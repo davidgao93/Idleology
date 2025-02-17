@@ -693,3 +693,23 @@ class DatabaseManager:
         
         # Commit the transaction
         await self.connection.commit()
+
+
+    # Method to update the number of refinement runes for a user
+    async def update_refinement_runes(self, user_id: str, count: int) -> None:
+        """Update the user's count of refinement runes in the database."""
+        await self.connection.execute(
+            "UPDATE users SET refinement_runes = refinement_runes + ? WHERE user_id = ?",
+            (count, user_id)
+        )
+        await self.connection.commit()
+
+    # Method to fetch the number of refinement runes for a user
+    async def fetch_refinement_runes(self, user_id: str) -> int:
+        """Fetch the user's refinement runes count from the database."""
+        rows = await self.connection.execute(
+            "SELECT refinement_runes FROM users WHERE user_id = ?",
+            (user_id,)
+        )
+        result = await rows.fetchone()
+        return result[0] if result else 0  # Return the count or 0 if user not found

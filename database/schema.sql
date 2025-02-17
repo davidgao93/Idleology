@@ -5,6 +5,7 @@
 --DROP TABLE IF EXISTS `fishing`;
 --DROP TABLE IF EXISTS `woodcutting`;
 --DROP TABLE IF EXISTS `mining`;
+ALTER TABLE users ADD COLUMN `refinement_runes` INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -25,7 +26,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `ascension` INTEGER NOT NULL DEFAULT 0,
   `potions` INTEGER NOT NULL DEFAULT 0,
   `last_checkin_time` TIMESTAMP DEFAULT NULL,  -- New column for storing the last check-in time
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `refinement_runes` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (

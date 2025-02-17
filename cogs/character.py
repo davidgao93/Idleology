@@ -648,15 +648,54 @@ class Character(commands.Cog, name="character"):
         # Get the current state of the item
         refines_remaining = item_details[10]  # Assuming refines_remaining is at index 10
         player_gold = await self.bot.database.fetch_user_gold(user_id, server_id)
+        refinement_runes = await self.bot.database.fetch_refinement_runes(user_id)
 
         if refines_remaining <= 0:
-            embed.add_field(name="Refining", value=f"This item can no longer be refined.", inline=False)
-            await message.edit(embed=embed)
-            await asyncio.sleep(5)
+            if refinement_runes > 0:
+                # Create confirmation embed for applying a Rune of Refinement
+                confirm_embed = discord.Embed(
+                    title="Apply Rune of Refinement?",
+                    description=(f"**{item_name}** has no refine attempts remaining.\n"
+                                f"Do you want to use a **Rune of Refinement** to add a refining attempt?\n"
+                                f"(You have {refinement_runes} runes available)"),
+                    color=0xFFCC00
+                )
+                await message.edit(embed=confirm_embed)
+
+                await message.add_reaction("✅")  # Confirm
+                await message.add_reaction("❌")  # Cancel
+
+                def confirm_check(reaction, user):
+                    return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
+
+                    if str(reaction.emoji) == "✅":
+                        # Applying the rune
+                        await self.bot.database.update_refinement_runes(user_id, -1)  # Deduct a rune
+                        await self.bot.database.update_item_refine_count(item_id, 1)  # Set refines_remaining to 1
+                        confirm_embed.add_field(name="Rune of Refinement",
+                                                 value=(f"You have successfully applied a **Rune of Refinement**!"
+                                                        f"{item_name} now has **1** refine remaining."),
+                                                   inline=False)
+                        refines_remaining = 1  # Update local variable to reflect the change
+                        await message.edit(embed=confirm_embed)
+                        await asyncio.sleep(5)
+                    elif str(reaction.emoji) == "❌":
+                        confirm_embed.add_field(name="Rune of Refinement",
+                            value=(f"You chose not to apply a Rune of Refinement."),
+                            inline=False)
+                        await message.edit(embed=confirm_embed)
+                        await asyncio.sleep(5)
+                        return  # Exit the method to return to the inventory interface
+
+                except asyncio.TimeoutError:
+                    return
             return
 
         # Determine cost of the refinement
-        refine_costs = [20000, 50000, 100000, 200000, 500000]
+        refine_costs = [10000, 30000, 50000, 100000, 200000]
         cost = refine_costs[5 - refines_remaining]  # Costs increase when refines_remaining decreases
         # Create a confirmation embed showing the cost
         cost_embed = discord.Embed(

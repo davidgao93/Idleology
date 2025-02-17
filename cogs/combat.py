@@ -46,6 +46,11 @@ class Combat(commands.Cog, name="combat"):
         loot_description = item_name + f"\n"
         if modifiers:
             loot_description += f"\n".join(modifiers)
+        else:
+            # Award the Rune of Refinement if there are no modifiers
+            await self.bot.database.update_refinement_runes(user_id, 1)  # Increment runes
+            loot_description += "**Rune of Refinement**!"
+
 
         return item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description
 
