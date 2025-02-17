@@ -6,6 +6,8 @@ from discord.ext.commands import Context
 from discord.ext.tasks import asyncio
 from discord.ext import tasks
 import math
+import csv
+import os
 
 class Combat(commands.Cog, name="combat"):
     def __init__(self, bot) -> None:
@@ -13,6 +15,7 @@ class Combat(commands.Cog, name="combat"):
         self.prefixes = self.load_list("assets/items/pref.txt")
         self.weapon_types = self.load_list("assets/items/wep.txt")
         self.suffixes = self.load_list("assets/items/suff.txt")
+        self.monsters = self.load_monsters()
 
     def load_list(self, filepath: str) -> list:
         """Load a list from a text file."""
@@ -96,7 +99,7 @@ class Combat(commands.Cog, name="combat"):
                   f"p.atk: {player_attack} | p.def: {player_defence}")
             print(f"m.lvl: {encounter_level} | m.atk: {monster_attack} | m.def: {monster_defence} | m.hp: {monster_hp}")
             # Fetch the monster image
-            monster_name, image_url = await self.fetch_monster_image(monster_hp)
+            monster_name, image_url = await self.fetch_monster_image(encounter_level)
             print(f"Generated {monster_name} with image_url: {image_url}")
 
             start_combat = False
@@ -699,53 +702,37 @@ class Combat(commands.Cog, name="combat"):
         return encounter_level, monster_attack, monster_defence    
     
 
-    async def fetch_monster_image(self, monster_hp: int) -> str:
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.get("https://www.dnd5eapi.co/api/monsters") as response:
-                    if response.status == 200:
-                        # print('Generating monster')
-                        data = await response.json()
-                        monsters = data['results']
-                        if not monsters:
-                            return "Unknown Monster", "https://www.dnd5eapi.co/api/images/monsters/acolyte.png"  # Fallback
-                        
-                        image_retrieved = False
-                        while True:
-                            # print('Trying to find a valid monster')
-                            monster = random.choice(monsters)
-                            monster_id = monster['index']
-                            async with session.get(f"https://www.dnd5eapi.co/api/monsters/{monster_id}") as monster_response:
-                                if monster_response.status == 200:
-                                    monster_data = await monster_response.json()
-                                    monster_name = monster_data['name']  # Get the monster's name
-                                    cur_hp = 10 * monster_data["hit_points"] ** 1.2
-                                    if cur_hp <= 10:
-                                        cur_hp = 10
-                                    # print(f'{monster_data["name"]} with hp {cur_hp}, target hp: {monster_hp}')
-                                    hp_diff = abs(cur_hp - monster_hp)
-                                    # print(f'{monster_data["name"]} hp difference is {hp_diff}')
-                                    if (hp_diff <= 1000 and cur_hp <= monster_hp):
-                                        # print("HP parameters valid")
-                                        if ("image" in monster_data):
-                                            # print("image present in monster data")
-                                            if monster_data["image"]:
-                                                # print(f'monster image url found: {monster_data["image"]}')
-                                                image_url = f"https://www.dnd5eapi.co" + monster_data["image"]
-                                                # print(image_url)
-                                                async with session.get(image_url) as image_response:
-                                                    if image_response.status == 200:
-                                                        # print('Image retrieved successfully')
-                                                        image_retrieved = True
-                                    if (image_retrieved):
-                                        print(f'{monster_data["name"]} fetched')
-                                        return monster_name, image_url
-                                    else:
-                                        continue
-                return "Unknown Monster", "https://www.dnd5eapi.co/api/images/monsters/acolyte.png"  # Fallback if none are found
-            except Exception as e:
-                print(f"Error fetching monster data: {e}")
-                return "Unknown Monster", "https://www.dnd5eapi.co/api/images/monsters/acolyte.png"  # Fallback on exceptions
+    async def fetch_monster_image(self, encounter_level: int):
+        """Fetches a monster image from the monsters.csv file based on the encounter level."""
+        # Path to the CSV file
+        csv_file_path = os.path.join(os.path.dirname(__file__), '../assets/monsters.csv')
+        
+        monsters = []
+        
+        # Reading the CSV file and collecting monsters
+        try:
+            with open(csv_file_path, newline='') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    monster_name = row['name']
+                    monster_url = row['url']
+                    monster_level = int(row['level'])
+                    monsters.append((monster_name, monster_url, monster_level))
+        except Exception as e:
+            print(f"Error reading monsters.csv: {e}")
+            return "Commoner", "https://i.imgur.com/v1BrB1M.png"  # Fallback image
+
+        # Define level range for filtering
+        min_level = max(1, (encounter_level // 10) * 10)  # Select 10 levels below (use integer division to round down)
+        max_level = min(100, min_level + 20)                # Ensure we don't exceed level 30, adjust max level based on encounter
+        selected_monsters = [monster for monster in monsters if min_level <= monster[2] <= max_level]
+
+        if not selected_monsters:
+            return "Commoner", "https://i.imgur.com/v1BrB1M.png"  # Fallback if no monsters are found
+
+        # Randomly select a monster from the filtered list
+        selected_monster = random.choice(selected_monsters)
+        return selected_monster[0], selected_monster[1]  # Return the name and the URL
 
     async def update_experience(self, user_id: str, server_id: str, xp_award: int, context) -> None:
         """Update the user's experience and handle leveling up."""
@@ -901,6 +888,19 @@ class Combat(commands.Cog, name="combat"):
             
         # print(f'Update {user_id} experience')
         await self.bot.database.update_experience(user_id, new_exp)
+
+    def load_monsters(self):
+        monsters = []
+        csv_path = os.path.join("../assets/monsters.csv")  # Update this line with the correct path
+        with open(csv_path, mode='r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                monsters.append({
+                    "name": row["name"],
+                    "url": row["url"],
+                    "level": int(row["level"]),
+                })
+        return monsters
 
 async def setup(bot) -> None:
     await bot.add_cog(Combat(bot))
