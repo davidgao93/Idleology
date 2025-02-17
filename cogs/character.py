@@ -657,9 +657,10 @@ class Character(commands.Cog, name="character"):
                     title="Apply Rune of Refinement?",
                     description=(f"**{item_name}** has no refine attempts remaining.\n"
                                 f"Do you want to use a **Rune of Refinement** to add a refining attempt?\n"
-                                f"(You have {refinement_runes} runes available)"),
+                                f"(You have {refinement_runes} rune(s) available)"),
                     color=0xFFCC00
                 )
+                await message.clear_reactions()
                 await message.edit(embed=confirm_embed)
 
                 await message.add_reaction("✅")  # Confirm
@@ -676,15 +677,15 @@ class Character(commands.Cog, name="character"):
                         await self.bot.database.update_refinement_runes(user_id, -1)  # Deduct a rune
                         await self.bot.database.update_item_refine_count(item_id, 1)  # Set refines_remaining to 1
                         confirm_embed.add_field(name="Rune of Refinement",
-                                                 value=(f"You have successfully applied a **Rune of Refinement**!"
-                                                        f"{item_name} now has **1** refine remaining."),
+                                                 value=(f"You have successfully applied a **Rune of Refinement**!\n"
+                                                        f"{item_name} now has **1** refine remaining. Returning to main menu..."),
                                                    inline=False)
                         refines_remaining = 1  # Update local variable to reflect the change
                         await message.edit(embed=confirm_embed)
                         await asyncio.sleep(5)
                     elif str(reaction.emoji) == "❌":
                         confirm_embed.add_field(name="Rune of Refinement",
-                            value=(f"You chose not to apply a Rune of Refinement."),
+                            value=(f"You chose not to apply a Rune of Refinement.\nReturning to main menu..."),
                             inline=False)
                         await message.edit(embed=confirm_embed)
                         await asyncio.sleep(5)

@@ -116,10 +116,10 @@ class Skills(commands.Cog, name="skills"):
 
         embed.add_field(name="⛏️", value=mining_value or "No mining data available.", inline=False)
 
-        await context.send(embed=embed)
-        await self.offer_mining_upgrade(context, mining_data)
+        message = await context.send(embed=embed)
+        await self.offer_mining_upgrade(context, mining_data, embed, message)
 
-    async def offer_mining_upgrade(self, context, mining_data):
+    async def offer_mining_upgrade(self, context, mining_data, embed, message):
         user_id = str(context.author.id)
         server_id = str(context.guild.id)
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
@@ -134,6 +134,17 @@ class Skills(commands.Cog, name="skills"):
         required_iron, required_coal, required_gold, required_platinum, required_gp = upgrade_requirements
         print(f'Required iron: {required_iron} | Required coal: {required_coal} '
               f'| Required gold: {required_gold} | Required plat: {required_platinum} | Required gp: {required_gp}')
+        
+        cost_fields = [
+                f"Iron ore required: **{required_iron:,}**" if required_iron else "",
+                f"Coal required: **{required_coal:,}**" if required_coal > 0 else "",
+                f"Gold ore required: **{required_gold:,}**" if required_gold > 0 else "",
+                f"Platinum ore required: **{required_platinum:,}**" if required_platinum > 0 else "",
+                f"GP required: **{required_gp:,}**" if required_gp > 0 else "",
+            ]
+        cost_str = "\n".join(filter(None, cost_fields))
+        embed.add_field(name="Next upgrade", value=cost_str or "No further upgrades possible.", inline=False)
+        await message.edit(embed=embed)
         # Check if user can upgrade
         if (mining_data[3] >= required_iron and
             mining_data[4] >= required_coal and
@@ -147,14 +158,6 @@ class Skills(commands.Cog, name="skills"):
                              f"Pickaxe to {self.next_pickaxe_tier(pickaxe_tier).title()}?"),
                 color=0xFFCC00
             )
-            cost_fields = [
-                f"Iron ore required: **{required_iron:,}**" if required_iron else "",
-                f"Coal required: **{required_coal:,}**" if required_coal > 0 else "",
-                f"Gold ore required: **{required_gold:,}**" if required_gold > 0 else "",
-                f"Platinum ore required: **{required_platinum:,}**" if required_platinum > 0 else "",
-                f"GP required: **{required_gp:,}**" if required_gp > 0 else "",
-            ]
-            cost_str = "\n".join(filter(None, cost_fields))
             embed.add_field(name="Material costs", value=cost_str or "No further upgrades possible.", inline=False)
             message = await context.send(embed=embed)
             await message.add_reaction("✅")  # Confirm Upgrade
@@ -192,9 +195,9 @@ class Skills(commands.Cog, name="skills"):
         requirements = {
             'ideal': None,
             'iron': (100, 0, 0, 0, 1000),
-            'steel': (300, 100, 0, 0, 5000),
-            'gold': (1000, 500, 100, 0, 10000),
-            'platinum': (5000, 2000, 1000, 500, 100000),
+            'steel': (200, 100, 0, 0, 5000),
+            'gold': (300, 200, 100, 0, 10000),
+            'platinum': (600, 400, 200, 100, 100000),
         }
         return requirements.get(pickaxe_tier)
 
@@ -241,14 +244,14 @@ class Skills(commands.Cog, name="skills"):
         woodcutting_value = "\n".join(filter(None, woodcutting_fields))
         embed.add_field(name="🪓", value=woodcutting_value or "No woodcutting data available.", inline=False)
         
-        await context.send(embed=embed)
-        await self.offer_wc_upgrade(context, woodcutting_data)
+        message = await context.send(embed=embed)
+        await self.offer_wc_upgrade(context, woodcutting_data, embed, message)
 
     @commands.hybrid_command(name="wc", description="Check your woodcutting status and resources (alias).")
-    async def wc(self, context: commands.Context):
+    async def wc(self, context: commands.Context, embed):
         await self.woodcutting(context)
 
-    async def offer_wc_upgrade(self, context, wc_data):
+    async def offer_wc_upgrade(self, context, wc_data, embed, message):
         user_id = str(context.author.id)
         server_id = str(context.guild.id)
         
@@ -262,7 +265,16 @@ class Skills(commands.Cog, name="skills"):
             return  # Already at the highest tier
         
         required_oak, required_willow, required_mahogany, required_magic, required_gp = upgrade_requirements
-        
+        cost_fields = [
+            f"Oak logs required: **{required_oak:,}**" if required_oak else "",
+            f"Willow logs required: **{required_willow:,}**" if required_willow > 0 else "",
+            f"Mahogany logs required: **{required_mahogany:,}**" if required_mahogany > 0 else "",
+            f"Magic logs required: **{required_magic:,}**" if required_magic > 0 else "",
+            f"GP required: **{required_gp:,}**" if required_gp > 0 else "",
+        ]
+        cost_str = "\n".join(filter(None, cost_fields))
+        embed.add_field(name="Next upgrade", value=cost_str or "No further upgrades possible.", inline=False)
+        await message.edit(embed=embed)
         # Check if user can upgrade
         if (wc_data[3] >= required_oak and
             wc_data[4] >= required_willow and
@@ -276,14 +288,6 @@ class Skills(commands.Cog, name="skills"):
                              f"Axe to {self.next_axe_tier(axe_tier).title()}?"),
                 color=0xFFCC00
             )
-            cost_fields = [
-                f"Oak logs required: **{required_oak:,}**" if required_oak else "",
-                f"Willow logs required: **{required_willow:,}**" if required_willow > 0 else "",
-                f"Mahogany logs required: **{required_mahogany:,}**" if required_mahogany > 0 else "",
-                f"Magic logs required: **{required_magic:,}**" if required_magic > 0 else "",
-                f"GP required: **{required_gp:,}**" if required_gp > 0 else "",
-            ]
-            cost_str = "\n".join(filter(None, cost_fields))
             embed.add_field(name="Material costs", value=cost_str or "No further upgrades possible.", inline=False)
             message = await context.send(embed=embed)
             await message.add_reaction("✅")  # Confirm Upgrade
@@ -320,9 +324,9 @@ class Skills(commands.Cog, name="skills"):
         requirements = {
             'felling': None,
             'flimsy': (100, 0, 0, 0, 1000),
-            'carved': (300, 100, 0, 0, 5000),
-            'chopping': (1000, 500, 100, 0, 10000),
-            'magic': (5000, 2000, 1000, 500, 100000),
+            'carved': (200, 100, 0, 0, 5000),
+            'chopping': (300, 200, 100, 0, 10000),
+            'magic': (600, 400, 200, 100, 100000),
         }
         return requirements.get(axe_tier)
 
@@ -372,10 +376,10 @@ class Skills(commands.Cog, name="skills"):
         fish_value = "\n".join(filter(None, fishing_fields))
         embed.add_field(name="🎣", value=fish_value or "No fishing data available.", inline=False)
         
-        await context.send(embed=embed)
-        await self.offer_fishing_upgrade(context, fishing_data)
+        message = await context.send(embed=embed)
+        await self.offer_fishing_upgrade(context, fishing_data, embed, message)
 
-    async def offer_fishing_upgrade(self, context, fishing_data):
+    async def offer_fishing_upgrade(self, context, fishing_data, embed, message):
         user_id = str(context.author.id)
         server_id = str(context.guild.id)
         
@@ -389,7 +393,16 @@ class Skills(commands.Cog, name="skills"):
             return  # Already at the highest tier
         
         required_desiccated, required_regular, required_sturdy, required_reinforced, required_gp = upgrade_requirements
-        
+        cost_fields = [
+                f"Desiccated Fish Bones required: **{required_desiccated:,}**" if required_desiccated else "",
+                f"Regular Fish Bones required: **{required_regular:,}**" if required_regular > 0 else "",
+                f"Sturdy Fish Bones required: **{required_sturdy:,}**" if required_sturdy > 0 else "",
+                f"Reinforced Fish Bones required: **{required_reinforced:,}**" if required_reinforced > 0 else "",
+                f"GP required: **{required_gp:,}**" if required_gp > 0 else "",
+            ]
+        cost_str = "\n".join(filter(None, cost_fields))
+        embed.add_field(name="Next upgrade", value=cost_str or "No further upgrades possible.", inline=False)
+        await message.edit(embed=embed)
         # Check if user can upgrade
         if (fishing_data[3] >= required_desiccated and
             fishing_data[4] >= required_regular and
@@ -403,14 +416,6 @@ class Skills(commands.Cog, name="skills"):
                              f"Fishing Rod to {self.next_fishing_rod_tier(fishing_rod_tier).title()}?"),
                 color=0xFFCC00
             )
-            cost_fields = [
-                f"Desiccated Fish Bones required: **{required_desiccated:,}**" if required_desiccated else "",
-                f"Regular Fish Bones required: **{required_regular:,}**" if required_regular > 0 else "",
-                f"Sturdy Fish Bones required: **{required_sturdy:,}**" if required_sturdy > 0 else "",
-                f"Reinforced Fish Bones required: **{required_reinforced:,}**" if required_reinforced > 0 else "",
-                f"GP required: **{required_gp:,}**" if required_gp > 0 else "",
-            ]
-            cost_str = "\n".join(filter(None, cost_fields))
             embed.add_field(name="Material costs", value=cost_str or "No further upgrades possible.", inline=False)
             message = await context.send(embed=embed)
             await message.add_reaction("✅")  # Confirm Upgrade
@@ -448,9 +453,9 @@ class Skills(commands.Cog, name="skills"):
         requirements = {
             'titanium': None,
             'desiccated': (100, 0, 0, 0, 1000),
-            'regular': (300, 100, 0, 0, 5000),
-            'sturdy': (1000, 500, 200, 0, 10000),
-            'reinforced': (5000, 2000, 1000, 500, 50000),
+            'regular': (200, 100, 0, 0, 5000),
+            'sturdy': (300, 200, 100, 0, 10000),
+            'reinforced': (600, 400, 200, 100, 50000),
         }
         return requirements.get(fishing_rod_tier)
 
