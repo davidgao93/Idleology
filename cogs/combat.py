@@ -15,7 +15,6 @@ class Combat(commands.Cog, name="combat"):
         self.prefixes = self.load_list("assets/items/pref.txt")
         self.weapon_types = self.load_list("assets/items/wep.txt")
         self.suffixes = self.load_list("assets/items/suff.txt")
-        self.monsters = self.load_monsters()
 
     def load_list(self, filepath: str) -> list:
         """Load a list from a text file."""
@@ -716,17 +715,17 @@ class Combat(commands.Cog, name="combat"):
                 for row in reader:
                     monster_name = row['name']
                     monster_url = row['url']
-                    monster_level = int(row['level'])
+                    monster_level = int(row['level']) * 10
                     monsters.append((monster_name, monster_url, monster_level))
         except Exception as e:
             print(f"Error reading monsters.csv: {e}")
             return "Commoner", "https://i.imgur.com/v1BrB1M.png"  # Fallback image
 
         # Define level range for filtering
-        min_level = max(1, (encounter_level // 10) * 10)  # Select 10 levels below (use integer division to round down)
-        max_level = min(100, min_level + 20)                # Ensure we don't exceed level 30, adjust max level based on encounter
+        min_level = max(1, encounter_level - 20)  # Select 20 levels below
+        max_level = min(100, min_level + 20)      # Select 20 levels above
         selected_monsters = [monster for monster in monsters if min_level <= monster[2] <= max_level]
-
+        print(selected_monsters)
         if not selected_monsters:
             return "Commoner", "https://i.imgur.com/v1BrB1M.png"  # Fallback if no monsters are found
 
@@ -888,19 +887,6 @@ class Combat(commands.Cog, name="combat"):
             
         # print(f'Update {user_id} experience')
         await self.bot.database.update_experience(user_id, new_exp)
-
-    def load_monsters(self):
-        monsters = []
-        csv_path = os.path.join("../assets/monsters.csv")  # Update this line with the correct path
-        with open(csv_path, mode='r') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                monsters.append({
-                    "name": row["name"],
-                    "url": row["url"],
-                    "level": int(row["level"]),
-                })
-        return monsters
 
 async def setup(bot) -> None:
     await bot.add_cog(Combat(bot))

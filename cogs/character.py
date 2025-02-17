@@ -592,11 +592,11 @@ class Character(commands.Cog, name="character"):
             "tempered": "Reduce monster's defence. (20%)",
             "flaring": "Reduce monster's defence. (25%)",
             
-            "sparking": "Additional damage on normal hits. (2d6)",
-            "shocking": "Additional damage on normal hits. (3d6)",
-            "discharging": "Additional damage on normal hits. (4d6)",
-            "electrocuting": "Additional damage on normal hits. (5d6)",
-            "vapourising": "Additional damage on normal hits. (6d6)",
+            "sparking": "Additional damage on normal hits. (1d6)",
+            "shocking": "Additional damage on normal hits. (2d6)",
+            "discharging": "Additional damage on normal hits. (3d6)",
+            "electrocuting": "Additional damage on normal hits. (4d6)",
+            "vapourising": "Additional damage on normal hits. (5d6)",
             
             "sturdy": "Additional defence. (+3)",
             "reinforced": "Additional defence. (+6)",

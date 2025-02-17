@@ -172,11 +172,15 @@ class Skills(commands.Cog, name="skills"):
                 if str(reaction.emoji) == "✅":
                     # Upgrade the pickaxe
                     await self.upgrade_pickaxe(context.author.id, context.guild.id, pickaxe_tier, self.next_pickaxe_tier(pickaxe_tier))
-                    await context.send(f"You have upgraded your pickaxe to {self.next_pickaxe_tier(pickaxe_tier).title()}!")
+                    value = (f"You have upgraded your pickaxe to {self.next_pickaxe_tier(pickaxe_tier).title()}!")
+                    embed.add_field(name="Upgraded!", value=value, inline=False)
+                    await message.edit(embed=embed)
                 else:
-                    await context.send("Upgrade cancelled.")
+                    embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
+                    await message.edit(embed=embed)
             except asyncio.TimeoutError:
-                await context.send("You took too long to respond. Upgrade cancelled.")
+                embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
+                await message.edit(embed=embed)
 
     async def upgrade_pickaxe(self, user_id, server_id, pickaxe_tier, new_pickaxe_tier):
         upgrade_requirements = self.get_mining_upgrade_requirements(pickaxe_tier)
@@ -302,11 +306,15 @@ class Skills(commands.Cog, name="skills"):
                 if str(reaction.emoji) == "✅":
                     # Upgrade the axe
                     await self.upgrade_axe(context.author.id, context.guild.id, axe_tier, self.next_axe_tier(axe_tier))
-                    await context.send(f"You have upgraded your axe to {self.next_axe_tier(axe_tier).title()}!")
+                    value = (f"You have upgraded your axe to {self.next_axe_tier(axe_tier).title()}!")
+                    embed.add_field(name="Upgraded!", value=value, inline=False)
+                    await message.edit(embed=embed)
                 else:
-                    await context.send("Upgrade cancelled.")
+                    embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
+                    await message.edit(embed=embed)
             except asyncio.TimeoutError:
-                await context.send("You took too long to respond. Upgrade cancelled.")
+                embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
+                await message.edit(embed=embed)
 
     async def upgrade_axe(self, user_id, server_id, axe_tier, new_axe_tier):
         upgrade_requirements = self.get_wc_upgrade_requirements(axe_tier)
@@ -430,11 +438,16 @@ class Skills(commands.Cog, name="skills"):
                 if str(reaction.emoji) == "✅":
                     # Upgrade the fishing rod
                     await self.upgrade_fishing_rod(user_id, server_id, fishing_rod_tier, self.next_fishing_rod_tier(fishing_rod_tier))
-                    await context.send(f"You have upgraded your fishing rod to {self.next_fishing_rod_tier(fishing_rod_tier).title()}!")
+                    value = (f"You have upgraded your fishing rod to "
+                             f"{self.next_fishing_rod_tier(fishing_rod_tier).title()}!")
+                    embed.add_field(name="Upgraded!", value=value, inline=False)
+                    await message.edit(embed=embed)
                 else:
-                    await context.send("Upgrade cancelled.")
+                    embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
+                    await message.edit(embed=embed)
             except asyncio.TimeoutError:
-                await context.send("You took too long to respond. Upgrade cancelled.")
+                embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
+                await message.edit(embed=embed)
 
     async def upgrade_fishing_rod(self, user_id, server_id, fishing_rod_tier, new_fishing_rod_tier):
         upgrade_requirements = self.get_fishing_upgrade_requirements(fishing_rod_tier)
