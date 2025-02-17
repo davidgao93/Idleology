@@ -122,7 +122,7 @@ class Combat(commands.Cog, name="combat"):
                 if (current_passive in sturdy_passives):
                     value = sturdy_passives.index(current_passive)
                     # Example behavior for Sturdy (currently unspecified)
-                    defence_bonus = value + 1  # This can be defined later based on combat mechanics
+                    defence_bonus = (1 + value) * 3  # This can be defined later based on combat mechanics
                     print(f"Sturdy passive increases defense by {defence_bonus}.")
                     embed.add_field(name="Weapon passive", 
                                     value=(f"Your **{current_passive}** weapon strengthens your resolve!\n"

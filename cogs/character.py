@@ -117,15 +117,15 @@ class Character(commands.Cog, name="character"):
             return
         player_name = existing_user[3]
         embed = discord.Embed(
-            title=f"{player_name}'s Inventory",
-            #description="Inventory:",
+            title=f"📦",
+            description=f"{player_name}'s Inventory:",
             color=0x00FF00,
         )
 
         inventory_message = await context.send(embed=embed)
         while True:
             items = await self.bot.database.fetch_user_items(user_id)
-        
+            embed.description = f"{player_name}'s Inventory:"
             if not items:
                 await context.send("You peer into your inventory, it is empty.")
                 return
@@ -136,23 +136,31 @@ class Character(commands.Cog, name="character"):
             await inventory_message.clear_reactions()
             embed.clear_fields()
             number_emojis = ["🚪", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+            items_display_string = ""
+
             for index, item in enumerate(items_to_display):
                 item_name = item[1]  # index 1: item name
                 item_level = item[2]  # index 2: item level
                 is_equipped = equipped_item and (equipped_item[0] == item[0])
                 
-                # Add the item field with equipped indication if applicable
-                embed.add_field(
-                    name=f"{number_emojis[index + 1]}:",
-                    value=f"{item_name} (Level {item_level}){' [E]' if is_equipped else ''}",
-                    inline=False
+                # Append item details to the display string
+                items_display_string += (
+                        f"{number_emojis[index + 1]}: "
+                        f"{item_name} (Level {item_level})"
+                        f"{' [E]' if is_equipped else ''}\n"
                 )
+            # Add a single field for all items
+            embed.add_field(
+                name="Items:",
+                value=items_display_string.strip(),  # Use strip to remove any trailing newline
+                inline=False
+            )
                 
             # Add the choose field outside the loop, since it is the same for all items
             embed.add_field(
                 name="Instructions",
-                value=(f"ℹ️ Select an item you want to interact with.\n"
-                       f"🚪 Close your inventory."),
+                value=(f"[ℹ️] Select an item you want to interact with.\n"
+                       f"[🚪] Close your inventory."),
                 inline=False
             )
             await inventory_message.edit(embed=embed)
@@ -188,6 +196,8 @@ class Character(commands.Cog, name="character"):
                 embed.add_field(name="Defence", value=item_defence, inline=True)
                 embed.add_field(name="Rarity", value=item_rarity, inline=True)
                 embed.add_field(name="Passive", value=item_passive, inline=False)
+                effect_description = self.get_passive_effect(item_passive)  # Get the associated effect message
+                embed.add_field(name="Effect", value=effect_description, inline=False)
                 item_guide = (
                     "⚔️ to equip.\n"
                     "🔨 to forge.\n"
@@ -561,6 +571,64 @@ class Character(commands.Cog, name="character"):
             "echoooo": "echoes"
         }
         return passive_upgrade_table.get(current_passive, current_passive)  # Return current if maxed out
+    
+    def get_passive_effect(self, passive: str) -> str:
+        passive_messages = {
+            "burning": "Increases your maximum hit (1d6).",
+            "flaming": "Increases your maximum hit. (2d6)",
+            "scorching": "Increases your maximum hit. (3d6)",
+            "incinerating": "Increases your maximum hit. (4d6)",
+            "carbonising": "Increases your maximum hit. (5d6)",
+            
+            "poisonous": "Additional damage on misses. (3d6)",
+            "noxious": "Additional damage on misses. (4d6)",
+            "venomous": "Additional damage on misses. (5d6)",
+            "toxic": "Additional damage on misses. (6d6)",
+            "lethal": "Additional damage on misses. (7d6)",
+            
+            "polished": "Reduce monster's defence. (5%)",
+            "honed": "Reduce monster's defence. (10%)",
+            "gleaming": "Reduce monster's defence. (15%)",
+            "tempered": "Reduce monster's defence. (20%)",
+            "flaring": "Reduce monster's defence. (25%)",
+            
+            "sparking": "Additional damage on normal hits. (2d6)",
+            "shocking": "Additional damage on normal hits. (3d6)",
+            "discharging": "Additional damage on normal hits. (4d6)",
+            "electrocuting": "Additional damage on normal hits. (5d6)",
+            "vapourising": "Additional damage on normal hits. (6d6)",
+            
+            "sturdy": "Additional defence. (+3)",
+            "reinforced": "Additional defence. (+6)",
+            "thickened": "Additional defence. (+9)",
+            "impregnable": "Additional defence. (+12)",
+            "impenetrable": "Additional defence. (+15)",
+            
+            "piercing": "Additional crit chance. (3%)",
+            "keen": "Additional crit chance. (6%)",
+            "incisive": "Additional crit chance. (9%)",
+            "puncturing": "Additional crit chance. (12%)",
+            "penetrating": "Additional crit chance. (15%)",
+            
+            "strengthened": "Culling strike.",
+            "forceful": "Culling strike.",
+            "overwhelming": "Culling strike.",
+            "devastating": "Culling strike.",
+            "catastrophic": "Culling strike.",
+            
+            "accurate": "Increased accuracy.",
+            "precise": "Increased accuracy.",
+            "sharpshooter": "Increased accuracy.",
+            "deadeye": "Increased accuracy.",
+            "bullseye": "Increased accuracy.",
+            
+            "echo": "Echo normal hits.",
+            "echoo": "Echo normal hits.",
+            "echooo": "Echo normal hits.",
+            "echoooo": "Echo normal hits.",
+            "echoes": "Echo normal hits."
+        }
+        return passive_messages.get(passive, "No effect.")
     
     async def refine_item(self, context: Context, 
                           selected_item: tuple, 
