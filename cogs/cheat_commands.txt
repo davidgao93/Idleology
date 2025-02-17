@@ -1,0 +1,43 @@
+    @commands.hybrid_command(name="cheat", description="cheat.")
+    async def cheat(self, context: Context):
+        user_id = str(context.author.id)
+        server_id = str(context.guild.id)
+
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+
+        if existing_user:
+            victory_embed = discord.Embed(
+            title="cheat!",
+            description=f"cheats activated**! 🎉",
+            color=0x00FF00,
+            )
+            victory_embed.add_field(name="📚 Experience Earned", value=f"10,000 XP")
+            victory_embed.add_field(name="💰 Gold Earned", value=f"10,000 GP")
+            await context.send(embed=victory_embed)
+            await self.update_experience(user_id, server_id, 10000, context)  # Update player EXP
+            await self.bot.database.add_gold(user_id, 10000)  # Update player gold
+
+
+       @commands.hybrid_command(
+        name="heal",
+        description="cheatcommand"
+    )
+    async def heal(self, context: Context) -> None:
+        user_id = str(context.author.id)
+        server_id = str(context.guild.id)
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+
+        if not existing_user:
+            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+            return
+
+        current_hp = existing_user[11]
+        max_hp = existing_user[12]
+
+        if current_hp == max_hp:
+            await context.send(f"You are already fully rested.")
+            return
+
+        await self.bot.database.update_player_hp(user_id, max_hp)
+        await context.send(f"You have rested and regained your health! Current HP is now **{max_hp}**.")
+        return         

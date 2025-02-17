@@ -1,0 +1,48 @@
+Sword
+Dagger
+Crossbow
+Staff
+Axe
+Spear
+Mace
+Bow
+Halberd
+Claw
+Whip
+Katana
+Pike
+Throwing Knife
+Morning Star
+Rapier
+Trident
+Battle Axe
+Greatsword
+Fist Weapon
+Flail
+Sling
+Nunchaku
+Polearm
+Shortsword
+Scimitar
+Glaive
+Blunderbuss
+Stave
+Javelin
+Warhammer
+Wand
+Chain
+Sickle
+Lance
+Sabre
+Double-Edged Sword
+Longbow
+Brass Knuckles
+Cudgel
+Tanto
+Bardiche
+Chakram
+Kukri
+Tomahawk
+Hunting Bow
+Magical Staff
+Felling Axe
