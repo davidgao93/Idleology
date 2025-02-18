@@ -3,7 +3,7 @@ import aiohttp
 import csv
 
 API_MONSTERS_URL = "https://www.dnd5eapi.co/api/monsters"
-PLACEHOLDER_IMAGE_URL = "https://www.dnd5eapi.co/api/images/monsters/acolyte.png"
+PLACEHOLDER_IMAGE_URL = ""
 
 async def fetch_monsters():
     async with aiohttp.ClientSession() as session:
