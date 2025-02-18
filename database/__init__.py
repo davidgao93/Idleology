@@ -358,6 +358,17 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+
+    async def update_mining_resource(self, user_id: str, server_id: str, resource: str, amount: int) -> None:
+        """Update a specific mining resource count for a user."""
+        
+        # Define the SQL query for updating the specific resource
+        sql_query = f"UPDATE mining SET {resource} = {resource} + ? WHERE user_id = ? AND server_id = ?"
+        
+        # Execute the query with the provided amount, user ID, and server ID
+        await self.connection.execute(sql_query, (amount, user_id, server_id))
+        await self.connection.commit()
+
     async def update_mining_resources(self, user_id: str, server_id: str, resources: dict) -> None:
         """Update mining resource counts for a user."""
         sql_query = (
@@ -383,6 +394,16 @@ class DatabaseManager:
         await self.connection.execute(sql_query, params)
         await self.connection.commit()
 
+    async def update_fishing_resource(self, user_id: str, server_id: str, resource: str, amount: int) -> None:
+        """Update a specific fishing resource count for a user."""
+        
+        # Define the SQL query for updating the specific resource
+        sql_query = f"UPDATE fishing SET {resource} = {resource} + ? WHERE user_id = ? AND server_id = ?"
+        
+        # Execute the query with the provided amount, user ID, and server ID
+        await self.connection.execute(sql_query, (amount, user_id, server_id))
+        await self.connection.commit()
+
     async def update_fishing_resources(self, user_id: str, server_id: str, resources: dict) -> None:
         """Update fishing resource counts for a user."""
         sql_query = (
@@ -406,6 +427,16 @@ class DatabaseManager:
         )
 
         await self.connection.execute(sql_query, params)
+        await self.connection.commit()
+
+    async def update_woodcutting_resource(self, user_id: str, server_id: str, resource: str, amount: int) -> None:
+        """Update a specific woodcutting resource count for a user."""
+
+        # Define the SQL query for updating the specific resource
+        sql_query = f"UPDATE woodcutting SET {resource} = {resource} + ? WHERE user_id = ? AND server_id = ?"
+
+        # Execute the query with the provided amount, user ID, and server ID
+        await self.connection.execute(sql_query, (amount, user_id, server_id))
         await self.connection.commit()
 
     async def update_woodcutting_resources(self, user_id: str, server_id: str, resources: dict) -> None:

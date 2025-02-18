@@ -158,5 +158,123 @@ class Trade(commands.Cog, name="trade"):
         finally:
             self.bot.state_manager.clear_active(user_id)
 
+
+    @commands.hybrid_command(name="send_material", description="Send skilling materials to another player.")
+    async def send_material(self, context: Context, receiver: discord.User, material: str, amount: int) -> None:
+        user_id = str(context.author.id)
+        server_id = str(context.guild.id)
+
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        if not existing_user:
+            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+            return
+
+        # Check if the user is trying to send materials to themselves
+        if receiver.id == context.author.id:
+            await context.send("You cannot send materials to yourself.")
+            return
+        
+        if self.bot.state_manager.is_active(user_id):
+            await context.send("You are currently busy with another operation. Please finish that first.")
+            return
+        # Set the user as active in operations
+        self.bot.state_manager.set_active(user_id, "send_material")
+
+        try:
+            # Prepare the material name and types
+            material_lower = material.lower()  # Case-insensitive match
+
+            # Determine which table to query based on material type
+            if material_lower in ["iron", "coal", "gold", "platinum"]:
+                table = "mining"
+                material_name = material_lower
+            elif material_lower in ["desiccated", "regular", "sturdy", "reinforced"]:
+                table = "fishing"
+                material_name = f"{material_lower}_bones"
+            elif material_lower in ["oak", "willow", "mahogany", "magic"]:
+                table = "woodcutting"
+                material_name = f"{material_lower}_logs"
+            else:
+                await context.send(f"Invalid material type.\n"
+                                   f"Ores: iron, coal, gold, and platinum.\n"
+                                   f"Bones: desiccated, regular, sturdy, and reinforced.\n"
+                                   f"Wood: oak, willow, mahogany, magic.")
+                return
+
+            # Fetch the user's current resources from the respective table
+            if table == "mining":
+                material_index = {
+                    "iron": 3,
+                    "coal": 4,
+                    "gold": 5,
+                    "platinum": 6
+                }[material_lower]
+                user_resources = await self.bot.database.fetch_user_mining(user_id, server_id)
+                current_amount = user_resources[material_index]
+            elif table == "fishing":
+                material_index = {
+                    "desiccated": 3, "regular": 4, "sturdy": 5, "reinforced": 6
+                                  }[material_lower]
+                user_resources = await self.bot.database.fetch_user_fishing(user_id, server_id)
+                current_amount = user_resources[material_index]
+            else:  # woodcutting
+                material_index = {
+                    "oak": 3, "willow": 4, "mahogany": 5, "magic": 6, "idea": 7
+                    }[material_lower]
+                user_resources = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+                current_amount = user_resources[material_index]
+
+            # Check if the specified amount is valid
+            if amount <= 0:
+                await context.send("Invalid amount. You must specify a positive amount of materials.")
+                return
+
+            if amount > current_amount:
+                await context.send(f"You do not have enough {material_lower} to send. You currently have: {current_amount}.")
+                return
+
+            # Create a confirmation embed
+            confirm_embed = discord.Embed(
+                title="Confirm",
+                description=(f"Are you sure you want to send **{amount}** **{material_lower.title()}** "
+                            f"to {receiver.mention}?"),
+                color=0x00FF00
+            )
+
+            # Send the confirmation embed and get user reaction
+            confirm_message = await context.send(embed=confirm_embed)
+            await confirm_message.add_reaction("✅")  # Confirm
+            await confirm_message.add_reaction("❌")  # Cancel
+
+            def confirm_check(reaction, user):
+                return user == context.author and reaction.message.id == confirm_message.id and str(reaction.emoji) in ["✅", "❌"]
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
+                if str(reaction.emoji) == "✅":
+                    if table == "mining":
+                        await self.bot.database.update_mining_resource(user_id, server_id, material_name, -amount)  # Subtract from sender
+                        await self.bot.database.update_mining_resource(str(receiver.id), server_id, material_name, amount)  # Add to receiver
+                    elif table == "fishing":
+                        await self.bot.database.update_fishing_resource(user_id, server_id, material_name, -amount)  # Subtract from sender
+                        await self.bot.database.update_fishing_resource(str(receiver.id), server_id, material_name, amount)  # Add to receiver
+                    elif table == "woodcutting":
+                        await self.bot.database.update_woodcutting_resource(user_id, server_id, material_name, -amount)  # Subtract from sender
+                        await self.bot.database.update_woodcutting_resource(str(receiver.id), server_id, material_name, amount)  # Add to receiver
+                    
+                    # Update the confirmation embed to indicate success
+                    confirm_embed.description = f"Successfully sent **{amount}** **{material_lower.title()}** to {receiver.mention}! 🎉"
+                    await confirm_message.edit(embed=confirm_embed)               
+                    
+                else:
+                    confirm_embed.description = "Transaction cancelled."
+                    await confirm_message.edit(embed=confirm_embed)
+
+            except asyncio.TimeoutError:
+                await confirm_message.delete()  # Delete the confirmation message if timed out.
+        finally:
+            # Ensure we clear the active operation regardless of success/failure
+            self.bot.state_manager.clear_active(user_id)
+
 async def setup(bot) -> None:
     await bot.add_cog(Trade(bot))
