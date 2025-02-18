@@ -71,6 +71,7 @@ class Combat(commands.Cog, name="combat"):
             player_attack = existing_user[9]
             player_defence = existing_user[10]
             player_hp = existing_user[11]  
+            player_max_hp = existing_user[12]
             ascension_level = existing_user[15]
             potions = existing_user[16]
             player_rar = 0
@@ -98,7 +99,7 @@ class Combat(commands.Cog, name="combat"):
                   f"p.atk: {player_attack} | p.def: {player_defence}")
             print(f"m.lvl: {encounter_level} | m.atk: {monster_attack} | m.def: {monster_defence} | m.hp: {monster_hp}")
             # Fetch the monster image
-            monster_name, image_url = await self.fetch_monster_image(encounter_level)
+            monster_name, image_url, flavor_txt = await self.fetch_monster_image(encounter_level)
             print(f"Generated {monster_name} with image_url: {image_url}")
 
             start_combat = False
@@ -174,7 +175,7 @@ class Combat(commands.Cog, name="combat"):
                                                                                 ascension_level, monster_name, current_passive)
                             player_hp, monster_message = await self.monster_turn(embed, monster_attack, player_hp, 
                                                                                 player_defence, followers_count, monster_name, 
-                                                                                user_id, current_passive)
+                                                                                user_id, current_passive, flavor_txt)
                             await self.bot.database.update_player_hp(user_id, player_hp)
 
                             # Check if the player is defeated
@@ -217,7 +218,8 @@ class Combat(commands.Cog, name="combat"):
                                                     followers_count, player_name, user_id, 
                                                     server_id, monster_name, player_hp, 
                                                     message, award_xp, ascension_level, 
-                                                    player_rar, current_passive, user_level)
+                                                    player_rar, current_passive, user_level,
+                                                    flavor_txt, player_max_hp)
                             break
 
                         elif str(reaction.emoji) == "🩹":
@@ -412,7 +414,7 @@ class Combat(commands.Cog, name="combat"):
     
     async def monster_turn(self, embed, monster_attack, player_hp, 
                            player_defence, followers_count, 
-                           monster_name, user_id, current_passive):
+                           monster_name, user_id, current_passive, flavor_txt):
         monster_miss_chance = 100 - int(self.calculate_monster_hit_chance(monster_attack, player_defence) * 100)
         monster_attack_roll = random.randint(0, 100) # Roll between 0 and 100
         # (f'{monster_miss_chance}% to miss. Monster rolls {monster_attack_roll}.')
@@ -420,7 +422,7 @@ class Combat(commands.Cog, name="combat"):
             damage_taken = self.calculate_damage_taken(monster_attack, player_defence)
             # print(f"Monster hits, player takes damage: {player_hp} - {damage_taken}")
             player_hp -= damage_taken
-            monster_message = f"The {monster_name} ⚔️ hits you for 💥 **{damage_taken}** damage!"
+            monster_message = f"The {monster_name} ⚔️ {flavor_txt} you for 💥 **{damage_taken}** damage!"
         else:
             # print(f"Monster misses")
             monster_message = f"The {monster_name} 💨 missed!"
@@ -462,11 +464,14 @@ class Combat(commands.Cog, name="combat"):
                             followers_count, player_name, user_id, 
                             server_id, monster_name, player_hp, 
                             message, award_xp, ascension_level,
-                            player_rar, current_passive, user_level):
-        while player_hp > 0 and monster_hp > 0:
+                            player_rar, current_passive, user_level,
+                            flavor_txt, player_max_hp):
+        minimum_hp = int(player_max_hp / 10)
+        while player_hp > minimum_hp and monster_hp > 0:
             monster_hp, attack_message = await self.player_turn(embed, player_attack, monster_hp, 
                                                 monster_defence, followers_count, 
-                                                player_name, ascension_level, monster_name, current_passive)
+                                                player_name, ascension_level, monster_name, 
+                                                current_passive)
             overwhelm_passives = ["strengthened", "forceful", "overwhelming", "devastating", "catastrophic"]
             if (current_passive in overwhelm_passives):
                 value = overwhelm_passives.index(current_passive)
@@ -489,7 +494,7 @@ class Combat(commands.Cog, name="combat"):
 
             player_hp, monster_message = await self.monster_turn(embed, monster_attack, player_hp, 
                                                 player_defence, followers_count, 
-                                                monster_name, user_id, current_passive)
+                                                monster_name, user_id, current_passive, flavor_txt)
             await self.bot.database.update_player_hp(user_id, player_hp)
             
             if player_hp <= 0:
@@ -716,7 +721,8 @@ class Combat(commands.Cog, name="combat"):
                     monster_name = row['name']
                     monster_url = row['url']
                     monster_level = int(row['level']) * 10
-                    monsters.append((monster_name, monster_url, monster_level))
+                    flavor_txt = row['flavor']
+                    monsters.append((monster_name, monster_url, monster_level, flavor_txt))
         except Exception as e:
             print(f"Error reading monsters.csv: {e}")
             return "Commoner", "https://i.imgur.com/v1BrB1M.png"  # Fallback image
@@ -731,7 +737,7 @@ class Combat(commands.Cog, name="combat"):
 
         # Randomly select a monster from the filtered list
         selected_monster = random.choice(selected_monsters)
-        return selected_monster[0], selected_monster[1]  # Return the name and the URL
+        return selected_monster[0], selected_monster[1], selected_monster[3]  # Return the name, URL, flavor
 
     async def update_experience(self, user_id: str, server_id: str, xp_award: int, context) -> None:
         """Update the user's experience and handle leveling up."""
