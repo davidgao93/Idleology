@@ -130,13 +130,13 @@ class Character(commands.Cog, name="character"):
         )
 
         inventory_message = await context.send(embed=embed)
+        self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
         while True:
-            self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
             items = await self.bot.database.fetch_user_items(user_id)
             embed.description = f"{player_name}'s Inventory:"
             if not items:
                 await context.send("You peer into your inventory, it is empty.")
-                return
+                break
 
             items.sort(key=lambda item: item[2], reverse=True)  # item_level at index 2
             items_to_display = items[:5]
@@ -173,7 +173,6 @@ class Character(commands.Cog, name="character"):
             )
             await inventory_message.edit(embed=embed)
             
-
             for i in range(len(items_to_display) + 1):  # Only add reactions for existing items
                 await inventory_message.add_reaction(number_emojis[i])
 
@@ -215,9 +214,7 @@ class Character(commands.Cog, name="character"):
                 )
 
                 embed.add_field(name="Item Guide", value=item_guide, inline=False)
-
                 await inventory_message.edit(embed=embed)
-
                 await inventory_message.clear_reactions()
                 action_reactions = ["⚔️", "🔨", "⚙️", "🗑️", "◀️"]
 
@@ -846,12 +843,9 @@ class Character(commands.Cog, name="character"):
             await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
             return
         
-        # Check if the user is already active in allocating passives
-        if user_id in self.active_users:
-            await context.send("You are already allocating your passive points. Please finish that process first.")
+        if self.bot.state_manager.is_active(user_id):
+            await context.send("You are currently busy with another operation. Please finish that first.")
             return
-        
-        self.active_users[user_id] = True
 
         # Fetch user's current passive points
         passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
@@ -876,7 +870,7 @@ class Character(commands.Cog, name="character"):
         # embed.add_field(name="HP", value="❤️", inline=True)
 
         message = await context.send(embed=embed)
-        
+        self.bot.state_manager.set_active(user_id, "stats")
         def check(reaction, user):
             return user == context.author and str(reaction.emoji) in ["⚔️", "🛡️", "❤️"] and reaction.message.id == message.id
         
@@ -885,6 +879,7 @@ class Character(commands.Cog, name="character"):
             await message.add_reaction("⚔️")  # Attack
             await message.add_reaction("🛡️")  # Defense
             await message.add_reaction("❤️")  # HP
+            await message.add_reaction("🚪") # Leave
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=180.0, check=check)
                 existing_user = await self.bot.database.fetch_user(user_id, server_id)
@@ -897,6 +892,8 @@ class Character(commands.Cog, name="character"):
                 elif str(reaction.emoji) == "❤️":
                     # Increment HP and decrement passive points
                     await self.bot.database.update_player_max_hp(user_id, 1)
+                elif str(reaction.emoji) == "🚪":
+                    break
 
                 passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
                 # Update passive points
@@ -920,9 +917,8 @@ class Character(commands.Cog, name="character"):
             
             except asyncio.TimeoutError:
                 break
-            finally:
-                del self.active_users[user_id]
 
+        self.bot.state_manager.clear_active(user_id)
         await message.clear_reactions()
         if (passive_points == 0):
             embed.add_field(name="All points allocated", value="You have allocated all your passive points.", inline=False)

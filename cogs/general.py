@@ -142,6 +142,7 @@ class General(commands.Cog, name="general"):
                 " ⏩ to auto-batle (stops at <10% hp), 🏃 to run\n"
                 "- Leveling up increases your stats!"
                 "- The tavern is a great place to rest and make some quick cash!"
+                "- You also heal over time if you're down on your luck."
                 "- Check your skills with the /skills command!"
             ),
             inline=False

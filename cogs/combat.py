@@ -85,7 +85,17 @@ class Combat(commands.Cog, name="combat"):
                 player_defence += equipped_item[5]
                 player_rar += equipped_item[6]
 
-            encounter_level, monster_attack, monster_defence = self.generate_encounter(user_level)
+            # Randomly determine if a treasure chest should spawn (1% chance)
+            is_treasure = False
+            if random.random() < 0.01:  # 1% chance
+                print('treasure chest')
+                encounter_level, monster_attack, monster_defence = self.generate_encounter(user_level)
+                monster_attack = 0
+                monster_defence = 0
+                is_treasure = True
+            else:
+                encounter_level, monster_attack, monster_defence = self.generate_encounter(user_level)
+
             if (user_level < 5):
                 monster_hp = max(10, random.randint(1, 4) + int(7 * (encounter_level ** random.uniform(1.05, 1.15))))
             else:
@@ -100,7 +110,11 @@ class Combat(commands.Cog, name="combat"):
                   f"p.atk: {player_attack} | p.def: {player_defence}")
             print(f"m.lvl: {encounter_level} | m.atk: {monster_attack} | m.def: {monster_defence} | m.hp: {monster_hp}")
             # Fetch the monster image
-            monster_name, image_url, flavor_txt = await self.fetch_monster_image(encounter_level)
+            if (is_treasure):
+                monster_name, image_url, flavor_txt = await self.fetch_monster_image(999)
+            else:
+                monster_name, image_url, flavor_txt = await self.fetch_monster_image(encounter_level)
+            
             print(f"Generated {monster_name} with image_url: {image_url}")
 
             start_combat = False
@@ -543,10 +557,16 @@ class Combat(commands.Cog, name="combat"):
                 description=f"{player_name} has slain the **{monster_name}** with {player_hp} ❤️ remaining!",
                 color=0x00FF00,
             )
-        reward_scale = (encounter_level - user_level) / 10 # Bonus rewards based on level differential
+        if (monster_name == "Treasure Chest"):
+            drop_chance = 0
+            xp_award = 0
+            reward_scale = int(user_level / 10) # Bonus rewards based on level differential
+        else:
+            drop_chance = 90
+            xp_award = int(award_xp * 1.4)
+            reward_scale = (encounter_level - user_level) / 10 # Bonus rewards based on level differential
+        
         rarity =  (player_rar / 100) # Player rarity
-        xp_award = int(award_xp * 1.4)
-        drop_chance = 90 # Base 10% drop chance
         loot_roll = random.randint(1, 100)
         final_loot_roll = loot_roll
         if (player_rar > 0):
@@ -669,6 +689,7 @@ class Combat(commands.Cog, name="combat"):
     
     def generate_encounter(self, user_level):
         """Generate an encounter with a monster based on the user's level."""
+        # Randomly determine if a treasure chest should spawn (1% chance)
         if (user_level < 5):
             difficulty_multiplier = random.randint(1, 2)
         elif (user_level >= 5 and user_level <= 20):
@@ -735,15 +756,16 @@ class Combat(commands.Cog, name="combat"):
                     monsters.append((monster_name, monster_url, monster_level, flavor_txt))
         except Exception as e:
             print(f"Error reading monsters.csv: {e}")
-            return "Commoner", "https://i.imgur.com/v1BrB1M.png"  # Fallback image
-
+            return "Commoner", "https://i.imgur.com/v1BrB1M.png", "stares pleadingly at"  # Fallback image
+        if encounter_level == 999:
+            return "Treasure Chest", "https://i.imgur.com/7GXtbaH.png", "stares pleadingly at"  # Fallback image
         # Define level range for filtering
         min_level = max(1, encounter_level - 20)  # Select 20 levels below
         max_level = min(100, encounter_level + 20)      # Select 20 levels above
         selected_monsters = [monster for monster in monsters if min_level <= monster[2] <= max_level]
         #print(selected_monsters)
         if not selected_monsters:
-            return "Commoner", "https://i.imgur.com/v1BrB1M.png"  # Fallback if no monsters are found
+            return "Commoner", "https://i.imgur.com/v1BrB1M.png", "stares pleadingly at"  # Fallback if no monsters are found
 
         # Randomly select a monster from the filtered list
         selected_monster = random.choice(selected_monsters)

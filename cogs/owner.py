@@ -160,5 +160,16 @@ class Owner(commands.Cog, name="owner"):
         )
         await context.send(embed=embed)
 
+
+    @commands.hybrid_command(
+        name="clearall",
+        description="Clear all active operations for users."
+    )
+    @commands.is_owner()
+    async def clear_active_operations(self, context: Context) -> None:
+        """Clears all active operations."""
+        self.bot.state_manager.clear_all()
+        await context.send("All active operations have been cleared.")
+
 async def setup(bot) -> None:
     await bot.add_cog(Owner(bot))

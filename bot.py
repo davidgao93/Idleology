@@ -296,6 +296,10 @@ class StateManager:
         """Check if a user is currently engaged in an operation."""
         return user_id in self.active_operations
 
+    def clear_all(self):
+        """Clear all active operations."""
+        self.active_operations.clear()  # Clears the dictionary
+
 load_dotenv()
 
 bot = DiscordBot()
