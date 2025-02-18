@@ -264,11 +264,12 @@ class Trade(commands.Cog, name="trade"):
                     
                     # Update the confirmation embed to indicate success
                     confirm_embed.description = f"Successfully sent **{amount}** **{material_lower.title()}** to {receiver.mention}! 🎉"
+                    await confirm_message.clear_reactions()
                     await confirm_message.edit(embed=confirm_embed)               
                     
                 else:
                     confirm_embed.description = "Transaction cancelled."
-                    await confirm_message.edit(embed=confirm_embed)
+                    await confirm_message.delete()
 
             except asyncio.TimeoutError:
                 await confirm_message.delete()  # Delete the confirmation message if timed out.
