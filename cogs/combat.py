@@ -888,6 +888,9 @@ class Combat(commands.Cog, name="combat"):
             if current_level > 0 and current_level % 10 == 0 and current_level <= 100:  # Check levels 10, 20, 30, etc.
                 passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
                 await self.bot.database.set_passive_points(user_id, server_id, passive_points + 2)
+                level_up_embed.add_field(name="2 passive points gained!", 
+                            value=(f"Use /passives to allocate them."), 
+                            inline=False)
             level_up_embed.add_field(name="Stat increases:", 
                                      value=(f"⚔️ **Attack:** {new_atk} (+{attack_increase})\n"
                                             f"🛡️ ** Defense:** {new_def} (+{defence_increase})\n"
