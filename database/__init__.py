@@ -713,3 +713,22 @@ class DatabaseManager:
         )
         result = await rows.fetchone()
         return result[0] if result else 0  # Return the count or 0 if user not found
+    
+
+    async def set_passive_points(self, user_id: str, server_id: str, passive_points: int) -> None:
+        """Set the number of passive points for a user in the database."""
+        await self.connection.execute(
+            "UPDATE users SET passive_points = ? WHERE user_id = ? AND server_id = ?",
+            (passive_points, user_id, server_id)
+        )
+        await self.connection.commit()
+
+
+    async def fetch_passive_points(self, user_id: str, server_id: str) -> int:
+        """Fetch the number of passive points for a user."""
+        rows = await self.connection.execute(
+            "SELECT passive_points FROM users WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id)
+        )
+        result = await rows.fetchone()
+        return result[0] if result else 0  # Return the passive points or 0 if not found

@@ -138,10 +138,26 @@ class General(commands.Cog, name="general"):
                 "To level up, keep battling enemies.\n\n"
                 "Here are some points to remember:\n"
                 "- Engage in combat every 10 minutes using the `/combat` command.\n"
-                "- ⚔️ to attack, 🩹 to heal (if you have potions, buy with /shop), ⏩ to auto-batle, 🏃 to run\n"
+                "- ⚔️ to attack, 🩹 to heal (if you have potions, buy with /shop),"
+                " ⏩ to auto-batle (stops at <10% hp), 🏃 to run\n"
                 "- Leveling up increases your stats!"
                 "- The tavern is a great place to rest and make some quick cash!"
                 "- Check your skills with the /skills command!"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="Forging and refining items",
+            value=(
+                "When you win your combats, you have a chance of dropping loot."
+                "Loot drops in the form of weapons.\n\n"
+                "Here are some points to remember:\n"
+                "- Weapons can be forged with skilling materials.\n"
+                "- Weapons can be refined with gold.\n"
+                "- Weapons can gain powerful passives via forging."
+                "- Weapons can gain more stats with refining."
+                "- Check your equipment with the /inventory command!"
             ),
             inline=False
         )

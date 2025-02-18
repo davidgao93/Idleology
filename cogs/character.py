@@ -30,7 +30,8 @@ Index	Attribute Description
 class Character(commands.Cog, name="character"):
     def __init__(self, bot) -> None:
         self.bot = bot
-
+        self.active_users = {}  # Dictionary to track active users
+        
     @commands.Cog.listener()
     async def on_ready(self):
         if not self.check_hp.is_running():
@@ -103,6 +104,12 @@ class Character(commands.Cog, name="character"):
         """Fetch and display the character's inventory."""
         user_id = str(context.author.id)
         server_id = str(context.guild.id)
+
+        # Check if the user has any active operations
+        if self.bot.state_manager.is_active(user_id):
+            await context.send("You are currently busy with another operation. Please finish that first.")
+            return
+
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         
         if not existing_user: 
@@ -124,6 +131,7 @@ class Character(commands.Cog, name="character"):
 
         inventory_message = await context.send(embed=embed)
         while True:
+            self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
             items = await self.bot.database.fetch_user_items(user_id)
             embed.description = f"{player_name}'s Inventory:"
             if not items:
@@ -179,7 +187,7 @@ class Character(commands.Cog, name="character"):
                 print(f'{selected_index} was selected')
                 if selected_index == 0: # exit
                     await inventory_message.delete()
-                    return
+                    break
                 selected_index -= 1 # get to true index of item
                 selected_item = items_to_display[selected_index]
                 print(f'associated item: {selected_item}')
@@ -240,6 +248,7 @@ class Character(commands.Cog, name="character"):
             except asyncio.TimeoutError:
                 await inventory_message.delete()
                 break
+        self.bot.state_manager.clear_active(user_id)
 
     async def equip(self, context: Context, selected_item: tuple, new_equip: str, message, embed) -> None:
         """Equip an item."""
@@ -824,6 +833,100 @@ class Character(commands.Cog, name="character"):
         embed.add_field(name="Top Adventurers:", value=leaderboard_text, inline=False)
 
         await context.send(embed=embed)
+
+
+    @commands.hybrid_command(name="passives", description="Allocate your passive points.")
+    async def passives(self, context: Context) -> None:
+        user_id = str(context.author.id)
+        server_id = str(context.guild.id)
+
+        # Fetch the sender's user data
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        if not existing_user:
+            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+            return
+        
+        # Check if the user is already active in allocating passives
+        if user_id in self.active_users:
+            await context.send("You are already allocating your passive points. Please finish that process first.")
+            return
+        
+        self.active_users[user_id] = True
+
+        # Fetch user's current passive points
+        passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
+        if passive_points <= 0:
+            await context.send("You do not have any passive points to allocate.")
+            return
+        
+        embed = discord.Embed(
+            title="Allocate Passive Points",
+            description="Choose a stat to allocate a passive point to.",
+            color=0x00FF00
+        )
+        embed.add_field(name="Points remaining: ", value=f"{passive_points}", inline=True)
+        embed.add_field(name="Current Stats", 
+                value=(f"Attack: {existing_user[9]}\n"
+                f"Defense: {existing_user[10]}\n"
+                f"HP: {existing_user[12]}"), inline=False)
+        embed.add_field(name="**WARNING**", 
+                value=(f"All choices are **final**, no take-backsies! You have been warned."), inline=False)
+        # embed.add_field(name="Attack", value="⚔️", inline=False)
+        # embed.add_field(name="Defense", value="🛡️", inline=True)
+        # embed.add_field(name="HP", value="❤️", inline=True)
+
+        message = await context.send(embed=embed)
+        
+        def check(reaction, user):
+            return user == context.author and str(reaction.emoji) in ["⚔️", "🛡️", "❤️"] and reaction.message.id == message.id
+        
+        while passive_points > 0:
+            await message.clear_reactions()
+            await message.add_reaction("⚔️")  # Attack
+            await message.add_reaction("🛡️")  # Defense
+            await message.add_reaction("❤️")  # HP
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=180.0, check=check)
+                existing_user = await self.bot.database.fetch_user(user_id, server_id)
+                if str(reaction.emoji) == "⚔️":
+                    # Increment attack and decrement passive points
+                    await self.bot.database.increase_attack(user_id, 1)
+                elif str(reaction.emoji) == "🛡️":
+                    # Increment defense and decrement passive points
+                    await self.bot.database.increase_defence(user_id, 1)
+                elif str(reaction.emoji) == "❤️":
+                    # Increment HP and decrement passive points
+                    await self.bot.database.update_player_max_hp(user_id, 1)
+
+                passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
+                # Update passive points
+                if passive_points > 0:
+                    passive_points -= 1
+                    print("-1 passive pt")
+                    await self.bot.database.set_passive_points(user_id, server_id, passive_points)
+                else:
+                    print('Invalid passive points')
+                # Edit the embed to show current allocations
+                embed.clear_fields()
+                embed.add_field(name="Points remaining: ", value=f"{passive_points}", inline=True)
+                embed.add_field(name="Current Stats", 
+                                value=(f"Attack: {existing_user[9]}\n"
+                                f"Defense: {existing_user[10]}\n"
+                                f"HP: {existing_user[12]}"), inline=False)
+                # embed.add_field(name="Attack", value="⚔️", inline=True)
+                # embed.add_field(name="Defense", value="🛡️", inline=True)
+                # embed.add_field(name="HP", value="❤️", inline=True)
+                await message.edit(embed=embed)
+            
+            except asyncio.TimeoutError:
+                break
+            finally:
+                del self.active_users[user_id]
+
+        await message.clear_reactions()
+        if (passive_points == 0):
+            embed.add_field(name="All points allocated", value="You have allocated all your passive points.", inline=False)
+        await message.edit(embed=embed)
     
 async def setup(bot) -> None:
     await bot.add_cog(Character(bot))

@@ -6,12 +6,13 @@ import asyncio
 class Trade(commands.Cog, name="trade"):
     def __init__(self, bot) -> None:
         self.bot = bot
+        self.active_users = {}  # Dictionary to track active users
 
     @commands.hybrid_command(name="send", description="Send gold to another player.")
     async def send(self, context: Context, receiver: discord.User, amount: int) -> None:
         user_id = str(context.author.id)
         server_id = str(context.guild.id)
-
+        
         # Check if the user is trying to send gold to themselves
         if receiver.id == context.author.id:
             await context.send("You cannot send gold to yourself.")
@@ -22,7 +23,17 @@ class Trade(commands.Cog, name="trade"):
         if not existing_user:
             await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
             return
+        
+        if user_id in self.active_users:
+            await context.send("You are already sending gold. Please finish that process first.")
+            return
 
+        if self.bot.state_manager.is_active(user_id):
+            await context.send("You are currently busy with another operation. Please finish that first.")
+            return
+        
+        self.bot.state_manager.set_active(user_id, "gamble")
+        self.active_users[user_id] = True
         # Check if the amount is valid
         if amount <= 0:
             await context.send("You cannot send zero or negative gold.")
@@ -65,6 +76,9 @@ class Trade(commands.Cog, name="trade"):
                 await message.edit(embed=confirm_embed)
         except asyncio.TimeoutError:
             await message.delete()  # Delete the confirmation message if timed out.
+        finally:
+            del self.active_users[user_id]
+            self.bot.state_manager.clear_active(user_id)
 
     @commands.hybrid_command(name="send_item", description="Send an item to another player.")
     async def send_item(self, context: Context, receiver: discord.User, item_id: int) -> None:
@@ -75,6 +89,12 @@ class Trade(commands.Cog, name="trade"):
         if receiver.id == context.author.id:
             await context.send("You cannot send items to yourself.")
             return
+
+        # Check if the user has any active operations
+        if self.bot.state_manager.is_active(user_id):
+            await context.send("You are currently busy with another operation. Please finish that first.")
+            return
+        self.bot.state_manager.set_active(user_id, "send_item")  # Set send_item as active operation
 
         # Fetch the sender's user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
@@ -130,11 +150,13 @@ class Trade(commands.Cog, name="trade"):
             if str(reaction.emoji) == "✅":
                 # The sender has confirmed the action
                 await self.bot.database.send_item(receiver.id, item_id)  # Create a method to handle item transfer
-                await context.send(f"Sent **{item_details[1]}** to {receiver.mention}! 🎉")
+                await context.send(f"Sent **{item_details[2]}** to {receiver.mention}! 🎉")
             else:
                 await context.send("Transaction cancelled.")
         except asyncio.TimeoutError:
             await message.delete()  # Delete the confirmation message if timed out.
+        finally:
+            self.bot.state_manager.clear_active(user_id)
 
 async def setup(bot) -> None:
     await bot.add_cog(Trade(bot))

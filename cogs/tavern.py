@@ -228,6 +228,12 @@ class Tavern(commands.Cog, name="tavern"):
         if not existing_user:
             await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
             return
+        
+        if self.bot.state_manager.is_active(user_id):
+            await context.send("You are currently busy with another operation. Please finish that first.")
+            return
+        
+        self.bot.state_manager.set_active(user_id, "gamble")
 
         player_gold = existing_user[6]
 
@@ -269,6 +275,8 @@ class Tavern(commands.Cog, name="tavern"):
                 await self.play_roulette(context, player_gold, amount, gambling_message, embed)
         except asyncio.TimeoutError:
             await context.send("You took too long to decide. The gambling options have been closed.")
+        finally:
+            self.bot.state_manager.clear_active(user_id)
 
     async def play_blackjack(self, context: Context, player_gold: int, bet_amount: int, message, embed) -> None:
         """Simulate a Blackjack game against the house."""

@@ -51,7 +51,8 @@ class Combat(commands.Cog, name="combat"):
         else:
             # Award the Rune of Refinement if there are no modifiers
             await self.bot.database.update_refinement_runes(user_id, 1)  # Increment runes
-            loot_description += "**Rune of Refinement**!"
+            loot_description = "**Rune of Refinement**!"
+            item_name = "rune"
 
 
         return item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description
@@ -212,7 +213,8 @@ class Combat(commands.Cog, name="combat"):
                                     break
 
                         elif str(reaction.emoji) == "⏩":
-                            await self.auto_battle(embed, context, encounter_level,
+                            end_battle, end_php, end_mhp = await self.auto_battle(
+                                                    embed, context, encounter_level,
                                                     player_attack, monster_hp, monster_attack,
                                                     monster_defence, player_defence,
                                                     followers_count, player_name, user_id, 
@@ -220,8 +222,14 @@ class Combat(commands.Cog, name="combat"):
                                                     message, award_xp, ascension_level, 
                                                     player_rar, current_passive, user_level,
                                                     flavor_txt, player_max_hp)
-                            break
-
+                            if end_battle:
+                                break
+                            else:
+                                player_hp = end_php
+                                monster_hp = end_mhp 
+                                embed.add_field(name="Auto battle",
+                                                value="Player HP < 10%, auto-battle paused!",
+                                                inline=False)
                         elif str(reaction.emoji) == "🩹":
                             player_hp, potions, heal_message = await self.heal(existing_user, player_hp, potions, 
                                                         user_id, server_id, context, embed,
@@ -301,7 +309,7 @@ class Combat(commands.Cog, name="combat"):
                           monster_defence, followers_count, player_name, 
                           ascension_level, monster_name, current_passive):
         attack_message = ""
-        echo_hit = 0
+        echo_damage = 0
         has_passive = False
         accuracy_passives = ["accurate", "precise", "sharpshooter", "deadeye", "bullseye"]
         if (current_passive in accuracy_passives):
@@ -374,7 +382,7 @@ class Combat(commands.Cog, name="combat"):
             else:
                 echo_hit = False
                 actual_hit = random.randint(1, max_hit)
-                echo_passives = ["echo", "echoo", "echooo", "echooo", "echoes"]
+                echo_passives = ["echo", "echoo", "echooo", "echoooo", "echoes"]
                 if (current_passive in echo_passives):
                     has_passive = True
                     value = echo_passives.index(current_passive)
@@ -385,7 +393,7 @@ class Combat(commands.Cog, name="combat"):
                 if (actual_hit > monster_hp):
                     actual_hit = monster_hp
 
-            attack_message += f"You ⚔️ hit the {monster_name} for 💥 **{actual_hit}** damage!"
+            attack_message += f"You ⚔️ hit the {monster_name} for 💥 **{actual_hit - echo_damage}** damage!"
             if (echo_hit):
                 attack_message += f"\nYour {current_passive} weapon echoes the hit, dealing an additional {echo_damage} damage."
             # print(f'Normal hit: {monster_hp} - {actual_hit}')
@@ -482,7 +490,7 @@ class Combat(commands.Cog, name="combat"):
                         player_name, monster_name, context, 
                         award_xp, player_rar, player_hp,
                         message, user_level, True)
-                    break
+                    return True, player_hp, monster_hp
             else:
                 if monster_hp <= 0:
                     embed.add_field(name=monster_name, value=attack_message, inline=False)
@@ -490,7 +498,7 @@ class Combat(commands.Cog, name="combat"):
                                             player_name, monster_name, context, 
                                             award_xp, player_rar, player_hp,
                                             message, user_level, False)
-                    break
+                    return True, player_hp, monster_hp
 
             player_hp, monster_message = await self.monster_turn(embed, monster_attack, player_hp, 
                                                 player_defence, followers_count, 
@@ -503,7 +511,7 @@ class Combat(commands.Cog, name="combat"):
                 await self.handle_defeat(user_id, message,
                                          monster_name, total_damage_dealt,
                                          player_name, award_xp, server_id)
-                break
+                return True, player_hp, monster_hp
 
             if len(embed.fields) > 5:
                 embed.clear_fields()
@@ -517,7 +525,8 @@ class Combat(commands.Cog, name="combat"):
 
             await message.edit(embed=embed)
             await asyncio.sleep(1)
-        await message.clear_reactions()
+        return False, player_hp, monster_hp
+        #await message.clear_reactions()
 
     async def handle_victory(self, encounter_level, user_id, server_id, 
                              player_name, monster_name, context, award_xp,
@@ -560,8 +569,9 @@ class Combat(commands.Cog, name="combat"):
                 (item_name, attack_modifier, 
                 defence_modifier, rarity_modifier, 
                 loot_description) = await self.generate_loot(user_id, server_id, encounter_level)
-                await self.bot.database.create_item(user_id, item_name, encounter_level, 
-                                                    attack_modifier, defence_modifier, rarity_modifier)
+                if (item_name != "rune"):
+                    await self.bot.database.create_item(user_id, item_name, encounter_level, 
+                                                        attack_modifier, defence_modifier, rarity_modifier)
                 victory_embed.add_field(name="✨ Loot", value=f"{loot_description}")
         else:
             victory_embed.add_field(name="✨ Loot", value=f"None")
@@ -662,17 +672,17 @@ class Combat(commands.Cog, name="combat"):
         if (user_level < 5):
             difficulty_multiplier = random.randint(1, 2)
         elif (user_level >= 5 and user_level <= 20):
-            difficulty_multiplier = random.randint(2, 4)
-        elif (user_level > 20):
-            difficulty_multiplier = random.randint(3, 6)
-        elif (user_level > 40):
-            difficulty_multiplier = random.randint(4, 8)
-        elif (user_level > 50):
-            difficulty_multiplier = random.randint(5, 10)
-        elif (user_level > 60):
-            difficulty_multiplier = random.randint(6, 12)   
+            difficulty_multiplier = random.randint(1, 3)
+        elif (user_level > 20 and user_level <= 40):
+            difficulty_multiplier = random.randint(1, 4)
+        elif (user_level > 40 and user_level <= 50):
+            difficulty_multiplier = random.randint(1, 5)
+        elif (user_level > 50 and user_level <= 60):
+            difficulty_multiplier = random.randint(1, 6)
+        elif (user_level > 60 and user_level <= 70):
+            difficulty_multiplier = random.randint(1, 7)   
         elif (user_level > 70):
-            difficulty_multiplier = random.randint(7, 14)  
+            difficulty_multiplier = random.randint(2, 7)  
 
         # Calculate the encounter level
         encounter_level = random.randint(user_level, user_level + difficulty_multiplier)
@@ -700,8 +710,8 @@ class Combat(commands.Cog, name="combat"):
             base_defence = encounter_level ** random.uniform(1.29, 1.3)
 
         # Calculate monster attack and defence based on the difficulty multiplier
-        monster_attack = int(base_attack + difficulty_multiplier)
-        monster_defence = int(base_defence + difficulty_multiplier)
+        monster_attack = int(base_attack)
+        monster_defence = int(base_defence)
     
         return encounter_level, monster_attack, monster_defence    
     
@@ -750,106 +760,106 @@ class Combat(commands.Cog, name="combat"):
         current_mhp = existing_user[12]
         # Experience table
         exp_table = {
-            1:0,
-            2:50,
-            3:100,
-            4:100,
-            5:100,
-            6:124,
-            7:138,
-            8:151,
-            9:168,
-            10:185,
-            11:204,
-            12:226,
-            13:249,
-            14:274,
-            15:304,
-            16:335,
-            17:369,
-            18:408,
-            19:450,
-            20:497,
-            21:548,
-            22:606,
-            23:667,
-            24:737,
-            25:814,
-            26:898,
-            27:990,
-            28:1094,
-            29:1207,
-            30:1332,
-            31:1470,
-            32:1623,
-            33:1791,
-            34:1977,
-            35:2182,
-            36:2409,
-            37:2658,
-            38:2935,
-            39:3240,
-            40:3576,
-            41:3947,
-            42:4358,
-            43:4810,
-            44:5310,
-            45:5863,
-            46:6471,
-            47:7144,
-            48:7887,
-            49:8707,
-            50:9612,
-            51:10612,
-            52:11715,
-            53:12934,
-            54:14278,
-            55:15764,
-            56:17404,
-            57:19214,
-            58:21212,
-            59:23420,
-            60:25856,
-            61:28546,
-            62:31516,
-            63:34795,
-            64:38416,
-            65:42413,
-            66:46826,
-            67:51699,
-            68:57079,
-            69:63019,
-            70:69576,
-            71:76818,
-            72:84812,
-            73:93638,
-            74:103383,
-            75:114143,
-            76:126022,
-            77:139138,
-            78:153619,
-            79:169608,
-            80:187260,
-            81:206750,
-            82:228269,
-            83:252027,
-            84:278259,
-            85:307221,
-            86:339198,
-            87:374502,
-            88:413482,
-            89:456519,
-            90:504037,
-            91:556499,
-            92:614422,
-            93:678376,
-            94:748985,
-            95:826944,
-            96:913019,
-            97:1008052,
-            98:1112977,
-            99:1228825,
-            100:1356729,
+            1:42,
+            2:111,
+            3:143,
+            4:181,
+            5:219,
+            6:708,
+            7:802,
+            8:907,
+            9:1012,
+            10:1122,
+            11:1555,
+            12:1705,
+            13:1843,
+            14:1994,
+            15:2162,
+            16:2298,
+            17:2461,
+            18:2652,
+            19:2790,
+            20:3535,
+            21:4200,
+            22:4354,
+            23:4577,
+            24:4784,
+            25:5042,
+            26:5241,
+            27:5437,
+            28:5652,
+            29:5918,
+            30:6144,
+            31:7405,
+            32:7659,
+            33:7978,
+            34:8243,
+            35:8531,
+            36:8751,
+            37:9022,
+            38:9345,
+            39:9648,
+            40:9869,
+            41:12007,
+            42:12298,
+            43:12655,
+            44:12999,
+            45:13312,
+            46:13675,
+            47:13992,
+            48:14336,
+            49:14697,
+            50:15060,
+            51:19639,
+            52:20070,
+            53:20543,
+            54:21008,
+            55:21405,
+            56:21894,
+            57:22296,
+            58:22810,
+            59:23256,
+            60:23694,
+            61:36968,
+            62:37589,
+            63:38333,
+            64:39005,
+            65:39755,
+            66:40493,
+            67:41144,
+            68:41872,
+            69:42529,
+            70:57664,
+            71:60563,
+            72:61556,
+            73:62633,
+            74:63634,
+            75:64458,
+            76:65585,
+            77:66476,
+            78:67431,
+            79:68528,
+            80:69530,
+            81:105771,
+            82:107433,
+            83:108770,
+            84:110381,
+            85:111938,
+            86:113409,
+            87:114975,
+            88:116456,
+            89:117942,
+            90:199204,
+            91:222140,
+            92:245453,
+            93:269362,
+            94:293812,
+            95:318657,
+            96:343708,
+            97:392048,
+            98:440898,
+            99:890804,
+            100:902440,
         }
 
         new_exp = current_exp + xp_award
@@ -875,6 +885,9 @@ class Combat(commands.Cog, name="combat"):
             new_atk = current_atk + attack_increase
             new_def = current_def + defence_increase
             new_mhp = current_mhp + hp_increase
+            if current_level > 0 and current_level % 10 == 0 and current_level <= 100:  # Check levels 10, 20, 30, etc.
+                passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
+                await self.bot.database.set_passive_points(user_id, server_id, passive_points + 2)
             level_up_embed.add_field(name="Stat increases:", 
                                      value=(f"⚔️ **Attack:** {new_atk} (+{attack_increase})\n"
                                             f"🛡️ ** Defense:** {new_def} (+{defence_increase})\n"
@@ -893,6 +906,7 @@ class Combat(commands.Cog, name="combat"):
             
         # print(f'Update {user_id} experience')
         await self.bot.database.update_experience(user_id, new_exp)
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Combat(bot))

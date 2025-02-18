@@ -130,6 +130,7 @@ class DiscordBot(commands.Bot):
         self.logger = logger
         self.config = config
         self.database = None
+        self.state_manager = StateManager()
 
     async def init_db(self) -> None:
         async with aiosqlite.connect(
@@ -277,6 +278,23 @@ class DiscordBot(commands.Bot):
         else:
             raise error
 
+
+class StateManager:
+    def __init__(self):
+        self.active_operations = {}
+
+    def set_active(self, user_id: str, operation: str):
+        """Set a user's operation state."""
+        self.active_operations[user_id] = operation
+
+    def clear_active(self, user_id: str):
+        """Clear a user's operation state."""
+        if user_id in self.active_operations:
+            del self.active_operations[user_id]
+
+    def is_active(self, user_id: str):
+        """Check if a user is currently engaged in an operation."""
+        return user_id in self.active_operations
 
 load_dotenv()
 

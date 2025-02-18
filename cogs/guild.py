@@ -185,7 +185,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
         await self.bot.database.add_to_mining(user_id, server_id, 'iron')
         await self.bot.database.add_to_fishing(user_id, server_id, 'desiccated')
         await self.bot.database.add_to_woodcutting(user_id, server_id, 'flimsy')
-        await self.bot.database.add_gold(user_id, 200)
+        await self.bot.database.add_gold(user_id, 2000)
 
     def load_character_appearances(self):
         appearances = [
