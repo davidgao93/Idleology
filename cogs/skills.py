@@ -673,7 +673,7 @@ class Skills(commands.Cog, name="skills"):
     '''
     HANDLE RANDOM EVENTS
     '''
-    @tasks.loop(minutes=30)
+    @tasks.loop(minutes=5)
     async def random_event(self):
         """Trigger a random event with a 50% chance every half hour."""
         if random.random() <= 0.5:  # 50% chance
@@ -729,10 +729,7 @@ class Skills(commands.Cog, name="skills"):
             color=0xFFD700
         )
         embed.set_image(url=event_data["image"])
-        
         message = await channel.send(embed=embed)  # Use context to send the embed
-
-        # Add reaction for claiming event
         await message.add_reaction(event_data["emoji"])
 
         self.active_events[message.id] = {
@@ -743,8 +740,11 @@ class Skills(commands.Cog, name="skills"):
 
         # Wait for 5 minutes before expiration
         await asyncio.sleep(300)  # 5 minutes
-        await message.delete()  # Delete the message after 5 minutes
-        del self.active_events[message.id]  # Clear the event entry when it expires.
+        try:
+            await message.delete()  # Delete the message after 5 minutes
+            del self.active_events[message.id]  # Clear the event entry when it expires.
+        except discord.NotFound:
+            print(f'Message already deleted: {message.id}')
 
 
     @commands.Cog.listener()
@@ -782,9 +782,8 @@ class Skills(commands.Cog, name="skills"):
                         gold_amount = random.randint(1000, 2000)
                         await self.bot.database.add_gold(user_id, gold_amount)
                         event_data["claimed_users"].add(user_id)
-
+                        print('Leprechaun claimed')
                         # Update the message embed
-                        message = await channel.fetch_message(payload.message_id)
                         embed = message.embeds[0]
                         embed.add_field(name="Claimed Reward", 
                                         value=f"{existing_user[3]} has grabbed **{gold_amount:,} gold** from the pot!", 
@@ -794,11 +793,10 @@ class Skills(commands.Cog, name="skills"):
                     elif event_type == "meteorite" and str(payload.emoji) == event_data["emoji"]:
                         mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
                         if mining_data:
+                            print('Meteor claimed')
                             resources = await self.gather_mining_resources(mining_data[2])  # Use the mining tier from mining_data
                             await self.bot.database.update_mining_resources(user_id, server_id, resources)
                             event_data["claimed_users"].add(user_id)
-
-                            message = await channel.fetch_message(payload.message_id)
                             embed = message.embeds[0]
                             embed.add_field(name="Claimed Reward", 
                                             value=f"{existing_user[3]} has gathered resources from the meteorite!", 
@@ -808,11 +806,10 @@ class Skills(commands.Cog, name="skills"):
                     elif event_type == "dryad" and str(payload.emoji) == event_data["emoji"]:
                         woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
                         if woodcutting_data:
+                            print('Dryad claimed')
                             resources = await self.gather_woodcutting_resources(woodcutting_data[2])  # Use the axe tier from woodcutting_data
                             await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
                             event_data["claimed_users"].add(user_id)
-
-                            message = await channel.fetch_message(payload.message_id)
                             embed = message.embeds[0]
                             embed.add_field(name="Claimed Reward", 
                                             value=f"{existing_user[3]} has received the dryad's blessing!", 
@@ -822,10 +819,10 @@ class Skills(commands.Cog, name="skills"):
                     elif event_type == "high_tide" and str(payload.emoji) == event_data["emoji"]:
                         fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
                         if fishing_data:
+                            print('Fishing claimed')
                             resources = await self.gather_fishing_resources(fishing_data[2])  # Use the fishing rod tier from fishing_data
                             await self.bot.database.update_fishing_resources(user_id, server_id, resources)
                             event_data["claimed_users"].add(user_id)
-
                             embed = await channel.fetch_message(payload.message_id)
                             embed = message.embeds[0]
                             embed.add_field(name="Claimed Reward", 
@@ -835,7 +832,7 @@ class Skills(commands.Cog, name="skills"):
 
                     # If the user has already claimed, update the message to reflect this
                     if user_id in event_data["claimed_users"]:
-                        print('Already claimed, ignoring')
+                        print(f"{existing_user[3]} has already claimed this bounty!")
                        # await payload.channel.send(f"{existing_user[3]} has already claimed this bounty!")
 
 async def setup(bot) -> None:
