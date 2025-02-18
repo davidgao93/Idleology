@@ -524,7 +524,7 @@ class Tavern(commands.Cog, name="tavern"):
             return
 
         # Check if enough time has passed since the last check-in
-        next_checkin_time = last_checkin_time_dt + timedelta(days=1)
+        next_checkin_time = last_checkin_time_dt + timedelta(hours=18)
 
         # Calculate the next check-in time considering the reset at 3 AM EST
         if current_time < next_checkin_time:

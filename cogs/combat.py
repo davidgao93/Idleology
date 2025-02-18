@@ -400,10 +400,10 @@ class Combat(commands.Cog, name="combat"):
                 poison_rolls = [random.randint(1, 6) for _ in range(poison_damage_dice)]
                 total_poison_damage = sum(poison_rolls)
                 if total_poison_damage >= monster_hp:
-                    poison_damage = monster_hp
+                    total_poison_damage = monster_hp
                 # print(f'Miss poison hit: {monster_hp} - {poison_damage}')
-                monster_hp -= poison_damage
-                attack_message = f"You miss, but your weapon still inflicts {poison_damage} poison 🐍 damage."
+                monster_hp -= total_poison_damage
+                attack_message = f"You miss, but your weapon still inflicts {total_poison_damage} poison 🐍 damage."
             else:
                 attack_message = "Your attack 💨 misses!"
 
@@ -723,9 +723,9 @@ class Combat(commands.Cog, name="combat"):
 
         # Define level range for filtering
         min_level = max(1, encounter_level - 20)  # Select 20 levels below
-        max_level = min(100, min_level + 20)      # Select 20 levels above
+        max_level = min(100, encounter_level + 20)      # Select 20 levels above
         selected_monsters = [monster for monster in monsters if min_level <= monster[2] <= max_level]
-        print(selected_monsters)
+        #print(selected_monsters)
         if not selected_monsters:
             return "Commoner", "https://i.imgur.com/v1BrB1M.png"  # Fallback if no monsters are found
 

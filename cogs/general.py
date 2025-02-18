@@ -181,7 +181,7 @@ class General(commands.Cog, name="general"):
         # Check cooldown for /checkin
         last_checkin_time = existing_user[18]  # Assuming last_checkin_time is at index 14
         checkin_remaining = None
-        checkin_duration = timedelta(days=1)
+        checkin_duration = timedelta(hours=18)
         if last_checkin_time:
             last_checkin_time_dt = datetime.fromisoformat(last_checkin_time)
             time_since_checkin = datetime.now() - last_checkin_time_dt
@@ -194,7 +194,7 @@ class General(commands.Cog, name="general"):
         # Check cooldown for /propagate
         last_propagate_time = existing_user[14]  # Index for last_propagate_time (update if necessary)
         propagate_remaining = None
-        propagate_duration = timedelta(days=1)
+        propagate_duration = timedelta(hours=18)
 
         if last_propagate_time:
             last_propagate_time_dt = datetime.fromisoformat(last_propagate_time)

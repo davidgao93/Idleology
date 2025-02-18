@@ -64,7 +64,7 @@ class Ideology(commands.Cog, name="ideology"):
         user_ideology = existing_user[8]
         followers_count = await self.bot.database.fetch_followers(user_ideology)
         last_propagate_time = existing_user[14] 
-        cooldown_duration = timedelta(days=1)
+        cooldown_duration = timedelta(hours=18)
 
         try:
             if last_propagate_time is not None:
