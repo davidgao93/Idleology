@@ -641,7 +641,9 @@ class Combat(commands.Cog, name="combat"):
         difference = player_attack - monster_defence
         additional_hit_chance = int(accuracy / 100)
         if player_attack <= 10:
-            hit_chance = 0.9
+            return 0.8
+        elif player_attack > 10 and player_attack <= 20:
+            return 0.7
         # If the player_attack is higher, calculate the hit chance normally
         if difference > 0:
             hit_chance = 0.6 + (difference / 100)  # Starting at 60%, increase by 1% per difference in level
