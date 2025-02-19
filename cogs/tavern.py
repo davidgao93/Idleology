@@ -339,6 +339,8 @@ class Tavern(commands.Cog, name="tavern"):
             except asyncio.TimeoutError:
                 await context.send("You took too long to respond. The game has ended.")
                 return
+            finally:
+                self.bot.state_manager.clear_active(context.author.id)
 
         # The house's turn
         house_value = calculate_hand_value(house_hand)
@@ -368,6 +370,7 @@ class Tavern(commands.Cog, name="tavern"):
 
         await message.edit(embed=embed)
         await self.bot.database.update_user_gold(context.author.id, player_gold)  # Update gold in DB
+        self.bot.state_manager.clear_active(context.author.id)
         await asyncio.sleep(10)
         await message.delete()
 
@@ -419,6 +422,7 @@ class Tavern(commands.Cog, name="tavern"):
 
         await message.edit(embed=embed)
         await self.bot.database.update_user_gold(context.author.id, player_gold)  # Update gold in DB
+        self.bot.state_manager.clear_active(context.author.id)
         await asyncio.sleep(10)
         await message.delete()
 
@@ -497,6 +501,8 @@ class Tavern(commands.Cog, name="tavern"):
         except asyncio.TimeoutError:
             await context.send("You took too long to respond. The roulette game has ended.")
             await message.delete()
+        finally:
+            self.bot.state_manager.clear_active(context.author.id)
 
 
     @commands.hybrid_command(
