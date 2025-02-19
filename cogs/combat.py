@@ -252,12 +252,15 @@ class Combat(commands.Cog, name="combat"):
                                                         player_name)
                             if random.random() < 0.5:
                                 opportunity = True
-                                damage_taken = random.randint(1, 6) 
+                                if user_level <= 10:
+                                    damage_taken = random.randint(1, 2)
+                                else:
+                                    damage_taken = random.randint(1, 6) 
                                 # print(f'Monster opportune strikes for {damage_taken}')
                                 new_player_hp = max(1, player_hp - damage_taken)
                                 player_hp = new_player_hp
                                 await self.bot.database.update_player_hp(user_id, player_hp)
-                                opportunity_message = f"The monster took an opportunity strike, dealing **{damage_taken}** damage!"
+                                opportunity_message = f"The monster took an opportunity strike, dealing **{damage_taken}** 💥 damage!"
                                 embed.add_field(name=monster_name, value=opportunity_message, inline=False)
                                 embed.set_field_at(1, name="Your ❤️ HP", value=player_hp, inline=True)
                                 await message.edit(embed=embed)
@@ -265,13 +268,16 @@ class Combat(commands.Cog, name="combat"):
                         elif str(reaction.emoji) == "🏃":
                             if random.random() < 0.5:
                                 opportunity = True
-                                damage_taken = random.randint(1, 6) 
+                                if user_level <= 10:
+                                    damage_taken = random.randint(1, 2)
+                                else:
+                                    damage_taken = random.randint(1, 6) 
                                 # print(f'Monster opportune strikes for {damage_taken}')
                                 new_player_hp = max(1, player_hp - damage_taken)
                                 player_hp = new_player_hp
                                 await self.bot.database.update_player_hp(user_id, player_hp)
                                 opportunity_message = (f"As you run away, the {monster_name} savagely swipes, "
-                                                       f" grazing you for **{damage_taken}** damage!")
+                                                       f" grazing you for **{damage_taken}** 💥 damage!")
                                 embed.add_field(name=monster_name, value=opportunity_message, inline=False)
                                 embed.set_field_at(1, name="Your ❤️ HP", value=player_hp, inline=True)
                                 await message.edit(embed=embed)
