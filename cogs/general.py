@@ -67,7 +67,8 @@ class General(commands.Cog, name="general"):
             "Once you're /registered, use any of the commands below. May the best ideology win."
         )
 
-        prefix = self.bot.config["prefix"]
+        #prefix = self.bot.config["prefix"]
+        prefix = "/"
         embed = discord.Embed(
             title="Help",
             description=game_description,

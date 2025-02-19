@@ -8,7 +8,7 @@ class Skills(commands.Cog, name="skills"):
     def __init__(self, bot) -> None:
         self.bot = bot
         self.active_events = {}
-        self.event_channel_id = 840020888602148914  # Store channel ID as a string
+        self.event_channel_id = self.bot.config["channel_id"]  # Store channel ID as a string
 
     @commands.hybrid_command(name="skills", description="Check your skills and resources.")
     async def skills(self, context: commands.Context):
@@ -687,7 +687,7 @@ class Skills(commands.Cog, name="skills"):
             print(f'random event {event_type} triggered')
             if self.event_channel_id:  # Ensure the channel ID exists
                 if self.event_channel_id:  # Ensure the channel ID exists
-                    guild = self.bot.get_guild(431301983475990528)  # Replace `guild_id` with the actual guild ID
+                    guild = self.bot.get_guild(self.bot.config["guild_id"])  # Replace `guild_id` with the actual guild ID
                     if guild:
                         channel = guild.get_channel(self.event_channel_id)
                         print(f'random in {self.event_channel_id} for {channel}')
