@@ -673,7 +673,7 @@ class Skills(commands.Cog, name="skills"):
     '''
     HANDLE RANDOM EVENTS
     '''
-    @tasks.loop(minutes=5)
+    @tasks.loop(minutes=30)
     async def random_event(self):
         """Trigger a random event with a 50% chance every half hour."""
         if random.random() <= 0.5:  # 50% chance

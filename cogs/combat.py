@@ -324,6 +324,7 @@ class Combat(commands.Cog, name="combat"):
                           ascension_level, monster_name, current_passive):
         attack_message = ""
         echo_damage = 0
+        echo_hit = False
         has_passive = False
         accuracy_passives = ["accurate", "precise", "sharpshooter", "deadeye", "bullseye"]
         if (current_passive in accuracy_passives):
