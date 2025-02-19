@@ -186,6 +186,7 @@ class Character(commands.Cog, name="character"):
                 print(f'{selected_index} was selected')
                 if selected_index == 0: # exit
                     await inventory_message.delete()
+                    self.bot.state_manager.clear_active(user_id)
                     break
                 selected_index -= 1 # get to true index of item
                 selected_item = items_to_display[selected_index]
@@ -256,6 +257,7 @@ class Character(commands.Cog, name="character"):
         if not existing_user: 
             await context.send("You are not registered with the 🏦 Adventurer's guild."
                                " Please /register first.")
+            self.bot.state_manager.clear_active(user_id)
             return
                 
         equipped_item = await self.bot.database.get_equipped_item(user_id)
