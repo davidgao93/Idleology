@@ -158,7 +158,7 @@ class Combat(commands.Cog, name="combat"):
                 accuracy_passives = ["accurate", "precise", "sharpshooter", "deadeye", "bullseye"]
                 if (current_passive in accuracy_passives):
                     has_passive = True
-                    value = (1 + accuracy_passives.index(current_passive)) * 3
+                    value = (1 + accuracy_passives.index(current_passive)) * 4
                     embed.add_field(name="Accuracy", 
                         value=(f"Your **{current_passive}** weapon glints with precision. "
                                f"It boosts your accuracy by **{value}%**!"), 
