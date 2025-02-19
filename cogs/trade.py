@@ -32,6 +32,10 @@ class Trade(commands.Cog, name="trade"):
             await context.send("You are currently busy with another operation. Please finish that first.")
             return
         
+        if existing_user[4] <= 10:
+            await context.send("You have to be above level 10 to send gold.")
+            return
+        
         self.bot.state_manager.set_active(user_id, "gamble")
         self.active_users[user_id] = True
         # Check if the amount is valid

@@ -96,7 +96,9 @@ class Combat(commands.Cog, name="combat"):
             else:
                 encounter_level, monster_attack, monster_defence = self.generate_encounter(user_level)
 
-            if (user_level < 5):
+            if (user_level == 1):
+                monster_hp = 10
+            elif (user_level > 1 and user_level <= 5):
                 monster_hp = max(10, random.randint(1, 4) + int(7 * (encounter_level ** random.uniform(1.05, 1.15))))
             else:
                 monster_hp = random.randint(0, 9) + int(10 * (encounter_level ** random.uniform(1.25, 1.35)))
@@ -638,6 +640,8 @@ class Combat(commands.Cog, name="combat"):
         """Calculate the chance to hit based on the player's attack and monster's defence."""
         difference = player_attack - monster_defence
         additional_hit_chance = int(accuracy / 100)
+        if player_attack <= 10:
+            hit_chance = 0.9
         # If the player_attack is higher, calculate the hit chance normally
         if difference > 0:
             hit_chance = 0.6 + (difference / 100)  # Starting at 60%, increase by 1% per difference in level
@@ -655,6 +659,9 @@ class Combat(commands.Cog, name="combat"):
         difference = monster_attack - player_defence
         # If the monster_attack is higher, calculate the hit chance normally
         # print(f"M.ATK {monster_attack} - P.DEF {player_defence} = {difference}")
+        if monster_attack <= 3:
+            return 0.2
+        
         if difference > 0:
             # Starting at 50%, increase based on the difference
             # print(f'Positive monster hit chance: {hit_chance}')
@@ -673,9 +680,15 @@ class Combat(commands.Cog, name="combat"):
         # Calculate the difference
         difference = monster_attack - player_defence
         # print(f"M.ATK {monster_attack} - P.DEF {player_defence} = {difference}")
-
+        if (monster_attack) <= 3:
+            damage = random.randint(1,2)
+            difference = 0
+        elif (monster_attack) <= 20:
+            damage = random.randint(1,3)
+            difference = 0
+        else:
+            damage = random.randint(1, 6)  # Roll 1d6
         # Base damage (1d6)
-        damage = random.randint(1, 6)  # Roll 1d6
         additional_d6s = 0
         additional_damage = 0
         # If the difference is positive, roll 1 additional d6 per 10 difference in levels
@@ -888,7 +901,7 @@ class Combat(commands.Cog, name="combat"):
         new_exp = current_exp + xp_award
         level_up = False
         # print(f'Currently level {current_level} with exp {current_exp}, new exp is {new_exp}')
-        exp_threshold = exp_table[current_level + 1]
+        exp_threshold = exp_table[current_level]
         # print(f'exp threshold is {exp_threshold}')
         if current_level < 100 and new_exp >= exp_threshold:
             # print(f'Level up')
@@ -928,7 +941,7 @@ class Combat(commands.Cog, name="combat"):
             await self.bot.database.increase_attack(user_id, attack_increase)
             await self.bot.database.increase_defence(user_id, defence_increase)
             await self.bot.database.increase_level(user_id)
-            new_exp -= exp_table[current_level]
+            new_exp -= exp_table[current_level - 1]
             
         # print(f'Update {user_id} experience')
         await self.bot.database.update_experience(user_id, new_exp)
