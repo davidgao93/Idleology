@@ -84,8 +84,8 @@ class Trade(commands.Cog, name="trade"):
             del self.active_users[user_id]
             self.bot.state_manager.clear_active(user_id)
 
-    @commands.hybrid_command(name="send_item", description="Send an item to another player.")
-    async def send_item(self, context: Context, receiver: discord.User, item_id: int) -> None:
+    @commands.hybrid_command(name="send_weapon", description="Send a weapon to another player.")
+    async def send_weapon(self, context: Context, receiver: discord.User, item_id: int) -> None:
         user_id = str(context.author.id)
         server_id = str(context.guild.id)
 
@@ -98,7 +98,7 @@ class Trade(commands.Cog, name="trade"):
         if self.bot.state_manager.is_active(user_id):
             await context.send("You are currently busy with another operation. Please finish that first.")
             return
-        self.bot.state_manager.set_active(user_id, "send_item")  # Set send_item as active operation
+        self.bot.state_manager.set_active(user_id, "send_weapon")  # Set send_item as active operation
 
         # Fetch the sender's user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
@@ -109,7 +109,7 @@ class Trade(commands.Cog, name="trade"):
         # Fetch the item details
         item_details = await self.bot.database.fetch_item_by_id(item_id)
         if not item_details:
-            await context.send("Item not found. Please check the item ID and try again.")
+            await context.send("Weapon not found. Please check the Weapon ID and try again.")
             return
 
         item_level = int(item_details[3])  # Assuming item_level is at index 3
@@ -117,13 +117,13 @@ class Trade(commands.Cog, name="trade"):
         
         # Check level difference
         if (current_level - item_level) > 15:
-            await context.send(f"You cannot send this item due to ilvl diff being too great. (< 15)")
+            await context.send(f"You cannot send this item due to iLvl diff being too great. (< 15)")
             return
         
         # Check if the item is equipped
         equipped_item = await self.bot.database.get_equipped_item(user_id)
         if equipped_item and equipped_item[0] == item_id:  # Assuming item_id is at index 0
-            await context.send("You cannot send an item that you have equipped.")
+            await context.send("You cannot send a weapon that you have equipped.")
             return
         
         # Fetch the receiver's item data to check their current item count
@@ -131,12 +131,12 @@ class Trade(commands.Cog, name="trade"):
         
         # Check if the receiver has less than 3 items in their inventory
         if len(receiver_items) >= 3:
-            await context.send(f"{receiver.mention} cannot receive more items because they already have 3 items in their inventory.")
+            await context.send(f"{receiver.mention} cannot receive more weapons. They have 3+ weapons already.")
             return
 
         # Confirm the action
         confirm_embed = discord.Embed(
-            title="Confirm Send Item",
+            title="Confirm Send Weapon",
             description=f"Send **{item_details[2]}** to {receiver.mention}?",
             color=0x00FF00
         )

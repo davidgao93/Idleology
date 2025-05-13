@@ -3,11 +3,21 @@ import re
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.tasks import asyncio
-import random
+import csv
 
 class Guild(commands.Cog, name="adventurer's guild"):
     def __init__(self, bot) -> None:
         self.bot = bot
+
+
+    def load_character_appearances(self, gender: str):
+        appearances = []
+        with open('assets/profiles.csv', mode='r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                if row['Sex'].upper() == gender.upper():
+                    appearances.append(row['URL'])
+        return appearances
 
     @commands.hybrid_command(name="card", description="See your adventurer card.")
     async def card(
@@ -54,6 +64,11 @@ class Guild(commands.Cog, name="adventurer's guild"):
         server_id = str(context.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
+
+        if self.bot.state_manager.is_active(user_id):
+            await context.send("You are currently busy with another operation. Please finish that first.")
+            return
+
         if existing_user:
             embed = discord.Embed(
                 title="Registration",
@@ -63,16 +78,35 @@ class Guild(commands.Cog, name="adventurer's guild"):
             )
             await context.send(embed=embed)
             return
-
+        
+        self.bot.state_manager.set_active(user_id, "register")  # Set register as active operation
+        # Ask for gender selection
         embed = discord.Embed(
-            title="Registration",
-            description=f"Welcome, **{name}**! Please choose your appearance.",
+            title="What are you?",
+            description="Pick a gender:",
             color=0x00FF00,
         )
+        message = await context.send(embed=embed)
+        reactions = ["♂️", "♀️"]
+        await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
 
-        appearances = self.load_character_appearances()
+        def gender_check(reaction, user):
+            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in reactions
+
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=gender_check)
+            gender = "M" if str(reaction.emoji) == "♂️" else "F"
+
+        except asyncio.TimeoutError:
+            await context.send(f"{name} took too long to respond!")
+            self.bot.state_manager.clear_active(context.author.id)  
+            return
+
+        # Load appearances based on gender
+        appearances = self.load_character_appearances(gender)
         if not appearances:
-            await context.send("Appearances failed to load, please try again later.")
+            await context.send("No appearances found, please try again later.")
+            self.bot.state_manager.clear_active(context.author.id)
             return
         
         current_index = 0
@@ -104,6 +138,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
 
             except asyncio.TimeoutError:
                 await context.send(f"{name} took too long to respond!")
+                self.bot.state_manager.clear_active(context.author.id)  
                 return
             
         selected_appearance = f"{appearances[current_index]}"
@@ -161,12 +196,16 @@ class Guild(commands.Cog, name="adventurer's guild"):
                     if str(reaction.emoji) == "✅":
                         if ideology in ideologies:
                             followers = await self.bot.database.fetch_followers(ideology)
-                            await context.send(f"{name} has adopted **{ideology}**! Followers: {followers + 1}")
+                            await context.send(f"{name} has adopted **{ideology}**! Followers: {followers + 1}\n"
+                                               "You are now registered.")
                             await self.bot.database.update_followers_count(ideology, followers + 1)
+                            self.bot.state_manager.clear_active(context.author.id)  
                         else:
                             await self.bot.database.create_ideology(user_id, server_id, ideology)
                             await self.bot.database.update_followers_count(ideology, 1)
-                            await context.send(f"Congratulations, {name} has founded a new ideology called **{ideology}**!")
+                            await context.send(f"Congratulations, {name} has founded a new ideology called **{ideology}**!\n"
+                                               "You are now registered.")
+                            self.bot.state_manager.clear_active(context.author.id)  
                         break
 
                     elif str(reaction.emoji) == "❌":
@@ -175,35 +214,23 @@ class Guild(commands.Cog, name="adventurer's guild"):
 
                 except asyncio.TimeoutError:
                     await context.send(f"{name} took too long, the confirmation has been cancelled.")
+                    self.bot.state_manager.clear_active(context.author.id)  
                     break
 
             except asyncio.TimeoutError:
                 await context.send(f"{name} took too long, the registration has been cancelled.")
+                self.bot.state_manager.clear_active(context.author.id)  
                 break
+
 
         await self.bot.database.register_user(user_id, server_id, name, selected_appearance, ideology)
         await self.bot.database.add_to_mining(user_id, server_id, 'iron')
         await self.bot.database.add_to_fishing(user_id, server_id, 'desiccated')
         await self.bot.database.add_to_woodcutting(user_id, server_id, 'flimsy')
-        await self.bot.database.add_gold(user_id, 2000)
-        for _ in range (0, 5):
+        await self.bot.database.add_gold(user_id, 200)
+        for _ in range (0, 10):
             await self.bot.database.increase_potion_count(user_id)
-
-    def load_character_appearances(self):
-        appearances = [
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1334216420480778261/ranger_m.png?ex=679bb95f&is=679a67df&hm=d544ff57e893daa141e64e80ba0e4ca7b3f0d5b040c6efc71c5b8be7f7cb0162&",
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1336070320871968850/ranger_f.png?ex=67a277f3&is=67a12673&hm=25b9080dc0b820d5cc78c688e575fca52d2eeeafcc9ff39a4a4a52dbccdca7cb&",
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1334216420799680633/rogue_f.png?ex=679bb95f&is=679a67df&hm=f245d0d0141c62b99ada3b7fdffd708c7671f411c79e80c6d6dc31d8bc36ce5a&",
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1334216421303124010/rogue_m.png?ex=679bb95f&is=679a67df&hm=3f4eebd8843c5524e5d003372a6635b550d59e8b171d1b32a2067bdad7398e6e&",
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1334216469210202215/bard_m.png?ex=679bb96a&is=679a67ea&hm=714bebe89f069b03d17bcbf9460bf77b3fa4c82125469f45684d444118932aa0&",
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1334216469654802565/bard_w.png?ex=679bb96a&is=679a67ea&hm=c4d70e4b80eecc6c353be732aaa8aff03fb9b6975271e423769b1cdb52b37953&",
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1334216470581874842/fighter_m.png?ex=679bb96b&is=679a67eb&hm=0647c9a4f5081739c0940c272b03323a3b7556ebf230ded9f5063089ed35599c&",
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1334216471039180980/fighter_w.png?ex=679bb96b&is=679a67eb&hm=490501a002904876fda1e01e561191d34a56f90d7f1b825aab6bd4946158a504&",
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1334216471659810846/monk_f.png?ex=679bb96b&is=679a67eb&hm=7b7d8da402d41214936486cb174c64b98871873839cdd857c95e657442816c52&",
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1334216472062591079/monk_m.png?ex=679bb96b&is=679a67eb&hm=316ce7f28e3645ed986883b730448c5ba9def36327be1c131e3f31df3b6112db&",
-                    "https://cdn.discordapp.com/attachments/699690514051629089/1334216469977763932/dragon.png?ex=679bb96a&is=679a67ea&hm=09d8f016521fa0eb45258cb0d921296364eb9af2b13d6dbe0cfa2525bb8d8fe4&"
-                       ]
-        return appearances
+        self.bot.state_manager.clear_active(context.author.id)  
     
     @commands.hybrid_command(name="unregister", description="Unregister as an adventurer.")
     async def unregister_adventurer(self, context: commands.Context) -> None:

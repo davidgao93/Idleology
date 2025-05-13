@@ -249,15 +249,57 @@ class DatabaseManager:
             (user_id, item_name, item_level, attack, defence, rarity, is_equipped)
         )
         await self.connection.commit()
+
+    async def create_accessory(self, user_id: str, acc_name: str, item_level: int, 
+                                modifier_type: str, modifier_value: int) -> None:
+        """
+        Insert a new accessory into the accessories table.
+        """
+        # Initialize default values
+        attack = 0
+        defence = 0
+        rarity = 0
+        ward = 0
+        crit = 0
+
+        # Adjust values based on modifier type
+        if modifier_type.lower() == "attack":
+            attack = modifier_value
+        elif modifier_type.lower() == "defence":
+            defence = modifier_value
+        elif modifier_type.lower() == "rarity":
+            rarity = modifier_value
+        elif modifier_type.lower() == "ward":
+            ward = modifier_value
+        elif modifier_type.lower() == "crit":
+            crit = modifier_value
+
+        # Insert the new accessory into the database
+        await self.connection.execute(
+            "INSERT INTO accessories (user_id, item_name, item_level, attack, defence, rarity, ward, crit, is_equipped, potential_remaining, passive_lvl) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (user_id, acc_name, item_level, attack, defence, rarity, ward, crit, False, 10, 0)  # is_equipped defaults to False and potential_remaining to 10
+        )
+        await self.connection.commit()
+
     
     async def fetch_user_items(self, user_id: str) -> list:
         """Fetch all items owned by a specific user."""
         rows = await self.connection.execute(
-            "SELECT item_id, item_name, item_level, attack, defence, rarity, passive is_equipped FROM items WHERE user_id=?",
+            "SELECT item_id, item_name, item_level, attack, defence, rarity, passive, is_equipped FROM items WHERE user_id=?",
             (user_id,)
         )
         async with rows as cursor:
             return await cursor.fetchall()  # Returns a list of items
+        
+    async def fetch_user_accessories(self, user_id: str) -> list:
+        """Fetch all accessories owned by a specific user."""
+        rows = await self.connection.execute(
+            "SELECT * FROM accessories WHERE user_id=?",
+            (user_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchall()  # Returns a list of accessories
     
     async def update_item_equipped_status(self, item_id: int, is_equipped: bool) -> None:
         """Update the equipped status of an item."""
@@ -290,6 +332,21 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+
+    async def equip_accessory(self, user_id: str, item_id: int) -> None:
+        """Equip an item and deselect any previously equipped item."""
+        # First, unequip any currently equipped item for this user
+        await self.connection.execute(
+            "UPDATE accessories SET is_equipped = FALSE WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        # Then, equip the new item
+        await self.connection.execute(
+            "UPDATE accessories SET is_equipped = TRUE WHERE item_id = ?",
+            (item_id,)
+        )
+        await self.connection.commit()
+
     async def get_equipped_item(self, user_id: str) -> tuple:
         """Fetch the currently equipped item for a specific user."""
         rows = await self.connection.execute(
@@ -298,6 +355,51 @@ class DatabaseManager:
         )
         async with rows as cursor:
             return await cursor.fetchone()       
+
+    async def get_equipped_accessory(self, user_id: str) -> tuple:
+        """Fetch the currently equipped accessory for a specific user."""
+        rows = await self.connection.execute(
+            "SELECT * FROM accessories WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchone()    
+        
+
+    async def update_accessory_passive(self, accessory_id: int, passive: str) -> None:
+        """Update the potential level of an accessory in the database."""
+        await self.connection.execute(
+            "UPDATE accessories SET passive = ? WHERE item_id = ?",
+            (passive, accessory_id)
+        )
+        await self.connection.commit() 
+
+    async def update_accessory_passive_lvl(self, accessory_id: int, new_potential: int) -> None:
+        """Update the potential level of an accessory in the database."""
+        await self.connection.execute(
+            "UPDATE accessories SET passive_lvl = ? WHERE item_id = ?",
+            (new_potential, accessory_id)
+        )
+        await self.connection.commit()
+
+
+    async def update_accessory_potential(self, accessory_id: int, new_potential: int) -> None:
+        """Update the potential level of an accessory in the database."""
+        await self.connection.execute(
+            "UPDATE accessories SET potential_remaining = ? WHERE item_id = ?",
+            (new_potential, accessory_id)
+        )
+        await self.connection.commit()
+
+
+    async def update_accessory_passive(self, accessory_id: int, passive: str) -> None:
+        """Update the passive of an accessory in the database."""
+        await self.connection.execute(
+            "UPDATE accessories SET passive = ? WHERE item_id = ?",
+            (passive, accessory_id)
+        )
+        await self.connection.commit()
+
 
     async def discard_item(self, item_id: int) -> None:
         """Remove an item from the items table."""
@@ -472,7 +574,7 @@ class DatabaseManager:
                               required_platinum: int,
                               required_gp: int) -> None:
         """Upgrade the user's pickaxe in the database."""
-        # Deduct resources from the user's inventory
+        # Deduct resources from the user's resources
         await self.connection.execute(
             "UPDATE mining SET "
             "iron = iron - ?, "
@@ -503,7 +605,7 @@ class DatabaseManager:
                         required_magic: int,
                         required_gp: int) -> None:
         """Upgrade the user's axe in the database."""
-        # Deduct resources from the user's inventory
+        # Deduct resources from the user's resources
         await self.connection.execute(
             "UPDATE woodcutting SET "
             "oak_logs = oak_logs - ?, "
@@ -534,7 +636,7 @@ class DatabaseManager:
                                 required_reinforced: int,
                                 required_gp: int) -> None:
         """Upgrade the user's fishing rod in the database."""
-        # Deduct resources from the user's inventory
+        # Deduct resources from the user's resources
         await self.connection.execute(
             "UPDATE fishing SET "
             "desiccated_bones = desiccated_bones - ?, "
@@ -735,11 +837,29 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+    async def update_potential_runes(self, user_id: str, count: int) -> None:
+        """Update the user's count of potential runes in the database."""
+        await self.connection.execute(
+            "UPDATE users SET potential_runes = potential_runes + ? WHERE user_id = ?",
+            (count, user_id)
+        )
+        await self.connection.commit()
+
     # Method to fetch the number of refinement runes for a user
     async def fetch_refinement_runes(self, user_id: str) -> int:
         """Fetch the user's refinement runes count from the database."""
         rows = await self.connection.execute(
             "SELECT refinement_runes FROM users WHERE user_id = ?",
+            (user_id,)
+        )
+        result = await rows.fetchone()
+        return result[0] if result else 0  # Return the count or 0 if user not found
+    
+    # Method to fetch the number of refinement runes for a user
+    async def fetch_potential_runes(self, user_id: str) -> int:
+        """Fetch the user's potential runes count from the database."""
+        rows = await self.connection.execute(
+            "SELECT potential_runes FROM users WHERE user_id = ?",
             (user_id,)
         )
         result = await rows.fetchone()

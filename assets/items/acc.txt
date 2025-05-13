@@ -1,0 +1,13 @@
+Ring
+Necklace
+Earring
+Bracelet
+Bangle
+Chain
+Pin
+Brooch
+Charm
+Signet 
+Locket
+Pendant
+Medallion

@@ -278,7 +278,7 @@ class General(commands.Cog, name="general"):
             items_description = "\n".join([f"**ID:** {item[0]} - **Name:** {item[1]}" for item in user_items])
             embed.add_field(name="Your Items", value=items_description, inline=False)
         else:
-            embed.add_field(name="Your Items", value="You have no items in your inventory.", inline=False)
+            embed.add_field(name="Your Items", value="You have no weapons or accessories.", inline=False)
 
         await context.send(embed=embed)
 

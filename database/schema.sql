@@ -5,8 +5,8 @@
 --DROP TABLE IF EXISTS `fishing`;
 --DROP TABLE IF EXISTS `woodcutting`;
 --DROP TABLE IF EXISTS `mining`;
--- ALTER TABLE users ADD COLUMN `refinement_runes` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN `passive_points` INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN `potential_runes` INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE accessories ADD COLUMN `passive_lvl` INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `last_checkin_time` TIMESTAMP DEFAULT NULL,  -- New column for storing the last check-in time
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `refinement_runes` INTEGER NOT NULL DEFAULT 0,
-  `passive_points` INTEGER NOT NULL DEFAULT 0
+  `passive_points` INTEGER NOT NULL DEFAULT 0,
+  `potential_runes` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (
@@ -54,6 +55,23 @@ CREATE TABLE IF NOT EXISTS `items` (
   `forges_remaining` INTEGER DEFAULT 5,
   `refines_remaining` INTEGER DEFAULT 5
 );
+
+CREATE TABLE IF NOT EXISTS `accessories` (
+  `item_id` INTEGER PRIMARY KEY,
+  `user_id` TEXT NOT NULL,
+  `item_name` TEXT NOT NULL,
+  `item_level` INTEGER NOT NULL,
+  `attack` INTEGER DEFAULT 0,
+  `defence` INTEGER DEFAULT 0,
+  `rarity` INTEGER DEFAULT 0,
+  `ward` INTEGER DEFAULT 0,
+  `crit` INTEGER DEFAULT 0,
+  `passive` TEXT NOT NULL DEFAULT 'none',
+  `is_equipped` BOOLEAN DEFAULT FALSE,
+  `potential_remaining` INTEGER DEFAULT 10,
+  `passive_lvl` INTEGER DEFAULT 0
+);
+
 
 CREATE TABLE IF NOT EXISTS mining (
     `user_id` TEXT NOT NULL,

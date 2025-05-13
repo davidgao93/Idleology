@@ -20,5 +20,5 @@ def resize_large_pngs(folder_path):
                 print(f"Resized {filename} to {new_size[0]}x{new_size[1]}.")
 
 # Specify the folder path
-folder_path = 'C:\\Users\\dervd\\Documents\\Idleology\\assets\\images\\monsters'  # Change this to your folder path
+folder_path = 'C:\\Users\\yugao\\Idleology\\assets\\images\\monster3'  # Change this to your folder path
 resize_large_pngs(folder_path)

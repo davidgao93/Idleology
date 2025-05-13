@@ -98,10 +98,15 @@ class Character(commands.Cog, name="character"):
         else:
             await context.send("You are not registered with the 🏦 Adventurer's guild. Please /register first.")
 
-    @commands.hybrid_command(name="inventory", description="View your character's inventory and modify items.")
-    async def inventory(self, context: Context) -> None:
+    '''
+
+    WEAPON HANDLING
+
+    '''
+    @commands.hybrid_command(name="weapons", description="View your character's weapons and modify them.")
+    async def weapons(self, context: Context) -> None:
         await context.defer()
-        """Fetch and display the character's inventory."""
+        """Fetch and display the character's weapons."""
         user_id = str(context.author.id)
         server_id = str(context.guild.id)
 
@@ -120,12 +125,12 @@ class Character(commands.Cog, name="character"):
         items = await self.bot.database.fetch_user_items(user_id)
         
         if not items:
-            await context.send("You peer into your inventory, it is empty.")
+            await context.send("You peer into your weapon's pouch, it is empty.")
             return
         player_name = existing_user[3]
         embed = discord.Embed(
             title=f"📦",
-            description=f"{player_name}'s Inventory:",
+            description=f"{player_name}'s Weapons:",
             color=0x00FF00,
         )
 
@@ -133,9 +138,9 @@ class Character(commands.Cog, name="character"):
         self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
         while True:
             items = await self.bot.database.fetch_user_items(user_id)
-            embed.description = f"{player_name}'s Inventory:"
+            embed.description = f"{player_name}'s Weapons:"
             if not items:
-                await context.send("You peer into your inventory, it is empty.")
+                await context.send("You peer into your weapon's pouch, it is empty.")
                 break
 
             items.sort(key=lambda item: item[2], reverse=True)  # item_level at index 2
@@ -159,7 +164,7 @@ class Character(commands.Cog, name="character"):
                 )
             # Add a single field for all items
             embed.add_field(
-                name="Items:",
+                name="Weapons:",
                 value=items_display_string.strip(),  # Use strip to remove any trailing newline
                 inline=False
             )
@@ -168,7 +173,7 @@ class Character(commands.Cog, name="character"):
             embed.add_field(
                 name="Instructions",
                 value=(f"[ℹ️] Select an item you want to interact with.\n"
-                       f"[🚪] Close your inventory."),
+                       f"[🚪] Close interface."),
                 inline=False
             )
             await inventory_message.edit(embed=embed)
@@ -242,9 +247,11 @@ class Character(commands.Cog, name="character"):
 
                 except asyncio.TimeoutError:
                     await inventory_message.delete()
+                    self.bot.state_manager.clear_active(context.author.id)  
                     break
             except asyncio.TimeoutError:
                 await inventory_message.delete()
+                self.bot.state_manager.clear_active(context.author.id)  
                 break
         self.bot.state_manager.clear_active(user_id)
 
@@ -295,6 +302,7 @@ class Character(commands.Cog, name="character"):
 
             except asyncio.TimeoutError:
                 await context.send("Your arms grow tired, you put your equipment away.")
+                self.bot.state_manager.clear_active(context.author.id)  
                 return
 
         item_id = selected_item[0]
@@ -304,7 +312,7 @@ class Character(commands.Cog, name="character"):
         await asyncio.sleep(3)
 
     async def discard(self, context: Context, selected_item: tuple, item_name: str, message, embed) -> None:
-        """Discard an item from the inventory."""
+        """Discard an item."""
         item_id = selected_item[0]
 
         confirmation_embed = discord.Embed(
@@ -333,6 +341,7 @@ class Character(commands.Cog, name="character"):
 
         except asyncio.TimeoutError:
             await context.send("You took too long to decide.")
+            self.bot.state_manager.clear_active(context.author.id)  
             return
 
         await self.bot.database.discard_item(item_id)
@@ -448,6 +457,7 @@ class Character(commands.Cog, name="character"):
 
         except asyncio.TimeoutError:
             await context.send("You took too long to decide.")
+            self.bot.state_manager.clear_active(context.author.id)  
             return
         # Deduct the costs from the user's resources
         print('subtracting ore')
@@ -700,6 +710,7 @@ class Character(commands.Cog, name="character"):
                         return  # Exit the method to return to the inventory interface
 
                 except asyncio.TimeoutError:
+                    self.bot.state_manager.clear_active(context.author.id)  
                     return
             return
 
@@ -734,6 +745,7 @@ class Character(commands.Cog, name="character"):
 
         except asyncio.TimeoutError:
             await context.send("You took too long to respond. Refinement cancelled.")
+            self.bot.state_manager.clear_active(context.author.id)  
             return
         
         if player_gold < cost:
@@ -796,6 +808,412 @@ class Character(commands.Cog, name="character"):
             cost_embed.add_field(name="Refining", value=("\n".join(result_message)), inline=False)
             await message.edit(embed=cost_embed)
             await asyncio.sleep(5)
+
+    ''' 
+
+    ACCESSORY HANDLING
+
+    '''            
+
+    @commands.hybrid_command(name="accessory", aliases=["acc"], description="View your character's accessories and modify them.")
+    async def accessory(self, context: Context) -> None:
+        """Fetch and display the character's accessories."""
+        user_id = str(context.author.id)
+        server_id = str(context.guild.id)
+        
+        # Check if the user has any active operations
+        if self.bot.state_manager.is_active(user_id):
+            await context.send("You are currently busy with another operation. Please finish that first.")
+            return
+
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+
+        if not existing_user: 
+            await context.send("You are not registered with the 🏦 Adventurer's guild. Please /register first.")
+            return
+
+        accessories = await self.bot.database.fetch_user_accessories(user_id)
+
+        if not accessories:
+            await context.send("You check your accessory pouch, it is empty.")
+            return
+
+        player_name = existing_user[3]
+        embed = discord.Embed(
+            title=f"📿",
+            description=f"{player_name}'s Accessories:",
+            color=0x00FF00,
+        )
+
+        inventory_message = await context.send(embed=embed)
+        self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
+
+        while True:
+            accessories = await self.bot.database.fetch_user_accessories(user_id)
+            embed.description = f"{player_name}'s Accessories:"
+            
+            if not accessories:
+                await context.send("You check your accessory pouch, it is empty.")
+                break
+
+            accessories.sort(key=lambda acc: acc[3], reverse=True)  # Sort by item_level at index 3
+            accessories_to_display = accessories[:5]  # Display the top 5 accessories
+            await inventory_message.clear_reactions()
+            embed.clear_fields()
+            number_emojis = ["🚪", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+            accessories_display_string = ""
+
+            for index, accessory in enumerate(accessories_to_display):
+                accessory_name = accessory[2]  # item_name is at index 2
+                accessory_level = accessory[3]  # item_level is at index 3
+                is_equipped = accessory[10]  # is_equipped is at index 10
+
+                # Append accessory details to the display string
+                accessories_display_string += (
+                    f"{number_emojis[index + 1]}: "
+                    f"{accessory_name} (Level {accessory_level})"
+                    f"{' [E]' if is_equipped else ''}\n"
+                )
+
+            # Add a single field for all accessories
+            embed.add_field(
+                name="Accessories:",
+                value=accessories_display_string.strip(),  # Strip any trailing newline
+                inline=False
+            )
+
+            # Instructions for user
+            embed.add_field(
+                name="Instructions",
+                value=(f"[ℹ️] Select an accessory you want to interact with.\n"
+                    f"[🚪] Close interface."),
+                inline=False
+            )
+            await inventory_message.edit(embed=embed)
+
+            for i in range(len(accessories_to_display) + 1):  # Add reactions for existing items
+                await inventory_message.add_reaction(number_emojis[i])
+
+            def check(reaction, user):
+                return (user == context.author and reaction.message.id == inventory_message.id)
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                selected_index = number_emojis.index(str(reaction.emoji))  # Get the index of the selected accessory
+                print(f'{selected_index} was selected')
+                if selected_index == 0:  # exit
+                    await inventory_message.delete()
+                    self.bot.state_manager.clear_active(user_id)
+                    break
+                selected_index -= 1  # Adjust to true index of accessory
+                selected_accessory = accessories_to_display[selected_index]
+                print(f'Selected accessory: {selected_accessory}')
+
+                # Display selected accessory details
+                accessory_name = selected_accessory[2]
+                accessory_level = selected_accessory[3]
+                accessory_attack = selected_accessory[4]  # index 4 for attack
+                accessory_defence = selected_accessory[5]  # index 5 for defense
+                accessory_rarity = selected_accessory[6]  # index 6 for rarity
+                accessory_ward = selected_accessory[7]  # index 7 for ward
+                accessory_crit = selected_accessory[8]  # index 8 for crit
+                accessory_passive = selected_accessory[9]  # passive is at index 9
+                potential_lvl = selected_accessory[12] 
+
+                embed.description = f"**{accessory_name}** (Level {accessory_level}):"
+                embed.clear_fields()
+                # Only display the stat that is not zero
+                if accessory_attack > 0:
+                    embed.add_field(name="Attack", value=accessory_attack, inline=True)
+                elif accessory_defence > 0:
+                    embed.add_field(name="Defense", value=accessory_defence, inline=True)
+                elif accessory_rarity > 0:
+                    embed.add_field(name="Rarity", value=accessory_rarity, inline=True)
+                elif accessory_ward > 0:
+                    embed.add_field(name="Ward", value=accessory_ward, inline=True)
+                elif accessory_crit > 0:
+                    embed.add_field(name="Critical Chance", value=accessory_crit, inline=True)
+
+                if (accessory_passive != "none"):
+                    embed.add_field(name="Passive", value=accessory_passive + f"({potential_lvl})", inline=False)
+                else:
+                    embed.add_field(name="Passive", value="🪄 to unlock!", inline=False)
+
+                # Add guide for potential modifications
+                potential_guide = (
+                    "💎 to equip.\n"
+                    "🪄 to unlock/improve potential.\n"
+                    "🗑️ to discard.\n"
+                    "◀️ to go back."
+                )
+
+                embed.add_field(name="Accessory Guide", value=potential_guide, inline=False)
+                await inventory_message.edit(embed=embed)
+                await inventory_message.clear_reactions()
+
+                action_reactions = ["💎", "🪄", "🗑️", "◀️"]
+                for emoji in action_reactions:
+                    await inventory_message.add_reaction(emoji)
+
+                try:
+                    action_reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                    if str(action_reaction.emoji) == "💎":
+                        await self.equip_accessory(context, selected_accessory, accessory_name, inventory_message, embed)
+                        continue
+                    elif str(action_reaction.emoji) == "🪄":
+                        await self.improve_potential(context, selected_accessory, inventory_message, embed)
+                        continue
+                    elif str(action_reaction.emoji) == "🗑️":
+                        await self.discard_accessory(context, selected_accessory, accessory_name, inventory_message, embed)
+                        continue
+                    elif str(action_reaction.emoji) == "◀️":
+                        print('Go back')
+                        continue
+
+                except asyncio.TimeoutError:
+                    await inventory_message.delete()
+                    self.bot.state_manager.clear_active(context.author.id)  
+                    break
+                
+            except asyncio.TimeoutError:
+                await inventory_message.delete()
+                self.bot.state_manager.clear_active(context.author.id)  
+                break
+            
+        self.bot.state_manager.clear_active(user_id)    
+
+
+    async def equip_accessory(self, context: Context, selected_item: tuple, new_equip: str, message, embed) -> None:
+        """Equip an item."""
+        user_id = str(context.author.id)
+        server_id = str(context.guild.id)
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        
+        if not existing_user: 
+            await context.send("You are not registered with the 🏦 Adventurer's guild."
+                               " Please /register first.")
+            self.bot.state_manager.clear_active(user_id)
+            return
+                
+        equipped_item = await self.bot.database.get_equipped_accessory(user_id)
+
+        if equipped_item:
+            current_equipped_id = equipped_item[0] 
+            if selected_item[0] == current_equipped_id:
+                embed.add_field(name="But why", value=(f"You already have **{new_equip}** equipped! "
+                                                       " Returning to main menu..."), inline=False)
+                await message.edit(embed=embed)
+                await asyncio.sleep(3)
+                return
+
+            item_name = equipped_item[2]  # Assuming item_name is at index 2
+            confirmation_embed = discord.Embed(
+                title="Switch accessory",
+                description=f"Unequip **{item_name}** and equip **{new_equip}** instead?",
+                color=0xFFCC00
+            )
+            await message.edit(embed=confirmation_embed)
+            await message.clear_reactions()
+            await message.add_reaction("✅")
+            await message.add_reaction("❌")
+
+            def confirm_check(reaction, user):
+                return (user == context.author and 
+                        reaction.message.id == message.id 
+                        and str(reaction.emoji) in ["✅", "❌"])
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
+                if str(reaction.emoji) == "❌":
+                    await context.send("You put the accessory away.")
+                    return
+
+            except asyncio.TimeoutError:
+                await context.send("Your arms grow tired, you put your accessories away.")
+                self.bot.state_manager.clear_active(context.author.id)  
+                return
+
+        item_id = selected_item[0]
+        await self.bot.database.equip_accessory(user_id, item_id)
+        confirmation_embed.add_field(name="Equip", value=f"Equipped **{new_equip}**\nReturning to main menu...", inline=False)
+        await message.edit(embed=confirmation_embed)
+        await asyncio.sleep(3)
+
+    async def discard_accessory(self, context: Context, selected_accessory: tuple, accessory_name: str, message, embed) -> None:
+        """Discard an accessory."""
+        accessory_id = selected_accessory[0]  # Assuming item_id is at index 0
+
+        confirmation_embed = discord.Embed(
+            title="Confirm Discard",
+            description=f"Are you sure you want to discard **{accessory_name}**? This action cannot be undone.",
+            color=0xFF0000,
+        )
+        await message.edit(embed=confirmation_embed)
+        await message.clear_reactions()
+        await message.add_reaction("✅")  # Confirm discard
+        await message.add_reaction("❌")  # Cancel discard
+
+        def confirm_check(reaction, user):
+            return (user == context.author and 
+                    reaction.message.id == message.id and 
+                    str(reaction.emoji) in ["✅", "❌"])
+
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
+
+            if str(reaction.emoji) == "❌":
+                confirmation_embed.add_field(name="Cancel", value=f"Returning to main menu...", inline=False)
+                await message.edit(embed=confirmation_embed)
+                await asyncio.sleep(3)
+                return
+
+        except asyncio.TimeoutError:
+            await context.send("You took too long to decide.")
+            self.bot.state_manager.clear_active(context.author.id)  
+            return
+
+        # Perform the actual discard operation
+        await self.bot.database.discard_item(accessory_id)  # Assuming you have a method to discard items
+        confirmation_embed.add_field(name="Discard", 
+                                    value=f"Discarded **{accessory_name}**. Returning to main menu...", 
+                                    inline=False)
+        await message.edit(embed=confirmation_embed)
+        await asyncio.sleep(3)
+
+
+    async def improve_potential(self, context: Context, selected_accessory: tuple, message, embed) -> None:
+        """Improve the potential of an accessory."""
+        print('Improving accessory')
+        accessory_id = selected_accessory[0]
+        accessory_name = selected_accessory[2]
+        current_passive = selected_accessory[9]
+        potential_remaining = selected_accessory[11]
+        potential_lvl = selected_accessory[12] 
+        potential_passive_list = ["Obliterate", "Absorb", "Prosper", "Infinite Wisdom", "Lucky Strikes"]
+        
+        if potential_remaining <= 0:
+            embed.add_field(name="Error", 
+                            value=f"This accessory has no potential remaining. You cannot enhance it further.", 
+                            inline=False)
+            await message.edit(embed=embed)
+            await asyncio.sleep(3)
+            return
+
+        # Check user's rune of potential count
+        rune_of_potential_count = await self.bot.database.fetch_potential_runes(str(context.author.id))
+        
+        # Prepare the confirmation embed
+        costs = [500, 1000, 2000, 3000, 4000, 5000, 10000, 20000, 30000, 40000]
+        refine_cost = costs[10 - potential_remaining]  # Cost is based on current potential level
+        success_rate = max(75 - (10 - potential_remaining) * 5, 35)  # Success rate starts at 75% and decreases
+
+        if (current_passive == "none"):
+            confirm_embed = discord.Embed(
+                title="Unlock Potential Attempt",
+                description=(f"Attempt to unlock *{accessory_name}*'s potential? \n"
+                             f"Attempts left: **{potential_remaining}** \n"
+                            f"Unlock Cost: **{refine_cost:,} GP**\n"
+                            f"Success Rate: **{success_rate}%**\n"),
+                color=0xFFCC00
+            )       
+        else:
+            confirm_embed = discord.Embed(
+                title="Enhance Potential Attempt",
+                description=(f"Enhance **{accessory_name}**'s potential? \n"
+                             f"Attempts left: **{potential_remaining}** \n"
+                            f"Next Potential Level Cost: **{refine_cost:,} GP**\n"
+                            f"Success Rate: **{success_rate}%**\n"),
+                color=0xFFCC00
+            )
+
+        await message.edit(embed=confirm_embed)
+        await message.clear_reactions()
+        await message.add_reaction("✅")  # Confirm
+        await message.add_reaction("❌")  # Cancel
+
+        def confirm_check(reaction, user):
+            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
+
+            if str(reaction.emoji) == "❌":
+                confirm_embed.add_field(name="Potential", value=f"Cancelling, returning to main menu...", inline=False)
+                await message.edit(embed=confirm_embed)
+                await asyncio.sleep(5)
+                return
+
+        except asyncio.TimeoutError:
+            await context.send("You took too long to respond.")
+            self.bot.state_manager.clear_active(context.author.id)
+            return
+
+        if rune_of_potential_count > 0:
+            confirm_embed.add_field(name="Runes of Potential", 
+                                    value=(f"You have **{rune_of_potential_count}** Rune(s) of Potential available.\n"
+                                            f"Do you want to use one to boost your success rate to **{success_rate + 25}%**?"),
+                                    inline=False)
+            await message.edit(embed=confirm_embed)
+            await message.clear_reactions()
+            await message.add_reaction("✅")  # Confirm with rune
+            await message.add_reaction("❌")  # Confirm without rune
+
+            def check_reaction(r, user):
+                return user == context.author and r.message.id == message.id and str(r.emoji) in ["✅", "❌"]
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check_reaction)
+
+                if str(reaction.emoji) == "✅":
+                    success_rate += 25  # Boost success rate by 25%
+                    await self.bot.database.update_potential_runes(str(context.author.id), -1)  # Use a rune
+
+            except asyncio.TimeoutError:
+                await context.send("You took too long to respond.")
+                self.bot.state_manager.clear_active(context.author.id)  
+                return
+
+        # Perform the potential enhancement roll
+        player_roll = random.random()
+        chance_to_improve = success_rate / 100
+        enhancement_success = player_roll <= chance_to_improve # Check if the enhancement is successful
+        print(f"Enhancement was {enhancement_success}, with player rolling {player_roll} and {chance_to_improve} success rate")
+        
+        if enhancement_success:
+            # Successfully enhanced, set new potential level
+            if (potential_lvl == 0):
+                passive_choice = random.choice(potential_passive_list)
+                await self.bot.database.update_accessory_passive(accessory_id, passive_choice)
+                await self.bot.database.update_accessory_passive_lvl(accessory_id, 1)
+
+            new_potential = potential_lvl + 1
+            await self.bot.database.update_accessory_passive_lvl(accessory_id, new_potential)
+            if (new_potential == 1):
+                success_message = (f"🎉 Success!\n"
+                                    f"Your accessory has gained the **{passive_choice}** passive.")
+            else:
+                success_message = (f"🎉 Success!\n"
+                                   f"Upgraded **{current_passive}** from level **{potential_lvl}** to **{new_potential}**.\n")
+            confirm_embed.add_field(name="Enhancement Result", value=success_message, inline=False)
+        else:
+            # Failed enhancement
+            fail_message = "💔 The enhancement failed. Unlucky."
+            confirm_embed.add_field(name="Enhancement Result", value=fail_message, inline=False)
+
+        # Update database with new potential level and passive
+        potential_remaining -= 1
+        await self.bot.database.update_accessory_potential(accessory_id, potential_remaining)
+        await message.edit(embed=confirm_embed)
+        await asyncio.sleep(5)
+        embed.clear_fields()
+
+
+
+    '''
+    
+    MISCELLANEOUS COMMANDS
+    
+    '''
 
     @commands.hybrid_command(name="leaderboard", description="Show the top adventurers sorted by level.")
     async def leaderboard(self, context: Context) -> None:
@@ -918,6 +1336,7 @@ class Character(commands.Cog, name="character"):
                 await message.edit(embed=embed)
             
             except asyncio.TimeoutError:
+                self.bot.state_manager.clear_active(context.author.id)
                 break
 
         self.bot.state_manager.clear_active(user_id)

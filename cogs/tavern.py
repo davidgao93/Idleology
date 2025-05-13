@@ -449,7 +449,7 @@ class Tavern(commands.Cog, name="tavern"):
             chosen_color = "red" if str(color_response[0].emoji) == "🟥" else "black"
 
             # Ask for a number
-            embed.description = "Enter a number between 1 and 36:"
+            embed.description = f"Enter a number between 1 and 36:\nRed = Even\nBlack = Odd"
             await message.edit(embed=embed)
 
             def number_check(m):

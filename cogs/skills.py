@@ -10,6 +10,14 @@ class Skills(commands.Cog, name="skills"):
         self.active_events = {}
         self.event_channel_id = self.bot.config["channel_id"]  # Store channel ID as a string
 
+    # @commands.Cog.listener()
+    # async def on_ready(self):
+    #     if not self.schedule_skills.is_running():
+    #         self.schedule_skills.start()
+        
+    #     if not self.random_event.is_running():
+    #         self.random_event.start()
+
     @commands.hybrid_command(name="skills", description="Check your skills and resources.")
     async def skills(self, context: commands.Context):
         user_id = str(context.author.id)
@@ -488,16 +496,7 @@ class Skills(commands.Cog, name="skills"):
     """
     SCHEDULED TASKS HERE
     MODIFY AMOUNTS OF RESOURCES GRANTED
-    """
-    
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if not self.schedule_skills.is_running():
-            self.schedule_skills.start()
-        
-        if not self.random_event.is_running():
-            self.random_event.start()
-    
+    """    
     @tasks.loop(hours=1)
     #@tasks.loop(seconds=60)
     async def schedule_skills(self):
