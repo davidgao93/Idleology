@@ -163,6 +163,70 @@ class Trade(commands.Cog, name="trade"):
             self.bot.state_manager.clear_active(user_id)
 
 
+    @commands.hybrid_command(name="send_accessory", description="Send an accessory to another player.")
+    async def send_accessory(self, context: Context, receiver: discord.User, accessory_id: int) -> None:
+        user_id = str(context.author.id)
+        server_id = str(context.guild.id)
+
+        # Check if the user is trying to send the item to themselves
+        if receiver.id == context.author.id:
+            await context.send("You cannot send accessories to yourself.")
+            return
+
+        # Check if the user has any active operations
+        if self.bot.state_manager.is_active(user_id):
+            await context.send("You are currently busy with another operation. Please finish that first.")
+            return
+
+        self.bot.state_manager.set_active(user_id, "send_accessory")  # Set send_accessory as active operation
+
+        # Fetch the sender's user data
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        if not existing_user:
+            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+            return
+
+        # Fetch the accessory details
+        accessory_details = await self.bot.database.fetch_accessory_by_id(accessory_id)
+        if not accessory_details:
+            await context.send("Accessory not found. Please check the Accessory ID and try again.")
+            return
+
+        # Check if the accessory is equipped
+        equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
+        if equipped_accessory and equipped_accessory[0] == accessory_details[0]:  # Check if it's the same accessory
+            await context.send("You cannot send an accessory that you have equipped.")
+            return
+        
+        # Confirm the action
+        confirm_embed = discord.Embed(
+            title="Confirm Send Accessory",
+            description=f"Send **{accessory_details[2]}** to {receiver.mention}?",
+            color=0x00FF00
+        )
+        message = await context.send(embed=confirm_embed)
+
+        await message.add_reaction("✅")  # Confirm
+        await message.add_reaction("❌")  # Cancel
+
+        def confirm_check(reaction, user):
+            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
+
+            if str(reaction.emoji) == "✅":
+                # The sender has confirmed the action
+                await self.bot.database.send_accessory(receiver.id, accessory_id)  # Create a method to handle item transfer
+                await context.send(f"Sent **{accessory_details[2]}** to {receiver.mention}! 🎉")
+            else:
+                await message.delete()  # Delete the confirmation message.
+        except asyncio.TimeoutError:
+            await message.delete()  # Delete the confirmation message if timed out.
+        finally:
+            self.bot.state_manager.clear_active(user_id)
+
+
     @commands.hybrid_command(name="send_material", description="Send skilling materials to another player.")
     async def send_material(self, context: Context, receiver: discord.User, material: str, amount: int) -> None:
         user_id = str(context.author.id)
@@ -272,11 +336,11 @@ class Trade(commands.Cog, name="trade"):
                     await confirm_message.edit(embed=confirm_embed)               
                     
                 else:
-                    confirm_embed.description = "Transaction cancelled."
                     await confirm_message.delete()
-
+                    self.bot.state_manager.clear_active(user_id)
             except asyncio.TimeoutError:
                 await confirm_message.delete()  # Delete the confirmation message if timed out.
+                self.bot.state_manager.clear_active(user_id)
         finally:
             # Ensure we clear the active operation regardless of success/failure
             self.bot.state_manager.clear_active(user_id)

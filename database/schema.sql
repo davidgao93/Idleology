@@ -5,8 +5,9 @@
 --DROP TABLE IF EXISTS `fishing`;
 --DROP TABLE IF EXISTS `woodcutting`;
 --DROP TABLE IF EXISTS `mining`;
--- ALTER TABLE users ADD COLUMN `potential_runes` INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN `curios` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE accessories ADD COLUMN `passive_lvl` INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN curios_purchased_today INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -30,7 +31,9 @@ CREATE TABLE IF NOT EXISTS `users` (
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `refinement_runes` INTEGER NOT NULL DEFAULT 0,
   `passive_points` INTEGER NOT NULL DEFAULT 0,
-  `potential_runes` INTEGER NOT NULL DEFAULT 0
+  `potential_runes` INTEGER NOT NULL DEFAULT 0,
+  `curios` INTEGER NOT NULL DEFAULT 0,
+  `curios_purchased_today` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (

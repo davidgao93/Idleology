@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 import asyncio
 import random
-
+import json
 """
 Index	Attribute Description
 0	Unique ID
@@ -25,6 +25,11 @@ Index	Attribute Description
 16	Potion Count
 17	Created at
 18  Last Checkin Time
+19  Refinement runes
+20  Passive Points
+21  Potential runes
+22  Curios
+23  Curious purchased
 """
 
 class Character(commands.Cog, name="character"):
@@ -71,32 +76,103 @@ class Character(commands.Cog, name="character"):
                 color=0x00FF00,
             )
             equipped_item = await self.bot.database.get_equipped_item(user_id)
+            equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
+
+            # Calculate base attack and defense
+            base_attack = existing_user[9]
+            base_defense = existing_user[10]
             add_atk = 0
             add_def = 0
+            add_rar = 0
+            crit = 0
+            ward = 0
             if equipped_item:
-                add_atk = equipped_item[4]
-                add_def = equipped_item[5]
+                add_atk += equipped_item[4]
+                add_def += equipped_item[5]
+                add_rar += equipped_item[6]
+            if equipped_accessory:
+                add_atk += equipped_accessory[4]
+                add_def += equipped_accessory[5]
+                add_rar += equipped_accessory[6]
+                # Add crit and ward if they exist
+                crit = equipped_accessory[8]
+                ward = equipped_accessory[7]
+
+
+            # Fetch experience table
+            with open('assets/exp.json') as file:
+                exp_table = json.load(file)
+
+            current_level = existing_user[4]  # Assuming level is at index 4
+            current_exp = existing_user[5]      # Current experience
+            exp_needed = exp_table["levels"].get(str(current_level), 0)  # Fetch the necessary EXP for this level
+
+            # Calculate experience percentage
+            if exp_needed > 0:
+                exp_percentage = (current_exp / exp_needed) * 100
+            else:
+                exp_percentage = 100  # Full EXP if already max level or no exp required
             # Add the character stats to the embed
             embed.add_field(name="Level ⭐", value=existing_user[4], inline=True)
-            embed.add_field(name="Experience ✨", value=f"{existing_user[5]:,}", inline=True) 
-            embed.add_field(name="Gold 💰", value=f"{existing_user[6]:,}", inline=True) 
-            embed.add_field(name="Ideology 🧠", value=existing_user[8], inline=True)
-            attack_display = f"{existing_user[9]} (+{add_atk})" if add_atk > 0 else f"{existing_user[9]}"
+            embed.add_field(name="Experience ✨", value=f"{current_exp:,} ({exp_percentage:.2f}%)", inline=True)
+            attack_display = f"{base_attack} (+{add_atk})" if add_atk > 0 else f"{base_attack}"
             embed.add_field(name="Attack ⚔️", value=attack_display, inline=True)
-            defense_display = f"{existing_user[10]} (+{add_def})" if add_def > 0 else f"{existing_user[10]}"
+            defense_display = f"{base_defense} (+{add_def})" if add_def > 0 else f"{base_defense}"
             embed.add_field(name="Defense 🛡️", value=defense_display, inline=True)
+            if (crit > 0):
+                embed.add_field(name="Crit 🗡️", value=f"{crit}%", inline=True)
+            if (ward > 0): 
+                embed.add_field(name="Ward 🔮", value=f"{ward}", inline=True)
+            if (add_rar > 0):
+                embed.add_field(name="Rarity 🪄", value=f"{add_rar}%", inline=True)
             embed.add_field(name="Current HP ❤️", value=existing_user[11], inline=True)
             embed.add_field(name="Maximum HP ❤️", value=existing_user[12], inline=True) 
             ascension = existing_user[15]
             if (ascension > 0):
                 embed.add_field(name="Ascension 🌟", value=ascension, inline=True)
-            embed.add_field(name="Potions 🍹", value=existing_user[16], inline=True) 
 
             message = await context.send(embed=embed)
             await asyncio.sleep(10)
             await message.delete()
         else:
             await context.send("You are not registered with the 🏦 Adventurer's guild. Please /register first.")
+
+
+
+    @commands.hybrid_command(name="inventory", description="Check your inventory status.")
+    async def inventory(self, context: Context) -> None:
+        """Fetch and display the user's inventory status."""
+        user_id = str(context.author.id)
+        server_id = str(context.guild.id)
+
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        if not existing_user:
+            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+            return
+
+        # Fetching inventory data
+        weapons_count = await self.bot.database.count_user_weapons(user_id)
+        accessories_count = await self.bot.database.count_user_accessories(user_id)
+        runes_of_potential = existing_user[21]  # index for runes of potential
+        runes_of_refinement = existing_user[19]  # index for runes of refinement
+        potions_count = existing_user[16]  # index for potion count
+        gold_count = existing_user[6]  # index for gold
+
+        # Create an embed to display inventory information
+        embed = discord.Embed(
+            title=f"{existing_user[3]}'s Inventory",
+            color=0x00FF00,
+        )
+        embed.add_field(name="Weapons ⚔️", value=f"{weapons_count:,}", inline=True)
+        embed.add_field(name="Accessories 📿", value=f"{accessories_count:,}", inline=True)
+        embed.add_field(name="Potions 🍹", value=f"{potions_count:,}", inline=True)
+        embed.add_field(name="Runes of Potential 💎", value=f"{runes_of_potential:,}", inline=True)
+        embed.add_field(name="Runes of Refinement 🔨", value=f"{runes_of_refinement:,}", inline=True)
+        embed.add_field(name="Gold 💰", value=f"{gold_count:,}", inline=True)
+
+        message = await context.send(embed=embed)
+        await asyncio.sleep(10)
+        await message.delete()
 
     '''
 
@@ -133,7 +209,7 @@ class Character(commands.Cog, name="character"):
             description=f"{player_name}'s Weapons:",
             color=0x00FF00,
         )
-
+        embed.set_image(url="https://i.imgur.com/AnlbnbO.jpeg")
         inventory_message = await context.send(embed=embed)
         self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
         while True:
@@ -148,7 +224,7 @@ class Character(commands.Cog, name="character"):
             equipped_item = await self.bot.database.get_equipped_item(user_id)
             await inventory_message.clear_reactions()
             embed.clear_fields()
-            number_emojis = ["🚪", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+            number_emojis = ["❌", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
             items_display_string = ""
 
             for index, item in enumerate(items_to_display):
@@ -173,7 +249,7 @@ class Character(commands.Cog, name="character"):
             embed.add_field(
                 name="Instructions",
                 value=(f"[ℹ️] Select an item you want to interact with.\n"
-                       f"[🚪] Close interface."),
+                       f"[❌] Close interface."),
                 inline=False
             )
             await inventory_message.edit(embed=embed)
@@ -209,8 +285,9 @@ class Character(commands.Cog, name="character"):
                 embed.add_field(name="Defence", value=item_defence, inline=True)
                 embed.add_field(name="Rarity", value=item_rarity, inline=True)
                 embed.add_field(name="Passive", value=item_passive, inline=False)
-                effect_description = self.get_passive_effect(item_passive)  # Get the associated effect message
-                embed.add_field(name="Effect", value=effect_description, inline=False)
+                if (item_passive != "none"):
+                    effect_description = self.get_passive_effect(item_passive)  # Get the associated effect message
+                    embed.add_field(name="Effect", value=effect_description, inline=False)
                 item_guide = (
                     "⚔️ to equip.\n"
                     "🔨 to forge.\n"
@@ -260,7 +337,7 @@ class Character(commands.Cog, name="character"):
         user_id = str(context.author.id)
         server_id = str(context.guild.id)
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        
+        print(message)
         if not existing_user: 
             await context.send("You are not registered with the 🏦 Adventurer's guild."
                                " Please /register first.")
@@ -270,6 +347,7 @@ class Character(commands.Cog, name="character"):
         equipped_item = await self.bot.database.get_equipped_item(user_id)
 
         if equipped_item:
+            print(message)
             current_equipped_id = equipped_item[0] 
             if selected_item[0] == current_equipped_id:
                 embed.add_field(name="But why", value=(f"You already have **{new_equip}** equipped! "
@@ -284,6 +362,8 @@ class Character(commands.Cog, name="character"):
                 description=f"Unequip **{item_name}** and equip **{new_equip}** instead?",
                 color=0xFFCC00
             )
+            print(message)
+            print(f'Attempting to edit {message}')
             await message.edit(embed=confirmation_embed)
             await message.clear_reactions()
             await message.add_reaction("✅")
@@ -844,7 +924,7 @@ class Character(commands.Cog, name="character"):
             description=f"{player_name}'s Accessories:",
             color=0x00FF00,
         )
-
+        embed.set_image(url="https://i.imgur.com/yzQDtNg.jpeg")
         inventory_message = await context.send(embed=embed)
         self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
 
@@ -860,7 +940,7 @@ class Character(commands.Cog, name="character"):
             accessories_to_display = accessories[:5]  # Display the top 5 accessories
             await inventory_message.clear_reactions()
             embed.clear_fields()
-            number_emojis = ["🚪", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+            number_emojis = ["❌", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
             accessories_display_string = ""
 
             for index, accessory in enumerate(accessories_to_display):
@@ -886,7 +966,7 @@ class Character(commands.Cog, name="character"):
             embed.add_field(
                 name="Instructions",
                 value=(f"[ℹ️] Select an accessory you want to interact with.\n"
-                    f"[🚪] Close interface."),
+                    f"[❌] Close interface."),
                 inline=False
             )
             await inventory_message.edit(embed=embed)
@@ -919,6 +999,7 @@ class Character(commands.Cog, name="character"):
                 accessory_crit = selected_accessory[8]  # index 8 for crit
                 accessory_passive = selected_accessory[9]  # passive is at index 9
                 potential_lvl = selected_accessory[12] 
+                passive_effect = self.get_accessory_passive_effect(accessory_passive, potential_lvl)
 
                 embed.description = f"**{accessory_name}** (Level {accessory_level}):"
                 embed.clear_fields()
@@ -935,7 +1016,8 @@ class Character(commands.Cog, name="character"):
                     embed.add_field(name="Critical Chance", value=accessory_crit, inline=True)
 
                 if (accessory_passive != "none"):
-                    embed.add_field(name="Passive", value=accessory_passive + f"({potential_lvl})", inline=False)
+                    embed.add_field(name="Passive", value=accessory_passive + f" ({potential_lvl})", inline=False)
+                    embed.add_field(name="Passive Description", value=passive_effect, inline=False)
                 else:
                     embed.add_field(name="Passive", value="🪄 to unlock!", inline=False)
 
@@ -982,6 +1064,15 @@ class Character(commands.Cog, name="character"):
             
         self.bot.state_manager.clear_active(user_id)    
 
+    def get_accessory_passive_effect(self, passive: str, level: int) -> str:
+        passive_messages = {
+            "Obliterate": f"% chance to deal double damage.",
+            "Absorb": f"% chance to absorb 10% of the monster's stats and add them to your own.",
+            "Prosper": f"% chance to double gold earned.",
+            "Infinite Wisdom": f"% chance to double experience earned.",
+            "Lucky Strikes": f"% chance to roll lucky hit chance."
+        }
+        return passive_messages.get(passive, "No passive effect.")
 
     async def equip_accessory(self, context: Context, selected_item: tuple, new_equip: str, message, embed) -> None:
         """Equip an item."""
@@ -1073,7 +1164,7 @@ class Character(commands.Cog, name="character"):
             return
 
         # Perform the actual discard operation
-        await self.bot.database.discard_item(accessory_id)  # Assuming you have a method to discard items
+        await self.bot.database.discard_accessory(accessory_id)  # Assuming you have a method to discard items
         confirmation_embed.add_field(name="Discard", 
                                     value=f"Discarded **{accessory_name}**. Returning to main menu...", 
                                     inline=False)
@@ -1093,7 +1184,7 @@ class Character(commands.Cog, name="character"):
         
         if potential_remaining <= 0:
             embed.add_field(name="Error", 
-                            value=f"This accessory has no potential remaining. You cannot enhance it further.", 
+                            value=f"This accessory has no potential remaining. You cannot enhance it further. Returning...", 
                             inline=False)
             await message.edit(embed=embed)
             await asyncio.sleep(3)
@@ -1299,7 +1390,7 @@ class Character(commands.Cog, name="character"):
             await message.add_reaction("⚔️")  # Attack
             await message.add_reaction("🛡️")  # Defense
             await message.add_reaction("❤️")  # HP
-            await message.add_reaction("🚪") # Leave
+            await message.add_reaction("❌") # Leave
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=180.0, check=check)
                 existing_user = await self.bot.database.fetch_user(user_id, server_id)
@@ -1312,7 +1403,7 @@ class Character(commands.Cog, name="character"):
                 elif str(reaction.emoji) == "❤️":
                     # Increment HP and decrement passive points
                     await self.bot.database.update_player_max_hp(user_id, 1)
-                elif str(reaction.emoji) == "🚪":
+                elif str(reaction.emoji) == "❌":
                     break
 
                 passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)

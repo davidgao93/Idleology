@@ -1,5 +1,5 @@
 import aiosqlite
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -22,9 +22,12 @@ class DatabaseManager:
 
     async def register_user(self, user_id: str, server_id: str, name: str, selected_appearance: str, ideology: str) -> None:
         """Registers a user in the database."""
+        current_time = datetime.now().isoformat()  # Get the current time in ISO format
+        # Calculate last check-in time as 18 hours after the current time
+        last_checkin_time = (datetime.now() + timedelta(hours=18)).isoformat()
         await self.connection.execute(
-            "INSERT INTO users (user_id, server_id, name, appearance, ideology) VALUES (?, ?, ?, ?, ?)",
-            (user_id, server_id, name, selected_appearance, ideology)
+            "INSERT INTO users (user_id, server_id, name, appearance, ideology, last_checkin_time) VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, server_id, name, selected_appearance, ideology, last_checkin_time)
         )
         await self.connection.commit()
 
@@ -277,7 +280,7 @@ class DatabaseManager:
         # Insert the new accessory into the database
         await self.connection.execute(
             "INSERT INTO accessories (user_id, item_name, item_level, attack, defence, rarity, ward, crit, is_equipped, potential_remaining, passive_lvl) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (user_id, acc_name, item_level, attack, defence, rarity, ward, crit, False, 10, 0)  # is_equipped defaults to False and potential_remaining to 10
         )
         await self.connection.commit()
@@ -313,6 +316,16 @@ class DatabaseManager:
         """Fetch an item by its ID."""
         rows = await self.connection.execute(
             "SELECT * FROM items WHERE item_id=?",
+            (item_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchone()  # Returns the item row, if found
+        
+
+    async def fetch_accessory_by_id(self, item_id: int):
+        """Fetch an acc by its ID."""
+        rows = await self.connection.execute(
+            "SELECT * FROM accessories WHERE item_id=?",
             (item_id,)
         )
         async with rows as cursor:
@@ -407,7 +420,16 @@ class DatabaseManager:
             "DELETE FROM items WHERE item_id = ?",
             (item_id,)
         )
-        await self.connection.commit()         
+        await self.connection.commit()        
+
+
+    async def discard_accessory(self, item_id: int) -> None:
+        """Remove an acc from the accessories table."""
+        await self.connection.execute(
+            "DELETE FROM accessories WHERE item_id = ?",
+            (item_id,)
+        )
+        await self.connection.commit()    
 
     async def fetch_user_mining(self, user_id: str, server_id: str):
         """Fetch the user's mining data from the database."""
@@ -828,6 +850,18 @@ class DatabaseManager:
         await self.connection.commit()
 
 
+    async def send_accessory(self, receiver_id: str, item_id: int) -> None:
+        """Transfer an accessory from one user to another by changing the user_id."""
+
+        await self.connection.execute(
+            "UPDATE accessories SET user_id = ? WHERE item_id = ?",
+            (receiver_id, item_id)
+        )
+        
+        # Commit the transaction
+        await self.connection.commit()
+
+
     # Method to update the number of refinement runes for a user
     async def update_refinement_runes(self, user_id: str, count: int) -> None:
         """Update the user's count of refinement runes in the database."""
@@ -883,3 +917,44 @@ class DatabaseManager:
         )
         result = await rows.fetchone()
         return result[0] if result else 0  # Return the passive points or 0 if not found
+
+    async def update_curios_count(self, user_id: str, server_id: str, amount: int) -> None:
+        """
+        Updates the user's curios count by adding or subtracting a specified amount.
+        
+        :param user_id: The ID of the user whose curios count will be updated.
+        :param server_id: The server ID where the user is registered.
+        :param amount: The amount to add (positive) or subtract (negative) from the user's curios count.
+        """
+        await self.connection.execute(
+            "UPDATE users SET curios = curios + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id)
+        )
+        await self.connection.commit()
+
+    async def update_curios_bought(self, user_id: str, server_id: str, amount: int) -> None:
+        """Updates the user's curios purchased today count."""
+        await self.connection.execute(
+            "UPDATE users SET curios_purchased_today = curios_purchased_today + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id)
+        )
+        await self.connection.commit()
+
+
+    async def count_user_weapons(self, user_id: str) -> int:
+        """Counts the number of weapons for a specific user."""
+        rows = await self.connection.execute(
+            "SELECT COUNT(*) FROM items WHERE user_id = ?",
+            (user_id,)
+        )
+        count = await rows.fetchone()  # Get the count
+        return count[0] if count else 0  # Return the count or 0 if none
+
+    async def count_user_accessories(self, user_id: str) -> int:
+        """Counts the number of accessories for a specific user."""
+        rows = await self.connection.execute(
+            "SELECT COUNT(*) FROM accessories WHERE user_id = ?",
+            (user_id,)
+        )
+        count = await rows.fetchone()  # Get the count
+        return count[0] if count else 0  # Return the count or 0 if none

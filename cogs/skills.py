@@ -10,13 +10,13 @@ class Skills(commands.Cog, name="skills"):
         self.active_events = {}
         self.event_channel_id = self.bot.config["channel_id"]  # Store channel ID as a string
 
-    # @commands.Cog.listener()
-    # async def on_ready(self):
-    #     if not self.schedule_skills.is_running():
-    #         self.schedule_skills.start()
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if not self.schedule_skills.is_running():
+            self.schedule_skills.start()
         
-    #     if not self.random_event.is_running():
-    #         self.random_event.start()
+        if not self.random_event.is_running():
+            self.random_event.start()
 
     @commands.hybrid_command(name="skills", description="Check your skills and resources.")
     async def skills(self, context: commands.Context):
@@ -105,6 +105,7 @@ class Skills(commands.Cog, name="skills"):
 
         # Display current pickaxe tier and resources
         embed = discord.Embed(title="Mining", color=0x00FF00)
+        embed.set_image(url="https://i.imgur.com/4OS6Blx.jpeg")
         mining_fields = [
             f"**{mining_data[2].capitalize()}** Pickaxe" if mining_data[2] else "",
             f"You can mine **iron** ore." if mining_data[2] == 'iron' else "",
@@ -241,6 +242,7 @@ class Skills(commands.Cog, name="skills"):
 
         # Display current axe tier and resources
         embed = discord.Embed(title="Woodcutting", color=0x00FF00)
+        embed.set_image(url="https://i.imgur.com/X0JdvX8.jpeg")
         woodcutting_fields = [
             f"**{woodcutting_data[2].capitalize()}** Axe" if woodcutting_data[2] else "",
             f"You can chop **oak** trees." if woodcutting_data[2] == 'flimsy' else "",
@@ -378,6 +380,7 @@ class Skills(commands.Cog, name="skills"):
 
         # Display current fishing rod tier and resources
         embed = discord.Embed(title="Fishing", color=0x00FF00)
+        embed.set_image(url="https://i.imgur.com/JpgyGlD.jpeg")
         fishing_fields = [
             f"**{fishing_data[2].capitalize()}** Fishing Rod" if fishing_data[2] else "",
             f"You can fish **minnows**." if fishing_data[2] == 'desiccated' else "",

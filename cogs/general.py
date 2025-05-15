@@ -101,15 +101,15 @@ class General(commands.Cog, name="general"):
         
         embed = discord.Embed(
             title="Welcome to Idleology!",
-            description="Here's a quick guide to help you get started and enjoy your journey in Tabularasa.",
+            description="Here's a quick guide to help you get started.",
             color=0x00FF00
         )
         
         embed.add_field(
             name="How to Play Idleology",
             value=(
-                "Idleology is an idle RPG where you can register with the adventurer's guild, engage in combat, "
-                "level up and spread your ideology to progress through the world of Tabularasa. "
+                "Idleology is a simple text RPG where you can register with the adventurer's guild, engage in combat, "
+                "level up and spread your ideology to progress through the world. "
                 "Use the commands below to get started!"
             ),
             inline=False
@@ -123,7 +123,7 @@ class General(commands.Cog, name="general"):
                 "**2. View Your Stats:**"
                 "Check your character's stats using `/stats` to track your progress.\n"
                 "**3. Choose Your Ideology:**"
-                "Join or create an ideology that best fits your adventure. Use `/ideology` to see the leaderboard.\n"
+                "Join or create an ideology that best fits your adventure. Use `/ideology` to see the followers leaderboard.\n"
                 "**4. Engage in Combat:**"
                 "Fight enemies using `/combat` to gain experience and level up!\n"
                 "**5. And much more!**\n"
@@ -135,31 +135,67 @@ class General(commands.Cog, name="general"):
         embed.add_field(
             name="Gaining Experience and Leveling Up",
             value=(
-                "In combat, you can earn experience points (XP). "
-                "To level up, keep battling enemies.\n\n"
-                "Here are some points to remember:\n"
-                "- Engage in combat every 10 minutes using the `/combat` command.\n"
-                "- ⚔️ to attack, 🩹 to heal (if you have potions, buy with /shop),"
-                " ⏩ to auto-batle (stops at <10% hp), 🏃 to run\n"
-                "- Leveling up increases your stats!"
-                "- The tavern is a great place to rest and make some quick cash!"
-                "- You also heal over time if you're down on your luck."
-                "- Check your skills with the /skills command!"
+                f"In combat, you can earn experience points (XP). "
+                f"To level up, keep battling enemies.\n\n"
+                f"Here are some points to remember:\n"
+                f"- Engage in combat every 10 minutes using the `/combat` command.\n"
+                f"- ⚔️ to attack, 🩹 to heal (if you have potions, buy with /shop),"
+                f" ⏩ to auto-batle (stops at <10% hp), 🏃 to run\n"
+                f"- Leveling up increases your stats!\n"
+                f"- The tavern is a great place to rest and make some quick cash!\n"
+                f"- You also heal over time if you're down on your luck.\n"
+                f"- Check your skills with the /skills, /mining, /fishing, /wc commands!"
             ),
             inline=False
         )
 
         embed.add_field(
-            name="Forging and refining items",
+            name="Forging and refining weapons",
             value=(
-                "When you win your combats, you have a chance of dropping loot."
-                "Loot drops in the form of weapons.\n\n"
-                "Here are some points to remember:\n"
-                "- Weapons can be forged with skilling materials.\n"
-                "- Weapons can be refined with gold.\n"
-                "- Weapons can gain powerful passives via forging."
-                "- Weapons can gain more stats with refining."
-                "- Check your equipment with the /inventory command!"
+                f"When you win your combats, you have a chance of dropping loot.\n"
+                f"Loot drops in the form of weapons or accessories.\n\n"
+                f"Here are some points to remember:\n"
+                f"- Weapons can be forged with skilling materials.\n"
+                f"- Weapons can be refined with gold.\n"
+                f"- Weapons can gain powerful passives via forging.\n"
+                f"- Weapons can gain more stats with refining.\n"
+                f"- Check your weapons with the /weapons command!"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="Unlocking accessory potential",
+            value=(
+                f"When you obtain an accessory, you can unlock its potential to gain a passive.\n\n"
+                f"Here are some points to remember:\n"
+                f"- You are limited to 10 attempts to improve an accessory's potential.\n"
+                f"- Each attempt will cost more gold.\n"
+                f"- You can increase the success rate with Runes of Potential.\n"
+                f"- Check your accessories with the /accessory command!"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="Trading with other players",
+            value=(
+                f"When you have items to trade, use the /ids command to get the ID of the item you want to send.\n\n"
+                f"Here are some points to remember:\n"
+                f"- This is a trust based system, only trade with those you trust!\n"
+                f"- You can send items and gold with their respective commands.\n"
+                f"- Report scammers to the admin to get their character deleted and a refund!\n"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="Miscellaneous tips",
+            value=(
+                f"- Use /cooldowns to see how long until major cooldown commands.\n"
+                f"- You passively obtain skilling materials over time, make sure to upgrade your tools on occasion!\n"
+                f"- You passively heal over time, make sure to take advantage!\n"
+                f"- Be on the lookout for random events, you might be able to score some extra loot.\n"
             ),
             inline=False
         )
@@ -228,7 +264,7 @@ class General(commands.Cog, name="general"):
             title="Timers",
             color=0x00FF00
         )
-
+        embed.set_image(url="https://i.imgur.com/I3JPD8R.jpeg")
         # Building the embed fields
         if rest_remaining:
             embed.add_field(name="/rest 🛏️", value=f"**{rest_remaining.seconds // 3600} hours "
@@ -266,7 +302,7 @@ class General(commands.Cog, name="general"):
 
         # Fetch user item data
         user_items = await self.bot.database.fetch_user_items(user_id)
-
+        user_accs = await self.bot.database.fetch_user_accessories(user_id)
         # Construct the embed to show information
         embed = discord.Embed(
             title="User ID and Item IDs",
@@ -276,7 +312,9 @@ class General(commands.Cog, name="general"):
 
         if user_items:
             items_description = "\n".join([f"**ID:** {item[0]} - **Name:** {item[1]}" for item in user_items])
-            embed.add_field(name="Your Items", value=items_description, inline=False)
+            embed.add_field(name="Your Weapons", value=items_description, inline=False)
+            acc_desc = "\n".join([f"**ID:** {acc[0]} - **Name:** {acc[2]}" for acc in user_accs])
+            embed.add_field(name="Your Accessories", value=acc_desc, inline=False)
         else:
             embed.add_field(name="Your Items", value="You have no weapons or accessories.", inline=False)
 

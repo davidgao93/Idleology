@@ -99,14 +99,14 @@ class Guild(commands.Cog, name="adventurer's guild"):
 
         except asyncio.TimeoutError:
             await context.send(f"{name} took too long to respond!")
-            self.bot.state_manager.clear_active(context.author.id)  
+            self.bot.state_manager.clear_active(user_id)  
             return
 
         # Load appearances based on gender
         appearances = self.load_character_appearances(gender)
         if not appearances:
             await context.send("No appearances found, please try again later.")
-            self.bot.state_manager.clear_active(context.author.id)
+            self.bot.state_manager.clear_active(user_id)
             return
         
         current_index = 0
@@ -138,7 +138,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
 
             except asyncio.TimeoutError:
                 await context.send(f"{name} took too long to respond!")
-                self.bot.state_manager.clear_active(context.author.id)  
+                self.bot.state_manager.clear_active(user_id)  
                 return
             
         selected_appearance = f"{appearances[current_index]}"
@@ -199,13 +199,13 @@ class Guild(commands.Cog, name="adventurer's guild"):
                             await context.send(f"{name} has adopted **{ideology}**! Followers: {followers + 1}\n"
                                                "You are now registered.")
                             await self.bot.database.update_followers_count(ideology, followers + 1)
-                            self.bot.state_manager.clear_active(context.author.id)  
+                            self.bot.state_manager.clear_active(user_id)  
                         else:
                             await self.bot.database.create_ideology(user_id, server_id, ideology)
                             await self.bot.database.update_followers_count(ideology, 1)
                             await context.send(f"Congratulations, {name} has founded a new ideology called **{ideology}**!\n"
                                                "You are now registered.")
-                            self.bot.state_manager.clear_active(context.author.id)  
+                            self.bot.state_manager.clear_active(user_id)  
                         break
 
                     elif str(reaction.emoji) == "❌":
@@ -214,15 +214,15 @@ class Guild(commands.Cog, name="adventurer's guild"):
 
                 except asyncio.TimeoutError:
                     await context.send(f"{name} took too long, the confirmation has been cancelled.")
-                    self.bot.state_manager.clear_active(context.author.id)  
+                    self.bot.state_manager.clear_active(user_id)  
                     break
 
             except asyncio.TimeoutError:
                 await context.send(f"{name} took too long, the registration has been cancelled.")
-                self.bot.state_manager.clear_active(context.author.id)  
+                self.bot.state_manager.clear_active(user_id)  
                 break
 
-
+        self.bot.state_manager.clear_active(user_id)
         await self.bot.database.register_user(user_id, server_id, name, selected_appearance, ideology)
         await self.bot.database.add_to_mining(user_id, server_id, 'iron')
         await self.bot.database.add_to_fishing(user_id, server_id, 'desiccated')
@@ -230,7 +230,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
         await self.bot.database.add_gold(user_id, 200)
         for _ in range (0, 10):
             await self.bot.database.increase_potion_count(user_id)
-        self.bot.state_manager.clear_active(context.author.id)  
+        self.bot.state_manager.clear_active(user_id)  
     
     @commands.hybrid_command(name="unregister", description="Unregister as an adventurer.")
     async def unregister_adventurer(self, context: commands.Context) -> None:

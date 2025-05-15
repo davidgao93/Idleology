@@ -1,0 +1,16 @@
+from discord import app_commands, Interaction, Message
+
+user_id = str(context.author.id) --> user_id = str(interaction.user.id)
+        
+server_id = str(context.guild.id) --> server_id = str(interaction.guild.id)
+
+@commands.hybrid_command -> @app_commands.command
+
+self, context: Context -> self, interaction: Interaction
+
+await context.send -> await interaction.response.send_message
+
+message = await context.send(embed=embed) ->         
+
+await interaction.response.send_message(embed=embed)
+message: Message = await interaction.original_response()

@@ -171,5 +171,16 @@ class Owner(commands.Cog, name="owner"):
         self.bot.state_manager.clear_all()
         await context.send("All active operations have been cleared.")
 
+
+    @commands.hybrid_command(
+        name="debug",
+        description="Check all active operations for users."
+    )
+    @commands.is_owner()
+    async def debug_active_operations(self, context: Context) -> None:
+        """Debug method."""
+        is_active = self.bot.state_manager.active_operations
+        await context.send(f"{is_active}")
+
 async def setup(bot) -> None:
     await bot.add_cog(Owner(bot))
