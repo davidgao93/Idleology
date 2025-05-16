@@ -1,14 +1,13 @@
 import discord
 import re
 from discord.ext import commands
-from discord.ext.commands import Context
 from discord.ext.tasks import asyncio
+from discord import app_commands, Interaction, Message
 import csv
 
 class Guild(commands.Cog, name="adventurer's guild"):
     def __init__(self, bot) -> None:
         self.bot = bot
-
 
     def load_character_appearances(self, gender: str):
         appearances = []
@@ -19,15 +18,15 @@ class Guild(commands.Cog, name="adventurer's guild"):
                     appearances.append(row['URL'])
         return appearances
 
-    @commands.hybrid_command(name="card", description="See your adventurer card.")
+    @app_commands.command(name="card", description="See your adventurer card.")
     async def card(
-        self, context: Context
+        self, interaction: Interaction
     ) -> None:
         """
         Returns info about the sender's adventurer.
         """
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if existing_user:
@@ -38,35 +37,32 @@ class Guild(commands.Cog, name="adventurer's guild"):
             )
             embed.add_field(name="Level", value=existing_user[4], inline=True)
             embed.add_field(name="Experience", value=existing_user[5], inline=True)
-            embed.add_field(name="Gold", value=existing_user[6], inline=True)
-            embed.set_image(url=existing_user[7])
+            embed.add_field(name="Gold", value=f"{existing_user[6]:,}", inline=True)
+            embed.set_thumbnail(url=existing_user[7])
             embed.add_field(name="Ideology", value=existing_user[8], inline=True)
-            await context.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
         else:
-            embed = discord.Embed(
-                title="What isn't there cannot be found",
-                description="You are not registered with the 🏦 Adventurer's Guild, you can do so with /register.",
-                color=0xFF0000,
-            )
-            await context.send(embed=embed)
+            await interaction.response.send_message("You are not registered with the 🏦 Adventurer's guild."
+                               " Please /register first.")
 
-    @commands.hybrid_command(name="register", description="Register as an adventurer.")
+
+    @app_commands.command(name="register", description="Register as an adventurer.")
     async def register_adventurer(
-        self, context: Context, name: str
+        self, interaction: Interaction, name: str
     ) -> None:
         """
         Registers the command sender as an adventurer with the specified name.
 
-        :param context: The hybrid command context.
+        :param interaction: The command interaction.
         :param name: The name of the adventurer.
         """
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-
+        success = False
         if self.bot.state_manager.is_active(user_id):
-            await context.send("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
             return
 
         if existing_user:
@@ -76,53 +72,55 @@ class Guild(commands.Cog, name="adventurer's guild"):
                              f" Use /card to see your Guild card."),
                 color=0x808080,
             )
-            await context.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             return
         
         self.bot.state_manager.set_active(user_id, "register")  # Set register as active operation
         # Ask for gender selection
         embed = discord.Embed(
-            title="What are you?",
-            description="Pick a gender:",
+            title="Gender",
+            description=f"Welcome to the adventurer's guild {name}!\nWhat would you like to identify as?",
             color=0x00FF00,
         )
-        message = await context.send(embed=embed)
+        embed.set_image(url="https://i.imgur.com/6pRwl0k.jpeg")
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
         reactions = ["♂️", "♀️"]
         await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
 
         def gender_check(reaction, user):
-            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in reactions
+            return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in reactions
 
         try:
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=gender_check)
             gender = "M" if str(reaction.emoji) == "♂️" else "F"
 
         except asyncio.TimeoutError:
-            await context.send(f"{name} took too long to respond!")
+            await message.delete()
             self.bot.state_manager.clear_active(user_id)  
             return
 
         # Load appearances based on gender
+        embed = discord.Embed(
+            title="Appearance",
+            description=f"Pick an appearance for {name}",
+            color=0x00FF00,
+        )
+        await message.clear_reactions()
         appearances = self.load_character_appearances(gender)
-        if not appearances:
-            await context.send("No appearances found, please try again later.")
-            self.bot.state_manager.clear_active(user_id)
-            return
         
         current_index = 0
-
         async def update_embed(message, index):
             embed.set_image(url=appearances[index])
             await message.edit(embed=embed)
 
-        message = await context.send(embed=embed)
         await update_embed(message, current_index)
         reactions = ["⬅️", "➡️", "✅"]
         await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
 
         def check(reaction, user):
-            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["⬅️", "➡️", "✅"]
-
+            return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["⬅️", "➡️", "✅"]
+        appearance_url = ""
         while True:
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
@@ -132,16 +130,18 @@ class Guild(commands.Cog, name="adventurer's guild"):
                 elif str(reaction.emoji) == "➡️":  # Right arrow
                     current_index = (current_index + 1) % len(appearances)
                 elif str(reaction.emoji) == "✅":  # Confirm selection
+                    appearance_url = appearances[current_index]
                     break
                 await update_embed(message, current_index)
                 await message.remove_reaction(reaction.emoji, user)
 
             except asyncio.TimeoutError:
-                await context.send(f"{name} took too long to respond!")
+                await message.delete()
                 self.bot.state_manager.clear_active(user_id)  
                 return
             
         selected_appearance = f"{appearances[current_index]}"
+
         ideologies = await self.bot.database.fetch_ideologies(server_id)
         ideology_str = ""
         for ideology in ideologies:
@@ -149,105 +149,129 @@ class Guild(commands.Cog, name="adventurer's guild"):
 
         if ideology_str:
             embed_description = (
-                "Appearance confirmed. Please enter your school's ideology from the list below:\n"
+                f"Please **enter** your desired ideology from the list below:\n"
                 f"{ideology_str}"
-                "Or type a new ideology name to create one."
+                "Or type a new ideology name to create your own."
             )
         else:
             embed_description = (
-                "Appearance confirmed. No ideologies are available.\n"
-                "Please type a new ideology name to create one."
+                f"No ideologies are currently on this server.\n"
+                f"Please **enter** a new ideology name to create your own."
             )            
 
         embed = discord.Embed(
-            title=f"Choose {name}'s Ideology",
+            title="Ideology",
             description=embed_description,
             color=0x00FF00,
         )
-        await context.send(embed=embed)
+        embed.set_image(url=appearance_url)
+        await message.edit(embed=embed)
+        await message.clear_reactions()
         while True:
             def ideology_check(m):
-                return m.author == context.author and m.channel == context.channel
+                return m.author == interaction.user and m.channel == interaction.channel
 
             try:
                 ideology_message = await self.bot.wait_for('message', timeout=60.0, check=ideology_check)
                 ideology = ideology_message.content.strip()
 
                 if not re.match(r'^[A-Za-z0-9\s]+$', ideology) or len(ideology) > 24:
-                    await context.send("Invalid input. Please enter an alphanumeric ideology with spaces (max 24 characters).")
+                    embed = discord.Embed(
+                            title="Ideology",
+                            description=embed_description,
+                            color=0x00FF00,
+                        )
+                    embed.set_image(url=appearance_url)
+                    embed.add_field(name="Invalid Ideology",
+                                    value="That name is not valid, try again.",
+                                    inline=False)
+                    await message.clear_reactions()
+                    await message.edit(embed=embed)
                     continue
 
-                confirmation_embed = discord.Embed(
-                    title=f"Confirm {name}'s Ideology",
-                    description=f"Are you sure {name} follows **{ideology}**? Note that Ideologies are **CASE SENSITIVE!**",
-                    color=0xFFCC00
-                )
-                message = await context.send(embed=confirmation_embed)
+                confirm_msg=f"Are you sure {name} follows **{ideology}**? Note that Ideologies are **CASE SENSITIVE!**"
+                embed.add_field(name="Confirm", value=confirm_msg, inline=False)
+                await message.edit(embed=embed)
 
                 reactions = ["✅", "❌"]
                 await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
 
                 def confirmation_check(reaction, user):
-                    return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+                    return (user == interaction.user and 
+                            reaction.message.id == message.id and
+                              str(reaction.emoji) in ["✅", "❌"])
                 
                 try:
-                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirmation_check)
+                    reaction, user = await self.bot.wait_for('reaction_add', 
+                                                             timeout=60.0, 
+                                                             check=confirmation_check)
 
                     if str(reaction.emoji) == "✅":
+                        await message.clear_reactions()
                         if ideology in ideologies:
                             followers = await self.bot.database.fetch_followers(ideology)
-                            await context.send(f"{name} has adopted **{ideology}**! Followers: {followers + 1}\n"
-                                               "You are now registered.")
+                            follow_text = (f"{name} has adopted **{ideology}**! Followers: {followers + 1}\n"
+                                               f"{name} is now registered.")
+                            embed.add_field(name="Follower", value=follow_text, inline=True)
+                            await message.edit(embed=embed)
                             await self.bot.database.update_followers_count(ideology, followers + 1)
-                            self.bot.state_manager.clear_active(user_id)  
+                            self.bot.state_manager.clear_active(user_id)
                         else:
                             await self.bot.database.create_ideology(user_id, server_id, ideology)
                             await self.bot.database.update_followers_count(ideology, 1)
-                            await context.send(f"Congratulations, {name} has founded a new ideology called **{ideology}**!\n"
-                                               "You are now registered.")
+                            founder_text = (f"Congratulations, {name} has founded a new ideology called **{ideology}**!\n"
+                                               f"{name} is now registered.")
+                            embed.add_field(name="Founder", value=founder_text, inline=True)
+                            await message.edit(embed=embed)
                             self.bot.state_manager.clear_active(user_id)  
+                        success = True
                         break
 
                     elif str(reaction.emoji) == "❌":
-                        await context.send("Please enter a new ideology name.")
+                        embed = discord.Embed(
+                            title="Ideology",
+                            description=embed_description,
+                            color=0x00FF00,
+                        )
+                        embed.set_image(url=appearance_url)
+                        await message.edit(embed=embed)
+                        await message.clear_reactions()
                         continue
 
                 except asyncio.TimeoutError:
-                    await context.send(f"{name} took too long, the confirmation has been cancelled.")
+                    await message.delete()
                     self.bot.state_manager.clear_active(user_id)  
                     break
 
             except asyncio.TimeoutError:
-                await context.send(f"{name} took too long, the registration has been cancelled.")
+                await message.delete()
                 self.bot.state_manager.clear_active(user_id)  
                 break
 
-        self.bot.state_manager.clear_active(user_id)
-        await self.bot.database.register_user(user_id, server_id, name, selected_appearance, ideology)
-        await self.bot.database.add_to_mining(user_id, server_id, 'iron')
-        await self.bot.database.add_to_fishing(user_id, server_id, 'desiccated')
-        await self.bot.database.add_to_woodcutting(user_id, server_id, 'flimsy')
-        await self.bot.database.add_gold(user_id, 200)
-        for _ in range (0, 10):
-            await self.bot.database.increase_potion_count(user_id)
-        self.bot.state_manager.clear_active(user_id)  
+        if (success):
+            self.bot.state_manager.clear_active(user_id)
+            await self.bot.database.register_user(user_id, server_id, name, selected_appearance, ideology)
+            await self.bot.database.add_to_mining(user_id, server_id, 'iron')
+            await self.bot.database.add_to_fishing(user_id, server_id, 'desiccated')
+            await self.bot.database.add_to_woodcutting(user_id, server_id, 'flimsy')
+            await self.bot.database.add_gold(user_id, 200)
+            for _ in range (0, 10):
+                await self.bot.database.increase_potion_count(user_id)
+            self.bot.state_manager.clear_active(user_id)  
     
-    @commands.hybrid_command(name="unregister", description="Unregister as an adventurer.")
-    async def unregister_adventurer(self, context: commands.Context) -> None:
+
+    @app_commands.command(name="unregister", description="Unregister as an adventurer.")
+    async def unregister_adventurer(self, interaction: Interaction) -> None:
         """
         Unregisters the command sender as an adventurer.
         """
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if not existing_user:
-            embed = discord.Embed(
-                title="What isn't there cannot be found",
-                description="You are not registered with the 🏦 Adventurer's Guild, you can do so with /register.",
-                color=0xFF0000,
-            )
-            await context.send(embed=embed)
+            await interaction.response.send_message("You are not registered with the 🏦 Adventurer's guild."
+                               " Please /register first.")
             return
 
         embed = discord.Embed(
@@ -256,12 +280,13 @@ class Guild(commands.Cog, name="adventurer's guild"):
                          "This action is **permanent**."),
             color=0xFFCC00
         )
-        message = await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
         reactions = ["✅", "❌"]
         await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
 
         def check(reaction, user):
-            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+            return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
 
         try:
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
@@ -271,27 +296,25 @@ class Guild(commands.Cog, name="adventurer's guild"):
                 followers_count = await self.bot.database.fetch_followers(user_ideology)
                 await self.bot.database.update_followers_count(user_ideology, followers_count - 1)
                 await self.bot.database.unregister_user(user_id, server_id)
-                success_embed = discord.Embed(
+                embed = discord.Embed(
                     title="Retirement",
                     description="You have been successfully unregistered.",
                     color=0x00FF00,
                 )
-                await context.send(embed=success_embed)
+                await message.edit(embed=embed)
+                await message.clear_reactions()
             else:
-                cancel_embed = discord.Embed(
+                embed = discord.Embed(
                     title="Good choice",
                     description="Your story doesn't end here.",
                     color=0x00FF00
                 )
-                await context.send(embed=cancel_embed)
+                await message.edit(embed=embed)
+                await message.clear_reactions()
 
         except asyncio.TimeoutError:
-            timeout_embed = discord.Embed(
-                title="Unregistration Timeout",
-                description="You took too long to respond! Your retirement has been cancelled.",
-                color=0xFF0000
-            )
-            await context.send(embed=timeout_embed)
+            await message.delete()
+            self.bot.state_manager.clear_active(user_id)  
     
 
 async def setup(bot) -> None:

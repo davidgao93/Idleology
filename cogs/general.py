@@ -3,6 +3,8 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 from datetime import datetime, timedelta
+from discord import app_commands, Interaction, Message
+from discord.ext.tasks import asyncio
 
 class General(commands.Cog, name="general"):
     def __init__(self, bot) -> None:
@@ -56,18 +58,16 @@ class General(commands.Cog, name="general"):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @commands.hybrid_command(
+    @app_commands.command(
         name="help", description="List Idleology's commands"
     )
-    async def help(self, context: commands.Context) -> None:
+    async def help(self, interaction: Interaction) -> None:
         # Brief description of Idleology
         game_description = (
-            "Welcome to **Idleology**! 💡 This is a Discord idle RPG where you journey through "
-            "Tabularasa.\n\n"
-            "Once you're /registered, use any of the commands below. May the best ideology win."
+            "Welcome to **Idleology**! 💡\n"
+            "Once you're /registered, use any of the commands below."
         )
 
-        #prefix = self.bot.config["prefix"]
         prefix = "/"
         embed = discord.Embed(
             title="Help",
@@ -75,28 +75,49 @@ class General(commands.Cog, name="general"):
             color=0xBEBEFE
         )
 
-        # Adding commands from all cogs
-        for i in self.bot.cogs:
-            if i == "owner" and not (await self.bot.is_owner(context.author)):
+        # Iterate through all cogs
+        for cog_name in self.bot.cogs:
+            if cog_name == "owner" and not (await self.bot.is_owner(interaction.user)):
                 continue
-            cog = self.bot.get_cog(i.lower())
-            print(f'Checking cog {cog}')
+            cog = self.bot.get_cog(cog_name)
             if cog is None:
-                self.bot.logger.warning(f"Cog '{i}' not found or not properly initialized.")
+                self.bot.logger.warning(f"Cog '{cog_name}' not found or not properly initialized.")
                 continue
-            commands = cog.get_commands()
-            data = []
-            for command in commands:
-                description = command.description.partition("\n")[0]
-                data.append(f"{prefix}{command.name} - {description}")
-            help_text = "\n".join(data)
-            embed.add_field(
-                name=i.capitalize(), value=f"```{help_text}```", inline=False
-            )
-        await context.send(embed=embed)
 
-    @commands.hybrid_command(name="getstarted", description="Get information and tips for playing Idleology.")
-    async def info(self, context: Context) -> None:
+            # Collect hybrid/prefix commands
+            hybrid_commands = cog.get_commands()
+            command_data = []
+
+            # Add hybrid commands
+            for command in hybrid_commands:
+                description = command.description.partition("\n")[0] or "No description"
+                command_data.append(f"{prefix}{command.name} - {description}")
+
+            # Collect slash commands from the cog
+            # Note: Slash commands are stored in the bot's tree, so we filter by cog
+            for tree_command in self.bot.tree.get_commands():
+                # Check if the command belongs to this cog
+                # This assumes slash commands are defined as methods in the cog
+                if hasattr(tree_command, "binding") and tree_command.binding == cog:
+                    description = tree_command.description or "No description"
+                    if isinstance(tree_command, app_commands.Command):
+                        command_data.append(f"{prefix}{tree_command.name} - {description}")
+                    elif isinstance(tree_command, app_commands.ContextMenu):
+                        command_data.append(f"Context: {tree_command.name} - {description}")
+
+            # If there are commands to display, add them to the embed
+            if command_data:
+                help_text = "\n".join(command_data)
+                embed.add_field(
+                    name=cog_name.capitalize(),
+                    value=f"```{help_text}```",
+                    inline=False
+                )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @app_commands.command(name="getstarted", description="Get information and tips for playing Idleology.")
+    async def info(self, interaction: Interaction) -> None:
         """Sends an information embed with gameplay and command instructions."""
         
         embed = discord.Embed(
@@ -202,19 +223,22 @@ class General(commands.Cog, name="general"):
 
         embed.set_footer(text="It's all in the mind.")
         
-        await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-    @commands.hybrid_command(name="cooldowns", description="Check your current cooldowns (cd) for various commands.")
-    async def cooldowns(self, context: Context) -> None:
+    @app_commands.command(name="cooldowns", description="Check your current cooldowns for various commands.")
+    async def cooldowns(self, interaction: Interaction) -> None:
         """Check the cooldowns of /rest, /checkin, and /propagate commands."""
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         # Get user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+            await interaction.response.send_message(
+                "Please /register with the 🏦 Adventurer's Guild first.",
+                ephemeral=True
+            )
             return
 
         # Check cooldown for /rest
@@ -233,7 +257,7 @@ class General(commands.Cog, name="general"):
             rest_remaining = timedelta(0)
 
         # Check cooldown for /checkin
-        last_checkin_time = existing_user[18]  # Assuming last_checkin_time is at index 14
+        last_checkin_time = existing_user[17] 
         checkin_remaining = None
         checkin_duration = timedelta(hours=18)
         if last_checkin_time:
@@ -285,19 +309,25 @@ class General(commands.Cog, name="general"):
             embed.add_field(name="/propagate 💡", value="Available now!", inline=False)
 
         # Send the embed message
-        await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        message: Message = await interaction.original_response()
+        await asyncio.sleep(10)
+        await message.delete()
 
 
-    @commands.hybrid_command(name="ids", description="Fetch your user ID and all item IDs.")
-    async def ids(self, context: commands.Context) -> None:
+    @app_commands.command(name="ids", description="Fetch your user ID and all item IDs.")
+    async def ids(self, interaction: Interaction) -> None:
         """Fetch and display the user's ID along with IDs of their items."""
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         # Fetch user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+            await interaction.response.send_message(
+                            "Please /register with the 🏦 Adventurer's Guild first.",
+                            ephemeral=True
+                        )
             return
 
         # Fetch user item data
@@ -318,7 +348,7 @@ class General(commands.Cog, name="general"):
         else:
             embed.add_field(name="Your Items", value="You have no weapons or accessories.", inline=False)
 
-        await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot) -> None:
     await bot.add_cog(General(bot))

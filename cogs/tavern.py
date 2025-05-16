@@ -10,6 +10,7 @@ import random
 import pytz
 import csv
 import re
+import math
 
 class Tavern(commands.Cog, name="tavern"):
     def __init__(self, bot) -> None:
@@ -25,21 +26,15 @@ class Tavern(commands.Cog, name="tavern"):
     async def shop(self, interaction: Interaction) -> None:
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
 
-        if not existing_user:
-            await interaction.response.send_message(
-                            "You are not registered with the 🏦 Adventurer's Guild. Please /register first.",
-                            ephemeral=True
-                        )
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
-      # Check if the user has any active operations
+        # Check if the user has any active operations
         if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message(
-                "You are currently busy with another operation. Please finish that first.",
-                ephemeral=True
-            )
+            await interaction.response.send_message("Please finish the previous interaction.",
+                                                    ephemeral=True)
             return
 
         # Initial user data setup
@@ -58,7 +53,7 @@ class Tavern(commands.Cog, name="tavern"):
             description="Welcome to the shop! Here are the items you can buy:",
             color=0xFFCC00,
         )
-        embed.set_image(url="https://i.imgur.com/81jN8tA.jpeg")
+        embed.set_thumbnail(url="https://i.imgur.com/81jN8tA.jpeg")
         embed.add_field(name="Your Gold 💰", value=f"{gold:,}", inline=False)
         cost = 200 + additional_cost
         embed.add_field(name="Potion 🍹 x1 / x5 / x10", value=f"Cost: {cost} / {cost * 5} / {cost * 10} gold", inline=False)
@@ -130,7 +125,8 @@ class Tavern(commands.Cog, name="tavern"):
                                         inline=False)
                         await interaction.edit_original_response(embed=embed)
                         break
-
+                    
+                    print('Deleting user gold and award a potion')
                     gold -= cost
                     await self.bot.database.add_gold(user_id, -cost)
                     await self.bot.database.increase_potion_count(user_id)
@@ -160,6 +156,7 @@ class Tavern(commands.Cog, name="tavern"):
                         continue
                     
                     # Deduct cost and increment curios count
+                    print('Deleting user gold and award a curio')
                     gold -= curio_cost
                     await self.bot.database.add_gold(user_id, -curio_cost)
                     await self.bot.database.update_curios_count(user_id, server_id, 1)
@@ -181,8 +178,7 @@ class Tavern(commands.Cog, name="tavern"):
                     await interaction.edit_original_response(embed=embed)
 
                 # Refresh reactions after every transaction
-                await message.clear_reactions()
-                await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
+                await message.remove_reaction(reaction.emoji, user)
 
         except asyncio.TimeoutError:
             self.bot.state_manager.clear_active(user_id)
@@ -208,9 +204,7 @@ class Tavern(commands.Cog, name="tavern"):
 
         # Fetch user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-
-        if not existing_user:
-            await interaction.response.send_message("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
         user_level = existing_user[4]
@@ -225,7 +219,7 @@ class Tavern(commands.Cog, name="tavern"):
                     description=("You are already fully rested."),
                     color=0xFFCC00
                 )
-            embed.set_image(url="https://i.imgur.com/ZARftKJ.jpeg")
+            embed.set_thumbnail(url="https://i.imgur.com/ZARftKJ.jpeg")
             await interaction.response.send_message(embed=embed)
             message: Message = await interaction.original_response()
             await asyncio.sleep(10)
@@ -242,7 +236,7 @@ class Tavern(commands.Cog, name="tavern"):
                     description=desc,
                     color=0xFFCC00
                 )
-            embed.set_image(url="https://i.imgur.com/ZARftKJ.jpeg")
+            embed.set_thumbnail(url="https://i.imgur.com/ZARftKJ.jpeg")
             message = await interaction.response.send_message(embed=embed)
             return
         try:
@@ -264,7 +258,7 @@ class Tavern(commands.Cog, name="tavern"):
                     description=desc,
                     color=0xFFCC00
                 )
-            embed.set_image(url="https://i.imgur.com/ZARftKJ.jpeg")
+            embed.set_thumbnail(url="https://i.imgur.com/ZARftKJ.jpeg")
             message = await interaction.response.send_message(embed=embed)
             return
         else:
@@ -277,18 +271,18 @@ class Tavern(commands.Cog, name="tavern"):
                     description=desc,
                     color=0xFFCC00
                 )
-            embed.set_image(url="https://i.imgur.com/ZARftKJ.jpeg")
+            embed.set_image(url="https://i.imgur.com/NUEdC7a.jpeg")
             message = await interaction.response.send_message(embed=embed)
-
+            message: Message = await interaction.original_response()
             # If player has more than 400 gold or their scaled amount, offer bypass
             if (user_level >= 20):
                 cost = (int(user_level / 10) * 100) + 400
             else:
                 cost = 400
             if gold >= cost:
-                skip_msg = (f"The tavern-keeper offers you a room for **{cost} gold** if you want to rest again immediately.\n"
-                            f"Do you wish to do so?")
-                embed.add_field(name="Pay for a room", value=skip_msg, inline=False)
+                skip_msg = (f"I have an extra room available for **{cost} gold**.\n"
+                            f"You can pay for it and rest immediately.")
+                embed.add_field(name="The Tavernkeeper", value=skip_msg, inline=False)
                 await message.edit(embed=embed)
                 await message.add_reaction("✅")  # Confirm
                 await message.add_reaction("❌")  # Cancel
@@ -304,8 +298,9 @@ class Tavern(commands.Cog, name="tavern"):
                         new_gold = gold - cost
                         await self.bot.database.update_player_hp(user_id, max_hp)  # Update HP to max
                         await self.bot.database.update_user_gold(user_id, new_gold)  # Update gold
-                        pay_msg = f"You have rested and regained your health! Current HP: **{max_hp}**."
-                        embed.add_field(name="Paid!", value=pay_msg, inline=False)
+                        pay_msg = (f"Thank you for your patronage! Enjoy your stay.\n"
+                                   f"You feel refreshed, your hp is now {max_hp}!")
+                        embed.add_field(name="Payment", value=pay_msg, inline=False)
                         await message.clear_reactions()
                         await message.edit(embed=embed)
                     else:
@@ -324,13 +319,12 @@ class Tavern(commands.Cog, name="tavern"):
         
         # Fetch user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-
-        if not existing_user:
-            await interaction.response.send_message("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
         if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("Please finish the previous interaction.",
+                                                    ephemeral=True)
             return
         
         self.bot.state_manager.set_active(user_id, "gamble")
@@ -339,18 +333,24 @@ class Tavern(commands.Cog, name="tavern"):
 
         # Check if the amount is valid
         if amount <= 0 or amount > player_gold:
-            await interaction.response.send_message("Invalid gambling amount. You must gamble an amount between 1 and your current gold.")
+            await interaction.response.send_message((f"Invalid gambling amount.\n"
+                                                    f"You must gamble an amount between 1 and your current gold."),
+                                                    ephemeral=True)
+            self.bot.state_manager.clear_active(user_id)
             return
 
         # Create the gambling embed
         embed = discord.Embed(
             title="The Tavern Casino 🎲",
-            description="Pick your poison:",
+            description="What would you like to play?",
             color=0xFFC107,
         )
+        embed.set_thumbnail(url="https://i.imgur.com/D8HlsQX.jpeg")
         embed.add_field(name="🃏 Blackjack", value="1v1 showdown with the Tavern keeper (x2)", inline=False)
         embed.add_field(name="🎰 Slot Machine", value="Spin the machine and may luck be in your favor (x7)", inline=False)
         embed.add_field(name="🎡 Roulette", value="Bet it all on black (x2 - x35)", inline=False)
+        embed.add_field(name="🎢 Wheel of Fortune", value="Spin the wheel for a chance at big rewards (x0 - x10)", inline=False)
+        embed.add_field(name="🚀 Crash", value="Cash out before the rocket crashes (x1 - x10+)", inline=False)
         
         await interaction.response.send_message(embed=embed)
         message: Message = await interaction.original_response()
@@ -359,11 +359,13 @@ class Tavern(commands.Cog, name="tavern"):
         await message.add_reaction("🃏")  # Blackjack
         await message.add_reaction("🎰")  # Slot Machine
         await message.add_reaction("🎡")  # Roulette
+        await message.add_reaction("🎢")  # Wheel of Fortune
+        await message.add_reaction("🚀")  # Crash
 
         def check(reaction, user):
             return (user == interaction.user and 
                     reaction.message.id == message.id and 
-                    str(reaction.emoji) in ["🃏", "🎰", "🎡"])
+                    str(reaction.emoji) in ["🃏", "🎰", "🎡", "🎢", "🚀"])
 
         try:
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
@@ -374,8 +376,13 @@ class Tavern(commands.Cog, name="tavern"):
                 await self.play_slot_machine(interaction, player_gold, amount, message, embed)
             elif str(reaction.emoji) == "🎡":
                 await self.play_roulette(interaction, player_gold, amount, message, embed)
+            elif str(reaction.emoji) == "🎢":
+                await self.play_wheel(interaction, player_gold, amount, message, embed)
+            elif str(reaction.emoji) == "🚀":
+                await self.play_crash(interaction, player_gold, amount, message, embed)
         except asyncio.TimeoutError:
-            await interaction.response.send_message("You took too long to decide. The gambling options have been closed.")
+            await interaction.followup.send("You took too long to decide. The gambling options have been closed.")
+            await message.delete()
         finally:
             self.bot.state_manager.clear_active(user_id)
 
@@ -407,12 +414,11 @@ class Tavern(commands.Cog, name="tavern"):
             # Update the embed with current game state
             embed.description = (
                 f"You drew: **{player_hand}** for a total of **{player_value}**\n"
-                f"The house shows: **{house_hand[0]}**"
+                f"The dealer shows: **{house_hand[0]}**"
             )
             await message.edit(embed=embed)
             embed.clear_fields()  # Clear fields for new options
             embed.add_field(name="Options", value="React with: 🃏 to Draw another card or ✋ to Hold", inline=False)
-            #print(message)
             print('Trying to modify message')
             await message.edit(embed=embed)
             await message.clear_reactions()
@@ -433,7 +439,7 @@ class Tavern(commands.Cog, name="tavern"):
                         embed.add_field(name="Result", 
                                         value=(f"You drew a **{new_card}** and your hand is now **{player_hand}**."
                                                f"Total: **{player_value}**. You went bust! "
-                                               f"The tavern keeper smirks and takes your 💰 **{bet_amount:,}**."), inline=False)
+                                               f"The dealer smirks and takes your 💰 **{bet_amount:,}**."), inline=False)
                         await message.edit(embed=embed)
                         await message.clear_reactions()
                         return
@@ -442,10 +448,9 @@ class Tavern(commands.Cog, name="tavern"):
                     break  # Exit the drawing loop, go to the house's turn
 
             except asyncio.TimeoutError:
-                await interaction.response.send_message("You took too long to respond. The game has ended.")
+                await interaction.followup.send("You took too long to respond. The game has ended.")
+                await message.delete()
                 return
-            finally:
-                self.bot.state_manager.clear_active(interaction.user.id)
 
         # The house's turn
         house_value = calculate_hand_value(house_hand)
@@ -463,21 +468,28 @@ class Tavern(commands.Cog, name="tavern"):
                                                 f"House Hand: **{house_hand}** (Total: **{final_house_value}**)")
 
         if final_player_value > 21:
-            embed.add_field(name="Result", value="You went bust! You lose your bet.", inline=False)
+            embed.add_field(name="Result", 
+                            value=f"You went bust! The dealer smirks and takes your 💰 **{bet_amount:,}**",
+                            inline=False)
         elif final_house_value > 21 or final_player_value > final_house_value:
             player_gold += bet_amount * 2  # Player wins, doubling their bet
-            embed.add_field(name="Result", value=f"You win! You double your initial {bet_amount:,} and now have 💰 {bet_amount * 2:,}!", inline=False)
+            embed.add_field(name="Result", 
+                            value=(f"You win! Here are your winnings: 💰 **{bet_amount * 2:,}**.\n"
+                            f"You now have 💰 **{player_gold:,}**!"), inline=False)
         elif final_player_value < final_house_value:
-            embed.add_field(name="Result", value=f"You lose! The tavern keeper smirks and takes your 💰 {bet_amount:,}", inline=False)
+            embed.add_field(name="Result", 
+                            value=f"You lose! The dealer smirks and takes your 💰 **{bet_amount:,}**", 
+                            inline=False)
         else:
-            player_gold += bet_amount  # Player wins, doubling their bet
-            embed.add_field(name="Result", value="It's a tie. Nothing interesting happens.", inline=False)
+            player_gold += bet_amount  # Return the bet for a tie
+            embed.add_field(name="Result", 
+                            value="It seems we have tied.", 
+                            inline=False)
 
         await message.edit(embed=embed)
         await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
-        self.bot.state_manager.clear_active(interaction.user.id)
-        await asyncio.sleep(10)
-        await message.delete()
+        #await asyncio.sleep(10)
+        #await message.delete()
 
 
     async def play_slot_machine(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
@@ -527,15 +539,14 @@ class Tavern(commands.Cog, name="tavern"):
 
         await message.edit(embed=embed)
         await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
-        self.bot.state_manager.clear_active(interaction.user.id)
-        await asyncio.sleep(10)
-        await message.delete()
+        #await asyncio.sleep(10)
+        #await message.delete()
 
     async def play_roulette(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
         """Simulate a simple Roulette game."""
         embed.clear_fields()
         
-        player_gold -= bet_amount  # Lose the bet
+        player_gold -= bet_amount  # Deduct the bet
         await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
         # Present color choice
         embed.title = "Roulette 🎡"
@@ -592,19 +603,118 @@ class Tavern(commands.Cog, name="tavern"):
                                     value=f"You won {bet_amount * 2:,}! Your new balance: 💰 **{player_gold:,}**", 
                                     inline=False)
             else:
-                # House wins
-                # player_gold -= bet_amount  # Lose the bet
                 embed.add_field(name="Loss 😞", 
                                 value=f"You lost {bet_amount:,}! Your new balance: 💰 **{player_gold:,}**", inline=False)
 
             await message.edit(embed=embed)
-            # player_gold -= bet_amount  # Lose the bet
             await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
-            await asyncio.sleep(10)
-            await message.delete()
+            #await asyncio.sleep(10)
+            #await message.delete()
             await number_response.delete()
         except asyncio.TimeoutError:
-            await interaction.response.send_message("You took too long to respond. The roulette game has ended.")
+            await interaction.followup.send("You took too long to respond. The roulette game has ended.")
+            await message.delete()
+        finally:
+            self.bot.state_manager.clear_active(interaction.user.id)
+
+    async def play_wheel(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
+        """Simulate a Wheel of Fortune game."""
+        # Define wheel segments and their weights
+        segments = [
+            (0, 50),   # 50% chance to lose (0x)
+            (1, 30),   # 30% chance to break even (1x)
+            (2, 15),   # 15% chance to double (2x)
+            (5, 4),    # 4% chance for 5x
+            (25, 1)    # 1% chance for 25x 
+        ]
+        outcomes = [multiplier for multiplier, weight in segments for _ in range(weight)]
+        result_multiplier = random.choice(outcomes)
+
+        # Calculate winnings
+        player_gold -= bet_amount  # Deduct the bet
+        winnings = bet_amount * result_multiplier
+        player_gold += winnings
+
+        # Update the embed with results
+        embed.clear_fields()
+        embed.title = "Wheel of Fortune Results 🎢"
+        embed.description = f"The wheel spins...\nResult: **{result_multiplier}x** multiplier!"
+
+        if result_multiplier > 0:
+            embed.add_field(
+                name="Congratulations!",
+                value=f"You won 💰 **{winnings:,}**!\nYour new balance: 💰 **{player_gold:,}**",
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="Oh no!",
+                value=f"You lost! Your new balance: 💰 **{player_gold:,}**",
+                inline=False
+            )
+
+        await message.edit(embed=embed)
+        await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+        #await asyncio.sleep(10)
+        #await message.delete()
+
+    async def play_crash(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
+        """Simulate a Crash game."""
+        player_gold -= bet_amount  # Deduct the bet
+        await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+
+        # Ask for target multiplier
+        embed.clear_fields()
+        embed.title = "Crash 🚀"
+        embed.description = "Enter your target multiplier (e.g., 2.0, between 1.1 and 10.0):"
+        await message.edit(embed=embed)
+        await message.clear_reactions()
+
+        def multiplier_check(m):
+            try:
+                value = float(m.content)
+                return (m.author == interaction.user and 
+                        m.channel == interaction.channel and 
+                        1.1 <= value <= 10.0)
+            except ValueError:
+                return False
+
+        try:
+            multiplier_response = await self.bot.wait_for('message', timeout=60.0, check=multiplier_check)
+            target_multiplier = float(multiplier_response.content)
+
+            # Generate crash point using an exponential distribution
+            # This gives a realistic spread (most crashes between 1.1x and 3x, rare high values)
+            crash_point = round(min(10.0, -math.log(random.random()) / 2), 2)
+
+            # Determine outcome
+            embed.title = "Crash Results 🚀"
+            embed.description = f"The rocket soared to **{crash_point}x** before crashing!"
+
+            if crash_point >= target_multiplier:
+                winnings = int(bet_amount * target_multiplier)
+                player_gold += winnings
+                embed.add_field(
+                    name="Congratulations! 🎉",
+                    value=f"You cashed out at **{target_multiplier}x**!\n"
+                          f"You won 💰 **{winnings:,}**!\nYour new balance: 💰 **{player_gold:,}**",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="Crash! 💥",
+                    value=f"The rocket crashed at **{crash_point}x**. You lost 💰 **{bet_amount:,}**!\n"
+                          f"Your new balance: 💰 **{player_gold:,}**",
+                    inline=False
+                )
+
+            await message.edit(embed=embed)
+            await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+            #await asyncio.sleep(10)
+            #await message.delete()
+            await multiplier_response.delete()
+        except asyncio.TimeoutError:
+            await interaction.followup.send("You took too long to respond. The crash game has ended.")
             await message.delete()
         finally:
             self.bot.state_manager.clear_active(interaction.user.id)
@@ -620,55 +730,72 @@ class Tavern(commands.Cog, name="tavern"):
 
         # Fetch user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await interaction.response.send_message("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
-        last_checkin_time = datetime.strptime(existing_user[17], '%Y-%m-%dT%H:%M:%S.%f')
-        #last_checkin_time = datetime.strptime(existing_user[18], '%Y-%m-%dT%H:%M:%S')
-        current_time = datetime.now()
+        last_checkin_time = existing_user[17]
+        print(f'Last checkin time: {last_checkin_time}')
+        checkin_remaining = None
+        checkin_duration = timedelta(hours=18)
+        if last_checkin_time:
+            last_checkin_time_dt = datetime.fromisoformat(last_checkin_time)
+            time_since_checkin = datetime.now() - last_checkin_time_dt
+            print(f'Time since checkin: {time_since_checkin}')
+            if time_since_checkin < checkin_duration:
+                print(f'Not enough time has passed')
+                remaining_time = checkin_duration - time_since_checkin
+                checkin_remaining = remaining_time
+                print(f'Remaining time: {remaining_time}')
 
-        # Check if user just registered
-        if (current_time < last_checkin_time):
-            next_checkin_time = last_checkin_time
-        else:
-            next_checkin_time = last_checkin_time + timedelta(hours=18)
-
-        # Calculate the next check-in time considering the reset at 3 AM EST
-        if current_time < next_checkin_time:
+        if checkin_remaining:
             # User is trying to check in before the next available check-in time
-            remaining_time = next_checkin_time - current_time
-            await interaction.response.send_message(f"You need to wait **{remaining_time.seconds // 3600} hours and {(remaining_time.seconds // 60) % 60} minutes** before you can check in again.")
+            value=(f"**{checkin_remaining.seconds // 3600} hours "
+                    f"{(checkin_remaining.seconds // 60) % 60} minutes** "
+                    f"remaining until your next /checkin is available.")
+            await interaction.response.send_message(value, ephemeral=True)
             return
+        else:
+            # Proceed with the check-in
+            #bonus = random.randint(1000, 2000)
+            #await self.bot.database.add_gold(user_id, bonus)
+            print('Update check-in time')
+            
+            await self.bot.database.update_checkin_time(user_id)
+            existing_user = await self.bot.database.fetch_user(user_id, server_id)
+            last_checkin_time = existing_user[17]
+            print(f'New last checkin time: {last_checkin_time}')
+            await self.bot.database.update_curios_count(user_id, server_id, 1)
+            await self.bot.database.update_curios_bought(user_id, server_id, -existing_user[23])  # Resetting to 0
+            await interaction.response.send_message((f"You have successfully checked in and received a **Curious Curio**!\n"
+                                                     f"Use /curios to open it!"),
+                                                     ephemeral=True)
 
-        # Proceed with the check-in
-        #bonus = random.randint(1000, 2000)
-        #await self.bot.database.add_gold(user_id, bonus)
-        await self.bot.database.update_checkin_time(user_id)
-        await self.bot.database.update_curios_count(user_id, server_id, 1)
-        await self.bot.database.update_curios_bought(user_id, server_id, -existing_user[23])  # Resetting to 0
-        await interaction.response.send_message(f"You have successfully checked in and received a **Curious Curio**! Use /curios to open it!")
 
     @app_commands.command(name="curios", description="Open a curio for rewards.")
-    @commands.cooldown(1, 10, commands.BucketType.user)
     async def curios(self, interaction: Interaction) -> None:
-        #await context.defer()
-        
         try:  
             user_id = str(interaction.user.id)
             server_id = str(interaction.guild.id)
 
             # Fetch user data
             existing_user = await self.bot.database.fetch_user(user_id, server_id)
-            if not existing_user:
-                await interaction.response.send_message("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+            if not await self.bot.check_user_registered(interaction, existing_user):
                 return
 
             # Check if the user has a curio
-            if not existing_user[22]:  # Assuming user[22] contains information about curio
+            if not existing_user[22]:
                 await interaction.response.send_message("You do not have any curios available.")
                 return
+            
+            items = await self.bot.database.fetch_user_items(user_id)
+            accs = await self.bot.database.fetch_user_accessories(user_id)
 
+            if (len(items) > 4 or len(accs) > 4):
+                await interaction.response.send_message(
+                    "Your inventory is too full to open this curio, check your weapons/accessories.",
+                    ephemeral=True
+                )
+                return
             # User level
             user_level = existing_user[4]
 

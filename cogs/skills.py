@@ -3,6 +3,7 @@ import random
 from discord.ext import commands, tasks
 from datetime import datetime, timedelta
 from discord.ext.tasks import asyncio
+from discord import app_commands, Interaction, Message
 
 class Skills(commands.Cog, name="skills"):
     def __init__(self, bot) -> None:
@@ -18,14 +19,13 @@ class Skills(commands.Cog, name="skills"):
         if not self.random_event.is_running():
             self.random_event.start()
 
-    @commands.hybrid_command(name="skills", description="Check your skills and resources.")
-    async def skills(self, context: commands.Context):
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    @app_commands.command(name="skills", description="Check your skills and resources.")
+    async def skills(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
         
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
 
@@ -80,27 +80,27 @@ class Skills(commands.Cog, name="skills"):
 
         embed.add_field(name="🪓 Woodcutting", value=woodcutting_value or "No woodcutting data available.", inline=False)
 
-        message = await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
         await asyncio.sleep(10)
         await message.delete()
     
 
     """ MINING SKILL """
 
-    @commands.hybrid_command(name="mining", description="Check your mining status and resources.")
-    async def mining(self, context: commands.Context):
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    @app_commands.command(name="mining", description="Check your mining status and resources.")
+    async def mining(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         # Fetch user mining data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
         mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
         if not mining_data:
-            await context.send("You do not have mining data. Please start mining first.")
+            await interaction.response.send_message("You do not have mining data. Please start mining first.")
             return
 
         # Display current pickaxe tier and resources
@@ -125,12 +125,13 @@ class Skills(commands.Cog, name="skills"):
 
         embed.add_field(name="⛏️", value=mining_value or "No mining data available.", inline=False)
 
-        message = await context.send(embed=embed)
-        await self.offer_mining_upgrade(context, mining_data, embed, message)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
+        await self.offer_mining_upgrade(interaction, mining_data, embed, message)
 
-    async def offer_mining_upgrade(self, context, mining_data, embed, message):
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    async def offer_mining_upgrade(self, interaction, mining_data, embed, message):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         player_gp = existing_user[6]
         pickaxe_tier = mining_data[2]
@@ -161,37 +162,34 @@ class Skills(commands.Cog, name="skills"):
             mining_data[6] >= required_platinum and
             player_gp >= required_gp):
             
-            embed = discord.Embed(
-                title=f"Upgrade available!",
-                description=(f"Do you want to upgrade your {pickaxe_tier.title()} "
-                             f"Pickaxe to {self.next_pickaxe_tier(pickaxe_tier).title()}?"),
-                color=0xFFCC00
-            )
+            embed.add_field(name="Upgrade available!", 
+                            value=f"Do you want to upgrade your {pickaxe_tier.title()} "
+                             f"Pickaxe to {self.next_pickaxe_tier(pickaxe_tier).title()}?", inline=False)
             embed.add_field(name="Material costs", value=cost_str or "No further upgrades possible.", inline=False)
-            message = await context.send(embed=embed)
+            await message.edit(embed=embed)
             await message.add_reaction("✅")  # Confirm Upgrade
             await message.add_reaction("❌")  # Cancel Upgrade
 
             def check(reaction, user):
-                return user == context.author and reaction.message.id == message.id
+                return user == interaction.user and reaction.message.id == message.id
 
             try:
                 reaction, _ = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
 
                 if str(reaction.emoji) == "✅":
                     # Upgrade the pickaxe
-                    await self.upgrade_pickaxe(context.author.id, context.guild.id, pickaxe_tier, self.next_pickaxe_tier(pickaxe_tier))
+                    await self.upgrade_pickaxe(interaction.user.id, interaction.guild.id, pickaxe_tier, self.next_pickaxe_tier(pickaxe_tier))
                     value = (f"You have upgraded your pickaxe to {self.next_pickaxe_tier(pickaxe_tier).title()}!")
                     embed.add_field(name="Upgraded!", value=value, inline=False)
                     await message.clear_reactions()
                     await message.edit(embed=embed)  
                 else:
-                    embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
-                    await message.edit(embed=embed)
+                    await message.delete()
             except asyncio.TimeoutError:
                 embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
-                await message.clear_reactions()
-                await message.edit(embed=embed)
+                await message.delete()
+        await asyncio.sleep(10)
+        await message.delete()
 
     async def upgrade_pickaxe(self, user_id, server_id, pickaxe_tier, new_pickaxe_tier):
         upgrade_requirements = self.get_mining_upgrade_requirements(pickaxe_tier)
@@ -225,19 +223,18 @@ class Skills(commands.Cog, name="skills"):
 
     """ WOODCUTTING SKILL """
 
-    @commands.hybrid_command(name="woodcutting", description="Check your woodcutting status and resources.")
-    async def woodcutting(self, context: commands.Context):
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    @app_commands.command(name="woodcutting", description="Check your woodcutting status and resources.")
+    async def woodcutting(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
         woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
         if not woodcutting_data:
-            await context.send("You do not have woodcutting data. Please start woodcutting first.")
+            await interaction.response.send_message("You do not have woodcutting data. Please start woodcutting first.")
             return
 
         # Display current axe tier and resources
@@ -260,16 +257,14 @@ class Skills(commands.Cog, name="skills"):
         woodcutting_value = "\n".join(filter(None, woodcutting_fields))
         embed.add_field(name="🪓", value=woodcutting_value or "No woodcutting data available.", inline=False)
         
-        message = await context.send(embed=embed)
-        await self.offer_wc_upgrade(context, woodcutting_data, embed, message)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
+        await self.offer_wc_upgrade(interaction, woodcutting_data, embed, message)
 
-    @commands.hybrid_command(name="wc", description="Check your woodcutting status and resources (alias).")
-    async def wc(self, context: commands.Context, embed):
-        await self.woodcutting(context)
 
-    async def offer_wc_upgrade(self, context, wc_data, embed, message):
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    async def offer_wc_upgrade(self, interaction, wc_data, embed, message):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
         
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         player_gp = existing_user[6]
@@ -298,37 +293,32 @@ class Skills(commands.Cog, name="skills"):
             wc_data[6] >= required_magic and
             player_gp >= required_gp):
             
-            embed = discord.Embed(
-                title=f"Upgrade available!",
-                description=(f"Do you want to upgrade your {axe_tier.title()} "
-                             f"Axe to {self.next_axe_tier(axe_tier).title()}?"),
-                color=0xFFCC00
-            )
+            embed.add_field(name="Upgrade available!", value=f"Do you want to upgrade your {axe_tier.title()} "
+                             f"Axe to {self.next_axe_tier(axe_tier).title()}?", inline=False)
             embed.add_field(name="Material costs", value=cost_str or "No further upgrades possible.", inline=False)
-            message = await context.send(embed=embed)
+            await message.edit(embed=embed)
             await message.add_reaction("✅")  # Confirm Upgrade
             await message.add_reaction("❌")  # Cancel Upgrade
 
             def check(reaction, user):
-                return user == context.author and reaction.message.id == message.id
+                return user == interaction.user and reaction.message.id == message.id
 
             try:
                 reaction, _ = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
                 
                 if str(reaction.emoji) == "✅":
                     # Upgrade the axe
-                    await self.upgrade_axe(context.author.id, context.guild.id, axe_tier, self.next_axe_tier(axe_tier))
+                    await self.upgrade_axe(interaction.user.id, interaction.guild.id, axe_tier, self.next_axe_tier(axe_tier))
                     value = (f"You have upgraded your axe to {self.next_axe_tier(axe_tier).title()}!")
                     embed.add_field(name="Upgraded!", value=value, inline=False)
                     await message.clear_reactions()
                     await message.edit(embed=embed)
                 else:
-                    embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
-                    await message.edit(embed=embed)
+                    await message.delete()
             except asyncio.TimeoutError:
-                embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
-                await message.clear_reactions()
-                await message.edit(embed=embed)
+                await message.delete()
+        await asyncio.sleep(10)
+        await message.delete()
 
     async def upgrade_axe(self, user_id, server_id, axe_tier, new_axe_tier):
         upgrade_requirements = self.get_wc_upgrade_requirements(axe_tier)
@@ -363,19 +353,18 @@ class Skills(commands.Cog, name="skills"):
     """
     FISHING SKILL
     """
-    @commands.hybrid_command(name="fishing", description="Check your fishing status and resources.")
-    async def fishing(self, context: commands.Context):
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    @app_commands.command(name="fishing", description="Check your fishing status and resources.")
+    async def fishing(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
         fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
         if not fishing_data:
-            await context.send("You do not have fishing data. Please start fishing first.")
+            await interaction.response.send_message("You do not have fishing data. Please start fishing first.")
             return
 
         # Display current fishing rod tier and resources
@@ -399,12 +388,13 @@ class Skills(commands.Cog, name="skills"):
         fish_value = "\n".join(filter(None, fishing_fields))
         embed.add_field(name="🎣", value=fish_value or "No fishing data available.", inline=False)
         
-        message = await context.send(embed=embed)
-        await self.offer_fishing_upgrade(context, fishing_data, embed, message)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
+        await self.offer_fishing_upgrade(interaction, fishing_data, embed, message)
 
-    async def offer_fishing_upgrade(self, context, fishing_data, embed, message):
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    async def offer_fishing_upgrade(self, interaction, fishing_data, embed, message):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
         
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         player_gp = existing_user[6]
@@ -433,19 +423,15 @@ class Skills(commands.Cog, name="skills"):
             fishing_data[6] >= required_reinforced and
             player_gp >= required_gp):
             
-            embed = discord.Embed(
-                title=f"Upgrade available!",
-                description=(f"Do you want to upgrade your {fishing_rod_tier.title()} "
-                             f"Fishing Rod to {self.next_fishing_rod_tier(fishing_rod_tier).title()}?"),
-                color=0xFFCC00
-            )
+            embed.add_field(name="Upgrade available!", value=f"Do you want to upgrade your {fishing_rod_tier.title()} "
+                             f"Fishing Rod to {self.next_fishing_rod_tier(fishing_rod_tier).title()}?", inline=False)
             embed.add_field(name="Material costs", value=cost_str or "No further upgrades possible.", inline=False)
-            message = await context.send(embed=embed)
+            await message.edit(embed=embed)
             await message.add_reaction("✅")  # Confirm Upgrade
             await message.add_reaction("❌")  # Cancel Upgrade
 
             def check(reaction, user):
-                return user == context.author and reaction.message.id == message.id
+                return user == interaction.user and reaction.message.id == message.id
 
             try:
                 reaction, _ = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
@@ -459,12 +445,11 @@ class Skills(commands.Cog, name="skills"):
                     await message.clear_reactions()
                     await message.edit(embed=embed)
                 else:
-                    embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
-                    await message.edit(embed=embed)
+                    await message.delete()
             except asyncio.TimeoutError:
-                embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
-                await message.clear_reactions()
-                await message.edit(embed=embed)
+                await message.delete()
+        await asyncio.sleep(10)
+        await message.delete()
 
     async def upgrade_fishing_rod(self, user_id, server_id, fishing_rod_tier, new_fishing_rod_tier):
         upgrade_requirements = self.get_fishing_upgrade_requirements(fishing_rod_tier)
@@ -503,6 +488,7 @@ class Skills(commands.Cog, name="skills"):
     @tasks.loop(hours=1)
     #@tasks.loop(seconds=60)
     async def schedule_skills(self):
+        print('Granting skilling resources to all users')
         # Get users with mining skills
         mining_users = await self.bot.database.fetch_users_with_mining()
         for user_id, server_id in mining_users:
@@ -686,46 +672,46 @@ class Skills(commands.Cog, name="skills"):
         """Trigger a random event with a 50% chance every half hour."""
         if random.random() <= 0.5:  # 50% chance
             event_type = random.choice(["leprechaun", "meteorite", "dryad", "high_tide"])
-            print(f'random event {event_type} triggered')
+            print(f'Random check success, starting: {event_type}.')
             if self.event_channel_id:  # Ensure the channel ID exists
                 if self.event_channel_id:  # Ensure the channel ID exists
                     guild = self.bot.get_guild(self.bot.config["guild_id"])  # Replace `guild_id` with the actual guild ID
                     if guild:
                         channel = guild.get_channel(self.event_channel_id)
-                        print(f'random in {self.event_channel_id} for {channel}')
+                        print(f'Random in Channel ID: {self.event_channel_id}')
                         if channel:
                             await self.trigger_event(channel, event_type)
-                            print(f'channel exists, triggered {event_type}')
+                            print(f'Channel {channel}: Trigger {event_type}')
                         else:
-                            print(f'failed to get channel info')
+                            print(f'Failed to get channel info.')
                     else:
                         print('Bot is not in the specified guild.')
             else:
-                print('could not establish channel')
+                print('Could not establish channel.')
         else:
-            print('no random event for now')
+            print('Chance to trigger random failed.')
 
     async def trigger_event(self, channel: discord.TextChannel, event_type: str):
         """Trigger the specified random event and create an embed message."""
         event_info = {
             "leprechaun": {
                 "emoji": "☘️",
-                "image": "https://cdn.discordapp.com/attachments/699690514051629089/1340082810769379419/leprechaun.png?ex=67b110df&is=67afbf5f&hm=45f828311a51e80225c3033c0ce7b8458a1a36b68a55659836bfbc75a2c63d87&",
+                "image": "https://i.imgur.com/fZTCt8S.png",
                 "description": "A leprechaun appears! React with ☘️ to reach into his pot of gold!"
             },
             "meteorite": {
                 "emoji": "⛏️",
-                "image": "https://cdn.discordapp.com/attachments/699690514051629089/1340082809104236615/asteroid.png?ex=67b110df&is=67afbf5f&hm=5fb6c03a54c2d9af07bc7f27f88730c7152948577c8d175aa1d0ec173ab8f616&",
+                "image": "https://i.imgur.com/QeBaabP.png",
                 "description": "A meteorite crashes nearby! ⛏️ to mine!"
             },
             "dryad": {
                 "emoji": "🪓",
-                "image": "https://cdn.discordapp.com/attachments/699690514051629089/1340082809926193223/dryad.png?ex=67b110df&is=67afbf5f&hm=733736eb3ac9e88c69adb47556d056ca44268f9cf9400d70e2ffd344bd8a2f48&",
+                "image": "https://i.imgur.com/8CQGsmf.png",
                 "description": "A giant dryad appears! 🪓 to receive his blessing!"
             },
             "high_tide": {
                 "emoji": "🎣",
-                "image": "https://cdn.discordapp.com/attachments/699690514051629089/1340082811465371679/tide.png?ex=67b110df&is=67afbf5f&hm=b4f15d92997efe9704cf2ffdacbdf496952c969103c927ba19703b974084d248&",
+                "image": "https://i.imgur.com/cgl89Ei.png",
                 "description": "The High Tide rises! 🎣 to gather fish resources!"
             }
         }
@@ -737,7 +723,7 @@ class Skills(commands.Cog, name="skills"):
             color=0xFFD700
         )
         embed.set_image(url=event_data["image"])
-        message = await channel.send(embed=embed)  # Use context to send the embed
+        message = await channel.send(embed=embed)  # Use channel to send the embed
         await message.add_reaction(event_data["emoji"])
 
         self.active_events[message.id] = {
@@ -762,7 +748,7 @@ class Skills(commands.Cog, name="skills"):
             user_id = payload.user_id
             server_id = payload.guild_id
             event_data = self.active_events[payload.message_id]  # Get the event data
-
+            print(f"{user_id} reacted to {event_data}")
             if user_id != self.bot.user.id:  # Ignore the bot's own reactions
                 if user_id not in event_data["claimed_users"]:
                     event_type = event_data["event_type"]
@@ -785,12 +771,10 @@ class Skills(commands.Cog, name="skills"):
                         print("Unregistered, not proceeding.")
                         return
                         
-
                     if event_type == "leprechaun" and str(payload.emoji) == event_data["emoji"]:
                         gold_amount = random.randint(1000, 2000)
                         await self.bot.database.add_gold(user_id, gold_amount)
                         event_data["claimed_users"].add(user_id)
-                        print('Leprechaun claimed')
                         # Update the message embed
                         embed = message.embeds[0]
                         embed.add_field(name="Claimed Reward", 
@@ -838,10 +822,8 @@ class Skills(commands.Cog, name="skills"):
                                               inline=False)
                             await message.edit(embed=embed)
 
-                    # If the user has already claimed, update the message to reflect this
                     if user_id in event_data["claimed_users"]:
-                        print(f"{existing_user[3]} has already claimed this bounty!")
-                       # await payload.channel.send(f"{existing_user[3]} has already claimed this bounty!")
+                        print(f'{existing_user[3]} claims random: {event_type}')
 
 async def setup(bot) -> None:
     await bot.add_cog(Skills(bot))

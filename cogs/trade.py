@@ -2,67 +2,71 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Context
 import asyncio
+from discord import app_commands, Interaction, Message
 
 class Trade(commands.Cog, name="trade"):
     def __init__(self, bot) -> None:
         self.bot = bot
         self.active_users = {}  # Dictionary to track active users
 
-    @commands.hybrid_command(name="send", description="Send gold to another player.")
-    async def send(self, context: Context, receiver: discord.User, amount: int) -> None:
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    @app_commands.command(name="send", description="Send gold to another player.")
+    async def send(self, interaction: Interaction, receiver: discord.User, amount: int) -> None:
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
         
         # Check if the user is trying to send gold to themselves
-        if receiver.id == context.author.id:
-            await context.send("You cannot send gold to yourself.")
+        if receiver.id == interaction.user:
+            await interaction.response.send_message("You cannot send gold to yourself.", 
+                                                    ephemeral=True)
             return
             
         # Fetch the sender's user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
         if user_id in self.active_users:
-            await context.send("You are already sending gold. Please finish that process first.")
+            await interaction.response.send_message("You are already sending gold. Please finish that process first.")
             return
 
         if self.bot.state_manager.is_active(user_id):
-            await context.send("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
             return
         
         if existing_user[4] <= 10:
-            await context.send("You have to be above level 10 to send gold.")
+            await interaction.response.send_message("You have to be above level 10 to send gold.")
             return
         
-        self.bot.state_manager.set_active(user_id, "gamble")
+        self.bot.state_manager.set_active(user_id, "trade")
         self.active_users[user_id] = True
         # Check if the amount is valid
         if amount <= 0:
-            await context.send("You cannot send zero or negative gold.")
+            await interaction.response.send_message("You cannot send zero or negative gold.")
             return
 
         current_gold = existing_user[6]  # Assuming gold is at index 6
         
         # Check if the sender has enough gold
         if amount > current_gold:
-            await context.send(f"You don't have enough gold to send. Your current balance is: 💰 **{current_gold:,}**.")
+            await interaction.response.send_message(f"You don't have enough gold to send. Your current balance is: 💰 **{current_gold:,}**.")
             return
 
         # Confirm the action
-        confirm_embed = discord.Embed(
-            title="Confirm Send Gold",
+        embed = discord.Embed(
+            title="Confirm",
             description=f"Are you sure you want to send 💰 **{amount}** gold to {receiver.mention}?",
             color=0x00FF00
         )
-        message = await context.send(embed=confirm_embed)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
 
         await message.add_reaction("✅")  # Confirm
         await message.add_reaction("❌")  # Cancel
 
         def confirm_check(reaction, user):
-            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+            return (user == interaction.user and 
+                    reaction.message.id == message.id and 
+                    str(reaction.emoji) in ["✅", "❌"])
 
         try:
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
@@ -73,43 +77,42 @@ class Trade(commands.Cog, name="trade"):
                 await self.bot.database.add_gold(str(receiver.id), amount)  # Add to receiver
 
                 # Update the embed message to inform of the successful transaction
-                confirm_embed.description = f"Successfully sent 💰 **{amount}** gold to {receiver.mention}! 🎉"
-                await message.edit(embed=confirm_embed)
+                embed.description = f"Successfully sent 💰 **{amount}** gold to {receiver.mention}! 🎉"
+                await message.edit(embed=embed)
             else:
-                confirm_embed.description = "Transaction cancelled."
-                await message.edit(embed=confirm_embed)
+                embed.description = "Transaction cancelled."
+                await message.edit(embed=embed)
         except asyncio.TimeoutError:
             await message.delete()  # Delete the confirmation message if timed out.
         finally:
             del self.active_users[user_id]
             self.bot.state_manager.clear_active(user_id)
 
-    @commands.hybrid_command(name="send_weapon", description="Send a weapon to another player.")
-    async def send_weapon(self, context: Context, receiver: discord.User, item_id: int) -> None:
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    @app_commands.command(name="send_weapon", description="Send a weapon to another player.")
+    async def send_weapon(self, interaction: Interaction, receiver: discord.User, item_id: int) -> None:
+        user_id = str(interaction.user)
+        server_id = str(interaction.guild.id)
 
         # Check if the user is trying to send the item to themselves
-        if receiver.id == context.author.id:
-            await context.send("You cannot send items to yourself.")
+        if receiver.id == interaction.user:
+            await interaction.response.send_message("You cannot send items to yourself.")
             return
 
         # Check if the user has any active operations
         if self.bot.state_manager.is_active(user_id):
-            await context.send("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
             return
         self.bot.state_manager.set_active(user_id, "send_weapon")  # Set send_item as active operation
 
         # Fetch the sender's user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
         # Fetch the item details
         item_details = await self.bot.database.fetch_item_by_id(item_id)
         if not item_details:
-            await context.send("Weapon not found. Please check the Weapon ID and try again.")
+            await interaction.response.send_message("Weapon not found. Please check the Weapon ID and try again.")
             return
 
         item_level = int(item_details[3])  # Assuming item_level is at index 3
@@ -117,13 +120,13 @@ class Trade(commands.Cog, name="trade"):
         
         # Check level difference
         if (current_level - item_level) > 15:
-            await context.send(f"You cannot send this item due to iLvl diff being too great. (< 15)")
+            await interaction.response.send_message(f"You cannot send this item due to iLvl diff being too great. (< 15)")
             return
         
         # Check if the item is equipped
         equipped_item = await self.bot.database.get_equipped_item(user_id)
         if equipped_item and equipped_item[0] == item_id:  # Assuming item_id is at index 0
-            await context.send("You cannot send a weapon that you have equipped.")
+            await interaction.response.send_message("You cannot send a weapon that you have equipped.")
             return
         
         # Fetch the receiver's item data to check their current item count
@@ -131,22 +134,25 @@ class Trade(commands.Cog, name="trade"):
         
         # Check if the receiver has less than 3 items in their inventory
         if len(receiver_items) >= 3:
-            await context.send(f"{receiver.mention} cannot receive more weapons. They have 3+ weapons already.")
+            await interaction.response.send_message(f"{receiver.mention} cannot receive more weapons. They have 3+ weapons already.")
             return
 
         # Confirm the action
-        confirm_embed = discord.Embed(
+        embed = discord.Embed(
             title="Confirm Send Weapon",
             description=f"Send **{item_details[2]}** to {receiver.mention}?",
             color=0x00FF00
         )
-        message = await context.send(embed=confirm_embed)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
 
         await message.add_reaction("✅")  # Confirm
         await message.add_reaction("❌")  # Cancel
 
         def confirm_check(reaction, user):
-            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+            return (user == interaction.user and 
+                    reaction.message.id == message.id and 
+                    str(reaction.emoji) in ["✅", "❌"])
 
         try:
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
@@ -154,63 +160,65 @@ class Trade(commands.Cog, name="trade"):
             if str(reaction.emoji) == "✅":
                 # The sender has confirmed the action
                 await self.bot.database.send_item(receiver.id, item_id)  # Create a method to handle item transfer
-                await context.send(f"Sent **{item_details[2]}** to {receiver.mention}! 🎉")
+                await interaction.response.send_message(f"Sent **{item_details[2]}** to {receiver.mention}! 🎉")
             else:
-                await context.send("Transaction cancelled.")
+                await interaction.response.send_message("Transaction cancelled.")
         except asyncio.TimeoutError:
             await message.delete()  # Delete the confirmation message if timed out.
         finally:
             self.bot.state_manager.clear_active(user_id)
 
 
-    @commands.hybrid_command(name="send_accessory", description="Send an accessory to another player.")
-    async def send_accessory(self, context: Context, receiver: discord.User, accessory_id: int) -> None:
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    @app_commands.command(name="send_accessory", description="Send an accessory to another player.")
+    async def send_accessory(self, interaction: Interaction, receiver: discord.User, accessory_id: int) -> None:
+        user_id = str(interaction.user)
+        server_id = str(interaction.guild.id)
 
         # Check if the user is trying to send the item to themselves
-        if receiver.id == context.author.id:
-            await context.send("You cannot send accessories to yourself.")
+        if receiver.id == interaction.user:
+            await interaction.response.send_message("You cannot send accessories to yourself.")
             return
 
         # Check if the user has any active operations
         if self.bot.state_manager.is_active(user_id):
-            await context.send("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
             return
 
         self.bot.state_manager.set_active(user_id, "send_accessory")  # Set send_accessory as active operation
 
         # Fetch the sender's user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
         # Fetch the accessory details
         accessory_details = await self.bot.database.fetch_accessory_by_id(accessory_id)
         if not accessory_details:
-            await context.send("Accessory not found. Please check the Accessory ID and try again.")
+            await interaction.response.send_message("Accessory not found. Please check the Accessory ID and try again.")
             return
 
         # Check if the accessory is equipped
         equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
         if equipped_accessory and equipped_accessory[0] == accessory_details[0]:  # Check if it's the same accessory
-            await context.send("You cannot send an accessory that you have equipped.")
+            await interaction.response.send_message("You cannot send an accessory that you have equipped.")
             return
         
         # Confirm the action
-        confirm_embed = discord.Embed(
+        embed = discord.Embed(
             title="Confirm Send Accessory",
             description=f"Send **{accessory_details[2]}** to {receiver.mention}?",
             color=0x00FF00
         )
-        message = await context.send(embed=confirm_embed)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
 
         await message.add_reaction("✅")  # Confirm
         await message.add_reaction("❌")  # Cancel
 
         def confirm_check(reaction, user):
-            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+            return user == (interaction.user and 
+                            reaction.message.id == message.id and 
+                            str(reaction.emoji) in ["✅", "❌"])
 
         try:
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
@@ -218,7 +226,7 @@ class Trade(commands.Cog, name="trade"):
             if str(reaction.emoji) == "✅":
                 # The sender has confirmed the action
                 await self.bot.database.send_accessory(receiver.id, accessory_id)  # Create a method to handle item transfer
-                await context.send(f"Sent **{accessory_details[2]}** to {receiver.mention}! 🎉")
+                await interaction.response.send_message(f"Sent **{accessory_details[2]}** to {receiver.mention}! 🎉")
             else:
                 await message.delete()  # Delete the confirmation message.
         except asyncio.TimeoutError:
@@ -227,23 +235,22 @@ class Trade(commands.Cog, name="trade"):
             self.bot.state_manager.clear_active(user_id)
 
 
-    @commands.hybrid_command(name="send_material", description="Send skilling materials to another player.")
-    async def send_material(self, context: Context, receiver: discord.User, material: str, amount: int) -> None:
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    @app_commands.command(name="send_material", description="Send skilling materials to another player.")
+    async def send_material(self, interaction: Interaction, receiver: discord.User, material: str, amount: int) -> None:
+        user_id = str(interaction.user)
+        server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
         # Check if the user is trying to send materials to themselves
-        if receiver.id == context.author.id:
-            await context.send("You cannot send materials to yourself.")
+        if receiver.id == interaction.user:
+            await interaction.response.send_message("You cannot send materials to yourself.")
             return
         
         if self.bot.state_manager.is_active(user_id):
-            await context.send("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
             return
         # Set the user as active in operations
         self.bot.state_manager.set_active(user_id, "send_material")
@@ -263,7 +270,7 @@ class Trade(commands.Cog, name="trade"):
                 table = "woodcutting"
                 material_name = f"{material_lower}_logs"
             else:
-                await context.send(f"Invalid material type.\n"
+                await interaction.response.send_message(f"Invalid material type.\n"
                                    f"Ores: iron, coal, gold, and platinum.\n"
                                    f"Bones: desiccated, regular, sturdy, and reinforced.\n"
                                    f"Wood: oak, willow, mahogany, magic.")
@@ -294,15 +301,15 @@ class Trade(commands.Cog, name="trade"):
 
             # Check if the specified amount is valid
             if amount <= 0:
-                await context.send("Invalid amount. You must specify a positive amount of materials.")
+                await interaction.response.send_message("Invalid amount. You must specify a positive amount of materials.")
                 return
 
             if amount > current_amount:
-                await context.send(f"You do not have enough {material_lower} to send. You currently have: {current_amount}.")
+                await interaction.response.send_message(f"You do not have enough {material_lower} to send. You currently have: {current_amount}.")
                 return
 
             # Create a confirmation embed
-            confirm_embed = discord.Embed(
+            embed = discord.Embed(
                 title="Confirm",
                 description=(f"Are you sure you want to send **{amount}** **{material_lower.title()}** "
                             f"to {receiver.mention}?"),
@@ -310,12 +317,15 @@ class Trade(commands.Cog, name="trade"):
             )
 
             # Send the confirmation embed and get user reaction
-            confirm_message = await context.send(embed=confirm_embed)
-            await confirm_message.add_reaction("✅")  # Confirm
-            await confirm_message.add_reaction("❌")  # Cancel
+            await interaction.response.send_message(embed=embed)
+            message: Message = await interaction.original_response()
+            await message.add_reaction("✅")  # Confirm
+            await message.add_reaction("❌")  # Cancel
 
             def confirm_check(reaction, user):
-                return user == context.author and reaction.message.id == confirm_message.id and str(reaction.emoji) in ["✅", "❌"]
+                return (user == interaction.user and 
+                        reaction.message.id == message.id and 
+                        str(reaction.emoji) in ["✅", "❌"])
 
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
@@ -331,15 +341,15 @@ class Trade(commands.Cog, name="trade"):
                         await self.bot.database.update_woodcutting_resource(str(receiver.id), server_id, material_name, amount)  # Add to receiver
                     
                     # Update the confirmation embed to indicate success
-                    confirm_embed.description = f"Successfully sent **{amount}** **{material_lower.title()}** to {receiver.mention}! 🎉"
-                    await confirm_message.clear_reactions()
-                    await confirm_message.edit(embed=confirm_embed)               
+                    embed.description = f"Successfully sent **{amount}** **{material_lower.title()}** to {receiver.mention}! 🎉"
+                    await message.clear_reactions()
+                    await message.edit(embed=embed)               
                     
                 else:
-                    await confirm_message.delete()
+                    await message.delete()
                     self.bot.state_manager.clear_active(user_id)
             except asyncio.TimeoutError:
-                await confirm_message.delete()  # Delete the confirmation message if timed out.
+                await message.delete()  # Delete the confirmation message if timed out.
                 self.bot.state_manager.clear_active(user_id)
         finally:
             # Ensure we clear the active operation regardless of success/failure

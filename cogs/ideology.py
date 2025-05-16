@@ -3,24 +3,25 @@ from discord.ext.commands import Context
 import discord
 import random
 from datetime import datetime, timedelta
+from discord import app_commands, Interaction, Message
 
 class Ideology(commands.Cog, name="ideology"):
     def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.hybrid_command(
+    @app_commands.command(
         name="ideology",
         description="Current list of ideologies and follower counts.",
     )
-    async def ideology(self, context: Context) -> None:
+    async def ideology(self, interaction: Interaction) -> None:
         """
         Gets a list of ideologies and their follower counts.
         """
-        server_id = str(context.guild.id)
+        server_id = str(interaction.guild.id)
         ideologies = await self.bot.database.fetch_ideologies(server_id)
 
         if not ideologies:
-            await context.send("No ideologies found for this server.")
+            await interaction.response.send_message("No ideologies found for this server.")
             return
 
         # Create a list of tuples to store (ideology, followers_count)
@@ -45,20 +46,18 @@ class Ideology(commands.Cog, name="ideology"):
             color=0x00FF00,
         )
 
-        await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
-    @commands.hybrid_command(
+    @app_commands.command(
         name="propagate",
         description="Spread your ideology to gain more followers."
     )
-    async def propagate(self, context: Context) -> None:
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    async def propagate(self, interaction: Interaction) -> None:
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's guild."
-                               " Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
         user_ideology = existing_user[8]
@@ -72,12 +71,12 @@ class Ideology(commands.Cog, name="ideology"):
                 time_since_last_propagate = datetime.now() - last_propagate_time_dt
                 if time_since_last_propagate < cooldown_duration:
                     remaining_time = cooldown_duration - time_since_last_propagate
-                    await context.send(f"You need to wait **{remaining_time.seconds // 3600} hours"
+                    await interaction.response.send_message(f"You need to wait **{remaining_time.seconds // 3600} hours"
                                        f" and {(remaining_time.seconds // 60) % 60} minutes** before propagating"
                                         f" **{user_ideology}** again.")
                     return
         except (ValueError, TypeError):
-            await context.send("There was an error with your last propagate time. "
+            await interaction.response.send_message("There was an error with your last propagate time. "
                               "Please contact the admin.")
             return
 
@@ -91,7 +90,7 @@ class Ideology(commands.Cog, name="ideology"):
             await self.bot.database.increase_ascension_level(user_id)
             new_followers_count = await self.bot.database.count_followers(user_ideology)  # Fetch user_ids of followers
             ascension = True
-            await context.send(f"{user_ideology} has spread far and wide!\n"
+            await interaction.response.send_message(f"{user_ideology} has spread far and wide!\n"
                                 f"As an evangelist you have done well, you gain an ascension level.\n"
                                 f"Your adventure should be easier now.\n"
                                 f"{user_ideology}'s follower count has been reset.")
@@ -99,7 +98,7 @@ class Ideology(commands.Cog, name="ideology"):
         await self.bot.database.update_followers_count(user_ideology, new_followers_count) 
         await self.bot.database.update_propagate_time(user_id)
         if not ascension:
-            await context.send(f"You advocate for {user_ideology} and it spreads. "
+            await interaction.response.send_message(f"You advocate for {user_ideology} and it spreads. "
                                 f"New follower count: **{new_followers_count}**.")
 
 async def setup(bot) -> None:

@@ -2,7 +2,6 @@ import aiohttp
 import random
 import discord
 from discord.ext import commands
-from discord.ext.commands import Context
 from discord.ext.tasks import asyncio
 from discord.ext import tasks
 from discord import app_commands, Interaction, Message
@@ -110,16 +109,15 @@ class Combat(commands.Cog, name="combat"):
             
         return acc_name, loot_description
 
-    @commands.hybrid_command(name="combat", description="Engage in combat.")
-    @commands.cooldown(1, 600, commands.BucketType.user)
-    async def combat(self, context: Context):
-        await context.defer()
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    @app_commands.command(name="combat", description="Engage in combat.")
+    @app_commands.checks.cooldown(1, 600, key=lambda i: (i.user.id))  # 1 use per 600 seconds per user
+    async def combat(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         # Check if the user has any active operations
         if self.bot.state_manager.is_active(user_id):
-            await context.send("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
             return
         
         if existing_user:
@@ -265,21 +263,20 @@ class Combat(commands.Cog, name="combat"):
                                f"It boosts your accuracy by **{value}%**!"), 
                         inline=False)
 
-                message = await context.send(embed=embed)
+                await interaction.response.send_message(embed=embed)
+                message: Message = await interaction.original_response()
                 start_combat = True
             except Exception as e:
-                await context.send(f"The servers are busy handling another request. Try again.")
+                await interaction.response.send_message(f"The servers are busy handling another request. Try again.")
                 self.bot.state_manager.clear_active(user_id)
                 return
-
+            
+            reactions = ["⚔️", "🩹", "⏩", "🏃"]
+            await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
             if start_combat:
                 while True:
-                    await message.clear_reactions()
-                    reactions = ["⚔️", "🩹", "⏩", "🏃"]
-                    await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
-
                     def check(reaction, user):
-                        return (user == context.author 
+                        return (user == interaction.user 
                                 and reaction.message.id == message.id 
                                 and str(reaction.emoji) in ["⚔️", "🩹", "⏩", "🏃"])
 
@@ -314,7 +311,7 @@ class Combat(commands.Cog, name="combat"):
                                                                                             player_ward)
                             
                             await self.bot.database.update_player_hp(user_id, player_hp)
-
+                            await message.remove_reaction(reaction.emoji, user)
                             # Check if the player is defeated
                             if player_hp <= 0:
                                 total_damage_dealt = award_xp - monster_hp
@@ -335,7 +332,7 @@ class Combat(commands.Cog, name="combat"):
                                     embed.add_field(name=player_name, value=attack_message, inline=False)
                                     embed.add_field(name=monster_name, value=monster_message, inline=False)
                                     await self.handle_victory(encounter_level, user_id, server_id, 
-                                                            player_name, monster_name, context, 
+                                                            player_name, monster_name, interaction, 
                                                             award_xp, player_rar, player_hp,
                                                             message, user_level, True,
                                                             accessory_passive, accessory_lvl)
@@ -346,7 +343,7 @@ class Combat(commands.Cog, name="combat"):
                                     embed.add_field(name=player_name, value=attack_message, inline=False)
                                     embed.add_field(name=monster_name, value=monster_message, inline=False)
                                     await self.handle_victory(encounter_level, user_id, server_id, 
-                                                            player_name, monster_name, context, 
+                                                            player_name, monster_name, interaction, 
                                                             award_xp, player_rar, player_hp,
                                                             message, user_level, False,
                                                             accessory_passive, accessory_lvl)
@@ -354,8 +351,9 @@ class Combat(commands.Cog, name="combat"):
                                     break
 
                         elif str(reaction.emoji) == "⏩":
+                            await message.remove_reaction(reaction.emoji, user)
                             end_battle, end_php, end_mhp = await self.auto_battle(
-                                                    embed, context, encounter_level,
+                                                    embed, interaction, encounter_level,
                                                     player_attack, monster_hp, monster_attack,
                                                     monster_defence, player_defence,
                                                     followers_count, player_name, user_id, 
@@ -371,14 +369,14 @@ class Combat(commands.Cog, name="combat"):
                                 player_hp = end_php
                                 monster_hp = end_mhp 
                                 embed.add_field(name="Auto battle",
-                                                value="Player HP < 10%, auto-battle paused!",
+                                                value="Player HP < 20%, auto-battle paused!",
                                                 inline=False)
                         elif str(reaction.emoji) == "🩹":
                             if (player_ward > 0):
                                 embed.add_field(name="Heal", value="You're at full hp!", inline=False)
                             else:
                                 player_hp, potions, heal_message = await self.heal(existing_user, player_hp, potions, 
-                                                            user_id, server_id, context, embed,
+                                                            user_id, server_id, interaction, embed,
                                                             player_name)
                                 if random.random() < 0.5:
                                     opportunity = True
@@ -394,7 +392,8 @@ class Combat(commands.Cog, name="combat"):
                                     embed.add_field(name=monster_name, value=opportunity_message, inline=False)
                                     embed.set_field_at(1, name="Your ❤️ HP", value=player_hp, inline=True)
                             await message.edit(embed=embed)
-                            
+                            await message.remove_reaction(reaction.emoji, user)
+
                         elif str(reaction.emoji) == "🏃":
                             if random.random() < 0.5:
                                 opportunity = True
@@ -415,6 +414,7 @@ class Combat(commands.Cog, name="combat"):
                                 embed.add_field(name="Escape", value="You get away safely!", inline=False)
                                 await message.edit(embed=embed)
                             self.bot.state_manager.clear_active(user_id)
+                            await message.remove_reaction(reaction.emoji, user)
                             break
 
                         if len(embed.fields) > 5:
@@ -440,7 +440,7 @@ class Combat(commands.Cog, name="combat"):
                                 embed.set_field_at(1, name="Your ❤️ HP", value=f"{player_hp} ({player_ward} 🛡️)", inline=True)
                             else:                            
                                 embed.set_field_at(1, name="Your ❤️ HP", value=player_hp, inline=True)
-                        await message.clear_reactions()
+                        #await message.clear_reactions()
                         await message.edit(embed=embed)
 
                     except asyncio.TimeoutError:
@@ -466,10 +466,13 @@ class Combat(commands.Cog, name="combat"):
                             await message.edit(embed=embed)
                         self.bot.state_manager.clear_active(user_id)
                         break
-                await message.clear_reactions()
+                #await message.clear_reactions()
         else:
-            await context.send("You are not registered with the 🏦 Adventurer's guild. Please /register first before engaging in combat.")
-
+            await interaction.response.send_message(
+                                        "Please /register with the 🏦 Adventurer's Guild first.",
+                                        ephemeral=True
+                        )
+            return
     async def player_turn(self, embed, player_attack, monster_hp, 
                           monster_defence, followers_count, player_name, 
                           ascension_level, monster_name, current_passive,
@@ -487,11 +490,11 @@ class Combat(commands.Cog, name="combat"):
               f'Accessory passive: {accessory_passive}\n'
               f'Passive level: {accessory_lvl}')
         if accessory_passive == "Obliterate":
-            passive_message = (f"Your accessory's **Obliterate ({accessory_lvl})** activates, dealing double damage!\n") 
             double_damage_chance = (accessory_lvl * 2)
             print(f'Obliterate passive found, double_damage_chance: {double_damage_chance}')
             if random.randint(1, 100) <= double_damage_chance:
                 print(f'Obliterate roll succeeded, attack multiplier set to 2')
+                passive_message = (f"Your accessory's **Obliterate ({accessory_lvl})** activates, dealing double damage!\n") 
                 attack_multiplier = 2
             else:
                 print('No modifiers to attack multiplier')
@@ -647,7 +650,7 @@ class Combat(commands.Cog, name="combat"):
         return player_hp, monster_message, player_ward  # Return the player's HP after monster attack
     
     async def heal(self, existing_user, player_hp, potions, 
-                   user_id, server_id, context, 
+                   user_id, server_id, interaction, 
                    embed, player_name):
         print("**** HEAL ****")
         if potions <= 0:
@@ -674,7 +677,7 @@ class Combat(commands.Cog, name="combat"):
         potions -= 1
         return new_hp, potions, heal_message
 
-    async def auto_battle(self, embed, context, encounter_level,
+    async def auto_battle(self, embed, interaction, encounter_level,
                             player_attack, monster_hp, monster_attack,
                             monster_defence, player_defence,
                             followers_count, player_name, user_id, 
@@ -684,7 +687,7 @@ class Combat(commands.Cog, name="combat"):
                             flavor_txt, player_max_hp, player_crit,
                             player_ward, accessory_passive, accessory_lvl):
         print("**** AUTO BATTLE ****")
-        minimum_hp = int(player_max_hp / 10)
+        minimum_hp = int(player_max_hp * 0.2)
         while player_hp > minimum_hp and monster_hp > 0:
             monster_hp, attack_message = await self.player_turn(embed, player_attack, monster_hp, 
                                                 monster_defence, followers_count, 
@@ -698,7 +701,7 @@ class Combat(commands.Cog, name="combat"):
                 if monster_hp <= (award_xp * culling_strike / 100):
                     print('overwhelmed')
                     await self.handle_victory(encounter_level, user_id, server_id, 
-                        player_name, monster_name, context, 
+                        player_name, monster_name, interaction, 
                         award_xp, player_rar, player_hp,
                         message, user_level, True, 
                         accessory_passive, accessory_lvl)
@@ -707,7 +710,7 @@ class Combat(commands.Cog, name="combat"):
                 if monster_hp <= 0:
                     embed.add_field(name=monster_name, value=attack_message, inline=False)
                     await self.handle_victory(encounter_level, user_id, server_id, 
-                                            player_name, monster_name, context, 
+                                            player_name, monster_name, interaction, 
                                             award_xp, player_rar, player_hp,
                                             message, user_level, False, 
                                             accessory_passive, accessory_lvl)
@@ -730,14 +733,14 @@ class Combat(commands.Cog, name="combat"):
                 return True, player_hp, monster_hp
 
             if len(embed.fields) > 5:
-                print('Fields > 5, resetting...')
+                # print('Fields > 5, resetting...')
                 embed.clear_fields()
                 embed.add_field(name="Monster 🐲 HP", value=monster_hp, inline=True)
                 if (player_ward > 0):
-                    print('Positive player_ward')
+                    #print('Positive player_ward')
                     embed.add_field(name="Your ❤️ HP", value=f"{player_hp} ({player_ward} 🛡️)", inline=True)
                 else:         
-                    print('No player ward')       
+                    #print('No player ward')       
                     embed.add_field(name="Your ❤️ HP", value=player_hp, inline=True)
                 embed.add_field(name=player_name, value=attack_message, inline=False)
                 embed.add_field(name=monster_name, value=monster_message, inline=False)
@@ -751,10 +754,9 @@ class Combat(commands.Cog, name="combat"):
             await message.edit(embed=embed)
             await asyncio.sleep(1)
         return False, player_hp, monster_hp
-        #await message.clear_reactions()
 
     async def handle_victory(self, encounter_level, user_id, server_id, 
-                             player_name, monster_name, context, award_xp,
+                             player_name, monster_name, interaction, award_xp,
                              player_rar, player_hp, message, user_level, 
                              isCulled, accessory_passive, accessory_lvl):
         await message.clear_reactions()
@@ -783,12 +785,16 @@ class Combat(commands.Cog, name="combat"):
         
         rarity =  (player_rar / 100) # Player rarity
         loot_roll = random.randint(1, 100)
+        acc_roll = random.randint(1, 100)
         final_loot_roll = loot_roll
+        final_acc_roll = acc_roll
         if (player_rar > 0):
             final_loot_roll = int(loot_roll + (10 * rarity))
+            final_acc_roll = int(acc_roll + (10 * rarity))
             print(f'User has {rarity}, multiplier on {loot_roll} to {final_loot_roll}')
+            print(f'User has {rarity}, multiplier on {acc_roll} to {final_acc_roll}')
         
-        print(f'User rolls {final_loot_roll}, beat {drop_chance} to get item')
+        print(f'User rolls {final_loot_roll}, beat {drop_chance} to get weapon')
         gold_award = int((encounter_level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale ** 1.3)))
         if (player_rar > 0):
             final_gold_award = int(gold_award * (1.5 + rarity))
@@ -820,6 +826,7 @@ class Combat(commands.Cog, name="combat"):
         items = await self.bot.database.fetch_user_items(user_id)
         accs = await self.bot.database.fetch_user_accessories(user_id)
         if (final_loot_roll >= drop_chance): # Normal drop logic
+            print('Drop chance beat, generating item')
         #if (False): # Accessory only drop logic
             if (len(items) > 4):
                 victory_embed.add_field(name="✨ Loot", value=f"Weapon pouch full!")
@@ -835,7 +842,8 @@ class Combat(commands.Cog, name="combat"):
                 victory_embed.add_field(name="✨ Loot", value=f"{loot_description}")
         else: # Chance to generate accessory if weapon roll fails
             # if (random.randint(1, 100) >= 0): #100% chance for accessory
-            if (random.randint(1, 100) >= 95): #5% chance for accessory
+            print(f'Weapon roll failed, trying for accessory with {final_acc_roll}')
+            if (final_acc_roll >= 97): #beat 96, base 4% for accessory
                 if (len(accs) > 4):
                     victory_embed.add_field(name="✨ Loot", value=f"Accessory pouch full!")
                 else:
@@ -857,7 +865,7 @@ class Combat(commands.Cog, name="combat"):
             await self.bot.database.update_curios_count(user_id, server_id, 1)
         
         await message.edit(embed=victory_embed)
-        await self.update_experience(user_id, server_id, xp_award, context) 
+        await self.update_experience(user_id, server_id, xp_award, message, victory_embed) 
         await self.bot.database.add_gold(user_id, final_gold_award)
 
     async def handle_defeat(self, user_id, message, 
@@ -906,32 +914,32 @@ class Combat(commands.Cog, name="combat"):
             hit_chance = 0.6 + (difference / 100)  # Starting at 60%, increase by 1% per difference in level
             if (hit_chance >= 0.8):
                 hit_chance = 0.8
-            # print(f'Player attack higher than monster defence, hit chance: {hit_chance}')
+            print(f'P. Atk > M. Def, total hit chance: {hit_chance + additional_hit_chance}')
             return hit_chance + additional_hit_chance
         else:
             # If the monster's defence is higher or equal, hit chance is 60%
-            # print(f'Monster defence higher than player attack, hit chance: {hit_chance}')
+            print(f'P. Atk < M. Def, total hit chance: {0.6 + additional_hit_chance}')
             return 0.6 + additional_hit_chance
     
     def calculate_monster_hit_chance(self, monster_attack, player_defence):
         """Calculate the player's chance to be hit based on stats."""
         difference = monster_attack - player_defence
         # If the monster_attack is higher, calculate the hit chance normally
-        # print(f"M.ATK {monster_attack} - P.DEF {player_defence} = {difference}")
+        print(f"M.ATK {monster_attack} - P.DEF {player_defence} = {difference}")
         if monster_attack <= 3:
             return 0.2
         
         if difference > 0:
             # Starting at 50%, increase based on the difference
-            # print(f'Positive monster hit chance: {hit_chance}')
+            print(f'M.ATK {monster_attack} > P.DEF {player_defence}. Hit chance: 0.5')
             return 0.5
         else:
             # If the monster's attack is lower
             # The lower the attack, the lower the hit chance
-            hit_chance = 0.5 - (difference / 100)  # Starting at 50%, reduce by 1% until 30%
+            hit_chance = 0.5 + (difference / 100)  # Starting at 50%, reduce by 1% until 30%
             if hit_chance <= 0.3:
                 hit_chance = 0.3
-            # print(f'Negative monster hit chance: {hit_chance}')
+            print(f'M.ATK {monster_attack} < P.DEF {player_defence}. Hit chance: {hit_chance}')
             return hit_chance  # 50% base chance to  get hit, or the calculated hit chance, whichever is lower
         
     def calculate_damage_taken(self, monster_attack, player_defence):
@@ -1047,7 +1055,7 @@ class Combat(commands.Cog, name="combat"):
         selected_monster = random.choice(selected_monsters)
         return selected_monster[0], selected_monster[1], selected_monster[3]  # Return the name, URL, flavor
 
-    async def update_experience(self, user_id: str, server_id: str, xp_award: int, context) -> None:
+    async def update_experience(self, user_id: str, server_id: str, xp_award: int, message, embed) -> None:
         """Update the user's experience and handle leveling up."""
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         player_name = existing_user[3]
@@ -1073,12 +1081,7 @@ class Combat(commands.Cog, name="combat"):
             attack_increase = random.randint(1, 5)
             defence_increase = random.randint(1, 5)
             hp_increase = random.randint(1, 5)
-
-            level_up_embed = discord.Embed(
-                title="Level Up! 🎉",
-                description=f"{player_name} has reached level **{current_level}**!",
-                color=0x00FF00
-            )
+            embed.add_field(name="Level Up! 🎉", value=f"{player_name} has reached level **{current_level}**!")
             new_atk = current_atk + attack_increase
             new_def = current_def + defence_increase
             new_mhp = current_mhp + hp_increase
@@ -1086,14 +1089,14 @@ class Combat(commands.Cog, name="combat"):
                 print('Awarding 2 passive points for this level up since it fits the criteria')
                 passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
                 await self.bot.database.set_passive_points(user_id, server_id, passive_points + 2)
-                level_up_embed.add_field(name="2 passive points gained!", 
+                embed.add_field(name="2 passive points gained!", 
                             value=(f"Use /passives to allocate them."), 
                             inline=False)
-            level_up_embed.add_field(name="Stat increases:", 
+            embed.add_field(name="Stat increases:", 
                                      value=(f"⚔️ **Attack:** {new_atk} (+{attack_increase})\n"
                                             f"🛡️ ** Defense:** {new_def} (+{defence_increase})\n"
                                             f"❤️ **Hit Points:** {new_mhp} (+{hp_increase})"), inline=False)
-            await context.send(embed=level_up_embed)
+            await message.edit(embed=embed)
 
             # print(f'Update {user_id} stats')
             await self.bot.database.update_player_hp(user_id, 
@@ -1109,38 +1112,39 @@ class Combat(commands.Cog, name="combat"):
         await self.bot.database.update_experience(user_id, new_exp)
 
 
-    @commands.hybrid_command(name="duel", description="Challenge another user to a PvP duel.")
-    async def pvp(self, context: Context, member: discord.Member, gold_amount: int) -> None:
-        user_id = str(context.author.id)
+    @app_commands.command(name="duel", description="Challenge another user to a PvP duel.")
+    async def pvp(self, interaction: Interaction, member: discord.Member, gold_amount: int) -> None:
+        user_id = str(interaction.user.id)
         challenged_user_id = str(member.id)
 
         # Fetch user gold
-        existing_user = await self.bot.database.fetch_user(user_id, context.guild.id)
-        challenged_user = await self.bot.database.fetch_user(challenged_user_id, context.guild.id)
+        existing_user = await self.bot.database.fetch_user(user_id, interaction.guild.id)
+        challenged_user = await self.bot.database.fetch_user(challenged_user_id, interaction.guild.id)
         if self.bot.state_manager.is_active(user_id):
-            await context.send("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
             return
         
         if existing_user and challenged_user:
             challenged_gold = challenged_user[6]
 
             if challenged_gold < gold_amount:
-                await context.send(f"{member.mention} does not have enough gold to accept the challenge!")
+                await interaction.response.send_message(f"{member.mention} does not have enough gold to accept the challenge!")
                 return
             
             if gold_amount <= 0:
-                await context.send("You cannot challenge with zero or negative gold.")
+                await interaction.response.send_message("You cannot challenge with zero or negative gold.")
                 return
 
             # Create the challenge embed
             embed = discord.Embed(
                 title="PvP Challenge!",
-                description=f"{context.author.mention} has challenged {member.mention} for **{gold_amount} gold**!\n"
+                description=f"{interaction.user.mention} has challenged {member.mention} for **{gold_amount} gold**!\n"
                             f"React with ✅ to accept the challenge!",
                 color=0x00FF00,
             )
             embed.set_image(url="https://i.imgur.com/z20wfJO.jpeg")
-            message = await context.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
+            message: Message = await interaction.original_response()
             await message.add_reaction("✅")  # Accept Challenge
             await message.add_reaction("❌")  # Decline Challenge
             self.bot.state_manager.set_active(user_id, "duel")
@@ -1152,7 +1156,7 @@ class Combat(commands.Cog, name="combat"):
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
                 if str(reaction.emoji) == "✅":
                     if self.bot.state_manager.is_active(challenged_user_id):
-                        await context.send("You are currently busy with another operation. Please finish that first.")
+                        await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
                         await message.delete()
                         self.bot.state_manager.clear_active(user_id)
                         return
@@ -1168,15 +1172,14 @@ class Combat(commands.Cog, name="combat"):
             # Start the PvP duel
             player = existing_user[3]
             opponent = challenged_user[3]
-            await message.delete()
-            await self.start_duel(context, user_id, challenged_user_id, gold_amount, member, player, opponent)
+            await self.start_duel(interaction, user_id, challenged_user_id, gold_amount, member, player, opponent, message)
         else:
-            await context.send("There was an error fetching user data.")
+            await interaction.response.send_message("There was an error fetching user data.")
 
-    async def start_duel(self, context: Context, 
+    async def start_duel(self, interaction: Interaction, 
                          challenger_id: str, challenged_id: str, 
                          gold_amount: int, member: discord.Member,
-                         player: str, opponent: str) -> None:
+                         player: str, opponent: str, message) -> None:
         self.bot.state_manager.set_active(challenged_id, "duel")
         # Initial HP for both players
         challenger_hp = 100
@@ -1202,7 +1205,7 @@ class Combat(commands.Cog, name="combat"):
         embed.add_field(name=f"{player}'s HP ❤️", value=challenger_hp, inline=True)
         embed.add_field(name=f"{opponent}'s HP ❤️", value=challenged_hp, inline=True)
         embed.add_field(name=f"Waiting for input", value="Pick an action!", inline=False)
-        message = await context.send(embed=embed)
+        message.edit(embed=embed)
         await asyncio.sleep(1)
         embed.set_field_at(0, name=f"{name} has won the coin toss!", value="Beginning in 2...", inline=False)
         await message.edit(embed=embed)
@@ -1218,14 +1221,13 @@ class Combat(commands.Cog, name="combat"):
             name = player
         else:
             name = opponent
-        while challenger_hp > 0 and challenged_hp > 0:
 
+        await message.add_reaction("⚔️")  # Attack
+        await message.add_reaction("💖")  # Heal
+
+        while challenger_hp > 0 and challenged_hp > 0:
             embed.set_field_at(0, name=f"It's **{name}**'s turn!", value="Do you choose to HIT ⚔️ or HEAL 💖? ", inline=False)
             await message.edit(embed=embed)
-
-            await message.clear_reactions()
-            await message.add_reaction("⚔️")  # Attack
-            await message.add_reaction("💖")  # Heal
 
             def action_check(reaction, user):
                 return (
@@ -1264,7 +1266,7 @@ class Combat(commands.Cog, name="combat"):
                         challenged_hp = min(challenged_hp + heal_amount, 100)
                         response_message = f"{name} healed for **{heal_amount}**."
                         embed.set_field_at(2, name=f"{opponent}'s HP ❤️", value=challenged_hp, inline=True)
-
+                await message.remove_reaction(reaction.emoji, user)
                 embed.set_field_at(3, name=f"Result", value=response_message, inline=False)
                 await asyncio.sleep(1)
 
@@ -1278,24 +1280,25 @@ class Combat(commands.Cog, name="combat"):
                     name = opponent
 
             except asyncio.TimeoutError:
-                await context.send(f"{name} took too long to decide. The duel has ended and they forfeit their gold.")
+                timeout = (f"{name} took too long to decide. The duel has ended and they forfeit their gold.")
+                embed.add_field(name=f"Timed out!", value=timeout, inline=False)
                 if (current_player == challenger_id):
-                    await self.bot.database.add_gold(challenged_id, gold_amount * 2)
+                    await self.bot.database.add_gold(challenged_id, gold_amount)
                     await self.bot.database.add_gold(challenger_id, -gold_amount)
                     print(f'Awarded {challenged_id} with gold')
                 else: 
-                    await self.bot.database.add_gold(challenger_id, gold_amount * 2)
+                    await self.bot.database.add_gold(challenger_id, gold_amount)
                     await self.bot.database.add_gold(challenged_id, -gold_amount)
                     print(f'Awarded {challenger_id} with gold')
                 self.bot.state_manager.clear_active(challenger_id)
                 self.bot.state_manager.clear_active(challenged_id)
-                await message.delete()
+                await message.edit(embed=embed)
                 return
 
         # Duel outcome
         winner, loser = (challenger_id, challenged_id) if challenged_hp <= 0 else (challenged_id, challenger_id)
         print(f'winner: {winner}, loser: {loser}')
-        await self.bot.database.add_gold(winner, gold_amount * 2)
+        await self.bot.database.add_gold(winner, gold_amount)
         await self.bot.database.add_gold(loser, -gold_amount)
         if (winner == challenger_id):
             name = player
@@ -1303,11 +1306,13 @@ class Combat(commands.Cog, name="combat"):
         else:
             name = opponent
             loser_name = player
-        await message.delete()
         self.bot.state_manager.clear_active(challenger_id)
         self.bot.state_manager.clear_active(challenged_id)
-        await context.send(f"{name} slays {loser_name} with a 💥 {damage}!\nThey receive **{gold_amount * 2} gold**!")
-        
+        victory = (f"{name} slays {loser_name} with a 💥 {damage}!\nThey receive **{gold_amount * 2} gold**!")
+        embed.add_field(name=f"{name} is victorious!", value=victory, inline=False)
+        await message.edit(embed=embed)
+
+
     def calculate_damage(self, current_hp: int) -> int:
         """Calculate damage based on HP, using a modified version of the Dharok's effect."""
         

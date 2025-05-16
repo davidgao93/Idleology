@@ -9,6 +9,8 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
 from database import DatabaseManager
+from discord import app_commands, Interaction
+from discord.app_commands import CommandTree
 
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
     sys.exit("'config.json' not found! Please add it and try again.")
@@ -110,6 +112,28 @@ file_handler.setFormatter(file_handler_formatter)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
+class CustomCommandTree(CommandTree):
+    async def on_error(self, interaction: Interaction, error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.CommandOnCooldown):
+            # Log and handle silently without propagating
+            logger.info(f"Cooldown triggered for user {interaction.user.id} on command {interaction.command.name}, retry after {int(error.retry_after)} seconds")
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send(
+                        f"You are on cooldown. Try again in {int(error.retry_after)} seconds.",
+                        ephemeral=True
+                    )
+                else:
+                    await interaction.response.send_message(
+                        f"You are on cooldown. Try again in {int(error.retry_after)} seconds.",
+                        ephemeral=True
+                    )
+            except Exception as e:
+                logger.error(f"Failed to send cooldown message: {type(e).__name__}: {e}")
+        else:
+            # Log other errors and let the bot's on_app_command_error handle them
+            logger.error(f"Unhandled error in app command {interaction.command.name}: {type(error).__name__}: {error}")
+            await super().on_error(interaction, error)
 
 class DiscordBot(commands.Bot):
     def __init__(self) -> None:
@@ -117,6 +141,7 @@ class DiscordBot(commands.Bot):
             command_prefix=commands.when_mentioned_or(config["prefix"]),
             intents=intents,
             help_command=None,
+            tree_cls=CustomCommandTree
         )
         """
         This creates custom bot variables so that we can access these variables in cogs more easily.
@@ -192,6 +217,7 @@ class DiscordBot(commands.Bot):
                 f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
             )
         )
+
 
     async def on_message(self, message: discord.Message) -> None:
         """
@@ -276,6 +302,48 @@ class DiscordBot(commands.Bot):
             await context.send(embed=embed)
         else:
             raise error
+
+    async def on_app_command_error(self, interaction: Interaction, error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.CommandOnCooldown):
+            retry_after = int(error.retry_after)
+            # Check if the interaction is already responded to
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    f"You are on cooldown. Try again in {retry_after} seconds.",
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    f"You are on cooldown. Try again in {retry_after} seconds.",
+                    ephemeral=True
+                )
+        else:
+            # Log other errors for debugging but don't raise them to prevent duplicate logging
+            self.logger.error(f"Error in app command: {type(error).__name__}: {error}")
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    "An unexpected error occurred. Please try again later.",
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    "An unexpected error occurred. Please try again later.",
+                    ephemeral=True
+                )
+
+    async def check_user_registered(self, interaction: Interaction, existing_user) -> bool:
+        """
+        Check if a user is registered in the database. If not, send a registration prompt.
+        :param interaction: The Discord interaction object.
+        :return: True if the user is registered, False otherwise.
+        """
+        if not existing_user:
+            await interaction.response.send_message(
+                "Please /register with the 🏦 Adventurer's Guild first.",
+                ephemeral=True
+            )
+            return False
+        return True
 
 
 class StateManager:

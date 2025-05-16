@@ -158,7 +158,7 @@ class Owner(commands.Cog, name="owner"):
         embed = discord.Embed(
             description=f"Successfully reloaded the `{cog}` cog.", color=0xBEBEFE
         )
-        await context.send(embed=embed)
+        await context.send(embed=embed, ephemeral=True)
 
 
     @commands.hybrid_command(

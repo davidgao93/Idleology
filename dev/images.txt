@@ -1,13 +1,28 @@
-100_Accessory,https://i.imgur.com/GiXSgbb.jpeg
-100_Weapon,https://i.imgur.com/VOIowA7.jpeg
-Bit_Of_Gold,https://i.imgur.com/srNXzKt.jpeg
-Fish,https://i.imgur.com/31jHTiQ.jpeg
-Ilvl_Accessory,https://i.imgur.com/KRZUDyO.jpeg
-Ilvl_Weapon,https://i.imgur.com/mEIV0ab.jpeg
-Ore,https://i.imgur.com/WV9OLsV.jpeg
-Pile_Of_Gold,https://i.imgur.com/A1DttNd.jpeg
-Pouch_Of_Gold,https://i.imgur.com/y7Bv5pd.jpeg
-Rune_Of_Potential,https://i.imgur.com/1tcMeSe.jpeg
-Rune_Of_Refinement,https://i.imgur.com/aeorjQG.jpeg
-Sack_Of_Gold,https://i.imgur.com/pDUWzza.jpeg
-Wood,https://i.imgur.com/or6a9YN.jpeg
+Leviathan: https://i.imgur.com/nVeDr5k.jpeg
+Lilith: https://i.imgur.com/iv3JtOL.jpeg
+Mogwai: https://i.imgur.com/0Dz0bIh.jpeg
+Nymph: https://i.imgur.com/SGmHRr9.jpeg
+Oracle: https://i.imgur.com/6BlMZOR.jpeg
+Quetzalcoatl: https://i.imgur.com/fyEtx7h.jpeg
+Raging Spirit: https://i.imgur.com/5FFRo2o.jpeg
+Revenant: https://i.imgur.com/H8NZIaK.jpeg
+River Fairy: https://i.imgur.com/js8ZhvN.jpeg
+Roper: https://i.imgur.com/8qziTDr.jpeg
+Sabretooth Tiger: https://i.imgur.com/reySeyW.jpeg
+Selkie: https://i.imgur.com/EFMQ6la.jpeg
+Shifter: https://i.imgur.com/8vZF7ZM.jpeg
+Shoggoth: https://i.imgur.com/W6xmAq2.jpeg
+Siren: https://i.imgur.com/n7H4YmV.jpeg
+Slime: https://i.imgur.com/VYwjwps.jpeg
+Sphinx: https://i.imgur.com/ZKCoPYj.jpeg
+Spriggan: https://i.imgur.com/qIpELXJ.jpeg
+Sprite: https://i.imgur.com/0QfZUv6.jpeg
+Succubus: https://i.imgur.com/QDVjjYT.jpeg
+Templar: https://i.imgur.com/P0lJrdZ.jpeg
+Tiny Lizard: https://i.imgur.com/AsJoHSF.jpeg
+Vampire Lady: https://i.imgur.com/AM23eWW.jpeg
+Wendango: https://i.imgur.com/50akWqO.jpeg
+Wendigo: https://i.imgur.com/WMEHowB.jpeg
+Wild Hunt: https://i.imgur.com/C60ORgG.jpeg
+Yggdrasil: https://i.imgur.com/nuE1h9r.jpeg
+Yuan Ti: https://i.imgur.com/B9BMiE2.jpeg

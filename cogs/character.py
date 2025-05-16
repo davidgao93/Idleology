@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands, tasks
-from discord.ext.commands import Context
+from discord import app_commands, Interaction, Message
 import asyncio
 import random
 import json
@@ -23,8 +23,8 @@ Index	Attribute Description
 14	Last Propagate Time
 15	Ascension Level
 16	Potion Count
-17	Created at
-18  Last Checkin Time
+17	Last Checkin Time
+18  Created at
 19  Refinement runes
 20  Passive Points
 21  Potential runes
@@ -63,11 +63,11 @@ class Character(commands.Cog, name="character"):
                 
                 await self.bot.database.update_player_hp(user_id, new_hp)
 
-    @commands.hybrid_command(name="stats", description="Get your character's stats.")
-    async def get_stats(self, context: Context) -> None:
+    @app_commands.command(name="stats", description="Get your character's stats.")
+    async def get_stats(self, interaction: Interaction) -> None:
         """Fetch and display the character's stats."""
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if existing_user:
@@ -75,6 +75,7 @@ class Character(commands.Cog, name="character"):
                 title=f"{existing_user[3]}'s Stats",
                 color=0x00FF00,
             )
+            embed.set_thumbnail(url=existing_user[7])
             equipped_item = await self.bot.database.get_equipped_item(user_id)
             equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
 
@@ -131,23 +132,23 @@ class Character(commands.Cog, name="character"):
             if (ascension > 0):
                 embed.add_field(name="Ascension 🌟", value=ascension, inline=True)
 
-            message = await context.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
+            message: Message = await interaction.original_response()
             await asyncio.sleep(10)
             await message.delete()
         else:
-            await context.send("You are not registered with the 🏦 Adventurer's guild. Please /register first.")
+            if not await self.bot.check_user_registered(interaction, existing_user):
+                return
 
 
-
-    @commands.hybrid_command(name="inventory", description="Check your inventory status.")
-    async def inventory(self, context: Context) -> None:
+    @app_commands.command(name="inventory", description="Check your inventory status.")
+    async def inventory(self, interaction: Interaction) -> None:
         """Fetch and display the user's inventory status."""
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
         # Fetching inventory data
@@ -170,7 +171,8 @@ class Character(commands.Cog, name="character"):
         embed.add_field(name="Runes of Refinement 🔨", value=f"{runes_of_refinement:,}", inline=True)
         embed.add_field(name="Gold 💰", value=f"{gold_count:,}", inline=True)
 
-        message = await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
         await asyncio.sleep(10)
         await message.delete()
 
@@ -179,29 +181,25 @@ class Character(commands.Cog, name="character"):
     WEAPON HANDLING
 
     '''
-    @commands.hybrid_command(name="weapons", description="View your character's weapons and modify them.")
-    async def weapons(self, context: Context) -> None:
-        await context.defer()
+    @app_commands.command(name="weapons", description="View your character's weapons and modify them.")
+    async def weapons(self, interaction: Interaction) -> None:
         """Fetch and display the character's weapons."""
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         # Check if the user has any active operations
         if self.bot.state_manager.is_active(user_id):
-            await context.send("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
             return
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        
-        if not existing_user: 
-            await context.send("You are not registered with the 🏦 Adventurer's guild."
-                               " Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
         items = await self.bot.database.fetch_user_items(user_id)
         
         if not items:
-            await context.send("You peer into your weapon's pouch, it is empty.")
+            await interaction.response.send_message("You peer into your weapon's pouch, it is empty.")
             return
         player_name = existing_user[3]
         embed = discord.Embed(
@@ -209,20 +207,21 @@ class Character(commands.Cog, name="character"):
             description=f"{player_name}'s Weapons:",
             color=0x00FF00,
         )
-        embed.set_image(url="https://i.imgur.com/AnlbnbO.jpeg")
-        inventory_message = await context.send(embed=embed)
+        embed.set_thumbnail(url="https://i.imgur.com/AnlbnbO.jpeg")
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
         self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
         while True:
             items = await self.bot.database.fetch_user_items(user_id)
             embed.description = f"{player_name}'s Weapons:"
             if not items:
-                await context.send("You peer into your weapon's pouch, it is empty.")
+                await interaction.response.send_message("You peer into your weapon's pouch, it is empty.")
                 break
 
             items.sort(key=lambda item: item[2], reverse=True)  # item_level at index 2
             items_to_display = items[:5]
             equipped_item = await self.bot.database.get_equipped_item(user_id)
-            await inventory_message.clear_reactions()
+            await message.clear_reactions()
             embed.clear_fields()
             number_emojis = ["❌", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
             items_display_string = ""
@@ -252,21 +251,21 @@ class Character(commands.Cog, name="character"):
                        f"[❌] Close interface."),
                 inline=False
             )
-            await inventory_message.edit(embed=embed)
+            await message.edit(embed=embed)
             
             for i in range(len(items_to_display) + 1):  # Only add reactions for existing items
-                await inventory_message.add_reaction(number_emojis[i])
+                await message.add_reaction(number_emojis[i])
 
             def check(reaction, user):
-                return (user == context.author
-                        and reaction.message.id == inventory_message.id)
+                return (user == interaction.user
+                        and reaction.message.id == message.id)
 
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
                 selected_index = number_emojis.index(str(reaction.emoji))  # Get the index of the selected item
                 print(f'{selected_index} was selected')
                 if selected_index == 0: # exit
-                    await inventory_message.delete()
+                    await message.delete()
                     self.bot.state_manager.clear_active(user_id)
                     break
                 selected_index -= 1 # get to true index of item
@@ -297,57 +296,53 @@ class Character(commands.Cog, name="character"):
                 )
 
                 embed.add_field(name="Item Guide", value=item_guide, inline=False)
-                await inventory_message.edit(embed=embed)
-                await inventory_message.clear_reactions()
+                await message.edit(embed=embed)
+                await message.clear_reactions()
                 action_reactions = ["⚔️", "🔨", "⚙️", "🗑️", "◀️"]
 
                 for emoji in action_reactions:
-                    await inventory_message.add_reaction(emoji)
+                    await message.add_reaction(emoji)
 
                 try:
                     action_reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
                     if str(action_reaction.emoji) == "⚔️":
-                        await self.equip(context, selected_item, item_name, inventory_message, embed)
+                        await self.equip(interaction, selected_item, item_name, message, embed)
                         continue
                     elif str(action_reaction.emoji) == "🔨":
-                        await self.forge_item(context, selected_item, user_id, server_id, embed, inventory_message)
+                        await self.forge_item(interaction, selected_item, user_id, server_id, embed, message)
                         continue
                     elif str(action_reaction.emoji) == "⚙️":
-                        await self.refine_item(context, selected_item, user_id, server_id, embed, inventory_message)
+                        await self.refine_item(interaction, selected_item, user_id, server_id, embed, message)
                         continue
                     elif str(action_reaction.emoji) == "🗑️":
-                        await self.discard(context, selected_item, item_name, inventory_message, embed)
+                        await self.discard(interaction, selected_item, item_name, message, embed)
                         continue
                     elif str(action_reaction.emoji) == "◀️":
                         print('Go back')
                         continue
 
                 except asyncio.TimeoutError:
-                    await inventory_message.delete()
-                    self.bot.state_manager.clear_active(context.author.id)  
+                    await message.delete()
+                    self.bot.state_manager.clear_active(interaction.user.id)  
                     break
             except asyncio.TimeoutError:
-                await inventory_message.delete()
-                self.bot.state_manager.clear_active(context.author.id)  
+                await message.delete()
+                self.bot.state_manager.clear_active(interaction.user.id)  
                 break
         self.bot.state_manager.clear_active(user_id)
 
-    async def equip(self, context: Context, selected_item: tuple, new_equip: str, message, embed) -> None:
+    async def equip(self, interaction: Interaction, selected_item: tuple, new_equip: str, message, embed) -> None:
         """Equip an item."""
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        print(message)
-        if not existing_user: 
-            await context.send("You are not registered with the 🏦 Adventurer's guild."
-                               " Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             self.bot.state_manager.clear_active(user_id)
             return
                 
         equipped_item = await self.bot.database.get_equipped_item(user_id)
 
         if equipped_item:
-            print(message)
             current_equipped_id = equipped_item[0] 
             if selected_item[0] == current_equipped_id:
                 embed.add_field(name="But why", value=(f"You already have **{new_equip}** equipped! "
@@ -357,56 +352,53 @@ class Character(commands.Cog, name="character"):
                 return
 
             item_name = equipped_item[2]  # Assuming item_name is at index 2
-            confirmation_embed = discord.Embed(
+            embed = discord.Embed(
                 title="Switch weapon",
                 description=f"Unequip **{item_name}** and equip **{new_equip}** instead?",
                 color=0xFFCC00
             )
-            print(message)
-            print(f'Attempting to edit {message}')
-            await message.edit(embed=confirmation_embed)
+            await message.edit(embed=embed)
             await message.clear_reactions()
             await message.add_reaction("✅")
             await message.add_reaction("❌")
 
             def confirm_check(reaction, user):
-                return (user == context.author and 
+                return (user == interaction.user and 
                         reaction.message.id == message.id 
                         and str(reaction.emoji) in ["✅", "❌"])
 
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
                 if str(reaction.emoji) == "❌":
-                    await context.send("You put the equipment away.")
                     return
 
             except asyncio.TimeoutError:
-                await context.send("Your arms grow tired, you put your equipment away.")
-                self.bot.state_manager.clear_active(context.author.id)  
+                await message.delete()
+                self.bot.state_manager.clear_active(interaction.user.id)  
                 return
 
         item_id = selected_item[0]
         await self.bot.database.equip_item(user_id, item_id)
-        confirmation_embed.add_field(name="Equip", value=f"Equipped **{new_equip}**\nReturning to main menu...", inline=False)
-        await message.edit(embed=confirmation_embed)
+        embed.add_field(name="Equip", value=f"Equipped **{new_equip}**\nReturning to main menu...", inline=False)
+        await message.edit(embed=embed)
         await asyncio.sleep(3)
 
-    async def discard(self, context: Context, selected_item: tuple, item_name: str, message, embed) -> None:
+    async def discard(self, interaction: Interaction, selected_item: tuple, item_name: str, message, embed) -> None:
         """Discard an item."""
         item_id = selected_item[0]
 
-        confirmation_embed = discord.Embed(
+        embed = discord.Embed(
             title="Confirm Discard",
             description=f"Are you sure you want to discard **{item_name}**? This action cannot be undone.",
             color=0xFF0000,
         )
-        await message.edit(embed=confirmation_embed)
+        await message.edit(embed=embed)
         await message.clear_reactions()
         await message.add_reaction("✅")  # Confirm discard
         await message.add_reaction("❌")  # Cancel discard
 
         def confirm_check(reaction, user):
-            return (user == context.author and 
+            return (user == interaction.user and 
                     reaction.message.id == message.id and 
                     str(reaction.emoji) in ["✅", "❌"])
 
@@ -414,25 +406,25 @@ class Character(commands.Cog, name="character"):
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
 
             if str(reaction.emoji) == "❌":
-                confirmation_embed.add_field(name="Cancel", value=f"Returning to main menu...", inline=False)
-                await message.edit(embed=confirmation_embed)
+                embed.add_field(name="Cancel", value=f"Returning to main menu...", inline=False)
+                await message.edit(embed=embed)
                 await asyncio.sleep(3)
                 return
 
         except asyncio.TimeoutError:
-            await context.send("You took too long to decide.")
-            self.bot.state_manager.clear_active(context.author.id)  
+            await message.delete()
+            self.bot.state_manager.clear_active(interaction.user.id)  
             return
 
         await self.bot.database.discard_item(item_id)
-        confirmation_embed.add_field(name="Discard", 
+        embed.add_field(name="Discard", 
                                      value=f"Discarded **{item_name}**. Returning to main menu...", 
                                      inline=False)
-        await message.edit(embed=confirmation_embed)
+        await message.edit(embed=embed)
         await asyncio.sleep(3)
 
 
-    async def forge_item(self, context: Context, selected_item: tuple, user_id: str, server_id: str, embed, message) -> None:
+    async def forge_item(self, interaction: Interaction, selected_item: tuple, user_id: str, server_id: str, embed, message) -> None:
         item_id = selected_item[0] # unique id of item
         item_name = selected_item[1]
 
@@ -440,7 +432,7 @@ class Character(commands.Cog, name="character"):
         item_details = await self.bot.database.fetch_item_by_id(item_id)
         
         if not item_details:
-            await context.send("Item not found.")
+            await interaction.response.send_message("Item not found.")
             return
 
         # Get the current state of the item
@@ -504,9 +496,10 @@ class Character(commands.Cog, name="character"):
             await asyncio.sleep(3)
             return
         
-
-        # Create a confirmation embed to show the costs
-        confirm_embed = discord.Embed(
+        base_success_rate = 0.8
+        success_rate = base_success_rate - (5 - forges_remaining) * 0.05
+        success_rate = max(0, min(success_rate, 1))
+        embed = discord.Embed(
             title="Forge",
             description=(f"You are about to forge **{item_name}**.\n"
                         f"Forging costs:\n"
@@ -514,30 +507,31 @@ class Character(commands.Cog, name="character"):
                         f"- **{logs.capitalize()}** Logs: **{wood_cost}**\n"
                         f"- **{bones.capitalize()}** Bones: **{bone_cost}**\n"
                         f"- GP cost: **{gp_cost}**\n"
+                        f"- Success rate: **{success_rate * 100}%**\n"
                         "Do you want to continue?"),
             color=0xFFFF00
         )
-        await message.edit(embed=confirm_embed)
+        await message.edit(embed=embed)
         await message.clear_reactions()
         await message.add_reaction("✅")
         await message.add_reaction("❌")
 
         def confirm_check(reaction, user):
-            return (user == context.author and 
+            return (user == interaction.user and 
                     reaction.message.id == message.id 
                     and str(reaction.emoji) in ["✅", "❌"])
         try:
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
 
             if str(reaction.emoji) == "❌":
-                confirm_embed.add_field(name="Cancel", value=f"Returning to main menu...", inline=False)
-                await message.edit(embed=confirm_embed)
+                embed.add_field(name="Cancel", value=f"Returning to main menu...", inline=False)
+                await message.edit(embed=embed)
                 await asyncio.sleep(3)
                 return
 
         except asyncio.TimeoutError:
-            await context.send("You took too long to decide.")
-            self.bot.state_manager.clear_active(context.author.id)  
+            await message.delete()
+            self.bot.state_manager.clear_active(interaction.user.id)  
             return
         # Deduct the costs from the user's resources
         print('subtracting ore')
@@ -569,9 +563,6 @@ class Character(commands.Cog, name="character"):
         await self.bot.database.add_gold(user_id, -gp_cost)
 
         new_forges_remaining = forges_remaining - 1
-        base_success_rate = 0.8
-        success_rate = base_success_rate - (5 - forges_remaining) * 0.05
-        success_rate = max(0, min(success_rate, 1))
         forge_success = random.random() <= success_rate  
 
         if forge_success:
@@ -728,7 +719,7 @@ class Character(commands.Cog, name="character"):
         }
         return passive_messages.get(passive, "No effect.")
     
-    async def refine_item(self, context: Context, 
+    async def refine_item(self, interaction: Interaction, 
                           selected_item: tuple, 
                           user_id: str, server_id: str,
                           embed,
@@ -740,7 +731,7 @@ class Character(commands.Cog, name="character"):
         item_details = await self.bot.database.fetch_item_by_id(item_id)
         
         if not item_details:
-            await context.send("Item not found.")
+            await interaction.response.send_message("Item not found.")
             return
 
         # Get the current state of the item
@@ -750,8 +741,7 @@ class Character(commands.Cog, name="character"):
 
         if refines_remaining <= 0:
             if refinement_runes > 0:
-                # Create confirmation embed for applying a Rune of Refinement
-                confirm_embed = discord.Embed(
+                embed = discord.Embed(
                     title="Apply Rune of Refinement?",
                     description=(f"**{item_name}** has no refine attempts remaining.\n"
                                 f"Do you want to use a **Rune of Refinement** to add a refining attempt?\n"
@@ -759,13 +749,13 @@ class Character(commands.Cog, name="character"):
                     color=0xFFCC00
                 )
                 await message.clear_reactions()
-                await message.edit(embed=confirm_embed)
+                await message.edit(embed=embed)
 
                 await message.add_reaction("✅")  # Confirm
                 await message.add_reaction("❌")  # Cancel
 
                 def confirm_check(reaction, user):
-                    return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+                    return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
 
                 try:
                     reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
@@ -774,63 +764,64 @@ class Character(commands.Cog, name="character"):
                         # Applying the rune
                         await self.bot.database.update_refinement_runes(user_id, -1)  # Deduct a rune
                         await self.bot.database.update_item_refine_count(item_id, 1)  # Set refines_remaining to 1
-                        confirm_embed.add_field(name="Rune of Refinement",
+                        embed.add_field(name="Rune of Refinement",
                                                  value=(f"You have successfully applied a **Rune of Refinement**!\n"
                                                         f"{item_name} now has **1** refine remaining. Returning to main menu..."),
                                                    inline=False)
                         refines_remaining = 1  # Update local variable to reflect the change
-                        await message.edit(embed=confirm_embed)
+                        await message.edit(embed=embed)
                         await asyncio.sleep(5)
                     elif str(reaction.emoji) == "❌":
-                        confirm_embed.add_field(name="Rune of Refinement",
+                        embed.add_field(name="Rune of Refinement",
                             value=(f"You chose not to apply a Rune of Refinement.\nReturning to main menu..."),
                             inline=False)
-                        await message.edit(embed=confirm_embed)
+                        await message.edit(embed=embed)
                         await asyncio.sleep(5)
                         return  # Exit the method to return to the inventory interface
 
                 except asyncio.TimeoutError:
-                    self.bot.state_manager.clear_active(context.author.id)  
+                    self.bot.state_manager.clear_active(interaction.user.id)  
                     return
             return
 
         # Determine cost of the refinement
         refine_costs = [10000, 30000, 50000, 100000, 200000]
         cost = refine_costs[5 - refines_remaining]  # Costs increase when refines_remaining decreases
-        # Create a confirmation embed showing the cost
-        cost_embed = discord.Embed(
+        embed = discord.Embed(
             title="Confirm Refinement",
             description=f"You are about to refine **{item_name}**.\n"
                         f"Cost: **{cost:,} GP**\n"
                         f"Refines Remaining: **{refines_remaining}**\n"
+                        f"Stats are granted randomly **with a chance to grant no stats.**\n"
                         "Do you want to proceed?",
             color=0xFFCC00
         )
-        await message.edit(embed=cost_embed)
+        embed.set_thumbnail(url="https://i.imgur.com/AnlbnbO.jpeg")
+        await message.edit(embed=embed)
         await message.clear_reactions()
         await message.add_reaction("✅")  # Confirm
         await message.add_reaction("❌")  # Cancel
 
         def confirm_check(reaction, user):
-            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+            return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
 
         try:
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
 
             if str(reaction.emoji) == "❌":
-                cost_embed.add_field(name="Refining", value=f"Refinement cancelled. Returning to main menu...", inline=False)
-                await message.edit(embed=cost_embed)
+                embed.add_field(name="Refining", value=f"Refinement cancelled. Returning to main menu...", inline=False)
+                await message.edit(embed=embed)
                 await asyncio.sleep(5)
                 return
 
         except asyncio.TimeoutError:
-            await context.send("You took too long to respond. Refinement cancelled.")
-            self.bot.state_manager.clear_active(context.author.id)  
+            await message.delete()
+            self.bot.state_manager.clear_active(interaction.user.id)  
             return
         
         if player_gold < cost:
-            cost_embed.add_field(name="Refining", value=f"You do not have enough gold. Returning to main menu...", inline=False)
-            await message.edit(embed=cost_embed)
+            embed.add_field(name="Refining", value=f"You do not have enough gold. Returning to main menu...", inline=False)
+            await message.edit(embed=embed)
             await asyncio.sleep(5)
             return
 
@@ -838,8 +829,8 @@ class Character(commands.Cog, name="character"):
         await self.bot.database.update_user_gold(user_id, player_gold - cost)
 
         # Printing the refinement process
-        cost_embed.add_field(name="Refining", value=f"You chose to refine {item_name}.", inline=False)
-        await message.edit(embed=cost_embed)
+        embed.add_field(name="Refining", value=f"You chose to refine {item_name}.", inline=False)
+        await message.edit(embed=embed)
         
         # Perform roll checks for attack, defense, rarity
         attack_roll = random.randint(0, 100) < 80  # 80% chance for attack
@@ -881,12 +872,12 @@ class Character(commands.Cog, name="character"):
             result_message.append(f"Rarity increased by **{rarity_modifier}**!")
 
         if not result_message:
-            cost_embed.add_field(name="Refining", value=f"The refinement was successful, but no stats were upgraded.", inline=False)
-            await message.edit(embed=cost_embed)
+            embed.add_field(name="Refining", value=f"The refinement was successful, but no stats were upgraded.", inline=False)
+            await message.edit(embed=embed)
             await asyncio.sleep(5)
         else:
-            cost_embed.add_field(name="Refining", value=("\n".join(result_message)), inline=False)
-            await message.edit(embed=cost_embed)
+            embed.add_field(name="Refining", value=("\n".join(result_message)), inline=False)
+            await message.edit(embed=embed)
             await asyncio.sleep(5)
 
     ''' 
@@ -895,27 +886,25 @@ class Character(commands.Cog, name="character"):
 
     '''            
 
-    @commands.hybrid_command(name="accessory", aliases=["acc"], description="View your character's accessories and modify them.")
-    async def accessory(self, context: Context) -> None:
+    @app_commands.command(name="accessory", description="View your character's accessories and modify them.")
+    async def accessory(self, interaction: Interaction) -> None:
         """Fetch and display the character's accessories."""
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
         
         # Check if the user has any active operations
         if self.bot.state_manager.is_active(user_id):
-            await context.send("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
             return
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-
-        if not existing_user: 
-            await context.send("You are not registered with the 🏦 Adventurer's guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
         accessories = await self.bot.database.fetch_user_accessories(user_id)
 
         if not accessories:
-            await context.send("You check your accessory pouch, it is empty.")
+            await interaction.response.send_message("You check your accessory pouch, it is empty.")
             return
 
         player_name = existing_user[3]
@@ -924,8 +913,9 @@ class Character(commands.Cog, name="character"):
             description=f"{player_name}'s Accessories:",
             color=0x00FF00,
         )
-        embed.set_image(url="https://i.imgur.com/yzQDtNg.jpeg")
-        inventory_message = await context.send(embed=embed)
+        embed.set_thumbnail(url="https://i.imgur.com/yzQDtNg.jpeg")
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
         self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
 
         while True:
@@ -933,12 +923,12 @@ class Character(commands.Cog, name="character"):
             embed.description = f"{player_name}'s Accessories:"
             
             if not accessories:
-                await context.send("You check your accessory pouch, it is empty.")
+                await interaction.response.send_message("You check your accessory pouch, it is empty.")
                 break
 
             accessories.sort(key=lambda acc: acc[3], reverse=True)  # Sort by item_level at index 3
             accessories_to_display = accessories[:5]  # Display the top 5 accessories
-            await inventory_message.clear_reactions()
+            await message.clear_reactions()
             embed.clear_fields()
             number_emojis = ["❌", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
             accessories_display_string = ""
@@ -969,20 +959,20 @@ class Character(commands.Cog, name="character"):
                     f"[❌] Close interface."),
                 inline=False
             )
-            await inventory_message.edit(embed=embed)
+            await message.edit(embed=embed)
 
             for i in range(len(accessories_to_display) + 1):  # Add reactions for existing items
-                await inventory_message.add_reaction(number_emojis[i])
+                await message.add_reaction(number_emojis[i])
 
             def check(reaction, user):
-                return (user == context.author and reaction.message.id == inventory_message.id)
+                return (user == interaction.user and reaction.message.id == message.id)
 
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
                 selected_index = number_emojis.index(str(reaction.emoji))  # Get the index of the selected accessory
                 print(f'{selected_index} was selected')
                 if selected_index == 0:  # exit
-                    await inventory_message.delete()
+                    await message.delete()
                     self.bot.state_manager.clear_active(user_id)
                     break
                 selected_index -= 1  # Adjust to true index of accessory
@@ -1030,36 +1020,36 @@ class Character(commands.Cog, name="character"):
                 )
 
                 embed.add_field(name="Accessory Guide", value=potential_guide, inline=False)
-                await inventory_message.edit(embed=embed)
-                await inventory_message.clear_reactions()
+                await message.edit(embed=embed)
+                await message.clear_reactions()
 
                 action_reactions = ["💎", "🪄", "🗑️", "◀️"]
                 for emoji in action_reactions:
-                    await inventory_message.add_reaction(emoji)
+                    await message.add_reaction(emoji)
 
                 try:
                     action_reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
                     if str(action_reaction.emoji) == "💎":
-                        await self.equip_accessory(context, selected_accessory, accessory_name, inventory_message, embed)
+                        await self.equip_accessory(interaction, selected_accessory, accessory_name, message, embed)
                         continue
                     elif str(action_reaction.emoji) == "🪄":
-                        await self.improve_potential(context, selected_accessory, inventory_message, embed)
+                        await self.improve_potential(interaction, selected_accessory, message, embed)
                         continue
                     elif str(action_reaction.emoji) == "🗑️":
-                        await self.discard_accessory(context, selected_accessory, accessory_name, inventory_message, embed)
+                        await self.discard_accessory(interaction, selected_accessory, accessory_name, message, embed)
                         continue
                     elif str(action_reaction.emoji) == "◀️":
                         print('Go back')
                         continue
 
                 except asyncio.TimeoutError:
-                    await inventory_message.delete()
-                    self.bot.state_manager.clear_active(context.author.id)  
+                    await message.delete()
+                    self.bot.state_manager.clear_active(interaction.user.id)  
                     break
                 
             except asyncio.TimeoutError:
-                await inventory_message.delete()
-                self.bot.state_manager.clear_active(context.author.id)  
+                await message.delete()
+                self.bot.state_manager.clear_active(interaction.user.id)  
                 break
             
         self.bot.state_manager.clear_active(user_id)    
@@ -1074,15 +1064,13 @@ class Character(commands.Cog, name="character"):
         }
         return passive_messages.get(passive, "No passive effect.")
 
-    async def equip_accessory(self, context: Context, selected_item: tuple, new_equip: str, message, embed) -> None:
+    async def equip_accessory(self, interaction: Interaction, selected_item: tuple, new_equip: str, message, embed) -> None:
         """Equip an item."""
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         
-        if not existing_user: 
-            await context.send("You are not registered with the 🏦 Adventurer's guild."
-                               " Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             self.bot.state_manager.clear_active(user_id)
             return
                 
@@ -1098,54 +1086,54 @@ class Character(commands.Cog, name="character"):
                 return
 
             item_name = equipped_item[2]  # Assuming item_name is at index 2
-            confirmation_embed = discord.Embed(
+            embed = discord.Embed(
                 title="Switch accessory",
                 description=f"Unequip **{item_name}** and equip **{new_equip}** instead?",
                 color=0xFFCC00
             )
-            await message.edit(embed=confirmation_embed)
+            await message.edit(embed=embed)
             await message.clear_reactions()
             await message.add_reaction("✅")
             await message.add_reaction("❌")
 
             def confirm_check(reaction, user):
-                return (user == context.author and 
+                return (user == interaction.user and 
                         reaction.message.id == message.id 
                         and str(reaction.emoji) in ["✅", "❌"])
 
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
                 if str(reaction.emoji) == "❌":
-                    await context.send("You put the accessory away.")
+                    await interaction.response.send_message("You put the accessory away.")
                     return
 
             except asyncio.TimeoutError:
-                await context.send("Your arms grow tired, you put your accessories away.")
-                self.bot.state_manager.clear_active(context.author.id)  
+                await message.delete()
+                self.bot.state_manager.clear_active(interaction.user.id)  
                 return
 
         item_id = selected_item[0]
         await self.bot.database.equip_accessory(user_id, item_id)
-        confirmation_embed.add_field(name="Equip", value=f"Equipped **{new_equip}**\nReturning to main menu...", inline=False)
-        await message.edit(embed=confirmation_embed)
+        embed.add_field(name="Equip", value=f"Equipped **{new_equip}**\nReturning to main menu...", inline=False)
+        await message.edit(embed=embed)
         await asyncio.sleep(3)
 
-    async def discard_accessory(self, context: Context, selected_accessory: tuple, accessory_name: str, message, embed) -> None:
+    async def discard_accessory(self, interaction: Interaction, selected_accessory: tuple, accessory_name: str, message, embed) -> None:
         """Discard an accessory."""
         accessory_id = selected_accessory[0]  # Assuming item_id is at index 0
 
-        confirmation_embed = discord.Embed(
+        embed = discord.Embed(
             title="Confirm Discard",
             description=f"Are you sure you want to discard **{accessory_name}**? This action cannot be undone.",
             color=0xFF0000,
         )
-        await message.edit(embed=confirmation_embed)
+        await message.edit(embed=embed)
         await message.clear_reactions()
         await message.add_reaction("✅")  # Confirm discard
         await message.add_reaction("❌")  # Cancel discard
 
         def confirm_check(reaction, user):
-            return (user == context.author and 
+            return (user == interaction.user and 
                     reaction.message.id == message.id and 
                     str(reaction.emoji) in ["✅", "❌"])
 
@@ -1153,26 +1141,26 @@ class Character(commands.Cog, name="character"):
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
 
             if str(reaction.emoji) == "❌":
-                confirmation_embed.add_field(name="Cancel", value=f"Returning to main menu...", inline=False)
-                await message.edit(embed=confirmation_embed)
+                embed.add_field(name="Cancel", value=f"Returning to main menu...", inline=False)
+                await message.edit(embed=embed)
                 await asyncio.sleep(3)
                 return
 
         except asyncio.TimeoutError:
-            await context.send("You took too long to decide.")
-            self.bot.state_manager.clear_active(context.author.id)  
+            await message.delete()
+            self.bot.state_manager.clear_active(interaction.user.id)  
             return
 
         # Perform the actual discard operation
         await self.bot.database.discard_accessory(accessory_id)  # Assuming you have a method to discard items
-        confirmation_embed.add_field(name="Discard", 
+        embed.add_field(name="Discard", 
                                     value=f"Discarded **{accessory_name}**. Returning to main menu...", 
                                     inline=False)
-        await message.edit(embed=confirmation_embed)
+        await message.edit(embed=embed)
         await asyncio.sleep(3)
 
 
-    async def improve_potential(self, context: Context, selected_accessory: tuple, message, embed) -> None:
+    async def improve_potential(self, interaction: Interaction, selected_accessory: tuple, message, embed) -> None:
         """Improve the potential of an accessory."""
         print('Improving accessory')
         accessory_id = selected_accessory[0]
@@ -1191,15 +1179,13 @@ class Character(commands.Cog, name="character"):
             return
 
         # Check user's rune of potential count
-        rune_of_potential_count = await self.bot.database.fetch_potential_runes(str(context.author.id))
-        
-        # Prepare the confirmation embed
+        rune_of_potential_count = await self.bot.database.fetch_potential_runes(str(interaction.user.id))
         costs = [500, 1000, 2000, 3000, 4000, 5000, 10000, 20000, 30000, 40000]
         refine_cost = costs[10 - potential_remaining]  # Cost is based on current potential level
         success_rate = max(75 - (10 - potential_remaining) * 5, 35)  # Success rate starts at 75% and decreases
 
         if (current_passive == "none"):
-            confirm_embed = discord.Embed(
+            embed = discord.Embed(
                 title="Unlock Potential Attempt",
                 description=(f"Attempt to unlock *{accessory_name}*'s potential? \n"
                              f"Attempts left: **{potential_remaining}** \n"
@@ -1208,7 +1194,7 @@ class Character(commands.Cog, name="character"):
                 color=0xFFCC00
             )       
         else:
-            confirm_embed = discord.Embed(
+            embed = discord.Embed(
                 title="Enhance Potential Attempt",
                 description=(f"Enhance **{accessory_name}**'s potential? \n"
                              f"Attempts left: **{potential_remaining}** \n"
@@ -1217,51 +1203,51 @@ class Character(commands.Cog, name="character"):
                 color=0xFFCC00
             )
 
-        await message.edit(embed=confirm_embed)
+        await message.edit(embed=embed)
         await message.clear_reactions()
         await message.add_reaction("✅")  # Confirm
         await message.add_reaction("❌")  # Cancel
 
         def confirm_check(reaction, user):
-            return user == context.author and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
+            return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
 
         try:
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
 
             if str(reaction.emoji) == "❌":
-                confirm_embed.add_field(name="Potential", value=f"Cancelling, returning to main menu...", inline=False)
-                await message.edit(embed=confirm_embed)
+                embed.add_field(name="Potential", value=f"Cancelling, returning to main menu...", inline=False)
+                await message.edit(embed=embed)
                 await asyncio.sleep(5)
                 return
 
         except asyncio.TimeoutError:
-            await context.send("You took too long to respond.")
-            self.bot.state_manager.clear_active(context.author.id)
+            await message.delete()
+            self.bot.state_manager.clear_active(interaction.user.id)  
             return
 
         if rune_of_potential_count > 0:
-            confirm_embed.add_field(name="Runes of Potential", 
+            embed.add_field(name="Runes of Potential", 
                                     value=(f"You have **{rune_of_potential_count}** Rune(s) of Potential available.\n"
                                             f"Do you want to use one to boost your success rate to **{success_rate + 25}%**?"),
                                     inline=False)
-            await message.edit(embed=confirm_embed)
+            await message.edit(embed=embed)
             await message.clear_reactions()
             await message.add_reaction("✅")  # Confirm with rune
             await message.add_reaction("❌")  # Confirm without rune
 
             def check_reaction(r, user):
-                return user == context.author and r.message.id == message.id and str(r.emoji) in ["✅", "❌"]
+                return user == interaction.user and r.message.id == message.id and str(r.emoji) in ["✅", "❌"]
 
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check_reaction)
 
                 if str(reaction.emoji) == "✅":
                     success_rate += 25  # Boost success rate by 25%
-                    await self.bot.database.update_potential_runes(str(context.author.id), -1)  # Use a rune
+                    await self.bot.database.update_potential_runes(str(interaction.user.id), -1)  # Use a rune
 
             except asyncio.TimeoutError:
-                await context.send("You took too long to respond.")
-                self.bot.state_manager.clear_active(context.author.id)  
+                await message.delete()
+                self.bot.state_manager.clear_active(interaction.user.id)  
                 return
 
         # Perform the potential enhancement roll
@@ -1285,16 +1271,16 @@ class Character(commands.Cog, name="character"):
             else:
                 success_message = (f"🎉 Success!\n"
                                    f"Upgraded **{current_passive}** from level **{potential_lvl}** to **{new_potential}**.\n")
-            confirm_embed.add_field(name="Enhancement Result", value=success_message, inline=False)
+            embed.add_field(name="Enhancement Result", value=success_message, inline=False)
         else:
             # Failed enhancement
             fail_message = "💔 The enhancement failed. Unlucky."
-            confirm_embed.add_field(name="Enhancement Result", value=fail_message, inline=False)
+            embed.add_field(name="Enhancement Result", value=fail_message, inline=False)
 
         # Update database with new potential level and passive
         potential_remaining -= 1
         await self.bot.database.update_accessory_potential(accessory_id, potential_remaining)
-        await message.edit(embed=confirm_embed)
+        await message.edit(embed=embed)
         await asyncio.sleep(5)
         embed.clear_fields()
 
@@ -1306,13 +1292,13 @@ class Character(commands.Cog, name="character"):
     
     '''
 
-    @commands.hybrid_command(name="leaderboard", description="Show the top adventurers sorted by level.")
-    async def leaderboard(self, context: Context) -> None:
+    @app_commands.command(name="leaderboard", description="Show the top adventurers sorted by level.")
+    async def leaderboard(self, interaction: Interaction) -> None:
         """Fetch and display the top 10 adventurers sorted by level."""
         top_users = await self.bot.database.fetch_top_users_by_level(limit=10)
 
         if not top_users:
-            await context.send("No adventurers found.")
+            await interaction.response.send_message("No adventurers found.")
             return
 
         # Create an embed for the leaderboard
@@ -1340,28 +1326,28 @@ class Character(commands.Cog, name="character"):
         leaderboard_text = "\n".join(leaderboard_lines)
         embed.add_field(name="Top Adventurers:", value=leaderboard_text, inline=False)
 
-        await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
 
 
-    @commands.hybrid_command(name="passives", description="Allocate your passive points.")
-    async def passives(self, context: Context) -> None:
-        user_id = str(context.author.id)
-        server_id = str(context.guild.id)
+    @app_commands.command(name="passives", description="Allocate your passive points.")
+    async def passives(self, interaction: Interaction) -> None:
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
 
         # Fetch the sender's user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await context.send("You are not registered with the 🏦 Adventurer's Guild. Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
         if self.bot.state_manager.is_active(user_id):
-            await context.send("You are currently busy with another operation. Please finish that first.")
+            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
             return
 
         # Fetch user's current passive points
         passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
         if passive_points <= 0:
-            await context.send("You do not have any passive points to allocate.")
+            await interaction.response.send_message("You do not have any passive points to allocate.")
             return
         
         embed = discord.Embed(
@@ -1380,10 +1366,11 @@ class Character(commands.Cog, name="character"):
         # embed.add_field(name="Defense", value="🛡️", inline=True)
         # embed.add_field(name="HP", value="❤️", inline=True)
 
-        message = await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
         self.bot.state_manager.set_active(user_id, "stats")
         def check(reaction, user):
-            return user == context.author and str(reaction.emoji) in ["⚔️", "🛡️", "❤️"] and reaction.message.id == message.id
+            return user == interaction.user and str(reaction.emoji) in ["⚔️", "🛡️", "❤️"] and reaction.message.id == message.id
         
         while passive_points > 0:
             await message.clear_reactions()
@@ -1427,7 +1414,8 @@ class Character(commands.Cog, name="character"):
                 await message.edit(embed=embed)
             
             except asyncio.TimeoutError:
-                self.bot.state_manager.clear_active(context.author.id)
+                await message.delete()
+                self.bot.state_manager.clear_active(interaction.user.id)  
                 break
 
         self.bot.state_manager.clear_active(user_id)
