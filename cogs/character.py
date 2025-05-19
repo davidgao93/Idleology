@@ -50,9 +50,9 @@ class Character(commands.Cog, name="character"):
         users = await self.bot.database.fetch_all_users()
 
         for user in users:
-            user_id = user[1]  # Assuming the user ID is the first element
-            current_hp = user[11]  # current_hp index
-            max_hp = user[12]  # max_hp index
+            user_id = user[1] 
+            current_hp = user[11]
+            max_hp = user[12]
             scaling = int(max_hp / 30)
             if current_hp < max_hp:
                 # Update current_hp by incrementing it by 1
@@ -188,8 +188,7 @@ class Character(commands.Cog, name="character"):
         server_id = str(interaction.guild.id)
 
         # Check if the user has any active operations
-        if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
+        if not await self.bot.check_is_active(interaction, user_id):
             return
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
@@ -427,7 +426,7 @@ class Character(commands.Cog, name="character"):
     async def forge_item(self, interaction: Interaction, selected_item: tuple, user_id: str, server_id: str, embed, message) -> None:
         item_id = selected_item[0] # unique id of item
         item_name = selected_item[1]
-
+        item_level = selected_item[2]
         # Fetch current item details
         item_details = await self.bot.database.fetch_item_by_id(item_id)
         
@@ -439,14 +438,53 @@ class Character(commands.Cog, name="character"):
         forges_remaining = item_details[9]  # Index where `forges_remaining` is stored
         print(f'Forges remaining for item id {item_id}: {forges_remaining}')
         # Define the costs lookup based on the forges remaining
-        costs = {
-            5: (50, 50, 50, 500),   # (ore_cost, wood_cost, bone_cost, gp_cost)
-            4: (50, 50, 50, 2000),
-            3: (50, 50, 50, 5000),
-            2: (50, 50, 50, 10000),
-            1: (50, 50, 50, 20000),
-        }
-        
+        base_success_rate = 0.8
+        if (item_level <= 40):
+            costs = {
+                3: (10, 10, 10, 100),
+                2: (10, 10, 10, 400),
+                1: (10, 10, 10, 1000),
+            }
+            cost_index = 6 - forges_remaining
+            success_rate = base_success_rate - (3 - forges_remaining) * 0.05
+            forges_data = {
+                3: ('iron', 'oak', 'desiccated'),
+                2: ('coal', 'willow', 'regular'),
+                1: ('gold', 'mahogany', 'sturdy'),
+            }
+        elif (40 < item_level <= 80):    
+            costs = {
+                4: (25, 25, 25, 250),
+                3: (25, 25, 25, 1000),
+                2: (25, 25, 25, 2500),
+                1: (25, 25, 25, 5000),
+            }       
+            forges_data = {
+                4: ('iron', 'oak', 'desiccated'),
+                3: ('coal', 'willow', 'regular'),
+                2: ('gold', 'mahogany', 'sturdy'),
+                1: ('platinum', 'magic', 'reinforced'),
+            }
+            cost_index = 7 - forges_remaining
+            success_rate = base_success_rate - (4 - forges_remaining) * 0.05 
+        else:
+            costs = {
+                5: (50, 50, 50, 500),   # (ore_cost, wood_cost, bone_cost, gp_cost)
+                4: (50, 50, 50, 2000),
+                3: (50, 50, 50, 5000),
+                2: (50, 50, 50, 10000),
+                1: (50, 50, 50, 20000),
+            }
+            forges_data = {
+                5: ('iron', 'oak', 'desiccated'),
+                4: ('coal', 'willow', 'regular'),
+                3: ('gold', 'mahogany', 'sturdy'),
+                2: ('platinum', 'magic', 'reinforced'),
+                1: ('idea', 'idea', 'titanium'),
+            }
+            cost_index = 8 - forges_remaining
+            success_rate = base_success_rate - (5 - forges_remaining) * 0.05
+        success_rate = max(0, min(success_rate, 1))
         # Check if there are forges remaining
         if forges_remaining == 0:
             embed.add_field(name="Forging", value=f"This item cannot be forged anymore.", inline=True)
@@ -464,16 +502,9 @@ class Character(commands.Cog, name="character"):
 
         # Get the corresponding costs based on forges remaining
         ore_cost, wood_cost, bone_cost, gp_cost = costs[forges_remaining]
-        cost_index = 8 - forges_remaining
+        
         print(f'forge will cost {ore_cost} ore, {wood_cost} logs, {bone_cost} bones, {gp_cost} gp')
-        # print(mining_data[cost_index])
-        forges_data = {
-            5: ('iron', 'oak', 'desiccated'),
-            4: ('coal', 'willow', 'regular'),
-            3: ('gold', 'mahogany', 'sturdy'),
-            2: ('platinum', 'magic', 'reinforced'),
-            1: ('idea', 'idea', 'titanium'),
-        }
+        print(mining_data[cost_index])
 
         if forges_remaining in forges_data:
             ore, logs, bones = forges_data[forges_remaining]
@@ -496,9 +527,6 @@ class Character(commands.Cog, name="character"):
             await asyncio.sleep(3)
             return
         
-        base_success_rate = 0.8
-        success_rate = base_success_rate - (5 - forges_remaining) * 0.05
-        success_rate = max(0, min(success_rate, 1))
         embed = discord.Embed(
             title="Forge",
             description=(f"You are about to forge **{item_name}**.\n"
@@ -785,8 +813,17 @@ class Character(commands.Cog, name="character"):
             return
 
         # Determine cost of the refinement
-        refine_costs = [10000, 30000, 50000, 100000, 200000]
-        cost = refine_costs[5 - refines_remaining]  # Costs increase when refines_remaining decreases
+
+        
+        if (item_level <= 40):
+            refine_costs = [1000, 6000, 10000]  
+            cost = refine_costs[3 - refines_remaining]
+        elif (40 < item_level <= 80):    
+            refine_costs = [5000, 15000, 25000, 50000]  
+            cost = refine_costs[4 - refines_remaining]
+        else:
+            refine_costs = [10000, 30000, 50000, 100000, 200000]
+            cost = refine_costs[5 - refines_remaining]
         embed = discord.Embed(
             title="Confirm Refinement",
             description=f"You are about to refine **{item_name}**.\n"
@@ -892,9 +929,7 @@ class Character(commands.Cog, name="character"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
         
-        # Check if the user has any active operations
-        if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
+        if not await self.bot.check_is_active(interaction, user_id):
             return
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
@@ -1033,7 +1068,8 @@ class Character(commands.Cog, name="character"):
                         await self.equip_accessory(interaction, selected_accessory, accessory_name, message, embed)
                         continue
                     elif str(action_reaction.emoji) == "🪄":
-                        await self.improve_potential(interaction, selected_accessory, message, embed)
+                        await self.improve_potential(interaction, selected_accessory, 
+                                                     user_id, server_id, message, embed)
                         continue
                     elif str(action_reaction.emoji) == "🗑️":
                         await self.discard_accessory(interaction, selected_accessory, accessory_name, message, embed)
@@ -1160,7 +1196,8 @@ class Character(commands.Cog, name="character"):
         await asyncio.sleep(3)
 
 
-    async def improve_potential(self, interaction: Interaction, selected_accessory: tuple, message, embed) -> None:
+    async def improve_potential(self, interaction: Interaction, selected_accessory: tuple, 
+                                user_id: str, server_id: str, message, embed) -> None:
         """Improve the potential of an accessory."""
         print('Improving accessory')
         accessory_id = selected_accessory[0]
@@ -1224,6 +1261,16 @@ class Character(commands.Cog, name="character"):
             await message.delete()
             self.bot.state_manager.clear_active(interaction.user.id)  
             return
+        
+        player_gold = await self.bot.database.fetch_user_gold(user_id, server_id)
+        if player_gold < refine_cost:
+            embed.add_field(name="Refining", value=f"You do not have enough gold. Returning to main menu...", inline=False)
+            await message.edit(embed=embed)
+            await asyncio.sleep(5)
+            return
+
+        # Deduct the gold cost from the user's resources
+        await self.bot.database.update_user_gold(user_id, player_gold - refine_cost)
 
         if rune_of_potential_count > 0:
             embed.add_field(name="Runes of Potential", 
@@ -1340,8 +1387,7 @@ class Character(commands.Cog, name="character"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
-        if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
+        if not await self.bot.check_is_active(interaction, user_id):
             return
 
         # Fetch user's current passive points
@@ -1370,7 +1416,9 @@ class Character(commands.Cog, name="character"):
         message: Message = await interaction.original_response()
         self.bot.state_manager.set_active(user_id, "stats")
         def check(reaction, user):
-            return user == interaction.user and str(reaction.emoji) in ["⚔️", "🛡️", "❤️"] and reaction.message.id == message.id
+            return (user == interaction.user and 
+                    str(reaction.emoji) in ["⚔️", "🛡️", "❤️"] and 
+                    reaction.message.id == message.id)
         
         while passive_points > 0:
             await message.clear_reactions()

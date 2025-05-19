@@ -4,6 +4,8 @@ from discord.ext import commands
 from discord.ext.tasks import asyncio
 from discord import app_commands, Interaction, Message
 import csv
+from datetime import datetime
+import json
 
 class Guild(commands.Cog, name="adventurer's guild"):
     def __init__(self, bot) -> None:
@@ -29,21 +31,43 @@ class Guild(commands.Cog, name="adventurer's guild"):
         server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user):
+            return
+        
         if existing_user:
+            timestamp_str = str(existing_user[18])  # e.g., '2025-05-14 21:44:30'
+            timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+
+            # Get the current timestamp
+            current_time = datetime.now()
+
+            # Calculate the difference in days
+            days_passed = (current_time - timestamp).days
             embed = discord.Embed(
-                title="User Info",
-                description=f"You are registered as **{existing_user[3]}**.",
+                title=f"**{existing_user[3]}**",
+                description=f"You've been an adventurer for **{days_passed}** day(s).",
                 color=0x808080,
             )
-            embed.add_field(name="Level", value=existing_user[4], inline=True)
-            embed.add_field(name="Experience", value=existing_user[5], inline=True)
-            embed.add_field(name="Gold", value=f"{existing_user[6]:,}", inline=True)
+            embed.add_field(name="Level ⭐", value=existing_user[4], inline=True)
+                        # Fetch experience table
+            with open('assets/exp.json') as file:
+                exp_table = json.load(file)
+
+            current_level = existing_user[4]  # Assuming level is at index 4
+            current_exp = existing_user[5]      # Current experience
+            exp_needed = exp_table["levels"].get(str(current_level), 0)  # Fetch the necessary EXP for this level
+
+            # Calculate experience percentage
+            if exp_needed > 0:
+                exp_percentage = (current_exp / exp_needed) * 100
+            else:
+                exp_percentage = 100  # Full EXP if already max level or no exp required
+            # Add the character stats to the embed
+            embed.add_field(name="Experience ✨", value=f"{current_exp:,} ({exp_percentage:.2f}%)", inline=True)
+            embed.add_field(name="Gold 💰", value=f"{existing_user[6]:,}", inline=True)
             embed.set_thumbnail(url=existing_user[7])
-            embed.add_field(name="Ideology", value=existing_user[8], inline=True)
+            embed.add_field(name="Ideology 🧠", value=existing_user[8], inline=True)
             await interaction.response.send_message(embed=embed)
-        else:
-            await interaction.response.send_message("You are not registered with the 🏦 Adventurer's guild."
-                               " Please /register first.")
 
 
     @app_commands.command(name="register", description="Register as an adventurer.")
@@ -60,10 +84,10 @@ class Guild(commands.Cog, name="adventurer's guild"):
         server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        success = False
-        if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
+        if not await self.bot.check_is_active(interaction, user_id):
             return
+        
+        success = False
 
         if existing_user:
             embed = discord.Embed(
@@ -269,9 +293,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
         server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not existing_user:
-            await interaction.response.send_message("You are not registered with the 🏦 Adventurer's guild."
-                               " Please /register first.")
+        if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
         embed = discord.Embed(

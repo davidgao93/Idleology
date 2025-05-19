@@ -27,7 +27,7 @@ class Owner(commands.Cog, name="owner"):
                 description="Slash commands have been globally synchronized.",
                 color=0xBEBEFE,
             )
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
             return
         elif scope == "guild":
             context.bot.tree.copy_global_to(guild=context.guild)
@@ -36,7 +36,7 @@ class Owner(commands.Cog, name="owner"):
                 description="Slash commands have been synchronized in this guild.",
                 color=0xBEBEFE,
             )
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
             return
         embed = discord.Embed(
             description="The scope must be `global` or `guild`.", color=0xE02B2B
@@ -66,7 +66,7 @@ class Owner(commands.Cog, name="owner"):
                 description="Slash commands have been globally unsynchronized.",
                 color=0xBEBEFE,
             )
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
             return
         elif scope == "guild":
             context.bot.tree.clear_commands(guild=context.guild)
@@ -75,12 +75,12 @@ class Owner(commands.Cog, name="owner"):
                 description="Slash commands have been unsynchronized in this guild.",
                 color=0xBEBEFE,
             )
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
             return
         embed = discord.Embed(
             description="The scope must be `global` or `guild`.", color=0xE02B2B
         )
-        await context.send(embed=embed)
+        await context.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(
         name="load",
@@ -101,12 +101,12 @@ class Owner(commands.Cog, name="owner"):
             embed = discord.Embed(
                 description=f"Could not load the `{cog}` cog.", color=0xE02B2B
             )
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
             return
         embed = discord.Embed(
             description=f"Successfully loaded the `{cog}` cog.", color=0xBEBEFE
         )
-        await context.send(embed=embed)
+        await context.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(
         name="unload",
@@ -127,12 +127,12 @@ class Owner(commands.Cog, name="owner"):
             embed = discord.Embed(
                 description=f"Could not unload the `{cog}` cog.", color=0xE02B2B
             )
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
             return
         embed = discord.Embed(
             description=f"Successfully unloaded the `{cog}` cog.", color=0xBEBEFE
         )
-        await context.send(embed=embed)
+        await context.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(
         name="reload",
@@ -153,7 +153,7 @@ class Owner(commands.Cog, name="owner"):
             embed = discord.Embed(
                 description=f"Could not reload the `{cog}` cog.", color=0xE02B2B
             )
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
             return
         embed = discord.Embed(
             description=f"Successfully reloaded the `{cog}` cog.", color=0xBEBEFE
@@ -169,7 +169,7 @@ class Owner(commands.Cog, name="owner"):
     async def clear_active_operations(self, context: Context) -> None:
         """Clears all active operations."""
         self.bot.state_manager.clear_all()
-        await context.send("All active operations have been cleared.")
+        await context.send("All active operations have been cleared.", ephemeral=True)
 
 
     @commands.hybrid_command(
@@ -180,7 +180,7 @@ class Owner(commands.Cog, name="owner"):
     async def debug_active_operations(self, context: Context) -> None:
         """Debug method."""
         is_active = self.bot.state_manager.active_operations
-        await context.send(f"{is_active}")
+        await context.send(f"{is_active}", ephemeral=True)
 
 async def setup(bot) -> None:
     await bot.add_cog(Owner(bot))

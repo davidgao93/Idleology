@@ -55,8 +55,8 @@ CREATE TABLE IF NOT EXISTS `items` (
   `rarity` INTEGER DEFAULT 0,
   `passive` TEXT NOT NULL DEFAULT 'none',
   `is_equipped` BOOLEAN DEFAULT FALSE,
-  `forges_remaining` INTEGER DEFAULT 5,
-  `refines_remaining` INTEGER DEFAULT 5
+  `forges_remaining` INTEGER DEFAULT 0,
+  `refines_remaining` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `accessories` (

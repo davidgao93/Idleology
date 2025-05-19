@@ -344,6 +344,17 @@ class DiscordBot(commands.Bot):
             )
             return False
         return True
+    
+    async def check_is_active(self, interaction: Interaction, user_id: str) -> bool:
+        """
+        Check if a user has an active operation.
+        """
+        if self.state_manager.is_active(user_id):
+            await interaction.response.send_message(
+                "Please finish all your other interactions first.",
+                ephemeral=True)
+            return False
+        return True
 
 
 class StateManager:
@@ -352,11 +363,14 @@ class StateManager:
 
     def set_active(self, user_id: str, operation: str):
         """Set a user's operation state."""
+        print(f'Set {user_id} as {operation}')
         self.active_operations[user_id] = operation
 
     def clear_active(self, user_id: str):
         """Clear a user's operation state."""
+        print(f'Attempt to clear {user_id}')
         if user_id in self.active_operations:
+            print(f'{user_id} found in active list, cleared')
             del self.active_operations[user_id]
 
     def is_active(self, user_id: str):

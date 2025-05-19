@@ -29,8 +29,7 @@ class Trade(commands.Cog, name="trade"):
             await interaction.response.send_message("You are already sending gold. Please finish that process first.")
             return
 
-        if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
+        if not await self.bot.check_is_active(interaction, user_id):
             return
         
         if existing_user[4] <= 10:
@@ -54,7 +53,7 @@ class Trade(commands.Cog, name="trade"):
         # Confirm the action
         embed = discord.Embed(
             title="Confirm",
-            description=f"Are you sure you want to send 💰 **{amount}** gold to {receiver.mention}?",
+            description=f"Are you sure you want to send 💰 **{amount:,}** gold to {receiver.mention}?",
             color=0x00FF00
         )
         await interaction.response.send_message(embed=embed)
@@ -77,7 +76,7 @@ class Trade(commands.Cog, name="trade"):
                 await self.bot.database.add_gold(str(receiver.id), amount)  # Add to receiver
 
                 # Update the embed message to inform of the successful transaction
-                embed.description = f"Successfully sent 💰 **{amount}** gold to {receiver.mention}! 🎉"
+                embed.description = f"Successfully sent 💰 **{amount:,}** gold to {receiver.mention}! 🎉"
                 await message.edit(embed=embed)
             else:
                 embed.description = "Transaction cancelled."
@@ -90,7 +89,7 @@ class Trade(commands.Cog, name="trade"):
 
     @app_commands.command(name="send_weapon", description="Send a weapon to another player.")
     async def send_weapon(self, interaction: Interaction, receiver: discord.User, item_id: int) -> None:
-        user_id = str(interaction.user)
+        user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
         # Check if the user is trying to send the item to themselves
@@ -99,11 +98,9 @@ class Trade(commands.Cog, name="trade"):
             return
 
         # Check if the user has any active operations
-        if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
+        if not await self.bot.check_is_active(interaction, user_id):
             return
-        self.bot.state_manager.set_active(user_id, "send_weapon")  # Set send_item as active operation
-
+        
         # Fetch the sender's user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
@@ -145,6 +142,7 @@ class Trade(commands.Cog, name="trade"):
         )
         await interaction.response.send_message(embed=embed)
         message: Message = await interaction.original_response()
+        self.bot.state_manager.set_active(user_id, "send_weapon")  # Set send_item as active operation
 
         await message.add_reaction("✅")  # Confirm
         await message.add_reaction("❌")  # Cancel
@@ -159,10 +157,14 @@ class Trade(commands.Cog, name="trade"):
 
             if str(reaction.emoji) == "✅":
                 # The sender has confirmed the action
-                await self.bot.database.send_item(receiver.id, item_id)  # Create a method to handle item transfer
-                await interaction.response.send_message(f"Sent **{item_details[2]}** to {receiver.mention}! 🎉")
+                await self.bot.database.send_item(receiver.id, item_id)
+                details = f"Sent **{item_details[2]}** to {receiver.mention}! 🎉"
+                embed.add_field(name="Weapon Sent", value=details, inline=False)
+                await message.edit(embed=embed)
+                self.bot.state_manager.clear_active(user_id)
             else:
-                await interaction.response.send_message("Transaction cancelled.")
+                await message.delete()
+                self.bot.state_manager.clear_active(user_id)
         except asyncio.TimeoutError:
             await message.delete()  # Delete the confirmation message if timed out.
         finally:
@@ -171,7 +173,7 @@ class Trade(commands.Cog, name="trade"):
 
     @app_commands.command(name="send_accessory", description="Send an accessory to another player.")
     async def send_accessory(self, interaction: Interaction, receiver: discord.User, accessory_id: int) -> None:
-        user_id = str(interaction.user)
+        user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
         # Check if the user is trying to send the item to themselves
@@ -180,8 +182,7 @@ class Trade(commands.Cog, name="trade"):
             return
 
         # Check if the user has any active operations
-        if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
+        if not await self.bot.check_is_active(interaction, user_id):
             return
 
         self.bot.state_manager.set_active(user_id, "send_accessory")  # Set send_accessory as active operation
@@ -225,10 +226,14 @@ class Trade(commands.Cog, name="trade"):
 
             if str(reaction.emoji) == "✅":
                 # The sender has confirmed the action
-                await self.bot.database.send_accessory(receiver.id, accessory_id)  # Create a method to handle item transfer
-                await interaction.response.send_message(f"Sent **{accessory_details[2]}** to {receiver.mention}! 🎉")
+                await self.bot.database.send_accessory(receiver.id, accessory_id)
+                details = f"Sent **{accessory_details[2]}** to {receiver.mention}! 🎉"
+                embed.add_field(name="Accessory Sent", value=details, inline=False)
+                await message.edit(embed=embed)
+                self.bot.state_manager.clear_active(user_id)
             else:
                 await message.delete()  # Delete the confirmation message.
+                self.bot.state_manager.clear_active(user_id)
         except asyncio.TimeoutError:
             await message.delete()  # Delete the confirmation message if timed out.
         finally:
@@ -237,7 +242,7 @@ class Trade(commands.Cog, name="trade"):
 
     @app_commands.command(name="send_material", description="Send skilling materials to another player.")
     async def send_material(self, interaction: Interaction, receiver: discord.User, material: str, amount: int) -> None:
-        user_id = str(interaction.user)
+        user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
@@ -249,8 +254,7 @@ class Trade(commands.Cog, name="trade"):
             await interaction.response.send_message("You cannot send materials to yourself.")
             return
         
-        if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("You are currently busy with another operation. Please finish that first.")
+        if not await self.bot.check_is_active(interaction, user_id):
             return
         # Set the user as active in operations
         self.bot.state_manager.set_active(user_id, "send_material")
@@ -311,7 +315,7 @@ class Trade(commands.Cog, name="trade"):
             # Create a confirmation embed
             embed = discord.Embed(
                 title="Confirm",
-                description=(f"Are you sure you want to send **{amount}** **{material_lower.title()}** "
+                description=(f"Are you sure you want to send **{amount:,}** **{material_lower.title()}** "
                             f"to {receiver.mention}?"),
                 color=0x00FF00
             )
@@ -341,7 +345,7 @@ class Trade(commands.Cog, name="trade"):
                         await self.bot.database.update_woodcutting_resource(str(receiver.id), server_id, material_name, amount)  # Add to receiver
                     
                     # Update the confirmation embed to indicate success
-                    embed.description = f"Successfully sent **{amount}** **{material_lower.title()}** to {receiver.mention}! 🎉"
+                    embed.description = f"Successfully sent **{amount:,}** **{material_lower.title()}** to {receiver.mention}! 🎉"
                     await message.clear_reactions()
                     await message.edit(embed=embed)               
                     

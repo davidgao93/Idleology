@@ -247,9 +247,15 @@ class DatabaseManager:
     async def create_item(self, user_id: str, item_name: str, item_level: int,
                            attack: int, defence: int, rarity: int, is_equipped: bool = False) -> None:
         """Insert a new item into the items table."""
+        if (item_level) <= 40:
+            item_potential = 3
+        elif (40 < item_level <= 80):
+            item_potential = 4
+        else:
+            item_potential = 5
         await self.connection.execute(
-            "INSERT INTO items (user_id, item_name, item_level, attack, defence, rarity, is_equipped) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (user_id, item_name, item_level, attack, defence, rarity, is_equipped)
+            "INSERT INTO items (user_id, item_name, item_level, attack, defence, rarity, is_equipped, forges_remaining, refines_remaining) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (user_id, item_name, item_level, attack, defence, rarity, is_equipped, item_potential, item_potential)
         )
         await self.connection.commit()
 

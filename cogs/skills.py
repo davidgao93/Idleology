@@ -28,7 +28,6 @@ class Skills(commands.Cog, name="skills"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
-
         mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
         fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
         woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
@@ -78,7 +77,9 @@ class Skills(commands.Cog, name="skills"):
         # Filtering out empty fields
         woodcutting_value = "\n".join(filter(None, woodcutting_fields))
 
-        embed.add_field(name="🪓 Woodcutting", value=woodcutting_value or "No woodcutting data available.", inline=False)
+        embed.add_field(name="🪓 Woodcutting", 
+                        value=woodcutting_value or "No woodcutting data available.", 
+                        inline=False)
 
         await interaction.response.send_message(embed=embed)
         message: Message = await interaction.original_response()
@@ -87,21 +88,19 @@ class Skills(commands.Cog, name="skills"):
     
 
     """ MINING SKILL """
-
     @app_commands.command(name="mining", description="Check your mining status and resources.")
     async def mining(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        # Fetch user mining data
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
         mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
-        if not mining_data:
-            await interaction.response.send_message("You do not have mining data. Please start mining first.")
-            return
 
         # Display current pickaxe tier and resources
         embed = discord.Embed(title="Mining", color=0x00FF00)
@@ -165,10 +164,10 @@ class Skills(commands.Cog, name="skills"):
             embed.add_field(name="Upgrade available!", 
                             value=f"Do you want to upgrade your {pickaxe_tier.title()} "
                              f"Pickaxe to {self.next_pickaxe_tier(pickaxe_tier).title()}?", inline=False)
-            embed.add_field(name="Material costs", value=cost_str or "No further upgrades possible.", inline=False)
             await message.edit(embed=embed)
             await message.add_reaction("✅")  # Confirm Upgrade
             await message.add_reaction("❌")  # Cancel Upgrade
+            self.bot.state_manager.set_active(user_id, "upgrade tool")
 
             def check(reaction, user):
                 return user == interaction.user and reaction.message.id == message.id
@@ -183,13 +182,21 @@ class Skills(commands.Cog, name="skills"):
                     embed.add_field(name="Upgraded!", value=value, inline=False)
                     await message.clear_reactions()
                     await message.edit(embed=embed)  
+                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.state_manager.clear_active(user_id)
                 else:
                     await message.delete()
+                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.state_manager.clear_active(user_id)
+                return
             except asyncio.TimeoutError:
-                embed.add_field(name="Cancel", value="Upgrade cancelled.", inline=False)
+                print(f'Cleared {user_id} from active interactions')
+                self.bot.state_manager.clear_active(user_id)
                 await message.delete()
-        await asyncio.sleep(10)
-        await message.delete()
+                return
+        if (message):
+            await asyncio.sleep(10)
+            await message.delete()
 
     async def upgrade_pickaxe(self, user_id, server_id, pickaxe_tier, new_pickaxe_tier):
         upgrade_requirements = self.get_mining_upgrade_requirements(pickaxe_tier)
@@ -227,6 +234,9 @@ class Skills(commands.Cog, name="skills"):
     async def woodcutting(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
+
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
@@ -295,11 +305,10 @@ class Skills(commands.Cog, name="skills"):
             
             embed.add_field(name="Upgrade available!", value=f"Do you want to upgrade your {axe_tier.title()} "
                              f"Axe to {self.next_axe_tier(axe_tier).title()}?", inline=False)
-            embed.add_field(name="Material costs", value=cost_str or "No further upgrades possible.", inline=False)
             await message.edit(embed=embed)
             await message.add_reaction("✅")  # Confirm Upgrade
             await message.add_reaction("❌")  # Cancel Upgrade
-
+            self.bot.state_manager.set_active(user_id, "upgrade tool")
             def check(reaction, user):
                 return user == interaction.user and reaction.message.id == message.id
 
@@ -313,12 +322,21 @@ class Skills(commands.Cog, name="skills"):
                     embed.add_field(name="Upgraded!", value=value, inline=False)
                     await message.clear_reactions()
                     await message.edit(embed=embed)
+                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.state_manager.clear_active(user_id)
                 else:
                     await message.delete()
+                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.state_manager.clear_active(user_id)
+                return
             except asyncio.TimeoutError:
+                print(f'Cleared {user_id} from active interactions')
+                self.bot.state_manager.clear_active(user_id)
                 await message.delete()
-        await asyncio.sleep(10)
-        await message.delete()
+                return
+        if (message):
+            await asyncio.sleep(10)
+            await message.delete()
 
     async def upgrade_axe(self, user_id, server_id, axe_tier, new_axe_tier):
         upgrade_requirements = self.get_wc_upgrade_requirements(axe_tier)
@@ -348,8 +366,6 @@ class Skills(commands.Cog, name="skills"):
         next_index = current_index + 1
         return tiers[next_index] if next_index < len(tiers) else None
 
-
-
     """
     FISHING SKILL
     """
@@ -358,14 +374,14 @@ class Skills(commands.Cog, name="skills"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+        
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
         fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
-        if not fishing_data:
-            await interaction.response.send_message("You do not have fishing data. Please start fishing first.")
-            return
 
         # Display current fishing rod tier and resources
         embed = discord.Embed(title="Fishing", color=0x00FF00)
@@ -403,7 +419,7 @@ class Skills(commands.Cog, name="skills"):
 
         if not upgrade_requirements:
             print('Already at highest fishing rod tier, not offering an upgrade.')
-            return  # Already at the highest tier
+            return
         
         required_desiccated, required_regular, required_sturdy, required_reinforced, required_gp = upgrade_requirements
         cost_fields = [
@@ -425,11 +441,10 @@ class Skills(commands.Cog, name="skills"):
             
             embed.add_field(name="Upgrade available!", value=f"Do you want to upgrade your {fishing_rod_tier.title()} "
                              f"Fishing Rod to {self.next_fishing_rod_tier(fishing_rod_tier).title()}?", inline=False)
-            embed.add_field(name="Material costs", value=cost_str or "No further upgrades possible.", inline=False)
             await message.edit(embed=embed)
             await message.add_reaction("✅")  # Confirm Upgrade
             await message.add_reaction("❌")  # Cancel Upgrade
-
+            self.bot.state_manager.set_active(user_id, "upgrade tool")
             def check(reaction, user):
                 return user == interaction.user and reaction.message.id == message.id
 
@@ -444,12 +459,20 @@ class Skills(commands.Cog, name="skills"):
                     embed.add_field(name="Upgraded!", value=value, inline=False)
                     await message.clear_reactions()
                     await message.edit(embed=embed)
+                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.state_manager.clear_active(user_id)
                 else:
                     await message.delete()
+                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.state_manager.clear_active(user_id)  
+                return
             except asyncio.TimeoutError:
+                self.bot.state_manager.clear_active(user_id)  
                 await message.delete()
-        await asyncio.sleep(10)
-        await message.delete()
+                return
+        if (message):
+            await asyncio.sleep(10)
+            await message.delete()
 
     async def upgrade_fishing_rod(self, user_id, server_id, fishing_rod_tier, new_fishing_rod_tier):
         upgrade_requirements = self.get_fishing_upgrade_requirements(fishing_rod_tier)
@@ -775,11 +798,27 @@ class Skills(commands.Cog, name="skills"):
                         gold_amount = random.randint(1000, 2000)
                         await self.bot.database.add_gold(user_id, gold_amount)
                         event_data["claimed_users"].add(user_id)
-                        # Update the message embed
+                        # Assuming message is the interaction's context or a message object
                         embed = message.embeds[0]
-                        embed.add_field(name="Claimed Reward", 
-                                        value=f"{existing_user[3]} has grabbed **{gold_amount:,} gold** from the pot!", 
-                                        inline=False)
+
+                        # Initialize a flag to check for the existing field
+                        field_exists = False
+                        new_value = f"**{existing_user[3]}** has grabbed **{gold_amount:,} gold** from the pot!"
+
+                        # Iterate through existing fields to check for the "Claimed Reward" field
+                        for i, field in enumerate(embed.fields):
+                            if field.name == "Claimed Reward":
+                                # Field exists; append the new information
+                                updated_value = f"{field.value}\n{new_value}"  # Append the new message with a newline for separation
+                                embed.set_field_at(i, name="Claimed Reward", value=updated_value, inline=False)
+                                field_exists = True
+                                break
+                            
+                        # If the field doesn't exist, add it as a new one
+                        if not field_exists:
+                            embed.add_field(name="Claimed Reward", value=new_value, inline=False)
+
+                        # Finally, edit the message to update the embed
                         await message.edit(embed=embed)
 
                     elif event_type == "meteorite" and str(payload.emoji) == event_data["emoji"]:
@@ -789,10 +828,27 @@ class Skills(commands.Cog, name="skills"):
                             resources = await self.gather_mining_resources(mining_data[2])  # Use the mining tier from mining_data
                             await self.bot.database.update_mining_resources(user_id, server_id, resources)
                             event_data["claimed_users"].add(user_id)
+                            # Assuming message is the interaction's context or a message object
                             embed = message.embeds[0]
-                            embed.add_field(name="Claimed Reward", 
-                                            value=f"{existing_user[3]} has gathered resources from the meteorite!", 
-                                            inline=False)
+
+                            # Initialize a flag to check for the existing field
+                            field_exists = False
+                            new_value = f"**{existing_user[3]}** has mined the meteor!"
+
+                            # Iterate through existing fields to check for the "Claimed Reward" field
+                            for i, field in enumerate(embed.fields):
+                                if field.name == "Claimed Reward":
+                                    # Field exists; append the new information
+                                    updated_value = f"{field.value}\n{new_value}"  # Append the new message with a newline for separation
+                                    embed.set_field_at(i, name="Claimed Reward", value=updated_value, inline=False)
+                                    field_exists = True
+                                    break
+                                
+                            # If the field doesn't exist, add it as a new one
+                            if not field_exists:
+                                embed.add_field(name="Claimed Reward", value=new_value, inline=False)
+
+                            # Finally, edit the message to update the embed
                             await message.edit(embed=embed)
 
                     elif event_type == "dryad" and str(payload.emoji) == event_data["emoji"]:
@@ -802,10 +858,27 @@ class Skills(commands.Cog, name="skills"):
                             resources = await self.gather_woodcutting_resources(woodcutting_data[2])  # Use the axe tier from woodcutting_data
                             await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
                             event_data["claimed_users"].add(user_id)
+                            # Assuming message is the interaction's context or a message object
                             embed = message.embeds[0]
-                            embed.add_field(name="Claimed Reward", 
-                                            value=f"{existing_user[3]} has received the dryad's blessing!", 
-                                            inline=False)
+
+                            # Initialize a flag to check for the existing field
+                            field_exists = False
+                            new_value = f"**{existing_user[3]}** has claimed the Dryad's blessing!"
+
+                            # Iterate through existing fields to check for the "Claimed Reward" field
+                            for i, field in enumerate(embed.fields):
+                                if field.name == "Claimed Reward":
+                                    # Field exists; append the new information
+                                    updated_value = f"{field.value}\n{new_value}"  # Append the new message with a newline for separation
+                                    embed.set_field_at(i, name="Claimed Reward", value=updated_value, inline=False)
+                                    field_exists = True
+                                    break
+                                
+                            # If the field doesn't exist, add it as a new one
+                            if not field_exists:
+                                embed.add_field(name="Claimed Reward", value=new_value, inline=False)
+
+                            # Finally, edit the message to update the embed
                             await message.edit(embed=embed)
 
                     elif event_type == "high_tide" and str(payload.emoji) == event_data["emoji"]:
@@ -815,11 +888,27 @@ class Skills(commands.Cog, name="skills"):
                             resources = await self.gather_fishing_resources(fishing_data[2])  # Use the fishing rod tier from fishing_data
                             await self.bot.database.update_fishing_resources(user_id, server_id, resources)
                             event_data["claimed_users"].add(user_id)
-                            embed = await channel.fetch_message(payload.message_id)
+                            # Assuming message is the interaction's context or a message object
                             embed = message.embeds[0]
-                            embed.add_field(name="Claimed Reward", 
-                                            value=f"{existing_user[3]} has gathered fish from the high tide!",
-                                              inline=False)
+
+                            # Initialize a flag to check for the existing field
+                            field_exists = False
+                            new_value = f"**{existing_user[3]}** has gathered fish from the high tide!"
+
+                            # Iterate through existing fields to check for the "Claimed Reward" field
+                            for i, field in enumerate(embed.fields):
+                                if field.name == "Claimed Reward":
+                                    # Field exists; append the new information
+                                    updated_value = f"{field.value}\n{new_value}"  # Append the new message with a newline for separation
+                                    embed.set_field_at(i, name="Claimed Reward", value=updated_value, inline=False)
+                                    field_exists = True
+                                    break
+                                
+                            # If the field doesn't exist, add it as a new one
+                            if not field_exists:
+                                embed.add_field(name="Claimed Reward", value=new_value, inline=False)
+
+                            # Finally, edit the message to update the embed
                             await message.edit(embed=embed)
 
                     if user_id in event_data["claimed_users"]:

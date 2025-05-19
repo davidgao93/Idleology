@@ -30,11 +30,7 @@ class Tavern(commands.Cog, name="tavern"):
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
-        
-        # Check if the user has any active operations
-        if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("Please finish the previous interaction.",
-                                                    ephemeral=True)
+        if not await self.bot.check_is_active(interaction, user_id):
             return
 
         # Initial user data setup
@@ -322,9 +318,7 @@ class Tavern(commands.Cog, name="tavern"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
-        if self.bot.state_manager.is_active(user_id):
-            await interaction.response.send_message("Please finish the previous interaction.",
-                                                    ephemeral=True)
+        if not await self.bot.check_is_active(interaction, user_id):
             return
         
         self.bot.state_manager.set_active(user_id, "gamble")
@@ -904,6 +898,7 @@ class Tavern(commands.Cog, name="tavern"):
                     "10k": 10000,
                     "5k": 5000,
                 }
+                print(f'Awarding {user_id} {amount_mapping[selected_reward]} gold')
                 await self.bot.database.add_gold(user_id, amount_mapping[selected_reward])
             elif selected_reward == "Ore":
                 for _ in range(5):
