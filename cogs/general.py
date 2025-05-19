@@ -161,11 +161,11 @@ class General(commands.Cog, name="general"):
                 f"Here are some points to remember:\n"
                 f"- Engage in combat every 10 minutes using the `/combat` command.\n"
                 f"- ⚔️ to attack, 🩹 to heal (if you have potions, buy with /shop),"
-                f" ⏩ to auto-batle (stops at <10% hp), 🏃 to run\n"
+                f" ⏩ to auto-batle (stops at <20% hp), 🏃 to run\n"
                 f"- Leveling up increases your stats!\n"
                 f"- The tavern is a great place to rest and make some quick cash!\n"
                 f"- You also heal over time if you're down on your luck.\n"
-                f"- Check your skills with the /skills, /mining, /fishing, /wc commands!"
+                f"- Check your skills with the /skills, /mining, /fishing, /woodcutting commands!"
             ),
             inline=False
         )
@@ -283,30 +283,49 @@ class General(commands.Cog, name="general"):
         else:
             propagate_remaining = timedelta(0)  # First propagate
 
+    
+        last_combat_time = existing_user[24]
+        combat_remaining = None
+        combat_duration = timedelta(minutes=10)
+        if last_combat_time:
+            last_combat_time_dt = datetime.fromisoformat(last_combat_time)
+            time_since_combat = datetime.now() - last_combat_time_dt
+            if time_since_combat < combat_duration:
+                remaining_time = combat_duration - time_since_combat
+                combat_remaining = remaining_time
+        else:
+            combat_remaining = timedelta(0)
+
         # Creating the embed
         embed = discord.Embed(
             title="Timers",
             color=0x00FF00
         )
-        embed.set_image(url="https://i.imgur.com/I3JPD8R.jpeg")
+        embed.set_thumbnail(url="https://i.imgur.com/I3JPD8R.jpeg")
         # Building the embed fields
+        if combat_remaining:
+            embed.add_field(name="/combat ⚔️", value=f"**{(combat_remaining.seconds // 60) % 60} minutes "
+                                                            f"{(combat_remaining.seconds % 60)} seconds** remaining.")
+        else:
+            embed.add_field(name="/combat ⚔️", value="Available now!", inline=True)
+
         if rest_remaining:
             embed.add_field(name="/rest 🛏️", value=f"**{rest_remaining.seconds // 3600} hours "
                                                         f"{(rest_remaining.seconds // 60) % 60} minutes** remaining. (400 gp bypass)")
         else:
-            embed.add_field(name="/rest 🛏️", value="Available now!", inline=False)
+            embed.add_field(name="/rest 🛏️", value="Available now!", inline=True)
 
         if checkin_remaining:
             embed.add_field(name="/checkin 🛖", value=f"**{checkin_remaining.seconds // 3600} hours "
                                                             f"{(checkin_remaining.seconds // 60) % 60} minutes** remaining.")
         else:
-            embed.add_field(name="/checkin 🛖", value="Available now!", inline=False)
+            embed.add_field(name="/checkin 🛖", value="Available now!", inline=True)
 
         if propagate_remaining:
             embed.add_field(name="/propagate 💡", value=f"**{propagate_remaining.seconds // 3600} hours "
                                                             f"{(propagate_remaining.seconds // 60) % 60} minutes** remaining.")
         else:
-            embed.add_field(name="/propagate 💡", value="Available now!", inline=False)
+            embed.add_field(name="/propagate 💡", value="Available now!", inline=True)
 
         # Send the embed message
         await interaction.response.send_message(embed=embed, ephemeral=True)

@@ -7,7 +7,7 @@
 --DROP TABLE IF EXISTS `mining`;
 -- ALTER TABLE users ADD COLUMN `curios` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE accessories ADD COLUMN `passive_lvl` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN curios_purchased_today INTEGER DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN `last_combat` TIMESTAMP DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `passive_points` INTEGER NOT NULL DEFAULT 0,
   `potential_runes` INTEGER NOT NULL DEFAULT 0,
   `curios` INTEGER NOT NULL DEFAULT 0,
-  `curios_purchased_today` INTEGER NOT NULL DEFAULT 0
+  `curios_purchased_today` INTEGER NOT NULL DEFAULT 0,
+  `last_combat` TIMESTAMP DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (

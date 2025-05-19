@@ -50,7 +50,7 @@ class Ideology(commands.Cog, name="ideology"):
 
     @app_commands.command(
         name="propagate",
-        description="Spread your ideology to gain more followers."
+        description="Spread your ideology to gain more followers and collect their offerings."
     )
     async def propagate(self, interaction: Interaction) -> None:
         user_id = str(interaction.user.id)
@@ -71,35 +71,44 @@ class Ideology(commands.Cog, name="ideology"):
                 time_since_last_propagate = datetime.now() - last_propagate_time_dt
                 if time_since_last_propagate < cooldown_duration:
                     remaining_time = cooldown_duration - time_since_last_propagate
-                    await interaction.response.send_message(f"You need to wait **{remaining_time.seconds // 3600} hours"
-                                       f" and {(remaining_time.seconds // 60) % 60} minutes** before propagating"
-                                        f" **{user_ideology}** again.")
+                    await interaction.response.send_message(
+                        f"You need to wait **{remaining_time.seconds // 3600} hours "
+                        f"and {(remaining_time.seconds // 60) % 60} minutes** before propagating "
+                        f"**{user_ideology}** again."
+                    )
                     return
         except (ValueError, TypeError):
-            await interaction.response.send_message("There was an error with your last propagate time. "
-                              "Please contact the admin.")
+            await interaction.response.send_message(
+                "There was an error with your last propagate time. Please contact the admin."
+            )
             return
 
-        # Calculate new follower count
-        rolls_count = max(1, followers_count // 100) + 1
-        total_sum = sum(random.randint(1, 20) for _ in range(rolls_count))
-        new_followers_count = min(1000, followers_count + total_sum)
-        # print(f"{rolls_count} number of d20's rolled with a total sum of {total_sum}")
-        ascension = False
-        if new_followers_count >= 1000:
-            await self.bot.database.increase_ascension_level(user_id)
-            new_followers_count = await self.bot.database.count_followers(user_ideology)  # Fetch user_ids of followers
-            ascension = True
-            await interaction.response.send_message(f"{user_ideology} has spread far and wide!\n"
-                                f"As an evangelist you have done well, you gain an ascension level.\n"
-                                f"Your adventure should be easier now.\n"
-                                f"{user_ideology}'s follower count has been reset.")
+        # Calculate new follower count (exponential growth)
+        base_followers = 10
+        growth_factor = 1.5
+        scaling_factor = 100
+        follower_increase = base_followers * (growth_factor ** (followers_count // scaling_factor))
+        # Add random variation (±10%)
+        variation = random.uniform(0.9, 1.1)
+        follower_increase = int(follower_increase * variation)
+        new_followers_count = min(1000, followers_count + follower_increase)
 
-        await self.bot.database.update_followers_count(user_ideology, new_followers_count) 
+        # Calculate gold reward (linear)
+        base_gold = 1000
+        gold_per_follower = 50
+        gold_reward = base_gold + (followers_count * gold_per_follower)
+
+        # Update database
+        await self.bot.database.update_followers_count(user_ideology, new_followers_count)
+        await self.bot.database.add_gold(user_id, gold_reward)
         await self.bot.database.update_propagate_time(user_id)
-        if not ascension:
-            await interaction.response.send_message(f"You advocate for {user_ideology} and it spreads. "
-                                f"New follower count: **{new_followers_count}**.")
+
+        # Send response
+        await interaction.response.send_message(
+            f"You advocate for **{user_ideology}** and it spreads!\n"
+            f"New followers gained: **{follower_increase}** (Total: **{new_followers_count}**).\n"
+            f"Gold collected from followers: **{gold_reward:,} GP**."
+        )
 
 async def setup(bot) -> None:
     await bot.add_cog(Ideology(bot))

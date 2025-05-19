@@ -203,6 +203,9 @@ class Tavern(commands.Cog, name="tavern"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+
         user_level = existing_user[4]
         current_hp = existing_user[11]  
         max_hp = existing_user[12]

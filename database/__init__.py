@@ -244,6 +244,16 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+
+    async def update_combat_time(self, user_id: str) -> None:
+        """Update the last combat time of the user to the current time."""
+        current_time = datetime.now().isoformat()  # Get the current timestamp in ISO format
+        await self.connection.execute(
+            "UPDATE users SET last_combat = ? WHERE user_id = ?",
+            (current_time, user_id)
+        )
+        await self.connection.commit()
+
     async def create_item(self, user_id: str, item_name: str, item_level: int,
                            attack: int, defence: int, rarity: int, is_equipped: bool = False) -> None:
         """Insert a new item into the items table."""

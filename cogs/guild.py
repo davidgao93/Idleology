@@ -167,25 +167,10 @@ class Guild(commands.Cog, name="adventurer's guild"):
         selected_appearance = f"{appearances[current_index]}"
 
         ideologies = await self.bot.database.fetch_ideologies(server_id)
-        ideology_str = ""
-        for ideology in ideologies:
-            ideology_str += ('💡' + ideology + '\n')
-
-        if ideology_str:
-            embed_description = (
-                f"Please **enter** your desired ideology from the list below:\n"
-                f"{ideology_str}"
-                "Or type a new ideology name to create your own."
-            )
-        else:
-            embed_description = (
-                f"No ideologies are currently on this server.\n"
-                f"Please **enter** a new ideology name to create your own."
-            )            
 
         embed = discord.Embed(
             title="Ideology",
-            description=embed_description,
+            description=f"Please **enter** your desired ideology:\n",
             color=0x00FF00,
         )
         embed.set_image(url=appearance_url)
@@ -199,10 +184,24 @@ class Guild(commands.Cog, name="adventurer's guild"):
                 ideology_message = await self.bot.wait_for('message', timeout=60.0, check=ideology_check)
                 ideology = ideology_message.content.strip()
 
+                if not ideology in ideologies:
+                    embed = discord.Embed(
+                            title="Ideology",
+                            description=f"Please **enter** your desired ideology:\n",
+                            color=0x00FF00,
+                        )
+                    embed.set_image(url=appearance_url)
+                    embed.add_field(name="Invalid Ideology",
+                                    value="That ideology is already taken, try again.",
+                                    inline=False)
+                    await message.clear_reactions()
+                    await message.edit(embed=embed)
+                    continue
+
                 if not re.match(r'^[A-Za-z0-9\s]+$', ideology) or len(ideology) > 24:
                     embed = discord.Embed(
                             title="Ideology",
-                            description=embed_description,
+                            description=f"Please **enter** your desired ideology:\n",
                             color=0x00FF00,
                         )
                     embed.set_image(url=appearance_url)
@@ -213,7 +212,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
                     await message.edit(embed=embed)
                     continue
 
-                confirm_msg=f"Are you sure {name} follows **{ideology}**? Note that Ideologies are **CASE SENSITIVE!**"
+                confirm_msg=f"Are you sure {name} follows **{ideology}**?"
                 embed.add_field(name="Confirm", value=confirm_msg, inline=False)
                 await message.edit(embed=embed)
 
@@ -254,7 +253,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
                     elif str(reaction.emoji) == "❌":
                         embed = discord.Embed(
                             title="Ideology",
-                            description=embed_description,
+                            description=f"Please **enter** your desired ideology:\n",
                             color=0x00FF00,
                         )
                         embed.set_image(url=appearance_url)

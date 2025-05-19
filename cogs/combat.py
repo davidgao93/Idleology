@@ -5,6 +5,7 @@ from discord.ext import commands
 from discord.ext.tasks import asyncio
 from discord.ext import tasks
 from discord import app_commands, Interaction, Message
+from datetime import datetime, timedelta
 import json
 import csv
 import os
@@ -110,7 +111,6 @@ class Combat(commands.Cog, name="combat"):
         return acc_name, loot_description
 
     @app_commands.command(name="combat", description="Engage in combat.")
-    @app_commands.checks.cooldown(1, 600, key=lambda i: (i.user.id))  # 1 use per 600 seconds per user
     async def combat(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
@@ -121,9 +121,35 @@ class Combat(commands.Cog, name="combat"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
         
-        if existing_user:
+        player_name = existing_user[3]
+        last_combat_time = existing_user[24]
+        print(f'Last checkin time: {last_combat_time}')
+        checkin_remaining = None
+        combat_duration = timedelta(minutes=10)
+        if last_combat_time:
+            last_combat_time_dt = datetime.fromisoformat(last_combat_time)
+            time_since_combat = datetime.now() - last_combat_time_dt
+            print(f'Time since combat: {time_since_combat}')
+            if time_since_combat < combat_duration:
+                print(f'Not enough time has passed')
+                remaining_time = combat_duration - time_since_combat
+                checkin_remaining = remaining_time
+                print(f'Remaining time: {remaining_time}')
+        else:
+            print('Update combat time')
+            await self.bot.database.update_combat_time(user_id)
+            
+        if checkin_remaining:
+            # User is trying to check in before the next available check-in time
+            value=(f"{player_name} isn't yet ready.\n"
+                   f"{(checkin_remaining.seconds // 60) % 60} minutes** "
+                   f"{(checkin_remaining.seconds % 60)} seconds** "
+                    f"remaining until they can engage in combat again.")
+            await interaction.response.send_message(value, ephemeral=True)
+            return
+        else:
+            await self.bot.database.update_combat_time(user_id)
             self.bot.state_manager.set_active(user_id, "combat")  # Set combat as active operation
-            player_name = existing_user[3]
             user_level = existing_user[4] 
             player_ideology = existing_user[8]
             player_attack = existing_user[9]
@@ -208,10 +234,10 @@ class Combat(commands.Cog, name="combat"):
                     embed.add_field(name="❤️ HP", value=player_hp, inline=True)
                 items = await self.bot.database.fetch_user_items(user_id)
                 accs = await self.bot.database.fetch_user_accessories(user_id)
-                if (len(items) > 4):
+                if (len(items) > 60):
                     embed.add_field(name="🚫 WARNING 🚫", value=f"Weapon pouch is full! Weapons can't drop.",
                                     inline=False)
-                if (len(accs) > 4):
+                if (len(accs) > 60):
                     embed.add_field(name="🚫 WARNING 🚫", value=f"Accessory pouch is full! Accessories can't drop.",
                                     inline=False)
                 # CALCULATE ABSORB PASSIVE
@@ -830,7 +856,7 @@ class Combat(commands.Cog, name="combat"):
         if (final_loot_roll >= drop_chance): # Normal drop logic
             print('Drop chance beat, generating item')
         #if (False): # Accessory only drop logic
-            if (len(items) > 4):
+            if (len(items) > 60):
                 victory_embed.add_field(name="✨ Loot", value=f"Weapon pouch full!")
             else:
                 (item_name, 
@@ -849,7 +875,7 @@ class Combat(commands.Cog, name="combat"):
             # if (random.randint(1, 100) >= 0): #100% chance for accessory
             print(f'Weapon roll failed, trying for accessory with {final_acc_roll}')
             if (final_acc_roll >= 97): #beat 96, base 4% for accessory
-                if (len(accs) > 4):
+                if (len(accs) > 60):
                     victory_embed.add_field(name="✨ Loot", value=f"Accessory pouch full!")
                 else:
                     (acc_name, loot_description) = await self.generate_accessory(user_id, server_id, encounter_level, True)

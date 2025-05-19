@@ -30,6 +30,7 @@ Index	Attribute Description
 21  Potential runes
 22  Curios
 23  Curious purchased
+24  Last Combat
 """
 
 class Character(commands.Cog, name="character"):
@@ -183,7 +184,7 @@ class Character(commands.Cog, name="character"):
     '''
     @app_commands.command(name="weapons", description="View your character's weapons and modify them.")
     async def weapons(self, interaction: Interaction) -> None:
-        """Fetch and display the character's weapons."""
+        """Fetch and display the character's weapons with pagination."""
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
@@ -200,6 +201,7 @@ class Character(commands.Cog, name="character"):
         if not items:
             await interaction.response.send_message("You peer into your weapon's pouch, it is empty.")
             return
+        
         player_name = existing_user[3]
         embed = discord.Embed(
             title=f"📦",
@@ -210,123 +212,148 @@ class Character(commands.Cog, name="character"):
         await interaction.response.send_message(embed=embed)
         message: Message = await interaction.original_response()
         self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
+
+        # Pagination setup
+        items_per_page = 5
+        total_pages = (len(items) + items_per_page - 1) // items_per_page  # Ceiling division
+        current_page = 0
+        number_emojis = ["❌", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+
         while True:
             items = await self.bot.database.fetch_user_items(user_id)
-            embed.description = f"{player_name}'s Weapons:"
+            total_pages = (len(items) + items_per_page - 1) // items_per_page
+            current_page = min(current_page, total_pages - 1)  # Ensure current_page is valid
+            embed.description = f"{player_name}'s Weapons (Page {current_page + 1}/{total_pages}):"
             if not items:
-                await interaction.response.send_message("You peer into your weapon's pouch, it is empty.")
+                await interaction.followup.send("You peer into your weapon's pouch, it is empty.")
                 break
 
             items.sort(key=lambda item: item[2], reverse=True)  # item_level at index 2
-            items_to_display = items[:5]
-            equipped_item = await self.bot.database.get_equipped_item(user_id)
+            start_idx = current_page * items_per_page
+            items_to_display = items[start_idx:start_idx + items_per_page]
             await message.clear_reactions()
             embed.clear_fields()
-            number_emojis = ["❌", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
             items_display_string = ""
 
             for index, item in enumerate(items_to_display):
                 item_name = item[1]  # index 1: item name
                 item_level = item[2]  # index 2: item level
+                equipped_item = await self.bot.database.get_equipped_item(user_id)
                 is_equipped = equipped_item and (equipped_item[0] == item[0])
                 
                 # Append item details to the display string
                 items_display_string += (
-                        f"{number_emojis[index + 1]}: "
-                        f"{item_name} (Level {item_level})"
-                        f"{' [E]' if is_equipped else ''}\n"
+                    f"{number_emojis[index + 1]}: "
+                    f"{item_name} (Level {item_level})"
+                    f"{' [E]' if is_equipped else ''}\n"
                 )
+            
             # Add a single field for all items
             embed.add_field(
                 name="Weapons:",
-                value=items_display_string.strip(),  # Use strip to remove any trailing newline
+                value=items_display_string.strip(),
                 inline=False
             )
                 
-            # Add the choose field outside the loop, since it is the same for all items
+            # Add instructions and page info
             embed.add_field(
                 name="Instructions",
-                value=(f"[ℹ️] Select an item you want to interact with.\n"
-                       f"[❌] Close interface."),
+                value=(f"[ℹ️] Select an item to interact with.\n"
+                       f"[◀️] Previous page | [▶️] Next page | [❌] Close interface."),
                 inline=False
             )
             await message.edit(embed=embed)
             
-            for i in range(len(items_to_display) + 1):  # Only add reactions for existing items
+            # Add reactions: number emojis for items, navigation, and exit
+            for i in range(len(items_to_display) + 1):
                 await message.add_reaction(number_emojis[i])
+            if current_page > 0:
+                await message.add_reaction("◀️")
+            if current_page < total_pages - 1:
+                await message.add_reaction("▶️")
 
             def check(reaction, user):
                 return (user == interaction.user
-                        and reaction.message.id == message.id)
+                        and reaction.message.id == message.id
+                        and str(reaction.emoji) in number_emojis + ["◀️", "▶️"])
 
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                selected_index = number_emojis.index(str(reaction.emoji))  # Get the index of the selected item
-                print(f'{selected_index} was selected')
-                if selected_index == 0: # exit
+                reaction_str = str(reaction.emoji)
+                
+                if reaction_str == "◀️" and current_page > 0:
+                    current_page -= 1
+                    continue
+                elif reaction_str == "▶️" and current_page < total_pages - 1:
+                    current_page += 1
+                    continue
+                elif reaction_str == "❌":
                     await message.delete()
                     self.bot.state_manager.clear_active(user_id)
                     break
-                selected_index -= 1 # get to true index of item
-                selected_item = items_to_display[selected_index]
-                print(f'associated item: {selected_item}')
-                # Display selected item details
-                item_name = selected_item[1] 
-                item_level = selected_item[2] 
-                item_attack = selected_item[3] if len(selected_item) > 4 else 0  # Assuming attack is at index 4
-                item_defence = selected_item[4] if len(selected_item) > 5 else 0  # Assuming defence is at index 5
-                item_rarity = selected_item[5] if len(selected_item) > 6 else 0  # Assuming rarity is at index 6
-                item_passive = selected_item[6]
-                embed.description = f"**{item_name}** (Level {item_level}):"
-                embed.clear_fields()
-                embed.add_field(name="Attack", value=item_attack, inline=True)
-                embed.add_field(name="Defence", value=item_defence, inline=True)
-                embed.add_field(name="Rarity", value=item_rarity, inline=True)
-                embed.add_field(name="Passive", value=item_passive, inline=False)
-                if (item_passive != "none"):
-                    effect_description = self.get_passive_effect(item_passive)  # Get the associated effect message
-                    embed.add_field(name="Effect", value=effect_description, inline=False)
-                item_guide = (
-                    "⚔️ to equip.\n"
-                    "🔨 to forge.\n"
-                    "⚙️ to refine.\n"
-                    "🗑️ to discard.\n"
-                    "◀️ to go back."
-                )
+                
+                selected_index = number_emojis.index(reaction_str) - 1
+                if selected_index >= 0:
+                    selected_item = items_to_display[selected_index]
+                    print(f'associated item: {selected_item}')
+                    # Display selected item details
+                    item_name = selected_item[1]
+                    item_level = selected_item[2]
+                    item_attack = selected_item[3] if len(selected_item) > 4 else 0
+                    item_defence = selected_item[4] if len(selected_item) > 5 else 0
+                    item_rarity = selected_item[5] if len(selected_item) > 6 else 0
+                    item_passive = selected_item[6]
+                    embed.description = f"**{item_name}** (Level {item_level}):"
+                    embed.clear_fields()
+                    embed.add_field(name="Attack", value=item_attack, inline=True)
+                    embed.add_field(name="Defence", value=item_defence, inline=True)
+                    embed.add_field(name="Rarity", value=item_rarity, inline=True)
+                    embed.add_field(name="Passive", value=item_passive, inline=False)
+                    if item_passive != "none":
+                        effect_description = self.get_passive_effect(item_passive)
+                        embed.add_field(name="Effect", value=effect_description, inline=False)
+                    item_guide = (
+                        "⚔️ to equip.\n"
+                        "🔨 to forge.\n"
+                        "⚙️ to refine.\n"
+                        "🗑️ to discard.\n"
+                        "◀️ to go back."
+                    )
+                    embed.add_field(name="Item Guide", value=item_guide, inline=False)
+                    await message.edit(embed=embed)
+                    await message.clear_reactions()
+                    action_reactions = ["⚔️", "🔨", "⚙️", "🗑️", "◀️"]
+                    for emoji in action_reactions:
+                        await message.add_reaction(emoji)
 
-                embed.add_field(name="Item Guide", value=item_guide, inline=False)
-                await message.edit(embed=embed)
-                await message.clear_reactions()
-                action_reactions = ["⚔️", "🔨", "⚙️", "🗑️", "◀️"]
+                    def action_check(r, u):
+                        return u == interaction.user and r.message.id == message.id and str(r.emoji) in action_reactions
 
-                for emoji in action_reactions:
-                    await message.add_reaction(emoji)
+                    try:
+                        action_reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=action_check)
+                        if str(action_reaction.emoji) == "⚔️":
+                            await self.equip(interaction, selected_item, item_name, message, embed)
+                            continue
+                        elif str(action_reaction.emoji) == "🔨":
+                            await self.forge_item(interaction, selected_item, user_id, server_id, embed, message, current_page, selected_index)
+                            continue
+                        elif str(action_reaction.emoji) == "⚙️":
+                            await self.refine_item(interaction, selected_item, user_id, server_id, embed, message, current_page, selected_index)
+                            continue
+                        elif str(action_reaction.emoji) == "🗑️":
+                            await self.discard(interaction, selected_item, item_name, message, embed)
+                            continue
+                        elif str(action_reaction.emoji) == "◀️":
+                            continue
 
-                try:
-                    action_reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                    if str(action_reaction.emoji) == "⚔️":
-                        await self.equip(interaction, selected_item, item_name, message, embed)
-                        continue
-                    elif str(action_reaction.emoji) == "🔨":
-                        await self.forge_item(interaction, selected_item, user_id, server_id, embed, message)
-                        continue
-                    elif str(action_reaction.emoji) == "⚙️":
-                        await self.refine_item(interaction, selected_item, user_id, server_id, embed, message)
-                        continue
-                    elif str(action_reaction.emoji) == "🗑️":
-                        await self.discard(interaction, selected_item, item_name, message, embed)
-                        continue
-                    elif str(action_reaction.emoji) == "◀️":
-                        print('Go back')
-                        continue
+                    except asyncio.TimeoutError:
+                        await message.delete()
+                        self.bot.state_manager.clear_active(interaction.user.id)
+                        break
 
-                except asyncio.TimeoutError:
-                    await message.delete()
-                    self.bot.state_manager.clear_active(interaction.user.id)  
-                    break
             except asyncio.TimeoutError:
                 await message.delete()
-                self.bot.state_manager.clear_active(interaction.user.id)  
+                self.bot.state_manager.clear_active(interaction.user.id)
                 break
         self.bot.state_manager.clear_active(user_id)
 
@@ -423,7 +450,7 @@ class Character(commands.Cog, name="character"):
         await asyncio.sleep(3)
 
 
-    async def forge_item(self, interaction: Interaction, selected_item: tuple, user_id: str, server_id: str, embed, message) -> None:
+    async def forge_item(self, interaction: Interaction, selected_item: tuple, user_id: str, server_id: str, embed, message, current_page: int, selected_index: int) -> None:
         item_id = selected_item[0] # unique id of item
         item_name = selected_item[1]
         item_level = selected_item[2]
@@ -431,7 +458,7 @@ class Character(commands.Cog, name="character"):
         item_details = await self.bot.database.fetch_item_by_id(item_id)
         
         if not item_details:
-            await interaction.response.send_message("Item not found.")
+            await interaction.followup.send("Item not found.")
             return
 
         # Get the current state of the item
@@ -439,7 +466,7 @@ class Character(commands.Cog, name="character"):
         print(f'Forges remaining for item id {item_id}: {forges_remaining}')
         # Define the costs lookup based on the forges remaining
         base_success_rate = 0.8
-        if (item_level <= 40):
+        if item_level <= 40:
             costs = {
                 3: (10, 10, 10, 100),
                 2: (10, 10, 10, 400),
@@ -452,7 +479,7 @@ class Character(commands.Cog, name="character"):
                 2: ('coal', 'willow', 'regular'),
                 1: ('gold', 'mahogany', 'sturdy'),
             }
-        elif (40 < item_level <= 80):    
+        elif 40 < item_level <= 80:    
             costs = {
                 4: (25, 25, 25, 250),
                 3: (25, 25, 25, 1000),
@@ -469,7 +496,7 @@ class Character(commands.Cog, name="character"):
             success_rate = base_success_rate - (4 - forges_remaining) * 0.05 
         else:
             costs = {
-                5: (50, 50, 50, 500),   # (ore_cost, wood_cost, bone_cost, gp_cost)
+                5: (50, 50, 50, 500),
                 4: (50, 50, 50, 2000),
                 3: (50, 50, 50, 5000),
                 2: (50, 50, 50, 10000),
@@ -489,6 +516,7 @@ class Character(commands.Cog, name="character"):
         if forges_remaining == 0:
             embed.add_field(name="Forging", value=f"This item cannot be forged anymore.", inline=True)
             await message.edit(embed=embed)
+            await asyncio.sleep(3)
             return
 
         # Fetch user data
@@ -513,17 +541,17 @@ class Character(commands.Cog, name="character"):
         else:
             ore, logs, bones = None, None, None
         # Check if the user has enough resources and gold
-        if (mining_data[cost_index] < ore_cost or  # Check for the required ore
-            woodcutting_data[cost_index] < wood_cost or  # Check for the required wood
-            fishing_data[cost_index] < bone_cost or  # Check for the required bones
-            player_gp < gp_cost):  # Check for the gold
+        if (mining_data[cost_index] < ore_cost or
+            woodcutting_data[cost_index] < wood_cost or
+            fishing_data[cost_index] < bone_cost or
+            player_gp < gp_cost):
             embed.add_field(name="Forging", 
                             value=(f"You do not have enough resources to forge this item.\n"
-                                    f"Forging costs:\n"
-                                    f"- **{ore.capitalize()}** {'Ore' if ore != 'coal' else ''} : **{ore_cost}**\n"
-                                    f"- **{logs.capitalize()}** Logs: **{wood_cost}**\n"
-                                    f"- **{bones.capitalize()}** Bones: **{bone_cost}**\n"
-                                    f"- GP cost: **{gp_cost}**\n"), 
+                                   f"Forging costs:\n"
+                                   f"- **{ore.capitalize()}** {'Ore' if ore != 'coal' else ''} : **{ore_cost}**\n"
+                                   f"- **{logs.capitalize()}** Logs: **{wood_cost}**\n"
+                                   f"- **{bones.capitalize()}** Bones: **{bone_cost}**\n"
+                                   f"- GP cost: **{gp_cost}**\n"), 
                             inline=True)
             await message.edit(embed=embed)
             await asyncio.sleep(3)
@@ -532,13 +560,13 @@ class Character(commands.Cog, name="character"):
         embed = discord.Embed(
             title="Forge",
             description=(f"You are about to forge **{item_name}**.\n"
-                        f"Forging costs:\n"
-                        f"- **{ore.capitalize()}** {'Ore' if ore != 'coal' else ''} : **{ore_cost}**\n"
-                        f"- **{logs.capitalize()}** Logs: **{wood_cost}**\n"
-                        f"- **{bones.capitalize()}** Bones: **{bone_cost}**\n"
-                        f"- GP cost: **{gp_cost:,}**\n"
-                        f"- Success rate: **{int(success_rate * 100)}%**\n"
-                        "Do you want to continue?"),
+                         f"Forging costs:\n"
+                         f"- **{ore.capitalize()}** {'Ore' if ore != 'coal' else ''} : **{ore_cost}**\n"
+                         f"- **{logs.capitalize()}** Logs: **{wood_cost}**\n"
+                         f"- **{bones.capitalize()}** Bones: **{bone_cost}**\n"
+                         f"- GP cost: **{gp_cost:,}**\n"
+                         f"- Success rate: **{int(success_rate * 100)}%**\n"
+                         "Do you want to continue?"),
             color=0xFFFF00
         )
         await message.edit(embed=embed)
@@ -554,7 +582,7 @@ class Character(commands.Cog, name="character"):
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
 
             if str(reaction.emoji) == "❌":
-                embed.add_field(name="Cancel", value=f"Returning to main menu...", inline=False)
+                embed.add_field(name="Cancel", value=f"Returning to item menu...", inline=False)
                 await message.edit(embed=embed)
                 await asyncio.sleep(3)
                 return
@@ -563,87 +591,86 @@ class Character(commands.Cog, name="character"):
             await message.delete()
             self.bot.state_manager.clear_active(interaction.user.id)  
             return
+
         # Deduct the costs from the user's resources
         print('subtracting ore')
-        if (item_level <= 40):
+        if item_level <= 40:
             await self.bot.database.update_mining_resources(user_id, server_id, {
-                'iron': -ore_cost if forges_remaining == 3 else 0,  # Set cost based on forges_remaining
-                'coal': -ore_cost if forges_remaining == 2 else 0,  # Coal for forges_remaining == 4
-                'gold': -ore_cost if forges_remaining == 1 else 0,  # Gold for forges_remaining == 3
-                'platinum': 0,  # Platinum for forges_remaining == 2
-                'idea': 0,  # Idea for forges_remaining == 1
+                'iron': -ore_cost if forges_remaining == 3 else 0,
+                'coal': -ore_cost if forges_remaining == 2 else 0,
+                'gold': -ore_cost if forges_remaining == 1 else 0,
+                'platinum': 0,
+                'idea': 0,
             })
-        elif (40 < item_level <= 80):
+        elif 40 < item_level <= 80:
             await self.bot.database.update_mining_resources(user_id, server_id, {
-                'iron': -ore_cost if forges_remaining == 4 else 0,  # Set cost based on forges_remaining
-                'coal': -ore_cost if forges_remaining == 3 else 0,  # Coal for forges_remaining == 4
-                'gold': -ore_cost if forges_remaining == 2 else 0,  # Gold for forges_remaining == 3
-                'platinum': -ore_cost if forges_remaining == 1 else 0,  # Platinum for forges_remaining == 2
-                'idea': 0,  # Idea for forges_remaining == 1
+                'iron': -ore_cost if forges_remaining == 4 else 0,
+                'coal': -ore_cost if forges_remaining == 3 else 0,
+                'gold': -ore_cost if forges_remaining == 2 else 0,
+                'platinum': -ore_cost if forges_remaining == 1 else 0,
+                'idea': 0,
             })
         else:
             await self.bot.database.update_mining_resources(user_id, server_id, {
-                'iron': -ore_cost if forges_remaining == 5 else 0,  # Set cost based on forges_remaining
-                'coal': -ore_cost if forges_remaining == 4 else 0,  # Coal for forges_remaining == 4
-                'gold': -ore_cost if forges_remaining == 3 else 0,  # Gold for forges_remaining == 3
-                'platinum': -ore_cost if forges_remaining == 2 else 0,  # Platinum for forges_remaining == 2
-                'idea': -ore_cost if forges_remaining == 1 else 0,  # Idea for forges_remaining == 1
+                'iron': -ore_cost if forges_remaining == 5 else 0,
+                'coal': -ore_cost if forges_remaining == 4 else 0,
+                'gold': -ore_cost if forges_remaining == 3 else 0,
+                'platinum': -ore_cost if forges_remaining == 2 else 0,
+                'idea': -ore_cost if forges_remaining == 1 else 0,
             })
 
         print('subtracting wood')
-        if (item_level <= 40):
+        if item_level <= 40:
             await self.bot.database.update_woodcutting_resources(user_id, server_id, {
-                'oak': -ore_cost if forges_remaining == 3 else 0, 
-                'willow': -ore_cost if forges_remaining == 2 else 0,  
-                'mahogany': -ore_cost if forges_remaining == 1 else 0, 
-                'magic': 0, 
-                'idea': 0, 
+                'oak': -ore_cost if forges_remaining == 3 else 0,
+                'willow': -ore_cost if forges_remaining == 2 else 0,
+                'mahogany': -ore_cost if forges_remaining == 1 else 0,
+                'magic': 0,
+                'idea': 0,
             })
-        elif (40 < item_level <= 80):
+        elif 40 < item_level <= 80:
             await self.bot.database.update_woodcutting_resources(user_id, server_id, {
-                'oak': -ore_cost if forges_remaining == 4 else 0, 
-                'willow': -ore_cost if forges_remaining == 3 else 0,  
-                'mahogany': -ore_cost if forges_remaining == 2 else 0, 
-                'magic': -ore_cost if forges_remaining == 1 else 0, 
+                'oak': -ore_cost if forges_remaining == 4 else 0,
+                'willow': -ore_cost if forges_remaining == 3 else 0,
+                'mahogany': -ore_cost if forges_remaining == 2 else 0,
+                'magic': -ore_cost if forges_remaining == 1 else 0,
                 'idea': 0,
             })
         else:
             await self.bot.database.update_woodcutting_resources(user_id, server_id, {
-                'oak': -ore_cost if forges_remaining == 5 else 0,  
-                'willow': -ore_cost if forges_remaining == 4 else 0,  
-                'mahogany': -ore_cost if forges_remaining == 3 else 0, 
-                'magic': -ore_cost if forges_remaining == 2 else 0, 
-                'idea': -ore_cost if forges_remaining == 1 else 0,  
+                'oak': -ore_cost if forges_remaining == 5 else 0,
+                'willow': -ore_cost if forges_remaining == 4 else 0,
+                'mahogany': -ore_cost if forges_remaining == 3 else 0,
+                'magic': -ore_cost if forges_remaining == 2 else 0,
+                'idea': -ore_cost if forges_remaining == 1 else 0,
             })
-    
 
         print('subtracting bones')
-        if (item_level <= 40):
+        if item_level <= 40:
             await self.bot.database.update_fishing_resources(user_id, server_id, {
-                'desiccated': -ore_cost if forges_remaining == 3 else 0, 
-                'regular': -ore_cost if forges_remaining == 2 else 0,  
-                'sturdy': -ore_cost if forges_remaining == 1 else 0, 
-                'reinforced': 0, 
-                'titanium': 0, 
+                'desiccated': -ore_cost if forges_remaining == 3 else 0,
+                'regular': -ore_cost if forges_remaining == 2 else 0,
+                'sturdy': -ore_cost if forges_remaining == 1 else 0,
+                'reinforced': 0,
+                'titanium': 0,
             })
-        elif (40 < item_level <= 80):
+        elif 40 < item_level <= 80:
             await self.bot.database.update_fishing_resources(user_id, server_id, {
-                'desiccated': -ore_cost if forges_remaining == 4 else 0, 
-                'regular': -ore_cost if forges_remaining == 3 else 0,  
-                'sturdy': -ore_cost if forges_remaining == 2 else 0, 
-                'reinforced': -ore_cost if forges_remaining == 1 else 0, 
+                'desiccated': -ore_cost if forges_remaining == 4 else 0,
+                'regular': -ore_cost if forges_remaining == 3 else 0,
+                'sturdy': -ore_cost if forges_remaining == 2 else 0,
+                'reinforced': -ore_cost if forges_remaining == 1 else 0,
                 'titanium': 0,
             })
         else:
             await self.bot.database.update_fishing_resources(user_id, server_id, {
-                'desiccated': -ore_cost if forges_remaining == 5 else 0,  
-                'regular': -ore_cost if forges_remaining == 4 else 0,  
-                'sturdy': -ore_cost if forges_remaining == 3 else 0, 
-                'reinforced': -ore_cost if forges_remaining == 2 else 0, 
-                'titanium': -ore_cost if forges_remaining == 1 else 0,  
+                'desiccated': -ore_cost if forges_remaining == 5 else 0,
+                'regular': -ore_cost if forges_remaining == 4 else 0,
+                'sturdy': -ore_cost if forges_remaining == 3 else 0,
+                'reinforced': -ore_cost if forges_remaining == 2 else 0,
+                'titanium': -ore_cost if forges_remaining == 1 else 0,
             })
         print('subtracting gold')
-        # Deduct the gold
         await self.bot.database.add_gold(user_id, -gp_cost)
 
         new_forges_remaining = forges_remaining - 1
@@ -655,7 +682,6 @@ class Character(commands.Cog, name="character"):
             
             if current_passive == "none":
                 print('item has no passive')
-                # Assign a new passive
                 passives = [
                     "burning",
                     "poisonous",
@@ -667,40 +693,38 @@ class Character(commands.Cog, name="character"):
                     "accurate",
                     "echo"
                 ]
-                new_passive = random.choice(passives)  # Assign default new passive (you can define logic for tiering)
+                new_passive = random.choice(passives)
                 print(f'Assigning {new_passive} to item {item_id}')
-                # Set the passive in the database
                 await self.bot.database.update_item_passive(item_id, new_passive)
                 embed.add_field(name="Forging success", 
                                 value=(f"🎊 Congratulations! 🎊 " 
-                                        f"**{item_name}** has gained the " 
-                                        f"**{new_passive.capitalize()}** passive."), 
-                                        inline=False)
+                                       f"**{item_name}** has gained the " 
+                                       f"**{new_passive.capitalize()}** passive."), 
+                                inline=False)
                 await message.edit(embed=embed)
                 await asyncio.sleep(7)
             else:
                 print('item has passive, upgrade it')
-                new_passive = await self.upgrade_passive(current_passive)  # Function to upgrade the passive
+                new_passive = await self.upgrade_passive(current_passive)
                 print(f'new passive is {new_passive}')
                 await self.bot.database.update_item_passive(item_id, new_passive)
                 embed.add_field(name="Forging success", 
                                 value=(f"🎊 Congratulations! 🎊 "
                                        f"**{item_name}**'s passive upgrades from **{current_passive.capitalize()}**"
                                        f" to **{new_passive.capitalize()}**."),
-                                       inline=False)
+                                inline=False)
                 await message.edit(embed=embed)
                 await asyncio.sleep(7)
         else:
             print('forging failed')
             embed.add_field(name="Forging", 
-                value=(f"Forging failed! "
-                        f"Better luck next time. 🥺 \n"
-                        f"Returning to main menu..."),
-                        inline=False)
+                            value=(f"Forging failed! "
+                                   f"Better luck next time. 🥺 \n"
+                                   f"Returning to item menu..."),
+                            inline=False)
             await message.edit(embed=embed)
             await asyncio.sleep(5)
         
-        # Update the item in the database with the new forges_remaining count
         await self.bot.database.update_item_forge_count(item_id, new_forges_remaining)
 
     async def upgrade_passive(self, current_passive: str) -> str:
@@ -807,7 +831,9 @@ class Character(commands.Cog, name="character"):
                           selected_item: tuple, 
                           user_id: str, server_id: str,
                           embed,
-                          message) -> None:
+                          message,
+                          current_page: int,
+                          selected_index: int) -> None:
         item_id = selected_item[0]  # unique id of item
         item_name = selected_item[1]
         item_level = selected_item[2]
@@ -815,7 +841,7 @@ class Character(commands.Cog, name="character"):
         item_details = await self.bot.database.fetch_item_by_id(item_id)
         
         if not item_details:
-            await interaction.response.send_message("Item not found.")
+            await interaction.followup.send("Item not found.")
             return
 
         # Get the current state of the item
@@ -828,15 +854,15 @@ class Character(commands.Cog, name="character"):
                 embed = discord.Embed(
                     title="Apply Rune of Refinement?",
                     description=(f"**{item_name}** has no refine attempts remaining.\n"
-                                f"Do you want to use a **Rune of Refinement** to add a refining attempt?\n"
-                                f"(You have {refinement_runes} rune(s) available)"),
+                                 f"Do you want to use a **Rune of Refinement** to add a refining attempt?\n"
+                                 f"(You have {refinement_runes} rune(s) available)"),
                     color=0xFFCC00
                 )
                 await message.clear_reactions()
                 await message.edit(embed=embed)
 
-                await message.add_reaction("✅")  # Confirm
-                await message.add_reaction("❌")  # Cancel
+                await message.add_reaction("✅")
+                await message.add_reaction("❌")
 
                 def confirm_check(reaction, user):
                     return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
@@ -845,23 +871,22 @@ class Character(commands.Cog, name="character"):
                     reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
 
                     if str(reaction.emoji) == "✅":
-                        # Applying the rune
-                        await self.bot.database.update_refinement_runes(user_id, -1)  # Deduct a rune
-                        await self.bot.database.update_item_refine_count(item_id, 1)  # Set refines_remaining to 1
+                        await self.bot.database.update_refinement_runes(user_id, -1)
+                        await self.bot.database.update_item_refine_count(item_id, 1)
                         embed.add_field(name="Rune of Refinement",
-                                                 value=(f"You have successfully applied a **Rune of Refinement**!\n"
-                                                        f"{item_name} now has **1** refine remaining. Returning to main menu..."),
-                                                   inline=False)
-                        refines_remaining = 1  # Update local variable to reflect the change
+                                       value=(f"You have successfully applied a **Rune of Refinement**!\n"
+                                              f"{item_name} now has **1** refine remaining. Returning to item menu..."),
+                                       inline=False)
+                        refines_remaining = 1
                         await message.edit(embed=embed)
                         await asyncio.sleep(5)
                     elif str(reaction.emoji) == "❌":
                         embed.add_field(name="Rune of Refinement",
-                            value=(f"You chose not to apply a Rune of Refinement.\nReturning to main menu..."),
-                            inline=False)
+                                        value=(f"You chose not to apply a Rune of Refinement.\nReturning to item menu..."),
+                                        inline=False)
                         await message.edit(embed=embed)
                         await asyncio.sleep(5)
-                        return  # Exit the method to return to the inventory interface
+                        return
 
                 except asyncio.TimeoutError:
                     self.bot.state_manager.clear_active(interaction.user.id)  
@@ -869,12 +894,10 @@ class Character(commands.Cog, name="character"):
             return
 
         # Determine cost of the refinement
-
-        
-        if (item_level <= 40):
+        if item_level <= 40:
             refine_costs = [1000, 6000, 10000]  
             cost = refine_costs[3 - refines_remaining]
-        elif (40 < item_level <= 80):    
+        elif 40 < item_level <= 80:    
             refine_costs = [5000, 15000, 25000, 50000]  
             cost = refine_costs[4 - refines_remaining]
         else:
@@ -892,8 +915,8 @@ class Character(commands.Cog, name="character"):
         embed.set_thumbnail(url="https://i.imgur.com/AnlbnbO.jpeg")
         await message.edit(embed=embed)
         await message.clear_reactions()
-        await message.add_reaction("✅")  # Confirm
-        await message.add_reaction("❌")  # Cancel
+        await message.add_reaction("✅")
+        await message.add_reaction("❌")
 
         def confirm_check(reaction, user):
             return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
@@ -902,7 +925,7 @@ class Character(commands.Cog, name="character"):
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
 
             if str(reaction.emoji) == "❌":
-                embed.add_field(name="Refining", value=f"Refinement cancelled. Returning to main menu...", inline=False)
+                embed.add_field(name="Refining", value=f"Refinement cancelled. Returning to item menu...", inline=False)
                 await message.edit(embed=embed)
                 await asyncio.sleep(5)
                 return
@@ -913,22 +936,19 @@ class Character(commands.Cog, name="character"):
             return
         
         if player_gold < cost:
-            embed.add_field(name="Refining", value=f"You do not have enough gold. Returning to main menu...", inline=False)
+            embed.add_field(name="Refining", value=f"You do not have enough gold. Returning to item menu...", inline=False)
             await message.edit(embed=embed)
             await asyncio.sleep(5)
             return
 
-        # Deduct the gold cost from the user's resources
         await self.bot.database.update_user_gold(user_id, player_gold - cost)
 
-        # Printing the refinement process
         embed.add_field(name="Refining", value=f"You chose to refine {item_name}.", inline=False)
         await message.edit(embed=embed)
         
-        # Perform roll checks for attack, defense, rarity
-        attack_roll = random.randint(0, 100) < 80  # 80% chance for attack
-        defense_roll = random.randint(0, 100) < 50  # 50% chance for defense
-        rarity_roll = random.randint(0, 100) < 20  # 20% chance for rarity
+        attack_roll = random.randint(0, 100) < 80
+        defense_roll = random.randint(0, 100) < 50
+        rarity_roll = random.randint(0, 100) < 20
 
         attack_modifier = 0
         defense_modifier = 0
@@ -949,13 +969,11 @@ class Character(commands.Cog, name="character"):
             await self.bot.database.increase_item_defence(item_id, defense_modifier)  
 
         if rarity_roll:
-            rarity_modifier = random.randint(5, max_range * 5)  # Example range for rarity increase
+            rarity_modifier = random.randint(5, max_range * 5)
             await self.bot.database.update_item_rarity(item_id, rarity_modifier)
 
-        # Update refines_remaining in the database
         await self.bot.database.update_item_refine_count(item_id, refines_remaining - 1)
 
-        # Sending a message about the refinements
         result_message = []
         if attack_modifier > 0:
             result_message.append(f"Attack increased by **{attack_modifier}**!")
@@ -965,11 +983,11 @@ class Character(commands.Cog, name="character"):
             result_message.append(f"Rarity increased by **{rarity_modifier}**!")
 
         if not result_message:
-            embed.add_field(name="Refining", value=f"The refinement was successful, but no stats were upgraded.", inline=False)
+            embed.add_field(name="Refining", value=f"The refinement was successful, but no stats were upgraded. Returning to item menu...", inline=False)
             await message.edit(embed=embed)
             await asyncio.sleep(5)
         else:
-            embed.add_field(name="Refining", value=("\n".join(result_message)), inline=False)
+            embed.add_field(name="Refining", value=("\n".join(result_message) + "\nReturning to item menu..."), inline=False)
             await message.edit(embed=embed)
             await asyncio.sleep(5)
 
@@ -981,7 +999,7 @@ class Character(commands.Cog, name="character"):
 
     @app_commands.command(name="accessory", description="View your character's accessories and modify them.")
     async def accessory(self, interaction: Interaction) -> None:
-        """Fetch and display the character's accessories."""
+        """Fetch and display the character's accessories with pagination."""
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
         
@@ -1009,19 +1027,27 @@ class Character(commands.Cog, name="character"):
         message: Message = await interaction.original_response()
         self.bot.state_manager.set_active(user_id, "inventory")  # Set inventory as active operation
 
+        # Pagination setup
+        items_per_page = 5
+        total_pages = (len(accessories) + items_per_page - 1) // items_per_page  # Ceiling division
+        current_page = 0
+        number_emojis = ["❌", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+
         while True:
             accessories = await self.bot.database.fetch_user_accessories(user_id)
-            embed.description = f"{player_name}'s Accessories:"
+            total_pages = (len(accessories) + items_per_page - 1) // items_per_page
+            current_page = min(current_page, total_pages - 1)  # Ensure current_page is valid
+            embed.description = f"{player_name}'s Accessories (Page {current_page + 1}/{total_pages}):"
             
             if not accessories:
-                await interaction.response.send_message("You check your accessory pouch, it is empty.")
+                await interaction.followup.send("You check your accessory pouch, it is empty.")
                 break
 
             accessories.sort(key=lambda acc: acc[3], reverse=True)  # Sort by item_level at index 3
-            accessories_to_display = accessories[:5]  # Display the top 5 accessories
+            start_idx = current_page * items_per_page
+            accessories_to_display = accessories[start_idx:start_idx + items_per_page]
             await message.clear_reactions()
             embed.clear_fields()
-            number_emojis = ["❌", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
             accessories_display_string = ""
 
             for index, accessory in enumerate(accessories_to_display):
@@ -1039,112 +1065,124 @@ class Character(commands.Cog, name="character"):
             # Add a single field for all accessories
             embed.add_field(
                 name="Accessories:",
-                value=accessories_display_string.strip(),  # Strip any trailing newline
+                value=accessories_display_string.strip(),
                 inline=False
             )
 
             # Instructions for user
             embed.add_field(
                 name="Instructions",
-                value=(f"[ℹ️] Select an accessory you want to interact with.\n"
-                    f"[❌] Close interface."),
+                value=(f"[ℹ️] Select an accessory to interact with.\n"
+                       f"[◀️] Previous page | [▶️] Next page | [❌] Close interface."),
                 inline=False
             )
             await message.edit(embed=embed)
 
-            for i in range(len(accessories_to_display) + 1):  # Add reactions for existing items
+            # Add reactions: number emojis for items, navigation, and exit
+            for i in range(len(accessories_to_display) + 1):
                 await message.add_reaction(number_emojis[i])
+            if current_page > 0:
+                await message.add_reaction("◀️")
+            if current_page < total_pages - 1:
+                await message.add_reaction("▶️")
 
             def check(reaction, user):
-                return (user == interaction.user and reaction.message.id == message.id)
+                return (user == interaction.user
+                        and reaction.message.id == message.id
+                        and str(reaction.emoji) in number_emojis + ["◀️", "▶️"])
 
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                selected_index = number_emojis.index(str(reaction.emoji))  # Get the index of the selected accessory
-                print(f'{selected_index} was selected')
-                if selected_index == 0:  # exit
+                reaction_str = str(reaction.emoji)
+                
+                if reaction_str == "◀️" and current_page > 0:
+                    current_page -= 1
+                    continue
+                elif reaction_str == "▶️" and current_page < total_pages - 1:
+                    current_page += 1
+                    continue
+                elif reaction_str == "❌":
                     await message.delete()
                     self.bot.state_manager.clear_active(user_id)
                     break
-                selected_index -= 1  # Adjust to true index of accessory
-                selected_accessory = accessories_to_display[selected_index]
-                print(f'Selected accessory: {selected_accessory}')
+                
+                selected_index = number_emojis.index(reaction_str) - 1
+                if selected_index >= 0:
+                    selected_accessory = accessories_to_display[selected_index]
+                    print(f'Selected accessory: {selected_accessory}')
+                    # Display selected accessory details
+                    accessory_name = selected_accessory[2]
+                    accessory_level = selected_accessory[3]
+                    accessory_attack = selected_accessory[4]
+                    accessory_defence = selected_accessory[5]
+                    accessory_rarity = selected_accessory[6]
+                    accessory_ward = selected_accessory[7]
+                    accessory_crit = selected_accessory[8]
+                    accessory_passive = selected_accessory[9]
+                    potential_lvl = selected_accessory[12]
+                    passive_effect = self.get_accessory_passive_effect(accessory_passive, potential_lvl)
 
-                # Display selected accessory details
-                accessory_name = selected_accessory[2]
-                accessory_level = selected_accessory[3]
-                accessory_attack = selected_accessory[4]  # index 4 for attack
-                accessory_defence = selected_accessory[5]  # index 5 for defense
-                accessory_rarity = selected_accessory[6]  # index 6 for rarity
-                accessory_ward = selected_accessory[7]  # index 7 for ward
-                accessory_crit = selected_accessory[8]  # index 8 for crit
-                accessory_passive = selected_accessory[9]  # passive is at index 9
-                potential_lvl = selected_accessory[12] 
-                passive_effect = self.get_accessory_passive_effect(accessory_passive, potential_lvl)
+                    embed.description = f"**{accessory_name}** (Level {accessory_level}):"
+                    embed.clear_fields()
+                    if accessory_attack > 0:
+                        embed.add_field(name="Attack", value=accessory_attack, inline=True)
+                    elif accessory_defence > 0:
+                        embed.add_field(name="Defense", value=accessory_defence, inline=True)
+                    elif accessory_rarity > 0:
+                        embed.add_field(name="Rarity", value=accessory_rarity, inline=True)
+                    elif accessory_ward > 0:
+                        embed.add_field(name="Ward", value=accessory_ward, inline=True)
+                    elif accessory_crit > 0:
+                        embed.add_field(name="Critical Chance", value=accessory_crit, inline=True)
 
-                embed.description = f"**{accessory_name}** (Level {accessory_level}):"
-                embed.clear_fields()
-                # Only display the stat that is not zero
-                if accessory_attack > 0:
-                    embed.add_field(name="Attack", value=accessory_attack, inline=True)
-                elif accessory_defence > 0:
-                    embed.add_field(name="Defense", value=accessory_defence, inline=True)
-                elif accessory_rarity > 0:
-                    embed.add_field(name="Rarity", value=accessory_rarity, inline=True)
-                elif accessory_ward > 0:
-                    embed.add_field(name="Ward", value=accessory_ward, inline=True)
-                elif accessory_crit > 0:
-                    embed.add_field(name="Critical Chance", value=accessory_crit, inline=True)
+                    if accessory_passive != "none":
+                        embed.add_field(name="Passive", value=accessory_passive + f" ({potential_lvl})", inline=False)
+                        embed.add_field(name="Passive Description", value=passive_effect, inline=False)
+                    else:
+                        embed.add_field(name="Passive", value="🪄 to unlock!", inline=False)
 
-                if (accessory_passive != "none"):
-                    embed.add_field(name="Passive", value=accessory_passive + f" ({potential_lvl})", inline=False)
-                    embed.add_field(name="Passive Description", value=passive_effect, inline=False)
-                else:
-                    embed.add_field(name="Passive", value="🪄 to unlock!", inline=False)
+                    potential_guide = (
+                        "💎 to equip.\n"
+                        "🪄 to unlock/improve potential.\n"
+                        "🗑️ to discard.\n"
+                        "◀️ to go back."
+                    )
+                    embed.add_field(name="Accessory Guide", value=potential_guide, inline=False)
+                    await message.edit(embed=embed)
+                    await message.clear_reactions()
 
-                # Add guide for potential modifications
-                potential_guide = (
-                    "💎 to equip.\n"
-                    "🪄 to unlock/improve potential.\n"
-                    "🗑️ to discard.\n"
-                    "◀️ to go back."
-                )
+                    action_reactions = ["💎", "🪄", "🗑️", "◀️"]
+                    for emoji in action_reactions:
+                        await message.add_reaction(emoji)
 
-                embed.add_field(name="Accessory Guide", value=potential_guide, inline=False)
-                await message.edit(embed=embed)
-                await message.clear_reactions()
+                    def action_check(r, u):
+                        return u == interaction.user and r.message.id == message.id and str(r.emoji) in action_reactions
 
-                action_reactions = ["💎", "🪄", "🗑️", "◀️"]
-                for emoji in action_reactions:
-                    await message.add_reaction(emoji)
+                    try:
+                        action_reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=action_check)
+                        if str(action_reaction.emoji) == "💎":
+                            await self.equip_accessory(interaction, selected_accessory, accessory_name, message, embed)
+                            continue
+                        elif str(action_reaction.emoji) == "🪄":
+                            await self.improve_potential(interaction, selected_accessory, user_id, server_id, message, embed, current_page, selected_index)
+                            continue
+                        elif str(action_reaction.emoji) == "🗑️":
+                            await self.discard_accessory(interaction, selected_accessory, accessory_name, message, embed)
+                            continue
+                        elif str(action_reaction.emoji) == "◀️":
+                            continue
 
-                try:
-                    action_reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                    if str(action_reaction.emoji) == "💎":
-                        await self.equip_accessory(interaction, selected_accessory, accessory_name, message, embed)
-                        continue
-                    elif str(action_reaction.emoji) == "🪄":
-                        await self.improve_potential(interaction, selected_accessory, 
-                                                     user_id, server_id, message, embed)
-                        continue
-                    elif str(action_reaction.emoji) == "🗑️":
-                        await self.discard_accessory(interaction, selected_accessory, accessory_name, message, embed)
-                        continue
-                    elif str(action_reaction.emoji) == "◀️":
-                        print('Go back')
-                        continue
-
-                except asyncio.TimeoutError:
-                    await message.delete()
-                    self.bot.state_manager.clear_active(interaction.user.id)  
-                    break
+                    except asyncio.TimeoutError:
+                        await message.delete()
+                        self.bot.state_manager.clear_active(interaction.user.id)
+                        break
                 
             except asyncio.TimeoutError:
                 await message.delete()
-                self.bot.state_manager.clear_active(interaction.user.id)  
+                self.bot.state_manager.clear_active(interaction.user.id)
                 break
             
-        self.bot.state_manager.clear_active(user_id)    
+        self.bot.state_manager.clear_active(user_id)
 
     def get_accessory_passive_effect(self, passive: str, level: int) -> str:
         passive_messages = {
@@ -1253,8 +1291,8 @@ class Character(commands.Cog, name="character"):
 
 
     async def improve_potential(self, interaction: Interaction, selected_accessory: tuple, 
-                                user_id: str, server_id: str, message, embed) -> None:
-        """Improve the potential of an accessory."""
+                                user_id: str, server_id: str, message, embed,
+                                current_page: int, selected_index: int) -> None:
         print('Improving accessory')
         accessory_id = selected_accessory[0]
         accessory_name = selected_accessory[2]
@@ -1265,25 +1303,24 @@ class Character(commands.Cog, name="character"):
         
         if potential_remaining <= 0:
             embed.add_field(name="Error", 
-                            value=f"This accessory has no potential remaining. You cannot enhance it further. Returning...", 
+                            value=f"This accessory has no potential remaining. You cannot enhance it further. Returning to item menu...", 
                             inline=False)
             await message.edit(embed=embed)
             await asyncio.sleep(3)
             return
 
-        # Check user's rune of potential count
         rune_of_potential_count = await self.bot.database.fetch_potential_runes(str(interaction.user.id))
         costs = [500, 1000, 2000, 3000, 4000, 5000, 10000, 20000, 30000, 40000]
-        refine_cost = costs[10 - potential_remaining]  # Cost is based on current potential level
-        success_rate = max(75 - (10 - potential_remaining) * 5, 35)  # Success rate starts at 75% and decreases
+        refine_cost = costs[10 - potential_remaining]
+        success_rate = max(75 - (10 - potential_remaining) * 5, 35)
 
-        if (current_passive == "none"):
+        if current_passive == "none":
             embed = discord.Embed(
                 title="Unlock Potential Attempt",
                 description=(f"Attempt to unlock *{accessory_name}*'s potential? \n"
                              f"Attempts left: **{potential_remaining}** \n"
-                            f"Unlock Cost: **{refine_cost:,} GP**\n"
-                            f"Success Rate: **{success_rate}%**\n"),
+                             f"Unlock Cost: **{refine_cost:,} GP**\n"
+                             f"Success Rate: **{success_rate}%**\n"),
                 color=0xFFCC00
             )       
         else:
@@ -1291,15 +1328,15 @@ class Character(commands.Cog, name="character"):
                 title="Enhance Potential Attempt",
                 description=(f"Enhance **{accessory_name}**'s potential? \n"
                              f"Attempts left: **{potential_remaining}** \n"
-                            f"Next Potential Level Cost: **{refine_cost:,} GP**\n"
-                            f"Success Rate: **{success_rate}%**\n"),
+                             f"Next Potential Level Cost: **{refine_cost:,} GP**\n"
+                             f"Success Rate: **{success_rate}%**\n"),
                 color=0xFFCC00
             )
 
         await message.edit(embed=embed)
         await message.clear_reactions()
-        await message.add_reaction("✅")  # Confirm
-        await message.add_reaction("❌")  # Cancel
+        await message.add_reaction("✅")
+        await message.add_reaction("❌")
 
         def confirm_check(reaction, user):
             return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
@@ -1308,7 +1345,7 @@ class Character(commands.Cog, name="character"):
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
 
             if str(reaction.emoji) == "❌":
-                embed.add_field(name="Potential", value=f"Cancelling, returning to main menu...", inline=False)
+                embed.add_field(name="Potential", value=f"Cancelling, returning to item menu...", inline=False)
                 await message.edit(embed=embed)
                 await asyncio.sleep(5)
                 return
@@ -1320,23 +1357,22 @@ class Character(commands.Cog, name="character"):
         
         player_gold = await self.bot.database.fetch_user_gold(user_id, server_id)
         if player_gold < refine_cost:
-            embed.add_field(name="Refining", value=f"You do not have enough gold. Returning to main menu...", inline=False)
+            embed.add_field(name="Refining", value=f"You do not have enough gold. Returning to item menu...", inline=False)
             await message.edit(embed=embed)
             await asyncio.sleep(5)
             return
 
-        # Deduct the gold cost from the user's resources
         await self.bot.database.update_user_gold(user_id, player_gold - refine_cost)
 
         if rune_of_potential_count > 0:
             embed.add_field(name="Runes of Potential", 
-                                    value=(f"You have **{rune_of_potential_count}** Rune(s) of Potential available.\n"
-                                            f"Do you want to use one to boost your success rate to **{success_rate + 25}%**?"),
-                                    inline=False)
+                            value=(f"You have **{rune_of_potential_count}** Rune(s) of Potential available.\n"
+                                   f"Do you want to use one to boost your success rate to **{success_rate + 25}%**?"),
+                            inline=False)
             await message.edit(embed=embed)
             await message.clear_reactions()
-            await message.add_reaction("✅")  # Confirm with rune
-            await message.add_reaction("❌")  # Confirm without rune
+            await message.add_reaction("✅")
+            await message.add_reaction("❌")
 
             def check_reaction(r, user):
                 return user == interaction.user and r.message.id == message.id and str(r.emoji) in ["✅", "❌"]
@@ -1345,42 +1381,36 @@ class Character(commands.Cog, name="character"):
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check_reaction)
 
                 if str(reaction.emoji) == "✅":
-                    success_rate += 25  # Boost success rate by 25%
-                    await self.bot.database.update_potential_runes(str(interaction.user.id), -1)  # Use a rune
+                    success_rate += 25
+                    await self.bot.database.update_potential_runes(str(interaction.user.id), -1)
 
             except asyncio.TimeoutError:
                 await message.delete()
                 self.bot.state_manager.clear_active(interaction.user.id)  
                 return
 
-        # Perform the potential enhancement roll
         player_roll = random.random()
         chance_to_improve = success_rate / 100
-        enhancement_success = player_roll <= chance_to_improve # Check if the enhancement is successful
+        enhancement_success = player_roll <= chance_to_improve
         print(f"Enhancement was {enhancement_success}, with player rolling {player_roll} and {chance_to_improve} success rate")
         
         if enhancement_success:
-            # Successfully enhanced, set new potential level
-            if (potential_lvl == 0):
+            if potential_lvl == 0:
                 passive_choice = random.choice(potential_passive_list)
                 await self.bot.database.update_accessory_passive(accessory_id, passive_choice)
                 await self.bot.database.update_accessory_passive_lvl(accessory_id, 1)
-
-            new_potential = potential_lvl + 1
-            await self.bot.database.update_accessory_passive_lvl(accessory_id, new_potential)
-            if (new_potential == 1):
                 success_message = (f"🎉 Success!\n"
-                                    f"Your accessory has gained the **{passive_choice}** passive.")
+                                   f"Your accessory has gained the **{passive_choice}** passive.")
             else:
+                new_potential = potential_lvl + 1
+                await self.bot.database.update_accessory_passive_lvl(accessory_id, new_potential)
                 success_message = (f"🎉 Success!\n"
                                    f"Upgraded **{current_passive}** from level **{potential_lvl}** to **{new_potential}**.\n")
-            embed.add_field(name="Enhancement Result", value=success_message, inline=False)
+            embed.add_field(name="Enhancement Result", value=success_message + " Returning to item menu...", inline=False)
         else:
-            # Failed enhancement
-            fail_message = "💔 The enhancement failed. Unlucky."
+            fail_message = "💔 The enhancement failed. Unlucky. Returning to item menu..."
             embed.add_field(name="Enhancement Result", value=fail_message, inline=False)
 
-        # Update database with new potential level and passive
         potential_remaining -= 1
         await self.bot.database.update_accessory_potential(accessory_id, potential_remaining)
         await message.edit(embed=embed)
