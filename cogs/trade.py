@@ -78,6 +78,7 @@ class Trade(commands.Cog, name="trade"):
                 # Update the embed message to inform of the successful transaction
                 embed.description = f"Successfully sent 💰 **{amount:,}** gold to {receiver.mention}! 🎉"
                 await message.edit(embed=embed)
+                await message.clear_reactions()
             else:
                 embed.description = "Transaction cancelled."
                 await message.edit(embed=embed)

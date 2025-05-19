@@ -502,9 +502,11 @@ class Character(commands.Cog, name="character"):
 
         # Get the corresponding costs based on forges remaining
         ore_cost, wood_cost, bone_cost, gp_cost = costs[forges_remaining]
-        
+        print(mining_data)
+        print(woodcutting_data)
+        print(fishing_data)
         print(f'forge will cost {ore_cost} ore, {wood_cost} logs, {bone_cost} bones, {gp_cost} gp')
-        print(mining_data[cost_index])
+        print(f'mining_data[cost_index]: {mining_data[cost_index]}')
 
         if forges_remaining in forges_data:
             ore, logs, bones = forges_data[forges_remaining]
@@ -534,8 +536,8 @@ class Character(commands.Cog, name="character"):
                         f"- **{ore.capitalize()}** {'Ore' if ore != 'coal' else ''} : **{ore_cost}**\n"
                         f"- **{logs.capitalize()}** Logs: **{wood_cost}**\n"
                         f"- **{bones.capitalize()}** Bones: **{bone_cost}**\n"
-                        f"- GP cost: **{gp_cost}**\n"
-                        f"- Success rate: **{success_rate * 100}%**\n"
+                        f"- GP cost: **{gp_cost:,}**\n"
+                        f"- Success rate: **{int(success_rate * 100)}%**\n"
                         "Do you want to continue?"),
             color=0xFFFF00
         )
@@ -563,29 +565,83 @@ class Character(commands.Cog, name="character"):
             return
         # Deduct the costs from the user's resources
         print('subtracting ore')
-        await self.bot.database.update_mining_resources(user_id, server_id, {
-            'iron': -ore_cost if forges_remaining == 5 else 0,  # Set cost based on forges_remaining
-            'coal': -ore_cost if forges_remaining == 4 else 0,  # Coal for forges_remaining == 4
-            'gold': -ore_cost if forges_remaining == 3 else 0,  # Gold for forges_remaining == 3
-            'platinum': -ore_cost if forges_remaining == 2 else 0,  # Platinum for forges_remaining == 2
-            'idea': -ore_cost if forges_remaining == 1 else 0,  # Idea for forges_remaining == 1
-        })
+        if (item_level <= 40):
+            await self.bot.database.update_mining_resources(user_id, server_id, {
+                'iron': -ore_cost if forges_remaining == 3 else 0,  # Set cost based on forges_remaining
+                'coal': -ore_cost if forges_remaining == 2 else 0,  # Coal for forges_remaining == 4
+                'gold': -ore_cost if forges_remaining == 1 else 0,  # Gold for forges_remaining == 3
+                'platinum': 0,  # Platinum for forges_remaining == 2
+                'idea': 0,  # Idea for forges_remaining == 1
+            })
+        elif (40 < item_level <= 80):
+            await self.bot.database.update_mining_resources(user_id, server_id, {
+                'iron': -ore_cost if forges_remaining == 4 else 0,  # Set cost based on forges_remaining
+                'coal': -ore_cost if forges_remaining == 3 else 0,  # Coal for forges_remaining == 4
+                'gold': -ore_cost if forges_remaining == 2 else 0,  # Gold for forges_remaining == 3
+                'platinum': -ore_cost if forges_remaining == 1 else 0,  # Platinum for forges_remaining == 2
+                'idea': 0,  # Idea for forges_remaining == 1
+            })
+        else:
+            await self.bot.database.update_mining_resources(user_id, server_id, {
+                'iron': -ore_cost if forges_remaining == 5 else 0,  # Set cost based on forges_remaining
+                'coal': -ore_cost if forges_remaining == 4 else 0,  # Coal for forges_remaining == 4
+                'gold': -ore_cost if forges_remaining == 3 else 0,  # Gold for forges_remaining == 3
+                'platinum': -ore_cost if forges_remaining == 2 else 0,  # Platinum for forges_remaining == 2
+                'idea': -ore_cost if forges_remaining == 1 else 0,  # Idea for forges_remaining == 1
+            })
+
         print('subtracting wood')
-        await self.bot.database.update_woodcutting_resources(user_id, server_id, {
-            'oak': -wood_cost if forges_remaining == 5 else 0,  # Oak for 5 or 4
-            'willow': -wood_cost if forges_remaining == 4 else 0,  # Willow for 4
-            'mahogany': -wood_cost if forges_remaining == 3 else 0,  # Mahogany for 3
-            'magic': -wood_cost if forges_remaining == 2 else 0,  # Magic for 2
-            'idea': -wood_cost if forges_remaining == 1 else 0,  # Idea for 1
-        })
+        if (item_level <= 40):
+            await self.bot.database.update_woodcutting_resources(user_id, server_id, {
+                'oak': -ore_cost if forges_remaining == 3 else 0, 
+                'willow': -ore_cost if forges_remaining == 2 else 0,  
+                'mahogany': -ore_cost if forges_remaining == 1 else 0, 
+                'magic': 0, 
+                'idea': 0, 
+            })
+        elif (40 < item_level <= 80):
+            await self.bot.database.update_woodcutting_resources(user_id, server_id, {
+                'oak': -ore_cost if forges_remaining == 4 else 0, 
+                'willow': -ore_cost if forges_remaining == 3 else 0,  
+                'mahogany': -ore_cost if forges_remaining == 2 else 0, 
+                'magic': -ore_cost if forges_remaining == 1 else 0, 
+                'idea': 0,
+            })
+        else:
+            await self.bot.database.update_woodcutting_resources(user_id, server_id, {
+                'oak': -ore_cost if forges_remaining == 5 else 0,  
+                'willow': -ore_cost if forges_remaining == 4 else 0,  
+                'mahogany': -ore_cost if forges_remaining == 3 else 0, 
+                'magic': -ore_cost if forges_remaining == 2 else 0, 
+                'idea': -ore_cost if forges_remaining == 1 else 0,  
+            })
+    
+
         print('subtracting bones')
-        await self.bot.database.update_fishing_resources(user_id, server_id, {
-            'desiccated': -bone_cost if forges_remaining == 5 else 0,  # Desiccated for 5 or 4
-            'regular': -bone_cost if forges_remaining == 4 else 0,  # Regular for 4
-            'sturdy': -bone_cost if forges_remaining == 3 else 0,  # Sturdy for 3
-            'reinforced': -bone_cost if forges_remaining == 2 else 0,  # Reinforced for 2
-            'titanium': -bone_cost if forges_remaining == 1 else 0,  # Titanium for 1
-        })
+        if (item_level <= 40):
+            await self.bot.database.update_fishing_resources(user_id, server_id, {
+                'desiccated': -ore_cost if forges_remaining == 3 else 0, 
+                'regular': -ore_cost if forges_remaining == 2 else 0,  
+                'sturdy': -ore_cost if forges_remaining == 1 else 0, 
+                'reinforced': 0, 
+                'titanium': 0, 
+            })
+        elif (40 < item_level <= 80):
+            await self.bot.database.update_fishing_resources(user_id, server_id, {
+                'desiccated': -ore_cost if forges_remaining == 4 else 0, 
+                'regular': -ore_cost if forges_remaining == 3 else 0,  
+                'sturdy': -ore_cost if forges_remaining == 2 else 0, 
+                'reinforced': -ore_cost if forges_remaining == 1 else 0, 
+                'titanium': 0,
+            })
+        else:
+            await self.bot.database.update_fishing_resources(user_id, server_id, {
+                'desiccated': -ore_cost if forges_remaining == 5 else 0,  
+                'regular': -ore_cost if forges_remaining == 4 else 0,  
+                'sturdy': -ore_cost if forges_remaining == 3 else 0, 
+                'reinforced': -ore_cost if forges_remaining == 2 else 0, 
+                'titanium': -ore_cost if forges_remaining == 1 else 0,  
+            })
         print('subtracting gold')
         # Deduct the gold
         await self.bot.database.add_gold(user_id, -gp_cost)
