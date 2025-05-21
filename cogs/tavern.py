@@ -784,10 +784,13 @@ class Tavern(commands.Cog, name="tavern"):
                 await interaction.response.send_message("You do not have any curios available.")
                 return
             
+            # if not await self.bot.is_maintenance(interaction, user_id):
+            #    return
+            
             items = await self.bot.database.fetch_user_items(user_id)
             accs = await self.bot.database.fetch_user_accessories(user_id)
 
-            if (len(items) > 4 or len(accs) > 4):
+            if (len(items) > 60 or len(accs) > 60):
                 await interaction.response.send_message(
                     "Your inventory is too full to open this curio, check your weapons/accessories.",
                     ephemeral=True
@@ -798,12 +801,15 @@ class Tavern(commands.Cog, name="tavern"):
 
             # Define curio rewards and their odds
             rewards = {
-                "Level 100 Weapon": 0.005,
-                "Level 100 Accessory": 0.005,
-                "ilvl Weapon": 0.1,
-                "ilvl Accessory": 0.05,
-                "Rune of Refinement": 0.02,
-                "Rune of Potential": 0.02,
+                "Level 100 Weapon": 0.0045,
+                "Level 100 Accessory": 0.0045,
+                "Level 100 Armor": 0.001,
+                "Rune of Imbuing": 0.005,
+                "Rune of Refinement": 0.0175,
+                "Rune of Potential": 0.0175,
+                "ilvl Weapon": 0.095,
+                "ilvl Accessory": 0.045,
+                "ilvl Armor": 0.01,
                 "100k": 0.1,
                 "50k": 0.1,
                 "10k": 0.1,
@@ -838,8 +844,10 @@ class Tavern(commands.Cog, name="tavern"):
             elif selected_reward == "ilvl Accessory":
                 selected_reward = f"Level {user_level} Accessory"
                 image_url = item_images.get("ilvl Accessory".replace(" ", "_"))  # Replace spaces with underscores
-
-
+            elif selected_reward == "ilvl Armor": 
+                selected_reward = f"Level {user_level} Armor"
+                image_url = item_images.get("ilvl Armor".replace(" ", "_"))  # Replace spaces with underscores
+            
             # Create an embed with the reward and the corresponding image
             embed = discord.Embed(
                 title="Curio Reward!",
@@ -871,6 +879,25 @@ class Tavern(commands.Cog, name="tavern"):
                                 modifier_type = match.group(2) # save the value associated with the mod_type
                 await self.bot.database.create_accessory(user_id, acc_name, 100, modifier_type, modifier_value)
                 embed.add_field(name="✨ Loot", value=f"{loot_description}")
+            elif selected_reward == "Level 100 Armor":
+                armor_name, loot_description = await self.combat_cog.generate_armor(user_id, server_id, 100, False)
+                lines = loot_description.splitlines()
+                block_modifier = 0
+                evasion_modifier = 0
+                ward_modifier = 0
+                for line in lines[1:]:
+                    match = re.search(r"\+(\d+)%? (\w+)", line)
+                    if match:
+                        modifier_value = int(match.group(1))
+                        modifier_type = match.group(2).lower()
+                        if modifier_type == "block":
+                            block_modifier = modifier_value
+                        elif modifier_type == "evasion":
+                            evasion_modifier = modifier_value
+                        elif modifier_type == "ward":
+                            ward_modifier = modifier_value
+                await self.bot.database.create_armor(user_id, armor_name, 100, block_modifier, evasion_modifier, ward_modifier)
+                embed.add_field(name="✨ Loot", value=f"{loot_description}")
             elif selected_reward == f"Level {user_level} Weapon":
                     (item_name, 
                     attack_modifier, 
@@ -890,10 +917,31 @@ class Tavern(commands.Cog, name="tavern"):
                                 modifier_type = match.group(2) # save the value associated with the mod_type
                 await self.bot.database.create_accessory(user_id, acc_name, user_level, modifier_type, modifier_value)
                 embed.add_field(name="✨ Loot", value=f"{loot_description}")
+            elif selected_reward == f"Level {user_level} Armor":
+                armor_name, loot_description = await self.combat_cog.generate_armor(user_id, server_id, user_level, False)
+                lines = loot_description.splitlines()
+                block_modifier = 0
+                evasion_modifier = 0
+                ward_modifier = 0
+                for line in lines[1:]:
+                    match = re.search(r"\+(\d+)%? (\w+)", line)
+                    if match:
+                        modifier_value = int(match.group(1))
+                        modifier_type = match.group(2).lower()
+                        if modifier_type == "block":
+                            block_modifier = modifier_value
+                        elif modifier_type == "evasion":
+                            evasion_modifier = modifier_value
+                        elif modifier_type == "ward":
+                            ward_modifier = modifier_value
+                await self.bot.database.create_armor(user_id, armor_name, 100, block_modifier, evasion_modifier, ward_modifier)
+                embed.add_field(name="✨ Loot", value=f"{loot_description}")
             elif selected_reward == "Rune of Refinement":
                 await self.bot.database.update_refinement_runes(user_id, 1)
             elif selected_reward == "Rune of Potential":
                 await self.bot.database.update_potential_runes(user_id, 1)
+            elif selected_reward == "Rune of Imbuing":
+                await self.bot.database.update_imbuing_runes(user_id, 1)
             elif selected_reward in ["100k", "50k", "10k", "5k"]:
                 amount_mapping = {
                     "100k": 100000,

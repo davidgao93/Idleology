@@ -355,6 +355,18 @@ class DiscordBot(commands.Bot):
                 ephemeral=True)
             return False
         return True
+    
+
+    async def is_maintenance(self, interaction: Interaction, user_id: str) -> bool:
+        """
+        Check if a user has an active operation.
+        """
+        if user_id != str(866408616873820180):
+            await interaction.response.send_message(
+                "This command is under maintenance, please try again later.",
+                ephemeral=True)
+            return False
+        return True
 
 
 class StateManager:

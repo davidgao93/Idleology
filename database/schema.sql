@@ -5,7 +5,9 @@
 --DROP TABLE IF EXISTS `fishing`;
 --DROP TABLE IF EXISTS `woodcutting`;
 --DROP TABLE IF EXISTS `mining`;
--- ALTER TABLE users ADD COLUMN `curios` INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN `dragon_key` INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN `angel_key` INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN `imbue_runes` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE accessories ADD COLUMN `passive_lvl` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN `last_combat` TIMESTAMP DEFAULT NULL;
 
@@ -34,7 +36,10 @@ CREATE TABLE IF NOT EXISTS `users` (
   `potential_runes` INTEGER NOT NULL DEFAULT 0,
   `curios` INTEGER NOT NULL DEFAULT 0,
   `curios_purchased_today` INTEGER NOT NULL DEFAULT 0,
-  `last_combat` TIMESTAMP DEFAULT NULL
+  `last_combat` TIMESTAMP DEFAULT NULL,
+  `dragon_key` INTEGER NOT NULL DEFAULT 0,
+  `angel_key` INTEGER NOT NULL DEFAULT 0,
+  `imbue_runes` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (
@@ -74,6 +79,20 @@ CREATE TABLE IF NOT EXISTS `accessories` (
   `is_equipped` BOOLEAN DEFAULT FALSE,
   `potential_remaining` INTEGER DEFAULT 10,
   `passive_lvl` INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS `armor` (
+  `item_id` INTEGER PRIMARY KEY,
+  `user_id` TEXT NOT NULL,
+  `item_name` TEXT NOT NULL,
+  `item_level` INTEGER NOT NULL,
+  `block` INTEGER DEFAULT 0,
+  `evasion` INTEGER DEFAULT 0,
+  `ward` INTEGER DEFAULT 0,
+  `armor_passive` TEXT NOT NULL DEFAULT 'none',
+  `is_equipped` BOOLEAN DEFAULT FALSE,
+  `temper_remaining` INTEGER DEFAULT 0,
+  `imbue_remaining` INTEGER DEFAULT 1
 );
 
 

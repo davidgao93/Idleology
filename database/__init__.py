@@ -137,6 +137,23 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+
+    async def add_dragon_key(self, user_id: str, increase_by: int) -> None:
+        """Increase the user's dragon keys in the database."""
+        await self.connection.execute(
+            "UPDATE users SET dragon_key = dragon_key + ? WHERE user_id = ?",
+            (increase_by, user_id)
+        )
+        await self.connection.commit()
+
+    async def add_angel_key(self, user_id: str, increase_by: int) -> None:
+        """Increase the user's angel keys in the database."""
+        await self.connection.execute(
+            "UPDATE users SET angel_key = angel_key + ? WHERE user_id = ?",
+            (increase_by, user_id)
+        )
+        await self.connection.commit()       
+
     async def update_user_gold(self, user_id: str, new_gold: int) -> None:
         """Update the user's gold in the database."""
         await self.connection.execute(
@@ -315,6 +332,16 @@ class DatabaseManager:
         """Fetch all accessories owned by a specific user."""
         rows = await self.connection.execute(
             "SELECT * FROM accessories WHERE user_id=?",
+            (user_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchall()  # Returns a list of accessories
+        
+
+    async def fetch_user_armors(self, user_id: str) -> list:
+        """Fetch all armors owned by a specific user."""
+        rows = await self.connection.execute(
+            "SELECT * FROM armor WHERE user_id=?",
             (user_id,)
         )
         async with rows as cursor:
@@ -895,6 +922,14 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+    async def update_imbuing_runes(self, user_id: str, count: int) -> None:
+        """Update the user's count of imbuing runes in the database."""
+        await self.connection.execute(
+            "UPDATE users SET imbue_runes = imbue_runes + ? WHERE user_id = ?",
+            (count, user_id)
+        )
+        await self.connection.commit()
+
     # Method to fetch the number of refinement runes for a user
     async def fetch_refinement_runes(self, user_id: str) -> int:
         """Fetch the user's refinement runes count from the database."""
@@ -974,3 +1009,93 @@ class DatabaseManager:
         )
         count = await rows.fetchone()  # Get the count
         return count[0] if count else 0  # Return the count or 0 if none
+    
+
+    async def create_armor(self, user_id: str, item_name: str, item_level: int, block: int, evasion: int, ward: int) -> None:
+        """Insert a new armor in the database."""
+
+        if (item_level) <= 40:
+            item_potential = 3
+        elif (40 < item_level <= 80):
+            item_potential = 4
+        else:
+            item_potential = 5
+
+        await self.connection.execute(
+            "INSERT INTO armor (user_id, item_name, item_level, block, evasion, ward, temper_remaining) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (user_id, item_name, item_level, block, evasion, ward, item_potential)
+        )
+        await self.connection.commit()
+
+    async def fetch_armor_by_id(self, item_id: int):
+        """Fetch armor by its ID."""
+        rows = await self.connection.execute(
+            "SELECT * FROM armor WHERE item_id=?",
+            (item_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchone()  # Returns the armor row, if found
+
+    async def get_equipped_armor(self, user_id: str):
+        """Fetch the currently equipped armor for a specific user."""
+        rows = await self.connection.execute(
+            "SELECT * FROM armor WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchone()
+  
+    async def discard_armor(self, item_id: int) -> None:
+        """Remove an armor from the armor table."""
+        await self.connection.execute(
+            "DELETE FROM armor WHERE item_id = ?",
+            (item_id,)
+        )
+        await self.connection.commit()
+
+    async def equip_armor(self, user_id: str, item_id: int) -> None:
+        """Equip an armor piece and deselect any previously equipped armor."""
+        # First, unequip any currently equipped armor for this user
+        await self.connection.execute(
+            "UPDATE armor SET is_equipped = FALSE WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        # Then, equip the new armor
+        await self.connection.execute(
+            "UPDATE armor SET is_equipped = TRUE WHERE item_id = ?",
+            (item_id,)
+        )
+        await self.connection.commit()
+
+    async def update_armor_passive(self, armor_id: int, passive: str) -> None:
+        """Update the passive of an armor piece in the database."""
+        await self.connection.execute(
+            "UPDATE armor SET armor_passive = ? WHERE item_id = ?",
+            (passive, armor_id)
+        )
+        await self.connection.commit()
+
+    async def update_armor_temper_count(self, armor_id: int, new_temper_count: int) -> None:
+        """Update the temper count of an armor piece in the database."""
+        await self.connection.execute(
+            "UPDATE armor SET temper_remaining = ? WHERE item_id = ?",
+            (new_temper_count, armor_id)
+        )
+        await self.connection.commit()
+
+
+    async def update_armor_imbue_count(self, armor_id: int, new_imbue_count: int) -> None:
+        """Update the imbue count of an armor piece in the database."""
+        await self.connection.execute(
+            "UPDATE armor SET imbue_remaining = ? WHERE item_id = ?",
+            (new_imbue_count, armor_id)
+        )
+        await self.connection.commit()
+
+    async def increase_armor_stat(self, armor_id: int, stat: str, increase_by: int) -> None:
+        """Increase a specific stat (block, evasion, or ward) of an armor piece in the database."""
+        await self.connection.execute(
+            f"UPDATE armor SET {stat} = {stat} + ? WHERE item_id = ?",
+            (increase_by, armor_id)
+        )
+        await self.connection.commit()

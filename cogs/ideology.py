@@ -87,11 +87,14 @@ class Ideology(commands.Cog, name="ideology"):
         base_followers = 10
         growth_factor = 1.5
         scaling_factor = 100
-        follower_increase = base_followers * (growth_factor ** (followers_count // scaling_factor))
+        if (followers_count > 1000):
+            follower_increase = 100
+        else:
+            follower_increase = base_followers * (growth_factor ** (followers_count // scaling_factor))
         # Add random variation (±10%)
         variation = random.uniform(0.9, 1.1)
         follower_increase = int(follower_increase * variation)
-        new_followers_count = min(1000, followers_count + follower_increase)
+        new_followers_count = followers_count + follower_increase
 
         # Calculate gold reward (linear)
         base_gold = 1000

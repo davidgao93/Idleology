@@ -1,4 +1,4 @@
-### Version 0.2
+### Version 0.3
 CONTENT
 - Added accessories
     - Accessories can roll between atk, def, rarity, crit, and ward (bonus shield based off max hp granted before each combat)

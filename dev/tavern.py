@@ -4,7 +4,6 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from datetime import datetime, timedelta
 from .combat import Combat
-from .skills import Skills
 import asyncio
 import random
 import pytz

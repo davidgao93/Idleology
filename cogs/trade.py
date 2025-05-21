@@ -178,7 +178,7 @@ class Trade(commands.Cog, name="trade"):
         server_id = str(interaction.guild.id)
 
         # Check if the user is trying to send the item to themselves
-        if receiver.id == interaction.user:
+        if receiver.id == interaction.user.id:
             await interaction.response.send_message("You cannot send accessories to yourself.")
             return
 
@@ -218,7 +218,7 @@ class Trade(commands.Cog, name="trade"):
         await message.add_reaction("❌")  # Cancel
 
         def confirm_check(reaction, user):
-            return user == (interaction.user and 
+            return (user == interaction.user and 
                             reaction.message.id == message.id and 
                             str(reaction.emoji) in ["✅", "❌"])
 
