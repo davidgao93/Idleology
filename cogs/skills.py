@@ -10,6 +10,7 @@ class Skills(commands.Cog, name="skills"):
         self.bot = bot
         self.active_events = {}
         self.event_channel_id = self.bot.config["channel_id"]  # Store channel ID as a string
+        self.event_channel_id2 = self.bot.config["channel_id2"]
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -137,11 +138,11 @@ class Skills(commands.Cog, name="skills"):
         upgrade_requirements = self.get_mining_upgrade_requirements(pickaxe_tier)
 
         if not upgrade_requirements:
-            print('Already at highest pickaxe tier, not offering an upgrade.')
+            self.bot.logger.info('Already at highest pickaxe tier, not offering an upgrade.')
             return  # Already at the highest tier
-        print(f'player has {player_gp}')
+        self.bot.logger.info(f'player has {player_gp}')
         required_iron, required_coal, required_gold, required_platinum, required_gp = upgrade_requirements
-        print(f'Required iron: {required_iron} | Required coal: {required_coal} '
+        self.bot.logger.info(f'Required iron: {required_iron} | Required coal: {required_coal} '
               f'| Required gold: {required_gold} | Required plat: {required_platinum} | Required gp: {required_gp}')
         
         cost_fields = [
@@ -182,15 +183,15 @@ class Skills(commands.Cog, name="skills"):
                     embed.add_field(name="Upgraded!", value=value, inline=False)
                     await message.clear_reactions()
                     await message.edit(embed=embed)  
-                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.logger.info(f'Cleared {user_id} from active interactions')
                     self.bot.state_manager.clear_active(user_id)
                 else:
                     await message.delete()
-                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.logger.info(f'Cleared {user_id} from active interactions')
                     self.bot.state_manager.clear_active(user_id)
                 return
             except asyncio.TimeoutError:
-                print(f'Cleared {user_id} from active interactions')
+                self.bot.logger.info(f'Cleared {user_id} from active interactions')
                 self.bot.state_manager.clear_active(user_id)
                 await message.delete()
                 return
@@ -282,7 +283,7 @@ class Skills(commands.Cog, name="skills"):
         upgrade_requirements = self.get_wc_upgrade_requirements(axe_tier)
 
         if not upgrade_requirements:
-            print('Already at highest axe tier, not offering an upgrade.')
+            self.bot.logger.info('Already at highest axe tier, not offering an upgrade.')
             return  # Already at the highest tier
         
         required_oak, required_willow, required_mahogany, required_magic, required_gp = upgrade_requirements
@@ -322,15 +323,15 @@ class Skills(commands.Cog, name="skills"):
                     embed.add_field(name="Upgraded!", value=value, inline=False)
                     await message.clear_reactions()
                     await message.edit(embed=embed)
-                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.logger.info(f'Cleared {user_id} from active interactions')
                     self.bot.state_manager.clear_active(user_id)
                 else:
                     await message.delete()
-                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.logger.info(f'Cleared {user_id} from active interactions')
                     self.bot.state_manager.clear_active(user_id)
                 return
             except asyncio.TimeoutError:
-                print(f'Cleared {user_id} from active interactions')
+                self.bot.logger.info(f'Cleared {user_id} from active interactions')
                 self.bot.state_manager.clear_active(user_id)
                 await message.delete()
                 return
@@ -418,7 +419,7 @@ class Skills(commands.Cog, name="skills"):
         upgrade_requirements = self.get_fishing_upgrade_requirements(fishing_rod_tier)
 
         if not upgrade_requirements:
-            print('Already at highest fishing rod tier, not offering an upgrade.')
+            self.bot.logger.info('Already at highest fishing rod tier, not offering an upgrade.')
             return
         
         required_desiccated, required_regular, required_sturdy, required_reinforced, required_gp = upgrade_requirements
@@ -459,11 +460,11 @@ class Skills(commands.Cog, name="skills"):
                     embed.add_field(name="Upgraded!", value=value, inline=False)
                     await message.clear_reactions()
                     await message.edit(embed=embed)
-                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.logger.info(f'Cleared {user_id} from active interactions')
                     self.bot.state_manager.clear_active(user_id)
                 else:
                     await message.delete()
-                    print(f'Cleared {user_id} from active interactions')
+                    self.bot.logger.info(f'Cleared {user_id} from active interactions')
                     self.bot.state_manager.clear_active(user_id)  
                 return
             except asyncio.TimeoutError:
@@ -511,14 +512,14 @@ class Skills(commands.Cog, name="skills"):
     @tasks.loop(hours=1)
     #@tasks.loop(seconds=60)
     async def schedule_skills(self):
-        print('Granting skilling resources to all users')
+        self.bot.logger.info('Granting skilling resources to all users')
         # Get users with mining skills
         mining_users = await self.bot.database.fetch_users_with_mining()
         for user_id, server_id in mining_users:
             mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
             if mining_data:
                 resources = await self.gather_mining_resources(mining_data[2])  # fetching pickaxe tier
-                # print(f'Granting {user_id} with mining {resources}')
+                # self.bot.logger.info(f'Granting {user_id} with mining {resources}')
                 await self.bot.database.update_mining_resources(user_id, server_id, resources)
 
         # Get users with fishing skills
@@ -527,7 +528,7 @@ class Skills(commands.Cog, name="skills"):
             fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
             if fishing_data:
                 resources = await self.gather_fishing_resources(fishing_data[2])  # fetching fishing rod
-                # print(f'Granting {user_id} with fishing {resources}')
+                # self.bot.logger.info(f'Granting {user_id} with fishing {resources}')
                 await self.bot.database.update_fishing_resources(user_id, server_id, resources)
 
         # Get users with woodcutting skills
@@ -536,7 +537,7 @@ class Skills(commands.Cog, name="skills"):
             woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
             if woodcutting_data:
                 resources = await self.gather_woodcutting_resources(woodcutting_data[2])  # fetching axe type
-                # print(f'Granting {user_id} with woodcutting {resources}')
+                # self.bot.logger.info(f'Granting {user_id} with woodcutting {resources}')
                 await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
 
 
@@ -695,24 +696,32 @@ class Skills(commands.Cog, name="skills"):
         """Trigger a random event with a 50% chance every half hour."""
         if random.random() <= 0.5:  # 50% chance
             event_type = random.choice(["leprechaun", "meteorite", "dryad", "high_tide"])
-            print(f'Random check success, starting: {event_type}.')
-            if self.event_channel_id:  # Ensure the channel ID exists
-                if self.event_channel_id:  # Ensure the channel ID exists
-                    guild = self.bot.get_guild(self.bot.config["guild_id"])  # Replace `guild_id` with the actual guild ID
-                    if guild:
-                        channel = guild.get_channel(self.event_channel_id)
-                        print(f'Random in Channel ID: {self.event_channel_id}')
-                        if channel:
-                            await self.trigger_event(channel, event_type)
-                            print(f'Channel {channel}: Trigger {event_type}')
-                        else:
-                            print(f'Failed to get channel info.')
-                    else:
-                        print('Bot is not in the specified guild.')
+            self.bot.logger.info(f'Random check success, starting: {event_type}.')
+            guild = self.bot.get_guild(self.bot.config["guild_id"])  # Replace `guild_id` with the actual guild ID
+            if guild:
+                channel = guild.get_channel(self.event_channel_id)
+                self.bot.logger.info(f'Random in Channel ID: {self.event_channel_id}')
+                if channel:
+                    await self.trigger_event(channel, event_type)
+                    self.bot.logger.info(f'Channel {channel}: Trigger {event_type}')
+                else:
+                    self.bot.logger.info(f'Failed to get channel info.')
             else:
-                print('Could not establish channel.')
+                self.bot.logger.info('Bot is not in the specified guild.')
+            
+            guild2 = self.bot.get_guild(self.bot.config["guild_id2"])  # Replace `guild_id` with the actual guild ID
+            if guild2:
+                channel2 = guild2.get_channel(self.event_channel_id2)
+                self.bot.logger.info(f'Random in Channel ID: {self.event_channel_id2}')
+                if channel2:
+                    await self.trigger_event(channel2, event_type)
+                    self.bot.logger.info(f'Channel {channel2}: Trigger {event_type}')
+                else:
+                    self.bot.logger.info(f'Failed to get channel info.')
+            else:
+                self.bot.logger.info('Bot is not in the specified guild.')
         else:
-            print('Chance to trigger random failed.')
+            self.bot.logger.info('Chance to trigger random failed.')
 
     async def trigger_event(self, channel: discord.TextChannel, event_type: str):
         """Trigger the specified random event and create an embed message."""
@@ -761,7 +770,7 @@ class Skills(commands.Cog, name="skills"):
             await message.delete()  # Delete the message after 5 minutes
             del self.active_events[message.id]  # Clear the event entry when it expires.
         except discord.NotFound:
-            print(f'Message already deleted: {message.id}')
+            self.bot.logger.info(f'Message already deleted: {message.id}')
 
 
     @commands.Cog.listener()
@@ -771,7 +780,7 @@ class Skills(commands.Cog, name="skills"):
             user_id = payload.user_id
             server_id = payload.guild_id
             event_data = self.active_events[payload.message_id]  # Get the event data
-            print(f"{user_id} reacted to {event_data}")
+            self.bot.logger.info(f"{user_id} reacted to {event_data}")
             if user_id != self.bot.user.id:  # Ignore the bot's own reactions
                 if user_id not in event_data["claimed_users"]:
                     event_type = event_data["event_type"]
@@ -779,19 +788,19 @@ class Skills(commands.Cog, name="skills"):
                     # Fetch the channel using channel_id from payload
                     channel = self.bot.get_channel(payload.channel_id)
                     if channel is None:
-                        print(f"Cannot find channel with ID: {payload.channel_id}")
+                        self.bot.logger.info(f"Cannot find channel with ID: {payload.channel_id}")
                         return
 
                     # Fetch message using the message_id from payload
                     try:
                         message = await channel.fetch_message(payload.message_id)
                     except discord.NotFound:
-                        print(f"Message not found: {payload.message_id}")
+                        self.bot.logger.info(f"Message not found: {payload.message_id}")
                         return
 
                     existing_user = await self.bot.database.fetch_user(user_id, server_id)
                     if not existing_user:
-                        print("Unregistered, not proceeding.")
+                        self.bot.logger.info("Unregistered, not proceeding.")
                         return
                         
                     if event_type == "leprechaun" and str(payload.emoji) == event_data["emoji"]:
@@ -824,7 +833,7 @@ class Skills(commands.Cog, name="skills"):
                     elif event_type == "meteorite" and str(payload.emoji) == event_data["emoji"]:
                         mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
                         if mining_data:
-                            print('Meteor claimed')
+                            self.bot.logger.info('Meteor claimed')
                             resources = await self.gather_mining_resources(mining_data[2])  # Use the mining tier from mining_data
                             await self.bot.database.update_mining_resources(user_id, server_id, resources)
                             event_data["claimed_users"].add(user_id)
@@ -854,7 +863,7 @@ class Skills(commands.Cog, name="skills"):
                     elif event_type == "dryad" and str(payload.emoji) == event_data["emoji"]:
                         woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
                         if woodcutting_data:
-                            print('Dryad claimed')
+                            self.bot.logger.info('Dryad claimed')
                             resources = await self.gather_woodcutting_resources(woodcutting_data[2])  # Use the axe tier from woodcutting_data
                             await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
                             event_data["claimed_users"].add(user_id)
@@ -884,7 +893,7 @@ class Skills(commands.Cog, name="skills"):
                     elif event_type == "high_tide" and str(payload.emoji) == event_data["emoji"]:
                         fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
                         if fishing_data:
-                            print('Fishing claimed')
+                            self.bot.logger.info('Fishing claimed')
                             resources = await self.gather_fishing_resources(fishing_data[2])  # Use the fishing rod tier from fishing_data
                             await self.bot.database.update_fishing_resources(user_id, server_id, resources)
                             event_data["claimed_users"].add(user_id)
@@ -912,7 +921,7 @@ class Skills(commands.Cog, name="skills"):
                             await message.edit(embed=embed)
 
                     if user_id in event_data["claimed_users"]:
-                        print(f'{existing_user[3]} claims random: {event_type}')
+                        self.bot.logger.info(f'{existing_user[3]} claims random: {event_type}')
 
 async def setup(bot) -> None:
     await bot.add_cog(Skills(bot))

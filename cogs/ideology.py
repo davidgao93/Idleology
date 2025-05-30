@@ -102,6 +102,7 @@ class Ideology(commands.Cog, name="ideology"):
         gold_reward = base_gold + (followers_count * gold_per_follower)
 
         # Update database
+        self.bot.logger.info(f"Propogate {user_ideology}, awarding {user_id} with {gold_reward}")
         await self.bot.database.update_followers_count(user_ideology, new_followers_count)
         await self.bot.database.add_gold(user_id, gold_reward)
         await self.bot.database.update_propagate_time(user_id)

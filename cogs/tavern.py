@@ -1,21 +1,307 @@
 import discord
-from discord import app_commands, Interaction, Message
+from discord import app_commands, Interaction, Message, ButtonStyle
 from discord.ext import commands
-from discord.ext.commands import Context
+from discord.ui import Button, View
 from datetime import datetime, timedelta
 from .combat import Combat
 from .skills import Skills
 import asyncio
 import random
-import pytz
 import csv
 import re
 import math
 
+class CurioView(View):
+    def __init__(self, bot, user_id, server_id, curio_count, tavern_cog):
+        super().__init__(timeout=60.0)
+        self.bot = bot
+        self.user_id = user_id
+        self.server_id = server_id
+        self.curio_count = curio_count
+        self.tavern_cog = tavern_cog
+
+        # Define buttons
+        self.add_button("🎁", self.open_one, 1, ButtonStyle.primary)
+        self.add_button("🎁 x5", self.open_five, 5, ButtonStyle.primary)
+        self.add_button("🎁 x10", self.open_ten, 10, ButtonStyle.primary)
+        self.add_button("❌", self.close, 0, ButtonStyle.danger)
+
+    def add_button(self, label, callback, curio_amount, style):
+        button = Button(label=label, style=style, disabled=(self.curio_count < curio_amount and curio_amount > 0))
+        button.callback = lambda interaction: callback(interaction, curio_amount)
+        self.add_item(button)
+
+    async def update_view(self, interaction: Interaction, curio_count: int, reward_embed=None):
+        """Update button states and embed based on remaining curios and rewards."""
+        self.curio_count = curio_count
+        # Update button states
+        for item in self.children:
+            if isinstance(item, Button) and item.label != "❌":
+                amount = int(item.label.split("x")[1]) if "x" in item.label else 1
+                item.disabled = self.curio_count < amount
+
+        # Create or update embed
+        embed = discord.Embed(
+            title="Your Curios",
+            description=f"You have **{self.curio_count}** curio{'s' if self.curio_count != 1 else ''} available.",
+            color=0x00FF00
+        )
+        if reward_embed:
+            # Merge reward embed's fields and image into the main embed
+            for field in reward_embed.fields:
+                embed.add_field(name=field.name, value=field.value, inline=field.inline)
+            if reward_embed.image:
+                embed.set_image(url=reward_embed.image.url)
+
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def open_curios(self, interaction: Interaction, amount: int):
+        try:
+            user_id = self.user_id
+            server_id = self.server_id
+
+            # Fetch user data
+            existing_user = await self.bot.database.fetch_user(user_id, server_id)
+            if not await self.bot.check_user_registered(interaction, existing_user):
+                self.bot.state_manager.clear_active(user_id)  
+                return
+
+            # Check if the user has enough curios
+            if existing_user[22] < amount:
+                await interaction.response.send_message("You do not have enough curios available.", ephemeral=True)
+                self.bot.state_manager.clear_active(user_id)  
+                return
+
+            # Check inventory space
+            items = await self.bot.database.fetch_user_items(user_id)
+            accs = await self.bot.database.fetch_user_accessories(user_id)
+            if (len(items) + amount > 60 or len(accs) + amount > 60):
+                await interaction.response.send_message(
+                    "Your inventory is too full to open this many curios, check your weapons/accessories.",
+                    ephemeral=True
+                )
+                self.bot.state_manager.clear_active(user_id)  
+                return
+
+            # Check if skills_cog is available
+            if not self.tavern_cog.skills_cog:
+                await interaction.response.send_message("Error: Skills system is not available.", ephemeral=True)
+                self.bot.state_manager.clear_active(user_id)  
+                return
+
+            user_level = existing_user[4]
+            rewards = {
+                "Level 100 Weapon": 0.0045,
+                "Level 100 Accessory": 0.0045,
+                "Level 100 Armor": 0.001,
+                "Rune of Imbuing": 0.005,
+                "Rune of Refinement": 0.0175,
+                "Rune of Potential": 0.0175,
+                "ilvl Weapon": 0.095,
+                "ilvl Accessory": 0.045,
+                "ilvl Armor": 0.01,
+                "100k": 0.1,
+                "50k": 0.1,
+                "10k": 0.1,
+                "5k": 0.2,
+                "Ore": 0.1,
+                "Wood": 0.1,
+                "Fish": 0.1,
+            }
+
+            # Prepare the reward pool
+            reward_pool = []
+            for reward, odds in rewards.items():
+                count = int(odds * 1000)
+                reward_pool.extend([reward] * count)
+
+            # Load item images
+            item_images = {}
+            with open('assets/curios.csv', mode='r') as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    item_images[row['Item']] = row['URL']
+
+            # Process rewards
+            selected_rewards = [random.choice(reward_pool) for _ in range(amount)]
+            reward_summary = {}
+            for reward in selected_rewards:
+                reward_summary[reward] = reward_summary.get(reward, 0) + 1
+
+            # Create reward embed
+            reward_embed = discord.Embed(
+                title="Curio Reward!",
+                description=f"You opened {amount} curio{'s' if amount > 1 else ''}!",
+                color=0x00FF00
+            )
+
+            # Set image based on amount
+            if amount == 1:
+                selected_reward = selected_rewards[0]
+                if selected_reward == "ilvl Weapon":
+                    selected_reward = f"Level {user_level} Weapon"
+                elif selected_reward == "ilvl Accessory":
+                    selected_reward = f"Level {user_level} Accessory"
+                elif selected_reward == "ilvl Armor":
+                    selected_reward = f"Level {user_level} Armor"
+                image_url = item_images.get(selected_reward.replace(" ", "_"))
+                self.bot.logger.info(image_url)
+                if image_url:
+                    reward_embed.set_image(url=image_url)
+            else:
+                reward_embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
+
+            # Process each reward
+            loot_descriptions = []
+            for reward, count in reward_summary.items():
+                self.bot.logger.info(f"[DEBUG] Processing reward: {reward} x{count}")
+                if reward == "Level 100 Weapon":
+                    for _ in range(count):
+                        item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description = await self.tavern_cog.combat_cog.generate_loot(user_id, server_id, 100, False)
+                        await self.bot.database.create_item(user_id, item_name, 100, attack_modifier, defence_modifier, rarity_modifier)
+                        loot_descriptions.append(loot_description)
+                elif reward == "Level 100 Accessory":
+                    for _ in range(count):
+                        acc_name, loot_description = await self.tavern_cog.combat_cog.generate_accessory(user_id, server_id, 100, False)
+                        lines = loot_description.splitlines()
+                        for line in lines[1:]:
+                            match = re.search(r"\+(\d+)%? (\w+)", line)
+                            if match:
+                                modifier_value = match.group(1)
+                                modifier_type = match.group(2)
+                        await self.bot.database.create_accessory(user_id, acc_name, 100, modifier_type, modifier_value)
+                        loot_descriptions.append(loot_description)
+                elif reward == "Level 100 Armor":
+                    for _ in range(count):
+                        armor_name, loot_description = await self.tavern_cog.combat_cog.generate_armor(user_id, server_id, 100, False)
+                        lines = loot_description.splitlines()
+                        block_modifier = evasion_modifier = ward_modifier = 0
+                        for line in lines[1:]:
+                            match = re.search(r"\+(\d+)%? (\w+)", line)
+                            if match:
+                                modifier_value = int(match.group(1))
+                                modifier_type = match.group(2).lower()
+                                if modifier_type == "block":
+                                    block_modifier = modifier_value
+                                elif modifier_type == "evasion":
+                                    evasion_modifier = modifier_value
+                                elif modifier_type == "ward":
+                                    ward_modifier = modifier_value
+                        await self.bot.database.create_armor(user_id, armor_name, 100, block_modifier, evasion_modifier, ward_modifier)
+                        loot_descriptions.append(loot_description)
+                elif reward == "ilvl Weapon":
+                    for _ in range(count):
+                        item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description = await self.tavern_cog.combat_cog.generate_loot(user_id, server_id, user_level, False)
+                        await self.bot.database.create_item(user_id, item_name, user_level, attack_modifier, defence_modifier, rarity_modifier)
+                        loot_descriptions.append(loot_description)
+                elif reward == "ilvl Accessory":
+                    for _ in range(count):
+                        acc_name, loot_description = await self.tavern_cog.combat_cog.generate_accessory(user_id, server_id, user_level, False)
+                        lines = loot_description.splitlines()
+                        for line in lines[1:]:
+                            match = re.search(r"\+(\d+)%? (\w+)", line)
+                            if match:
+                                modifier_value = match.group(1)
+                                modifier_type = match.group(2)
+                        await self.bot.database.create_accessory(user_id, acc_name, user_level, modifier_type, modifier_value)
+                        loot_descriptions.append(loot_description)
+                elif reward == "ilvl Armor":
+                    for _ in range(count):
+                        armor_name, loot_description = await self.tavern_cog.combat_cog.generate_armor(user_id, server_id, user_level, False)
+                        lines = loot_description.splitlines()
+                        block_modifier = evasion_modifier = ward_modifier = 0
+                        for line in lines[1:]:
+                            match = re.search(r"\+(\d+)%? (\w+)", line)
+                            if match:
+                                modifier_value = int(match.group(1))
+                                modifier_type = match.group(2).lower()
+                                if modifier_type == "block":
+                                    block_modifier = modifier_value
+                                elif modifier_type == "evasion":
+                                    evasion_modifier = modifier_value
+                                elif modifier_type == "ward":
+                                    ward_modifier = modifier_value
+                        await self.bot.database.create_armor(user_id, armor_name, user_level, block_modifier, evasion_modifier, ward_modifier)
+                        loot_descriptions.append(loot_description)
+                elif reward == "Rune of Refinement":
+                    await self.bot.database.update_refinement_runes(user_id, count)
+                elif reward == "Rune of Potential":
+                    await self.bot.database.update_potential_runes(user_id, count)
+                elif reward == "Rune of Imbuing":
+                    await self.bot.database.update_imbuing_runes(user_id, count)
+                elif reward in ["100k", "50k", "10k", "5k"]:
+                    amount_mapping = {"100k": 100000, "50k": 50000, "10k": 10000, "5k": 5000}
+                    await self.bot.database.add_gold(user_id, amount_mapping[reward] * count)
+                elif reward == "Ore":
+                    for _ in range(count * 5):
+                        mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+                        resources = await self.tavern_cog.skills_cog.gather_mining_resources(mining_data[2])
+                        await self.bot.database.update_mining_resources(user_id, server_id, resources)
+                elif reward == "Wood":
+                    for _ in range(count * 5):
+                        woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+                        resources = await self.tavern_cog.skills_cog.gather_woodcutting_resources(woodcutting_data[2])
+                        await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
+                elif reward == "Fish":
+                    for _ in range(count * 5):
+                        fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+                        resources = await self.tavern_cog.skills_cog.gather_fishing_resources(fishing_data[2])
+                        await self.bot.database.update_fishing_resources(user_id, server_id, resources)
+
+            # Summarize rewards
+            summary_text = "\n".join(f"{count}x {reward}" for reward, count in reward_summary.items())
+            if loot_descriptions:
+                summary_text += "\n\n**Loot Details:**\n" + "\n".join(loot_descriptions)
+            reward_embed.add_field(name="Rewards", value=summary_text, inline=False)
+
+            # Update curio count
+            await self.bot.database.update_curios_count(user_id, server_id, -amount)
+
+            # Fetch updated curio count
+            updated_user = await self.bot.database.fetch_user(user_id, server_id)
+            self.curio_count = updated_user[22]
+
+            # If no curios left, update embed and stop
+            if self.curio_count == 0:
+                reward_embed.add_field(name="All done!", value="You have **0** curios available.", inline=False)
+                await interaction.response.edit_message(embed=reward_embed)
+                self.stop()
+                self.bot.state_manager.clear_active(user_id)  
+                return
+
+            # Update the existing message with the new embed
+            await self.update_view(interaction, self.curio_count, reward_embed)
+
+        except discord.errors.NotFound:
+            self.bot.state_manager.clear_active(user_id)  
+            self.bot.logger.info("Failed to respond to the interaction: Interaction not found.")
+        except Exception as e:
+            self.bot.state_manager.clear_active(user_id)
+            self.bot.logger.info(f"An error occurred: {e}")
+
+    async def open_one(self, interaction: Interaction, amount: int):
+        await self.open_curios(interaction, amount)
+
+    async def open_five(self, interaction: Interaction, amount: int):
+        await self.open_curios(interaction, amount)
+
+    async def open_ten(self, interaction: Interaction, amount: int):
+        await self.open_curios(interaction, amount)
+
+    async def close(self, interaction: Interaction, amount: int):
+        embed = discord.Embed(
+            title="Your Curios",
+            description=f"You have **{self.curio_count}** curio{'s' if self.curio_count != 1 else ''} available.\nInteraction closed.",
+            color=0x00FF00
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+        # self.bot.logger.info(interaction.user.id)
+        self.bot.state_manager.clear_active(str(interaction.user.id))
+        self.stop()
+
 class Tavern(commands.Cog, name="tavern"):
     def __init__(self, bot) -> None:
         self.bot = bot
-        self.est_tz = pytz.timezone('America/New_York')  # Define EST timezone
         self.combat_cog = bot.get_cog("combat")
         self.skills_cog = bot.get_cog("skills")
 
@@ -87,17 +373,12 @@ class Tavern(commands.Cog, name="tavern"):
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
 
                 if str(reaction.emoji) == "❌":  # Exit if user wants to close the shop
-                    print(f"Attempting to delete original response for interaction {interaction.id}")
                     try:
-                        #await interaction.delete_original_response()
                         await message.delete()
-                        print(f"Successfully deleted response")
                     except discord.errors.Forbidden:
                         await interaction.followup.send("I don't have permission to delete messages!")
-                        print("Failed to delete: Missing permissions")
                     except discord.errors.HTTPException as e:
                         await interaction.followup.send(f"Failed to delete message: {e}")
-                        print(f"Failed to delete: HTTPException - {e}")
                     break
 
                 success = 0
@@ -122,7 +403,6 @@ class Tavern(commands.Cog, name="tavern"):
                         await interaction.edit_original_response(embed=embed)
                         break
                     
-                    print('Deleting user gold and award a potion')
                     gold -= cost
                     await self.bot.database.add_gold(user_id, -cost)
                     await self.bot.database.increase_potion_count(user_id)
@@ -152,7 +432,6 @@ class Tavern(commands.Cog, name="tavern"):
                         continue
                     
                     # Deduct cost and increment curios count
-                    print('Deleting user gold and award a curio')
                     gold -= curio_cost
                     await self.bot.database.add_gold(user_id, -curio_cost)
                     await self.bot.database.update_curios_count(user_id, server_id, 1)
@@ -378,14 +657,13 @@ class Tavern(commands.Cog, name="tavern"):
             elif str(reaction.emoji) == "🚀":
                 await self.play_crash(interaction, player_gold, amount, message, embed)
         except asyncio.TimeoutError:
-            await interaction.followup.send("You took too long to decide. The gambling options have been closed.")
             await message.delete()
+            self.bot.state_manager.clear_active(user_id)
         finally:
             self.bot.state_manager.clear_active(user_id)
 
     async def play_blackjack(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
         """Simulate a Blackjack game against the house."""
-        print('Starting blackjack sim')
         player_hand = [random.randint(1, 10), random.randint(1, 10)]
         house_hand = [random.randint(1, 10), random.randint(1, 10)]
         player_gold -= bet_amount
@@ -405,7 +683,6 @@ class Tavern(commands.Cog, name="tavern"):
 
         # The player's turn
         while True:
-            print('Calculating player hand')
             player_value = calculate_hand_value(player_hand)
             
             # Update the embed with current game state
@@ -416,7 +693,6 @@ class Tavern(commands.Cog, name="tavern"):
             await message.edit(embed=embed)
             embed.clear_fields()  # Clear fields for new options
             embed.add_field(name="Options", value="React with: 🃏 to Draw another card or ✋ to Hold", inline=False)
-            print('Trying to modify message')
             await message.edit(embed=embed)
             await message.clear_reactions()
             await message.add_reaction("🃏")  # Draw another card
@@ -731,18 +1007,14 @@ class Tavern(commands.Cog, name="tavern"):
             return
 
         last_checkin_time = existing_user[17]
-        print(f'Last checkin time: {last_checkin_time}')
         checkin_remaining = None
         checkin_duration = timedelta(hours=18)
         if last_checkin_time:
             last_checkin_time_dt = datetime.fromisoformat(last_checkin_time)
             time_since_checkin = datetime.now() - last_checkin_time_dt
-            print(f'Time since checkin: {time_since_checkin}')
             if time_since_checkin < checkin_duration:
-                print(f'Not enough time has passed')
                 remaining_time = checkin_duration - time_since_checkin
                 checkin_remaining = remaining_time
-                print(f'Remaining time: {remaining_time}')
 
         if checkin_remaining:
             # User is trying to check in before the next available check-in time
@@ -752,15 +1024,9 @@ class Tavern(commands.Cog, name="tavern"):
             await interaction.response.send_message(value, ephemeral=True)
             return
         else:
-            # Proceed with the check-in
-            #bonus = random.randint(1000, 2000)
-            #await self.bot.database.add_gold(user_id, bonus)
-            print('Update check-in time')
-            
             await self.bot.database.update_checkin_time(user_id)
             existing_user = await self.bot.database.fetch_user(user_id, server_id)
             last_checkin_time = existing_user[17]
-            print(f'New last checkin time: {last_checkin_time}')
             await self.bot.database.update_curios_count(user_id, server_id, 1)
             await self.bot.database.update_curios_bought(user_id, server_id, -existing_user[23])  # Resetting to 0
             await interaction.response.send_message((f"You have successfully checked in and received a **Curious Curio**!\n"
@@ -825,7 +1091,7 @@ class Tavern(commands.Cog, name="tavern"):
                 # Using a more explicit calculation for determining how many times to repeat each reward
                 count = int(odds * 1000)  # Scale odds to make selection easier.
                 reward_pool.extend([reward] * count)
-            # print(reward_pool)
+
             # Selection of a reward
             selected_reward = random.choice(reward_pool)
             # Load item images from the provided CSV file
@@ -835,7 +1101,7 @@ class Tavern(commands.Cog, name="tavern"):
                 for row in reader:
                     item_images[row['Item']] = row['URL']
             # Debug message for selected reward
-            print(f"[DEBUG] Selected reward before adjustment: {selected_reward}")
+            self.bot.logger.info(f"[DEBUG] Selected reward before adjustment: {selected_reward}")
             image_url = item_images.get(selected_reward.replace(" ", "_"))  # Replace spaces with underscores
             # Adjust the ilvl rewards to match user's level
             if selected_reward == "ilvl Weapon":
@@ -934,7 +1200,7 @@ class Tavern(commands.Cog, name="tavern"):
                             evasion_modifier = modifier_value
                         elif modifier_type == "ward":
                             ward_modifier = modifier_value
-                await self.bot.database.create_armor(user_id, armor_name, 100, block_modifier, evasion_modifier, ward_modifier)
+                await self.bot.database.create_armor(user_id, armor_name, user_level, block_modifier, evasion_modifier, ward_modifier)
                 embed.add_field(name="✨ Loot", value=f"{loot_description}")
             elif selected_reward == "Rune of Refinement":
                 await self.bot.database.update_refinement_runes(user_id, 1)
@@ -949,35 +1215,77 @@ class Tavern(commands.Cog, name="tavern"):
                     "10k": 10000,
                     "5k": 5000,
                 }
-                print(f'Awarding {user_id} {amount_mapping[selected_reward]} gold')
                 await self.bot.database.add_gold(user_id, amount_mapping[selected_reward])
             elif selected_reward == "Ore":
                 for _ in range(5):
                     mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
-                    print(mining_data)
                     resources = await self.skills_cog.gather_mining_resources(mining_data[2])  # fetching pickaxe tier
                     await self.bot.database.update_mining_resources(user_id, server_id, resources)
 
             elif selected_reward == "Wood":
                 for _ in range(5):
                     woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
-                    print(woodcutting_data)
                     resources = await self.skills_cog.gather_woodcutting_resources(woodcutting_data[2])  # fetching axe type
                     await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
 
             elif selected_reward == "Fish":
                 for _ in range(5):
                     fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
-                    print(fishing_data)
                     resources = await self.skills_cog.gather_fishing_resources(fishing_data[2])  # fetching fishing rod
                     await self.bot.database.update_fishing_resources(user_id, server_id, resources)
             # Send the embed
             await interaction.response.send_message(embed=embed)
             await self.bot.database.update_curios_count(user_id, server_id, -1)
         except discord.errors.NotFound:
-            print("Failed to respond to the interaction: Interaction not found.")
+            self.bot.logger.info("Failed to respond to the interaction: Interaction not found.")
         except Exception as e:
-            print(f"An error occurred: {e}")  # Catch and log other potential errors
+            self.bot.logger.info(f"An error occurred: {e}")  # Catch and log other potential errors
+
+
+    @app_commands.command(name="bulk_curios", description="Open many curios.")
+    async def bulk_curios(self, interaction: Interaction) -> None:
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+        self.bot.logger.info(f'Check if {user_id} is active')
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+        
+        try:
+            # Fetch user data
+            existing_user = await self.bot.database.fetch_user(user_id, server_id)
+            if not await self.bot.check_user_registered(interaction, existing_user):
+                return
+
+            # Check if skills_cog is available
+            if not self.skills_cog:
+                await interaction.response.send_message("Error: Skills system is not available.", ephemeral=True)
+                return
+            
+            # if not await self.bot.is_maintenance(interaction, user_id):
+            #     return
+            self.bot.logger.info('Set active')
+            self.bot.state_manager.set_active(user_id, "curios")
+            # Create embed showing curio count
+            curio_count = existing_user[22]
+            embed = discord.Embed(
+                title="Your Curios",
+                description=f"You have **{curio_count}** curio{'s' if curio_count != 1 else ''} available.",
+                color=0x00FF00
+            )
+
+            # If no curios, send embed without buttons
+            if curio_count == 0:
+                await interaction.response.send_message(embed=embed)
+                return
+
+            # Create view with buttons
+            view = CurioView(self.bot, user_id, server_id, curio_count, self)
+            await interaction.response.send_message(embed=embed, view=view)
+            
+        except discord.errors.NotFound:
+            self.bot.logger.info("Failed to respond to the interaction: Interaction not found.")
+        except Exception as e:
+            self.bot.logger.info(f"An error occurred: {e}")
 
 async def setup(bot) -> None:
     await bot.add_cog(Tavern(bot))

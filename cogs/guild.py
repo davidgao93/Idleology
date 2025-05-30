@@ -184,7 +184,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
                 ideology_message = await self.bot.wait_for('message', timeout=60.0, check=ideology_check)
                 ideology = ideology_message.content.strip()
 
-                if not ideology in ideologies:
+                if ideology in ideologies:
                     embed = discord.Embed(
                             title="Ideology",
                             description=f"Please **enter** your desired ideology:\n",

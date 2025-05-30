@@ -17,7 +17,6 @@ Rapier
 Trident
 Battle Axe
 Greatsword
-Fist Weapon
 Flail
 Sling
 Nunchaku

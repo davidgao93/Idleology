@@ -4,32 +4,136 @@ from discord.ext import commands
 from discord.ext.tasks import asyncio
 from discord import app_commands, Interaction, Message
 from datetime import datetime, timedelta
-from core.models import Player
+from core.models import Player, Monster, Item
 import json
 import csv
 import os
 import re
+from typing import List, Optional, Dict
+from core.config import MONSTER_MODIFIERS, DROP_RATES, ASSET_PATHS
 
-class Combat(commands.Cog, name="combat"):
+class CombatEngine:
+    def __init__(self, bot, player: Player, monster: Monster):
+        self.bot = bot
+        self.player = player
+        self.monster = monster
+        self.embed = discord.Embed(title=f"Witness {player.name}", color=0x00FF00)
+        self.messages = []
+
+    async def initialize_combat(self, interaction: Interaction):
+        """Set up the initial combat embed and reactions."""
+        self.embed.description = f"A level {self.monster.level} {self.monster.name} approaches! ({int(self.monster.hp * 1.4)} xp)"
+        self.embed.set_image(url=self.monster.image_url)
+        self.embed.add_field(name="🐲 HP", value=self.monster.hp, inline=True)
+        self.embed.add_field(name="❤️ HP", value=f"{self.player.hp} ({self.player.ward} 🔮)" if self.player.ward > 0 else self.player.hp, inline=True)
+        
+        message = await interaction.response.send_message(embed=self.embed)
+        await asyncio.gather(*(message.add_reaction(emoji) for emoji in ["⚔️", "🩹", "⏩", "🏃"]))
+        return await interaction.original_response()
+
+    async def player_turn(self) -> tuple[int, str]:
+        """Handle the player's turn, returning updated monster HP and message."""
+        attack_message = ""
+        damage = 0
+        hit_chance = self.calculate_hit_chance(self.player.attack, self.monster.defence)
+        attack_roll = random.randint(0, 100)
+
+        if attack_roll >= (100 - hit_chance * 100):
+            damage = random.randint(1, self.player.attack)
+            if "Titanium" in self.monster.modifiers:
+                damage = int(damage * 0.9)
+            if attack_roll > self.player.crit:
+                damage *= 2
+                attack_message = f"Critical! {self.player.name} 🗡️ pierces through defenses! Damage: 💥 **{damage}**"
+            else:
+                attack_message = f"Hit! Damage: 💥 **{damage}**"
+            self.monster.hp -= damage
+        else:
+            attack_message = "Miss!"
+        
+        return self.monster.hp, attack_message
+
+    async def monster_turn(self) -> tuple[int, int, str]:
+        """Handle the monster's turn, returning updated player HP, ward, and message."""
+        if self.player.invulnerable:
+            return self.player.hp, self.player.ward, f"{self.monster.name} attacks, but {self.player.name} is invulnerable!"
+        
+        miss_chance = (100 + self.player.evasion / 100 * 25) - int(self.calculate_monster_hit_chance(self.monster.attack, self.player.defence) * 100)
+        attack_roll = random.randint(0, 100)
+        
+        if attack_roll >= miss_chance:
+            damage = self.calculate_damage_taken(self.monster.attack, self.player.defence, self.monster.modifiers)
+            if self.player.ward > 0:
+                self.player.ward -= damage
+                if self.player.ward < 0:
+                    self.player.hp += self.player.ward
+                    self.player.ward = 0
+            else:
+                self.player.hp -= damage
+            return self.player.hp, self.player.ward, f"{self.monster.name} {self.monster.flavor_text}. Damage: 💥 **{damage}**"
+        return self.player.hp, self.player.ward, f"{self.monster.name} misses!"
+
+    def calculate_hit_chance(self, attack: int, defence: int) -> float:
+        """Calculate hit chance based on attack and defence."""
+        difference = attack - defence
+        return min(0.8, 0.6 + (difference / 100) if difference > 0 else 0.6)
+
+    def calculate_monster_hit_chance(self, attack: int, defence: int) -> float:
+        """Calculate monster hit chance."""
+        difference = attack - defence
+        return 0.5 if difference > 0 else max(0.3, 0.5 + (difference / 100))
+
+    def calculate_damage_taken(self, attack: int, defence: int, modifiers: List[str]) -> int:
+        """Calculate damage taken by player."""
+        damage = random.randint(1, 6 if attack > 20 else 3)
+        if "Strengthened" in modifiers:
+            damage += 3
+        return max(0, damage)
+
+class CombatEvo(commands.Cog, name="combatevo"):
     def __init__(self, bot) -> None:
         self.bot = bot
-        self.prefixes = self.load_list("assets/items/pref.txt")
-        self.weapon_types = self.load_list("assets/items/wep.txt")
-        self.suffixes = self.load_list("assets/items/suff.txt")
-        self.accessory_types = self.load_list("assets/items/acc.txt")
-        self.monster_modifiers = self.load_list("assets/mobs/mods.txt")
-        self.boss_modifiers = self.load_list("assets/mobs/bossmods.txt")
+        self.prefixes = self.load_list(ASSET_PATHS["prefixes"])
+        self.weapon_types = self.load_list(ASSET_PATHS["weapons"])
+        self.suffixes = self.load_list(ASSET_PATHS["suffixes"])
+        self.accessory_types = self.load_list(ASSET_PATHS["accessories"])
+        self.armor_types = self.load_list(ASSET_PATHS["armor"])
 
-    def load_list(self, filepath: str) -> list:
+    def load_list(self, filepath: str) -> List[str]:
         """Load a list from a text file."""
-        with open(filepath, "r") as file:
-            return [line.strip() for line in file.readlines()]
+        try:
+            with open(filepath, "r") as file:
+                return [line.strip() for line in file.readlines()]
+        except FileNotFoundError:
+            print(f"File not found: {filepath}")
+            return []
         
     def load_exp_table(self):
         with open('assets/exp.json') as file:
             exp_table = json.load(file)
         return exp_table
     
+
+    async def fetch_monster_image(self, encounter_level: int) -> tuple[str, str, str]:
+        """Fetch monster details from CSV."""
+        try:
+            with open(ASSET_PATHS["monsters"], newline='') as csvfile:
+                reader = csv.DictReader(csvfile)
+                monsters = [(row['name'], row['url'], int(row['level']) * 10, row['flavor']) for row in reader]
+        except Exception as e:
+            print(f"Error reading monsters.csv: {e}")
+            return "Commoner", "https://i.imgur.com/v1BrB1M.png", "stares pleadingly at"
+
+        if 886 <= encounter_level <= 888:
+            for monster in monsters:
+                if monster[2] == encounter_level * 10:
+                    return monster[0], monster[1], monster[3]
+        else:
+            min_level = max(1, encounter_level - 20)
+            max_level = min(100, encounter_level + 20)
+            selected_monsters = [m for m in monsters if min_level <= m[2] <= max_level]
+            return random.choice(selected_monsters)[:3] if selected_monsters else ("Commoner", "https://i.imgur.com/v1BrB1M.png", "stares pleadingly at")
+        
     async def generate_loot(self, user_id: str, server_id: str, encounter_level: int, drop_rune: bool) -> str:
         """Generate a unique loot item."""
         prefix = random.choice(self.prefixes)
@@ -67,7 +171,7 @@ class Combat(commands.Cog, name="combat"):
             item_name = "rune"
 
         return item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description
-
+    
     async def generate_accessory(self, user_id: str, server_id: str, encounter_level: int, drop_rune: bool) -> str:
         """Generate a unique accessory item."""
         prefix = random.choice(self.prefixes)
@@ -110,6 +214,7 @@ class Combat(commands.Cog, name="combat"):
             acc_name = "rune"
             
         return acc_name, loot_description
+    
 
     async def generate_armor(self, user_id: str, server_id: str, encounter_level: int, drop_rune: bool) -> str:
         """Generate a unique armor item."""
@@ -190,7 +295,6 @@ class Combat(commands.Cog, name="combat"):
             if user_id != str(866408616873820180):
                 await self.bot.database.update_combat_time(user_id)
                 self.bot.state_manager.set_active(user_id, "combat")
-            
             user_level = existing_user[4]
             player_ideology = existing_user[8]
             player_attack = existing_user[9]
@@ -218,7 +322,8 @@ class Combat(commands.Cog, name="combat"):
                 player_attack += equipped_item[4]
                 player_defence += equipped_item[5]
                 player_rar += equipped_item[6]
-                print(f'Weapon: {equipped_item[4]} ATK {equipped_item[5]} DEF {equipped_item[6]} RAR {current_passive} passive')
+                print(f'Stats from equipped weapon: {equipped_item[4]} atk {equipped_item[5]} def {equipped_item[6]} rar')
+                print(f'Weapon grants {current_passive}')
             if equipped_accessory:
                 accessory_passive = equipped_accessory[9]
                 player_attack += equipped_accessory[4]
@@ -227,21 +332,20 @@ class Combat(commands.Cog, name="combat"):
                 player_ward += int((equipped_accessory[7] / 100) * player_max_hp)
                 player_crit -= equipped_accessory[8]
                 accessory_lvl = equipped_accessory[12]
-                print(f'Accessory: {equipped_accessory[4]} ATK {equipped_accessory[5]} DEF {equipped_accessory[6]} RAR '
-                      f'{5 + equipped_accessory[8]}% Crit, {player_ward} Ward '
-                      f'{accessory_passive} passive ({accessory_lvl})')
+                print(f'Stats from equipped acc: {equipped_accessory[4]} atk {equipped_accessory[5]} def {equipped_accessory[6]} rar')
+                print(f'beat {player_crit} to crit, {player_ward} hp ward shield')
+                print(f'Accessory grants {accessory_passive}')
             if equipped_armor:
                 armor_passive = equipped_armor[7]
                 player_ward += int((equipped_armor[6] / 100) * player_max_hp)  # Ward from armor
                 player_block += equipped_armor[4]  # Block
                 player_eva += equipped_armor[5]  # Evasion treated as rarity boost
-                print(f'Armor: {player_block} Block {player_eva} Evasion {equipped_armor[6]} Ward {armor_passive} passive')
+                print(f'Stats from equipped armor: {player_block} block {player_eva} evasion {equipped_armor[6]} ward')
+                print(f'Armor grants {armor_passive}')
 
             # Check for Door of Ascension
             is_boss_encounter = False
             is_heaven_door = False
-            is_hell_door = False
-            boss_type = ''
             if (user_level >= 20 and existing_user[25] > 0 and existing_user[26] > 0 and
                     random.random() < 0.2):
                 is_heaven_door = True
@@ -252,7 +356,6 @@ class Combat(commands.Cog, name="combat"):
                     color=0x00FF00,
                 )
                 embed.set_image(url="https://i.imgur.com/PXOhTbX.png")
-                                             
                 await interaction.response.send_message(embed=embed)
                 message = await interaction.original_response()
                 await message.add_reaction("✅")
@@ -270,50 +373,12 @@ class Combat(commands.Cog, name="combat"):
                         is_boss_encounter = True
                         await self.bot.database.add_dragon_key(user_id, -1)
                         await self.bot.database.add_angel_key(user_id, -1)
-                        boss_type = 'aphrodite'
                     else:
                         pass  # Proceed with normal combat
-                except asyncio.TimeoutError: 
-                    await message.clear_reactions()                      
+                except asyncio.TimeoutError:
+                    await message.clear_reactions()
                     await message.edit(embed=discord.Embed(
                         title="Door of Ascension",
-                        description="You hesitated, and the opportunity fades.",
-                        color=0xFF0000))
-                    self.bot.state_manager.clear_active(user_id)
-                    return
-            elif (user_level >= 20 and existing_user[28] >= 5 and random.random() < 0.2):
-                is_hell_door = True
-                embed = discord.Embed(
-                    title="Door of the Infernal",
-                    description="Your soul cores tremble with anticipation, "
-                                "do you wish to challenge the depths below?",
-                    color=0x00FF00,
-                )
-                embed.set_image(url="https://i.imgur.com/bWMAksf.png")
-                                             
-                await interaction.response.send_message(embed=embed)
-                message = await interaction.original_response()
-                await message.add_reaction("✅")
-                await message.add_reaction("❌")
-
-                def check(reaction, user):
-                    return (user == interaction.user and
-                            reaction.message.id == message.id and
-                            str(reaction.emoji) in ["✅", "❌"])
-
-                try:
-                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                    await message.clear_reactions()
-                    if str(reaction.emoji) == "✅":
-                        is_boss_encounter = True
-                        await self.bot.database.add_soul_cores(user_id, -5)
-                        boss_type = 'lucifer'
-                    else:
-                        pass  # Proceed with normal combat
-                except asyncio.TimeoutError: 
-                    await message.clear_reactions()                      
-                    await message.edit(embed=discord.Embed(
-                        title="Door of the Infernal",
                         description="You hesitated, and the opportunity fades.",
                         color=0xFF0000))
                     self.bot.state_manager.clear_active(user_id)
@@ -328,7 +393,7 @@ class Combat(commands.Cog, name="combat"):
                     player_crit, player_ward, player_block, player_eva,
                     current_passive, accessory_passive, armor_passive,
                     accessory_lvl, followers_count, equipped_item,
-                    equipped_accessory, equipped_armor, invulnerable, boss_type
+                    equipped_accessory, equipped_armor, invulnerable
                 )
                 self.bot.state_manager.clear_active(user_id)
                 return
@@ -336,18 +401,18 @@ class Combat(commands.Cog, name="combat"):
             # Treasure Hunter: +5% chance to turn the monster into a loot encounter
             is_treasure = False
             treasure_hunter = False
-            treasure_chance = 0.02
-            if armor_passive == "Treasure Hunter":
+            treasure_chance = 0.01
+            if armor_passive == "Treasure Hunter" and random.random() < 0.05:
                 treasure_chance += 0.05
                 print("Treasure Hunter passive: Increased treasure encounter chance by 5%")
             if random.random() < treasure_chance:
-                encounter_level, monster_attack, monster_defence, monster_modifiers = self.generate_encounter(user_level, True, player_rar)
+                encounter_level, monster_attack, monster_defence, monster_modifiers = self.generate_encounter(user_level, is_treasure=True)
                 monster_attack = 0
                 monster_defence = 0
                 treasure_hunter = True
                 is_treasure = True
             else:
-                encounter_level, monster_attack, monster_defence, monster_modifiers = self.generate_encounter(user_level, False, player_rar)
+                encounter_level, monster_attack, monster_defence, monster_modifiers = self.generate_encounter(user_level, is_treasure=False)
 
             # Omnipotent: 20% chance to set monster's attack and defense to 0
             if armor_passive == "Omnipotent" and random.random() < 0.2:
@@ -371,10 +436,10 @@ class Combat(commands.Cog, name="combat"):
             award_xp = monster_hp
             if "Glutton" in monster_modifiers:
                 monster_hp *= 2
-                # print(f"Glutton modifier applied: Monster HP doubled to {monster_hp}")
+                print(f"Glutton modifier applied: Monster HP doubled to {monster_hp}")
             if "Enfeeble" in monster_modifiers:
-                player_attack = int(player_attack * 0.9)
-                # print(f"Enfeeble modifier applied: Player attack reduced to {effective_player_attack}")
+                effective_player_attack = int(player_attack * 0.9)
+                print(f"Enfeeble modifier applied: Player attack reduced to {effective_player_attack}")
             player_rar += len(monster_modifiers) * 30
             print(f"Player rarity boosted by {(len(monster_modifiers) * 30)} from monster mods")
             attack_message = ""
@@ -383,7 +448,7 @@ class Combat(commands.Cog, name="combat"):
             opportunity_message = ""
             pause_message = ""
             opportunity = False
-            print(f"player_hp: {player_hp} | ascension: {ascension_level} | "
+            print(f"player_hp: {player_hp} | follower_count: {followers_count} | ascension: {ascension_level} | "
                   f"p.atk: {player_attack} | p.def: {player_defence}")
             print(f"m.lvl: {encounter_level} | m.atk: {monster_attack} | m.def: {monster_defence} | m.hp: {monster_hp} | modifiers: {monster_modifiers}")
 
@@ -399,27 +464,63 @@ class Combat(commands.Cog, name="combat"):
 
             start_combat = False
             try:
-
+                modifier_descriptions = []
+                for modifier in monster_modifiers:
+                    if modifier == "Steel-born":
+                        modifier_descriptions.append("**Steel-born**: 10% boost to monster defense")
+                    elif modifier == "All-seeing":
+                        modifier_descriptions.append("**All-seeing**: 10% boost to monster accuracy")
+                    elif modifier == "Mirror Image":
+                        modifier_descriptions.append("**Mirror Image**: 20% chance to deal double damage")
+                    elif modifier == "Volatile":
+                        modifier_descriptions.append("**Volatile**: Explodes after combat, reducing player HP to 1")
+                    elif modifier == "Glutton":
+                        modifier_descriptions.append("**Glutton**: Doubles monster HP, no extra XP")
+                    elif modifier == "Enfeeble":
+                        modifier_descriptions.append("**Enfeeble**: Decreases player's attack by 10%")
+                    elif modifier == "Venomous":
+                        modifier_descriptions.append("**Venomous**: Deals 1 damage on every miss")
+                    elif modifier == "Strengthened":
+                        modifier_descriptions.append("**Strengthened**: +3 monster max hit")
+                    elif modifier == "Hellborn":
+                        modifier_descriptions.append("**Hellborn**: +2 each successful hit")
+                    elif modifier == "Lucifer-touched":
+                        modifier_descriptions.append("**Lucifer-touched**: Lucky attacks")
+                    elif modifier == "Titanium":
+                        modifier_descriptions.append("**Titanium**: Player damage reduced by 10%")
+                    elif modifier == "Ascended":
+                        modifier_descriptions.append("**Ascended**: +10 Attack, +10 Defence")
+                    elif modifier == "Summoner":
+                        modifier_descriptions.append("**Summoner**: Minions echo hits for 1/6 the monster hit")
+                    elif modifier == "Shield-breaker":
+                        modifier_descriptions.append("**Shield-breaker**: Player has no ward")
+                    elif modifier == "Impenetrable":
+                        modifier_descriptions.append("**Impenetrable**: Player cannot crit")
+                    elif modifier == "Unblockable":
+                        modifier_descriptions.append("**Unblockable**: Player cannot block")
+                    elif modifier == "Unavoidable":
+                        modifier_descriptions.append("**Unavoidable**: Player has no additional evade chance")
+            
                 if "Shield-breaker" in monster_modifiers:
                     player_ward = 0
-                    # print(f"Shield-breaker modifier applied: player ward is now 0")
+                    print(f"Shield-breaker modifier applied: player ward is now 0")
 
                 if "Impenetrable" in monster_modifiers:
                     player_crit += 200
-                    # print(f"Impenetrable applied: beat {player_crit} to crit")
+                    print(f"Impenetrable applied: beat {player_crit} to crit")
 
                 if "Unblockable" in monster_modifiers:
                     player_block = 0
-                    # print(f"Unblockable applied: {player_block} to 0")
+                    print(f"Unblockable applied: {player_block} to 0")
 
                 if "Unavoidable" in monster_modifiers:
                     player_eva = 0
-                    # print(f"Unavoidable applied: {player_eva} to 0")    
+                    print(f"Unavoidable applied: {player_eva} to 0")    
 
                 embed = discord.Embed(
                     title=f"Witness {player_name}",
-                    description=(f"A level {encounter_level} {monster_full_name} approaches! ({int(award_xp * 1.4)} xp)\n\n" +
-                                "\n".join([f"**{m}**: {self.get_modifier_description(m)}" for m in monster_modifiers])),
+                    description=(f"A level {encounter_level} {monster_full_name} approaches! ({int(award_xp * 1.4)} xp)\n" +
+                                 ("\n".join(modifier_descriptions) if modifier_descriptions else "")),
                     color=0x00FF00,
                 )
                 embed.set_image(url=image_url)
@@ -462,16 +563,16 @@ class Combat(commands.Cog, name="combat"):
 
                 # Existing passive checks (Absorb, Polished, Sturdy, Accuracy)
                 if accessory_passive == "Absorb":
-                    absorb_chance = accessory_lvl * 10
+                    absorb_chance = accessory_lvl * 2
                     if random.randint(1, 100) <= absorb_chance:
                         monster_stats = monster_attack + monster_defence
                         absorb_amount = int(monster_stats * 0.10)
-                        player_attack += absorb_amount
-                        player_defence += absorb_amount
+                        player_attack += int(absorb_amount / 2)
+                        player_defence += int(absorb_amount / 2)
                         embed.add_field(name="Accessory passive",
-                                        value=f"The accessory's 🌀 **Absorb ({accessory_lvl})** activates!\n"
-                                              f"⚔️ boosted by **{absorb_amount}**\n"
-                                              f"🛡️ boosted by **{absorb_amount}**",
+                                        value=f"The accessory's 🌀 **Absorb ({accessory_lvl})** activates! "
+                                              f"⚔️ boosted by **{player_attack}**\n"
+                                              f"🛡️ boosted by **{player_defence}**",
                                         inline=False)
                 polished_passives = ["polished", "honed", "gleaming", "tempered", "flaring"]
                 if current_passive in polished_passives:
@@ -492,8 +593,7 @@ class Combat(commands.Cog, name="combat"):
                                           f"🛡️ boosted by **{defence_bonus}**!",
                                     inline=False)
                     player_defence += defence_bonus
-                                          
-                if (is_heaven_door or is_hell_door):
+                if (is_heaven_door):
                     message: Message = await interaction.followup.send(embed=embed)
                 else:
                     await interaction.response.send_message(embed=embed)
@@ -505,17 +605,18 @@ class Combat(commands.Cog, name="combat"):
                 self.bot.state_manager.clear_active(user_id)
                 return
 
-            reactions = ["⚔️", "🩹", "⏩", "🏃", "🕒"]
+            reactions = ["⚔️", "🩹", "⏩", "🏃"]
             await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
             if start_combat:
                 while True:
                     def check(reaction, user):
                         return (user == interaction.user
                                 and reaction.message.id == message.id
-                                and str(reaction.emoji) in ["⚔️", "🩹", "⏩", "🏃", "🕒"])
+                                and str(reaction.emoji) in ["⚔️", "🩹", "⏩", "🏃"])
 
                     try:
                         reaction, user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
+
                         if str(reaction.emoji) == "⚔️":
                             heal_message = ""
                             opportunity = False
@@ -538,8 +639,11 @@ class Combat(commands.Cog, name="combat"):
                                 player_hp, monster_message, player_ward = await self.monster_turn(embed,
                                                                                                  monster_attack,
                                                                                                  player_hp,
-                                                                                                 player_defence,                                                                                                 
-                                                                                                 monster_name,                                                                                                 
+                                                                                                 player_defence,
+                                                                                                 followers_count,
+                                                                                                 monster_name,
+                                                                                                 user_id,
+                                                                                                 current_passive,
                                                                                                  flavor_txt,
                                                                                                  player_ward,
                                                                                                  monster_modifiers,
@@ -590,7 +694,7 @@ class Combat(commands.Cog, name="combat"):
                             print('Start auto battle')
                             pause_message = ""
                             await message.remove_reaction(reaction.emoji, user)
-                            end_battle, end_php, end_mhp, end_ward = await self.auto_battle(
+                            end_battle, end_php, end_mhp = await self.auto_battle(
                                 embed, interaction, encounter_level,
                                 player_attack, monster_hp, monster_attack,
                                 monster_defence, player_defence,
@@ -610,40 +714,13 @@ class Combat(commands.Cog, name="combat"):
                                 print('Pause auto battle')
                                 player_hp = end_php
                                 monster_hp = end_mhp
-                                player_ward = end_ward
-                                pause_message = "Player HP < 20%, auto-battle paused!"
-                        elif str(reaction.emoji) == "🕒":
-                            print('Start giga-auto battle')
-                            pause_message = ""
-                            await message.remove_reaction(reaction.emoji, user)
-                            end_battle, end_php, end_mhp, end_ward = await self.giga_auto_battle(
-                                embed, interaction, encounter_level,
-                                player_attack, monster_hp, monster_attack,
-                                monster_defence, player_defence,
-                                followers_count, player_name, user_id,
-                                server_id, monster_name, player_hp,
-                                message, award_xp, ascension_level,
-                                player_rar, current_passive, user_level,
-                                flavor_txt, player_max_hp, player_crit,
-                                player_ward, accessory_passive, accessory_lvl,
-                                monster_modifiers, armor_passive, invulnerable,
-                                player_block, player_eva)
-                            if end_battle:
-                                print('End auto battle')
-                                self.bot.state_manager.clear_active(user_id)
-                                break
-                            else:
-                                print('Pause auto battle')
-                                player_hp = end_php
-                                monster_hp = end_mhp
-                                player_ward = end_ward
                                 pause_message = "Player HP < 20%, auto-battle paused!"
                         elif str(reaction.emoji) == "🩹":
-                            if player_hp >= player_max_hp:
+                            if player_ward > 0:
                                 embed.add_field(name="Heal", value="Full hp!", inline=False)
                             else:
-                                player_hp, potions, heal_message = await self.heal(player_hp, potions,
-                                                                                  user_id, server_id, embed,
+                                player_hp, potions, heal_message = await self.heal(existing_user, player_hp, potions,
+                                                                                  user_id, server_id, interaction, embed,
                                                                                   player_name)
                                 if random.random() < 0.5:
                                     opportunity = True
@@ -731,146 +808,82 @@ class Combat(commands.Cog, name="combat"):
                                    player_crit, player_ward, player_block, player_eva,
                                    current_passive, accessory_passive, armor_passive,
                                    accessory_lvl, followers_count, equipped_item,
-                                   equipped_accessory, equipped_armor, invulnerable,
-                                   type):
-        if (type == 'aphrodite'):
-            """Handle the three-phase boss encounter with Aphrodite."""
-            phases = [
-                {"name": "Aphrodite, Heaven's Envoy", "level": 886, "modifiers_count": 3, "hp_multiplier": 1.5},
-                {"name": "Aphrodite, the Eternal", "level": 887, "modifiers_count": 6, "hp_multiplier": 2},
-                {"name": "Aphrodite, Harbinger of Destruction", "level": 888, "modifiers_count": 9, "hp_multiplier": 2.5},
-            ]
-        elif (type == 'lucifer'):
-            phases = [
-                {"name": "Lucifer, Fallen", "level": 663, "modifiers_count": 1, "hp_multiplier": 1.25},
-                {"name": "Lucifer, Maddened", "level": 664, "modifiers_count": 2, "hp_multiplier": 1.5},
-                {"name": "Lucifer, Enraged", "level": 665, "modifiers_count": 3, "hp_multiplier": 1.75},
-                {"name": "Lucifer, Unbound", "level": 666, "modifiers_count": 4, "hp_multiplier": 2},
-            ]
+                                   equipped_accessory, equipped_armor, invulnerable):
+        """Handle the three-phase boss encounter with Aphrodite."""
+        phases = [
+            {"name": "Aphrodite, Heaven's Envoy", "level": 886, "modifiers_count": 3, "hp_multiplier": 1.5},
+            {"name": "Aphrodite, the Eternal", "level": 887, "modifiers_count": 6, "hp_multiplier": 2},
+            {"name": "Aphrodite, Harbinger of Destruction", "level": 888, "modifiers_count": 9, "hp_multiplier": 2.5},
+        ]
         current_hp = player_hp
         current_ward = player_ward
 
         for phase in phases:
             print(f'On phase {phase}')
             # Generate encounter
-            encounter_level, monster_attack, monster_defence, monster_modifiers = self.generate_encounter(user_level - 2, False, player_rar)
-            print(f"player_hp: {player_hp} | ascension: {ascension_level} | "
-                  f"p.atk: {player_attack} | p.def: {player_defence}")
-            print(f"m.lvl: {encounter_level} | m.atk: {monster_attack} | m.def: {monster_defence} | modifiers: {monster_modifiers}")
-
+            encounter_level, monster_attack, monster_defence, monster_modifiers = self.generate_encounter(user_level)
             # Override with phase-specific modifiers
             available_modifiers = self.monster_modifiers.copy()
             monster_modifiers = []
-            if (type == 'lucifer'):
-                print('Boss specific mod')
-                boss_modifiers = self.boss_modifiers.copy()
-                boss_mod = random.choice(boss_modifiers)
-                if (boss_mod == "Celestial Watcher"):
-                    available_modifiers.remove("All-seeing")
-                elif (boss_mod == "Unlimited Blade Works"):
-                    available_modifiers.remove("Mirror Image")
-                elif (boss_mod == "Hell's Fury"):
-                    available_modifiers.remove("Strengthened")
-                elif (boss_mod == "Hell's Precision"):
-                    available_modifiers.remove("Hellborn")
-                elif (boss_mod == "Absolute"):
-                    available_modifiers.remove("Ascended")
-                elif (boss_mod == "Infernal Legion"):
-                    available_modifiers.remove("Summoner")
-                elif (boss_mod == "Overwhelm"):
-                    available_modifiers.remove("Shield-breaker")
-                    available_modifiers.remove("Unblockable")
-                    available_modifiers.remove("Unavoidable")
-                monster_modifiers.append(boss_mod)
-            
             for _ in range(phase["modifiers_count"]):
                 if available_modifiers:
                     modifier = random.choice(available_modifiers)
                     monster_modifiers.append(modifier)
                     available_modifiers.remove(modifier)
-            
-            if "Absolute" in monster_modifiers:
-                monster_attack += 25
-                monster_defence += 25
-                print('Absolute set')
             if "Ascended" in monster_modifiers:
                 monster_attack += 10
                 monster_defence += 10
             if "Steel-born" in monster_modifiers:
                 monster_defence = int(monster_defence * 1.1)
-            invulnerable = False
+
             # Calculate monster HP
             monster_hp = random.randint(0, 9) + int(10 * (encounter_level ** random.uniform(1.25, 1.35)))
             monster_hp = int(monster_hp * phase["hp_multiplier"])
-
-            if "Glutton" in monster_modifiers:
-                monster_hp = int(monster_hp * 1.5)
-                # print(f"Glutton modifier applied: Monster HP doubled to {monster_hp}")
             award_xp = monster_hp
+            if "Glutton" in monster_modifiers:
+                monster_hp *= 2
+                print(f"Glutton modifier applied: Monster HP doubled to {monster_hp}")
+
             # Apply Enfeeble modifier
             effective_player_attack = player_attack
             if "Enfeeble" in monster_modifiers:
                 effective_player_attack = int(player_attack * 0.9)
-                # print(f"Enfeeble modifier applied: Player attack reduced to {effective_player_attack}")
+                print(f"Enfeeble modifier applied: Player attack reduced to {effective_player_attack}")
 
             # Apply other modifiers
-            if "Shield-breaker" in monster_modifiers or "Overwhelm" in monster_modifiers:
+            if "Shield-breaker" in monster_modifiers:
                 current_ward = 0
             if "Impenetrable" in monster_modifiers:
                 player_crit += 200
-            if "Unblockable" in monster_modifiers or "Overwhelm" in monster_modifiers:
+            if "Unblockable" in monster_modifiers:
                 player_block = 0
-            if "Unavoidable" in monster_modifiers or "Overwhelm" in monster_modifiers:
+            if "Unavoidable" in monster_modifiers:
                 player_eva = 0
 
             # Fetch monster details
             monster_name, image_url, flavor_txt = await self.fetch_monster_image(phase["level"])
-            if (type == 'aphrodite'):
-                embed = discord.Embed(
-                    title=f"Witness {player_name}",
-                    description=(f"🐉**{monster_name}**🪽 descends!\n" +
-                                "\n".join([f"**{m}**: {self.get_modifier_description(m)}" for m in monster_modifiers])),
-                    color=0x00FF00,
-                )
-            elif (type == 'lucifer'):
-                embed = discord.Embed(
-                    title=f"Witness {player_name}",
-                    description=(f"😈 **{monster_name}** 😈 ascends!\n" +
-                                "\n".join([f"**{m}**: {self.get_modifier_description(m)}" for m in monster_modifiers])),
-                    color=0x00FF00,
-                )
+            monster_full_name = f"**{', '.join(monster_modifiers)}** {monster_name}" if monster_modifiers else monster_name
+
+            # Setup embed
+            embed = discord.Embed(
+                title=f"Witness {player_name}",
+                description=(f"🐉**{monster_name}**🪽 descends upon you!\n" +
+                             "\n".join([f"**{m}**: {self.get_modifier_description(m)}" for m in monster_modifiers])),
+                color=0x00FF00,
+            )
             embed.set_image(url=image_url)
-
-            # Omnipotent: 20% chance to set monster's attack and defense to 0
-            if armor_passive == "Omnipotent" and random.random() < 0.2:
-                monster_attack = 0
-                monster_defence = 0
-                # print("Omnipotent passive: Monster attack and defense set to 0")
-
-            if armor_passive == "Invulnerable" and random.random() < 0.2:
-                embed.add_field(name="Armor Passive",
-                                value="The **Invulnerable** armor imbues with power!",
-                                inline=False)
-                invulnerable = True
-                    
-            greed_good = False
-            if armor_passive == "Unlimited Wealth" and random.random() < 0.2:
-                player_rar *= 5
-                print(f"Unlimited Wealth passive: Player rarity multiplied by 5 to {player_rar}")
-                greed_good = True    
-
-            if armor_passive == "Omnipotent" and monster_attack == 0 and monster_defence == 0:
-                embed.add_field(name="Armor Passive",
-                                value=f"The **Omnipotent** armor imbues with power! The {monster_name} trembles in **terror**.",
-                                inline=False)
-
-            if armor_passive == "Unlimited Wealth" and greed_good:
-                embed.add_field(name="Armor Passive",
-                                value=f"The **Unlimited Wealth** armor imbues with power! {player_name}'s greed knows no bounds.",
-                                inline=False)
-
             embed.add_field(name="🐲 HP", value=monster_hp, inline=True)
-            embed.add_field(name="❤️ HP", value=f"{current_hp} ({current_ward} 🔮)" if current_ward > 0 else current_hp, inline=True)                                                     
+            embed.add_field(name="❤️ HP", value=f"{current_hp} ({current_ward} 🔮)" if current_ward > 0 else current_hp, inline=True)
+            items = await self.bot.database.fetch_user_items(user_id)
+            accs = await self.bot.database.fetch_user_accessories(user_id)
+            arms = await self.bot.database.fetch_user_armors(user_id)
+            if len(items) > 60:
+                embed.add_field(name="🚫 WARNING 🚫", value="Weapon pouch is full! Weapons can't drop.", inline=False)
+            if len(accs) > 60:
+                embed.add_field(name="🚫 WARNING 🚫", value="Accessory pouch is full! Accessories can't drop.", inline=False)
+            if len(arms) > 60:
+                embed.add_field(name="🚫 WARNING 🚫", value="Armor pouch is full! Armor can't drop.", inline=False)
+
             await interaction.edit_original_response(embed=embed)
             message = await interaction.original_response()
             reactions = ["⚔️", "🩹", "⏩"]
@@ -885,14 +898,15 @@ class Combat(commands.Cog, name="combat"):
 
                 try:
                     reaction, user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
-                                                                                                                                           
                     attack_message = ""
                     monster_message = ""
                     heal_message = ""
                     opportunity_message = ""
                     pause_message = ""
+                    opportunity = False
 
                     if str(reaction.emoji) == "⚔️":
+                        print('attack')
                         await message.remove_reaction(reaction.emoji, user)
                         monster_hp, attack_message = await self.player_turn(
                             embed, effective_player_attack, monster_hp, monster_defence,
@@ -901,8 +915,8 @@ class Combat(commands.Cog, name="combat"):
                             armor_passive, monster_modifiers)
                         if monster_hp > 0:
                             current_hp, monster_message, current_ward = await self.monster_turn(
-                                embed, monster_attack, current_hp, player_defence,
-                                monster_name, flavor_txt, current_ward,
+                                embed, monster_attack, current_hp, player_defence, followers_count,
+                                monster_name, user_id, current_passive, flavor_txt, current_ward,
                                 monster_modifiers, invulnerable, player_block, player_eva)
                         await self.bot.database.update_player_hp(user_id, current_hp)
                         
@@ -912,7 +926,7 @@ class Combat(commands.Cog, name="combat"):
                             embed.add_field(name=monster_name, value=monster_message, inline=False)
                             await self.handle_boss_defeat(user_id, message, monster_name,
                                                          total_damage_dealt, player_name, award_xp,
-                                                         server_id, monster_modifiers, type)
+                                                         server_id, monster_modifiers)
                             return
                         overwhelm_passives = ["strengthened", "forceful", "overwhelming", "devastating", "catastrophic"]
                         if current_passive in overwhelm_passives:
@@ -926,8 +940,7 @@ class Combat(commands.Cog, name="combat"):
                                     await self.handle_boss_victory(
                                         encounter_level, user_id, server_id, player_name, monster_name,
                                         interaction, award_xp, player_rar, current_hp, message, user_level,
-                                        True, accessory_passive, accessory_lvl, monster_modifiers, armor_passive,
-                                        type)
+                                        True, accessory_passive, accessory_lvl, monster_modifiers, armor_passive)
                                     return
                                 break
                         else:
@@ -939,15 +952,18 @@ class Combat(commands.Cog, name="combat"):
                                     await self.handle_boss_victory(
                                         encounter_level, user_id, server_id, player_name, monster_name,
                                         interaction, award_xp, player_rar, current_hp, message, user_level,
-                                        False, accessory_passive, accessory_lvl, monster_modifiers, armor_passive,
-                                        type)
+                                        False, accessory_passive, accessory_lvl, monster_modifiers, armor_passive)
                                     return
+                                if "Volatile" in monster_modifiers and current_hp > 1:
+                                    current_hp = 1
+                                    await self.bot.database.update_player_hp(user_id, current_hp)
+                                    print(f"Volatile modifier triggered: Player HP set to {current_hp}")
                                 break
 
                     elif str(reaction.emoji) == "⏩":
                         print('Start auto battle')
                         await message.remove_reaction(reaction.emoji, user)
-                        end_battle, end_php, end_mhp, end_ward = await self.boss_auto_battle(
+                        end_battle, end_php, end_mhp = await self.boss_auto_battle(
                             embed, interaction, encounter_level, effective_player_attack, monster_hp,
                             monster_attack, monster_defence, player_defence, followers_count,
                             player_name, user_id, server_id, monster_name, current_hp, message,
@@ -956,38 +972,40 @@ class Combat(commands.Cog, name="combat"):
                             accessory_lvl, monster_modifiers, armor_passive, invulnerable,
                             player_block, player_eva)
                         if end_battle:
-                            print('Auto-battle ended')
+                            print('Battle ended')
                             if end_php <= 0:
                                 await self.handle_boss_defeat(user_id, message, monster_name,
                                                              award_xp - monster_hp, player_name, award_xp,
-                                                             server_id, monster_modifiers, type)
+                                                             server_id, monster_modifiers)
                             elif phase == phases[-1]:
-                                print(f'Won phase {phase}')
+                                print(f'Won every phase {phase} vs {phases[-1]} with -1')
                                 await self.handle_boss_victory(
                                     encounter_level, user_id, server_id, player_name, monster_name,
-                                    interaction, award_xp, player_rar, end_php, message, user_level,
-                                    False, accessory_passive, accessory_lvl, monster_modifiers, armor_passive,
-                                    type)
+                                    interaction, award_xp, player_rar, current_hp, message, user_level,
+                                    False, accessory_passive, accessory_lvl, monster_modifiers, armor_passive)
                                 return
                             else:
-                                print(f'end_battle: {end_battle}, mhp: {end_mhp}, php: {end_php}, pward: {end_ward}')
+                                print(f'end_battle: {end_battle}, mhp: {end_mhp}, php: {end_php}')
                                 current_hp = end_php
-                                current_ward = end_ward
+                                if "Volatile" in monster_modifiers and current_hp > 1:
+                                    current_hp = 1
+                                    await self.bot.database.update_player_hp(user_id, current_hp)
+                                    print(f"Volatile modifier triggered: Player HP set to {current_hp}")
                                 break
                         else:
                             print('Pause auto battle')
                             current_hp = end_php
                             monster_hp = end_mhp
-                            current_ward = end_ward
                             pause_message = "Player HP < 20%, auto-battle paused!"
 
                     elif str(reaction.emoji) == "🩹":
                         await message.remove_reaction(reaction.emoji, user)
-                        if current_hp >= player_max_hp:
+                        if current_ward > 0 or current_hp >= player_max_hp:
                             heal_message = "Full hp!"
                         else:
-                            current_hp, potions, heal_message = await self.heal(current_hp, potions,
-                                user_id, server_id, embed, player_name)
+                            current_hp, potions, heal_message = await self.heal(
+                                await self.bot.database.fetch_user(user_id, server_id), current_hp, potions,
+                                user_id, server_id, interaction, embed, player_name)
                         await message.edit(embed=embed)
 
                     # if len(embed.fields) > 5:
@@ -1041,20 +1059,14 @@ class Combat(commands.Cog, name="combat"):
                           monster_modifiers):
         attack_message = ""
         echo_damage = 0
-        actual_hit = 0
         echo_hit = False
         passive_message = ""
         attack_multiplier = 1
         if accessory_passive == "Obliterate":
             double_damage_chance = accessory_lvl * 2
             if random.randint(1, 100) <= double_damage_chance:
-                passive_message += f"**Obliterate ({accessory_lvl})** activates, doubling 💥 damage dealt!\n"
+                passive_message = f"**Obliterate ({accessory_lvl})** activates, doubling 💥 damage dealt!\n"
                 attack_multiplier = 2
-
-        # Mystical Might: 20% chance to deal 10x damage
-        if armor_passive == "Mystical Might" and random.random() < 0.2:
-            attack_multiplier *= 10
-            passive_message += "The **Mystical Might** armor imbues with power!\n"
 
         hit_chance = self.calculate_hit_chance(player_attack, monster_defence)
         miss_chance = 100 - (hit_chance * 100)
@@ -1063,7 +1075,7 @@ class Combat(commands.Cog, name="combat"):
         accuracy_passives = ["accurate", "precise", "sharpshooter", "deadeye", "bullseye"]
         if current_passive in accuracy_passives:
             acc_value = (1 + accuracy_passives.index(current_passive)) * 3
-            passive_message += f"The **{current_passive}** weapon boosts 🎯 accuracy by **{acc_value}%**!\n"
+            passive_message = f"The **{current_passive}** weapon boosts 🎯 accuracy by **{acc_value}%**!\n"
             attack_roll += acc_value
 
         if accessory_passive == "Lucky Strikes":
@@ -1071,39 +1083,31 @@ class Combat(commands.Cog, name="combat"):
             if random.randint(1, 100) <= lucky_chance:
                 attack_roll2 = random.randint(0, 100)
                 attack_roll = max(attack_roll, attack_roll2)
-                passive_message += f"**Lucky Strikes ({accessory_lvl})** activates!\nHit chance is now 🍀 lucky!\n"
+                passive_message = f"**Lucky Strikes ({accessory_lvl})** activates!\nHit chance is now 🍀 lucky!\n"
 
-        if "Suffocator" in monster_modifiers and random.random() < 0.2:
-            # print(f"Suffocator modifier applied: hit chance unlucky")
-            passive_message += f"You have been suffocated!\nHit chance is now 💀 unlucky!\n"
-            attack_roll2 = random.randint(0, 100)
-            attack_roll = min(attack_roll, attack_roll2)
-            
         adjusted_value = 0
         crit_passives = ["piercing", "keen", "incisive", "puncturing", "penetrating"]
         if current_passive in crit_passives:
             value = crit_passives.index(current_passive)
             adjusted_value = (value + 1) * 3
 
-        monster_shielded = False
-        if "Shields-up" in monster_modifiers and random.random() < 0.1:
-            monster_shielded = True
-            attack_multiplier = 0
-            passive_message += f"{monster_name} projects a powerful magical barrier!\n"
-        # Handle Crit scenario
-        # Calculate actual_hit under a crit scenario
         if (attack_roll - acc_value) > (player_crit - adjusted_value):
             max_hit = player_attack
             actual_hit = (random.randint(1, max_hit) * 2) * attack_multiplier
+            # Mystical Might: 20% chance to deal 10x damage
+            if armor_passive == "Mystical Might" and random.random() < 0.2:
+                actual_hit *= 10
+                passive_message += "The **Mystical Might** armor imbues with power!\n"
+            if actual_hit > monster_hp:
+                actual_hit = monster_hp
+            monster_hp -= actual_hit
             attack_message = (
                 (f"The **{current_passive}** weapon glimmers with power!\n" if adjusted_value > 0 else '') +
                 f"Critical! {player_name} 🗡️ pierces through monster's defenses!\n"
                 f"Damage: 💥 **{actual_hit}**"
             )
             attack_message = passive_message + attack_message
-        # Handle a normal hit scenario
         elif attack_roll >= miss_chance:
-            #  If burning passive, max_hit increases, otherwise it's the player's attack stat
             burning_passives = ["burning", "flaming", "scorching", "incinerating", "carbonising"]
             if current_passive in burning_passives:
                 value = burning_passives.index(current_passive)
@@ -1115,8 +1119,6 @@ class Combat(commands.Cog, name="combat"):
             else:
                 max_hit = player_attack
 
-            # If sparking passives, min_hit increases, otherwise it's between 
-            # We calculate actual_hit here
             sparking_passives = ["sparking", "shocking", "discharging", "electrocuting", "vapourising"]
             if current_passive in sparking_passives:
                 value = sparking_passives.index(current_passive)
@@ -1125,24 +1127,43 @@ class Combat(commands.Cog, name="combat"):
                 final_spark_damage = sum(rolls)
                 attack_message = f"The **{current_passive}** weapon surges with ⚡ lightning!\nLightning damage: **{final_spark_damage}**"
                 min_damage = max(final_spark_damage, 1)
-                actual_hit = (random.randint(min_damage, max_hit)) * attack_multiplier
-            # Handle non-sparking normal hit
+                if monster_hp <= min_damage:
+                    actual_hit = monster_hp
+                else:
+                    actual_hit = (random.randint(min_damage, max_hit + min_damage)) * attack_multiplier
+                    # Mystical Might: 20% chance to deal 10x damage
+                    if armor_passive == "Mystical Might" and random.random() < 0.2:
+                        actual_hit *= 10
+                        passive_message += "The **Mystical Might** armor imbues with power!\n"
+                    if actual_hit > monster_hp:
+                        actual_hit = monster_hp
             else:
-                actual_hit = random.randint(1, max_hit) * attack_multiplier
                 echo_hit = False
+                if "Titanium" in monster_modifiers:
+                    print(f"Titanium modifier applied: actual hit reduced")
+                    actual_hit = int(random.randint(1, max_hit) * 0.9)
+                else:
+                    actual_hit = random.randint(1, max_hit)
+                    
                 echo_passives = ["echo", "echoo", "echooo", "echoooo", "echoes"]
                 if current_passive in echo_passives:
                     value = echo_passives.index(current_passive)
                     echo_multiplier = (value + 1) / 10
-                    echo_damage = int(actual_hit * echo_multiplier)
-                    actual_hit += echo_damage
+                    echo_damage = (1 + int(actual_hit * echo_multiplier)) * attack_multiplier
+                    actual_hit = (actual_hit + echo_damage) * attack_multiplier
                     echo_hit = True
+                # Mystical Might: 20% chance to deal 10x damage
+                if armor_passive == "Mystical Might" and random.random() < 0.2:
+                    actual_hit *= 10
+                    passive_message += "The **Mystical Might** imbues with power!\n"
+                if actual_hit > monster_hp:
+                    actual_hit = monster_hp
 
             attack_message += f"Hit! Damage: 💥 **{actual_hit - echo_damage}**"
             attack_message = passive_message + attack_message
             if echo_hit:
-                attack_message += f"\nThe **{current_passive}** weapon 🎶 echoes the hit!\nEcho damage: 💥 **{echo_damage}**"
-            
+                attack_message += f"\nThe **{current_passive}** weapon 🎶 echoes the hit!\nEcho damage: **{echo_damage}**"
+            monster_hp -= actual_hit
         else:
             poisonous_passives = ["poisonous", "noxious", "venomous", "toxic", "lethal"]
             if current_passive in poisonous_passives:
@@ -1157,125 +1178,79 @@ class Combat(commands.Cog, name="combat"):
             else:
                 attack_message = f"Miss!"
 
-        # Finally calculate the actual damage done
-        if "Titanium" in monster_modifiers:
-            # print(f"Titanium modifier applied: actual hit reduced")
-            actual_hit = int(actual_hit * 0.9)
-
-        # If the monster would die
-        if (actual_hit > monster_hp):
-            if "Time Lord" in monster_modifiers and random.random() < 0.8:
-                print(f"Time Lord modifier applied: doesn't die")
-                actual_hit = monster_hp - 1
-                attack_message += f"\nA fatal blow was dealt, but **{monster_name}** cheats death!"
-            else:
-                actual_hit = monster_hp
-        monster_hp -= actual_hit
         embed.add_field(name=player_name, value=attack_message, inline=False)
         return monster_hp, attack_message
 
 
-    async def heal(self, player_hp, potions, 
-                   user_id, server_id, 
+    async def heal(self, existing_user, player_hp, potions, 
+                   user_id, server_id, interaction, 
                    embed, player_name):
         # print("**** HEAL ****")
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if potions <= 0:
             # print('Unable to heal, out of potions')
-            heal_message = f"{player_name} has no potions left to use!"
+            heal_message = f"{player_name} has no potions left to heal!"
             embed.add_field(name=player_name, value=heal_message, inline=False)
             return player_hp, 0, heal_message
 
         # Calculate healing amount
         max_hp = existing_user[12]  # Assuming maximum HP is at index 12
-        heal_amount = int((max_hp / 10 * 3) + random.randint(1, 6))  # Heal formula        
-        new_hp = min(max_hp, player_hp + heal_amount)  # Update current HP, max to max HP
+        base_heal = int((max_hp / 10 * 3) + random.randint(1, 6))  # Heal formula
+        ascension_level = existing_user[15] 
+        
+        total_heal = base_heal + (random.randint(1, 6) * ascension_level)
+        new_hp = min(max_hp, player_hp + total_heal)  # Update current HP, max to max HP
         await self.bot.database.update_player_hp(user_id, new_hp)  # Update in DB
+
+        # Decrease potion count
         await self.bot.database.decrease_potion_count(user_id)  # Create this method in DatabaseManager
-        heal_message = (f"{player_name} heals for **{heal_amount}** HP!\n"
+        # print(f'Healing for {total_heal}')
+        
+        heal_message = (f"{player_name} heals for **{total_heal}** HP!\n"
                         f"**{potions - 1}** potions left.")
         embed.add_field(name=player_name, value=heal_message, inline=False)
         potions -= 1
         return new_hp, potions, heal_message
 
     async def monster_turn(self, embed, monster_attack, player_hp,
-                           player_defence,
-                           monster_name,
+                           player_defence, followers_count,
+                           monster_name, user_id, current_passive,
                            flavor_txt, player_ward, monster_modifiers,
                            invulnerable, player_block, player_eva):
         if invulnerable == True:
             #print("Invulnerable passive active: No damage taken")
-            monster_message = f"The **Invulnerable** armor imbues with power and absorbs all damage!"
+            monster_message = f"The {monster_name} {flavor_txt}, but the **Invulnerable** armor absorbs all damage!"
             embed.add_field(name=monster_name, value=monster_message, inline=False)
             return player_hp, monster_message, player_ward
         
-        evade_chance = player_eva / 400
-        # print(f'{evade_chance} evasion')
-        monster_hit_chance = self.calculate_monster_hit_chance(monster_attack, player_defence)
-        # print(f'monster_hit_chance = {monster_hit_chance}')
-        monster_attack_roll = random.random() + evade_chance
-        # print(f'monster_attack_roll = {monster_attack_roll}')
-        if "Lucifer-touched" in monster_modifiers and random.random() < 0.5:
-                monster_attack_roll2 = random.random()
+        evade_chance = player_eva / 100 * 25
+        #print(f'{evade_chance} evasion added to monster_miss_chance')
+        monster_miss_chance = (100 + evade_chance) - int(self.calculate_monster_hit_chance(monster_attack, player_defence) * 100)
+        monster_attack_roll = random.randint(0, 100)
+        if "Lucifer-touched" in monster_modifiers:
+                monster_attack_roll2 = random.randint(0, 100)
                 monster_attack_roll = max(monster_attack_roll, monster_attack_roll2)
-                # print(f"Lucifer-touched modifier applied: lucky attack roll")
+                print(f"Lucifer-touched modifier applied: lucky attack roll")
         if "All-seeing" in monster_modifiers:
-            monster_attack_roll = monster_attack_roll * 0.9
-            # print(f"All-seeing modifier applied: Monster attack roll boosted to {monster_attack_roll}")
+            monster_attack_roll = int(monster_attack_roll * 1.1)
+            print(f"All-seeing modifier applied: Monster attack roll boosted to {monster_attack_roll}")
 
-        if "Celestial Watcher" in monster_modifiers:
-            monster_attack_roll = 0
-            print(f"Celestial modifier applied: Monster attack roll is now 0")
-
-        if monster_attack_roll <= monster_hit_chance:
-            # print(f'monster_attack_roll <= monster_hit_chance, take damage')
+        if monster_attack_roll >= monster_miss_chance:
             damage_taken = self.calculate_damage_taken(monster_attack, player_defence, monster_modifiers)
-            if "Celestial Watcher" in monster_modifiers:
-                damage_taken = int(damage_taken * 0.8)
-                print(f"Celestial modifier applied: damage_taken reduced")
-            
             if "Hellborn" in monster_modifiers:
                 damage_taken += 2
-                # print(f"Hellborn modifier applied: Damage taken boosted")
-            
-            if "Hell's Fury" in monster_modifiers:
-                damage_taken += 3
-                print(f"Hell's Fury modifier applied: Damage taken boosted")
-
+                print(f"Hellborn modifier applied: Damage taken boosted")
             minion_dmg = 0
             if "Summoner" in monster_modifiers:
-                minion_dmg = int(damage_taken / 3)
-                # print(f"Summoner modifier applied: calculated minion_dmg: {minion_dmg}")
-            if "Infernal Legion" in monster_modifiers:
-                minion_dmg = int(damage_taken)
-                # print(f"Summoner modifier applied: calculated minion_dmg: {minion_dmg}")
-            
-            multi_dmg = 0
-            if "Multistrike" in monster_modifiers:
-                monster_attack_roll2 = random.random()
-                if monster_attack_roll2 <= monster_hit_chance: 
-                    multi_dmg += int(0.5 * self.calculate_damage_taken(monster_attack, player_defence, monster_modifiers))
-                    damage_taken += multi_dmg
-                # print(f"Multistrike modifier applied")
-
+                minion_dmg = int(damage_taken / 6)
+                print(f"Summoner modifier applied: calculated minion_dmg: {minion_dmg}")
             #print(f"{damage_taken} pre block")
-            blocked_damage = player_block / 200
+            blocked_damage = player_block / 400
             if (random.random() < blocked_damage):
                 damage_taken = 0
                 #print(f"all damage blocked")
-            if "Mirror Image" in monster_modifiers and random.random() < 0.2:
+            if "Mirror Image" in monster_modifiers and random.randint(1, 100) <= 20:
                 damage_taken *= 2
-                # print(f"Mirror Image modifier applied: Damage doubled to {damage_taken}")
-            
-            if "Unlimited Blade Works" in monster_modifiers:
-                damage_taken *= 2
-                print(f"UBW: Damage doubled to {damage_taken}")
-            
-            is_executed = False
-            if "Executioner" in monster_modifiers and random.random() < 0.01:
-                executed_damage = int(player_hp * 0.9)
-                damage_taken = executed_damage
-                print(f"Executioner modifier applied: Damage set to {damage_taken}")
+                print(f"Mirror Image modifier applied: Damage doubled to {damage_taken}")
             if player_ward > 0:
                 # print(f"Original ward: {player_ward}")
                 player_ward -= damage_taken
@@ -1286,13 +1261,8 @@ class Combat(commands.Cog, name="combat"):
             else:
                 player_hp -= damage_taken
             monster_message = f"{monster_name} {flavor_txt}.\nDamage: 💥 **{damage_taken}**"
-            if is_executed:
-                monster_message = (f"{monster_name} summons a monstrous executioner's axe.\n"
-                                  f"It shatters your very being.\nDamage: 💥 **{damage_taken}**")
             if (minion_dmg > 0):
                 monster_message += f"\nTheir minions attack!\nDamage: 💥 **{minion_dmg}**"
-            if (multi_dmg > 0):
-                monster_message += f"\nThe monster strikes again in succession!\nDamage: 💥 **{multi_dmg}**"
         else:
             if "Venomous" in monster_modifiers:
                 player_hp = max(1, player_hp - 1)
@@ -1333,7 +1303,7 @@ class Combat(commands.Cog, name="combat"):
                                              message, user_level, True,
                                              accessory_passive, accessory_lvl,
                                              monster_modifiers, armor_passive)
-                    return True, player_hp, monster_hp, player_ward
+                    return True, player_hp, monster_hp
             else:
                 if monster_hp <= 0:
                     embed.add_field(name=monster_name, value=attack_message, inline=False)
@@ -1343,12 +1313,12 @@ class Combat(commands.Cog, name="combat"):
                                              message, user_level, False,
                                              accessory_passive, accessory_lvl,
                                              monster_modifiers, armor_passive)
-                    return True, player_hp, monster_hp, player_ward
+                    return True, player_hp, monster_hp
 
             player_hp, monster_message, player_ward = await self.monster_turn(embed,
                                                                             monster_attack, player_hp,
-                                                                            player_defence,
-                                                                            monster_name,
+                                                                            player_defence, followers_count,
+                                                                            monster_name, user_id, current_passive,
                                                                             flavor_txt, player_ward,
                                                                             monster_modifiers, invulnerable, 
                                                                             player_block, player_eva)
@@ -1361,7 +1331,7 @@ class Combat(commands.Cog, name="combat"):
                                         monster_name, total_damage_dealt,
                                         player_name, award_xp, server_id,
                                         monster_modifiers)
-                return True, player_hp, monster_hp, player_ward
+                return True, player_hp, monster_hp
 
 
             embed.clear_fields()
@@ -1374,122 +1344,7 @@ class Combat(commands.Cog, name="combat"):
             embed.add_field(name=monster_name, value=monster_message, inline=False)
             await message.edit(embed=embed)
             await asyncio.sleep(1)
-        return False, player_hp, monster_hp, player_ward
-    
-
-    async def giga_auto_battle(self, embed, interaction, encounter_level,
-                      player_attack, monster_hp, monster_attack,
-                      monster_defence, player_defence,
-                      followers_count, player_name, user_id,
-                      server_id, monster_name, player_hp,
-                      message, award_xp, ascension_level,
-                      player_rar, current_passive, user_level,
-                      flavor_txt, player_max_hp, player_crit,
-                      player_ward, accessory_passive, accessory_lvl,
-                      monster_modifiers, armor_passive, invulnerable,
-                      player_block, player_eva):
-        minimum_hp = int(player_max_hp * 0.2)
-        turn_count = 0
-        last_attack_message = ""
-        last_monster_message = ""
-
-        while player_hp > minimum_hp and monster_hp > 0:
-            turn_count += 1
-
-            # Player turn
-            monster_hp, attack_message = await self.player_turn(embed, player_attack, monster_hp,
-                                                                monster_defence, followers_count,
-                                                                player_name, ascension_level, monster_name,
-                                                                current_passive, player_crit,
-                                                                accessory_passive, accessory_lvl, armor_passive,
-                                                                monster_modifiers)
-            last_attack_message = attack_message
-
-            # Check for culling strike
-            overwhelm_passives = ["strengthened", "forceful", "overwhelming", "devastating", "catastrophic"]
-            if current_passive in overwhelm_passives:
-                value = overwhelm_passives.index(current_passive)
-                culling_strike = (value + 1) * 5
-                if monster_hp <= (award_xp * culling_strike / 100):
-                    embed.clear_fields()
-                    embed.add_field(name="🐲 HP", value=monster_hp, inline=True)
-                    embed.add_field(name="❤️ HP", value=f"{player_hp} ({player_ward} 🔮)" if player_ward > 0 else player_hp, inline=True)
-                    embed.add_field(name=player_name, value=attack_message, inline=False)
-                    await message.edit(embed=embed)
-                    await self.handle_victory(encounter_level, user_id, server_id,
-                                            player_name, monster_name, interaction,
-                                            award_xp, player_rar, player_hp,
-                                            message, user_level, True,
-                                            accessory_passive, accessory_lvl,
-                                            monster_modifiers, armor_passive)
-                    await self.bot.database.update_player_hp(user_id, player_hp)  # Update HP at end
-                    return True, player_hp, monster_hp, player_ward
-
-            # Regular victory check
-            if monster_hp <= 0:
-                embed.clear_fields()
-                embed.add_field(name="🐲 HP", value=monster_hp, inline=True)
-                embed.add_field(name="❤️ HP", value=f"{player_hp} ({player_ward} 🔮)" if player_ward > 0 else player_hp, inline=True)
-                embed.add_field(name=player_name, value=attack_message, inline=False)
-                await message.edit(embed=embed)
-                await self.handle_victory(encounter_level, user_id, server_id,
-                                        player_name, monster_name, interaction,
-                                        award_xp, player_rar, player_hp,
-                                        message, user_level, False,
-                                        accessory_passive, accessory_lvl,
-                                        monster_modifiers, armor_passive)
-                await self.bot.database.update_player_hp(user_id, player_hp)  # Update HP at end
-                return True, player_hp, monster_hp, player_ward
-
-            # Monster turn
-            player_hp, monster_message, player_ward = await self.monster_turn(embed,
-                                                                            monster_attack, player_hp,
-                                                                            player_defence,
-                                                                            monster_name,
-                                                                            flavor_txt, player_ward,
-                                                                            monster_modifiers, invulnerable,
-                                                                            player_block, player_eva)
-            last_monster_message = monster_message
-
-            # Defeat check
-            if player_hp <= 0:
-                embed.clear_fields()
-                embed.add_field(name="🐲 HP", value=monster_hp, inline=True)
-                embed.add_field(name="❤️ HP", value=player_hp, inline=True)
-                embed.add_field(name=player_name, value=attack_message, inline=False)
-                embed.add_field(name=monster_name, value=monster_message, inline=False)
-                await message.edit(embed=embed)
-                await self.handle_defeat(user_id, message,
-                                        monster_name, award_xp - monster_hp,
-                                        player_name, award_xp, server_id,
-                                        monster_modifiers)
-                await self.bot.database.update_player_hp(user_id, player_hp)  # Update HP at end
-                return True, player_hp, monster_hp, player_ward
-
-            # Update embed every 10 turns or when HP is low
-            if turn_count % 10 == 0 or player_hp <= minimum_hp:
-                embed.clear_fields()
-                embed.add_field(name="🐲 HP", value=monster_hp, inline=True)
-                embed.add_field(name="❤️ HP", value=f"{player_hp} ({player_ward} 🔮)" if player_ward > 0 else player_hp, inline=True)
-                embed.add_field(name=player_name, value=last_attack_message, inline=False)
-                embed.add_field(name=monster_name, value=last_monster_message, inline=False)
-                if player_hp <= minimum_hp:
-                    embed.add_field(name="Auto battle", value="Player HP < 20%, auto-battle paused!", inline=False)
-                await message.edit(embed=embed)
-                await asyncio.sleep(1)
-        # If combat pauses (e.g., low HP)
-        if player_hp <= minimum_hp:
-            embed.clear_fields()
-            embed.add_field(name="🐲 HP", value=monster_hp, inline=True)
-            embed.add_field(name="❤️ HP", value=f"{player_hp} ({player_ward} 🔮)" if player_ward > 0 else player_hp, inline=True)
-            embed.add_field(name=player_name, value=last_attack_message, inline=False)
-            embed.add_field(name=monster_name, value=last_monster_message, inline=False)
-            embed.add_field(name="Auto battle", value="Player HP < 20%, auto-battle paused!", inline=False)
-            await message.edit(embed=embed)
-            await self.bot.database.update_player_hp(user_id, player_hp)  # Update HP when pausing
-            return False, player_hp, monster_hp, player_ward
-
-        return False, player_hp, monster_hp, player_ward
+        return False, player_hp, monster_hp
     
 
     async def boss_auto_battle(self, embed, interaction, encounter_level,
@@ -1516,21 +1371,22 @@ class Combat(commands.Cog, name="combat"):
                 value = overwhelm_passives.index(current_passive)
                 culling_strike = (value + 1) * 5
                 if monster_hp <= (award_xp * culling_strike / 100):
-                    return True, player_hp, 0, player_ward
+                    return True, player_hp, 0
 
             if monster_hp <= 0:
-                return True, player_hp, 0, player_ward
+                return True, player_hp, 0
 
             player_hp, monster_message, player_ward = await self.monster_turn(embed,
                                                                             monster_attack, player_hp,
-                                                                            player_defence,
-                                                                            monster_name,
+                                                                            player_defence, followers_count,
+                                                                            monster_name, user_id, current_passive,
                                                                             flavor_txt, player_ward,
                                                                             monster_modifiers, invulnerable, 
                                                                             player_block, player_eva)
+            await self.bot.database.update_player_hp(user_id, player_hp)
 
             if player_hp <= 0:
-                return True, player_hp, monster_hp, player_ward
+                return True, player_hp, monster_hp
 
             embed.clear_fields()
             embed.add_field(name="🐲 HP", value=monster_hp, inline=True)
@@ -1544,13 +1400,17 @@ class Combat(commands.Cog, name="combat"):
             await asyncio.sleep(1)
         embed.add_field(name="A temporary reprieve!", value="Auto-battle paused! (< 20% HP)", inline=True)
         await message.edit(embed=embed)
-        return False, player_hp, monster_hp, player_ward
+        return False, player_hp, monster_hp
 
     async def handle_victory(self, encounter_level, user_id, server_id,
                              player_name, monster_name, interaction, award_xp,
                              player_rar, player_hp, message, user_level, isCulled,
                              accessory_passive, accessory_lvl, monster_modifiers, armor_passive):
         await message.clear_reactions()
+        if "Volatile" in monster_modifiers and player_hp > 1:
+            player_hp = 1
+            await self.bot.database.update_player_hp(user_id, player_hp)
+            print(f"Volatile modifier triggered: Player HP set to {player_hp}")
 
         if isCulled:
             victory_embed = discord.Embed(
@@ -1564,16 +1424,12 @@ class Combat(commands.Cog, name="combat"):
                 description=f"{player_name} has slain the {monster_name} with {player_hp} ❤️ remaining!",
                 color=0x00FF00,
             )
-        rare_monsters = ["Treasure Chest", 
-                         "Random Korean Lady", 
-                         "KPOP STAR", 
-                         "Loot Goblin", 
-                         "Yggdrasil",
-                         "Capybara Sauna"]
-        
-        special_drop = len(monster_modifiers) / 100
+        if "Volatile" in monster_modifiers and player_hp == 1:
+            victory_embed.add_field(name="Volatile Explosion",
+                                   value=f"{monster_name} explodes, reducing {player_name}'s HP to **1**!",
+                                   inline=False)
+        rare_monsters = ["Treasure Chest", "Random Korean Lady", "KPOP STAR", "Loot Goblin", "Yggdrasil"]
         if monster_name in rare_monsters:
-            special_drop = 0.05
             drop_chance = 0
             xp_award = 0
             reward_scale = int(user_level / 10)
@@ -1583,7 +1439,6 @@ class Combat(commands.Cog, name="combat"):
             reward_scale = (encounter_level - user_level) / 10
 
         rarity = player_rar / 100
-        drop_roll = random.randint(1, 100) + int(100 - user_level)
         loot_roll = random.randint(1, 100)
         acc_roll = random.randint(1, 100)
         arm_roll = random.randint(1, 100)
@@ -1591,15 +1446,12 @@ class Combat(commands.Cog, name="combat"):
         final_acc_roll = acc_roll
         final_arm_roll = arm_roll
         if player_rar > 0:
-            drop_roll = int(drop_roll + (10 * rarity))
             final_loot_roll = int(loot_roll + (10 * rarity))
             final_acc_roll = int(acc_roll + (10 * rarity))
             final_arm_roll = int(arm_roll + (10 * rarity))
-            print(f"User has {rarity} RAR: "
-                f"Rolls: {drop_roll} loot, "
-                f"{final_loot_roll} wep, "
-                f"{final_acc_roll} acc, "
-                f"{final_arm_roll} armor")
+            print(f'User has {rarity}, multiplier on {loot_roll} to {final_loot_roll} for wep')
+            print(f'User has {rarity}, multiplier on {acc_roll} to {final_acc_roll} for acc')
+            print(f'User has {rarity}, multiplier on {arm_roll} to {final_arm_roll} for armor')
 
         gold_award = int((encounter_level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale ** 1.3)))
         if player_rar > 0:
@@ -1609,116 +1461,113 @@ class Combat(commands.Cog, name="combat"):
         final_gold_award += 20
 
         if accessory_passive == "Prosper":
-            double_gold_chance = accessory_lvl * 10
+            double_gold_chance = accessory_lvl * 5
             if random.randint(1, 100) <= double_gold_chance:
                 final_gold_award *= 2
-                victory_embed.add_field(name="Accessory Passive",
+                victory_embed.add_field(name="Passive Activated",
                                       value=f"The accessory's **Prosper ({accessory_lvl})** activates, granting double gold!",
                                       inline=False)
         elif accessory_passive == "Infinite Wisdom":
-            double_exp_chance = accessory_lvl * 5 / 100
-            if random.random() <= double_exp_chance:
+            double_exp_chance = accessory_lvl * 5
+            if random.randint(1, 100) <= double_exp_chance:
                 xp_award *= 2
-                victory_embed.add_field(name="Accessory Passive",
+                victory_embed.add_field(name="Passive Activated",
                                       value=f"The accessory's **Infinite Wisdom ({accessory_lvl})** activates, "
                                             f"granting double experience!",
                                       inline=False)
-        victory_embed.add_field(name="📚 Experience", value=f"{xp_award:,} XP")
-        victory_embed.add_field(name="💰 Gold", value=f"{final_gold_award:,} GP")
+        victory_embed.add_field(name="📚 Experience Earned", value=f"{xp_award:,} XP")
+        victory_embed.add_field(name="💰 Gold Earned", value=f"{final_gold_award:,} GP")
         items = await self.bot.database.fetch_user_items(user_id)
         accs = await self.bot.database.fetch_user_accessories(user_id)
         arms = await self.bot.database.fetch_user_armors(user_id)
         weapon_dropped = False
         acc_dropped = False
         arm_dropped = False
-        if (drop_roll >= drop_chance):
-            if final_loot_roll >= 95:
-                weapon_dropped = True
-                if len(items) > 60:
-                    victory_embed.add_field(name="✨ Loot", value="Weapon pouch full!")
+        if final_loot_roll >= drop_chance:
+            print('Set weapon_dropped = True')
+            weapon_dropped = True
+            if len(items) > 60:
+                victory_embed.add_field(name="✨ Loot", value="Weapon pouch full!")
+            else:
+                item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description = await self.generate_loot(user_id, server_id, encounter_level, True)
+                if item_name != "rune":
+                    victory_embed.set_thumbnail(url="https://i.imgur.com/mEIV0ab.jpeg")
+                    await self.bot.database.create_item(user_id, item_name, encounter_level,
+                                                       attack_modifier, defence_modifier, rarity_modifier)
                 else:
-                    item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description = await self.generate_loot(user_id, server_id, encounter_level, True)
-                    if item_name != "rune":
-                        victory_embed.set_thumbnail(url="https://i.imgur.com/mEIV0ab.jpeg")
-                        await self.bot.database.create_item(user_id, item_name, encounter_level,
-                                                        attack_modifier, defence_modifier, rarity_modifier)
+                    victory_embed.set_thumbnail(url="https://i.imgur.com/aeorjQG.jpeg")
+                victory_embed.add_field(name="✨ Loot", value=f"{loot_description}", inline=False)
+
+        if not weapon_dropped:
+            if final_acc_roll >= 97:
+                print(f'Accessory dropped, acc_dropped = True')
+                acc_dropped = True
+                if len(accs) > 60:
+                    victory_embed.add_field(name="✨ Loot", value="Accessory pouch full!")
+                else:
+                    acc_name, loot_description = await self.generate_accessory(user_id, server_id, encounter_level, True)
+                    if acc_name != "rune":
+                        lines = loot_description.splitlines()
+                        for line in lines[1:]:
+                            match = re.search(r"\+(\d+)%? (\w+)", line)
+                            if match:
+                                modifier_value = match.group(1)
+                                modifier_type = match.group(2)
+                        await self.bot.database.create_accessory(user_id, acc_name, encounter_level,
+                                                               modifier_type, modifier_value)
+                        victory_embed.set_thumbnail(url="https://i.imgur.com/KRZUDyO.jpeg")
                     else:
-                        victory_embed.set_thumbnail(url="https://i.imgur.com/aeorjQG.jpeg")
+                        victory_embed.set_thumbnail(url="https://i.imgur.com/1tcMeSe.jpeg")
                     victory_embed.add_field(name="✨ Loot", value=f"{loot_description}", inline=False)
 
-            if not weapon_dropped:
-                if final_acc_roll >= 97:
-                    acc_dropped = True
-                    if len(accs) > 60:
-                        victory_embed.add_field(name="✨ Loot", value="Accessory pouch full!")
+        if not weapon_dropped and not acc_dropped:
+            if (len(arms) > 60):
+                victory_embed.add_field(name="✨ Loot", value="Armor pouch full!")
+            else:
+                if final_arm_roll >= 99:
+                    print('Armor roll success')
+                    arm_dropped = True
+                    armor_name, loot_description = await self.generate_armor(user_id, server_id, encounter_level, True)
+                    lines = loot_description.splitlines()
+                    block_modifier = 0
+                    evasion_modifier = 0
+                    ward_modifier = 0
+                    if armor_name != "rune":
+                        for line in lines[1:]:
+                            match = re.search(r"\+(\d+)%? (\w+)", line)
+                            if match:
+                                modifier_value = int(match.group(1))
+                                modifier_type = match.group(2).lower()
+                                if modifier_type == "block":
+                                    block_modifier = modifier_value
+                                elif modifier_type == "evasion":
+                                    evasion_modifier = modifier_value
+                                elif modifier_type == "ward":
+                                    ward_modifier = modifier_value
+                        await self.bot.database.create_armor(user_id, armor_name, encounter_level, block_modifier, evasion_modifier, ward_modifier)
+                        victory_embed.set_thumbnail(url="https://i.imgur.com/jtYg94i.png")
                     else:
-                        acc_name, loot_description = await self.generate_accessory(user_id, server_id, encounter_level, True)
-                        if acc_name != "rune":
-                            lines = loot_description.splitlines()
-                            for line in lines[1:]:
-                                match = re.search(r"\+(\d+)%? (\w+)", line)
-                                if match:
-                                    modifier_value = match.group(1)
-                                    modifier_type = match.group(2)
-                            await self.bot.database.create_accessory(user_id, acc_name, encounter_level,
-                                                                modifier_type, modifier_value)
-                            victory_embed.set_thumbnail(url="https://i.imgur.com/KRZUDyO.jpeg")
-                        else:
-                            victory_embed.set_thumbnail(url="https://i.imgur.com/1tcMeSe.jpeg")
-                        victory_embed.add_field(name="✨ Loot", value=f"{loot_description}", inline=False)
-
-            if not weapon_dropped and not acc_dropped:
-                if (len(arms) > 60):
-                    victory_embed.add_field(name="✨ Loot", value="Armor pouch full!")
-                else:
-                    if final_arm_roll >= 99:
-                        arm_dropped = True
-                        armor_name, loot_description = await self.generate_armor(user_id, server_id, encounter_level, True)
-                        lines = loot_description.splitlines()
-                        block_modifier = 0
-                        evasion_modifier = 0
-                        ward_modifier = 0
-                        if armor_name != "rune":
-                            for line in lines[1:]:
-                                match = re.search(r"\+(\d+)%? (\w+)", line)
-                                if match:
-                                    modifier_value = int(match.group(1))
-                                    modifier_type = match.group(2).lower()
-                                    if modifier_type == "block":
-                                        block_modifier = modifier_value
-                                    elif modifier_type == "evasion":
-                                        evasion_modifier = modifier_value
-                                    elif modifier_type == "ward":
-                                        ward_modifier = modifier_value
-                            await self.bot.database.create_armor(user_id, armor_name, encounter_level, block_modifier, evasion_modifier, ward_modifier)
-                            victory_embed.set_thumbnail(url="https://i.imgur.com/jtYg94i.png")
-                        else:
-                            victory_embed.set_thumbnail(url="https://i.imgur.com/MHgtUW8.png")
-                        victory_embed.add_field(name="✨ Loot", value=f"{loot_description}", inline=False)
+                        victory_embed.set_thumbnail(url="https://i.imgur.com/MHgtUW8.png")
+                    victory_embed.add_field(name="✨ Loot", value=f"{loot_description}", inline=False)
         if not weapon_dropped and not acc_dropped and not arm_dropped:
             victory_embed.add_field(name="✨ Loot", value="None")
         if drop_chance == 0:
             victory_embed.add_field(name="✨ Curious Curio", value="A curious curio was left behind!", 
                                     inline=False)
             await self.bot.database.update_curios_count(user_id, server_id, 1)
-        if random.random() < (0.03 + special_drop):
+        if random.random() < 0.03:
             victory_embed.add_field(name="✨ Draconic Key", value="A draconic key was left behind!",
                                     inline=False)
             victory_embed.set_image(url="https://i.imgur.com/jPteeoT.png")
             await self.bot.database.add_dragon_key(user_id, 1)
-        if random.random() < (0.03 + special_drop):
+        if random.random() < 0.03:
             victory_embed.add_field(name="✨ Angelic Key", value="An angelic key was left behind!",
                                     inline=False)
             victory_embed.set_image(url="https://i.imgur.com/cpwPxjU.png")
             await self.bot.database.add_angel_key(user_id, 1)
-        if random.random() < (0.08 + special_drop):
-            victory_embed.add_field(name="❤️‍🔥 Soul Core", value="A demonic soul core was left behind!",
-                                    inline=False)
-            victory_embed.set_image(url="https://i.imgur.com/x6QKvSy.png")
-            await self.bot.database.add_soul_cores(user_id, 1)
 
-        # Everlasting Blessing: Placeholder for 10% chance to propagate ideology
-        if armor_passive == "Everlasting Blessing" and random.random() < 0.1:
+        # Everlasting Blessing: Placeholder for 3% chance to propagate ideology
+        if armor_passive == "Everlasting Blessing" and random.random() < 0.03:
             victory_embed.add_field(name="Armor Passive",
                                    value="The **Everlasting Blessing** imbues with power!",
                                    inline=False)
@@ -1772,8 +1621,13 @@ class Combat(commands.Cog, name="combat"):
         new_exp = int(current_exp - penalty_xp)
         if new_exp < 0:
             new_exp = 0
-            
+        # Apply Volatile modifier
         player_hp = 1
+        if "Volatile" in monster_modifiers:
+            player_hp = 1
+            await self.bot.database.update_player_hp(user_id, player_hp)
+            print(f"Volatile modifier triggered: Player HP set to {player_hp}")
+        
         defeat_embed = discord.Embed(
             title="Oh dear...",
             description=f"The {monster_name} deals a fatal blow!\n"
@@ -1782,6 +1636,10 @@ class Combat(commands.Cog, name="combat"):
                         f"Death 💀 takes away {penalty_xp:,} xp from your essence...",
             color=0xFF0000
         )
+        if "Volatile" in monster_modifiers:
+            defeat_embed.add_field(name="Volatile Explosion", 
+                                  value=f"The {monster_name} explodes, reducing {player_name}'s HP to **1**!",
+                                  inline=False)
         defeat_embed.add_field(name="🪽 Redemption 🪽", value=f"({player_name} revives with 1 hp.)")
         await message.edit(embed=defeat_embed)
         await self.bot.database.update_player_hp(user_id, player_hp)
@@ -1812,20 +1670,19 @@ class Combat(commands.Cog, name="combat"):
         difference = monster_attack - player_defence
         if monster_attack <= 3:
             return 0.2
-        
-        hit_chance = 0.5 + (difference / 100)
-        if hit_chance >= 0.8:
-            return 0.8
-        if hit_chance <= 0.3:
-            hit_chance = 0.3
-        # print(f'Monster hit chance set at: {hit_chance}')
-        return hit_chance
+        if difference > 0:
+            return 0.5
+        else:
+            hit_chance = 0.5 + (difference / 100)
+            if hit_chance <= 0.3:
+                hit_chance = 0.3
+            return hit_chance
         
     def calculate_damage_taken(self, monster_attack, player_defence, monster_modifiers):
         """Calculate damage taken based on monster's attack and player's defense."""
         difference = monster_attack - player_defence
         if "Strengthened" in monster_modifiers:
-            # print(f"Strengthened modifier applied: roll ranges increased by +3")
+            print(f"Strengthened modifier applied: roll ranges increased by +3")
             if monster_attack <= 3:
                 damage = random.randint(1, 5)
                 difference = 0
@@ -1847,12 +1704,12 @@ class Combat(commands.Cog, name="combat"):
         additional_damage = 0
         if difference > 0:
             additional_d6s = int(difference / 10)
-            additional_damage = int(sum(random.randint(1, 3) for _ in range(additional_d6s)))
+            additional_damage = int(sum(random.randint(1, 6) for _ in range(additional_d6s)))
             damage += additional_damage
         damage_taken = random.randint(1, damage)
         return max(0, damage_taken)
     
-    def generate_encounter(self, user_level, is_treasure, player_rar):
+    def generate_encounter(self, user_level, is_treasure=False):
         """Generate an encounter with a monster based on the user's level."""
         if user_level < 5:
             difficulty_multiplier = random.randint(1, 2)
@@ -1863,239 +1720,14 @@ class Combat(commands.Cog, name="combat"):
         elif user_level > 40 and user_level <= 50:
             difficulty_multiplier = random.randint(1, 5)
         elif user_level > 50 and user_level <= 60:
-            difficulty_multiplier = random.randint(2, 5)
+            difficulty_multiplier = random.randint(1, 6)
         elif user_level > 60 and user_level <= 70:
-            difficulty_multiplier = random.randint(2, 6)
+            difficulty_multiplier = random.randint(1, 7)
         elif user_level > 70:
-            difficulty_multiplier = random.randint(3, 6)
+            difficulty_multiplier = random.randint(2, 7)
 
         encounter_level = random.randint(user_level, user_level + difficulty_multiplier)
-        monster_attack, monster_defence = self.calculate_monster_stats(encounter_level)
 
-        # Apply monster modifiers
-        monster_modifiers = []
-        if not is_treasure:
-            modifier_checks = []
-            if encounter_level > 20:
-                modifier_checks.append(10 + int(player_rar / 10))
-            if encounter_level > 40:
-                modifier_checks.append(15 + int(player_rar / 10))
-            if encounter_level > 60:
-                modifier_checks.append(20 + int(player_rar / 10))
-            if encounter_level > 80:
-                modifier_checks.append(25 + int(player_rar / 10))
-            if encounter_level >= 100:
-                modifier_checks.append(50 + int(player_rar / 10))
-
-            available_modifiers = self.monster_modifiers.copy()
-            
-            for chance in modifier_checks:
-                if random.randint(1, 100) <= chance and available_modifiers:
-                    modifier = random.choice(available_modifiers)
-                    monster_modifiers.append(modifier)
-                    available_modifiers.remove(modifier)  # Ensure no duplicate modifiers
-                    print(f"Added modifier: {modifier}")
-
-            if "Built-different" in monster_modifiers:
-                encounter_level += 2
-                monster_attack, monster_defence = self.calculate_monster_stats(encounter_level)
-
-            if "Ascended" in monster_modifiers:
-                monster_attack += 10
-                monster_defence += 10
-                # print(f"Ascended modifier applied: m.atk/m.def +10")
-
-            # Apply Steel-born modifier
-            if "Steel-born" in monster_modifiers:
-                monster_defence = int(monster_defence * 1.1)
-                # print(f"Steel-born modifier applied: Monster defence increased to {monster_defence}")
-            
-            if "Mighty" in monster_modifiers:
-                monster_attack = int(monster_attack * 1.1)
-
-        return encounter_level, monster_attack, monster_defence, monster_modifiers
-    
-
-    async def handle_boss_victory(self, encounter_level, user_id, server_id,
-                                 player_name, monster_name, interaction, award_xp,
-                                 player_rar, player_hp, message, user_level, isCulled,
-                                 accessory_passive, accessory_lvl, monster_modifiers, armor_passive,
-                                 type):
-        """Handle victory for the boss encounter."""
-        await message.clear_reactions()
-            
-        if type == 'aphrodite':
-            title = "Aphrodite overwhelmed!  ⚰️" if isCulled else "Aphrodite defeated!  🎉"
-        elif type == 'lucifer':
-            title = "Lucifer overwhelmed!  ⚰️" if isCulled else "Lucifer defeated!  🎉"
-
-        
-        victory_embed = discord.Embed(
-            title=title,
-            description=f"{player_name} has conquered {monster_name} with {player_hp} ❤️ remaining!",
-            color=0x00FF00,
-        )
-        print('Calculating boss rewards')
-        xp_award = int(award_xp * 1.4)
-        gold_award = int(random.randint(15000, 50000) * (1 + player_rar / 100))
-        curios_award = random.randint(1, 5)
-        if accessory_passive == "Prosper":
-            double_gold_chance = accessory_lvl * 5
-            if random.randint(1, 100) <= double_gold_chance:
-                gold_award *= 2
-                victory_embed.add_field(name="Accessory Passive",
-                                      value=f"The accessory's **Prosper ({accessory_lvl})** activates, granting double gold!",
-                                      inline=False)
-        if accessory_passive == "Infinite Wisdom":
-            double_exp_chance = accessory_lvl * 5
-            if random.randint(1, 100) <= double_exp_chance:
-                xp_award *= 2
-                victory_embed.add_field(name="Accessory Passive",
-                                      value=f"The accessory's **Infinite Wisdom ({accessory_lvl})** activates, "
-                                            f"granting double experience!",
-                                      inline=False)
-
-        victory_embed.add_field(name="📚 Experience", value=f"{xp_award:,} XP")
-        victory_embed.add_field(name="💰 Gold", value=f"{gold_award:,} GP")
-        victory_embed.add_field(name="🎁 Curios", value=f"{curios_award} Curious Curios")
-
-        # Rune drops
-        runes_dropped = []
-        if type == 'aphrodite':
-            if random.random() < 0.33:
-                await self.bot.database.update_refinement_runes(user_id, 1)
-                runes_dropped.append("Rune of Refinement")
-            if random.random() < 0.33:
-                await self.bot.database.update_potential_runes(user_id, 1)
-                runes_dropped.append("Rune of Potential")
-            if random.random() < 0.33:
-                await self.bot.database.update_imbuing_runes(user_id, 1)
-                runes_dropped.append("Rune of Imbuing")
-        elif type == 'lucifer':
-            if random.random() < 0.66:
-                await self.bot.database.update_refinement_runes(user_id, 1)
-                runes_dropped.append("Rune of Refinement")
-            if random.random() < 0.33:
-                await self.bot.database.update_potential_runes(user_id, 1)
-                runes_dropped.append("Rune of Potential")
-        if runes_dropped:
-            victory_embed.add_field(name="❇️ Runes Dropped", value=", ".join(runes_dropped), inline=False)
-        else:
-            victory_embed.add_field(name="❇️ Runes Dropped", value="None", inline=False)
-
-        await self.bot.database.add_gold(user_id, gold_award)
-        await self.bot.database.update_curios_count(user_id, server_id, curios_award)
-        await self.update_experience(user_id, server_id, xp_award, message, victory_embed)
-        if type == 'aphrodite':
-            victory_embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
-            await message.edit(embed=victory_embed)
-        if type == 'lucifer':
-            victory_embed.set_image(url="https://i.imgur.com/x9suAGK.png")
-            
-            # Final prompt for soul cores
-            soul_core_prompt = (
-                "As Lucifer falls, his soul explodes into soul cores. You have a feeling you can pick just one to consume its power:\n"
-                "🩶  **Inverse** Soul Core: Switches player's attack and defence stat\n"
-                "❤️‍🔥  **Enraged** Soul Core: Randomly adjusts attack by -1 to +2\n"
-                "💙  **Solidified** Soul Core: Randomly adjusts defence by -1 to +2\n"
-                "💔  **Unstable** Soul Core: Changes your stats unpredictably towards equilibrium\n"
-                "🖤  **Original** Soul Core: Grants a single soul core back to challenge Lucifer\n"
-                "Select an option below:"
-            )
-            victory_embed.add_field(name="Soul Core Selection", value=soul_core_prompt, inline=False)
-            await message.edit(embed=victory_embed)
-            
-            # Handle user selection of soul core
-            def check(reaction, user):
-                return user.id == interaction.user.id and str(reaction.emoji) in ["🩶", "❤️‍🔥", "💙", "💔", "🖤"]
-
-            await message.add_reaction("🩶")
-            await message.add_reaction("❤️‍🔥")
-            await message.add_reaction("💙")
-            await message.add_reaction("💔")
-            await message.add_reaction("🖤")
-
-            try:
-                reaction, user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
-                await message.clear_reactions()
-                
-                existing_user = await self.bot.database.fetch_user(user_id, server_id)
-                player_attack = existing_user[9]
-                player_defence = existing_user[10]
-                
-                if str(reaction.emoji) == "🩶":  # Inverse Soul Core
-                    await self.bot.database.update_player_attack(user_id, player_defence)
-                    await self.bot.database.update_player_defence(user_id, player_attack)
-                    new_attack = player_defence
-                    new_defence = player_attack
-                    response_message = (f"You have consumed the **Inverse** Soul Core!\nAttack is now {new_attack}, Defence is now {new_defence}.")
-                    
-                elif str(reaction.emoji) == "❤️‍🔥":  # Enraged Soul Core
-                    adjustment = random.randint(-1, 2)
-                    new_attack = player_attack + adjustment
-                    adjustment_str = f"+{adjustment}" if adjustment > 0 else str(adjustment)
-                    await self.bot.database.update_player_attack(user_id, new_attack)
-                    response_message = f"You have consumed the **Enraged** Soul Core! Attack is now {new_attack} ({adjustment_str})."
-                    
-                elif str(reaction.emoji) == "💙":  # Solidified Soul Core
-                    adjustment = random.randint(-1, 2)
-                    new_defence = player_defence + adjustment
-                    adjustment_str = f"+{adjustment}" if adjustment > 0 else str(adjustment)
-                    await self.bot.database.update_player_defence(user_id, new_defence)
-                    response_message = f"You have consumed the **Solidified** Soul Core! Defence is now {new_defence} ({adjustment_str})."
-                    
-                elif str(reaction.emoji) == "💔":  # Unstable Soul Core
-                    total = player_attack + player_defence
-                    new_attack = int(total * random.uniform(0.49, 0.51))  # Assign a weighted value
-                    new_defence = total - new_attack
-                    await self.bot.database.update_player_attack(user_id, new_attack)
-                    await self.bot.database.update_player_defence(user_id, new_defence)
-                    response_message = f"You have consumed the **Unstable** Soul Core! Attack is now {new_attack}, Defence is now {new_defence}."
-                    
-                elif str(reaction.emoji) == "🖤":  # Original Soul Core
-                    await self.bot.database.add_soul_cores(user_id, 1)  # Grant 1 soul core back
-                    response_message = "You gain an additional soul core."
-
-                # Update the victory embed with the response message
-                victory_embed.add_field(name="Result", value=response_message, inline=False)
-                await message.edit(embed=victory_embed)
-
-            except asyncio.TimeoutError:
-                await message.clear_reactions()                      
-                await interaction.channel.send("You hesitated, and the moment has passed.")
-
-
-    async def handle_boss_defeat(self, user_id, message, monster_name,
-                                total_damage_dealt, player_name, award_xp,
-                                server_id, monster_modifiers, type):
-        """Handle defeat for the boss encounter."""
-        await message.clear_reactions()
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        current_exp = existing_user[5]
-        penalty_xp = int(current_exp * 0.1)
-        new_exp = max(0, current_exp - penalty_xp)
-        player_hp = 1
-
-        if 'type' == 'aphrodite':
-            title_text = "You have failed to conquer the heavens."
-        elif 'type' == 'lucifer':
-            title_text = "You have failed to conquer the depths."
-
-        defeat_embed = discord.Embed(
-            title=title_text,
-            description=f"{monster_name} deals a fatal blow!\n"
-                        f"{player_name} has been defeated after dealing {total_damage_dealt} damage.\n"
-                        f"{monster_name} stands triumphant with {award_xp - total_damage_dealt} health left.\n"
-                        f"{monster_name} drains {penalty_xp:,} xp from your essence...",
-            color=0xFF0000
-        )
-        defeat_embed.add_field(name="Pity...", value=f"({player_name} stumbles away with 1 hp.)")
-        await message.edit(embed=defeat_embed)
-        await self.bot.database.update_player_hp(user_id, player_hp)
-        await self.bot.database.update_experience(user_id, new_exp)
-
-
-    def calculate_monster_stats(self, encounter_level):
         if encounter_level < 5:
             base_attack = encounter_level
             base_defence = encounter_level
@@ -2120,82 +1752,160 @@ class Combat(commands.Cog, name="combat"):
 
         monster_attack = int(base_attack)
         monster_defence = int(base_defence)
-        
-        return monster_attack, monster_defence
+
+        # Apply monster modifiers
+        monster_modifiers = []
+        if not is_treasure:
+            modifier_checks = []
+            if encounter_level > 20:
+                modifier_checks.append(10)
+            if encounter_level > 40:
+                modifier_checks.append(12)
+            if encounter_level > 60:
+                modifier_checks.append(14)
+            if encounter_level > 80:
+                modifier_checks.append(17)
+            if encounter_level >= 100:
+                modifier_checks.append(20)
+
+            available_modifiers = self.monster_modifiers.copy()
+            for chance in modifier_checks:
+                if random.randint(1, 100) <= chance and available_modifiers:
+                    modifier = random.choice(available_modifiers)
+                    monster_modifiers.append(modifier)
+                    available_modifiers.remove(modifier)  # Ensure no duplicate modifiers
+                    print(f"Added modifier: {modifier}")
+
+            if "Ascended" in monster_modifiers:
+                monster_attack += 10
+                monster_defence += 10
+                print(f"Ascended modifier applied: m.atk/m.def +10")
+
+            # Apply Steel-born modifier
+            if "Steel-born" in monster_modifiers:
+                monster_defence = int(monster_defence * 1.1)
+                print(f"Steel-born modifier applied: Monster defence increased to {monster_defence}")
+
+        return encounter_level, monster_attack, monster_defence, monster_modifiers
+    
+
+    async def handle_boss_victory(self, encounter_level, user_id, server_id,
+                                 player_name, monster_name, interaction, award_xp,
+                                 player_rar, player_hp, message, user_level, isCulled,
+                                 accessory_passive, accessory_lvl, monster_modifiers, armor_passive):
+        """Handle victory for the boss encounter."""
+        await message.clear_reactions()
+        if "Volatile" in monster_modifiers and player_hp > 1:
+            player_hp = 1
+            await self.bot.database.update_player_hp(user_id, player_hp)
+
+        title = "Aphrodite overwhelmed!  ⚰️" if isCulled else "Aphrodite defeated!  🎉"
+        victory_embed = discord.Embed(
+            title=title,
+            description=f"{player_name} has conquered {monster_name} with {player_hp} ❤️ remaining!",
+            color=0x00FF00,
+        )
+        if "Volatile" in monster_modifiers and player_hp == 1:
+            victory_embed.add_field(name="Volatile Explosion",
+                                   value=f"{monster_name} explodes, reducing {player_name}'s HP to **1**!",
+                                   inline=False)
+        print('Calculating boss rewards')
+        xp_award = int(award_xp * 1.4)
+        gold_award = random.randint(15000, 50000)
+        curios_award = random.randint(1, 5)
+        if accessory_passive == "Prosper":
+            double_gold_chance = accessory_lvl * 5
+            if random.randint(1, 100) <= double_gold_chance:
+                gold_award *= 2
+                victory_embed.add_field(name="Passive Activated",
+                                      value=f"The accessory's **Prosper ({accessory_lvl})** activates, granting double gold!",
+                                      inline=False)
+        if accessory_passive == "Infinite Wisdom":
+            double_exp_chance = accessory_lvl * 5
+            if random.randint(1, 100) <= double_exp_chance:
+                xp_award *= 2
+                victory_embed.add_field(name="Passive Activated",
+                                      value=f"The accessory's **Infinite Wisdom ({accessory_lvl})** activates, "
+                                            f"granting double experience!",
+                                      inline=False)
+
+        victory_embed.add_field(name="📚 Experience Earned", value=f"{xp_award:,} XP")
+        victory_embed.add_field(name="💰 Gold Earned", value=f"{gold_award:,} GP")
+        victory_embed.add_field(name="🎁 Curios Earned", value=f"{curios_award} Curious Curios")
+
+        # Rune drops
+        runes_dropped = []
+        if random.random() < 0.33:
+            await self.bot.database.update_refinement_runes(user_id, 1)
+            runes_dropped.append("Rune of Refinement")
+        if random.random() < 0.33:
+            await self.bot.database.update_potential_runes(user_id, 1)
+            runes_dropped.append("Rune of Potential")
+        if random.random() < 0.33:
+            await self.bot.database.update_imbuing_runes(user_id, 1)
+            runes_dropped.append("Rune of Imbuing")
+        if runes_dropped:
+            victory_embed.add_field(name="❇️ Runes Dropped", value=", ".join(runes_dropped), inline=False)
+        else:
+            victory_embed.add_field(name="❇️ Runes Dropped", value="None", inline=False)
+
+        await self.bot.database.add_gold(user_id, gold_award)
+        await self.bot.database.update_curios_count(user_id, server_id, curios_award)
+        await self.update_experience(user_id, server_id, xp_award, message, victory_embed)
+        victory_embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
+        await message.edit(embed=victory_embed)
+
+    async def handle_boss_defeat(self, user_id, message, monster_name,
+                                total_damage_dealt, player_name, award_xp,
+                                server_id, monster_modifiers):
+        """Handle defeat for the boss encounter."""
+        await message.clear_reactions()
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        current_exp = existing_user[5]
+        penalty_xp = int(current_exp * 0.1)
+        new_exp = max(0, current_exp - penalty_xp)
+        player_hp = 1
+        if "Volatile" in monster_modifiers:
+            player_hp = 1
+            await self.bot.database.update_player_hp(user_id, player_hp)
+
+        defeat_embed = discord.Embed(
+            title="You have failed to conquer the heavens.",
+            description=f"{monster_name} deals a fatal blow!\n"
+                        f"{player_name} has been defeated after dealing {total_damage_dealt} damage.\n"
+                        f"{monster_name} stands triumphant with {award_xp - total_damage_dealt} health left.\n"
+                        f"{monster_name} drains {penalty_xp:,} xp from your essence...",
+            color=0xFF0000
+        )
+        defeat_embed.add_field(name="Pity...", value=f"({player_name} stumbles away with 1 hp.)")
+        await message.edit(embed=defeat_embed)
+        await self.bot.database.update_player_hp(user_id, player_hp)
+        await self.bot.database.update_experience(user_id, new_exp)
+
 
     def get_modifier_description(self, modifier):
         """Helper method to get modifier descriptions."""
         descriptions = {
-            "Steel-born": "10% boost to monster defence",
+            "Steel-born": "10% boost to monster defense",
             "All-seeing": "10% boost to monster accuracy",
             "Mirror Image": "20% chance to deal double damage",
-            "Glutton": "2x monster HP (1.5x for bosses)",
+            "Volatile": "Explodes after combat, reducing player HP to 1",
+            "Glutton": "Doubles monster HP, no extra XP",
             "Enfeeble": "Decreases player's attack by 10%",
             "Venomous": "Deals 1 damage on every miss",
             "Strengthened": "+3 monster max hit",
             "Hellborn": "+2 each successful hit",
-            "Lucifer-touched": "50% chance to roll lucky attacks",
+            "Lucifer-touched": "Lucky attacks",
             "Titanium": "Player damage reduced by 10%",
             "Ascended": "+10 Attack, +10 Defence",
-            "Summoner": "Summon minions that hit for 1/3 of their master's hit",
+            "Summoner": "Minions echo hits for 1/6 the monster hit",
             "Shield-breaker": "Player has no ward",
             "Impenetrable": "Player cannot crit",
             "Unblockable": "Player cannot block",
-            "Unavoidable": "Player has no additional evade chance",
-            "Built-different": "+2 to monster level",
-            "Multistrike": "Rolls another attack at 50% damage if the previous attack succeeds",
-            "Mighty": "10% boost to monster attack",
-            "Shields-up": "Block 10% of all player attacks",
-            "Executioner": "1% chance on successful attack to deal 90% of player remaining HP",
-            "Time Lord": "80% chance to not die",
-            "Suffocator": "Player hits are unlucky 20% of the time",
-            "Celestial Watcher": "Never miss",
-            "Unlimited Blade Works": "Deals double damage",
-            "Hell's Fury": "+5 each successful hit",
-            "Absolute": "+25 Attack, +25 defence",
-            "Infernal Legion": "Minions echo the monster hit",
-            "Overwhelm" : "Player has no ward, cannot block, cannot evade",
+            "Unavoidable": "Player has no additional evade chance"
         }
         return descriptions.get(modifier, "") 
-
-
-    async def fetch_monster_image(self, encounter_level: int):
-        """Fetches a monster image from the monsters.csv file based on the encounter level."""
-        csv_file_path = os.path.join(os.path.dirname(__file__), '../assets/monsters.csv')
-        monsters = []
-        try:
-            with open(csv_file_path, newline='') as csvfile:
-                reader = csv.DictReader(csvfile)
-                for row in reader:
-                    monster_name = row['name']
-                    monster_url = row['url']
-                    monster_level = int(row['level']) * 10
-                    flavor_txt = row['flavor']
-                    monsters.append((monster_name, monster_url, monster_level, flavor_txt))
-        except Exception as e:
-            print(f"Error reading monsters.csv: {e}")
-            return "Commoner", "https://i.imgur.com/v1BrB1M.png", "stares pleadingly at"
-        
-        if 663 <= encounter_level <= 666:
-            for monster in monsters:
-                if (monster[2] == encounter_level * 10):
-                    return monster[0], monster[1], monster[3]
-        elif 886 <= encounter_level <= 888:
-            for monster in monsters:
-                if (monster[2] == encounter_level * 10):
-                    return monster[0], monster[1], monster[3]
-        else:
-            if encounter_level == 999:
-                selected_monsters = [monster for monster in monsters if monster[2] == encounter_level * 10]
-            else:
-                min_level = max(1, encounter_level - 10)
-                max_level = min(100, encounter_level + 10)
-                selected_monsters = [monster for monster in monsters if min_level <= monster[2] <= max_level]
-            if not selected_monsters:
-                return "Commoner", "https://i.imgur.com/v1BrB1M.png", "says how did you find me???"
-
-            selected_monster = random.choice(selected_monsters)
-            return selected_monster[0], selected_monster[1], selected_monster[3]
+    
 
     async def update_experience(self, user_id: str, server_id: str, xp_award: int, message, embed) -> None:
         """Update the user's experience and handle leveling up."""
@@ -2206,20 +1916,13 @@ class Combat(commands.Cog, name="combat"):
         current_atk = existing_user[9]
         current_def = existing_user[10]
         current_mhp = existing_user[12]
-        ascension_lvl = existing_user[15]
         exp_table = self.load_exp_table()
 
         new_exp = current_exp + xp_award
         level_up = False
-        ascension = False
         print(f'Currently level {current_level} with exp {current_exp}, new exp is {new_exp}')
         exp_threshold = exp_table["levels"][str(current_level)]
         print(f'exp threshold is {exp_threshold}')
-
-        if current_level == 100 and new_exp >= exp_threshold:
-            ascension = True
-            print('Ascension')
-
         if current_level < 100 and new_exp >= exp_threshold:
             current_level += 1
             level_up = True
@@ -2233,7 +1936,7 @@ class Combat(commands.Cog, name="combat"):
             new_def = current_def + defence_increase
             new_mhp = current_mhp + hp_increase
             if current_level > 0 and current_level % 10 == 0 and current_level <= 100:
-                # print('Awarding 2 passive points for this level up since it fits the criteria')
+                print('Awarding 2 passive points for this level up since it fits the criteria')
                 passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
                 await self.bot.database.set_passive_points(user_id, server_id, passive_points + 2)
                 embed.add_field(name="2 passive points gained!", 
@@ -2245,7 +1948,7 @@ class Combat(commands.Cog, name="combat"):
                                  f"❤️ **Hit Points:** {new_mhp} (+{hp_increase})", inline=False)
             await message.edit(embed=embed)
 
-            # print(f'Update {user_id} stats')
+            print(f'Update {user_id} stats')
             await self.bot.database.update_player_hp(user_id, 
                                                    existing_user[11] + hp_increase)
             await self.bot.database.update_player_max_hp(user_id, 
@@ -2254,21 +1957,219 @@ class Combat(commands.Cog, name="combat"):
             await self.bot.database.increase_defence(user_id, defence_increase)
             await self.bot.database.increase_level(user_id)
             new_exp -= exp_table["levels"][str(current_level - 1)]
-
-        if ascension:
-            embed.add_field(name="Ascension Level Up! 🎉", value=f"{player_name} has reached Ascension **{ascension_lvl + 1}**!")
-            passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
-            await self.bot.database.set_passive_points(user_id, server_id, passive_points + 2)
-            embed.add_field(name="2 passive points gained!", 
-                            value="Use /passives to allocate them.", 
-                            inline=False)
-            await message.edit(embed=embed)
-            await self.bot.database.increase_ascension_level(user_id)
-            new_exp -= exp_table["levels"][str(current_level - 1)]
             
         print(f'Update {user_id} experience to {new_exp}')
         await self.bot.database.update_experience(user_id, new_exp)
 
+    @app_commands.command(name="duel", description="Challenge another user to a PvP duel.")
+    async def pvp(self, interaction: Interaction, member: discord.Member, gold_amount: int) -> None:
+        user_id = str(interaction.user.id)
+        challenged_user_id = str(member.id)
+        existing_user = await self.bot.database.fetch_user(user_id, interaction.guild.id)
+        challenged_user = await self.bot.database.fetch_user(challenged_user_id, interaction.guild.id)
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+        
+        if existing_user and challenged_user:
+            challenged_gold = challenged_user[6]
+            challenger_gold = existing_user[6]
+
+            if challenger_gold < gold_amount:
+                await interaction.response.send_message(
+                    "You do not have enough gold to initiate this challenge!",
+                    ephemeral=True)
+                return
+
+            if challenged_gold < gold_amount:
+                await interaction.response.send_message(
+                    f"{member.name} does not have enough gold to accept the challenge!",
+                    ephemeral=True)
+                return
+            
+            if gold_amount <= 0:
+                await interaction.response.send_message(
+                    "You cannot challenge with zero or negative gold.",
+                    ephemeral=True)
+                return
+
+            embed = discord.Embed(
+                title="PvP Challenge!",
+                description=f"{interaction.user.mention} has challenged {member.mention} for **{gold_amount:,} gold**!\n"
+                            f"React with ✅ to accept the challenge!",
+                color=0x00FF00,
+            )
+            embed.set_image(url="https://i.imgur.com/z20wfJO.jpeg")
+            await interaction.response.send_message(embed=embed)
+            message: Message = await interaction.original_response()
+            await message.add_reaction("✅")
+            await message.add_reaction("❌")
+            self.bot.state_manager.set_active(user_id, "duel")
+
+            def check(reaction, user):
+                return user == member and str(reaction.emoji) in ["✅", "❌"] and reaction.message.id == message.id
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                if str(reaction.emoji) == "✅":
+                    if self.bot.state_manager.is_active(challenged_user_id):
+                        await interaction.followup.send("You cannot accept this duel. Please finish all other interactions.")
+                        await message.delete()
+                        self.bot.state_manager.clear_active(user_id)
+                        return
+                else:
+                    self.bot.state_manager.clear_active(user_id)
+                    await message.delete()
+                    return
+            except asyncio.TimeoutError:
+                self.bot.state_manager.clear_active(user_id)
+                await message.delete()
+                return
+
+            player = existing_user[3]
+            opponent = challenged_user[3]
+            await self.start_duel(interaction, user_id, challenged_user_id, gold_amount, member, player, opponent, message)
+        else:
+            await interaction.response.send_message("There was an error fetching user data.")
+
+    async def start_duel(self, interaction: Interaction, 
+                         challenger_id: str, challenged_id: str, 
+                         gold_amount: int, member: discord.Member,
+                         player: str, opponent: str, message) -> None:
+        self.bot.state_manager.set_active(challenged_id, "duel")
+        await message.clear_reactions()
+        challenger_hp = 100
+        challenged_hp = 100
+        print(f"Challenger: {challenger_id}, Challenged: {challenged_id}")
+        print(f"Challenger name: {player}, Challenged name: {opponent}")
+        turn_order = random.choice([challenger_id, challenged_id])
+        name = ''
+        if turn_order == challenger_id:
+            starter = challenger_id
+            name = player
+        else:
+            starter = challenged_id
+            name = opponent
+
+        embed = discord.Embed(
+            title="PvP Duel Begins!",
+            color=0x00FF00
+        )
+        embed.set_thumbnail(url="https://i.imgur.com/z20wfJO.jpeg")
+        embed.add_field(name=f"{name} has won the coin toss!", value="Beginning in 3...", inline=False)
+        embed.add_field(name=f"{player}'s HP ❤️", value=challenger_hp, inline=True)
+        embed.add_field(name=f"{opponent}'s HP ❤️", value=challenged_hp, inline=True)
+        embed.add_field(name=f"Waiting for input", value="Pick an action!", inline=False)
+        await message.edit(embed=embed)
+        await asyncio.sleep(1)
+        embed.set_field_at(0, name=f"{name} has won the coin toss!", value="Beginning in 2...", inline=False)
+        await message.edit(embed=embed)
+        await asyncio.sleep(1)
+        embed.set_field_at(0, name=f"{name} has won the coin toss!", value="Beginning in 1...", inline=False)
+        await message.edit(embed=embed)
+        await asyncio.sleep(1)
+        embed.set_field_at(0, name=f"{name} has won the coin toss!", value="FIGHT!", inline=False)
+        await message.edit(embed=embed)
+        current_player = starter
+        if turn_order == challenger_id:
+            name = player
+        else:
+            name = opponent
+
+        await message.add_reaction("⚔️")
+        await message.add_reaction("💖")
+
+        while challenger_hp > 0 and challenged_hp > 0:
+            embed.set_field_at(0, name=f"It's **{name}**'s turn!", value="Do you choose to HIT ⚔️ or HEAL 💖? ", inline=False)
+            await message.edit(embed=embed)
+
+            def action_check(reaction, user):
+                return (
+                    user.id == int(current_player) and 
+                    reaction.message.id == message.id and 
+                    str(reaction.emoji) in ["⚔️", "💖"]
+                )
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=action_check)
+
+                if str(reaction.emoji) == "⚔️":
+                    if random.randint(1, 100) <= 30:
+                        response_message = f"{name}'s attack 💨 misses! "
+                    else:
+                        damage = self.calculate_damage(challenger_hp if current_player == challenger_id else challenged_hp)
+                        if current_player == challenger_id:
+                            challenged_hp -= damage
+                            response_message = f"{name} attacked for 💥 **{damage}**!"
+                            embed.set_field_at(2, name=f"{opponent}'s HP ❤️", value=challenged_hp, inline=True)
+                        else:
+                            challenger_hp -= damage
+                            response_message = f"{name} attacked for 💥 **{damage}**!"
+                            embed.set_field_at(1, name=f"{player}'s HP ❤️", value=challenger_hp, inline=True)
+                else:
+                    heal_amount = 20
+                    if current_player == challenger_id:
+                        challenger_hp = min(challenger_hp + heal_amount, 100)
+                        response_message = f"{name} healed for **{heal_amount}**."
+                        embed.set_field_at(1, name=f"{player}'s HP ❤️", value=challenger_hp, inline=True)
+                    else:
+                        challenged_hp = min(challenged_hp + heal_amount, 100)
+                        response_message = f"{name} healed for **{heal_amount}**."
+                        embed.set_field_at(2, name=f"{opponent}'s HP ❤️", value=challenged_hp, inline=True)
+                await message.remove_reaction(reaction.emoji, user)
+                embed.set_field_at(3, name=f"Result", value=response_message, inline=False)
+                await asyncio.sleep(1)
+
+                current_player = challenged_id if current_player == challenger_id else challenger_id
+                if current_player == challenger_id:
+                    name = player
+                else:
+                    name = opponent
+
+            except asyncio.TimeoutError:
+                timeout = f"{name} took too long to decide. The duel has ended and they forfeit their gold."
+                embed.add_field(name=f"Timed out!", value=timeout, inline=False)
+                if current_player == challenger_id:
+                    await self.bot.database.add_gold(challenged_id, gold_amount)
+                    await self.bot.database.add_gold(challenger_id, -gold_amount)
+                    print(f'Awarded {challenged_id} with gold')
+                else: 
+                    await self.bot.database.add_gold(challenger_id, gold_amount)
+                    await self.bot.database.add_gold(challenged_id, -gold_amount)
+                    print(f'Awarded {challenger_id} with gold')
+                self.bot.state_manager.clear_active(challenger_id)
+                self.bot.state_manager.clear_active(challenged_id)
+                await message.edit(embed=embed)
+                return
+
+        winner, loser = (challenger_id, challenged_id) if challenged_hp <= 0 else (challenged_id, challenger_id)
+        print(f'winner: {winner}, loser: {loser}')
+        await self.bot.database.add_gold(winner, gold_amount)
+        await self.bot.database.add_gold(loser, -gold_amount)
+        if winner == challenger_id:
+            name = player
+            loser_name = opponent
+        else:
+            name = opponent
+            loser_name = player
+        self.bot.state_manager.clear_active(challenger_id)
+        self.bot.state_manager.clear_active(challenged_id)
+        victory = f"{name} slays {loser_name} with a 💥 {damage}!\nThey receive **{gold_amount * 2} gold**!"
+        embed.add_field(name=f"{name} is victorious!", value=victory, inline=False)
+        await message.edit(embed=embed)
+
+    def calculate_damage(self, current_hp: int) -> int:
+        """Calculate damage based on HP, using a modified version of the Dharok's effect."""
+        if current_hp <= 0:
+            return 0
+
+        if current_hp == 100:
+            max_hit = 25
+        else:
+            max_hit = 120 * (100 - current_hp) / 100
+
+        max_hit = max(25, int(max_hit))
+        damage = random.randint(1, max_hit)
+        return damage
 
 async def setup(bot) -> None:
-    await bot.add_cog(Combat(bot))
+    await bot.add_cog(CombatEvo(bot))

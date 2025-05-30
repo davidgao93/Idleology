@@ -1,9 +1,35 @@
 import aiosqlite
 from datetime import datetime, timedelta
+from core.models import Player
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
         self.connection = connection
+
+    async def update_player(self, player: Player) -> None:
+        """Update the player's data in the database."""
+        await self.connection.execute(
+            """
+            UPDATE users SET 
+                level = ?, 
+                ascension = ?, 
+                experience = ?, 
+                current_hp = ?, 
+                max_hp = ?, 
+                potions = ?
+            WHERE user_id = ?
+            """,
+            (
+                player.level,
+                player.ascension,
+                player.exp,
+                player.hp,
+                player.max_hp,
+                player.potions,
+                player.id
+            )
+        )
+        await self.connection.commit()
 
     async def fetch_user(self, user_id: str, server_id: str):
         """Fetches a user from the database."""
@@ -40,6 +66,14 @@ class DatabaseManager:
             )
             await self.connection.execute(
                 "DELETE FROM items WHERE user_id=?",
+                (user_id,)
+            )
+            await self.connection.execute(
+                "DELETE FROM accessories WHERE user_id=?",
+                (user_id,)
+            )
+            await self.connection.execute(
+                "DELETE FROM armor WHERE user_id=?",
                 (user_id,)
             )
             await self.connection.execute(
@@ -152,7 +186,16 @@ class DatabaseManager:
             "UPDATE users SET angel_key = angel_key + ? WHERE user_id = ?",
             (increase_by, user_id)
         )
-        await self.connection.commit()       
+        await self.connection.commit()     
+
+
+    async def add_soul_cores(self, user_id: str, increase_by: int) -> None:
+        """Increase the user's soul cores in the database."""
+        await self.connection.execute(
+            "UPDATE users SET soul_cores = soul_cores + ? WHERE user_id = ?",
+            (increase_by, user_id)
+        )
+        await self.connection.commit()      
 
     async def update_user_gold(self, user_id: str, new_gold: int) -> None:
         """Update the user's gold in the database."""
@@ -200,6 +243,22 @@ class DatabaseManager:
         await self.connection.execute(
             "UPDATE users SET current_hp = ? WHERE user_id = ?",
             (hp, user_id)
+        )
+        await self.connection.commit()
+
+    async def update_player_attack(self, user_id: str, atk: int) -> None:
+        """Update the player's attack in the database."""
+        await self.connection.execute(
+            "UPDATE users SET attack = ? WHERE user_id = ?",
+            (atk, user_id)
+        )
+        await self.connection.commit()
+
+    async def update_player_defence(self, user_id: str, defence: int) -> None:
+        """Update the player's defence in the database."""
+        await self.connection.execute(
+            "UPDATE users SET defence = ? WHERE user_id = ?",
+            (defence, user_id)
         )
         await self.connection.commit()
 
@@ -322,7 +381,7 @@ class DatabaseManager:
     async def fetch_user_items(self, user_id: str) -> list:
         """Fetch all items owned by a specific user."""
         rows = await self.connection.execute(
-            "SELECT item_id, item_name, item_level, attack, defence, rarity, passive, is_equipped FROM items WHERE user_id=?",
+            "SELECT * FROM items WHERE user_id=?",
             (user_id,)
         )
         async with rows as cursor:
@@ -345,7 +404,7 @@ class DatabaseManager:
             (user_id,)
         )
         async with rows as cursor:
-            return await cursor.fetchall()  # Returns a list of accessories
+            return await cursor.fetchall()  # Returns a list of armors
     
     async def update_item_equipped_status(self, item_id: int, is_equipped: bool) -> None:
         """Update the equipped status of an item."""

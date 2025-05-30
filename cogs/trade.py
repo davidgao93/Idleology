@@ -94,7 +94,7 @@ class Trade(commands.Cog, name="trade"):
         server_id = str(interaction.guild.id)
 
         # Check if the user is trying to send the item to themselves
-        if receiver.id == interaction.user:
+        if receiver.id == user_id:
             await interaction.response.send_message("You cannot send items to yourself.")
             return
 
@@ -112,12 +112,16 @@ class Trade(commands.Cog, name="trade"):
         if not item_details:
             await interaction.response.send_message("Weapon not found. Please check the Weapon ID and try again.")
             return
+        
+        if item_details[1] != user_id:
+            await interaction.response.send_message("Weapon is not yours. Please check the Weapon ID and try again.")
+            return
 
         item_level = int(item_details[3])  # Assuming item_level is at index 3
         current_level = existing_user[4]  # Assuming user level is at index 4
         
         # Check level difference
-        if (current_level - item_level) > 15:
+        if (item_level - current_level) > 15:
             await interaction.response.send_message(f"You cannot send this item due to iLvl diff being too great. (< 15)")
             return
         
@@ -131,10 +135,11 @@ class Trade(commands.Cog, name="trade"):
         receiver_items = await self.bot.database.fetch_user_items(str(receiver.id))
         
         # Check if the receiver has less than 3 items in their inventory
-        if len(receiver_items) >= 3:
-            await interaction.response.send_message(f"{receiver.mention} cannot receive more weapons. They have 3+ weapons already.")
+        if len(receiver_items) >= 58:
+            await interaction.response.send_message(f"{receiver.mention} cannot receive more weapons. They have too many already.")
             return
 
+        self.bot.state_manager.set_active(user_id, "send_weapon")  # Set send_item as active operation
         # Confirm the action
         embed = discord.Embed(
             title="Confirm Send Weapon",
@@ -143,7 +148,7 @@ class Trade(commands.Cog, name="trade"):
         )
         await interaction.response.send_message(embed=embed)
         message: Message = await interaction.original_response()
-        self.bot.state_manager.set_active(user_id, "send_weapon")  # Set send_item as active operation
+
 
         await message.add_reaction("✅")  # Confirm
         await message.add_reaction("❌")  # Cancel
@@ -178,15 +183,13 @@ class Trade(commands.Cog, name="trade"):
         server_id = str(interaction.guild.id)
 
         # Check if the user is trying to send the item to themselves
-        if receiver.id == interaction.user.id:
+        if receiver.id == user_id:
             await interaction.response.send_message("You cannot send accessories to yourself.")
             return
 
         # Check if the user has any active operations
         if not await self.bot.check_is_active(interaction, user_id):
             return
-
-        self.bot.state_manager.set_active(user_id, "send_accessory")  # Set send_accessory as active operation
 
         # Fetch the sender's user data
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
@@ -199,12 +202,16 @@ class Trade(commands.Cog, name="trade"):
             await interaction.response.send_message("Accessory not found. Please check the Accessory ID and try again.")
             return
 
+        if accessory_details[1] != user_id:
+            await interaction.response.send_message("Accessory is not yours. Please check the Accessory ID and try again.")
+            return
         # Check if the accessory is equipped
         equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
         if equipped_accessory and equipped_accessory[0] == accessory_details[0]:  # Check if it's the same accessory
             await interaction.response.send_message("You cannot send an accessory that you have equipped.")
             return
         
+        self.bot.state_manager.set_active(user_id, "send_accessory")  # Set send_accessory as active operation
         # Confirm the action
         embed = discord.Embed(
             title="Confirm Send Accessory",
@@ -358,6 +365,88 @@ class Trade(commands.Cog, name="trade"):
                 self.bot.state_manager.clear_active(user_id)
         finally:
             # Ensure we clear the active operation regardless of success/failure
+            self.bot.state_manager.clear_active(user_id)
+
+
+    @app_commands.command(name="send_key", description="Send a key to another player.")
+    async def send_key(self, interaction: Interaction, key_type: str, receiver: discord.User) -> None:
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        # Check if the user is trying to send a key to themselves
+        if receiver.id == interaction.user.id:
+            await interaction.response.send_message("You cannot send keys to yourself.", ephemeral=True)
+            return
+
+        if key_type.lower() not in ["angelic", "draconic"]:
+            await interaction.response.send_message("Please specify either 'angelic' or 'draconic'.", ephemeral=True)
+            return
+
+        # Fetch the sender's user data
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user):
+            return
+
+        # Check if the sender has any active operations
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+     
+        dragon_keys = existing_user[25] # dragon keys
+        angel_keys = existing_user[26]
+
+        # Check if the sender has the specified key
+        if key_type.lower() == "angelic":
+            sender_key_count = angel_keys
+        if key_type.lower() == "draconic":
+            sender_key_count = dragon_keys
+
+        if sender_key_count < 1:
+            await interaction.response.send_message(f"You do not have any {key_type} keys to send.", ephemeral=True)
+            return
+
+        self.bot.state_manager.set_active(user_id, "send_key")
+
+        # Confirm the action
+        embed = discord.Embed(
+            title="Confirm Send Key",
+            description=f"Send a {key_type.title()} Key to {receiver.mention}?",
+            color=0x00FF00
+        )
+
+        await interaction.response.send_message(embed=embed)
+        message: Message = await interaction.original_response()
+
+        await message.add_reaction("✅")  # Confirm
+        await message.add_reaction("❌")  # Cancel
+
+        def confirm_check(reaction, user):
+            return (user == interaction.user and 
+                    reaction.message.id == message.id and 
+                    str(reaction.emoji) in ["✅", "❌"])
+
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
+            if str(reaction.emoji) == "✅":
+                # Reduce the key count from the sender and add to the receiver
+                if key_type.lower() == "angelic":
+                    await self.bot.database.add_angel_key(user_id, -1)
+                    await self.bot.database.add_angel_key(str(receiver.id), 1)
+                else:
+                    await self.bot.database.add_dragon_key(user_id, -1)
+                    await self.bot.database.add_dragon_key(str(receiver.id), 1)
+
+                # Update the embed to indicate success
+                embed.description = f"Sent a {key_type.title()} Key to {receiver.mention}! 🎉"
+                await message.clear_reactions()
+                await message.edit(embed=embed)
+
+            else:
+                await message.delete()
+
+        except asyncio.TimeoutError:
+            await message.delete()
+
+        finally:
             self.bot.state_manager.clear_active(user_id)
 
 async def setup(bot) -> None:

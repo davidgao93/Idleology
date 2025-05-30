@@ -144,7 +144,7 @@ class General(commands.Cog, name="general"):
                 "**2. View Your Stats:**"
                 "Check your character's stats using `/stats` to track your progress.\n"
                 "**3. Choose Your Ideology:**"
-                "Join or create an ideology that best fits your adventure. Use `/ideology` to see the followers leaderboard.\n"
+                "Create an ideology that best fits you. Use `/ideology` to see the followers leaderboard.\n"
                 "**4. Engage in Combat:**"
                 "Fight enemies using `/combat` to gain experience and level up!\n"
                 "**5. And much more!**\n"
@@ -162,8 +162,10 @@ class General(commands.Cog, name="general"):
                 f"- Engage in combat every 10 minutes using the `/combat` command.\n"
                 f"- ⚔️ to attack, 🩹 to heal (if you have potions, buy with /shop),"
                 f" ⏩ to auto-batle (stops at <20% hp), 🏃 to run\n"
-                f"- Leveling up increases your stats!\n"
-                f"- The tavern is a great place to rest and make some quick cash!\n"
+                f" 🕒 to skip to the end (stops at <20% hp)\n"
+                f"- Leveling up increases your stats\n"
+                f"- You gain some passive points every 10 levels\n"
+                f"- The tavern is a great place to rest and make (or lose) some quick cash!\n"
                 f"- You also heal over time if you're down on your luck.\n"
                 f"- Check your skills with the /skills, /mining, /fishing, /woodcutting commands!"
             ),
@@ -174,7 +176,7 @@ class General(commands.Cog, name="general"):
             name="Forging and refining weapons",
             value=(
                 f"When you win your combats, you have a chance of dropping loot.\n"
-                f"Loot drops in the form of weapons or accessories.\n\n"
+                f"Loot drops in the form of weapons, accessories, or equipment\n\n"
                 f"Here are some points to remember:\n"
                 f"- Weapons can be forged with skilling materials.\n"
                 f"- Weapons can be refined with gold.\n"
@@ -194,6 +196,15 @@ class General(commands.Cog, name="general"):
                 f"- Each attempt will cost more gold.\n"
                 f"- You can increase the success rate with Runes of Potential.\n"
                 f"- Check your accessories with the /accessory command!"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="Equipment can gain various bonuses",
+            value=(
+                f"When you obtain pieces of equipment, they each have their own upgrade system.\n\n"
+                f"Check them out with the various equipment commands!"
             ),
             inline=False
         )
@@ -228,7 +239,7 @@ class General(commands.Cog, name="general"):
 
     @app_commands.command(name="cooldowns", description="Check your current cooldowns for various commands.")
     async def cooldowns(self, interaction: Interaction) -> None:
-        """Check the cooldowns of /rest, /checkin, and /propagate commands."""
+        """Check the cooldowns of /combat, /rest, /checkin, and /propagate commands."""
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
@@ -311,7 +322,7 @@ class General(commands.Cog, name="general"):
 
         if rest_remaining:
             embed.add_field(name="/rest 🛏️", value=f"**{rest_remaining.seconds // 3600} hours "
-                                                        f"{(rest_remaining.seconds // 60) % 60} minutes** remaining. (400 gp bypass)")
+                                                        f"{(rest_remaining.seconds // 60) % 60} minutes** remaining. (Pay gp to bypass)")
         else:
             embed.add_field(name="/rest 🛏️", value="Available now!", inline=True)
 
@@ -352,6 +363,7 @@ class General(commands.Cog, name="general"):
         # Fetch user item data
         user_items = await self.bot.database.fetch_user_items(user_id)
         user_accs = await self.bot.database.fetch_user_accessories(user_id)
+        user_arms = await self.bot.database.fetch_user_armors(user_id)
         # Construct the embed to show information
         embed = discord.Embed(
             title="User ID and Item IDs",
@@ -360,7 +372,7 @@ class General(commands.Cog, name="general"):
         embed.add_field(name="User ID", value=user_id, inline=False)
 
         if user_items:
-            items_description = "\n".join([f"**ID:** {item[0]} - **Name:** {item[1]}" for item in user_items])
+            items_description = "\n".join([f"**ID:** {item[0]} - **Name:** {item[2]}" for item in user_items])
             embed.add_field(name="Your Weapons", value=items_description, inline=False)
             acc_desc = "\n".join([f"**ID:** {acc[0]} - **Name:** {acc[2]}" for acc in user_accs])
             embed.add_field(name="Your Accessories", value=acc_desc, inline=False)

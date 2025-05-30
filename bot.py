@@ -154,7 +154,7 @@ class DiscordBot(commands.Bot):
         self.logger = logger
         self.config = config
         self.database = None
-        self.state_manager = StateManager()
+        self.state_manager = StateManager(logger=self.logger)
 
     async def init_db(self) -> None:
         async with aiosqlite.connect(
@@ -370,19 +370,20 @@ class DiscordBot(commands.Bot):
 
 
 class StateManager:
-    def __init__(self):
+    def __init__(self, logger):
+        self.logger = logger
         self.active_operations = {}
 
     def set_active(self, user_id: str, operation: str):
         """Set a user's operation state."""
-        print(f'Set {user_id} as {operation}')
+        self.logger.info(f'Set {user_id} as {operation}')
         self.active_operations[user_id] = operation
 
     def clear_active(self, user_id: str):
         """Clear a user's operation state."""
-        print(f'Attempt to clear {user_id}')
+        self.logger.info(f'Attempt to clear {user_id}')
         if user_id in self.active_operations:
-            print(f'{user_id} found in active list, cleared')
+            self.logger.info(f'{user_id} found in active list, cleared')
             del self.active_operations[user_id]
 
     def is_active(self, user_id: str):
