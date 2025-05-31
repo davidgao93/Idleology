@@ -3,7 +3,7 @@ from discord import app_commands, Interaction, Message, ButtonStyle
 from discord.ext import commands
 from discord.ui import Button, View
 from datetime import datetime, timedelta
-from .combat import Combat
+from core.loot import generate_loot, generate_armor, generate_accessory
 from .skills import Skills
 import asyncio
 import random
@@ -157,12 +157,12 @@ class CurioView(View):
                 self.bot.logger.info(f"[DEBUG] Processing reward: {reward} x{count}")
                 if reward == "Level 100 Weapon":
                     for _ in range(count):
-                        item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description = await self.tavern_cog.combat_cog.generate_loot(user_id, server_id, 100, False)
+                        item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description = await generate_loot(100, drop_rune=False)
                         await self.bot.database.create_item(user_id, item_name, 100, attack_modifier, defence_modifier, rarity_modifier)
                         loot_descriptions.append(loot_description)
                 elif reward == "Level 100 Accessory":
                     for _ in range(count):
-                        acc_name, loot_description = await self.tavern_cog.combat_cog.generate_accessory(user_id, server_id, 100, False)
+                        acc_name, loot_description = await generate_accessory(100, drop_rune=False)
                         lines = loot_description.splitlines()
                         for line in lines[1:]:
                             match = re.search(r"\+(\d+)%? (\w+)", line)
@@ -173,7 +173,7 @@ class CurioView(View):
                         loot_descriptions.append(loot_description)
                 elif reward == "Level 100 Armor":
                     for _ in range(count):
-                        armor_name, loot_description = await self.tavern_cog.combat_cog.generate_armor(user_id, server_id, 100, False)
+                        armor_name, loot_description = await generate_armor(100, drop_rune=False)
                         lines = loot_description.splitlines()
                         block_modifier = evasion_modifier = ward_modifier = 0
                         for line in lines[1:]:
@@ -191,12 +191,12 @@ class CurioView(View):
                         loot_descriptions.append(loot_description)
                 elif reward == "ilvl Weapon":
                     for _ in range(count):
-                        item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description = await self.tavern_cog.combat_cog.generate_loot(user_id, server_id, user_level, False)
+                        item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description = await generate_loot(user_level, drop_rune=False)
                         await self.bot.database.create_item(user_id, item_name, user_level, attack_modifier, defence_modifier, rarity_modifier)
                         loot_descriptions.append(loot_description)
                 elif reward == "ilvl Accessory":
                     for _ in range(count):
-                        acc_name, loot_description = await self.tavern_cog.combat_cog.generate_accessory(user_id, server_id, user_level, False)
+                        acc_name, loot_description = await generate_accessory(user_level, drop_rune=False)
                         lines = loot_description.splitlines()
                         for line in lines[1:]:
                             match = re.search(r"\+(\d+)%? (\w+)", line)
@@ -207,7 +207,7 @@ class CurioView(View):
                         loot_descriptions.append(loot_description)
                 elif reward == "ilvl Armor":
                     for _ in range(count):
-                        armor_name, loot_description = await self.tavern_cog.combat_cog.generate_armor(user_id, server_id, user_level, False)
+                        armor_name, loot_description = await generate_armor(user_level, drop_rune=False)
                         lines = loot_description.splitlines()
                         block_modifier = evasion_modifier = ward_modifier = 0
                         for line in lines[1:]:
@@ -291,7 +291,7 @@ class CurioView(View):
     async def close(self, interaction: Interaction, amount: int):
         embed = discord.Embed(
             title="Your Curios",
-            description=f"You have **{self.curio_count}** curio{'s' if self.curio_count != 1 else ''} available.\nInteraction closed.",
+            description=f"You have **{self.curio_count}** curio{'s' if self.curio_count != 1 else ''} available.\nMay your curios always be lucky.",
             color=0x00FF00
         )
         await interaction.response.edit_message(embed=embed, view=None)
@@ -299,10 +299,22 @@ class CurioView(View):
         self.bot.state_manager.clear_active(str(interaction.user.id))
         self.stop()
 
+    def stop(self):
+        # Perform actions when the view is stopped or times out
+        self.bot.state_manager.clear_active(self.user_id)  # Clear the active user
+        if self.message:  # Ensure that the message exists
+            asyncio.create_task(self.message.delete())  # Delete the message asynchronously
+        super().stop()  # Call the base class stop method
+    
+    async def on_timeout(self):
+        # Handle the timeout scenario explicitly
+        self.stop()  # Call stop() to handle cleanup
+        # await self.message.edit(content="This action has timed out.", embed=None, view=None)  # Optionally edit the message to indicate timeout
+
+
 class Tavern(commands.Cog, name="tavern"):
     def __init__(self, bot) -> None:
         self.bot = bot
-        self.combat_cog = bot.get_cog("combat")
         self.skills_cog = bot.get_cog("skills")
 
     @app_commands.command(
@@ -1131,12 +1143,12 @@ class Tavern(commands.Cog, name="tavern"):
                     attack_modifier, 
                     defence_modifier,
                     rarity_modifier, 
-                    loot_description) = await self.combat_cog.generate_loot(user_id, server_id, 100, False)
+                    loot_description) = await generate_loot(100, drop_rune=False)
                     await self.bot.database.create_item(user_id, item_name, 100, 
                                                             attack_modifier, defence_modifier, rarity_modifier)
                     embed.add_field(name="✨ Loot", value=f"{loot_description}")
             elif selected_reward == "Level 100 Accessory":
-                (acc_name, loot_description) = await self.combat_cog.generate_accessory(user_id, server_id, 100, False)
+                (acc_name, loot_description) = await generate_accessory(100, drop_rune=False)
                 lines = loot_description.splitlines()
                 for line in lines[1:]:  # Skip the first line (the accessory name)
                             match = re.search(r"\+(\d+)%? (\w+)", line)  # Capture value and type
@@ -1146,7 +1158,7 @@ class Tavern(commands.Cog, name="tavern"):
                 await self.bot.database.create_accessory(user_id, acc_name, 100, modifier_type, modifier_value)
                 embed.add_field(name="✨ Loot", value=f"{loot_description}")
             elif selected_reward == "Level 100 Armor":
-                armor_name, loot_description = await self.combat_cog.generate_armor(user_id, server_id, 100, False)
+                armor_name, loot_description = await generate_armor(100, drop_rune=False)
                 lines = loot_description.splitlines()
                 block_modifier = 0
                 evasion_modifier = 0
@@ -1169,12 +1181,12 @@ class Tavern(commands.Cog, name="tavern"):
                     attack_modifier, 
                     defence_modifier,
                     rarity_modifier, 
-                    loot_description) = await self.combat_cog.generate_loot(user_id, server_id, user_level, False)
+                    loot_description) = await generate_loot(user_level, drop_rune=False)
                     await self.bot.database.create_item(user_id, item_name, user_level, 
                                                             attack_modifier, defence_modifier, rarity_modifier)
                     embed.add_field(name="✨ Loot", value=f"{loot_description}")
             elif selected_reward == f"Level {user_level} Accessory":
-                (acc_name, loot_description) = await self.combat_cog.generate_accessory(user_id, server_id, user_level, False)
+                (acc_name, loot_description) = await generate_accessory(user_level, drop_rune=False)
                 lines = loot_description.splitlines()
                 for line in lines[1:]:  # Skip the first line (the accessory name)
                             match = re.search(r"\+(\d+)%? (\w+)", line)  # Capture value and type
@@ -1184,7 +1196,7 @@ class Tavern(commands.Cog, name="tavern"):
                 await self.bot.database.create_accessory(user_id, acc_name, user_level, modifier_type, modifier_value)
                 embed.add_field(name="✨ Loot", value=f"{loot_description}")
             elif selected_reward == f"Level {user_level} Armor":
-                armor_name, loot_description = await self.combat_cog.generate_armor(user_id, server_id, user_level, False)
+                armor_name, loot_description = await generate_armor(user_level, drop_rune=False)
                 lines = loot_description.splitlines()
                 block_modifier = 0
                 evasion_modifier = 0

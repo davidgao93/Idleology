@@ -326,7 +326,7 @@ class Accessories(commands.Cog, name="accessories"):
                            value=f"Not enough gold!\nReturning to item menu...", 
                            inline=False)
             await message.edit(embed=embed)
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
             return
 
         await self.bot.database.update_user_gold(user_id, player_gold - refine_cost)
@@ -381,7 +381,7 @@ class Accessories(commands.Cog, name="accessories"):
         potential_remaining -= 1
         await self.bot.database.update_accessory_potential(accessory_id, potential_remaining)
         await message.edit(embed=embed)
-        await asyncio.sleep(5)
+        await asyncio.sleep(3)
         embed.clear_fields()
 
 async def setup(bot) -> None:

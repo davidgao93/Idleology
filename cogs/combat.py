@@ -47,8 +47,7 @@ class Combat(commands.Cog, name="combat"):
                 remaining_time = combat_duration - time_since_combat
                 checkin_remaining = remaining_time
         else:
-            if user_id != str(866408616873820180):
-                await self.bot.database.update_combat_time(user_id)
+            await self.bot.database.update_combat_time(user_id)
 
         if checkin_remaining:
             value = (f"Please slow down. Try again in {(checkin_remaining.seconds // 60) % 60} minute(s) "
@@ -56,9 +55,8 @@ class Combat(commands.Cog, name="combat"):
             await interaction.response.send_message(value, ephemeral=True)
             return
         else:
-            if user_id != str(866408616873820180):
-                await self.bot.database.update_combat_time(user_id)
-                self.bot.state_manager.set_active(user_id, "combat")
+            await self.bot.database.update_combat_time(user_id)
+            self.bot.state_manager.set_active(user_id, "combat")
             
             # Initialize our player object
             player = Player(
@@ -1150,7 +1148,7 @@ class Combat(commands.Cog, name="combat"):
                 if len(items) > 60:
                     embed.add_field(name="✨ Loot", value="Weapon pouch full!")
                 else:
-                    (item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description) = await generate_loot(player, monster, drop_rune=True)
+                    (item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description) = await generate_loot(monster.level, drop_rune=True)
                     if item_name != "rune":
                         embed.set_thumbnail(url="https://i.imgur.com/mEIV0ab.jpeg")
                         await self.bot.database.create_item(user_id, item_name, monster.level,
@@ -1166,7 +1164,7 @@ class Combat(commands.Cog, name="combat"):
                     if len(accs) > 60:
                         embed.add_field(name="✨ Loot", value="Accessory pouch full!")
                     else:
-                        acc_name, loot_description = await generate_accessory(player, monster, drop_rune=True)
+                        acc_name, loot_description = await generate_accessory(monster.level, drop_rune=True)
                         if acc_name != "rune":
                             lines = loot_description.splitlines()
                             for line in lines[1:]:
@@ -1188,7 +1186,7 @@ class Combat(commands.Cog, name="combat"):
                 else:
                     if final_arm_roll >= 99:
                         arm_dropped = True
-                        armor_name, loot_description = await generate_armor(player, monster, drop_rune=True)
+                        armor_name, loot_description = await generate_armor(monster.level, drop_rune=True)
                         lines = loot_description.splitlines()
                         block_modifier = 0
                         evasion_modifier = 0

@@ -457,7 +457,7 @@ class Weapons(commands.Cog, name="weapons"):
                                          f"**{new_passive.capitalize()}** passive.\nReturning..."), 
                                   inline=False)
                     await message.edit(embed=embed)
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(3)
                 else:
                     new_passive = await self.upgrade_passive(current_passive)
                     await self.bot.database.update_item_passive(item_id, new_passive)
@@ -467,7 +467,7 @@ class Weapons(commands.Cog, name="weapons"):
                                          f" to **{new_passive.capitalize()}**.\nReturning..."),
                                   inline=False)
                     await message.edit(embed=embed)
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(3)
             else:
                 embed.add_field(name="Failed", 
                               value=(f"Your hand slips and you fail to strike the weapon! 💔\n"
@@ -475,7 +475,7 @@ class Weapons(commands.Cog, name="weapons"):
                                      f"Returning to item menu..."),
                               inline=False)
                 await message.edit(embed=embed)
-                await asyncio.sleep(5)
+                await asyncio.sleep(3)
         
             await self.bot.database.update_item_forge_count(item_id, new_forges_remaining)
 
@@ -618,13 +618,11 @@ class Weapons(commands.Cog, name="weapons"):
                         await self.bot.database.update_refinement_runes(user_id, -1)
                         await self.bot.database.update_item_refine_count(item_id, 1)
                         embed.add_field(name="Rune of Refinement",
-                                      value=(f"You have successfully applied a **Rune of Refinement**!\n"
-                                             f"{item_name} now has **1** refine remaining.\nReturning..."),
+                                      value=(f"+1 refine attempts."),
                                       inline=False)
                         embed.set_thumbnail(url="https://i.imgur.com/1tcMeSe.jpg")
-                        refines_remaining = 1
                         await message.edit(embed=embed)
-                        await asyncio.sleep(5)
+                        await asyncio.sleep(2)
                     elif rune_interaction.data['custom_id'] == "cancel_rune":
                         return
 
@@ -677,14 +675,13 @@ class Weapons(commands.Cog, name="weapons"):
                 return
 
             if player_gold < cost:
-                embed.add_field(name="Refining", value=f"You do not have enough gold. Returning...", inline=False)
+                embed.add_field(name="Refining", value=f"Not enough gold. Returning...", inline=False)
                 await message.edit(embed=embed)
-                await asyncio.sleep(5)
+                await asyncio.sleep(2)
                 return
 
             await self.bot.database.update_user_gold(user_id, player_gold - cost)
             embed.add_field(name="Refining", value=f"The blacksmith carefully hones your weapon.", inline=False)
-            await message.edit(embed=embed)
         
             attack_roll = random.randint(0, 100) < 80
             defense_roll = random.randint(0, 100) < 50
@@ -724,7 +721,7 @@ class Weapons(commands.Cog, name="weapons"):
 
             embed.add_field(name="Refining", value=("\n".join(result_message) + "\nReturning..."), inline=False)
             await message.edit(embed=embed)
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
 
         except asyncio.TimeoutError:
             await message.delete()
