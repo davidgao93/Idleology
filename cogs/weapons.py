@@ -4,7 +4,6 @@ from discord import app_commands, Interaction, Message, ButtonStyle
 from discord.ui import View, Button
 import asyncio
 import random
-import uuid
 
 class Weapons(commands.Cog, name="weapons"):
     def __init__(self, bot) -> None:

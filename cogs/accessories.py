@@ -147,11 +147,11 @@ class Accessories(commands.Cog, name="accessories"):
                         if accessory_defence > 0:
                             embed.add_field(name="Defense", value=accessory_defence, inline=True)
                         if accessory_rarity > 0:
-                            embed.add_field(name="Rarity", value=accessory_rarity + "%", inline=True)
+                            embed.add_field(name="Rarity", value=str(accessory_rarity) + "%", inline=True)
                         if accessory_ward > 0:
-                            embed.add_field(name="Ward", value=accessory_ward + "%", inline=True)
+                            embed.add_field(name="Ward", value=str(accessory_ward) + "%", inline=True)
                         if accessory_crit > 0:
-                            embed.add_field(name="Critical Chance", value=accessory_crit + "%", inline=True)
+                            embed.add_field(name="Critical Chance", value=str(accessory_crit) + "%", inline=True)
 
                         if accessory_passive != "none":
                             embed.add_field(name="Passive", value=accessory_passive + f" ({potential_lvl})", inline=False)
