@@ -4,6 +4,7 @@ from discord import app_commands, Interaction, Message, ButtonStyle
 from discord.ui import View, Button
 import asyncio
 import random
+import uuid
 
 class Weapons(commands.Cog, name="weapons"):
     def __init__(self, bot) -> None:
@@ -173,7 +174,8 @@ class Weapons(commands.Cog, name="weapons"):
                         action_view.add_item(Button(label="Send", style=ButtonStyle.primary, custom_id="send"))
                         action_view.add_item(Button(label="Back", style=ButtonStyle.secondary, custom_id="back"))
                         
-                        await message.edit(embed=embed, view=action_view)
+                        if message:
+                            await message.edit(embed=embed, view=action_view)
                         
                         try:
                             action_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
@@ -193,8 +195,98 @@ class Weapons(commands.Cog, name="weapons"):
                                 await self.refine_item(action_interaction, selected_item, embed, message)
                                 continue
                             elif action_interaction.data['custom_id'] == "send":
-                                await self.send_item(action_interaction, selected_item, embed, message)
-                                continue
+                                if is_equipped:
+                                    embed.add_field(name="Error", value="You should probably unequip the weapon before sending it. Returning...", inline=False)
+                                    await message.edit(embed=embed, view=action_view)
+                                    await asyncio.sleep(3)
+                                    break
+                                embed.clear_fields()
+                                embed.add_field(
+                                    name="Send Weapon",
+                                    value="Please mention a user (@username) to send the weapon to.",
+                                    inline=False
+                                )
+                                await message.edit(embed=embed, view=None)
+                                
+                                def message_check(m: Message):
+                                    return (m.author == interaction.user and 
+                                            m.channel == interaction.channel and 
+                                            m.mentions)
+                                
+                                try:
+                                    user_message = await self.bot.wait_for('message', timeout=60.0, check=message_check)
+                                    await user_message.delete()
+                                    receiver = user_message.mentions[0]
+                                    send_item = True
+                                    receiver_user = await self.bot.database.fetch_user(receiver.id, server_id)
+                                    if not receiver_user:
+                                        send_item = False
+                                        embed.add_field(name="Error", value="This person isn't a valid adventurer. Returning...", inline=False)
+                                        await message.edit(embed=embed, view=None)
+                                        await asyncio.sleep(3)
+                                        continue
+
+                                    # Run send_weapon logic
+                                    if receiver.id == interaction.user.id:
+                                        send_item = False
+                                        embed.add_field(name="Error", value="You cannot send items to yourself. Returning...", inline=False)
+                                        await message.edit(embed=embed, view=None)
+                                        await asyncio.sleep(3)
+                                        continue
+                                    
+                                    current_level = receiver_user[4]
+                                    
+                                    if (item_level - current_level) > 15:
+                                        send_item = False
+                                        embed.add_field(name="Error", value="Item iLvl diff too great. (< 15) Returning...", inline=False)
+                                        await message.edit(embed=embed, view=None)
+                                        await asyncio.sleep(3)
+                                        continue
+                                    
+                                    receiver_items = await self.bot.database.fetch_user_weapons(str(receiver.id))
+                                    if len(receiver_items) >= 58:
+                                        send_item = False
+                                        embed.add_field(name="Error", value=f"{receiver.mention}'s inventory is full. Returning...", inline=False)
+                                        await message.edit(embed=embed, view=None)
+                                        await asyncio.sleep(3)
+                                        continue
+                                    
+                                    if send_item:
+                                        confirm_embed = discord.Embed(
+                                            title="Confirm Send Weapon",
+                                            description=f"Send **{item_name}** to {receiver.mention}?",
+                                            color=0x00FF00
+                                        )
+                                        confirm_view = View(timeout=60.0)
+                                        confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_send"))
+                                        confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_send"))
+                                        
+                                        await message.edit(embed=confirm_embed, view=confirm_view)
+                                        
+                                        try:
+                                            confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                                            await confirm_interaction.response.defer()
+                                            
+                                            if confirm_interaction.data['custom_id'] == "confirm_send":
+                                                await self.bot.database.send_weapon(receiver.id, selected_item[0])
+                                                confirm_embed.add_field(name="Weapon Sent", value=f"Sent **{item_name}** to {receiver.mention}! 🎉", inline=False)
+                                                await message.edit(embed=confirm_embed, view=None)
+                                                await asyncio.sleep(3)
+                                                break  # Return to weapon list
+                                            else:
+                                                self.bot.state_manager.clear_active(user_id)
+                                                continue
+                                        
+                                        except asyncio.TimeoutError:
+                                            await message.delete()
+                                            self.bot.state_manager.clear_active(user_id)
+                                            break
+                                    
+                                except asyncio.TimeoutError:
+                                    if message:
+                                        await message.delete()
+                                    self.bot.state_manager.clear_active(user_id)
+                                    break
                             elif action_interaction.data['custom_id'] == "discard":
                                 await self.discard(action_interaction, selected_item, message, embed)
                                 continue
@@ -213,110 +305,6 @@ class Weapons(commands.Cog, name="weapons"):
                 self.bot.state_manager.clear_active(user_id)
                 break
         self.bot.state_manager.clear_active(user_id)
-
-    async def send_item(self,
-                        interaction: Interaction,
-                        selected_item: tuple,
-                        message, embed, action_view) -> None:
-        user_id = str(interaction.user.id)
-        server_id = str(interaction.guild.id)
-        embed.clear_fields()
-        embed.add_field(
-            name="Send Weapon",
-            value="Please mention a user (@username) to send the weapon to.",
-            inline=False
-        )
-        await message.edit(embed=embed, view=None)
-        
-        def message_check(m: Message):
-            return (m.author == interaction.user and 
-                    m.channel == interaction.channel and 
-                    m.mentions)
-        
-        try:
-            user_message = await self.bot.wait_for('message', timeout=60.0, check=message_check)
-            await user_message.delete()
-            receiver = user_message.mentions[0]
-            send_item = True
-            receiver_user = await self.bot.database.fetch_user(receiver.id, server_id)
-            if not receiver_user:
-                send_item = False
-                embed.add_field(name="Error", value="This person isn't a valid adventurer. Returning...", inline=False)
-                await message.edit(embed=embed, view=None)
-                await asyncio.sleep(3)
-                return
-
-            # Run send_weapon logic
-            if receiver.id == interaction.user.id:
-                send_item = False
-                embed.add_field(name="Error", value="You cannot send items to yourself. Returning...", inline=False)
-                await message.edit(embed=embed, view=None)
-                await asyncio.sleep(3)
-                return
-            
-            current_level = receiver_user[4]
-            
-            if (selected_item[4] - current_level) > 15:
-                send_item = False
-                embed.add_field(name="Error", value="Item iLvl diff too great. (< 15) Returning...", inline=False)
-                await message.edit(embed=embed, view=None)
-                await asyncio.sleep(3)
-                return
-            
-            if selected_item[8]:
-                send_item = False
-                embed.add_field(name="Error", value="Currently equipped... Returning...", inline=False)
-                await message.edit(embed=embed, view=None)
-                await asyncio.sleep(3)
-                return
-            
-            receiver_items = await self.bot.database.fetch_user_weapons(str(receiver.id))
-            if len(receiver_items) >= 58:
-                send_item = False
-                embed.add_field(name="Error", value=f"{receiver.mention}'s inventory is full. Returning...", inline=False)
-                await message.edit(embed=embed, view=action_view)
-                await asyncio.sleep(3)
-                return
-            
-            if send_item:
-                confirm_embed = discord.Embed(
-                    title="Confirm Send Weapon",
-                    description=f"Send **{selected_item[1]}** to {receiver.mention}?",
-                    color=0x00FF00
-                )
-                confirm_view = View(timeout=60.0)
-                confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_send"))
-                confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_send"))
-                
-                await message.edit(embed=confirm_embed, view=confirm_view)
-
-                def check(button_interaction: Interaction):
-                    # Check if message is still valid and user matches
-                    return (button_interaction.user.id == user_id and 
-                            button_interaction.message is not None and 
-                            button_interaction.message.id == message.id)
-                try:
-                    confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-                    await confirm_interaction.response.defer()
-                    
-                    if confirm_interaction.data['custom_id'] == "confirm_send":
-                        await self.bot.database.send_weapon(receiver.id, selected_item[0])
-                        confirm_embed.add_field(name="Weapon Sent", value=f"Sent **{selected_item[1]}** to {receiver.mention}! 🎉", inline=False)
-                        await message.edit(embed=confirm_embed, view=None)
-                        await asyncio.sleep(3)
-                        return  # Return to weapon list
-                
-                except asyncio.TimeoutError:
-                    if message:
-                        await message.delete()
-                    self.bot.state_manager.clear_active(user_id)
-                    return
-            
-        except asyncio.TimeoutError:
-            if message:
-                await message.delete()
-            self.bot.state_manager.clear_active(user_id)
-        return
 
     async def discard(self, 
                      interaction: Interaction, 
@@ -353,8 +341,7 @@ class Weapons(commands.Cog, name="weapons"):
             await self.bot.database.discard_weapon(item_id)
 
         except asyncio.TimeoutError:
-            if message:
-                await message.delete()
+            await message.delete()
             self.bot.state_manager.clear_active(interaction.user.id)
 
     async def forge_item(self, 
