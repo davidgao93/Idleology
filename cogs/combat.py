@@ -9,7 +9,6 @@ from core.loot import generate_weapon, generate_armor, generate_accessory
 from core.combat_calcs import calculate_hit_chance, calculate_monster_hit_chance, calculate_damage_taken, check_cull
 from core.gen_mob import fetch_monster_image, get_modifier_description, generate_encounter, get_monster_mods, get_boss_mods
 import json
-import re
 
 class Combat(commands.Cog, name="combat"):
     def __init__(self, bot) -> None:
@@ -99,7 +98,8 @@ class Combat(commands.Cog, name="combat"):
             player.attack += equipped_accessory[4]
             player.defence += equipped_accessory[5]
             player.rarity += equipped_accessory[6]
-            player.ward += max(1, int((equipped_accessory[7] / 100) * player.max_hp))
+            if player.ward > 0:
+                player.ward += max(1, int((equipped_accessory[7] / 100) * player.max_hp))
             player.crit -= equipped_accessory[8]
             player.acc_lvl = equipped_accessory[12]
             self.bot.logger.info(f'Accessory: {equipped_accessory[4]} ATK {equipped_accessory[5]} DEF {equipped_accessory[6]} RAR '

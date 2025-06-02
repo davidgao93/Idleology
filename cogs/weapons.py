@@ -693,22 +693,21 @@ class Weapons(commands.Cog, name="weapons"):
             max_range = int(item_level / 10) + 2
             if attack_roll:
                 attack_modifier = random.randint(2, max_range)
-                await self.bot.database.increase_weapon_rarity(item_id, attack_modifier)
             else:
                 attack_modifier = 1
-                await self.bot.database.increase_weapon_rarity(item_id, attack_modifier)
+                
         
             if defense_roll:
                 defense_modifier = random.randint(2, max_range)
-                await self.bot.database.increase_weapon_rarity(item_id, defense_modifier)
             else:
                 defense_modifier = 1
-                await self.bot.database.increase_weapon_rarity(item_id, defense_modifier)
 
             if rarity_roll:
                 rarity_modifier = random.randint(5, max_range * 5)
                 await self.bot.database.increase_weapon_rarity(item_id, rarity_modifier)
 
+            await self.bot.database.increase_weapon_attack(item_id, attack_modifier)
+            await self.bot.database.increase_weapon_defence(item_id, defense_modifier)
             await self.bot.database.update_weapon_refine_count(item_id, refines_remaining - 1)
 
             result_message = []

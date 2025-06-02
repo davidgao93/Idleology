@@ -307,6 +307,7 @@ class Curios(commands.Cog, name="curios"):
                 return
             
             if not self.skills_cog:
+                print(self.skills_cog)
                 await interaction.response.send_message("Please slow down and try again.", ephemeral=True)
                 self.bot.state_manager.clear_active(user_id)  
                 return

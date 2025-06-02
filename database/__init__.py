@@ -34,6 +34,7 @@ class DatabaseManager:
 
     async def create_weapon(self, weapon: Weapon) -> None:
         """Create a weapon in the database."""
+        item_potential = 0
         if (weapon.level) <= 40:
             item_potential = 3
         elif (40 < weapon.level <= 80):
@@ -101,13 +102,13 @@ class DatabaseManager:
 
     async def create_armor(self, armor: Armor) -> None:
         """Insert a new armor in the database."""
-
+        item_potential = 0
         if (armor.level) <= 40:
             item_potential = 3
         elif (40 < armor.level <= 80):
-            armor.level = 4
+            item_potential = 4
         else:
-            armor.level = 5
+            item_potential = 5
 
         await self.connection.execute(
             """INSERT INTO armor 
@@ -924,7 +925,7 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def increase_weapon_rarity(self, item_id: str, attack_modifier: int) -> None:
+    async def increase_weapon_attack(self, item_id: str, attack_modifier: int) -> None:
         """
         Increase the attack stat of items owned by the specified user in the database.
         
@@ -937,7 +938,7 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def increase_weapon_rarity(self, item_id: str, defence_modifier: int) -> None:
+    async def increase_weapon_defence(self, item_id: str, defence_modifier: int) -> None:
         """
         Increase the defense stat of items owned by the specified user in the database.
         
