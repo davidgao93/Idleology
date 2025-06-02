@@ -10,6 +10,7 @@
 -- ALTER TABLE users ADD COLUMN `imbue_runes` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN `soul_cores` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE accessories ADD COLUMN `passive_lvl` INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE items ADD COLUMN `refinement_lvl` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN `last_combat` TIMESTAMP DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS `users` (
@@ -64,7 +65,8 @@ CREATE TABLE IF NOT EXISTS `items` (
   `passive` TEXT NOT NULL DEFAULT 'none',
   `is_equipped` BOOLEAN DEFAULT FALSE,
   `forges_remaining` INTEGER DEFAULT 0,
-  `refines_remaining` INTEGER DEFAULT 0
+  `refines_remaining` INTEGER DEFAULT 0,
+  `refinement_lvl` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `accessories` (

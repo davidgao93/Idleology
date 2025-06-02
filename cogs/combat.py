@@ -252,7 +252,6 @@ class Combat(commands.Cog, name="combat"):
 
         if "Enfeeble" in monster.modifiers:
             player.attack = int(player.attack * 0.9)
-            self.bot.logger.info(f"Enfeeble modifier applied: Player attack reduced to {player.attack}")
 
         player.rarity += len(monster.modifiers) * 30
         attack_message = ""
@@ -265,19 +264,15 @@ class Combat(commands.Cog, name="combat"):
         try:
             if "Shield-breaker" in monster.modifiers:
                 player.ward = 0
-                self.bot.logger.info(f"Shield-breaker modifier applied: player ward is now 0")
 
             if "Impenetrable" in monster.modifiers:
                 player.crit += 5
-                self.bot.logger.info(f"Impenetrable applied: beat {player.crit} to crit")
 
             if "Unblockable" in monster.modifiers:
                 player.block = 0
-                self.bot.logger.info(f"Unblockable applied: {player.block} to 0")
 
             if "Unavoidable" in monster.modifiers:
                 player.evasion = 0
-                self.bot.logger.info(f"Unavoidable applied: {player.evasion} to 0")     
 
             mod_text = " "
             modifiers_title = ""
@@ -557,7 +552,6 @@ class Combat(commands.Cog, name="combat"):
             # Apply Enfeeble modifier
             if "Enfeeble" in monster.modifiers:
                 player.attack = int(player.attack * 0.9)
-                self.bot.logger.info(f"Enfeeble modifier applied: Player attack reduced to {player.attack}")
 
             # Apply other modifiers
             if "Shield-breaker" in monster.modifiers or "Overwhelm" in monster.modifiers:
@@ -595,7 +589,6 @@ class Combat(commands.Cog, name="combat"):
             )
             embed.set_image(url=monster.image)
 
-            # Omnipotent: 20% chance to set monster's attack and defense to 0
             if player.armor_passive == "Omnipotent" and random.random() < 0.2:
                 monster.attack = 0
                 monster.defence = 0
@@ -742,17 +735,13 @@ class Combat(commands.Cog, name="combat"):
             lucky_chance = player.acc_lvl / 10 # 10% per acc level
             if random.random() <= lucky_chance:
                 attack_roll2 = random.randint(0, 100)
-                self.bot.logger.info(f"Lucky strikes modifier applied: max of {attack_roll} and {attack_roll2}, picking max")
                 attack_roll = max(attack_roll, attack_roll2)
-                self.bot.logger.info(f"Lucky strikes modifier applied: picks {attack_roll}")
                 passive_message += f"**Lucky Strikes ({player.acc_lvl})** activates!\nHit chance is now 🍀 lucky!\n"
 
         if "Suffocator" in monster.modifiers and random.random() < 0.2:
             passive_message += f"You have been suffocated!\nHit chance is now 💀 unlucky!\n"
             attack_roll2 = random.randint(0, 100)
-            self.bot.logger.info(f"Suffocator modifier applied: min of {attack_roll} and {attack_roll2}, picking minimum")
             attack_roll = min(attack_roll, attack_roll2)
-            self.bot.logger.info(f"Suffocator set attack_roll to {attack_roll}")
             
         weapon_crit = 0
         crit_passives = ["piercing", "keen", "incisive", "puncturing", "penetrating"]
@@ -828,7 +817,6 @@ class Combat(commands.Cog, name="combat"):
 
         # Finally calculate the actual damage done
         if "Titanium" in monster.modifiers:
-            self.bot.logger.info(f"Titanium modifier applied: actual damage reduced")
             actual_hit = int(actual_hit * 0.9)
 
         # If the monster would die
@@ -860,8 +848,8 @@ class Combat(commands.Cog, name="combat"):
             heal_message = f"{player.name} is already full HP!"
             return player, heal_message
 
-        heal_amount = int((player.max_hp / 10 * 3) + random.randint(1, 6))  # Heal formula
-        new_hp = min(player.max_hp, player.hp + heal_amount)  # Update current HP, max to max HP
+        heal_amount = int((player.max_hp / 10 * 3) + random.randint(1, 6))
+        new_hp = min(player.max_hp, player.hp + heal_amount)
         player.hp = new_hp
 
         heal_message = (f"{player.name} heals for **{heal_amount}** HP!\n"
@@ -871,29 +859,22 @@ class Combat(commands.Cog, name="combat"):
 
     async def monster_turn(self, player, monster):
         if player.invulnerable == True:
-            #self.bot.logger.info("Invulnerable passive active: No damage taken")
             monster_message = f"The **Invulnerable** armor imbues with power and absorbs all damage!"
             return player, monster_message
         
         evade_chance = 0.01 + player.evasion / 400
-        # self.bot.logger.info(f'{evade_chance} evasion')
         monster_hit_chance = calculate_monster_hit_chance(player, monster)
-        # self.bot.logger.info(f'monster_hit_chance = {monster_hit_chance}')
         monster_attack_roll = random.random() + evade_chance
-        # self.bot.logger.info(f'monster_attack_roll = {monster_attack_roll}')
         if "Lucifer-touched" in monster.modifiers and random.random() < 0.5:
                 monster_attack_roll2 = random.random()
-                #self.bot.logger.info(f"Lucifer-touched modifier applied: min between {monster_attack_roll:.2f} and {monster_attack_roll2:.2f}")
+            
                 monster_attack_roll = min(monster_attack_roll, monster_attack_roll2)
-                #self.bot.logger.info(f"Lucifer-touched modifier applied: attack roll is now {monster_attack_roll:.2f}")
 
         if "All-seeing" in monster.modifiers:
             monster_attack_roll = monster_attack_roll * 0.9
-            self.bot.logger.info(f"All-seeing modifier applied: Monster attack roll reduced to {monster_attack_roll:2f}")
 
         if "Celestial Watcher" in monster.modifiers:
             monster_attack_roll = 0
-            self.bot.logger.info(f"Celestial modifier applied: Monster attack roll is now 0")
 
         if monster_attack_roll <= monster_hit_chance:
             # self.bot.logger.info(f'monster_attack_roll <= monster_hit_chance, take damage')
@@ -901,23 +882,19 @@ class Combat(commands.Cog, name="combat"):
 
             if "Celestial Watcher" in monster.modifiers:
                 damage_taken = int(damage_taken * 0.8)
-                self.bot.logger.info(f"Celestial modifier applied: damage_taken reduced")
             
             if "Hellborn" in monster.modifiers:
                 damage_taken += 2
-                self.bot.logger.info(f"Hellborn modifier applied: Damage taken boosted")
             
             if "Hell's Fury" in monster.modifiers:
                 damage_taken += 3
-                self.bot.logger.info(f"Hell's Fury modifier applied: Damage taken boosted")
 
             minion_dmg = 0
             if "Summoner" in monster.modifiers:
                 minion_dmg = int(damage_taken / 3)
-                self.bot.logger.info(f"Summoner modifier applied: calculated minion_dmg: {minion_dmg}")
+
             if "Infernal Legion" in monster.modifiers:
                 minion_dmg = int(damage_taken)
-                self.bot.logger.info(f"Summoner modifier applied: calculated minion_dmg: {minion_dmg}")
             
             multi_dmg = 0
             if "Multistrike" in monster.modifiers:
@@ -925,27 +902,23 @@ class Combat(commands.Cog, name="combat"):
                 if monster_attack_roll2 <= monster_hit_chance: 
                     multi_dmg += int(0.5 * calculate_damage_taken(player, monster))
                     damage_taken += multi_dmg
-                self.bot.logger.info(f"Multistrike modifier applied")
 
-            # self.bot.logger.info(f"{damage_taken} pre block")
             is_blocked = False
             if (random.random() <= (player.block / 200 + 0.01)):
                 damage_taken = 0
                 is_blocked = True
-                self.bot.logger.info(f"all damage blocked")
+
             if "Mirror Image" in monster.modifiers and random.random() < 0.2:
                 damage_taken *= 2
-                self.bot.logger.info(f"Mirror Image modifier applied: Damage doubled to {damage_taken}")
             
             if "Unlimited Blade Works" in monster.modifiers:
                 damage_taken *= 2
-                self.bot.logger.info(f"UBW: Damage doubled to {damage_taken}")
             
             is_executed = False
             if "Executioner" in monster.modifiers and random.random() < 0.01:
                 executed_damage = int(player.hp * 0.9)
                 damage_taken = executed_damage
-                self.bot.logger.info(f"Executioner modifier applied: Damage set to {damage_taken}")
+                self.bot.logger.info(f"Executioner: {damage_taken} Damage ")
             if player.ward > 0:
                 player.ward -= damage_taken
                 if player.ward < 0:

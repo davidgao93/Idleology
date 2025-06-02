@@ -585,7 +585,7 @@ class Armor(commands.Cog, name="armor"):
             "Mystical Might": "20% chance to deal 10x damage after all calculations.",
             "Omnipotent": "20% chance to set the monsters attack and defense to 0.",
             "Treasure Hunter": "5% additional chance to turn the monster into a loot encounter.",
-            "Unlimited Wealth": "20% chance to 5x player rarity stat.",
+            "Unlimited Wealth": "20% chance to 5x (2x on bosses) player rarity stat.",
             "Everlasting Blessing": "10% chance on victory to propagate your ideology."
         }
         return passive_messages.get(passive, "No effect.")

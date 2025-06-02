@@ -927,6 +927,14 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+    async def update_weapon_refine_lvl(self, item_id: int, lvl: int) -> None:
+        """Update the refine count of an item in the database."""
+        await self.connection.execute(
+            "UPDATE items SET refinement_lvl = ? WHERE item_id = ?",
+            (lvl, item_id)
+        )
+        await self.connection.commit()
+
     async def increase_weapon_rarity(self, item_id: int, rarity_increase: int) -> None:
         """Update the item's rarity in the database."""
         await self.connection.execute(

@@ -105,7 +105,8 @@ class Weapons(commands.Cog, name="weapons"):
                 view.add_item(Button(label="Next", style=ButtonStyle.secondary, custom_id="next"))
             view.add_item(Button(label="Close", style=ButtonStyle.danger, custom_id="close"))
 
-            await message.edit(embed=embed, view=view)
+            if message:
+                await message.edit(embed=embed, view=view)
 
             def check(button_interaction: Interaction):
                 # Check if message is still valid and user matches
@@ -144,8 +145,9 @@ class Weapons(commands.Cog, name="weapons"):
                         item_defence = selected_item[5] if len(selected_item) > 5 else 0
                         item_rarity = selected_item[6] if len(selected_item) > 6 else 0
                         item_passive = selected_item[7]
+                        item_refinement = selected_item[11]
                         is_equipped = equipped_item and (equipped_item[0] == selected_item[0])
-                        embed.description = f"**{item_name}** (i{item_level}):"
+                        embed.description = f"**{item_name}** (i{item_level}) (R{item_refinement}):"
                         embed.clear_fields()
                         if (is_equipped):
                             embed.description += "\nEquipped"
@@ -810,6 +812,7 @@ class Weapons(commands.Cog, name="weapons"):
                 await self.bot.database.increase_weapon_attack(item_id, attack_modifier)
                 await self.bot.database.increase_weapon_defence(item_id, defense_modifier)
                 await self.bot.database.update_weapon_refine_count(item_id, refines_remaining - 1)
+                await self.bot.database.update_weapon_refine_lvl(item_id, 1)
 
                 result_message = []
                 if attack_modifier > 0:
