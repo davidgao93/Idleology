@@ -1147,7 +1147,7 @@ class Combat(commands.Cog, name="combat"):
                     embed.add_field(name="✨ Loot", value="Weapon pouch full!")
                 else:
                     weapon = await generate_weapon(user_id, monster.level, drop_rune=True)
-                    if weapon.passive != "Rune of Refinement":
+                    if weapon.name != "Rune of Refinement":
                         embed.set_thumbnail(url="https://i.imgur.com/mEIV0ab.jpeg")
                         await self.bot.database.create_weapon(weapon)
                     else:
