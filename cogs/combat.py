@@ -481,7 +481,8 @@ class Combat(commands.Cog, name="combat"):
                 {"name": "Lucifer, Unbound", "level": 666, "modifiers_count": 4, "hp_multiplier": 2},
             ]
 
-        for phase in phases:
+        auto_battle_active = False
+        for phase_index, phase in enumerate(phases):
             self.bot.logger.info(f'On phase {phase}')
             # Generate encounter
             monster = Monster(
@@ -619,8 +620,25 @@ class Combat(commands.Cog, name="combat"):
             embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)" if player.ward > 0 else player.hp, inline=True)                                                     
             await interaction.edit_original_response(embed=embed)
             message = await interaction.original_response()
-            reactions = ["⚔️", "🩹", "⏩"]
-            await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
+
+            health_percentage = player.hp / player.max_hp
+            if auto_battle_active or (health_percentage > 0.20 and phase_index > 0):
+                self.bot.logger.info(f"Continuing auto-battle for phase {phase_index + 1}")
+                player, monster = await self.boss_auto_battle(message, embed, player, monster)
+                if player.hp <= 0:
+                    await self.handle_boss_defeat(message, player, monster, type)
+                    return
+                elif monster.hp <= 0 and phase == phases[-1]:
+                    self.bot.logger.info(f'Won full fight')
+                    await self.handle_boss_victory(interaction, message, player, monster, type)
+                    return
+                elif monster.hp <= 0:
+                    continue  # Move to next phase automatically
+                else:
+                    auto_battle_active = False  # Pause auto-battle if HP is low
+            else:
+                reactions = ["⚔️", "🩹", "⏩"]
+                await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
 
             # Combat loop
             while monster.hp > 0 and player.hp > 0:
@@ -657,6 +675,7 @@ class Combat(commands.Cog, name="combat"):
                     elif str(reaction.emoji) == "⏩":
                         self.bot.logger.info('Start boss auto battle')
                         await message.remove_reaction(reaction.emoji, user)
+                        auto_battle_active = True
                         player, monster = await self.boss_auto_battle(message, embed, player, monster)
                         self.bot.logger.info('Boss auto-battle ended')
                         if player.hp <= 0:
@@ -665,7 +684,10 @@ class Combat(commands.Cog, name="combat"):
                             self.bot.logger.info(f'Won full fight')
                             await self.handle_boss_victory(interaction, message, player, monster, type)
                             return
-                        elif (monster.hp > 0):
+                        elif monster.hp <= 0:
+                            break
+                        else:
+                            auto_battle_active = False
                             self.bot.logger.info('Pause auto battle')
                             pause_message = "Player HP < 20%, auto-battle paused!"
 
@@ -1070,7 +1092,7 @@ class Combat(commands.Cog, name="combat"):
 
         gold_award = int((monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale ** 1.3)))
         if player.rarity > 0:
-            final_gold_award = int(gold_award * (1.5 + rarity))
+            final_gold_award = int(gold_award * (1.5 + rarity / 100))
         else:
             final_gold_award = gold_award
         final_gold_award += 20
