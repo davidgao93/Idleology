@@ -48,11 +48,11 @@ class Combat(commands.Cog, name="combat"):
         else:
             await self.bot.database.update_combat_time(user_id)
 
-        # if checkin_remaining:
-        #     value = (f"Please slow down. Try again in {(checkin_remaining.seconds // 60) % 60} minute(s) "
-        #              f"{(checkin_remaining.seconds % 60)} second(s).")
-        #     await interaction.response.send_message(value, ephemeral=True)
-        #     return
+        if checkin_remaining:
+            value = (f"Please slow down. Try again in {(checkin_remaining.seconds // 60) % 60} minute(s) "
+                     f"{(checkin_remaining.seconds % 60)} second(s).")
+            await interaction.response.send_message(value, ephemeral=True)
+            return
 
         await self.bot.database.update_combat_time(user_id)
         self.bot.state_manager.set_active(user_id, "combat")
