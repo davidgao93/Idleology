@@ -48,11 +48,11 @@ class Combat(commands.Cog, name="combat"):
         else:
             await self.bot.database.update_combat_time(user_id)
 
-        if checkin_remaining:
-            value = (f"Please slow down. Try again in {(checkin_remaining.seconds // 60) % 60} minute(s) "
-                     f"{(checkin_remaining.seconds % 60)} second(s).")
-            await interaction.response.send_message(value, ephemeral=True)
-            return
+        # if checkin_remaining:
+        #     value = (f"Please slow down. Try again in {(checkin_remaining.seconds // 60) % 60} minute(s) "
+        #              f"{(checkin_remaining.seconds % 60)} second(s).")
+        #     await interaction.response.send_message(value, ephemeral=True)
+        #     return
 
         await self.bot.database.update_combat_time(user_id)
         self.bot.state_manager.set_active(user_id, "combat")
@@ -277,11 +277,7 @@ class Combat(commands.Cog, name="combat"):
 
             if "Unavoidable" in monster.modifiers:
                 player.evasion = 0
-                self.bot.logger.info(f"Unavoidable applied: {player.evasion} to 0")  
-
-            if "Temporal Bubble" in monster.modifiers:
-                player.weapon_passive = "none"
-                self.bot.logger.info(f"Temporal bubble applied: {player.weapon_passive} to nothing")     
+                self.bot.logger.info(f"Unavoidable applied: {player.evasion} to 0")     
 
             mod_text = " "
             modifiers_title = ""
@@ -509,8 +505,6 @@ class Combat(commands.Cog, name="combat"):
                 flavor=""
             )
             monster = await generate_encounter(player, monster, is_treasure=False)
-            self.bot.logger.info(player)
-            self.bot.logger.info(monster)
 
             # Override with phase-specific modifiers
             available_modifiers = get_monster_mods()
@@ -559,11 +553,6 @@ class Combat(commands.Cog, name="combat"):
             monster.hp = int(monster.hp * phase["hp_multiplier"])
             monster.max_hp = monster.hp
             monster.xp = monster.hp
-
-            if "Glutton" in monster.modifiers:
-                monster.hp = int(monster.hp * 1.5)
-                monster.max_hp = monster.hp
-                self.bot.logger.info(f"Glutton modifier applied: Monster HP doubled to {monster.hp}")
             
             # Apply Enfeeble modifier
             if "Enfeeble" in monster.modifiers:
@@ -581,12 +570,19 @@ class Combat(commands.Cog, name="combat"):
             if "Impenetrable" in monster.modifiers:
                 player.crit += 5
 
+            if "Temporal Bubble" in monster.modifiers:
+                player.weapon_passive = "none"
+                self.bot.logger.info(f"Temporal bubble applied: {player.weapon_passive} to nothing")  
+
             # Fetch monster details
             monster = await fetch_monster_image(phase["level"], monster)
             if (type == 'aphrodite'):
                 desc = f"🐉**{monster.name}**🪽 descends!\n"
             elif (type == 'lucifer'):
                 desc = f"😈 **{monster.name}** 😈 ascends!\n"
+
+            self.bot.logger.info(player)
+            self.bot.logger.info(monster)
 
             embed = discord.Embed(
                 title=f"Witness {player.name} (Level {player.level})",
