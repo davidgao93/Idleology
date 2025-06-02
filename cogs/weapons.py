@@ -2,9 +2,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands, Interaction, Message, ButtonStyle
 from discord.ui import View, Button
+from core.util import clear_msg
 import asyncio
 import random
-import uuid
 
 class Weapons(commands.Cog, name="weapons"):
     def __init__(self, bot) -> None:
@@ -686,149 +686,152 @@ class Weapons(commands.Cog, name="weapons"):
                          message) -> None:
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
-        item_id = selected_item[0]
-        item_name = selected_item[2]
-        item_level = selected_item[3]
-        refines_remaining = selected_item[10]
+        while True:
+            selected_item = await self.bot.database.fetch_weapon_by_id(selected_item[0])
+            item_id = selected_item[0]
+            item_name = selected_item[2]
+            item_level = selected_item[3]
+            refines_remaining = selected_item[10]
 
-        player_gold = await self.bot.database.fetch_user_gold(user_id, server_id)
-        refinement_runes = await self.bot.database.fetch_refinement_runes(user_id)
+            player_gold = await self.bot.database.fetch_user_gold(user_id, server_id)
+            refinement_runes = await self.bot.database.fetch_refinement_runes(user_id)
 
-        if refines_remaining <= 0:
-            if refinement_runes > 0:
-                embed = discord.Embed(
-                    title="Apply Rune of Refinement?",
-                    description=(f"**{item_name}** has no refine attempts remaining.\n"
-                                f"Do you want to use a **Rune of Refinement** to add a refining attempt?\n"
-                                f"(You have {refinement_runes} rune(s) available)"),
-                    color=0xFFCC00
-                )
-                rune_view = View(timeout=60.0)
-                rune_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_rune"))
-                rune_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_rune"))
-                
-                await message.edit(embed=embed, view=rune_view)
+            if refines_remaining <= 0:
+                if refinement_runes > 0:
+                    embed = discord.Embed(
+                        title="Apply Rune of Refinement?",
+                        description=(f"**{item_name}** has no refine attempts remaining.\n"
+                                    f"Do you want to use a **Rune of Refinement** to add a refining attempt?\n"
+                                    f"(You have {refinement_runes} rune(s) available)"),
+                        color=0xFFCC00
+                    )
+                    rune_view = View(timeout=60.0)
+                    rune_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_rune"))
+                    rune_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_rune"))
+                    
+                    await message.edit(embed=embed, view=rune_view)
 
-                def check(button_interaction: Interaction):
-                    return (button_interaction.user == interaction.user and 
-                            button_interaction.message is not None and 
-                            button_interaction.message.id == message.id)
+                    def check(button_interaction: Interaction):
+                        return (button_interaction.user == interaction.user and 
+                                button_interaction.message is not None and 
+                                button_interaction.message.id == message.id)
 
-                try:
-                    rune_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-                    await rune_interaction.response.defer()
+                    try:
+                        rune_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                        await rune_interaction.response.defer()
 
-                    if rune_interaction.data['custom_id'] == "confirm_rune":
-                        await self.bot.database.update_refinement_runes(user_id, -1)
-                        await self.bot.database.update_weapon_refine_count(item_id, 1)
-                        embed.add_field(name="Rune of Refinement",
-                                      value=(f"+1 refine attempts."),
-                                      inline=False)
-                        embed.set_thumbnail(url="https://i.imgur.com/1tcMeSe.jpg")
-                        await message.edit(embed=embed)
-                        await asyncio.sleep(2)
-                    elif rune_interaction.data['custom_id'] == "cancel_rune":
-                        return
+                        if rune_interaction.data['custom_id'] == "confirm_rune":
+                            await self.bot.database.update_refinement_runes(user_id, -1)
+                            await self.bot.database.update_weapon_refine_count(item_id, 1)
+                            embed.add_field(name="Rune of Refinement",
+                                        value=(f"+1 refine attempts."),
+                                        inline=False)
+                            embed.set_thumbnail(url="https://i.imgur.com/1tcMeSe.jpg")
+                            await message.edit(embed=embed)
+                            await asyncio.sleep(2)
+                        elif rune_interaction.data['custom_id'] == "cancel_rune":
+                            break
 
-                except asyncio.TimeoutError:
-                    await message.delete()
-                    self.bot.state_manager.clear_active(interaction.user.id)
-                    return
+                    except asyncio.TimeoutError:
+                        await clear_msg(message)
+                        self.bot.state_manager.clear_active(interaction.user.id)
+                        break
+                else:
+                    embed.add_field(name="Refinement", value=f"You'll need runes of refinement to continue.\n"
+                        "Returning...", inline=True)
+                    await message.edit(embed=embed)
+                    await asyncio.sleep(3)
+                break
+
+            if item_level <= 40:
+                refine_costs = [1000, 6000, 10000]
+                cost = refine_costs[3 - refines_remaining]
+            elif 40 < item_level <= 80:
+                refine_costs = [5000, 15000, 25000, 50000]
+                cost = refine_costs[4 - refines_remaining]
             else:
-                embed.add_field(name="Refinement", value=f"You'll need runes of refinement to continue.\n"
-                    "Returning...", inline=True)
+                refine_costs = [10000, 30000, 50000, 100000, 200000]
+                cost = refine_costs[5 - refines_remaining]
+            
+            embed = discord.Embed(
+                title="Confirm",
+                description=f"Attempt to refine **{item_name}**?\n"
+                            f"Cost: **{cost:,} GP**\n"
+                            f"Refines Remaining: **{refines_remaining}**\n"
+                            f"Stats are granted randomly based on the **weapon's level**.\n",
+                color=0xFFCC00
+            )
+            embed.set_thumbnail(url="https://i.imgur.com/k8nPS3E.jpeg")
+            refine_view = View(timeout=60.0)
+            refine_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_refine"))
+            refine_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_refine"))
+            
+            await message.edit(embed=embed, view=refine_view)
+
+            def check(button_interaction: Interaction):
+                return (button_interaction.user == interaction.user and 
+                        button_interaction.message is not None and 
+                        button_interaction.message.id == message.id)
+
+            try:
+                refine_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                await refine_interaction.response.defer()
+
+                if refine_interaction.data['custom_id'] == "cancel_refine":
+                    break
+
+                if player_gold < cost:
+                    embed.add_field(name="Refining", value=f"Not enough gold. Returning...", inline=False)
+                    await message.edit(embed=embed)
+                    await asyncio.sleep(2)
+                    break
+
+                await self.bot.database.update_user_gold(user_id, player_gold - cost)
+                embed.add_field(name="Refining", value=f"The blacksmith carefully hones your weapon.", inline=False)
+            
+                attack_roll = random.randint(0, 100) < 80
+                defense_roll = random.randint(0, 100) < 50
+                rarity_roll = random.randint(0, 100) < 20
+
+                attack_modifier = 0
+                defense_modifier = 0
+                rarity_modifier = 0
+                max_range = int(item_level / 10) + 2
+                if attack_roll:
+                    attack_modifier = random.randint(2, max_range)
+                else:
+                    attack_modifier = 1
+                    
+            
+                if defense_roll:
+                    defense_modifier = random.randint(2, max_range)
+                else:
+                    defense_modifier = 1
+
+                if rarity_roll:
+                    rarity_modifier = random.randint(5, max_range * 5)
+                    await self.bot.database.increase_weapon_rarity(item_id, rarity_modifier)
+
+                await self.bot.database.increase_weapon_attack(item_id, attack_modifier)
+                await self.bot.database.increase_weapon_defence(item_id, defense_modifier)
+                await self.bot.database.update_weapon_refine_count(item_id, refines_remaining - 1)
+
+                result_message = []
+                if attack_modifier > 0:
+                    result_message.append(f"Attack increased by **{attack_modifier}**!")
+                if defense_modifier > 0:
+                    result_message.append(f"Defense increased by **{defense_modifier}**!")
+                if rarity_modifier > 0:
+                    result_message.append(f"Rarity increased by **{rarity_modifier}**!")
+
+                embed.add_field(name="Refining", value=("\n".join(result_message) + "\nReturning..."), inline=False)
                 await message.edit(embed=embed)
                 await asyncio.sleep(3)
-            return
 
-        if item_level <= 40:
-            refine_costs = [1000, 6000, 10000]
-            cost = refine_costs[3 - refines_remaining]
-        elif 40 < item_level <= 80:
-            refine_costs = [5000, 15000, 25000, 50000]
-            cost = refine_costs[4 - refines_remaining]
-        else:
-            refine_costs = [10000, 30000, 50000, 100000, 200000]
-            cost = refine_costs[5 - refines_remaining]
-        
-        embed = discord.Embed(
-            title="Confirm",
-            description=f"Attempt to refine **{item_name}**?\n"
-                        f"Cost: **{cost:,} GP**\n"
-                        f"Refines Remaining: **{refines_remaining}**\n"
-                        f"Stats are granted randomly based on the **weapon's level**.\n",
-            color=0xFFCC00
-        )
-        embed.set_thumbnail(url="https://i.imgur.com/k8nPS3E.jpeg")
-        refine_view = View(timeout=60.0)
-        refine_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_refine"))
-        refine_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_refine"))
-        
-        await message.edit(embed=embed, view=refine_view)
-
-        def check(button_interaction: Interaction):
-            return (button_interaction.user == interaction.user and 
-                    button_interaction.message is not None and 
-                    button_interaction.message.id == message.id)
-
-        try:
-            refine_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-            await refine_interaction.response.defer()
-
-            if refine_interaction.data['custom_id'] == "cancel_refine":
-                return
-
-            if player_gold < cost:
-                embed.add_field(name="Refining", value=f"Not enough gold. Returning...", inline=False)
-                await message.edit(embed=embed)
-                await asyncio.sleep(2)
-                return
-
-            await self.bot.database.update_user_gold(user_id, player_gold - cost)
-            embed.add_field(name="Refining", value=f"The blacksmith carefully hones your weapon.", inline=False)
-        
-            attack_roll = random.randint(0, 100) < 80
-            defense_roll = random.randint(0, 100) < 50
-            rarity_roll = random.randint(0, 100) < 20
-
-            attack_modifier = 0
-            defense_modifier = 0
-            rarity_modifier = 0
-            max_range = int(item_level / 10) + 2
-            if attack_roll:
-                attack_modifier = random.randint(2, max_range)
-            else:
-                attack_modifier = 1
-                
-        
-            if defense_roll:
-                defense_modifier = random.randint(2, max_range)
-            else:
-                defense_modifier = 1
-
-            if rarity_roll:
-                rarity_modifier = random.randint(5, max_range * 5)
-                await self.bot.database.increase_weapon_rarity(item_id, rarity_modifier)
-
-            await self.bot.database.increase_weapon_attack(item_id, attack_modifier)
-            await self.bot.database.increase_weapon_defence(item_id, defense_modifier)
-            await self.bot.database.update_weapon_refine_count(item_id, refines_remaining - 1)
-
-            result_message = []
-            if attack_modifier > 0:
-                result_message.append(f"Attack increased by **{attack_modifier}**!")
-            if defense_modifier > 0:
-                result_message.append(f"Defense increased by **{defense_modifier}**!")
-            if rarity_modifier > 0:
-                result_message.append(f"Rarity increased by **{rarity_modifier}**!")
-
-            embed.add_field(name="Refining", value=("\n".join(result_message) + "\nReturning..."), inline=False)
-            await message.edit(embed=embed)
-            await asyncio.sleep(3)
-
-        except asyncio.TimeoutError:
-            await message.delete()
-            self.bot.state_manager.clear_active(interaction.user.id)
+            except asyncio.TimeoutError:
+                await message.delete()
+                self.bot.state_manager.clear_active(interaction.user.id)
+        return
 
 async def setup(bot) -> None:
     await bot.add_cog(Weapons(bot))
