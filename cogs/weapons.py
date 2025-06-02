@@ -58,16 +58,22 @@ class Weapons(commands.Cog, name="weapons"):
                 await interaction.followup.send("You peer into your weapon's pouch, it is empty.")
                 break
 
+            equipped_item = await self.bot.database.get_equipped_weapon(user_id)
+            equipped_items = [item for item in items if equipped_item and (equipped_item[0] == item[0])]
+            other_items = [item for item in items if not equipped_item or (equipped_item[0] != item[0])]
+            other_items.sort(key=lambda item: item[3], reverse=True)
+            sorted_items = equipped_items + other_items
+
             items.sort(key=lambda item: item[3], reverse=True)
             start_idx = current_page * items_per_page
-            items_to_display = items[start_idx:start_idx + items_per_page]
+            items_to_display = sorted_items[start_idx:start_idx + items_per_page]
             embed.clear_fields()
             items_display_string = ""
 
             for index, item in enumerate(items_to_display):
                 item_name = item[2]
                 item_level = item[3]
-                equipped_item = await self.bot.database.get_equipped_weapon(user_id)
+                
                 is_equipped = equipped_item and (equipped_item[0] == item[0])
                 
                 items_display_string += (
@@ -137,6 +143,7 @@ class Weapons(commands.Cog, name="weapons"):
                         item_defence = selected_item[5] if len(selected_item) > 5 else 0
                         item_rarity = selected_item[6] if len(selected_item) > 6 else 0
                         item_passive = selected_item[7]
+                        is_equipped = equipped_item and (equipped_item[0] == selected_item[0])
                         embed.description = f"**{item_name}** (i{item_level}):"
                         embed.clear_fields()
                         embed.add_field(name="Attack", value=item_attack, inline=True)
@@ -148,7 +155,7 @@ class Weapons(commands.Cog, name="weapons"):
                             embed.add_field(name="Effect", value=effect_description, inline=False)
                         item_guide = (
                             "Select an action:\n"
-                            "- Equip: Equip the item\n"
+                            f"- {'Unequip' if is_equipped else 'Equip'}: {'Unequip' if is_equipped else 'Equip'} the item\n"
                             "- Forge: Attempt to forge\n"
                             "- Refine: Attempt to refine\n"
                             "- Discard: Discard item\n"
@@ -157,10 +164,11 @@ class Weapons(commands.Cog, name="weapons"):
                         embed.add_field(name="Item Guide", value=item_guide, inline=False)
                         
                         action_view = View(timeout=60.0)
-                        action_view.add_item(Button(label="Equip", style=ButtonStyle.primary, custom_id="equip"))
+                        action_view.add_item(Button(label="Unequip" if is_equipped else "Equip", style=ButtonStyle.primary, custom_id="unequip" if is_equipped else "equip"))
                         action_view.add_item(Button(label="Forge", style=ButtonStyle.primary, custom_id="forge"))
                         action_view.add_item(Button(label="Refine", style=ButtonStyle.primary, custom_id="refine"))
                         action_view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))
+                        action_view.add_item(Button(label="Send", style=ButtonStyle.primary, custom_id="send"))
                         action_view.add_item(Button(label="Back", style=ButtonStyle.secondary, custom_id="back"))
                         
                         await message.edit(embed=embed, view=action_view)
@@ -179,12 +187,103 @@ class Weapons(commands.Cog, name="weapons"):
                                     await message.edit(embed=embed, view=action_view)
                                 await asyncio.sleep(3)
                                 continue
+                            elif action_interaction.data['custom_id'] == "unequip":
+                                await self.bot.database.unequip_weapon(user_id)
+                                embed.add_field(name="Unequip", value=f"Unequipped weapon.", inline=False)
+                                await message.edit(embed=embed, view=action_view)
+                                await asyncio.sleep(3)
+                                continue
                             elif action_interaction.data['custom_id'] == "forge":
                                 await self.forge_item(action_interaction, selected_item, embed, message)
                                 continue
                             elif action_interaction.data['custom_id'] == "refine":
                                 await self.refine_item(action_interaction, selected_item, embed, message)
                                 continue
+                            elif action_interaction.data['custom_id'] == "send":
+                                embed.clear_fields()
+                                embed.add_field(
+                                    name="Send Weapon",
+                                    value="Please mention a user (@username) to send the weapon to.",
+                                    inline=False
+                                )
+                                await message.edit(embed=embed, view=None)
+                                
+                                def message_check(m: Message):
+                                    return (m.author == interaction.user and 
+                                            m.channel == interaction.channel and 
+                                            m.mentions)
+                                
+                                try:
+                                    user_message = await self.bot.wait_for('message', timeout=60.0, check=message_check)
+                                    await user_message.delete()
+                                    receiver = user_message.mentions[0]
+                                    
+                                    receiver_user = await self.bot.database.fetch_user(receiver.id, server_id)
+                                    if not receiver_user:
+                                        embed.add_field(name="Error", value="This person isn't a valid adventurer.", inline=False)
+                                        await message.edit(embed=embed, view=action_view)
+                                        continue
+
+                                    # Run send_weapon logic
+                                    if receiver.id == interaction.user.id:
+                                        embed.add_field(name="Error", value="You cannot send items to yourself.", inline=False)
+                                        await message.edit(embed=embed, view=action_view)
+                                        continue
+                                    
+                                    current_level = receiver_user[4]
+                                    
+                                    if (item_level - current_level) > 15:
+                                        embed.add_field(name="Error", value="You cannot send this item due to iLvl diff being too great. (< 15)", inline=False)
+                                        await message.edit(embed=embed, view=action_view)
+                                        continue
+                                    
+                                    if is_equipped:
+                                        embed.add_field(name="Error", value="You cannot send a weapon that you have equipped.", inline=False)
+                                        await message.edit(embed=embed, view=action_view)
+                                        continue
+                                    
+                                    receiver_items = await self.bot.database.fetch_user_weapons(str(receiver.id))
+                                    if len(receiver_items) >= 58:
+                                        embed.add_field(name="Error", value=f"{receiver.mention} cannot receive more weapons. They have too many already.", inline=False)
+                                        await message.edit(embed=embed, view=action_view)
+                                        continue
+                                    
+                                    
+                                    confirm_embed = discord.Embed(
+                                        title="Confirm Send Weapon",
+                                        description=f"Send **{item_name}** to {receiver.mention}?",
+                                        color=0x00FF00
+                                    )
+                                    confirm_view = View(timeout=60.0)
+                                    confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_send"))
+                                    confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_send"))
+                                    
+                                    await message.edit(embed=confirm_embed, view=confirm_view)
+                                    
+                                    try:
+                                        confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                                        await confirm_interaction.response.defer()
+                                        
+                                        if confirm_interaction.data['custom_id'] == "confirm_send":
+                                            await self.bot.database.send_weapon(receiver.id, selected_item[0])
+                                            confirm_embed.add_field(name="Weapon Sent", value=f"Sent **{item_name}** to {receiver.mention}! 🎉", inline=False)
+                                            await message.edit(embed=confirm_embed, view=None)
+                                            self.bot.state_manager.clear_active(user_id)
+                                            await asyncio.sleep(3)
+                                            break  # Return to weapon list
+                                        else:
+                                            self.bot.state_manager.clear_active(user_id)
+                                            continue
+                                    
+                                    except asyncio.TimeoutError:
+                                        await message.delete()
+                                        self.bot.state_manager.clear_active(user_id)
+                                        break
+                                    
+                                except asyncio.TimeoutError:
+                                    await message.delete()
+                                    self.bot.state_manager.clear_active(user_id)
+                                    break
                             elif action_interaction.data['custom_id'] == "discard":
                                 await self.discard(action_interaction, selected_item, message, embed)
                                 continue

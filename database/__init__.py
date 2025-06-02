@@ -468,6 +468,16 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+    
+    async def unequip_weapon(self, user_id: str) -> None:
+        """Equip an item and deselect any previously equipped item."""
+        # First, unequip any currently equipped item for this user
+        await self.connection.execute(
+            "UPDATE items SET is_equipped = FALSE WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        await self.connection.commit()
+
 
     async def equip_accessory(self, user_id: str, item_id: int) -> None:
         """Equip an item and deselect any previously equipped item."""
