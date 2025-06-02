@@ -473,7 +473,7 @@ class DatabaseManager:
         """Equip an item and deselect any previously equipped item."""
         # First, unequip any currently equipped item for this user
         await self.connection.execute(
-            "UPDATE items SET is_equipped = FALSE WHERE user_id = ? AND is_equipped = TRUE",
+            "UPDATE items SET is_equipped = 0 WHERE user_id = ? AND is_equipped = 1",
             (user_id,)
         )
         await self.connection.commit()
