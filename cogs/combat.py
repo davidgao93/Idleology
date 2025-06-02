@@ -1047,39 +1047,26 @@ class Combat(commands.Cog, name="combat"):
             color=0x00FF00,
         )
         rare_monsters = ["Treasure Chest", 
-                         "Random Korean Lady", 
-                         "KPOP STAR", 
-                         "Loot Goblin", 
-                         "Yggdrasil",
-                         "Capybara Sauna"]
+                        "Random Korean Lady", 
+                        "KPOP STAR", 
+                        "Loot Goblin", 
+                        "Yggdrasil",
+                        "Capybara Sauna"]
         
         special_drop = len(monster.modifiers) / 100
         if monster.name in rare_monsters:
             special_drop = 0.05
-            drop_chance = 0
             reward_scale = int(player.level / 10)
         else:
-            drop_chance = 90
             reward_scale = (monster.level - player.level) / 10
 
-        rarity = player.rarity / 100
-        drop_roll = random.randint(1, 100) + int(100 - player.level)
-        loot_roll = random.randint(1, 100)
-        acc_roll = random.randint(1, 100)
-        arm_roll = random.randint(1, 100)
-        final_loot_roll = loot_roll
-        final_acc_roll = acc_roll
-        final_arm_roll = arm_roll
-        if player.rarity > 0:
-            drop_roll = int(drop_roll + (10 * rarity))
-            final_loot_roll = int(loot_roll + (10 * rarity))
-            final_acc_roll = int(acc_roll + (10 * rarity))
-            final_arm_roll = int(arm_roll + (10 * rarity))
-            self.bot.logger.info(f"User has {rarity} RAR: "
-                f"Rolls: {drop_roll} loot, "
-                f"{final_loot_roll} wep, "
-                f"{final_acc_roll} acc, "
-                f"{final_arm_roll} armor")
+        rarity = player.rarity
+        # Level-scaled drop chance: base 10%, boosted by rarity
+        base_drop_chance = 10
+        level_bonus = int(0.2 * (100 - player.level))
+        drop_chance = base_drop_chance + (player.rarity / 10) + level_bonus
+        drop_roll = random.randint(1, 100)
+        self.bot.logger.info(f"Drop roll: {drop_roll}, Drop chance: {drop_chance}, Rarity: {rarity}")
 
         gold_award = int((monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale ** 1.3)))
         if player.rarity > 0:
@@ -1093,98 +1080,95 @@ class Combat(commands.Cog, name="combat"):
             if random.randint(1, 100) <= double_gold_chance:
                 final_gold_award *= 2
                 embed.add_field(name="Accessory Passive",
-                                      value=f"The accessory's **Prosper ({player.acc_lvl})** activates, granting double gold!",
-                                      inline=False)
+                                value=f"The accessory's **Prosper ({player.acc_lvl})** activates, granting double gold!",
+                                inline=False)
         elif player.acc_passive == "Infinite Wisdom":
             double_exp_chance = player.acc_lvl * 5 / 100
             if random.random() <= double_exp_chance:
                 monster.xp *= 2
                 embed.add_field(name="Accessory Passive",
-                                      value=f"The accessory's **Infinite Wisdom ({player.acc_lvl})** activates, "
-                                            f"granting double experience!",
-                                      inline=False)
+                                value=f"The accessory's **Infinite Wisdom ({player.acc_lvl})** activates, "
+                                    f"granting double experience!",
+                                inline=False)
         embed.add_field(name="📚 Experience", value=f"{monster.xp:,} XP")
         embed.add_field(name="💰 Gold", value=f"{final_gold_award:,} GP")
+
         items = await self.bot.database.fetch_user_weapons(user_id)
         accs = await self.bot.database.fetch_user_accessories(user_id)
         arms = await self.bot.database.fetch_user_armors(user_id)
-        weapon_dropped = False
-        acc_dropped = False
-        arm_dropped = False
-        if (drop_roll >= drop_chance):
-            if final_loot_roll >= 90:
-                weapon_dropped = True
+        item_dropped = False
+
+        if drop_roll <= drop_chance:
+            # Weighted item type selection
+            item_type_roll = random.randint(1, 100)
+            if item_type_roll <= 50:  # 50% chance for weapon
                 if len(items) > 60:
                     embed.add_field(name="✨ Loot", value="Weapon pouch full!")
                 else:
+                    item_dropped = True
                     weapon = await generate_weapon(user_id, monster.level, drop_rune=True)
                     if weapon.name != "Rune of Refinement":
                         embed.set_thumbnail(url="https://i.imgur.com/mEIV0ab.jpeg")
                         await self.bot.database.create_weapon(weapon)
                     else:
                         embed.set_thumbnail(url="https://i.imgur.com/1tcMeSe.jpeg")
-                        await self.bot.database.update_refinement_runes(user_id, 1)  # Increment runes
+                        await self.bot.database.update_refinement_runes(user_id, 1)
                     embed.add_field(name="✨ Loot", value=f"{weapon.description}", inline=False)
-
-            if not weapon_dropped:
-                if final_acc_roll >= 95:
-                    acc_dropped = True
-                    if len(accs) > 60:
-                        embed.add_field(name="✨ Loot", value="Accessory pouch full!")
+            elif item_type_roll <= 80:  # 30% chance for accessory (50+30)
+                if len(accs) > 60:
+                    embed.add_field(name="✨ Loot", value="Accessory pouch full!")
+                else:
+                    item_dropped = True
+                    acc = await generate_accessory(user_id, monster.level, drop_rune=True)
+                    if acc.name != "Rune of Potential":
+                        await self.bot.database.create_accessory(acc)
+                        embed.set_thumbnail(url="https://i.imgur.com/KRZUDyO.jpeg")
                     else:
-                        acc = await generate_accessory(user_id, monster.level, drop_rune=True)
-                        if acc.name != "Rune of Potential":
-                            await self.bot.database.create_accessory(acc)
-                            embed.set_thumbnail(url="https://i.imgur.com/KRZUDyO.jpeg")
-                        else:
-                            await self.bot.database.update_potential_runes(user_id, 1)  # Increment runes
-                            embed.set_thumbnail(url="https://i.imgur.com/aeorjQG.jpeg")
-                        embed.add_field(name="✨ Loot", value=f"{acc.description}", inline=False)
-
-            if not weapon_dropped and not acc_dropped:
-                if (len(arms) > 60):
+                        await self.bot.database.update_potential_runes(user_id, 1)
+                        embed.set_thumbnail(url="https://i.imgur.com/aeorjQG.jpeg")
+                    embed.add_field(name="✨ Loot", value=f"{acc.description}", inline=False)
+            else:  # 20% chance for armor (80+20)
+                if len(arms) > 60:
                     embed.add_field(name="✨ Loot", value="Armor pouch full!")
                 else:
-                    if final_arm_roll >= 97:
-                        arm_dropped = True
-                        armor = await generate_armor(user_id, monster.level, drop_rune=True)
-                        if armor.name != "Rune of Imbuing":
-                            await self.bot.database.create_armor(armor)
-                            embed.set_thumbnail(url="https://i.imgur.com/jtYg94i.png")
-                        else:
-                            await self.bot.database.update_imbuing_runes(user_id, 1)  # Increment runes
-                            embed.set_thumbnail(url="https://i.imgur.com/MHgtUW8.png")
-                        
-                        embed.add_field(name="✨ Loot", value=f"{armor.description}", inline=False)
+                    item_dropped = True
+                    armor = await generate_armor(user_id, monster.level, drop_rune=True)
+                    if armor.name != "Rune of Imbuing":
+                        await self.bot.database.create_armor(armor)
+                        embed.set_thumbnail(url="https://i.imgur.com/jtYg94i.png")
+                    else:
+                        await self.bot.database.update_imbuing_runes(user_id, 1)
+                        embed.set_thumbnail(url="https://i.imgur.com/MHgtUW8.png")
+                    embed.add_field(name="✨ Loot", value=f"{armor.description}", inline=False)
 
-        if not weapon_dropped and not acc_dropped and not arm_dropped:
+        if not item_dropped:
             embed.add_field(name="✨ Loot", value="None")
-        if drop_chance == 0:
+
+        if monster.name in rare_monsters:
             embed.add_field(name="✨ Curious Curio", value="A curious curio was left behind!", 
-                                    inline=False)
+                            inline=False)
             await self.bot.database.update_curios_count(user_id, server_id, 1)
-        if (player.level > 20):
+        if player.level > 20:
             if random.random() < (0.03 + special_drop):
                 embed.add_field(name="✨ Draconic Key", value="A draconic key was left behind!",
-                                        inline=False)
+                                inline=False)
                 embed.set_image(url="https://i.imgur.com/jPteeoT.png")
                 await self.bot.database.add_dragon_key(user_id, 1)
             if random.random() < (0.03 + special_drop):
                 embed.add_field(name="✨ Angelic Key", value="An angelic key was left behind!",
-                                        inline=False)
+                                inline=False)
                 embed.set_image(url="https://i.imgur.com/cpwPxjU.png")
                 await self.bot.database.add_angel_key(user_id, 1)
             if random.random() < (0.08 + special_drop):
                 embed.add_field(name="❤️‍🔥 Soul Core", value="A demonic soul core was left behind!",
-                                        inline=False)
+                                inline=False)
                 embed.set_image(url="https://i.imgur.com/x6QKvSy.png")
                 await self.bot.database.add_soul_cores(user_id, 1)
 
-        # Everlasting Blessing: Placeholder for 10% chance to propagate ideology
         if player.armor_passive == "Everlasting Blessing" and random.random() < 0.1:
             embed.add_field(name="Armor Passive",
-                                   value="The **Everlasting Blessing** imbues with power!",
-                                   inline=False)
+                            value="The **Everlasting Blessing** imbues with power!",
+                            inline=False)
             self.bot.logger.info("Everlasting Blessing passive")
             existing_user = await self.bot.database.fetch_user(user_id, server_id)
             user_ideology = existing_user[8]
@@ -1192,34 +1176,27 @@ class Combat(commands.Cog, name="combat"):
             base_followers = 10
             growth_factor = 1.5
             scaling_factor = 100
-            if (followers_count > 1000):
+            if followers_count > 1000:
                 follower_increase = 100
             else:
                 follower_increase = base_followers * (growth_factor ** (followers_count // scaling_factor))
-            # Add random variation (±10%)
             variation = random.uniform(0.9, 1.1)
             follower_increase = int(follower_increase * variation)
             new_followers_count = followers_count + follower_increase
-
-            # Calculate gold reward (linear)
             base_gold = 1000
             gold_per_follower = 50
             gold_reward = base_gold + (followers_count * gold_per_follower)
-
-            # Update database
             await self.bot.database.update_followers_count(user_ideology, new_followers_count)
             await self.bot.database.add_gold(user_id, gold_reward)
             await self.bot.database.update_propagate_time(user_id)
-            
             propagate_message = (
                 f"You advocate for **{user_ideology}** and it spreads!\n"
                 f"New followers gained: **{follower_increase}** (Total: **{new_followers_count}**).\n"
                 f"Gold collected from followers: **{gold_reward:,} GP**."
             )
-            # Send response
             embed.add_field(name=f"{user_ideology} propagated",
-                        value=propagate_message,
-                        inline=False)
+                            value=propagate_message,
+                            inline=False)
 
         await message.edit(embed=embed)
         player = await self.update_experience(interaction, message, embed, player, monster)
