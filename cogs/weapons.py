@@ -723,12 +723,7 @@ class Weapons(commands.Cog, name="weapons"):
                         if rune_interaction.data['custom_id'] == "confirm_rune":
                             await self.bot.database.update_refinement_runes(user_id, -1)
                             await self.bot.database.update_weapon_refine_count(item_id, 1)
-                            embed.add_field(name="Rune of Refinement",
-                                        value=(f"+1 refine attempts."),
-                                        inline=False)
-                            embed.set_thumbnail(url="https://i.imgur.com/1tcMeSe.jpg")
-                            await message.edit(embed=embed)
-                            await asyncio.sleep(2)
+                            refines_remaining += 1
                         elif rune_interaction.data['custom_id'] == "cancel_rune":
                             break
 
@@ -740,8 +735,8 @@ class Weapons(commands.Cog, name="weapons"):
                     embed.add_field(name="Refinement", value=f"You'll need runes of refinement to continue.\n"
                         "Returning...", inline=True)
                     await message.edit(embed=embed)
-                    await asyncio.sleep(3)
-                break
+                    await asyncio.sleep(5)
+                    break
 
             if item_level <= 40:
                 refine_costs = [1000, 6000, 10000]
@@ -824,9 +819,10 @@ class Weapons(commands.Cog, name="weapons"):
                 if rarity_modifier > 0:
                     result_message.append(f"Rarity increased by **{rarity_modifier}**!")
 
-                embed.add_field(name="Refining", value=("\n".join(result_message) + "\nReturning..."), inline=False)
+                embed.add_field(name="Refining", value=("\n".join(result_message) + "\nSaving item..."), inline=False)
                 await message.edit(embed=embed)
                 await asyncio.sleep(3)
+                
 
             except asyncio.TimeoutError:
                 await message.delete()
