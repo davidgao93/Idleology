@@ -64,9 +64,13 @@ class Guild(commands.Cog, name="adventurer's guild"):
                 exp_percentage = 100  # Full EXP if already max level or no exp required
             # Add the character stats to the embed
             embed.add_field(name="Experience ✨", value=f"{current_exp:,} ({exp_percentage:.2f}%)", inline=True)
+            ascension = existing_user[15]
+            if (ascension > 0):
+                embed.add_field(name="Ascension 🌟", value=ascension, inline=True)
             embed.add_field(name="Gold 💰", value=f"{existing_user[6]:,}", inline=True)
             embed.set_thumbnail(url=existing_user[7])
             embed.add_field(name="Ideology 🧠", value=existing_user[8], inline=True)
+
             await interaction.response.send_message(embed=embed)
 
 
