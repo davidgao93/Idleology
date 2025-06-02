@@ -93,3 +93,4 @@ class Monster:
     modifiers: List[str]
     image: str
     flavor: str
+    is_boss: bool = False

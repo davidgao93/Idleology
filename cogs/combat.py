@@ -43,43 +43,40 @@ class Combat(commands.Cog, name="combat"):
             last_combat_time_dt = datetime.fromisoformat(last_combat_time)
             time_since_combat = datetime.now() - last_combat_time_dt
             if time_since_combat < combat_duration:
-                remaining_time = combat_duration - time_since_combat
-                checkin_remaining = remaining_time
-        else:
-            await self.bot.database.update_combat_time(user_id)
-
-        if checkin_remaining:
-            value = (f"Please slow down. Try again in {(checkin_remaining.seconds // 60) % 60} minute(s) "
-                     f"{(checkin_remaining.seconds % 60)} second(s).")
-            await interaction.response.send_message(value, ephemeral=True)
-            return
-
+                checkin_remaining = combat_duration - time_since_combat
+                await interaction.response.send_message(
+                    f"Please slow down. Try again in {(checkin_remaining.seconds // 60) % 60} minute(s) "
+                    f"{(checkin_remaining.seconds % 60)} second(s).",
+                    ephemeral=True
+                )
+                return
+            
         await self.bot.database.update_combat_time(user_id)
         self.bot.state_manager.set_active(user_id, "combat")
         
         # Initialize our player object
         player = Player(
-            id = user_id,
-            name = existing_user[3],
-            level = existing_user[4],
-            ascension = existing_user[15],
-            exp = existing_user[5],
-            hp = existing_user[11],
-            max_hp = existing_user[12],
-            attack = existing_user[9],
-            defence = existing_user[10],
-            rarity = 0,
-            crit = 95,
-            ward = 0,
-            block = 0,
-            evasion = 0,
-            potions = existing_user[16],
-            wep_id = 0,
-            weapon_passive = "",
-            acc_passive = "",
-            acc_lvl = 0,
-            armor_passive = "",
-            invulnerable = False
+            id=user_id,
+            name=existing_user[3],
+            level=existing_user[4],
+            ascension=existing_user[15],
+            exp=existing_user[5],
+            hp=existing_user[11],
+            max_hp=existing_user[12],
+            attack=existing_user[9],
+            defence=existing_user[10],
+            rarity=0,
+            crit=95,
+            ward=0,
+            block=0,
+            evasion=0,
+            potions=existing_user[16],
+            wep_id=0,
+            weapon_passive="",
+            acc_passive="",
+            acc_lvl=0,
+            armor_passive="",
+            invulnerable=False
         )
 
         # Handle equipped weapon
@@ -90,7 +87,7 @@ class Combat(commands.Cog, name="combat"):
             player.attack += equipped_item[4]
             player.defence += equipped_item[5]
             player.rarity += equipped_item[6]
-            self.bot.logger.info(f'Weapon: {equipped_item[4]} ATK {equipped_item[4]} DEF {equipped_item[5]} RAR {equipped_item[7]} passive')
+            self.bot.logger.info(f'Weapon ATK {equipped_item[4]} DEF {equipped_item[5]} RAR {equipped_item[7]} passive')
 
         equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
         if equipped_accessory:
@@ -102,7 +99,8 @@ class Combat(commands.Cog, name="combat"):
                 player.ward += max(1, int((equipped_accessory[7] / 100) * player.max_hp))
             player.crit -= equipped_accessory[8]
             player.acc_lvl = equipped_accessory[12]
-            self.bot.logger.info(f'Accessory: {equipped_accessory[4]} ATK {equipped_accessory[5]} DEF {equipped_accessory[6]} RAR '
+            self.bot.logger.info(
+                    f'Accessory {equipped_accessory[4]} ATK {equipped_accessory[5]} DEF {equipped_accessory[6]} RAR '
                     f'{5 + equipped_accessory[8]}% Crit, {player.ward} Ward '
                     f'{player.acc_passive} passive ({player.acc_lvl})')
             
@@ -119,10 +117,10 @@ class Combat(commands.Cog, name="combat"):
         is_heaven_door = False
         is_hell_door = False
         boss_type = ''
-        if (player.level >= 20 and 
-            existing_user[25] > 0 and 
-            existing_user[26] > 0 and
-            random.random() < 0.2):
+        phases = []
+        current_phase_index = 0
+
+        if player.level >= 20 and existing_user[25] > 0 and existing_user[26] > 0 and random.random() < 0.2:
             is_heaven_door = True
             embed = discord.Embed(
                 title="Door of Ascension",
@@ -150,8 +148,13 @@ class Combat(commands.Cog, name="combat"):
                     await self.bot.database.add_dragon_key(user_id, -1)
                     await self.bot.database.add_angel_key(user_id, -1)
                     boss_type = 'aphrodite'
+                    phases = [
+                        {"name": "Aphrodite, Heaven's Envoy", "level": 886, "modifiers_count": 3, "hp_multiplier": 1.5},
+                        {"name": "Aphrodite, the Eternal", "level": 887, "modifiers_count": 6, "hp_multiplier": 2},
+                        {"name": "Aphrodite, Harbinger of Destruction", "level": 888, "modifiers_count": 9, "hp_multiplier": 2.5},
+                    ]
                 else:
-                    pass  # Proceed with normal combat
+                    pass
             except asyncio.TimeoutError: 
                 await message.clear_reactions()                      
                 await message.edit(embed=discord.Embed(
@@ -160,7 +163,7 @@ class Combat(commands.Cog, name="combat"):
                     color=0xFF0000))
                 self.bot.state_manager.clear_active(user_id)
                 return
-        elif (player.level >= 20 and existing_user[28] >= 5 and random.random() < 0.2):
+        elif player.level >= 20 and existing_user[28] >= 5 and random.random() < 0.2:
             is_hell_door = True
             embed = discord.Embed(
                 title="Door of the Infernal",
@@ -187,6 +190,12 @@ class Combat(commands.Cog, name="combat"):
                     is_boss_encounter = True
                     await self.bot.database.add_soul_cores(user_id, -5)
                     boss_type = 'lucifer'
+                    phases = [
+                        {"name": "Lucifer, Fallen", "level": 663, "modifiers_count": 1, "hp_multiplier": 1.25},
+                        {"name": "Lucifer, Maddened", "level": 664, "modifiers_count": 2, "hp_multiplier": 1.5},
+                        {"name": "Lucifer, Enraged", "level": 665, "modifiers_count": 3, "hp_multiplier": 1.75},
+                        {"name": "Lucifer, Unbound", "level": 666, "modifiers_count": 4, "hp_multiplier": 2},
+                    ]
                 else:
                     pass  # Proceed with normal combat
             except asyncio.TimeoutError: 
@@ -221,7 +230,8 @@ class Combat(commands.Cog, name="combat"):
             defence=0,
             modifiers=[],
             image="",
-            flavor=""
+            flavor="",
+            is_boss=False
         )
 
         if random.random() < treasure_chance:
@@ -497,7 +507,8 @@ class Combat(commands.Cog, name="combat"):
                 defence=0,
                 modifiers=[],
                 image="",
-                flavor=""
+                flavor="",
+                is_boss=True
             )
             monster = await generate_encounter(player, monster, is_treasure=False)
 
