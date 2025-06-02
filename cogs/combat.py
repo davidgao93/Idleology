@@ -117,8 +117,6 @@ class Combat(commands.Cog, name="combat"):
         is_heaven_door = False
         is_hell_door = False
         boss_type = ''
-        phases = []
-        current_phase_index = 0
 
         if player.level >= 20 and existing_user[25] > 0 and existing_user[26] > 0 and random.random() < 0.2:
             is_heaven_door = True
@@ -148,11 +146,6 @@ class Combat(commands.Cog, name="combat"):
                     await self.bot.database.add_dragon_key(user_id, -1)
                     await self.bot.database.add_angel_key(user_id, -1)
                     boss_type = 'aphrodite'
-                    phases = [
-                        {"name": "Aphrodite, Heaven's Envoy", "level": 886, "modifiers_count": 3, "hp_multiplier": 1.5},
-                        {"name": "Aphrodite, the Eternal", "level": 887, "modifiers_count": 6, "hp_multiplier": 2},
-                        {"name": "Aphrodite, Harbinger of Destruction", "level": 888, "modifiers_count": 9, "hp_multiplier": 2.5},
-                    ]
                 else:
                     pass
             except asyncio.TimeoutError: 
@@ -190,12 +183,6 @@ class Combat(commands.Cog, name="combat"):
                     is_boss_encounter = True
                     await self.bot.database.add_soul_cores(user_id, -5)
                     boss_type = 'lucifer'
-                    phases = [
-                        {"name": "Lucifer, Fallen", "level": 663, "modifiers_count": 1, "hp_multiplier": 1.25},
-                        {"name": "Lucifer, Maddened", "level": 664, "modifiers_count": 2, "hp_multiplier": 1.5},
-                        {"name": "Lucifer, Enraged", "level": 665, "modifiers_count": 3, "hp_multiplier": 1.75},
-                        {"name": "Lucifer, Unbound", "level": 666, "modifiers_count": 4, "hp_multiplier": 2},
-                    ]
                 else:
                     pass  # Proceed with normal combat
             except asyncio.TimeoutError: 
