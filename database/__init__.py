@@ -1,6 +1,6 @@
 import aiosqlite
 from datetime import datetime, timedelta
-from core.models import Player
+from core.models import Player, Weapon, Accessory, Armor
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -31,6 +31,105 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+
+    async def create_weapon(self, weapon: Weapon) -> None:
+        """Create a weapon in the database."""
+        if (weapon.level) <= 40:
+            item_potential = 3
+        elif (40 < weapon.level <= 80):
+            item_potential = 4
+        else:
+            item_potential = 5
+        await self.connection.execute(
+            """INSERT INTO items 
+            (user_id, 
+            item_name, 
+            item_level, 
+            attack, 
+            defence, 
+            rarity, 
+            is_equipped, 
+            forges_remaining, 
+            refines_remaining) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (weapon.user, 
+             weapon.name, 
+             weapon.level, 
+             weapon.attack, 
+             weapon.defence, 
+             weapon.rarity, 
+             0, 
+             item_potential, 
+             item_potential)
+        )
+        await self.connection.commit()
+
+
+    async def create_accessory(self, acc: Accessory) -> None:
+        """
+        Insert a new accessory into the accessories table.
+        """
+        # Insert the new accessory into the database
+        await self.connection.execute(
+            """INSERT INTO accessories 
+            (user_id, 
+            item_name, 
+            item_level, 
+            attack, 
+            defence, 
+            rarity, 
+            ward, 
+            crit, 
+            is_equipped, 
+            potential_remaining, 
+            passive_lvl)"""
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (acc.user, 
+             acc.name, 
+             acc.level, 
+             acc.attack, 
+             acc.defence, 
+             acc.rarity, 
+             acc.ward, 
+             acc.crit, 
+             False, 
+             10, 
+             0)
+        )
+        await self.connection.commit()
+
+
+    async def create_armor(self, armor: Armor) -> None:
+        """Insert a new armor in the database."""
+
+        if (armor.level) <= 40:
+            item_potential = 3
+        elif (40 < armor.level <= 80):
+            armor.level = 4
+        else:
+            armor.level = 5
+
+        await self.connection.execute(
+            """INSERT INTO armor 
+            (user_id, 
+            item_name, 
+            item_level, 
+            block, 
+            evasion, 
+            ward, 
+            temper_remaining) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (armor.user, 
+             armor.name, 
+             armor.level, 
+             armor.block, 
+             armor.evasion, 
+             armor.ward, 
+             item_potential)
+        )
+        await self.connection.commit()
+
+    
     async def fetch_user(self, user_id: str, server_id: str):
         """Fetches a user from the database."""
         rows = await self.connection.execute(
@@ -48,8 +147,6 @@ class DatabaseManager:
 
     async def register_user(self, user_id: str, server_id: str, name: str, selected_appearance: str, ideology: str) -> None:
         """Registers a user in the database."""
-        current_time = datetime.now().isoformat()  # Get the current time in ISO format
-        # Calculate last check-in time as 18 hours after the current time
         last_checkin_time = (datetime.now() + timedelta(hours=18)).isoformat()
         await self.connection.execute(
             "INSERT INTO users (user_id, server_id, name, appearance, ideology, last_checkin_time) VALUES (?, ?, ?, ?, ?, ?)",
@@ -63,6 +160,10 @@ class DatabaseManager:
             await self.connection.execute(
                 "DELETE FROM users WHERE user_id=? AND server_id=?",
                 (user_id, server_id)
+            )
+            await self.connection.execute(
+                "DELETE FROM ideologies WHERE user_id=?",
+                (user_id,)
             )
             await self.connection.execute(
                 "DELETE FROM items WHERE user_id=?",
@@ -93,6 +194,7 @@ class DatabaseManager:
             print(f"Error during user unregistration: {e}")
             raise
 
+
     async def fetch_user_gold(self, user_id: str, server_id: str):
         """Fetch the user's gold from the database."""
         rows = await self.connection.execute(
@@ -101,6 +203,7 @@ class DatabaseManager:
         )
         result = await rows.fetchone()
         return result[0] if result else 0  # Return the gold value or 0 if user not found
+
 
     async def fetch_ideologies(self, server_id: str):
         """Fetches a list of ideologies from a server."""
@@ -111,6 +214,7 @@ class DatabaseManager:
         results = await rows.fetchall()  
         return [row[3] for row in results]  # Assuming the ideology is in the second column; adjust the index as needed
     
+
     async def fetch_followers(self, ideology: str):
         """Fetches the number of followers of an ideology directly from the ideologies table."""
         rows = await self.connection.execute(
@@ -122,14 +226,6 @@ class DatabaseManager:
         count = await rows.fetchone()  # This will return a tuple with one item
         return count[0] if count else 0  # Return the count or 0 if none
     
-    async def count_followers(self, ideology: str) -> int:
-        """Counts the number of followers of a specific ideology."""
-        rows = await self.connection.execute(
-            "SELECT COUNT(*) FROM users WHERE ideology=?",
-            (ideology,)
-        )
-        count = await rows.fetchone()  # Fetch the count from the result
-        return count[0] if count else 0  # Return the count or 0 if none
 
     async def update_player_hp(self, user_id: str, hp: int, server_id: str) -> None:
         """Update the player's current HP in the database."""
@@ -155,13 +251,6 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def update_level(self, user_id: str, new_level: int) -> None:
-        """Update the user's level in the database."""
-        await self.connection.execute(
-            "UPDATE users SET level = ? WHERE user_id = ?",
-            (new_level, user_id)
-        )
-        await self.connection.commit()
 
     async def add_gold(self, user_id: str, increase_by: int) -> None:
         """Increase the user's gold in the database."""
@@ -230,13 +319,6 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def increase_level(self, user_id: str) -> None:
-        """Increase the user's level in the database."""
-        await self.connection.execute(
-            "UPDATE users SET level = level + 1 WHERE user_id = ?",
-            (user_id,)
-        )
-        await self.connection.commit()
 
     async def update_player_hp(self, user_id: str, hp: int) -> None:
         """Update the player's current HP in the database."""
@@ -275,14 +357,6 @@ class DatabaseManager:
         await self.connection.execute(
             "UPDATE ideologies SET followers = ? WHERE name = ?",
             (new_count, ideology)
-        )
-        await self.connection.commit()
-
-    async def decrease_potion_count(self, user_id: str) -> None:
-        """Decreases the potion count for a user by 1."""
-        await self.connection.execute(
-            "UPDATE users SET potions = potions - 1 WHERE user_id = ?",
-            (user_id,)
         )
         await self.connection.commit()
 
@@ -330,55 +404,8 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def create_item(self, user_id: str, item_name: str, item_level: int,
-                           attack: int, defence: int, rarity: int, is_equipped: bool = False) -> None:
-        """Insert a new item into the items table."""
-        if (item_level) <= 40:
-            item_potential = 3
-        elif (40 < item_level <= 80):
-            item_potential = 4
-        else:
-            item_potential = 5
-        await self.connection.execute(
-            "INSERT INTO items (user_id, item_name, item_level, attack, defence, rarity, is_equipped, forges_remaining, refines_remaining) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (user_id, item_name, item_level, attack, defence, rarity, is_equipped, item_potential, item_potential)
-        )
-        await self.connection.commit()
-
-    async def create_accessory(self, user_id: str, acc_name: str, item_level: int, 
-                                modifier_type: str, modifier_value: int) -> None:
-        """
-        Insert a new accessory into the accessories table.
-        """
-        # Initialize default values
-        attack = 0
-        defence = 0
-        rarity = 0
-        ward = 0
-        crit = 0
-
-        # Adjust values based on modifier type
-        if modifier_type.lower() == "attack":
-            attack = modifier_value
-        elif modifier_type.lower() == "defence":
-            defence = modifier_value
-        elif modifier_type.lower() == "rarity":
-            rarity = modifier_value
-        elif modifier_type.lower() == "ward":
-            ward = modifier_value
-        elif modifier_type.lower() == "crit":
-            crit = modifier_value
-
-        # Insert the new accessory into the database
-        await self.connection.execute(
-            "INSERT INTO accessories (user_id, item_name, item_level, attack, defence, rarity, ward, crit, is_equipped, potential_remaining, passive_lvl) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (user_id, acc_name, item_level, attack, defence, rarity, ward, crit, False, 10, 0)  # is_equipped defaults to False and potential_remaining to 10
-        )
-        await self.connection.commit()
-
     
-    async def fetch_user_items(self, user_id: str) -> list:
+    async def fetch_user_weapons(self, user_id: str) -> list:
         """Fetch all items owned by a specific user."""
         rows = await self.connection.execute(
             "SELECT * FROM items WHERE user_id=?",
@@ -405,16 +432,9 @@ class DatabaseManager:
         )
         async with rows as cursor:
             return await cursor.fetchall()  # Returns a list of armors
+        
     
-    async def update_item_equipped_status(self, item_id: int, is_equipped: bool) -> None:
-        """Update the equipped status of an item."""
-        await self.connection.execute(
-            "UPDATE items SET is_equipped = ? WHERE item_id = ?",
-            (is_equipped, item_id)
-        )
-        await self.connection.commit()
-    
-    async def fetch_item_by_id(self, item_id: int):
+    async def fetch_weapon_by_id(self, item_id: int):
         """Fetch an item by its ID."""
         rows = await self.connection.execute(
             "SELECT * FROM items WHERE item_id=?",
@@ -433,7 +453,7 @@ class DatabaseManager:
         async with rows as cursor:
             return await cursor.fetchone()  # Returns the item row, if found
 
-    async def equip_item(self, user_id: str, item_id: int) -> None:
+    async def equip_weapon(self, user_id: str, item_id: int) -> None:
         """Equip an item and deselect any previously equipped item."""
         # First, unequip any currently equipped item for this user
         await self.connection.execute(
@@ -462,7 +482,7 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def get_equipped_item(self, user_id: str) -> tuple:
+    async def get_equipped_weapon(self, user_id: str) -> tuple:
         """Fetch the currently equipped item for a specific user."""
         rows = await self.connection.execute(
             "SELECT * FROM items WHERE user_id = ? AND is_equipped = TRUE",
@@ -516,7 +536,7 @@ class DatabaseManager:
         await self.connection.commit()
 
 
-    async def discard_item(self, item_id: int) -> None:
+    async def discard_weapon(self, item_id: int) -> None:
         """Remove an item from the items table."""
         await self.connection.execute(
             "DELETE FROM items WHERE item_id = ?",
@@ -801,13 +821,13 @@ class DatabaseManager:
         async with rows as cursor:
             return await cursor.fetchall()  # Returns a list of (user_id, server_id) tuples
         
-    async def update_item_passive(self, item_id: int, new_passive: str) -> None:
+    async def update_weapon_passive(self, item_id: int, new_passive: str) -> None:
         """Update the passive of an item in the database."""
         sql_query = "UPDATE items SET passive = ? WHERE item_id = ?"
         await self.connection.execute(sql_query, (new_passive, item_id))
         await self.connection.commit()
 
-    async def update_item_forge_count(self, item_id: int, new_forge_count: int) -> None:
+    async def update_weapon_forge_count(self, item_id: int, new_forge_count: int) -> None:
         """Update the forge count of an item in the database."""
         sql_query = "UPDATE items SET forges_remaining = ? WHERE item_id = ?"
         await self.connection.execute(sql_query, (new_forge_count, item_id))
@@ -888,7 +908,7 @@ class DatabaseManager:
         await self.connection.execute(sql_query, params)
         await self.connection.commit()
 
-    async def update_item_refine_count(self, item_id: int, new_refine_count: int) -> None:
+    async def update_weapon_refine_count(self, item_id: int, new_refine_count: int) -> None:
         """Update the refine count of an item in the database."""
         await self.connection.execute(
             "UPDATE items SET refines_remaining = ? WHERE item_id = ?",
@@ -896,7 +916,7 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def update_item_rarity(self, item_id: int, rarity_increase: int) -> None:
+    async def increase_weapon_rarity(self, item_id: int, rarity_increase: int) -> None:
         """Update the item's rarity in the database."""
         await self.connection.execute(
             "UPDATE items SET rarity = rarity + ? WHERE item_id = ?",
@@ -904,7 +924,7 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def increase_item_attack(self, item_id: str, attack_modifier: int) -> None:
+    async def increase_weapon_rarity(self, item_id: str, attack_modifier: int) -> None:
         """
         Increase the attack stat of items owned by the specified user in the database.
         
@@ -917,7 +937,7 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def increase_item_defence(self, item_id: str, defence_modifier: int) -> None:
+    async def increase_weapon_rarity(self, item_id: str, defence_modifier: int) -> None:
         """
         Increase the defense stat of items owned by the specified user in the database.
         
@@ -940,7 +960,7 @@ class DatabaseManager:
             return await cursor.fetchall()  # Returns the list of top users
 
 
-    async def send_item(self, receiver_id: str, item_id: int) -> None:
+    async def send_weapon(self, receiver_id: str, item_id: int) -> None:
         """Transfer an item from one user to another by changing the user_id."""
 
         await self.connection.execute(
@@ -1068,23 +1088,7 @@ class DatabaseManager:
         )
         count = await rows.fetchone()  # Get the count
         return count[0] if count else 0  # Return the count or 0 if none
-    
 
-    async def create_armor(self, user_id: str, item_name: str, item_level: int, block: int, evasion: int, ward: int) -> None:
-        """Insert a new armor in the database."""
-
-        if (item_level) <= 40:
-            item_potential = 3
-        elif (40 < item_level <= 80):
-            item_potential = 4
-        else:
-            item_potential = 5
-
-        await self.connection.execute(
-            "INSERT INTO armor (user_id, item_name, item_level, block, evasion, ward, temper_remaining) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (user_id, item_name, item_level, block, evasion, ward, item_potential)
-        )
-        await self.connection.commit()
 
     async def fetch_armor_by_id(self, item_id: int):
         """Fetch armor by its ID."""

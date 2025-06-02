@@ -210,13 +210,13 @@ class DiscordBot(commands.Bot):
         )
         self.logger.info("-------------------")
         await self.init_db()
-        await self.load_cogs()
-        self.status_task.start()
         self.database = DatabaseManager(
             connection=await aiosqlite.connect(
                 f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
             )
         )
+        await self.load_cogs()
+        self.status_task.start()
 
 
     async def on_message(self, message: discord.Message) -> None:

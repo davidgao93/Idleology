@@ -25,7 +25,7 @@ class Weapons(commands.Cog, name="weapons"):
         # if not await self.bot.is_maintenance(interaction, user_id):
         #     return
         
-        items = await self.bot.database.fetch_user_items(user_id)
+        items = await self.bot.database.fetch_user_weapons(user_id)
         
         if not items:
             await interaction.response.send_message("You peer into your weapon's pouch, it is empty.")
@@ -49,7 +49,7 @@ class Weapons(commands.Cog, name="weapons"):
         number_emojis = ["❌", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
 
         while True:
-            items = await self.bot.database.fetch_user_items(user_id)
+            items = await self.bot.database.fetch_user_weapons(user_id)
             total_pages = (len(items) + items_per_page - 1) // items_per_page
             current_page = min(current_page, total_pages - 1)  # Ensure current_page is valid
             embed.description = f"{player_name}'s Weapons (Page {current_page + 1}/{total_pages}):"
@@ -67,7 +67,7 @@ class Weapons(commands.Cog, name="weapons"):
             for index, item in enumerate(items_to_display):
                 item_name = item[1]  # index 1: item name
                 item_level = item[2]  # index 2: item level
-                equipped_item = await self.bot.database.get_equipped_item(user_id)
+                equipped_item = await self.bot.database.get_equipped_weapon(user_id)
                 is_equipped = equipped_item and (equipped_item[0] == item[0])
                 
                 # Append item details to the display string
@@ -126,7 +126,7 @@ class Weapons(commands.Cog, name="weapons"):
                     while True:
                         selected_item = items_to_display[selected_index]
                         print(f'Fetching {selected_item} from db again for refresh')
-                        selected_item = await self.bot.database.fetch_item_by_id(selected_item[0])
+                        selected_item = await self.bot.database.fetch_weapon_by_id(selected_item[0])
                         if not selected_item:
                             break
                         # Display selected item details
@@ -171,7 +171,7 @@ class Weapons(commands.Cog, name="weapons"):
                                     embed.add_field(name="But why", value=f"You already have this equipped.", inline=False)
                                     await message.edit(embed=embed)
                                 else:
-                                    await self.bot.database.equip_item(user_id, selected_item[0])
+                                    await self.bot.database.equip_weapon(user_id, selected_item[0])
                                     embed.add_field(name="Equip", value=f"Equipped weapon.", inline=False)
                                     await message.edit(embed=embed)
                                 continue
@@ -232,7 +232,7 @@ class Weapons(commands.Cog, name="weapons"):
             self.bot.state_manager.clear_active(interaction.user.id)  
             return
 
-        await self.bot.database.discard_item(item_id)
+        await self.bot.database.discard_weapon(item_id)
 
 
     async def forge_item(self, 
@@ -484,7 +484,7 @@ class Weapons(commands.Cog, name="weapons"):
                 ]
                 new_passive = random.choice(passives)
                 print(f'Assigning {new_passive} to item {item_id}')
-                await self.bot.database.update_item_passive(item_id, new_passive)
+                await self.bot.database.update_weapon_passive(item_id, new_passive)
                 embed.add_field(name="Forging success", 
                                 value=(f"🎊 Congratulations! 🎊 " 
                                     f"**{item_name}** has gained the " 
@@ -496,7 +496,7 @@ class Weapons(commands.Cog, name="weapons"):
                 print('item has passive, upgrade it')
                 new_passive = await self.upgrade_passive(current_passive)
                 print(f'new passive is {new_passive}')
-                await self.bot.database.update_item_passive(item_id, new_passive)
+                await self.bot.database.update_weapon_passive(item_id, new_passive)
                 embed.add_field(name="Forging success", 
                                 value=(f"🎊 Congratulations! 🎊 "
                                     f"**{item_name}**'s passive upgrades from **{current_passive.capitalize()}**"
@@ -513,7 +513,7 @@ class Weapons(commands.Cog, name="weapons"):
             await message.edit(embed=embed)
             await asyncio.sleep(5)
         
-        await self.bot.database.update_item_forge_count(item_id, new_forges_remaining)
+        await self.bot.database.update_weapon_forge_count(item_id, new_forges_remaining)
 
     async def upgrade_passive(self, current_passive: str) -> str:
         """Upgrade the current passive to a stronger version."""
@@ -653,7 +653,7 @@ class Weapons(commands.Cog, name="weapons"):
 
                     if str(reaction.emoji) == "✅":
                         await self.bot.database.update_refinement_runes(user_id, -1)
-                        await self.bot.database.update_item_refine_count(item_id, 1)
+                        await self.bot.database.update_weapon_refine_count(item_id, 1)
                         embed.add_field(name="Rune of Refinement",
                                        value=(f"You have successfully applied a **Rune of Refinement**!\n"
                                               f"{item_name} now has **1** refine remaining. Returning to item menu..."),
@@ -728,23 +728,23 @@ class Weapons(commands.Cog, name="weapons"):
         max_range = int(item_level / 10) + 2
         if attack_roll:
             attack_modifier = random.randint(2, max_range)
-            await self.bot.database.increase_item_attack(item_id, attack_modifier) 
+            await self.bot.database.increase_weapon_rarity(item_id, attack_modifier) 
         else:
             attack_modifier = 1
-            await self.bot.database.increase_item_attack(item_id, attack_modifier) 
+            await self.bot.database.increase_weapon_rarity(item_id, attack_modifier) 
         
         if defense_roll:
             defense_modifier = random.randint(2, max_range)
-            await self.bot.database.increase_item_defence(item_id, defense_modifier) 
+            await self.bot.database.increase_weapon_rarity(item_id, defense_modifier) 
         else:
             defense_modifier = 1
-            await self.bot.database.increase_item_defence(item_id, defense_modifier)  
+            await self.bot.database.increase_weapon_rarity(item_id, defense_modifier)  
 
         if rarity_roll:
             rarity_modifier = random.randint(5, max_range * 5)
-            await self.bot.database.update_item_rarity(item_id, rarity_modifier)
+            await self.bot.database.increase_weapon_rarity(item_id, rarity_modifier)
 
-        await self.bot.database.update_item_refine_count(item_id, refines_remaining - 1)
+        await self.bot.database.update_weapon_refine_count(item_id, refines_remaining - 1)
 
         result_message = []
         if attack_modifier > 0:

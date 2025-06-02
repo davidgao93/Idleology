@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `last_combat` TIMESTAMP DEFAULT NULL,
   `dragon_key` INTEGER NOT NULL DEFAULT 0,
   `angel_key` INTEGER NOT NULL DEFAULT 0,
-  `imbue_runes` INTEGER NOT NULL DEFAULT 0
+  `imbue_runes` INTEGER NOT NULL DEFAULT 0,
+  `soul_cores` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (

@@ -19,7 +19,7 @@ Gambeson
 Quilted Armor
 Bone Armor
 Chitin Armor
-Crystal Plate
+Plate
 Dragonhide
 Sage's Robes
 Enchanted Vestments

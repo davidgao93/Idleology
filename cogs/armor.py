@@ -43,7 +43,7 @@ class Armor(commands.Cog, name="armor"):
         self.bot.state_manager.set_active(user_id, "inventory")
 
         # Pagination setup
-        items_per_page = 5
+        items_per_page = 7
         total_pages = (len(armors) + items_per_page - 1) // items_per_page
         current_page = 0
         original_user = interaction.user
@@ -139,12 +139,12 @@ class Armor(commands.Cog, name="armor"):
                         if armor_block > 0:
                             embed.add_field(name="Block", value=armor_block)
                             embed.add_field(name=f"Effect",
-                                        value=f"{int(armor_block / 2)}% chance to reduce initial monster hit to 0",
+                                        value=f"{int(armor_block / 2) + 1}% chance to reduce initial monster hit to 0",
                                         inline=False)
                         if armor_evasion > 0:
                             embed.add_field(name="Evasion",value=f"{armor_evasion}")
                             embed.add_field(name="Effect", 
-                                value=f"Monster accuracy roll decreased by {int(armor_evasion / 4)}",
+                                value=f"Monster accuracy roll decreased by {int(armor_evasion / 4) + 1}",
                                 inline=False)
                         if armor_ward > 0:
                             embed.add_field(name="Ward", value=f"{armor_ward}%")

@@ -4,8 +4,8 @@ from discord.ext import commands
 from discord.ext.tasks import asyncio
 from discord import app_commands, Interaction, Message
 from datetime import datetime, timedelta
-from core.models import Player, Monster
-from core.loot import generate_loot, generate_armor, generate_accessory
+from core.models import Player, Monster, Weapon, Accessory, Armor
+from core.loot import generate_weapon, generate_armor, generate_accessory
 from core.combat_calcs import calculate_hit_chance, calculate_monster_hit_chance, calculate_damage_taken, check_cull
 from core.gen_mob import fetch_monster_image, get_modifier_description, generate_encounter, get_monster_mods, get_boss_mods
 import json
@@ -54,428 +54,429 @@ class Combat(commands.Cog, name="combat"):
                      f"{(checkin_remaining.seconds % 60)} second(s).")
             await interaction.response.send_message(value, ephemeral=True)
             return
-        else:
-            await self.bot.database.update_combat_time(user_id)
-            self.bot.state_manager.set_active(user_id, "combat")
+
+        await self.bot.database.update_combat_time(user_id)
+        self.bot.state_manager.set_active(user_id, "combat")
+        
+        # Initialize our player object
+        player = Player(
+            id = user_id,
+            name = existing_user[3],
+            level = existing_user[4],
+            ascension = existing_user[15],
+            exp = existing_user[5],
+            hp = existing_user[11],
+            max_hp = existing_user[12],
+            attack = existing_user[9],
+            defence = existing_user[10],
+            rarity = 0,
+            crit = 95,
+            ward = 0,
+            block = 0,
+            evasion = 0,
+            potions = existing_user[16],
+            wep_id = 0,
+            weapon_passive = "",
+            acc_passive = "",
+            acc_lvl = 0,
+            armor_passive = "",
+            invulnerable = False
+        )
+
+        # Handle equipped weapon
+        equipped_item = await self.bot.database.get_equipped_weapon(user_id)
+        if equipped_item:
+            player.wep_id = equipped_item[0]
+            player.weapon_passive = equipped_item[7]
+            player.attack += equipped_item[4]
+            player.defence += equipped_item[5]
+            player.rarity += equipped_item[6]
+            self.bot.logger.info(f'Weapon: {equipped_item[4]} ATK {equipped_item[4]} DEF {equipped_item[5]} RAR {equipped_item[7]} passive')
+
+        equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
+        if equipped_accessory:
+            player.acc_passive = equipped_accessory[9]
+            player.attack += equipped_accessory[4]
+            player.defence += equipped_accessory[5]
+            player.rarity += equipped_accessory[6]
+            player.ward += max(1, int((equipped_accessory[7] / 100) * player.max_hp))
+            player.crit -= equipped_accessory[8]
+            player.acc_lvl = equipped_accessory[12]
+            self.bot.logger.info(f'Accessory: {equipped_accessory[4]} ATK {equipped_accessory[5]} DEF {equipped_accessory[6]} RAR '
+                    f'{5 + equipped_accessory[8]}% Crit, {player.ward} Ward '
+                    f'{player.acc_passive} passive ({player.acc_lvl})')
             
-            # Initialize our player object
-            player = Player(
-                id = user_id,
-                name = existing_user[3],
-                level = existing_user[4],
-                ascension = existing_user[15],
-                exp = existing_user[5],
-                hp = existing_user[11],
-                max_hp = existing_user[12],
-                attack = existing_user[9],
-                defence = existing_user[10],
-                rarity = 0,
-                crit = 95,
-                ward = 0,
-                block = 0,
-                evasion = 0,
-                potions = existing_user[16],
-                wep_id = 0,
-                weapon_passive = "",
-                acc_passive = "",
-                acc_lvl = 0,
-                armor_passive = "",
-                invulnerable = False
+        equipped_armor = await self.bot.database.get_equipped_armor(user_id)
+        if equipped_armor:
+            player.armor_passive = equipped_armor[7]
+            player.ward += int((equipped_armor[6] / 100) * player.max_hp)  # Ward from armor
+            player.block += equipped_armor[4]  # Block
+            player.evasion += equipped_armor[5]  # Evasion treated as rarity boost
+            self.bot.logger.info(f'Armor: {player.block} Block {player.evasion} Evasion {equipped_armor[6]} Ward {player.armor_passive} passive')
+
+        # Check for Door of Ascension
+        is_boss_encounter = False
+        is_heaven_door = False
+        is_hell_door = False
+        boss_type = ''
+        if (player.level >= 20 and 
+            existing_user[25] > 0 and 
+            existing_user[26] > 0 and
+            random.random() < 0.2):
+            is_heaven_door = True
+            embed = discord.Embed(
+                title="Door of Ascension",
+                description="Your angelic and draconic keys tremble with anticipation, "
+                            "do you wish to challenge the heavens?",
+                color=0x00FF00,
             )
+            embed.set_image(url="https://i.imgur.com/PXOhTbX.png")
+                                            
+            await interaction.response.send_message(embed=embed)
+            message = await interaction.original_response()
+            await message.add_reaction("✅")
+            await message.add_reaction("❌")
 
-            # Handle equipped weapon
-            equipped_item = await self.bot.database.get_equipped_item(user_id)
-            if equipped_item:
-                player.wep_id = equipped_item[0]
-                player.weapon_passive = equipped_item[7]
-                player.attack += equipped_item[4]
-                player.defence += equipped_item[5]
-                player.rarity += equipped_item[6]
-                self.bot.logger.info(f'Weapon: {equipped_item[4]} ATK {equipped_item[4]} DEF {equipped_item[5]} RAR {equipped_item[7]} passive')
+            def check(reaction, user):
+                return (user == interaction.user and
+                        reaction.message.id == message.id and
+                        str(reaction.emoji) in ["✅", "❌"])
 
-            equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
-            if equipped_accessory:
-                player.acc_passive = equipped_accessory[9]
-                player.attack += equipped_accessory[4]
-                player.defence += equipped_accessory[5]
-                player.rarity += equipped_accessory[6]
-                player.ward += int((equipped_accessory[7] / 100) * player.max_hp)
-                player.crit -= equipped_accessory[8]
-                player.acc_lvl = equipped_accessory[12]
-                self.bot.logger.info(f'Accessory: {equipped_accessory[4]} ATK {equipped_accessory[5]} DEF {equipped_accessory[6]} RAR '
-                      f'{5 + equipped_accessory[8]}% Crit, {player.ward} Ward '
-                      f'{player.acc_passive} passive ({player.acc_lvl})')
-                
-            equipped_armor = await self.bot.database.get_equipped_armor(user_id)
-            if equipped_armor:
-                player.armor_passive = equipped_armor[7]
-                player.ward += int((equipped_armor[6] / 100) * player.max_hp)  # Ward from armor
-                player.block += equipped_armor[4]  # Block
-                player.evasion += equipped_armor[5]  # Evasion treated as rarity boost
-                self.bot.logger.info(f'Armor: {player.block} Block {player.evasion} Evasion {equipped_armor[6]} Ward {player.armor_passive} passive')
-
-            # Check for Door of Ascension
-            is_boss_encounter = False
-            is_heaven_door = False
-            is_hell_door = False
-            boss_type = ''
-            if (player.level >= 20 and 
-                existing_user[25] > 0 and 
-                existing_user[26] > 0 and
-                random.random() < 0.2):
-                is_heaven_door = True
-                embed = discord.Embed(
-                    title="Door of Ascension",
-                    description="Your angelic and draconic keys tremble with anticipation, "
-                                "do you wish to challenge the heavens?",
-                    color=0x00FF00,
-                )
-                embed.set_image(url="https://i.imgur.com/PXOhTbX.png")
-                                             
-                await interaction.response.send_message(embed=embed)
-                message = await interaction.original_response()
-                await message.add_reaction("✅")
-                await message.add_reaction("❌")
-
-                def check(reaction, user):
-                    return (user == interaction.user and
-                            reaction.message.id == message.id and
-                            str(reaction.emoji) in ["✅", "❌"])
-
-                try:
-                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                    await message.clear_reactions()
-                    if str(reaction.emoji) == "✅":
-                        is_boss_encounter = True
-                        await self.bot.database.add_dragon_key(user_id, -1)
-                        await self.bot.database.add_angel_key(user_id, -1)
-                        boss_type = 'aphrodite'
-                    else:
-                        pass  # Proceed with normal combat
-                except asyncio.TimeoutError: 
-                    await message.clear_reactions()                      
-                    await message.edit(embed=discord.Embed(
-                        title="Door of Ascension",
-                        description="You hesitated, and the opportunity fades.",
-                        color=0xFF0000))
-                    self.bot.state_manager.clear_active(user_id)
-                    return
-            elif (player.level >= 20 and existing_user[28] >= 5 and random.random() < 0.2):
-                is_hell_door = True
-                embed = discord.Embed(
-                    title="Door of the Infernal",
-                    description="Your soul cores tremble with anticipation, "
-                                "do you wish to challenge the depths below?",
-                    color=0x00FF00,
-                )
-                embed.set_image(url="https://i.imgur.com/bWMAksf.png")
-                                             
-                await interaction.response.send_message(embed=embed)
-                message = await interaction.original_response()
-                await message.add_reaction("✅")
-                await message.add_reaction("❌")
-
-                def check(reaction, user):
-                    return (user == interaction.user and
-                            reaction.message.id == message.id and
-                            str(reaction.emoji) in ["✅", "❌"])
-
-                try:
-                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                    await message.clear_reactions()
-                    if str(reaction.emoji) == "✅":
-                        is_boss_encounter = True
-                        await self.bot.database.add_soul_cores(user_id, -5)
-                        boss_type = 'lucifer'
-                    else:
-                        pass  # Proceed with normal combat
-                except asyncio.TimeoutError: 
-                    await message.clear_reactions()                      
-                    await message.edit(embed=discord.Embed(
-                        title="Door of the Infernal",
-                        description="You hesitated, and the opportunity fades.",
-                        color=0xFF0000))
-                    self.bot.state_manager.clear_active(user_id)
-                    return
-                
-            if is_boss_encounter:
-                # Start the boss encounter with three phases
-                await self.handle_boss_encounter(interaction, player, boss_type)
-                self.bot.state_manager.clear_active(user_id)
-                return
-                
-            # Treasure Hunter: +5% chance to turn the monster into a loot encounter
-            treasure_hunter = False
-            treasure_chance = 0.02
-            if player.armor_passive == "Treasure Hunter":
-                treasure_chance += 0.05
-                self.bot.logger.info("Treasure Hunter passive: Increased treasure encounter chance by 5%")
-            
-            monster = Monster(
-                name="",
-                level=0,
-                hp=0,
-                max_hp=0,
-                xp=0,
-                attack=0,
-                defence=0,
-                modifiers=[],
-                image="",
-                flavor=""
-            )
-
-            if random.random() < treasure_chance:
-                monster = await generate_encounter(player, monster, is_treasure=True)
-                monster.attack = 0
-                monster.defence = 0
-                monster.xp = 0
-                treasure_hunter = True
-            else:
-                monster = await generate_encounter(player, monster, is_treasure=False)
-                if monster.level <= 20:
-                    monster.xp *= 2
-                else:
-                    monster.xp = int(monster.xp * 1.3)
-
-            self.bot.logger.info(monster)
-
-            if player.armor_passive == "Omnipotent" and random.random() < 0.2:
-                monster.attack = 0
-                monster.defence = 0
-                self.bot.logger.info("Omnipotent passive: Monster attack and defense set to 0")
-
-            greed_good = False
-            if player.armor_passive == "Unlimited Wealth" and random.random() < 0.2:
-                player.rarity *= 5
-                self.bot.logger.info(f"Unlimited Wealth passive: Player rarity multiplied by 5 to {player.rarity}")
-                greed_good = True
-
-            if "Enfeeble" in monster.modifiers:
-                player.attack = int(player.attack * 0.9)
-                self.bot.logger.info(f"Enfeeble modifier applied: Player attack reduced to {player.attack}")
-
-            player.rarity += len(monster.modifiers) * 30
-            attack_message = ""
-            monster_message = ""
-            heal_message = ""
-            pause_message = ""
-            self.bot.logger.info(player)
-
-            start_combat = False
             try:
-                if "Shield-breaker" in monster.modifiers:
-                    player.ward = 0
-                    self.bot.logger.info(f"Shield-breaker modifier applied: player ward is now 0")
-
-                if "Impenetrable" in monster.modifiers:
-                    player.crit += 200
-                    self.bot.logger.info(f"Impenetrable applied: beat {player.crit} to crit")
-
-                if "Unblockable" in monster.modifiers:
-                    player.block = 0
-                    self.bot.logger.info(f"Unblockable applied: {player.block} to 0")
-
-                if "Unavoidable" in monster.modifiers:
-                    player.evasion = 0
-                    self.bot.logger.info(f"Unavoidable applied: {player.evasion} to 0")  
-
-                if "Temporal Bubble" in monster.modifiers:
-                    player.weapon_passive = ""
-                    self.bot.logger.info(f"Temporal bubble applied: {player.weapon_passive} to nothing")     
-
-                mod_text = " "
-                modifiers_title = ""
-                mods_space = ""
-                if len(monster.modifiers) > 0:
-                    mod_text = f" {len(monster.modifiers)}-mod "
-                    modifiers_title = "\n__Modifiers__\n"
-                    mods_space = "\n"
-                get_hit_chance = calculate_monster_hit_chance(player, monster)
-                embed = discord.Embed(
-                    title=f"Witness {player.name} (Level {player.level})",
-                    description=(f"A{mod_text}level **{monster.level}** {monster.name} approaches!\n"
-                                 f"{modifiers_title}" +
-                                "\n".join([f"**{m}**: {get_modifier_description(m)}" for m in monster.modifiers]) +
-                                f"{mods_space}"
-                                f"\n~{int(calculate_hit_chance(player, monster) * 100)}% to hit | "
-                                f"~{int(get_hit_chance * 100) - int(player.evasion * 0.25 * get_hit_chance)}% to get hit"),
-                    color=0x00FF00,
-                )
-                embed.set_image(url=monster.image) # SET IMAGE HERE
-                embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
-                if player.ward > 0:
-                    embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)", inline=True)
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                await message.clear_reactions()
+                if str(reaction.emoji) == "✅":
+                    is_boss_encounter = True
+                    await self.bot.database.add_dragon_key(user_id, -1)
+                    await self.bot.database.add_angel_key(user_id, -1)
+                    boss_type = 'aphrodite'
                 else:
-                    embed.add_field(name="❤️ HP", value=player.hp, inline=True)
-                items = await self.bot.database.fetch_user_items(user_id)
-                accs = await self.bot.database.fetch_user_accessories(user_id)
-                arms = await self.bot.database.fetch_user_armors(user_id)
-                if len(items) > 60:
-                    embed.add_field(name="🚫 WARNING 🚫", value="Weapon pouch is full! Weapons can't drop.", inline=False)
-                if len(accs) > 60:
-                    embed.add_field(name="🚫 WARNING 🚫", value="Accessory pouch is full! Accessories can't drop.", inline=False)
-                if len(arms) > 60:
-                    embed.add_field(name="🚫 WARNING 🚫", value="Armor pouch is full! Armor can't drop.", inline=False)
-
-                # Check armor passives that affect the start of combat
-                if player.armor_passive == "Treasure Hunter" and treasure_hunter == True:
-                    embed.add_field(name="Armor Passive",
-                        value="The **Treasure Hunter** armor imbues with power! A mysterious being appears.",
-                        inline=False)
-
-                player.invulnerable = False
-                if player.armor_passive == "Invulnerable" and random.random() < 0.2:
-                    embed.add_field(name="Armor Passive",
-                                    value="The **Invulnerable** armor imbues with power!",
-                                    inline=False)
-                    player.invulnerable = True
-
-                if player.armor_passive == "Omnipotent" and monster.attack == 0 and monster.defence == 0:
-                    embed.add_field(name="Armor Passive",
-                                    value=f"The **Omnipotent** armor imbues with power! The {monster.name} trembles in **terror**.",
-                                    inline=False)
-                    
-                if player.armor_passive == "Unlimited Wealth" and greed_good:
-                    embed.add_field(name="Armor Passive",
-                                    value=f"The **Unlimited Wealth** armor imbues with power! {player.name}'s greed knows no bounds.",
-                                    inline=False)
-
-                # Existing passive checks (Absorb, Polished, Sturdy, Accuracy)
-                if player.acc_passive == "Absorb":
-                    absorb_chance = player.acc_lvl * 10
-                    if random.randint(1, 100) <= absorb_chance:
-                        monster_stats = monster.attack + monster.defence
-                        absorb_amount = int(monster_stats * 0.10)
-                        player.attack += absorb_amount
-                        player.defence += absorb_amount
-                        embed.add_field(name="Accessory passive",
-                                        value=f"The accessory's 🌀 **Absorb ({player.acc_lvl})** activates!\n"
-                                              f"⚔️ boosted by **{absorb_amount}**\n"
-                                              f"🛡️ boosted by **{absorb_amount}**",
-                                        inline=False)
-                polished_passives = ["polished", "honed", "gleaming", "tempered", "flaring"]
-                if player.weapon_passive in polished_passives:
-                    value = polished_passives.index(player.weapon_passive)
-                    defence_reduction = (value + 1) * 0.08
-                    monster.defence = int(monster.defence * (1 - defence_reduction))
-                    embed.add_field(name="Weapon passive",
-                                    value=f"The **{player.weapon_passive}** weapon 💫 shines with anticipation!\n"
-                                          f"It reduces the {monster.name}'s defence by {defence_reduction}%.",
-                                    inline=False)
-                sturdy_passives = ["sturdy", "reinforced", "thickened", "impregnable", "impenetrable"]
-                if player.weapon_passive in sturdy_passives:
-                    value = sturdy_passives.index(player.weapon_passive)
-                    defence_bonus = int((1 + value) * 0.08 * player.defence)
-                    embed.add_field(name="Weapon passive",
-                                    value=f"The **{player.weapon_passive}** weapon strengthens resolve!\n"
-                                          f"🛡️ boosted by **{defence_bonus}**!",
-                                    inline=False)
-                    player.defence += defence_bonus
-                                          
-                if (is_heaven_door or is_hell_door):
-                    message: Message = await interaction.followup.send(embed=embed)
-                else:
-                    await interaction.response.send_message(embed=embed)
-                    message: Message = await interaction.original_response()
-                start_combat = True
-            except Exception as e:
-                self.bot.logger.info(e)
-                await interaction.response.send_message("The servers are busy handling another request. Try again.")
+                    pass  # Proceed with normal combat
+            except asyncio.TimeoutError: 
+                await message.clear_reactions()                      
+                await message.edit(embed=discord.Embed(
+                    title="Door of Ascension",
+                    description="You hesitated, and the opportunity fades.",
+                    color=0xFF0000))
                 self.bot.state_manager.clear_active(user_id)
                 return
+        elif (player.level >= 20 and existing_user[28] >= 5 and random.random() < 0.2):
+            is_hell_door = True
+            embed = discord.Embed(
+                title="Door of the Infernal",
+                description="Your soul cores tremble with anticipation, "
+                            "do you wish to consume 5 to challenge the depths below?",
+                color=0x00FF00,
+            )
+            embed.set_image(url="https://i.imgur.com/bWMAksf.png")
+                                            
+            await interaction.response.send_message(embed=embed)
+            message = await interaction.original_response()
+            await message.add_reaction("✅")
+            await message.add_reaction("❌")
 
-            reactions = ["⚔️", "🩹", "⏩", "🏃", "🕒"]
-            await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
-            if start_combat:
-                while True:
-                    def check(reaction, user):
-                        return (user == interaction.user
-                                and reaction.message.id == message.id
-                                and str(reaction.emoji) in ["⚔️", "🩹", "⏩", "🏃", "🕒"])
+            def check(reaction, user):
+                return (user == interaction.user and
+                        reaction.message.id == message.id and
+                        str(reaction.emoji) in ["✅", "❌"])
 
-                    try:
-                        heal_message = ""
-                        attack_message = ""
-                        monster_message = ""
-                        pause_message = ""
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                await message.clear_reactions()
+                if str(reaction.emoji) == "✅":
+                    is_boss_encounter = True
+                    await self.bot.database.add_soul_cores(user_id, -5)
+                    boss_type = 'lucifer'
+                else:
+                    pass  # Proceed with normal combat
+            except asyncio.TimeoutError: 
+                await message.clear_reactions()                      
+                await message.edit(embed=discord.Embed(
+                    title="Door of the Infernal",
+                    description="You hesitated, and the opportunity fades.",
+                    color=0xFF0000))
+                self.bot.state_manager.clear_active(user_id)
+                return
+            
+        if is_boss_encounter:
+            # Start the boss encounter with three phases
+            await self.handle_boss_encounter(interaction, player, boss_type)
+            self.bot.state_manager.clear_active(user_id)
+            return
+            
+        # Treasure Hunter: +5% chance to turn the monster into a loot encounter
+        treasure_hunter = False
+        treasure_chance = 0.02
+        if player.armor_passive == "Treasure Hunter":
+            treasure_chance += 0.05
+            self.bot.logger.info("Treasure Hunter passive: Increased treasure encounter chance by 5%")
+        
+        monster = Monster(
+            name="",
+            level=0,
+            hp=0,
+            max_hp=0,
+            xp=0,
+            attack=0,
+            defence=0,
+            modifiers=[],
+            image="",
+            flavor=""
+        )
 
-                        reaction, user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
-                        if str(reaction.emoji) == "⚔️":
-                            await message.remove_reaction(reaction.emoji, user)
-                            monster, attack_message = await self.player_turn(player, monster)
+        if random.random() < treasure_chance:
+            monster = await generate_encounter(player, monster, is_treasure=True)
+            monster.attack = 0
+            monster.defence = 0
+            monster.xp = 0
+            treasure_hunter = True
+        else:
+            monster = await generate_encounter(player, monster, is_treasure=False)
+            if monster.level <= 20:
+                monster.xp *= 2
+            else:
+                monster.xp = int(monster.xp * 1.3)
 
-                            if monster.hp > 0:
-                                player, monster_message = await self.monster_turn(player, monster)
+        self.bot.logger.info(monster)
 
-                            if player.hp <= 0:
-                                await self.handle_defeat(message, player, monster)
-                                self.bot.state_manager.clear_active(user_id)
-                                break
+        if player.armor_passive == "Omnipotent" and random.random() < 0.2:
+            monster.attack = 0
+            monster.defence = 0
+            self.bot.logger.info("Omnipotent passive: Monster attack and defense set to 0")
 
-                            if monster.hp <= 0:
-                                await self.handle_victory(interaction, message, player, monster)
-                                self.bot.state_manager.clear_active(user_id)
-                                break
+        greed_good = False
+        if player.armor_passive == "Unlimited Wealth" and random.random() < 0.2:
+            player.rarity *= 5
+            self.bot.logger.info(f"Unlimited Wealth passive: Player rarity multiplied by 5 to {player.rarity}")
+            greed_good = True
 
-                        elif str(reaction.emoji) == "⏩":
-                            self.bot.logger.info('Start auto battle')
-                            pause_message = ""
-                            await message.remove_reaction(reaction.emoji, user)
-                            player, monster = await self.auto_battle(interaction, message, embed, player, monster)
-                            if (monster.hp > 0 or player.hp < 0):
-                                self.bot.logger.info('Pause auto battle')
-                                pause_message = "Player HP < 20%, auto-battle paused!"
-                            else:
-                                return
+        if "Enfeeble" in monster.modifiers:
+            player.attack = int(player.attack * 0.9)
+            self.bot.logger.info(f"Enfeeble modifier applied: Player attack reduced to {player.attack}")
 
-                        elif str(reaction.emoji) == "🕒":
-                            self.bot.logger.info('Start giga-auto battle')
-                            pause_message = ""
-                            await message.remove_reaction(reaction.emoji, user)
-                            player, monster = await self.giga_auto_battle(interaction, message, embed, player, monster)
-                            if (monster.hp > 0 or player.hp < 0):
-                                self.bot.logger.info('Pause giga-auto battle')
-                                pause_message = "Player HP < 20%, auto-battle paused!"
-                            else:
-                                return
+        player.rarity += len(monster.modifiers) * 30
+        attack_message = ""
+        monster_message = ""
+        heal_message = ""
+        pause_message = ""
+        self.bot.logger.info(player)
 
-                        elif str(reaction.emoji) == "🩹":
-                            await message.remove_reaction(reaction.emoji, user)
-                            player, heal_message = await self.heal(player)
+        start_combat = False
+        try:
+            if "Shield-breaker" in monster.modifiers:
+                player.ward = 0
+                self.bot.logger.info(f"Shield-breaker modifier applied: player ward is now 0")
 
-                        elif str(reaction.emoji) == "🏃":
-                            await message.clear_reactions()
-                            embed.add_field(name="Escape", value="Got away safely!", inline=False)
-                            await message.edit(embed=embed)
+            if "Impenetrable" in monster.modifiers:
+                player.crit += 5
+                self.bot.logger.info(f"Impenetrable applied: beat {player.crit} to crit")
+
+            if "Unblockable" in monster.modifiers:
+                player.block = 0
+                self.bot.logger.info(f"Unblockable applied: {player.block} to 0")
+
+            if "Unavoidable" in monster.modifiers:
+                player.evasion = 0
+                self.bot.logger.info(f"Unavoidable applied: {player.evasion} to 0")  
+
+            if "Temporal Bubble" in monster.modifiers:
+                player.weapon_passive = "none"
+                self.bot.logger.info(f"Temporal bubble applied: {player.weapon_passive} to nothing")     
+
+            mod_text = " "
+            modifiers_title = ""
+            mods_space = ""
+            if len(monster.modifiers) > 0:
+                mod_text = f" {len(monster.modifiers)}-mod "
+                modifiers_title = "\n__Modifiers__\n"
+                mods_space = "\n"
+            get_hit_chance = calculate_monster_hit_chance(player, monster)
+            embed = discord.Embed(
+                title=f"Witness {player.name} (Level {player.level})",
+                description=(f"A{mod_text}level **{monster.level}** {monster.name} approaches!\n"
+                                f"{modifiers_title}" +
+                            "\n".join([f"**{m}**: {get_modifier_description(m)}" for m in monster.modifiers]) +
+                            f"{mods_space}"
+                            f"\n~{int(calculate_hit_chance(player, monster) * 100)}% to hit | "
+                            f"~{int(get_hit_chance * 100) - int((player.evasion * 0.25 + 1) * get_hit_chance)}% to get hit"),
+                color=0x00FF00,
+            )
+            embed.set_image(url=monster.image) # SET IMAGE HERE
+            embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
+            if player.ward > 0:
+                embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)", inline=True)
+            else:
+                embed.add_field(name="❤️ HP", value=player.hp, inline=True)
+            items = await self.bot.database.fetch_user_weapons(user_id)
+            accs = await self.bot.database.fetch_user_accessories(user_id)
+            arms = await self.bot.database.fetch_user_armors(user_id)
+            if len(items) > 60:
+                embed.add_field(name="🚫 WARNING 🚫", value="Weapon pouch is full! Weapons can't drop.", inline=False)
+            if len(accs) > 60:
+                embed.add_field(name="🚫 WARNING 🚫", value="Accessory pouch is full! Accessories can't drop.", inline=False)
+            if len(arms) > 60:
+                embed.add_field(name="🚫 WARNING 🚫", value="Armor pouch is full! Armor can't drop.", inline=False)
+
+            # Check armor passives that affect the start of combat
+            if player.armor_passive == "Treasure Hunter" and treasure_hunter == True:
+                embed.add_field(name="Armor Passive",
+                    value="The **Treasure Hunter** armor imbues with power! A mysterious being appears.",
+                    inline=False)
+
+            player.invulnerable = False
+            if player.armor_passive == "Invulnerable" and random.random() < 0.2:
+                embed.add_field(name="Armor Passive",
+                                value="The **Invulnerable** armor imbues with power!",
+                                inline=False)
+                player.invulnerable = True
+
+            if player.armor_passive == "Omnipotent" and monster.attack == 0 and monster.defence == 0:
+                embed.add_field(name="Armor Passive",
+                                value=f"The **Omnipotent** armor imbues with power! The {monster.name} trembles in **terror**.",
+                                inline=False)
+                
+            if player.armor_passive == "Unlimited Wealth" and greed_good:
+                embed.add_field(name="Armor Passive",
+                                value=f"The **Unlimited Wealth** armor imbues with power! {player.name}'s greed knows no bounds.",
+                                inline=False)
+
+            # Existing passive checks (Absorb, Polished, Sturdy, Accuracy)
+            if player.acc_passive == "Absorb":
+                absorb_chance = player.acc_lvl * 10
+                if random.randint(1, 100) <= absorb_chance:
+                    monster_stats = monster.attack + monster.defence
+                    absorb_amount = int(monster_stats * 0.10)
+                    player.attack += absorb_amount
+                    player.defence += absorb_amount
+                    embed.add_field(name="Accessory passive",
+                                    value=f"The accessory's 🌀 **Absorb ({player.acc_lvl})** activates!\n"
+                                            f"⚔️ boosted by **{absorb_amount}**\n"
+                                            f"🛡️ boosted by **{absorb_amount}**",
+                                    inline=False)
+            polished_passives = ["polished", "honed", "gleaming", "tempered", "flaring"]
+            if player.weapon_passive in polished_passives:
+                value = polished_passives.index(player.weapon_passive)
+                defence_reduction = (value + 1) * 0.08
+                monster.defence = int(monster.defence * (1 - defence_reduction))
+                embed.add_field(name="Weapon passive",
+                                value=f"The **{player.weapon_passive}** weapon 💫 shines with anticipation!\n"
+                                        f"It reduces the {monster.name}'s defence by {defence_reduction}%.",
+                                inline=False)
+            sturdy_passives = ["sturdy", "reinforced", "thickened", "impregnable", "impenetrable"]
+            if player.weapon_passive in sturdy_passives:
+                value = sturdy_passives.index(player.weapon_passive)
+                defence_bonus = int((1 + value) * 0.08 * player.defence)
+                embed.add_field(name="Weapon passive",
+                                value=f"The **{player.weapon_passive}** weapon strengthens resolve!\n"
+                                        f"🛡️ boosted by **{defence_bonus}**!",
+                                inline=False)
+                player.defence += defence_bonus
+                                        
+            if (is_heaven_door or is_hell_door):
+                message: Message = await interaction.followup.send(embed=embed)
+            else:
+                await interaction.response.send_message(embed=embed)
+                message: Message = await interaction.original_response()
+            start_combat = True
+        except Exception as e:
+            self.bot.logger.info(e)
+            await interaction.response.send_message("The servers are busy handling another request. Try again.")
+            self.bot.state_manager.clear_active(user_id)
+            return
+
+        reactions = ["⚔️", "🩹", "⏩", "🏃", "🕒"]
+        await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
+        if start_combat:
+            while True:
+                def check(reaction, user):
+                    return (user == interaction.user
+                            and reaction.message.id == message.id
+                            and str(reaction.emoji) in ["⚔️", "🩹", "⏩", "🏃", "🕒"])
+
+                try:
+                    heal_message = ""
+                    attack_message = ""
+                    monster_message = ""
+                    pause_message = ""
+
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
+                    if str(reaction.emoji) == "⚔️":
+                        await message.remove_reaction(reaction.emoji, user)
+                        monster, attack_message = await self.player_turn(player, monster)
+
+                        if monster.hp > 0:
+                            player, monster_message = await self.monster_turn(player, monster)
+
+                        if player.hp <= 0:
+                            await self.handle_defeat(message, player, monster)
                             self.bot.state_manager.clear_active(user_id)
                             break
 
-                        embed.clear_fields()
-                        embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
-                        if player.ward > 0:
-                            embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)", inline=True)
+                        if monster.hp <= 0:
+                            await self.handle_victory(interaction, message, player, monster)
+                            self.bot.state_manager.clear_active(user_id)
+                            break
+
+                    elif str(reaction.emoji) == "⏩":
+                        self.bot.logger.info('Start auto battle')
+                        pause_message = ""
+                        await message.remove_reaction(reaction.emoji, user)
+                        player, monster = await self.auto_battle(interaction, message, embed, player, monster)
+                        if (monster.hp > 0 or player.hp < 0):
+                            self.bot.logger.info('Pause auto battle')
+                            pause_message = "Player HP < 20%, auto-battle paused!"
                         else:
-                            embed.add_field(name="❤️ HP", value=player.hp, inline=True)
+                            return
 
-                        if attack_message:
-                            embed.add_field(name=player.name, value=attack_message, inline=False)
-                        if monster_message:
-                            embed.add_field(name=monster.name, value=monster_message, inline=False)
-                        if heal_message:
-                            embed.add_field(name="Heal", value=heal_message, inline=False)
-                        if pause_message:
-                            embed.add_field(name="A temporary reprieve!", value=pause_message, inline=False)
-                        await message.edit(embed=embed)
+                    elif str(reaction.emoji) == "🕒":
+                        self.bot.logger.info('Start giga-auto battle')
+                        pause_message = ""
+                        await message.remove_reaction(reaction.emoji, user)
+                        player, monster = await self.giga_auto_battle(interaction, message, embed, player, monster)
+                        if (monster.hp > 0 or player.hp < 0):
+                            self.bot.logger.info('Pause giga-auto battle')
+                            pause_message = "Player HP < 20%, auto-battle paused!"
+                        else:
+                            return
 
-                    except asyncio.TimeoutError:
-                        embed.add_field(name=monster.name,
-                                        value=f"The {monster.name} loses interest.\n"
-                                                f"{player.name} failed to grasp the moment.",
-                                        inline=False)
-                        await message.edit(embed=embed)
+                    elif str(reaction.emoji) == "🩹":
+                        await message.remove_reaction(reaction.emoji, user)
+                        player, heal_message = await self.heal(player)
+
+                    elif str(reaction.emoji) == "🏃":
                         await message.clear_reactions()
+                        embed.add_field(name="Escape", value="Got away safely!", inline=False)
+                        await message.edit(embed=embed)
                         self.bot.state_manager.clear_active(user_id)
                         break
+
+                    embed.clear_fields()
+                    embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
+                    if player.ward > 0:
+                        embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)", inline=True)
+                    else:
+                        embed.add_field(name="❤️ HP", value=player.hp, inline=True)
+
+                    if attack_message:
+                        embed.add_field(name=player.name, value=attack_message, inline=False)
+                    if monster_message:
+                        embed.add_field(name=monster.name, value=monster_message, inline=False)
+                    if heal_message:
+                        embed.add_field(name="Heal", value=heal_message, inline=False)
+                    if pause_message:
+                        embed.add_field(name="A temporary reprieve!", value=pause_message, inline=False)
+                    await message.edit(embed=embed)
+
+                except asyncio.TimeoutError:
+                    embed.add_field(name=monster.name,
+                                    value=f"The {monster.name} loses interest.\n"
+                                            f"{player.name} failed to grasp the moment.",
+                                    inline=False)
+                    await message.edit(embed=embed)
+                    await message.clear_reactions()
+                    self.bot.state_manager.clear_active(user_id)
+                    await self.bot.database.update_player(player)
+                    break
 
     async def handle_boss_encounter(self, interaction, player, type):
         if (type == 'aphrodite'):
@@ -578,7 +579,7 @@ class Combat(commands.Cog, name="combat"):
                 player.evasion = 0
 
             if "Impenetrable" in monster.modifiers:
-                player.crit += 200
+                player.crit += 5
 
             # Fetch monster details
             monster = await fetch_monster_image(phase["level"], monster)
@@ -707,6 +708,7 @@ class Combat(commands.Cog, name="combat"):
                     await message.edit(embed=embed)
                     await message.clear_reactions()
                     self.bot.state_manager.clear_active(player.id)
+                    await self.bot.database.update_player(player)
                     return
 
             if player.hp <= 0:
@@ -877,7 +879,7 @@ class Combat(commands.Cog, name="combat"):
             monster_message = f"The **Invulnerable** armor imbues with power and absorbs all damage!"
             return player, monster_message
         
-        evade_chance = player.evasion / 400
+        evade_chance = 0.01 + player.evasion / 400
         # self.bot.logger.info(f'{evade_chance} evasion')
         monster_hit_chance = calculate_monster_hit_chance(player, monster)
         # self.bot.logger.info(f'monster_hit_chance = {monster_hit_chance}')
@@ -931,7 +933,7 @@ class Combat(commands.Cog, name="combat"):
 
             # self.bot.logger.info(f"{damage_taken} pre block")
             is_blocked = False
-            if (random.random() <= player.block / 200):
+            if (random.random() <= (player.block / 200 + 0.01)):
                 damage_taken = 0
                 is_blocked = True
                 self.bot.logger.info(f"all damage blocked")
@@ -1136,100 +1138,80 @@ class Combat(commands.Cog, name="combat"):
                                       inline=False)
         embed.add_field(name="📚 Experience", value=f"{monster.xp:,} XP")
         embed.add_field(name="💰 Gold", value=f"{final_gold_award:,} GP")
-        items = await self.bot.database.fetch_user_items(user_id)
+        items = await self.bot.database.fetch_user_weapons(user_id)
         accs = await self.bot.database.fetch_user_accessories(user_id)
         arms = await self.bot.database.fetch_user_armors(user_id)
         weapon_dropped = False
         acc_dropped = False
         arm_dropped = False
         if (drop_roll >= drop_chance):
-            if final_loot_roll >= 95:
+            if final_loot_roll >= 90:
                 weapon_dropped = True
                 if len(items) > 60:
                     embed.add_field(name="✨ Loot", value="Weapon pouch full!")
                 else:
-                    (item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description) = await generate_loot(monster.level, drop_rune=True)
-                    if item_name != "rune":
+                    weapon = await generate_weapon(user_id, monster.level, drop_rune=True)
+                    if weapon.passive != "Rune of Refinement":
                         embed.set_thumbnail(url="https://i.imgur.com/mEIV0ab.jpeg")
-                        await self.bot.database.create_item(user_id, item_name, monster.level,
-                                                        attack_modifier, defence_modifier, rarity_modifier)
+                        await self.bot.database.create_weapon(weapon)
                     else:
                         embed.set_thumbnail(url="https://i.imgur.com/1tcMeSe.jpeg")
                         await self.bot.database.update_refinement_runes(user_id, 1)  # Increment runes
-                    embed.add_field(name="✨ Loot", value=f"{loot_description}", inline=False)
+                    embed.add_field(name="✨ Loot", value=f"{weapon.description}", inline=False)
 
             if not weapon_dropped:
-                if final_acc_roll >= 97:
+                if final_acc_roll >= 95:
                     acc_dropped = True
                     if len(accs) > 60:
                         embed.add_field(name="✨ Loot", value="Accessory pouch full!")
                     else:
-                        acc_name, loot_description = await generate_accessory(monster.level, drop_rune=True)
-                        if acc_name != "rune":
-                            lines = loot_description.splitlines()
-                            for line in lines[1:]:
-                                match = re.search(r"\+(\d+)%? (\w+)", line)
-                                if match:
-                                    modifier_value = match.group(1)
-                                    modifier_type = match.group(2)
-                            await self.bot.database.create_accessory(user_id, acc_name, monster.level,
-                                                                modifier_type, modifier_value)
+                        acc = await generate_accessory(user_id, monster.level, drop_rune=True)
+                        if acc.name != "Rune of Potential":
+                            await self.bot.database.create_accessory(acc)
                             embed.set_thumbnail(url="https://i.imgur.com/KRZUDyO.jpeg")
                         else:
                             await self.bot.database.update_potential_runes(user_id, 1)  # Increment runes
                             embed.set_thumbnail(url="https://i.imgur.com/aeorjQG.jpeg")
-                        embed.add_field(name="✨ Loot", value=f"{loot_description}", inline=False)
+                        embed.add_field(name="✨ Loot", value=f"{acc.description}", inline=False)
 
             if not weapon_dropped and not acc_dropped:
                 if (len(arms) > 60):
                     embed.add_field(name="✨ Loot", value="Armor pouch full!")
                 else:
-                    if final_arm_roll >= 99:
+                    if final_arm_roll >= 97:
                         arm_dropped = True
-                        armor_name, loot_description = await generate_armor(monster.level, drop_rune=True)
-                        lines = loot_description.splitlines()
-                        block_modifier = 0
-                        evasion_modifier = 0
-                        ward_modifier = 0
-                        if armor_name != "rune":
-                            for line in lines[1:]:
-                                match = re.search(r"\+(\d+)%? (\w+)", line)
-                                if match:
-                                    modifier_value = int(match.group(1))
-                                    modifier_type = match.group(2).lower()
-                                    if modifier_type == "block":
-                                        block_modifier = modifier_value
-                                    elif modifier_type == "evasion":
-                                        evasion_modifier = modifier_value
-                                    elif modifier_type == "ward":
-                                        ward_modifier = modifier_value
-                            await self.bot.database.create_armor(user_id, armor_name, monster.level, block_modifier, evasion_modifier, ward_modifier)
+                        armor = await generate_armor(user_id, monster.level, drop_rune=True)
+                        if armor.name != "Rune of Imbuing":
+                            await self.bot.database.create_armor(armor)
                             embed.set_thumbnail(url="https://i.imgur.com/jtYg94i.png")
                         else:
                             await self.bot.database.update_imbuing_runes(user_id, 1)  # Increment runes
                             embed.set_thumbnail(url="https://i.imgur.com/MHgtUW8.png")
-                        embed.add_field(name="✨ Loot", value=f"{loot_description}", inline=False)
+                        
+                        embed.add_field(name="✨ Loot", value=f"{armor.description}", inline=False)
+
         if not weapon_dropped and not acc_dropped and not arm_dropped:
             embed.add_field(name="✨ Loot", value="None")
         if drop_chance == 0:
             embed.add_field(name="✨ Curious Curio", value="A curious curio was left behind!", 
                                     inline=False)
             await self.bot.database.update_curios_count(user_id, server_id, 1)
-        if random.random() < (0.03 + special_drop):
-            embed.add_field(name="✨ Draconic Key", value="A draconic key was left behind!",
-                                    inline=False)
-            embed.set_image(url="https://i.imgur.com/jPteeoT.png")
-            await self.bot.database.add_dragon_key(user_id, 1)
-        if random.random() < (0.03 + special_drop):
-            embed.add_field(name="✨ Angelic Key", value="An angelic key was left behind!",
-                                    inline=False)
-            embed.set_image(url="https://i.imgur.com/cpwPxjU.png")
-            await self.bot.database.add_angel_key(user_id, 1)
-        if random.random() < (0.08 + special_drop):
-            embed.add_field(name="❤️‍🔥 Soul Core", value="A demonic soul core was left behind!",
-                                    inline=False)
-            embed.set_image(url="https://i.imgur.com/x6QKvSy.png")
-            await self.bot.database.add_soul_cores(user_id, 1)
+        if (player.level > 20):
+            if random.random() < (0.03 + special_drop):
+                embed.add_field(name="✨ Draconic Key", value="A draconic key was left behind!",
+                                        inline=False)
+                embed.set_image(url="https://i.imgur.com/jPteeoT.png")
+                await self.bot.database.add_dragon_key(user_id, 1)
+            if random.random() < (0.03 + special_drop):
+                embed.add_field(name="✨ Angelic Key", value="An angelic key was left behind!",
+                                        inline=False)
+                embed.set_image(url="https://i.imgur.com/cpwPxjU.png")
+                await self.bot.database.add_angel_key(user_id, 1)
+            if random.random() < (0.08 + special_drop):
+                embed.add_field(name="❤️‍🔥 Soul Core", value="A demonic soul core was left behind!",
+                                        inline=False)
+                embed.set_image(url="https://i.imgur.com/x6QKvSy.png")
+                await self.bot.database.add_soul_cores(user_id, 1)
 
         # Everlasting Blessing: Placeholder for 10% chance to propagate ideology
         if player.armor_passive == "Everlasting Blessing" and random.random() < 0.1:

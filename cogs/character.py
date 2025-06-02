@@ -79,7 +79,7 @@ class Character(commands.Cog, name="character"):
                 color=0x00FF00,
             )
             embed.set_thumbnail(url=existing_user[7]) # user portrait
-            equipped_item = await self.bot.database.get_equipped_item(user_id)
+            equipped_item = await self.bot.database.get_equipped_weapon(user_id)
             equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
             equipped_armor = await self.bot.database.get_equipped_armor(user_id)
 

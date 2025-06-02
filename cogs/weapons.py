@@ -24,7 +24,7 @@ class Weapons(commands.Cog, name="weapons"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
-        items = await self.bot.database.fetch_user_items(user_id)
+        items = await self.bot.database.fetch_user_weapons(user_id)
         
         if not items:
             await interaction.response.send_message("You peer into your weapon's pouch, it is empty.")
@@ -42,7 +42,7 @@ class Weapons(commands.Cog, name="weapons"):
         self.bot.state_manager.set_active(user_id, "inventory")
 
         # Pagination setup
-        items_per_page = 5
+        items_per_page = 7
         total_pages = (len(items) + items_per_page - 1) // items_per_page
         current_page = 0
 
@@ -50,7 +50,7 @@ class Weapons(commands.Cog, name="weapons"):
         original_user = interaction.user
 
         while True:
-            items = await self.bot.database.fetch_user_items(user_id)
+            items = await self.bot.database.fetch_user_weapons(user_id)
             total_pages = (len(items) + items_per_page - 1) // items_per_page
             current_page = min(current_page, total_pages - 1)
             embed.description = f"{player_name}'s Weapons (Page {current_page + 1}/{total_pages}):"
@@ -67,7 +67,7 @@ class Weapons(commands.Cog, name="weapons"):
             for index, item in enumerate(items_to_display):
                 item_name = item[2]
                 item_level = item[3]
-                equipped_item = await self.bot.database.get_equipped_item(user_id)
+                equipped_item = await self.bot.database.get_equipped_weapon(user_id)
                 is_equipped = equipped_item and (equipped_item[0] == item[0])
                 
                 items_display_string += (
@@ -128,7 +128,7 @@ class Weapons(commands.Cog, name="weapons"):
                     await button_interaction.response.defer()
                     while True:
                         selected_item = items_to_display[selected_index]
-                        selected_item = await self.bot.database.fetch_item_by_id(selected_item[0])
+                        selected_item = await self.bot.database.fetch_weapon_by_id(selected_item[0])
                         if not selected_item:
                             break
                         item_name = selected_item[2]
@@ -174,7 +174,7 @@ class Weapons(commands.Cog, name="weapons"):
                                     embed.add_field(name="Error", value=f"You already have this equipped.", inline=False)
                                     await message.edit(embed=embed, view=action_view)
                                 else:
-                                    await self.bot.database.equip_item(user_id, selected_item[0])
+                                    await self.bot.database.equip_weapon(user_id, selected_item[0])
                                     embed.add_field(name="Equip", value=f"Equipped weapon.", inline=False)
                                     await message.edit(embed=embed, view=action_view)
                                 await asyncio.sleep(3)
@@ -234,7 +234,7 @@ class Weapons(commands.Cog, name="weapons"):
             if confirm_interaction.data['custom_id'] == "cancel_discard":
                 return
 
-            await self.bot.database.discard_item(item_id)
+            await self.bot.database.discard_weapon(item_id)
 
         except asyncio.TimeoutError:
             await message.delete()
@@ -450,7 +450,7 @@ class Weapons(commands.Cog, name="weapons"):
                         "echo"
                     ]
                     new_passive = random.choice(passives)
-                    await self.bot.database.update_item_passive(item_id, new_passive)
+                    await self.bot.database.update_weapon_passive(item_id, new_passive)
                     embed.add_field(name="Forging success", 
                                   value=(f"🎊 Congratulations! 🎊 " 
                                          f"**{item_name}** has gained the " 
@@ -460,7 +460,7 @@ class Weapons(commands.Cog, name="weapons"):
                     await asyncio.sleep(3)
                 else:
                     new_passive = await self.upgrade_passive(current_passive)
-                    await self.bot.database.update_item_passive(item_id, new_passive)
+                    await self.bot.database.update_weapon_passive(item_id, new_passive)
                     embed.add_field(name="Forging success", 
                                   value=(f"🎊 Congratulations! 🎊 "
                                          f"**{item_name}**'s passive upgrades from **{current_passive.capitalize()}**"
@@ -477,7 +477,7 @@ class Weapons(commands.Cog, name="weapons"):
                 await message.edit(embed=embed)
                 await asyncio.sleep(3)
         
-            await self.bot.database.update_item_forge_count(item_id, new_forges_remaining)
+            await self.bot.database.update_weapon_forge_count(item_id, new_forges_remaining)
 
         except asyncio.TimeoutError:
             await message.delete()
@@ -616,7 +616,7 @@ class Weapons(commands.Cog, name="weapons"):
 
                     if rune_interaction.data['custom_id'] == "confirm_rune":
                         await self.bot.database.update_refinement_runes(user_id, -1)
-                        await self.bot.database.update_item_refine_count(item_id, 1)
+                        await self.bot.database.update_weapon_refine_count(item_id, 1)
                         embed.add_field(name="Rune of Refinement",
                                       value=(f"+1 refine attempts."),
                                       inline=False)
@@ -693,23 +693,23 @@ class Weapons(commands.Cog, name="weapons"):
             max_range = int(item_level / 10) + 2
             if attack_roll:
                 attack_modifier = random.randint(2, max_range)
-                await self.bot.database.increase_item_attack(item_id, attack_modifier)
+                await self.bot.database.increase_weapon_rarity(item_id, attack_modifier)
             else:
                 attack_modifier = 1
-                await self.bot.database.increase_item_attack(item_id, attack_modifier)
+                await self.bot.database.increase_weapon_rarity(item_id, attack_modifier)
         
             if defense_roll:
                 defense_modifier = random.randint(2, max_range)
-                await self.bot.database.increase_item_defence(item_id, defense_modifier)
+                await self.bot.database.increase_weapon_rarity(item_id, defense_modifier)
             else:
                 defense_modifier = 1
-                await self.bot.database.increase_item_defence(item_id, defense_modifier)
+                await self.bot.database.increase_weapon_rarity(item_id, defense_modifier)
 
             if rarity_roll:
                 rarity_modifier = random.randint(5, max_range * 5)
-                await self.bot.database.update_item_rarity(item_id, rarity_modifier)
+                await self.bot.database.increase_weapon_rarity(item_id, rarity_modifier)
 
-            await self.bot.database.update_item_refine_count(item_id, refines_remaining - 1)
+            await self.bot.database.update_weapon_refine_count(item_id, refines_remaining - 1)
 
             result_message = []
             if attack_modifier > 0:

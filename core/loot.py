@@ -1,51 +1,64 @@
 import random
 from core.util import load_list
+from core.models import Player, Weapon, Accessory, Armor
 
-
-async def generate_loot(level: int, drop_rune: bool) -> str:
+async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
     """Generate a unique loot item."""
     prefix = random.choice(load_list("assets/items/pref.txt"))
     weapon_type = random.choice(load_list("assets/items/wep.txt"))
     suffix = random.choice(load_list("assets/items/suff.txt"))
     item_name = f"{prefix} {weapon_type} {suffix}"
-
-    modifiers = []
-    attack_modifier = 0
-    defence_modifier = 0
-    rarity_modifier = 0
+    
+    weapon = Weapon(
+        user="",
+        name="",
+        level=0,
+        attack=0,
+        defence=0,
+        rarity=0,
+        passive="",
+        description=""
+    )
+    weapon.user=user_id
+    weapon.name=item_name
+    weapon.level=level
+    # If a rune cannot be dropped, set attack mod to always be true (curio case)
     if (drop_rune):
         if random.randint(0, 100) < 80:  # 80% chance for attack roll
             attack_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-            modifiers.append(f"+{attack_modifier} Attack")
+            weapon.attack = attack_modifier
     else:
         attack_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        modifiers.append(f"+{attack_modifier} Attack")
+        weapon.attack = attack_modifier
 
     if random.randint(0, 100) < 50:  # 50% chance for defense roll
         defence_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        modifiers.append(f"+{defence_modifier} Defence")
+        weapon.defence = defence_modifier
 
     if random.randint(0, 100) < 20:  # 20% chance for rarity roll
         rarity_modifier = max(1, random.randint(int(level // 7), int(level // 5))) * 5
-        modifiers.append(f"+{rarity_modifier}% Rarity")
+        weapon.rarity = rarity_modifier
 
-    loot_description = item_name + f"\n"
-    if modifiers:
-        loot_description += f"\n".join(modifiers)
+    if weapon.attack > 0 or weapon.defence > 0 or weapon.rarity > 0:
+        weapon.passive = "none"
+        weapon.description = ((f"**{weapon.name}**\n(Level {weapon.level})\n") +
+            (f"+{weapon.attack} Attack\n" if weapon.attack > 0 else "") +
+            (f"+{weapon.defence} Defence\n" if weapon.defence > 0 else "") +
+            (f"+{weapon.rarity}% Rarity\n" if weapon.rarity > 0 else "")
+        )
     else:
-        loot_description = "**Rune of Refinement**!"
-        item_name = "rune"
+        weapon.name = "Rune of Refinement"
+        weapon.description = f"{weapon.name}\nAdds a refinement attempt if the weapon is no longer refinable."
 
-    return item_name, attack_modifier, defence_modifier, rarity_modifier, loot_description
+    return weapon
 
-async def generate_accessory(level: int, drop_rune: bool) -> str:
+async def generate_accessory(user_id: str, level: int, drop_rune: bool) -> str:
     """Generate a unique accessory item."""
-    prefix = random.choice(load_list("assets/items/pref.txt"))
+    prefix = random.choice(load_list("assets/items/acc_pref.txt"))
     accessory_type = random.choice(load_list("assets/items/acc.txt"))
-    suffix = random.choice(load_list("assets/items/suff.txt"))
+    suffix = random.choice(load_list("assets/items/acc_suff.txt"))
     acc_name = f"{prefix} {accessory_type} {suffix}"
 
-    modifiers = []
     attack_modifier = 0
     defence_modifier = 0
     rarity_modifier = 0
@@ -54,42 +67,66 @@ async def generate_accessory(level: int, drop_rune: bool) -> str:
     else:
         randroll = random.randint(0, 90)
 
+    acc = Accessory(
+        user=user_id,
+        name=acc_name,
+        level=level,
+        attack=0,
+        defence=0,
+        rarity=0,
+        ward=0,
+        crit=0,
+        passive="",
+        description=f"**{acc_name}**\n(Level {level})\n"
+    )
+    
     if randroll <= 18:  # 18% chance for attack roll
         attack_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        modifiers.append(f"+{attack_modifier} Attack")
+        acc.attack=attack_modifier
+        acc.description += f"+{attack_modifier} Attack"
     elif randroll > 18 and randroll <= 36:  # 18% chance for defense roll
         defence_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        modifiers.append(f"+{defence_modifier} Defence")
+        acc.defence=defence_modifier
+        acc.description += f"+{defence_modifier} Defence"
     elif randroll > 36 and randroll <= 54:
         rarity_modifier = max(1, random.randint(int(level // 7), int(level // 5))) * 5
-        modifiers.append(f"+{rarity_modifier}% Rarity")
+        acc.rarity=rarity_modifier
+        acc.description += f"+{rarity_modifier}% Rarity"
     elif randroll > 54 and randroll <= 72:
-        rarity_modifier = max(1, random.randint(int(level // 7), int(level // 5))) * 2
-        modifiers.append(f"+{rarity_modifier}% Ward")
+        ward_modifier = max(1, random.randint(int(level // 7), int(level // 5))) * 2
+        acc.ward=ward_modifier
+        acc.description += f"+{ward_modifier}% Ward"
     elif randroll > 72 and randroll <= 90:
-        rarity_modifier = max(1, random.randint(int(level // 10), int(level // 9)))
-        modifiers.append(f"+{rarity_modifier}% Crit")
-
-    loot_description = acc_name + f"\n"
-    if modifiers:
-        loot_description += f"\n".join(modifiers)
+        crit_modifier = max(1, random.randint(int(level // 10), int(level // 9)))
+        acc.crit=crit_modifier
+        acc.description += f"+{crit_modifier}% Crit"
     else:
-        loot_description = "**Rune of Potential**!"
-        acc_name = "rune"
+        acc.name = "Rune of Potential"
+        acc.description = f"{acc.name}\n25% increased chance to succeed at increasing an accessory's potential level."
         
-    return acc_name, loot_description
+    return acc
 
-async def generate_armor(level: int, drop_rune: bool) -> str:
+async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
     """Generate a unique armor item."""
-    prefix = random.choice(load_list("assets/items/pref.txt"))
+    prefix = random.choice(load_list("assets/items/armor_pref.txt"))
     armor_type = random.choice(load_list('assets/items/armor.txt'))  # Load names from armor.txt
-    suffix = random.choice(load_list("assets/items/suff.txt"))
+    suffix = random.choice(load_list("assets/items/armor_suff.txt"))
     armor_name = f"{prefix} {armor_type} {suffix}"
 
-    modifiers = []
     block_modifier = 0
     evasion_modifier = 0
     ward_modifier = 0
+
+    armor = Armor(
+        user=user_id,
+        name=armor_name,
+        level=level,
+        block=0,
+        evasion=0,
+        ward=0,
+        passive="",
+        description=f"**{armor_name}**\n(Level {level})\n"
+    )
 
     if drop_rune:
         randroll = random.randint(0, 100)
@@ -98,21 +135,18 @@ async def generate_armor(level: int, drop_rune: bool) -> str:
     print(f"Armor attribute roll: {randroll}")
     if randroll <= 30:  # 30% chance for block roll
         block_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        modifiers.append(f"+{block_modifier} Block")
+        armor.block = block_modifier
+        armor.description += f"+{block_modifier} Block"
     elif randroll > 30 and randroll <= 60:  # 30% chance for evasion roll
         evasion_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        modifiers.append(f"+{evasion_modifier} Evasion")
+        armor.evasion = evasion_modifier
+        armor.description += f"+{evasion_modifier} Evasion"
     elif randroll > 60 and randroll <= 90:  # 30% chance for ward roll
         ward_modifier = max(1, random.randint(int(level // 7), int(level // 5))) * 2
-        modifiers.append(f"+{ward_modifier}% Ward")
+        armor.ward = ward_modifier
+        armor.description += f"+{ward_modifier}% Ward"
     else:
-        armor_description = "**Rune of Imbuing**!"
-        armor_name = "rune"
-        return armor_name, armor_description
+        armor.name = "**Rune of Imbuing**!"
+        armor.description = f"{armor.name}\nPotentially imbues a powerful passive onto your armor."
 
-    if modifiers:
-        armor_description = armor_name + f"\n" + f"\n".join(modifiers)
-    else:
-        armor_description = armor_name
-
-    return armor_name, armor_description
+    return armor

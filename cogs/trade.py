@@ -108,7 +108,7 @@ class Trade(commands.Cog, name="trade"):
             return
 
         # Fetch the item details
-        item_details = await self.bot.database.fetch_item_by_id(item_id)
+        item_details = await self.bot.database.fetch_weapon_by_id(item_id)
         if not item_details:
             await interaction.response.send_message("Weapon not found. Please check the Weapon ID and try again.")
             return
@@ -126,20 +126,20 @@ class Trade(commands.Cog, name="trade"):
             return
         
         # Check if the item is equipped
-        equipped_item = await self.bot.database.get_equipped_item(user_id)
+        equipped_item = await self.bot.database.get_equipped_weapon(user_id)
         if equipped_item and equipped_item[0] == item_id:  # Assuming item_id is at index 0
             await interaction.response.send_message("You cannot send a weapon that you have equipped.")
             return
         
         # Fetch the receiver's item data to check their current item count
-        receiver_items = await self.bot.database.fetch_user_items(str(receiver.id))
+        receiver_items = await self.bot.database.fetch_user_weapons(str(receiver.id))
         
         # Check if the receiver has less than 3 items in their inventory
         if len(receiver_items) >= 58:
             await interaction.response.send_message(f"{receiver.mention} cannot receive more weapons. They have too many already.")
             return
 
-        self.bot.state_manager.set_active(user_id, "send_weapon")  # Set send_item as active operation
+        self.bot.state_manager.set_active(user_id, "send_weapon")  # Set send_weapon as active operation
         # Confirm the action
         embed = discord.Embed(
             title="Confirm Send Weapon",
@@ -163,7 +163,7 @@ class Trade(commands.Cog, name="trade"):
 
             if str(reaction.emoji) == "✅":
                 # The sender has confirmed the action
-                await self.bot.database.send_item(receiver.id, item_id)
+                await self.bot.database.send_weapon(receiver.id, item_id)
                 details = f"Sent **{item_details[2]}** to {receiver.mention}! 🎉"
                 embed.add_field(name="Weapon Sent", value=details, inline=False)
                 await message.edit(embed=embed)

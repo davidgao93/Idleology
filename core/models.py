@@ -24,32 +24,38 @@ class ModifierType(Enum):
 
 @dataclass
 class Weapon:
+    user: str
     name: str
     level: int
-    attack_modifier: int = 0
-    defence_modifier: int = 0
-    rarity_modifier: int = 0
-    passive: str = ""
+    attack: int
+    defence: int
+    rarity: int
+    passive: str
+    description: str
 
 @dataclass
 class Accessory:
+    user: str
     name: str
     level: int
-    attack_modifier: int = 0
-    defence_modifier: int = 0
-    rarity_modifier: int = 0
-    ward_modifier: int = 0
-    crit_modifier: int = 0
-    passive: str = ""
+    attack: int
+    defence: int
+    rarity: int
+    ward: int
+    crit: int
+    passive: str
+    description: str
 
 @dataclass
 class Armor:
+    user: str
     name: str
     level: int
-    block_modifier: int = 0
-    evasion_modifier: int = 0
-    ward_modifier: int = 0
-    passive: str = ""        
+    block: int
+    evasion: int
+    ward: int
+    passive: str
+    description: str        
 
 @dataclass
 class Player:

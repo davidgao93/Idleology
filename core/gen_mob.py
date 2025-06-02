@@ -28,7 +28,7 @@ async def generate_encounter(player, monster, is_treasure):
     else:
         difficulty_multiplier = random.randint(3, 6)
     
-    monster.level = random.randint(player.level, player.level + difficulty_multiplier)
+    monster.level = random.randint(player.level + player.ascension, player.level + difficulty_multiplier)
 
     # print('Calculating monster stats')
     monster = calculate_monster_stats(monster)
@@ -152,7 +152,7 @@ async def fetch_monster_image(level, monster_data):
             selected_monsters = [monster for monster in monsters if monster[2] == level * 10]
         else:
             min_level = max(1, level - 10)
-            max_level = min(100, level + 10)
+            max_level = min(120, level + 10)
             selected_monsters = [monster for monster in monsters if min_level <= monster[2] <= max_level]
 
         if not selected_monsters:
@@ -183,7 +183,7 @@ def get_modifier_description(modifier):
         "Ascended": "+10 Attack, +10 Defence",
         "Summoner": "Has minions that deal 33% damage",
         "Shield-breaker": "Disables ward",
-        "Impenetrable": "Crit immunity",
+        "Impenetrable": "Base crit immunity",
         "Unblockable": "Cannot be blocked",
         "Unavoidable": "Cannot be evaded",
         "Built-different": "+2 to level",

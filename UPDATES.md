@@ -50,7 +50,7 @@ CONTENT
 CHANGES
 - Changed /inventory to instead show potions, gold, runes, # of weapons, and # of accessories
 - Old /inventory is now /weapons to view weapon inventory
-- Changed /send_item to /send_weapon
+- Changed /send_weapon to /send_weapon
 - The leveling curve has been adjusted
 - Early combat difficulty has been dramatically reduced
 - Monsters at all levels now award a base gold of 20 instead of 1

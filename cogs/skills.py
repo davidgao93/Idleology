@@ -12,13 +12,13 @@ class Skills(commands.Cog, name="skills"):
         self.event_channel_id = self.bot.config["channel_id"]  # Store channel ID as a string
         self.event_channel_id2 = self.bot.config["channel_id2"]
 
-    @commands.Cog.listener()
-    async def on_ready(self):
+    # @commands.Cog.listener()
+    # async def on_ready(self):
         if not self.schedule_skills.is_running():
             self.schedule_skills.start()
         
-        if not self.random_event.is_running():
-            self.random_event.start()
+    #     if not self.random_event.is_running():
+    #         self.random_event.start()
 
     @app_commands.command(name="skills", description="Check your skills and resources.")
     async def skills(self, interaction: Interaction):
@@ -514,31 +514,37 @@ class Skills(commands.Cog, name="skills"):
     async def schedule_skills(self):
         self.bot.logger.info('Granting skilling resources to all users')
         # Get users with mining skills
+        if self.bot.database is None:
+            self.bot.logger.error("Database is not initialized.")
+            exit(0)
         mining_users = await self.bot.database.fetch_users_with_mining()
-        for user_id, server_id in mining_users:
-            mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
-            if mining_data:
-                resources = await self.gather_mining_resources(mining_data[2])  # fetching pickaxe tier
-                # self.bot.logger.info(f'Granting {user_id} with mining {resources}')
-                await self.bot.database.update_mining_resources(user_id, server_id, resources)
+        if mining_users:
+            for user_id, server_id in mining_users:
+                mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+                if mining_data:
+                    resources = await self.gather_mining_resources(mining_data[2])  # fetching pickaxe tier
+                    # self.bot.logger.info(f'Granting {user_id} with mining {resources}')
+                    await self.bot.database.update_mining_resources(user_id, server_id, resources)
 
         # Get users with fishing skills
         fishing_users = await self.bot.database.fetch_users_with_fishing()
-        for user_id, server_id in fishing_users:
-            fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
-            if fishing_data:
-                resources = await self.gather_fishing_resources(fishing_data[2])  # fetching fishing rod
-                # self.bot.logger.info(f'Granting {user_id} with fishing {resources}')
-                await self.bot.database.update_fishing_resources(user_id, server_id, resources)
+        if fishing_users:
+            for user_id, server_id in fishing_users:
+                fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+                if fishing_data:
+                    resources = await self.gather_fishing_resources(fishing_data[2])  # fetching fishing rod
+                    # self.bot.logger.info(f'Granting {user_id} with fishing {resources}')
+                    await self.bot.database.update_fishing_resources(user_id, server_id, resources)
 
         # Get users with woodcutting skills
         woodcutting_users = await self.bot.database.fetch_users_with_woodcutting()
-        for user_id, server_id in woodcutting_users:
-            woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
-            if woodcutting_data:
-                resources = await self.gather_woodcutting_resources(woodcutting_data[2])  # fetching axe type
-                # self.bot.logger.info(f'Granting {user_id} with woodcutting {resources}')
-                await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
+        if woodcutting_users:
+            for user_id, server_id in woodcutting_users:
+                woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+                if woodcutting_data:
+                    resources = await self.gather_woodcutting_resources(woodcutting_data[2])  # fetching axe type
+                    # self.bot.logger.info(f'Granting {user_id} with woodcutting {resources}')
+                    await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
 
 
     async def gather_mining_resources(self, pickaxe_tier):

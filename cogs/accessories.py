@@ -44,7 +44,7 @@ class Accessories(commands.Cog, name="accessories"):
         self.bot.state_manager.set_active(user_id, "inventory")
 
         # Pagination setup
-        items_per_page = 5
+        items_per_page = 7
         total_pages = (len(accessories) + items_per_page - 1) // items_per_page
         current_page = 0
         original_user = interaction.user
@@ -147,11 +147,11 @@ class Accessories(commands.Cog, name="accessories"):
                         if accessory_defence > 0:
                             embed.add_field(name="Defense", value=accessory_defence, inline=True)
                         if accessory_rarity > 0:
-                            embed.add_field(name="Rarity", value=accessory_rarity, inline=True)
+                            embed.add_field(name="Rarity", value=accessory_rarity + "%", inline=True)
                         if accessory_ward > 0:
-                            embed.add_field(name="Ward", value=accessory_ward, inline=True)
+                            embed.add_field(name="Ward", value=accessory_ward + "%", inline=True)
                         if accessory_crit > 0:
-                            embed.add_field(name="Critical Chance", value=accessory_crit, inline=True)
+                            embed.add_field(name="Critical Chance", value=accessory_crit + "%", inline=True)
 
                         if accessory_passive != "none":
                             embed.add_field(name="Passive", value=accessory_passive + f" ({potential_lvl})", inline=False)
@@ -283,9 +283,9 @@ class Accessories(commands.Cog, name="accessories"):
             return
 
         rune_of_potential_count = await self.bot.database.fetch_potential_runes(str(interaction.user.id))
-        costs = [500, 1000, 2000, 3000, 4000, 5000, 10000, 20000, 30000, 40000]
-        refine_cost = costs[10 - potential_remaining]
-        success_rate = max(75 - (10 - potential_remaining) * 5, 35)
+        costs = [500, 1000, 2000, 3000, 4000, 5000, 10000, 25000, 50000, 100000]
+        refine_cost = costs[potential_lvl]
+        success_rate = max(75 - potential_lvl * 5, 30)
 
         title_keyword = "Unlock" if current_passive == "none" else "Enhance"
         embed = discord.Embed(
@@ -298,8 +298,8 @@ class Accessories(commands.Cog, name="accessories"):
         )
         embed.set_thumbnail(url="https://i.imgur.com/Tkikr5b.jpeg")
         confirm_view = View(timeout=60.0)
-        confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_improve"))
-        confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_improve"))
+        confirm_view.add_item(Button(label="Use", style=ButtonStyle.primary, custom_id="confirm_improve"))
+        confirm_view.add_item(Button(label="Skip", style=ButtonStyle.secondary, custom_id="cancel_improve"))
         
         await message.edit(embed=embed, view=confirm_view)
 

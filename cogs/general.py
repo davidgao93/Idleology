@@ -268,17 +268,20 @@ class General(commands.Cog, name="general"):
             rest_remaining = timedelta(0)
 
         # Check cooldown for /checkin
-        last_checkin_time = existing_user[17] 
+        last_checkin_time = existing_user[17]
         checkin_remaining = None
         checkin_duration = timedelta(hours=18)
         if last_checkin_time:
             last_checkin_time_dt = datetime.fromisoformat(last_checkin_time)
-            time_since_checkin = datetime.now() - last_checkin_time_dt
-            if time_since_checkin < checkin_duration:
-                remaining_time = checkin_duration - time_since_checkin
-                checkin_remaining = remaining_time
-        else:
-            checkin_remaining = timedelta(0)  # First check-in
+            if (last_checkin_time_dt > datetime.now()):
+                print(f"{last_checkin_time_dt} vs {datetime.now()}")
+                checkin_remaining = last_checkin_time_dt - datetime.now()
+            else:
+                time_since_checkin = datetime.now() - last_checkin_time_dt
+                if time_since_checkin < checkin_duration:
+                    remaining_time = checkin_duration - time_since_checkin
+                    checkin_remaining = remaining_time
+
 
         # Check cooldown for /propagate
         last_propagate_time = existing_user[14]  # Index for last_propagate_time (update if necessary)
@@ -361,7 +364,7 @@ class General(commands.Cog, name="general"):
             return
 
         # Fetch user item data
-        user_items = await self.bot.database.fetch_user_items(user_id)
+        user_items = await self.bot.database.fetch_user_weapons(user_id)
         user_accs = await self.bot.database.fetch_user_accessories(user_id)
         user_arms = await self.bot.database.fetch_user_armors(user_id)
         # Construct the embed to show information
