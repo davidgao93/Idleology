@@ -146,7 +146,7 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
         armor.ward = ward_modifier
         armor.description += f"+{ward_modifier}% Ward"
     else:
-        armor.name = "**Rune of Imbuing**!"
+        armor.name = "Rune of Imbuing"
         armor.description = f"{armor.name}\nPotentially imbues a powerful passive onto your armor."
 
     return armor
