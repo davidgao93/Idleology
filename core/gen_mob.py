@@ -173,13 +173,10 @@ async def generate_ascent_monster(player, monster_instance, ascent_stage_level, 
     monster.defence = temp_monster_for_stats.defence
 
     # Fetch image, name, and flavor text using the stage level
-    monster = await fetch_monster_image(monster.level, monster)
+    monster = await fetch_monster_image(random.randint(0,120), monster)
 
     # HP Calculation based on stage level
-    if monster.level <= 5: # Should generally not be this low in ascent unless player is very low level
-        monster.hp = max(10, random.randint(1, 4) + int(7 * monster.level))
-    else:
-        monster.hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.4, 1.45)))
+    monster.hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.3, 1.4)))
     
     monster.max_hp = monster.hp
     monster.xp = int(monster.max_hp * (1 + ascent_stage_level / 50)) # XP scales with stage level
@@ -201,6 +198,7 @@ async def generate_ascent_monster(player, monster_instance, ascent_stage_level, 
     all_boss_mods = get_boss_mods()
     # Ensure boss mods are not already present if they can also be normal mods
     available_boss_mods = [m for m in all_boss_mods if m not in monster.modifiers] 
+    available_boss_mods.remove("Temporal Bubble")
     random.shuffle(available_boss_mods)
 
     count_boss_applied = 0
