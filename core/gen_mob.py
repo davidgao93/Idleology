@@ -95,12 +95,12 @@ async def generate_encounter(player, monster, is_treasure):
     return monster
 
 
-async def generate_boss(player, phase):
+async def generate_boss(player, monster, phase, phase_index):
     """Generate a boss with a phase based on the user's level."""
     print(f'Generating a boss based on {phase}')
-    difficulty_multiplier = int(player.level / 10)
+    difficulty_multiplier = int(player.level / 15)
     
-    monster.level = player.level + player.ascension + difficulty_multiplier
+    monster.level = player.level + player.ascension + difficulty_multiplier + phase_index
 
     monster = calculate_monster_stats(monster)
     monster = await fetch_monster_image(phase["level"], monster)
@@ -113,7 +113,7 @@ async def generate_boss(player, phase):
     available_modifiers = get_monster_mods()
     available_modifiers.remove("Glutton")
     monster.modifiers = []
-    if (type == 'lucifer'):
+    if ('Lucifer' in phase["name"]):
         boss_modifiers = get_boss_mods()
         boss_mod = random.choice(boss_modifiers)
         if (boss_mod == "Celestial Watcher"):
@@ -134,12 +134,14 @@ async def generate_boss(player, phase):
             available_modifiers.remove("Unblockable")
             available_modifiers.remove("Unavoidable")
         monster.modifiers.append(boss_mod)
+        print(monster)
     
     for _ in range(phase["modifiers_count"]):
         if available_modifiers:
             modifier = random.choice(available_modifiers)
             monster.modifiers.append(modifier)
             available_modifiers.remove(modifier)
+    print(monster)
             
     if "Absolute" in monster.modifiers:
         monster.attack += 25

@@ -40,7 +40,11 @@ class Combat(commands.Cog, name="combat"):
             "Unblockable": lambda p, m: setattr(p, "block", 0),
             "Unavoidable": lambda p, m: setattr(p, "evasion", 0),
             "Enfeeble": lambda p, m: setattr(p, "attack", int(p.attack * 0.9)),
-            # Add other modifiers as needed
+            "Overwhelm": lambda p, m: (
+                setattr(p, "ward", 0),
+                setattr(p, "block", 0),
+                setattr(p, "evasion", 0)
+            )  # Applying Shield-breaker, Unblockable, and Unavoidable
         }
         
         for modifier in monster.modifiers:
@@ -80,7 +84,7 @@ class Combat(commands.Cog, name="combat"):
                 )
                 return
             
-        await self.bot.database.update_combat_time(user_id)
+        # await self.bot.database.update_combat_time(user_id)
         self.bot.state_manager.set_active(user_id, "combat")
         
         # Initialize our player object
@@ -429,6 +433,7 @@ class Combat(commands.Cog, name="combat"):
                         if (monster.hp > 0 or player.hp < 0):
                             self.bot.logger.info('Pause auto battle')
                             pause_message = "Player HP < 20%, auto-battle paused!"
+                            await interaction.followup.send(f'{interaction.user.mention} auto-combat paused!', ephemeral=True)
                         else:
                             return
 
@@ -440,6 +445,7 @@ class Combat(commands.Cog, name="combat"):
                         if (monster.hp > 0 or player.hp < 0):
                             self.bot.logger.info('Pause giga-auto battle')
                             pause_message = "Player HP < 20%, auto-battle paused!"
+                            await interaction.followup.send(f'{interaction.user.mention} auto-combat paused!', ephemeral=True)
                         else:
                             return
 
@@ -523,7 +529,7 @@ class Combat(commands.Cog, name="combat"):
                 flavor="",
                 is_boss=True
             )
-            monster = await generate_boss(player, phase)
+            monster = await generate_boss(player, monster, phase, phase_index)
 
             self.apply_stat_effects(player, monster)
 
@@ -593,6 +599,8 @@ class Combat(commands.Cog, name="combat"):
                 else:
                     auto_battle_active = False  # Pause auto-battle if HP is low
                     embed.add_field(name="A temporary reprieve!", value="Player HP < 20%, auto-battle paused!", inline=False)
+                    await interaction.followup.send(f'{interaction.user.mention} auto-combat paused!', ephemeral=True)
+                    await message.edit(embed=embed)
             else:
                 reactions = ["⚔️", "🩹", "⏩"]
                 await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
@@ -647,6 +655,7 @@ class Combat(commands.Cog, name="combat"):
                             auto_battle_active = False
                             self.bot.logger.info('Pause auto battle')
                             pause_message = "Player HP < 20%, auto-battle paused!"
+                            await interaction.followup.send(f'{interaction.user.mention} auto-combat paused!', ephemeral=True)
 
                     elif str(reaction.emoji) == "🩹":
                         await message.remove_reaction(reaction.emoji, user)
@@ -999,6 +1008,7 @@ class Combat(commands.Cog, name="combat"):
                 embed.add_field(name=monster.name, value=last_monster_message, inline=False)
                 if player.hp <= minimum_hp:
                     embed.add_field(name="Auto battle", value="Player HP < 20%, auto-battle paused!", inline=False)
+                    await interaction.followup.send(f'{interaction.user.mention} auto-combat paused!', ephemeral=True)
                 await message.edit(embed=embed)
                 await asyncio.sleep(1)
         return player, monster
