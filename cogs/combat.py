@@ -328,24 +328,24 @@ class Combat(commands.Cog, name="combat"):
             # Check armor passives that affect the start of combat
             if player.armor_passive == "Treasure Hunter" and treasure_hunter == True:
                 embed.add_field(name="Armor Passive",
-                    value="The **Treasure Hunter** armor imbues with power! A mysterious being appears.",
+                    value=f"The **Treasure Hunter** armor imbues with power!\nA mysterious encounter appears...",
                     inline=False)
 
             player.invulnerable = False
             if player.armor_passive == "Invulnerable" and random.random() < 0.2:
                 embed.add_field(name="Armor Passive",
-                                value="The **Invulnerable** armor imbues with power!",
+                                value=f"The **Invulnerable** armor imbues with power!\n{player.name} receives divine protection.",
                                 inline=False)
                 player.invulnerable = True
 
             if player.armor_passive == "Omnipotent" and monster.attack == 0 and monster.defence == 0:
                 embed.add_field(name="Armor Passive",
-                                value=f"The **Omnipotent** armor imbues with power! The {monster.name} trembles in **terror**.",
+                                value=f"The **Omnipotent** armor imbues with power!\nThe {monster.name} trembles in **terror**.",
                                 inline=False)
                 
             if player.armor_passive == "Unlimited Wealth" and greed_good:
                 embed.add_field(name="Armor Passive",
-                                value=f"The **Unlimited Wealth** armor imbues with power! {player.name}'s greed knows no bounds.",
+                                value=f"The **Unlimited Wealth** armor imbues with power!\n{player.name}'s greed knows no bounds.",
                                 inline=False)
 
             # Existing passive checks (Absorb, Polished, Sturdy, Accuracy)
@@ -460,7 +460,6 @@ class Combat(commands.Cog, name="combat"):
                         self.bot.state_manager.clear_active(user_id)
                         break
 
-
                     messages = {
                         player.name: attack_message,
                         monster.name: monster_message,
@@ -469,22 +468,6 @@ class Combat(commands.Cog, name="combat"):
                     }
                     embed = await self.update_combat_embed(embed, player, monster, messages)
                     await message.edit(embed=embed)
-                    # embed.clear_fields()
-                    # embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
-                    # if player.ward > 0:
-                    #     embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)", inline=True)
-                    # else:
-                    #     embed.add_field(name="❤️ HP", value=player.hp, inline=True)
-
-                    # if attack_message:
-                    #     embed.add_field(name=player.name, value=attack_message, inline=False)
-                    # if monster_message:
-                    #     embed.add_field(name=monster.name, value=monster_message, inline=False)
-                    # if heal_message:
-                    #     embed.add_field(name="Heal", value=heal_message, inline=False)
-                    # if pause_message:
-                    #     embed.add_field(name="A temporary reprieve!", value=pause_message, inline=False)
-                    # await message.edit(embed=embed)
 
                 except asyncio.TimeoutError:
                     embed.add_field(name=monster.name,
@@ -506,10 +489,10 @@ class Combat(commands.Cog, name="combat"):
             ]
         elif (type == 'lucifer'):
             phases = [
-                {"name": "Lucifer, Fallen", "level": 663, "modifiers_count": 1, "hp_multiplier": 1.25},
-                {"name": "Lucifer, Maddened", "level": 664, "modifiers_count": 2, "hp_multiplier": 1.5},
-                {"name": "Lucifer, Enraged", "level": 665, "modifiers_count": 3, "hp_multiplier": 1.75},
-                {"name": "Lucifer, Unbound", "level": 666, "modifiers_count": 4, "hp_multiplier": 2},
+                {"name": "Lucifer, Fallen", "level": 663, "modifiers_count": 2, "hp_multiplier": 1.25},
+                {"name": "Lucifer, Maddened", "level": 664, "modifiers_count": 3, "hp_multiplier": 1.5},
+                {"name": "Lucifer, Enraged", "level": 665, "modifiers_count": 4, "hp_multiplier": 1.75},
+                {"name": "Lucifer, Unbound", "level": 666, "modifiers_count": 5, "hp_multiplier": 2},
             ]
 
         auto_battle_active = False
@@ -670,18 +653,6 @@ class Combat(commands.Cog, name="combat"):
                     }
                     embed = await self.update_combat_embed(embed, player, monster, messages)
                     await message.edit(embed=embed)
-                    # embed.clear_fields()
-                    # embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
-                    # embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)" if player.ward > 0 else player.hp, inline=True)
-                    # if attack_message:
-                    #     embed.add_field(name=player.name, value=attack_message, inline=False)
-                    # if monster_message:
-                    #     embed.add_field(name=monster.name, value=monster_message, inline=False)
-                    # if heal_message:
-                    #     embed.add_field(name="Heal", value=heal_message, inline=False)
-                    # if pause_message:
-                    #     embed.add_field(name="A temporary reprieve!", value=pause_message, inline=False)
-                    # await message.edit(embed=embed)
 
                 except asyncio.TimeoutError:
                     embed.add_field(name=monster.name,
@@ -853,7 +824,7 @@ class Combat(commands.Cog, name="combat"):
 
     async def monster_turn(self, player, monster):
         if player.invulnerable == True:
-            monster_message = f"The **Invulnerable** armor imbues with power and absorbs all damage!"
+            monster_message = f"The **Invulnerable** armor imbues with power!\nIt absorbs all damage."
             return player, monster_message
         
         evade_chance = 0.01 + player.evasion / 400
@@ -961,15 +932,6 @@ class Combat(commands.Cog, name="combat"):
             }
             embed = await self.update_combat_embed(embed, player, monster, messages)
             await message.edit(embed=embed)
-            # embed.clear_fields()
-            # embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
-            # if player.ward > 0:
-            #     embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)", inline=True)
-            # else:
-            #     embed.add_field(name="❤️ HP", value=player.hp, inline=True)
-            # embed.add_field(name=player.name, value=attack_message, inline=False)
-            # embed.add_field(name=monster.name, value=monster_message, inline=False)
-            # await message.edit(embed=embed)
             await asyncio.sleep(1)
         return player, monster
     
@@ -1034,15 +996,6 @@ class Combat(commands.Cog, name="combat"):
             }
             embed = await self.update_combat_embed(embed, player, monster, messages)
             await message.edit(embed=embed)
-            # embed.clear_fields()
-            # embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
-            # if player.ward > 0:
-            #     embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)", inline=True)
-            # else:
-            #     embed.add_field(name="❤️ HP", value=player.hp, inline=True)
-            # embed.add_field(name=player.name, value=attack_message, inline=False)
-            # embed.add_field(name=monster.name, value=monster_message, inline=False)
-            # await message.edit(embed=embed)
             await asyncio.sleep(1)
         return player, monster
 

@@ -112,6 +112,7 @@ async def generate_boss(player, monster, phase, phase_index):
 
     available_modifiers = get_monster_mods()
     available_modifiers.remove("Glutton")
+    available_modifiers.remove("Built-different")
     monster.modifiers = []
     if ('Lucifer' in phase["name"]):
         boss_modifiers = get_boss_mods()
@@ -263,6 +264,6 @@ def get_modifier_description(modifier):
         "Absolute": "+25 Attack, +25 defence",
         "Infernal Legion": "Has minions that echo hits",
         "Overwhelm" : "Disables ward, cannot be blocked, cannot be evaded",
-        "Temporal Bubble": "Player's weapon passive is disabled"
+        "Temporal Bubble": "Weapon passive is disabled"
     }
     return descriptions.get(modifier, "") 
