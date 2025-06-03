@@ -94,6 +94,68 @@ async def generate_encounter(player, monster, is_treasure):
 
     return monster
 
+
+async def generate_boss(player, phase):
+    """Generate a boss with a phase based on the user's level."""
+    print(f'Generating a boss based on {phase}')
+    difficulty_multiplier = int(player.level / 10)
+    
+    monster.level = player.level + player.ascension + difficulty_multiplier
+
+    monster = calculate_monster_stats(monster)
+    monster = await fetch_monster_image(phase["level"], monster)
+
+    monster.hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.25, 1.35)))
+    monster.hp = int(monster.hp * phase["hp_multiplier"])
+    monster.max_hp = monster.hp
+    monster.xp = monster.hp
+
+    available_modifiers = get_monster_mods()
+    available_modifiers.remove("Glutton")
+    monster.modifiers = []
+    if (type == 'lucifer'):
+        boss_modifiers = get_boss_mods()
+        boss_mod = random.choice(boss_modifiers)
+        if (boss_mod == "Celestial Watcher"):
+            available_modifiers.remove("All-seeing")
+            available_modifiers.remove("Venomous")
+        elif (boss_mod == "Unlimited Blade Works"):
+            available_modifiers.remove("Mirror Image")
+        elif (boss_mod == "Hell's Fury"):
+            available_modifiers.remove("Strengthened")
+        elif (boss_mod == "Hell's Precision"):
+            available_modifiers.remove("Hellborn")
+        elif (boss_mod == "Absolute"):
+            available_modifiers.remove("Ascended")
+        elif (boss_mod == "Infernal Legion"):
+            available_modifiers.remove("Summoner")
+        elif (boss_mod == "Overwhelm"):
+            available_modifiers.remove("Shield-breaker")
+            available_modifiers.remove("Unblockable")
+            available_modifiers.remove("Unavoidable")
+        monster.modifiers.append(boss_mod)
+    
+    for _ in range(phase["modifiers_count"]):
+        if available_modifiers:
+            modifier = random.choice(available_modifiers)
+            monster.modifiers.append(modifier)
+            available_modifiers.remove(modifier)
+            
+    if "Absolute" in monster.modifiers:
+        monster.attack += 25
+        monster.defence += 25
+
+    if "Ascended" in monster.modifiers:
+        monster.attack += 10
+        monster.defence += 10
+
+    if "Steel-born" in monster.modifiers:
+        monster.defence = int(monster.defence * 1.1)
+
+    if "Mighty" in monster.modifiers:
+        monster.attack = int(monster.attack * 1.1)
+    return monster
+
 def calculate_monster_stats(monster):
     if monster.level < 5:
         base_attack = monster.level

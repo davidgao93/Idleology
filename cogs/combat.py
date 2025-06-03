@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from core.models import Player, Monster, Weapon, Accessory, Armor
 from core.loot import generate_weapon, generate_armor, generate_accessory
 from core.combat_calcs import calculate_hit_chance, calculate_monster_hit_chance, calculate_damage_taken, check_cull
-from core.gen_mob import fetch_monster_image, get_modifier_description, generate_encounter, get_monster_mods, get_boss_mods
+from core.gen_mob import get_modifier_description, generate_encounter, generate_boss
 import json
 
 class Combat(commands.Cog, name="combat"):
@@ -523,66 +523,14 @@ class Combat(commands.Cog, name="combat"):
                 flavor="",
                 is_boss=True
             )
-            monster = await generate_encounter(player, monster, is_treasure=False)
+            monster = await generate_boss(player, phase)
 
-            # Override with phase-specific modifiers
-            available_modifiers = get_monster_mods()
-            available_modifiers.remove("Glutton")
-            monster.modifiers = []
-            if (type == 'lucifer'):
-                self.bot.logger.info('Boss specific mod')
-                boss_modifiers = get_boss_mods()
-                boss_mod = random.choice(boss_modifiers)
-                if (boss_mod == "Celestial Watcher"):
-                    available_modifiers.remove("All-seeing")
-                    available_modifiers.remove("Venomous")
-                elif (boss_mod == "Unlimited Blade Works"):
-                    available_modifiers.remove("Mirror Image")
-                elif (boss_mod == "Hell's Fury"):
-                    available_modifiers.remove("Strengthened")
-                elif (boss_mod == "Hell's Precision"):
-                    available_modifiers.remove("Hellborn")
-                elif (boss_mod == "Absolute"):
-                    available_modifiers.remove("Ascended")
-                elif (boss_mod == "Infernal Legion"):
-                    available_modifiers.remove("Summoner")
-                elif (boss_mod == "Overwhelm"):
-                    available_modifiers.remove("Shield-breaker")
-                    available_modifiers.remove("Unblockable")
-                    available_modifiers.remove("Unavoidable")
-                monster.modifiers.append(boss_mod)
-            
-            for _ in range(phase["modifiers_count"]):
-                if available_modifiers:
-                    modifier = random.choice(available_modifiers)
-                    monster.modifiers.append(modifier)
-                    available_modifiers.remove(modifier)
-            
-            monster.attack += phase_index * 5
-            
-            if "Absolute" in monster.modifiers:
-                monster.attack += 25
-                monster.defence += 25
-            if "Ascended" in monster.modifiers:
-                monster.attack += 10
-                monster.defence += 10
-            if "Steel-born" in monster.modifiers:
-                monster.defence = int(monster.defence * 1.1)
-
-            # Calculate monster HP
-            monster.hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.25, 1.35)))
-            monster.hp = int(monster.hp * phase["hp_multiplier"])
-            monster.max_hp = monster.hp
-            monster.xp = monster.hp
-            
             self.apply_stat_effects(player, monster)
 
             if "Temporal Bubble" in monster.modifiers:
                 player.weapon_passive = "none"
                 self.bot.logger.info(f"Temporal bubble applied: {player.weapon_passive} to nothing")  
 
-            # Fetch monster details
-            monster = await fetch_monster_image(phase["level"], monster)
             if (type == 'aphrodite'):
                 desc = f"🐉**{monster.name}**🪽 descends!\n"
             elif (type == 'lucifer'):
@@ -606,6 +554,9 @@ class Combat(commands.Cog, name="combat"):
                 monster.attack = 0
                 monster.defence = 0
                 self.bot.logger.info("Omnipotent passive: Monster attack and defense set to 0")
+                embed.add_field(name="Armor Passive",
+                value=f"The **Omnipotent** armor imbues with power! The {monster.name} trembles in **terror**.",
+                inline=False)
 
             player.invulnerable = False
             if player.armor_passive == "Invulnerable" and random.random() < 0.2:
@@ -614,21 +565,12 @@ class Combat(commands.Cog, name="combat"):
                                 inline=False)
                 player.invulnerable = True
                     
-            greed_good = False
             if player.armor_passive == "Unlimited Wealth" and random.random() < 0.2:
                 player.rarity *= 2
                 self.bot.logger.info(f"Unlimited Wealth passive: Player rarity multiplied by 2 to {player.rarity}")
-                greed_good = True    
-
-            if player.armor_passive == "Omnipotent" and monster.attack == 0 and monster.defence == 0:
                 embed.add_field(name="Armor Passive",
-                                value=f"The **Omnipotent** armor imbues with power! The {monster.name} trembles in **terror**.",
-                                inline=False)
-
-            if player.armor_passive == "Unlimited Wealth" and greed_good:
-                embed.add_field(name="Armor Passive",
-                                value=f"The **Unlimited Wealth** armor imbues with power! {player.name}'s greed knows no bounds.",
-                                inline=False)
+                value=f"The **Unlimited Wealth** armor imbues with power! {player.name}'s greed knows no bounds.",
+                inline=False)
 
             embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
             embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)" if player.ward > 0 else player.hp, inline=True)                                                     
