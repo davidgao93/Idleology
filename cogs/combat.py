@@ -426,6 +426,7 @@ class Combat(commands.Cog, name="combat"):
                     self.bot.state_manager.clear_active(user_id)
                     return
                 if monster.hp <= 0:
+                    print('Won encounter')
                     await self.handle_victory(interaction, message, player, monster)
                     self.bot.state_manager.clear_active(user_id)
                     return
@@ -772,24 +773,12 @@ class Combat(commands.Cog, name="combat"):
             monster, attack_message = await self.player_turn(player, monster)
             last_attack_message = attack_message # Store for batch update
             if monster.hp <= 0:
-                # Update embed one last time before victory
-                embed.title = original_embed_title
-                embed = await self.update_combat_embed(embed, player, monster, {player.name: last_attack_message, monster.name: ""})
-                await message.edit(embed=embed)
-                await self.handle_victory(interaction, message, player, monster)
-                self.bot.state_manager.clear_active(player.id)
                 return player, monster
 
             # Monster's turn
             player, monster_message = await self.monster_turn(player, monster)
             last_monster_message = monster_message # Store for batch update
             if player.hp <= 0:
-                # Update embed one last time before defeat
-                embed.title = original_embed_title
-                embed = await self.update_combat_embed(embed, player, monster, {player.name: last_attack_message, monster.name: last_monster_message})
-                await message.edit(embed=embed)
-                await self.handle_defeat(message, player, monster)
-                self.bot.state_manager.clear_active(player.id)
                 return player, monster
             
             if turn_count % 10 == 0 or player.hp <= minimum_hp_threshold : # Update embed every 10 turns or if HP low
@@ -985,11 +974,13 @@ class Combat(commands.Cog, name="combat"):
                             value=propagate_message,
                             inline=False)
 
-        await message.edit(embed=embed)
+        
         player = await self.update_experience(interaction, message, embed, player, monster)
         await self.bot.database.add_gold(user_id, final_gold_award)
         self.bot.logger.info(player)
         await self.bot.database.update_player(player)
+        print('message.edit - victory')
+        await message.edit(embed=embed)
 
 
     async def handle_defeat(self, message, player, monster):
@@ -1013,6 +1004,7 @@ class Combat(commands.Cog, name="combat"):
             color=discord.Color.red()
         )
         defeat_embed.add_field(name="🪽 Redemption 🪽", value=f"({player.name} revives with 1 HP.)")
+        print('message.edit - defeat')
         await message.edit(embed=defeat_embed)
         await self.bot.database.update_player(player) # Save new HP and XP
         # self.bot.state_manager.clear_active(player.id) # Caller should handle this
@@ -1121,6 +1113,7 @@ class Combat(commands.Cog, name="combat"):
                     auto_battle_active = False  # Pause auto-battle if HP is low
                     embed.add_field(name="A temporary reprieve!", value="Player HP < 20%, auto-battle paused!", inline=False)
                     await interaction.followup.send(f'{interaction.user.mention} auto-combat paused!', ephemeral=True)
+                    print('message.edit - pause boss')
                     await message.edit(embed=embed)
             else:
                 reactions = ["⚔️", "🩹", "⏩"]
@@ -1428,7 +1421,6 @@ class Combat(commands.Cog, name="combat"):
                            value=f"⚔️ **Attack:** {new_atk} (+{attack_increase})\n"
                                  f"🛡️ ** Defence:** {new_def} (+{defence_increase})\n"
                                  f"❤️ **Hit Points:** {new_mhp} (+{hp_increase})", inline=False)
-            await message.edit(embed=embed)
             new_exp -= exp_table["levels"][str(player.level - 1)]
             await self.bot.database.increase_attack(user_id, attack_increase)
             await self.bot.database.increase_defence(user_id, defence_increase)
@@ -1440,7 +1432,6 @@ class Combat(commands.Cog, name="combat"):
             embed.add_field(name="2 passive points gained!", 
                             value="Use /passives to allocate them.", 
                             inline=False)
-            await message.edit(embed=embed)
             new_exp -= exp_table["levels"][str(player.level - 1)]
             player.ascension += 1
 
