@@ -28,7 +28,7 @@ async def generate_encounter(player, monster, is_treasure):
     else:
         difficulty_multiplier = random.randint(3, 6)
     
-    monster.level = random.randint(player.level + player.ascension, player.level + difficulty_multiplier)
+    monster.level = random.randint(player.level + player.ascension, player.level + player.ascension + difficulty_multiplier)
 
     # print('Calculating monster stats')
     monster = calculate_monster_stats(monster)
@@ -159,6 +159,97 @@ async def generate_boss(player, monster, phase, phase_index):
         monster.attack = int(monster.attack * 1.1)
     return monster
 
+
+async def generate_ascent_monster(player, monster_instance, ascent_stage_level, num_normal_mods, num_boss_mods):
+    """Generates a monster for the ascent mode."""
+    monster = monster_instance
+    monster.level = ascent_stage_level # This is the base level for the stage
+
+    # Calculate initial stats based on the stage level
+    # We use a temporary monster object for stat calculation to avoid altering monster.level if "Built-different" applies
+    temp_monster_for_stats = Monster(name="", level=monster.level, hp=0,max_hp=0,xp=0,attack=0,defence=0,modifiers=[],image="",flavor="")
+    temp_monster_for_stats = calculate_monster_stats(temp_monster_for_stats)
+    monster.attack = temp_monster_for_stats.attack
+    monster.defence = temp_monster_for_stats.defence
+
+    # Fetch image, name, and flavor text using the stage level
+    monster = await fetch_monster_image(monster.level, monster)
+
+    # HP Calculation based on stage level
+    if monster.level <= 5: # Should generally not be this low in ascent unless player is very low level
+        monster.hp = max(10, random.randint(1, 4) + int(7 * monster.level))
+    else:
+        monster.hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.4, 1.45)))
+    
+    monster.max_hp = monster.hp
+    monster.xp = int(monster.max_hp * (1 + ascent_stage_level / 50)) # XP scales with stage level
+
+    monster.modifiers = []
+    
+    # Apply Normal Modifiers
+    all_normal_mods = get_monster_mods()
+    available_normal_mods = [m for m in all_normal_mods] # Create a mutable copy
+    random.shuffle(available_normal_mods) 
+
+    count_normal_applied = 0
+    while count_normal_applied < num_normal_mods and available_normal_mods:
+        modifier = available_normal_mods.pop(0)
+        monster.modifiers.append(modifier)
+        count_normal_applied += 1
+        
+    # Apply Boss Modifiers
+    all_boss_mods = get_boss_mods()
+    # Ensure boss mods are not already present if they can also be normal mods
+    available_boss_mods = [m for m in all_boss_mods if m not in monster.modifiers] 
+    random.shuffle(available_boss_mods)
+
+    count_boss_applied = 0
+    while count_boss_applied < num_boss_mods and available_boss_mods:
+        modifier = available_boss_mods.pop(0)
+        monster.modifiers.append(modifier) # Assumes boss mods are distinct enough or effects are additive
+        count_boss_applied +=1
+
+    # Apply effects of chosen modifiers
+    # Handle "Built-different" first as it affects stat calculation level
+    effective_stat_level = monster.level # Start with the base stage level
+    if "Built-different" in monster.modifiers:
+        effective_stat_level += 2
+        # Recalculate attack/defense based on this effective level
+        temp_monster_for_stats.level = effective_stat_level
+        temp_monster_for_stats = calculate_monster_stats(temp_monster_for_stats)
+        monster.attack = temp_monster_for_stats.attack
+        monster.defence = temp_monster_for_stats.defence
+        print(f"Built-different modifier applied: m.atk/m.def recalculated for effective level {effective_stat_level}")
+
+    # Apply other stat-modifying effects on top of (potentially) recalculated stats
+    if "Ascended" in monster.modifiers:
+        monster.attack += 10
+        monster.defence += 10
+        print(f"Ascended modifier applied: m.atk/m.def +10")
+    
+    if "Absolute" in monster.modifiers: # Typically a boss mod
+        monster.attack += 25
+        monster.defence += 25
+        print(f"Absolute modifier applied: m.atk/m.def +25")
+
+    if "Steel-born" in monster.modifiers:
+        monster.defence = int(monster.defence * 1.1)
+        print(f"Steel-born modifier applied: Monster defence increased to {monster.defence}")
+    
+    if "Mighty" in monster.modifiers:
+        monster.attack = int(monster.attack * 1.1)
+        print(f"Mighty modifier applied: Monster attack increased to {monster.attack}")
+
+    # Glutton applies to HP calculated from STAGE level, after other HP calculations
+    if "Glutton" in monster.modifiers:
+        monster.hp = int(monster.hp * 2) 
+        monster.max_hp = monster.hp # Ensure max_hp matches
+        print(f"Glutton modifier applied: Monster HP doubled to {monster.hp}")
+
+    monster.is_boss = True # Ascent monsters are considered bosses
+    return monster
+
+
 def calculate_monster_stats(monster):
     if monster.level < 5:
         base_attack = monster.level
@@ -231,6 +322,7 @@ async def fetch_monster_image(level, monster_data):
         monster_data.image = selected_monster[1]
         monster_data.flavor = selected_monster[3]
         return monster_data
+        
     
 def get_modifier_description(modifier):
     """Helper method to get modifier descriptions."""

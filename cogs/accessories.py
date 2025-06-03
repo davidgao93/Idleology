@@ -298,8 +298,8 @@ class Accessories(commands.Cog, name="accessories"):
         )
         embed.set_thumbnail(url="https://i.imgur.com/Tkikr5b.jpeg")
         confirm_view = View(timeout=60.0)
-        confirm_view.add_item(Button(label="Use", style=ButtonStyle.primary, custom_id="confirm_improve"))
-        confirm_view.add_item(Button(label="Skip", style=ButtonStyle.secondary, custom_id="cancel_improve"))
+        confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_improve"))
+        confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_improve"))
         
         await message.edit(embed=embed, view=confirm_view)
 
@@ -340,8 +340,8 @@ class Accessories(commands.Cog, name="accessories"):
             )
             embed.set_thumbnail(url="https://i.imgur.com/aeorjQG.jpg")
             rune_view = View(timeout=60.0)
-            rune_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_rune"))
-            rune_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_rune"))
+            rune_view.add_item(Button(label="Use", style=ButtonStyle.primary, custom_id="confirm_rune"))
+            rune_view.add_item(Button(label="Skip", style=ButtonStyle.secondary, custom_id="cancel_rune"))
             
             await message.edit(embed=embed, view=rune_view)
 

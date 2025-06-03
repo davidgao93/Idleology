@@ -84,7 +84,7 @@ class Combat(commands.Cog, name="combat"):
                 )
                 return
             
-        # await self.bot.database.update_combat_time(user_id)
+        await self.bot.database.update_combat_time(user_id)
         self.bot.state_manager.set_active(user_id, "combat")
         
         # Initialize our player object
@@ -970,7 +970,7 @@ class Combat(commands.Cog, name="combat"):
                 embed.add_field(name=monster.name, value=last_monster_message, inline=False)
                 if player.hp <= minimum_hp:
                     embed.add_field(name="Auto battle", value="Player HP < 20%, auto-battle paused!", inline=False)
-                    await interaction.followup.send(f'{interaction.user.mention} auto-combat paused!', ephemeral=True)
+                    # await interaction.followup.send(f'{interaction.user.mention} auto-combat paused!', ephemeral=True)
                 await message.edit(embed=embed)
                 await asyncio.sleep(1)
         return player, monster
