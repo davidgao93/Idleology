@@ -1,6 +1,6 @@
 # core/models.py
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import List, Optional, Union, Dict
 from enum import Enum
 
 class ModifierType(Enum):
@@ -94,3 +94,38 @@ class Monster:
     image: str
     flavor: str
     is_boss: bool = False
+
+
+@dataclass
+class DungeonRoomOption:
+    direction: str
+    flavor_text: str
+    encounter_type: str # e.g., "COMBAT_NORMAL", "MERCHANT", "BOSS_ENTRANCE"
+
+@dataclass
+class DungeonState:
+    player_id: str
+    player_name: str 
+    current_floor: int
+    max_regular_floors: int # Number of floors with choices before the boss
+    
+    player_current_hp: int
+    player_max_hp: int
+    player_current_ward: int
+    player_base_ward: int 
+    
+    potions_remaining: int
+    dungeon_coins: int
+    loot_gathered: List[Union[Weapon, Accessory, Armor]] = field(default_factory=list)
+
+    player_buffs: List[str] = field(default_factory=list)
+    player_curses: List[str] = field(default_factory=list)
+    player_attack_multiplier: float = 1.0
+    player_defence_multiplier: float = 1.0
+    player_rarity_multiplier: float = 1.0
+    monster_attack_multiplier: float = 1.0
+    monster_defence_multiplier: float = 1.0
+    global_monster_modifiers: List[str] = field(default_factory=list)
+
+    current_room_options: Optional[List[DungeonRoomOption]] = None
+    last_action_message: Optional[str] = None

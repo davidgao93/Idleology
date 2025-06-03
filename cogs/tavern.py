@@ -50,7 +50,7 @@ class Tavern(commands.Cog, name="tavern"):
         embed.set_thumbnail(url="https://i.imgur.com/81jN8tA.jpeg")
         embed.add_field(name="Your Gold 💰", value=f"{gold:,}", inline=False)
         cost = 200 + additional_cost
-        embed.add_field(name="Potion 🍹 x1 / x5 / x10", value=f"Cost: {cost} / {cost * 5} / {cost * 10} gold", inline=False)
+        embed.add_field(name="Potion 🧪 x1 / x5 / x10", value=f"Cost: {cost} / {cost * 5} / {cost * 10} gold", inline=False)
 
         # Curios Section
         curio_cost = 8000
@@ -68,7 +68,7 @@ class Tavern(commands.Cog, name="tavern"):
         await interaction.response.send_message(embed=embed)
         message: Message = await interaction.original_response()
 
-        reactions = ["🍹", "5️⃣", "🔟", "🎁", "❌"]  # Added ❌ reaction for closing shop
+        reactions = ["🧪", "5️⃣", "🔟", "🎁", "❌"]  # Added ❌ reaction for closing shop
         await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
 
         def check(reaction, user):
@@ -96,8 +96,8 @@ class Tavern(commands.Cog, name="tavern"):
                 success = 0
                 times = 0
 
-                if str(reaction.emoji) in ["🍹", "5️⃣", "🔟"]:
-                    times = 1 if str(reaction.emoji) == "🍹" else (5 if str(reaction.emoji) == "5️⃣" else 10)
+                if str(reaction.emoji) in ["🧪", "5️⃣", "🔟"]:
+                    times = 1 if str(reaction.emoji) == "🧪" else (5 if str(reaction.emoji) == "5️⃣" else 10)
 
                 # Handle potion purchases
                 for _ in range(times):

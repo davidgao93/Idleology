@@ -181,7 +181,7 @@ class Character(commands.Cog, name="character"):
         embed = discord.Embed(
             title=(f"{existing_user[3]}'s Inventory\n"
                     f"💰 Gold: **{gold_count:,}**\n"
-                    f"🍹 Potions: **{potions_count:,}**"),
+                    f"🧪 Potions: **{potions_count:,}**"),
             color=0x00FF00,
         )
         embed.set_thumbnail(url=existing_user[7]) # user portrait
