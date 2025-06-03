@@ -33,7 +33,7 @@ class Combat(commands.Cog, name="combat"):
         return embed
 
 
-    def apply_modifier_effects(self, player, monster):
+    def apply_stat_effects(self, player, monster):
         modifier_effects = {
             "Shield-breaker": lambda p, m: setattr(p, "ward", 0),
             "Impenetrable": lambda p, m: setattr(p, "crit", p.crit + 5),
@@ -48,88 +48,6 @@ class Combat(commands.Cog, name="combat"):
                 modifier_effects[modifier](player, monster)
                 self.bot.logger.info(f'Applied {modifier}')
 
-
-
-    async def run_combat_loop(self, interaction, message, embed, player, monster, reactions, is_boss=False, update_frequency=1):
-        minimum_hp = int(player.max_hp * 0.2)
-        turn_count = 0
-
-        while monster.hp > 0 and player.hp > 0:
-            turn_count += 1
-            if reactions:
-                def check(reaction, user):
-                    return (user == interaction.user and
-                            reaction.message.id == message.id and
-                            str(reaction.emoji) in reactions)
-
-                try:
-                    reaction, user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
-                    await message.remove_reaction(reaction.emoji, user)
-                    
-                    attack_message, monster_message, heal_message, pause_message = "", "", "", ""
-                    
-                    if str(reaction.emoji) == "⚔️":
-                        monster, attack_message = await self.player_turn(player, monster)
-                        if monster.hp > 0:
-                            player, monster_message = await self.monster_turn(player, monster)
-                    elif str(reaction.emoji) == "🩹":
-                        player, heal_message = await self.heal(player)
-                    elif str(reaction.emoji) == "⏩":
-                        player, monster = await self.auto_battle(interaction, message, embed, player, monster)
-                        return player, monster
-                    elif str(reaction.emoji) == "🕒" and "🕒" in reactions:
-                        player, monster = await self.giga_auto_battle(interaction, message, embed, player, monster)
-                        return player, monster
-                    elif str(reaction.emoji) == "🏃" and "🏃" in reactions:
-                        embed.add_field(name="Escape", value="Got away safely!", inline=False)
-                        await message.edit(embed=embed)
-                        await message.clear_reactions()
-                        self.bot.state_manager.clear_active(player.id)
-                        return player, monster
-                    
-                    if player.hp <= 0:
-                        await (self.handle_boss_defeat if is_boss else self.handle_defeat)(message, player, monster, "aphrodite" if is_boss else None)
-                        return player, monster
-                    if monster.hp <= 0:
-                        await (self.handle_boss_victory if is_boss else self.handle_victory)(interaction, message, player, monster, "aphrodite" if is_boss else None)
-                        return player, monster
-                    
-                    if turn_count % update_frequency == 0 or player.hp <= minimum_hp:
-                        messages = {
-                            player.name: attack_message,
-                            monster.name: monster_message,
-                            "Heal": heal_message,
-                            "A temporary reprieve!": pause_message
-                        }
-                        embed = await self.update_combat_embed(embed, player, monster, messages)
-                        await message.edit(embed=embed)
-                
-                except asyncio.TimeoutError:
-                    embed.add_field(name=monster.name,
-                                    value=f"The {monster.name} loses interest.\n{player.name} failed to grasp the moment.",
-                                    inline=False)
-                    await message.edit(embed=embed)
-                    await message.clear_reactions()
-                    self.bot.state_manager.clear_active(player.id)
-                    await self.bot.database.update_player(player)
-                    return player, monster
-            else:
-                # Auto-battle logic
-                monster, attack_message = await self.player_turn(player, monster)
-                if monster.hp <= 0:
-                    await (self.handle_boss_victory if is_boss else self.handle_victory)(interaction, message, player, monster, "aphrodite" if is_boss else None)
-                    return player, monster
-                player, monster_message = await self.monster_turn(player, monster)
-                if player.hp <= 0:
-                    await (self.handle_boss_defeat if is_boss else self.handle_defeat)(message, player, monster, "aphrodite" if is_boss else None)
-                    return player, monster
-                if turn_count % update_frequency == 0 or player.hp <= minimum_hp:
-                    messages = {player.name: attack_message, monster.name: monster_message}
-                    embed = await self.update_combat_embed(embed, player, monster, messages)
-                    await message.edit(embed=embed)
-                    await asyncio.sleep(1)
-        
-        return player, monster
 
     @app_commands.command(name="combat", description="Engage in combat.")
     async def combat(self, interaction: Interaction):
@@ -367,7 +285,7 @@ class Combat(commands.Cog, name="combat"):
 
         start_combat = False
         try:
-            self.apply_modifier_effects(player, monster)
+            self.apply_stat_effects(player, monster)
 
             mod_text = " "
             modifiers_title = ""
@@ -472,7 +390,106 @@ class Combat(commands.Cog, name="combat"):
 
         reactions = ["⚔️", "🩹", "⏩", "🏃", "🕒"]
         await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
-        await self.run_combat_loop(interaction, message, embed, player, monster, reactions, update_frequency=1)
+        if start_combat:
+            while True:
+                def check(reaction, user):
+                    return (user == interaction.user
+                            and reaction.message.id == message.id
+                            and str(reaction.emoji) in ["⚔️", "🩹", "⏩", "🏃", "🕒"])
+
+                try:
+                    heal_message = ""
+                    attack_message = ""
+                    monster_message = ""
+                    pause_message = ""
+
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
+                    if str(reaction.emoji) == "⚔️":
+                        await message.remove_reaction(reaction.emoji, user)
+                        monster, attack_message = await self.player_turn(player, monster)
+
+                        if monster.hp > 0:
+                            player, monster_message = await self.monster_turn(player, monster)
+
+                        if player.hp <= 0:
+                            await self.handle_defeat(message, player, monster)
+                            self.bot.state_manager.clear_active(user_id)
+                            break
+
+                        if monster.hp <= 0:
+                            await self.handle_victory(interaction, message, player, monster)
+                            self.bot.state_manager.clear_active(user_id)
+                            break
+
+                    elif str(reaction.emoji) == "⏩":
+                        self.bot.logger.info('Start auto battle')
+                        pause_message = ""
+                        await message.remove_reaction(reaction.emoji, user)
+                        player, monster = await self.auto_battle(interaction, message, embed, player, monster)
+                        if (monster.hp > 0 or player.hp < 0):
+                            self.bot.logger.info('Pause auto battle')
+                            pause_message = "Player HP < 20%, auto-battle paused!"
+                        else:
+                            return
+
+                    elif str(reaction.emoji) == "🕒":
+                        self.bot.logger.info('Start giga-auto battle')
+                        pause_message = ""
+                        await message.remove_reaction(reaction.emoji, user)
+                        player, monster = await self.giga_auto_battle(interaction, message, embed, player, monster)
+                        if (monster.hp > 0 or player.hp < 0):
+                            self.bot.logger.info('Pause giga-auto battle')
+                            pause_message = "Player HP < 20%, auto-battle paused!"
+                        else:
+                            return
+
+                    elif str(reaction.emoji) == "🩹":
+                        await message.remove_reaction(reaction.emoji, user)
+                        player, heal_message = await self.heal(player)
+
+                    elif str(reaction.emoji) == "🏃":
+                        await message.clear_reactions()
+                        embed.add_field(name="Escape", value="Got away safely!", inline=False)
+                        await message.edit(embed=embed)
+                        self.bot.state_manager.clear_active(user_id)
+                        break
+
+
+                    messages = {
+                        player.name: attack_message,
+                        monster.name: monster_message,
+                        "Heal": heal_message,
+                        "A temporary reprieve!": pause_message
+                    }
+                    embed = await self.update_combat_embed(embed, player, monster, messages)
+                    await message.edit(embed=embed)
+                    # embed.clear_fields()
+                    # embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
+                    # if player.ward > 0:
+                    #     embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)", inline=True)
+                    # else:
+                    #     embed.add_field(name="❤️ HP", value=player.hp, inline=True)
+
+                    # if attack_message:
+                    #     embed.add_field(name=player.name, value=attack_message, inline=False)
+                    # if monster_message:
+                    #     embed.add_field(name=monster.name, value=monster_message, inline=False)
+                    # if heal_message:
+                    #     embed.add_field(name="Heal", value=heal_message, inline=False)
+                    # if pause_message:
+                    #     embed.add_field(name="A temporary reprieve!", value=pause_message, inline=False)
+                    # await message.edit(embed=embed)
+
+                except asyncio.TimeoutError:
+                    embed.add_field(name=monster.name,
+                                    value=f"The {monster.name} loses interest.\n"
+                                            f"{player.name} failed to grasp the moment.",
+                                    inline=False)
+                    await message.edit(embed=embed)
+                    await message.clear_reactions()
+                    self.bot.state_manager.clear_active(user_id)
+                    await self.bot.database.update_player(player)
+                    break
 
     async def handle_boss_encounter(self, interaction, player, type):
         if (type == 'aphrodite'):
@@ -558,7 +575,7 @@ class Combat(commands.Cog, name="combat"):
             monster.max_hp = monster.hp
             monster.xp = monster.hp
             
-            self.apply_modifier_effects(player, monster)
+            self.apply_stat_effects(player, monster)
 
             if "Temporal Bubble" in monster.modifiers:
                 player.weapon_passive = "none"
@@ -638,7 +655,96 @@ class Combat(commands.Cog, name="combat"):
                 reactions = ["⚔️", "🩹", "⏩"]
                 await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
 
-            await self.run_combat_loop(interaction, message, embed, player, monster, [], is_boss=True, update_frequency=1)
+            # Combat loop
+            while monster.hp > 0 and player.hp > 0:
+                def check(reaction, user):
+                    return (user == interaction.user and
+                            reaction.message.id == message.id and
+                            str(reaction.emoji) in ["⚔️", "🩹", "⏩"])
+
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
+                                                                                                                                           
+                    heal_message = ""
+                    attack_message = ""
+                    monster_message = ""
+                    pause_message = ""
+
+                    if str(reaction.emoji) == "⚔️":
+                        await message.remove_reaction(reaction.emoji, user)
+                        monster, attack_message = await self.player_turn(player, monster)
+                        if monster.hp > 0:
+                            player, monster_message = await self.monster_turn(player, monster)
+                        
+                        if player.hp <= 0:
+                            await self.handle_boss_defeat(message, player, monster, type)
+                            return
+                        
+                        if monster.hp <= 0:
+                            if phase == phases[-1]:
+                                self.bot.logger.info(f'Won phase {phase} vs {phases[-1]} with -1')
+                                await self.handle_boss_victory(interaction, message, player, monster, type)
+                                return
+                            break
+
+                    elif str(reaction.emoji) == "⏩":
+                        self.bot.logger.info('Start boss auto battle')
+                        await message.remove_reaction(reaction.emoji, user)
+                        auto_battle_active = True
+                        player, monster = await self.boss_auto_battle(message, embed, player, monster)
+                        self.bot.logger.info('Boss auto-battle ended')
+                        if player.hp <= 0:
+                            await self.handle_boss_defeat(message, player, monster, type)
+                        elif monster.hp <= 0 and phase == phases[-1]:
+                            self.bot.logger.info(f'Won full fight')
+                            await self.handle_boss_victory(interaction, message, player, monster, type)
+                            return
+                        elif monster.hp <= 0:
+                            break
+                        else:
+                            auto_battle_active = False
+                            self.bot.logger.info('Pause auto battle')
+                            pause_message = "Player HP < 20%, auto-battle paused!"
+
+                    elif str(reaction.emoji) == "🩹":
+                        await message.remove_reaction(reaction.emoji, user)
+                        player, heal_message = await self.heal(player)
+
+
+                    messages = {
+                        player.name: attack_message,
+                        monster.name: monster_message,
+                        "Heal": heal_message,
+                        "A temporary reprieve!": pause_message
+                    }
+                    embed = await self.update_combat_embed(embed, player, monster, messages)
+                    await message.edit(embed=embed)
+                    # embed.clear_fields()
+                    # embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
+                    # embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)" if player.ward > 0 else player.hp, inline=True)
+                    # if attack_message:
+                    #     embed.add_field(name=player.name, value=attack_message, inline=False)
+                    # if monster_message:
+                    #     embed.add_field(name=monster.name, value=monster_message, inline=False)
+                    # if heal_message:
+                    #     embed.add_field(name="Heal", value=heal_message, inline=False)
+                    # if pause_message:
+                    #     embed.add_field(name="A temporary reprieve!", value=pause_message, inline=False)
+                    # await message.edit(embed=embed)
+
+                except asyncio.TimeoutError:
+                    embed.add_field(name=monster.name,
+                                    value=f"{monster.name} loses interest.\n"
+                                            f"{player.name} failed to grasp the moment.",
+                                    inline=False)
+                    await message.edit(embed=embed)
+                    await message.clear_reactions()
+                    self.bot.state_manager.clear_active(player.id)
+                    await self.bot.database.update_player(player)
+                    return
+
+            if player.hp <= 0:
+                return
 
     async def player_turn(self, player, monster):
         attack_message = ""
@@ -918,7 +1024,42 @@ class Combat(commands.Cog, name="combat"):
     
 
     async def giga_auto_battle(self, interaction, message, embed, player, monster):
-        await self.run_combat_loop(interaction, message, embed, player, monster, [], update_frequency=10)
+        minimum_hp = int(player.max_hp * 0.2)
+        turn_count = 0
+        last_attack_message = ""
+        last_monster_message = ""
+
+        while player.hp > minimum_hp and monster.hp > 0:
+            turn_count += 1
+
+            monster, attack_message = await self.player_turn(player, monster)
+            last_attack_message = attack_message
+
+            if monster.hp <= 0:
+                await self.handle_victory(interaction, message, player, monster)
+                return player, monster
+            
+            # Monster turn
+            player, monster_message = await self.monster_turn(player, monster)
+            last_monster_message = monster_message
+
+            # Defeat check
+            if player.hp <= 0:
+                await self.handle_defeat(message, player, monster)
+                return player, monster
+            
+            # Update embed every 10 turns or when HP is low
+            if turn_count % 10 == 0 or player.hp <= minimum_hp:
+                embed.clear_fields()
+                embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
+                embed.add_field(name="❤️ HP", value=f"{player.hp} ({player.ward} 🔮)" if player.ward > 0 else player.hp, inline=True)
+                embed.add_field(name=player.name, value=last_attack_message, inline=False)
+                embed.add_field(name=monster.name, value=last_monster_message, inline=False)
+                if player.hp <= minimum_hp:
+                    embed.add_field(name="Auto battle", value="Player HP < 20%, auto-battle paused!", inline=False)
+                await message.edit(embed=embed)
+                await asyncio.sleep(1)
+        return player, monster
     
 
     async def boss_auto_battle(self, message, embed, player, monster):
