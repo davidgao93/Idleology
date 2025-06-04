@@ -38,11 +38,11 @@ class Skills(commands.Cog, name="skills"):
         # Mining stats
         mining_fields = [
             f"**{mining_data[2].capitalize()}** Pickaxe" if mining_data[2] else "",
-            f"Iron Ore: {mining_data[3]}" if mining_data[3] > 0 else "",
-            f"Coal: {mining_data[4]}" if mining_data[4] > 0 else "",
-            f"Gold Ore: {mining_data[5]}" if mining_data[5] > 0 else "",
-            f"Platinum Ore: {mining_data[6]}" if mining_data[6] > 0 else "",
-            f"Idea Ore: {mining_data[7]}" if mining_data[7] > 0 else "",
+            f"Iron Ore: {mining_data[3]:,}" if mining_data[3] > 0 else "",
+            f"Coal: {mining_data[4]:,}" if mining_data[4] > 0 else "",
+            f"Gold Ore: {mining_data[5]:,}" if mining_data[5] > 0 else "",
+            f"Platinum Ore: {mining_data[6]:,}" if mining_data[6] > 0 else "",
+            f"Idea Ore: {mining_data[7]:,}" if mining_data[7] > 0 else "",
         ]
 
         # Filtering out empty fields
@@ -53,11 +53,11 @@ class Skills(commands.Cog, name="skills"):
         # Fishing stats
         fishing_fields = [
             f"**{fishing_data[2].capitalize()}** Fishing Rod" if fishing_data[2] else "",
-            f"Desiccated Fish Bones: {fishing_data[3]}" if fishing_data[3] > 0 else "",
-            f"Regular Fish Bones: {fishing_data[4]}" if fishing_data[4] > 0 else "",
-            f"Sturdy Fish Bones: {fishing_data[5]}" if fishing_data[5] > 0 else "",
-            f"Reinforced Fish Bones: {fishing_data[6]}" if fishing_data[6] > 0 else "",
-            f"Titanium Fish Bones: {fishing_data[7]}" if fishing_data[7] > 0 else "",
+            f"Desiccated Fish Bones: {fishing_data[3]:,}" if fishing_data[3] > 0 else "",
+            f"Regular Fish Bones: {fishing_data[4]:,}" if fishing_data[4] > 0 else "",
+            f"Sturdy Fish Bones: {fishing_data[5]:,}" if fishing_data[5] > 0 else "",
+            f"Reinforced Fish Bones: {fishing_data[6]:,}" if fishing_data[6] > 0 else "",
+            f"Titanium Fish Bones: {fishing_data[7]:,}" if fishing_data[7] > 0 else "",
         ]
 
         # Filtering out empty fields
@@ -68,11 +68,11 @@ class Skills(commands.Cog, name="skills"):
         # Woodcutting stats
         woodcutting_fields = [
             f"**{woodcutting_data[2].capitalize()}** Axe" if woodcutting_data[2] else "",
-            f"Oak Logs: {woodcutting_data[3]}" if woodcutting_data[3] > 0 else "",
-            f"Willow Logs: {woodcutting_data[4]}" if woodcutting_data[4] > 0 else "",
-            f"Mahogany Logs: {woodcutting_data[5]}" if woodcutting_data[5] > 0 else "",
-            f"Magic Logs: {woodcutting_data[6]}" if woodcutting_data[6] > 0 else "",
-            f"Idea Logs: {woodcutting_data[7]}" if woodcutting_data[7] > 0 else "",
+            f"Oak Logs: {woodcutting_data[3]:,}" if woodcutting_data[3] > 0 else "",
+            f"Willow Logs: {woodcutting_data[4]:,}" if woodcutting_data[4] > 0 else "",
+            f"Mahogany Logs: {woodcutting_data[5]:,}" if woodcutting_data[5] > 0 else "",
+            f"Magic Logs: {woodcutting_data[6]:,}" if woodcutting_data[6] > 0 else "",
+            f"Idea Logs: {woodcutting_data[7]:,}" if woodcutting_data[7] > 0 else "",
         ]
 
         # Filtering out empty fields
@@ -113,11 +113,11 @@ class Skills(commands.Cog, name="skills"):
             f"You can mine **iron** ore, **coal**, and **gold** ore." if mining_data[2] == 'gold' else "",
             f"You can mine **iron** ore, **coal**, **gold** ore, and **platinum** ore." if mining_data[2] == 'platinum' else "",
             f"You can mine **all** ore types." if mining_data[2] == 'ideal' else "",
-            f"Iron Ore: {mining_data[3]}" if mining_data[3] > 0 else "",
-            f"Coal: {mining_data[4]}" if mining_data[4] > 0 else "",
-            f"Gold Ore: {mining_data[5]}" if mining_data[5] > 0 else "",
-            f"Platinum Ore: {mining_data[6]}" if mining_data[6] > 0 else "",
-            f"Idea Ore: {mining_data[7]}" if mining_data[7] > 0 else "",
+            f"Iron Ore: {mining_data[3]:,}" if mining_data[3] > 0 else "",
+            f"Coal: {mining_data[4]:,}" if mining_data[4] > 0 else "",
+            f"Gold Ore: {mining_data[5]:,}" if mining_data[5] > 0 else "",
+            f"Platinum Ore: {mining_data[6]:,}" if mining_data[6] > 0 else "",
+            f"Idea Ore: {mining_data[7]:,}" if mining_data[7] > 0 else "",
         ]
 
         # Filtering out empty fields
@@ -258,11 +258,11 @@ class Skills(commands.Cog, name="skills"):
             f"You can chop **oak**, **willow**, and **mahogany** trees." if woodcutting_data[2] == 'chopping' else "",
             f"You can chop **oak**, **willow**, **mahogany**, and **magic** trees." if woodcutting_data[2] == 'magic' else "",
             f"You can chop **all** tree types." if woodcutting_data[2] == 'felling' else "",
-            f"Oak Logs: {woodcutting_data[3]}" if woodcutting_data[3] > 0 else "",
-            f"Willow Logs: {woodcutting_data[4]}" if woodcutting_data[4] > 0 else "",
-            f"Mahogany Logs: {woodcutting_data[5]}" if woodcutting_data[5] > 0 else "",
-            f"Magic Logs: {woodcutting_data[6]}" if woodcutting_data[6] > 0 else "",
-            f"Idea Logs: {woodcutting_data[7]}" if woodcutting_data[7] > 0 else "",
+            f"Oak Logs: {woodcutting_data[3]:,}" if woodcutting_data[3] > 0 else "",
+            f"Willow Logs: {woodcutting_data[4]:,}" if woodcutting_data[4] > 0 else "",
+            f"Mahogany Logs: {woodcutting_data[5]:,}" if woodcutting_data[5] > 0 else "",
+            f"Magic Logs: {woodcutting_data[6]:,}" if woodcutting_data[6] > 0 else "",
+            f"Idea Logs: {woodcutting_data[7]:,}" if woodcutting_data[7] > 0 else "",
         ]
 
         woodcutting_value = "\n".join(filter(None, woodcutting_fields))
@@ -395,11 +395,11 @@ class Skills(commands.Cog, name="skills"):
             f"You can fish **minnows**, **sardines**, **salmon**, and **sharks**." if fishing_data[2] == 'reinforced' else "",
             f"You can fish **all** fish types." if fishing_data[2] == 'titanium' else "",
             f"Fish grants their respective bones as materials.",
-            f"Desiccated Fish Bones: {fishing_data[3]}" if fishing_data[3] > 0 else "",
-            f"Regular Fish Bones: {fishing_data[4]}" if fishing_data[4] > 0 else "",
-            f"Sturdy Fish Bones: {fishing_data[5]}" if fishing_data[5] > 0 else "",
-            f"Reinforced Fish Bones: {fishing_data[6]}" if fishing_data[6] > 0 else "",
-            f"Titanium Fish Bones: {fishing_data[7]}" if fishing_data[7] > 0 else "",
+            f"Desiccated Fish Bones: {fishing_data[3]:,}" if fishing_data[3] > 0 else "",
+            f"Regular Fish Bones: {fishing_data[4]:,}" if fishing_data[4] > 0 else "",
+            f"Sturdy Fish Bones: {fishing_data[5]:,}" if fishing_data[5] > 0 else "",
+            f"Reinforced Fish Bones: {fishing_data[6]:,}" if fishing_data[6] > 0 else "",
+            f"Titanium Fish Bones: {fishing_data[7]:,}" if fishing_data[7] > 0 else "",
         ]
 
         fish_value = "\n".join(filter(None, fishing_fields))

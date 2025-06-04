@@ -176,6 +176,8 @@ class Character(commands.Cog, name="character"):
         dragon_keys = existing_user[25] # dragon keys
         angel_keys = existing_user[26]
         soul_cores = existing_user[28] # soul cores
+        void_frags = existing_user[29]
+        void_keys = existing_user[30]
         curio_count = existing_user[22]
         gold_count = existing_user[6]  # index for gold
 
@@ -209,13 +211,15 @@ class Character(commands.Cog, name="character"):
                         value=(
                             f"🐉 Draconic: {dragon_keys:,}\n"
                             f"🪽 Angelic: {angel_keys:,}\n"
-                            f"❤️‍🔥 Soul Core: {soul_cores:,}"
+                            f"❤️‍🔥 Soul Core: {soul_cores:,}\n"
+                            f"🟣 Void Fragments: {void_frags:,}"
                         ), inline=True)
 
         # Curios
         embed.add_field(name="✨ **Misc**", 
                 value=(
                     f"🎁 Curios: {curio_count:,}\n"
+                    f"🗝️ Void Keys: {void_keys:,}\n"
                 ), inline=True)
 
         # Send the embed
