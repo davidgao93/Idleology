@@ -978,6 +978,11 @@ class Combat(commands.Cog, name="combat"):
                                 inline=False)
                 embed.set_image(url="https://i.imgur.com/x6QKvSy.png")
                 await self.bot.database.add_soul_cores(user_id, 1)
+            if random.random() < (0.05 + special_drop):
+                embed.add_field(name="🟣 Void Fragment", value="A void fragment was left behind!",
+                                inline=False)
+                embed.set_image(url="https://i.imgur.com/T2ap5iO.png")
+                await self.bot.database.add_void_frags(user_id, 1)
 
         if player.armor_passive == "Everlasting Blessing" and random.random() < 0.1:
             embed.add_field(name="Armor Passive",
