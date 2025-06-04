@@ -265,7 +265,7 @@ class Accessories(commands.Cog, name="accessories"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
         while True:
-            selected_accessory = await self.bot.database.fetch_weapon_by_id(selected_accessory[0])
+            selected_accessory = await self.bot.database.fetch_accessory_by_id(selected_accessory[0])
             accessory_id = selected_accessory[0]
             accessory_name = selected_accessory[2]
             current_passive = selected_accessory[9]

@@ -382,15 +382,13 @@ class Combat(commands.Cog, name="combat"):
         # Corrected hit chance display string
         player_hit_c = calculate_hit_chance(player, monster)
         monster_hit_c_base = calculate_monster_hit_chance(player, monster)
-        player_evade_bonus = (0.01 + player.evasion / 400) if player.evasion > 0 else 0
-        effective_monster_hit_c = max(0, monster_hit_c_base - player_evade_bonus)
 
         embed_description = (f"A{mod_text}level **{monster.level}** {monster.name} approaches!\n"
                              f"{modifiers_title}" +
                              "\n".join([f"**{m}**: {get_modifier_description(m)}" for m in monster.modifiers]) +
                              f"{mods_space}"
                              f"\n~{int(player_hit_c * 100)}% to hit | "
-                             f"~{int(effective_monster_hit_c * 100)}% to be hit")
+                             f"~{int(monster_hit_c_base * 100)}% to be hit")
 
         embed = discord.Embed(title=f"Witness {player.name} (Level {player.level})", description=embed_description, color=0x00FF00)
         embed.set_image(url=monster.image)
@@ -635,9 +633,7 @@ class Combat(commands.Cog, name="combat"):
         # Monster's chance to hit player
         base_monster_hit_chance = calculate_monster_hit_chance(player, monster) # e.g., 0.6 (60%)
         
-        # Player's evasion reducing monster's hit chance
-        player_evasion_value = 0.01 + (player.evasion / 400.0) # e.g. 100 evasion = 0.01 + 0.25 = 0.26 (26% flat reduction)
-        effective_hit_chance = max(0.05, base_monster_hit_chance - player_evasion_value) # Monster min 5% hit chance
+        effective_hit_chance = max(0.05, base_monster_hit_chance) # Monster min 5% hit chance
 
         monster_attack_roll = random.random() # Roll 0.0 to 1.0
 
@@ -687,14 +683,21 @@ class Combat(commands.Cog, name="combat"):
             # Player Block
             final_damage_to_player = total_damage_before_block_ward
             is_blocked = False
-            block_chance_calc = min(0.75, (player.block / 200) if player.block > 0 else 0)
+            block_chance_calc = player.block / 100
 
             if random.random() <= block_chance_calc:
                 final_damage_to_player = 0 # Block negates all damage
                 is_blocked = True
 
+            is_dodged = False
+            dodge_chance_calc = player.eva / 100
+
+            if random.random() <= dodge_chance_calc:
+                final_damage_to_player = 0 # Block negates all damage
+                is_dodged = True
+
             # Apply damage to Ward first, then HP
-            if not is_blocked:
+            if not is_blocked or not is_dodged:
                 if player.ward > 0:
                     if final_damage_to_player <= player.ward:
                         player.ward -= final_damage_to_player
@@ -709,8 +712,11 @@ class Combat(commands.Cog, name="combat"):
                     player.hp -= final_damage_to_player
                     monster_message += f"{monster.name} {monster.flavor}. You take 💔 **{final_damage_to_player}** damage!\n"
 
-            else: # Damage was blocked
-                 monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ blocks all damage!\n"
+            else: # Damage was blocked or dodged
+                if is_blocked:
+                    monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ blocks all damage!\n"
+                else:
+                    monster_message = f"{monster.name} {monster.flavor}, but your armor 🏃 lets you nimbly step aside!\n"
 
             # Add messages for special damage procs
             if is_executed and not is_blocked:
@@ -742,15 +748,15 @@ class Combat(commands.Cog, name="combat"):
             # Player's turn
             monster, attack_message = await self.player_turn(player, monster)
             if monster.hp <= 0:
-                await self.handle_victory(interaction, message, player, monster)
-                self.bot.state_manager.clear_active(player.id) # Ensure cleared after victory
+                # await self.handle_victory(interaction, message, player, monster)
+                # self.bot.state_manager.clear_active(player.id) # Ensure cleared after victory
                 return player, monster # Combat ends
 
             # Monster's turn
             player, monster_message = await self.monster_turn(player, monster)
             if player.hp <= 0:
-                await self.handle_defeat(message, player, monster)
-                self.bot.state_manager.clear_active(player.id) # Ensure cleared after defeat
+                # await self.handle_defeat(message, player, monster)
+                # self.bot.state_manager.clear_active(player.id) # Ensure cleared after defeat
                 return player, monster # Combat ends
 
             # Update embed
@@ -947,7 +953,7 @@ class Combat(commands.Cog, name="combat"):
             if random.random() < (0.05 + special_drop):
                 embed.add_field(name="🟣 Void Fragment", value="A void fragment was left behind!",
                                 inline=False)
-                embed.set_image(url="https://i.imgur.com/KSTfiW3.png")
+                embed.set_image(url="https://i.imgur.com/T2ap5iO.png")
                 await self.bot.database.add_void_frags(user_id, 1)
             if random.random() < (0.01 + special_drop):
                 embed.add_field(name="Rune of Shattering", value="Shatters a weapon, granting back 80% of any runes of refinement used.",
