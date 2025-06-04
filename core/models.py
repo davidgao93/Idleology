@@ -78,6 +78,8 @@ class Player:
     potions: int
     wep_id: int
     weapon_passive: str
+    pinnacle_passive: str
+    utmost_passive: str
     acc_passive: str
     acc_lvl: int
     armor_passive: str

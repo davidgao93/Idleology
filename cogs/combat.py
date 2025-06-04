@@ -6,7 +6,18 @@ from discord import app_commands, Interaction, Message
 from datetime import datetime, timedelta
 from core.models import Player, Monster, Weapon, Accessory, Armor
 from core.loot import generate_weapon, generate_armor, generate_accessory
-from core.combat_calcs import calculate_hit_chance, calculate_monster_hit_chance, calculate_damage_taken, check_cull
+from core.combat_calcs import (calculate_hit_chance, 
+                               calculate_monster_hit_chance, 
+                               calculate_damage_taken, 
+                               check_cull, 
+                               check_for_polished, 
+                               check_for_sturdy,
+                                check_for_accuracy, 
+                                check_for_crit_bonus, 
+                                check_for_burn_bonus, 
+                                check_for_spark_bonus,
+                                check_for_echo_bonus,
+                                check_for_poison_bonus)
 from core.gen_mob import get_modifier_description, generate_encounter, generate_boss
 import json
 
@@ -75,6 +86,8 @@ class Combat(commands.Cog, name="combat"):
             potions=existing_user_data[16],
             wep_id=0, # To be populated
             weapon_passive="",
+            pinnacle_passive="",
+            utmost_passive="",
             acc_passive="",
             acc_lvl=0,
             armor_passive="",
@@ -86,6 +99,8 @@ class Combat(commands.Cog, name="combat"):
         if equipped_item:
             player.wep_id = equipped_item[0]
             player.weapon_passive = equipped_item[7]
+            player.pinnacle_passive = equipped_item[12]
+            player.utmost_passive = equipped_item[13]
             player.attack += equipped_item[4]
             player.defence += equipped_item[5]
             player.rarity += equipped_item[6]
@@ -158,27 +173,8 @@ class Combat(commands.Cog, name="combat"):
                                             inline=False)
         
         # Player weapon passives
-        polished_passives = ["polished", "honed", "gleaming", "tempered", "flaring"]
-        if player.weapon_passive in polished_passives:
-            value = polished_passives.index(player.weapon_passive)
-            defence_reduction_percentage = (value + 1) * 0.08 # 8% to 40%
-            reduced_amount = int(monster.defence * defence_reduction_percentage)
-            monster.defence = max(0, monster.defence - reduced_amount) # Ensure defence doesn't go below 0
-            embed_to_modify.add_field(name="Weapon Passive",
-                                    value=f"The **{player.weapon_passive}** weapon 💫 shines!\n"
-                                          f"Reduces {monster.name}'s defence by {reduced_amount} ({defence_reduction_percentage*100:.0f}%).",
-                                    inline=False)
-            
-        sturdy_passives = ["sturdy", "reinforced", "thickened", "impregnable", "impenetrable"]
-        if player.weapon_passive in sturdy_passives:
-            value = sturdy_passives.index(player.weapon_passive)
-            defence_bonus_percentage = (value + 1) * 0.08 # 8% to 40%
-            defence_bonus_amount = int(player.defence * defence_bonus_percentage) # Bonus based on player's current defence
-            player.defence += defence_bonus_amount
-            embed_to_modify.add_field(name="Weapon Passive",
-                                    value=f"The **{player.weapon_passive}** weapon strengthens resolve!\n"
-                                          f"🛡️ Player defence boosted by **{defence_bonus_amount}**!",
-                                    inline=False)
+        player, monster, embed_to_modify = check_for_polished(player, monster, embed_to_modify)
+        player, monster, embed_to_modify = check_for_sturdy(player, monster, embed_to_modify)
 
 
     @app_commands.command(name="combat", description="Engage in combat.")
@@ -509,11 +505,7 @@ class Combat(commands.Cog, name="combat"):
         attack_roll = random.randint(0, 100) # Roll out of 100
         final_miss_threshold = 100 - int(hit_chance * 100)
 
-        acc_value_bonus = 0
-        accuracy_passives = ["accurate", "precise", "sharpshooter", "deadeye", "bullseye"]
-        if player.weapon_passive in accuracy_passives:
-            acc_value_bonus = (1 + accuracy_passives.index(player.weapon_passive)) * 4 # This is a % bonus to the roll
-            passive_message += f"The **{player.weapon_passive}** weapon boosts 🎯 accuracy roll by **{acc_value_bonus}**!\n"
+        acc_value_bonus, passive_message = check_for_accuracy(player, passive_message)
 
         if player.acc_passive == "Lucky Strikes":
             lucky_strike_chance = player.acc_lvl * 0.10 # 10% per level
@@ -527,11 +519,7 @@ class Combat(commands.Cog, name="combat"):
             attack_roll2 = random.randint(0, 100)
             attack_roll = min(attack_roll, attack_roll2) # Take the worse roll
             
-        weapon_crit_bonus_chance = 0 # This is a reduction to player.crit target for easier crits
-        crit_passives = ["piercing", "keen", "incisive", "puncturing", "penetrating"]
-        if player.weapon_passive in crit_passives:
-            value = crit_passives.index(player.weapon_passive)
-            weapon_crit_bonus_chance = (value + 1) * 5 # e.g., 5 to 25 reduction in crit target
+        weapon_crit_bonus_chance = check_for_crit_bonus(player)
 
         if "Shields-up" in monster.modifiers and random.random() < 0.1:
             attack_multiplier = 0 # No damage
@@ -556,7 +544,7 @@ class Combat(commands.Cog, name="combat"):
             max_hit_calc = player.attack # Base for crit damage
             # Crit damage is typically base_damage * crit_multiplier (e.g., 2x)
             actual_hit = int((random.randint(int(max_hit_calc * 0.5) + 1, max_hit_calc)) * 2.0 * attack_multiplier)
-            attack_message = ( (f"The **{player.weapon_passive}** weapon glimmers with power!\n" if weapon_crit_bonus_chance > 0 else '') +
+            attack_message = ( (f"The weapon glimmers with power!\n" if weapon_crit_bonus_chance > 0 else '') +
                                f"Critical Hit! Damage: 🗡️ **{actual_hit}**")
             attack_message = passive_message + attack_message # Prepend passives
         elif is_hit:
@@ -564,59 +552,32 @@ class Combat(commands.Cog, name="combat"):
             base_damage_max = player.attack
             base_damage_min = 1
 
-            burning_passives = ["burning", "flaming", "scorching", "incinerating", "carbonising"]
-            if player.weapon_passive in burning_passives:
-                value = burning_passives.index(player.weapon_passive)
-                burn_bonus_percentage = (value + 1) * 0.08
-                bonus_burn_damage = int(player.attack * burn_bonus_percentage)
-                base_damage_max += bonus_burn_damage
-                attack_message = (f"The **{player.weapon_passive}** weapon 🔥 burns bright!\n"
-                                  f"Attack damage potential boosted by **{bonus_burn_damage}**.\n")
+            base_damage_max, attack_message = check_for_burn_bonus(player, base_damage_max, attack_message)
             
-            sparking_passives = ["sparking", "shocking", "discharging", "electrocuting", "vapourising"]
-            if player.weapon_passive in sparking_passives:
-                value = sparking_passives.index(player.weapon_passive)
-                spark_min_percentage = (value + 1) * 0.08
-                base_damage_min = max(base_damage_min, int(base_damage_max * spark_min_percentage))
-                attack_message = (f"The **{player.weapon_passive}** weapon surges with ⚡ lightning, ensuring solid impact!\n")
+            base_damage_min, attack_message = check_for_spark_bonus(player, base_damage_min, base_damage_max, attack_message)
 
             # Calculate actual hit damage for normal hit
-            if base_damage_min >= base_damage_max : base_damage_min = base_damage_max -1 # Ensure range
+            if base_damage_min >= base_damage_max : base_damage_min = base_damage_max - 1 # Ensure range
             rolled_damage = random.randint(base_damage_min, base_damage_max)
             actual_hit = int(rolled_damage * attack_multiplier)
 
-            echo_hit = False
-            echo_passives = ["echo", "echoo", "echooo", "echoooo", "echoes"]
-            if player.weapon_passive in echo_passives:
-                value = echo_passives.index(player.weapon_passive)
-                echo_multiplier = (value + 1) * 0.10
-                echo_damage = int(actual_hit * echo_multiplier) # Echo is based on the already calculated hit
-                actual_hit += echo_damage # Total damage includes echo
-                echo_hit = True
+            actual_hit, echo_hit, echo_damage = check_for_echo_bonus(player, actual_hit)
 
             attack_message += f"Hit! Damage: 💥 **{actual_hit - echo_damage}**" # Display main hit part
             attack_message = passive_message + attack_message # Prepend general passives
             if echo_hit:
-                attack_message += (f"\nThe **{player.weapon_passive}** weapon 🎶 echoes the hit!\n"
+                attack_message += (f"\nThe hit is 🎶 echoed!\n"
                                    f"Echo damage: 💥 **{echo_damage}**")
         else: # Miss
             actual_hit = 0 # No direct damage on miss
-            poison_damage_on_miss = 0
-            poisonous_passives = ["poisonous", "noxious", "venomous", "toxic", "lethal"]
-            if player.weapon_passive in poisonous_passives:
-                value = poisonous_passives.index(player.weapon_passive)
-                poison_miss_percentage = (value + 1) * 0.08
-                # Poison damage on miss is a fraction of player's attack
-                poison_damage_on_miss = int(random.randint(1, int(player.attack * poison_miss_percentage)) * attack_multiplier)
+            poison_damage_on_miss = check_for_poison_bonus(player, attack_multiplier)
                 
-                if poison_damage_on_miss > 0:
-                     attack_message = passive_message + f"Miss!\nHowever, the **{player.weapon_passive}** weapon's lingering poison 🐍 deals **{poison_damage_on_miss}** damage."
+            if poison_damage_on_miss > 0:
+                attack_message = passive_message + f"Miss!\nHowever, the lingering poison 🐍 deals **{poison_damage_on_miss}** damage."
                      # Apply poison damage directly here if it's instant, or set up a DoT if applicable
                      # For now, assume it's instant damage on miss
-                     actual_hit = poison_damage_on_miss # This "hit" is the poison damage
-                else: # Should not happen if player.attack > 0
-                    attack_message = passive_message + "Miss!"
-            else:
+                actual_hit = poison_damage_on_miss # This "hit" is the poison damage
+            else: # Should not happen if player.attack > 0
                 attack_message = passive_message + "Miss!"
 
         # Apply monster's damage reduction like Titanium

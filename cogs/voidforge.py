@@ -190,7 +190,7 @@ class Voidforge(commands.Cog, name="voidforge"):
                         item_defence = selected_item[5]
                         item_rarity = selected_item[6]
                         item_passive = selected_item[7]
-                        # forges_remaining = selected_item[9]
+                        forges_remaining = selected_item[9]
                         # refines_remaining = selected_item[10]
                         item_refinement = selected_item[11]
                         item_pinnacle_passive = selected_item[12]
@@ -241,7 +241,8 @@ class Voidforge(commands.Cog, name="voidforge"):
                         
                         action_view = View(timeout=60.0)
                         action_view.add_item(Button(label="Unequip" if is_equipped else "Equip", style=ButtonStyle.primary, custom_id="unequip" if is_equipped else "equip"))
-                        action_view.add_item(Button(label="Forge", style=ButtonStyle.primary, custom_id="forge"))
+                        if forges_remaining > 0:
+                            action_view.add_item(Button(label="Forge", style=ButtonStyle.primary, custom_id="forge"))
                         action_view.add_item(Button(label="Refine", style=ButtonStyle.primary, custom_id="refine"))
                         
                         # Add Voidforge button conditionally
@@ -477,9 +478,12 @@ class Voidforge(commands.Cog, name="voidforge"):
         # 2. Display sacrificeable weapons and prompt for ID
         display_embed = discord.Embed(
             title=f"Voidforge: Sacrifice for {equipped_weapon_name}",
-            description="Type the ID of the weapon you wish to sacrifice. This weapon will be destroyed.\nType 'cancel' to go back.",
+            description="**Type** the ID of the weapon you wish to sacrifice. This weapon will be __**destroyed**__.\n\n"
+            "**WARNING**: Passives of the same type will NOT both work during combat, only the highest level will.\n"
+            "Type __'cancel'__ to go back.",
             color=discord.Color.purple()
         )
+        display_embed.set_thumbnail(url="https://i.imgur.com/rZnRu0R.jpeg")
         
         sacrifice_display_string = ""
         valid_sacrifice_ids = []
@@ -540,7 +544,8 @@ class Voidforge(commands.Cog, name="voidforge"):
 
         confirm_embed = discord.Embed(
             title="Confirm Voidforge",
-            description="Are you sure you want to proceed? The sacrificed weapon will be destroyed.",
+            description="Are you sure you want to proceed? The sacrificed weapon will be __**destroyed**__ no matter what happens.\n"
+            "You estimate you have a **25%** chance to succeed, and a **25%** chance for something horrible to happen...",
             color=discord.Color.orange() # discord.py color
         )
         eq_name = equipped_weapon[2]
@@ -602,7 +607,7 @@ class Voidforge(commands.Cog, name="voidforge"):
                                            f"granting it the Utmost Passive: **{sac_weapon_passive.capitalize()}**!")
                 elif roll < 0.50: # Outcome 2: Overwrite passive (25%)
                     await self.bot.database.update_weapon_passive(equipped_weapon_id, sac_weapon_passive)
-                    outcome_message = (f"A turbulent fusion! The passive of **{equipped_weapon_name}** has been overwritten by **{sac_weapon_name}**'s essence, "
+                    outcome_message = (f"Disaster strikes! The voidforge howls with fury, the passive of **{equipped_weapon_name}** has been overwritten by **{sac_weapon_name}**'s essence, "
                                        f"now possessing: **{sac_weapon_passive.capitalize()}**!")
                     if equipped_weapon_pinnacle_passive != 'none':
                         await self.bot.database.update_item_pinnacle_passive(equipped_weapon_id, 'none')
@@ -635,178 +640,209 @@ class Voidforge(commands.Cog, name="voidforge"):
                         message: Message) -> None:
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
-        
-        # Re-fetch item to ensure data is current before forging
-        current_item_state = await self.bot.database.fetch_weapon_by_id(selected_item[0])
-        if not current_item_state:
-            # Item might have been removed by another process
-            # Create a temporary embed for the error
-            error_embed = discord.Embed(title="Error", description="Item not found. It may have been removed.", color=discord.Color.red())
-            await message.edit(embed=error_embed, view=None)
-            await asyncio.sleep(3)
-            return # Return to item action loop
-
-        item_id = current_item_state[0]
-        item_name = current_item_state[2] 
-        item_level = current_item_state[3]
-        forges_remaining = current_item_state[9]
-
-        # Create a new embed for forging process to avoid modifying shared embed directly
-        forge_embed = discord.Embed(title=f"Forging: {item_name}", color=0xFFFF00)
-        forge_embed.set_thumbnail(url="https://i.imgur.com/jgq4aGA.jpeg")
-
-
-        if forges_remaining < 1:
-            forge_embed.description = "This item cannot be forged anymore.\nReturning..."
-            await message.edit(embed=forge_embed, view=None)
-            await asyncio.sleep(3)
-            return
-
-        base_success_rate = 0.8
-        if item_level <= 40:
-            costs = {
-                3: (10, 10, 10, 100), 2: (10, 10, 10, 400), 1: (10, 10, 10, 1000),
-            }
-            cost_index_map = {3: 3, 2: 4, 1: 5} # Maps forges_remaining to resource index (iron=3, coal=4, gold=5, plat=6, idea=7)
-            success_rate = base_success_rate - (3 - forges_remaining) * 0.05
-            forges_data = {
-                3: ('iron', 'oak', 'desiccated'), 2: ('coal', 'willow', 'regular'), 1: ('gold', 'mahogany', 'sturdy'),
-            }
-        elif 40 < item_level <= 80:    
-            costs = {
-                4: (25, 25, 25, 250), 3: (25, 25, 25, 1000), 2: (25, 25, 25, 2500), 1: (25, 25, 25, 5000),
-            }       
-            cost_index_map = {4: 3, 3: 4, 2: 5, 1: 6}
-            forges_data = {
-                4: ('iron', 'oak', 'desiccated'), 3: ('coal', 'willow', 'regular'), 2: ('gold', 'mahogany', 'sturdy'), 1: ('platinum', 'magic', 'reinforced'),
-            }
-            success_rate = base_success_rate - (4 - forges_remaining) * 0.05 
-        else: # item_level > 80
-            costs = {
-                5: (50, 50, 50, 500), 4: (50, 50, 50, 2000), 3: (50, 50, 50, 5000), 2: (50, 50, 50, 10000), 1: (50, 50, 50, 20000),
-            }
-            cost_index_map = {5: 3, 4: 4, 3: 5, 2: 6, 1: 7}
-            forges_data = {
-                5: ('iron', 'oak', 'desiccated'), 4: ('coal', 'willow', 'regular'), 3: ('gold', 'mahogany', 'sturdy'), 2: ('platinum', 'magic', 'reinforced'), 1: ('idea', 'idea', 'titanium'), # Assuming 'idea' for ore/wood
-            }
-            success_rate = base_success_rate - (5 - forges_remaining) * 0.05
-
-        success_rate = max(0.05, min(success_rate, 0.95)) # Ensure success rate is within a reasonable bound
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        player_gp = existing_user[6]
-        mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
-        woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
-        fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
-
-        if forges_remaining not in costs: # Should not happen if logic is correct
-            forge_embed.description = "Error determining forge costs. Returning..."
-            await message.edit(embed=forge_embed, view=None)
-            await asyncio.sleep(3)
-            return
-
-        ore_cost, wood_cost, bone_cost, gp_cost = costs[forges_remaining]
-        ore_type, log_type, bone_type = forges_data.get(forges_remaining, (None, None, None))
-        
-        # Determine resource index (3 for iron/oak/desiccated, 4 for coal/willow/regular etc.)
-        # This mapping needs to be robust. The `cost_index_map` is an attempt.
-        # Example: if forges_remaining = 3 (for item_level <= 40), ore_type is 'iron'. 'iron' is index 3 in mining table.
-        # mining_data: user_id, server_id, pickaxe_tier, iron, coal, gold, platinum, idea
-        # Indices:         0,         1,              2,    3,    4,    5,        6,    7
-        # fishing_data: user_id, server_id, fishing_rod, desiccated_bones, regular_bones, sturdy_bones, reinforced_bones, titanium_bones
-        # Indices:          0,         1,           2,                  3,             4,            5,                6,              7
-        # woodcutting_data: user_id, server_id, axe_type, oak_logs, willow_logs, mahogany_logs, magic_logs, idea_logs
-        # Indices:            0,         1,          2,        3,           4,             5,          6,         7
-        
-        # Resource name to index mapping
-        ore_to_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}
-        log_to_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}
-        bone_to_idx = {'desiccated': 3, 'regular': 4, 'sturdy': 5, 'reinforced': 6, 'titanium': 7}
-
-        actual_ore_owned = mining_data[ore_to_idx[ore_type]] if ore_type and ore_type in ore_to_idx else 0
-        actual_logs_owned = woodcutting_data[log_to_idx[log_type]] if log_type and log_type in log_to_idx else 0
-        actual_bones_owned = fishing_data[bone_to_idx[bone_type]] if bone_type and bone_type in bone_to_idx else 0
-
-
-        if (actual_ore_owned < ore_cost or
-            actual_logs_owned < wood_cost or
-            actual_bones_owned < bone_cost or
-            player_gp < gp_cost):
-            forge_embed.description = (f"You do not have enough resources to forge this item.\n"
-                                       f"Forging costs:\n"
-                                       f"- **{ore_type.capitalize()}** {'Ore' if ore_type != 'coal' else ''} : **{ore_cost}** (You have: {actual_ore_owned})\n"
-                                       f"- **{log_type.capitalize()}** Logs: **{wood_cost}** (You have: {actual_logs_owned})\n"
-                                       f"- **{bone_type.capitalize()}** Bones: **{bone_cost}** (You have: {actual_bones_owned})\n"
-                                       f"- GP cost: **{gp_cost:,}** (You have: {player_gp:,})\nReturning...")
-            await message.edit(embed=forge_embed, view=None)
-            await asyncio.sleep(5)
-            return
-        
-        forge_embed.description=(f"Attempt to forge **{item_name}**?\n"
-                                 f"Forging costs:\n"
-                                 f"- **{ore_type.capitalize()}** {'Ore' if ore_type != 'coal' else ''} : **{ore_cost}**\n"
-                                 f"- **{log_type.capitalize()}** Logs: **{wood_cost}**\n"
-                                 f"- **{bone_type.capitalize()}** Bones: **{bone_cost}**\n"
-                                 f"- GP cost: **{gp_cost:,}**\n"
-                                 f"- Success rate: **{int(success_rate * 100)}%**\n")
-        confirm_view = View(timeout=60.0)
-        confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_forge"))
-        confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_forge"))
-        
-        await message.edit(embed=forge_embed, view=confirm_view)
-
-        def check(button_interaction: Interaction):
-            return (button_interaction.user == interaction.user and 
-                    button_interaction.message is not None and 
-                    button_interaction.message.id == message.id)
-
-        try:
-            confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-            await confirm_interaction.response.defer()
-            
-            if confirm_interaction.data['custom_id'] == "cancel_forge":
+        while True:
+            # Re-fetch item to ensure data is current before forging
+            print('Fetching item to forge')
+            current_item_state = await self.bot.database.fetch_weapon_by_id(selected_item[0])
+            if not current_item_state:
+                # Item might have been removed by another process
+                # Create a temporary embed for the error
+                error_embed = discord.Embed(title="Error", description="Item not found. It may have been removed.", color=discord.Color.red())
+                await message.edit(embed=error_embed, view=None)
+                await asyncio.sleep(3)
                 return # Return to item action loop
 
-            # Deduct resources
-            await self.bot.database.update_mining_resources(user_id, server_id, {ore_type: -ore_cost})
-            await self.bot.database.update_woodcutting_resources(user_id, server_id, {log_type: -wood_cost})
-            await self.bot.database.update_fishing_resources(user_id, server_id, {bone_type: -bone_cost}) # Assumes fishing resources are desiccated, regular etc.
-            await self.bot.database.add_gold(user_id, -gp_cost)
+            item_id = current_item_state[0]
+            item_name = current_item_state[2] 
+            item_level = current_item_state[3]
+            forges_remaining = current_item_state[9]
 
-            new_forges_remaining = forges_remaining - 1
-            forge_success = random.random() <= success_rate  
+            # Create a new embed for forging process to avoid modifying shared embed directly
+            forge_embed = discord.Embed(title=f"Forging: {item_name}", color=0xFFFF00)
+            forge_embed.set_thumbnail(url="https://i.imgur.com/jgq4aGA.jpeg")
 
-            forge_embed.clear_fields() # Clear previous description if any
 
-            if forge_success:
-                current_passive = current_item_state[7]
-                if current_passive == "none":
-                    passives = ["burning", "poisonous", "polished", "sparking", "sturdy", "piercing", "strengthened", "accurate", "echo"]
-                    new_passive = random.choice(passives)
-                    await self.bot.database.update_weapon_passive(item_id, new_passive)
-                    forge_embed.description = (f"🎊 Congratulations! 🎊\n" 
-                                               f"**{item_name}** has gained the " 
-                                               f"**{new_passive.capitalize()}** passive.\nReturning...")
+            if forges_remaining < 1:
+                forge_embed.description = "This item cannot be forged anymore.\nReturning..."
+                await message.edit(embed=forge_embed, view=None)
+                await asyncio.sleep(1)
+                return
+
+            base_success_rate = 0.8
+            if item_level <= 40:
+                costs = {
+                    3: (10, 10, 10, 100), 2: (10, 10, 10, 400), 1: (10, 10, 10, 1000),
+                }
+                cost_index_map = {3: 3, 2: 4, 1: 5} # Maps forges_remaining to resource index (iron=3, coal=4, gold=5, plat=6, idea=7)
+                success_rate = base_success_rate - (3 - forges_remaining) * 0.05
+                forges_data = {
+                    3: ('iron', 'oak', 'desiccated'), 2: ('coal', 'willow', 'regular'), 1: ('gold', 'mahogany', 'sturdy'),
+                }
+            elif 40 < item_level <= 80:    
+                costs = {
+                    4: (25, 25, 25, 250), 3: (25, 25, 25, 1000), 2: (25, 25, 25, 2500), 1: (25, 25, 25, 5000),
+                }       
+                cost_index_map = {4: 3, 3: 4, 2: 5, 1: 6}
+                forges_data = {
+                    4: ('iron', 'oak', 'desiccated'), 3: ('coal', 'willow', 'regular'), 2: ('gold', 'mahogany', 'sturdy'), 1: ('platinum', 'magic', 'reinforced'),
+                }
+                success_rate = base_success_rate - (4 - forges_remaining) * 0.05 
+            else: # item_level > 80
+                costs = {
+                    5: (50, 50, 50, 500), 4: (50, 50, 50, 2000), 3: (50, 50, 50, 5000), 2: (50, 50, 50, 10000), 1: (50, 50, 50, 20000),
+                }
+                cost_index_map = {5: 3, 4: 4, 3: 5, 2: 6, 1: 7}
+                forges_data = {
+                    5: ('iron', 'oak', 'desiccated'), 4: ('coal', 'willow', 'regular'), 3: ('gold', 'mahogany', 'sturdy'), 2: ('platinum', 'magic', 'reinforced'), 1: ('idea', 'idea', 'titanium'), # Assuming 'idea' for ore/wood
+                }
+                success_rate = base_success_rate - (5 - forges_remaining) * 0.05
+
+            success_rate = max(0.05, min(success_rate, 0.95)) # Ensure success rate is within a reasonable bound
+            existing_user = await self.bot.database.fetch_user(user_id, server_id)
+            player_gp = existing_user[6]
+            mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+            woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+            fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+
+            if forges_remaining not in costs: # Should not happen if logic is correct
+                forge_embed.description = "Error determining forge costs. Returning..."
+                await message.edit(embed=forge_embed, view=None)
+                await asyncio.sleep(3)
+                return
+
+            ore_cost, wood_cost, bone_cost, gp_cost = costs[forges_remaining]
+            ore_type, log_type, bone_type = forges_data.get(forges_remaining, (None, None, None))
+            
+            # Determine resource index (3 for iron/oak/desiccated, 4 for coal/willow/regular etc.)
+            # This mapping needs to be robust. The `cost_index_map` is an attempt.
+            # Example: if forges_remaining = 3 (for item_level <= 40), ore_type is 'iron'. 'iron' is index 3 in mining table.
+            # mining_data: user_id, server_id, pickaxe_tier, iron, coal, gold, platinum, idea
+            # Indices:         0,         1,              2,    3,    4,    5,        6,    7
+            # fishing_data: user_id, server_id, fishing_rod, desiccated_bones, regular_bones, sturdy_bones, reinforced_bones, titanium_bones
+            # Indices:          0,         1,           2,                  3,             4,            5,                6,              7
+            # woodcutting_data: user_id, server_id, axe_type, oak_logs, willow_logs, mahogany_logs, magic_logs, idea_logs
+            # Indices:            0,         1,          2,        3,           4,             5,          6,         7
+            
+            # Resource name to index mapping
+            ore_to_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}
+            log_to_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}
+            bone_to_idx = {'desiccated': 3, 'regular': 4, 'sturdy': 5, 'reinforced': 6, 'titanium': 7}
+
+            actual_ore_owned = mining_data[ore_to_idx[ore_type]] if ore_type and ore_type in ore_to_idx else 0
+            actual_logs_owned = woodcutting_data[log_to_idx[log_type]] if log_type and log_type in log_to_idx else 0
+            actual_bones_owned = fishing_data[bone_to_idx[bone_type]] if bone_type and bone_type in bone_to_idx else 0
+
+
+            if (actual_ore_owned < ore_cost or
+                actual_logs_owned < wood_cost or
+                actual_bones_owned < bone_cost or
+                player_gp < gp_cost):
+                forge_embed.description = (f"You do not have enough resources to forge this item.\n"
+                                        f"Forging costs:\n"
+                                        f"- **{ore_type.capitalize()}** {'Ore' if ore_type != 'coal' else ''} : **{ore_cost}** (You have: {actual_ore_owned})\n"
+                                        f"- **{log_type.capitalize()}** Logs: **{wood_cost}** (You have: {actual_logs_owned})\n"
+                                        f"- **{bone_type.capitalize()}** Bones: **{bone_cost}** (You have: {actual_bones_owned})\n"
+                                        f"- GP cost: **{gp_cost:,}** (You have: {player_gp:,})\nReturning...")
+                await message.edit(embed=forge_embed, view=None)
+                await asyncio.sleep(3)
+                return
+            
+            forge_embed.description=(f"Attempt to forge **{item_name}**?\n"
+                                    f"Forging costs:\n"
+                                    f"- **{ore_type.capitalize()}** {'Ore' if ore_type != 'coal' else ''} : **{ore_cost}**\n"
+                                    f"- **{log_type.capitalize()}** Logs: **{wood_cost}**\n"
+                                    f"- **{bone_type.capitalize()}** Bones: **{bone_cost}**\n"
+                                    f"- GP cost: **{gp_cost:,}**\n"
+                                    f"- Success rate: **{int(success_rate * 100)}%**\n")
+            confirm_view = View(timeout=60.0)
+            confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_forge"))
+            confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_forge"))
+            
+            await message.edit(embed=forge_embed, view=confirm_view)
+
+            def check(button_interaction: Interaction):
+                return (button_interaction.user == interaction.user and 
+                        button_interaction.message is not None and 
+                        button_interaction.message.id == message.id)
+
+            try:
+                confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                await confirm_interaction.response.defer()
+                
+                if confirm_interaction.data['custom_id'] == "cancel_forge":
+                    return # Return to item action loop
+
+                mining_deduction = {'iron': 0, 'coal': 0, 'gold': 0, 'platinum': 0, 'idea': 0}
+                if ore_type in mining_deduction: # Ensure ore_type is a valid key
+                    mining_deduction[ore_type] = -ore_cost
                 else:
-                    new_passive = await self.upgrade_passive(current_passive)
-                    await self.bot.database.update_weapon_passive(item_id, new_passive)
-                    forge_embed.description = (f"🎊 Congratulations! 🎊\n"
-                                               f"**{item_name}**'s passive upgrades from **{current_passive.capitalize()}**"
-                                               f" to **{new_passive.capitalize()}**.\nReturning...")
-            else:
-                forge_embed.description = (f"Your hand slips and you fail to strike the weapon! 💔\n"
-                                           f"Better luck next time.\n"
-                                           f"Returning to item menu...")
-        
-            await self.bot.database.update_weapon_forge_count(item_id, new_forges_remaining)
-            await message.edit(embed=forge_embed, view=None)
-            await asyncio.sleep(4)
+                    print(f"ERROR: Invalid ore_type '{ore_type}' for mining deduction.")
+                    # Handle error appropriately, e.g., show message and return
+                    forge_embed.description = f"Internal error: Invalid resource type for deduction ({ore_type})."
+                    await message.edit(embed=forge_embed, view=None)
+                    await asyncio.sleep(3)
+                    return
+                await self.bot.database.update_mining_resources(user_id, server_id, mining_deduction)
 
-        except asyncio.TimeoutError:
-            # Timeout on forge confirmation
-            await message.edit(content="Forge confirmation timed out.", embed=None, view=None)
-            await asyncio.sleep(3)
-            # self.bot.state_manager.clear_active(interaction.user.id) # Let item action loop handle this
-            return
+                woodcutting_deduction = {'oak': 0, 'willow': 0, 'mahogany': 0, 'magic': 0, 'idea': 0}
+                if log_type in woodcutting_deduction: # Ensure log_type is a valid key
+                    woodcutting_deduction[log_type] = -wood_cost
+                else:
+                    print(f"ERROR: Invalid log_type '{log_type}' for woodcutting deduction.")
+                    forge_embed.description = f"Internal error: Invalid resource type for deduction ({log_type})."
+                    await message.edit(embed=forge_embed, view=None)
+                    await asyncio.sleep(3)
+                    return
+                await self.bot.database.update_woodcutting_resources(user_id, server_id, woodcutting_deduction)
+
+                fishing_deduction = {'desiccated': 0, 'regular': 0, 'sturdy': 0, 'reinforced': 0, 'titanium': 0}
+                if bone_type in fishing_deduction: # Ensure bone_type is a valid key
+                    fishing_deduction[bone_type] = -bone_cost
+                else:
+                    print(f"ERROR: Invalid bone_type '{bone_type}' for fishing deduction.")
+                    forge_embed.description = f"Internal error: Invalid resource type for deduction ({bone_type})."
+                    await message.edit(embed=forge_embed, view=None)
+                    await asyncio.sleep(3)
+                    return
+                await self.bot.database.update_fishing_resources(user_id, server_id, fishing_deduction)
+
+                await self.bot.database.add_gold(user_id, -gp_cost)
+
+                new_forges_remaining = forges_remaining - 1
+                forge_success = random.random() <= success_rate  
+
+                forge_embed.clear_fields() # Clear previous description if any
+
+                if forge_success:
+                    current_passive = current_item_state[7]
+                    if current_passive == "none":
+                        passives = ["burning", "poisonous", "polished", "sparking", "sturdy", "piercing", "strengthened", "accurate", "echo"]
+                        new_passive = random.choice(passives)
+                        await self.bot.database.update_weapon_passive(item_id, new_passive)
+                        forge_embed.description = (f"🎊 Congratulations! 🎊\n" 
+                                                f"**{item_name}** has gained the " 
+                                                f"**{new_passive.capitalize()}** passive.\nReturning...")
+                    else:
+                        new_passive = await self.upgrade_passive(current_passive)
+                        await self.bot.database.update_weapon_passive(item_id, new_passive)
+                        forge_embed.description = (f"🎊 Congratulations! 🎊\n"
+                                                f"**{item_name}**'s passive upgrades from **{current_passive.capitalize()}**"
+                                                f" to **{new_passive.capitalize()}**.\nReturning...")
+                else:
+                    forge_embed.description = (f"Your hand slips and you fail to strike the weapon! 💔\n"
+                                            f"Better luck next time.\n"
+                                            f"Returning to item menu...")
+            
+                await self.bot.database.update_weapon_forge_count(item_id, new_forges_remaining)
+                await message.edit(embed=forge_embed, view=None)
+                await asyncio.sleep(4)
+
+            except asyncio.TimeoutError:
+                # Timeout on forge confirmation
+                await message.edit(content="Forge confirmation timed out.", embed=None, view=None)
+                await asyncio.sleep(3)
+                # self.bot.state_manager.clear_active(interaction.user.id) # Let item action loop handle this
+                return
 
     async def upgrade_passive(self, current_passive: str) -> str:
         """Upgrade the current passive to a stronger version."""
@@ -953,7 +989,7 @@ class Voidforge(commands.Cog, name="voidforge"):
                 
                 refine_embed.description = f"The blacksmith carefully hones your weapon..."
                 await message.edit(embed=refine_embed, view=None) # Show progress
-                await asyncio.sleep(1.5) # Simulate work
+                await asyncio.sleep(1) # Simulate work
 
                 attack_roll_success = random.randint(0, 100) < 80 # 80% chance to get any attack
                 defense_roll_success = random.randint(0, 100) < 50 # 50% chance to get any defense
@@ -1003,10 +1039,10 @@ class Voidforge(commands.Cog, name="voidforge"):
                 if not result_message_parts: # Should not happen with current logic but as fallback
                     result_message_parts.append("The weapon's properties were subtly altered.")
 
-                refine_embed.description = ("\n".join(result_message_parts) + "\n\nItem saved. Returning...")
+                refine_embed.description = ("\n".join(result_message_parts) + "\n\nItem saved.")
                 await message.edit(embed=refine_embed, view=None)
-                await asyncio.sleep(4)
-                return # Successfully refined, back to item action menu
+                await asyncio.sleep(2)
+                #return # Successfully refined, back to item action menu
                 
             except asyncio.TimeoutError: # Timeout on refine confirmation buttons
                 await message.edit(content="Refine confirmation timed out.", embed=None, view=None)
