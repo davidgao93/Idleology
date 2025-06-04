@@ -497,6 +497,26 @@ class DatabaseManager:
         await self.connection.commit()
 
 
+    async def unequip_armor(self, user_id: str) -> None:
+        """Equip an item and deselect any previously equipped item."""
+        # First, unequip any currently equipped item for this user
+        await self.connection.execute(
+            "UPDATE armor SET is_equipped = 0 WHERE user_id = ? AND is_equipped = 1",
+            (user_id,)
+        )
+        await self.connection.commit()
+
+
+    async def unequip_accessory(self, user_id: str) -> None:
+        """Equip an item and deselect any previously equipped item."""
+        # First, unequip any currently equipped item for this user
+        await self.connection.execute(
+            "UPDATE accessories SET is_equipped = 0 WHERE user_id = ? AND is_equipped = 1",
+            (user_id,)
+        )
+        await self.connection.commit()
+
+
     async def equip_accessory(self, user_id: str, item_id: int) -> None:
         """Equip an item and deselect any previously equipped item."""
         # First, unequip any currently equipped item for this user
@@ -1071,6 +1091,15 @@ class DatabaseManager:
         """Update the user's count of imbuing runes in the database."""
         await self.connection.execute(
             "UPDATE users SET imbue_runes = imbue_runes + ? WHERE user_id = ?",
+            (count, user_id)
+        )
+        await self.connection.commit()
+
+
+    async def update_shatter_runes(self, user_id: str, count: int) -> None:
+        """Update the user's count of shatter runes in the database."""
+        await self.connection.execute(
+            "UPDATE users SET shatter_runes = shatter_runes + ? WHERE user_id = ?",
             (count, user_id)
         )
         await self.connection.commit()

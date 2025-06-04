@@ -135,6 +135,12 @@ class Armor(commands.Cog, name="armor"):
                         armor_ward = selected_armor[6]
                         armor_passive = selected_armor[7]
                         embed.description = f"**{armor_name}** (i{armor_level}):"
+                        
+                        equipped_item_tuple = await self.bot.database.get_equipped_armor(user_id) # Re-fetch for accurate equipped status
+
+                        is_equipped = equipped_item_tuple and (equipped_item_tuple[0] == selected_armor[0])
+                        if (is_equipped):
+                            embed.description += "\nEquipped"
                         embed.clear_fields()
                         if armor_block > 0:
                             embed.add_field(name="Block", value=armor_block)
@@ -164,9 +170,11 @@ class Armor(commands.Cog, name="armor"):
                         embed.add_field(name="Armor Guide", value=armor_guide, inline=False)
 
                         action_view = View(timeout=60.0)
-                        action_view.add_item(Button(label="Equip", style=ButtonStyle.primary, custom_id="equip"))
-                        action_view.add_item(Button(label="Temper", style=ButtonStyle.primary, custom_id="temper"))
-                        action_view.add_item(Button(label="Imbue", style=ButtonStyle.primary, custom_id="imbue"))
+                        action_view.add_item(Button(label="Unequip" if is_equipped else "Equip", style=ButtonStyle.primary, custom_id="unequip" if is_equipped else "equip"))
+                        if selected_armor[9] > 0:
+                            action_view.add_item(Button(label="Temper", style=ButtonStyle.primary, custom_id="temper"))
+                        if selected_armor[10] > 0:
+                            action_view.add_item(Button(label="Imbue", style=ButtonStyle.primary, custom_id="imbue"))
                         action_view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))
                         action_view.add_item(Button(label="Back", style=ButtonStyle.secondary, custom_id="back"))
 
@@ -176,16 +184,12 @@ class Armor(commands.Cog, name="armor"):
                             action_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
                             await action_interaction.response.defer()
 
-                            if action_interaction.data['custom_id'] == "equip":
-                                if selected_armor[8] == 1:
-                                    embed.add_field(name="Error", value=f"You already have this equipped.", inline=False)
-                                    await message.edit(embed=embed, view=action_view)
-                                else:
+                            if action_interaction.data['custom_id'] in ["equip", "unequip"]:
+                                if action_interaction.data['custom_id'] == "equip":
                                     await self.bot.database.equip_armor(user_id, selected_armor[0])
-                                    embed.add_field(name="Equip", value=f"Equipped armor.", inline=False)
-                                    await message.edit(embed=embed, view=action_view)
-                                await asyncio.sleep(3)
-                                continue
+                                else:  # unequip
+                                    await self.bot.database.unequip_armor(user_id)
+                                continue # Re-fetch and re-display item details
                             elif action_interaction.data['custom_id'] == "temper":
                                 await self.temper_armor(action_interaction, selected_armor, embed, message)
                                 continue
@@ -220,228 +224,227 @@ class Armor(commands.Cog, name="armor"):
         armor_id = selected_armor[0]
         armor_name = selected_armor[2]
         armor_level = selected_armor[3]
-        armor_details = await self.bot.database.fetch_armor_by_id(armor_id)
-        
-        if not armor_details:
-            await interaction.followup.send("Armor not found.")
-            return
-
-        tempers_remaining = armor_details[9]
-        base_success_rate = 0.8
-        if armor_level <= 40:
-            costs = {
-                3: (20, 20, 20, 500),
-                2: (20, 20, 20, 100),
-                1: (20, 20, 20, 2000),
-            }
-            cost_index = 6 - tempers_remaining
-            success_rate = base_success_rate - (3 - tempers_remaining) * 0.05
-            tempers_data = {
-                3: ('iron', 'oak', 'desiccated'),
-                2: ('coal', 'willow', 'regular'),
-                1: ('gold', 'mahogany', 'sturdy'),
-            }
-        elif 40 < armor_level <= 80:    
-            costs = {
-                4: (50, 50, 50, 500),
-                3: (50, 50, 50, 1500),
-                2: (50, 50, 50, 3000),
-                1: (50, 50, 50, 6000),
-            }       
-            tempers_data = {
-                4: ('iron', 'oak', 'desiccated'),
-                3: ('coal', 'willow', 'regular'),
-                2: ('gold', 'mahogany', 'sturdy'),
-                1: ('platinum', 'magic', 'reinforced'),
-            }
-            cost_index = 7 - tempers_remaining
-            success_rate = base_success_rate - (4 - tempers_remaining) * 0.05 
-        else:
-            costs = {
-                5: (100, 100, 100, 500),
-                4: (100, 100, 100, 2000),
-                3: (100, 100, 100, 5000),
-                2: (100, 100, 100, 10000),
-                1: (100, 100, 100, 20000),
-            }
-            tempers_data = {
-                5: ('iron', 'oak', 'desiccated'),
-                4: ('coal', 'willow', 'regular'),
-                3: ('gold', 'mahogany', 'sturdy'),
-                2: ('platinum', 'magic', 'reinforced'),
-                1: ('idea', 'idea', 'titanium'),
-            }
-            cost_index = 8 - tempers_remaining
-            success_rate = base_success_rate - (5 - tempers_remaining) * 0.05
-        success_rate = max(0, min(success_rate, 1))
-
-        if tempers_remaining == 0:
-            embed.add_field(name="Tempering", value=f"This armor cannot be tempered anymore.", inline=True)
-            await message.edit(embed=embed)
-            await asyncio.sleep(3)
-            return
-
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        player_gp = existing_user[6]
-        mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
-        woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
-        fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
-
-        ore_cost, wood_cost, bone_cost, gp_cost = costs[tempers_remaining]
-        ore, logs, bones = tempers_data.get(tempers_remaining, (None, None, None))
-
-        if (mining_data[cost_index] < ore_cost or
-            woodcutting_data[cost_index] < wood_cost or
-            fishing_data[cost_index] < bone_cost or
-            player_gp < gp_cost):
-            embed.add_field(name="Tempering", 
-                           value=(f"You do not have enough resources to temper this armor.\n"
-                                  f"Tempering costs:\n"
-                                  f"- **{ore.capitalize()}** {'Ore' if ore != 'coal' else ''} : **{ore_cost}**\n"
-                                  f"- **{logs.capitalize()}** Logs: **{wood_cost}**\n"
-                                  f"- **{bones.capitalize()}** Bones: **{bone_cost}**\n"
-                                  f"- GP cost: **{gp_cost}**\n"), 
-                           inline=True)
-            embed.set_thumbnail(url="https://i.imgur.com/jQeOEP7.jpeg")
-            await message.edit(embed=embed)
-            await asyncio.sleep(3)
-            return
-        
-        embed = discord.Embed(
-            title="Temper",
-            description=(f"You are about to temper **{armor_name}**.\n"
-                         f"Tempering costs:\n"
-                         f"- **{ore.capitalize()}** {'Ore' if ore != 'coal' else ''} : **{ore_cost}**\n"
-                         f"- **{logs.capitalize()}** Logs: **{wood_cost}**\n"
-                         f"- **{bones.capitalize()}** Bones: **{bone_cost}**\n"
-                         f"- GP cost: **{gp_cost:,}**\n"
-                         f"- Success rate: **{int(success_rate * 100)}%**\n"
-                         "Do you want to continue?"),
-            color=0xFFFF00
-        )
-        confirm_view = View(timeout=60.0)
-        confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_temper"))
-        confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_temper"))
-        
-        await message.edit(embed=embed, view=confirm_view)
-
-        def check(button_interaction: Interaction):
-            return (button_interaction.user == interaction.user and 
-                    button_interaction.message is not None and 
-                    button_interaction.message.id == message.id)
-
-        try:
-            confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-            await confirm_interaction.response.defer()
+        while True:
+            armor_details = await self.bot.database.fetch_armor_by_id(armor_id)
             
-            if confirm_interaction.data['custom_id'] == "cancel_temper":
+            if not armor_details:
+                await interaction.followup.send("Armor not found.")
                 return
 
-        except asyncio.TimeoutError:
-            await message.delete()
-            self.bot.state_manager.clear_active(interaction.user.id)
-            return
-
-        if armor_level <= 40:
-            await self.bot.database.update_mining_resources(user_id, server_id, {
-                'iron': -ore_cost if tempers_remaining == 3 else 0,
-                'coal': -ore_cost if tempers_remaining == 2 else 0,
-                'gold': -ore_cost if tempers_remaining == 1 else 0,
-                'platinum': 0,
-                'idea': 0,
-            })
-            await self.bot.database.update_woodcutting_resources(user_id, server_id, {
-                'oak': -wood_cost if tempers_remaining == 3 else 0,
-                'willow': -wood_cost if tempers_remaining == 2 else 0,
-                'mahogany': -wood_cost if tempers_remaining == 1 else 0,
-                'magic': 0,
-                'idea': 0,
-            })
-            await self.bot.database.update_fishing_resources(user_id, server_id, {
-                'desiccated': -bone_cost if tempers_remaining == 3 else 0,
-                'regular': -bone_cost if tempers_remaining == 2 else 0,
-                'sturdy': -bone_cost if tempers_remaining == 1 else 0,
-                'reinforced': 0,
-                'titanium': 0,
-            })
-        elif 40 < armor_level <= 80:
-            await self.bot.database.update_mining_resources(user_id, server_id, {
-                'iron': -ore_cost if tempers_remaining == 4 else 0,
-                'coal': -ore_cost if tempers_remaining == 3 else 0,
-                'gold': -ore_cost if tempers_remaining == 2 else 0,
-                'platinum': -ore_cost if tempers_remaining == 1 else 0,
-                'idea': 0,
-            })
-            await self.bot.database.update_woodcutting_resources(user_id, server_id, {
-                'oak': -wood_cost if tempers_remaining == 4 else 0,
-                'willow': -wood_cost if tempers_remaining == 3 else 0,
-                'mahogany': -wood_cost if tempers_remaining == 2 else 0,
-                'magic': -wood_cost if tempers_remaining == 1 else 0,
-                'idea': 0,
-            })
-            await self.bot.database.update_fishing_resources(user_id, server_id, {
-                'desiccated': -bone_cost if tempers_remaining == 4 else 0,
-                'regular': -bone_cost if tempers_remaining == 3 else 0,
-                'sturdy': -bone_cost if tempers_remaining == 2 else 0,
-                'reinforced': -bone_cost if tempers_remaining == 1 else 0,
-                'titanium': 0,
-            })
-        else:
-            await self.bot.database.update_mining_resources(user_id, server_id, {
-                'iron': -ore_cost if tempers_remaining == 5 else 0,
-                'coal': -ore_cost if tempers_remaining == 4 else 0,
-                'gold': -ore_cost if tempers_remaining == 3 else 0,
-                'platinum': -ore_cost if tempers_remaining == 2 else 0,
-                'idea': -ore_cost if tempers_remaining == 1 else 0,
-            })
-            await self.bot.database.update_woodcutting_resources(user_id, server_id, {
-                'oak': -wood_cost if tempers_remaining == 5 else 0,
-                'willow': -wood_cost if tempers_remaining == 4 else 0,
-                'mahogany': -wood_cost if tempers_remaining == 3 else 0,
-                'magic': -wood_cost if tempers_remaining == 2 else 0,
-                'idea': -wood_cost if tempers_remaining == 1 else 0,
-            })
-            await self.bot.database.update_fishing_resources(user_id, server_id, {
-                'desiccated': -bone_cost if tempers_remaining == 5 else 0,
-                'regular': -bone_cost if tempers_remaining == 4 else 0,
-                'sturdy': -bone_cost if tempers_remaining == 3 else 0,
-                'reinforced': -bone_cost if tempers_remaining == 2 else 0,
-                'titanium': -bone_cost if tempers_remaining == 1 else 0,
-            })
-        await self.bot.database.add_gold(user_id, -gp_cost)
-
-        new_tempers_remaining = tempers_remaining - 1
-        temper_success = random.random() <= success_rate  
-
-        if temper_success:
-            if armor_details[4] > 0:
-                stat_to_increase = 'block'
-                current_value = armor_details[4]
-            elif armor_details[5] > 0:
-                stat_to_increase = 'evasion'
-                current_value = armor_details[5]
+            tempers_remaining = armor_details[9]
+            base_success_rate = 0.8
+            if armor_level <= 40:
+                costs = {
+                    3: (20, 20, 20, 500),
+                    2: (20, 20, 20, 100),
+                    1: (20, 20, 20, 2000),
+                }
+                cost_index = 6 - tempers_remaining
+                success_rate = base_success_rate - (3 - tempers_remaining) * 0.05
+                tempers_data = {
+                    3: ('iron', 'oak', 'desiccated'),
+                    2: ('coal', 'willow', 'regular'),
+                    1: ('gold', 'mahogany', 'sturdy'),
+                }
+            elif 40 < armor_level <= 80:    
+                costs = {
+                    4: (50, 50, 50, 500),
+                    3: (50, 50, 50, 1500),
+                    2: (50, 50, 50, 3000),
+                    1: (50, 50, 50, 6000),
+                }       
+                tempers_data = {
+                    4: ('iron', 'oak', 'desiccated'),
+                    3: ('coal', 'willow', 'regular'),
+                    2: ('gold', 'mahogany', 'sturdy'),
+                    1: ('platinum', 'magic', 'reinforced'),
+                }
+                cost_index = 7 - tempers_remaining
+                success_rate = base_success_rate - (4 - tempers_remaining) * 0.05 
             else:
-                stat_to_increase = 'ward'
-                current_value = armor_details[6]
+                costs = {
+                    5: (100, 100, 100, 500),
+                    4: (100, 100, 100, 2000),
+                    3: (100, 100, 100, 5000),
+                    2: (100, 100, 100, 10000),
+                    1: (100, 100, 100, 20000),
+                }
+                tempers_data = {
+                    5: ('iron', 'oak', 'desiccated'),
+                    4: ('coal', 'willow', 'regular'),
+                    3: ('gold', 'mahogany', 'sturdy'),
+                    2: ('platinum', 'magic', 'reinforced'),
+                    1: ('idea', 'idea', 'titanium'),
+                }
+                cost_index = 8 - tempers_remaining
+                success_rate = base_success_rate - (5 - tempers_remaining) * 0.05
+            success_rate = max(0, min(success_rate, 1))
+
+            if tempers_remaining == 0:
+                embed.add_field(name="Tempering", value=f"This armor cannot be tempered anymore.", inline=True)
+                await message.edit(embed=embed)
+                await asyncio.sleep(3)
+                return
+
+            existing_user = await self.bot.database.fetch_user(user_id, server_id)
+            player_gp = existing_user[6]
+            mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+            woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+            fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+
+            ore_cost, wood_cost, bone_cost, gp_cost = costs[tempers_remaining]
+            ore, logs, bones = tempers_data.get(tempers_remaining, (None, None, None))
+
+            if (mining_data[cost_index] < ore_cost or
+                woodcutting_data[cost_index] < wood_cost or
+                fishing_data[cost_index] < bone_cost or
+                player_gp < gp_cost):
+                embed.add_field(name="Tempering", 
+                            value=(f"You do not have enough resources to temper this armor.\n"
+                                    f"Tempering costs:\n"
+                                    f"- **{ore.capitalize()}** {'Ore' if ore != 'coal' else ''} : **{ore_cost}**\n"
+                                    f"- **{logs.capitalize()}** Logs: **{wood_cost}**\n"
+                                    f"- **{bones.capitalize()}** Bones: **{bone_cost}**\n"
+                                    f"- GP cost: **{gp_cost}**\n"), 
+                            inline=True)
+                embed.set_thumbnail(url="https://i.imgur.com/jQeOEP7.jpeg")
+                await message.edit(embed=embed)
+                await asyncio.sleep(3)
+                return
+            
+            embed = discord.Embed(
+                title="Temper",
+                description=(f"You are about to temper **{armor_name}**.\n"
+                            f"Tempering costs:\n"
+                            f"- **{ore.capitalize()}** {'Ore' if ore != 'coal' else ''} : **{ore_cost}**\n"
+                            f"- **{logs.capitalize()}** Logs: **{wood_cost}**\n"
+                            f"- **{bones.capitalize()}** Bones: **{bone_cost}**\n"
+                            f"- GP cost: **{gp_cost:,}**\n"
+                            f"- Success rate: **{int(success_rate * 100)}%**\n"
+                            "Do you want to continue?"),
+                color=0xFFFF00
+            )
+            confirm_view = View(timeout=60.0)
+            confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_temper"))
+            confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_temper"))
+            
+            await message.edit(embed=embed, view=confirm_view)
+
+            def check(button_interaction: Interaction):
+                return (button_interaction.user == interaction.user and 
+                        button_interaction.message is not None and 
+                        button_interaction.message.id == message.id)
+
+            try:
+                confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                await confirm_interaction.response.defer()
                 
-            increase_amount = max(1, random.randint(int(armor_level // 7), int(armor_level // 5)))
-            await self.bot.database.increase_armor_stat(armor_id, stat_to_increase, increase_amount)
-            embed.add_field(name="Tempering success", 
-                          value=(f"🎊 Congratulations! 🎊 " 
-                                 f"**{armor_name}**'s {stat_to_increase.capitalize()} increased by **{increase_amount}**."), 
-                          inline=False)
-            await message.edit(embed=embed)
-            await asyncio.sleep(7)
-        else:
-            embed.add_field(name="Tempering", 
-                          value=(f"Tempering failed! "
-                                 f"Better luck next time. 🥺 \n"
-                                 f"Returning to armor menu..."), 
-                          inline=False)
-            await message.edit(embed=embed)
-            await asyncio.sleep(5)
-        
-        await self.bot.database.update_armor_temper_count(armor_id, new_tempers_remaining)
+                if confirm_interaction.data['custom_id'] == "cancel_temper":
+                    return
+
+            except asyncio.TimeoutError:
+                await message.delete()
+                self.bot.state_manager.clear_active(interaction.user.id)
+                return
+
+            if armor_level <= 40:
+                await self.bot.database.update_mining_resources(user_id, server_id, {
+                    'iron': -ore_cost if tempers_remaining == 3 else 0,
+                    'coal': -ore_cost if tempers_remaining == 2 else 0,
+                    'gold': -ore_cost if tempers_remaining == 1 else 0,
+                    'platinum': 0,
+                    'idea': 0,
+                })
+                await self.bot.database.update_woodcutting_resources(user_id, server_id, {
+                    'oak': -wood_cost if tempers_remaining == 3 else 0,
+                    'willow': -wood_cost if tempers_remaining == 2 else 0,
+                    'mahogany': -wood_cost if tempers_remaining == 1 else 0,
+                    'magic': 0,
+                    'idea': 0,
+                })
+                await self.bot.database.update_fishing_resources(user_id, server_id, {
+                    'desiccated': -bone_cost if tempers_remaining == 3 else 0,
+                    'regular': -bone_cost if tempers_remaining == 2 else 0,
+                    'sturdy': -bone_cost if tempers_remaining == 1 else 0,
+                    'reinforced': 0,
+                    'titanium': 0,
+                })
+            elif 40 < armor_level <= 80:
+                await self.bot.database.update_mining_resources(user_id, server_id, {
+                    'iron': -ore_cost if tempers_remaining == 4 else 0,
+                    'coal': -ore_cost if tempers_remaining == 3 else 0,
+                    'gold': -ore_cost if tempers_remaining == 2 else 0,
+                    'platinum': -ore_cost if tempers_remaining == 1 else 0,
+                    'idea': 0,
+                })
+                await self.bot.database.update_woodcutting_resources(user_id, server_id, {
+                    'oak': -wood_cost if tempers_remaining == 4 else 0,
+                    'willow': -wood_cost if tempers_remaining == 3 else 0,
+                    'mahogany': -wood_cost if tempers_remaining == 2 else 0,
+                    'magic': -wood_cost if tempers_remaining == 1 else 0,
+                    'idea': 0,
+                })
+                await self.bot.database.update_fishing_resources(user_id, server_id, {
+                    'desiccated': -bone_cost if tempers_remaining == 4 else 0,
+                    'regular': -bone_cost if tempers_remaining == 3 else 0,
+                    'sturdy': -bone_cost if tempers_remaining == 2 else 0,
+                    'reinforced': -bone_cost if tempers_remaining == 1 else 0,
+                    'titanium': 0,
+                })
+            else:
+                await self.bot.database.update_mining_resources(user_id, server_id, {
+                    'iron': -ore_cost if tempers_remaining == 5 else 0,
+                    'coal': -ore_cost if tempers_remaining == 4 else 0,
+                    'gold': -ore_cost if tempers_remaining == 3 else 0,
+                    'platinum': -ore_cost if tempers_remaining == 2 else 0,
+                    'idea': -ore_cost if tempers_remaining == 1 else 0,
+                })
+                await self.bot.database.update_woodcutting_resources(user_id, server_id, {
+                    'oak': -wood_cost if tempers_remaining == 5 else 0,
+                    'willow': -wood_cost if tempers_remaining == 4 else 0,
+                    'mahogany': -wood_cost if tempers_remaining == 3 else 0,
+                    'magic': -wood_cost if tempers_remaining == 2 else 0,
+                    'idea': -wood_cost if tempers_remaining == 1 else 0,
+                })
+                await self.bot.database.update_fishing_resources(user_id, server_id, {
+                    'desiccated': -bone_cost if tempers_remaining == 5 else 0,
+                    'regular': -bone_cost if tempers_remaining == 4 else 0,
+                    'sturdy': -bone_cost if tempers_remaining == 3 else 0,
+                    'reinforced': -bone_cost if tempers_remaining == 2 else 0,
+                    'titanium': -bone_cost if tempers_remaining == 1 else 0,
+                })
+            await self.bot.database.add_gold(user_id, -gp_cost)
+
+            new_tempers_remaining = tempers_remaining - 1
+            temper_success = random.random() <= success_rate  
+
+            if temper_success:
+                if armor_details[4] > 0:
+                    stat_to_increase = 'block'
+                elif armor_details[5] > 0:
+                    stat_to_increase = 'evasion'
+                else:
+                    stat_to_increase = 'ward'
+                    
+                increase_amount = max(1, random.randint(int(armor_level // 7), int(armor_level // 5)))
+                await self.bot.database.increase_armor_stat(armor_id, stat_to_increase, increase_amount)
+                embed.add_field(name="Tempering success", 
+                            value=(f"🎊 Congratulations! 🎊 " 
+                                    f"**{armor_name}**'s {stat_to_increase.capitalize()} increased by **{increase_amount}**."), 
+                            inline=False)
+                await message.edit(embed=embed)
+                await asyncio.sleep(3)
+            else:
+                embed.add_field(name="Tempering", 
+                            value=(f"Tempering failed! "
+                                    f"Better luck next time. 🥺 \n"
+                                    f"Returning to armor menu..."), 
+                            inline=False)
+                await message.edit(embed=embed)
+                await asyncio.sleep(3)
+            
+            await self.bot.database.update_armor_temper_count(armor_id, new_tempers_remaining)
+
 
     async def imbue_armor(self, 
                          interaction: Interaction, 
@@ -541,6 +544,7 @@ class Armor(commands.Cog, name="armor"):
                           inline=False)
             await message.edit(embed=embed)
             await asyncio.sleep(5)
+
 
     async def discard_armor(self, 
                            interaction: Interaction, 

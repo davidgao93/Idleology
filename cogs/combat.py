@@ -189,23 +189,23 @@ class Combat(commands.Cog, name="combat"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        # last_combat_time_str = existing_user[24]
-        # if last_combat_time_str:
-        #     try:
-        #         last_combat_time_dt = datetime.fromisoformat(last_combat_time_str)
-        #         time_since_combat = datetime.now() - last_combat_time_dt
-        #         if time_since_combat < self.COMBAT_COOLDOWN_DURATION:
-        #             remaining_cooldown = self.COMBAT_COOLDOWN_DURATION - time_since_combat
-        #             await interaction.response.send_message(
-        #                 f"Please slow down. Try again in {(remaining_cooldown.seconds // 60) % 60} minute(s) "
-        #                 f"{(remaining_cooldown.seconds % 60)} second(s).",
-        #                 ephemeral=True
-        #             )
-        #             return
-        #     except ValueError:
-        #         self.bot.logger.warning(f"Invalid datetime format for last_combat_time for user {user_id}: {last_combat_time_str}")
+        last_combat_time_str = existing_user[24]
+        if last_combat_time_str:
+            try:
+                last_combat_time_dt = datetime.fromisoformat(last_combat_time_str)
+                time_since_combat = datetime.now() - last_combat_time_dt
+                if time_since_combat < self.COMBAT_COOLDOWN_DURATION:
+                    remaining_cooldown = self.COMBAT_COOLDOWN_DURATION - time_since_combat
+                    await interaction.response.send_message(
+                        f"Please slow down. Try again in {(remaining_cooldown.seconds // 60) % 60} minute(s) "
+                        f"{(remaining_cooldown.seconds % 60)} second(s).",
+                        ephemeral=True
+                    )
+                    return
+            except ValueError:
+                self.bot.logger.warning(f"Invalid datetime format for last_combat_time for user {user_id}: {last_combat_time_str}")
         
-        # await self.bot.database.update_combat_time(user_id)
+        await self.bot.database.update_combat_time(user_id)
         self.bot.state_manager.set_active(user_id, "combat")
         
         player = await self._initialize_player_for_combat(user_id, existing_user)
@@ -220,7 +220,7 @@ class Combat(commands.Cog, name="combat"):
         aphrodite_eligible = player.level >= 20 and existing_user[25] > 0 and existing_user[26] > 0
         lucifer_eligible = player.level >= 20 and existing_user[28] >= 5
         neet_eligible = player.level >= 40 and existing_user[29] >= 3
-
+        
         if aphrodite_eligible and door_chance_roll < 0.2: # Reduced chance for example
             is_heaven_door = True
             embed = discord.Embed(
@@ -296,7 +296,7 @@ class Combat(commands.Cog, name="combat"):
                     color=0xFF0000))
                 self.bot.state_manager.clear_active(user_id)
                 return
-        elif neet_eligible and 0.0 < door_chance_roll < 1.6: # Reduced chance
+        elif neet_eligible and 0.6 < door_chance_roll < 0.8: # Reduced chance
             is_neet_door = True
             embed = discord.Embed(
                 title="Sad anime kid",
@@ -947,8 +947,13 @@ class Combat(commands.Cog, name="combat"):
             if random.random() < (0.05 + special_drop):
                 embed.add_field(name="🟣 Void Fragment", value="A void fragment was left behind!",
                                 inline=False)
-                embed.set_image(url="https://i.imgur.com/T2ap5iO.png")
+                embed.set_image(url="https://i.imgur.com/KSTfiW3.png")
                 await self.bot.database.add_void_frags(user_id, 1)
+            if random.random() < (0.01 + special_drop):
+                embed.add_field(name="Rune of Shattering", value="Shatters a weapon, granting back 80% of any runes of refinement used.",
+                                inline=False)
+                embed.set_image(url="https://i.imgur.com/KSTfiW3.png")
+                await self.bot.database.update_shatter_runes(user_id, 1)
 
         if player.armor_passive == "Everlasting Blessing" and random.random() < 0.1:
             embed.add_field(name="Armor Passive",
@@ -988,7 +993,6 @@ class Combat(commands.Cog, name="combat"):
         await self.bot.database.add_gold(user_id, final_gold_award)
         self.bot.logger.info(player)
         await self.bot.database.update_player(player)
-        print('message.edit - victory')
         await message.edit(embed=embed)
 
 

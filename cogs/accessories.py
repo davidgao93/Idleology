@@ -139,8 +139,12 @@ class Accessories(commands.Cog, name="accessories"):
                         accessory_passive = selected_accessory[9]
                         potential_lvl = selected_accessory[12]
                         passive_effect = self.get_accessory_passive_effect(accessory_passive, potential_lvl)
-
+                        
+                        equipped_item_tuple = await self.bot.database.get_equipped_accessory(user_id) # Re-fetch for accurate equipped status
                         embed.description = f"**{accessory_name}** (Level {accessory_level}):"
+                        is_equipped = equipped_item_tuple and (equipped_item_tuple[0] == selected_accessory[0])
+                        if (is_equipped):
+                            embed.description += "\nEquipped"
                         embed.clear_fields()
                         if accessory_attack > 0:
                             embed.add_field(name="Attack", value=accessory_attack, inline=True)
@@ -169,8 +173,9 @@ class Accessories(commands.Cog, name="accessories"):
                         embed.add_field(name="Accessory Guide", value=potential_guide, inline=False)
 
                         action_view = View(timeout=60.0)
-                        action_view.add_item(Button(label="Equip", style=ButtonStyle.primary, custom_id="equip"))
-                        action_view.add_item(Button(label="Unlock/Improve", style=ButtonStyle.primary, custom_id="improve"))
+                        action_view.add_item(Button(label="Unequip" if is_equipped else "Equip", style=ButtonStyle.primary, custom_id="unequip" if is_equipped else "equip"))
+                        if selected_accessory[11] > 0:
+                            action_view.add_item(Button(label="Unlock/Improve", style=ButtonStyle.primary, custom_id="improve"))
                         action_view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))
                         action_view.add_item(Button(label="Back", style=ButtonStyle.secondary, custom_id="back"))
 
@@ -179,17 +184,12 @@ class Accessories(commands.Cog, name="accessories"):
                         try:
                             action_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
                             await action_interaction.response.defer()
-
-                            if action_interaction.data['custom_id'] == "equip":
-                                if selected_accessory[10] == 1:
-                                    embed.add_field(name="Error", value=f"You already have this equipped.", inline=False)
-                                    await message.edit(embed=embed, view=action_view)
-                                else:
+                            if action_interaction.data['custom_id'] in ["equip", "unequip"]:
+                                if action_interaction.data['custom_id'] == "equip":
                                     await self.bot.database.equip_accessory(user_id, selected_accessory[0])
-                                    embed.add_field(name="Equip", value=f"Equipped accessory.", inline=False)
-                                    await message.edit(embed=embed, view=action_view)
-                                await asyncio.sleep(3)
-                                continue
+                                else:  # unequip
+                                    await self.bot.database.unequip_accessory(user_id)
+                                continue # Re-fetch and re-display item details
                             elif action_interaction.data['custom_id'] == "improve":
                                 await self.improve_potential(action_interaction, selected_accessory, message, embed)
                                 continue
@@ -264,125 +264,126 @@ class Accessories(commands.Cog, name="accessories"):
                                embed) -> None:
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
-
-        accessory_id = selected_accessory[0]
-        accessory_name = selected_accessory[2]
-        current_passive = selected_accessory[9]
-        potential_remaining = selected_accessory[11]
-        potential_lvl = selected_accessory[12] 
-        potential_passive_list = ["Obliterate", "Absorb", "Prosper", "Infinite Wisdom", "Lucky Strikes"]
-        
-        if potential_remaining <= 0:
-            embed.add_field(name="Error", 
-                           value=f"This accessory has no potential remaining.\n"
-                                 f"You cannot enhance it further.\n"
-                                 f"Returning to item menu...", 
-                           inline=False)
-            await message.edit(embed=embed)
-            await asyncio.sleep(3)
-            return
-
-        rune_of_potential_count = await self.bot.database.fetch_potential_runes(str(interaction.user.id))
-        costs = [500, 1000, 2000, 3000, 4000, 5000, 10000, 25000, 50000, 100000]
-        refine_cost = costs[potential_lvl]
-        success_rate = max(75 - potential_lvl * 5, 30)
-
-        title_keyword = "Unlock" if current_passive == "none" else "Enhance"
-        embed = discord.Embed(
-            title=f"{title_keyword} Potential Attempt",
-            description=(f"{title_keyword} **{accessory_name}**'s potential? \n"
-                         f"Attempts left: **{potential_remaining}** \n"
-                         f"Cost: **{refine_cost:,} GP**\n"
-                         f"Success Rate: **{success_rate}%**\n"),
-            color=0xFFCC00
-        )
-        embed.set_thumbnail(url="https://i.imgur.com/Tkikr5b.jpeg")
-        confirm_view = View(timeout=60.0)
-        confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_improve"))
-        confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_improve"))
-        
-        await message.edit(embed=embed, view=confirm_view)
-
-        def check(button_interaction: Interaction):
-            return (button_interaction.user == interaction.user and 
-                    button_interaction.message is not None and 
-                    button_interaction.message.id == message.id)
-
-        try:
-            confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-            await confirm_interaction.response.defer()
+        while True:
+            selected_accessory = await self.bot.database.fetch_weapon_by_id(selected_accessory[0])
+            accessory_id = selected_accessory[0]
+            accessory_name = selected_accessory[2]
+            current_passive = selected_accessory[9]
+            potential_remaining = selected_accessory[11]
+            potential_lvl = selected_accessory[12] 
+            potential_passive_list = ["Obliterate", "Absorb", "Prosper", "Infinite Wisdom", "Lucky Strikes"]
             
-            if confirm_interaction.data['custom_id'] == "cancel_improve":
+            if potential_remaining <= 0:
+                embed.add_field(name="Error", 
+                            value=f"This accessory has no potential remaining.\n"
+                                    f"You cannot enhance it further.\n"
+                                    f"Returning to item menu...", 
+                            inline=False)
+                await message.edit(embed=embed)
+                await asyncio.sleep(2)
                 return
 
-        except asyncio.TimeoutError:
-            await message.delete()
-            self.bot.state_manager.clear_active(interaction.user.id)
-            return
-        
-        player_gold = await self.bot.database.fetch_user_gold(user_id, server_id)
-        if player_gold < refine_cost:
-            embed.add_field(name="Refining", 
-                           value=f"Not enough gold!\nReturning to item menu...", 
-                           inline=False)
-            await message.edit(embed=embed)
-            await asyncio.sleep(3)
-            return
+            rune_of_potential_count = await self.bot.database.fetch_potential_runes(str(interaction.user.id))
+            costs = [500, 1000, 2000, 3000, 4000, 5000, 10000, 25000, 50000, 100000]
+            refine_cost = costs[potential_lvl]
+            success_rate = max(75 - potential_lvl * 5, 30)
 
-        await self.bot.database.update_user_gold(user_id, player_gold - refine_cost)
-
-        if rune_of_potential_count > 0:
+            title_keyword = "Unlock" if current_passive == "none" else "Enhance"
             embed = discord.Embed(
-                title="Use Rune of Potential?",
-                description=(f"You have **{rune_of_potential_count}** Rune(s) of Potential available.\n"
-                             f"Do you want to use one to boost your success rate to **{success_rate + 25}%**?"),
+                title=f"{title_keyword} Potential Attempt",
+                description=(f"{title_keyword} **{accessory_name}**'s potential? \n"
+                            f"Attempts left: **{potential_remaining}** \n"
+                            f"Cost: **{refine_cost:,} GP**\n"
+                            f"Success Rate: **{success_rate}%**\n"),
                 color=0xFFCC00
             )
-            embed.set_thumbnail(url="https://i.imgur.com/aeorjQG.jpg")
-            rune_view = View(timeout=60.0)
-            rune_view.add_item(Button(label="Use", style=ButtonStyle.primary, custom_id="confirm_rune"))
-            rune_view.add_item(Button(label="Skip", style=ButtonStyle.secondary, custom_id="cancel_rune"))
+            embed.set_thumbnail(url="https://i.imgur.com/Tkikr5b.jpeg")
+            confirm_view = View(timeout=60.0)
+            confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_improve"))
+            confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_improve"))
             
-            await message.edit(embed=embed, view=rune_view)
+            await message.edit(embed=embed, view=confirm_view)
+
+            def check(button_interaction: Interaction):
+                return (button_interaction.user == interaction.user and 
+                        button_interaction.message is not None and 
+                        button_interaction.message.id == message.id)
 
             try:
-                rune_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-                await rune_interaction.response.defer()
-
-                if rune_interaction.data['custom_id'] == "confirm_rune":
-                    success_rate += 25
-                    await self.bot.database.update_potential_runes(str(interaction.user.id), -1)
+                confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                await confirm_interaction.response.defer()
+                
+                if confirm_interaction.data['custom_id'] == "cancel_improve":
+                    return
 
             except asyncio.TimeoutError:
                 await message.delete()
                 self.bot.state_manager.clear_active(interaction.user.id)
                 return
+            
+            player_gold = await self.bot.database.fetch_user_gold(user_id, server_id)
+            if player_gold < refine_cost:
+                embed.add_field(name="Refining", 
+                            value=f"Not enough gold!\nReturning to item menu...", 
+                            inline=False)
+                await message.edit(embed=embed)
+                await asyncio.sleep(3)
+                return
 
-        chance_to_improve = success_rate / 100
-        enhancement_success = random.random() <= chance_to_improve
+            await self.bot.database.update_user_gold(user_id, player_gold - refine_cost)
 
-        if enhancement_success:
-            if potential_lvl == 0:
-                passive_choice = random.choice(potential_passive_list)
-                await self.bot.database.update_accessory_passive(accessory_id, passive_choice)
-                await self.bot.database.update_accessory_passive_lvl(accessory_id, 1)
-                success_message = (f"🎉 Success!\n"
-                                  f"Your accessory has gained the **{passive_choice}** passive.")
+            if rune_of_potential_count > 0:
+                embed = discord.Embed(
+                    title="Use Rune of Potential?",
+                    description=(f"You have **{rune_of_potential_count}** Rune(s) of Potential available.\n"
+                                f"Do you want to use one to boost your success rate to **{success_rate + 25}%**?"),
+                    color=0xFFCC00
+                )
+                embed.set_thumbnail(url="https://i.imgur.com/aeorjQG.jpg")
+                rune_view = View(timeout=60.0)
+                rune_view.add_item(Button(label="Use", style=ButtonStyle.primary, custom_id="confirm_rune"))
+                rune_view.add_item(Button(label="Skip", style=ButtonStyle.secondary, custom_id="cancel_rune"))
+                
+                await message.edit(embed=embed, view=rune_view)
+
+                try:
+                    rune_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                    await rune_interaction.response.defer()
+
+                    if rune_interaction.data['custom_id'] == "confirm_rune":
+                        success_rate += 25
+                        await self.bot.database.update_potential_runes(str(interaction.user.id), -1)
+
+                except asyncio.TimeoutError:
+                    await message.delete()
+                    self.bot.state_manager.clear_active(interaction.user.id)
+                    return
+
+            chance_to_improve = success_rate / 100
+            enhancement_success = random.random() <= chance_to_improve
+
+            if enhancement_success:
+                if potential_lvl == 0:
+                    passive_choice = random.choice(potential_passive_list)
+                    await self.bot.database.update_accessory_passive(accessory_id, passive_choice)
+                    await self.bot.database.update_accessory_passive_lvl(accessory_id, 1)
+                    success_message = (f"🎉 Success!\n"
+                                    f"Your accessory has gained the **{passive_choice}** passive.")
+                else:
+                    new_potential = potential_lvl + 1
+                    await self.bot.database.update_accessory_passive_lvl(accessory_id, new_potential)
+                    success_message = (f"🎉 Success!\n"
+                                    f"Upgraded **{current_passive}** from level **{potential_lvl}** to **{new_potential}**.\n")
+                embed.add_field(name="Enhancement Result", value=success_message + " Returning to item menu...", inline=False)
             else:
-                new_potential = potential_lvl + 1
-                await self.bot.database.update_accessory_passive_lvl(accessory_id, new_potential)
-                success_message = (f"🎉 Success!\n"
-                                  f"Upgraded **{current_passive}** from level **{potential_lvl}** to **{new_potential}**.\n")
-            embed.add_field(name="Enhancement Result", value=success_message + " Returning to item menu...", inline=False)
-        else:
-            fail_message = "💔 The enhancement failed. Unlucky.\nReturning to item menu..."
-            embed.add_field(name="Enhancement Result", value=fail_message, inline=False)
+                fail_message = "💔 The enhancement failed. Unlucky.\nReturning to item menu..."
+                embed.add_field(name="Enhancement Result", value=fail_message, inline=False)
 
-        potential_remaining -= 1
-        await self.bot.database.update_accessory_potential(accessory_id, potential_remaining)
-        await message.edit(embed=embed)
-        await asyncio.sleep(3)
-        embed.clear_fields()
+            potential_remaining -= 1
+            await self.bot.database.update_accessory_potential(accessory_id, potential_remaining)
+            await message.edit(embed=embed)
+            await asyncio.sleep(2)
+            embed.clear_fields()
 
 async def setup(bot) -> None:
     await bot.add_cog(Accessories(bot))

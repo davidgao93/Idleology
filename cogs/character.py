@@ -38,6 +38,7 @@ Index	Attribute Description
 28  Soul Cores
 29  Void Fragments
 30  Void Keys
+31  Shatter Runes
 """
 class Character(commands.Cog, name="character"):
     def __init__(self, bot) -> None:
