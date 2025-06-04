@@ -7,11 +7,15 @@
 --DROP TABLE IF EXISTS `mining`;
 -- ALTER TABLE users ADD COLUMN `dragon_key` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN `angel_key` INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN `void_frags` INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN `void_keys` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN `imbue_runes` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN `soul_cores` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE accessories ADD COLUMN `passive_lvl` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE items ADD COLUMN `refinement_lvl` INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN `last_combat` TIMESTAMP DEFAULT NULL;
+ALTER TABLE items ADD COLUMN `pinnacle_passive` TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE items ADD COLUMN `utmost_passive` TEXT NOT NULL DEFAULT 'none';
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -42,7 +46,9 @@ CREATE TABLE IF NOT EXISTS `users` (
   `dragon_key` INTEGER NOT NULL DEFAULT 0,
   `angel_key` INTEGER NOT NULL DEFAULT 0,
   `imbue_runes` INTEGER NOT NULL DEFAULT 0,
-  `soul_cores` INTEGER NOT NULL DEFAULT 0
+  `soul_cores` INTEGER NOT NULL DEFAULT 0,
+  `void_frags` INTEGER NOT NULL DEFAULT 0,
+  `void_keys` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (
@@ -66,7 +72,9 @@ CREATE TABLE IF NOT EXISTS `items` (
   `is_equipped` BOOLEAN DEFAULT FALSE,
   `forges_remaining` INTEGER DEFAULT 0,
   `refines_remaining` INTEGER DEFAULT 0,
-  `refinement_lvl` INTEGER DEFAULT 0
+  `refinement_lvl` INTEGER DEFAULT 0,
+  `pinnacle_passive` TEXT NOT NULL DEFAULT 'none',
+  `utmost_passive` TEXT NOT NULL DEFAULT 'none'
 );
 
 CREATE TABLE IF NOT EXISTS `accessories` (
@@ -100,7 +108,7 @@ CREATE TABLE IF NOT EXISTS `armor` (
 );
 
 
-CREATE TABLE IF NOT EXISTS mining (
+CREATE TABLE IF NOT EXISTS `mining` (
     `user_id` TEXT NOT NULL,
     `server_id` TEXT NOT NULL,
     `pickaxe_tier` TEXT DEFAULT 'iron',
@@ -111,7 +119,7 @@ CREATE TABLE IF NOT EXISTS mining (
     `idea` INTEGER DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS fishing (
+CREATE TABLE IF NOT EXISTS `fishing` (
     `user_id` TEXT,
     `server_id` TEXT,
     `fishing_rod` TEXT DEFAULT 'desiccated',
@@ -122,7 +130,7 @@ CREATE TABLE IF NOT EXISTS fishing (
     `titanium_bones` INTEGER DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS woodcutting (
+CREATE TABLE IF NOT EXISTS `woodcutting` (
     `user_id` TEXT,
     `server_id` TEXT,
     `axe_type` TEXT DEFAULT 'flimsy',

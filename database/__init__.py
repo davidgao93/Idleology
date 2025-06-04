@@ -285,7 +285,25 @@ class DatabaseManager:
             "UPDATE users SET soul_cores = soul_cores + ? WHERE user_id = ?",
             (increase_by, user_id)
         )
-        await self.connection.commit()      
+        await self.connection.commit()   
+
+
+    async def add_void_frags(self, user_id: str, increase_by: int) -> None:
+        """Increase the user's void_frags in the database."""
+        await self.connection.execute(
+            "UPDATE users SET void_frags = void_frags + ? WHERE user_id = ?",
+            (increase_by, user_id)
+        )
+        await self.connection.commit()     
+
+
+    async def add_void_keys(self, user_id: str, increase_by: int) -> None:
+        """Increase the user's void_keys in the database."""
+        await self.connection.execute(
+            "UPDATE users SET void_keys = void_keys + ? WHERE user_id = ?",
+            (increase_by, user_id)
+        )
+        await self.connection.commit()  
 
     async def update_user_gold(self, user_id: str, new_gold: int) -> None:
         """Update the user's gold in the database."""
@@ -837,6 +855,35 @@ class DatabaseManager:
         sql_query = "UPDATE items SET passive = ? WHERE item_id = ?"
         await self.connection.execute(sql_query, (new_passive, item_id))
         await self.connection.commit()
+
+
+    async def update_item_pinnacle_passive(self, item_id: int, new_passive: str) -> None:
+        """Update the pinnacle_passive of an item in the database."""
+        await self.connection.execute(
+            "UPDATE items SET pinnacle_passive = ? WHERE item_id = ?",
+            (new_passive, item_id)
+        )
+        await self.connection.commit()    
+
+
+    async def update_item_utmost_passive(self, item_id: int, new_passive: str) -> None:
+        """Update the utmost_passive of an item in the database."""
+        await self.connection.execute(
+            "UPDATE items SET utmost_passive = ? WHERE item_id = ?",
+            (new_passive, item_id)
+        )
+        await self.connection.commit()
+
+
+    async def fetch_void_forge_weapons(self, user_id: str) -> list:
+        """Fetch all items not equipped for the user with refinement_level >= 5 and forges_remaining = 0."""
+        rows = await self.connection.execute(
+            "SELECT * FROM items WHERE user_id = ? AND refinement_lvl >= 5 AND forges_remaining = 0 AND is_equipped = 0",
+            (user_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchall()  # Returns a list of items matching the criteria
+
 
     async def update_weapon_forge_count(self, item_id: int, new_forge_count: int) -> None:
         """Update the forge count of an item in the database."""

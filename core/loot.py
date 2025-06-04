@@ -17,7 +17,9 @@ async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
         defence=0,
         rarity=0,
         passive="",
-        description=""
+        description="",
+        p_passive="",
+        u_passive=""
     )
     weapon.user=user_id
     weapon.name=item_name

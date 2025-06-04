@@ -32,6 +32,8 @@ class Weapon:
     rarity: int
     passive: str
     description: str
+    p_passive: str
+    u_passive: str
 
 @dataclass
 class Accessory:

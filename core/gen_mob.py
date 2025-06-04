@@ -136,7 +136,15 @@ async def generate_boss(player, monster, phase, phase_index):
             available_modifiers.remove("Unavoidable")
         monster.modifiers.append(boss_mod)
         print(monster)
-    
+
+    if ('NEET' in phase["name"]):
+        boss_modifiers = get_boss_mods()
+        for _ in range(phase["modifiers_count"]):
+            if available_modifiers:
+                boss_mod = random.choice(boss_modifiers)
+                monster.modifiers.append(boss_mod)
+                boss_modifiers.remove(modifier)
+
     for _ in range(phase["modifiers_count"]):
         if available_modifiers:
             modifier = random.choice(available_modifiers)

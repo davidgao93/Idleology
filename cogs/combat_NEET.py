@@ -220,6 +220,7 @@ class Combat(commands.Cog, name="combat"):
         door_chance_roll = random.random()
         aphrodite_eligible = player.level >= 20 and existing_user[25] > 0 and existing_user[26] > 0
         lucifer_eligible = player.level >= 20 and existing_user[28] >= 5
+        neet_eligible = player.level >= 40 and existing_user[29] >= 3
 
         if aphrodite_eligible and door_chance_roll < 0.2: # Reduced chance for example
             is_heaven_door = True
@@ -293,6 +294,43 @@ class Combat(commands.Cog, name="combat"):
                 await message.edit(embed=discord.Embed(
                     title="Door of the Infernal",
                     description="You hesitated, and the opportunity fades.",
+                    color=0xFF0000))
+                self.bot.state_manager.clear_active(user_id)
+                return
+        elif neet_eligible and 0.4 < door_chance_roll < 0.6: # Reduced chance
+            is_neet_door = True
+            embed = discord.Embed(
+                title="Sad anime kid",
+                description=f"You walk past a sad anime kid who looked like he just got dumped by his girlfriend.\n"
+                            "The void fragments in your inventory suddenly start trembling with anticipation.",
+                color=0x00FF00,
+            )
+            embed.set_image(url="https://i.imgur.com/6f9OJ4s.jpeg")
+                                            
+            await interaction.response.send_message(embed=embed)
+            message = await interaction.original_response()
+            await message.add_reaction("✅")
+            await message.add_reaction("❌")
+
+            def check(reaction, user):
+                return (user == interaction.user and
+                        reaction.message.id == message.id and
+                        str(reaction.emoji) in ["✅", "❌"])
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                await message.clear_reactions()
+                if str(reaction.emoji) == "✅":
+                    is_boss_encounter = True
+                    await self.bot.database.add_soul_cores(user_id, -5)
+                    boss_type = 'NEET'
+                else:
+                    pass  # Proceed with normal combat
+            except asyncio.TimeoutError: 
+                await message.clear_reactions()                      
+                await message.edit(embed=discord.Embed(
+                    title="Sad anime kid",
+                    description="You hesitated, and leave the sad anime kid in the rain.",
                     color=0xFF0000))
                 self.bot.state_manager.clear_active(user_id)
                 return
@@ -1024,6 +1062,13 @@ class Combat(commands.Cog, name="combat"):
                 {"name": "Lucifer, Enraged", "level": 665, "modifiers_count": 4, "hp_multiplier": 1.75},
                 {"name": "Lucifer, Unbound", "level": 666, "modifiers_count": 5, "hp_multiplier": 2},
             ]
+        elif (type == 'NEET'):
+            phases = [
+                {"name": "NEET, Sadge", "level": 444, "modifiers_count": 1, "hp_multiplier": 1.25},
+                {"name": "NEET, Madge", "level": 445, "modifiers_count": 2, "hp_multiplier": 1.5},
+                {"name": "NEET, REEEEEE", "level": 446, "modifiers_count": 3, "hp_multiplier": 1.75},
+                {"name": "NEET, Deadge", "level": 447, "modifiers_count": 4, "hp_multiplier": 2},
+            ]
 
         auto_battle_active = False
         for phase_index, phase in enumerate(phases):
@@ -1054,6 +1099,8 @@ class Combat(commands.Cog, name="combat"):
                 desc = f"🐉**{monster.name}**🪽 descends!\n"
             elif (type == 'lucifer'):
                 desc = f"😈 **{monster.name}** 😈 ascends!\n"
+            elif (type == 'NEET'):
+                desc = f"😭 **{monster.name}** 😡 approaches!\n"
 
             self.bot.logger.info(player)
             self.bot.logger.info(monster)
@@ -1252,6 +1299,13 @@ class Combat(commands.Cog, name="combat"):
             if random.random() < 0.33:
                 await self.bot.database.update_potential_runes(user_id, 1)
                 runes_dropped.append("Rune of Potential")
+        elif type == 'NEET':
+            if random.random() < 0.33:
+                await self.bot.database.update_refinement_runes(user_id, 1)
+                runes_dropped.append("Rune of Refinement")
+            if random.random() < 0.66:
+                await self.bot.database.update_potential_runes(user_id, 1)
+                runes_dropped.append("Rune of Potential")
         if runes_dropped:
             embed.add_field(name="❇️ Runes Dropped", value=", ".join(runes_dropped), inline=False)
         else:
@@ -1265,6 +1319,12 @@ class Combat(commands.Cog, name="combat"):
         if type == 'aphrodite':
             embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
             await message.edit(embed=embed)
+            self.bot.state_manager.clear_active(user_id)
+        if type == 'NEET':
+            embed.set_image(url="https://i.imgur.com/7UmY4Mo.jpeg")
+            embed.add_field(name="As the tombstone crumbles away...", value="You notice a shining void key, you pocket it...", inline=False)
+            await message.edit(embed=embed)
+            await self.bot.database.add_void_keys(user_id, 1)
             self.bot.state_manager.clear_active(user_id)
         if type == 'lucifer':
             embed.set_image(url="https://i.imgur.com/x9suAGK.png")

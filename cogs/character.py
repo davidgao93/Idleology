@@ -36,6 +36,8 @@ Index	Attribute Description
 26  Angel Key
 27  Imbue runes
 28  Soul Cores
+29  Void Fragments
+30  Void Keys
 """
 class Character(commands.Cog, name="character"):
     def __init__(self, bot) -> None:
