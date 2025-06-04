@@ -143,7 +143,7 @@ async def generate_boss(player, monster, phase, phase_index):
             if available_modifiers:
                 boss_mod = random.choice(boss_modifiers)
                 monster.modifiers.append(boss_mod)
-                boss_modifiers.remove(modifier)
+                boss_modifiers.remove(boss_mod)
 
     for _ in range(phase["modifiers_count"]):
         if available_modifiers:
@@ -301,7 +301,7 @@ async def fetch_monster_image(level, monster_data):
         print(f"Error reading monsters.csv: {e}")
         return "Commoner", "https://i.imgur.com/v1BrB1M.png", "stares pleadingly at"
     
-    if 663 <= level <= 888:
+    if 444 <= level <= 888:
         for monster in monsters:
             if (monster[2] == level * 10):
                 print('Monster matched')

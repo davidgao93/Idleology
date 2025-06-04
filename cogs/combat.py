@@ -193,39 +193,43 @@ class Combat(commands.Cog, name="combat"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        last_combat_time_str = existing_user[24]
-        if last_combat_time_str:
-            try:
-                last_combat_time_dt = datetime.fromisoformat(last_combat_time_str)
-                time_since_combat = datetime.now() - last_combat_time_dt
-                if time_since_combat < self.COMBAT_COOLDOWN_DURATION:
-                    remaining_cooldown = self.COMBAT_COOLDOWN_DURATION - time_since_combat
-                    await interaction.response.send_message(
-                        f"Please slow down. Try again in {(remaining_cooldown.seconds // 60) % 60} minute(s) "
-                        f"{(remaining_cooldown.seconds % 60)} second(s).",
-                        ephemeral=True
-                    )
-                    return
-            except ValueError:
-                self.bot.logger.warning(f"Invalid datetime format for last_combat_time for user {user_id}: {last_combat_time_str}")
+        # last_combat_time_str = existing_user[24]
+        # if last_combat_time_str:
+        #     try:
+        #         last_combat_time_dt = datetime.fromisoformat(last_combat_time_str)
+        #         time_since_combat = datetime.now() - last_combat_time_dt
+        #         if time_since_combat < self.COMBAT_COOLDOWN_DURATION:
+        #             remaining_cooldown = self.COMBAT_COOLDOWN_DURATION - time_since_combat
+        #             await interaction.response.send_message(
+        #                 f"Please slow down. Try again in {(remaining_cooldown.seconds // 60) % 60} minute(s) "
+        #                 f"{(remaining_cooldown.seconds % 60)} second(s).",
+        #                 ephemeral=True
+        #             )
+        #             return
+        #     except ValueError:
+        #         self.bot.logger.warning(f"Invalid datetime format for last_combat_time for user {user_id}: {last_combat_time_str}")
         
-        await self.bot.database.update_combat_time(user_id)
+        # await self.bot.database.update_combat_time(user_id)
         self.bot.state_manager.set_active(user_id, "combat")
         
         player = await self._initialize_player_for_combat(user_id, existing_user)
 
         # Check for Door of Ascension / Infernal Door
         is_boss_encounter = False
+        is_heaven_door = False
+        is_hell_door = False
+        is_neet_door = False
         boss_type = '' # aphrodite or lucifer
         door_chance_roll = random.random()
         aphrodite_eligible = player.level >= 20 and existing_user[25] > 0 and existing_user[26] > 0
         lucifer_eligible = player.level >= 20 and existing_user[28] >= 5
+        neet_eligible = player.level >= 40 and existing_user[29] >= 3
 
         if aphrodite_eligible and door_chance_roll < 0.2: # Reduced chance for example
             is_heaven_door = True
             embed = discord.Embed(
                 title="Door of Ascension",
-                description="Your angelic and draconic keys tremble with anticipation, "
+                description="Your **angelic** and **draconic** keys tremble with anticipation, "
                             "do you wish to challenge the heavens?",
                 color=0x00FF00,
             )
@@ -264,7 +268,7 @@ class Combat(commands.Cog, name="combat"):
             embed = discord.Embed(
                 title="Door of the Infernal",
                 description="Your soul cores tremble with anticipation, "
-                            "do you wish to consume 5 to challenge the depths below?",
+                            "do you wish to consume **5** to challenge the depths below?",
                 color=0x00FF00,
             )
             embed.set_image(url="https://i.imgur.com/bWMAksf.png")
@@ -293,6 +297,45 @@ class Combat(commands.Cog, name="combat"):
                 await message.edit(embed=discord.Embed(
                     title="Door of the Infernal",
                     description="You hesitated, and the opportunity fades.",
+                    color=0xFF0000))
+                self.bot.state_manager.clear_active(user_id)
+                return
+        elif neet_eligible and 0.0 < door_chance_roll < 1.6: # Reduced chance
+            is_neet_door = True
+            embed = discord.Embed(
+                title="Sad anime kid",
+                description=f"You walk past a sad anime kid who looked like he just got dumped by his girlfriend.\n"
+                            "The void fragments in your inventory suddenly start trembling with anticipation.\n"
+                            "Take **3** of them out and try to figure out what's happening?\n"
+                            "You have a feeling this **won't be easy**, are you prepared?",
+                color=0x00FF00,
+            )
+            embed.set_image(url="https://i.imgur.com/6f9OJ4s.jpeg")
+                                            
+            await interaction.response.send_message(embed=embed)
+            message = await interaction.original_response()
+            await message.add_reaction("✅")
+            await message.add_reaction("❌")
+
+            def check(reaction, user):
+                return (user == interaction.user and
+                        reaction.message.id == message.id and
+                        str(reaction.emoji) in ["✅", "❌"])
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                await message.clear_reactions()
+                if str(reaction.emoji) == "✅":
+                    is_boss_encounter = True
+                    await self.bot.database.add_void_frags(user_id, -3)
+                    boss_type = 'NEET'
+                else:
+                    pass  # Proceed with normal combat
+            except asyncio.TimeoutError: 
+                await message.clear_reactions()                      
+                await message.edit(embed=discord.Embed(
+                    title="Sad anime kid",
+                    description="You hesitated, and leave the sad anime kid in the rain.",
                     color=0xFF0000))
                 self.bot.state_manager.clear_active(user_id)
                 return
@@ -373,7 +416,7 @@ class Combat(commands.Cog, name="combat"):
         # Apply combat start passives and update embed
         await self._apply_combat_start_passives(player, monster, embed, treasure_hunter_triggered, greed_good_triggered)
         
-        if is_boss_encounter : # This means a door was chosen, message might be followup
+        if is_boss_encounter or is_heaven_door or is_hell_door or is_neet_door : # This means a door was chosen, message might be followup
              message = await interaction.followup.send(embed=embed, ephemeral=False)
         else: # Standard /combat start
             await interaction.response.send_message(embed=embed)
@@ -694,10 +737,10 @@ class Combat(commands.Cog, name="combat"):
                 if player.ward > 0:
                     if final_damage_to_player <= player.ward:
                         player.ward -= final_damage_to_player
-                        monster_message += f"{monster.name} {monster.flavor}. Your ward absorbs 🔮 {final_damage_to_player} damage!\n"
+                        monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {final_damage_to_player} damage!\n"
                         final_damage_to_player = 0 
                     else:
-                        monster_message += f"{monster.name} {monster.flavor}. Your ward absorbs 🔮 {player.ward} damage, but shatters!\n"
+                        monster_message += f"{monster.name} {monster.flavor}.nYour ward absorbs 🔮 {player.ward} damage, but shatters!\n"
                         final_damage_to_player -= player.ward
                         player.ward = 0
                 
@@ -940,6 +983,11 @@ class Combat(commands.Cog, name="combat"):
                                 inline=False)
                 embed.set_image(url="https://i.imgur.com/x6QKvSy.png")
                 await self.bot.database.add_soul_cores(user_id, 1)
+            if random.random() < (0.05 + special_drop):
+                embed.add_field(name="🟣 Void Fragment", value="A void fragment was left behind!",
+                                inline=False)
+                embed.set_image(url="https://i.imgur.com/T2ap5iO.png")
+                await self.bot.database.add_void_frags(user_id, 1)
 
         if player.armor_passive == "Everlasting Blessing" and random.random() < 0.1:
             embed.add_field(name="Armor Passive",
@@ -1024,6 +1072,13 @@ class Combat(commands.Cog, name="combat"):
                 {"name": "Lucifer, Enraged", "level": 665, "modifiers_count": 4, "hp_multiplier": 1.75},
                 {"name": "Lucifer, Unbound", "level": 666, "modifiers_count": 5, "hp_multiplier": 2},
             ]
+        elif (type == 'NEET'):
+            phases = [
+                {"name": "NEET, Sadge", "level": 444, "modifiers_count": 1, "hp_multiplier": 1.25},
+                {"name": "NEET, Madge", "level": 445, "modifiers_count": 2, "hp_multiplier": 1.5},
+                {"name": "NEET, REEEEEE", "level": 446, "modifiers_count": 3, "hp_multiplier": 1.75},
+                {"name": "NEET, Deadge", "level": 447, "modifiers_count": 5, "hp_multiplier": 0.2},
+            ]
 
         auto_battle_active = False
         for phase_index, phase in enumerate(phases):
@@ -1048,12 +1103,14 @@ class Combat(commands.Cog, name="combat"):
 
             if "Temporal Bubble" in monster.modifiers:
                 player.weapon_passive = "none"
-                self.bot.logger.info(f"Temporal bubble applied: {player.weapon_passive} to nothing")  
+                self.bot.logger.info(f"Temporal bubble applied: weapon passive to nothing")  
 
             if (type == 'aphrodite'):
                 desc = f"🐉**{monster.name}**🪽 descends!\n"
             elif (type == 'lucifer'):
                 desc = f"😈 **{monster.name}** 😈 ascends!\n"
+            elif (type == 'NEET'):
+                desc = f"😭 **{monster.name}** 😡 approaches!\n"
 
             self.bot.logger.info(player)
             self.bot.logger.info(monster)
@@ -1252,6 +1309,13 @@ class Combat(commands.Cog, name="combat"):
             if random.random() < 0.33:
                 await self.bot.database.update_potential_runes(user_id, 1)
                 runes_dropped.append("Rune of Potential")
+        elif type == 'NEET':
+            if random.random() < 0.33:
+                await self.bot.database.update_refinement_runes(user_id, 1)
+                runes_dropped.append("Rune of Refinement")
+            if random.random() < 0.66:
+                await self.bot.database.update_potential_runes(user_id, 1)
+                runes_dropped.append("Rune of Potential")
         if runes_dropped:
             embed.add_field(name="❇️ Runes Dropped", value=", ".join(runes_dropped), inline=False)
         else:
@@ -1265,6 +1329,12 @@ class Combat(commands.Cog, name="combat"):
         if type == 'aphrodite':
             embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
             await message.edit(embed=embed)
+            self.bot.state_manager.clear_active(user_id)
+        if type == 'NEET':
+            embed.set_image(url="https://i.imgur.com/7UmY4Mo.jpeg")
+            embed.add_field(name="As the tombstone crumbles away...", value="You notice a shining void key, you pocket it...", inline=False)
+            await message.edit(embed=embed)
+            await self.bot.database.add_void_keys(user_id, 1)
             self.bot.state_manager.clear_active(user_id)
         if type == 'lucifer':
             embed.set_image(url="https://i.imgur.com/x9suAGK.png")
@@ -1361,6 +1431,8 @@ class Combat(commands.Cog, name="combat"):
             title_text = "You have failed to conquer the heavens."
         elif type == 'lucifer':
             title_text = "You have failed to conquer the infernal depths."
+        elif type == 'NEET':
+            title_text = "You have failed to console the sad anime kid."
             
         total_damage_dealt = monster.max_hp - monster.hp
         defeat_embed = discord.Embed(
