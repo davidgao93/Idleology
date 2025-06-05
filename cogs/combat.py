@@ -1536,7 +1536,7 @@ class Combat(commands.Cog, name="combat"):
         self.bot.state_manager.set_active(user_id, "ascent")
 
         player = await self._initialize_player_for_combat(user_id, existing_user)
-        print(player)
+        player_save = player
         # --- ASCENT VARIABLES ---
         # Start ascent monster level at player's current level or slightly higher for a challenge.
         current_monster_base_level = player.level + player.ascension # Base level for the stage
@@ -1549,10 +1549,14 @@ class Combat(commands.Cog, name="combat"):
         cumulative_gold_earned_ascent = 0
         # --- MAIN ASCENT LOOP ---
         while True: 
+            player.attack = player_save.attack
+            player.defence = player_save.defence
+            print(player)
             monster_object_template = Monster(name="",level=0,hp=0,max_hp=0,xp=0,attack=0,defence=0,modifiers=[],image="",flavor="",is_boss=True)
             monster = await generate_ascent_monster(player, monster_object_template, current_monster_base_level, current_normal_mods, current_boss_mods)
-            self.bot.logger.info(f"Ascent Stage {ascent_stage}: Player Lvl {player.level}, Monster Lvl {monster.level} (Base {current_monster_base_level}), Modifiers: {monster.modifiers}")
-            print(monster)
+            self.bot.logger.info(f"Ascent Stage {ascent_stage}: P. Lvl {player.level}, "
+                                 f"Player Atk {player.attack}, P. Def {player.defence}, " 
+                                 f"Monster Lvl {monster.level}, M. ATK {monster.attack} M. DEF {monster.defence}")
             self.apply_stat_effects(player, monster) # Apply monster mods effects on player stats (e.g. Enfeeble)
 
             # --- UI and COMBAT SETUP ---
@@ -1672,25 +1676,21 @@ class Combat(commands.Cog, name="combat"):
                     final_gold_award_stage *= 2
                     stage_clear_embed.add_field(name="Passive Bonus!", value="**Prosper** doubles stage gold!", inline=False)
                 if player.acc_passive == "Infinite Wisdom" and random.random() < (player.acc_lvl * 0.05):
-                    final_xp_award_stage = int(final_xp_award_stage * 1.5)
+                    final_xp_award_stage = int(final_xp_award_stage * 2)
                     stage_clear_embed.add_field(name="Passive Bonus!", value="**Infinite Wisdom** boosts stage XP!", inline=False)
 
-                # <<< MODIFICATION 3: Increment cumulative trackers >>>
                 cumulative_xp_earned_ascent += final_xp_award_stage
                 cumulative_gold_earned_ascent += final_gold_award_stage
-                # <<< END MODIFICATION 3 >>>
 
                 stage_clear_embed.add_field(name="📚 Stage XP Gained", value=f"{final_xp_award_stage:,} XP")
                 stage_clear_embed.add_field(name="💰 Stage Gold Acquired", value=f"{final_gold_award_stage:,} GP")
                 
-                # <<< MODIFICATION 4: Display cumulative amounts in stage clear embed >>>
                 stage_clear_embed.add_field(
                     name="--- Total Ascent Earnings So Far ---", 
                     value=(f"Cumulative XP: {cumulative_xp_earned_ascent:,}\n"
                            f"Cumulative Gold: {cumulative_gold_earned_ascent:,}"),
                     inline=False
                 )
-                # <<< END MODIFICATION 4 >>>
                 
                 if ascent_stage % 3 == 0: 
                     if random.random() < 0.25: 
@@ -1716,9 +1716,7 @@ class Combat(commands.Cog, name="combat"):
                 await message.edit(embed=stage_clear_embed)
                 await asyncio.sleep(4) 
 
-                await self.bot.database.add_gold(user_id, final_gold_award_stage) # Add STAGE gold to player's total
-                
-                # Pass stage XP to update_experience
+                await self.bot.database.add_gold(user_id, final_gold_award_stage)
                 temp_monster_for_stage_xp = Monster(name="",level=0,hp=0,max_hp=0,xp=final_xp_award_stage,attack=0,defence=0,modifiers=[],image="",flavor="")
                 player = await self.update_experience(interaction, message, stage_clear_embed, player, temp_monster_for_stage_xp) 
                 await self.bot.database.update_player(player) 
