@@ -663,10 +663,10 @@ class Combat(commands.Cog, name="combat"):
 
             # percent damage reduction for pdr
             print(f"Previous damage taken {damage_taken_base}")
-            damage_taken_base /= (player.pdr / 100)
+            damage_taken_base = int(damage_taken_base * (1 - (player.pdr / 100)))
             print(f"After % damage taken {damage_taken_base}")
             damage_taken_base -= player.fdr
-            
+            print(f"After flat damage taken {damage_taken_base}")
             # Minions (Summoner, Infernal Legion)
             minion_additional_damage = 0
             if "Summoner" in monster.modifiers:
@@ -700,7 +700,7 @@ class Combat(commands.Cog, name="combat"):
                 is_blocked = True
 
             is_dodged = False
-            dodge_chance_calc = player.eva / 100
+            dodge_chance_calc = player.evasion / 100
 
             if random.random() <= dodge_chance_calc:
                 final_damage_to_player = 0 # Block negates all damage
