@@ -206,7 +206,6 @@ async def generate_ascent_monster(player, monster_instance, ascent_stage_level, 
     all_boss_mods = get_boss_mods()
     # Ensure boss mods are not already present if they can also be normal mods
     available_boss_mods = [m for m in all_boss_mods if m not in monster.modifiers] 
-    available_boss_mods.remove("Temporal Bubble")
     random.shuffle(available_boss_mods)
 
     count_boss_applied = 0
@@ -362,6 +361,5 @@ def get_modifier_description(modifier):
         "Absolute": "+25 Attack, +25 defence",
         "Infernal Legion": "Has minions that echo hits",
         "Overwhelm" : "Disables ward, cannot be blocked, cannot be evaded",
-        "Temporal Bubble": "Weapon passive is disabled"
     }
     return descriptions.get(modifier, "") 

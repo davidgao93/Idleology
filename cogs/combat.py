@@ -1082,9 +1082,6 @@ class Combat(commands.Cog, name="combat"):
 
             self.apply_stat_effects(player, monster)
 
-            if "Temporal Bubble" in monster.modifiers:
-                player.weapon_passive = "none"
-                self.bot.logger.info(f"Temporal bubble applied: weapon passive to nothing")  
 
             if (type == 'aphrodite'):
                 desc = f"🐉**{monster.name}**🪽 descends!\n"
