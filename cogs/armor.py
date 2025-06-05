@@ -432,11 +432,11 @@ class Armor(commands.Cog, name="armor"):
 
                 if armor_details[11] > 0:
                     stat_to_increase = 'pdr'
-                    increase_amount = max(1, random.randint(int(armor_level // 20), int(armor_level // 10)))
+                    increase_amount = max(1, random.randint(int(armor_level // 16), int(armor_level // 33)))
                     success_str =  f"Percentage damage reduction increased by **{increase_amount}**%"
                 elif armor_details[12] > 0:
                     stat_to_increase = 'fdr'
-                    increase_amount = max(1, random.randint(int(armor_level // 50), int(armor_level // 20)))
+                    increase_amount = max(1, random.randint(int(armor_level // 100), int(armor_level // 25)))
                     success_str =  f"Flat damage reduction increased by **{increase_amount}**"
                 await self.bot.database.increase_armor_stat(armor_id, stat_to_increase, increase_amount)
                 embed.add_field(name="Tempering success", 
