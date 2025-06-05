@@ -18,7 +18,7 @@ from core.combat_calcs import (calculate_hit_chance,
                                 check_for_spark_bonus,
                                 check_for_echo_bonus,
                                 check_for_poison_bonus)
-from core.gen_mob import get_modifier_description, generate_encounter, generate_boss
+from core.gen_mob import get_modifier_description, generate_encounter, generate_boss, generate_ascent_monster
 import json
 
 class Combat(commands.Cog, name="combat"):
@@ -1490,6 +1490,241 @@ class Combat(commands.Cog, name="combat"):
 
         player.exp = new_exp
         return player
+
+
+    @app_commands.command(name="ascent", description="Begin your ascent against increasingly powerful foes.")
+    async def ascent(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user):
+            return
+
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+        
+        if existing_user[4] < 100:
+            await interaction.response.send_message(
+                f"The path of ascent is brutal. Come back at level 100.",
+                ephemeral=True
+            )
+            return
+
+        # --- COOLDOWN CHECK (Shared with /combat) ---
+        last_combat_time_str = existing_user[24] 
+        if last_combat_time_str:
+            try:
+                last_combat_time_dt = datetime.fromisoformat(last_combat_time_str)
+                time_since_combat = datetime.now() - last_combat_time_dt
+                if time_since_combat < self.COMBAT_COOLDOWN_DURATION:
+                    remaining_cooldown = self.COMBAT_COOLDOWN_DURATION - time_since_combat
+                    await interaction.response.send_message(
+                        f"The path of ascent is tiring. Rest for {(remaining_cooldown.seconds // 60) % 60} minute(s) "
+                        f"{(remaining_cooldown.seconds % 60)} second(s).",
+                        ephemeral=True
+                    )
+                    return
+            except ValueError:
+                self.bot.logger.warning(f"Invalid datetime format for last_combat_time for user {user_id}: {last_combat_time_str}")
+        
+        await self.bot.database.update_combat_time(user_id)
+        self.bot.state_manager.set_active(user_id, "ascent")
+
+        player = await self._initialize_player_for_combat(user_id, existing_user)
+
+        # --- ASCENT VARIABLES ---
+        # Start ascent monster level at player's current level or slightly higher for a challenge.
+        current_monster_base_level = player.level + player.ascension # Base level for the stage
+        current_normal_mods = 5
+        current_boss_mods = 1
+        ascent_stage = 1
+        
+        message = None # To store the interaction message for editing across stages
+        cumulative_xp_earned_ascent = 0
+        cumulative_gold_earned_ascent = 0
+        # --- MAIN ASCENT LOOP ---
+        while True: 
+            monster_object_template = Monster(name="",level=0,hp=0,max_hp=0,xp=0,attack=0,defence=0,modifiers=[],image="",flavor="",is_boss=True)
+            monster = await generate_ascent_monster(player, monster_object_template, current_monster_base_level, current_normal_mods, current_boss_mods)
+            self.bot.logger.info(f"Ascent Stage {ascent_stage}: Player Lvl {player.level}, Monster Lvl {monster.level} (Base {current_monster_base_level}), Modifiers: {monster.modifiers}")
+            
+            self.apply_stat_effects(player, monster) # Apply monster mods effects on player stats (e.g. Enfeeble)
+
+            # --- UI and COMBAT SETUP ---
+            embed_title = f"Ascent - Stage {ascent_stage} | {player.name} (Lvl {player.level} - Asc {player.ascension})"
+            
+            player_hit_c = calculate_hit_chance(player, monster)
+            monster_hit_c_base = calculate_monster_hit_chance(player, monster)
+            player_evade_bonus = (0.01 + player.evasion / 400) if player.evasion > 0 else 0
+            effective_monster_hit_c = max(0, monster_hit_c_base - player_evade_bonus)
+
+            embed_description = (f"A formidable foe bars your ascent: Level **{monster.level}** {monster.name}!\n"
+                                 f"\n__Modifiers ({len(monster.modifiers)})__\n" +
+                                 " ".join([f"**{m}**, " for m in monster.modifiers]) +
+                                 f"\n\n~{int(player_hit_c * 100)}% to hit | "
+                                 f"~{int(effective_monster_hit_c * 100)}% to be hit")
+            
+            embed = discord.Embed(title=embed_title, description=embed_description, color=discord.Color.orange())
+            embed.set_image(url=monster.image)
+            embed.add_field(name="🐲 HP", value=monster.hp, inline=True)
+            hp_value = f"{player.hp} ({player.ward} 🔮)" if player.ward > 0 else player.hp
+            embed.add_field(name="❤️ HP", value=hp_value, inline=True)
+            
+            await self._apply_combat_start_passives(player, monster, embed) # Apply relevant player passives
+
+            if ascent_stage == 1:
+                await interaction.response.send_message(embed=embed)
+                message = await interaction.original_response()
+            else:
+                await message.edit(embed=embed)
+                await message.clear_reactions() 
+
+            reactions = ["⚔️", "🩹", "⏩", "🏃"] # Standard reactions for ascent
+            await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
+
+            # --- INNER COMBAT LOOP (for the current monster) ---
+            attack_message, monster_message, heal_message, pause_message = "", "", "", ""
+            auto_battle_this_stage = False
+
+            while monster.hp > 0 and player.hp > 0:
+                def check_ascent_reaction(reaction, user):
+                    return (user == interaction.user and
+                            reaction.message.id == message.id and
+                            str(reaction.emoji) in reactions)
+                
+                try:
+                    action_emoji = None
+                    if auto_battle_this_stage:
+                        if player.hp <= int(player.max_hp * 0.2): 
+                            auto_battle_this_stage = False
+                            pause_message = "Player HP < 20%, auto-battle paused!"
+                            await interaction.followup.send(f'{interaction.user.mention} auto-combat paused for this stage!', ephemeral=True)
+                        else:
+                            action_emoji = "⚔️" # Simulate attack
+                            await asyncio.sleep(1) # Auto-battle delay
+                    
+                    if not action_emoji: # If not auto-battling or paused, wait for reaction
+                        reaction_obj, reaction_user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check_ascent_reaction)
+                        action_emoji = str(reaction_obj.emoji)
+                        await message.remove_reaction(reaction_obj.emoji, reaction_user)
+
+                    heal_message, attack_message, monster_message, pause_message = "", "", "", "" # Reset messages
+
+                    if action_emoji == "⚔️":
+                        monster, attack_message = await self.player_turn(player, monster)
+                        if monster.hp > 0: player, monster_message = await self.monster_turn(player, monster)
+                    elif action_emoji == "🩹":
+                        player, heal_message = await self.heal(player)
+                    elif action_emoji == "⏩":
+                        auto_battle_this_stage = True
+                        pause_message = "Auto-battle engaged for this stage!" # Brief indicator
+                    elif action_emoji == "🏃":
+                        await message.clear_reactions()
+                        retreat_message_value = (f"You retreated from the ascent at Stage {ascent_stage}.\n\n"
+                                                    f"**Total Ascent Earnings During This Attempt:**\n"
+                                                    f"📚 Total XP: {cumulative_xp_earned_ascent:,}\n"
+                                                    f"💰 Total Gold: {cumulative_gold_earned_ascent:,}")
+                        embed.add_field(name="Retreat", value=retreat_message_value, inline=False)
+                        await message.edit(embed=embed)
+                        self.bot.state_manager.clear_active(user_id)
+                        await self.bot.database.update_player(player) 
+                        return 
+
+                    if player.hp <= 0: break 
+                    if monster.hp <= 0: break 
+
+                    messages = {player.name: attack_message, monster.name: monster_message, "Heal": heal_message, "Auto-Battle": pause_message}
+                    embed = await self.update_combat_embed(embed, player, monster, messages)
+                    embed.title = embed_title # Ensure title persists
+                    await message.edit(embed=embed)
+
+                except asyncio.TimeoutError:
+                    embed.add_field(name="Timeout", value="Your hesitation cost you the ascent.", inline=False)
+                    await message.edit(embed=embed); await message.clear_reactions()
+                    self.bot.state_manager.clear_active(user_id); await self.bot.database.update_player(player)
+                    return
+            
+            # --- END OF INNER COMBAT LOOP ---
+            if player.hp <= 0:
+                await self.handle_defeat(message, player, monster) 
+                self.bot.state_manager.clear_active(user_id)
+                # No need to update_player here, handle_defeat does it.
+                return 
+
+            if monster.hp <= 0: # Monster defeated, prepare for next stage or end ascent
+                stage_clear_embed = discord.Embed(
+                    title=f"Ascent - Stage {ascent_stage} Cleared!",
+                    description=f"{player.name} defeated {monster.name} with {player.hp} ❤️ remaining!",
+                    color=discord.Color.green()
+                )
+                base_gold = int((monster.level ** random.uniform(1.5, 1.7))) 
+                final_gold_award_stage = int(base_gold * (1 + player.rarity / 100 + ascent_stage / 20))
+                final_gold_award_stage = max(100, final_gold_award_stage)
+
+                final_xp_award_stage = monster.xp # monster.xp is already calculated for the stage
+
+                if player.acc_passive == "Prosper" and random.random() < (player.acc_lvl * 0.1):
+                    final_gold_award_stage *= 2
+                    stage_clear_embed.add_field(name="Passive Bonus!", value="**Prosper** doubles stage gold!", inline=False)
+                if player.acc_passive == "Infinite Wisdom" and random.random() < (player.acc_lvl * 0.05):
+                    final_xp_award_stage = int(final_xp_award_stage * 1.5)
+                    stage_clear_embed.add_field(name="Passive Bonus!", value="**Infinite Wisdom** boosts stage XP!", inline=False)
+
+                # <<< MODIFICATION 3: Increment cumulative trackers >>>
+                cumulative_xp_earned_ascent += final_xp_award_stage
+                cumulative_gold_earned_ascent += final_gold_award_stage
+                # <<< END MODIFICATION 3 >>>
+
+                stage_clear_embed.add_field(name="📚 Stage XP Gained", value=f"{final_xp_award_stage:,} XP")
+                stage_clear_embed.add_field(name="💰 Stage Gold Acquired", value=f"{final_gold_award_stage:,} GP")
+                
+                # <<< MODIFICATION 4: Display cumulative amounts in stage clear embed >>>
+                stage_clear_embed.add_field(
+                    name="--- Total Ascent Earnings So Far ---", 
+                    value=(f"Cumulative XP: {cumulative_xp_earned_ascent:,}\n"
+                           f"Cumulative Gold: {cumulative_gold_earned_ascent:,}"),
+                    inline=False
+                )
+                # <<< END MODIFICATION 4 >>>
+                
+                if ascent_stage % 3 == 0: 
+                    if random.random() < 0.25: 
+                        await self.bot.database.update_curios_count(user_id, server_id, 1)
+                        stage_clear_embed.add_field(name="✨ Special Reward!", value="Found a Curious Curio!", inline=False)
+                    
+                    if random.random() < 0.05:
+                        await self.bot.database.add_angel_key(user_id, 1)
+                        stage_clear_embed.add_field(name="✨ Special Reward!", value="Found an Angelic key!", inline=False)
+                    
+                    if random.random() < 0.05:
+                        await self.bot.database.add_dragon_key(user_id, 1)
+                        stage_clear_embed.add_field(name="✨ Special Reward!", value="Found a draconic key!", inline=False)
+
+                    if random.random() < 0.05:
+                        await self.bot.database.add_soul_cores(user_id, 1)
+                        stage_clear_embed.add_field(name="✨ Special Reward!", value="Found a Soul core!", inline=False)
+                
+                await message.edit(embed=stage_clear_embed)
+                await asyncio.sleep(4) 
+
+                await self.bot.database.add_gold(user_id, final_gold_award_stage) # Add STAGE gold to player's total
+                
+                # Pass stage XP to update_experience
+                temp_monster_for_stage_xp = Monster(name="",level=0,hp=0,max_hp=0,xp=final_xp_award_stage,attack=0,defence=0,modifiers=[],image="",flavor="")
+                player = await self.update_experience(interaction, message, stage_clear_embed, player, temp_monster_for_stage_xp) 
+                await self.bot.database.update_player(player) 
+                                
+                ascent_stage += 1
+                current_monster_base_level += 1
+                current_normal_mods += 1
+                current_boss_mods = min(5, current_boss_mods + 1) 
+                auto_battle_this_stage = False 
+            else: 
+                self.bot.logger.error("Ascent main loop exited unexpectedly after inner combat.")
+                self.bot.state_manager.clear_active(user_id)
+                return
+            
 
 
 async def setup(bot) -> None:
