@@ -134,6 +134,8 @@ class Armor(commands.Cog, name="armor"):
                         armor_evasion = selected_armor[5]
                         armor_ward = selected_armor[6]
                         armor_passive = selected_armor[7]
+                        armor_pdr = selected_armor[11]
+                        armor_fdr = selected_armor[12]
                         embed.description = f"**{armor_name}** (i{armor_level}):"
                         
                         equipped_item_tuple = await self.bot.database.get_equipped_armor(user_id) # Re-fetch for accurate equipped status
@@ -145,16 +147,24 @@ class Armor(commands.Cog, name="armor"):
                         if armor_block > 0:
                             embed.add_field(name="Block", value=armor_block)
                             embed.add_field(name=f"Effect",
-                                        value=f"{int(armor_block / 2) + 1}% chance to reduce initial monster hit to 0",
+                                        value=f"{armor_block}% chance to reduce initial monster hit to 0",
                                         inline=False)
                         if armor_evasion > 0:
-                            embed.add_field(name="Evasion",value=f"{armor_evasion}")
+                            embed.add_field(name="Dodge",value=f"{armor_evasion}")
                             embed.add_field(name="Effect", 
-                                value=f"Monster accuracy roll decreased by {int(armor_evasion / 4) + 1}",
+                                value=f"{armor_evasion}% chance to completely dodge a monster's attack",
                                 inline=False)
                         if armor_ward > 0:
                             embed.add_field(name="Ward", value=f"{armor_ward}%")
                             embed.add_field(name=f"Effect", value=f"{int(armor_ward)}% additional temporary max hp at start of encounter", inline=False)
+                        if armor_pdr > 0:
+                            embed.add_field(name="Percentage Damage Reduction", value=f"{armor_pdr}%")
+                            embed.add_field(name=f"Effect", value=f"Initial monster hit reduced by {int(armor_pdr)}%", inline=False)
+                        if armor_fdr > 0:
+                            embed.add_field(name="Flat Damage Reduction", value=f"{armor_fdr}")
+                            embed.add_field(name=f"Effect", value=f"Initial monster hit reduced by {int(armor_fdr)}", inline=False)
+                        
+                        
                         if armor_passive != "none":
                             effect_description = self.get_armor_passive_effect(armor_passive)
                             embed.add_field(name="Passive", value=armor_passive)
@@ -419,18 +429,19 @@ class Armor(commands.Cog, name="armor"):
             temper_success = random.random() <= success_rate  
 
             if temper_success:
-                if armor_details[4] > 0:
-                    stat_to_increase = 'block'
-                elif armor_details[5] > 0:
-                    stat_to_increase = 'evasion'
-                else:
-                    stat_to_increase = 'ward'
-                    
-                increase_amount = max(1, random.randint(int(armor_level // 7), int(armor_level // 5)))
+
+                if armor_details[11] > 0:
+                    stat_to_increase = 'pdr'
+                    increase_amount = max(1, random.randint(int(armor_level // 20), int(armor_level // 10)))
+                    success_str =  f"Percentage damage reduction increased by **{increase_amount}**%"
+                elif armor_details[12] > 0:
+                    stat_to_increase = 'fdr'
+                    increase_amount = max(1, random.randint(int(armor_level // 50), int(armor_level // 20)))
+                    success_str =  f"Flat damage reduction increased by **{increase_amount}**"
                 await self.bot.database.increase_armor_stat(armor_id, stat_to_increase, increase_amount)
                 embed.add_field(name="Tempering success", 
                             value=(f"🎊 Congratulations! 🎊 " 
-                                    f"**{armor_name}**'s {stat_to_increase.capitalize()} increased by **{increase_amount}**."), 
+                                    f"**{armor_name}**'s {success_str}."), 
                             inline=False)
                 await message.edit(embed=embed)
                 await asyncio.sleep(3)
