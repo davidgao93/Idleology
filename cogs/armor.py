@@ -693,7 +693,7 @@ class Armor(commands.Cog, name="armor"):
         passive_messages = {
             "Invulnerable": "20% chance to take no damage the entire fight.",
             "Mystical Might": "20% chance to deal 10x damage after all calculations.",
-            "Omnipotent": "50% chance to double your stats at start of combat (Atk, Def, HP).",
+            "Omnipotent": "50% chance to double your stats and gain your max HP as ward.",
             "Treasure Hunter": "5% additional chance to turn the monster into a loot encounter.",
             "Unlimited Wealth": "20% chance to 5x (2x on bosses) player rarity stat.",
             "Everlasting Blessing": "10% chance on victory to propagate your ideology."

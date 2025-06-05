@@ -153,16 +153,16 @@ class Combat(commands.Cog, name="combat"):
             player.invulnerable = True
 
         if player.armor_passive == "Omnipotent" and random.random() < 0.5:
+            embed_to_modify.add_field(name="Armor Passive", 
+                            value=f"The **Omnipotent** armor imbues with power!\nYou feel **empowered**.\n"
+                            f"⚔️ Attack boosted by **{player.attack}**\n"
+                            f"🛡️ Defence boosted by **{player.defence}**\n"
+                            f"🔮 Gain **{player.max_hp}** ward\n", inline=False)
             player.attack *= 2
             player.defence *= 2
-            player.hp *= 2
-            player.max_hp *= 2
+            player.ward += player.max_hp
             self.bot.logger.info("Omnipotent passive: Monster attack and defense set to 0")
-            embed_to_modify.add_field(name="Armor Passive", 
-                                      value=f"The **Omnipotent** armor imbues with power!\nYou feel **empowered**."
-                                       f"⚔️ Attack boosted by **{player.attack}**\n"
-                                       f"🛡️ Defence boosted by **{player.defence}**\n"
-                                       f"❤️ Max HP boosted by **{player.max_hp}**\n", inline=False)
+
                                                              
         if player.armor_passive == "Unlimited Wealth" and greed_good_triggered: # This is usually checked before monster gen for /combat
              # For ascent, this could be a per-stage proc or a global buff if triggered once
