@@ -121,7 +121,7 @@ class DatabaseManager:
             pdr,
             fdr,
             temper_remaining) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (armor.user, 
              armor.name, 
              armor.level, 
