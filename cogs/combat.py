@@ -662,11 +662,11 @@ class Combat(commands.Cog, name="combat"):
             if "Unlimited Blade Works" in monster.modifiers: damage_taken_base *= 2
 
             # percent damage reduction for pdr
-            print(f"Previous damage taken {damage_taken_base}")
-            damage_taken_base = int(damage_taken_base * (1 - (player.pdr / 100)))
-            print(f"After % damage taken {damage_taken_base}")
-            damage_taken_base -= player.fdr
-            print(f"After flat damage taken {damage_taken_base}")
+            # print(f"Previous damage taken {damage_taken_base}")
+            damage_taken_base = max(0, int(damage_taken_base * (1 - (player.pdr / 100))))
+            # print(f"After % damage taken {damage_taken_base}")
+            damage_taken_base = max(0, damage_taken_base - player.fdr)
+            # print(f"After flat damage taken {damage_taken_base}")
             # Minions (Summoner, Infernal Legion)
             minion_additional_damage = 0
             if "Summoner" in monster.modifiers:
@@ -708,7 +708,7 @@ class Combat(commands.Cog, name="combat"):
 
             # Apply damage to Ward first, then HP
             if not is_blocked or not is_dodged:
-                if player.ward > 0:
+                if player.ward > 0 and final_damage_to_player > 0:
                     if final_damage_to_player <= player.ward:
                         player.ward -= final_damage_to_player
                         monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {final_damage_to_player} damage!\n"
@@ -737,7 +737,7 @@ class Combat(commands.Cog, name="combat"):
                 monster_message += f"{monster.name} strikes again in quick succession for {multistrike_damage} damage!\n"
             
             if not monster_message: # Fallback if no other message was generated but hit occurred
-                monster_message = f"{monster.name} {monster.flavor}, dealing its blow."
+                monster_message = f"{monster.name} {monster.flavor}, but you mitigate all its damage."
 
         else: # Monster misses
             if "Venomous" in monster.modifiers:
