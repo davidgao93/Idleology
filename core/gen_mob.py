@@ -355,7 +355,12 @@ def get_modifier_description(modifier):
         "Executioner": "1% chance to deal 90% of remaining HP",
         "Time Lord": "80% chance to not die",
         "Suffocator": "20% for player hits to be unlucky",
-        
+        "Penetrator": "Ignores 20% of Percentage Damage Reduction",
+        "Clobberer": "Ignores 5 Flat Damage Reduction",
+        "Smothering": "Critical hit damage is reduced by 20%",
+        "Dodgy": "Evasion increased by 10%",
+        "Prescient": "10% more likely to hit",
+        "Vampiric": "Heals for 10 times damage dealt",
         "Celestial Watcher": "Never miss", # Start boss list here
         "Unlimited Blade Works": "Double damage",
         "Hell's Fury": "+5 each successful hit",

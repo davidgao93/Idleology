@@ -58,7 +58,9 @@ class Combat(commands.Cog, name="combat"):
                 setattr(p, "ward", 0),
                 setattr(p, "block", 0),
                 setattr(p, "evasion", 0)
-            )
+            ),
+            "Penetrator": lambda p, m: setattr(p, "pdr", max(0, p.pdr - 20)), # Reduce PDR, ensure not negative
+            "Clobberer": lambda p, m: setattr(p, "fdr", max(0, p.fdr - 5)),   # Reduce FDR, ensure not negative
         }
         
         for modifier in monster.modifiers:
@@ -590,6 +592,9 @@ class Combat(commands.Cog, name="combat"):
             passive_message += "The **Mystical Might** armor imbues with power, massively increasing damage!\n"
 
         hit_chance = calculate_hit_chance(player, monster)
+        if "Dodgy" in monster.modifiers:
+            hit_chance = max(0.05, hit_chance - 0.10) # Reduce player's hit chance cap by 10% (absolute)
+            passive_message += f"The monster's **Dodgy** nature makes it harder to hit!\n"
         attack_roll = random.randint(0, 100) # Roll out of 100
         final_miss_threshold = 100 - int(hit_chance * 100)
 
@@ -634,12 +639,19 @@ class Combat(commands.Cog, name="combat"):
                 crit_damage_floor_multiplier = min(crit_damage_floor_multiplier, 0.75) # Cap at 75%
                 passive_message += f"**Deftness (Lvl {player.glove_passive_lvl})** bolsters your critical precision!\n"
             
-            # Crit damage is (random between floor and max) * 2.0 * attack_multiplier
             crit_min_damage_part = int(max_hit_calc * crit_damage_floor_multiplier) + 1
             crit_max_damage_part = max_hit_calc
             if crit_min_damage_part >= crit_max_damage_part: crit_min_damage_part = max(1, crit_max_damage_part -1)
 
-            actual_hit_pre_ward_gen = int((random.randint(crit_min_damage_part, crit_max_damage_part)) * 2.0 * attack_multiplier)
+            crit_base_damage = int((random.randint(crit_min_damage_part, crit_max_damage_part)) * 2.0)
+            
+            # Monster Modifier: Smothering - reduces player's crit damage
+            if "Smothering" in monster.modifiers:
+                crit_base_damage = int(crit_base_damage * 0.80) # Reduce crit damage by 20%
+                passive_message += f"The monster's **Smothering** aura dampens your critical hit!\n"
+
+            actual_hit_pre_ward_gen = int(crit_base_damage * attack_multiplier) # Apply other multipliers after smothering
+            
             attack_message = ( (f"The weapon glimmers with power!\n" if weapon_crit_bonus_chance > 0 else '') +
                                f"Critical Hit! Damage: 🗡️ **{actual_hit_pre_ward_gen}**")
             attack_message = passive_message + attack_message 
@@ -777,6 +789,11 @@ class Combat(commands.Cog, name="combat"):
 
         monster_attack_roll = random.random() # Roll 0.0 to 1.0
 
+        # Monster Modifier: Prescient - increases monster's base accuracy
+        if "Prescient" in monster.modifiers:
+            effective_hit_chance = min(0.95, effective_hit_chance + 0.10) # Add 10% (absolute) to hit chance, cap 95%
+            self.bot.logger.info("Prescient modifier: Monster effective hit chance increased.")
+
         # Monster accuracy modifiers
         if "Lucifer-touched" in monster.modifiers and random.random() < 0.5: # Lucky for monster
             monster_attack_roll = min(monster_attack_roll, random.random()) # Takes lower roll (better for monster vs threshold)
@@ -843,21 +860,33 @@ class Combat(commands.Cog, name="combat"):
                 is_dodged = True
 
             # Apply damage to Ward first, then HP
-            if not is_blocked or not is_dodged:
+            # Apply damage to Ward first, then HP
+            if not is_blocked or not is_dodged: # Ensure is_blocked/is_dodged are defined
+                damage_dealt_this_turn = 0 # Track actual damage to player HP/Ward for Vampiric
+
                 if player.ward > 0 and final_damage_to_player > 0:
                     if final_damage_to_player <= player.ward:
+                        damage_dealt_this_turn = final_damage_to_player
                         player.ward -= final_damage_to_player
-                        monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {final_damage_to_player} damage!\n"
+                        monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {damage_dealt_this_turn} damage!\n"
                         final_damage_to_player = 0 
                     else:
-                        monster_message += f"{monster.name} {monster.flavor}.nYour ward absorbs 🔮 {player.ward} damage, but shatters!\n"
+                        damage_dealt_this_turn = player.ward
+                        monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {player.ward} damage, but shatters!\n"
                         final_damage_to_player -= player.ward
                         player.ward = 0
                 
                 if final_damage_to_player > 0:
+                    damage_dealt_this_turn += final_damage_to_player # Add HP damage to total dealt
                     player.hp -= final_damage_to_player
                     monster_message += f"{monster.name} {monster.flavor}. You take 💔 **{final_damage_to_player}** damage!\n"
 
+                # Monster Modifier: Vampiric
+                if "Vampiric" in monster.modifiers and damage_dealt_this_turn > 0:
+                    heal_amount = damage_dealt_this_turn * 10
+                    monster.hp = min(monster.max_hp, monster.hp + heal_amount)
+                    monster_message += f"The monster's **Vampiric** essence siphons life, healing it for **{heal_amount}** HP!\n"
+                    
             else: # Damage was blocked or dodged
                 if is_blocked:
                     monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ blocks all damage!\n"
