@@ -1074,6 +1074,19 @@ class DatabaseManager:
         await self.connection.commit()
 
 
+
+    async def send_armor(self, receiver_id: str, item_id: int) -> None:
+        """Transfer an armor from one user to another by changing the user_id."""
+
+        await self.connection.execute(
+            "UPDATE armor SET user_id = ? WHERE item_id = ?",
+            (receiver_id, item_id)
+        )
+        
+        # Commit the transaction
+        await self.connection.commit()
+
+
     # Method to update the number of refinement runes for a user
     async def update_refinement_runes(self, user_id: str, count: int) -> None:
         """Update the user's count of refinement runes in the database."""
@@ -1187,6 +1200,16 @@ class DatabaseManager:
         )
         count = await rows.fetchone()  # Get the count
         return count[0] if count else 0  # Return the count or 0 if none
+    
+    async def count_user_armors(self, user_id: str) -> int:
+        """Counts the number of armor for a specific user."""
+        rows = await self.connection.execute(
+            "SELECT COUNT(*) FROM armor WHERE user_id = ?",
+            (user_id,)
+        )
+        count = await rows.fetchone()  # Get the count
+        return count[0] if count else 0  # Return the count or 0 if none
+
 
 
     async def fetch_armor_by_id(self, item_id: int):

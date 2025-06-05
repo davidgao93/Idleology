@@ -68,12 +68,18 @@ class Accessories(commands.Cog, name="accessories"):
             for index, accessory in enumerate(accessories_to_display):
                 accessory_name = accessory[2]
                 accessory_level = accessory[3]
+                accessory_passive = accessory[9]
+                accessory_plvl = accessory[12]
                 is_equipped = accessory[10]
+                
+                info_txt = ""
+                if accessory_passive != "none":
+                    info_txt += f" - {accessory_passive.title()} {accessory_plvl}"
 
                 accessories_display_string += (
                     f"{index + 1}: "
                     f"{'[E] ' if is_equipped else ''}"
-                    f"{accessory_name} (i{accessory_level})\n"
+                    f"{accessory_name} (i{accessory_level}{info_txt})\n"
                 )
 
             embed.add_field(
@@ -176,6 +182,7 @@ class Accessories(commands.Cog, name="accessories"):
                         action_view.add_item(Button(label="Unequip" if is_equipped else "Equip", style=ButtonStyle.primary, custom_id="unequip" if is_equipped else "equip"))
                         if selected_accessory[11] > 0:
                             action_view.add_item(Button(label="Unlock/Improve", style=ButtonStyle.primary, custom_id="improve"))
+                        action_view.add_item(Button(label="Send", style=ButtonStyle.primary, custom_id="send"))
                         action_view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))
                         action_view.add_item(Button(label="Back", style=ButtonStyle.secondary, custom_id="back"))
 
@@ -193,6 +200,95 @@ class Accessories(commands.Cog, name="accessories"):
                             elif action_interaction.data['custom_id'] == "improve":
                                 await self.improve_potential(action_interaction, selected_accessory, message, embed)
                                 continue
+                            elif action_interaction.data['custom_id'] == "send":
+                                if is_equipped:
+                                    # Create a temporary embed for the error to avoid clearing fields
+                                    error_embed = embed.copy()
+                                    error_embed.add_field(name="Error", value="You should probably unequip the accessory before sending it. Returning...", inline=False)
+                                    await message.edit(embed=error_embed, view=None) # Remove buttons during error
+                                    await asyncio.sleep(3)
+                                    continue
+
+                                temp_send_embed = embed.copy()
+                                temp_send_embed.clear_fields()
+                                temp_send_embed.add_field(
+                                    name="Send Accessory",
+                                    value="Please mention a user (@username) to send the accessory to.",
+                                    inline=False
+                                )
+                                await message.edit(embed=temp_send_embed, view=None)
+                                
+                                def message_check(m: Message):
+                                    return (m.author == interaction.user and 
+                                            m.channel == interaction.channel and 
+                                            m.mentions)
+                                
+                                try:
+                                    user_message = await self.bot.wait_for('message', timeout=60.0, check=message_check)
+                                    await user_message.delete()
+                                    receiver = user_message.mentions[0]
+                                    send_item_flag = True
+                                    receiver_user = await self.bot.database.fetch_user(receiver.id, server_id)
+
+                                    error_messages_send = []
+                                    if not receiver_user:
+                                        send_item_flag = False
+                                        error_messages_send.append("This person isn't a valid adventurer.")
+                                    if receiver.id == interaction.user.id:
+                                        send_item_flag = False
+                                        error_messages_send.append("You cannot send items to yourself.")
+                                    
+                                    if receiver_user: # Only check level and inventory if receiver is valid
+                                        current_level_receiver = receiver_user[4]
+                                        if (accessory_level - current_level_receiver) > 15:
+                                            send_item_flag = False
+                                            error_messages_send.append("Item iLvl diff too great. (< 15)")
+                                        
+                                        receiver_items_count = await self.bot.database.count_user_accessories(str(receiver.id))
+                                        if receiver_items_count >= 58: # Assuming 58 is max capacity
+                                            send_item_flag = False
+                                            error_messages_send.append(f"{receiver.mention}'s inventory is full.")
+
+                                    if not send_item_flag:
+                                        err_embed = embed.copy()
+                                        err_embed.add_field(name="Error Sending", value="\n".join(error_messages_send) + "\nReturning...", inline=False)
+                                        await message.edit(embed=err_embed, view=None)
+                                        await asyncio.sleep(4)
+                                        continue # Back to item details view
+
+                                    # If all checks pass, proceed to confirmation
+                                    confirm_embed = discord.Embed(
+                                        title="Confirm Send Accessory",
+                                        description=f"Send **{accessory_name}** to {receiver.mention}?",
+                                        color=0x00FF00
+                                    )
+                                    confirm_view = View(timeout=60.0)
+                                    confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_send"))
+                                    confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_send"))
+                                    
+                                    await message.edit(embed=confirm_embed, view=confirm_view)
+                                    
+                                    try:
+                                        confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                                        await confirm_interaction.response.defer()
+                                        
+                                        if confirm_interaction.data['custom_id'] == "confirm_send":
+                                            await self.bot.database.send_accessory(str(receiver.id), selected_accessory[0])
+                                            confirm_embed.clear_fields()
+                                            confirm_embed.add_field(name="Accessory Sent", value=f"Sent **{accessory_name}** to {receiver.mention}! 🎉", inline=False)
+                                            await message.edit(embed=confirm_embed, view=None)
+                                            await asyncio.sleep(3)
+                                            break
+                                        else:
+                                            continue 
+                                    except asyncio.TimeoutError:
+                                        await message.edit(content="Send confirmation timed out.", embed=None, view=None)
+                                        await asyncio.sleep(3)
+                                        continue
+                                except asyncio.TimeoutError:
+                                    await message.edit(content="Send acc timed out while waiting for user mention.", embed=None, view=None)
+                                    await asyncio.sleep(3)
+                                    continue
                             elif action_interaction.data['custom_id'] == "discard":
                                 await self.discard_accessory(action_interaction, selected_accessory, message, embed)
                                 continue

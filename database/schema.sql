@@ -107,7 +107,41 @@ CREATE TABLE IF NOT EXISTS `armor` (
   `armor_passive` TEXT NOT NULL DEFAULT 'none',
   `is_equipped` BOOLEAN DEFAULT FALSE,
   `temper_remaining` INTEGER DEFAULT 0,
-  `imbue_remaining` INTEGER DEFAULT 1
+  `imbue_remaining` INTEGER DEFAULT 1,
+  `pdr` INTEGER DEFAULT 0,
+  `fdr` INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS `gloves` (
+  `item_id` INTEGER PRIMARY KEY,
+  `user_id` TEXT NOT NULL,
+  `item_name` TEXT NOT NULL,
+  `item_level` INTEGER NOT NULL,
+  `attack` INTEGER DEFAULT 0,
+  `defence` INTEGER DEFAULT 0,
+  `ward` INTEGER DEFAULT 0,
+  `pdr` INTEGER DEFAULT 0,
+  `fdr` INTEGER DEFAULT 0,
+  `passive` TEXT NOT NULL DEFAULT 'none',
+  `is_equipped` BOOLEAN DEFAULT FALSE,
+  `potential_remaining` INTEGER DEFAULT 5,
+  `passive_lvl` INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS `boots` (
+  `item_id` INTEGER PRIMARY KEY,
+  `user_id` TEXT NOT NULL,
+  `item_name` TEXT NOT NULL,
+  `item_level` INTEGER NOT NULL,
+  `attack` INTEGER DEFAULT 0,
+  `defence` INTEGER DEFAULT 0,
+  `ward` INTEGER DEFAULT 0,
+  `pdr` INTEGER DEFAULT 0,
+  `fdr` INTEGER DEFAULT 0,
+  `passive` TEXT NOT NULL DEFAULT 'none',
+  `is_equipped` BOOLEAN DEFAULT FALSE,
+  `potential_remaining` INTEGER DEFAULT 6,
+  `passive_lvl` INTEGER DEFAULT 0
 );
 
 

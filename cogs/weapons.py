@@ -96,15 +96,28 @@ class Weapons(commands.Cog, name="weapons"):
             items_display_string = ""
 
             for index, item_tuple in enumerate(items_to_display):
+                print(item_tuple)
                 item_name = item_tuple[2]
                 item_level = item_tuple[3]
-                
+                item_passive = item_tuple[7]
+                item_pinnacle = item_tuple[12]
+                item_utmost = item_tuple[13]
+                refine_level = item_tuple[11]
+                info_txt = ""
                 is_equipped_flag = equipped_item_tuple and (equipped_item_tuple[0] == item_tuple[0])
-                
+                if item_passive != "none":
+                    info_txt += f"Passives: **{item_passive.title()}**"
+                if item_pinnacle != "none":
+                    info_txt += f", **{item_pinnacle.title()}**"
+                if item_utmost != "none":
+                    info_txt += f", **{item_utmost.title()}**"
+                if item_passive != "none":
+                    info_txt += f"\n"
                 items_display_string += (
                     f"{index + 1}: "
                     f"{'[E] ' if is_equipped_flag else ''}"
-                    f"{item_name} (i{item_level})\n"
+                    f"{item_name} (i{item_level} - R{refine_level})\n"
+                    f"{info_txt}"
                 )
             
             if not items_display_string:

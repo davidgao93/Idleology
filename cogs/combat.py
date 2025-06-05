@@ -139,6 +139,7 @@ class Combat(commands.Cog, name="combat"):
             self.bot.logger.info(f'Armor: Block {player.block}, Evasion {player.evasion}, Ward {armor_ward_percentage}%, Passive: {player.armor_passive} pdr: {equipped_armor[11]} fdr: {equipped_armor[12]}')
         
         player.rarity = max(0, player.rarity) # Ensure rarity is not negative
+        print(player)
         return player
 
     async def _apply_combat_start_passives(self, player, monster, embed_to_modify, treasure_hunter_triggered=False, greed_good_triggered=False):
@@ -151,12 +152,18 @@ class Combat(commands.Cog, name="combat"):
             embed_to_modify.add_field(name="Armor Passive", value=f"The **Invulnerable** armor imbues with power!\n{player.name} receives divine protection.", inline=False)
             player.invulnerable = True
 
-        if player.armor_passive == "Omnipotent" and random.random() < 0.2: # Omnipotent needs to be checked after monster stats are set
-            monster.attack = 0
-            monster.defence = 0
+        if player.armor_passive == "Omnipotent" and random.random() < 0.5:
+            player.attack *= 2
+            player.defence *= 2
+            player.hp *= 2
+            player.max_hp *= 2
             self.bot.logger.info("Omnipotent passive: Monster attack and defense set to 0")
-            embed_to_modify.add_field(name="Armor Passive", value=f"The **Omnipotent** armor imbues with power!\nThe {monster.name} trembles in **terror**.", inline=False)
-            
+            embed_to_modify.add_field(name="Armor Passive", 
+                                      value=f"The **Omnipotent** armor imbues with power!\nYou feel **empowered**."
+                                       f"⚔️ Attack boosted by **{player.attack}**\n"
+                                       f"🛡️ Defence boosted by **{player.defence}**\n"
+                                       f"❤️ Max HP boosted by **{player.max_hp}**\n", inline=False)
+                                                             
         if player.armor_passive == "Unlimited Wealth" and greed_good_triggered: # This is usually checked before monster gen for /combat
              # For ascent, this could be a per-stage proc or a global buff if triggered once
             embed_to_modify.add_field(name="Armor Passive", value=f"The **Unlimited Wealth** armor imbues with power!\n{player.name}'s greed knows no bounds.", inline=False)
@@ -355,7 +362,7 @@ class Combat(commands.Cog, name="combat"):
 
         if random.random() < treasure_chance:
             monster = await generate_encounter(player, monster, is_treasure=True)
-            monster.attack = 0; monster.defence = 0; monster.xp = 0 # Treasure monster stats
+            monster.attack = 0; monster.defence = 0; monster.xp = 0; monster.hp = 10 # Treasure monster stats
             treasure_hunter_triggered = True # Flag that TH armor might have triggered this
         else:
             monster = await generate_encounter(player, monster, is_treasure=False)
@@ -1529,7 +1536,7 @@ class Combat(commands.Cog, name="combat"):
         self.bot.state_manager.set_active(user_id, "ascent")
 
         player = await self._initialize_player_for_combat(user_id, existing_user)
-
+        print(player)
         # --- ASCENT VARIABLES ---
         # Start ascent monster level at player's current level or slightly higher for a challenge.
         current_monster_base_level = player.level + player.ascension # Base level for the stage
@@ -1545,7 +1552,7 @@ class Combat(commands.Cog, name="combat"):
             monster_object_template = Monster(name="",level=0,hp=0,max_hp=0,xp=0,attack=0,defence=0,modifiers=[],image="",flavor="",is_boss=True)
             monster = await generate_ascent_monster(player, monster_object_template, current_monster_base_level, current_normal_mods, current_boss_mods)
             self.bot.logger.info(f"Ascent Stage {ascent_stage}: Player Lvl {player.level}, Monster Lvl {monster.level} (Base {current_monster_base_level}), Modifiers: {monster.modifiers}")
-            
+            print(monster)
             self.apply_stat_effects(player, monster) # Apply monster mods effects on player stats (e.g. Enfeeble)
 
             # --- UI and COMBAT SETUP ---
@@ -1553,14 +1560,8 @@ class Combat(commands.Cog, name="combat"):
             
             player_hit_c = calculate_hit_chance(player, monster)
             monster_hit_c_base = calculate_monster_hit_chance(player, monster)
-            player_evade_bonus = (0.01 + player.evasion / 400) if player.evasion > 0 else 0
-            effective_monster_hit_c = max(0, monster_hit_c_base - player_evade_bonus)
 
-            embed_description = (f"A formidable foe bars your ascent: Level **{monster.level}** {monster.name}!\n"
-                                 f"\n__Modifiers ({len(monster.modifiers)})__\n" +
-                                 " ".join([f"**{m}**, " for m in monster.modifiers]) +
-                                 f"\n\n~{int(player_hit_c * 100)}% to hit | "
-                                 f"~{int(effective_monster_hit_c * 100)}% to be hit")
+            embed_description = f""
             
             embed = discord.Embed(title=embed_title, description=embed_description, color=discord.Color.orange())
             embed.set_image(url=monster.image)
@@ -1569,6 +1570,12 @@ class Combat(commands.Cog, name="combat"):
             embed.add_field(name="❤️ HP", value=hp_value, inline=True)
             
             await self._apply_combat_start_passives(player, monster, embed) # Apply relevant player passives
+
+            embed.description = (f"A formidable foe bars your ascent: Level **{monster.level}** {monster.name}!\n"
+                        f"\n__Modifiers ({len(monster.modifiers)})__\n" +
+                        "\n".join([f"**{m}**: {get_modifier_description(m)}" for m in monster.modifiers]) +
+                        f"\n\n~{int(player_hit_c * 100)}% to hit | "
+                        f"~{int(monster_hit_c_base * 100)}% to be hit")
 
             if ascent_stage == 1:
                 await interaction.response.send_message(embed=embed)
@@ -1701,6 +1708,10 @@ class Combat(commands.Cog, name="combat"):
                     if random.random() < 0.05:
                         await self.bot.database.add_soul_cores(user_id, 1)
                         stage_clear_embed.add_field(name="✨ Special Reward!", value="Found a Soul core!", inline=False)
+
+                    if random.random() < 0.05:
+                        await self.bot.database.add_void_frags(user_id, 1)
+                        stage_clear_embed.add_field(name="✨ Special Reward!", value="Found a Void fragment!", inline=False)
                 
                 await message.edit(embed=stage_clear_embed)
                 await asyncio.sleep(4) 

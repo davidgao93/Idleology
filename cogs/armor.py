@@ -66,13 +66,17 @@ class Armor(commands.Cog, name="armor"):
             for index, armor in enumerate(armors_to_display):
                 armor_name = armor[2]
                 armor_level = armor[3]
+                armor_passive = armor[7]
+
                 equipped_armor = await self.bot.database.get_equipped_armor(user_id)
                 is_equipped = equipped_armor and (equipped_armor[0] == armor[0])
-                
+                info_txt = ""
+                if armor_passive != "none":
+                    info_txt += f" - {armor_passive}"
                 armors_display_string += (
                     f"{index + 1}: "
                     f"{'[E] ' if is_equipped else ''}"
-                    f"{armor_name} (i{armor_level})\n"
+                    f"{armor_name} (i{armor_level}{info_txt})\n"
                 )
             
             embed.add_field(
@@ -174,7 +178,8 @@ class Armor(commands.Cog, name="armor"):
                             "- Equip: Equip the armor\n"
                             "- Temper: Temper the armor\n"
                             "- Imbue: Apply a passive\n"
-                            "- Discard: Discard item\n"
+                            "- Send: Send armor\n"
+                            "- Discard: Discard\n"
                             "- Back: Return to list"
                         )
                         embed.add_field(name="Armor Guide", value=armor_guide, inline=False)
@@ -185,6 +190,7 @@ class Armor(commands.Cog, name="armor"):
                             action_view.add_item(Button(label="Temper", style=ButtonStyle.primary, custom_id="temper"))
                         if selected_armor[10] > 0:
                             action_view.add_item(Button(label="Imbue", style=ButtonStyle.primary, custom_id="imbue"))
+                        action_view.add_item(Button(label="Send", style=ButtonStyle.primary, custom_id="send"))
                         action_view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))
                         action_view.add_item(Button(label="Back", style=ButtonStyle.secondary, custom_id="back"))
 
@@ -206,6 +212,95 @@ class Armor(commands.Cog, name="armor"):
                             elif action_interaction.data['custom_id'] == "imbue":
                                 await self.imbue_armor(action_interaction, selected_armor, embed, message)
                                 continue
+                            elif action_interaction.data['custom_id'] == "send":
+                                if is_equipped:
+                                    # Create a temporary embed for the error to avoid clearing fields
+                                    error_embed = embed.copy()
+                                    error_embed.add_field(name="Error", value="You should probably unequip the armor before sending it. Returning...", inline=False)
+                                    await message.edit(embed=error_embed, view=None) # Remove buttons during error
+                                    await asyncio.sleep(3)
+                                    continue
+
+                                temp_send_embed = embed.copy()
+                                temp_send_embed.clear_fields()
+                                temp_send_embed.add_field(
+                                    name="Send Armor",
+                                    value="Please mention a user (@username) to send the armor to.",
+                                    inline=False
+                                )
+                                await message.edit(embed=temp_send_embed, view=None)
+                                
+                                def message_check(m: Message):
+                                    return (m.author == interaction.user and 
+                                            m.channel == interaction.channel and 
+                                            m.mentions)
+                                
+                                try:
+                                    user_message = await self.bot.wait_for('message', timeout=60.0, check=message_check)
+                                    await user_message.delete()
+                                    receiver = user_message.mentions[0]
+                                    send_item_flag = True
+                                    receiver_user = await self.bot.database.fetch_user(receiver.id, server_id)
+
+                                    error_messages_send = []
+                                    if not receiver_user:
+                                        send_item_flag = False
+                                        error_messages_send.append("This person isn't a valid adventurer.")
+                                    if receiver.id == interaction.user.id:
+                                        send_item_flag = False
+                                        error_messages_send.append("You cannot send items to yourself.")
+                                    
+                                    if receiver_user: # Only check level and inventory if receiver is valid
+                                        current_level_receiver = receiver_user[4]
+                                        if (armor_level - current_level_receiver) > 15:
+                                            send_item_flag = False
+                                            error_messages_send.append("Item iLvl diff too great. (< 15)")
+                                        
+                                        receiver_items_count = await self.bot.database.count_user_armors(str(receiver.id))
+                                        if receiver_items_count >= 58: # Assuming 58 is max capacity
+                                            send_item_flag = False
+                                            error_messages_send.append(f"{receiver.mention}'s inventory is full.")
+
+                                    if not send_item_flag:
+                                        err_embed = embed.copy()
+                                        err_embed.add_field(name="Error Sending", value="\n".join(error_messages_send) + "\nReturning...", inline=False)
+                                        await message.edit(embed=err_embed, view=None)
+                                        await asyncio.sleep(4)
+                                        continue # Back to item details view
+
+                                    # If all checks pass, proceed to confirmation
+                                    confirm_embed = discord.Embed(
+                                        title="Confirm Send Armor",
+                                        description=f"Send **{armor_name}** to {receiver.mention}?",
+                                        color=0x00FF00
+                                    )
+                                    confirm_view = View(timeout=60.0)
+                                    confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_send"))
+                                    confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_send"))
+                                    
+                                    await message.edit(embed=confirm_embed, view=confirm_view)
+                                    
+                                    try:
+                                        confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                                        await confirm_interaction.response.defer()
+                                        
+                                        if confirm_interaction.data['custom_id'] == "confirm_send":
+                                            await self.bot.database.send_armor(str(receiver.id), selected_armor[0])
+                                            confirm_embed.clear_fields()
+                                            confirm_embed.add_field(name="Armor Sent", value=f"Sent **{armor_name}** to {receiver.mention}! 🎉", inline=False)
+                                            await message.edit(embed=confirm_embed, view=None)
+                                            await asyncio.sleep(3)
+                                            break
+                                        else:
+                                            continue 
+                                    except asyncio.TimeoutError:
+                                        await message.edit(content="Send confirmation timed out.", embed=None, view=None)
+                                        await asyncio.sleep(3)
+                                        continue
+                                except asyncio.TimeoutError:
+                                    await message.edit(content="Send armor timed out while waiting for user mention.", embed=None, view=None)
+                                    await asyncio.sleep(3)
+                                    continue
                             elif action_interaction.data['custom_id'] == "discard":
                                 await self.discard_armor(action_interaction, selected_armor, message, embed)
                                 continue
@@ -432,7 +527,7 @@ class Armor(commands.Cog, name="armor"):
 
                 if armor_details[11] > 0:
                     stat_to_increase = 'pdr'
-                    increase_amount = max(1, random.randint(int(armor_level // 16), int(armor_level // 33)))
+                    increase_amount = max(1, random.randint(int(armor_level // 33), int(armor_level // 16)))
                     success_str =  f"Percentage damage reduction increased by **{increase_amount}**%"
                 elif armor_details[12] > 0:
                     stat_to_increase = 'fdr'
@@ -598,7 +693,7 @@ class Armor(commands.Cog, name="armor"):
         passive_messages = {
             "Invulnerable": "20% chance to take no damage the entire fight.",
             "Mystical Might": "20% chance to deal 10x damage after all calculations.",
-            "Omnipotent": "20% chance to set the monsters attack and defense to 0.",
+            "Omnipotent": "50% chance to double your stats at start of combat (Atk, Def, HP).",
             "Treasure Hunter": "5% additional chance to turn the monster into a loot encounter.",
             "Unlimited Wealth": "20% chance to 5x (2x on bosses) player rarity stat.",
             "Everlasting Blessing": "10% chance on victory to propagate your ideology."

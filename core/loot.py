@@ -155,7 +155,7 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
 
     # Roll for PDR or FDR
     if (random.random() < 0.5):
-        pdr_mod = max(1, random.randint(int(level // 16), int(level // 33)))
+        pdr_mod = max(1, random.randint(int(level // 33), int(level // 16)))
         armor.pdr = pdr_mod
     else:
         fdr_mod = max(1, random.randint(int(level // 100), int(level // 25)))

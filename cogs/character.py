@@ -179,6 +179,7 @@ class Character(commands.Cog, name="character"):
         soul_cores = existing_user[28] # soul cores
         void_frags = existing_user[29]
         void_keys = existing_user[30]
+        shatter_runes = existing_user[31]
         curio_count = existing_user[22]
         gold_count = existing_user[6]  # index for gold
 
@@ -204,7 +205,8 @@ class Character(commands.Cog, name="character"):
                         value=(
                             f"💎 Potential: {runes_of_potential:,}\n"
                             f"🔨 Refinement: {runes_of_refinement:,}\n"
-                            f"🔅 Imbuing: {runes_of_imbuing:,}"
+                            f"🔅 Imbuing: {runes_of_imbuing:,}\n"
+                            f"💥 Shatter: {shatter_runes:,}"
                         ), inline=True)
 
         # Grouped fields for Keys and Soul Cores
