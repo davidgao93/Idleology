@@ -28,7 +28,7 @@ class Armor(commands.Cog, name="armor"):
         armors = await self.bot.database.fetch_user_armors(user_id)
         
         if not armors:
-            await interaction.response.send_message("You peer into your armor pouch, it is empty.")
+            await interaction.response.send_message("You search your gear for armor, you find none.")
             return
         
         player_name = existing_user[3]

@@ -3,7 +3,7 @@ from discord import app_commands, Interaction, Message, ButtonStyle
 from discord.ext import commands
 from discord.ui import Button, View
 from datetime import datetime, timedelta
-from core.loot import generate_weapon, generate_armor, generate_accessory
+from core.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot
 from .skills import Skills
 import asyncio
 import random
@@ -93,22 +93,23 @@ class CurioView(View):
 
             user_level = existing_user[4]
             rewards = {
-                "Level 100 Weapon": 0.0045,
-                "Level 100 Accessory": 0.0045,
-                "Level 100 Armor": 0.001,
+                "Level 100 Weapon": 0.002,
+                "Level 100 Accessory": 0.002,
+                "Level 100 Armor": 0.002,
+                "Level 100 Gloves": 0.002,
+                "Level 100 Boots": 0.002,
                 "Rune of Imbuing": 0.005,
-                "Rune of Refinement": 0.0175,
-                "Rune of Potential": 0.0175,
-                "ilvl Weapon": 0.095,
-                "ilvl Accessory": 0.045,
-                "ilvl Armor": 0.01,
-                "100k": 0.1,
-                "50k": 0.1,
-                "10k": 0.1,
-                "5k": 0.2,
-                "Ore": 0.1,
-                "Wood": 0.1,
-                "Fish": 0.1,
+                "Rune of Refinement": 0.02,
+                "Rune of Potential": 0.02,
+                "Rune of Shattering": 0.02,
+                "100k": 0.10,
+                "50k": 0.10,
+                "10k": 0.10,
+                "5k": 0.20,
+                "1k": 0.05,
+                "Ore": 0.125,
+                "Wood": 0.125,
+                "Fish": 0.125,
             }
 
             # Prepare the reward pool
@@ -140,12 +141,6 @@ class CurioView(View):
             # Set image based on amount
             if amount == 1:
                 selected_reward = selected_rewards[0]
-                if selected_reward == "ilvl Weapon":
-                    selected_reward = f"Level {user_level} Weapon"
-                elif selected_reward == "ilvl Accessory":
-                    selected_reward = f"Level {user_level} Accessory"
-                elif selected_reward == "ilvl Armor":
-                    selected_reward = f"Level {user_level} Armor"
                 image_url = item_images.get(selected_reward.replace(" ", "_"))
                 self.bot.logger.info(image_url)
                 if image_url:
@@ -172,29 +167,26 @@ class CurioView(View):
                         armor = await generate_armor(user_id, 100, drop_rune=False)
                         await self.bot.database.create_armor(armor)
                         loot_descriptions.append(armor.description)
-                elif reward == "ilvl Weapon":
+                elif reward == "Level 100 Gloves":
                     for _ in range(count):
-                        weapon = await generate_weapon(user_id, user_level, drop_rune=False)
-                        await self.bot.database.create_weapon(weapon)
-                        loot_descriptions.append(weapon.description)
-                elif reward == "ilvl Accessory":
+                        gloves = await generate_glove(user_id, 100, drop_rune=False)
+                        await self.bot.database.create_gloves(gloves)
+                        loot_descriptions.append(gloves.description)
+                elif reward == "Level 100 Boots":
                     for _ in range(count):
-                        acc = await generate_accessory(user_id, user_level, drop_rune=False)
-                        await self.bot.database.create_accessory(acc)
-                        loot_descriptions.append(acc.description)
-                elif reward == "ilvl Armor":
-                    for _ in range(count):
-                        armor = await generate_armor(user_id, user_level, drop_rune=False)
-                        await self.bot.database.create_armor(armor)
-                        loot_descriptions.append(armor.description)
+                        boots = await generate_boot(user_id, 100, drop_rune=False)
+                        await self.bot.database.create_boots(boots)
+                        loot_descriptions.append(boots.description)
                 elif reward == "Rune of Refinement":
                     await self.bot.database.update_refinement_runes(user_id, count)
                 elif reward == "Rune of Potential":
                     await self.bot.database.update_potential_runes(user_id, count)
                 elif reward == "Rune of Imbuing":
                     await self.bot.database.update_imbuing_runes(user_id, count)
+                elif reward == "Rune of Shattering":
+                    await self.bot.database.update_shatter_runes(user_id, count)
                 elif reward in ["100k", "50k", "10k", "5k"]:
-                    amount_mapping = {"100k": 100000, "50k": 50000, "10k": 10000, "5k": 5000}
+                    amount_mapping = {"100k": 100000, "50k": 50000, "10k": 10000, "5k": 5000, "1k": 1000}
                     await self.bot.database.add_gold(user_id, amount_mapping[reward] * count)
                 elif reward == "Ore":
                     for _ in range(count * 5):
@@ -330,22 +322,23 @@ class Curios(commands.Cog, name="curios"):
 
             # Define curio rewards and their odds
             rewards = {
-                "Level 100 Weapon": 0.0045,
-                "Level 100 Accessory": 0.0045,
-                "Level 100 Armor": 0.001,
+                "Level 100 Weapon": 0.002,
+                "Level 100 Accessory": 0.002,
+                "Level 100 Armor": 0.002,
+                "Level 100 Gloves": 0.002,
+                "Level 100 Boots": 0.002,
                 "Rune of Imbuing": 0.005,
-                "Rune of Refinement": 0.0175,
-                "Rune of Potential": 0.0175,
-                "ilvl Weapon": 0.095,
-                "ilvl Accessory": 0.045,
-                "ilvl Armor": 0.01,
-                "100k": 0.1,
-                "50k": 0.1,
-                "10k": 0.1,
-                "5k": 0.2,
-                "Ore": 0.1,
-                "Wood": 0.1,
-                "Fish": 0.1,
+                "Rune of Refinement": 0.02,
+                "Rune of Potential": 0.02,
+                "Rune of Shattering": 0.02,
+                "100k": 0.10,
+                "50k": 0.10,
+                "10k": 0.10,
+                "5k": 0.20,
+                "1k": 0.05,
+                "Ore": 0.125,
+                "Wood": 0.125,
+                "Fish": 0.125,
             }
 
             reward_pool = []
@@ -364,16 +357,6 @@ class Curios(commands.Cog, name="curios"):
 
             self.bot.logger.info(f"Selected reward before adjustment: {selected_reward}")
             image_url = item_images.get(selected_reward.replace(" ", "_"))
-
-            if selected_reward == "ilvl Weapon":
-                selected_reward = f"Level {user_level} Weapon"
-                image_url = item_images.get("ilvl Weapon".replace(" ", "_"))
-            elif selected_reward == "ilvl Accessory":
-                selected_reward = f"Level {user_level} Accessory"
-                image_url = item_images.get("ilvl Accessory".replace(" ", "_"))
-            elif selected_reward == "ilvl Armor": 
-                selected_reward = f"Level {user_level} Armor"
-                image_url = item_images.get("ilvl Armor".replace(" ", "_"))
             
             # Create an embed with the reward and the corresponding image
             embed = discord.Embed(
@@ -401,20 +384,16 @@ class Curios(commands.Cog, name="curios"):
                 await self.bot.database.create_armor(armor)
                 embed.add_field(name="✨ Loot", value=f"{armor.description}", inline=False)
             
-            elif selected_reward == f"Level {user_level} Weapon":
-                weapon = await generate_weapon(user_id, user_level, drop_rune=False)
-                await self.bot.database.create_weapon(weapon)
-                embed.add_field(name="✨ Loot", value=f"{weapon.description}", inline=False)
-            
-            elif selected_reward == f"Level {user_level} Accessory":
-                acc = await generate_accessory(user_id, user_level, drop_rune=False)
-                await self.bot.database.create_accessory(acc)
-                embed.add_field(name="✨ Loot", value=f"{acc.description}", inline=False)
+            elif reward == "Level 100 Gloves":
+                gloves = await generate_glove(user_id, 100, drop_rune=False)
+                await self.bot.database.create_gloves(gloves)
+                embed.add_field(name="✨ Loot", value=f"{gloves.description}", inline=False)
 
-            elif selected_reward == f"Level {user_level} Armor":
-                armor = await generate_armor(user_id, user_level, drop_rune=False)
-                await self.bot.database.create_armor(armor)
-                embed.add_field(name="✨ Loot", value=f"{armor.description}", inline=False)
+            elif reward == "Level 100 Boots":
+                for _ in range(count):
+                    boots = await generate_boot(user_id, 100, drop_rune=False)
+                    await self.bot.database.create_boots(boots)
+                    embed.add_field(name="✨ Loot", value=f"{boots.description}", inline=False)
             
             elif selected_reward == "Rune of Refinement":
                 await self.bot.database.update_refinement_runes(user_id, 1)
@@ -425,12 +404,13 @@ class Curios(commands.Cog, name="curios"):
             elif selected_reward == "Rune of Imbuing":
                 await self.bot.database.update_imbuing_runes(user_id, 1)
             
-            elif selected_reward in ["100k", "50k", "10k", "5k"]:
+            elif selected_reward in ["100k", "50k", "10k", "5k", "1k"]:
                 amount_mapping = {
                     "100k": 100000,
                     "50k": 50000,
                     "10k": 10000,
                     "5k": 5000,
+                    "1k": 1000
                 }
                 await self.bot.database.add_gold(user_id, amount_mapping[selected_reward])
             

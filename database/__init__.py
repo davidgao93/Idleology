@@ -1,6 +1,6 @@
 import aiosqlite
 from datetime import datetime, timedelta
-from core.models import Player, Weapon, Accessory, Armor
+from core.models import Player, Weapon, Accessory, Armor, Glove, Boot
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -15,7 +15,6 @@ class DatabaseManager:
                 ascension = ?, 
                 experience = ?, 
                 current_hp = ?, 
-                max_hp = ?, 
                 potions = ?
             WHERE user_id = ?
             """,
@@ -24,7 +23,6 @@ class DatabaseManager:
                 player.ascension,
                 player.exp,
                 player.hp,
-                player.max_hp,
                 player.potions,
                 player.id
             )
@@ -134,6 +132,20 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+    async def create_glove(self, glove: Glove) -> None:
+        """Insert a new glove into the gloves table."""
+        # Defaults from schema: potential_remaining=5, passive_lvl=0, is_equipped=False
+        await self.connection.execute(
+            """INSERT INTO gloves 
+            (user_id, item_name, item_level, attack, defence, ward, pdr, fdr, passive, 
+             is_equipped, potential_remaining, passive_lvl) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (glove.user, glove.name, glove.level, glove.attack, glove.defence, 
+             glove.ward, glove.pdr, glove.fdr, glove.passive,
+             False, 5, 0) # Using schema defaults for potential_remaining and passive_lvl
+        )
+        await self.connection.commit()
+
     
     async def fetch_user(self, user_id: str, server_id: str):
         """Fetches a user from the database."""
@@ -180,6 +192,14 @@ class DatabaseManager:
             )
             await self.connection.execute(
                 "DELETE FROM armor WHERE user_id=?",
+                (user_id,)
+            )
+            await self.connection.execute( # Add deletion for gloves table
+                "DELETE FROM gloves WHERE user_id=?",
+                (user_id,)
+            )
+            await self.connection.execute( # Add deletion for boots table
+                "DELETE FROM boots WHERE user_id=?",
                 (user_id,)
             )
             await self.connection.execute(
@@ -343,6 +363,15 @@ class DatabaseManager:
         await self.connection.commit()
 
 
+    async def increase_max_hp(self, user_id: str, increase_by: int) -> None:
+        """Increase the user's max hp stat in the database."""
+        await self.connection.execute(
+            "UPDATE users SET max_hp = max_hp + ? WHERE user_id = ?",
+            (increase_by, user_id)
+        )
+        await self.connection.commit()
+
+
     async def update_player_hp(self, user_id: str, hp: int) -> None:
         """Update the player's current HP in the database."""
         await self.connection.execute(
@@ -456,7 +485,15 @@ class DatabaseManager:
         async with rows as cursor:
             return await cursor.fetchall()  # Returns a list of armors
         
-    
+    async def fetch_user_gloves(self, user_id: str) -> list:
+        """Fetch all gloves owned by a specific user."""
+        rows = await self.connection.execute(
+            "SELECT * FROM gloves WHERE user_id=?",
+            (user_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchall()
+
     async def fetch_weapon_by_id(self, item_id: int):
         """Fetch an item by its ID."""
         rows = await self.connection.execute(
@@ -475,6 +512,15 @@ class DatabaseManager:
         )
         async with rows as cursor:
             return await cursor.fetchone()  # Returns the item row, if found
+
+    async def fetch_glove_by_id(self, item_id: int):
+        """Fetch a glove by its ID."""
+        rows = await self.connection.execute(
+            "SELECT * FROM gloves WHERE item_id=?",
+            (item_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchone()
 
     async def equip_weapon(self, user_id: str, item_id: int) -> None:
         """Equip an item and deselect any previously equipped item."""
@@ -520,6 +566,13 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+    async def unequip_glove(self, user_id: str) -> None:
+        """Unequip any currently equipped glove for this user."""
+        await self.connection.execute(
+            "UPDATE gloves SET is_equipped = FALSE WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        await self.connection.commit()
 
     async def equip_accessory(self, user_id: str, item_id: int) -> None:
         """Equip an item and deselect any previously equipped item."""
@@ -531,6 +584,18 @@ class DatabaseManager:
         # Then, equip the new item
         await self.connection.execute(
             "UPDATE accessories SET is_equipped = TRUE WHERE item_id = ?",
+            (item_id,)
+        )
+        await self.connection.commit()
+
+    async def equip_glove(self, user_id: str, item_id: int) -> None:
+        """Equip a glove and deselect any previously equipped glove."""
+        await self.connection.execute(
+            "UPDATE gloves SET is_equipped = FALSE WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        await self.connection.execute(
+            "UPDATE gloves SET is_equipped = TRUE WHERE item_id = ?",
             (item_id,)
         )
         await self.connection.commit()
@@ -553,6 +618,14 @@ class DatabaseManager:
         async with rows as cursor:
             return await cursor.fetchone()    
         
+    async def get_equipped_glove(self, user_id: str) -> tuple:
+        """Fetch the currently equipped glove for a specific user."""
+        rows = await self.connection.execute(
+            "SELECT * FROM gloves WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchone()
 
     async def update_accessory_passive(self, accessory_id: int, passive: str) -> None:
         """Update the potential level of an accessory in the database."""
@@ -562,6 +635,14 @@ class DatabaseManager:
         )
         await self.connection.commit() 
 
+    async def update_glove_passive(self, glove_id: int, passive: str) -> None:
+        """Update the passive of a glove in the database."""
+        await self.connection.execute(
+            "UPDATE gloves SET passive = ? WHERE item_id = ?",
+            (passive, glove_id)
+        )
+        await self.connection.commit()
+
     async def update_accessory_passive_lvl(self, accessory_id: int, new_potential: int) -> None:
         """Update the potential level of an accessory in the database."""
         await self.connection.execute(
@@ -570,6 +651,13 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
+    async def update_glove_passive_lvl(self, glove_id: int, new_passive_lvl: int) -> None:
+        """Update the passive level of a glove in the database."""
+        await self.connection.execute(
+            "UPDATE gloves SET passive_lvl = ? WHERE item_id = ?",
+            (new_passive_lvl, glove_id)
+        )
+        await self.connection.commit()
 
     async def update_accessory_potential(self, accessory_id: int, new_potential: int) -> None:
         """Update the potential level of an accessory in the database."""
@@ -579,12 +667,11 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-
-    async def update_accessory_passive(self, accessory_id: int, passive: str) -> None:
-        """Update the passive of an accessory in the database."""
+    async def update_glove_potential_remaining(self, glove_id: int, new_potential_remaining: int) -> None:
+        """Update the potential remaining of a glove in the database."""
         await self.connection.execute(
-            "UPDATE accessories SET passive = ? WHERE item_id = ?",
-            (passive, accessory_id)
+            "UPDATE gloves SET potential_remaining = ? WHERE item_id = ?",
+            (new_potential_remaining, glove_id)
         )
         await self.connection.commit()
 
@@ -605,6 +692,14 @@ class DatabaseManager:
             (item_id,)
         )
         await self.connection.commit()    
+
+    async def discard_glove(self, item_id: int) -> None:
+        """Remove a glove from the gloves table."""
+        await self.connection.execute(
+            "DELETE FROM gloves WHERE item_id = ?",
+            (item_id,)
+        )
+        await self.connection.commit()
 
     async def fetch_user_mining(self, user_id: str, server_id: str):
         """Fetch the user's mining data from the database."""
@@ -1086,6 +1181,13 @@ class DatabaseManager:
         # Commit the transaction
         await self.connection.commit()
 
+    async def send_glove(self, receiver_id: str, item_id: int) -> None:
+        """Transfer a glove from one user to another by changing the user_id."""
+        await self.connection.execute(
+            "UPDATE gloves SET user_id = ? WHERE item_id = ?",
+            (receiver_id, item_id)
+        )
+        await self.connection.commit()
 
     # Method to update the number of refinement runes for a user
     async def update_refinement_runes(self, user_id: str, count: int) -> None:
@@ -1210,6 +1312,14 @@ class DatabaseManager:
         count = await rows.fetchone()  # Get the count
         return count[0] if count else 0  # Return the count or 0 if none
 
+    async def count_user_gloves(self, user_id: str) -> int:
+        """Counts the number of gloves for a specific user."""
+        rows = await self.connection.execute(
+            "SELECT COUNT(*) FROM gloves WHERE user_id = ?",
+            (user_id,)
+        )
+        count = await rows.fetchone()
+        return count[0] if count else 0
 
 
     async def fetch_armor_by_id(self, item_id: int):
@@ -1284,3 +1394,114 @@ class DatabaseManager:
             (increase_by, armor_id)
         )
         await self.connection.commit()
+
+
+    async def create_boot(self, boot: Boot) -> None:
+        """Insert a new boot into the boots table."""
+        # Defaults from schema: potential_remaining=6, passive_lvl=0, is_equipped=False
+        await self.connection.execute(
+            """INSERT INTO boots 
+            (user_id, item_name, item_level, attack, defence, ward, pdr, fdr, passive, 
+             is_equipped, potential_remaining, passive_lvl) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (boot.user, boot.name, boot.level, boot.attack, boot.defence, 
+             boot.ward, boot.pdr, boot.fdr, boot.passive,
+             False, 6, 0) # potential_remaining defaults to 6 for boots
+        )
+        await self.connection.commit()
+
+    async def fetch_user_boots(self, user_id: str) -> list:
+        """Fetch all boots owned by a specific user."""
+        rows = await self.connection.execute(
+            "SELECT * FROM boots WHERE user_id=?",
+            (user_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchall()
+
+    async def fetch_boot_by_id(self, item_id: int):
+        """Fetch a boot by its ID."""
+        rows = await self.connection.execute(
+            "SELECT * FROM boots WHERE item_id=?",
+            (item_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchone()
+
+    async def unequip_boot(self, user_id: str) -> None:
+        """Unequip any currently equipped boot for this user."""
+        await self.connection.execute(
+            "UPDATE boots SET is_equipped = FALSE WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        await self.connection.commit()
+
+    async def equip_boot(self, user_id: str, item_id: int) -> None:
+        """Equip a boot and deselect any previously equipped boot."""
+        await self.connection.execute(
+            "UPDATE boots SET is_equipped = FALSE WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        await self.connection.execute(
+            "UPDATE boots SET is_equipped = TRUE WHERE item_id = ?",
+            (item_id,)
+        )
+        await self.connection.commit()
+
+    async def get_equipped_boot(self, user_id: str) -> tuple:
+        """Fetch the currently equipped boot for a specific user."""
+        rows = await self.connection.execute(
+            "SELECT * FROM boots WHERE user_id = ? AND is_equipped = TRUE",
+            (user_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchone()
+
+    async def update_boot_passive(self, boot_id: int, passive: str) -> None:
+        """Update the passive of a boot in the database."""
+        await self.connection.execute(
+            "UPDATE boots SET passive = ? WHERE item_id = ?",
+            (passive, boot_id)
+        )
+        await self.connection.commit()
+
+    async def update_boot_passive_lvl(self, boot_id: int, new_passive_lvl: int) -> None:
+        """Update the passive level of a boot in the database."""
+        await self.connection.execute(
+            "UPDATE boots SET passive_lvl = ? WHERE item_id = ?",
+            (new_passive_lvl, boot_id)
+        )
+        await self.connection.commit()
+
+    async def update_boot_potential_remaining(self, boot_id: int, new_potential_remaining: int) -> None:
+        """Update the potential remaining of a boot in the database."""
+        await self.connection.execute(
+            "UPDATE boots SET potential_remaining = ? WHERE item_id = ?",
+            (new_potential_remaining, boot_id)
+        )
+        await self.connection.commit()
+
+    async def discard_boot(self, item_id: int) -> None:
+        """Remove a boot from the boots table."""
+        await self.connection.execute(
+            "DELETE FROM boots WHERE item_id = ?",
+            (item_id,)
+        )
+        await self.connection.commit()
+
+    async def send_boot(self, receiver_id: str, item_id: int) -> None:
+        """Transfer a boot from one user to another by changing the user_id."""
+        await self.connection.execute(
+            "UPDATE boots SET user_id = ? WHERE item_id = ?",
+            (receiver_id, item_id)
+        )
+        await self.connection.commit()
+
+    async def count_user_boots(self, user_id: str) -> int:
+        """Counts the number of boots for a specific user."""
+        rows = await self.connection.execute(
+            "SELECT COUNT(*) FROM boots WHERE user_id = ?",
+            (user_id,)
+        )
+        count = await rows.fetchone()
+        return count[0] if count else 0

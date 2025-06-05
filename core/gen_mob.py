@@ -355,7 +355,8 @@ def get_modifier_description(modifier):
         "Executioner": "1% chance to deal 90% of remaining HP",
         "Time Lord": "80% chance to not die",
         "Suffocator": "20% for player hits to be unlucky",
-        "Celestial Watcher": "Never miss",
+        
+        "Celestial Watcher": "Never miss", # Start boss list here
         "Unlimited Blade Works": "Double damage",
         "Hell's Fury": "+5 each successful hit",
         "Absolute": "+25 Attack, +25 defence",

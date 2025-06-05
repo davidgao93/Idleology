@@ -27,7 +27,7 @@ class Weapons(commands.Cog, name="weapons"):
         items = await self.bot.database.fetch_user_weapons(user_id)
         
         if not items:
-            await interaction.response.send_message("You peer into your weapon's pouch, it is empty.")
+            await interaction.response.send_message("You search your gear for weapons, you find none.")
             return
         
         player_name = existing_user[3]

@@ -1,6 +1,6 @@
 import random
 from core.util import load_list
-from core.models import Player, Weapon, Accessory, Armor
+from core.models import Player, Weapon, Accessory, Armor, Glove, Boot
 
 async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
     """Generate a unique loot item."""
@@ -163,3 +163,100 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
 
 
     return armor
+
+
+async def generate_glove(user_id: str, level: int) -> Glove: # drop_rune parameter removed
+    """Generate a unique glove item. Gloves roll one primary stat (Atk, Def, or Ward)
+    and one secondary stat (PDR or FDR). They do not drop runes."""
+    try:
+        prefix = random.choice(load_list("assets/items/armor_pref.txt"))
+        glove_type_name = random.choice(load_list("assets/items/gloves.txt")) # Renamed to avoid conflict
+        suffix = random.choice(load_list("assets/items/armor_suff.txt"))
+        glove_name = f"{prefix} {glove_type_name} {suffix}"
+    except FileNotFoundError: 
+        glove_name = f"Training Gloves of Level {level}"
+
+    glove = Glove(
+        user=user_id,
+        name=glove_name,
+        level=level,
+        description=f"**{glove_name}**\n(Level {level})\n"
+    )
+    
+    # 1. Primary Stat Roll (Attack, Defence, or Ward)
+    # Each has an equal chance (1/3)
+    primary_stat_roll = random.randint(0, 2)
+
+    if primary_stat_roll == 0:  # Attack
+        attack_modifier = max(1, random.randint(int(level // 8), int(level // 6)))
+        glove.attack = attack_modifier
+        glove.description += f"+{attack_modifier} Attack\n"
+    elif primary_stat_roll == 1: # Defence
+        defence_modifier = max(1, random.randint(int(level // 8), int(level // 6)))
+        glove.defence = defence_modifier
+        glove.description += f"+{defence_modifier} Defence\n"
+    else: # Ward (primary_stat_roll == 2)
+        ward_modifier = max(1, random.randint(int(level // 8), int(level // 6))) * 2 # Ward is %
+        glove.ward = ward_modifier
+        glove.description += f"+{ward_modifier}% Ward\n"
+
+    # 2. Secondary Stat Roll (PDR or FDR - always one of them)
+    # 50/50 chance for PDR or FDR
+    if random.random() < 0.5: 
+        pdr_modifier = max(1, random.randint(int(level // 11), int(level // 7))) # PDR is %
+        glove.pdr = pdr_modifier
+        glove.description += f"+{pdr_modifier}% Percentage Damage Reduction\n"
+    else: 
+        fdr_modifier = max(1, random.randint(int(level // 25), int(level // 10))) # FDR is flat
+        glove.fdr = fdr_modifier
+        glove.description += f"+{fdr_modifier} Flat Damage Reduction\n"
+        
+    return glove
+
+
+async def generate_boot(user_id: str, level: int) -> Boot:
+    """Generate a unique boot item. Boots roll one primary stat (Atk, Def, or Ward)
+    and one secondary stat (PDR or FDR). They do not drop runes."""
+    try:
+        # Assuming asset files: assets/items/boot_pref.txt, assets/items/boots.txt, assets/items/boot_suff.txt
+        prefix = random.choice(load_list("assets/items/armor_pref.txt"))
+        boot_type_name = random.choice(load_list("assets/items/boots.txt"))
+        suffix = random.choice(load_list("assets/items/armor_suff.txt"))
+        boot_name = f"{prefix} {boot_type_name} {suffix}"
+    except FileNotFoundError: 
+        boot_name = f"Sturdy Boots of Level {level}" # Fallback name
+
+    boot = Boot(
+        user=user_id,
+        name=boot_name,
+        level=level,
+        description=f"**{boot_name}**\n(Level {level})\n"
+    )
+    
+    # 1. Primary Stat Roll (Attack, Defence, or Ward)
+    primary_stat_roll = random.randint(0, 2)
+
+    if primary_stat_roll == 0:  # Attack
+        attack_modifier = max(1, random.randint(int(level // 8), int(level // 6)))
+        boot.attack = attack_modifier
+        boot.description += f"+{attack_modifier} Attack\n"
+    elif primary_stat_roll == 1: # Defence
+        defence_modifier = max(1, random.randint(int(level // 8), int(level // 6)))
+        boot.defence = defence_modifier
+        boot.description += f"+{defence_modifier} Defence\n"
+    else: # Ward 
+        ward_modifier = max(1, random.randint(int(level // 8), int(level // 6))) * 2 
+        boot.ward = ward_modifier
+        boot.description += f"+{ward_modifier}% Ward\n"
+
+    # 2. Secondary Stat Roll (PDR or FDR - always one of them)
+    if random.random() < 0.5: 
+        pdr_modifier = max(1, random.randint(int(level // 10), int(level // 7))) 
+        boot.pdr = pdr_modifier
+        boot.description += f"+{pdr_modifier}% Percentage Damage Reduction\n"
+    else: 
+        fdr_modifier = max(1, random.randint(int(level // 12), int(level // 9))) 
+        boot.fdr = fdr_modifier
+        boot.description += f"+{fdr_modifier} Flat Damage Reduction\n"
+        
+    return boot

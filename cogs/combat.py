@@ -4,8 +4,8 @@ from discord.ext import commands
 from discord.ext.tasks import asyncio
 from discord import app_commands, Interaction, Message
 from datetime import datetime, timedelta
-from core.models import Player, Monster, Weapon, Accessory, Armor
-from core.loot import generate_weapon, generate_armor, generate_accessory
+from core.models import Player, Monster
+from core.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot
 from core.combat_calcs import (calculate_hit_chance, 
                                calculate_monster_hit_chance, 
                                calculate_damage_taken, 
@@ -93,6 +93,11 @@ class Combat(commands.Cog, name="combat"):
             acc_passive="",
             acc_lvl=0,
             armor_passive="",
+            glove_passive="",
+            glove_passive_lvl=0,
+            boot_passive="",
+            boot_passive_lvl=0,
+            combat_cooldown_reduction=0,
             invulnerable=False # Default state
         )
 
@@ -138,6 +143,52 @@ class Combat(commands.Cog, name="combat"):
             player.fdr += equipped_armor[12]
             self.bot.logger.info(f'Armor: Block {player.block}, Evasion {player.evasion}, Ward {armor_ward_percentage}%, Passive: {player.armor_passive} pdr: {equipped_armor[11]} fdr: {equipped_armor[12]}')
         
+
+        # Handle equipped gloves (New)
+        equipped_glove = await self.bot.database.get_equipped_glove(user_id)
+        if equipped_glove:
+            # item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5), 
+            # ward(6), pdr(7), fdr(8), passive(9), is_equipped(10), potential_remaining(11), passive_lvl(12)
+            player.glove_passive = equipped_glove[9]
+            player.glove_passive_lvl = equipped_glove[12]
+            player.attack += equipped_glove[4]
+            player.defence += equipped_glove[5]
+            glove_ward_percentage = equipped_glove[6]
+            if glove_ward_percentage > 0:
+                player.ward += max(1, int((glove_ward_percentage / 100) * player.max_hp))
+            player.pdr += equipped_glove[7]
+            player.fdr += equipped_glove[8]
+            self.bot.logger.info(f'Gloves: ATK {equipped_glove[4]}, DEF {equipped_glove[5]}, Ward {glove_ward_percentage}%, PDR {equipped_glove[7]}%, FDR {equipped_glove[8]}, Passive: {player.glove_passive} (Lvl {player.glove_passive_lvl})')
+
+        # Handle equipped boots (New)
+        equipped_boot = await self.bot.database.get_equipped_boot(user_id)
+        if equipped_boot:
+            # item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5), 
+            # ward(6), pdr(7), fdr(8), passive(9), is_equipped(10), potential_remaining(11), passive_lvl(12)
+            player.boot_passive = equipped_boot[9]
+            player.boot_passive_lvl = equipped_boot[12]
+            player.attack += equipped_boot[4]
+            player.defence += equipped_boot[5]
+            boot_ward_percentage = equipped_boot[6]
+            if boot_ward_percentage > 0:
+                player.ward += max(1, int((boot_ward_percentage / 100) * player.max_hp))
+            player.pdr += equipped_boot[7]
+            player.fdr += equipped_boot[8]
+            self.bot.logger.info(f'Boots: ATK {equipped_boot[4]}, DEF {equipped_boot[5]}, Ward {boot_ward_percentage}%, PDR {equipped_boot[7]}%, FDR {equipped_boot[8]}, Passive: {player.boot_passive} (Lvl {player.boot_passive_lvl})')
+
+            # Implement "hearty" boot passive
+            if player.boot_passive == "hearty" and player.boot_passive_lvl > 0:
+                hp_bonus_percentage = player.boot_passive_lvl * 0.05 # 5% per level
+                bonus_hp = int(player.max_hp * hp_bonus_percentage)
+                player.max_hp += bonus_hp
+                player.hp += bonus_hp # Also increase current HP by the same amount
+                self.bot.logger.info(f"Hearty passive: Max HP increased by {bonus_hp} to {player.max_hp}")
+            
+            # Implement "speedster" boot passive by setting cooldown reduction
+            if player.boot_passive == "speedster" and player.boot_passive_lvl > 0:
+                player.combat_cooldown_reduction = player.boot_passive_lvl * 20 # 20s per level
+                self.bot.logger.info(f"Speedster passive: Combat cooldown reduction set to {player.combat_cooldown_reduction}s")
+
         player.rarity = max(0, player.rarity) # Ensure rarity is not negative
         print(player)
         return player
@@ -200,13 +251,25 @@ class Combat(commands.Cog, name="combat"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
+        # --- Cooldown Calculation ---
+        temp_cooldown_reduction = 0
+        equipped_boot_for_cooldown = await self.bot.database.get_equipped_boot(user_id)
+        if equipped_boot_for_cooldown:
+            boot_passive_name = equipped_boot_for_cooldown[9]
+            boot_passive_level = equipped_boot_for_cooldown[12]
+            if boot_passive_name == "speedster" and boot_passive_level > 0:
+                temp_cooldown_reduction = boot_passive_level * 20
+
+        current_combat_cooldown_duration = self.COMBAT_COOLDOWN_DURATION - timedelta(seconds=temp_cooldown_reduction)
+        current_combat_cooldown_duration = max(timedelta(seconds=10), current_combat_cooldown_duration) # Ensure minimum cooldown
+
         last_combat_time_str = existing_user[24]
         if last_combat_time_str:
             try:
                 last_combat_time_dt = datetime.fromisoformat(last_combat_time_str)
                 time_since_combat = datetime.now() - last_combat_time_dt
-                if time_since_combat < self.COMBAT_COOLDOWN_DURATION:
-                    remaining_cooldown = self.COMBAT_COOLDOWN_DURATION - time_since_combat
+                if time_since_combat < current_combat_cooldown_duration: # Use dynamic duration
+                    remaining_cooldown = current_combat_cooldown_duration - time_since_combat
                     await interaction.response.send_message(
                         f"Please slow down. Try again in {(remaining_cooldown.seconds // 60) % 60} minute(s) "
                         f"{(remaining_cooldown.seconds % 60)} second(s).",
@@ -357,6 +420,10 @@ class Combat(commands.Cog, name="combat"):
         treasure_chance = 0.02
         if player.armor_passive == "Treasure Hunter":
             treasure_chance += 0.05
+
+        if player.boot_passive == "treasure-tracker" and player.boot_passive_lvl > 0:
+            treasure_chance += (player.boot_passive_lvl * 0.005) # 0.5% per level
+            self.bot.logger.info(f"Treasure Tracker active: treasure chance increased by {player.boot_passive_lvl * 0.5}%")
         
         monster = Monster(name="",level=0,hp=0,max_hp=0,xp=0,attack=0,defence=0,modifiers=[],image="",flavor="",is_boss=False)
 
@@ -500,6 +567,18 @@ class Combat(commands.Cog, name="combat"):
         passive_message = ""
         attack_multiplier = 1.0 # Use float for multipliers
 
+        # Glove Passive: instability
+        if player.glove_passive == "instability" and player.glove_passive_lvl > 0:
+            instability_roll = random.random()
+            if instability_roll < 0.5: # 50% chance for 50% damage
+                attack_multiplier *= 0.5
+            else: # 50% chance for bonus damage
+                # 160/170/180/190/200% based on level
+                instability_bonus = 1.50 + (player.glove_passive_lvl * 0.10) 
+                attack_multiplier *= instability_bonus
+            passive_message += f"**Instability (Lvl {player.glove_passive_lvl})** causes chaotic energy! Attack multiplier adjusted to {attack_multiplier:.2f}x.\n"
+
+
         if player.acc_passive == "Obliterate":
             double_damage_chance = player.acc_lvl * 0.02 # 2% per level
             if random.random() <= double_damage_chance:
@@ -535,75 +614,121 @@ class Combat(commands.Cog, name="combat"):
             passive_message += f"{monster.name} projects a powerful magical barrier, nullifying the hit!\n"
 
         is_crit = False
-        if attack_multiplier > 0 : # Only roll for crit if damage is possible
-             # player.crit is e.g. 95. Crit if roll > (95 - bonus).
+        if attack_multiplier > 0 : 
             crit_target = player.crit - weapon_crit_bonus_chance 
-            if attack_roll > crit_target : # Roll needs to be high (e.g. 96, 97, 98, 99, 100 for 95 target)
+            if attack_roll > crit_target : 
                 is_crit = True
         
-        # Hit Check:
         is_hit = False
-        if attack_multiplier > 0: # Only roll for hit if damage is possible
-            # Effective roll for hit = attack_roll + accuracy passive bonus
+        if attack_multiplier > 0: 
             effective_attack_roll_for_hit = attack_roll + acc_value_bonus
             if effective_attack_roll_for_hit >= final_miss_threshold:
                 is_hit = True
 
-        if is_crit: # Crit always hits
-            max_hit_calc = player.attack # Base for crit damage
-            # Crit damage is typically base_damage * crit_multiplier (e.g., 2x)
-            actual_hit = int((random.randint(int(max_hit_calc * 0.5) + 1, max_hit_calc)) * 2.0 * attack_multiplier)
+        if is_crit: 
+            max_hit_calc = player.attack 
+            # Glove Passive: deftness - raises floor of crits
+            crit_damage_floor_multiplier = 0.5 # Base crit floor is 50% of max_hit_calc * 2
+            if player.glove_passive == "deftness" and player.glove_passive_lvl > 0:
+                crit_damage_floor_multiplier += (player.glove_passive_lvl * 0.05) # 5% per level
+                crit_damage_floor_multiplier = min(crit_damage_floor_multiplier, 0.75) # Cap at 75%
+                passive_message += f"**Deftness (Lvl {player.glove_passive_lvl})** bolsters your critical precision!\n"
+            
+            # Crit damage is (random between floor and max) * 2.0 * attack_multiplier
+            crit_min_damage_part = int(max_hit_calc * crit_damage_floor_multiplier) + 1
+            crit_max_damage_part = max_hit_calc
+            if crit_min_damage_part >= crit_max_damage_part: crit_min_damage_part = max(1, crit_max_damage_part -1)
+
+            actual_hit_pre_ward_gen = int((random.randint(crit_min_damage_part, crit_max_damage_part)) * 2.0 * attack_multiplier)
             attack_message = ( (f"The weapon glimmers with power!\n" if weapon_crit_bonus_chance > 0 else '') +
-                               f"Critical Hit! Damage: 🗡️ **{actual_hit}**")
-            attack_message = passive_message + attack_message # Prepend passives
+                               f"Critical Hit! Damage: 🗡️ **{actual_hit_pre_ward_gen}**")
+            attack_message = passive_message + attack_message 
         elif is_hit:
-            # Normal Hit Logic
             base_damage_max = player.attack
             base_damage_min = 1
 
+            # Glove Passive: adroit - raises floor of normal hits
+            if player.glove_passive == "adroit" and player.glove_passive_lvl > 0:
+                adroit_floor_increase_percentage = player.glove_passive_lvl * 0.02 # 2% per level
+                base_damage_min = max(base_damage_min, int(base_damage_max * adroit_floor_increase_percentage))
+                passive_message += f"**Adroit (Lvl {player.glove_passive_lvl})** sharpens your technique, ensuring a solid hit!\n"
+
+
             base_damage_max, attack_message = check_for_burn_bonus(player, base_damage_max, attack_message)
-            
-            base_damage_min, attack_message = check_for_spark_bonus(player, base_damage_min, base_damage_max, attack_message)
+            base_damage_min, attack_message = check_for_spark_bonus(player, base_damage_min, base_damage_max, attack_message) # Sparking might override adroit if higher
 
-            # Calculate actual hit damage for normal hit
-            if base_damage_min >= base_damage_max : base_damage_min = base_damage_max - 1 # Ensure range
+            if base_damage_min >= base_damage_max : base_damage_min = max(1, base_damage_max -1)
             rolled_damage = random.randint(base_damage_min, base_damage_max)
-            actual_hit = int(rolled_damage * attack_multiplier)
+            actual_hit_pre_ward_gen = int(rolled_damage * attack_multiplier)
 
-            actual_hit, echo_hit, echo_damage = check_for_echo_bonus(player, actual_hit)
+            actual_hit_pre_ward_gen, echo_hit, echo_damage = check_for_echo_bonus(player, actual_hit_pre_ward_gen)
 
-            attack_message += f"Hit! Damage: 💥 **{actual_hit - echo_damage}**" # Display main hit part
-            attack_message = passive_message + attack_message # Prepend general passives
+            attack_message += f"Hit! Damage: 💥 **{actual_hit_pre_ward_gen - echo_damage}**" 
+            attack_message = passive_message + attack_message 
             if echo_hit:
                 attack_message += (f"\nThe hit is 🎶 echoed!\n"
                                    f"Echo damage: 💥 **{echo_damage}**")
         else: # Miss
-            actual_hit = 0 # No direct damage on miss
+            actual_hit_pre_ward_gen = 0 
             poison_damage_on_miss = check_for_poison_bonus(player, attack_multiplier)
-                
             if poison_damage_on_miss > 0:
                 attack_message = passive_message + f"Miss!\nHowever, the lingering poison 🐍 deals **{poison_damage_on_miss}** damage."
-                     # Apply poison damage directly here if it's instant, or set up a DoT if applicable
-                     # For now, assume it's instant damage on miss
-                actual_hit = poison_damage_on_miss # This "hit" is the poison damage
-            else: # Should not happen if player.attack > 0
+                actual_hit_pre_ward_gen = poison_damage_on_miss 
+            else: 
                 attack_message = passive_message + "Miss!"
+        
+        actual_hit = actual_hit_pre_ward_gen # Use a new var for post-titanium damage
 
         # Apply monster's damage reduction like Titanium
         if "Titanium" in monster.modifiers and actual_hit > 0:
             reduction = int(actual_hit * 0.10)
-            actual_hit = max(0, actual_hit - reduction) # Reduce damage by 10%
+            actual_hit = max(0, actual_hit - reduction) 
             attack_message += f"\n{monster.name}'s **Titanium** plating reduces damage by {reduction}."
 
-        # Prevent overkill unless it's a killing blow / Time Lord check
-        if actual_hit >= monster.hp: # If current damage would kill
-            if "Time Lord" in monster.modifiers and random.random() < 0.80 and monster.hp > 1: # Time Lord saves if not already at 1 HP
-                actual_hit = monster.hp - 1 # Leaves monster at 1 HP
+        # Glove passives: ward-touched and ward-fused (Applied after Titanium, based on damage dealt before monster reduction)
+        generated_ward_this_turn = 0
+        if player.glove_passive == "ward-touched" and player.glove_passive_lvl > 0 and actual_hit_pre_ward_gen > 0: # Use pre-titanium damage
+            ward_gain_percentage = player.glove_passive_lvl * 0.01 # 1% per level
+            ward_gained = int(actual_hit_pre_ward_gen * ward_gain_percentage)
+            if ward_gained > 0:
+                player.ward += ward_gained
+                generated_ward_this_turn += ward_gained
+                attack_message += f"\n**Ward-Touched (Lvl {player.glove_passive_lvl})** pulses, generating 🔮 **{ward_gained}** ward!"
+        
+        if is_crit and player.glove_passive == "ward-fused" and player.glove_passive_lvl > 0 and actual_hit_pre_ward_gen > 0:
+            ward_gain_percentage_fused = player.glove_passive_lvl * 0.02 # 2% per level on crit
+            ward_gained_fused = int(actual_hit_pre_ward_gen * ward_gain_percentage_fused) # Based on crit damage
+            if ward_gained_fused > 0:
+                player.ward += ward_gained_fused
+                generated_ward_this_turn += ward_gained_fused
+                attack_message += f"\n**Ward-Fused (Lvl {player.glove_passive_lvl})** ignites on critical, generating 🔮 **{ward_gained_fused}** ward!"
+
+        # Prevent overkill unless it's a killing blow / Time Lord check (uses actual_hit after Titanium)
+        if actual_hit >= monster.hp: 
+            if "Time Lord" in monster.modifiers and random.random() < 0.80 and monster.hp > 1: 
+                actual_hit = monster.hp - 1 
                 attack_message += f"\nA fatal blow was dealt, but **{monster.name}**'s **Time Lord** ability allows it to cheat death!"
-            else: # Normal killing blow, or Time Lord failed/not applicable
-                actual_hit = monster.hp # Damage is exactly enough to kill
+            else: 
+                actual_hit = monster.hp 
         
         monster.hp -= actual_hit
+        
+        # Store damage for equilibrium and plundering (based on damage dealt *after* Titanium)
+        player.equilibrium_bonus_xp_pending = getattr(player, 'equilibrium_bonus_xp_pending', 0)
+        player.plundering_bonus_gold_pending = getattr(player, 'plundering_bonus_gold_pending', 0)
+
+        if actual_hit > 0: # Only if actual damage was dealt to monster HP
+            if player.glove_passive == "equilibrium" and player.glove_passive_lvl > 0:
+                xp_gain_percentage = player.glove_passive_lvl * 0.05 # 5% per level
+                bonus_xp = int(actual_hit * xp_gain_percentage)
+                player.equilibrium_bonus_xp_pending += bonus_xp
+                # attack_message += f"\n(Equilibrium will grant {bonus_xp} XP)" # Optional: immediate feedback
+
+            if player.glove_passive == "plundering" and player.glove_passive_lvl > 0:
+                gold_gain_percentage = player.glove_passive_lvl * 0.10 # 10% per level
+                bonus_gold = int(actual_hit * gold_gain_percentage)
+                player.plundering_bonus_gold_pending += bonus_gold
+                # attack_message += f"\n(Plundering will grant {bonus_gold} Gold)" # Optional
         
         # Culling Strike check (after all other damage and Time Lord)
         if monster.hp > 0 and check_cull(player, monster): # check_cull needs monster's current HP
@@ -617,16 +742,20 @@ class Combat(commands.Cog, name="combat"):
     async def heal(self, player):
         self.bot.logger.info(f"Player has {player.potions} potions")
         if player.potions <= 0:
-            self.bot.logger.info('Unable to heal, out of potions')
-            heal_message = f"{player.name} has no potions left to use!"
+            # ... (no potions message) ...
             return player, heal_message
 
         if player.hp >= player.max_hp:
-            self.bot.logger.info('Already at max hp')
-            heal_message = f"{player.name} is already full HP!"
+            # ... (already full HP message) ...
             return player, heal_message
 
-        heal_amount = int((player.max_hp * 0.3) + random.randint(1, 6)) # Heal 30% of max HP + small random
+        heal_percentage = 0.30 # Base 30%
+        # Boot Passive: cleric
+        if player.boot_passive == "cleric" and player.boot_passive_lvl > 0:
+            heal_percentage += (player.boot_passive_lvl * 0.10) # 10% extra per level
+            self.bot.logger.info(f"Cleric passive active: heal percentage increased to {heal_percentage*100}%")
+            
+        heal_amount = int((player.max_hp * heal_percentage) + random.randint(1, 6)) 
         healed_to_hp = min(player.max_hp, player.hp + heal_amount)
         actual_healed_amount = healed_to_hp - player.hp
         player.hp = healed_to_hp
@@ -896,6 +1025,22 @@ class Combat(commands.Cog, name="combat"):
         embed.add_field(name="📚 Experience", value=f"{monster.xp:,} XP")
         embed.add_field(name="💰 Gold", value=f"{final_gold_award:,} GP")
 
+        # Glove Passive: equilibrium (add pending XP)
+        if hasattr(player, 'equilibrium_bonus_xp_pending') and player.equilibrium_bonus_xp_pending > 0:
+            monster.xp += player.equilibrium_bonus_xp_pending
+            embed.add_field(name="Glove Passive: Equilibrium", 
+                            value=f"Your gloves siphon an extra **{player.equilibrium_bonus_xp_pending:,}** XP!", 
+                            inline=False)
+            player.equilibrium_bonus_xp_pending = 0 # Reset for next combat
+
+        # Glove Passive: plundering (add pending gold)
+        if hasattr(player, 'plundering_bonus_gold_pending') and player.plundering_bonus_gold_pending > 0:
+            final_gold_award += player.plundering_bonus_gold_pending
+            embed.add_field(name="Glove Passive: Plundering", 
+                            value=f"Your gloves snatch an extra **{player.plundering_bonus_gold_pending:,}** Gold!", 
+                            inline=False)
+            player.plundering_bonus_gold_pending = 0 # Reset
+
         items = await self.bot.database.fetch_user_weapons(user_id)
         accs = await self.bot.database.fetch_user_accessories(user_id)
         arms = await self.bot.database.fetch_user_armors(user_id)
@@ -951,6 +1096,12 @@ class Combat(commands.Cog, name="combat"):
             embed.add_field(name="✨ Curious Curio", value="A curious curio was left behind!", 
                             inline=False)
             await self.bot.database.update_curios_count(user_id, server_id, 1)
+
+        # Boot Passive: thrill seeker (modify special_drop chance)
+        if player.boot_passive == "thrill-seeker" and player.boot_passive_lvl > 0:
+            special_drop += (player.boot_passive_lvl * 0.01) # 1% per level
+            self.bot.logger.info(f"Thrill Seeker active: special_drop chance increased to {special_drop*100:.2f}%")
+
         if player.level > 20:
             if random.random() < (0.03 + special_drop):
                 embed.add_field(name="✨ Draconic Key", value="A draconic key was left behind!",
@@ -1011,6 +1162,34 @@ class Combat(commands.Cog, name="combat"):
                             value=propagate_message,
                             inline=False)
 
+        # Boot Passive: skiller
+        if player.boot_passive == "skiller" and player.boot_passive_lvl > 0:
+            skiller_proc_chance = player.boot_passive_lvl * 0.05 # 5% per level
+            if random.random() < skiller_proc_chance:
+                self.bot.logger.info("Skiller passive proc'd!")
+                skill_type_roll = random.randint(1, 3) # 1: mining, 2: woodcutting, 3: fishing
+                resource_messages = []
+
+                if skill_type_roll == 1: # Mining
+                    mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+                    resources = await self.skills_cog.gather_mining_resources(mining_data[2])
+                    await self.bot.database.update_mining_resources(user_id, server_id, resources)
+                    resource_messages.append(f"grants you some additional ores!")
+                elif skill_type_roll == 2: # Woodcutting
+                    woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+                    resources = await self.skills_cog.gather_woodcutting_resources(woodcutting_data[2])
+                    await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
+                    resource_messages.append(f"grants you some additional wood!")
+                else: # Fishing
+                    fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+                    resources = await self.skills_cog.gather_fishing_resources(fishing_data[2])
+                    await self.bot.database.update_fishing_resources(user_id, server_id, resources)
+                    resource_messages.append(f"grants you some additional fish!")
+                
+                if resource_messages:
+                    embed.add_field(name="Boot Passive: Skiller", 
+                                    value="Your boots guide you to extra resources and it " + " and ".join(resource_messages), 
+                                    inline=False)
         
         player = await self.update_experience(interaction, message, embed, player, monster)
         await self.bot.database.add_gold(user_id, final_gold_award)
@@ -1439,6 +1618,7 @@ class Combat(commands.Cog, name="combat"):
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         player.attack = existing_user[9]
         player.defence = existing_user[10]
+        player.max_hp = existing_user[12]
         exp_table = self.load_exp_table()
         new_exp = player.exp + monster.xp
         level_up = False
@@ -1481,6 +1661,7 @@ class Combat(commands.Cog, name="combat"):
             new_exp -= exp_table["levels"][str(player.level - 1)]
             await self.bot.database.increase_attack(user_id, attack_increase)
             await self.bot.database.increase_defence(user_id, defence_increase)
+            await self.bot.database.increase_max_hp(user_id, hp_increase)
 
         if ascension:
             embed.add_field(name="Ascension Level Up! 🎉", value=f"{player.name} has reached Ascension **{player.ascension + 1}**!")
@@ -1515,28 +1696,40 @@ class Combat(commands.Cog, name="combat"):
             )
             return
 
-        # --- COOLDOWN CHECK (Shared with /combat) ---
+        # --- Dynamic Cooldown Calculation for Ascent ---
+        temp_cooldown_reduction_ascent = 0
+        equipped_boot_for_ascent_cooldown = await self.bot.database.get_equipped_boot(user_id)
+        if equipped_boot_for_ascent_cooldown:
+            boot_passive_name_ascent = equipped_boot_for_ascent_cooldown[9]
+            boot_passive_level_ascent = equipped_boot_for_ascent_cooldown[12]
+            if boot_passive_name_ascent == "speedster" and boot_passive_level_ascent > 0:
+                temp_cooldown_reduction_ascent = boot_passive_level_ascent * 20
+        
+        current_ascent_cooldown_duration = self.COMBAT_COOLDOWN_DURATION - timedelta(seconds=temp_cooldown_reduction_ascent)
+        current_ascent_cooldown_duration = max(timedelta(seconds=10), current_ascent_cooldown_duration)
+
+
         last_combat_time_str = existing_user[24] 
         if last_combat_time_str:
             try:
                 last_combat_time_dt = datetime.fromisoformat(last_combat_time_str)
                 time_since_combat = datetime.now() - last_combat_time_dt
-                if time_since_combat < self.COMBAT_COOLDOWN_DURATION:
-                    remaining_cooldown = self.COMBAT_COOLDOWN_DURATION - time_since_combat
+                if time_since_combat < current_ascent_cooldown_duration: # Use dynamic duration
+                    remaining_cooldown = current_ascent_cooldown_duration - time_since_combat
                     await interaction.response.send_message(
-                        f"The path of ascent is tiring. Rest for {(remaining_cooldown.seconds // 60) % 60} minute(s) "
+                        f"Please slow down. Try again in {(remaining_cooldown.seconds // 60) % 60} minute(s) "
                         f"{(remaining_cooldown.seconds % 60)} second(s).",
                         ephemeral=True
                     )
                     return
             except ValueError:
                 self.bot.logger.warning(f"Invalid datetime format for last_combat_time for user {user_id}: {last_combat_time_str}")
-        
+
         await self.bot.database.update_combat_time(user_id)
         self.bot.state_manager.set_active(user_id, "ascent")
 
         player = await self._initialize_player_for_combat(user_id, existing_user)
-        player_save = player
+        player_save = await self._initialize_player_for_combat(user_id, existing_user)
         # --- ASCENT VARIABLES ---
         # Start ascent monster level at player's current level or slightly higher for a challenge.
         current_monster_base_level = player.level + player.ascension # Base level for the stage

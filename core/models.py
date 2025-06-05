@@ -62,6 +62,34 @@ class Armor:
     description: str        
 
 @dataclass
+class Glove: # New dataclass for Gloves
+    user: str  # user_id
+    name: str  # item_name
+    level: int # item_level
+    attack: int = 0
+    defence: int = 0
+    ward: int = 0    # Percentage
+    pdr: int = 0     # Percentage
+    fdr: int = 0     # Flat
+    passive: str = "none"
+    description: str = ""
+
+
+@dataclass
+class Boot: # New dataclass for Boots
+    user: str
+    name: str
+    level: int
+    attack: int = 0
+    defence: int = 0
+    ward: int = 0    # Percentage
+    pdr: int = 0     # Percentage
+    fdr: int = 0     # Flat
+    passive: str = "none"
+    description: str = ""
+
+
+@dataclass
 class Player:
     id: str
     name: str
@@ -87,6 +115,11 @@ class Player:
     acc_passive: str
     acc_lvl: int
     armor_passive: str
+    glove_passive: str = ""
+    glove_passive_lvl: int = 0
+    boot_passive: str = ""
+    boot_passive_lvl: int = 0
+    combat_cooldown_reduction: int = 0 # For speedster, in seconds
     invulnerable: bool = False
 
 @dataclass

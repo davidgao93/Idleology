@@ -29,7 +29,7 @@ class Accessories(commands.Cog, name="accessories"):
         accessories = await self.bot.database.fetch_user_accessories(user_id)
 
         if not accessories:
-            await interaction.response.send_message("You check your accessory pouch, it is empty.")
+            await interaction.response.send_message("You search your gear for accessories, you find none.")
             return
 
         player_name = existing_user[3]
