@@ -56,6 +56,8 @@ class Armor:
     block: int
     evasion: int
     ward: int
+    pdr: int
+    fdr: int
     passive: str
     description: str        
 
@@ -75,6 +77,8 @@ class Player:
     ward: int
     block: int
     evasion: int
+    pdr: int
+    fdr: int
     potions: int
     wep_id: int
     weapon_passive: str

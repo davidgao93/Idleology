@@ -126,6 +126,8 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
         block=0,
         evasion=0,
         ward=0,
+        pdr=0,
+        fdr=0,
         passive="",
         description=f"**{armor_name}**\n(Level {level})\n"
     )
@@ -150,5 +152,14 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
     else:
         armor.name = "Rune of Imbuing"
         armor.description = f"{armor.name}\nPotentially imbues a powerful passive onto your armor."
+
+    # Roll for PDR or FDR
+    if (random.random() < 0.5):
+        pdr_mod = max(1, random.randint(int(level // 20), int(level // 10)))
+        armor.pdr = pdr_mod
+    else:
+        fdr_mod = max(1, random.randint(int(level // 20), int(level // 10)))
+        armor.fdr = fdr_mod
+
 
     return armor

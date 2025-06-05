@@ -118,6 +118,8 @@ class DatabaseManager:
             block, 
             evasion, 
             ward, 
+            pdr,
+            fdr,
             temper_remaining) 
             VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (armor.user, 
@@ -126,6 +128,8 @@ class DatabaseManager:
              armor.block, 
              armor.evasion, 
              armor.ward, 
+             armor.pdr,
+             armor.fdr,
              item_potential)
         )
         await self.connection.commit()

@@ -83,6 +83,8 @@ class Combat(commands.Cog, name="combat"):
             ward=0,   # Base ward, will be modified by gear
             block=0,  # Base block, will be modified by gear
             evasion=0,# Base evasion, will be modified by gear
+            pdr=0, #percent damage reduction
+            fdr=0, #flat damage reduction
             potions=existing_user_data[16],
             wep_id=0, # To be populated
             weapon_passive="",
@@ -132,7 +134,9 @@ class Combat(commands.Cog, name="combat"):
                 player.ward += int((armor_ward_percentage / 100) * player.max_hp)
             player.block += equipped_armor[4]
             player.evasion += equipped_armor[5]
-            self.bot.logger.info(f'Armor: Block {player.block}, Evasion {player.evasion}, Ward {armor_ward_percentage}%, Passive: {player.armor_passive}')
+            player.pdr += equipped_armor[11]
+            player.fdr += equipped_armor[12]
+            self.bot.logger.info(f'Armor: Block {player.block}, Evasion {player.evasion}, Ward {armor_ward_percentage}%, Passive: {player.armor_passive} pdr: {equipped_armor[11]} fdr: {equipped_armor[12]}')
         
         player.rarity = max(0, player.rarity) # Ensure rarity is not negative
         return player
@@ -656,6 +660,12 @@ class Combat(commands.Cog, name="combat"):
             if "Hell's Fury" in monster.modifiers: damage_taken_base += 5 # Note: Original was 3, consistency check.
             if "Mirror Image" in monster.modifiers and random.random() < 0.2: damage_taken_base *= 2
             if "Unlimited Blade Works" in monster.modifiers: damage_taken_base *= 2
+
+            # percent damage reduction for pdr
+            print(f"Previous damage taken {damage_taken_base}")
+            damage_taken_base /= (player.pdr / 100)
+            print(f"After % damage taken {damage_taken_base}")
+            damage_taken_base -= player.fdr
             
             # Minions (Summoner, Infernal Legion)
             minion_additional_damage = 0
@@ -663,7 +673,7 @@ class Combat(commands.Cog, name="combat"):
                 minion_additional_damage = int(damage_taken_base * (1/3)) # Summoner minions add 1/3 of main hit
             if "Infernal Legion" in monster.modifiers: # IL echoes the full hit as extra
                 minion_additional_damage = damage_taken_base 
-            
+
             total_damage_before_block_ward = damage_taken_base + minion_additional_damage
 
             # Multistrike (monster hits again for 50% damage)
