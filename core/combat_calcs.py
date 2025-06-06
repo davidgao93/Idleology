@@ -43,7 +43,7 @@ def calculate_damage_taken(player, monster):
         damage = random.randint(*damage_ranges[1])
         difference = 0
     else:
-        damage = random.randint(*damage_ranges[2]) + int(monster.level // 10 * 2)
+        damage = random.randint(*damage_ranges[2]) + int(monster.level // 10)
 
     additional_damage = 0
     if difference > 0:

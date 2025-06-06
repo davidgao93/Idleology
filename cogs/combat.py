@@ -835,10 +835,15 @@ class Combat(commands.Cog, name="combat"):
             minion_additional_damage = 0
             if "Summoner" in monster.modifiers:
                 minion_additional_damage += int(damage_taken_base * (1/3)) # Summoner minions add 1/3 of main hit
+                minion_additional_damage = max(0, minion_additional_damage - player.fdr) # minitated by fdr
                 print(f'*1/3 Summoner: {minion_additional_damage}')
             if "Infernal Legion" in monster.modifiers: # IL echoes the full hit as extra
                 minion_additional_damage += damage_taken_base 
+                minion_additional_damage = max(0, minion_additional_damage - player.fdr) 
                 print(f'+100% Infernal Legion: {minion_additional_damage}')
+
+            if minion_additional_damage < 0:
+                minion_additional_damage = 0
 
             total_damage_before_block_ward = damage_taken_base + minion_additional_damage
             print(f"Total damage before block/ward: {total_damage_before_block_ward}")
@@ -846,6 +851,7 @@ class Combat(commands.Cog, name="combat"):
             multistrike_damage = 0
             if "Multistrike" in monster.modifiers and random.random() <= effective_hit_chance: # Check hit for multistrike
                 multistrike_damage = int(calculate_damage_taken(player, monster) * 0.5) # 50% of a new damage roll
+                multistrike_damage = max(0, multistrike_damage - player.fdr) # minitated by fdr
                 total_damage_before_block_ward += multistrike_damage
                 print(f"+Multistrike {multistrike_damage}")
             # Executioner (high damage proc)
@@ -1955,7 +1961,7 @@ class Combat(commands.Cog, name="combat"):
 
                 # Glove Passive: plundering (add pending gold)
                 if hasattr(player, 'plundering_bonus_gold_pending') and player.plundering_bonus_gold_pending > 0:
-                    final_gold_award += player.plundering_bonus_gold_pending
+                    final_gold_award_stage += player.plundering_bonus_gold_pending
                     stage_clear_embed.add_field(name="Glove Passive: Plundering", 
                                     value=f"Your gloves snatch an extra **{player.plundering_bonus_gold_pending:,}** Gold!", 
                                     inline=False)
