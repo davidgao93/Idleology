@@ -190,12 +190,12 @@ class Gloves(commands.Cog, name="gloves"):
                             item_embed.add_field(name="Passive", value=f"{g_passive.replace('-', ' ').title()} (Lvl {g_passive_lvl})", inline=False)
                             item_embed.add_field(name="Effect", value=passive_effect_desc, inline=False)
                         else:
-                            item_embed.add_field(name="Passive", value="Unlock to reveal!", inline=False)
+                            item_embed.add_field(name="Passive", value="Enchant to reveal!", inline=False)
 
                         guide_text = (
                             "Select an action:\n"
                             f"- {'Unequip' if g_is_equipped else 'Equip'}\n"
-                            "- Unlock/Improve Potential\n"
+                            "- Enchant\n"
                             "- Send\n"
                             "- Discard\n"
                             "- Back to list"
@@ -265,7 +265,7 @@ class Gloves(commands.Cog, name="gloves"):
 
     def get_glove_passive_effect(self, passive_name: str, level: int) -> str:
         if level == 0: # Not yet improved
-            return "Unlock to reveal its true power."
+            return "Enchant to reveal its true power."
         if passive_name == "ward-touched":
             return f"Generate **{level * 1}%** of your hit damage as Ward."
         elif passive_name == "ward-fused":
@@ -322,7 +322,7 @@ class Gloves(commands.Cog, name="gloves"):
         # L0->1: 75% | L1->2: 70% | L2->3: 65% | L3->4: 60% | L4->5: 55%
         success_rate_percent = max(75 - current_passive_lvl * 5, 30)
 
-        title_keyword = "Unlock" if current_passive == "none" else "Enhance"
+        title_keyword = "Enchant" if current_passive == "none" else "Enhance"
         confirm_embed = discord.Embed(
             title=f"{title_keyword} Potential",
             description=(f"Attempt to {title_keyword.lower()} **{glove_name}**'s potential?\n"
@@ -356,7 +356,7 @@ class Gloves(commands.Cog, name="gloves"):
 
             player_gold = await self.bot.database.fetch_user_gold(user_id, server_id)
             if player_gold < improvement_cost:
-                result_embed = discord.Embed(title="Improvement Failed", description="Not enough gold!", color=discord.Color.red())
+                result_embed = discord.Embed(title="Enchantment Failed", description="Not enough gold!", color=discord.Color.red())
                 await message.edit(embed=result_embed, view=None)
                 await asyncio.sleep(3)
                 return
@@ -376,22 +376,22 @@ class Gloves(commands.Cog, name="gloves"):
                 if current_passive == "none": # First successful improvement
                     new_passive_name = random.choice(self.glove_passive_list)
                     await self.bot.database.update_glove_passive(glove_id, new_passive_name)
-                    result_title = "Potential Unlocked! 🎉"
+                    result_title = "Passive Unlocked! 🎉"
                     result_description = (f"**{glove_name}** has gained the **{new_passive_name.replace('-', ' ').title()}** passive (Lvl {new_passive_lvl})!")
                 else: # Improving existing passive
-                    result_title = "Potential Enhanced! ✨"
+                    result_title = "Passive Enhanced! ✨"
                     result_description = (f"**{glove_name}**'s **{new_passive_name.replace('-', ' ').title()}** passive improved to Lvl {new_passive_lvl}!")
                 
                 await self.bot.database.update_glove_passive_lvl(glove_id, new_passive_lvl)
             else:
                 result_title = "Enhancement Failed 💔"
-                result_description = "The attempt to improve potential was unsuccessful. Better luck next time!"
+                result_description = "The enchantment was unsuccessful."
 
             await self.bot.database.update_glove_potential_remaining(glove_id, potential_remaining - 1)
             
             final_embed = discord.Embed(title=result_title, description=result_description, color=discord.Color.green() if enhancement_success else discord.Color.orange())
             await message.edit(embed=final_embed, view=None)
-            await asyncio.sleep(4)
+            await asyncio.sleep(3)
 
         except asyncio.TimeoutError:
             await message.edit(content="Improvement confirmation timed out.", embed=None, view=None)
@@ -496,7 +496,7 @@ class Gloves(commands.Cog, name="gloves"):
                 error_display_embed = original_embed.copy()
                 error_display_embed.add_field(name="Send Error", value=f"{err_summary}\nReturning...", inline=False)
                 await message.edit(embed=error_display_embed, view=None)
-                await asyncio.sleep(4)
+                await asyncio.sleep(2)
                 return # Return to selected glove view
 
             # Proceed to confirmation

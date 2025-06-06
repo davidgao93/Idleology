@@ -180,17 +180,17 @@ class Boots(commands.Cog, name="boots"):
                             item_embed.add_field(name="Passive", value=f"{b_passive.replace('-', ' ').title()} (Lvl {b_passive_lvl})", inline=False)
                             item_embed.add_field(name="Effect", value=passive_effect_desc, inline=False)
                         else:
-                            item_embed.add_field(name="Passive", value="Unlock to reveal!", inline=False)
+                            item_embed.add_field(name="Passive", value="Enchant to reveal!", inline=False)
 
                         guide_text = ("Select an action:\n"
                                       f"- {'Unequip' if b_is_equipped else 'Equip'}\n"
-                                      "- Unlock/Improve Potential\n- Send\n- Discard\n- Back to list")
+                                      "- Enchant\n- Send\n- Discard\n- Back to list")
                         item_embed.add_field(name="Actions", value=guide_text, inline=False)
 
                         action_view = View(timeout=60.0)
                         action_view.add_item(Button(label="Unequip" if b_is_equipped else "Equip", style=ButtonStyle.primary, custom_id="equip_unequip"))
                         if b_potential_rem > 0 and b_passive_lvl < 6: # Max passive level 6 for boots
-                            action_view.add_item(Button(label="Improve Potential", style=ButtonStyle.success, custom_id="improve"))
+                            action_view.add_item(Button(label="Enchant", style=ButtonStyle.success, custom_id="improve"))
                         action_view.add_item(Button(label="Send", style=ButtonStyle.secondary, custom_id="send"))
                         action_view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))
                         action_view.add_item(Button(label="Back", style=ButtonStyle.grey, custom_id="back"))
@@ -237,7 +237,7 @@ class Boots(commands.Cog, name="boots"):
         self.bot.state_manager.clear_active(user_id)
 
     def get_boot_passive_effect(self, passive_name: str, level: int) -> str:
-        if level == 0: return "Unlock to reveal its true power."
+        if level == 0: return "Enchant to reveal its true power."
         
         effects = {
             "speedster": f"Combat cooldown reduced by **{level * 20}** seconds.",
@@ -267,7 +267,7 @@ class Boots(commands.Cog, name="boots"):
             await message.edit(embed=embed, view=None); await asyncio.sleep(3); return
 
         if current_passive_lvl >= 6: # Max potential level 6 for boots
-            embed = discord.Embed(title="Max Potential", description=f"**{boot_name}** is already at its maximum potential (Lvl 6).", color=discord.Color.gold())
+            embed = discord.Embed(title="Max Enchantment", description=f"**{boot_name}** is already at its maximum potential (Lvl 6).", color=discord.Color.gold())
             await message.edit(embed=embed, view=None); await asyncio.sleep(3); return
 
         # Costs for levels 0->1, 1->2, ..., 5->6
@@ -276,9 +276,9 @@ class Boots(commands.Cog, name="boots"):
         
         success_rate_percent = max(75 - current_passive_lvl * 5, 25) # Keep floor at 25% for L5->L6 (50%)
 
-        title_keyword = "Unlock" if current_passive == "none" else "Enhance"
+        title_keyword = "Enchant" if current_passive == "none" else "Enhance"
         confirm_embed = discord.Embed(
-            title=f"{title_keyword} Boot Potential",
+            title=f"{title_keyword} Boot Enchantment",
             description=(f"Attempt to {title_keyword.lower()} **{boot_name}**'s potential?\n"
                          f"Current Passive Level: {current_passive_lvl}\n"
                          f"Attempts left: **{potential_remaining}**\n"
@@ -304,7 +304,7 @@ class Boots(commands.Cog, name="boots"):
 
             player_gold = await self.bot.database.fetch_user_gold(user_id, server_id)
             if player_gold < improvement_cost:
-                result_embed = discord.Embed(title="Improvement Failed", description="Not enough gold!", color=discord.Color.red())
+                result_embed = discord.Embed(title="Enchanting Failed", description="Not enough gold!", color=discord.Color.red())
                 await message.edit(embed=result_embed, view=None); await asyncio.sleep(3); return
 
             await self.bot.database.update_user_gold(user_id, player_gold - improvement_cost)
@@ -319,18 +319,18 @@ class Boots(commands.Cog, name="boots"):
                 if current_passive == "none": 
                     new_passive_name = random.choice(self.boot_passive_list)
                     await self.bot.database.update_boot_passive(boot_id, new_passive_name)
-                    result_title, result_description = "Potential Unlocked! 🎉", f"**{boot_name}** gained **{new_passive_name.replace('-', ' ').title()}** (Lvl {new_passive_lvl})!"
+                    result_title, result_description = "Passive Unlocked! 🎉", f"**{boot_name}** gained **{new_passive_name.replace('-', ' ').title()}** (Lvl {new_passive_lvl})!"
                 else: 
-                    result_title, result_description = "Potential Enhanced! ✨", f"**{boot_name}**'s **{new_passive_name.replace('-', ' ').title()}** passive improved to Lvl {new_passive_lvl}!"
+                    result_title, result_description = "Passive Enhanced! ✨", f"**{boot_name}**'s **{new_passive_name.replace('-', ' ').title()}** passive improved to Lvl {new_passive_lvl}!"
                 await self.bot.database.update_boot_passive_lvl(boot_id, new_passive_lvl)
             else:
-                result_title, result_description = "Enhancement Failed 💔", "The attempt was unsuccessful."
+                result_title, result_description = "Enchantment Failed 💔", "The enchantment was unsuccessful."
 
             await self.bot.database.update_boot_potential_remaining(boot_id, potential_remaining - 1)
             final_embed = discord.Embed(title=result_title, description=result_description, color=discord.Color.green() if enhancement_success else discord.Color.orange())
-            await message.edit(embed=final_embed, view=None); await asyncio.sleep(4)
+            await message.edit(embed=final_embed, view=None); await asyncio.sleep(3)
         except asyncio.TimeoutError:
-            await message.edit(content="Improvement confirmation timed out.", embed=None, view=None); await asyncio.sleep(3)
+            await message.edit(content="Enchantment confirmation timed out.", embed=None, view=None); await asyncio.sleep(3)
 
     async def discard_boot_interaction(self, interaction: Interaction, selected_boot: tuple, message: Message, original_embed: discord.Embed) -> bool:
         boot_id, _, boot_name, *_ = selected_boot

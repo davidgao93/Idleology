@@ -179,7 +179,7 @@ class Character(commands.Cog, name="character"):
             # Add the character stats to the embed
             embed.add_field(name="Level ⭐", value=existing_user[4], inline=True)
             embed.add_field(name="Experience ✨", value=f"{current_exp:,} ({exp_percentage:.2f}%)", inline=True)
-            embed.add_field(name="HP ❤️", value=f"{existing_user[11]}/{existing_user[15]}", inline=True)
+            embed.add_field(name="HP ❤️", value=f"{existing_user[11]}/{existing_user[12]}", inline=True)
             attack_display = f"{base_attack} (+{add_atk})" if add_atk > 0 else f"{base_attack}"
             embed.add_field(name="Attack ⚔️", value=attack_display, inline=True)
             defense_display = f"{base_defense} (+{add_def})" if add_def > 0 else f"{base_defense}"
@@ -194,10 +194,13 @@ class Character(commands.Cog, name="character"):
                 embed.add_field(name="Evasion 🏃‍♂️", value=f"{evasion}", inline=True)
             if (ward > 0): 
                 embed.add_field(name="Ward 🔮", value=f"{ward}% ({int(existing_user[12]*ward/100)})", inline=True)
-            if (pdr > 0): 
-                embed.add_field(name="PDR% 🔻", value=f"{pdr}%", inline=True)
-            if (fdr > 0): 
-                embed.add_field(name="FDR 🔻", value=f"{fdr}", inline=True)
+            pdr_fdr_info = []
+            if pdr > 0: 
+                pdr_fdr_info.append(f"{pdr}%")
+            if fdr > 0: 
+                pdr_fdr_info.append(f"{fdr}")
+            if pdr_fdr_info:
+                embed.add_field(name="Damage Reduction 🔺", value=" / ".join(pdr_fdr_info), inline=True)
             if (passive_list):
                 embed.add_field(name="__Passives__", value=f"{passive_list}", inline=False)
 

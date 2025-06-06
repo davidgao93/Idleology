@@ -1969,7 +1969,7 @@ class Combat(commands.Cog, name="combat"):
                 await self.bot.database.update_player(player) 
                                 
                 ascent_stage += 1
-                current_monster_base_level += 1
+                current_monster_base_level += 2
                 current_normal_mods += 1
                 current_boss_mods = min(5, current_boss_mods + 1) 
                 auto_battle_this_stage = False 
