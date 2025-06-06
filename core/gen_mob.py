@@ -181,7 +181,7 @@ async def generate_ascent_monster(player, monster_instance, ascent_stage_level, 
     monster.defence = temp_monster_for_stats.defence
 
     # Fetch image, name, and flavor text using the stage level
-    monster = await fetch_monster_image(random.randint(0,120), monster)
+    monster = await fetch_monster_image(random.randint(20,120), monster)
 
     # HP Calculation based on stage level
     monster.hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.3, 1.4)))
@@ -312,7 +312,7 @@ async def fetch_monster_image(level, monster_data):
         if level == 999:
             selected_monsters = [monster for monster in monsters if monster[2] == level * 10]
         else:
-            min_level = max(1, level - 10)
+            min_level = max(1, level - 20)
             max_level = min(120, level + 10)
             selected_monsters = [monster for monster in monsters if min_level <= monster[2] <= max_level]
 
