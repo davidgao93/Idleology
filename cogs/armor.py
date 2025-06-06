@@ -188,7 +188,7 @@ class Armor(commands.Cog, name="armor"):
                         action_view.add_item(Button(label="Unequip" if is_equipped else "Equip", style=ButtonStyle.primary, custom_id="unequip" if is_equipped else "equip"))
                         if selected_armor[9] > 0:
                             action_view.add_item(Button(label="Temper", style=ButtonStyle.primary, custom_id="temper"))
-                        if selected_armor[10] > 0:
+                        if selected_armor[10] > 0 and existing_user[27] > 0:
                             action_view.add_item(Button(label="Imbue", style=ButtonStyle.primary, custom_id="imbue"))
                         action_view.add_item(Button(label="Send", style=ButtonStyle.primary, custom_id="send"))
                         action_view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))

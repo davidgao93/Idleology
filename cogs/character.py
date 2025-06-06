@@ -226,6 +226,8 @@ class Character(commands.Cog, name="character"):
         weapons_count = await self.bot.database.count_user_weapons(user_id)
         accessories_count = await self.bot.database.count_user_accessories(user_id)
         arms = await self.bot.database.fetch_user_armors(user_id)
+        gloves = await self.bot.database.count_user_gloves(user_id)
+        boots = await self.bot.database.count_user_boots(user_id)
         runes_of_potential = existing_user[21]  # index for runes of potential
         runes_of_refinement = existing_user[19]  # index for runes of refinement
         runes_of_imbuing = existing_user[27] # imbue runes
@@ -253,7 +255,9 @@ class Character(commands.Cog, name="character"):
                         value=(
                             f"⚔️ Weapons: {weapons_count:,}\n"
                             f"💍 Accessories: {accessories_count:,}\n"
-                            f"👘 Armors: {len(arms):,}"
+                            f"👘 Armors: {len(arms):,}\n"
+                            f"🧤 Gloves: {gloves:,}\n"
+                            f"👢 Boots: {boots:,}"
                         ), inline=True)
 
         # Grouped fields for Runes

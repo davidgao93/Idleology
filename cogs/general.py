@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from discord import app_commands, Interaction, Message
 from discord.ext.tasks import asyncio
 from core.gen_mob import get_modifier_description
+from typing import Literal
 
 
 def get_weapon_passive_effect_mock(passive_name: str, level: int = 5) -> str:
@@ -87,20 +88,15 @@ class General(commands.Cog, name="general"):
             name="Remove spoilers", callback=self.remove_spoilers
         )
         self.bot.tree.add_command(self.context_menu_message)
-                # Define lists of passives for each gear type
-        # These should ideally be sourced from the same place your game logic gets them
-        # or maintained consistently.
-        self.weapon_passives_base = [ # Base names for tiered passives
+        self.weapon_passives_base = [
             "burning", "poisonous", "polished", "sparking", "sturdy", 
             "piercing", "strengthened", "accurate", "echo"
         ]
-        self.weapon_passives_tiers = ["", "flaming", "noxious", "honed", "shocking", "reinforced", "keen", "forceful", "precise", "echoo",
-                                      "scorching", "venomous", "gleaming", "discharging", "thickened", "incisive", "overwhelming", "sharpshooter", "echooo",
-                                      "incinerating", "toxic", "tempered", "electrocuting", "impregnable", "puncturing", "devastating", "deadeye", "echoooo",
-                                      "carbonising", "lethal", "flaring", "vapourising", "impenetrable", "penetrating", "catastrophic", "bullseye", "echoes"]
-        # For weapon passives, you might want to show the max tier effect or a general idea.
-        # The current mock function uses base names.
-
+        self.weapon_final_tier_map = {
+            "burning": "carbonising", "poisonous": "lethal", "polished": "flaring", "sparking": "vapourising",
+            "sturdy": "impenetrable", "piercing": "penetrating", "strengthened": "catastrophic",
+            "accurate": "bullseye", "echo": "echoes"
+        }
         self.accessory_passives = [
             "Obliterate", "Absorb", "Prosper", "Infinite Wisdom", "Lucky Strikes"
         ]
@@ -116,11 +112,10 @@ class General(commands.Cog, name="general"):
             "speedster", "skiller", "treasure-tracker", 
             "hearty", "cleric", "thrill-seeker"
         ]
-        # You can also include monster modifiers if desired
-        self.monster_modifiers = [
-            "Steel-born", "All-seeing", "Mirror Image", "Volatile", "Glutton", 
+        self.monster_modifiers = [ # Sourced from your provided files
+            "Steel-born", "All-seeing", "Mirror Image", "Glutton", 
             "Enfeeble", "Venomous", "Strengthened", "Hellborn", "Lucifer-touched", 
-            "Titanium", "Ascended", "Summoner", "Shield-breaker", "Impenetrable", # Monster Impenetrable
+            "Titanium", "Ascended", "Summoner", "Shield-breaker", "Impenetrable",
             "Unblockable", "Unavoidable", "Built-different", "Multistrike", "Mighty",
             "Shields-up", "Executioner", "Time Lord", "Suffocator", "Celestial Watcher",
             "Unlimited Blade Works", "Hell's Fury", "Absolute", "Infernal Legion", "Overwhelm",
@@ -494,71 +489,97 @@ class General(commands.Cog, name="general"):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-    @app_commands.command(name="mod_details", description="Shows a list of mods and their explanations.")
-    async def show_passives(self, interaction: Interaction):
-        embed = discord.Embed(title="✨ Equipment Passives Guide ✨", color=discord.Color.gold())
-        embed.set_footer(text="Effects shown are generally at their maximum potential/level for brevity.")
-
-        # Weapons
-        weapon_text = ""
-        # For tiered weapon passives, let's show the final tier for brevity
-        weapon_final_tier_map = {
-            "burning": "carbonising", "poisonous": "lethal", "polished": "flaring", "sparking": "vapourising",
-            "sturdy": "impenetrable", "piercing": "penetrating", "strengthened": "catastrophic",
-            "accurate": "bullseye", "echo": "echoes"
-        }
-        for base_passive in self.weapon_passives_base:
-            max_tier_passive = weapon_final_tier_map.get(base_passive, base_passive) # Fallback to base if not in map
-            effect = get_weapon_passive_effect_mock(max_tier_passive, 5) # Assuming level 5 for max tier
-            weapon_text += f"**{max_tier_passive.capitalize()}**: {effect}\n"
-        if weapon_text:
-            embed.add_field(name="⚔️ Weapon Passives (Max Tier Effects)", value=weapon_text, inline=False)
-
-        # Accessories
-        acc_text = ""
-        for passive in self.accessory_passives:
-            effect = get_accessory_passive_effect_mock(passive, 5) # Level 5 for accessories
-            acc_text += f"**{passive.replace('-', ' ').title()}**: {effect}\n"
-        if acc_text:
-            embed.add_field(name="📿 Accessory Passives (Lvl 5 Effects)", value=acc_text, inline=False)
-
-        # Armor
-        armor_text = ""
-        for passive in self.armor_passives:
-            effect = get_armor_passive_effect_mock(passive) # Armor passives are not leveled in your example
-            armor_text += f"**{passive.replace('-', ' ').title()}**: {effect}\n"
-        if armor_text:
-            embed.add_field(name="🛡️ Armor Passives", value=armor_text, inline=False)
-
-        # Gloves
-        glove_text = ""
-        for passive in self.glove_passives:
-            effect = get_glove_passive_effect_mock(passive, 5) # Level 5 for gloves
-            glove_text += f"**{passive.replace('-', ' ').title()}**: {effect}\n"
-        if glove_text:
-            embed.add_field(name="🧤 Glove Passives (Lvl 5 Effects)", value=glove_text, inline=False)
+    @app_commands.command(name="mod_details", description="Shows details for specific types of modifiers or passives.")
+    @app_commands.describe(category="Choose the category of modifiers/passives to view.")
+    async def mod_details(self, interaction: Interaction, 
+                          category: Literal['monster', 'weapon', 'accessory', 'armor', 'glove', 'boot']):
         
-        # Boots
-        boot_text = ""
-        for passive in self.boot_passives:
-            effect = get_boot_passive_effect_mock(passive, 6) # Level 6 for boots
-            boot_text += f"**{passive.replace('-', ' ').title()}**: {effect}\n"
-        if boot_text:
-            embed.add_field(name="👢 Boot Passives (Lvl 6 Effects)", value=boot_text, inline=False)
+        embed = discord.Embed(color=discord.Color.blue())
+        embed.set_footer(text="Effects for gear passives are generally shown at their maximum potential/level.")
+        
+        content_added = False
 
-        # Monster Modifiers (Optional - if you want to include them here)
-        monster_mod_text = ""
-        for mod in self.monster_modifiers:
-            desc = get_modifier_description(mod) # From core.gen_mob
-            monster_mod_text += f"**{mod}**: {desc}\n"
-        if monster_mod_text:
-            embed.add_field(name="👹 Monster Modifiers", value=monster_mod_text, inline=False)
+        if category == 'monster':
+            embed.title = "👹 Monster Modifier Details"
+            mod_text = ""
+            for mod_name in sorted(self.monster_modifiers): # Sort for consistent order
+                desc = get_modifier_description(mod_name) 
+                mod_text += f"**{mod_name}**: {desc}\n"
+            if mod_text:
+                embed.description = mod_text
+                content_added = True
+            else:
+                embed.description = "No monster modifier details available."
 
+        elif category == 'weapon':
+            embed.title = "⚔️ Weapon Passive Details (Max Tier Effects)"
+            weapon_text = ""
+            for base_passive in sorted(self.weapon_passives_base):
+                max_tier_passive = self.weapon_final_tier_map.get(base_passive, base_passive)
+                effect = get_weapon_passive_effect_mock(max_tier_passive, 5)
+                weapon_text += f"**{max_tier_passive.capitalize()}**: {effect}\n"
+            if weapon_text:
+                embed.description = weapon_text
+                content_added = True
+            else:
+                embed.description = "No weapon passive details available."
 
-        if not embed.fields: # If somehow no passives were added
-            embed.description = "No passive information currently available."
-            
-        await interaction.response.send_message(embed=embed)
+        elif category == 'accessory':
+            embed.title = "📿 Accessory Passive Details (Lvl 5 Effects)"
+            acc_text = ""
+            for passive in sorted(self.accessory_passives):
+                effect = get_accessory_passive_effect_mock(passive, 5)
+                acc_text += f"**{passive.replace('-', ' ').title()}**: {effect}\n"
+            if acc_text:
+                embed.description = acc_text
+                content_added = True
+            else:
+                embed.description = "No accessory passive details available."
+
+        elif category == 'armor':
+            embed.title = "🛡️ Armor Passive Details"
+            armor_text = ""
+            for passive in sorted(self.armor_passives):
+                effect = get_armor_passive_effect_mock(passive)
+                armor_text += f"**{passive.replace('-', ' ').title()}**: {effect}\n"
+            if armor_text:
+                embed.description = armor_text
+                content_added = True
+            else:
+                embed.description = "No armor passive details available."
+                
+        elif category == 'glove':
+            embed.title = "🧤 Glove Passive Details (Lvl 5 Effects)"
+            glove_text = ""
+            for passive in sorted(self.glove_passives):
+                effect = get_glove_passive_effect_mock(passive, 5)
+                glove_text += f"**{passive.replace('-', ' ').title()}**: {effect}\n"
+            if glove_text:
+                embed.description = glove_text
+                content_added = True
+            else:
+                embed.description = "No glove passive details available."
+
+        elif category == 'boot':
+            embed.title = "👢 Boot Passive Details (Lvl 6 Effects)"
+            boot_text = ""
+            for passive in sorted(self.boot_passives):
+                effect = get_boot_passive_effect_mock(passive, 6)
+                boot_text += f"**{passive.replace('-', ' ').title()}**: {effect}\n"
+            if boot_text:
+                embed.description = boot_text
+                content_added = True
+            else:
+                embed.description = "No boot passive details available."
+        
+        else: # Should not be reached due to Literal choices
+            embed.title = "Error"
+            embed.description = "Invalid category selected."
+
+        if not content_added and not embed.description: # Fallback if a category somehow has no text
+             embed.description = f"No details available for category: {category}."
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot) -> None:
     await bot.add_cog(General(bot))

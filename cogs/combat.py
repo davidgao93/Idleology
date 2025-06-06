@@ -807,36 +807,47 @@ class Combat(commands.Cog, name="combat"):
         monster_message = ""
         if monster_attack_roll <= effective_hit_chance: # Monster hits
             damage_taken_base = calculate_damage_taken(player, monster) # Base damage roll
-
+            print(f'Base damage: {damage_taken_base}')
             # Apply monster damage modifiers
             if "Celestial Watcher" in monster.modifiers: # CW hits harder or has other effects
                 damage_taken_base = int(damage_taken_base * 1.2) # Example: CW deals 20% more
-            if "Hellborn" in monster.modifiers: damage_taken_base += 2
-            if "Hell's Fury" in monster.modifiers: damage_taken_base += 5 # Note: Original was 3, consistency check.
-            if "Mirror Image" in monster.modifiers and random.random() < 0.2: damage_taken_base *= 2
-            if "Unlimited Blade Works" in monster.modifiers: damage_taken_base *= 2
+                print(f'+ Celestial watcher: {damage_taken_base}')
+            if "Hellborn" in monster.modifiers: 
+                damage_taken_base += 2
+                print(f'+ Hellborn: {damage_taken_base}')
+            if "Hell's Fury" in monster.modifiers: 
+                damage_taken_base += 5
+                print(f'+ Hells Fury: {damage_taken_base}')
+            if "Mirror Image" in monster.modifiers and random.random() < 0.2: 
+                damage_taken_base *= 2
+                print(f'*2 Mirror Image: {damage_taken_base}')
+            if "Unlimited Blade Works" in monster.modifiers:
+                damage_taken_base *= 2
+                print(f'*2 UBW: {damage_taken_base}')
 
             # percent damage reduction for pdr
-            # print(f"Previous damage taken {damage_taken_base}")
+            print(f"Previous damage taken {damage_taken_base}")
             damage_taken_base = max(0, int(damage_taken_base * (1 - (player.pdr / 100))))
-            # print(f"After % damage taken {damage_taken_base}")
+            print(f"After % damage taken {damage_taken_base}")
             damage_taken_base = max(0, damage_taken_base - player.fdr)
-            # print(f"After flat damage taken {damage_taken_base}")
+            print(f"After flat damage taken {damage_taken_base}")
             # Minions (Summoner, Infernal Legion)
             minion_additional_damage = 0
             if "Summoner" in monster.modifiers:
-                minion_additional_damage = int(damage_taken_base * (1/3)) # Summoner minions add 1/3 of main hit
+                minion_additional_damage += int(damage_taken_base * (1/3)) # Summoner minions add 1/3 of main hit
+                print(f'*1/3 Summoner: {minion_additional_damage}')
             if "Infernal Legion" in monster.modifiers: # IL echoes the full hit as extra
-                minion_additional_damage = damage_taken_base 
+                minion_additional_damage += damage_taken_base 
+                print(f'+100% Infernal Legion: {minion_additional_damage}')
 
             total_damage_before_block_ward = damage_taken_base + minion_additional_damage
-
+            print(f"Total damage before block/ward: {total_damage_before_block_ward}")
             # Multistrike (monster hits again for 50% damage)
             multistrike_damage = 0
             if "Multistrike" in monster.modifiers and random.random() <= effective_hit_chance: # Check hit for multistrike
                 multistrike_damage = int(calculate_damage_taken(player, monster) * 0.5) # 50% of a new damage roll
                 total_damage_before_block_ward += multistrike_damage
-
+                print(f"+Multistrike {multistrike_damage}")
             # Executioner (high damage proc)
             is_executed = False
             if "Executioner" in monster.modifiers and random.random() < 0.01: # 1% chance
@@ -847,6 +858,7 @@ class Combat(commands.Cog, name="combat"):
 
             # Player Block
             final_damage_to_player = total_damage_before_block_ward
+            print(f"FINAL DAMAGE TO PLAYER: {final_damage_to_player}")
             is_blocked = False
             block_chance_calc = player.block / 100
 
@@ -861,7 +873,6 @@ class Combat(commands.Cog, name="combat"):
                 final_damage_to_player = 0 # Block negates all damage
                 is_dodged = True
 
-            # Apply damage to Ward first, then HP
             # Apply damage to Ward first, then HP
             if not is_blocked or not is_dodged: # Ensure is_blocked/is_dodged are defined
                 damage_dealt_this_turn = 0 # Track actual damage to player HP/Ward for Vampiric
@@ -1798,6 +1809,8 @@ class Combat(commands.Cog, name="combat"):
         while True: 
             player.attack = player_save.attack
             player.defence = player_save.defence
+            player.pdr = player_save.pdr
+            player.fdr = player_save.fdr
             print(player)
             monster_object_template = Monster(name="",level=0,hp=0,max_hp=0,xp=0,attack=0,defence=0,modifiers=[],image="",flavor="",is_boss=True)
             monster = await generate_ascent_monster(player, monster_object_template, current_monster_base_level, current_normal_mods, current_boss_mods)
@@ -1931,7 +1944,50 @@ class Combat(commands.Cog, name="combat"):
 
                 stage_clear_embed.add_field(name="📚 Stage XP Gained", value=f"{final_xp_award_stage:,} XP")
                 stage_clear_embed.add_field(name="💰 Stage Gold Acquired", value=f"{final_gold_award_stage:,} GP")
-                
+                # Glove Passive: equilibrium (add pending XP)
+                if hasattr(player, 'equilibrium_bonus_xp_pending') and player.equilibrium_bonus_xp_pending > 0:
+                    monster.xp += player.equilibrium_bonus_xp_pending
+                    stage_clear_embed.add_field(name="Glove Passive: Equilibrium", 
+                                    value=f"Your gloves siphon an extra **{player.equilibrium_bonus_xp_pending:,}** XP!", 
+                                    inline=False)
+                    player.equilibrium_bonus_xp_pending = 0 # Reset for next combat
+
+                # Glove Passive: plundering (add pending gold)
+                if hasattr(player, 'plundering_bonus_gold_pending') and player.plundering_bonus_gold_pending > 0:
+                    final_gold_award += player.plundering_bonus_gold_pending
+                    stage_clear_embed.add_field(name="Glove Passive: Plundering", 
+                                    value=f"Your gloves snatch an extra **{player.plundering_bonus_gold_pending:,}** Gold!", 
+                                    inline=False)
+                    player.plundering_bonus_gold_pending = 0 # Reset
+
+                if player.boot_passive == "skiller" and player.boot_passive_lvl > 0:
+                    skiller_proc_chance = player.boot_passive_lvl * 0.05 # 5% per level
+                    if random.random() < skiller_proc_chance:
+                        self.bot.logger.info("Skiller passive proc'd!")
+                        skill_type_roll = random.randint(1, 3) # 1: mining, 2: woodcutting, 3: fishing
+                        resource_messages = []
+
+                        if skill_type_roll == 1: # Mining
+                            mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+                            resources = await self.skills_cog.gather_mining_resources(mining_data[2])
+                            await self.bot.database.update_mining_resources(user_id, server_id, resources)
+                            resource_messages.append(f"grants you some additional ores!")
+                        elif skill_type_roll == 2: # Woodcutting
+                            woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+                            resources = await self.skills_cog.gather_woodcutting_resources(woodcutting_data[2])
+                            await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
+                            resource_messages.append(f"grants you some additional wood!")
+                        else: # Fishing
+                            fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+                            resources = await self.skills_cog.gather_fishing_resources(fishing_data[2])
+                            await self.bot.database.update_fishing_resources(user_id, server_id, resources)
+                            resource_messages.append(f"grants you some additional fish!")
+                        
+                        if resource_messages:
+                            stage_clear_embed.add_field(name="Boot Passive: Skiller", 
+                                            value="Your boots guide you to extra resources and it " + " and ".join(resource_messages), 
+                                            inline=False)
+
                 stage_clear_embed.add_field(
                     name="--- Total Ascent Earnings So Far ---", 
                     value=(f"Cumulative XP: {cumulative_xp_earned_ascent:,}\n"

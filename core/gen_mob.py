@@ -361,11 +361,11 @@ def get_modifier_description(modifier):
         "Dodgy": "Evasion increased by 10%",
         "Prescient": "10% more likely to hit",
         "Vampiric": "Heals for 10 times damage dealt",
-        "Celestial Watcher": "Never miss", # Start boss list here
-        "Unlimited Blade Works": "Double damage",
-        "Hell's Fury": "+5 each successful hit",
-        "Absolute": "+25 Attack, +25 defence",
-        "Infernal Legion": "Has minions that echo hits",
-        "Overwhelm" : "Disables ward, cannot be blocked, cannot be evaded",
+        "Celestial Watcher": "Never miss (boss)", # Start boss list here
+        "Unlimited Blade Works": "Double damage (boss)",
+        "Hell's Fury": "+5 each successful hit (boss)",
+        "Absolute": "+25 Attack, +25 defence (boss)",
+        "Infernal Legion": "Has minions that echo hits (boss)",
+        "Overwhelm" : "Disables ward on start, cannot be blocked, cannot be evaded (boss)",
     }
     return descriptions.get(modifier, "") 
