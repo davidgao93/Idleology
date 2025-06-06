@@ -3,7 +3,7 @@ import random
 def calculate_hit_chance(player, monster):
     """Calculate the chance to hit based on the player's attack and monster's defence."""
     difference = player.attack - monster.defence
-    print(f"p.atk {player.attack} - m.def {monster.defence}: {difference}")
+    # print(f"p.atk {player.attack} - m.def {monster.defence}: {difference}")
     if player.attack <= 10:
         return 0.9
     elif player.attack <= 20:

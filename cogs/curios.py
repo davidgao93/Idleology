@@ -1,15 +1,10 @@
 import discord
-from discord import app_commands, Interaction, Message, ButtonStyle
+from discord import app_commands, Interaction, ButtonStyle
 from discord.ext import commands
 from discord.ui import Button, View
-from datetime import datetime, timedelta
 from core.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot
-from .skills import Skills
-import asyncio
 import random
 import csv
-import re
-import math
 
 
 class CurioView(View):

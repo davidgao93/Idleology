@@ -77,18 +77,27 @@ class Character(commands.Cog, name="character"):
 
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
         if existing_user:
+            ascension = existing_user[15]
+            if ascension > 0:
+                title = f"{existing_user[3]} (Ascension {ascension} 🌟)"
+            else:
+                title = f"{existing_user[3]}"
+
+            # Create the embed with the constructed title
             embed = discord.Embed(
-                title=f"{existing_user[3]}'s Stats",
+                title=title,
                 color=0x00FF00,
             )
             embed.set_thumbnail(url=existing_user[7]) # user portrait
             equipped_item = await self.bot.database.get_equipped_weapon(user_id)
             equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
             equipped_armor = await self.bot.database.get_equipped_armor(user_id)
-
+            equipped_glove = await self.bot.database.get_equipped_glove(user_id)
+            equipped_boot = await self.bot.database.get_equipped_boot(user_id)
             # Calculate base attack and defense
             base_attack = existing_user[9]
             base_defense = existing_user[10]
+            
             add_atk = 0
             add_def = 0
             add_rar = 0
@@ -96,21 +105,63 @@ class Character(commands.Cog, name="character"):
             ward = 0
             block = 0
             evasion = 0
+            pdr = 0
+            fdr = 0
+            weapon_passive = ""
+            pinnacle_passive = ""
+            utmost_passive = ""
+            acc_passive = ""
+            armor_passive = ""
+            glove_passive = ""
+            boot_passive = ""
+            passive_list = ""
+
             if equipped_item:
                 add_atk += equipped_item[4]
                 add_def += equipped_item[5]
                 add_rar += equipped_item[6]
+                weapon_passive = equipped_item[7]
+                pinnacle_passive = equipped_item[12]
+                utmost_passive = equipped_item[13]
+                weapon_passives = [weapon_passive.title()]
+                if pinnacle_passive != "none":
+                    weapon_passives.append(pinnacle_passive.title())
+                if utmost_passive != "none":
+                    weapon_passives.append(utmost_passive.title())
+                passive_list += "Weapon: " + ", ".join(weapon_passives) + "\n"
             if equipped_accessory:
                 add_atk += equipped_accessory[4]
                 add_def += equipped_accessory[5]
                 add_rar += equipped_accessory[6]
                 # Add crit and ward if they exist
-                crit = equipped_accessory[8]
-                ward = equipped_accessory[7]
+                crit += equipped_accessory[8]
+                ward += equipped_accessory[7]
+                acc_passive = equipped_accessory[9]
+                passive_list += "Accessory: " + (acc_passive if acc_passive else "None") + "\n"
             if equipped_armor:
-                ward = equipped_armor[6]
-                block = equipped_armor[4]
-                evasion = equipped_armor[5]
+                ward += equipped_armor[6]
+                block += equipped_armor[4]
+                evasion += equipped_armor[5]
+                pdr += equipped_armor[11]
+                fdr += equipped_armor[12]
+                armor_passive = equipped_armor[7]
+                passive_list += "Armor: " + (armor_passive if armor_passive else "None") + "\n"
+            if equipped_glove:
+                add_atk += equipped_glove[4]
+                add_def += equipped_glove[5]
+                ward += equipped_glove[6]
+                pdr += equipped_glove[7]
+                fdr += equipped_glove[8]
+                glove_passive = equipped_glove[9]
+                passive_list += "Gloves: " + (glove_passive.title() if glove_passive else "None") + "\n"
+            if equipped_boot:
+                add_atk += equipped_boot[4]
+                add_def += equipped_boot[5]
+                ward += equipped_boot[6]
+                pdr += equipped_boot[7]
+                fdr += equipped_boot[8]
+                boot_passive = equipped_boot[9]
+                passive_list += "Boots: " + (boot_passive.title() if boot_passive else "None")
 
             # Fetch experience table
             with open('assets/exp.json') as file:
@@ -128,10 +179,13 @@ class Character(commands.Cog, name="character"):
             # Add the character stats to the embed
             embed.add_field(name="Level ⭐", value=existing_user[4], inline=True)
             embed.add_field(name="Experience ✨", value=f"{current_exp:,} ({exp_percentage:.2f}%)", inline=True)
+            embed.add_field(name="HP ❤️", value=f"{existing_user[11]}/{existing_user[15]}", inline=True)
             attack_display = f"{base_attack} (+{add_atk})" if add_atk > 0 else f"{base_attack}"
             embed.add_field(name="Attack ⚔️", value=attack_display, inline=True)
             defense_display = f"{base_defense} (+{add_def})" if add_def > 0 else f"{base_defense}"
             embed.add_field(name="Defense 🛡️", value=defense_display, inline=True)
+            if (add_rar > 0):
+                embed.add_field(name="Rarity 🪄", value=f"{add_rar}%", inline=True)
             if (crit > 0):
                 embed.add_field(name="Crit 🗡️", value=f"{crit}%", inline=True)
             if (block > 0): 
@@ -140,13 +194,12 @@ class Character(commands.Cog, name="character"):
                 embed.add_field(name="Evasion 🏃‍♂️", value=f"{evasion}", inline=True)
             if (ward > 0): 
                 embed.add_field(name="Ward 🔮", value=f"{ward}% ({int(existing_user[12]*ward/100)})", inline=True)
-            if (add_rar > 0):
-                embed.add_field(name="Rarity 🪄", value=f"{add_rar}%", inline=True)
-            embed.add_field(name="Current HP ❤️", value=existing_user[11], inline=True)
-            embed.add_field(name="Maximum HP ❤️", value=existing_user[12], inline=True) 
-            ascension = existing_user[15]
-            if (ascension > 0):
-                embed.add_field(name="Ascension 🌟", value=ascension, inline=True)
+            if (pdr > 0): 
+                embed.add_field(name="PDR% 🔻", value=f"{pdr}%", inline=True)
+            if (fdr > 0): 
+                embed.add_field(name="FDR 🔻", value=f"{fdr}", inline=True)
+            if (passive_list):
+                embed.add_field(name="__Passives__", value=f"{passive_list}", inline=False)
 
             await interaction.response.send_message(embed=embed)
             message: Message = await interaction.original_response()

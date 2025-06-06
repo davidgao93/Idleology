@@ -4,7 +4,6 @@ from discord.ext import commands
 from discord.ui import Button, View
 from datetime import datetime, timedelta
 from core.loot import generate_weapon, generate_armor, generate_accessory
-from .skills import Skills
 import asyncio
 import random
 import csv

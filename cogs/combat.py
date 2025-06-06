@@ -26,6 +26,8 @@ class Combat(commands.Cog, name="combat"):
         self.bot = bot
         # Cooldown can be a class attribute if it's fixed or loaded from config
         self.COMBAT_COOLDOWN_DURATION = timedelta(minutes=10) 
+        self.update_combat = True
+        self.skills_cog = bot.get_cog("skills")
         
     def load_exp_table(self):
         with open('assets/exp.json') as file:
@@ -231,7 +233,7 @@ class Combat(commands.Cog, name="combat"):
                     player.attack += absorb_amount
                     player.defence += absorb_amount
                     embed_to_modify.add_field(name="Accessory Passive",
-                                            value=f"The accessory's 🌀 **Absorb (Lvl {player.acc_lvl})** activates!\n"
+                                            value=f"The accessory's 🌀 **Absorb ({player.acc_lvl})** activates!\n"
                                                   f"⚔️ Attack boosted by **{absorb_amount}**\n"
                                                   f"🛡️ Defence boosted by **{absorb_amount}**",
                                             inline=False)
@@ -280,8 +282,8 @@ class Combat(commands.Cog, name="combat"):
                     return
             except ValueError:
                 self.bot.logger.warning(f"Invalid datetime format for last_combat_time for user {user_id}: {last_combat_time_str}")
-        
-        await self.bot.database.update_combat_time(user_id)
+        if (self.update_combat):
+            await self.bot.database.update_combat_time(user_id)
         self.bot.state_manager.set_active(user_id, "combat")
         
         player = await self._initialize_player_for_combat(user_id, existing_user)
@@ -578,13 +580,13 @@ class Combat(commands.Cog, name="combat"):
                 # 160/170/180/190/200% based on level
                 instability_bonus = 1.50 + (player.glove_passive_lvl * 0.10) 
                 attack_multiplier *= instability_bonus
-            passive_message += f"**Instability (Lvl {player.glove_passive_lvl})** causes chaotic energy! Attack multiplier adjusted to {attack_multiplier:.2f}x.\n"
+            passive_message += f"**Instability ({player.glove_passive_lvl})** gives you {attack_multiplier * 100}% damage.\n"
 
 
         if player.acc_passive == "Obliterate":
             double_damage_chance = player.acc_lvl * 0.02 # 2% per level
             if random.random() <= double_damage_chance:
-                passive_message += f"**Obliterate (Lvl {player.acc_lvl})** activates, doubling 💥 damage dealt!\n"
+                passive_message += f"**Obliterate ({player.acc_lvl})** activates, doubling 💥 damage dealt!\n"
                 attack_multiplier *= 2.0
 
         if player.armor_passive == "Mystical Might" and random.random() < 0.2:
@@ -605,10 +607,10 @@ class Combat(commands.Cog, name="combat"):
             if random.random() <= lucky_strike_chance:
                 attack_roll2 = random.randint(0, 100)
                 attack_roll = max(attack_roll, attack_roll2) # Take the better roll
-                passive_message += f"**Lucky Strikes (Lvl {player.acc_lvl})** activates! Hit chance is now 🍀 lucky!\n"
+                passive_message += f"**Lucky Strikes ({player.acc_lvl})** activates! Hit chance is now 🍀 lucky!\n"
 
         if "Suffocator" in monster.modifiers and random.random() < 0.2:
-            passive_message += f"The {monster.name}'s **Suffocator** aura attempts to stifle your attack! Hit chance is now 💀 unlucky!\n"
+            passive_message += f"The {monster.name}'s **Suffocator** aura stifles your attack! Hit chance is now 💀 unlucky!\n"
             attack_roll2 = random.randint(0, 100)
             attack_roll = min(attack_roll, attack_roll2) # Take the worse roll
             
@@ -637,7 +639,7 @@ class Combat(commands.Cog, name="combat"):
             if player.glove_passive == "deftness" and player.glove_passive_lvl > 0:
                 crit_damage_floor_multiplier += (player.glove_passive_lvl * 0.05) # 5% per level
                 crit_damage_floor_multiplier = min(crit_damage_floor_multiplier, 0.75) # Cap at 75%
-                passive_message += f"**Deftness (Lvl {player.glove_passive_lvl})** bolsters your critical precision!\n"
+                passive_message += f"**Deftness ({player.glove_passive_lvl})** increases your crit!\n"
             
             crit_min_damage_part = int(max_hit_calc * crit_damage_floor_multiplier) + 1
             crit_max_damage_part = max_hit_calc
@@ -663,7 +665,7 @@ class Combat(commands.Cog, name="combat"):
             if player.glove_passive == "adroit" and player.glove_passive_lvl > 0:
                 adroit_floor_increase_percentage = player.glove_passive_lvl * 0.02 # 2% per level
                 base_damage_min = max(base_damage_min, int(base_damage_max * adroit_floor_increase_percentage))
-                passive_message += f"**Adroit (Lvl {player.glove_passive_lvl})** sharpens your technique, ensuring a solid hit!\n"
+                passive_message += f"**Adroit ({player.glove_passive_lvl})** sharpens your technique, increasing your hit!\n"
 
 
             base_damage_max, attack_message = check_for_burn_bonus(player, base_damage_max, attack_message)
@@ -699,13 +701,13 @@ class Combat(commands.Cog, name="combat"):
 
         # Glove passives: ward-touched and ward-fused (Applied after Titanium, based on damage dealt before monster reduction)
         generated_ward_this_turn = 0
-        if player.glove_passive == "ward-touched" and player.glove_passive_lvl > 0 and actual_hit_pre_ward_gen > 0: # Use pre-titanium damage
+        if not is_crit and player.glove_passive == "ward-touched" and player.glove_passive_lvl > 0 and actual_hit_pre_ward_gen > 0: # Use pre-titanium damage
             ward_gain_percentage = player.glove_passive_lvl * 0.01 # 1% per level
             ward_gained = int(actual_hit_pre_ward_gen * ward_gain_percentage)
             if ward_gained > 0:
                 player.ward += ward_gained
                 generated_ward_this_turn += ward_gained
-                attack_message += f"\n**Ward-Touched (Lvl {player.glove_passive_lvl})** pulses, generating 🔮 **{ward_gained}** ward!"
+                attack_message += f"\n**Your Ward-Touched ({player.glove_passive_lvl})** generates 🔮 **{ward_gained}** ward!"
         
         if is_crit and player.glove_passive == "ward-fused" and player.glove_passive_lvl > 0 and actual_hit_pre_ward_gen > 0:
             ward_gain_percentage_fused = player.glove_passive_lvl * 0.02 # 2% per level on crit
@@ -713,7 +715,7 @@ class Combat(commands.Cog, name="combat"):
             if ward_gained_fused > 0:
                 player.ward += ward_gained_fused
                 generated_ward_this_turn += ward_gained_fused
-                attack_message += f"\n**Ward-Fused (Lvl {player.glove_passive_lvl})** ignites on critical, generating 🔮 **{ward_gained_fused}** ward!"
+                attack_message += f"\n**Your Ward-Fused ({player.glove_passive_lvl})** generates 🔮 **{ward_gained_fused}** ward!"
 
         # Prevent overkill unless it's a killing blow / Time Lord check (uses actual_hit after Titanium)
         if actual_hit >= monster.hp: 
@@ -1023,11 +1025,12 @@ class Combat(commands.Cog, name="combat"):
 
         rarity = player.rarity
         # Level-scaled drop chance: base 10%, boosted by rarity
-        base_drop_chance = 10
-        level_bonus = int(0.2 * (100 - player.level))
-        drop_chance = base_drop_chance + (player.rarity / 10) + level_bonus
+        base_drop_chance = 100
+        level_bonus = 0.2 * (100 - player.level)
+        diminish = 1.0 / (1 + (player.rarity / 1000))
+        drop_chance = int(base_drop_chance + (player.rarity / 10) * diminish + level_bonus)
         drop_roll = random.randint(1, 100)
-        self.bot.logger.info(f"Drop roll: {drop_roll}, Drop chance: {drop_chance}, Rarity: {rarity}")
+        self.bot.logger.info(f"Drop roll: {drop_roll}, Drop chance: {drop_chance}, Rarity: {rarity}, Reduced: {diminish}")
 
         gold_award = int((monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale ** 1.3)))
         if player.rarity > 0:
@@ -1073,12 +1076,14 @@ class Combat(commands.Cog, name="combat"):
         items = await self.bot.database.fetch_user_weapons(user_id)
         accs = await self.bot.database.fetch_user_accessories(user_id)
         arms = await self.bot.database.fetch_user_armors(user_id)
+        gloves = await self.bot.database.fetch_user_gloves(user_id)
+        boots = await self.bot.database.fetch_user_boots(user_id)
         item_dropped = False
 
         if drop_roll <= drop_chance:
             # Weighted item type selection
             item_type_roll = random.randint(1, 100)
-            if item_type_roll <= 50:  # 50% chance for weapon
+            if item_type_roll <= 40:  # 50% chance for weapon
                 if len(items) > 60:
                     embed.add_field(name="✨ Loot", value="Weapon pouch full!")
                 else:
@@ -1091,7 +1096,7 @@ class Combat(commands.Cog, name="combat"):
                         embed.set_thumbnail(url="https://i.imgur.com/1tcMeSe.jpeg")
                         await self.bot.database.update_refinement_runes(user_id, 1)
                     embed.add_field(name="✨ Loot", value=f"{weapon.description}", inline=False)
-            elif item_type_roll <= 80:  # 30% chance for accessory (50+30)
+            elif item_type_roll <= 60:  # 20% for acc
                 if len(accs) > 60:
                     embed.add_field(name="✨ Loot", value="Accessory pouch full!")
                 else:
@@ -1104,7 +1109,7 @@ class Combat(commands.Cog, name="combat"):
                         await self.bot.database.update_potential_runes(user_id, 1)
                         embed.set_thumbnail(url="https://i.imgur.com/aeorjQG.jpeg")
                     embed.add_field(name="✨ Loot", value=f"{acc.description}", inline=False)
-            else:  # 20% chance for armor (80+20)
+            elif item_type_roll <= 70:  # 10% chance for armor
                 if len(arms) > 60:
                     embed.add_field(name="✨ Loot", value="Armor pouch full!")
                 else:
@@ -1117,6 +1122,24 @@ class Combat(commands.Cog, name="combat"):
                         await self.bot.database.update_imbuing_runes(user_id, 1)
                         embed.set_thumbnail(url="https://i.imgur.com/MHgtUW8.png")
                     embed.add_field(name="✨ Loot", value=f"{armor.description}", inline=False)
+            elif item_type_roll <= 85:  # 15% chance for gloves
+                if len(gloves) > 60:
+                    embed.add_field(name="✨ Loot", value="Gloves pouch full!")
+                else:
+                    item_dropped = True
+                    glove = await generate_glove(user_id, monster.level)
+                    await self.bot.database.create_glove(glove)
+                    embed.set_thumbnail(url="https://i.imgur.com/mje37iC.png")
+                    embed.add_field(name="✨ Loot", value=f"{glove.description}", inline=False)
+            elif item_type_roll <= 100:  # 15% chance for boots
+                if len(boots) > 60:
+                    embed.add_field(name="✨ Loot", value="Boots pouch full!")
+                else:
+                    item_dropped = True
+                    boot = await generate_boot(user_id, monster.level)
+                    await self.bot.database.create_boot(boot)
+                    embed.set_thumbnail(url="https://i.imgur.com/MdA3WiG.png")
+                    embed.add_field(name="✨ Loot", value=f"{boot.description}", inline=False)
 
         if not item_dropped:
             embed.add_field(name="✨ Loot", value="None")
@@ -1648,6 +1671,8 @@ class Combat(commands.Cog, name="combat"):
         player.attack = existing_user[9]
         player.defence = existing_user[10]
         player.max_hp = existing_user[12]
+        if (player.hp > player.max_hp):
+            player.hp = player.max_hp
         exp_table = self.load_exp_table()
         new_exp = player.exp + monster.xp
         level_up = False
