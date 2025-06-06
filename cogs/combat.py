@@ -756,11 +756,11 @@ class Combat(commands.Cog, name="combat"):
     async def heal(self, player):
         self.bot.logger.info(f"Player has {player.potions} potions")
         if player.potions <= 0:
-            # ... (no potions message) ...
+            heal_message = f"{player.name} has no potions left to use!"
             return player, heal_message
 
         if player.hp >= player.max_hp:
-            # ... (already full HP message) ...
+            heal_message = f"{player.name} is already full HP!"
             return player, heal_message
 
         heal_percentage = 0.30 # Base 30%
@@ -1817,7 +1817,7 @@ class Combat(commands.Cog, name="combat"):
             player.defence = player_save.defence
             player.pdr = player_save.pdr
             player.fdr = player_save.fdr
-            print(player)
+            
             monster_object_template = Monster(name="",level=0,hp=0,max_hp=0,xp=0,attack=0,defence=0,modifiers=[],image="",flavor="",is_boss=True)
             monster = await generate_ascent_monster(player, monster_object_template, current_monster_base_level, current_normal_mods, current_boss_mods)
             self.bot.logger.info(f"Ascent Stage {ascent_stage}: P. Lvl {player.level}, "
@@ -1841,7 +1841,8 @@ class Combat(commands.Cog, name="combat"):
             embed.add_field(name="❤️ HP", value=hp_value, inline=True)
             
             await self._apply_combat_start_passives(player, monster, embed) # Apply relevant player passives
-
+            print('PLAYER FULLY INITIALIZED HERE')
+            print(player)
             embed.description = (f"A formidable foe bars your ascent: Level **{monster.level}** {monster.name}!\n"
                         f"\n__Modifiers ({len(monster.modifiers)})__\n" +
                         "\n".join([f"**{m}**: {get_modifier_description(m)}" for m in monster.modifiers]) +
