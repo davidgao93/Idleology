@@ -1816,6 +1816,7 @@ class Combat(commands.Cog, name="combat"):
             monster = await generate_ascent_monster(player, monster_object_template, current_monster_base_level, current_normal_mods, current_boss_mods)
             self.bot.logger.info(f"Ascent Stage {ascent_stage}: P. Lvl {player.level}, "
                                  f"Player Atk {player.attack}, P. Def {player.defence}, " 
+                                 f"Player PDR {player.pdr}, P. FDR {player.fdr}, " 
                                  f"Monster Lvl {monster.level}, M. ATK {monster.attack} M. DEF {monster.defence}")
             self.apply_stat_effects(player, monster) # Apply monster mods effects on player stats (e.g. Enfeeble)
 
