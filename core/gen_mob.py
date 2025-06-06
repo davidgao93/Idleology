@@ -344,7 +344,7 @@ def get_modifier_description(modifier):
         "Titanium": "Reduce incoming damage by 10%",
         "Ascended": "+10 Attack, +10 Defence",
         "Summoner": "Has minions that deal 33% damage",
-        "Shield-breaker": "Disables ward",
+        "Shield-breaker": "Disables ward at start of combat",
         "Impenetrable": "Base crit immunity",
         "Unblockable": "Cannot be blocked",
         "Unavoidable": "Cannot be evaded",

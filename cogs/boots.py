@@ -271,7 +271,7 @@ class Boots(commands.Cog, name="boots"):
             await message.edit(embed=embed, view=None); await asyncio.sleep(3); return
 
         # Costs for levels 0->1, 1->2, ..., 5->6
-        costs_for_boots = [500, 1000, 2000, 3000, 4000, 6000] # Added a 6th tier
+        costs_for_boots = [500, 2000, 5000, 10000, 20000, 30000] # Added a 6th tier
         improvement_cost = costs_for_boots[current_passive_lvl]
         
         success_rate_percent = max(75 - current_passive_lvl * 5, 25) # Keep floor at 25% for L5->L6 (50%)

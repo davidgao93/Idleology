@@ -183,8 +183,8 @@ class Gloves(commands.Cog, name="gloves"):
                         if g_attack > 0: item_embed.add_field(name="Attack", value=g_attack, inline=True)
                         if g_defence > 0: item_embed.add_field(name="Defence", value=g_defence, inline=True)
                         if g_ward > 0: item_embed.add_field(name="Ward", value=f"{g_ward}%", inline=True)
-                        if g_pdr > 0: item_embed.add_field(name="PDR", value=f"{g_pdr}%", inline=True)
-                        if g_fdr > 0: item_embed.add_field(name="FDR", value=g_fdr, inline=True)
+                        if g_pdr > 0: item_embed.add_field(name="Percent Damage Reduction", value=f"{g_pdr}%", inline=True)
+                        if g_fdr > 0: item_embed.add_field(name="Flat Damage Reduction", value=g_fdr, inline=True)
 
                         if g_passive != "none":
                             item_embed.add_field(name="Passive", value=f"{g_passive.replace('-', ' ').title()} (Lvl {g_passive_lvl})", inline=False)
@@ -309,7 +309,7 @@ class Gloves(commands.Cog, name="gloves"):
             return
 
         # Costs: 500, 1000, 2000, 3000, 4000 (for levels 0->1, 1->2, 2->3, 3->4, 4->5)
-        costs_for_glove = [500, 1000, 2000, 3000, 4000]
+        costs_for_glove = [500, 2000, 5000, 10000, 20000]
         if current_passive_lvl >= len(costs_for_glove): # Should be caught by max level check above
              embed = discord.Embed(title="Error", description="Cost calculation error for potential.", color=discord.Color.red())
              await message.edit(embed=embed, view=None)

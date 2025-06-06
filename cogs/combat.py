@@ -886,7 +886,7 @@ class Combat(commands.Cog, name="combat"):
                     heal_amount = damage_dealt_this_turn * 10
                     monster.hp = min(monster.max_hp, monster.hp + heal_amount)
                     monster_message += f"The monster's **Vampiric** essence siphons life, healing it for **{heal_amount}** HP!\n"
-                    
+
             else: # Damage was blocked or dodged
                 if is_blocked:
                     monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ blocks all damage!\n"
@@ -1761,7 +1761,7 @@ class Combat(commands.Cog, name="combat"):
         player_save = await self._initialize_player_for_combat(user_id, existing_user)
         # --- ASCENT VARIABLES ---
         # Start ascent monster level at player's current level or slightly higher for a challenge.
-        current_monster_base_level = player.level + player.ascension # Base level for the stage
+        current_monster_base_level = player.level + player.ascension + 3 # Base level for the stage
         current_normal_mods = 5
         current_boss_mods = 1
         ascent_stage = 1
