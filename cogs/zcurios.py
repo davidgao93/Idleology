@@ -169,13 +169,13 @@ class CurioView(View):
                         loot_descriptions.append(armor.description)
                 elif reward == "Level 100 Gloves":
                     for _ in range(count):
-                        gloves = await generate_glove(user_id, 100, drop_rune=False)
-                        await self.bot.database.create_gloves(gloves)
+                        gloves = await generate_glove(user_id, 100)
+                        await self.bot.database.create_glove(gloves)
                         loot_descriptions.append(gloves.description)
                 elif reward == "Level 100 Boots":
                     for _ in range(count):
-                        boots = await generate_boot(user_id, 100, drop_rune=False)
-                        await self.bot.database.create_boots(boots)
+                        boots = await generate_boot(user_id, 100)
+                        await self.bot.database.create_boot(boots)
                         loot_descriptions.append(boots.description)
                 elif reward == "Rune of Refinement":
                     await self.bot.database.update_refinement_runes(user_id, count)
@@ -385,14 +385,14 @@ class Curios(commands.Cog, name="curios"):
                 embed.add_field(name="✨ Loot", value=f"{armor.description}", inline=False)
             
             elif reward == "Level 100 Gloves":
-                gloves = await generate_glove(user_id, 100, drop_rune=False)
-                await self.bot.database.create_gloves(gloves)
+                gloves = await generate_glove(user_id, 100)
+                await self.bot.database.create_glove(gloves)
                 embed.add_field(name="✨ Loot", value=f"{gloves.description}", inline=False)
 
             elif reward == "Level 100 Boots":
                 for _ in range(count):
-                    boots = await generate_boot(user_id, 100, drop_rune=False)
-                    await self.bot.database.create_boots(boots)
+                    boots = await generate_boot(user_id, 100)
+                    await self.bot.database.create_boot(boots)
                     embed.add_field(name="✨ Loot", value=f"{boots.description}", inline=False)
             
             elif selected_reward == "Rune of Refinement":
