@@ -79,6 +79,7 @@ async def generate_accessory(user_id: str, level: int, drop_rune: bool) -> str:
         ward=0,
         crit=0,
         passive="",
+        passive_lvl=0,
         description=f"**{acc_name}**\n(Level {level})\n"
     )
     
@@ -140,15 +141,15 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
     if randroll <= 30:  # 30% chance for block roll
         block_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
         armor.block = block_modifier
-        armor.description += f"+{block_modifier} Block"
+        armor.description += f"+{block_modifier} Block\n"
     elif randroll > 30 and randroll <= 60:  # 30% chance for evasion roll
         evasion_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
         armor.evasion = evasion_modifier
-        armor.description += f"+{evasion_modifier} Evasion"
+        armor.description += f"+{evasion_modifier} Evasion\n"
     elif randroll > 60 and randroll <= 90:  # 30% chance for ward roll
         ward_modifier = max(1, random.randint(int(level // 7), int(level // 5))) * 2
         armor.ward = ward_modifier
-        armor.description += f"+{ward_modifier}% Ward"
+        armor.description += f"+{ward_modifier}% Ward\n"
     else:
         armor.name = "Rune of Imbuing"
         armor.description = f"{armor.name}\nPotentially imbues a powerful passive onto your armor."
@@ -157,10 +158,11 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
     if (random.random() < 0.5):
         pdr_mod = max(1, random.randint(int(level // 33), int(level // 16)))
         armor.pdr = pdr_mod
+        armor.description += f"+{armor.pdr}% Percent Damage Reduction"
     else:
         fdr_mod = max(1, random.randint(int(level // 100), int(level // 25)))
         armor.fdr = fdr_mod
-
+        armor.description += f"+{armor.fdr} Flat Damage Reduction"
 
     return armor
 

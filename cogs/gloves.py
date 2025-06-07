@@ -205,7 +205,7 @@ class Gloves(commands.Cog, name="gloves"):
                         action_view = View(timeout=60.0)
                         action_view.add_item(Button(label="Unequip" if g_is_equipped else "Equip", style=ButtonStyle.primary, custom_id="equip_unequip"))
                         if g_potential_rem > 0:
-                            action_view.add_item(Button(label="Improve Potential", style=ButtonStyle.success, custom_id="improve"))
+                            action_view.add_item(Button(label="Enchant", style=ButtonStyle.success, custom_id="improve"))
                         action_view.add_item(Button(label="Send", style=ButtonStyle.secondary, custom_id="send"))
                         action_view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))
                         action_view.add_item(Button(label="Back", style=ButtonStyle.grey, custom_id="back"))
@@ -297,13 +297,13 @@ class Gloves(commands.Cog, name="gloves"):
         current_passive_lvl = selected_glove[12]
 
         if potential_remaining <= 0:
-            embed = discord.Embed(title="Error", description=f"**{glove_name}** has no potential remaining.", color=discord.Color.red())
+            embed = discord.Embed(title="Error", description=f"**{glove_name}** has no enchant attempts remaining.", color=discord.Color.red())
             await message.edit(embed=embed, view=None)
             await asyncio.sleep(3)
             return
 
         if current_passive_lvl >= 5: # Max potential level is 5
-            embed = discord.Embed(title="Max Potential", description=f"**{glove_name}** is already at its maximum potential (Lvl 5).", color=discord.Color.gold())
+            embed = discord.Embed(title="Max Level", description=f"**{glove_name}** is already at its maximum enchantment (Lvl 5).", color=discord.Color.gold())
             await message.edit(embed=embed, view=None)
             await asyncio.sleep(3)
             return
@@ -311,7 +311,7 @@ class Gloves(commands.Cog, name="gloves"):
         # Costs: 500, 1000, 2000, 3000, 4000 (for levels 0->1, 1->2, 2->3, 3->4, 4->5)
         costs_for_glove = [500, 2000, 5000, 10000, 20000]
         if current_passive_lvl >= len(costs_for_glove): # Should be caught by max level check above
-             embed = discord.Embed(title="Error", description="Cost calculation error for potential.", color=discord.Color.red())
+             embed = discord.Embed(title="Error", description="Cost calculation error for enchanting.", color=discord.Color.red())
              await message.edit(embed=embed, view=None)
              await asyncio.sleep(3)
              return
@@ -324,8 +324,8 @@ class Gloves(commands.Cog, name="gloves"):
 
         title_keyword = "Enchant" if current_passive == "none" else "Enhance"
         confirm_embed = discord.Embed(
-            title=f"{title_keyword} Potential",
-            description=(f"Attempt to {title_keyword.lower()} **{glove_name}**'s potential?\n"
+            title=f"{title_keyword} Attempt",
+            description=(f"Attempt to {title_keyword.lower()} **{glove_name}**?\n"
                          f"Current Passive Level: {current_passive_lvl}\n"
                          f"Attempts left: **{potential_remaining}**\n"
                          f"Cost: **{improvement_cost:,} GP**\n"

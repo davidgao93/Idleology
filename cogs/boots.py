@@ -263,11 +263,11 @@ class Boots(commands.Cog, name="boots"):
         current_passive_lvl = selected_boot[12]
 
         if potential_remaining <= 0:
-            embed = discord.Embed(title="Error", description=f"**{boot_name}** has no potential remaining.", color=discord.Color.red())
+            embed = discord.Embed(title="Error", description=f"**{boot_name}** has no enchant attempts remaining.", color=discord.Color.red())
             await message.edit(embed=embed, view=None); await asyncio.sleep(3); return
 
         if current_passive_lvl >= 6: # Max potential level 6 for boots
-            embed = discord.Embed(title="Max Enchantment", description=f"**{boot_name}** is already at its maximum potential (Lvl 6).", color=discord.Color.gold())
+            embed = discord.Embed(title="Max Enchantment", description=f"**{boot_name}** is already at its maximum enchantment (Lvl 6).", color=discord.Color.gold())
             await message.edit(embed=embed, view=None); await asyncio.sleep(3); return
 
         # Costs for levels 0->1, 1->2, ..., 5->6
@@ -278,8 +278,8 @@ class Boots(commands.Cog, name="boots"):
 
         title_keyword = "Enchant" if current_passive == "none" else "Enhance"
         confirm_embed = discord.Embed(
-            title=f"{title_keyword} Boot Enchantment",
-            description=(f"Attempt to {title_keyword.lower()} **{boot_name}**'s potential?\n"
+            title=f"{title_keyword} Attempt",
+            description=(f"Attempt to {title_keyword.lower()} **{boot_name}**?\n"
                          f"Current Passive Level: {current_passive_lvl}\n"
                          f"Attempts left: **{potential_remaining}**\n"
                          f"Cost: **{improvement_cost:,} GP**\n"

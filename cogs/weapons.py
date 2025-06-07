@@ -481,7 +481,13 @@ class Weapons(commands.Cog, name="weapons"):
         server_id = str(interaction.guild.id)
         item_id = selected_item[0]
         item_name = selected_item[2]
+        item_atk = selected_item[4]
+        item_def = selected_item[5]
+        item_rar = selected_item[6]
         runes_back = int((selected_item[11]) - 5 * 0.8)
+        if item_atk > 0 and item_def > 0 and item_rar > 0:
+            runes_back += 1
+        
         confirm_embed = discord.Embed( # Create new embed for discard
             title="Confirm Shatter",
             description=f"Are you sure you want to shatter **{item_name}**?\n"
