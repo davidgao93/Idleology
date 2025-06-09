@@ -297,7 +297,7 @@ class Weapons(commands.Cog, name="weapons"):
                                     error_embed = embed.copy()
                                     error_embed.add_field(name="Error", value="You should probably unequip the weapon before sending it. Returning...", inline=False)
                                     await message.edit(embed=error_embed, view=None) # Remove buttons during error
-                                    await asyncio.sleep(3)
+                                    await asyncio.sleep(1)
                                     # No continue here, will re-render the item view with buttons below
                                     # Actually, we want to break to go back to item list or continue to re-render item details
                                     # If we `continue` here, it re-renders the item, which is correct.
@@ -347,7 +347,7 @@ class Weapons(commands.Cog, name="weapons"):
                                         err_embed = embed.copy()
                                         err_embed.add_field(name="Error Sending", value="\n".join(error_messages_send) + "\nReturning...", inline=False)
                                         await message.edit(embed=err_embed, view=None)
-                                        await asyncio.sleep(4)
+                                        await asyncio.sleep(2)
                                         continue # Back to item details view
 
                                     # If all checks pass, proceed to confirmation
@@ -371,7 +371,7 @@ class Weapons(commands.Cog, name="weapons"):
                                             confirm_embed.clear_fields()
                                             confirm_embed.add_field(name="Weapon Sent", value=f"Sent **{item_name}** to {receiver.mention}! 🎉", inline=False)
                                             await message.edit(embed=confirm_embed, view=None)
-                                            await asyncio.sleep(3)
+                                            await asyncio.sleep(1)
                                             break  # Return to weapon list (main pagination loop)
                                         else: # Cancel send
                                             # self.bot.state_manager.clear_active(user_id) # Don't clear, just go back to item view
@@ -380,13 +380,13 @@ class Weapons(commands.Cog, name="weapons"):
                                     except asyncio.TimeoutError:
                                         # Timeout on confirm send, edit message and then let item loop continue
                                         await message.edit(content="Send confirmation timed out.", embed=None, view=None)
-                                        await asyncio.sleep(3)
+                                        await asyncio.sleep(1)
                                         # self.bot.state_manager.clear_active(user_id) # No, stay in item view
                                         continue # Back to item details view (will re-render)
                                     
                                 except asyncio.TimeoutError: # Timeout on waiting for user mention
                                     await message.edit(content="Send weapon timed out while waiting for user mention.", embed=None, view=None)
-                                    await asyncio.sleep(3)
+                                    await asyncio.sleep(1)
                                     # self.bot.state_manager.clear_active(user_id)
                                     continue # Back to item details view (will re-render)
                             elif action_interaction.data['custom_id'] == "discard":
@@ -465,7 +465,7 @@ class Weapons(commands.Cog, name="weapons"):
         except asyncio.TimeoutError:
             # Timeout on discard confirmation
             await message.edit(content="Discard confirmation timed out.", embed=None, view=None) # Clear embed and view
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             # self.bot.state_manager.clear_active(interaction.user.id) # Don't clear, let outer loop handle
             return False # Not discarded
         
@@ -521,7 +521,7 @@ class Weapons(commands.Cog, name="weapons"):
         except asyncio.TimeoutError:
             # Timeout on discard confirmation
             await message.edit(content="Discard confirmation timed out.", embed=None, view=None) # Clear embed and view
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             # self.bot.state_manager.clear_active(interaction.user.id) # Don't clear, let outer loop handle
             return False # Not discarded
         
@@ -544,13 +544,13 @@ class Weapons(commands.Cog, name="weapons"):
         if not sacrifice_candidates:
             temp_embed.description = "Searching for eligible weapons..."
             await message.edit(embed=temp_embed, view=None)
-            await asyncio.sleep(1.5) # Simulate search
+            await asyncio.sleep(1) # Simulate search
             temp_embed.add_field(name="No Eligible Weapons", 
                                  value="You have no weapons suitable for voidforging sacrifice.\n"
                                        "Eligible weapons must have refinement level >= 5, 0 forges remaining, and not be equipped.", 
                                  inline=False)
             await message.edit(embed=temp_embed, view=None)
-            await asyncio.sleep(5)
+            await asyncio.sleep(2)
             return # Returns to item action loop, which will re-render the item details
 
         # 2. Display sacrificeable weapons and prompt for ID
@@ -608,7 +608,7 @@ class Weapons(commands.Cog, name="weapons"):
             
             except asyncio.TimeoutError:
                 await message.edit(content="Voidforge timed out while waiting for sacrifice ID. Returning to item menu.", embed=None, view=None)
-                await asyncio.sleep(3)
+                await asyncio.sleep(1)
                 return
 
         if not selected_sacrifice_weapon_data:
@@ -702,12 +702,12 @@ class Weapons(commands.Cog, name="weapons"):
                     color=discord.Color.green() if "Success" in outcome_message or "fusion" in outcome_message else discord.Color.red()
                 )
                 await message.edit(embed=final_embed, view=None)
-                await asyncio.sleep(8)
+                await asyncio.sleep(3)
                 return # Back to item action loop, will re-render item
 
         except asyncio.TimeoutError:
             await message.edit(content="Voidforge confirmation timed out. Returning to item menu.", embed=None, view=None)
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             return # Back to item action loop
 
 
@@ -727,7 +727,7 @@ class Weapons(commands.Cog, name="weapons"):
                 # Create a temporary embed for the error
                 error_embed = discord.Embed(title="Error", description="Item not found. It may have been removed.", color=discord.Color.red())
                 await message.edit(embed=error_embed, view=None)
-                await asyncio.sleep(3)
+                await asyncio.sleep(1)
                 return # Return to item action loop
 
             item_id = current_item_state[0]
@@ -785,7 +785,7 @@ class Weapons(commands.Cog, name="weapons"):
             if forges_remaining not in costs: # Should not happen if logic is correct
                 forge_embed.description = "Error determining forge costs. Returning..."
                 await message.edit(embed=forge_embed, view=None)
-                await asyncio.sleep(3)
+                await asyncio.sleep(1)
                 return
 
             ore_cost, wood_cost, bone_cost, gp_cost = costs[forges_remaining]
@@ -822,7 +822,7 @@ class Weapons(commands.Cog, name="weapons"):
                                         f"- **{bone_type.capitalize()}** Bones: **{bone_cost}** (You have: {actual_bones_owned})\n"
                                         f"- GP cost: **{gp_cost:,}** (You have: {player_gp:,})\nReturning...")
                 await message.edit(embed=forge_embed, view=None)
-                await asyncio.sleep(3)
+                await asyncio.sleep(1)
                 return
             
             forge_embed.description=(f"Attempt to forge **{item_name}**?\n"
@@ -858,7 +858,7 @@ class Weapons(commands.Cog, name="weapons"):
                     # Handle error appropriately, e.g., show message and return
                     forge_embed.description = f"Internal error: Invalid resource type for deduction ({ore_type})."
                     await message.edit(embed=forge_embed, view=None)
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(1)
                     return
                 await self.bot.database.update_mining_resources(user_id, server_id, mining_deduction)
 
@@ -869,7 +869,7 @@ class Weapons(commands.Cog, name="weapons"):
                     print(f"ERROR: Invalid log_type '{log_type}' for woodcutting deduction.")
                     forge_embed.description = f"Internal error: Invalid resource type for deduction ({log_type})."
                     await message.edit(embed=forge_embed, view=None)
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(1)
                     return
                 await self.bot.database.update_woodcutting_resources(user_id, server_id, woodcutting_deduction)
 
@@ -880,7 +880,7 @@ class Weapons(commands.Cog, name="weapons"):
                     print(f"ERROR: Invalid bone_type '{bone_type}' for fishing deduction.")
                     forge_embed.description = f"Internal error: Invalid resource type for deduction ({bone_type})."
                     await message.edit(embed=forge_embed, view=None)
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(1)
                     return
                 await self.bot.database.update_fishing_resources(user_id, server_id, fishing_deduction)
 
@@ -913,12 +913,12 @@ class Weapons(commands.Cog, name="weapons"):
             
                 await self.bot.database.update_weapon_forge_count(item_id, new_forges_remaining)
                 await message.edit(embed=forge_embed, view=None)
-                await asyncio.sleep(4)
+                await asyncio.sleep(1)
 
             except asyncio.TimeoutError:
                 # Timeout on forge confirmation
                 await message.edit(content="Forge confirmation timed out.", embed=None, view=None)
-                await asyncio.sleep(3)
+                await asyncio.sleep(1)
                 # self.bot.state_manager.clear_active(interaction.user.id) # Let item action loop handle this
                 return
 
@@ -967,7 +967,7 @@ class Weapons(commands.Cog, name="weapons"):
                 # Item might have been removed by another process
                 error_embed = discord.Embed(title="Error", description="Item not found. It may have been removed.", color=discord.Color.red())
                 await message.edit(embed=error_embed, view=None)
-                await asyncio.sleep(3)
+                await asyncio.sleep(1)
                 return # Return to item action loop
 
             item_id = current_item_state[0]
@@ -1012,14 +1012,14 @@ class Weapons(commands.Cog, name="weapons"):
                             return # Cancelled rune usage, back to item action menu
                     except asyncio.TimeoutError:
                         await message.edit(content="Rune usage timed out.", embed=None, view=None)
-                        await asyncio.sleep(3)
+                        await asyncio.sleep(1)
                         # self.bot.state_manager.clear_active(interaction.user.id) # Let item action loop handle
                         return # Back to item action menu
                 else: # No refines left and no runes
                     refine_embed.description = (f"**{item_name}** has no refine attempts remaining.\n"
                                                 "You also have no Runes of Refinement.\nReturning...")
                     await message.edit(embed=refine_embed, view=None)
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(1)
                     return # Back to item action menu
 
             # Determine cost based on updated refines_remaining
@@ -1060,7 +1060,7 @@ class Weapons(commands.Cog, name="weapons"):
                 if player_gold < cost:
                     refine_embed.description += f"\n\nNot enough gold. Returning..."
                     await message.edit(embed=refine_embed, view=None)
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(1)
                     return # Back to item action menu
 
                 await self.bot.database.update_user_gold(user_id, player_gold - cost) # Use specific update, not add
@@ -1119,13 +1119,12 @@ class Weapons(commands.Cog, name="weapons"):
 
                 refine_embed.description = ("\n".join(result_message_parts) + "\n\nItem saved.")
                 await message.edit(embed=refine_embed, view=None)
-                await asyncio.sleep(2)
+                await asyncio.sleep(1)
                 #return # Successfully refined, back to item action menu
                 
             except asyncio.TimeoutError: # Timeout on refine confirmation buttons
                 await message.edit(content="Refine confirmation timed out.", embed=None, view=None)
-                await asyncio.sleep(3)
-                # self.bot.state_manager.clear_active(interaction.user.id) # Let item action loop handle
+                await asyncio.sleep(1)
                 return # Back to item action menu
         # Fallthrough from while loop if something unexpected happens (should be caught by returns)
         return
