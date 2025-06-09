@@ -46,6 +46,7 @@ class Accessory:
     ward: int
     crit: int
     passive: str
+    passive_lvl: int
     description: str
 
 @dataclass

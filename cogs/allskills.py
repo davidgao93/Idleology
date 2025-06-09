@@ -12,13 +12,13 @@ class Skills(commands.Cog, name="skills"):
         self.event_channel_id = self.bot.config["channel_id"]  # Store channel ID as a string
         self.event_channel_id2 = self.bot.config["channel_id2"]
 
-    # @commands.Cog.listener()
-    # async def on_ready(self):
+    @commands.Cog.listener()
+    async def on_ready(self):
         if not self.schedule_skills.is_running():
             self.schedule_skills.start()
         
-    #     if not self.random_event.is_running():
-    #         self.random_event.start()
+        if not self.random_event.is_running():
+            self.random_event.start()
 
     @app_commands.command(name="skills", description="Check your skills and resources.")
     async def skills(self, interaction: Interaction):

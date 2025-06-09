@@ -484,7 +484,7 @@ class Weapons(commands.Cog, name="weapons"):
         item_atk = selected_item[4]
         item_def = selected_item[5]
         item_rar = selected_item[6]
-        runes_back = int((selected_item[11]) - 5 * 0.8)
+        runes_back = max(0, int((selected_item[11]) - 5 * 0.8))
         if item_atk > 0 and item_def > 0 and item_rar > 0:
             runes_back += 1
         

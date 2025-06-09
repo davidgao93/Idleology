@@ -1856,7 +1856,10 @@ class Combat(commands.Cog, name="combat"):
                 await message.edit(embed=embed)
                 await message.clear_reactions() 
 
-            reactions = ["⚔️", "🩹", "⏩", "🏃"] # Standard reactions for ascent
+            if (player.ascension < ascent_stage):
+                reactions = ["⏩", "🩹", "🏃"] # Standard reactions for ascent
+            else:
+                reactions = ["⏩", "🩹", "🏃", "🕒"]
             await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
 
             # --- INNER COMBAT LOOP (for the current monster) ---
@@ -1876,9 +1879,6 @@ class Combat(commands.Cog, name="combat"):
                             auto_battle_this_stage = False
                             pause_message = "Player HP < 20%, auto-battle paused!"
                             await interaction.followup.send(f'{interaction.user.mention} auto-combat paused for this stage!', ephemeral=True)
-                        else:
-                            action_emoji = "⚔️" # Simulate attack
-                            await asyncio.sleep(1) # Auto-battle delay
                     
                     if not action_emoji: # If not auto-battling or paused, wait for reaction
                         reaction_obj, reaction_user = await self.bot.wait_for('reaction_add', timeout=120.0, check=check_ascent_reaction)
@@ -1887,14 +1887,16 @@ class Combat(commands.Cog, name="combat"):
 
                     heal_message, attack_message, monster_message, pause_message = "", "", "", "" # Reset messages
 
-                    if action_emoji == "⚔️":
-                        monster, attack_message = await self.player_turn(player, monster)
-                        if monster.hp > 0: player, monster_message = await self.monster_turn(player, monster)
+                    if action_emoji == "🕒":
+                        auto_battle_this_stage = True
+                        #pause_message = "Auto-battle engaged for this stage!" # Brief indicator
+                        player, monster = await self.giga_auto_battle(interaction, message, embed, player, monster)
                     elif action_emoji == "🩹":
                         player, heal_message = await self.heal(player)
                     elif action_emoji == "⏩":
                         auto_battle_this_stage = True
-                        pause_message = "Auto-battle engaged for this stage!" # Brief indicator
+                        #pause_message = "Auto-battle engaged for this stage!" # Brief indicator
+                        player, monster = await self.auto_battle(interaction, message, embed, player, monster)
                     elif action_emoji == "🏃":
                         await message.clear_reactions()
                         retreat_message_value = (f"You retreated from the ascent at Stage {ascent_stage}.\n\n"
