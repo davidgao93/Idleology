@@ -377,12 +377,12 @@ class Character(commands.Cog, name="character"):
             return (user == interaction.user and 
                     str(reaction.emoji) in ["⚔️", "🛡️", "❤️", "❌"] and 
                     reaction.message.id == message.id)
+        await message.add_reaction("⚔️")  # Attack
+        await message.add_reaction("🛡️")  # Defense
+        await message.add_reaction("❤️")  # HP
+        await message.add_reaction("❌") # Leave
         
         while passive_points > 0:
-            await message.add_reaction("⚔️")  # Attack
-            await message.add_reaction("🛡️")  # Defense
-            await message.add_reaction("❤️")  # HP
-            await message.add_reaction("❌") # Leave
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=180.0, check=check)
                 if str(reaction.emoji) == "⚔️":
@@ -393,7 +393,7 @@ class Character(commands.Cog, name="character"):
                     await self.bot.database.increase_defence(user_id, 1)
                 elif str(reaction.emoji) == "❤️":
                     # Increment HP and decrement passive points
-                    await self.bot.database.update_player_max_hp(user_id, 1)
+                    await self.bot.database.increase_max_hp(user_id, 1)
                 elif str(reaction.emoji) == "❌":
                     await message.delete()
                     break

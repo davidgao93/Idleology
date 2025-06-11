@@ -1997,7 +1997,7 @@ class Combat(commands.Cog, name="combat"):
                             stage_clear_embed.add_field(name="Boot Passive: Skiller", 
                                             value="Your boots guide you to extra resources and it " + " and ".join(resource_messages), 
                                             inline=False)
-
+                await message.clear_reactions()
                 stage_clear_embed.add_field(
                     name="--- Total Ascent Earnings So Far ---", 
                     value=(f"Cumulative XP: {cumulative_xp_earned_ascent:,}\n"
@@ -2027,7 +2027,7 @@ class Combat(commands.Cog, name="combat"):
                         stage_clear_embed.add_field(name="✨ Special Reward!", value="Found a Void fragment!", inline=False)
                 
                 await message.edit(embed=stage_clear_embed)
-                await asyncio.sleep(4) 
+                await asyncio.sleep(1) 
 
                 await self.bot.database.add_gold(user_id, final_gold_award_stage)
                 temp_monster_for_stage_xp = Monster(name="",level=0,hp=0,max_hp=0,xp=final_xp_award_stage,attack=0,defence=0,modifiers=[],image="",flavor="")
