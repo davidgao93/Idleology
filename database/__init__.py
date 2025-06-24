@@ -1136,13 +1136,14 @@ class DatabaseManager:
         await self.connection.commit()
 
     async def fetch_top_users_by_level(self, limit: int = 10):
-        """Fetch the top users sorted by level."""
+        """Fetch the top users sorted by level and then by ascension."""
         rows = await self.connection.execute(
-            "SELECT * FROM users ORDER BY level DESC LIMIT ?",
+            "SELECT * FROM users ORDER BY level DESC, ascension DESC LIMIT ?",
             (limit,)
         )
         async with rows as cursor:
             return await cursor.fetchall()  # Returns the list of top users
+
 
 
     async def send_weapon(self, receiver_id: str, item_id: int) -> None:

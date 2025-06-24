@@ -22,7 +22,6 @@ class POETrivia(commands.Cog):
             "flaskoverview.json",     # Flasks
             "accessoryoverview.json", # Accessories
             "armouroverview.json",    # Armour
-            "jeweloverview.json"      # Jewels
         ]
         
         self.items = []
@@ -91,6 +90,10 @@ class POETrivia(commands.Cog):
     @app_commands.command(name="poe", description="Start a Path of Exile unique item guessing game")
     async def poe_trivia(self, interaction: discord.Interaction) -> None:
         """Starts a Path of Exile unique item guessing game"""
+        # Check if user is owner
+        if not await self.bot.is_owner(interaction.user):
+            await interaction.response.send_message("This command can only be used by the bot owner.", ephemeral=True)
+            return
         
         if self.game_active:
             await interaction.response.send_message("A game is already in progress!", ephemeral=True)
@@ -115,23 +118,13 @@ class POETrivia(commands.Cog):
         score_tracker = {}
         
         channel = interaction.channel
-        
-        # Create the main embed that we'll reuse throughout the game
-        main_embed = discord.Embed(
-            title="Path of Exile Unique Item Trivia",
-            description=f"Get ready for 10 rounds of POE guess the item! {len(self.items)} unique items in the pool.",
-            color=discord.Color.gold()
-        )
-        
-        # Send the initial embed and store the message for editing later
-        game_message = await interaction.followup.send(embed=main_embed)
+        await interaction.followup.send(f"Get ready for 10 rounds of POE trivia! {len(self.items)} unique items in the pool.")
         
         # Run 10 rounds
         for i in range(10):
             item = self.get_random_item()
             if not item:
-                main_embed.description = "Ran out of unique items! Game over."
-                await game_message.edit(embed=main_embed)
+                await channel.send("Ran out of unique items! Game over.")
                 break
             
             # Get item category
@@ -139,10 +132,12 @@ class POETrivia(commands.Cog):
             if "itemType" in item:
                 item_category = item["itemType"]
             
-            # Update the main embed for this round
-            main_embed.clear_fields()  # Clear previous fields
-            main_embed.title = f"Round {i+1}/10: Guess the Unique {item_category}!"
-            main_embed.description = f"**Base Type:** {item.get('baseType', 'Unknown')}\n**Required Level:** {item.get('levelRequired', 'Unknown')}"
+            # Create and send embed
+            embed = discord.Embed(
+                title=f"Round {i+1}/10: Guess the Unique {item_category}!",
+                description=f"**Base Type:** {item.get('baseType', 'Unknown')}\n**Required Level:** {item.get('levelRequired', 'Unknown')}",
+                color=discord.Color.gold()
+            )
             
             # Add mods to the embed
             mods_text = ""
@@ -151,7 +146,7 @@ class POETrivia(commands.Cog):
                     if not mod.get("optional", False):  # Only show non-optional mods
                         mods_text += f"• {mod['text']}\n"
             if mods_text:
-                main_embed.add_field(name="Properties", value=mods_text, inline=False)
+                embed.add_field(name="Properties", value=mods_text, inline=False)
             
             # Add implicit mods if available
             impl_text = ""
@@ -160,21 +155,20 @@ class POETrivia(commands.Cog):
                     if not mod.get("optional", False):
                         impl_text += f"• {mod['text']}\n"
                 if impl_text:
-                    main_embed.add_field(name="Implicit Modifiers", value=impl_text, inline=False)
+                    embed.add_field(name="Implicit Modifiers", value=impl_text, inline=False)
             
             # Add flavor text if available
             if "flavourText" in item and item["flavourText"]:
                 flavor = item["flavourText"].replace("\n", " ")
-                main_embed.add_field(name="Lore", value=f"*{flavor}*", inline=False)
+                embed.add_field(name="Lore", value=f"*{flavor}*", inline=False)
             
             # Add item image if available
             if "icon" in item and item["icon"]:
-                main_embed.set_thumbnail(url=item["icon"])
+                embed.set_thumbnail(url=item["icon"])
                 
-            main_embed.set_footer(text="You have 30 seconds to guess the name! (Minor variations are allowed)")
+            embed.set_footer(text="You have 30 seconds to guess the name! (Minor variations are allowed)")
             
-            # Edit the existing message with the updated embed
-            await game_message.edit(embed=main_embed)
+            await channel.send(embed=embed)
             
             # Normalize the correct answer for comparison
             correct_answer_normalized = self.normalize_item_name(item["name"])
@@ -213,27 +207,25 @@ class POETrivia(commands.Cog):
                 if got_curio:
                     score_tracker[msg.author.id]["curios"] += 1
                 
-                # Update embed with correct answer
-                main_embed.add_field(
-                    name="Correct!",
-                    value=f"{msg.author.mention} guessed correctly! The answer was **{item['name']}**.\n" +
-                        f"Rewards: {gold_amount:,} gold" + (" + 1 Curio!" if got_curio else ""),
-                    inline=False
+                # Send winner message
+                win_embed = discord.Embed(
+                    title="Correct!",
+                    description=f"{msg.author.mention} guessed correctly! The answer was **{item['name']}**.",
+                    color=discord.Color.green()
                 )
-                main_embed.color = discord.Color.green()
-                
-                await game_message.edit(embed=main_embed)
+                win_embed.add_field(name="Rewards", value=f"{gold_amount} gold" + (" + 1 Curio!" if got_curio else ""))
+                win_embed.set_thumbnail(url=item["icon"])
+                await channel.send(embed=win_embed)
                 
             except asyncio.TimeoutError:
                 # No correct answer in time
-                main_embed.add_field(
-                    name="Time's up!",
-                    value=f"Nobody guessed correctly. The answer was **{item['name']}**.",
-                    inline=False
+                timeout_embed = discord.Embed(
+                    title="Time's up!",
+                    description=f"Nobody guessed correctly. The answer was **{item['name']}**.",
+                    color=discord.Color.red()
                 )
-                main_embed.color = discord.Color.red()
-                
-                await game_message.edit(embed=main_embed)
+                timeout_embed.set_thumbnail(url=item["icon"])
+                await channel.send(embed=timeout_embed)
             
             # Brief pause between questions
             await asyncio.sleep(3)
@@ -241,11 +233,12 @@ class POETrivia(commands.Cog):
         # End the game and display the leaderboard
         self.game_active = False
         
-        # Update embed for the leaderboard
-        main_embed.clear_fields()
-        main_embed.title = "🏆 Path of Exile Trivia - Results 🏆"
-        main_embed.description = "Here's how everyone did in this game:"
-        main_embed.color = discord.Color.blue()
+        # Create leaderboard embed
+        leaderboard_embed = discord.Embed(
+            title="🏆 Path of Exile Trivia - Results 🏆",
+            description="Here's how everyone did in this game:",
+            color=discord.Color.blue()
+        )
         
         # Sort players by number of correct answers
         sorted_players = sorted(
@@ -258,9 +251,9 @@ class POETrivia(commands.Cog):
             # Add top players to the leaderboard
             for i, player in enumerate(sorted_players):
                 medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else f"{i+1}."
-                main_embed.add_field(
+                leaderboard_embed.add_field(
                     name=f"{medal} {player['name']}",
-                    value=f"**Correct Answers:** {player['correct']}\n**Gold Earned:** {player['gold']:,}\n**Curios:** {player['curios']}",
+                    value=f"**Correct Answers:** {player['correct']}\n**Gold Earned:** {player['gold']}\n**Curios:** {player['curios']}",
                     inline=True
                 )
             
@@ -268,18 +261,17 @@ class POETrivia(commands.Cog):
             total_gold = sum(player["gold"] for player in score_tracker.values())
             total_curios = sum(player["curios"] for player in score_tracker.values())
             
-            main_embed.add_field(
+            leaderboard_embed.add_field(
                 name="Game Totals", 
                 value=f"**Total Questions:** 10\n**Total Gold:** {total_gold}\n**Total Curios:** {total_curios}", 
                 inline=False
             )
             
-            main_embed.set_footer(text="Thanks for playing! Use /poe to start a new game.")
+            leaderboard_embed.set_footer(text="Thanks for playing! Use /poe to start a new game.")
         else:
-            main_embed.description = "Nobody answered any questions correctly! Better luck next time."
+            leaderboard_embed.description = "Nobody answered any questions correctly! Better luck next time."
         
-        # Final update to the embed
-        await game_message.edit(embed=main_embed)
+        await channel.send(embed=leaderboard_embed)
 
 async def setup(bot) -> None:
     await bot.add_cog(POETrivia(bot))

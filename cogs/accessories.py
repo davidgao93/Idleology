@@ -240,7 +240,7 @@ class Accessories(commands.Cog, name="accessories"):
                                     
                                     if receiver_user: # Only check level and inventory if receiver is valid
                                         current_level_receiver = receiver_user[4]
-                                        if (accessory_level - current_level_receiver) > 15:
+                                        if (accessory_level - current_level_receiver) > 15 and current_level_receiver < 100:
                                             send_item_flag = False
                                             error_messages_send.append("Item iLvl diff too great. (< 15)")
                                         

@@ -481,7 +481,7 @@ class Gloves(commands.Cog, name="gloves"):
             
             if receiver_user_db: # Only check level and inventory if receiver is valid
                 receiver_level = receiver_user_db[4] # Assuming level is at index 4
-                if (glove_level - receiver_level) > 15:
+                if (glove_level - receiver_level) > 15  and receiver_level < 100:
                     send_item_flag = False
                     error_messages_send.append("Item iLvl difference is too great (> 15 levels above recipient).")
                 

@@ -364,7 +364,7 @@ class Boots(commands.Cog, name="boots"):
             if not receiver_db: send_flag, errors = False, errors + ["Recipient not registered."]
             if str(receiver.id) == user_id: send_flag, errors = False, errors + ["Cannot send to yourself."]
             if receiver_db:
-                if (boot_level - receiver_db[4]) > 15: send_flag, errors = False, errors + ["Item iLvl too high for recipient (>15)."]
+                if (boot_level - receiver_db[4]) > 15 and receiver_db[4] < 100: send_flag, errors = False, errors + ["Item iLvl too high for recipient (>15)."]
                 if await self.bot.database.count_user_boots(str(receiver.id)) >= 58: send_flag, errors = False, errors + [f"{receiver.mention}'s boot bag is full."]
             if not send_flag:
                 err_disp_embed = original_embed.copy(); err_disp_embed.add_field(name="Send Error", value="\n".join(errors) + "\nReturning...", inline=False)

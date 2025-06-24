@@ -317,16 +317,17 @@ class Character(commands.Cog, name="character"):
         for idx, user in enumerate(top_users, start=1):
             user_name = user[3]  # Assuming player name is at index 3
             user_level = user[4]  # Assuming level is at index 4
+            user_asc = user[15] # Ascension level
 
             # Build leaderboard line with the appropriate emoji
             if idx == 1:
-                leaderboard_lines.append(f"🥇 **{user_name}** - Level {user_level}")
+                leaderboard_lines.append(f"🥇 **{user_name}** - Level {user_level} - (Ascension {user_asc} 🌟)")
             elif idx == 2:
-                leaderboard_lines.append(f"🥈 **{user_name}** - Level {user_level}")
+                leaderboard_lines.append(f"🥈 **{user_name}** - Level {user_level} - (Ascension {user_asc} 🌟)")
             elif idx == 3:
-                leaderboard_lines.append(f"🥉 **{user_name}** - Level {user_level}")
+                leaderboard_lines.append(f"🥉 **{user_name}** - Level {user_level} - (Ascension {user_asc} 🌟)")
             else:
-                leaderboard_lines.append(f"**{idx}: {user_name}** - Level {user_level}")
+                leaderboard_lines.append(f"**{idx}: {user_name}** - Level {user_level} - (Ascension {user_asc} 🌟)")
 
         leaderboard_text = "\n".join(leaderboard_lines)
         embed.add_field(name="Top Adventurers:", value=leaderboard_text, inline=False)
@@ -381,7 +382,7 @@ class Character(commands.Cog, name="character"):
         await message.add_reaction("🛡️")  # Defense
         await message.add_reaction("❤️")  # HP
         await message.add_reaction("❌") # Leave
-        
+
         while passive_points > 0:
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=180.0, check=check)

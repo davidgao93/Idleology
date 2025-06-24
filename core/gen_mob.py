@@ -312,8 +312,10 @@ async def fetch_monster_image(level, monster_data):
         if level == 999:
             selected_monsters = [monster for monster in monsters if monster[2] == level * 10]
         else:
+            if level > 110:
+                level = 100
             min_level = max(1, level - 20)
-            max_level = min(120, level + 10)
+            max_level = min(110, level + 10)
             selected_monsters = [monster for monster in monsters if min_level <= monster[2] <= max_level]
 
         if not selected_monsters:
