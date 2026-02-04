@@ -1,6 +1,5 @@
-# core/models.py
 from dataclasses import dataclass, field
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Union
 from enum import Enum
 
 class ModifierType(Enum):
@@ -34,6 +33,11 @@ class Weapon:
     description: str
     p_passive: str
     u_passive: str
+    item_id: Optional[int] = None
+    is_equipped: bool = False
+    forges_remaining: int = 0
+    refines_remaining: int = 0
+    refinement_lvl: int = 0
 
 @dataclass
 class Accessory:
@@ -48,6 +52,9 @@ class Accessory:
     passive: str
     passive_lvl: int
     description: str
+    item_id: Optional[int] = None
+    is_equipped: bool = False
+    potential_remaining: int = 0
 
 @dataclass
 class Armor:
@@ -60,28 +67,18 @@ class Armor:
     pdr: int
     fdr: int
     passive: str
-    description: str        
+    description: str   
+    item_id: Optional[int] = None     
+    is_equipped: bool = False
+    temper_remaining: int = 0
+    imbue_remaining: int = 0
 
 @dataclass
-class Glove: # New dataclass for Gloves
-    user: str  # user_id
-    name: str  # item_name
-    level: int # item_level
-    attack: int = 0
-    defence: int = 0
-    ward: int = 0    # Percentage
-    pdr: int = 0     # Percentage
-    fdr: int = 0     # Flat
-    passive: str = "none"
-    passive_lvl: int = 0
-    description: str = ""
-
-
-@dataclass
-class Boot: # New dataclass for Boots
+class Glove:
     user: str
     name: str
     level: int
+    item_id: Optional[int] = None
     attack: int = 0
     defence: int = 0
     ward: int = 0    # Percentage
@@ -90,7 +87,25 @@ class Boot: # New dataclass for Boots
     passive: str = "none"
     passive_lvl: int = 0
     description: str = ""
+    is_equipped: bool = False
+    potential_remaining: int = 0
 
+@dataclass
+class Boot:
+    user: str
+    name: str
+    level: int
+    item_id: Optional[int] = None
+    attack: int = 0
+    defence: int = 0
+    ward: int = 0    # Percentage
+    pdr: int = 0     # Percentage
+    fdr: int = 0     # Flat
+    passive: str = "none"
+    passive_lvl: int = 0
+    description: str = ""
+    is_equipped: bool = False
+    potential_remaining: int = 0
 
 @dataclass
 class Player:
@@ -103,10 +118,11 @@ class Player:
     max_hp: int
     base_attack: int
     base_defence: int
+    potions: int  # Moved UP: Mandatory field from DB
+    
+    # Fields with Defaults come LAST
     base_rarity: int = 0
-    base_crit_chance_target: int = 95 # target to hit when rolling, 5% base crit
-
-    potions: int
+    base_crit_chance_target: int = 95 
 
     # Equipped Gear
     equipped_weapon: Optional[Weapon] = None
@@ -123,6 +139,15 @@ class Player:
     # Glove passives
     equilibrium_bonus_xp_pending: int = 0
     plundering_bonus_gold_pending: int = 0
+
+    def rarity(self) -> int:
+        """Calculates total effective rarity from base stats and equipped gear."""
+        total = self.base_rarity
+        if self.equipped_weapon: 
+            total += self.equipped_weapon.rarity
+        if self.equipped_accessory: 
+            total += self.equipped_accessory.rarity
+        return total
 
     # Methods to calculate total states
     def get_total_attack(self) -> int:
@@ -142,14 +167,14 @@ class Player:
         return total
     
     def get_total_pdr(self) -> int:
-        total = 0 # Base PDR if any
+        total = 0 
         if self.equipped_armor: total += self.equipped_armor.pdr
         if self.equipped_glove: total += self.equipped_glove.pdr
         if self.equipped_boot: total += self.equipped_boot.pdr
         return total
 
     def get_total_fdr(self) -> int:
-        total = 0 # Base FDR if any
+        total = 0 
         if self.equipped_armor: total += self.equipped_armor.fdr
         if self.equipped_glove: total += self.equipped_glove.fdr
         if self.equipped_boot: total += self.equipped_boot.fdr
@@ -168,12 +193,10 @@ class Player:
         if self.equipped_accessory: target -= self.equipped_accessory.crit
         return max(1, target)
 
-    # Ward from gear is % of max_hp, applied at start of combat
     def get_combat_ward_value(self) -> int:
         ward_percent = self.get_total_ward_percentage()
         return int((ward_percent / 100) * self.max_hp) if ward_percent > 0 else 0
 
-    # Add more getter methods for block, evasion, rarity, passives etc.
     def get_weapon_passive(self) -> str:
         return self.equipped_weapon.passive if self.equipped_weapon else "none"
     
@@ -189,21 +212,11 @@ class Player:
     def get_accessory_passive(self) -> str:
         return self.equipped_accessory.passive if self.equipped_accessory else "none"
     
-    def get_accessory_level(self) -> str:
-        return self.equipped_accessory.passive if self.equipped_accessory else "none"
-    
     def get_glove_passive(self) -> str:
         return self.equipped_glove.passive if self.equipped_glove else "none"
     
-    def get_glove_passive_lvl(self) -> str:
-        return self.equipped_glove.passive_lvl if self.equipped_glove else "none"
-    
     def get_boot_passive(self) -> str:
         return self.equipped_boot.passive if self.equipped_boot else "none"
-    
-    def get_boot_passive_lvl(self) -> str:
-        return self.equipped_boot.passive_lvl if self.equipped_boot else "none"
-
 
 @dataclass
 class Monster:
@@ -219,19 +232,18 @@ class Monster:
     flavor: str
     is_boss: bool = False
 
-
 @dataclass
 class DungeonRoomOption:
     direction: str
     flavor_text: str
-    encounter_type: str # e.g., "COMBAT_NORMAL", "MERCHANT", "BOSS_ENTRANCE"
+    encounter_type: str 
 
 @dataclass
 class DungeonState:
     player_id: str
     player_name: str 
     current_floor: int
-    max_regular_floors: int # Number of floors with choices before the boss
+    max_regular_floors: int 
     
     player_current_hp: int
     player_max_hp: int
@@ -244,12 +256,6 @@ class DungeonState:
 
     player_buffs: List[str] = field(default_factory=list)
     player_curses: List[str] = field(default_factory=list)
-    player_attack_multiplier: float = 1.0
-    player_defence_multiplier: float = 1.0
-    player_rarity_multiplier: float = 1.0
-    monster_attack_multiplier: float = 1.0
-    monster_defence_multiplier: float = 1.0
-    global_monster_modifiers: List[str] = field(default_factory=list)
-
+    
     current_room_options: Optional[List[DungeonRoomOption]] = None
     last_action_message: Optional[str] = None

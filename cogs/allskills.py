@@ -17,8 +17,8 @@ class Skills(commands.Cog, name="skills"):
         if not self.schedule_skills.is_running():
             self.schedule_skills.start()
         
-        if not self.random_event.is_running():
-            self.random_event.start()
+        # if not self.random_event.is_running():
+        #     self.random_event.start()
 
     @app_commands.command(name="skills", description="Check your skills and resources.")
     async def skills(self, interaction: Interaction):

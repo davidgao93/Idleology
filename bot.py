@@ -5,6 +5,8 @@ import platform
 import sys
 import aiosqlite
 import discord
+import time
+from typing import Dict, Tuple
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
@@ -304,6 +306,30 @@ class DiscordBot(commands.Bot):
             raise error
 
     async def on_app_command_error(self, interaction: Interaction, error: app_commands.AppCommandError):
+        user_id = str(interaction.user.id)
+
+        # Check for 503 Service Unavailable errors or other connection issues
+        if isinstance(error, (discord.DiscordServerError, discord.HTTPException)):
+            if hasattr(error, 'status') and error.status == 503:
+                self.logger.warning(f"503 error for user {user_id}, clearing their active state")
+                self.state_manager.clear_active(user_id)
+                
+                try:
+                    if interaction.response.is_done():
+                        await interaction.followup.send(
+                            "Discord is experiencing issues. Your session has been reset. Please try again.",
+                            ephemeral=True
+                        )
+                    else:
+                        await interaction.response.send_message(
+                            "Discord is experiencing issues. Your session has been reset. Please try again.",
+                            ephemeral=True
+                        )
+                except:
+                    # If we can't even send this message, just log it
+                    self.logger.error(f"Failed to notify user {user_id} about 503 reset")
+                return
+        
         if isinstance(error, app_commands.CommandOnCooldown):
             retry_after = int(error.retry_after)
             # Check if the interaction is already responded to
@@ -370,14 +396,16 @@ class DiscordBot(commands.Bot):
 
 
 class StateManager:
-    def __init__(self, logger):
+    def __init__(self, logger, timeout_minutes=10):
         self.logger = logger
-        self.active_operations = {}
+        self.active_operations: Dict[str, Tuple[str, float]] = {}  # user_id: (operation, timestamp)
+        self.timeout_seconds = timeout_minutes * 60
 
     def set_active(self, user_id: str, operation: str):
-        """Set a user's operation state."""
+        """Set a user's operation state with timestamp."""
+        timestamp = time.time()
         self.logger.info(f'Set {user_id} as {operation}')
-        self.active_operations[user_id] = operation
+        self.active_operations[user_id] = (operation, timestamp)
 
     def clear_active(self, user_id: str):
         """Clear a user's operation state."""
@@ -388,11 +416,41 @@ class StateManager:
 
     def is_active(self, user_id: str):
         """Check if a user is currently engaged in an operation."""
-        return user_id in self.active_operations
-
+        if user_id in self.active_operations:
+            operation, timestamp = self.active_operations[user_id]
+            # Auto-clear if operation is too old
+            if time.time() - timestamp > self.timeout_seconds:
+                self.logger.info(f'Auto-clearing expired operation for {user_id}: {operation}')
+                del self.active_operations[user_id]
+                return False
+            return True
+        return False
+    
     def clear_all(self):
         """Clear all active operations."""
-        self.active_operations.clear()  # Clears the dictionary
+        count = len(self.active_operations)
+        self.active_operations.clear()
+        self.logger.info(f'Cleared all {count} active operations')
+
+    def clear_expired(self):
+        """Clear all expired operations."""
+        current_time = time.time()
+        expired_users = [
+            user_id for user_id, (operation, timestamp) in self.active_operations.items()
+            if current_time - timestamp > self.timeout_seconds
+        ]
+        
+        for user_id in expired_users:
+            operation = self.active_operations[user_id][0]
+            del self.active_operations[user_id]
+            self.logger.info(f'Cleared expired operation for {user_id}: {operation}')
+        
+        return len(expired_users)
+    
+    
+    def get_active_count(self):
+        """Get count of active operations."""
+        return len(self.active_operations)
 
 load_dotenv()
 

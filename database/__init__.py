@@ -22,7 +22,7 @@ class DatabaseManager:
                 player.level,
                 player.ascension,
                 player.exp,
-                player.hp,
+                player.current_hp,
                 player.potions,
                 player.id
             )

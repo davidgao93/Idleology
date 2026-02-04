@@ -52,15 +52,15 @@ async def generate_encounter(player, monster, is_treasure):
     if not is_treasure:
         modifier_checks = []
         if monster.level > 20:
-            modifier_checks.append(10 + int(player.rarity / 10))
+            modifier_checks.append(10 + int(player.rarity() / 10))
         if monster.level > 40:
-            modifier_checks.append(15 + int(player.rarity / 10))
+            modifier_checks.append(15 + int(player.rarity() / 10))
         if monster.level > 60:
-            modifier_checks.append(20 + int(player.rarity / 10))
+            modifier_checks.append(20 + int(player.rarity() / 10))
         if monster.level > 80:
-            modifier_checks.append(25 + int(player.rarity / 10))
+            modifier_checks.append(25 + int(player.rarity() / 10))
         if monster.level >= 100:
-            modifier_checks.append(50 + int(player.rarity / 10))
+            modifier_checks.append(50 + int(player.rarity() / 10))
 
         available_modifiers = get_monster_mods()
         

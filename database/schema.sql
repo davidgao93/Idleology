@@ -1,24 +1,3 @@
--- Drop the tables if they exist
---DROP TABLE IF EXISTS `users`;
---DROP TABLE IF EXISTS `ideologies`;
---DROP TABLE IF EXISTS `items`;
---DROP TABLE IF EXISTS `fishing`;
---DROP TABLE IF EXISTS `woodcutting`;
---DROP TABLE IF EXISTS `mining`;
--- ALTER TABLE users ADD COLUMN `dragon_key` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN `angel_key` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN `void_frags` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN `void_keys` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN `shatter_runes` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN `soul_cores` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE accessories ADD COLUMN `passive_lvl` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE armor ADD COLUMN `pdr` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE armor ADD COLUMN `fdr` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE items ADD COLUMN `refinement_lvl` INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN `last_combat` TIMESTAMP DEFAULT NULL;
--- ALTER TABLE items ADD COLUMN `pinnacle_passive` TEXT NOT NULL DEFAULT 'none';
--- ALTER TABLE items ADD COLUMN `utmost_passive` TEXT NOT NULL DEFAULT 'none';
-
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
   `user_id` TEXT NOT NULL UNIQUE,
@@ -37,7 +16,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `last_propagate_time` TIMESTAMP DEFAULT NULL, 
   `ascension` INTEGER NOT NULL DEFAULT 0,
   `potions` INTEGER NOT NULL DEFAULT 0,
-  `last_checkin_time` TIMESTAMP DEFAULT NULL,  -- New column for storing the last check-in time
+  `last_checkin_time` TIMESTAMP DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `refinement_runes` INTEGER NOT NULL DEFAULT 0,
   `passive_points` INTEGER NOT NULL DEFAULT 0,
