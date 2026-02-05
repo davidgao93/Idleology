@@ -1,485 +1,352 @@
 import discord
+import asyncio
+import random
 from discord.ext import commands
 from discord import app_commands, Interaction, Message, ButtonStyle
 from discord.ui import View, Button
-import asyncio
-import random
+
+# Core Imports
+from core.models import Accessory
+from core.factory import create_accessory
+from core.equipment_mechanics import EquipmentMechanics
+from core.ui.inventory import InventoryUI
 
 class Accessories(commands.Cog, name="accessories"):
     def __init__(self, bot) -> None:
         self.bot = bot
 
+    async def _fetch_and_parse_accessories(self, user_id: str) -> list[Accessory]:
+        """Helper to fetch raw DB data and convert to Objects."""
+        raw_items = await self.bot.database.fetch_user_accessories(user_id)
+        if not raw_items: 
+            return []
+        return [create_accessory(item) for item in raw_items]
+
     @app_commands.command(name="accessory", 
                          description="View your character's accessories and modify them.")
     async def view_accessories(self, interaction: Interaction) -> None:
-        """Fetch and display the character's accessories with pagination."""
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        # if not await self.bot.is_maintenance(interaction, user_id):
-        #     return
-        
-        if not await self.bot.check_is_active(interaction, user_id):
-            return
-
+        # 1. Validation
         existing_user = await self.bot.database.fetch_user(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, existing_user):
-            return
+        if not await self.bot.check_user_registered(interaction, existing_user): return
+        if not await self.bot.check_is_active(interaction, user_id): return
 
-        accessories = await self.bot.database.fetch_user_accessories(user_id)
-
-        if not accessories:
-            await interaction.response.send_message("You search your gear for accessories, you find none.")
-            return
-
-        player_name = existing_user[3]
-        embed = discord.Embed(
-            title="📿",
-            description=f"{player_name}'s Accessories:",
-            color=0x00FF00,
-        )
-        embed.set_thumbnail(url="https://i.imgur.com/yzQDtNg.jpeg")
-        await interaction.response.send_message(embed=embed)
-        message: Message = await interaction.original_response()
         self.bot.state_manager.set_active(user_id, "inventory")
-
-        # Pagination setup
-        items_per_page = 7
-        total_pages = (len(accessories) + items_per_page - 1) // items_per_page
+        
+        # 2. Pagination Setup
+        items_per_page = 5 
         current_page = 0
-        original_user = interaction.user
+        message = None
 
+        # 3. Main Navigation Loop
         while True:
-            accessories = await self.bot.database.fetch_user_accessories(user_id)
-            total_pages = (len(accessories) + items_per_page - 1) // items_per_page
-            current_page = min(current_page, total_pages - 1)
-            embed.description = f"{player_name}'s Accessories (Page {current_page + 1}/{total_pages}):"
+            # A. Fetch Data
+            accessories = await self._fetch_and_parse_accessories(user_id)
             
+            # Handle Empty Inventory
             if not accessories:
-                await interaction.followup.send("You check your accessory pouch, it is empty.")
+                if message:
+                    await message.edit(content="Your accessory pouch is empty.", embed=None, view=None)
+                else:
+                    await interaction.response.send_message("You search your gear for accessories, you find none.")
                 break
 
-            accessories.sort(key=lambda acc: acc[3], reverse=True)
+            # B. Sort: Equipped first, then by Level
+            equipped_raw = await self.bot.database.get_equipped_accessory(user_id)
+            equipped_id = equipped_raw[0] if equipped_raw else None
+            
+            # Sort lambda: (Is Not Equipped, Level Descending)
+            # False sorts before True, so we negate equipped check or use reverse logic
+            accessories.sort(key=lambda a: (a.item_id == equipped_id, a.level), reverse=True)
+            
+            # C. Pagination Math
+            total_pages = (len(accessories) + items_per_page - 1) // items_per_page
+            current_page = min(current_page, max(0, total_pages - 1))
+            
+            # D. Slice Items
             start_idx = current_page * items_per_page
-            accessories_to_display = accessories[start_idx:start_idx + items_per_page]
-            embed.clear_fields()
-            accessories_display_string = ""
+            page_items = accessories[start_idx:start_idx + items_per_page]
 
-            for index, accessory in enumerate(accessories_to_display):
-                accessory_name = accessory[2]
-                accessory_level = accessory[3]
-                accessory_passive = accessory[9]
-                accessory_plvl = accessory[12]
-                is_equipped = accessory[10]
-                
-                info_txt = ""
-                if accessory_passive != "none":
-                    info_txt += f" - {accessory_passive.title()} {accessory_plvl}"
-
-                accessories_display_string += (
-                    f"{index + 1}: "
-                    f"{'[E] ' if is_equipped else ''}"
-                    f"{accessory_name} (i{accessory_level}{info_txt})\n"
-                )
-
-            embed.add_field(
-                name="Accessories:",
-                value=accessories_display_string.strip(),
-                inline=False
+            # E. Generate UI
+            embed = InventoryUI.get_list_embed(
+                existing_user[3], page_items, current_page, total_pages, equipped_id, "📿"
             )
-
-            embed.add_field(
-                name="Instructions",
-                value=("Select an accessory to interact with.\n"
-                       "Use navigation buttons to change pages or close the interface."),
-                inline=False
-            )
-
-            view = View(timeout=60.0)
-            for i in range(len(accessories_to_display)):
-                view.add_item(Button(label=f"{i+1}", style=ButtonStyle.primary, custom_id=f"item_{i}"))
-            if current_page > 0:
-                view.add_item(Button(label="Previous", style=ButtonStyle.secondary, custom_id="previous"))
-            if current_page < total_pages - 1:
-                view.add_item(Button(label="Next", style=ButtonStyle.secondary, custom_id="next"))
+            
+            # Build View
+            view = View(timeout=60)
+            for i, _ in enumerate(page_items):
+                view.add_item(Button(label=f"{i+1}", style=ButtonStyle.primary, custom_id=f"select_{i}"))
+            
+            if current_page > 0: view.add_item(Button(label="Prev", custom_id="prev"))
+            if current_page < total_pages - 1: view.add_item(Button(label="Next", custom_id="next"))
             view.add_item(Button(label="Close", style=ButtonStyle.danger, custom_id="close"))
+
+            # F. Send or Edit Message
+            if message:
+                await message.edit(embed=embed, view=view)
+            else:
+                await interaction.response.send_message(embed=embed, view=view)
+                message = await interaction.original_response()
+
+            # G. Wait for Interaction
+            def check(i: Interaction): return i.user.id == interaction.user.id and i.message.id == message.id
+            
+            try:
+                act = await self.bot.wait_for('interaction', timeout=60, check=check)
+                await act.response.defer()
+                
+                cid = act.data['custom_id']
+                if cid == "close": 
+                    break
+                elif cid == "prev": 
+                    current_page -= 1
+                elif cid == "next": 
+                    current_page += 1
+                elif cid.startswith("select_"):
+                    idx = int(cid.split("_")[1])
+                    selected_acc = page_items[idx]
+                    await self._handle_item_actions(interaction, message, selected_acc)
+            
+            except asyncio.TimeoutError:
+                break
+        
+        self.bot.state_manager.clear_active(user_id)
+        if message:
+            try: await message.delete()
+            except: pass
+
+    async def _handle_item_actions(self, interaction: Interaction, message: Message, accessory: Accessory):
+        """Sub-loop for a specific item's actions."""
+        user_id = str(interaction.user.id)
+        
+        while True:
+            # Re-fetch item to get live stats
+            raw = await self.bot.database.fetch_accessory_by_id(accessory.item_id)
+            if not raw: 
+                await interaction.followup.send("Item no longer exists.", ephemeral=True)
+                return
+            accessory = create_accessory(raw)
+            
+            # Check equipped status dynamically
+            equipped_raw = await self.bot.database.get_equipped_accessory(user_id)
+            is_equipped = equipped_raw and equipped_raw[0] == accessory.item_id
+
+            embed = InventoryUI.get_item_details_embed(accessory, is_equipped)
+            
+            # Add Action Guide
+            guide = ["- Equip/Unequip", "- Discard", "- Back"]
+            
+            # Logic: Check if improvable
+            # Max passive level is implicitly 10 based on mechanics cost array length, 
+            # but usually capped by attempts remaining.
+            can_improve = accessory.potential_remaining > 0
+            if can_improve: 
+                guide.insert(1, "- Unlock/Improve (Gold)")
+            
+            guide.append("- Send")
+            
+            embed.add_field(name="Actions", value="\n".join(guide), inline=False)
+
+            # Build View
+            view = View(timeout=60)
+            view.add_item(Button(label="Unequip" if is_equipped else "Equip", style=ButtonStyle.primary, custom_id="equip"))
+            
+            if can_improve:
+                view.add_item(Button(label="Unlock/Improve", style=ButtonStyle.success, custom_id="improve"))
+                
+            view.add_item(Button(label="Send", style=ButtonStyle.secondary, custom_id="send"))
+            view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))
+            view.add_item(Button(label="Back", style=ButtonStyle.secondary, custom_id="back"))
 
             await message.edit(embed=embed, view=view)
 
-            def check(button_interaction: Interaction):
-                return (button_interaction.user == original_user and 
-                        button_interaction.message is not None and 
-                        button_interaction.message.id == message.id)
-
+            def check(i: Interaction): return i.user.id == interaction.user.id and i.message.id == message.id
             try:
-                button_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
+                act = await self.bot.wait_for('interaction', timeout=60, check=check)
+                await act.response.defer()
                 
-                if button_interaction.data['custom_id'] == "previous" and current_page > 0:
-                    current_page -= 1
-                    await button_interaction.response.defer()
-                    continue
-                elif button_interaction.data['custom_id'] == "next" and current_page < total_pages - 1:
-                    current_page += 1
-                    await button_interaction.response.defer()
-                    continue
-                elif button_interaction.data['custom_id'] == "close":
-                    await message.delete()
-                    self.bot.state_manager.clear_active(user_id)
-                    break
-                
-                if button_interaction.data['custom_id'].startswith("item_"):
-                    selected_index = int(button_interaction.data['custom_id'].split("_")[1])
-                    await button_interaction.response.defer()
-                    while True:
-                        selected_accessory = accessories_to_display[selected_index]
-                        selected_accessory = await self.bot.database.fetch_accessory_by_id(selected_accessory[0])
-                        if not selected_accessory:
-                            break
-                        accessory_name = selected_accessory[2]
-                        accessory_level = selected_accessory[3]
-                        accessory_attack = selected_accessory[4]
-                        accessory_defence = selected_accessory[5]
-                        accessory_rarity = selected_accessory[6]
-                        accessory_ward = selected_accessory[7]
-                        accessory_crit = selected_accessory[8]
-                        accessory_passive = selected_accessory[9]
-                        potential_lvl = selected_accessory[12]
-                        passive_effect = self.get_accessory_passive_effect(accessory_passive, potential_lvl)
-                        
-                        equipped_item_tuple = await self.bot.database.get_equipped_accessory(user_id) # Re-fetch for accurate equipped status
-                        embed.description = f"**{accessory_name}** (Level {accessory_level}):"
-                        is_equipped = equipped_item_tuple and (equipped_item_tuple[0] == selected_accessory[0])
-                        if (is_equipped):
-                            embed.description += "\nEquipped"
-                        embed.clear_fields()
-                        if accessory_attack > 0:
-                            embed.add_field(name="Attack", value=accessory_attack, inline=True)
-                        if accessory_defence > 0:
-                            embed.add_field(name="Defense", value=accessory_defence, inline=True)
-                        if accessory_rarity > 0:
-                            embed.add_field(name="Rarity", value=str(accessory_rarity) + "%", inline=True)
-                        if accessory_ward > 0:
-                            embed.add_field(name="Ward", value=str(accessory_ward) + "%", inline=True)
-                        if accessory_crit > 0:
-                            embed.add_field(name="Critical Chance", value=str(accessory_crit) + "%", inline=True)
+                cid = act.data['custom_id']
+                if cid == "back": return
+                elif cid == "equip":
+                    if is_equipped: await self.bot.database.unequip_accessory(user_id)
+                    else: await self.bot.database.equip_accessory(user_id, accessory.item_id)
+                elif cid == "discard":
+                    if await self._confirm_action(message, act.user, f"Discard **{accessory.name}**? This cannot be undone."):
+                        await self.bot.database.discard_accessory(accessory.item_id)
+                        return
+                elif cid == "improve":
+                    await self._improve_potential_flow(message, act.user, accessory)
+                elif cid == "send":
+                    if is_equipped:
+                        embed.set_footer(text="Error: Unequip before sending.")
+                        await message.edit(embed=embed)
+                        await asyncio.sleep(2)
+                        continue
+                    if await self._send_item_flow(message, act.user, interaction, accessory):
+                        return # Item sent, exit view
 
-                        if accessory_passive != "none":
-                            embed.add_field(name="Passive", value=accessory_passive + f" ({potential_lvl})", inline=False)
-                            embed.add_field(name="Passive Description", value=passive_effect, inline=False)
-                        else:
-                            embed.add_field(name="Passive", value="Unlock to reveal!", inline=False)
-
-                        potential_guide = (
-                            "Select an action:\n"
-                            "- Equip: Equip the accessory\n"
-                            "- Unlock/Improve: Unlock or improve potential\n"
-                            "- Discard: Discard accessory\n"
-                            "- Back: Return to list"
-                        )
-                        embed.add_field(name="Accessory Guide", value=potential_guide, inline=False)
-
-                        action_view = View(timeout=60.0)
-                        action_view.add_item(Button(label="Unequip" if is_equipped else "Equip", style=ButtonStyle.primary, custom_id="unequip" if is_equipped else "equip"))
-                        if selected_accessory[11] > 0:
-                            action_view.add_item(Button(label="Unlock/Improve", style=ButtonStyle.primary, custom_id="improve"))
-                        action_view.add_item(Button(label="Send", style=ButtonStyle.primary, custom_id="send"))
-                        action_view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))
-                        action_view.add_item(Button(label="Back", style=ButtonStyle.secondary, custom_id="back"))
-
-                        await message.edit(embed=embed, view=action_view)
-
-                        try:
-                            action_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-                            await action_interaction.response.defer()
-                            if action_interaction.data['custom_id'] in ["equip", "unequip"]:
-                                if action_interaction.data['custom_id'] == "equip":
-                                    await self.bot.database.equip_accessory(user_id, selected_accessory[0])
-                                else:  # unequip
-                                    await self.bot.database.unequip_accessory(user_id)
-                                continue # Re-fetch and re-display item details
-                            elif action_interaction.data['custom_id'] == "improve":
-                                await self.improve_potential(action_interaction, selected_accessory, message, embed)
-                                continue
-                            elif action_interaction.data['custom_id'] == "send":
-                                if is_equipped:
-                                    # Create a temporary embed for the error to avoid clearing fields
-                                    error_embed = embed.copy()
-                                    error_embed.add_field(name="Error", value="You should probably unequip the accessory before sending it. Returning...", inline=False)
-                                    await message.edit(embed=error_embed, view=None) # Remove buttons during error
-                                    await asyncio.sleep(3)
-                                    continue
-
-                                temp_send_embed = embed.copy()
-                                temp_send_embed.clear_fields()
-                                temp_send_embed.add_field(
-                                    name="Send Accessory",
-                                    value="Please mention a user (@username) to send the accessory to.",
-                                    inline=False
-                                )
-                                await message.edit(embed=temp_send_embed, view=None)
-                                
-                                def message_check(m: Message):
-                                    return (m.author == interaction.user and 
-                                            m.channel == interaction.channel and 
-                                            m.mentions)
-                                
-                                try:
-                                    user_message = await self.bot.wait_for('message', timeout=60.0, check=message_check)
-                                    await user_message.delete()
-                                    receiver = user_message.mentions[0]
-                                    send_item_flag = True
-                                    receiver_user = await self.bot.database.fetch_user(receiver.id, server_id)
-
-                                    error_messages_send = []
-                                    if not receiver_user:
-                                        send_item_flag = False
-                                        error_messages_send.append("This person isn't a valid adventurer.")
-                                    if receiver.id == interaction.user.id:
-                                        send_item_flag = False
-                                        error_messages_send.append("You cannot send items to yourself.")
-                                    
-                                    if receiver_user: # Only check level and inventory if receiver is valid
-                                        current_level_receiver = receiver_user[4]
-                                        if (accessory_level - current_level_receiver) > 15 and current_level_receiver < 100:
-                                            send_item_flag = False
-                                            error_messages_send.append("Item iLvl diff too great. (< 15)")
-                                        
-                                        receiver_items_count = await self.bot.database.count_user_accessories(str(receiver.id))
-                                        if receiver_items_count >= 58: # Assuming 58 is max capacity
-                                            send_item_flag = False
-                                            error_messages_send.append(f"{receiver.mention}'s inventory is full.")
-
-                                    if not send_item_flag:
-                                        err_embed = embed.copy()
-                                        err_embed.add_field(name="Error Sending", value="\n".join(error_messages_send) + "\nReturning...", inline=False)
-                                        await message.edit(embed=err_embed, view=None)
-                                        await asyncio.sleep(4)
-                                        continue # Back to item details view
-
-                                    # If all checks pass, proceed to confirmation
-                                    confirm_embed = discord.Embed(
-                                        title="Confirm Send Accessory",
-                                        description=f"Send **{accessory_name}** to {receiver.mention}?",
-                                        color=0x00FF00
-                                    )
-                                    confirm_view = View(timeout=60.0)
-                                    confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_send"))
-                                    confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_send"))
-                                    
-                                    await message.edit(embed=confirm_embed, view=confirm_view)
-                                    
-                                    try:
-                                        confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-                                        await confirm_interaction.response.defer()
-                                        
-                                        if confirm_interaction.data['custom_id'] == "confirm_send":
-                                            await self.bot.database.send_accessory(str(receiver.id), selected_accessory[0])
-                                            confirm_embed.clear_fields()
-                                            confirm_embed.add_field(name="Accessory Sent", value=f"Sent **{accessory_name}** to {receiver.mention}! 🎉", inline=False)
-                                            await message.edit(embed=confirm_embed, view=None)
-                                            await asyncio.sleep(3)
-                                            break
-                                        else:
-                                            continue 
-                                    except asyncio.TimeoutError:
-                                        await message.edit(content="Send confirmation timed out.", embed=None, view=None)
-                                        await asyncio.sleep(3)
-                                        continue
-                                except asyncio.TimeoutError:
-                                    await message.edit(content="Send acc timed out while waiting for user mention.", embed=None, view=None)
-                                    await asyncio.sleep(3)
-                                    continue
-                            elif action_interaction.data['custom_id'] == "discard":
-                                await self.discard_accessory(action_interaction, selected_accessory, message, embed)
-                                continue
-                            elif action_interaction.data['custom_id'] == "back":
-                                break
-
-                        except asyncio.TimeoutError:
-                            await message.delete()
-                            self.bot.state_manager.clear_active(user_id)
-                            break
-                
             except asyncio.TimeoutError:
-                await message.delete()
-                self.bot.state_manager.clear_active(user_id)
-                break
-            
-        self.bot.state_manager.clear_active(user_id)
-
-    def get_accessory_passive_effect(self, passive: str, level: int) -> str:
-        passive_messages = {
-            "Obliterate": f"**{level * 2}%** chance to deal double damage.",
-            "Absorb": f"**{level * 10}%** chance to absorb 10% of the monster's stats and add them to your own.",
-            "Prosper": f"**{level * 10}%** chance to double gold earned.",
-            "Infinite Wisdom": f"**{level * 5}%** chance to double experience earned.",
-            "Lucky Strikes": f"**{level * 10}%** chance to roll lucky hit chance."
-        }
-        return passive_messages.get(passive, "No passive effect.")
-
-    async def discard_accessory(self, 
-                               interaction: Interaction, 
-                               selected_accessory: tuple, 
-                               message, embed) -> None:
-        """Discard an accessory."""
-        accessory_id = selected_accessory[0]
-        accessory_name = selected_accessory[2]
-        embed = discord.Embed(
-            title="Confirm Discard",
-            description=f"Discard **{accessory_name}**?\n**This action cannot be undone.**",
-            color=0xFF0000,
-        )
-        confirm_view = View(timeout=60.0)
-        confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.danger, custom_id="confirm_discard"))
-        confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_discard"))
-        
-        await message.edit(embed=embed, view=confirm_view)
-
-        def check(button_interaction: Interaction):
-            return (button_interaction.user == interaction.user and 
-                    button_interaction.message is not None and 
-                    button_interaction.message.id == message.id)
-
-        try:
-            confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-            await confirm_interaction.response.defer()
-            
-            if confirm_interaction.data['custom_id'] == "cancel_discard":
                 return
 
-            await self.bot.database.discard_accessory(accessory_id)
+    async def _confirm_action(self, message: Message, user, text: str) -> bool:
+        """Generic confirmation helper."""
+        embed = discord.Embed(title="Confirm", description=text, color=discord.Color.red())
+        view = View(timeout=30)
+        view.add_item(Button(label="Confirm", style=ButtonStyle.danger, custom_id="yes"))
+        view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="no"))
+        await message.edit(embed=embed, view=view)
+        
+        def check(i): return i.user.id == user.id and i.message.id == message.id
+        try:
+            act = await self.bot.wait_for('interaction', timeout=30, check=check)
+            await act.response.defer()
+            return act.data['custom_id'] == "yes"
+        except: return False
+
+    async def _improve_potential_flow(self, message: Message, user, accessory: Accessory):
+        """Handles the Potential UI and Logic."""
+        uid, gid = str(user.id), str(message.guild.id)
+        
+        cost = EquipmentMechanics.calculate_potential_cost(accessory.passive_lvl)
+        player_gold = (await self.bot.database.fetch_user(uid, gid))[6]
+        
+        # Calculate Base Success Rate
+        # Logic from Mechanics: max(75 - level*5, 30)
+        success_rate = max(75 - (accessory.passive_lvl * 5), 30)
+        
+        title_keyword = "Unlock" if accessory.passive == "none" else "Enhance"
+        
+        embed = discord.Embed(
+            title=f"{title_keyword} Potential", 
+            description=(f"Attempts left: **{accessory.potential_remaining}**\n"
+                         f"Cost: **{cost:,} GP**\n"
+                         f"Success Rate: **{success_rate}%**"),
+            color=discord.Color.gold()
+        )
+
+        if player_gold < cost:
+            embed.set_footer(text="Insufficient Gold.")
+            await message.edit(embed=embed, view=None)
+            await asyncio.sleep(2)
+            return
+
+        # Check for Runes
+        runes = await self.bot.database.fetch_potential_runes(uid)
+        
+        view = View(timeout=30)
+        view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm"))
+        if runes > 0:
+            view.add_item(Button(label=f"Use Rune (+25%)", style=ButtonStyle.success, custom_id="use_rune"))
+        view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel"))
+        
+        await message.edit(embed=embed, view=view)
+
+        def check(i): return i.user.id == user.id and i.message.id == message.id
+        try:
+            act = await self.bot.wait_for('interaction', timeout=30, check=check)
+            await act.response.defer()
+            
+            if act.data['custom_id'] == "cancel": return
+
+            use_rune = (act.data['custom_id'] == "use_rune")
+            
+            # Re-check gold just in case
+            if player_gold < cost: return
+
+            # Consume resources
+            await self.bot.database.add_gold(uid, -cost)
+            if use_rune:
+                await self.bot.database.update_potential_runes(uid, -1)
+                success_rate += 25
+
+            # Roll
+            success = EquipmentMechanics.roll_potential_outcome(accessory.passive_lvl, use_rune)
+            
+            result_embed = discord.Embed(title="Potential Result", color=discord.Color.gold())
+            
+            if success:
+                if accessory.passive == "none":
+                    new_passive = EquipmentMechanics.get_new_passive('accessory')
+                    await self.bot.database.update_accessory_passive(accessory.item_id, new_passive)
+                    await self.bot.database.update_accessory_passive_lvl(accessory.item_id, 1)
+                    result_embed.description = f"🎉 Success! Unlocked **{new_passive}**!"
+                else:
+                    new_lvl = accessory.passive_lvl + 1
+                    await self.bot.database.update_accessory_passive_lvl(accessory.item_id, new_lvl)
+                    result_embed.description = f"🎉 Success! Upgraded to **Level {new_lvl}**!"
+            else:
+                result_embed.description = "💔 The enhancement failed."
+                result_embed.color = discord.Color.dark_grey()
+
+            # Decrement potential
+            await self.bot.database.update_accessory_potential(accessory.item_id, accessory.potential_remaining - 1)
+            
+            await message.edit(embed=result_embed, view=None)
+            await asyncio.sleep(3)
 
         except asyncio.TimeoutError:
-            await message.delete()
-            self.bot.state_manager.clear_active(interaction.user.id)
+            pass
 
-    async def improve_potential(self, 
-                               interaction: Interaction, 
-                               selected_accessory: tuple, 
-                               message, 
-                               embed) -> None:
-        user_id = str(interaction.user.id)
-        server_id = str(interaction.guild.id)
-        while True:
-            selected_accessory = await self.bot.database.fetch_accessory_by_id(selected_accessory[0])
-            accessory_id = selected_accessory[0]
-            accessory_name = selected_accessory[2]
-            current_passive = selected_accessory[9]
-            potential_remaining = selected_accessory[11]
-            potential_lvl = selected_accessory[12] 
-            potential_passive_list = ["Obliterate", "Absorb", "Prosper", "Infinite Wisdom", "Lucky Strikes"]
-            
-            if potential_remaining <= 0:
-                embed.add_field(name="Error", 
-                            value=f"This accessory has no potential remaining.\n"
-                                    f"You cannot enhance it further.\n"
-                                    f"Returning to item menu...", 
-                            inline=False)
+    async def _send_item_flow(self, message: Message, user, interaction: Interaction, accessory: Accessory) -> bool:
+        """Handles sending item logic. Returns True if sent."""
+        uid, gid = str(user.id), str(message.guild.id)
+        
+        embed = discord.Embed(title=f"Send {accessory.name}", description="Please mention the user (@username) to send this item to.", color=discord.Color.blue())
+        await message.edit(embed=embed, view=None)
+
+        def msg_check(m: Message): 
+            return m.author == user and m.channel == interaction.channel and m.mentions
+
+        try:
+            user_msg = await self.bot.wait_for('message', timeout=60, check=msg_check)
+            await user_msg.delete()
+            receiver = user_msg.mentions[0]
+
+            # Validation
+            if receiver.id == user.id:
+                embed.description = "You cannot send items to yourself."
                 await message.edit(embed=embed)
                 await asyncio.sleep(2)
-                return
+                return False
 
-            rune_of_potential_count = await self.bot.database.fetch_potential_runes(str(interaction.user.id))
-            costs = [500, 1000, 2000, 3000, 4000, 5000, 10000, 25000, 50000, 100000]
-            refine_cost = costs[potential_lvl]
-            success_rate = max(75 - potential_lvl * 5, 30)
-
-            title_keyword = "Unlock" if current_passive == "none" else "Enhance"
-            embed = discord.Embed(
-                title=f"{title_keyword} Potential Attempt",
-                description=(f"{title_keyword} **{accessory_name}**'s potential? \n"
-                            f"Attempts left: **{potential_remaining}** \n"
-                            f"Cost: **{refine_cost:,} GP**\n"
-                            f"Success Rate: **{success_rate}%**\n"),
-                color=0xFFCC00
-            )
-            embed.set_thumbnail(url="https://i.imgur.com/Tkikr5b.jpeg")
-            confirm_view = View(timeout=60.0)
-            confirm_view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm_improve"))
-            confirm_view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel_improve"))
-            
-            await message.edit(embed=embed, view=confirm_view)
-
-            def check(button_interaction: Interaction):
-                return (button_interaction.user == interaction.user and 
-                        button_interaction.message is not None and 
-                        button_interaction.message.id == message.id)
-
-            try:
-                confirm_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-                await confirm_interaction.response.defer()
-                
-                if confirm_interaction.data['custom_id'] == "cancel_improve":
-                    return
-
-            except asyncio.TimeoutError:
-                await message.delete()
-                self.bot.state_manager.clear_active(interaction.user.id)
-                return
-            
-            player_gold = await self.bot.database.fetch_user_gold(user_id, server_id)
-            if player_gold < refine_cost:
-                embed.add_field(name="Refining", 
-                            value=f"Not enough gold!\nReturning to item menu...", 
-                            inline=False)
+            receiver_db = await self.bot.database.fetch_user(str(receiver.id), gid)
+            if not receiver_db:
+                embed.description = "User is not registered."
                 await message.edit(embed=embed)
-                await asyncio.sleep(3)
-                return
+                await asyncio.sleep(2)
+                return False
 
-            await self.bot.database.update_user_gold(user_id, player_gold - refine_cost)
+            # Check Limits
+            rec_level = receiver_db[4]
+            if (accessory.level - rec_level > 15) and rec_level < 100:
+                embed.description = "Item level gap is too high (>15)."
+                await message.edit(embed=embed)
+                await asyncio.sleep(2)
+                return False
+            
+            rec_count = await self.bot.database.count_user_accessories(str(receiver.id))
+            if rec_count >= 58:
+                embed.description = "Receiver's inventory is full."
+                await message.edit(embed=embed)
+                await asyncio.sleep(2)
+                return False
 
-            if rune_of_potential_count > 0:
-                embed = discord.Embed(
-                    title="Use Rune of Potential?",
-                    description=(f"You have **{rune_of_potential_count}** Rune(s) of Potential available.\n"
-                                f"Do you want to use one to boost your success rate to **{success_rate + 25}%**?"),
-                    color=0xFFCC00
-                )
-                embed.set_thumbnail(url="https://i.imgur.com/aeorjQG.jpg")
-                rune_view = View(timeout=60.0)
-                rune_view.add_item(Button(label="Use", style=ButtonStyle.primary, custom_id="confirm_rune"))
-                rune_view.add_item(Button(label="Skip", style=ButtonStyle.secondary, custom_id="cancel_rune"))
-                
-                await message.edit(embed=embed, view=rune_view)
+            # Confirmation
+            if await self._confirm_action(message, user, f"Send **{accessory.name}** to {receiver.mention}?"):
+                await self.bot.database.send_accessory(str(receiver.id), accessory.item_id)
+                embed.title = "Sent!"
+                embed.description = f"Item sent to {receiver.mention}."
+                embed.color = discord.Color.green()
+                await message.edit(embed=embed, view=None)
+                await asyncio.sleep(2)
+                return True
+            
+            return False
 
-                try:
-                    rune_interaction = await self.bot.wait_for('interaction', timeout=60.0, check=check)
-                    await rune_interaction.response.defer()
-
-                    if rune_interaction.data['custom_id'] == "confirm_rune":
-                        success_rate += 25
-                        await self.bot.database.update_potential_runes(str(interaction.user.id), -1)
-
-                except asyncio.TimeoutError:
-                    await message.delete()
-                    self.bot.state_manager.clear_active(interaction.user.id)
-                    return
-
-            chance_to_improve = success_rate / 100
-            enhancement_success = random.random() <= chance_to_improve
-
-            if enhancement_success:
-                if potential_lvl == 0:
-                    passive_choice = random.choice(potential_passive_list)
-                    await self.bot.database.update_accessory_passive(accessory_id, passive_choice)
-                    await self.bot.database.update_accessory_passive_lvl(accessory_id, 1)
-                    success_message = (f"🎉 Success!\n"
-                                    f"Your accessory has gained the **{passive_choice}** passive.")
-                else:
-                    new_potential = potential_lvl + 1
-                    await self.bot.database.update_accessory_passive_lvl(accessory_id, new_potential)
-                    success_message = (f"🎉 Success!\n"
-                                    f"Upgraded **{current_passive}** from level **{potential_lvl}** to **{new_potential}**.\n")
-                embed.add_field(name="Enhancement Result", value=success_message + " Returning to item menu...", inline=False)
-            else:
-                fail_message = "💔 The enhancement failed. Unlucky.\nReturning to item menu..."
-                embed.add_field(name="Enhancement Result", value=fail_message, inline=False)
-
-            potential_remaining -= 1
-            await self.bot.database.update_accessory_potential(accessory_id, potential_remaining)
-            await message.edit(embed=embed)
-            await asyncio.sleep(2)
-            embed.clear_fields()
+        except asyncio.TimeoutError:
+            return False
 
 async def setup(bot) -> None:
     await bot.add_cog(Accessories(bot))

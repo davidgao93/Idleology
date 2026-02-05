@@ -6,6 +6,7 @@ class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
         self.connection = connection
 
+
     async def update_player(self, player: Player) -> None:
         """Update the player's data in the database."""
         await self.connection.execute(

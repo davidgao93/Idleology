@@ -1,13 +1,9 @@
 import discord
-from discord import app_commands, Interaction, Message, ButtonStyle
+from discord import app_commands, Interaction, Message
 from discord.ext import commands
-from discord.ui import Button, View
 from datetime import datetime, timedelta
-from core.loot import generate_weapon, generate_armor, generate_accessory
 import asyncio
 import random
-import csv
-import re
 import math
 
 
