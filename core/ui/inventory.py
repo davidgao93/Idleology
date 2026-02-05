@@ -27,9 +27,10 @@ class InventoryUI:
 
         display_text = ""
         for index, item in enumerate(items):
-            # Safe Stop if text gets too long
-            if len(display_text) > 950:
-                display_text += f"... and {len(items) - index} more on this page."
+            # Safety Truncation: Stop if text gets too long before adding next item
+            # Max field value length is 1024 characters.
+            if len(display_text) > 950: # Leave some buffer for final message and footer
+                display_text += f"\n... and {len(items) - index} more on this page."
                 break
 
             # Status flags
@@ -40,7 +41,7 @@ class InventoryUI:
             details = []
             if hasattr(item, 'passive') and item.passive != "none":
                 p_lvl = getattr(item, 'passive_lvl', '')
-                p_lvl_str = f" {p_lvl}" if p_lvl else ""
+                p_lvl_str = f" {p_lvl}" if p_lvl != '' and p_lvl > 0 else "" # Only add level if it's there and > 0
                 details.append(f"{item.passive.title()}{p_lvl_str}")
             
             # Weapon specific extra passives
@@ -58,13 +59,16 @@ class InventoryUI:
 
     @staticmethod
     def get_item_details_embed(item: Equipment, is_equipped: bool) -> discord.Embed:
-        # ... (Same as before) ...
+        """
+        Generates the detailed view for a single item.
+        """
         embed = discord.Embed(
             title=f"**{item.name}** (i{item.level})",
             description="**[Equipped]**" if is_equipped else "Unequipped",
-            color=0x00FFFF
+            color=0x00FFFF # Cyan
         )
 
+        # Generic Stats
         stats = {
             "Attack": getattr(item, 'attack', 0),
             "Defence": getattr(item, 'defence', 0),
@@ -77,22 +81,26 @@ class InventoryUI:
             "FDR": getattr(item, 'fdr', 0),
         }
 
+        # Add stat fields if > 0
         for label, value in stats.items():
             if value > 0:
                 val_str = f"{value}%" if label in ["Rarity", "Ward", "Crit", "PDR"] else str(value)
                 embed.add_field(name=label, value=val_str, inline=True)
 
+        # Passives
         main_passive = getattr(item, 'passive', 'none')
         if main_passive != 'none':
             lvl = getattr(item, 'passive_lvl', 0)
-            lvl_str = f" (Lvl {lvl})" if lvl > 0 else ""
+            lvl_str = f" (Lvl {lvl})" if lvl > 0 else "" # Only display level if > 0
             embed.add_field(name="Passive", value=f"{main_passive.title()}{lvl_str}", inline=False)
+            # Note: Detailed effect description would require importing the 'general' logic helper or similar
         
+        # Weapon Specifics
         if isinstance(item, Weapon):
             if item.p_passive != 'none':
                 embed.add_field(name="Pinnacle Passive", value=item.p_passive.title(), inline=False)
             if item.u_passive != 'none':
                 embed.add_field(name="Utmost Passive", value=item.u_passive.title(), inline=False)
             embed.add_field(name="Refinement", value=f"+{item.refinement_lvl}", inline=True)
-
+        
         return embed

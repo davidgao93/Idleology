@@ -27,7 +27,7 @@ class POETrivia(commands.Cog):
         self.items = []
         
         for filename in item_files:
-            file_path = f'assets/items/{filename}'
+            file_path = f'assets/items/poe/{filename}'
             try:
                 if os.path.exists(file_path):
                     with open(file_path, 'r') as file:

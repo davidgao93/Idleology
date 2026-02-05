@@ -1,25 +1,5 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
-from enum import Enum
-
-class ModifierType(Enum):
-    STEEL_BORN = "Steel-born"
-    ALL_SEEING = "All-seeing"
-    MIRROR_IMAGE = "Mirror Image"
-    VOLATILE = "Volatile"
-    GLUTTON = "Glutton"
-    ENFEEBLE = "Enfeeble"
-    VENOMOUS = "Venomous"
-    STRENGTHENED = "Strengthened"
-    HELLBORN = "Hellborn"
-    LUCIFER_TOUCHED = "Lucifer-touched"
-    TITANIUM = "Titanium"
-    ASCENDED = "Ascended"
-    SUMMONER = "Summoner"
-    SHIELD_BREAKER = "Shield-breaker"
-    IMPENETRABLE = "Impenetrable"
-    UNBLOCKABLE = "Unblockable"
-    UNAVOIDABLE = "Unavoidable"
 
 @dataclass
 class Weapon:
@@ -140,6 +120,7 @@ class Player:
     equilibrium_bonus_xp_pending: int = 0
     plundering_bonus_gold_pending: int = 0
 
+    @property
     def rarity(self) -> int:
         """Calculates total effective rarity from base stats and equipped gear."""
         total = self.base_rarity
