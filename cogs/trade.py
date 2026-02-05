@@ -21,7 +21,7 @@ class Trade(commands.Cog, name="trade"):
             return
             
         # Fetch the sender's user data
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
@@ -72,8 +72,8 @@ class Trade(commands.Cog, name="trade"):
 
             if str(reaction.emoji) == "✅":
                 # The sender has confirmed the action
-                await self.bot.database.update_user_gold(user_id, current_gold - amount)  # Deduct from sender
-                await self.bot.database.add_gold(str(receiver.id), amount)  # Add to receiver
+                await self.bot.database.users.modify_gold(user_id, -amount)  # Deduct from sender
+                await self.bot.database.users.modify_gold(str(receiver.id), amount)  # Add to receiver
 
                 # Update the embed message to inform of the successful transaction
                 embed.description = f"Successfully sent 💰 **{amount:,}** gold to {receiver.mention}! 🎉"
@@ -94,7 +94,7 @@ class Trade(commands.Cog, name="trade"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
@@ -224,7 +224,7 @@ class Trade(commands.Cog, name="trade"):
             return
 
         # Fetch the sender's user data
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
@@ -273,17 +273,17 @@ class Trade(commands.Cog, name="trade"):
             if str(reaction.emoji) == "✅":
                 # Reduce the key count from the sender and add to the receiver
                 if key_type.lower() == "angelic":
-                    await self.bot.database.add_angel_key(user_id, -1)
-                    await self.bot.database.add_angel_key(str(receiver.id), 1)
+                    await self.bot.database.users.modify_currency(user_id, 'angel_key', -1)
+                    await self.bot.database.users.modify_currency(str(receiver.id), 'angel_key', 1)
                 elif key_type.lower() == "draconic":
-                    await self.bot.database.add_dragon_key(user_id, -1)
-                    await self.bot.database.add_dragon_key(str(receiver.id), 1)
+                    await self.bot.database.users.modify_currency(user_id, 'dragon_key', -1)
+                    await self.bot.database.users.modify_currency(str(receiver.id), 'dragon_key', 1)
                 elif key_type.lower() == "void":
-                    await self.bot.database.add_void_keys(user_id, -1)
-                    await self.bot.database.add_void_keys(str(receiver.id), 1)
+                    await self.bot.database.users.modify_currency(user_id, 'void_frags', -1)
+                    await self.bot.database.users.modify_currency(str(receiver.id), 'void_frags', 1)
 
                 # Update the embed to indicate success
-                embed.description = f"Sent a {key_type.title()} Key to {receiver.mention}! 🎉"
+                embed.description = f"Successfully sent to {receiver.mention}! 🎉"
                 await message.clear_reactions()
                 await message.edit(embed=embed)
 

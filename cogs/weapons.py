@@ -7,8 +7,8 @@ from discord.ui import View, Button
 
 # Core Imports
 from core.models import Weapon
-from core.factory import create_weapon
-from core.equipment_mechanics import EquipmentMechanics
+from core.items.factory import create_weapon
+from core.items.equipment_mechanics import EquipmentMechanics
 from core.ui.inventory import InventoryUI
 
 class Weapons(commands.Cog, name="weapons"):
@@ -28,7 +28,7 @@ class Weapons(commands.Cog, name="weapons"):
         server_id = str(interaction.guild.id)
 
         # 1. Validation
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user): return
         if not await self.bot.check_is_active(interaction, user_id): return
 
@@ -137,7 +137,7 @@ class Weapons(commands.Cog, name="weapons"):
             guide = ["- Equip/Unequip", "- Refine (Gold)", "- Discard", "- Back"]
             if weapon.forges_remaining > 0: guide.insert(1, "- Forge (Mats)")
             
-            user_data = await self.bot.database.fetch_user(user_id, interaction.guild.id)
+            user_data = await self.bot.database.users.get(user_id, interaction.guild.id)
             if user_data[30] > 0 and is_equipped and weapon.u_passive == 'none':
                 guide.append("- Voidforge (Void Key)")
             
@@ -207,7 +207,7 @@ class Weapons(commands.Cog, name="weapons"):
         mining = await self.bot.database.fetch_user_mining(uid, gid)
         wood = await self.bot.database.fetch_user_woodcutting(uid, gid)
         fish = await self.bot.database.fetch_user_fishing(uid, gid)
-        player_gold = (await self.bot.database.fetch_user(uid, gid))[6]
+        player_gold = (await self.bot.database.users.get(uid, gid))[6]
 
         ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
         log_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}.get(costs['log_type'])
@@ -253,7 +253,7 @@ class Weapons(commands.Cog, name="weapons"):
             await self.bot.database.update_mining_resource(uid, gid, costs['ore_type'], -costs['ore_qty'])
             await self.bot.database.update_woodcutting_resource(uid, gid, f"{costs['log_type']}_logs", -costs['log_qty'])
             await self.bot.database.update_fishing_resource(uid, gid, f"{costs['bone_type']}_bones", -costs['bone_qty'])
-            await self.bot.database.add_gold(uid, -costs['gold'])
+            await self.bot.database.users.modify_gold(uid, -costs['gold'])
 
             success, new_passive = EquipmentMechanics.roll_forge_outcome(weapon)
             
@@ -276,7 +276,7 @@ class Weapons(commands.Cog, name="weapons"):
             runes = await self.bot.database.fetch_refinement_runes(uid)
             if runes > 0:
                 if await self._confirm_action(message, user, f"No refines left. Use a **Rune of Refinement**? ({runes} owned)"):
-                    await self.bot.database.update_refinement_runes(uid, -1)
+                    await self.bot.database.users.modify_currency(uid, 'refinement_runes', -1)
                     await self.bot.database.update_weapon_refine_count(weapon.item_id, 1)
                     return 
                 return
@@ -287,7 +287,7 @@ class Weapons(commands.Cog, name="weapons"):
                 return
 
         cost = 1000
-        player_gold = (await self.bot.database.fetch_user(uid, str(message.guild.id)))[6]
+        player_gold = (await self.bot.database.users.get(uid, str(message.guild.id)))[6]
         
         if player_gold < cost:
             embed = discord.Embed(title="Poor", description=f"Need {cost} gold.", color=discord.Color.red())
@@ -299,7 +299,7 @@ class Weapons(commands.Cog, name="weapons"):
             atk_gain = random.randint(1, 3)
             def_gain = random.randint(1, 3)
             
-            await self.bot.database.add_gold(uid, -cost)
+            await self.bot.database.users.modify_gold(uid, -cost)
             await self.bot.database.increase_weapon_attack(weapon.item_id, atk_gain)
             await self.bot.database.increase_weapon_defence(weapon.item_id, def_gain)
             await self.bot.database.update_weapon_refine_count(weapon.item_id, weapon.refines_remaining - 1)
@@ -337,7 +337,7 @@ class Weapons(commands.Cog, name="weapons"):
             if not target: return
 
             if await self._confirm_action(message, user, f"Sacrifice **{target.name}** to Voidforge **{weapon.name}**?"):
-                await self.bot.database.add_void_keys(uid, -1)
+                await self.bot.database.users.modify_currency(uid, 'void_keys', -1)
                 
                 roll = random.random()
                 outcome = ""

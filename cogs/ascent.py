@@ -7,9 +7,9 @@ from discord import app_commands, Interaction, Message
 
 # Core Imports
 from core.models import Player, Monster
-from core.factory import load_player
+from core.items.factory import load_player
 from core.combat import engine, ui
-from core.gen_mob import generate_ascent_monster, get_modifier_description
+from core.combat.gen_mob import generate_ascent_monster, get_modifier_description
 
 class Ascent(commands.Cog, name="ascent"):
     def __init__(self, bot) -> None:
@@ -47,7 +47,7 @@ class Ascent(commands.Cog, name="ascent"):
         server_id = str(interaction.guild.id)
 
         # 1. Validation
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user): return
         if not await self.bot.check_is_active(interaction, user_id): return
         
@@ -170,20 +170,16 @@ class Ascent(commands.Cog, name="ascent"):
                 cumulative_gold += gold_gain
                 
                 # Immediate DB updates for safety
-                await self.bot.database.add_gold(user_id, gold_gain)
+                await self.bot.database.users.modify_gold(user_id, gold_gain)
                 player.exp += xp_gain
-                await self.bot.database.update_player(player) # Save HP and XP
+                await self.bot.database.users.update_from_player_object(player) # Save HP and XP
 
                 # Special Rewards Check (Every 3 stages)
                 special_loot = []
                 if ascent_stage % 3 == 0:
                     if random.random() < 0.25:
-                        await self.bot.database.update_curios_count(user_id, server_id, 1)
+                        await self.bot.database.modify_currency(user_id, server_id, 1)
                         special_loot.append("Curious Curio")
-                    if random.random() < 0.05:
-                        await self.bot.database.add_angel_key(user_id, 1)
-                        special_loot.append("Angelic Key")
-                    # Add other keys/runes logic here as desired
 
                 # Stage Clear Embed
                 clear_embed = discord.Embed(title=f"Stage {ascent_stage} Cleared!", color=discord.Color.green())
@@ -219,7 +215,7 @@ class Ascent(commands.Cog, name="ascent"):
 
     async def _cleanup(self, user_id, player):
         self.bot.state_manager.clear_active(user_id)
-        await self.bot.database.update_player(player)
+        await self.bot.database.users.update_from_player_object(player)
 
 async def setup(bot) -> None:
     await bot.add_cog(Ascent(bot))

@@ -20,7 +20,7 @@ class Tavern(commands.Cog, name="tavern"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         if not await self.bot.check_is_active(interaction, user_id):
@@ -72,7 +72,7 @@ class Tavern(commands.Cog, name="tavern"):
         try:
             self.bot.state_manager.set_active(user_id, "shop") 
             while True:
-                existing_user = await self.bot.database.fetch_user(user_id, server_id)
+                existing_user = await self.bot.database.users.get(user_id, server_id)
                 gold = existing_user[6] 
                 potions = existing_user[16]
                 curios_today = existing_user[23]
@@ -111,8 +111,8 @@ class Tavern(commands.Cog, name="tavern"):
                         break
                     
                     gold -= cost
-                    await self.bot.database.add_gold(user_id, -cost)
-                    await self.bot.database.increase_potion_count(user_id)
+                    await self.bot.database.users.modify_gold(user_id, -cost)
+                    await self.bot.database.user.modify_stat(user_id, 'potions', 1)
                     success += 1
                 
                 # Update the embed after every potion transaction
@@ -140,9 +140,9 @@ class Tavern(commands.Cog, name="tavern"):
                     
                     # Deduct cost and increment curios count
                     gold -= curio_cost
-                    await self.bot.database.add_gold(user_id, -curio_cost)
-                    await self.bot.database.update_curios_count(user_id, server_id, 1)
-                    await self.bot.database.update_curios_bought(user_id, server_id, 1)
+                    await self.bot.database.users.modify_gold(user_id, -curio_cost)
+                    await self.bot.database.users.modify_currency(user_id, 'curios', 1)
+                    await self.bot.database.users.modify_currency(user_id, 'curios_purchased_today', 1)
 
                     # Update user values after purchase
                     curios_today += 1  # Increment curios today for the user
@@ -173,7 +173,7 @@ class Tavern(commands.Cog, name="tavern"):
 
         # Final cleanup after exiting the shop loop
         self.bot.state_manager.clear_active(user_id)
-        await self.bot.database.update_user_gold(user_id, gold)  # Update the user's gold in DB
+        await self.bot.database.users.set_gold(user_id, gold)  # Update the user's gold in DB
 
 
     @app_commands.command(
@@ -185,7 +185,7 @@ class Tavern(commands.Cog, name="tavern"):
         server_id = str(interaction.guild.id)
 
         # Fetch user data
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
@@ -213,7 +213,7 @@ class Tavern(commands.Cog, name="tavern"):
 
         cooldown_duration = timedelta(hours=2)
         if last_rest_time == None:
-            await self.bot.database.update_player_hp(user_id, max_hp)
+            await self.bot.database.users.update_hp(user_id, max_hp)
             await self.bot.database.update_rest_time(user_id)
             desc = f"You have rested and regained your health! Current HP is now **{max_hp}**."
             embed = discord.Embed(
@@ -235,7 +235,7 @@ class Tavern(commands.Cog, name="tavern"):
             return
 
         if time_since_rest >= cooldown_duration:
-            await self.bot.database.update_player_hp(user_id, max_hp)  # Set current HP to max HP
+            await self.bot.database.users.update_hp(user_id, max_hp)  # Set current HP to max HP
             await self.bot.database.update_rest_time(user_id)  # Reset last rest time
             desc = (f"You have rested and regained your health! Current HP: **{max_hp}**.")
             embed = discord.Embed(
@@ -281,8 +281,8 @@ class Tavern(commands.Cog, name="tavern"):
                     if str(reaction.emoji) == "✅":
                         # Deduct gold and update current HP to max HP
                         new_gold = gold - cost
-                        await self.bot.database.update_player_hp(user_id, max_hp)  # Update HP to max
-                        await self.bot.database.update_user_gold(user_id, new_gold)  # Update gold
+                        await self.bot.database.users.update_hp(user_id, max_hp)  # Update HP to max
+                        await self.bot.database.users.set_gold(user_id, new_gold)  # Update gold
                         pay_msg = (f"Thank you for your patronage! Enjoy your stay.\n"
                                    f"You feel refreshed, your hp is now {max_hp}!")
                         embed.add_field(name="Payment", value=pay_msg, inline=False)
@@ -303,7 +303,7 @@ class Tavern(commands.Cog, name="tavern"):
         server_id = str(interaction.guild.id)
         
         # Fetch user data
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
@@ -374,7 +374,7 @@ class Tavern(commands.Cog, name="tavern"):
         player_hand = [random.randint(1, 10), random.randint(1, 10)]
         house_hand = [random.randint(1, 10), random.randint(1, 10)]
         player_gold -= bet_amount
-        await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
 
         def calculate_hand_value(hand):
             """Calculate the total value of a hand, adjusting for Aces to achieve the best score possible without going over 21."""
@@ -467,7 +467,7 @@ class Tavern(commands.Cog, name="tavern"):
                             inline=False)
 
         await message.edit(embed=embed)
-        await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
         #await asyncio.sleep(10)
         #await message.delete()
 
@@ -518,7 +518,7 @@ class Tavern(commands.Cog, name="tavern"):
             embed.add_field(name="Oh no!", value=f"You lost! Your new balance: 💰 **{player_gold:,}**", inline=False)
 
         await message.edit(embed=embed)
-        await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
         #await asyncio.sleep(10)
         #await message.delete()
 
@@ -527,7 +527,7 @@ class Tavern(commands.Cog, name="tavern"):
         embed.clear_fields()
         
         player_gold -= bet_amount  # Deduct the bet
-        await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
         # Present color choice
         embed.title = "Roulette 🎡"
         embed.description = "Choose a color:\n🟥 Red\n⬛ Black"
@@ -587,7 +587,7 @@ class Tavern(commands.Cog, name="tavern"):
                                 value=f"You lost {bet_amount:,}! Your new balance: 💰 **{player_gold:,}**", inline=False)
 
             await message.edit(embed=embed)
-            await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+            await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
             #await asyncio.sleep(10)
             #await message.delete()
             await number_response.delete()
@@ -634,14 +634,14 @@ class Tavern(commands.Cog, name="tavern"):
             )
 
         await message.edit(embed=embed)
-        await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
         #await asyncio.sleep(10)
         #await message.delete()
 
     async def play_crash(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
         """Simulate a Crash game."""
         player_gold -= bet_amount  # Deduct the bet
-        await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
 
         # Ask for target multiplier
         embed.clear_fields()
@@ -689,7 +689,7 @@ class Tavern(commands.Cog, name="tavern"):
                 )
 
             await message.edit(embed=embed)
-            await self.bot.database.update_user_gold(interaction.user.id, player_gold)  # Update gold in DB
+            await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
             #await asyncio.sleep(10)
             #await message.delete()
             await multiplier_response.delete()
@@ -709,7 +709,7 @@ class Tavern(commands.Cog, name="tavern"):
         server_id = str(interaction.guild.id)
 
         # Fetch user data
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
@@ -737,9 +737,9 @@ class Tavern(commands.Cog, name="tavern"):
             return
         else:
             await self.bot.database.update_checkin_time(user_id)
-            existing_user = await self.bot.database.fetch_user(user_id, server_id)
+            existing_user = await self.bot.database.users.get(user_id, server_id)
             last_checkin_time = existing_user[17]
-            await self.bot.database.update_curios_count(user_id, server_id, 1)
+            await self.bot.database.users.modify_currency(user_id, 'curios', 1)
             await self.bot.database.update_curios_bought(user_id, server_id, -existing_user[23])  # Resetting to 0
             await interaction.response.send_message((f"You have successfully checked in and received a **Curious Curio**!\n"
                                                      f"Use /curios to open it!"),

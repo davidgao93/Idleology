@@ -1,34 +1,20 @@
 import aiosqlite
 from datetime import datetime, timedelta
 from core.models import Player, Weapon, Accessory, Armor, Glove, Boot
+from .repositories.users import UserRepository
+from .repositories.equipment import EquipmentRepository
+from .repositories.skills import SkillRepository
+from .repositories.social import SocialRepository
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
         self.connection = connection
 
-
-    async def update_player(self, player: Player) -> None:
-        """Update the player's data in the database."""
-        await self.connection.execute(
-            """
-            UPDATE users SET 
-                level = ?, 
-                ascension = ?, 
-                experience = ?, 
-                current_hp = ?, 
-                potions = ?
-            WHERE user_id = ?
-            """,
-            (
-                player.level,
-                player.ascension,
-                player.exp,
-                player.current_hp,
-                player.potions,
-                player.id
-            )
-        )
-        await self.connection.commit()
+        # Initialize sub-repositories
+        self.users = UserRepository(connection)
+        self.equipment = EquipmentRepository(connection)
+        self.skills = SkillRepository(connection)
+        self.social = SocialRepository(connection)
 
 
     async def create_weapon(self, weapon: Weapon) -> None:
@@ -147,89 +133,6 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    
-    async def fetch_user(self, user_id: str, server_id: str):
-        """Fetches a user from the database."""
-        rows = await self.connection.execute(
-            "SELECT * FROM users WHERE user_id=? AND server_id=?",
-            (user_id, server_id)
-        )
-        async with rows as cursor:
-            return await cursor.fetchone()
-        
-    async def fetch_all_users(self):
-        """Fetch all users from the database."""
-        rows = await self.connection.execute("SELECT * FROM users")
-        async with rows as cursor:
-            return await cursor.fetchall()  # Returns a list of all users
-
-    async def register_user(self, user_id: str, server_id: str, name: str, selected_appearance: str, ideology: str) -> None:
-        """Registers a user in the database."""
-        last_checkin_time = (datetime.now() + timedelta(hours=18)).isoformat()
-        await self.connection.execute(
-            "INSERT INTO users (user_id, server_id, name, appearance, ideology, last_checkin_time) VALUES (?, ?, ?, ?, ?, ?)",
-            (user_id, server_id, name, selected_appearance, ideology, last_checkin_time)
-        )
-        await self.connection.commit()
-
-    async def unregister_user(self, user_id: str, server_id: str) -> None:
-        """Deletes a user from the database."""
-        try:
-            await self.connection.execute(
-                "DELETE FROM users WHERE user_id=? AND server_id=?",
-                (user_id, server_id)
-            )
-            await self.connection.execute(
-                "DELETE FROM ideologies WHERE user_id=?",
-                (user_id,)
-            )
-            await self.connection.execute(
-                "DELETE FROM items WHERE user_id=?",
-                (user_id,)
-            )
-            await self.connection.execute(
-                "DELETE FROM accessories WHERE user_id=?",
-                (user_id,)
-            )
-            await self.connection.execute(
-                "DELETE FROM armor WHERE user_id=?",
-                (user_id,)
-            )
-            await self.connection.execute( # Add deletion for gloves table
-                "DELETE FROM gloves WHERE user_id=?",
-                (user_id,)
-            )
-            await self.connection.execute( # Add deletion for boots table
-                "DELETE FROM boots WHERE user_id=?",
-                (user_id,)
-            )
-            await self.connection.execute(
-                "DELETE FROM mining WHERE user_id=?",
-                (user_id,)
-            )
-            await self.connection.execute(
-                "DELETE FROM fishing WHERE user_id=?",
-                (user_id,)
-            )
-            await self.connection.execute(
-                "DELETE FROM woodcutting WHERE user_id=?",
-                (user_id,)
-            )
-            await self.connection.commit()
-        except Exception as e:
-            print(f"Error during user unregistration: {e}")
-            raise
-
-
-    async def fetch_user_gold(self, user_id: str, server_id: str):
-        """Fetch the user's gold from the database."""
-        rows = await self.connection.execute(
-            "SELECT gold FROM users WHERE user_id = ? AND server_id = ?",
-            (user_id, server_id)
-        )
-        result = await rows.fetchone()
-        return result[0] if result else 0  # Return the gold value or 0 if user not found
-
 
     async def fetch_ideologies(self, server_id: str):
         """Fetches a list of ideologies from a server."""
@@ -251,15 +154,7 @@ class DatabaseManager:
         # Fetch the count from the result
         count = await rows.fetchone()  # This will return a tuple with one item
         return count[0] if count else 0  # Return the count or 0 if none
-    
 
-    async def update_player_hp(self, user_id: str, hp: int, server_id: str) -> None:
-        """Update the player's current HP in the database."""
-        await self.connection.execute(
-            "UPDATE users SET current_hp = ? WHERE user_id = ? AND server_id = ?",
-            (hp, user_id, server_id)
-        )
-        await self.connection.commit()
      
     async def create_ideology(self, user_id: str, server_id: str, name: str) -> None:
         """Registers an ideology in the database."""
@@ -278,65 +173,6 @@ class DatabaseManager:
         await self.connection.commit()
 
 
-    async def add_gold(self, user_id: str, increase_by: int) -> None:
-        """Increase the user's gold in the database."""
-        await self.connection.execute(
-            "UPDATE users SET gold = gold + ? WHERE user_id = ?",
-            (increase_by, user_id)
-        )
-        await self.connection.commit()
-
-
-    async def add_dragon_key(self, user_id: str, increase_by: int) -> None:
-        """Increase the user's dragon keys in the database."""
-        await self.connection.execute(
-            "UPDATE users SET dragon_key = dragon_key + ? WHERE user_id = ?",
-            (increase_by, user_id)
-        )
-        await self.connection.commit()
-
-    async def add_angel_key(self, user_id: str, increase_by: int) -> None:
-        """Increase the user's angel keys in the database."""
-        await self.connection.execute(
-            "UPDATE users SET angel_key = angel_key + ? WHERE user_id = ?",
-            (increase_by, user_id)
-        )
-        await self.connection.commit()     
-
-
-    async def add_soul_cores(self, user_id: str, increase_by: int) -> None:
-        """Increase the user's soul cores in the database."""
-        await self.connection.execute(
-            "UPDATE users SET soul_cores = soul_cores + ? WHERE user_id = ?",
-            (increase_by, user_id)
-        )
-        await self.connection.commit()   
-
-
-    async def add_void_frags(self, user_id: str, increase_by: int) -> None:
-        """Increase the user's void_frags in the database."""
-        await self.connection.execute(
-            "UPDATE users SET void_frags = void_frags + ? WHERE user_id = ?",
-            (increase_by, user_id)
-        )
-        await self.connection.commit()     
-
-
-    async def add_void_keys(self, user_id: str, increase_by: int) -> None:
-        """Increase the user's void_keys in the database."""
-        await self.connection.execute(
-            "UPDATE users SET void_keys = void_keys + ? WHERE user_id = ?",
-            (increase_by, user_id)
-        )
-        await self.connection.commit()  
-
-    async def update_user_gold(self, user_id: str, new_gold: int) -> None:
-        """Update the user's gold in the database."""
-        await self.connection.execute(
-            "UPDATE users SET gold = ? WHERE user_id = ?",
-            (new_gold, user_id)
-        )
-        await self.connection.commit()
 
     async def update_rest_time(self, user_id: str) -> None:
         """Update the last rest time of the user in the database to now."""
@@ -347,87 +183,6 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def increase_attack(self, user_id: str, increase_by: int) -> None:
-        """Increase the user's attack stat in the database."""
-        await self.connection.execute(
-            "UPDATE users SET attack = attack + ? WHERE user_id = ?",
-            (increase_by, user_id)
-        )
-        await self.connection.commit()
-
-    async def increase_defence(self, user_id: str, increase_by: int) -> None:
-        """Increase the user's defense stat in the database."""
-        await self.connection.execute(
-            "UPDATE users SET defence = defence + ? WHERE user_id = ?",
-            (increase_by, user_id)
-        )
-        await self.connection.commit()
-
-
-    async def increase_max_hp(self, user_id: str, increase_by: int) -> None:
-        """Increase the user's max hp stat in the database."""
-        await self.connection.execute(
-            "UPDATE users SET max_hp = max_hp + ? WHERE user_id = ?",
-            (increase_by, user_id)
-        )
-        await self.connection.commit()
-
-
-    async def update_player_hp(self, user_id: str, hp: int) -> None:
-        """Update the player's current HP in the database."""
-        await self.connection.execute(
-            "UPDATE users SET current_hp = ? WHERE user_id = ?",
-            (hp, user_id)
-        )
-        await self.connection.commit()
-
-    async def update_player_attack(self, user_id: str, atk: int) -> None:
-        """Update the player's attack in the database."""
-        await self.connection.execute(
-            "UPDATE users SET attack = ? WHERE user_id = ?",
-            (atk, user_id)
-        )
-        await self.connection.commit()
-
-    async def update_player_defence(self, user_id: str, defence: int) -> None:
-        """Update the player's defence in the database."""
-        await self.connection.execute(
-            "UPDATE users SET defence = ? WHERE user_id = ?",
-            (defence, user_id)
-        )
-        await self.connection.commit()
-
-    async def update_player_max_hp(self, user_id: str, hp: int) -> None:
-        """Update the player's maximum HP in the database."""
-        await self.connection.execute(
-            "UPDATE users SET max_hp = ? WHERE user_id = ?",
-            (hp, user_id)
-        )
-        await self.connection.commit()
-
-    async def update_followers_count(self, ideology: str, new_count: int) -> None:
-        """Update the followers count in the ideologies table."""
-        await self.connection.execute(
-            "UPDATE ideologies SET followers = ? WHERE name = ?",
-            (new_count, ideology)
-        )
-        await self.connection.commit()
-
-    async def increase_potion_count(self, user_id: str) -> None:
-        """Increases the potion count for a user by 1."""
-        await self.connection.execute(
-            "UPDATE users SET potions = potions + 1 WHERE user_id = ?",
-            (user_id,)
-        )
-        await self.connection.commit()
-
-    async def increase_ascension_level(self, user_id: str) -> None:
-        """Increase the user's ascension level in the database."""
-        await self.connection.execute(
-            "UPDATE users SET ascension = ascension + 1 WHERE user_id = ?",
-            (user_id,)
-        )
-        await self.connection.commit()
 
     async def update_propagate_time(self, user_id: str) -> None:
         """Update the last propagate time of the user in the database to now."""
@@ -1136,17 +891,6 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    async def fetch_top_users_by_level(self, limit: int = 10):
-        """Fetch the top users sorted by level and then by ascension."""
-        rows = await self.connection.execute(
-            "SELECT * FROM users ORDER BY level DESC, ascension DESC LIMIT ?",
-            (limit,)
-        )
-        async with rows as cursor:
-            return await cursor.fetchall()  # Returns the list of top users
-
-
-
     async def send_weapon(self, receiver_id: str, item_id: int) -> None:
         """Transfer an item from one user to another by changing the user_id."""
 
@@ -1191,39 +935,7 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-    # Method to update the number of refinement runes for a user
-    async def update_refinement_runes(self, user_id: str, count: int) -> None:
-        """Update the user's count of refinement runes in the database."""
-        await self.connection.execute(
-            "UPDATE users SET refinement_runes = refinement_runes + ? WHERE user_id = ?",
-            (count, user_id)
-        )
-        await self.connection.commit()
 
-    async def update_potential_runes(self, user_id: str, count: int) -> None:
-        """Update the user's count of potential runes in the database."""
-        await self.connection.execute(
-            "UPDATE users SET potential_runes = potential_runes + ? WHERE user_id = ?",
-            (count, user_id)
-        )
-        await self.connection.commit()
-
-    async def update_imbuing_runes(self, user_id: str, count: int) -> None:
-        """Update the user's count of imbuing runes in the database."""
-        await self.connection.execute(
-            "UPDATE users SET imbue_runes = imbue_runes + ? WHERE user_id = ?",
-            (count, user_id)
-        )
-        await self.connection.commit()
-
-
-    async def update_shatter_runes(self, user_id: str, count: int) -> None:
-        """Update the user's count of shatter runes in the database."""
-        await self.connection.execute(
-            "UPDATE users SET shatter_runes = shatter_runes + ? WHERE user_id = ?",
-            (count, user_id)
-        )
-        await self.connection.commit()
 
     # Method to fetch the number of refinement runes for a user
     async def fetch_refinement_runes(self, user_id: str) -> int:
@@ -1246,15 +958,6 @@ class DatabaseManager:
         return result[0] if result else 0  # Return the count or 0 if user not found
     
 
-    async def set_passive_points(self, user_id: str, server_id: str, passive_points: int) -> None:
-        """Set the number of passive points for a user in the database."""
-        await self.connection.execute(
-            "UPDATE users SET passive_points = ? WHERE user_id = ? AND server_id = ?",
-            (passive_points, user_id, server_id)
-        )
-        await self.connection.commit()
-
-
     async def fetch_passive_points(self, user_id: str, server_id: str) -> int:
         """Fetch the number of passive points for a user."""
         rows = await self.connection.execute(
@@ -1263,28 +966,6 @@ class DatabaseManager:
         )
         result = await rows.fetchone()
         return result[0] if result else 0  # Return the passive points or 0 if not found
-
-    async def update_curios_count(self, user_id: str, server_id: str, amount: int) -> None:
-        """
-        Updates the user's curios count by adding or subtracting a specified amount.
-        
-        :param user_id: The ID of the user whose curios count will be updated.
-        :param server_id: The server ID where the user is registered.
-        :param amount: The amount to add (positive) or subtract (negative) from the user's curios count.
-        """
-        await self.connection.execute(
-            "UPDATE users SET curios = curios + ? WHERE user_id = ? AND server_id = ?",
-            (amount, user_id, server_id)
-        )
-        await self.connection.commit()
-
-    async def update_curios_bought(self, user_id: str, server_id: str, amount: int) -> None:
-        """Updates the user's curios purchased today count."""
-        await self.connection.execute(
-            "UPDATE users SET curios_purchased_today = curios_purchased_today + ? WHERE user_id = ? AND server_id = ?",
-            (amount, user_id, server_id)
-        )
-        await self.connection.commit()
 
 
     async def count_user_weapons(self, user_id: str) -> int:

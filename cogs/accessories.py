@@ -7,8 +7,8 @@ from discord.ui import View, Button
 
 # Core Imports
 from core.models import Accessory
-from core.factory import create_accessory
-from core.equipment_mechanics import EquipmentMechanics
+from core.items.factory import create_accessory
+from core.items.equipment_mechanics import EquipmentMechanics
 from core.ui.inventory import InventoryUI
 
 class Accessories(commands.Cog, name="accessories"):
@@ -29,7 +29,7 @@ class Accessories(commands.Cog, name="accessories"):
         server_id = str(interaction.guild.id)
 
         # 1. Validation
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user): return
         if not await self.bot.check_is_active(interaction, user_id): return
 
@@ -210,7 +210,7 @@ class Accessories(commands.Cog, name="accessories"):
         uid, gid = str(user.id), str(message.guild.id)
         
         cost = EquipmentMechanics.calculate_potential_cost(accessory.passive_lvl)
-        player_gold = (await self.bot.database.fetch_user(uid, gid))[6]
+        player_gold = (await self.bot.database.users.get(uid, gid))[6]
         
         # Calculate Base Success Rate
         # Logic from Mechanics: max(75 - level*5, 30)
@@ -256,9 +256,9 @@ class Accessories(commands.Cog, name="accessories"):
             if player_gold < cost: return
 
             # Consume resources
-            await self.bot.database.add_gold(uid, -cost)
+            await self.bot.database.users.modify_gold(uid, -cost)
             if use_rune:
-                await self.bot.database.update_potential_runes(uid, -1)
+                await self.bot.database.users.modify_currency(uid, 'refinement_runes', -1)
                 success_rate += 25
 
             # Roll
@@ -311,7 +311,7 @@ class Accessories(commands.Cog, name="accessories"):
                 await asyncio.sleep(2)
                 return False
 
-            receiver_db = await self.bot.database.fetch_user(str(receiver.id), gid)
+            receiver_db = await self.bot.database.users.get(str(receiver.id), gid)
             if not receiver_db:
                 embed.description = "User is not registered."
                 await message.edit(embed=embed)

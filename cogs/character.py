@@ -55,7 +55,7 @@ class Character(commands.Cog, name="character"):
     async def check_hp(self):
         """Check and increment current_hp for all users every 15m."""
         # Fetch all users from the database
-        users = await self.bot.database.fetch_all_users()
+        users = await self.bot.database.users.get_all()
         self.bot.logger.info(f'Healing all users')
         for user in users:
             user_id = user[1] 
@@ -66,7 +66,7 @@ class Character(commands.Cog, name="character"):
                 new_hp = current_hp + 1 + scaling
                 if (new_hp > max_hp):
                     new_hp = max_hp
-                await self.bot.database.update_player_hp(user_id, new_hp)
+                await self.bot.database.users.update_hp(user_id, new_hp)
 
 
     @app_commands.command(name="stats", description="Get your character's stats.")
@@ -75,7 +75,7 @@ class Character(commands.Cog, name="character"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if existing_user:
             ascension = existing_user[15]
             if ascension > 0:
@@ -218,7 +218,7 @@ class Character(commands.Cog, name="character"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
@@ -300,7 +300,7 @@ class Character(commands.Cog, name="character"):
     @app_commands.command(name="leaderboard", description="Show the top adventurers sorted by level.")
     async def leaderboard(self, interaction: Interaction) -> None:
         """Fetch and display the top 10 adventurers sorted by level."""
-        top_users = await self.bot.database.fetch_top_users_by_level(limit=10)
+        top_users = await self.bot.database.users.get_leaderboard(limit=10)
 
         if not top_users:
             await interaction.response.send_message("No adventurers found.")
@@ -342,7 +342,7 @@ class Character(commands.Cog, name="character"):
         server_id = str(interaction.guild.id)
 
         # Fetch the sender's user data
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
@@ -388,13 +388,13 @@ class Character(commands.Cog, name="character"):
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=180.0, check=check)
                 if str(reaction.emoji) == "⚔️":
                     # Increment attack and decrement passive points
-                    await self.bot.database.increase_attack(user_id, 1)
+                    await self.bot.database.users.modify_stat(user_id, 'attack', 1)
                 elif str(reaction.emoji) == "🛡️":
                     # Increment defense and decrement passive points
-                    await self.bot.database.increase_defence(user_id, 1)
+                    await self.bot.database.users.modify_stat(user_id, 'defence', 1)
                 elif str(reaction.emoji) == "❤️":
                     # Increment HP and decrement passive points
-                    await self.bot.database.increase_max_hp(user_id, 1)
+                    await self.bot.database.users.modify_stat(user_id, 'max_hp', 1)
                 elif str(reaction.emoji) == "❌":
                     await message.delete()
                     break
@@ -405,12 +405,12 @@ class Character(commands.Cog, name="character"):
                 if passive_points > 0:
                     passive_points -= 1
                     self.bot.logger.info("-1 passive pt")
-                    await self.bot.database.set_passive_points(user_id, server_id, passive_points)
+                    await self.bot.database.users.set_passive_points(user_id, server_id, passive_points)
                 else:
                     self.bot.logger.info('Invalid passive points')
                 # Edit the embed to show current allocations
                 embed.clear_fields()
-                existing_user = await self.bot.database.fetch_user(user_id, server_id)
+                existing_user = await self.bot.database.users.get(user_id, server_id)
                 embed.add_field(name="Points remaining: ", value=f"{passive_points}", inline=True)
                 embed.add_field(name="Current Stats", 
                                 value=(f"Attack ⚔️: {existing_user[9]}\n"

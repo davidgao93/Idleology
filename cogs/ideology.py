@@ -56,7 +56,7 @@ class Ideology(commands.Cog, name="ideology"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
@@ -104,7 +104,7 @@ class Ideology(commands.Cog, name="ideology"):
         # Update database
         self.bot.logger.info(f"Propogate {user_ideology}, awarding {user_id} with {gold_reward}")
         await self.bot.database.update_followers_count(user_ideology, new_followers_count)
-        await self.bot.database.add_gold(user_id, gold_reward)
+        await self.bot.database.users.modify_gold(user_id, gold_reward)
         await self.bot.database.update_propagate_time(user_id)
 
         # Send response

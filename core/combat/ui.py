@@ -1,7 +1,7 @@
 import discord
 from typing import Dict, Optional, Any
 from core.models import Player, Monster
-from core.gen_mob import get_modifier_description
+from core.combat.gen_mob import get_modifier_description
 
 def get_hp_display(current: int, max_hp: int, ward: int) -> str:
     """Formats HP string, e.g., '100/100 ❤️ (50 🔮)'"""
@@ -25,7 +25,7 @@ def create_combat_embed(player: Player, monster: Monster, logs: Dict[str, str] =
     # Calculate hit chances for display
     # Note: We re-calculate here purely for display purposes. 
     # Ideally, engine could pass these, but calculating them is cheap.
-    from core.combat_calcs import calculate_hit_chance, calculate_monster_hit_chance
+    from core.combat.combat_calcs import calculate_hit_chance, calculate_monster_hit_chance
     p_hit = int(calculate_hit_chance(player, monster) * 100)
     m_hit = int(calculate_monster_hit_chance(player, monster) * 100)
 

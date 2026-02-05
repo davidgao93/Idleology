@@ -143,7 +143,7 @@ class DungeonCog(commands.Cog, name="dungeon"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id) 
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         if not await self.bot.check_is_active(interaction, user_id):

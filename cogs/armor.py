@@ -33,7 +33,7 @@ class ArmorCog(commands.Cog, name="armor"):
         server_id = str(interaction.guild.id)
 
         # 1. Validation
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user): return
         if not await self.bot.check_is_active(interaction, user_id): return
 
@@ -223,7 +223,7 @@ class ArmorCog(commands.Cog, name="armor"):
         mining = await self.bot.database.fetch_user_mining(uid, gid)
         wood = await self.bot.database.fetch_user_woodcutting(uid, gid)
         fish = await self.bot.database.fetch_user_fishing(uid, gid)
-        player_gold = (await self.bot.database.fetch_user(uid, gid))[6]
+        player_gold = (await self.bot.database.users.get(uid, gid))[6]
 
         ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
         log_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}.get(costs['log_type'])
@@ -272,7 +272,7 @@ class ArmorCog(commands.Cog, name="armor"):
             await self.bot.database.update_mining_resource(uid, gid, costs['ore_type'], -costs['ore_qty'])
             await self.bot.database.update_woodcutting_resource(uid, gid, f"{costs['log_type']}_logs", -costs['log_qty'])
             await self.bot.database.update_fishing_resource(uid, gid, f"{costs['bone_type']}_bones", -costs['bone_qty'])
-            await self.bot.database.add_gold(uid, -costs['gold'])
+            await self.bot.database.users.modify_gold(uid, -costs['gold'])
 
             # Roll
             success, stat, amount = EquipmentMechanics.roll_temper_outcome(armor)
@@ -299,7 +299,7 @@ class ArmorCog(commands.Cog, name="armor"):
         uid, gid = str(user.id), str(message.guild.id)
         
         # Check Rune
-        user_data = await self.bot.database.fetch_user(uid, gid)
+        user_data = await self.bot.database.users.get(uid, gid)
         imbue_runes = user_data[27] # Imbue runes index
 
         if imbue_runes <= 0:
@@ -325,7 +325,7 @@ class ArmorCog(commands.Cog, name="armor"):
             await act.response.defer()
             if act.data['custom_id'] != "confirm": return
 
-            await self.bot.database.update_imbuing_runes(uid, -1)
+            await self.bot.database.users.modify_currency(uid, 'imbue_runes', -1)
             await self.bot.database.update_armor_imbue_count(armor.item_id, 0) # Set remaining to 0
 
             result_embed = discord.Embed(title="Imbue Result", color=discord.Color.purple())
@@ -365,7 +365,7 @@ class ArmorCog(commands.Cog, name="armor"):
                 await asyncio.sleep(2)
                 return False
 
-            receiver_db = await self.bot.database.fetch_user(str(receiver.id), gid)
+            receiver_db = await self.bot.database.users.get(str(receiver.id), gid)
             if not receiver_db:
                 embed.description = "User is not registered."
                 await message.edit(embed=embed)

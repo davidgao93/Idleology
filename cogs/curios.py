@@ -2,7 +2,7 @@ import discord
 from discord import app_commands, Interaction, ButtonStyle
 from discord.ext import commands
 from discord.ui import Button, View
-from core.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot
+from core.combat.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot
 import random
 import csv
 
@@ -58,7 +58,7 @@ class CurioView(View):
             server_id = self.server_id
 
             # Fetch user data
-            existing_user = await self.bot.database.fetch_user(user_id, server_id)
+            existing_user = await self.bot.database.users.get(user_id, server_id)
             if not await self.bot.check_user_registered(interaction, existing_user):
                 self.bot.state_manager.clear_active(user_id)  
                 return
@@ -173,16 +173,16 @@ class CurioView(View):
                         await self.bot.database.create_boot(boots)
                         loot_descriptions.append(boots.description)
                 elif reward == "Rune of Refinement":
-                    await self.bot.database.update_refinement_runes(user_id, count)
+                    await self.bot.database.users.modify_currency(user_id, 'refinement_runes', count)
                 elif reward == "Rune of Potential":
-                    await self.bot.database.update_potential_runes(user_id, count)
+                    await self.bot.database.users.modify_currency(user_id, 'potential_runes', count)
                 elif reward == "Rune of Imbuing":
-                    await self.bot.database.update_imbuing_runes(user_id, count)
+                    await self.bot.database.users.modify_currency(user_id, 'imbue_runes', count)
                 elif reward == "Rune of Shattering":
-                    await self.bot.database.update_shatter_runes(user_id, count)
+                    await self.bot.database.users.modify_currency(user_id, 'shatter_runes', count)
                 elif reward in ["100k", "50k", "10k", "5k"]:
                     amount_mapping = {"100k": 100000, "50k": 50000, "10k": 10000, "5k": 5000, "1k": 1000}
-                    await self.bot.database.add_gold(user_id, amount_mapping[reward] * count)
+                    await self.bot.database.users.modify_gold(user_id, amount_mapping[reward] * count)
                 elif reward == "Ore":
                     for _ in range(count * 5):
                         mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
@@ -206,10 +206,10 @@ class CurioView(View):
             reward_embed.add_field(name="Rewards", value=summary_text, inline=False)
 
             # Update curio count
-            await self.bot.database.update_curios_count(user_id, server_id, -amount)
+            await self.bot.database.modify_currency(user_id, 'curios', -amount)
 
             # Fetch updated curio count
-            updated_user = await self.bot.database.fetch_user(user_id, server_id)
+            updated_user = await self.bot.database.users.get(user_id, server_id)
             self.curio_count = updated_user[22]
 
             # If no curios left, update embed and stop
@@ -285,7 +285,7 @@ class Curios(commands.Cog, name="curios"):
             user_id = str(interaction.user.id)
             server_id = str(interaction.guild.id)
 
-            existing_user = await self.bot.database.fetch_user(user_id, server_id)
+            existing_user = await self.bot.database.users.get(user_id, server_id)
             if not await self.bot.check_user_registered(interaction, existing_user):
                 return
 
@@ -391,13 +391,13 @@ class Curios(commands.Cog, name="curios"):
                     embed.add_field(name="✨ Loot", value=f"{boots.description}", inline=False)
             
             elif selected_reward == "Rune of Refinement":
-                await self.bot.database.update_refinement_runes(user_id, 1)
+                await self.bot.database.users.modify_currency(user_id, 'refinement_runes', 1)
             
             elif selected_reward == "Rune of Potential":
-                await self.bot.database.update_potential_runes(user_id, 1)
+                await self.bot.database.users.modify_currency(user_id, 'potential_runes', 1)
             
             elif selected_reward == "Rune of Imbuing":
-                await self.bot.database.update_imbuing_runes(user_id, 1)
+                await self.bot.database.users.modify_currency(user_id, 'imbuing_runes', 1)
             
             elif selected_reward in ["100k", "50k", "10k", "5k", "1k"]:
                 amount_mapping = {
@@ -407,7 +407,7 @@ class Curios(commands.Cog, name="curios"):
                     "5k": 5000,
                     "1k": 1000
                 }
-                await self.bot.database.add_gold(user_id, amount_mapping[selected_reward])
+                await self.bot.database.users.modify_gold(user_id, amount_mapping[selected_reward])
             
             elif selected_reward == "Ore":
                 for _ in range(5):
@@ -428,7 +428,7 @@ class Curios(commands.Cog, name="curios"):
                     await self.bot.database.update_fishing_resources(user_id, server_id, resources)
 
             await interaction.response.send_message(embed=embed)
-            await self.bot.database.update_curios_count(user_id, server_id, -1)
+            await self.bot.database.modify_currency(user_id, 'curios', -1)
         except discord.errors.NotFound:
             self.bot.logger.info("Failed to respond to the interaction: Interaction not found.")
         except Exception as e:
@@ -444,7 +444,7 @@ class Curios(commands.Cog, name="curios"):
             return
         
         try:
-            existing_user = await self.bot.database.fetch_user(user_id, server_id)
+            existing_user = await self.bot.database.users.get(user_id, server_id)
             if not await self.bot.check_user_registered(interaction, existing_user):
                 return
             

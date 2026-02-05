@@ -28,7 +28,7 @@ class Gloves(commands.Cog, name="gloves"):
         server_id = str(interaction.guild.id)
 
         # 1. Validation
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user): return
         if not await self.bot.check_is_active(interaction, user_id): return
 
@@ -206,7 +206,7 @@ class Gloves(commands.Cog, name="gloves"):
         uid, gid = str(user.id), str(message.guild.id)
         
         cost = EquipmentMechanics.calculate_potential_cost(glove.passive_lvl)
-        player_gold = (await self.bot.database.fetch_user(uid, gid))[6]
+        player_gold = (await self.bot.database.users.get(uid, gid))[6]
         
         # Success Rate
         success_rate = max(75 - (glove.passive_lvl * 5), 30)
@@ -243,7 +243,7 @@ class Gloves(commands.Cog, name="gloves"):
             # Re-check gold
             if player_gold < cost: return
 
-            await self.bot.database.add_gold(uid, -cost)
+            await self.bot.database.users.modify_gold(uid, -cost)
 
             # Roll logic - Use generic roll function (Gloves do not use runes)
             success = EquipmentMechanics.roll_potential_outcome(glove.passive_lvl, use_rune=False)
@@ -293,7 +293,7 @@ class Gloves(commands.Cog, name="gloves"):
                 await asyncio.sleep(2)
                 return False
 
-            receiver_db = await self.bot.database.fetch_user(str(receiver.id), gid)
+            receiver_db = await self.bot.database.users.get(str(receiver.id), gid)
             if not receiver_db:
                 embed.description = "User is not registered."
                 await message.edit(embed=embed)

@@ -8,12 +8,12 @@ import json
 
 # Data Models & Factory
 from core.models import Player, Monster
-from core.factory import load_player
+from core.items.factory import load_player
 
 # Logic Modules
 from core.combat import engine, ui, rewards
-from core.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot
-from core.gen_mob import generate_encounter, generate_boss
+from core.combat.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot
+from core.combat.gen_mob import generate_encounter, generate_boss
 
 class Combat(commands.Cog, name="combat"):
     def __init__(self, bot) -> None:
@@ -74,8 +74,8 @@ class Combat(commands.Cog, name="combat"):
                 cost_text="-1 Dragon Key, -1 Angelic Key"
             )
             if accepted:
-                await self.bot.database.add_dragon_key(user_id, -1)
-                await self.bot.database.add_angel_key(user_id, -1)
+                await self.bot.database.users.modify_currency(user_id, 'dragon_key', -1)
+                await self.bot.database.users.modify_currency(user_id, 'angel_key', -1)
                 return True, "aphrodite"
 
         # 2. Door of the Infernal (Lucifer)
@@ -88,7 +88,7 @@ class Combat(commands.Cog, name="combat"):
                 cost_text="-5 Soul Cores"
             )
             if accepted:
-                await self.bot.database.add_soul_cores(user_id, -5)
+                await self.bot.database.users.modify_currency(user_id, 'soul_cores', -5)
                 return True, "lucifer"
 
         # 3. Sad Anime Kid (NEET)
@@ -101,7 +101,7 @@ class Combat(commands.Cog, name="combat"):
                 cost_text="-3 Void Fragments"
             )
             if accepted:
-                await self.bot.database.add_void_frags(user_id, -3)
+                await self.bot.database.users.modify_currency(user_id, 'void_frags', -3)
                 return True, "NEET"
 
         return False, ""
@@ -158,7 +158,7 @@ class Combat(commands.Cog, name="combat"):
         server_id = str(interaction.guild.id)
 
         # 1. Validation & Cooldowns
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user): return
         if not await self.bot.check_is_active(interaction, user_id): return
         # if not await self._check_cooldown(interaction, user_id, existing_user): return
@@ -292,7 +292,7 @@ class Combat(commands.Cog, name="combat"):
     async def _cleanup(self, user_id: str, player: Player, message: Message):
         self.bot.state_manager.clear_active(user_id)
         await message.clear_reactions()
-        await self.bot.database.update_player(player)
+        await self.bot.database.users.update_from_player_object(player)
 
     async def handle_defeat(self, message: Message, player: Player, monster: Monster):
         xp_loss = int(player.exp * 0.10)
@@ -313,22 +313,22 @@ class Combat(commands.Cog, name="combat"):
         reward_data['special'] = []
         
         if special_flags.get('draconic_key'):
-            await self.bot.database.add_dragon_key(user_id, 1)
+            await self.bot.database.users.modify_currency(user_id, 'dragon_key', 1)
             reward_data['special'].append("Draconic Key")
         if special_flags.get('angelic_key'):
-            await self.bot.database.add_angel_key(user_id, 1)
+            await self.bot.database.users.modify_currency(user_id, 'angel_key', 1)
             reward_data['special'].append("Angelic Key")
         if special_flags.get('soul_core'):
-            await self.bot.database.add_soul_cores(user_id, 1)
+            await self.bot.database.users.modify_currency(user_id, 'soul_cores', 1)
             reward_data['special'].append("Soul Core")
         if special_flags.get('void_frag'):
-            await self.bot.database.add_void_frags(user_id, 1)
+            await self.bot.database.users.modify_currency(user_id, 'void_frags', 1)
             reward_data['special'].append("Void Fragment")
         if special_flags.get('shatter_rune'):
-            await self.bot.database.update_shatter_runes(user_id, 1)
+            await self.bot.database.users.modify_currency(user_id, 'shatter_runes', 1)
             reward_data['special'].append("Rune of Shattering")
         if special_flags.get('curio'):
-            await self.bot.database.update_curios_count(user_id, interaction.guild.id, 1)
+            await self.bot.database.modify_currency(user_id, interaction.guild.id, 1)
             reward_data['curios'] = 1
 
         # 3. Gear Drops
@@ -348,7 +348,7 @@ class Combat(commands.Cog, name="combat"):
             if item_roll <= 40 and w_count < 60:
                 item = await generate_weapon(user_id, monster.level, drop_rune=True)
                 if item.name == "Rune of Refinement":
-                    await self.bot.database.update_refinement_runes(user_id, 1)
+                    await self.bot.database.users.modify_currency(user_id, 1)
                     reward_data['items'].append(f"**{item.name}**: {item.description}")
                 else:
                     await self.bot.database.create_weapon(item)
@@ -356,7 +356,7 @@ class Combat(commands.Cog, name="combat"):
             elif item_roll <= 60 and a_count < 60:
                 item = await generate_accessory(user_id, monster.level, drop_rune=True)
                 if item.name == "Rune of Potential":
-                    await self.bot.database.update_potential_runes(user_id, 1)
+                    await self.bot.database.users.modify_currency(user_id, 1)
                     reward_data['items'].append(f"**{item.name}**: {item.description}")
                 else:
                     await self.bot.database.create_accessory(item)
@@ -364,7 +364,7 @@ class Combat(commands.Cog, name="combat"):
             elif item_roll <= 70 and ar_count < 60:
                 item = await generate_armor(user_id, monster.level, drop_rune=True)
                 if item.name == "Rune of Imbuing":
-                    await self.bot.database.update_imbuing_runes(user_id, 1)
+                    await self.bot.database.users.modify_currency(user_id, 1)
                     reward_data['items'].append(f"**{item.name}**: {item.description}")
                 else:
                     await self.bot.database.create_armor(item)
@@ -380,7 +380,7 @@ class Combat(commands.Cog, name="combat"):
 
         # 4. Commit
         player.exp += reward_data['xp']
-        await self.bot.database.add_gold(user_id, reward_data['gold'])
+        await self.bot.database.users.modify_gold(user_id, reward_data['gold'])
         await self._handle_level_up(player, reward_data)
 
         embed = ui.create_victory_embed(player, monster, reward_data)
@@ -402,9 +402,9 @@ class Combat(commands.Cog, name="combat"):
             player.base_defence += def_inc
             player.max_hp += hp_inc
             
-            await self.bot.database.increase_attack(player.id, atk_inc)
-            await self.bot.database.increase_defence(player.id, def_inc)
-            await self.bot.database.increase_max_hp(player.id, hp_inc)
+            await self.bot.database.users.modify_stat(player.id, 'attack', atk_inc)
+            await self.bot.database.users.modify_stat(player.id, 'defence', def_inc)
+            await self.bot.database.users.modify_stat(player.id, 'max_hp', hp_inc)
             
             reward_data['msgs'].append(f"**LEVEL UP!** You are now level {player.level}!")
             reward_data['msgs'].append(f"Stats: +{atk_inc} Atk, +{def_inc} Def, +{hp_inc} HP")

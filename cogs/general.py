@@ -5,7 +5,7 @@ from discord.ext.commands import Context
 from datetime import datetime, timedelta
 from discord import app_commands, Interaction, Message
 from discord.ext.tasks import asyncio
-from core.gen_mob import get_modifier_description
+from core.combat.gen_mob import get_modifier_description
 from typing import Literal
 
 
@@ -348,7 +348,7 @@ class General(commands.Cog, name="general"):
         server_id = str(interaction.guild.id)
 
         # Get user data
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not existing_user:
             await interaction.response.send_message(
                 "Please /register with the 🏦 Adventurer's Guild first.",
@@ -459,7 +459,7 @@ class General(commands.Cog, name="general"):
         server_id = str(interaction.guild.id)
 
         # Fetch user data
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not existing_user:
             await interaction.response.send_message(
                             "Please /register with the 🏦 Adventurer's Guild first.",

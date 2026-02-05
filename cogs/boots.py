@@ -28,7 +28,7 @@ class Boots(commands.Cog, name="boots"):
         server_id = str(interaction.guild.id)
 
         # 1. Validation
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user): return
         if not await self.bot.check_is_active(interaction, user_id): return
 
@@ -217,7 +217,7 @@ class Boots(commands.Cog, name="boots"):
         # Using Mechanics standard cost calculator.
         
         cost = EquipmentMechanics.calculate_potential_cost(boot.passive_lvl)
-        player_gold = (await self.bot.database.fetch_user(uid, gid))[6]
+        player_gold = (await self.bot.database.users.get(uid, gid))[6]
         
         # Success Rate
         success_rate = max(75 - (boot.passive_lvl * 5), 25) # Floor at 25% for high levels
@@ -254,7 +254,7 @@ class Boots(commands.Cog, name="boots"):
             # Re-check gold
             if player_gold < cost: return
 
-            await self.bot.database.add_gold(uid, -cost)
+            await self.bot.database.users.modify_gold(uid, -cost)
 
             # Roll logic - Use generic roll function
             # Note: Boots originally didn't use runes, so we pass False
@@ -305,7 +305,7 @@ class Boots(commands.Cog, name="boots"):
                 await asyncio.sleep(2)
                 return False
 
-            receiver_db = await self.bot.database.fetch_user(str(receiver.id), gid)
+            receiver_db = await self.bot.database.users.get(str(receiver.id), gid)
             if not receiver_db:
                 embed.description = "User is not registered."
                 await message.edit(embed=embed)

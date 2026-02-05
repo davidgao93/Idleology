@@ -25,7 +25,7 @@ class Skills(commands.Cog, name="skills"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
         
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
@@ -97,7 +97,7 @@ class Skills(commands.Cog, name="skills"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
@@ -132,7 +132,7 @@ class Skills(commands.Cog, name="skills"):
     async def offer_mining_upgrade(self, interaction, mining_data, embed, message):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         player_gp = existing_user[6]
         pickaxe_tier = mining_data[2]
         upgrade_requirements = self.get_mining_upgrade_requirements(pickaxe_tier)
@@ -239,7 +239,7 @@ class Skills(commands.Cog, name="skills"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
@@ -277,7 +277,7 @@ class Skills(commands.Cog, name="skills"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
         
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         player_gp = existing_user[6]
         axe_tier = wc_data[2]
         upgrade_requirements = self.get_wc_upgrade_requirements(axe_tier)
@@ -378,7 +378,7 @@ class Skills(commands.Cog, name="skills"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
         
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
@@ -413,7 +413,7 @@ class Skills(commands.Cog, name="skills"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
         
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         player_gp = existing_user[6]
         fishing_rod_tier = fishing_data[2]
         upgrade_requirements = self.get_fishing_upgrade_requirements(fishing_rod_tier)
@@ -804,14 +804,14 @@ class Skills(commands.Cog, name="skills"):
                         self.bot.logger.info(f"Message not found: {payload.message_id}")
                         return
 
-                    existing_user = await self.bot.database.fetch_user(user_id, server_id)
+                    existing_user = await self.bot.database.users.get(user_id, server_id)
                     if not existing_user:
                         self.bot.logger.info("Unregistered, not proceeding.")
                         return
                         
                     if event_type == "leprechaun" and str(payload.emoji) == event_data["emoji"]:
                         gold_amount = random.randint(1000, 2000)
-                        await self.bot.database.add_gold(user_id, gold_amount)
+                        await self.bot.database.users.modify_gold(user_id, gold_amount)
                         event_data["claimed_users"].add(user_id)
                         # Assuming message is the interaction's context or a message object
                         embed = message.embeds[0]

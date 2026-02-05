@@ -13,8 +13,8 @@ class Pvp(commands.Cog, name="pvp"):
     async def pvp(self, interaction: Interaction, member: discord.Member, gold_amount: int) -> None:
         user_id = str(interaction.user.id)
         challenged_user_id = str(member.id)
-        existing_user = await self.bot.database.fetch_user(user_id, interaction.guild.id)
-        challenged_user = await self.bot.database.fetch_user(challenged_user_id, interaction.guild.id)
+        existing_user = await self.bot.database.users.get(user_id, interaction.guild.id)
+        challenged_user = await self.bot.database.users.get(challenged_user_id, interaction.guild.id)
         if not await self.bot.check_is_active(interaction, user_id):
             return
         
@@ -177,12 +177,12 @@ class Pvp(commands.Cog, name="pvp"):
                 timeout = f"{name} took too long to decide. The duel has ended and they forfeit their gold."
                 embed.add_field(name=f"Timed out!", value=timeout, inline=False)
                 if current_player == challenger_id:
-                    await self.bot.database.add_gold(challenged_id, gold_amount)
-                    await self.bot.database.add_gold(challenger_id, -gold_amount)
+                    await self.bot.database.users.modify_gold(challenged_id, gold_amount)
+                    await self.bot.database.users.modify_gold(challenger_id, -gold_amount)
                     self.bot.logger.info(f'Awarded {challenged_id} with gold')
                 else: 
-                    await self.bot.database.add_gold(challenger_id, gold_amount)
-                    await self.bot.database.add_gold(challenged_id, -gold_amount)
+                    await self.bot.database.users.modify_gold(challenger_id, gold_amount)
+                    await self.bot.database.users.modify_gold(challenged_id, -gold_amount)
                     self.bot.logger.info(f'Awarded {challenger_id} with gold')
                 self.bot.state_manager.clear_active(challenger_id)
                 self.bot.state_manager.clear_active(challenged_id)
@@ -191,8 +191,8 @@ class Pvp(commands.Cog, name="pvp"):
 
         winner, loser = (challenger_id, challenged_id) if challenged_hp <= 0 else (challenged_id, challenger_id)
         self.bot.logger.info(f'winner: {winner}, loser: {loser}')
-        await self.bot.database.add_gold(winner, gold_amount)
-        await self.bot.database.add_gold(loser, -gold_amount)
+        await self.bot.database.users.modify_gold(winner, gold_amount)
+        await self.bot.database.users.modify_gold(loser, -gold_amount)
         if winner == challenger_id:
             name = player
             loser_name = opponent

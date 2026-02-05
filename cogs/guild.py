@@ -30,7 +30,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
@@ -87,7 +87,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_is_active(interaction, user_id):
             return
         
@@ -277,13 +277,12 @@ class Guild(commands.Cog, name="adventurer's guild"):
 
         if (success):
             self.bot.state_manager.clear_active(user_id)
-            await self.bot.database.register_user(user_id, server_id, name, selected_appearance, ideology)
+            await self.bot.database.users.register(user_id, server_id, name, selected_appearance, ideology)
             await self.bot.database.add_to_mining(user_id, server_id, 'iron')
             await self.bot.database.add_to_fishing(user_id, server_id, 'desiccated')
             await self.bot.database.add_to_woodcutting(user_id, server_id, 'flimsy')
-            await self.bot.database.add_gold(user_id, 200)
-            for _ in range (0, 10):
-                await self.bot.database.increase_potion_count(user_id)
+            await self.bot.database.users.modify_gold(user_id, 200)
+            await self.bot.database.users.modify_stat(user_id, 'potions', 10)
             self.bot.state_manager.clear_active(user_id)  
     
 
@@ -295,7 +294,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        existing_user = await self.bot.database.fetch_user(user_id, server_id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
@@ -320,7 +319,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
                 user_ideology = existing_user[8]
                 followers_count = await self.bot.database.fetch_followers(user_ideology)
                 await self.bot.database.update_followers_count(user_ideology, followers_count - 1)
-                await self.bot.database.unregister_user(user_id, server_id)
+                await self.bot.database.users.unregister(user_id, server_id)
                 embed = discord.Embed(
                     title="Retirement",
                     description="You have been successfully unregistered.",
