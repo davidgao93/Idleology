@@ -339,11 +339,11 @@ class Combat(commands.Cog, name="combat"):
         if drop_roll <= drop_chance:
             item_roll = random.randint(1, 100)
             
-            w_count = await self.bot.database.count_user_weapons(user_id)
-            a_count = await self.bot.database.count_user_accessories(user_id)
-            ar_count = await self.bot.database.count_user_armors(user_id)
-            g_count = await self.bot.database.count_user_gloves(user_id)
-            b_count = await self.bot.database.count_user_boots(user_id)
+            w_count = await self.bot.database.equipment.get_count(user_id, 'weapon')
+            a_count = await self.bot.database.equipment.get_count(user_id, 'accessories')
+            ar_count = await self.bot.database.equipment.get_count(user_id, 'armor')
+            g_count = await self.bot.database.equipment.get_count(user_id, 'glove')
+            b_count = await self.bot.database.equipment.get_count(user_id, 'boot')
             
             if item_roll <= 40 and w_count < 60:
                 item = await generate_weapon(user_id, monster.level, drop_rune=True)
@@ -351,7 +351,7 @@ class Combat(commands.Cog, name="combat"):
                     await self.bot.database.users.modify_currency(user_id, 1)
                     reward_data['items'].append(f"**{item.name}**: {item.description}")
                 else:
-                    await self.bot.database.create_weapon(item)
+                    await self.bot.database.equipment.create_weapon(item)
                     reward_data['items'].append(item.description)
             elif item_roll <= 60 and a_count < 60:
                 item = await generate_accessory(user_id, monster.level, drop_rune=True)
@@ -359,7 +359,7 @@ class Combat(commands.Cog, name="combat"):
                     await self.bot.database.users.modify_currency(user_id, 1)
                     reward_data['items'].append(f"**{item.name}**: {item.description}")
                 else:
-                    await self.bot.database.create_accessory(item)
+                    await self.bot.database.equipment.create_accessory(item)
                     reward_data['items'].append(item.description)
             elif item_roll <= 70 and ar_count < 60:
                 item = await generate_armor(user_id, monster.level, drop_rune=True)
@@ -367,15 +367,15 @@ class Combat(commands.Cog, name="combat"):
                     await self.bot.database.users.modify_currency(user_id, 1)
                     reward_data['items'].append(f"**{item.name}**: {item.description}")
                 else:
-                    await self.bot.database.create_armor(item)
+                    await self.bot.database.equipment.create_armor(item)
                     reward_data['items'].append(item.description)
             elif item_roll <= 85 and g_count < 60:
                 item = await generate_glove(user_id, monster.level)
-                await self.bot.database.create_glove(item)
+                await self.bot.database.equipment.create_glove(item)
                 reward_data['items'].append(item.description)
             elif item_roll <= 100 and b_count < 60:
                 item = await generate_boot(user_id, monster.level)
-                await self.bot.database.create_boot(item)
+                await self.bot.database.equipment.create_boot(item)
                 reward_data['items'].append(item.description)
 
         # 4. Commit

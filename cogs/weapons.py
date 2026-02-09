@@ -204,9 +204,9 @@ class Weapons(commands.Cog, name="weapons"):
 
         # Resource check
         uid, gid = str(user.id), str(message.guild.id)
-        mining = await self.bot.database.fetch_user_mining(uid, gid)
-        wood = await self.bot.database.fetch_user_woodcutting(uid, gid)
-        fish = await self.bot.database.fetch_user_fishing(uid, gid)
+        mining = await self.bot.database.skills.get_data(uid, gid, 'mining')
+        wood = await self.bot.database.skills.get_data(uid, gid, 'woodcutting')
+        fish = await self.bot.database.skills.get_data(uid, gid, 'fishing')
         player_gold = (await self.bot.database.users.get(uid, gid))[6]
 
         ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
@@ -250,20 +250,20 @@ class Weapons(commands.Cog, name="weapons"):
             await act.response.defer()
             if act.data['custom_id'] != "do_forge": return
 
-            await self.bot.database.update_mining_resource(uid, gid, costs['ore_type'], -costs['ore_qty'])
-            await self.bot.database.update_woodcutting_resource(uid, gid, f"{costs['log_type']}_logs", -costs['log_qty'])
-            await self.bot.database.update_fishing_resource(uid, gid, f"{costs['bone_type']}_bones", -costs['bone_qty'])
+            await self.bot.database.skills.update_single_resource(uid, gid, 'mining', costs['ore_type'], -costs['ore_qty'])
+            await self.bot.database.skills.update_single_resource(uid, gid, 'woodcutting', f"{costs['log_type']}_logs", -costs['log_qty'])
+            await self.bot.database.skills.update_single_resource(uid, gid, 'fishing', f"{costs['bone_type']}_bones", -costs['bone_qty'])
             await self.bot.database.users.modify_gold(uid, -costs['gold'])
 
             success, new_passive = EquipmentMechanics.roll_forge_outcome(weapon)
             
             if success:
-                await self.bot.database.update_weapon_passive(weapon.item_id, new_passive)
+                await self.bot.database.equipment.update_passive(weapon.item_id, 'weapon', new_passive)
                 embed = discord.Embed(title="Forge Success! 🔨", description=f"Weapon passive is now **{new_passive.title()}**!", color=discord.Color.gold())
             else:
                 embed = discord.Embed(title="Forge Failed 💥", description="Materials consumed, but magic failed.", color=discord.Color.dark_grey())
             
-            await self.bot.database.update_weapon_forge_count(weapon.item_id, weapon.forges_remaining - 1)
+            await self.bot.database.equipment.update_counter(weapon.item_id, 'weapon', 'forges_remaining', weapon.forges_remaining - 1)
             await message.edit(embed=embed, view=None)
             await asyncio.sleep(3)
 
@@ -277,7 +277,7 @@ class Weapons(commands.Cog, name="weapons"):
             if runes > 0:
                 if await self._confirm_action(message, user, f"No refines left. Use a **Rune of Refinement**? ({runes} owned)"):
                     await self.bot.database.users.modify_currency(uid, 'refinement_runes', -1)
-                    await self.bot.database.update_weapon_refine_count(weapon.item_id, 1)
+                    await self.bot.database.equipment.update_counter(weapon.item_id, 'weapon', 'refines_remaining', 1)
                     return 
                 return
             else:
@@ -300,9 +300,9 @@ class Weapons(commands.Cog, name="weapons"):
             def_gain = random.randint(1, 3)
             
             await self.bot.database.users.modify_gold(uid, -cost)
-            await self.bot.database.increase_weapon_attack(weapon.item_id, atk_gain)
-            await self.bot.database.increase_weapon_defence(weapon.item_id, def_gain)
-            await self.bot.database.update_weapon_refine_count(weapon.item_id, weapon.refines_remaining - 1)
+            await self.bot.database.equipment.increase_stat(weapon.item_id, 'weapon', 'attack', atk_gain)
+            await self.bot.database.equipment.increase_stat(weapon.item_id, 'weapon', 'defence', def_gain)
+            await self.bot.database.equipment.update_counter(weapon.item_id, 'weapon', 'refines_remaining', weapon.refines_remaining - 1)
             await self.bot.database.update_weapon_refine_lvl(weapon.item_id, 1)
 
             embed = discord.Embed(title="Refined! ✨", description=f"+{atk_gain} Atk, +{def_gain} Def", color=discord.Color.blue())
@@ -344,13 +344,13 @@ class Weapons(commands.Cog, name="weapons"):
                 
                 if roll < 0.25:
                     if weapon.p_passive == 'none':
-                        await self.bot.database.update_item_pinnacle_passive(weapon.item_id, target.passive)
+                        await self.bot.database.equipment.update_passive(weapon.item_id, 'weapon', target.passive, "pinnacle_passive")
                         outcome = "Success! Pinnacle Passive added."
                     else:
-                        await self.bot.database.update_item_utmost_passive(weapon.item_id, target.passive)
+                        await self.bot.database.equipment.update_passive(weapon.item_id, 'weapon', target.passive, "utmost_passive")
                         outcome = "Success! Utmost Passive added."
                 elif roll < 0.50:
-                    await self.bot.database.update_weapon_passive(weapon.item_id, target.passive)
+                    await self.bot.database.equipment.update_passive(weapon.item_id, 'weapon', target.passive)
                     outcome = "Chaos! Main passive overwritten."
                 else:
                     outcome = "Failure. The essence dissipated."

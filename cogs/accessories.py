@@ -269,19 +269,19 @@ class Accessories(commands.Cog, name="accessories"):
             if success:
                 if accessory.passive == "none":
                     new_passive = EquipmentMechanics.get_new_passive('accessory')
-                    await self.bot.database.update_accessory_passive(accessory.item_id, new_passive)
-                    await self.bot.database.update_accessory_passive_lvl(accessory.item_id, 1)
+                    await self.bot.database.equipment.update_passive(accessory.item_id, 'accessory', new_passive)
+                    await self.bot.database.equipment.update_counter(accessory.item_id, 'accessory', 'passive_lvl', 1)
                     result_embed.description = f"🎉 Success! Unlocked **{new_passive}**!"
                 else:
                     new_lvl = accessory.passive_lvl + 1
-                    await self.bot.database.update_accessory_passive_lvl(accessory.item_id, new_lvl)
+                    await self.bot.database.equipment.update_counter(accessory.item_id, 'accessory', 'passive_lvl', new_lvl)
                     result_embed.description = f"🎉 Success! Upgraded to **Level {new_lvl}**!"
             else:
                 result_embed.description = "💔 The enhancement failed."
                 result_embed.color = discord.Color.dark_grey()
 
             # Decrement potential
-            await self.bot.database.update_accessory_potential(accessory.item_id, accessory.potential_remaining - 1)
+            await self.bot.database.equipment.update_counter(accessory.item_id, 'accessory', 'potential_remaining', accessory.potential_remaining - 1)
             
             await message.edit(embed=result_embed, view=None)
             await asyncio.sleep(3)
@@ -326,7 +326,7 @@ class Accessories(commands.Cog, name="accessories"):
                 await asyncio.sleep(2)
                 return False
             
-            rec_count = await self.bot.database.count_user_accessories(str(receiver.id))
+            rec_count = await self.bot.database.equipment.get_count(str(receiver.id, 'accessories'))
             if rec_count >= 58:
                 embed.description = "Receiver's inventory is full."
                 await message.edit(embed=embed)
@@ -335,7 +335,7 @@ class Accessories(commands.Cog, name="accessories"):
 
             # Confirmation
             if await self._confirm_action(message, user, f"Send **{accessory.name}** to {receiver.mention}?"):
-                await self.bot.database.send_accessory(str(receiver.id), accessory.item_id)
+                await self.bot.database.equipment.transfer(accessory.item_id, str(receiver.id), 'accessory')
                 embed.title = "Sent!"
                 embed.description = f"Item sent to {receiver.mention}."
                 embed.color = discord.Color.green()

@@ -12,6 +12,7 @@ class EquipmentRepository:
             "weapon": "items",
             "armor": "armor",
             "accessory": "accessories",
+            "accessories": "accessories",
             "glove": "gloves",
             "boot": "boots"
         }

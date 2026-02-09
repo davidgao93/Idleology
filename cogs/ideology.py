@@ -18,7 +18,7 @@ class Ideology(commands.Cog, name="ideology"):
         Gets a list of ideologies and their follower counts.
         """
         server_id = str(interaction.guild.id)
-        ideologies = await self.bot.database.fetch_ideologies(server_id)
+        ideologies = await self.bot.database.social.get_all_by_server(server_id)
 
         if not ideologies:
             await interaction.response.send_message("No ideologies found for this server.")
@@ -29,7 +29,7 @@ class Ideology(commands.Cog, name="ideology"):
 
         # Fetch the follower count for each ideology
         for ideology in ideologies:
-            followers_count = await self.bot.database.fetch_followers(ideology)
+            followers_count = await self.bot.database.social.get_follower_count(ideology)
             ideology_counts.append((ideology, followers_count))
 
         # Sort the list by follower counts in descending order
@@ -61,7 +61,7 @@ class Ideology(commands.Cog, name="ideology"):
             return
 
         user_ideology = existing_user[8]
-        followers_count = await self.bot.database.fetch_followers(user_ideology)
+        followers_count = await self.bot.database.social.get_follower_count(user_ideology)
         last_propagate_time = existing_user[14] 
         cooldown_duration = timedelta(hours=18)
 
@@ -103,7 +103,7 @@ class Ideology(commands.Cog, name="ideology"):
 
         # Update database
         self.bot.logger.info(f"Propogate {user_ideology}, awarding {user_id} with {gold_reward}")
-        await self.bot.database.update_followers_count(user_ideology, new_followers_count)
+        await self.bot.database.social.update_followers(user_ideology, new_followers_count)
         await self.bot.database.users.modify_gold(user_id, gold_reward)
         await self.bot.database.users.update_timer(user_id, 'last_propagate_time')
 

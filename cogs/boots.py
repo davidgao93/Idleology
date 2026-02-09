@@ -120,14 +120,14 @@ class Boots(commands.Cog, name="boots"):
         
         while True:
             # Re-fetch item
-            raw = await self.bot.database.fetch_boot_by_id(boot.item_id)
+            raw = await self.bot.database.equipment.get_by_id(boot.item_id, 'boot')
             if not raw: 
                 await interaction.followup.send("Item no longer exists.", ephemeral=True)
                 return
             boot = create_boot(raw)
             
             # Check equipped
-            equipped_raw = await self.bot.database.get_equipped_boot(user_id)
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, 'boot')
             is_equipped = equipped_raw and equipped_raw[0] == boot.item_id
 
             embed = InventoryUI.get_item_details_embed(boot, is_equipped)
@@ -265,18 +265,18 @@ class Boots(commands.Cog, name="boots"):
             if success:
                 if boot.passive == "none":
                     new_passive = EquipmentMechanics.get_new_passive('boot')
-                    await self.bot.database.update_boot_passive(boot.item_id, new_passive)
-                    await self.bot.database.update_boot_passive_lvl(boot.item_id, 1)
+                    await self.bot.database.equipment.update_passive(boot.item_id, 'boot', new_passive)
+                    await self.bot.database.equipment.update_counter(boot.item_id, 'boot', 'passive_lvl', 1)
                     result_embed.description = f"🎉 Success! Unlocked **{new_passive.replace('-', ' ').title()}**!"
                 else:
                     new_lvl = boot.passive_lvl + 1
-                    await self.bot.database.update_boot_passive_lvl(boot.item_id, new_lvl)
+                    await self.bot.database.equipment.update_counter(boot.item_id, 'boot', 'passive_lvl', new_lvl)
                     result_embed.description = f"🎉 Success! Upgraded to **Level {new_lvl}**!"
             else:
                 result_embed.description = "💔 The enchantment failed."
                 result_embed.color = discord.Color.dark_grey()
 
-            await self.bot.database.update_boot_potential_remaining(boot.item_id, boot.potential_remaining - 1)
+            await self.bot.database.equipment.update_counter(boot.item_id, 'boot', 'potential_remaining', boot.potential_remaining - 1)
             
             await message.edit(embed=result_embed, view=None)
             await asyncio.sleep(3)
@@ -320,7 +320,7 @@ class Boots(commands.Cog, name="boots"):
                 await asyncio.sleep(2)
                 return False
             
-            rec_count = await self.bot.database.count_user_boots(str(receiver.id))
+            rec_count = await self.bot.database.equipment.get_count(str(receiver.id), 'boot')
             if rec_count >= 58:
                 embed.description = "Receiver's inventory is full."
                 await message.edit(embed=embed)
@@ -328,7 +328,7 @@ class Boots(commands.Cog, name="boots"):
                 return False
 
             if await self._confirm_action(message, user, f"Send **{boot.name}** to {receiver.mention}?"):
-                await self.bot.database.send_boot(str(receiver.id), boot.item_id)
+                await self.bot.database.equipment.transfer(boot.item_id, str(receiver.id), 'boot')
                 embed.title = "Sent!"
                 embed.description = f"Item sent to {receiver.mention}."
                 embed.color = discord.Color.green()

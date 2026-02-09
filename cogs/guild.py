@@ -170,7 +170,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
             
         selected_appearance = f"{appearances[current_index]}"
 
-        ideologies = await self.bot.database.fetch_ideologies(server_id)
+        ideologies = await self.bot.database.social.get_all_by_server(server_id)
 
         embed = discord.Embed(
             title="Ideology",
@@ -236,16 +236,16 @@ class Guild(commands.Cog, name="adventurer's guild"):
                     if str(reaction.emoji) == "✅":
                         await message.clear_reactions()
                         if ideology in ideologies:
-                            followers = await self.bot.database.fetch_followers(ideology)
+                            followers = await self.bot.database.social.get_follower_count(ideology)
                             follow_text = (f"{name} has adopted **{ideology}**! Followers: {followers + 1}\n"
                                                f"{name} is now registered.")
                             embed.add_field(name="Follower", value=follow_text, inline=True)
                             await message.edit(embed=embed)
-                            await self.bot.database.update_followers_count(ideology, followers + 1)
+                            await self.bot.database.social.update_followers(ideology, followers + 1)
                             self.bot.state_manager.clear_active(user_id)
                         else:
-                            await self.bot.database.create_ideology(user_id, server_id, ideology)
-                            await self.bot.database.update_followers_count(ideology, 1)
+                            await self.bot.database.social.create_ideology(user_id, server_id, ideology)
+                            await self.bot.database.social.update_followers(ideology, 1)
                             founder_text = (f"Congratulations, {name} has founded a new ideology called **{ideology}**!\n"
                                                f"{name} is now registered.")
                             embed.add_field(name="Founder", value=founder_text, inline=True)
@@ -278,9 +278,9 @@ class Guild(commands.Cog, name="adventurer's guild"):
         if (success):
             self.bot.state_manager.clear_active(user_id)
             await self.bot.database.users.register(user_id, server_id, name, selected_appearance, ideology)
-            await self.bot.database.add_to_mining(user_id, server_id, 'iron')
-            await self.bot.database.add_to_fishing(user_id, server_id, 'desiccated')
-            await self.bot.database.add_to_woodcutting(user_id, server_id, 'flimsy')
+            await self.bot.database.skills.initialize(user_id, server_id, 'mining', 'iron')
+            await self.bot.database.skills.initialize(user_id, server_id, 'fishing', 'desiccated')
+            await self.bot.database.skills.initialize(user_id, server_id, 'woodcutting', 'flimsy')
             await self.bot.database.users.modify_gold(user_id, 200)
             await self.bot.database.users.modify_stat(user_id, 'potions', 10)
             self.bot.state_manager.clear_active(user_id)  
@@ -317,8 +317,8 @@ class Guild(commands.Cog, name="adventurer's guild"):
 
             if str(reaction.emoji) == "✅":
                 user_ideology = existing_user[8]
-                followers_count = await self.bot.database.fetch_followers(user_ideology)
-                await self.bot.database.update_followers_count(user_ideology, followers_count - 1)
+                followers_count = await self.bot.database.social.get_follower_count(user_ideology)
+                await self.bot.database.social.update_followers(user_ideology, followers_count - 1)
                 await self.bot.database.users.unregister(user_id, server_id)
                 embed = discord.Embed(
                     title="Retirement",

@@ -53,7 +53,7 @@ class Gloves(commands.Cog, name="gloves"):
                 break
 
             # B. Sort: Equipped first, then by Level
-            equipped_raw = await self.bot.database.get_equipped_glove(user_id)
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, 'gloves')
             equipped_id = equipped_raw[0] if equipped_raw else None
             
             gloves.sort(key=lambda g: (g.item_id == equipped_id, g.level), reverse=True)
@@ -120,14 +120,14 @@ class Gloves(commands.Cog, name="gloves"):
         
         while True:
             # Re-fetch item
-            raw = await self.bot.database.fetch_glove_by_id(glove.item_id)
+            raw = await self.bot.database.equipment.get_by_id(glove.item_id, 'glove')
             if not raw: 
                 await interaction.followup.send("Item no longer exists.", ephemeral=True)
                 return
             glove = create_glove(raw)
             
             # Check equipped
-            equipped_raw = await self.bot.database.get_equipped_glove(user_id)
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, 'glove')
             is_equipped = equipped_raw and equipped_raw[0] == glove.item_id
 
             embed = InventoryUI.get_item_details_embed(glove, is_equipped)
@@ -253,18 +253,18 @@ class Gloves(commands.Cog, name="gloves"):
             if success:
                 if glove.passive == "none":
                     new_passive = EquipmentMechanics.get_new_passive('glove')
-                    await self.bot.database.update_glove_passive(glove.item_id, new_passive)
-                    await self.bot.database.update_glove_passive_lvl(glove.item_id, 1)
+                    await self.bot.database.equipment.update_passive(glove.item_id, 'glove', new_passive)
+                    await self.bot.database.equipment.update_counter(glove.item_id, 'glove', 'passive_lvl', 1)
                     result_embed.description = f"🎉 Success! Unlocked **{new_passive.replace('-', ' ').title()}**!"
                 else:
                     new_lvl = glove.passive_lvl + 1
-                    await self.bot.database.update_glove_passive_lvl(glove.item_id, new_lvl)
+                    await self.bot.database.equipment.update_counter(glove.item_id, 'glove', 'passive_lvl', new_lvl)
                     result_embed.description = f"🎉 Success! Upgraded to **Level {new_lvl}**!"
             else:
                 result_embed.description = "💔 The enchantment failed."
                 result_embed.color = discord.Color.dark_grey()
 
-            await self.bot.database.update_glove_potential_remaining(glove.item_id, glove.potential_remaining - 1)
+            await self.bot.database.equipment.update_counter(glove.item_id, 'glove', 'potential_remaining', glove.potential_remaining - 1)
             
             await message.edit(embed=result_embed, view=None)
             await asyncio.sleep(3)
@@ -308,7 +308,7 @@ class Gloves(commands.Cog, name="gloves"):
                 await asyncio.sleep(2)
                 return False
             
-            rec_count = await self.bot.database.count_user_gloves(str(receiver.id))
+            rec_count = await self.bot.database.equipment.get_count(str(receiver.id, 'glove'))
             if rec_count >= 58:
                 embed.description = "Receiver's inventory is full."
                 await message.edit(embed=embed)
@@ -316,7 +316,7 @@ class Gloves(commands.Cog, name="gloves"):
                 return False
 
             if await self._confirm_action(message, user, f"Send **{glove.name}** to {receiver.mention}?"):
-                await self.bot.database.send_glove(str(receiver.id), glove.item_id)
+                await self.bot.database.equipment.transfer(glove.item_id, str(receiver.id), 'glove')
                 embed.title = "Sent!"
                 embed.description = f"Item sent to {receiver.mention}."
                 embed.color = discord.Color.green()

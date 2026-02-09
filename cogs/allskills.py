@@ -29,9 +29,9 @@ class Skills(commands.Cog, name="skills"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
-        mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
-        fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
-        woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+        mining_data = await self.bot.database.skills.get_data(user_id, server_id, 'mining')
+        fishing_data = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
+        woodcutting_data = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
 
         embed = discord.Embed(title=f"{existing_user[3]}'s Skills", color=0x00FF00)
 
@@ -101,7 +101,7 @@ class Skills(commands.Cog, name="skills"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
-        mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+        mining_data = await self.bot.database.skills.get_data(user_id, server_id, 'mining')
 
         # Display current pickaxe tier and resources
         embed = discord.Embed(title="Mining", color=0x00FF00)
@@ -201,14 +201,9 @@ class Skills(commands.Cog, name="skills"):
 
     async def upgrade_pickaxe(self, user_id, server_id, pickaxe_tier, new_pickaxe_tier):
         upgrade_requirements = self.get_mining_upgrade_requirements(pickaxe_tier)
-        required_iron, required_coal, required_gold, required_platinum, required_gp = upgrade_requirements
-        await self.bot.database.upgrade_pickaxe(user_id, server_id, 
+        await self.bot.database.skills.upgrade_pickaxe(user_id, server_id, 
                                                 new_pickaxe_tier, 
-                                                required_iron,
-                                                required_coal,
-                                                required_gold,
-                                                required_platinum,
-                                                required_gp)
+                                                upgrade_requirements)
 
     def get_mining_upgrade_requirements(self, pickaxe_tier):
         # Define upgrade requirements
@@ -243,7 +238,7 @@ class Skills(commands.Cog, name="skills"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
-        woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+        woodcutting_data = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
         if not woodcutting_data:
             await interaction.response.send_message("You do not have woodcutting data. Please start woodcutting first.")
             return
@@ -341,14 +336,9 @@ class Skills(commands.Cog, name="skills"):
 
     async def upgrade_axe(self, user_id, server_id, axe_tier, new_axe_tier):
         upgrade_requirements = self.get_wc_upgrade_requirements(axe_tier)
-        required_oak, required_willow, required_mahogany, required_magic, required_gp = upgrade_requirements
-        await self.bot.database.upgrade_axe(user_id, server_id, 
+        await self.bot.database.skills.upgrade_axe(user_id, server_id, 
                                              new_axe_tier, 
-                                             required_oak, 
-                                             required_willow, 
-                                             required_mahogany, 
-                                             required_magic, 
-                                             required_gp)
+                                             upgrade_requirements)
 
     def get_wc_upgrade_requirements(self, axe_tier):
         # Define upgrade requirements analogous to mining
@@ -382,7 +372,7 @@ class Skills(commands.Cog, name="skills"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         
-        fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+        fishing_data = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
 
         # Display current fishing rod tier and resources
         embed = discord.Embed(title="Fishing", color=0x00FF00)
@@ -477,15 +467,9 @@ class Skills(commands.Cog, name="skills"):
 
     async def upgrade_fishing_rod(self, user_id, server_id, fishing_rod_tier, new_fishing_rod_tier):
         upgrade_requirements = self.get_fishing_upgrade_requirements(fishing_rod_tier)
-        required_desiccated, required_regular, required_sturdy, required_reinforced, required_gp = upgrade_requirements
-        
-        await self.bot.database.upgrade_fishing_rod(user_id, server_id, 
+        await self.bot.database.skills.upgrade_fishing_rod(user_id, server_id, 
                                                      new_fishing_rod_tier, 
-                                                     required_desiccated, 
-                                                     required_regular,
-                                                     required_sturdy, 
-                                                     required_reinforced, 
-                                                     required_gp)
+                                                     upgrade_requirements)
 
     def get_fishing_upgrade_requirements(self, fishing_rod_tier):
         # Define upgrade requirements analogous to mining and woodcutting
@@ -517,34 +501,34 @@ class Skills(commands.Cog, name="skills"):
         if self.bot.database is None:
             self.bot.logger.error("Database is not initialized.")
             exit(0)
-        mining_users = await self.bot.database.fetch_users_with_mining()
+        mining_users = await self.bot.database.skills.get_all_users('mining')
         if mining_users:
             for user_id, server_id in mining_users:
-                mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+                mining_data = await self.bot.database.skills.get_data(user_id, server_id, 'mining')
                 if mining_data:
                     resources = await self.gather_mining_resources(mining_data[2])  # fetching pickaxe tier
                     # self.bot.logger.info(f'Granting {user_id} with mining {resources}')
-                    await self.bot.database.update_mining_resources(user_id, server_id, resources)
+                    await self.bot.database.skills.update_batch(user_id, server_id, 'mining', resources)
 
         # Get users with fishing skills
-        fishing_users = await self.bot.database.fetch_users_with_fishing()
+        fishing_users = await self.bot.database.skills.get_all_users('fishing')
         if fishing_users:
             for user_id, server_id in fishing_users:
-                fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+                fishing_data = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
                 if fishing_data:
                     resources = await self.gather_fishing_resources(fishing_data[2])  # fetching fishing rod
                     # self.bot.logger.info(f'Granting {user_id} with fishing {resources}')
-                    await self.bot.database.update_fishing_resources(user_id, server_id, resources)
+                    await self.bot.database.skills.update_batch(user_id, server_id, 'fishing', resources)
 
         # Get users with woodcutting skills
-        woodcutting_users = await self.bot.database.fetch_users_with_woodcutting()
+        woodcutting_users = await self.bot.database.skills.get_all_users('woodcutting')
         if woodcutting_users:
             for user_id, server_id in woodcutting_users:
-                woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+                woodcutting_data = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
                 if woodcutting_data:
                     resources = await self.gather_woodcutting_resources(woodcutting_data[2])  # fetching axe type
                     # self.bot.logger.info(f'Granting {user_id} with woodcutting {resources}')
-                    await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
+                    await self.bot.database.skills.update_batch(user_id, server_id, 'woodcutting', resources)
 
 
     async def gather_mining_resources(self, pickaxe_tier):
@@ -837,11 +821,11 @@ class Skills(commands.Cog, name="skills"):
                         await message.edit(embed=embed)
 
                     elif event_type == "meteorite" and str(payload.emoji) == event_data["emoji"]:
-                        mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+                        mining_data = await self.bot.database.skills.get_data(user_id, server_id, 'mining')
                         if mining_data:
                             self.bot.logger.info('Meteor claimed')
                             resources = await self.gather_mining_resources(mining_data[2])  # Use the mining tier from mining_data
-                            await self.bot.database.update_mining_resources(user_id, server_id, resources)
+                            await self.bot.database.skills.update_batch(user_id, server_id, 'mining', resources)
                             event_data["claimed_users"].add(user_id)
                             # Assuming message is the interaction's context or a message object
                             embed = message.embeds[0]
@@ -867,11 +851,11 @@ class Skills(commands.Cog, name="skills"):
                             await message.edit(embed=embed)
 
                     elif event_type == "dryad" and str(payload.emoji) == event_data["emoji"]:
-                        woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+                        woodcutting_data = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
                         if woodcutting_data:
                             self.bot.logger.info('Dryad claimed')
                             resources = await self.gather_woodcutting_resources(woodcutting_data[2])  # Use the axe tier from woodcutting_data
-                            await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
+                            await self.bot.database.skills.update_batch(user_id, server_id, 'woodcutting', resources)
                             event_data["claimed_users"].add(user_id)
                             # Assuming message is the interaction's context or a message object
                             embed = message.embeds[0]
@@ -897,11 +881,11 @@ class Skills(commands.Cog, name="skills"):
                             await message.edit(embed=embed)
 
                     elif event_type == "high_tide" and str(payload.emoji) == event_data["emoji"]:
-                        fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+                        fishing_data = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
                         if fishing_data:
                             self.bot.logger.info('Fishing claimed')
                             resources = await self.gather_fishing_resources(fishing_data[2])  # Use the fishing rod tier from fishing_data
-                            await self.bot.database.update_fishing_resources(user_id, server_id, resources)
+                            await self.bot.database.skills.update_batch(user_id, server_id, 'fishing', resources)
                             event_data["claimed_users"].add(user_id)
                             # Assuming message is the interaction's context or a message object
                             embed = message.embeds[0]

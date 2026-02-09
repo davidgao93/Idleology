@@ -137,19 +137,19 @@ class Trade(commands.Cog, name="trade"):
                     "gold": 5,
                     "platinum": 6
                 }[material_lower]
-                user_resources = await self.bot.database.fetch_user_mining(user_id, server_id)
+                user_resources = await self.bot.database.skills.get_data(user_id, server_id, 'mining')
                 current_amount = user_resources[material_index]
             elif table == "fishing":
                 material_index = {
                     "desiccated": 3, "regular": 4, "sturdy": 5, "reinforced": 6
                                   }[material_lower]
-                user_resources = await self.bot.database.fetch_user_fishing(user_id, server_id)
+                user_resources = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
                 current_amount = user_resources[material_index]
             else:  # woodcutting
                 material_index = {
                     "oak": 3, "willow": 4, "mahogany": 5, "magic": 6, "idea": 7
                     }[material_lower]
-                user_resources = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+                user_resources = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
                 current_amount = user_resources[material_index]
 
             # Check if the specified amount is valid
@@ -184,14 +184,14 @@ class Trade(commands.Cog, name="trade"):
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=confirm_check)
                 if str(reaction.emoji) == "✅":
                     if table == "mining":
-                        await self.bot.database.update_mining_resource(user_id, server_id, material_name, -amount)  # Subtract from sender
-                        await self.bot.database.update_mining_resource(str(receiver.id), server_id, material_name, amount)  # Add to receiver
+                        await self.bot.database.skills.update_single_resource(user_id, server_id, 'mining', material_name, -amount)  # Subtract from sender
+                        await self.bot.database.skills.update_single_resource(str(receiver.id), server_id, 'mining', material_name, amount)  # Add to receiver
                     elif table == "fishing":
-                        await self.bot.database.update_fishing_resource(user_id, server_id, material_name, -amount)  # Subtract from sender
-                        await self.bot.database.update_fishing_resource(str(receiver.id), server_id, material_name, amount)  # Add to receiver
+                        await self.bot.database.skills.update_single_resource(user_id, server_id, 'fishing', material_name, -amount)  # Subtract from sender
+                        await self.bot.database.skills.update_single_resource(str(receiver.id), server_id, 'fishing', material_name, amount)  # Add to receiver
                     elif table == "woodcutting":
-                        await self.bot.database.update_woodcutting_resource(user_id, server_id, material_name, -amount)  # Subtract from sender
-                        await self.bot.database.update_woodcutting_resource(str(receiver.id), server_id, material_name, amount)  # Add to receiver
+                        await self.bot.database.skills.update_single_resource(user_id, server_id, 'woodcutting', material_name, -amount)  # Subtract from sender
+                        await self.bot.database.skills.update_single_resource(str(receiver.id), server_id, 'woodcutting', material_name, amount)  # Add to receiver
                     
                     # Update the confirmation embed to indicate success
                     embed.description = f"Successfully sent **{amount:,}** **{material_lower.title()}** to {receiver.mention}! 🎉"

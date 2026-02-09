@@ -220,9 +220,9 @@ class ArmorCog(commands.Cog, name="armor"):
         if not costs: return
 
         # Check Resources
-        mining = await self.bot.database.fetch_user_mining(uid, gid)
-        wood = await self.bot.database.fetch_user_woodcutting(uid, gid)
-        fish = await self.bot.database.fetch_user_fishing(uid, gid)
+        mining = await self.bot.database.skills.get_data(uid, gid, 'mining')
+        wood = await self.bot.database.skills.get_data(uid, gid, 'woodcutting')
+        fish = await self.bot.database.skills.get_data(uid, gid, 'fishing')
         player_gold = (await self.bot.database.users.get(uid, gid))[6]
 
         ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
@@ -269,9 +269,9 @@ class ArmorCog(commands.Cog, name="armor"):
             if act.data['custom_id'] != "confirm": return
 
             # Consume
-            await self.bot.database.update_mining_resource(uid, gid, costs['ore_type'], -costs['ore_qty'])
-            await self.bot.database.update_woodcutting_resource(uid, gid, f"{costs['log_type']}_logs", -costs['log_qty'])
-            await self.bot.database.update_fishing_resource(uid, gid, f"{costs['bone_type']}_bones", -costs['bone_qty'])
+            await self.bot.database.skills.update_single_resource(uid, gid, 'mining', costs['ore_type'], -costs['ore_qty'])
+            await self.bot.database.skills.update_single_resource(uid, gid, 'woodcutting', f"{costs['log_type']}_logs", -costs['log_qty'])
+            await self.bot.database.skills.update_single_resource(uid, gid, 'fishing', f"{costs['bone_type']}_bones", -costs['bone_qty'])
             await self.bot.database.users.modify_gold(uid, -costs['gold'])
 
             # Roll
@@ -279,14 +279,14 @@ class ArmorCog(commands.Cog, name="armor"):
             
             result_embed = discord.Embed(title="Temper Result", color=discord.Color.gold())
             if success:
-                await self.bot.database.increase_armor_stat(armor.item_id, stat, amount)
+                await self.bot.database.equipment.increase_stat(armor.item_id, 'armor', 'stat', stat, amount)
                 stat_name = "Percentage Damage Reduction" if stat == "pdr" else "Flat Damage Reduction"
                 result_embed.description = f"🎊 Success! Increased **{stat_name}** by **{amount}**!"
             else:
                 result_embed.description = "💔 Tempering failed. Resources consumed."
                 result_embed.color = discord.Color.dark_grey()
 
-            await self.bot.database.update_armor_temper_count(armor.item_id, armor.temper_remaining - 1)
+            await self.bot.database.equipment.update_counter(armor.item_id, 'armor', 'temper_remaining', armor.temper_remaining - 1)
             
             await message.edit(embed=result_embed, view=None)
             await asyncio.sleep(3)
@@ -332,7 +332,7 @@ class ArmorCog(commands.Cog, name="armor"):
             
             if random.random() <= 0.5:
                 new_passive = random.choice(self.armor_passives)
-                await self.bot.database.update_armor_passive(armor.item_id, new_passive)
+                await self.bot.database.equipment.update_passive(armor.item_id, 'armor', new_passive, 'armor_passive')
                 result_embed.description = f"✨ Success! Armor imbued with **{new_passive}**!"
             else:
                 result_embed.description = "The rune shattered without effect."
@@ -380,7 +380,7 @@ class ArmorCog(commands.Cog, name="armor"):
                 await asyncio.sleep(2)
                 return False
             
-            rec_count = await self.bot.database.count_user_armors(str(receiver.id))
+            rec_count = await self.bot.database.equipment.get_count(str(receiver.id, 'armor'))
             if rec_count >= 58:
                 embed.description = "Receiver's inventory is full."
                 await message.edit(embed=embed)
@@ -388,7 +388,7 @@ class ArmorCog(commands.Cog, name="armor"):
                 return False
 
             if await self._confirm_action(message, user, f"Send **{armor.name}** to {receiver.mention}?"):
-                await self.bot.database.send_armor(str(receiver.id), armor.item_id)
+                await self.bot.database.equipment.transfer(armor.item_id, str(receiver.id), 'armor')
                 embed.title = "Sent!"
                 embed.description = f"Item sent to {receiver.mention}."
                 embed.color = discord.Color.green()

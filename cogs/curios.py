@@ -150,27 +150,27 @@ class CurioView(View):
                 if reward == "Level 100 Weapon":
                     for _ in range(count):
                         weapon = await generate_weapon(user_id, 100, drop_rune=False)
-                        await self.bot.database.create_weapon(weapon)
+                        await self.bot.database.equipment.create_weapon(weapon)
                         loot_descriptions.append(weapon.description)
                 elif reward == "Level 100 Accessory":
                     for _ in range(count):
                         acc = await generate_accessory(user_id, 100, drop_rune=False)
-                        await self.bot.database.create_accessory(acc)
+                        await self.bot.database.equipment.create_accessory(acc)
                         loot_descriptions.append(acc.description)
                 elif reward == "Level 100 Armor":
                     for _ in range(count):
                         armor = await generate_armor(user_id, 100, drop_rune=False)
-                        await self.bot.database.create_armor(armor)
+                        await self.bot.database.equipment.create_armor(armor)
                         loot_descriptions.append(armor.description)
                 elif reward == "Level 100 Gloves":
                     for _ in range(count):
                         gloves = await generate_glove(user_id, 100)
-                        await self.bot.database.create_glove(gloves)
+                        await self.bot.database.equipment.create_glove(gloves)
                         loot_descriptions.append(gloves.description)
                 elif reward == "Level 100 Boots":
                     for _ in range(count):
                         boots = await generate_boot(user_id, 100)
-                        await self.bot.database.create_boot(boots)
+                        await self.bot.database.equipment.create_boot(boots)
                         loot_descriptions.append(boots.description)
                 elif reward == "Rune of Refinement":
                     await self.bot.database.users.modify_currency(user_id, 'refinement_runes', count)
@@ -185,19 +185,19 @@ class CurioView(View):
                     await self.bot.database.users.modify_gold(user_id, amount_mapping[reward] * count)
                 elif reward == "Ore":
                     for _ in range(count * 5):
-                        mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+                        mining_data = await self.bot.database.skills.get_data(user_id, server_id, 'mining')
                         resources = await self.skills_cog.gather_mining_resources(mining_data[2])
-                        await self.bot.database.update_mining_resources(user_id, server_id, resources)
+                        await self.bot.database.skills.update_batch(user_id, server_id, 'mining', resources)
                 elif reward == "Wood":
                     for _ in range(count * 5):
-                        woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+                        woodcutting_data = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
                         resources = await self.skills_cog.gather_woodcutting_resources(woodcutting_data[2])
-                        await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
+                        await self.bot.database.skills.update_batch(user_id, server_id, 'woodcutting', resources)
                 elif reward == "Fish":
                     for _ in range(count * 5):
-                        fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+                        fishing_data = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
                         resources = await self.skills_cog.gather_fishing_resources(fishing_data[2])
-                        await self.bot.database.update_fishing_resources(user_id, server_id, resources)
+                        await self.bot.database.skills.update_batch(user_id, server_id, 'fishing', resources)
 
             # Summarize rewards
             summary_text = "\n".join(f"{count}x {reward}" for reward, count in reward_summary.items())
@@ -366,28 +366,28 @@ class Curios(commands.Cog, name="curios"):
             # Reward handling based on selected_reward
             if selected_reward == "Level 100 Weapon":
                 weapon = await generate_weapon(user_id, 100, drop_rune=False)
-                await self.bot.database.create_weapon(weapon)
+                await self.bot.database.equipment.create_weapon(weapon)
                 embed.add_field(name="✨ Loot", value=f"{weapon.description}", inline=False)
             
             elif selected_reward == "Level 100 Accessory":
                 acc = await generate_accessory(user_id, 100, drop_rune=False)
-                await self.bot.database.create_accessory(acc)
+                await self.bot.database.equipment.create_accessory(acc)
                 embed.add_field(name="✨ Loot", value=f"{acc.description}", inline=False)
             
             elif selected_reward == "Level 100 Armor":
                 armor = await generate_armor(user_id, 100, drop_rune=False)
-                await self.bot.database.create_armor(armor)
+                await self.bot.database.equipment.create_armor(armor)
                 embed.add_field(name="✨ Loot", value=f"{armor.description}", inline=False)
             
             elif reward == "Level 100 Gloves":
                 gloves = await generate_glove(user_id, 100)
-                await self.bot.database.create_glove(gloves)
+                await self.bot.database.equipment.create_glove(gloves)
                 embed.add_field(name="✨ Loot", value=f"{gloves.description}", inline=False)
 
             elif reward == "Level 100 Boots":
                 for _ in range(count):
                     boots = await generate_boot(user_id, 100)
-                    await self.bot.database.create_boot(boots)
+                    await self.bot.database.equipment.create_boot(boots)
                     embed.add_field(name="✨ Loot", value=f"{boots.description}", inline=False)
             
             elif selected_reward == "Rune of Refinement":
@@ -411,21 +411,21 @@ class Curios(commands.Cog, name="curios"):
             
             elif selected_reward == "Ore":
                 for _ in range(5):
-                    mining_data = await self.bot.database.fetch_user_mining(user_id, server_id)
+                    mining_data = await self.bot.database.skills.get_data(user_id, server_id, 'mining')
                     resources = await self.skills_cog.gather_mining_resources(mining_data[2])  # fetching pickaxe tier
-                    await self.bot.database.update_mining_resources(user_id, server_id, resources)
+                    await self.bot.database.skills.update_batch(user_id, server_id, 'mining', resources)
 
             elif selected_reward == "Wood":
                 for _ in range(5):
-                    woodcutting_data = await self.bot.database.fetch_user_woodcutting(user_id, server_id)
+                    woodcutting_data = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
                     resources = await self.skills_cog.gather_woodcutting_resources(woodcutting_data[2])  # fetching axe type
-                    await self.bot.database.update_woodcutting_resources(user_id, server_id, resources)
+                    await self.bot.database.skills.update_batch(user_id, server_id, 'woodcutting', resources)
 
             elif selected_reward == "Fish":
                 for _ in range(5):
-                    fishing_data = await self.bot.database.fetch_user_fishing(user_id, server_id)
+                    fishing_data = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
                     resources = await self.skills_cog.gather_fishing_resources(fishing_data[2])  # fetching fishing rod
-                    await self.bot.database.update_fishing_resources(user_id, server_id, resources)
+                    await self.bot.database.skills.update_batch(user_id, server_id, 'fishing', resources)
 
             await interaction.response.send_message(embed=embed)
             await self.bot.database.modify_currency(user_id, 'curios', -1)
