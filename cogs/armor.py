@@ -22,7 +22,7 @@ class ArmorCog(commands.Cog, name="armor"):
 
     async def _fetch_and_parse_armors(self, user_id: str) -> list[Armor]:
         """Helper to fetch raw DB data and convert to Objects."""
-        raw_items = await self.bot.database.fetch_user_armors(user_id)
+        raw_items = await self.bot.database.equipment.get_all(user_id, 'armor')
         if not raw_items: 
             return []
         return [create_armor(item) for item in raw_items]
@@ -175,11 +175,11 @@ class ArmorCog(commands.Cog, name="armor"):
                 cid = act.data['custom_id']
                 if cid == "back": return
                 elif cid == "equip":
-                    if is_equipped: await self.bot.database.unequip_armor(user_id)
-                    else: await self.bot.database.equip_armor(user_id, armor.item_id)
+                    if is_equipped: await self.bot.database.equipment.unequip(user_id, 'armor')
+                    else: await self.bot.database.equipment.equip(user_id, armor.item_id, 'armor')
                 elif cid == "discard":
                     if await self._confirm_action(message, act.user, f"Discard **{armor.name}**? Irreversible."):
-                        await self.bot.database.discard_armor(armor.item_id)
+                        await self.bot.database.equipment.discard(armor.item_id, 'armor')
                         return
                 elif cid == "temper":
                     await self._temper_armor_flow(message, act.user, armor)

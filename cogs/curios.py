@@ -70,8 +70,8 @@ class CurioView(View):
                 return
 
             # Check inventory space
-            items = await self.bot.database.fetch_user_weapons(user_id)
-            accs = await self.bot.database.fetch_user_accessories(user_id)
+            items = await self.bot.database.equipment.get_all(user_id, 'weapon')
+            accs = await self.bot.database.equipment.get_all(user_id, 'accessories')
             if (len(items) + amount > 60 or len(accs) + amount > 60):
                 await interaction.response.send_message(
                     "Your inventory is too full to open this many curios, check your weapons/accessories.",
@@ -302,9 +302,9 @@ class Curios(commands.Cog, name="curios"):
             # if not await self.bot.is_maintenance(interaction, user_id):
             #    return
             
-            items = await self.bot.database.fetch_user_weapons(user_id)
-            accs = await self.bot.database.fetch_user_accessories(user_id)
-            arms = await self.bot.database.fetch_user_armors(user_id)
+            items = await self.bot.database.equipment.get_all(user_id, 'weapon')
+            accs = await self.bot.database.equipment.get_all(user_id, 'accessories')
+            arms = await self.bot.database.equipment.get_all(user_id, 'armor')
             if (len(items) > 60 or len(accs) > 60 or len(arms) > 60):
                 await interaction.response.send_message(
                     "Your inventory is too full to open this curio, check your equipment.",

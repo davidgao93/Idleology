@@ -3,7 +3,7 @@ import logging
 from typing import Tuple, Dict
 
 from core.models import Player, Monster
-from core.combat_calcs import (
+from core.combat.calcs import (
     calculate_hit_chance, 
     calculate_monster_hit_chance, 
     calculate_damage_taken, 

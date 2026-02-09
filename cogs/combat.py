@@ -164,7 +164,7 @@ class Combat(commands.Cog, name="combat"):
         # if not await self._check_cooldown(interaction, user_id, existing_user): return
 
         if self.update_combat:
-            await self.bot.database.update_combat_time(user_id)
+            await self.bot.database.users.update_timer(user_id, 'last_combat')
         
         self.bot.state_manager.set_active(user_id, "combat")
 

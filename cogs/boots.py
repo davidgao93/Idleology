@@ -17,7 +17,7 @@ class Boots(commands.Cog, name="boots"):
 
     async def _fetch_and_parse_boots(self, user_id: str) -> list[Boot]:
         """Helper to fetch raw DB data and convert to Objects."""
-        raw_items = await self.bot.database.fetch_user_boots(user_id)
+        raw_items = await self.bot.database.equipment.get_all(user_id, 'boot')
         if not raw_items: 
             return []
         return [create_boot(item) for item in raw_items]
@@ -166,11 +166,11 @@ class Boots(commands.Cog, name="boots"):
                 cid = act.data['custom_id']
                 if cid == "back": return
                 elif cid == "equip":
-                    if is_equipped: await self.bot.database.unequip_boot(user_id)
-                    else: await self.bot.database.equip_boot(user_id, boot.item_id)
+                    if is_equipped: await self.bot.database.equipment.unequip(user_id, 'boot')
+                    else: await self.bot.database.equipment.equip(user_id, boot.item_id, 'boot')
                 elif cid == "discard":
                     if await self._confirm_action(message, act.user, f"Discard **{boot.name}**? Irreversible."):
-                        await self.bot.database.discard_boot(boot.item_id)
+                        await self.bot.database.equipment.discard(boot.item_id, 'boot')
                         return
                 elif cid == "improve":
                     await self._improve_potential_flow(message, act.user, boot)

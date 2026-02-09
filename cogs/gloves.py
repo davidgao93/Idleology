@@ -17,7 +17,7 @@ class Gloves(commands.Cog, name="gloves"):
 
     async def _fetch_and_parse_gloves(self, user_id: str) -> list[Glove]:
         """Helper to fetch raw DB data and convert to Objects."""
-        raw_items = await self.bot.database.fetch_user_gloves(user_id)
+        raw_items = await self.bot.database.equipment.get_all(user_id, 'glove')
         if not raw_items: 
             return []
         return [create_glove(item) for item in raw_items]
@@ -166,11 +166,11 @@ class Gloves(commands.Cog, name="gloves"):
                 cid = act.data['custom_id']
                 if cid == "back": return
                 elif cid == "equip":
-                    if is_equipped: await self.bot.database.unequip_glove(user_id)
-                    else: await self.bot.database.equip_glove(user_id, glove.item_id)
+                    if is_equipped: await self.bot.database.equipment.unequip(user_id, 'glove')
+                    else: await self.bot.database.equipment.equip(user_id, glove.item_id, 'glove')
                 elif cid == "discard":
                     if await self._confirm_action(message, act.user, f"Discard **{glove.name}**? Irreversible."):
-                        await self.bot.database.discard_glove(glove.item_id)
+                        await self.bot.database.equipment.discard(glove.item_id, 'glove')
                         return
                 elif cid == "improve":
                     await self._improve_potential_flow(message, act.user, glove)

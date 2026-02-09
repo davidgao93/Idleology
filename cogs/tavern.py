@@ -214,7 +214,7 @@ class Tavern(commands.Cog, name="tavern"):
         cooldown_duration = timedelta(hours=2)
         if last_rest_time == None:
             await self.bot.database.users.update_hp(user_id, max_hp)
-            await self.bot.database.update_rest_time(user_id)
+            await self.bot.database.users.update_timer(user_id, 'last_rest_time')
             desc = f"You have rested and regained your health! Current HP is now **{max_hp}**."
             embed = discord.Embed(
                     title="The Tavern 🛏️",
@@ -236,7 +236,7 @@ class Tavern(commands.Cog, name="tavern"):
 
         if time_since_rest >= cooldown_duration:
             await self.bot.database.users.update_hp(user_id, max_hp)  # Set current HP to max HP
-            await self.bot.database.update_rest_time(user_id)  # Reset last rest time
+            await self.bot.database.users.update_timer(user_id, 'last_rest_time')  # Reset last rest time
             desc = (f"You have rested and regained your health! Current HP: **{max_hp}**.")
             embed = discord.Embed(
                     title="The Tavern 🛏️",
@@ -736,7 +736,7 @@ class Tavern(commands.Cog, name="tavern"):
             await interaction.response.send_message(value, ephemeral=True)
             return
         else:
-            await self.bot.database.update_checkin_time(user_id)
+            await self.bot.database.users.update_timer(user_id, 'last_checkin_time')
             existing_user = await self.bot.database.users.get(user_id, server_id)
             last_checkin_time = existing_user[17]
             await self.bot.database.users.modify_currency(user_id, 'curios', 1)

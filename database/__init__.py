@@ -2,9 +2,9 @@ import aiosqlite
 from datetime import datetime, timedelta
 from core.models import Player, Weapon, Accessory, Armor, Glove, Boot
 from .repositories.users import UserRepository
-from .repositories.equipment import EquipmentRepository
-from .repositories.skills import SkillRepository
-from .repositories.social import SocialRepository
+#from .repositories.equipment import EquipmentRepository
+#from .repositories.skills import SkillRepository
+#from .repositories.social import SocialRepository
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -12,9 +12,9 @@ class DatabaseManager:
 
         # Initialize sub-repositories
         self.users = UserRepository(connection)
-        self.equipment = EquipmentRepository(connection)
-        self.skills = SkillRepository(connection)
-        self.social = SocialRepository(connection)
+        #self.equipment = EquipmentRepository(connection)
+        #self.skills = SkillRepository(connection)
+        #self.social = SocialRepository(connection)
 
 
     async def create_weapon(self, weapon: Weapon) -> None:
@@ -172,47 +172,6 @@ class DatabaseManager:
         )
         await self.connection.commit()
 
-
-
-    async def update_rest_time(self, user_id: str) -> None:
-        """Update the last rest time of the user in the database to now."""
-        current_time = datetime.now().isoformat()
-        await self.connection.execute(
-            "UPDATE users SET last_rest_time = ? WHERE user_id = ?",
-            (current_time, user_id)
-        )
-        await self.connection.commit()
-
-
-    async def update_propagate_time(self, user_id: str) -> None:
-        """Update the last propagate time of the user in the database to now."""
-        current_time = datetime.now().isoformat()
-        await self.connection.execute(
-            "UPDATE users SET last_propagate_time = ? WHERE user_id = ?",
-            (current_time, user_id)
-        )
-        await self.connection.commit()
-
-    async def update_checkin_time(self, user_id: str) -> None:
-        """Update the last check-in time of the user to the current time."""
-        current_time = datetime.now().isoformat()  # Get the current timestamp in ISO format
-        await self.connection.execute(
-            "UPDATE users SET last_checkin_time = ? WHERE user_id = ?",
-            (current_time, user_id)
-        )
-        await self.connection.commit()
-
-
-    async def update_combat_time(self, user_id: str) -> None:
-        """Update the last combat time of the user to the current time."""
-        current_time = datetime.now().isoformat()  # Get the current timestamp in ISO format
-        await self.connection.execute(
-            "UPDATE users SET last_combat = ? WHERE user_id = ?",
-            (current_time, user_id)
-        )
-        await self.connection.commit()
-
-    
     async def fetch_user_weapons(self, user_id: str) -> list:
         """Fetch all items owned by a specific user."""
         rows = await self.connection.execute(
@@ -934,39 +893,6 @@ class DatabaseManager:
             (receiver_id, item_id)
         )
         await self.connection.commit()
-
-
-
-    # Method to fetch the number of refinement runes for a user
-    async def fetch_refinement_runes(self, user_id: str) -> int:
-        """Fetch the user's refinement runes count from the database."""
-        rows = await self.connection.execute(
-            "SELECT refinement_runes FROM users WHERE user_id = ?",
-            (user_id,)
-        )
-        result = await rows.fetchone()
-        return result[0] if result else 0  # Return the count or 0 if user not found
-    
-    # Method to fetch the number of refinement runes for a user
-    async def fetch_potential_runes(self, user_id: str) -> int:
-        """Fetch the user's potential runes count from the database."""
-        rows = await self.connection.execute(
-            "SELECT potential_runes FROM users WHERE user_id = ?",
-            (user_id,)
-        )
-        result = await rows.fetchone()
-        return result[0] if result else 0  # Return the count or 0 if user not found
-    
-
-    async def fetch_passive_points(self, user_id: str, server_id: str) -> int:
-        """Fetch the number of passive points for a user."""
-        rows = await self.connection.execute(
-            "SELECT passive_points FROM users WHERE user_id = ? AND server_id = ?",
-            (user_id, server_id)
-        )
-        result = await rows.fetchone()
-        return result[0] if result else 0  # Return the passive points or 0 if not found
-
 
     async def count_user_weapons(self, user_id: str) -> int:
         """Counts the number of weapons for a specific user."""

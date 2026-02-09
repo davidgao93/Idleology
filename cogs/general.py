@@ -468,9 +468,9 @@ class General(commands.Cog, name="general"):
             return
 
         # Fetch user item data
-        user_items = await self.bot.database.fetch_user_weapons(user_id)
-        user_accs = await self.bot.database.fetch_user_accessories(user_id)
-        user_arms = await self.bot.database.fetch_user_armors(user_id)
+        user_items = await self.bot.database.equipment.get_all(user_id, 'weapon')
+        user_accs = await self.bot.database.equipment.get_all(user_id, 'accessories')
+        user_arms = await self.bot.database.equipment.get_all(user_id, 'armor')
         # Construct the embed to show information
         embed = discord.Embed(
             title="User ID and Item IDs",

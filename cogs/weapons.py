@@ -17,7 +17,7 @@ class Weapons(commands.Cog, name="weapons"):
 
     async def _fetch_and_parse_weapons(self, user_id: str) -> list[Weapon]:
         """Helper to fetch raw DB data and convert to Objects."""
-        raw_items = await self.bot.database.fetch_user_weapons(user_id)
+        raw_items = await self.bot.database.equipment.get_all(user_id, 'weapon')
         if not raw_items: 
             return []
         return [create_weapon(item) for item in raw_items]
@@ -166,11 +166,11 @@ class Weapons(commands.Cog, name="weapons"):
                 cid = act.data['custom_id']
                 if cid == "back": return
                 elif cid == "equip":
-                    if is_equipped: await self.bot.database.unequip_weapon(user_id)
-                    else: await self.bot.database.equip_weapon(user_id, weapon.item_id)
+                    if is_equipped: await self.bot.database.equipment.unequip(user_id, 'weapon')
+                    else: await self.bot.database.equipment.equip(user_id, weapon.item_id, 'weapon')
                 elif cid == "discard":
                     if await self._confirm_action(message, act.user, "Discard this weapon? Irreversible."):
-                        await self.bot.database.discard_weapon(weapon.item_id)
+                        await self.bot.database.equipment.discard(weapon.item_id, 'weapon')
                         return
                 elif cid == "forge":
                     await self._forge_weapon_flow(message, act.user, weapon)
@@ -273,7 +273,7 @@ class Weapons(commands.Cog, name="weapons"):
     async def _refine_weapon_flow(self, message: Message, user, weapon: Weapon):
         uid = str(user.id)
         if weapon.refines_remaining <= 0:
-            runes = await self.bot.database.fetch_refinement_runes(uid)
+            runes = await self.bot.database.users.get_currency(uid, 'refinement_runes')
             if runes > 0:
                 if await self._confirm_action(message, user, f"No refines left. Use a **Rune of Refinement**? ({runes} owned)"):
                     await self.bot.database.users.modify_currency(uid, 'refinement_runes', -1)
@@ -355,7 +355,7 @@ class Weapons(commands.Cog, name="weapons"):
                 else:
                     outcome = "Failure. The essence dissipated."
 
-                await self.bot.database.discard_weapon(target.item_id)
+                await self.bot.database.equipment.discard(target.item_id, 'weapon')
                 embed = discord.Embed(title="Voidforge Result", description=outcome, color=discord.Color.purple())
                 await message.edit(embed=embed, view=None)
                 await asyncio.sleep(4)

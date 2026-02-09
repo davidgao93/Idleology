@@ -225,7 +225,7 @@ class Character(commands.Cog, name="character"):
         # Fetching inventory data
         weapons_count = await self.bot.database.count_user_weapons(user_id)
         accessories_count = await self.bot.database.count_user_accessories(user_id)
-        arms = await self.bot.database.fetch_user_armors(user_id)
+        arms = await self.bot.database.equipment.get_all(user_id, 'armor')
         gloves = await self.bot.database.count_user_gloves(user_id)
         boots = await self.bot.database.count_user_boots(user_id)
         runes_of_potential = existing_user[21]  # index for runes of potential
@@ -350,7 +350,7 @@ class Character(commands.Cog, name="character"):
             return
 
         # Fetch user's current passive points
-        passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
+        passive_points = await self.bot.database.users.get_currency(user_id, 'passive_points')
         if passive_points <= 0:
             await interaction.response.send_message("You do not have any passive points to allocate.")
             return

@@ -17,7 +17,7 @@ class Accessories(commands.Cog, name="accessories"):
 
     async def _fetch_and_parse_accessories(self, user_id: str) -> list[Accessory]:
         """Helper to fetch raw DB data and convert to Objects."""
-        raw_items = await self.bot.database.fetch_user_accessories(user_id)
+        raw_items = await self.bot.database.equipment.get_all(user_id, 'accessories')
         if not raw_items: 
             return []
         return [create_accessory(item) for item in raw_items]
@@ -170,11 +170,11 @@ class Accessories(commands.Cog, name="accessories"):
                 cid = act.data['custom_id']
                 if cid == "back": return
                 elif cid == "equip":
-                    if is_equipped: await self.bot.database.unequip_accessory(user_id)
-                    else: await self.bot.database.equip_accessory(user_id, accessory.item_id)
+                    if is_equipped: await self.bot.database.equipment.unequip(user_id, 'accessory')
+                    else: await self.bot.database.equipment.equip(user_id, accessory.item_id, 'accessory')
                 elif cid == "discard":
                     if await self._confirm_action(message, act.user, f"Discard **{accessory.name}**? This cannot be undone."):
-                        await self.bot.database.discard_accessory(accessory.item_id)
+                        await self.bot.database.equipment.discard(accessory.item_id, 'accessory')
                         return
                 elif cid == "improve":
                     await self._improve_potential_flow(message, act.user, accessory)
@@ -233,7 +233,7 @@ class Accessories(commands.Cog, name="accessories"):
             return
 
         # Check for Runes
-        runes = await self.bot.database.fetch_potential_runes(uid)
+        runes = await self.bot.database.users.get_currency(uid, 'potential_runes')
         
         view = View(timeout=30)
         view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm"))

@@ -59,7 +59,7 @@ class Ascent(commands.Cog, name="ascent"):
 
         # Set Active & Update Timer
         self.bot.state_manager.set_active(user_id, "ascent")
-        await self.bot.database.update_combat_time(user_id)
+        await self.bot.database.users.update_timer(user_id, 'last_combat')
 
         # 2. Initialize Player
         # We fetch a fresh object every stage to reset transient combat stats, 

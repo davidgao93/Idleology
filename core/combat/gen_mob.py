@@ -12,7 +12,7 @@ def get_boss_mods():
 
 async def generate_encounter(player, monster, is_treasure):
     """Generate an encounter with a monster based on the user's level."""
-    # print('Generating a monster')
+    print(f'Generating a monster based off {monster}')
     if player.level < 5:
         difficulty_multiplier = random.randint(1, 2)
     elif player.level <= 20:
@@ -52,15 +52,15 @@ async def generate_encounter(player, monster, is_treasure):
     if not is_treasure:
         modifier_checks = []
         if monster.level > 20:
-            modifier_checks.append(10 + int(player.rarity() / 10))
+            modifier_checks.append(10 + int(player.rarity / 10))
         if monster.level > 40:
-            modifier_checks.append(15 + int(player.rarity() / 10))
+            modifier_checks.append(15 + int(player.rarity / 10))
         if monster.level > 60:
-            modifier_checks.append(20 + int(player.rarity() / 10))
+            modifier_checks.append(20 + int(player.rarity / 10))
         if monster.level > 80:
-            modifier_checks.append(25 + int(player.rarity() / 10))
+            modifier_checks.append(25 + int(player.rarity / 10))
         if monster.level >= 100:
-            modifier_checks.append(50 + int(player.rarity() / 10))
+            modifier_checks.append(50 + int(player.rarity / 10))
 
         available_modifiers = get_monster_mods()
         
@@ -285,7 +285,7 @@ def calculate_monster_stats(monster):
 
 async def fetch_monster_image(level, monster_data):
     """Fetches a monster image from the monsters.csv file based on the encounter level."""
-    csv_file_path = os.path.join(os.path.dirname(__file__), '../assets/monsters.csv')
+    csv_file_path = os.path.join(os.path.dirname(__file__), '../../assets/monsters.csv')
     monsters = []
     try:
         with open(csv_file_path, newline='') as csvfile:

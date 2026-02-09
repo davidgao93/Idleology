@@ -105,7 +105,7 @@ class Ideology(commands.Cog, name="ideology"):
         self.bot.logger.info(f"Propogate {user_ideology}, awarding {user_id} with {gold_reward}")
         await self.bot.database.update_followers_count(user_ideology, new_followers_count)
         await self.bot.database.users.modify_gold(user_id, gold_reward)
-        await self.bot.database.update_propagate_time(user_id)
+        await self.bot.database.users.update_timer(user_id, 'last_propagate_time')
 
         # Send response
         await interaction.response.send_message(
