@@ -112,7 +112,7 @@ class Tavern(commands.Cog, name="tavern"):
                     
                     gold -= cost
                     await self.bot.database.users.modify_gold(user_id, -cost)
-                    await self.bot.database.user.modify_stat(user_id, 'potions', 1)
+                    await self.bot.database.users.modify_stat(user_id, 'potions', 1)
                     success += 1
                 
                 # Update the embed after every potion transaction
@@ -740,7 +740,7 @@ class Tavern(commands.Cog, name="tavern"):
             existing_user = await self.bot.database.users.get(user_id, server_id)
             last_checkin_time = existing_user[17]
             await self.bot.database.users.modify_currency(user_id, 'curios', 1)
-            await self.bot.database.update_curios_bought(user_id, server_id, -existing_user[23])  # Resetting to 0
+            await self.bot.database.users.modify_currency(user_id, server_id, -existing_user[23])  # Resetting to 0
             await interaction.response.send_message((f"You have successfully checked in and received a **Curious Curio**!\n"
                                                      f"Use /curios to open it!"),
                                                      ephemeral=True)

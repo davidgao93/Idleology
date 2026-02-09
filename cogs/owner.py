@@ -2,6 +2,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
+import sys
+import importlib
 
 class Owner(commands.Cog, name="owner"):
     def __init__(self, bot) -> None:
@@ -165,11 +167,79 @@ class Owner(commands.Cog, name="owner"):
         name="clearall",
         description="Clear all active operations for users."
     )
-    #@commands.is_owner()
+    @commands.is_owner()
     async def clear_active_operations(self, context: Context) -> None:
         """Clears all active operations."""
         self.bot.state_manager.clear_all()
         await context.send("All active operations have been cleared.", ephemeral=True)
+
+
+
+    @commands.hybrid_command(
+        name="reload_system",
+        description="Deep reloads Core logic, Database modules, and Cogs."
+    )
+    @commands.is_owner()
+    async def reload_system(self, context: Context) -> None:
+        """
+        Deep reloads the bot's logic layers.
+        """
+        await context.defer()
+        
+        try:
+            # 1. Save the existing DB connection
+            # We don't want to close/re-open the SQL connection, just update the wrapper logic
+            db_connection = self.bot.database.connection
+
+            # 2. Unload all Cogs
+            # This clears the old logic holding references to old Core modules
+            current_extensions = list(self.bot.extensions.keys())
+            for ext in current_extensions:
+                await self.bot.unload_extension(ext)
+
+            # 3. Nuke 'core' and 'database' from sys.modules
+            # This forces Python to re-read these files from disk next time they are imported
+            modules_to_reload = []
+            for module_name in list(sys.modules.keys()):
+                if module_name.startswith("core") or module_name.startswith("database"):
+                    del sys.modules[module_name]
+                    modules_to_reload.append(module_name)
+
+            self.bot.logger.info(f"Purged {len(modules_to_reload)} modules from cache.")
+
+            # 4. Re-Initialize Database Manager
+            # We need to re-import the class to get the new methods
+            import database
+            importlib.reload(database)
+            
+            # Re-instantiate the manager with the EXISTING connection
+            # This updates the .users, .equipment, etc. repositories with new code
+            self.bot.database = database.DatabaseManager(connection=db_connection)
+            self.bot.logger.info("DatabaseManager has been rebuilt.")
+
+            # 5. Reload Cogs
+            # When these load, they will import the 'fresh' core/database modules
+            for ext in current_extensions:
+                try:
+                    await self.bot.load_extension(ext)
+                except Exception as e:
+                    self.bot.logger.error(f"Failed to reload {ext}: {e}")
+
+            embed = discord.Embed(
+                title="System Reloaded ♻️",
+                description=f"**Core**: Refreshed\n**Database**: Refreshed\n**Cogs**: {len(current_extensions)} reloaded.",
+                color=0x00FF00
+            )
+            await context.send(embed=embed)
+
+        except Exception as e:
+            self.bot.logger.error(f"Critical failure during system reload: {e}")
+            embed = discord.Embed(
+                title="Reload Failed 💥",
+                description=f"```{e}```",
+                color=0xE02B2B
+            )
+            await context.send(embed=embed)
 
 
     @commands.hybrid_command(

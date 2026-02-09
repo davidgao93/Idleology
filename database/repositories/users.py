@@ -137,6 +137,17 @@ class UserRepository:
             (amount, user_id)
         )
         await self.connection.commit()
+
+
+    async def get_value(self, user_id: str, column: str) -> int:
+        # Basic validation to prevent SQL injection
+        allowed = ["passive_points"] 
+        if column not in allowed: return 0
+        
+        rows = await self.connection.execute(f"SELECT {column} FROM users WHERE user_id = ?", (user_id,))
+        result = await rows.fetchone()
+        return result[0] if result else 0
+
     
     async def set_passive_points(self, user_id: str, server_id: str, amount: int):
         await self.connection.execute(
@@ -170,7 +181,7 @@ class UserRepository:
 
     async def get_currency(self, user_id: str, column: str) -> int:
         # Basic validation to prevent SQL injection
-        allowed = ["refinement_runes", "potential_runes", "passive_points"] 
+        allowed = ["refinement_runes", "potential_runes"] 
         if column not in allowed: return 0
         
         rows = await self.connection.execute(f"SELECT {column} FROM users WHERE user_id = ?", (user_id,))
@@ -182,9 +193,9 @@ class UserRepository:
         Generic handler for keys, runes, and misc counters.
         Allowed columns: dragon_key, angel_key, void_keys, soul_cores, void_frags, 
                          refinement_runes, potential_runes, imbue_runes, shatter_runes,
-                         curios
+                         curios, curios_purchased_today
         """
-        # In a real app, you might validate column names here to prevent SQL injection
+        # Could validate column names here to prevent SQL injection
         await self.connection.execute(
             f"UPDATE users SET {currency_column} = {currency_column} + ? WHERE user_id = ?",
             (amount, user_id)

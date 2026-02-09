@@ -89,11 +89,11 @@ class Character(commands.Cog, name="character"):
                 color=0x00FF00,
             )
             embed.set_thumbnail(url=existing_user[7]) # user portrait
-            equipped_item = await self.bot.database.get_equipped_weapon(user_id)
-            equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
-            equipped_armor = await self.bot.database.get_equipped_armor(user_id)
-            equipped_glove = await self.bot.database.get_equipped_glove(user_id)
-            equipped_boot = await self.bot.database.get_equipped_boot(user_id)
+            equipped_item = await self.bot.database.equipment.get_equipped(user_id, "weapon")
+            equipped_accessory = await self.bot.database.equipment.get_equipped(user_id, "accessory")
+            equipped_armor = await self.bot.database.equipment.get_equipped(user_id, "armor")
+            equipped_glove = await self.bot.database.equipment.get_equipped(user_id, "glove")
+            equipped_boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
             # Calculate base attack and defense
             base_attack = existing_user[9]
             base_defense = existing_user[10]
@@ -400,7 +400,7 @@ class Character(commands.Cog, name="character"):
                     break
 
                 await message.remove_reaction(reaction.emoji, user)
-                passive_points = await self.bot.database.fetch_passive_points(user_id, server_id)
+                passive_points = await self.bot.database.users.get_value(user_id, "passive_points")
                 # Update passive points
                 if passive_points > 0:
                     passive_points -= 1

@@ -58,7 +58,7 @@ class ArmorCog(commands.Cog, name="armor"):
                 break
 
             # B. Sort: Equipped first, then by Level
-            equipped_raw = await self.bot.database.get_equipped_armor(user_id)
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, "armor")
             equipped_id = equipped_raw[0] if equipped_raw else None
             
             armors.sort(key=lambda a: (a.item_id == equipped_id, a.level), reverse=True)
@@ -125,14 +125,14 @@ class ArmorCog(commands.Cog, name="armor"):
         
         while True:
             # Re-fetch item
-            raw = await self.bot.database.fetch_armor_by_id(armor.item_id)
+            raw = await self.bot.database.equipment.get_by_id(armor.item_id, "armor")
             if not raw: 
                 await interaction.followup.send("Item no longer exists.", ephemeral=True)
                 return
             armor = create_armor(raw)
             
             # Check equipped
-            equipped_raw = await self.bot.database.get_equipped_armor(user_id)
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, "armor")
             is_equipped = equipped_raw and equipped_raw[0] == armor.item_id
 
             embed = InventoryUI.get_item_details_embed(armor, is_equipped)
@@ -326,7 +326,7 @@ class ArmorCog(commands.Cog, name="armor"):
             if act.data['custom_id'] != "confirm": return
 
             await self.bot.database.users.modify_currency(uid, 'imbue_runes', -1)
-            await self.bot.database.update_armor_imbue_count(armor.item_id, 0) # Set remaining to 0
+            await self.bot.database.equipment.update_counter(id, 'armor', 'imbue_remaining', 0)
 
             result_embed = discord.Embed(title="Imbue Result", color=discord.Color.purple())
             

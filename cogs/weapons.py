@@ -54,7 +54,7 @@ class Weapons(commands.Cog, name="weapons"):
                 break
 
             # B. Sort: Equipped first, then by Level
-            equipped_raw = await self.bot.database.get_equipped_weapon(user_id)
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, "weapon")
             equipped_id = equipped_raw[0] if equipped_raw else None
             
             weapons.sort(key=lambda w: (w.item_id == equipped_id, w.level), reverse=True)
@@ -121,14 +121,14 @@ class Weapons(commands.Cog, name="weapons"):
         
         while True:
             # Re-fetch item to get live stats
-            raw = await self.bot.database.fetch_weapon_by_id(weapon.item_id)
+            raw = await self.bot.database.equipment.get_by_id(weapon.item_id, 'weapon')
             if not raw: 
                 await interaction.followup.send("Item no longer exists.", ephemeral=True)
                 return
             weapon = create_weapon(raw)
             
             # Check equipped status dynamically
-            equipped_raw = await self.bot.database.get_equipped_weapon(user_id)
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, "weapon")
             is_equipped = equipped_raw and equipped_raw[0] == weapon.item_id
 
             embed = InventoryUI.get_item_details_embed(weapon, is_equipped)
@@ -303,7 +303,7 @@ class Weapons(commands.Cog, name="weapons"):
             await self.bot.database.equipment.increase_stat(weapon.item_id, 'weapon', 'attack', atk_gain)
             await self.bot.database.equipment.increase_stat(weapon.item_id, 'weapon', 'defence', def_gain)
             await self.bot.database.equipment.update_counter(weapon.item_id, 'weapon', 'refines_remaining', weapon.refines_remaining - 1)
-            await self.bot.database.update_weapon_refine_lvl(weapon.item_id, 1)
+            await self.bot.database.equipment.increase_stat(id, 'weapon', 'refinement_lvl', 1)
 
             embed = discord.Embed(title="Refined! ✨", description=f"+{atk_gain} Atk, +{def_gain} Def", color=discord.Color.blue())
             await message.edit(embed=embed, view=None)
@@ -311,7 +311,7 @@ class Weapons(commands.Cog, name="weapons"):
 
     async def _voidforge_flow(self, message: Message, user, weapon: Weapon):
         uid = str(user.id)
-        raw_candidates = await self.bot.database.fetch_void_forge_weapons(uid)
+        raw_candidates = await self.bot.database.equipment.fetch_void_forge_candidates(uid)
         candidates = [create_weapon(w) for w in raw_candidates if w[0] != weapon.item_id]
         
         if not candidates:

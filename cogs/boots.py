@@ -53,7 +53,7 @@ class Boots(commands.Cog, name="boots"):
                 break
 
             # B. Sort: Equipped first, then by Level
-            equipped_raw = await self.bot.database.get_equipped_boot(user_id)
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, "boot")
             equipped_id = equipped_raw[0] if equipped_raw else None
             
             boots.sort(key=lambda b: (b.item_id == equipped_id, b.level), reverse=True)

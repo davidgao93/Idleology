@@ -29,7 +29,7 @@ class Combat(commands.Cog, name="combat"):
     async def _check_cooldown(self, interaction: Interaction, user_id: str, existing_user: tuple) -> bool:
         """Calculates dynamic cooldown and checks if user can fight."""
         temp_cooldown_reduction = 0
-        equipped_boot = await self.bot.database.get_equipped_boot(user_id)
+        equipped_boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
         if equipped_boot and equipped_boot[9] == "speedster":
             temp_cooldown_reduction = equipped_boot[12] * 20 
 
@@ -328,7 +328,7 @@ class Combat(commands.Cog, name="combat"):
             await self.bot.database.users.modify_currency(user_id, 'shatter_runes', 1)
             reward_data['special'].append("Rune of Shattering")
         if special_flags.get('curio'):
-            await self.bot.database.modify_currency(user_id, interaction.guild.id, 1)
+            await self.bot.database.users.modify_currency(user_id, 'curios', 1)
             reward_data['curios'] = 1
 
         # 3. Gear Drops

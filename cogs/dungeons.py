@@ -46,14 +46,14 @@ class DungeonCog(commands.Cog, name="dungeon"):
         base_ward_from_gear = 0
         
         # Armor ward & stats (only ward is used for base_ward now)
-        equipped_armor = await self.bot.database.get_equipped_armor(user_id)
+        equipped_armor = await self.bot.database.equipment.get_equipped(user_id, "armor")
         if equipped_armor:
             base_ward_from_gear += int((equipped_armor[6] / 100) * player.max_hp)
             # player.block += equipped_armor[4] # For future use if needed
             # player.evasion += equipped_armor[5] # For future use if needed
 
         # Accessory ward & stats (only ward is used for base_ward now)
-        equipped_accessory = await self.bot.database.get_equipped_accessory(user_id)
+        equipped_accessory = await self.bot.database.equipment.get_equipped(user_id, "accessory")
         if equipped_accessory:
             # Assuming equipped_accessory[7] is the % ward.
             # From combat.py: player.ward += max(1, int((equipped_accessory[7] / 100) * player.max_hp))

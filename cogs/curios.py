@@ -206,7 +206,7 @@ class CurioView(View):
             reward_embed.add_field(name="Rewards", value=summary_text, inline=False)
 
             # Update curio count
-            await self.bot.database.modify_currency(user_id, 'curios', -amount)
+            await self.bot.database.users.modify_currency(user_id, 'curios', -amount)
 
             # Fetch updated curio count
             updated_user = await self.bot.database.users.get(user_id, server_id)
@@ -428,7 +428,7 @@ class Curios(commands.Cog, name="curios"):
                     await self.bot.database.skills.update_batch(user_id, server_id, 'fishing', resources)
 
             await interaction.response.send_message(embed=embed)
-            await self.bot.database.modify_currency(user_id, 'curios', -1)
+            await self.bot.database.users.modify_currency(user_id, 'curios', -1)
         except discord.errors.NotFound:
             self.bot.logger.info("Failed to respond to the interaction: Interaction not found.")
         except Exception as e:

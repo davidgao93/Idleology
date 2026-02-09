@@ -19,7 +19,7 @@ class Ascent(commands.Cog, name="ascent"):
     async def _check_cooldown(self, interaction: Interaction, user_id: str, existing_user: tuple) -> bool:
         """Calculates dynamic cooldown for Ascent."""
         temp_cooldown_reduction = 0
-        equipped_boot = await self.bot.database.get_equipped_boot(user_id)
+        equipped_boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
         if equipped_boot and equipped_boot[9] == "speedster":
             temp_cooldown_reduction = equipped_boot[12] * 20 
 
@@ -178,7 +178,7 @@ class Ascent(commands.Cog, name="ascent"):
                 special_loot = []
                 if ascent_stage % 3 == 0:
                     if random.random() < 0.25:
-                        await self.bot.database.modify_currency(user_id, server_id, 1)
+                        await self.bot.database.users.modify_currency(user_id, 'curios', 1)
                         special_loot.append("Curious Curio")
 
                 # Stage Clear Embed

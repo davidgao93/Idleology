@@ -54,7 +54,7 @@ class Accessories(commands.Cog, name="accessories"):
                 break
 
             # B. Sort: Equipped first, then by Level
-            equipped_raw = await self.bot.database.get_equipped_accessory(user_id)
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, "accessory")
             equipped_id = equipped_raw[0] if equipped_raw else None
             
             # Sort lambda: (Is Not Equipped, Level Descending)
@@ -123,14 +123,14 @@ class Accessories(commands.Cog, name="accessories"):
         
         while True:
             # Re-fetch item to get live stats
-            raw = await self.bot.database.fetch_accessory_by_id(accessory.item_id)
+            raw = await self.bot.database.equipment.get_by_id(accessory.item_id, "accessory")
             if not raw: 
                 await interaction.followup.send("Item no longer exists.", ephemeral=True)
                 return
             accessory = create_accessory(raw)
             
             # Check equipped status dynamically
-            equipped_raw = await self.bot.database.get_equipped_accessory(user_id)
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, "accessory")
             is_equipped = equipped_raw and equipped_raw[0] == accessory.item_id
 
             embed = InventoryUI.get_item_details_embed(accessory, is_equipped)

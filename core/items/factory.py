@@ -168,23 +168,23 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     # 2. Fetch and Attach Gear
     # We await the database calls here so the resulting Player object is fully populated
     
-    wep_data = await database.get_equipped_weapon(user_id)
+    wep_data = await database.equipment.get_equipped(user_id, "weapon")
     if wep_data:
         player.equipped_weapon = create_weapon(wep_data)
 
-    acc_data = await database.get_equipped_accessory(user_id)
+    acc_data = await database.equipment.get_equipped(user_id, "accessory")
     if acc_data:
         player.equipped_accessory = create_accessory(acc_data)
 
-    armor_data = await database.get_equipped_armor(user_id)
+    armor_data = await database.equipment.get_equipped(user_id, "armor")
     if armor_data:
         player.equipped_armor = create_armor(armor_data)
 
-    glove_data = await database.get_equipped_glove(user_id)
+    glove_data = await database.equipment.get_equipped(user_id, "glove")
     if glove_data:
         player.equipped_glove = create_glove(glove_data)
 
-    boot_data = await database.get_equipped_boot(user_id)
+    boot_data = await database.equipment.get_equipped(user_id, "boot")
     if boot_data:
         player.equipped_boot = create_boot(boot_data)
 
