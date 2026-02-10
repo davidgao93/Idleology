@@ -52,8 +52,8 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     gold_award = int((monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale ** 1.3)))
     
     # Rarity Bonus
-    if player.base_rarity > 0:
-        gold_award = int(gold_award * (1.5 + player.base_rarity / 100))
+    if player.rarity > 0:
+        gold_award = int(gold_award * (1.5 + player.rarity / 100))
     
     gold_award += 20 # Base flat amount
 
@@ -77,23 +77,39 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
 def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     """
     Determines which special items (Keys, Runes, Curios) drop.
-    Returns a dict of flags like {'draconic_key': True, 'curio': False}
+    Returns a dict of flags like {'draconic_key': True, 'refinement_rune': True}
     """
     drops = {}
     
+    # --- BOSS DROPS (Aphrodite, Lucifer, NEET) ---
+    if "Aphrodite" in monster.name:
+        if random.random() < 0.33: drops['refinement_rune'] = True
+        if random.random() < 0.33: drops['potential_rune'] = True
+        if random.random() < 0.33: drops['imbue_rune'] = True
+        drops['curio'] = True 
+        return drops
+
+    if "Lucifer" in monster.name:
+        if random.random() < 0.66: drops['refinement_rune'] = True
+        if random.random() < 0.33: drops['potential_rune'] = True
+        return drops
+
+    if "NEET" in monster.name:
+        if random.random() < 0.33: drops['refinement_rune'] = True
+        if random.random() < 0.66: drops['potential_rune'] = True
+        return drops
+
+    # --- STANDARD MOBS ---
     rare_monsters = ["Treasure Chest", "Random Korean Lady", "KPOP STAR", "Loot Goblin", "Yggdrasil", "Capybara Sauna"]
     
     special_drop_chance = len(monster.modifiers) / 100.0
     if monster.name in rare_monsters:
         special_drop_chance = 0.05
+        drops['curio'] = True
 
     # Boot Passive: Thrill Seeker
     if player.equipped_boot and player.equipped_boot.passive == "thrill-seeker":
         special_drop_chance += (player.equipped_boot.passive_lvl * 0.01)
-
-    # Curio
-    if monster.name in rare_monsters:
-        drops['curio'] = True
     
     # Level 20+ Drops
     if player.level > 20:
@@ -106,24 +122,24 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     return drops
 
 def calculate_item_drop_chance(player: Player) -> int:
-    """Calculates the percentage chance (0-100) for a gear item to drop."""
-    base_drop_chance = 10
+    """
+    Calculates the percentage chance (0-100) for a gear item to drop.
+    Base: 10%
+    Max Cap: 30% (Asymptotic)
+    Scaling: 100% Rarity = 20% Total Chance
+    """
+    base_chance = 10.0
+    max_bonus_chance = 20.0 # The most you can possibly add to the base
     
-    # Note: original code had `base_drop_chance = 100` then a weird formula.
-    # Original: int(100 + (rarity/10)*diminish + level_bonus) 
-    # Wait, the original code in handle_victory says:
-    # `drop_chance = int(base_drop_chance + (player.base_rarity / 10) * diminish + level_bonus)`
-    # And base_drop_chance was 100. This implies 100% drop rate?
-    # Actually, looking closely at `combat.py`: `base_drop_chance = 100`.
-    # Then `drop_roll = random.randint(1, 100)`.
-    # If `drop_roll <= drop_chance`. 
-    # Yes, standard mobs seem to have a near 100% drop rate in the original code unless 
-    # `level_bonus` (which is `0.2 * (100 - player.level)`) makes it weird.
-    # Let's preserve the original logic logic exactly.
+    scaling_constant = 100.0 
     
-    rarity = player.base_rarity
-    level_bonus = 0.2 * (100 - player.level)
-    diminish = 1.0 / (1 + (rarity / 1000))
+    # Prevent negative rarity from breaking math (optional safety)
+    rarity = max(0, player.rarity)
+
+    # Formula: MaxBonus * ( R / (R + K) )
+    # As R gets huge, the fraction approaches 1.0, giving the full MaxBonus.
+    bonus_chance = max_bonus_chance * (rarity / (rarity + scaling_constant))
     
-    drop_chance = int(100 + (rarity / 10) * diminish + level_bonus)
-    return drop_chance
+    total_chance = base_chance + bonus_chance
+    
+    return int(total_chance)

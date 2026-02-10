@@ -225,6 +225,9 @@ class Owner(commands.Cog, name="owner"):
                 except Exception as e:
                     self.bot.logger.error(f"Failed to reload {ext}: {e}")
 
+            # 6. Clear all active operations
+            self.bot.state_manager.clear_all()
+            
             embed = discord.Embed(
                 title="System Reloaded ♻️",
                 description=f"**Core**: Refreshed\n**Database**: Refreshed\n**Cogs**: {len(current_extensions)} reloaded.",

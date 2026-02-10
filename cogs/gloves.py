@@ -53,7 +53,7 @@ class Gloves(commands.Cog, name="gloves"):
                 break
 
             # B. Sort: Equipped first, then by Level
-            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, 'gloves')
+            equipped_raw = await self.bot.database.equipment.get_equipped(user_id, 'glove')
             equipped_id = equipped_raw[0] if equipped_raw else None
             
             gloves.sort(key=lambda g: (g.item_id == equipped_id, g.level), reverse=True)

@@ -56,8 +56,7 @@ def create_combat_embed(player: Player, monster: Monster, logs: Dict[str, str] =
 
 def create_victory_embed(player: Player, monster: Monster, rewards: Dict[str, Any]) -> discord.Embed:
     """
-    Generates the Victory screen.
-    rewards dict expected keys: 'xp', 'gold', 'curios', 'items' (list of strings), 'special' (list of strings)
+    Generates the Victory screen with consolidated Loot.
     """
     embed = discord.Embed(
         title="Victory! 🎉",
@@ -70,25 +69,42 @@ def create_victory_embed(player: Player, monster: Monster, rewards: Dict[str, An
         for msg in rewards['msgs']:
             embed.add_field(name="Bonus", value=msg, inline=False)
 
-    embed.add_field(name="📚 Experience", value=f"{rewards.get('xp', 0):,} XP")
-    embed.add_field(name="💰 Gold", value=f"{rewards.get('gold', 0):,} GP")
+    embed.add_field(name="📚 Experience", value=f"{rewards.get('xp', 0):,} XP", inline=True)
+    embed.add_field(name="💰 Gold", value=f"{rewards.get('gold', 0):,} GP", inline=True)
     
-    if rewards.get('curios', 0) > 0:
-        embed.add_field(name="🎁 Curios", value=f"{rewards['curios']} Curious Curios")
+    # --- LOOT COMPILATION ---
+    loot_lines = []
 
-    # Items
-    items = rewards.get('items', [])
-    if items:
-        for item_desc in items:
-            embed.add_field(name="✨ Loot", value=item_desc, inline=False)
+    # 1. Curios
+    if rewards.get('curios', 0) > 0:
+        count = rewards['curios']
+        loot_lines.append(f"🎁 **{count}** Curious Curio{'s' if count > 1 else ''}")
+
+    # 2. Specials (Keys & Runes) - Mapped to emojis
+    special_map = {
+        "Draconic Key": "🐉", "Angelic Key": "🪽", "Soul Core": "❤️‍🔥",
+        "Void Fragment": "🟣", "Void Key": "🗝️",
+        "Rune of Potential": "💎", "Rune of Refinement": "🔨",
+        "Rune of Imbuing": "🔅", "Rune of Shattering": "💥"
+    }
+    
+    for item_name in rewards.get('special', []):
+        emoji = special_map.get(item_name, "✨")
+        loot_lines.append(f"{emoji} **{item_name}**")
+
+    # 3. Equipment Drops
+    # We heuristic match the description text since we don't have the object type here
+    for item_desc in rewards.get('items', []):
+        # Default to Weapon
+        emoji = "💠"
+        
+        loot_lines.append(f"{emoji} {item_desc}")
+
+    # Add single Loot field
+    if loot_lines:
+        embed.add_field(name="✨ Loot", value="\n\n".join(loot_lines), inline=False)
     else:
         embed.add_field(name="✨ Loot", value="None", inline=False)
-
-    # Special Drops (Keys, Runes)
-    specials = rewards.get('special', [])
-    if specials:
-        for special in specials:
-            embed.add_field(name="✨ Special Drop", value=special, inline=False)
 
     return embed
 
@@ -102,4 +118,5 @@ def create_defeat_embed(player: Player, monster: Monster, lost_xp: int) -> disco
     
     embed = discord.Embed(title="Oh dear...", description=description, color=0xFF0000)
     embed.add_field(name="🪽 Redemption 🪽", value=f"({player.name} revives with 1 HP.)")
+    embed.set_thumbnail(url="https://i.imgur.com/kqGzbvb.png")
     return embed

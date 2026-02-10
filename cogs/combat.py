@@ -141,16 +141,29 @@ class Combat(commands.Cog, name="combat"):
             await message.edit(embed=embed)
             return False
 
-    def _get_boss_phase_data(self, boss_type: str) -> dict:
-        """Returns the Phase 1 stats for the requested boss."""
-        if boss_type == "aphrodite":
-            return {"name": "Aphrodite, Heaven's Envoy", "level": 886, "modifiers_count": 3, "hp_multiplier": 1.5}
-        elif boss_type == "lucifer":
-            return {"name": "Lucifer, Fallen", "level": 663, "modifiers_count": 2, "hp_multiplier": 1.25}
-        elif boss_type == "NEET":
-            return {"name": "NEET, Sadge", "level": 444, "modifiers_count": 1, "hp_multiplier": 1.25}
-        # Fallback
-        return {"name": "Unknown Entity", "level": 999, "modifiers_count": 1, "hp_multiplier": 1.0}
+    def _get_boss_phases(self, boss_type: str) -> list[dict]:
+        """Returns the list of phases for a specific boss."""
+        if boss_type == 'aphrodite':
+            return [
+                {"name": "Aphrodite, Heaven's Envoy", "level": 886, "modifiers_count": 3, "hp_multiplier": 1.5},
+                {"name": "Aphrodite, the Eternal", "level": 887, "modifiers_count": 6, "hp_multiplier": 2},
+                {"name": "Aphrodite, Harbinger of Destruction", "level": 888, "modifiers_count": 9, "hp_multiplier": 2.5},
+            ]
+        elif boss_type == 'lucifer':
+            return [
+                {"name": "Lucifer, Fallen", "level": 663, "modifiers_count": 2, "hp_multiplier": 1.25},
+                {"name": "Lucifer, Maddened", "level": 664, "modifiers_count": 3, "hp_multiplier": 1.5},
+                {"name": "Lucifer, Enraged", "level": 665, "modifiers_count": 4, "hp_multiplier": 1.75},
+                {"name": "Lucifer, Unbound", "level": 666, "modifiers_count": 5, "hp_multiplier": 2},
+            ]
+        elif boss_type == 'NEET':
+            return [
+                {"name": "NEET, Sadge", "level": 444, "modifiers_count": 1, "hp_multiplier": 1.25},
+                {"name": "NEET, Madge", "level": 445, "modifiers_count": 2, "hp_multiplier": 1.5},
+                {"name": "NEET, REEEEEE", "level": 446, "modifiers_count": 3, "hp_multiplier": 1.75},
+                {"name": "NEET, Deadge", "level": 447, "modifiers_count": 5, "hp_multiplier": 0.2},
+            ]
+        return []
 
     @app_commands.command(name="combat", description="Engage in combat.")
     async def combat(self, interaction: Interaction):
@@ -173,119 +186,155 @@ class Combat(commands.Cog, name="combat"):
         
         # 3. Check for Boss Doors
         is_boss, boss_type = await self._handle_door_mechanic(interaction, player, existing_user)
-        
-        # 4. Generate Monster (Normal or Boss)
-        monster = Monster(name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0, modifiers=[], image="", flavor="")
-        
+
+        # 4. Determine Phases
+        combat_phases = []
         if is_boss:
-            phase_data = self._get_boss_phase_data(boss_type)
-            monster = await generate_boss(player, monster, phase_data, 0)
-            monster.is_boss = True
+            combat_phases = self._get_boss_phases(boss_type)
         else:
-            treasure_chance = 0.02
-            if player.get_armor_passive() == "Treasure Hunter": treasure_chance += 0.05
-            if player.equipped_boot and player.equipped_boot.passive == "treasure-tracker":
-                treasure_chance += (player.equipped_boot.passive_lvl * 0.005)
+            combat_phases = [None] # Dummy list for single iteration
 
-            if random.random() < treasure_chance:
-                monster = await generate_encounter(player, monster, is_treasure=True)
-                monster.attack = 0; monster.defence = 0; monster.xp = 0; monster.hp = 10
-            else:
-                monster = await generate_encounter(player, monster, is_treasure=False)
-                if monster.level <= 20: monster.xp = int(monster.xp * 2)
-                else: monster.xp = int(monster.xp * 1.3)
+        # 5. Generate Monster (Normal or Boss)
+        monster = Monster(name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0, modifiers=[], image="", flavor="")
 
-        # 5. Apply Combat Start Modifiers
-        engine.apply_stat_effects(player, monster)
-        start_logs = engine.apply_combat_start_passives(player, monster)
-        
-        # 6. UI Setup
-        if is_boss:
-            embed = ui.create_combat_embed(player, monster, start_logs, title_override=f"⚔️ BOSS: {monster.name} ⚔️")
-            await interaction.edit_original_response(embed=embed)
+        # Setup Message
+        if interaction.response.is_done():
             message = await interaction.original_response()
         else:
-            embed = ui.create_combat_embed(player, monster, start_logs)
-            if interaction.response.is_done():
-                message = await interaction.followup.send(embed=embed)
+            await interaction.response.send_message(embed=discord.Embed(description="Entering combat..."))
+            message = await interaction.original_response()
+        
+        # =========================================================================
+        # MAIN COMBAT LOOP (Iterates through Phases)
+        # =========================================================================
+        for phase_idx, phase_data in enumerate(combat_phases):
+            
+            # --- GENERATION ---
+            if is_boss:
+                monster = await generate_boss(player, monster, phase_data, phase_idx)
+                monster.is_boss = True
+                phase_title = f"⚔️ BOSS PHASE {phase_idx+1}/{len(combat_phases)}: {monster.name}"
             else:
-                await interaction.response.send_message(embed=embed)
-                message = await interaction.original_response()
+                # Normal Mob Generation
+                treasure_chance = 0.02
+                if player.get_armor_passive() == "Treasure Hunter": treasure_chance += 0.05
+                if player.equipped_boot and player.equipped_boot.passive == "treasure-tracker":
+                    treasure_chance += (player.equipped_boot.passive_lvl * 0.005)
 
-        reactions = ["⚔️", "🩹", "⏩", "🏃", "🕒"]
-        await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
+                if random.random() < treasure_chance:
+                    monster = await generate_encounter(player, monster, is_treasure=True)
+                    monster.attack = 0; monster.defence = 0; monster.xp = 0; monster.hp = 10
+                else:
+                    monster = await generate_encounter(player, monster, is_treasure=False)
+                    if monster.level <= 20: monster.xp = int(monster.xp * 2)
+                    else: monster.xp = int(monster.xp * 1.3)
+                
+                phase_title = f"Witness {player.name} (Level {player.level})"
 
-        # 7. Main Combat Loop
-        while player.current_hp > 0 and monster.hp > 0:
-            def check(reaction, user):
-                return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in reactions
+            # --- PRE-FIGHT SETUP ---
+            engine.apply_stat_effects(player, monster)
+            start_logs = engine.apply_combat_start_passives(player, monster)
+            
+            embed = ui.create_combat_embed(player, monster, start_logs, title_override=phase_title)
+            await message.edit(embed=embed)
 
+            reactions = ["⚔️", "🩹", "⏩", "🏃", "🕒"]
+            # Re-add reactions in case they were cleared
             try:
-                reaction, _ = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
-                await message.remove_reaction(reaction.emoji, interaction.user)
-                
-                emoji = str(reaction.emoji)
-                logs = {}
+                for emoji in reactions: await message.add_reaction(emoji)
+            except: pass
 
-                if emoji == "⚔️":
-                    logs[player.name] = engine.process_player_turn(player, monster)
-                    if monster.hp > 0:
-                        logs[monster.name] = engine.process_monster_turn(player, monster)
-                
-                elif emoji == "🩹":
-                    logs["Heal"] = engine.process_heal(player)
-                
-                elif emoji == "⏩": # Auto-battle
-                    while player.current_hp > int(player.max_hp * 0.2) and monster.hp > 0:
-                        atk_log = engine.process_player_turn(player, monster)
-                        def_log = ""
-                        if monster.hp > 0:
-                            def_log = engine.process_monster_turn(player, monster)
-                        
-                        embed = ui.create_combat_embed(player, monster, {player.name: atk_log, monster.name: def_log})
-                        await message.edit(embed=embed)
-                        await asyncio.sleep(1)
-                    if player.current_hp <= int(player.max_hp * 0.2) and monster.hp > 0:
-                        logs["Auto-Battle"] = "Paused: Low HP!"
+            # --- TURN LOOP ---
+            while player.current_hp > 0 and monster.hp > 0:
+                def check(reaction, user):
+                    return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in reactions
 
-                elif emoji == "🕒": # Giga-Auto
-                    turn_count = 0
-                    while player.current_hp > int(player.max_hp * 0.2) and monster.hp > 0:
-                        turn_count += 1
-                        last_atk = engine.process_player_turn(player, monster)
-                        last_def = ""
-                        if monster.hp > 0:
-                            last_def = engine.process_monster_turn(player, monster)
-                        
-                        if turn_count % 10 == 0:
-                            embed = ui.create_combat_embed(player, monster, {player.name: last_atk, monster.name: last_def})
-                            await message.edit(embed=embed)
-                            await asyncio.sleep(0.5)
+                try:
+                    reaction, _ = await self.bot.wait_for('reaction_add', timeout=120.0, check=check)
+                    await message.remove_reaction(reaction.emoji, interaction.user)
                     
-                    logs[player.name] = "Giga-battle complete."
+                    emoji = str(reaction.emoji)
+                    logs = {}
 
-                elif emoji == "🏃":
-                    embed.add_field(name="Escape", value="Got away safely!", inline=False)
+                    if emoji == "⚔️":
+                        logs[player.name] = engine.process_player_turn(player, monster)
+                        if monster.hp > 0:
+                            logs[monster.name] = engine.process_monster_turn(player, monster)
+                    
+                    elif emoji == "🩹":
+                        logs["Heal"] = engine.process_heal(player)
+                    
+                    elif emoji == "⏩": # Auto-battle
+                        while player.current_hp > int(player.max_hp * 0.2) and monster.hp > 0:
+                            atk_log = engine.process_player_turn(player, monster)
+                            def_log = ""
+                            if monster.hp > 0:
+                                def_log = engine.process_monster_turn(player, monster)
+                            
+                            embed = ui.create_combat_embed(player, monster, {player.name: atk_log, monster.name: def_log}, title_override=phase_title)
+                            await message.edit(embed=embed)
+                            await asyncio.sleep(1)
+                        if player.current_hp <= int(player.max_hp * 0.2) and monster.hp > 0:
+                            logs["Auto-Battle"] = "Paused: Low HP!"
+
+                    elif emoji == "🕒": # Giga-Auto (Skip anims)
+                        turn_count = 0
+                        while player.current_hp > int(player.max_hp * 0.2) and monster.hp > 0:
+                            turn_count += 1
+                            last_atk = engine.process_player_turn(player, monster)
+                            last_def = ""
+                            if monster.hp > 0:
+                                last_def = engine.process_monster_turn(player, monster)
+                            
+                            if turn_count % 10 == 0:
+                                embed = ui.create_combat_embed(player, monster, {player.name: last_atk, monster.name: last_def}, title_override=phase_title)
+                                await message.edit(embed=embed)
+                                await asyncio.sleep(0.5)
+                        
+                        logs[player.name] = "Giga-battle complete."
+
+                    elif emoji == "🏃":
+                        embed.add_field(name="Escape", value="Got away safely!", inline=False)
+                        await message.edit(embed=embed)
+                        await self._cleanup(user_id, player, message)
+                        return
+
+                    if player.current_hp <= 0:
+                        await self.handle_defeat(message, player, monster)
+                        await self._cleanup(user_id, player, message)
+                        return
+                    
+                    if monster.hp <= 0:
+                        # Break inner loop to proceed to next phase check
+                        break 
+
+                    embed = ui.create_combat_embed(player, monster, logs, title_override=phase_title)
+                    await message.edit(embed=embed)
+
+                except asyncio.TimeoutError:
+                    embed.add_field(name="Timeout", value="Combat ended due to inactivity.", inline=False)
                     await message.edit(embed=embed)
                     await self._cleanup(user_id, player, message)
                     return
-
-                if player.current_hp <= 0:
-                    await self.handle_defeat(message, player, monster)
-                    await self._cleanup(user_id, player, message)
-                    return
-                
-                if monster.hp <= 0:
-                    await self.handle_victory(interaction, message, player, monster)
-                    await self._cleanup(user_id, player, message)
-                    return
-
-                embed = ui.create_combat_embed(player, monster, logs)
-                await message.edit(embed=embed)
-
-            except asyncio.TimeoutError:
-                embed.add_field(name="Timeout", value="Combat ended due to inactivity.", inline=False)
-                await message.edit(embed=embed)
+            
+            # --- END OF TURN LOOP ---
+            
+            # Check if there are more phases
+            if is_boss and phase_idx < len(combat_phases) - 1:
+                # Transition Logic
+                transition_embed = discord.Embed(
+                    title="Phase Complete!", 
+                    description=f"**{monster.name}** falls, but the air grows heavier...\nNext phase beginning shortly.", 
+                    color=discord.Color.orange()
+                )
+                transition_embed.set_thumbnail(url=monster.image)
+                await message.edit(embed=transition_embed)
+                await message.clear_reactions()
+                await asyncio.sleep(3)
+                # Continue loop to next phase
+            else:
+                # Final Victory (Normal mob or Final Boss Phase)
+                await self.handle_victory(interaction, message, player, monster)
                 await self._cleanup(user_id, player, message)
                 return
 
@@ -305,10 +354,10 @@ class Combat(commands.Cog, name="combat"):
     async def handle_victory(self, interaction: Interaction, message: Message, player: Player, monster: Monster):
         user_id = player.id
         
-        # 1. Rewards
+        # 1. Rewards Calculation
         reward_data = rewards.calculate_rewards(player, monster)
         
-        # 2. Special Drops
+        # 2. Special Drops & Boss Logic
         special_flags = rewards.check_special_drops(player, monster)
         reward_data['special'] = []
         
@@ -331,12 +380,24 @@ class Combat(commands.Cog, name="combat"):
             await self.bot.database.users.modify_currency(user_id, 'curios', 1)
             reward_data['curios'] = 1
 
+        # Boss Specific Runes
+        if special_flags.get('refinement_rune'):
+            await self.bot.database.users.modify_currency(user_id, 'refinement_runes', 1)
+            reward_data['special'].append("Rune of Refinement")
+        if special_flags.get('potential_rune'):
+            await self.bot.database.users.modify_currency(user_id, 'potential_runes', 1)
+            reward_data['special'].append("Rune of Potential")
+        if special_flags.get('imbue_rune'):
+            await self.bot.database.users.modify_currency(user_id, 'imbue_runes', 1)
+            reward_data['special'].append("Rune of Imbuing")
+
         # 3. Gear Drops
         drop_roll = random.randint(1, 100)
-        drop_chance = rewards.calculate_item_drop_chance(player)
+        drop_threshold = rewards.calculate_item_drop_chance(player)
+        self.bot.logger.info(f'Player had {player.rarity}, player rolled {drop_roll} versus {drop_threshold} drop_threshold (under to drop item)')
         reward_data['items'] = []
 
-        if drop_roll <= drop_chance:
+        if drop_roll <= drop_threshold:
             item_roll = random.randint(1, 100)
             
             w_count = await self.bot.database.equipment.get_count(user_id, 'weapon')
@@ -348,7 +409,7 @@ class Combat(commands.Cog, name="combat"):
             if item_roll <= 40 and w_count < 60:
                 item = await generate_weapon(user_id, monster.level, drop_rune=True)
                 if item.name == "Rune of Refinement":
-                    await self.bot.database.users.modify_currency(user_id, 1)
+                    await self.bot.database.users.modify_currency(user_id, 'refinement_runes', 1)
                     reward_data['items'].append(f"**{item.name}**: {item.description}")
                 else:
                     await self.bot.database.equipment.create_weapon(item)
@@ -356,7 +417,7 @@ class Combat(commands.Cog, name="combat"):
             elif item_roll <= 60 and a_count < 60:
                 item = await generate_accessory(user_id, monster.level, drop_rune=True)
                 if item.name == "Rune of Potential":
-                    await self.bot.database.users.modify_currency(user_id, 1)
+                    await self.bot.database.users.modify_currency(user_id, 'potential_runes', 1)
                     reward_data['items'].append(f"**{item.name}**: {item.description}")
                 else:
                     await self.bot.database.equipment.create_accessory(item)
@@ -364,7 +425,7 @@ class Combat(commands.Cog, name="combat"):
             elif item_roll <= 70 and ar_count < 60:
                 item = await generate_armor(user_id, monster.level, drop_rune=True)
                 if item.name == "Rune of Imbuing":
-                    await self.bot.database.users.modify_currency(user_id, 1)
+                    await self.bot.database.users.modify_currency(user_id, 'imbue_runes', 1)
                     reward_data['items'].append(f"**{item.name}**: {item.description}")
                 else:
                     await self.bot.database.equipment.create_armor(item)
@@ -384,30 +445,145 @@ class Combat(commands.Cog, name="combat"):
         await self._handle_level_up(player, reward_data)
 
         embed = ui.create_victory_embed(player, monster, reward_data)
+
+        # BOSS FINALE SCENES
+        if "Aphrodite" in monster.name:
+            embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
+            await message.edit(embed=embed)
+            
+        elif "NEET" in monster.name:
+            embed.set_image(url="https://i.imgur.com/7UmY4Mo.jpeg")
+            embed.add_field(name="As the tombstone crumbles...", value="You find a **Void Key**.", inline=False)
+            await self.bot.database.users.modify_currency(user_id, 'void_keys', 1)
+            await message.edit(embed=embed)
+
+        elif "Lucifer" in monster.name:
+            embed.set_image(url="https://i.imgur.com/x9suAGK.png")
+            await message.edit(embed=embed)
+            # Trigger interactive selection
+            await self._handle_lucifer_choice(interaction, message, user_id, player)
         await message.edit(embed=embed)
 
-    async def _handle_level_up(self, player: Player, reward_data: dict):
-        exp_table = self.load_exp_table()
-        next_level_exp = exp_table["levels"].get(str(player.level), 999999999)
+    
+    async def _handle_lucifer_choice(self, interaction: Interaction, message: Message, user_id: str, player: Player):
+        """Handles the post-combat Soul Core selection for Lucifer."""
+        embed = message.embeds[0]
+        embed.add_field(
+            name="Soul Core Selection", 
+            value=(
+                "Lucifer's soul shatters. Choose a core to consume:\n"
+                "🩶 **Inverse**: Swap Atk/Def\n"
+                "❤️‍🔥 **Enraged**: Atk -1 to +2\n"
+                "💙 **Solidified**: Def -1 to +2\n"
+                "💔 **Unstable**: Randomize towards equilibrium\n"
+                "🖤 **Original**: Gain 1 Soul Core"
+            ),
+            inline=False
+        )
+        await message.edit(embed=embed)
         
-        if player.exp >= next_level_exp and player.level < 100:
-            player.level += 1
-            player.exp -= next_level_exp 
+        reactions = ["🩶", "❤️‍🔥", "💙", "💔", "🖤"]
+        await asyncio.gather(*(message.add_reaction(r) for r in reactions))
+
+        def check(r, u): 
+            return u.id == int(user_id) and str(r.emoji) in reactions and r.message.id == message.id
+
+        try:
+            reaction, _ = await self.bot.wait_for('reaction_add', timeout=60, check=check)
+            emoji = str(reaction.emoji)
             
-            atk_inc = random.randint(1, 5)
-            def_inc = random.randint(1, 5)
-            hp_inc = random.randint(1, 5)
+            resp = ""
+            if emoji == "🩶":
+                await self.bot.database.users.modify_stat(user_id, 'attack', player.base_defence - player.base_attack)
+                await self.bot.database.users.modify_stat(user_id, 'defence', player.base_attack - player.base_defence)
+                resp = f"Stats Swapped! Atk: {player.base_defence}, Def: {player.base_attack}"
+
+            elif emoji == "❤️‍🔥":
+                adj = random.randint(-1, 2)
+                await self.bot.database.users.modify_stat(user_id, 'attack', adj)
+                resp = f"Enraged! Attack changed by {adj}."
+
+            elif emoji == "💙":
+                adj = random.randint(-1, 2)
+                await self.bot.database.users.modify_stat(user_id, 'defence', adj)
+                resp = f"Solidified! Defence changed by {adj}."
+
+            elif emoji == "💔":
+                total = player.base_attack + player.base_defence
+                new_atk = int(total * random.uniform(0.49, 0.51))
+                new_def = total - new_atk
+                # Calc diffs
+                atk_diff = new_atk - player.base_attack
+                def_diff = new_def - player.base_defence
+                await self.bot.database.users.modify_stat(user_id, 'attack', atk_diff)
+                await self.bot.database.users.modify_stat(user_id, 'defence', def_diff)
+                resp = f"Chaos ensues! New Atk: {new_atk}, New Def: {new_def}"
+
+            elif emoji == "🖤":
+                await self.bot.database.users.modify_currency(user_id, 'soul_cores', 1)
+                resp = "You pocketed a Soul Core."
+
+            embed.add_field(name="Choice", value=resp, inline=False)
+            await message.edit(embed=embed)
+            await message.clear_reactions()
+
+        except asyncio.TimeoutError:
+            pass
+
+    async def _handle_level_up(self, player: Player, reward_data: dict):
+            """
+            Handles Level Ups, Stat Growth, Passive Points, and Ascension.
+            """
+            user_id = player.id
+            exp_table = self.load_exp_table()
             
-            player.base_attack += atk_inc
-            player.base_defence += def_inc
-            player.max_hp += hp_inc
+            # Get threshold for current level (Default to high number if maxed/missing)
+            exp_threshold = exp_table["levels"].get(str(player.level), 999999999)
             
-            await self.bot.database.users.modify_stat(player.id, 'attack', atk_inc)
-            await self.bot.database.users.modify_stat(player.id, 'defence', def_inc)
-            await self.bot.database.users.modify_stat(player.id, 'max_hp', hp_inc)
-            
-            reward_data['msgs'].append(f"**LEVEL UP!** You are now level {player.level}!")
-            reward_data['msgs'].append(f"Stats: +{atk_inc} Atk, +{def_inc} Def, +{hp_inc} HP")
+            # --- ASCENSION LOGIC (Level 100) ---
+            if player.level >= 100 and player.exp >= exp_threshold:
+                player.ascension += 1
+                player.exp -= exp_threshold  # Rollover XP
+                
+                # Grant 2 Passive Points
+                # Assuming 'passive_points' is a column supported by modify_currency based on previous refactor steps
+                await self.bot.database.users.modify_currency(user_id, 'passive_points', 2)
+                
+                reward_data['msgs'].append(f"🌟 **ASCENSION LEVEL UP!**")
+                reward_data['msgs'].append(f"{player.name} has reached Ascension **{player.ascension}**!")
+                reward_data['msgs'].append("✨ Gained **2** Passive Points! (Use /passives)")
+                return # Process complete for this turn
+
+            # --- STANDARD LEVEL UP LOGIC (< 100) ---
+            if player.level < 100 and player.exp >= exp_threshold:
+                player.level += 1
+                player.exp -= exp_threshold # Rollover XP
+                
+                # 1. Roll Stat Increases
+                atk_inc = random.randint(1, 5)
+                def_inc = random.randint(1, 5)
+                hp_inc = random.randint(1, 5)
+                
+                # 2. Update Memory Object (So Victory Embed shows correct stats/HP cap)
+                player.base_attack += atk_inc
+                player.base_defence += def_inc
+                player.max_hp += hp_inc
+                # Optional: Heal the amount gained so they don't feel weaker %-wise
+                player.current_hp += hp_inc 
+                
+                # 3. DB Updates (Permanent Stats)
+                # update_player() saves Level/Exp, but we need to save the base stats explicitly
+                await self.bot.database.users.modify_stat(user_id, 'attack', atk_inc)
+                await self.bot.database.users.modify_stat(user_id, 'defence', def_inc)
+                await self.bot.database.users.modify_stat(user_id, 'max_hp', hp_inc)
+                
+                reward_data['msgs'].append(f"🎉 **LEVEL UP!** You are now level {player.level}!")
+                reward_data['msgs'].append(f"📈 Stats: +{atk_inc} Atk, +{def_inc} Def, +{hp_inc} HP")
+
+                # 4. Passive Points Milestone (Every 10 Levels)
+                if player.level % 10 == 0:
+                    await self.bot.database.users.modify_currency(user_id, 'passive_points', 2)
+                    reward_data['msgs'].append(f"✨ **Milestone!** Gained **2** Passive Points! (Use /passives)")
 
 async def setup(bot) -> None:
     await bot.add_cog(Combat(bot))
