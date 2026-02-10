@@ -98,6 +98,64 @@ class EquipmentMechanics:
             # Upgrade existing or keep maxed
             return True, upgrade_map.get(weapon.passive, weapon.passive)
 
+
+# --- WEAPON REFINING LOGIC ---
+    @staticmethod
+    def calculate_refine_cost(weapon: Weapon) -> int:
+        """
+        Calculates Gold cost for refining based on level and remaining attempts.
+        Returns the cost in GP.
+        """
+        rem = weapon.refines_remaining
+        
+        # Default fallback
+        cost = 1000
+
+        if weapon.level <= 40:
+            # Low level logic (3 refines max)
+            costs = {3: 500, 2: 1000, 1: 5000}
+            cost = costs.get(rem, 1000)
+        elif weapon.level <= 80:
+            # Mid level (4 refines max)
+            # Original: [50000, 25000, 15000, 5000] for 1, 2, 3, 4 left
+            # Mapping remaining to cost:
+            costs = {4: 5000, 3: 15000, 2: 25000, 1: 50000}
+            cost = costs.get(rem, 50000)
+        else:
+            # High level (5 refines max)
+            # Original: [200000, 100000, 50000, 30000, 10000] for 1, 2, 3, 4, 5 left
+            costs = {5: 10000, 4: 30000, 3: 50000, 2: 100000, 1: 200000}
+            cost = costs.get(rem, 200000)
+            
+        return cost
+
+    @staticmethod
+    def roll_refine_outcome(weapon: Weapon) -> Dict[str, int]:
+        """
+        Calculates stat gains for a single refine action.
+        Returns dict: {'attack': val, 'defence': val, 'rarity': val}
+        """
+        stats = {'attack': 0, 'defence': 0, 'rarity': 0}
+        
+        # Success chances
+        atk_success = random.randint(0, 100) < 80 # 80%
+        def_success = random.randint(0, 100) < 50 # 50%
+        rar_success = random.randint(0, 100) < 20 # 20%
+        
+        # Range calculation: 1 to (Lvl/10 + 2)
+        max_gain = int(weapon.level / 10) + 2
+        
+        if atk_success:
+            stats['attack'] = random.randint(1, max_gain)
+        
+        if def_success:
+            stats['defence'] = random.randint(1, max_gain)
+            
+        if rar_success:
+            stats['rarity'] = random.randint(1, max_gain) * 5 # Rarity scales higher visually usually
+            
+        return stats
+
     # --- ARMOR TEMPERING LOGIC ---
     @staticmethod
     def calculate_temper_cost(armor: Armor) -> Optional[Dict[str, int]]:

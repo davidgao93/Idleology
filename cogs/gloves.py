@@ -205,72 +205,73 @@ class Gloves(commands.Cog, name="gloves"):
         """Handles the Enchanting/Potential UI and Logic."""
         uid, gid = str(user.id), str(message.guild.id)
         
-        cost = EquipmentMechanics.calculate_potential_cost(glove.passive_lvl)
-        player_gold = (await self.bot.database.users.get(uid, gid))[6]
-        
-        # Success Rate
-        success_rate = max(75 - (glove.passive_lvl * 5), 30)
-        
-        title_keyword = "Enchant" if glove.passive == "none" else "Enhance"
-        
-        embed = discord.Embed(
-            title=f"{title_keyword} Attempt", 
-            description=(f"Attempts left: **{glove.potential_remaining}**\n"
-                         f"Cost: **{cost:,} GP**\n"
-                         f"Success Rate: **{success_rate}%**"),
-            color=discord.Color.gold()
-        )
-
-        if player_gold < cost:
-            embed.set_footer(text="Insufficient Gold.")
-            await message.edit(embed=embed, view=None)
-            await asyncio.sleep(2)
-            return
-
-        view = View(timeout=30)
-        view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm"))
-        view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel"))
-        
-        await message.edit(embed=embed, view=view)
-
-        def check(i): return i.user.id == user.id and i.message.id == message.id
-        try:
-            act = await self.bot.wait_for('interaction', timeout=30, check=check)
-            await act.response.defer()
+        while True:
+            cost = EquipmentMechanics.calculate_potential_cost(glove.passive_lvl)
+            player_gold = (await self.bot.database.users.get(uid, gid))[6]
             
-            if act.data['custom_id'] != "confirm": return
+            # Success Rate
+            success_rate = max(75 - (glove.passive_lvl * 5), 30)
             
-            # Re-check gold
-            if player_gold < cost: return
+            title_keyword = "Enchant" if glove.passive == "none" else "Enhance"
+            
+            embed = discord.Embed(
+                title=f"{title_keyword} Attempt", 
+                description=(f"Attempts left: **{glove.potential_remaining}**\n"
+                            f"Cost: **{cost:,} GP**\n"
+                            f"Success Rate: **{success_rate}%**"),
+                color=discord.Color.gold()
+            )
+            embed.set_thumbnail(url="https://i.imgur.com/jQeOEP7.jpeg")
+            if player_gold < cost:
+                embed.set_footer(text="Insufficient Gold.")
+                await message.edit(embed=embed, view=None)
+                await asyncio.sleep(2)
+                return
 
-            await self.bot.database.users.modify_gold(uid, -cost)
+            view = View(timeout=30)
+            view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm"))
+            view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel"))
+            
+            await message.edit(embed=embed, view=view)
 
-            # Roll logic - Use generic roll function (Gloves do not use runes)
-            success = EquipmentMechanics.roll_potential_outcome(glove.passive_lvl, use_rune=False)
-            
-            result_embed = discord.Embed(title="Enchant Result", color=discord.Color.gold())
-            
-            if success:
-                if glove.passive == "none":
-                    new_passive = EquipmentMechanics.get_new_passive('glove')
-                    await self.bot.database.equipment.update_passive(glove.item_id, 'glove', new_passive)
-                    await self.bot.database.equipment.update_counter(glove.item_id, 'glove', 'passive_lvl', 1)
-                    result_embed.description = f"🎉 Success! Unlocked **{new_passive.replace('-', ' ').title()}**!"
+            def check(i): return i.user.id == user.id and i.message.id == message.id
+            try:
+                act = await self.bot.wait_for('interaction', timeout=30, check=check)
+                await act.response.defer()
+                
+                if act.data['custom_id'] != "confirm": return
+                
+                # Re-check gold
+                if player_gold < cost: return
+
+                await self.bot.database.users.modify_gold(uid, -cost)
+
+                # Roll logic - Use generic roll function (Gloves do not use runes)
+                success = EquipmentMechanics.roll_potential_outcome(glove.passive_lvl, use_rune=False)
+                
+                result_embed = discord.Embed(title="Enchant Result", color=discord.Color.gold())
+                
+                if success:
+                    if glove.passive == "none":
+                        new_passive = EquipmentMechanics.get_new_passive('glove')
+                        await self.bot.database.equipment.update_passive(glove.item_id, 'glove', new_passive)
+                        await self.bot.database.equipment.update_counter(glove.item_id, 'glove', 'passive_lvl', 1)
+                        result_embed.description = f"🎉 Success! Unlocked **{new_passive.replace('-', ' ').title()}**!"
+                    else:
+                        new_lvl = glove.passive_lvl + 1
+                        await self.bot.database.equipment.update_counter(glove.item_id, 'glove', 'passive_lvl', new_lvl)
+                        result_embed.description = f"🎉 Success! Upgraded to **Level {new_lvl}**!"
                 else:
-                    new_lvl = glove.passive_lvl + 1
-                    await self.bot.database.equipment.update_counter(glove.item_id, 'glove', 'passive_lvl', new_lvl)
-                    result_embed.description = f"🎉 Success! Upgraded to **Level {new_lvl}**!"
-            else:
-                result_embed.description = "💔 The enchantment failed."
-                result_embed.color = discord.Color.dark_grey()
+                    result_embed.description = "💔 The enchantment failed."
+                    result_embed.color = discord.Color.dark_grey()
 
-            await self.bot.database.equipment.update_counter(glove.item_id, 'glove', 'potential_remaining', glove.potential_remaining - 1)
-            
-            await message.edit(embed=result_embed, view=None)
-            await asyncio.sleep(3)
+                await self.bot.database.equipment.update_counter(glove.item_id, 'glove', 'potential_remaining', glove.potential_remaining - 1)
+                
+                await message.edit(embed=result_embed, view=None)
+                await asyncio.sleep(3)
 
-        except asyncio.TimeoutError:
-            pass
+            except asyncio.TimeoutError:
+                pass
 
     async def _send_item_flow(self, message: Message, user, interaction: Interaction, glove: Glove) -> bool:
         """Handles sending item logic. Returns True if sent."""

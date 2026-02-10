@@ -143,7 +143,7 @@ class Accessories(commands.Cog, name="accessories"):
             # but usually capped by attempts remaining.
             can_improve = accessory.potential_remaining > 0
             if can_improve: 
-                guide.insert(1, "- Unlock/Improve (Gold)")
+                guide.insert(1, "- Unlock/Improve Potential")
             
             guide.append("- Send")
             
@@ -154,7 +154,7 @@ class Accessories(commands.Cog, name="accessories"):
             view.add_item(Button(label="Unequip" if is_equipped else "Equip", style=ButtonStyle.primary, custom_id="equip"))
             
             if can_improve:
-                view.add_item(Button(label="Unlock/Improve", style=ButtonStyle.success, custom_id="improve"))
+                view.add_item(Button(label="Potential", style=ButtonStyle.success, custom_id="improve"))
                 
             view.add_item(Button(label="Send", style=ButtonStyle.secondary, custom_id="send"))
             view.add_item(Button(label="Discard", style=ButtonStyle.danger, custom_id="discard"))
@@ -209,85 +209,86 @@ class Accessories(commands.Cog, name="accessories"):
         """Handles the Potential UI and Logic."""
         uid, gid = str(user.id), str(message.guild.id)
         
-        cost = EquipmentMechanics.calculate_potential_cost(accessory.passive_lvl)
-        player_gold = (await self.bot.database.users.get(uid, gid))[6]
-        
-        # Calculate Base Success Rate
-        # Logic from Mechanics: max(75 - level*5, 30)
-        success_rate = max(75 - (accessory.passive_lvl * 5), 30)
-        
-        title_keyword = "Unlock" if accessory.passive == "none" else "Enhance"
-        
-        embed = discord.Embed(
-            title=f"{title_keyword} Potential", 
-            description=(f"Attempts left: **{accessory.potential_remaining}**\n"
-                         f"Cost: **{cost:,} GP**\n"
-                         f"Success Rate: **{success_rate}%**"),
-            color=discord.Color.gold()
-        )
-
-        if player_gold < cost:
-            embed.set_footer(text="Insufficient Gold.")
-            await message.edit(embed=embed, view=None)
-            await asyncio.sleep(2)
-            return
-
-        # Check for Runes
-        runes = await self.bot.database.users.get_currency(uid, 'potential_runes')
-        
-        view = View(timeout=30)
-        view.add_item(Button(label="Confirm", style=ButtonStyle.primary, custom_id="confirm"))
-        if runes > 0:
-            view.add_item(Button(label=f"Use Rune (+25%)", style=ButtonStyle.success, custom_id="use_rune"))
-        view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel"))
-        
-        await message.edit(embed=embed, view=view)
-
-        def check(i): return i.user.id == user.id and i.message.id == message.id
-        try:
-            act = await self.bot.wait_for('interaction', timeout=30, check=check)
-            await act.response.defer()
+        while True:
+            cost = EquipmentMechanics.calculate_potential_cost(accessory.passive_lvl)
+            player_gold = (await self.bot.database.users.get(uid, gid))[6]
             
-            if act.data['custom_id'] == "cancel": return
-
-            use_rune = (act.data['custom_id'] == "use_rune")
+            # Calculate Base Success Rate
+            # Logic from Mechanics: max(75 - level*5, 30)
+            success_rate = max(75 - (accessory.passive_lvl * 5), 30)
             
-            # Re-check gold just in case
-            if player_gold < cost: return
-
-            # Consume resources
-            await self.bot.database.users.modify_gold(uid, -cost)
-            if use_rune:
-                await self.bot.database.users.modify_currency(uid, 'refinement_runes', -1)
-                success_rate += 25
-
-            # Roll
-            success = EquipmentMechanics.roll_potential_outcome(accessory.passive_lvl, use_rune)
+            title_keyword = "Unlock" if accessory.passive == "none" else "Enhance"
             
-            result_embed = discord.Embed(title="Potential Result", color=discord.Color.gold())
+            embed = discord.Embed(
+                title=f"{title_keyword} Potential", 
+                description=(f"Attempts left: **{accessory.potential_remaining}**\n"
+                            f"Cost: **{cost:,} GP**\n"
+                            f"Success Rate: **{success_rate}%**"),
+                color=discord.Color.gold()
+            )
+            embed.set_thumbnail(url="https://i.imgur.com/Tkikr5b.jpeg")
+            if player_gold < cost:
+                embed.set_footer(text="Insufficient Gold.")
+                await message.edit(embed=embed, view=None)
+                await asyncio.sleep(2)
+                return
+
+            # Check for Runes
+            runes = await self.bot.database.users.get_currency(uid, 'potential_runes')
             
-            if success:
-                if accessory.passive == "none":
-                    new_passive = EquipmentMechanics.get_new_passive('accessory')
-                    await self.bot.database.equipment.update_passive(accessory.item_id, 'accessory', new_passive)
-                    await self.bot.database.equipment.update_counter(accessory.item_id, 'accessory', 'passive_lvl', 1)
-                    result_embed.description = f"🎉 Success! Unlocked **{new_passive}**!"
+            view = View(timeout=30)
+            view.add_item(Button(label="Confirm", style=ButtonStyle.success, custom_id="confirm"))
+            if runes > 0:
+                view.add_item(Button(label=f"Use Rune (+25%)", style=ButtonStyle.primary, custom_id="use_rune"))
+            view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel"))
+            
+            await message.edit(embed=embed, view=view)
+
+            def check(i): return i.user.id == user.id and i.message.id == message.id
+            try:
+                act = await self.bot.wait_for('interaction', timeout=30, check=check)
+                await act.response.defer()
+                
+                if act.data['custom_id'] == "cancel": return
+
+                use_rune = (act.data['custom_id'] == "use_rune")
+                
+                # Re-check gold just in case
+                if player_gold < cost: return
+
+                # Consume resources
+                await self.bot.database.users.modify_gold(uid, -cost)
+                if use_rune:
+                    await self.bot.database.users.modify_currency(uid, 'refinement_runes', -1)
+                    success_rate += 25
+
+                # Roll
+                success = EquipmentMechanics.roll_potential_outcome(accessory.passive_lvl, use_rune)
+                
+                result_embed = discord.Embed(title="Potential Result", color=discord.Color.gold())
+                
+                if success:
+                    if accessory.passive == "none":
+                        new_passive = EquipmentMechanics.get_new_passive('accessory')
+                        await self.bot.database.equipment.update_passive(accessory.item_id, 'accessory', new_passive)
+                        await self.bot.database.equipment.update_counter(accessory.item_id, 'accessory', 'passive_lvl', 1)
+                        result_embed.description = f"🎉 Success! Unlocked **{new_passive}**!"
+                    else:
+                        new_lvl = accessory.passive_lvl + 1
+                        await self.bot.database.equipment.update_counter(accessory.item_id, 'accessory', 'passive_lvl', new_lvl)
+                        result_embed.description = f"🎉 Success! Upgraded to **Level {new_lvl}**!"
                 else:
-                    new_lvl = accessory.passive_lvl + 1
-                    await self.bot.database.equipment.update_counter(accessory.item_id, 'accessory', 'passive_lvl', new_lvl)
-                    result_embed.description = f"🎉 Success! Upgraded to **Level {new_lvl}**!"
-            else:
-                result_embed.description = "💔 The enhancement failed."
-                result_embed.color = discord.Color.dark_grey()
+                    result_embed.description = "💔 The enhancement failed."
+                    result_embed.color = discord.Color.dark_grey()
 
-            # Decrement potential
-            await self.bot.database.equipment.update_counter(accessory.item_id, 'accessory', 'potential_remaining', accessory.potential_remaining - 1)
-            
-            await message.edit(embed=result_embed, view=None)
-            await asyncio.sleep(3)
+                # Decrement potential
+                await self.bot.database.equipment.update_counter(accessory.item_id, 'accessory', 'potential_remaining', accessory.potential_remaining - 1)
+                
+                await message.edit(embed=result_embed, view=None)
+                await asyncio.sleep(3)
 
-        except asyncio.TimeoutError:
-            pass
+            except asyncio.TimeoutError:
+                pass
 
     async def _send_item_flow(self, message: Message, user, interaction: Interaction, accessory: Accessory) -> bool:
         """Handles sending item logic. Returns True if sent."""

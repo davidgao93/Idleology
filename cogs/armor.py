@@ -216,83 +216,84 @@ class ArmorCog(commands.Cog, name="armor"):
         """Handles the Tempering UI and Logic."""
         uid, gid = str(user.id), str(message.guild.id)
         
-        costs = EquipmentMechanics.calculate_temper_cost(armor)
-        if not costs: return
+        while True:
+            costs = EquipmentMechanics.calculate_temper_cost(armor)
+            if not costs: return
 
-        # Check Resources
-        mining = await self.bot.database.skills.get_data(uid, gid, 'mining')
-        wood = await self.bot.database.skills.get_data(uid, gid, 'woodcutting')
-        fish = await self.bot.database.skills.get_data(uid, gid, 'fishing')
-        player_gold = (await self.bot.database.users.get(uid, gid))[6]
+            # Check Resources
+            mining = await self.bot.database.skills.get_data(uid, gid, 'mining')
+            wood = await self.bot.database.skills.get_data(uid, gid, 'woodcutting')
+            fish = await self.bot.database.skills.get_data(uid, gid, 'fishing')
+            player_gold = (await self.bot.database.users.get(uid, gid))[6]
 
-        ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
-        log_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}.get(costs['log_type'])
-        bone_idx = {'desiccated': 3, 'regular': 4, 'sturdy': 5, 'reinforced': 6, 'titanium': 7}.get(costs['bone_type'])
+            ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
+            log_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}.get(costs['log_type'])
+            bone_idx = {'desiccated': 3, 'regular': 4, 'sturdy': 5, 'reinforced': 6, 'titanium': 7}.get(costs['bone_type'])
 
-        has_resources = (
-            mining[ore_idx] >= costs['ore_qty'] and
-            wood[log_idx] >= costs['log_qty'] and
-            fish[bone_idx] >= costs['bone_qty'] and
-            player_gold >= costs['gold']
-        )
+            has_resources = (
+                mining[ore_idx] >= costs['ore_qty'] and
+                wood[log_idx] >= costs['log_qty'] and
+                fish[bone_idx] >= costs['bone_qty'] and
+                player_gold >= costs['gold']
+            )
 
-        cost_str = (
-            f"• {costs['ore_qty']} {costs['ore_type'].title()} Ore ({mining[ore_idx]})\n"
-            f"• {costs['log_qty']} {costs['log_type'].title()} Logs ({wood[log_idx]})\n"
-            f"• {costs['bone_qty']} {costs['bone_type'].title()} Bones ({fish[bone_idx]})\n"
-            f"• {costs['gold']:,} Gold ({player_gold:,})"
-        )
+            cost_str = (
+                f"• {costs['ore_qty']} {costs['ore_type'].title()} Ore ({mining[ore_idx]})\n"
+                f"• {costs['log_qty']} {costs['log_type'].title()} Logs ({wood[log_idx]})\n"
+                f"• {costs['bone_qty']} {costs['bone_type'].title()} Bones ({fish[bone_idx]})\n"
+                f"• {costs['gold']:,} Gold ({player_gold:,})"
+            )
 
-        embed = discord.Embed(
-            title=f"Temper {armor.name}", 
-            description=f"**Costs:**\n{cost_str}",
-            color=discord.Color.green() if has_resources else discord.Color.red()
-        )
+            embed = discord.Embed(
+                title=f"Temper {armor.name}", 
+                description=f"**Costs:**\n{cost_str}",
+                color=discord.Color.green() if has_resources else discord.Color.red()
+            )
+            embed.set_thumbnail(url="https://i.imgur.com/jQeOEP7.jpeg")
+            if not has_resources:
+                embed.set_footer(text="Insufficient resources.")
+                await message.edit(embed=embed, view=None)
+                await asyncio.sleep(3)
+                return
 
-        if not has_resources:
-            embed.set_footer(text="Insufficient resources.")
-            await message.edit(embed=embed, view=None)
-            await asyncio.sleep(3)
-            return
-
-        view = View(timeout=30)
-        view.add_item(Button(label="Temper!", style=ButtonStyle.success, custom_id="confirm"))
-        view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel"))
-        
-        await message.edit(embed=embed, view=view)
-
-        def check(i): return i.user.id == user.id and i.message.id == message.id
-        try:
-            act = await self.bot.wait_for('interaction', timeout=30, check=check)
-            await act.response.defer()
+            view = View(timeout=30)
+            view.add_item(Button(label="Temper!", style=ButtonStyle.success, custom_id="confirm"))
+            view.add_item(Button(label="Cancel", style=ButtonStyle.secondary, custom_id="cancel"))
             
-            if act.data['custom_id'] != "confirm": return
+            await message.edit(embed=embed, view=view)
 
-            # Consume
-            await self.bot.database.skills.update_single_resource(uid, gid, 'mining', costs['ore_type'], -costs['ore_qty'])
-            await self.bot.database.skills.update_single_resource(uid, gid, 'woodcutting', f"{costs['log_type']}_logs", -costs['log_qty'])
-            await self.bot.database.skills.update_single_resource(uid, gid, 'fishing', f"{costs['bone_type']}_bones", -costs['bone_qty'])
-            await self.bot.database.users.modify_gold(uid, -costs['gold'])
+            def check(i): return i.user.id == user.id and i.message.id == message.id
+            try:
+                act = await self.bot.wait_for('interaction', timeout=30, check=check)
+                await act.response.defer()
+                
+                if act.data['custom_id'] != "confirm": return
 
-            # Roll
-            success, stat, amount = EquipmentMechanics.roll_temper_outcome(armor)
-            
-            result_embed = discord.Embed(title="Temper Result", color=discord.Color.gold())
-            if success:
-                await self.bot.database.equipment.increase_stat(armor.item_id, 'armor', 'stat', stat, amount)
-                stat_name = "Percentage Damage Reduction" if stat == "pdr" else "Flat Damage Reduction"
-                result_embed.description = f"🎊 Success! Increased **{stat_name}** by **{amount}**!"
-            else:
-                result_embed.description = "💔 Tempering failed. Resources consumed."
-                result_embed.color = discord.Color.dark_grey()
+                # Consume
+                await self.bot.database.skills.update_single_resource(uid, gid, 'mining', costs['ore_type'], -costs['ore_qty'])
+                await self.bot.database.skills.update_single_resource(uid, gid, 'woodcutting', f"{costs['log_type']}_logs", -costs['log_qty'])
+                await self.bot.database.skills.update_single_resource(uid, gid, 'fishing', f"{costs['bone_type']}_bones", -costs['bone_qty'])
+                await self.bot.database.users.modify_gold(uid, -costs['gold'])
 
-            await self.bot.database.equipment.update_counter(armor.item_id, 'armor', 'temper_remaining', armor.temper_remaining - 1)
-            
-            await message.edit(embed=result_embed, view=None)
-            await asyncio.sleep(3)
+                # Roll
+                success, stat, amount = EquipmentMechanics.roll_temper_outcome(armor)
+                
+                result_embed = discord.Embed(title="Temper Result", color=discord.Color.gold())
+                if success:
+                    await self.bot.database.equipment.increase_stat(armor.item_id, 'armor', 'stat', stat, amount)
+                    stat_name = "Percentage Damage Reduction" if stat == "pdr" else "Flat Damage Reduction"
+                    result_embed.description = f"🎊 Success! Increased **{stat_name}** by **{amount}**!"
+                else:
+                    result_embed.description = "💔 Tempering failed. Resources consumed."
+                    result_embed.color = discord.Color.dark_grey()
 
-        except asyncio.TimeoutError:
-            pass
+                await self.bot.database.equipment.update_counter(armor.item_id, 'armor', 'temper_remaining', armor.temper_remaining - 1)
+                
+                await message.edit(embed=result_embed, view=None)
+                await asyncio.sleep(3)
+
+            except asyncio.TimeoutError:
+                pass
 
     async def _imbue_armor_flow(self, message: Message, user, armor: Armor):
         """Handles Imbuing Logic."""
