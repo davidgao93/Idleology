@@ -130,10 +130,6 @@ async def generate_boss(player, monster, phase, phase_index):
             available_modifiers.remove("Ascended")
         elif (boss_mod == "Infernal Legion"):
             available_modifiers.remove("Summoner")
-        elif (boss_mod == "Overwhelm"):
-            available_modifiers.remove("Shield-breaker")
-            available_modifiers.remove("Unblockable")
-            available_modifiers.remove("Unavoidable")
         monster.modifiers.append(boss_mod)
         print(monster)
 
@@ -368,6 +364,5 @@ def get_modifier_description(modifier):
         "Hell's Fury": "+5 each successful hit (boss)",
         "Absolute": "+25 Attack, +25 defence (boss)",
         "Infernal Legion": "Has minions that echo hits (boss)",
-        "Overwhelm" : "Disables ward on start, cannot be blocked, cannot be evaded (boss)",
-    }
+        }
     return descriptions.get(modifier, "") 

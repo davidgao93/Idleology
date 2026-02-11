@@ -252,7 +252,7 @@ class EquipmentMechanics:
         return random.randint(1, 100) <= base_chance
 
     @staticmethod
-    def get_new_passive(item_type: Literal['accessory', 'glove', 'boot']) -> str:
+    def get_new_passive(item_type: Literal['accessory', 'glove', 'boot', 'helmet']) -> str:
         """Returns a random passive name for a fresh unlock."""
         if item_type == 'accessory':
             return random.choice(["Obliterate", "Absorb", "Prosper", "Infinite Wisdom", "Lucky Strikes"])
@@ -260,4 +260,11 @@ class EquipmentMechanics:
             return random.choice(["ward-touched", "ward-fused", "instability", "deftness", "adroit", "equilibrium", "plundering"])
         elif item_type == 'boot':
             return random.choice(["speedster", "skiller", "treasure-tracker", "hearty", "cleric", "thrill-seeker"])
+        elif item_type == 'helmet':
+            return random.choice([
+                "thorns", "ghosted", "juggernaut", "insight", 
+                "volatile", "divine", "frenzy", "leeching"
+            ])
         return "none"
+    
+    

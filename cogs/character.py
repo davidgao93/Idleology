@@ -94,6 +94,7 @@ class Character(commands.Cog, name="character"):
             equipped_armor = await self.bot.database.equipment.get_equipped(user_id, "armor")
             equipped_glove = await self.bot.database.equipment.get_equipped(user_id, "glove")
             equipped_boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
+            equipped_helmet = await self.bot.database.equipment.get_equipped(user_id, "helmet")
             # Calculate base attack and defense
             base_attack = existing_user[9]
             base_defense = existing_user[10]
@@ -161,7 +162,14 @@ class Character(commands.Cog, name="character"):
                 pdr += equipped_boot[7]
                 fdr += equipped_boot[8]
                 boot_passive = equipped_boot[9]
-                passive_list += "Boots: " + (boot_passive.title() if boot_passive else "None")
+                passive_list += "Boots: " + (boot_passive.title() if boot_passive else "None") + "\n"
+            if equipped_helmet:
+                add_def += equipped_helmet[4]
+                ward += equipped_helmet[5]
+                pdr += equipped_helmet[6]
+                fdr += equipped_helmet[7]
+                helmet_passive = equipped_helmet[8]
+                passive_list += "Helmet: " + (helmet_passive.title() if helmet_passive else "None")
 
             # Fetch experience table
             with open('assets/exp.json') as file:

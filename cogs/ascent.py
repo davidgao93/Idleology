@@ -151,9 +151,7 @@ class Ascent(commands.Cog, name="ascent"):
                     await message.edit(embed=embed)
 
                 except asyncio.TimeoutError:
-                    await self._cleanup(user_id, player)
-                    embed.description += "\n\n**Timed out.**"
-                    await message.edit(embed=embed)
+                    await self._handle_retreat(user_id, player, message, ascent_stage, cumulative_xp, cumulative_gold)
                     return
 
             # --- POST STAGE CHECKS ---
@@ -177,7 +175,7 @@ class Ascent(commands.Cog, name="ascent"):
                 # Special Rewards Check (Every 3 stages)
                 special_loot = []
                 if ascent_stage % 3 == 0:
-                    if random.random() < 0.25:
+                    if random.random() < 0.05:
                         await self.bot.database.users.modify_currency(user_id, 'curios', 1)
                         special_loot.append("Curious Curio")
 
@@ -192,7 +190,7 @@ class Ascent(commands.Cog, name="ascent"):
                 
                 # Prepare next stage
                 ascent_stage += 1
-                current_monster_level += 2
+                current_monster_level += 5
                 await asyncio.sleep(3)
 
     async def _handle_retreat(self, user_id, player, message, stage, total_xp, total_gold):
@@ -211,6 +209,7 @@ class Ascent(commands.Cog, name="ascent"):
         embed = ui.create_defeat_embed(player, monster, xp_loss)
         embed.title = f"Defeated on Stage {stage}"
         await message.edit(embed=embed)
+        await message.clear_reactions()
         await self._cleanup(user_id, player)
 
     async def _cleanup(self, user_id, player):

@@ -119,7 +119,7 @@ class General(commands.Cog, name="general"):
     @app_commands.command(name="mod_details", description="Shows progression details for modifiers or passives.")
     @app_commands.describe(category="Choose the category of modifiers/passives to view.")
     async def mod_details(self, interaction: discord.Interaction, 
-                          category: Literal['monster', 'weapon', 'accessory', 'armor', 'glove', 'boot']):
+                          category: Literal['monster', 'weapon', 'accessory', 'helmet', 'armor', 'glove', 'boot']):
         
         embed = discord.Embed(color=discord.Color.blue())
         content_added = False
@@ -133,7 +133,7 @@ class General(commands.Cog, name="general"):
                 "Titanium", "Ascended", "Summoner", "Shield-breaker", "Impenetrable",
                 "Unblockable", "Unavoidable", "Built-different", "Multistrike", "Mighty",
                 "Shields-up", "Executioner", "Time Lord", "Suffocator", "Celestial Watcher",
-                "Unlimited Blade Works", "Hell's Fury", "Absolute", "Infernal Legion", "Overwhelm",
+                "Unlimited Blade Works", "Hell's Fury", "Absolute", "Infernal Legion",
                 "Penetrator", "Clobberer", "Smothering", "Dodgy", "Prescient", "Vampiric"
             ]
             mod_text = ""
@@ -203,6 +203,21 @@ class General(commands.Cog, name="general"):
             )
             embed.description = armor_text
             content_added = True
+
+        elif category == 'helmet':
+                    embed.title = "🪖 Helmet Passive Scaling (Max Lvl 5)"
+                    passives = {
+                        "Juggernaut": lambda l: f"Gain **{l * 4}%** of Base Def as Atk",
+                        "Insight": lambda l: f"Crit Dmg Multiplier +**{l * 0.1:.1f}x** (Base 2.0x)",
+                        "Volatile": lambda l: f"Deal **{l * 100}%** of Max HP as Dmg on ward break",
+                        "Divine": lambda l: f"Converts **{(l * 100)}%** of Potion Overheal to Ward",
+                        "Frenzy": lambda l: f"**{l * 0.5}%** Inc Dmg per 1% Missing HP",
+                        "Leeching": lambda l: f"Heal for **{l * 2}%** of base damage dealt",
+                        "Thorns": lambda l: f"Reflect **{l * 100}%** of blocked damage",
+                        "Ghosted": lambda l: f"Gain **{l * 10}** Ward on Dodge"
+                    }
+                    embed.description = self._generate_scaling_details(passives, 5)
+                    content_added = True
 
         if not content_added:
             embed.description = "No details available."

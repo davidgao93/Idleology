@@ -88,6 +88,23 @@ class Boot:
     potential_remaining: int = 0
 
 @dataclass
+class Helmet:
+    user: str
+    name: str
+    level: int
+    item_id: Optional[int] = None
+    defence: int = 0
+    ward: int = 0    # Percentage
+    pdr: int = 0     
+    fdr: int = 0     
+    passive: str = "none"
+    passive_lvl: int = 0
+    description: str = ""
+    is_equipped: bool = False
+    potential_remaining: int = 0
+
+
+@dataclass
 class Player:
     id: str
     name: str
@@ -110,6 +127,7 @@ class Player:
     equipped_armor: Optional[Armor] = None
     equipped_glove: Optional[Glove] = None
     equipped_boot: Optional[Boot] = None
+    equipped_helmet: Optional[Helmet] = None
 
     # Transient states (reset each combat)
     combat_ward: int = 0
@@ -145,6 +163,7 @@ class Player:
         if self.equipped_accessory: total += self.equipped_accessory.defence
         if self.equipped_glove: total += self.equipped_glove.defence
         if self.equipped_boot: total += self.equipped_boot.defence
+        if self.equipped_helmet: total += self.equipped_helmet.defence
         return total
     
     def get_total_pdr(self) -> int:
@@ -152,6 +171,7 @@ class Player:
         if self.equipped_armor: total += self.equipped_armor.pdr
         if self.equipped_glove: total += self.equipped_glove.pdr
         if self.equipped_boot: total += self.equipped_boot.pdr
+        if self.equipped_helmet: total += self.equipped_helmet.pdr
         return total
 
     def get_total_fdr(self) -> int:
@@ -159,6 +179,7 @@ class Player:
         if self.equipped_armor: total += self.equipped_armor.fdr
         if self.equipped_glove: total += self.equipped_glove.fdr
         if self.equipped_boot: total += self.equipped_boot.fdr
+        if self.equipped_helmet: total += self.equipped_helmet.fdr
         return total
 
     def get_total_ward_percentage(self) -> int:
@@ -167,6 +188,7 @@ class Player:
         if self.equipped_armor: total += self.equipped_armor.ward
         if self.equipped_glove: total += self.equipped_glove.ward
         if self.equipped_boot: total += self.equipped_boot.ward
+        if self.equipped_helmet: total += self.equipped_helmet.ward
         return total
 
     def get_current_crit_target(self) -> int:
@@ -198,6 +220,9 @@ class Player:
     
     def get_boot_passive(self) -> str:
         return self.equipped_boot.passive if self.equipped_boot else "none"
+    
+    def get_helmet_passive(self) -> str:
+        return self.equipped_helmet.passive if self.equipped_helmet else "none"
 
 @dataclass
 class Monster:

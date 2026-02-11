@@ -1,6 +1,6 @@
 import random
 from core.util import load_list
-from core.models import Player, Weapon, Accessory, Armor, Glove, Boot
+from core.models import Player, Weapon, Accessory, Armor, Glove, Boot, Helmet
 
 async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
     """Generate a unique loot item."""
@@ -263,3 +263,38 @@ async def generate_boot(user_id: str, level: int) -> Boot:
         boot.description += f"+{fdr_modifier} Flat Damage Reduction\n"
         
     return boot
+
+async def generate_helmet(user_id: str, level: int) -> Helmet:
+    try:
+        prefix = random.choice(load_list("assets/items/armor_pref.txt"))
+        helm_type = random.choice(["Helm", "Coif", "Sallet", "Bascinet", "Armet", "Visor"])
+        suffix = random.choice(load_list("assets/items/armor_suff.txt"))
+        name = f"{prefix} {helm_type} {suffix}"
+    except: name = f"Sturdy Helm of Level {level}"
+
+    helm = Helmet(user=user_id, name=name, level=level, description=f"**{name}**\n(Level {level})\n")
+
+    # 1. Primary Stat Roll (Defence OR Ward)
+    if random.random() < 0.5:
+        defence = max(1, random.randint(int(level // 8), int(level // 5)))
+        helm.defence = defence
+        helm.description += f"+{defence} Defence\n"
+    else:
+        ward = max(1, random.randint(int(level // 8), int(level // 5))) * 2
+        helm.ward = ward
+        helm.description += f"+{ward}% Ward\n"
+
+    # 2. Secondary Stat Roll (PDR OR FDR)
+    # 50/50 Chance
+    if random.random() < 0.5:
+        # PDR scaling: approx 1% per 8 levels
+        pdr = max(1, random.randint(int(level // 12), int(level // 8)))
+        helm.pdr = pdr
+        helm.description += f"+{pdr}% PDR\n"
+    else:
+        # FDR scaling: approx 1 per 6 levels
+        fdr = max(1, random.randint(int(level // 10), int(level // 6)))
+        helm.fdr = fdr
+        helm.description += f"+{fdr} FDR\n"
+
+    return helm

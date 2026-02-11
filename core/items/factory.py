@@ -1,4 +1,4 @@
-from core.models import Player, Weapon, Accessory, Armor, Glove, Boot
+from core.models import Player, Weapon, Accessory, Armor, Glove, Boot, Helmet
 
 def create_weapon(data: tuple) -> Weapon:
     """
@@ -136,6 +136,20 @@ def create_boot(data: tuple) -> Boot:
         description=""
     )
 
+def create_helmet(data: tuple) -> Helmet:
+    """
+    Schema: item_id(0), user_id(1), item_name(2), item_level(3), defence(4), 
+            ward(5), passive(6), passive_lvl(7), is_equipped(8), potential_remaining(9)
+    """
+    if not data: return None
+    return Helmet(
+        item_id=data[0], user=data[1], name=data[2], level=data[3],
+        defence=data[4], ward=data[5], 
+        pdr=data[6], fdr=data[7],
+        passive=data[8], passive_lvl=data[9],
+        is_equipped=bool(data[10]), potential_remaining=data[11], description=""
+    )
+
 async def load_player(user_id: str, user_data: tuple, database) -> Player:
     """
     Creates a Player object from the user tuple and asynchronously fetches 
@@ -187,6 +201,10 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     boot_data = await database.equipment.get_equipped(user_id, "boot")
     if boot_data:
         player.equipped_boot = create_boot(boot_data)
+
+    helmet_data = await database.equipment.get_equipped(user_id, "helmet")
+    if helmet_data:
+        player.equipped_helmet = create_helmet(helmet_data)
 
     # 3. Calculate Combat Initialization Stats (Optional but helpful)
     # This pre-calculates the ward pool based on equipped gear percentages

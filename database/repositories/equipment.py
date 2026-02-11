@@ -1,6 +1,6 @@
 import aiosqlite
 from typing import Literal, Optional, List, Tuple
-from core.models import Weapon, Armor, Accessory, Glove, Boot
+from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
 
 ItemType = Literal["weapon", "armor", "accessory", "glove", "boot"]
 
@@ -14,7 +14,8 @@ class EquipmentRepository:
             "accessory": "accessories",
             "accessories": "accessories",
             "glove": "gloves",
-            "boot": "boots"
+            "boot": "boots",
+            "helmet": "helmets"
         }
 
     # ---------------------------------------------------------
@@ -139,6 +140,16 @@ class EquipmentRepository:
             pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 6, 0)""",
             (b.user, b.name, b.level, b.attack, b.defence, b.ward, b.pdr, b.fdr, b.passive)
+        )
+        await self.connection.commit()
+
+    async def create_helmet(self, h: Helmet) -> None:
+        # Updated insert to include pdr and fdr
+        await self.connection.execute(
+            """INSERT INTO helmets (user_id, item_name, item_level, defence, ward, 
+            pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 5, 0)""",
+            (h.user, h.name, h.level, h.defence, h.ward, h.pdr, h.fdr, h.passive)
         )
         await self.connection.commit()
 

@@ -156,3 +156,18 @@ CREATE TABLE IF NOT EXISTS `woodcutting` (
     `magic_logs` INTEGER DEFAULT 0,
     `idea_logs` INTEGER DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS helmets (
+    item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    item_name TEXT NOT NULL,
+    item_level INTEGER NOT NULL,
+    defence INTEGER DEFAULT 0,
+    ward INTEGER DEFAULT 0,
+    pdr INTEGER DEFAULT 0, 
+    fdr INTEGER DEFAULT 0,
+    passive TEXT DEFAULT 'none',
+    passive_lvl INTEGER DEFAULT 0,
+    is_equipped BOOLEAN DEFAULT 0,
+    potential_remaining INTEGER DEFAULT 5
+);

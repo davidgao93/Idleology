@@ -12,7 +12,7 @@ from core.items.factory import load_player
 
 # Logic Modules
 from core.combat import engine, ui, rewards
-from core.combat.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot
+from core.combat.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot, generate_helmet
 from core.combat.gen_mob import generate_encounter, generate_boss
 
 class Combat(commands.Cog, name="combat"):
@@ -405,8 +405,17 @@ class Combat(commands.Cog, name="combat"):
             ar_count = await self.bot.database.equipment.get_count(user_id, 'armor')
             g_count = await self.bot.database.equipment.get_count(user_id, 'glove')
             b_count = await self.bot.database.equipment.get_count(user_id, 'boot')
+            h_count = await self.bot.database.equipment.get_count(user_id, 'helmet')
             
-            if item_roll <= 40 and w_count < 60:
+            # Adjusted Distribution:
+            # Weapon: 1-35 (35%)
+            # Accessory: 36-55 (25%)
+            # Armor: 56-65 (10%)
+            # Gloves: 66-80 (10%)
+            # Boots: 81-90 (10%)
+            # Helmets: 91-100 (10%)
+
+            if item_roll <= 35 and w_count < 60:
                 item = await generate_weapon(user_id, monster.level, drop_rune=True)
                 if item.name == "Rune of Refinement":
                     await self.bot.database.users.modify_currency(user_id, 'refinement_runes', 1)
@@ -430,13 +439,17 @@ class Combat(commands.Cog, name="combat"):
                 else:
                     await self.bot.database.equipment.create_armor(item)
                     reward_data['items'].append(item.description)
-            elif item_roll <= 85 and g_count < 60:
+            elif item_roll <= 80 and g_count < 60:
                 item = await generate_glove(user_id, monster.level)
                 await self.bot.database.equipment.create_glove(item)
                 reward_data['items'].append(item.description)
-            elif item_roll <= 100 and b_count < 60:
+            elif item_roll <= 90 and b_count < 60:
                 item = await generate_boot(user_id, monster.level)
                 await self.bot.database.equipment.create_boot(item)
+                reward_data['items'].append(item.description)
+            elif item_roll <= 100 and h_count < 60:
+                item = await generate_helmet(user_id, monster.level)
+                await self.bot.database.equipment.create_helmet(item)
                 reward_data['items'].append(item.description)
 
         # 4. Commit

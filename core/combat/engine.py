@@ -24,7 +24,6 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
         "Shield-breaker": lambda p, m: setattr(p, "combat_ward", 0),
         "Impenetrable": lambda p, m: setattr(p, "base_crit_chance_target", max(1, p.base_crit_chance_target - 5)), 
         "Enfeeble": lambda p, m: setattr(p, "base_attack", int(p.base_attack * 0.9)),
-        "Overwhelm": lambda p, m: setattr(p, "combat_ward", 0), 
     }
     
     for modifier in monster.modifiers:
@@ -70,6 +69,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
                                              f"⚔️ Attack boosted by **{absorb_amount}**\n"
                                              f"🛡️ Defence boosted by **{absorb_amount}**")
 
+    
     # 4. Weapon Passives (Polished/Sturdy/Impenetrable)
     # Collect all active passives (Main, Pinnacle, Utmost)
     active_passives = [player.get_weapon_passive(), player.get_weapon_pinnacle(), player.get_weapon_utmost()]
@@ -107,6 +107,17 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         else:
             logs["Weapon Passive"] = msg
 
+    # Helmet Passive: Juggernaut (Def -> Atk)
+    helmet_passive = player.get_helmet_passive()
+    helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+
+    if helmet_passive == "juggernaut" and helmet_lvl > 0:
+        defence = player.get_total_defence()
+        # 4% per level conversion
+        atk_bonus = int(defence * (helmet_lvl * 0.04))
+        player.base_attack += atk_bonus
+        logs["Helmet Passive"] = f"**Juggernaut ({helmet_lvl})** empowers your strikes!\n⚔️ Attack boosted by **{atk_bonus}**."
+
     return logs
 
 def process_heal(player: Player) -> str:
@@ -122,13 +133,26 @@ def process_heal(player: Player) -> str:
         heal_percentage += (player.equipped_boot.passive_lvl * 0.10)
         
     heal_amount = int((player.max_hp * heal_percentage) + random.randint(1, 6)) 
-    healed_to_hp = min(player.max_hp, player.current_hp + heal_amount)
-    actual_healed_amount = healed_to_hp - player.current_hp
-    player.current_hp = healed_to_hp
+    # Apply Divine Logic from Helmet
+    potential_hp = player.current_hp + heal_amount
+    overheal = 0
+    if potential_hp > player.max_hp:
+        helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+        overheal = (potential_hp - player.max_hp) * helmet_lvl
+        player.current_hp = player.max_hp
+    else:
+        player.current_hp = potential_hp
+    
     player.potions -= 1
     
-    return (f"{player.name} uses a potion and heals for **{actual_healed_amount}** HP!\n"
-            f"**{player.potions}** potions left.")
+    msg = f"{player.name} uses a potion and heals for **{heal_amount - overheal}** HP!"
+    
+    if player.get_helmet_passive() == "divine" and overheal > 0:
+        player.combat_ward += overheal
+        msg += f"\n**Divine** converts **{overheal}** overheal into 🔮 Ward!"
+        
+    msg += f"\n**{player.potions}** potions left."
+    return msg
 
 def process_player_turn(player: Player, monster: Monster) -> str:
     """Executes the player's turn, applying damage to the monster and returning the combat log."""
@@ -141,6 +165,8 @@ def process_player_turn(player: Player, monster: Monster) -> str:
     acc_passive = player.get_accessory_passive()
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
     armor_passive = player.get_armor_passive()
+    helmet_passive = player.get_helmet_passive()
+    helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
 
     # --- Pre-Attack Multipliers ---
     if glove_passive == "instability" and glove_lvl > 0:
@@ -158,6 +184,16 @@ def process_player_turn(player: Player, monster: Monster) -> str:
         attack_multiplier *= 10.0
         passive_message += "The **Mystical Might** armor imbues with power, massively increasing damage!\n"
 
+    # Frenzy (Low HP Scaling)
+    # Scale: 0.5% (L1) -> 2.5% (L5) per 1% HP missing
+    if helmet_passive == "frenzy" and helmet_lvl > 0:
+        missing_hp_pct = (1 - (player.current_hp / player.max_hp)) * 100
+        scaling_factor = 0.005 * helmet_lvl 
+        multiplier_bonus = (missing_hp_pct * scaling_factor)
+        
+        attack_multiplier *= (1 + multiplier_bonus)
+        passive_message += f"**Frenzy ({helmet_lvl})** rage increases damage by {int(multiplier_bonus*100)}%!\n"
+    
     # --- Hit Chance Calculation ---
     hit_chance = calculate_hit_chance(player, monster)
     if "Dodgy" in monster.modifiers:
@@ -191,8 +227,8 @@ def process_player_turn(player: Player, monster: Monster) -> str:
     is_crit = False
     weapon_crit_bonus_chance = check_for_crit_bonus(player)
     crit_target = player.get_current_crit_target() - weapon_crit_bonus_chance
-    
-    if is_hit and attack_roll > crit_target and "Impenetrable" not in monster.modifiers:
+    crit_roll = random.randint(0, 100)
+    if is_hit and crit_roll > crit_target and "Impenetrable" not in monster.modifiers:
         is_crit = True
 
     # --- Damage Calculation ---
@@ -205,14 +241,21 @@ def process_player_turn(player: Player, monster: Monster) -> str:
         crit_damage_floor_multiplier = 0.5
         if glove_passive == "deftness" and glove_lvl > 0:
             crit_damage_floor_multiplier = min(0.75, crit_damage_floor_multiplier + (glove_lvl * 0.05))
-            passive_message += f"**Deftness ({glove_lvl})** increases your crit floor!\n"
+            passive_message += f"**Deftness ({glove_lvl})** hones your crits!\n"
         
         crit_min = max(1, int(max_hit_calc * crit_damage_floor_multiplier) + 1)
         # Ensure max >= min
         crit_max = max(crit_min, max_hit_calc)
         
         crit_base_damage = int(random.randint(crit_min, crit_max) * 2.0)
-        
+        # Apply Insight
+
+        if helmet_passive == "insight" and helmet_lvl > 0:
+            # Add 0.1x multiplier per level
+            extra_mult = helmet_lvl * 0.1
+            crit_base_damage = int(crit_base_damage * (1 + extra_mult))
+            passive_message += f"**Insight ({helmet_lvl})** exposes a weak point! (Crit Dmg +{int(extra_mult*100)}%)\n"
+
         if "Smothering" in monster.modifiers:
             crit_base_damage = int(crit_base_damage * 0.80)
             passive_message += f"The monster's **Smothering** aura dampens your critical hit!\n"
@@ -280,6 +323,14 @@ def process_player_turn(player: Player, monster: Monster) -> str:
     
     monster.hp -= actual_hit
 
+    # Leeching (Helmet passive)
+    if actual_hit > 0 and helmet_passive == "leeching" and helmet_lvl > 0:
+        leech_pct = 0.02 * helmet_lvl # 2% to 10%
+        heal_amt = int(actual_hit * leech_pct)
+        if heal_amt > 0:
+            player.current_hp = min(player.max_hp, player.current_hp + heal_amt)
+            attack_message += f"\n**Leeching** drains life, healing you for **{heal_amt}** HP."
+
     # --- Pending XP/Gold Tracking ---
     if actual_hit > 0:
         if glove_passive == "equilibrium" and glove_lvl > 0:
@@ -301,6 +352,11 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
     """Executes the monster's turn, applies damage to player, and returns combat log."""
     if player.is_invulnerable_this_combat:
         return f"The **Invulnerable** armor protects {player.name}, absorbing all damage from {monster.name}!"
+    helmet_passive = player.get_helmet_passive()
+    helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+    
+    # Store previous ward to check for break later
+    previous_ward = player.combat_ward
 
     # --- Hit Chance Calculation ---
     base_hit_chance = calculate_monster_hit_chance(player, monster)
@@ -363,13 +419,13 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
         is_blocked = False
         is_dodged = False
         
-        if "Unblockable" not in monster.modifiers and "Overwhelm" not in monster.modifiers:
+        if "Unblockable" not in monster.modifiers:
             equipped_armor = player.equipped_armor
             block_chance = equipped_armor.block / 100 if equipped_armor else 0
             if random.random() <= block_chance:
                 is_blocked = True
                 
-        if "Unavoidable" not in monster.modifiers and "Overwhelm" not in monster.modifiers:
+        if "Unavoidable" not in monster.modifiers:
             equipped_armor = player.equipped_armor
             dodge_chance = equipped_armor.evasion / 100 if equipped_armor else 0
             if random.random() <= dodge_chance:
@@ -377,8 +433,20 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
 
         if is_blocked:
             monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ blocks all damage!\n"
+            # Thorns (Reflect on Block)
+            if helmet_passive == "thorns" and helmet_lvl > 0:
+                # 100% * Level reflect
+                reflect_dmg = int(calculate_damage_taken(player, monster) * (helmet_lvl * 1.0))
+                monster.hp -= reflect_dmg
+                monster_message += f"**Thorns ({helmet_lvl})** reflects **{reflect_dmg}** damage back!\n"
+
         elif is_dodged:
             monster_message = f"{monster.name} {monster.flavor}, but you 🏃 nimbly step aside!\n"
+            # Ghosted (Evasion -> Ward)
+            if helmet_passive == "ghosted" and helmet_lvl > 0:
+                ward_gain = helmet_lvl * 10
+                player.combat_ward += ward_gain
+                monster_message += f"**Ghosted ({helmet_lvl})** manifests **{ward_gain}** 🔮 Ward from the movement!\n"
         else:
             # Apply to Ward then HP
             damage_dealt_this_turn = 0
@@ -399,6 +467,16 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
                 player.current_hp -= total_damage
                 monster_message += f"{monster.name} {monster.flavor}. You take 💔 **{total_damage}** damage!\n"
 
+            # Volatile (Ward Break Explosion)
+            if helmet_passive == "volatile" and helmet_lvl > 0:
+                # If we had ward, and now we don't (and damage was dealt)
+                if previous_ward > 0 and player.combat_ward == 0:
+                    print(player.max_hp)
+                    print(helmet_lvl)
+                    boom_dmg = int(player.max_hp * helmet_lvl)
+                    monster.hp -= boom_dmg
+                    monster_message += f"\n💥 **Volatile** Shield shatters, dealing **{boom_dmg}** damage to {monster.name}!\n"
+                    
             if "Vampiric" in monster.modifiers and damage_dealt_this_turn > 0:
                 heal_amount = damage_dealt_this_turn * 10
                 monster.hp = min(monster.max_hp, monster.hp + heal_amount)
