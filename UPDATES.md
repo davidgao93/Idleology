@@ -1,3 +1,68 @@
+### Version 0.5
+CONTENT
+- Giga engine work
+- Added helmets, which can roll one of DEF/Ward and PDR/FDR
+- Helmets can unlock the following passives:
+    Juggernaut (1-5) 4/8/12/16/20% of Base DEF is added as ATK
+    Insight (1-5) Increases Crit DMG multiplier by +0.1x/+0.2x/+0.3x/+0.4x/+0.5x (Base 2.0x)
+    Volatile (1-5) On Ward break, deal 100/200/300/400/500% of Max HP as damage
+    Divine (1-5) 100/200/300/400/500% of potion overheal is converted to Ward
+    Frenzy (1-5) 0.5/1.0/1.5/2.0/2.5% increased damage per 1% missing HP
+    Leeching (1-5) Heal for 2/4/6/8/10% of base damage dealt
+    Thorns (1-5) Reflect 100/200/300/400/500% of blocked damage
+    Ghosted (1-5) Gain 10/20/30/40/50 Ward on Dodge
+- Aphrodite now only drops 1 curio instead of  1-5
+- Ascent monsters now scale faster and drop fewer curios
+- Loot drops have been slightly decreased, player rarity now has decreased efficiency at high amounts for equipment drops, however special drops (keys, curios, gold are unaffected)
+- Loot table for equipment now have the following odds:
+    # Weapon: (35%)
+    # Accessory: (25%)
+    # Armor: (10%)
+    # Gloves: (10%)
+    # Boots: (10%)
+    # Helmets: (10%)
+- Rewrote all games of chance to be way more interactive.
+- Removed overwhelm (no ward/evade/block) mod from boss monsters and ascent monsters
+
+### Version 0.4
+Added gloves and boots
+Similar upgrade system to accessories
+Gloves can roll 1 of atk/def and 1 of PDR/FDR
+Boots are the same
+
+
+Gloves have 5 potential levels, passive list:
+ward-touched - 1/2/3/4/5% ward generated based on dmg of your hits - this is added to player ward each time during the player turn
+ward-fused - 2/4/6/8/10% ward generated based on dmg of your crit - this is added to player ward each time during the player turn
+instability - all hits are either 50% or 160/170/180/190/200% of your hit damage - this affects the player's hit multiplier, BEFORE any other changes occur
+deftness - raises floor of crits by 5/10/15/20/25%, so 75% at max rank - this adds the value to the current crit value, which should be at 0.5, for a maximum of 0.75 at max rank
+adroit - raises floor of hits by 2/4/6/8/10% of maximum hit - this is similar to the sparking passive, where the floor of the hit is increased
+equilibrium - grants 5/10/15/20/25% of hit damage as exp - infinite wisdom does not affect this value
+plundering - grants 10/20/30/40/50% of hit damage as gold - prosper does not affect this value
+
+Boots have 6 potential levels, passive list:
+speedster - combat cooldown reduced by 20/40/60/80/100/120s
+skiller - grants 5/10/15/20/25/30% to proc a skill material award (granted based on tool) on victory
+treasure tracker - treasure mob chance increased by 0.5/1/1.5/2/2.5/3% - this is handled similar to the treasure hunter armor passive
+hearty - 5/10/15/20/25/30% bonus hp
+cleric - potions heal 10/20/30/40/50/60% increased hp, so right now its 30% at max rank it'll be 90%
+thrill seeker - special drops (boss keys, shatter runes) chance increased by 1/2/3/4/5/6%
+Other changes
+Curios no longer drop ilvl equipment, can now drop lv100 gloves, boots as well
+Added runes of shattering
+Added 1k drop
+
+Added a few more monster modifiers
+        "Penetrator": "Ignores 20% of Percentage Damage Reduction"
+        "Clobberer": "Ignores 5 Flat Damage Reduction"
+        "Smothering": "Critical hit damage is reduced by 20%"
+        "Dodgy": "Evasion increased by 10%"
+        "Prescient": "10% more likely to hit"
+        "Vampiric": "Heals for 10 times damage dealt"
+
+shieldbreaker/overwhelm now changed to ward is disabled only on start of combat
+Ascent now starts 3 levels above current player level + ascension
+
 ### Version 0.3
 CONTENT
 - Added accessories

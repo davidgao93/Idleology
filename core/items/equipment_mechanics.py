@@ -230,11 +230,20 @@ class EquipmentMechanics:
         
         return True, stat, amount
 
-    # --- POTENTIAL (Accessory/Glove/Boot) LOGIC ---
+    # --- POTENTIAL (Accessory) LOGIC ---
     @staticmethod
     def calculate_potential_cost(level: int) -> int:
         """Returns Gold cost based on current passive level (0-9)."""
         costs = [500, 1000, 2000, 3000, 4000, 5000, 10000, 25000, 50000, 100000]
+        if level < len(costs):
+            return costs[level]
+        return 999999999
+
+    # --- POTENTIAL (Glove/Boot/Helmet) LOGIC ---
+    @staticmethod
+    def calculate_ap_cost(level: int) -> int:
+        """Returns Gold cost based on current passive level (0-9)."""
+        costs = [1000, 5000, 25000, 50000, 100000]
         if level < len(costs):
             return costs[level]
         return 999999999

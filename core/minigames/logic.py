@@ -117,20 +117,28 @@ class HorseRaceLogic:
         """
         if self.winner: return True
 
+        finished_this_tick = []
+
+        # First, move all horses and track which finished this tick
         for horse in self.horses:
-            # Random move based on horse's speed variance
             move = random.randint(*horse['speed_var'])
-            
-            # Small catch-up mechanic: If way behind, slight boost chance
+
+            # Catch-up mechanic
             if horse['pos'] < (max(h['pos'] for h in self.horses) - 5):
-                if random.random() < 0.3: move += 2
+                if random.random() < 0.3:
+                    move += 2
 
             horse['pos'] += move
-            
-            if horse['pos'] >= self.track_length and not self.winner:
-                self.winner = horse
-        
+
+            if horse['pos'] >= self.track_length:
+                finished_this_tick.append(horse)
+
+        # If any horse finished in this step, randomly pick a winner among them
+        if finished_this_tick and not self.winner:
+            self.winner = random.choice(finished_this_tick)
+
         return self.winner is not None
+
 
     def get_race_string(self) -> str:
         """Generates the visual track string."""

@@ -208,7 +208,7 @@ class Helmets(commands.Cog, name="helmets"):
         while True:
             raw = await self.bot.database.equipment.get_by_id(helmet.item_id, 'helmet')
             helmet = create_helmet(raw)
-            cost = EquipmentMechanics.calculate_potential_cost(helmet.passive_lvl)
+            cost = EquipmentMechanics.calculate_ap_cost(helmet.passive_lvl)
             player_gold = (await self.bot.database.users.get(uid, gid))[6]
             
             # Success Rate

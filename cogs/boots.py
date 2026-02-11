@@ -206,7 +206,7 @@ class Boots(commands.Cog, name="boots"):
         uid, gid = str(user.id), str(message.guild.id)
 
         while True:
-            cost = EquipmentMechanics.calculate_potential_cost(boot.passive_lvl)
+            cost = EquipmentMechanics.calculate_ap_cost(boot.passive_lvl)
             player_gold = (await self.bot.database.users.get(uid, gid))[6]
             
             # Success Rate

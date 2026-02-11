@@ -70,6 +70,7 @@ class Ascent(commands.Cog, name="ascent"):
         # 2. Initialize Player
         # We fetch a fresh object every stage to reset transient combat stats, 
         # but we need to persist HP updates between stages manually.
+        base_player = await load_player(user_id, existing_user, self.bot.database)
         player = await load_player(user_id, existing_user, self.bot.database)
         
         # Ascent State Variables
@@ -84,6 +85,9 @@ class Ascent(commands.Cog, name="ascent"):
 
         # --- THE ASCENT LOOP ---
         while True:
+            player.base_attack = base_player.base_attack
+            player.base_defence = base_player.base_defence
+            player.max_hp = base_player.max_hp
             # Generate Monster for this stage
             monster = Monster(name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0, modifiers=[], image="", flavor="", is_boss=True)
             
