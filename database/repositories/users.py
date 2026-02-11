@@ -181,9 +181,7 @@ class UserRepository:
 
     async def get_currency(self, user_id: str, column: str) -> int:
         # Basic validation to prevent SQL injection
-        allowed = ["refinement_runes", "potential_runes"] 
-        if column not in allowed: return 0
-        
+      
         rows = await self.connection.execute(f"SELECT {column} FROM users WHERE user_id = ?", (user_id,))
         result = await rows.fetchone()
         return result[0] if result else 0

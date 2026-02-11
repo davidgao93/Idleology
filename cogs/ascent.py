@@ -1,6 +1,7 @@
 import discord
 import random
 import asyncio
+import json
 from datetime import datetime, timedelta
 from discord.ext import commands
 from discord import app_commands, Interaction, Message
@@ -15,6 +16,11 @@ class Ascent(commands.Cog, name="ascent"):
     def __init__(self, bot) -> None:
         self.bot = bot
         self.ASCENT_COOLDOWN = timedelta(minutes=10)
+
+    def load_exp_table(self):
+        with open('assets/exp.json') as file:
+            return json.load(file)
+
 
     async def _check_cooldown(self, interaction: Interaction, user_id: str, existing_user: tuple) -> bool:
         """Calculates dynamic cooldown for Ascent."""
@@ -55,7 +61,7 @@ class Ascent(commands.Cog, name="ascent"):
             await interaction.response.send_message("The path of ascent is brutal. Come back at level 100.", ephemeral=True)
             return
 
-        # if not await self._check_cooldown(interaction, user_id, existing_user): return
+        if not await self._check_cooldown(interaction, user_id, existing_user): return
 
         # Set Active & Update Timer
         self.bot.state_manager.set_active(user_id, "ascent")
@@ -160,28 +166,57 @@ class Ascent(commands.Cog, name="ascent"):
                 return
 
             if monster.hp <= 0:
-                # Stage Cleared Logic
+                # --- STAGE CLEARED LOGIC ---
                 xp_gain = monster.xp
                 gold_gain = int((monster.level ** 1.5) * (1 + ascent_stage/10))
                 
                 cumulative_xp += xp_gain
                 cumulative_gold += gold_gain
                 
-                # Immediate DB updates for safety
-                await self.bot.database.users.modify_gold(user_id, gold_gain)
+                # Update local player state
                 player.exp += xp_gain
-                await self.bot.database.users.update_from_player_object(player) # Save HP and XP
+                
+                # --- LEVEL UP CHECK (ASCENSION) ---
+                level_up_msgs = []
+                exp_table = self.load_exp_table()
+                # Threshold for level 100 (Ascension uses fixed threshold usually, or scales based on current level 100 cap)
+                exp_threshold = exp_table["levels"].get(str(player.level), 999999999)
+                
+                # Loop in case of massive XP gain triggering multiple levels
+                levels_gained = 0
+                while player.exp >= exp_threshold:
+                    player.ascension += 1
+                    player.exp -= exp_threshold
+                    levels_gained += 1
+                    # Grant Passive Points (Immediate DB update not strictly necessary as we save player obj below, 
+                    # but currency uses specific method)
+                    await self.bot.database.users.modify_currency(user_id, 'passive_points', 2)
+
+                if levels_gained > 0:
+                    level_up_msgs.append(f"🌟 **ASCENDED x{levels_gained}!** (Ascension {player.ascension})")
+                    level_up_msgs.append(f"✨ Gained **{levels_gained * 2}** Passive Points!")
+
+                # --- DB COMMITS ---
+                await self.bot.database.users.modify_gold(user_id, gold_gain)
+                # This saves new XP, Ascension count, and HP
+                await self.bot.database.users.update_from_player_object(player)
 
                 # Special Rewards Check (Every 3 stages)
                 special_loot = []
                 if ascent_stage % 3 == 0:
-                    if random.random() < 0.05:
+                    if random.random() < 0.25:
                         await self.bot.database.users.modify_currency(user_id, 'curios', 1)
                         special_loot.append("Curious Curio")
 
-                # Stage Clear Embed
+                # --- BUILD UI ---
                 clear_embed = discord.Embed(title=f"Stage {ascent_stage} Cleared!", color=discord.Color.green())
-                clear_embed.add_field(name="Rewards", value=f"xp: {xp_gain:,}\nGold: {gold_gain:,}", inline=False)
+                
+                # Rewards Field
+                rewards_text = f"XP: {xp_gain:,}\nGold: {gold_gain:,}"
+                if level_up_msgs:
+                    rewards_text += "\n\n" + "\n".join(level_up_msgs)
+                clear_embed.add_field(name="Rewards", value=rewards_text, inline=False)
+                
                 if special_loot:
                     clear_embed.add_field(name="Special Drops", value=", ".join(special_loot), inline=False)
                 
@@ -190,7 +225,7 @@ class Ascent(commands.Cog, name="ascent"):
                 
                 # Prepare next stage
                 ascent_stage += 1
-                current_monster_level += 5
+                current_monster_level += 2
                 await asyncio.sleep(3)
 
     async def _handle_retreat(self, user_id, player, message, stage, total_xp, total_gold):

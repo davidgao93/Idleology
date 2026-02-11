@@ -1,11 +1,10 @@
 import discord
-from discord import app_commands, Interaction, Message
+from discord import app_commands, Interaction, ButtonStyle, Message
 from discord.ext import commands
+from discord.ui import View, Button
 from datetime import datetime, timedelta
 import asyncio
-import random
-import math
-
+from core.minigames.views import CasinoMenuView, BlackjackView, RouletteView, CrashView, HorseRaceView
 
 class Tavern(commands.Cog, name="tavern"):
     def __init__(self, bot) -> None:
@@ -297,407 +296,95 @@ class Tavern(commands.Cog, name="tavern"):
 
 
     @app_commands.command(name="gamble", description="Gamble your gold in the tavern!")
-    @commands.cooldown(1, 60, commands.BucketType.user)  # 1 minute
+    @app_commands.describe(amount="The amount of gold to bet.")
     async def gamble(self, interaction: Interaction, amount: int) -> None:
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
         
-        # Fetch user data
+        # 1. Validation
         existing_user = await self.bot.database.users.get(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, existing_user):
-            return
+        if not await self.bot.check_user_registered(interaction, existing_user): return
+        if not await self.bot.check_is_active(interaction, user_id): return
         
-        if not await self.bot.check_is_active(interaction, user_id):
-            return
-        
-        self.bot.state_manager.set_active(user_id, "gamble")
-
         player_gold = existing_user[6]
 
-        # Check if the amount is valid
-        if amount <= 0 or amount > player_gold:
-            await interaction.response.send_message((f"Invalid gambling amount.\n"
-                                                    f"You must gamble an amount between 1 and your current gold."),
-                                                    ephemeral=True)
-            self.bot.state_manager.clear_active(user_id)
+        if amount <= 0:
+            await interaction.response.send_message("You cannot bet zero or negative gold.", ephemeral=True)
+            return
+        
+        if amount > player_gold:
+            await interaction.response.send_message(f"You don't have enough gold! Current balance: **{player_gold:,}**.", ephemeral=True)
             return
 
-        # Create the gambling embed
+        # 2. Set State & Launch Menu
+        self.bot.state_manager.set_active(user_id, "gamble_menu")
+
         embed = discord.Embed(
             title="The Tavern Casino 🎲",
-            description="What would you like to play?",
-            color=0xFFC107,
+            description=f"You have placed **{amount:,} gold** on the table.\nSelect a game to play:",
+            color=0xFFD700
         )
         embed.set_thumbnail(url="https://i.imgur.com/D8HlsQX.jpeg")
-        embed.add_field(name="🃏 Blackjack", value="1v1 showdown with the Tavern keeper (x2)", inline=False)
-        embed.add_field(name="🎰 Slot Machine", value="Spin the machine and may luck be in your favor (x7)", inline=False)
-        embed.add_field(name="🎡 Roulette", value="Bet it all on black (x2 - x35)", inline=False)
-        embed.add_field(name="🎢 Wheel of Fortune", value="Spin the wheel for a chance at big rewards (x0 - x10)", inline=False)
-        embed.add_field(name="🚀 Crash", value="Cash out before the rocket crashes (x1 - x10+)", inline=False)
         
-        await interaction.response.send_message(embed=embed)
-        message: Message = await interaction.original_response()
+        embed.add_field(name="🃏 Blackjack", value="Beat the dealer to 21. (2x Payout)", inline=True)
+        embed.add_field(name="🎡 Roulette", value="Red/Black/Parity/Number. (2x - 35x Payout)", inline=True)
+        embed.add_field(name="🚀 Crash", value="Cash out before the rocket crashes! (1.0x - ???x)", inline=True)
+        embed.add_field(name="🐎 Horse Racing", value="Pick the winning horse! (4x Payout)", inline=True)
 
-        # Add reactions for game selection
-        await message.add_reaction("🃏")  # Blackjack
-        await message.add_reaction("🎰")  # Slot Machine
-        await message.add_reaction("🎡")  # Roulette
-        await message.add_reaction("🎢")  # Wheel of Fortune
-        await message.add_reaction("🚀")  # Crash
+        view = CasinoMenuView(self.bot, user_id, amount, self)
+        
+        await interaction.response.send_message(embed=embed, view=view)
+        view.response = await interaction.original_response()
 
-        def check(reaction, user):
-            return (user == interaction.user and 
-                    reaction.message.id == message.id and 
-                    str(reaction.emoji) in ["🃏", "🎰", "🎡", "🎢", "🚀"])
+    # --- GAME HANDLERS ---
 
-        try:
-            reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+    async def start_blackjack(self, interaction: Interaction, amount: int):
+        bj_view = BlackjackView(self.bot, interaction.user.id, amount, interaction)
+        await bj_view.start_game()
 
-            if str(reaction.emoji) == "🃏":
-                await self.play_blackjack(interaction, player_gold, amount, message, embed)
-            elif str(reaction.emoji) == "🎰":
-                await self.play_slot_machine(interaction, player_gold, amount, message, embed)
-            elif str(reaction.emoji) == "🎡":
-                await self.play_roulette(interaction, player_gold, amount, message, embed)
-            elif str(reaction.emoji) == "🎢":
-                await self.play_wheel(interaction, player_gold, amount, message, embed)
-            elif str(reaction.emoji) == "🚀":
-                await self.play_crash(interaction, player_gold, amount, message, embed)
-        except asyncio.TimeoutError:
-            await message.delete()
-            self.bot.state_manager.clear_active(user_id)
-        finally:
-            self.bot.state_manager.clear_active(user_id)
+    async def start_roulette(self, interaction: Interaction, amount: int):
+        # Create Embed for Table
+        embed = discord.Embed(title="🎡 Roulette Table", description=f"Betting **{amount:,} gold**.\nChoose your wager:", color=discord.Color.red())
+        embed.set_thumbnail(url="https://i.imgur.com/D8HlsQX.jpeg")
+        
+        rl_view = RouletteView(self.bot, interaction.user.id, amount, interaction)
+        
+        # We edit the message here to transition from Menu -> Roulette
+        await interaction.response.edit_message(embed=embed, view=rl_view)
 
-    async def play_blackjack(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
-        """Simulate a Blackjack game against the house."""
-        player_hand = [random.randint(1, 10), random.randint(1, 10)]
-        house_hand = [random.randint(1, 10), random.randint(1, 10)]
-        player_gold -= bet_amount
-        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
+    async def start_crash(self, interaction: Interaction, amount: int):
+        # 1. Create View
+        crash_view = CrashView(self.bot, interaction.user.id, amount, interaction)
+        
+        # 2. Transition Embed
+        embed = discord.Embed(
+            title="🚀 Preparing Launch...", 
+            description=f"Fueling up for a bet of **{amount:,} gold**.",
+            color=discord.Color.blue()
+        )
+        await interaction.response.edit_message(embed=embed, view=crash_view)
+        
+        # 3. Start Game Logic
+        await crash_view.start_game()
 
-        def calculate_hand_value(hand):
-            """Calculate the total value of a hand, adjusting for Aces to achieve the best score possible without going over 21."""
-            total = sum(hand)
-            aces_count = hand.count(1)  # Count Aces as 1
-
-            # Iterate over the number of Aces we have and attempt to treat them as 11
-            while aces_count > 0 and total + 10 <= 21: 
-                total += 10  # Treat one Ace as 11 instead of 1
-                aces_count -= 1
-
-            return total
-
-        # The player's turn
-        while True:
-            player_value = calculate_hand_value(player_hand)
-            
-            # Update the embed with current game state
-            embed.description = (
-                f"You drew: **{player_hand}** for a total of **{player_value}**\n"
-                f"The dealer shows: **{house_hand[0]}**"
+    async def start_horse_race(self, interaction: Interaction, amount: int):
+            # 1. Create Embed
+            embed = discord.Embed(
+                title="🐎 Horse Racing", 
+                description=f"Betting **{amount:,} gold**.\nPick your champion! (4x Payout)", 
+                color=discord.Color.green()
             )
-            await message.edit(embed=embed)
-            embed.clear_fields()  # Clear fields for new options
-            embed.add_field(name="Options", value="React with: 🃏 to Draw another card or ✋ to Hold", inline=False)
-            await message.edit(embed=embed)
-            await message.clear_reactions()
-            await message.add_reaction("🃏")  # Draw another card
-            await message.add_reaction("✋")  # Hold
+            embed.add_field(name="1. Thunder Hoof 🐎", value="Balanced speed.", inline=True)
+            embed.add_field(name="2. Lightning Bolt 🦄", value="High risk, high speed.", inline=True)
+            embed.add_field(name="3. Old Reliable 🦓", value="Consistent pace.", inline=True)
+            embed.add_field(name="4. Dark Horse 🐫", value="Unpredictable.", inline=True)
 
-            def check(reaction, user):
-                return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["🃏", "✋"]
-
-            try:
-                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-
-                if str(reaction.emoji) == "🃏":  # Player chooses to draw another card
-                    new_card = random.randint(1, 10)  # Drawing a new card
-                    player_hand.append(new_card)
-                    player_value = calculate_hand_value(player_hand)
-                    if player_value > 21:
-                        embed.add_field(name="Result", 
-                                        value=(f"You drew a **{new_card}** and your hand is now **{player_hand}**."
-                                               f"Total: **{player_value}**. You went bust! "
-                                               f"The dealer smirks and takes your 💰 **{bet_amount:,}**."), inline=False)
-                        await message.edit(embed=embed)
-                        await message.clear_reactions()
-                        return
-
-                elif str(reaction.emoji) == "✋":  # Player chooses to hold
-                    break  # Exit the drawing loop, go to the house's turn
-
-            except asyncio.TimeoutError:
-                await interaction.followup.send("You took too long to respond. The game has ended.")
-                await message.delete()
-                return
-
-        # The house's turn
-        house_value = calculate_hand_value(house_hand)
-        while house_value < 17:  # House always hits until reaching 17 or higher
-            new_card = random.randint(1, 10)  # House draws a card
-            house_hand.append(new_card)
-            house_value = calculate_hand_value(house_hand)
-
-        # Determine the result
-        embed.clear_fields()
-        final_player_value = calculate_hand_value(player_hand)
-        final_house_value = house_value
-
-        embed.add_field(name="Final Hands", value=f"Your Hand: **{player_hand}** (Total: **{final_player_value}**)\n"
-                                                f"House Hand: **{house_hand}** (Total: **{final_house_value}**)")
-
-        if final_player_value > 21:
-            embed.add_field(name="Result", 
-                            value=f"You went bust! The dealer smirks and takes your 💰 **{bet_amount:,}**",
-                            inline=False)
-        elif final_house_value > 21 or final_player_value > final_house_value:
-            player_gold += bet_amount * 2  # Player wins, doubling their bet
-            embed.add_field(name="Result", 
-                            value=(f"You win! Here are your winnings: 💰 **{bet_amount * 2:,}**.\n"
-                            f"You now have 💰 **{player_gold:,}**!"), inline=False)
-        elif final_player_value < final_house_value:
-            embed.add_field(name="Result", 
-                            value=f"You lose! The dealer smirks and takes your 💰 **{bet_amount:,}**", 
-                            inline=False)
-        else:
-            player_gold += bet_amount  # Return the bet for a tie
-            embed.add_field(name="Result", 
-                            value="It seems we have tied.", 
-                            inline=False)
-
-        await message.edit(embed=embed)
-        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
-        #await asyncio.sleep(10)
-        #await message.delete()
-
-
-    async def play_slot_machine(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
-        """Simulate a simple Slot Machine game."""
-        emojis = ["🍒", "🔔", "⭐"]
-        
-        # Simulate the slot machine rolls
-        reel_results = [random.choices(emojis, k=5) for _ in range(5)]
-        
-        # Prepare the results for the embed
-        results_message = "\n".join([f"| {' | '.join(line)} |" for line in reel_results])
-        
-        # Create a counter for line matches
-        line_matches = 0
-
-        # Check for horizontal matches
-        for row in reel_results:
-            if len(set(row)) == 1:  # All items in the row are the same
-                line_matches += 1
-
-        # Check for vertical matches
-        for col in range(5):
-            if len(set(reel_results[row][col] for row in range(5))) == 1:  # All items in the column are the same
-                line_matches += 1
-
-        # Check for diagonal matches
-        if len(set(reel_results[i][i] for i in range(5))) == 1:  # Top-left to bottom-right
-            line_matches += 1
-        if len(set(reel_results[i][4 - i] for i in range(5))) == 1:  # Top-right to bottom-left
-            line_matches += 1
-
-        # Determine if there was a win based on line matches
-        win = line_matches > 0
-
-        # Update the embed with the rolled results
-        embed.clear_fields()
-        embed.title = "Slot Machine Results 🎰"
-        embed.description = f"**Results:**\n{results_message}\n\n"
-
-        if win:
-            player_gold += bet_amount * (line_matches) * 7
-            embed.add_field(name="Congratulations!", value=(f"You won {line_matches} lines!\n" 
-                                                            f"Your new balance: 💰 **{player_gold:,}**"), inline=False)
-        else:
-            player_gold -= bet_amount  # Lose the bet
-            embed.add_field(name="Oh no!", value=f"You lost! Your new balance: 💰 **{player_gold:,}**", inline=False)
-
-        await message.edit(embed=embed)
-        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
-        #await asyncio.sleep(10)
-        #await message.delete()
-
-    async def play_roulette(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
-        """Simulate a simple Roulette game."""
-        embed.clear_fields()
-        
-        player_gold -= bet_amount  # Deduct the bet
-        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
-        # Present color choice
-        embed.title = "Roulette 🎡"
-        embed.description = "Choose a color:\n🟥 Red\n⬛ Black"
-        await message.edit(embed=embed)
-        await message.clear_reactions()
-        # Add reactions for color choice
-        await message.add_reaction("🟥")  # Red
-        await message.add_reaction("⬛")  # Black
-
-        def color_check(reaction, user):
-            return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["🟥", "⬛"]
-
-        try:
-            color_response = await self.bot.wait_for('reaction_add', timeout=60.0, check=color_check)
-            chosen_color = "red" if str(color_response[0].emoji) == "🟥" else "black"
-
-            # Ask for a number
-            embed.description = f"Enter a number between 1 and 36:\nRed = Even\nBlack = Odd"
-            await message.edit(embed=embed)
-
-            def number_check(m):
-                return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit() and 1 <= int(m.content) <= 36
-
-            number_response = await self.bot.wait_for('message', timeout=60.0, check=number_check)
-            chosen_number = int(number_response.content)
-
-            # Spin the roulette
-            is_white = random.randint(0, 100)
-            if (is_white > 97):
-                result_color = "white"
-                result_number = 0
-            else:
-                roulettes_numbers = random.sample(range(1, 37), 36)  # Randomly shuffle numbers from 1 to 36
-                result_number = random.choice(roulettes_numbers)
-                result_color = "red" if result_number % 2 == 0 else "black"  # Simplified color determination
+            # 2. Create View
+            race_view = HorseRaceView(self.bot, interaction.user.id, amount, interaction)
             
-            # Update the embed with results
-            embed.title = "Roulette Results 🎡"
-            embed.description = f"The wheel spins...\nResult: **{result_number}** - Color: **{result_color}**"
-            
-            if result_color == chosen_color:
-                # Color was guessed right, check number
-                if result_number == chosen_number:
-                    # Both color and number match
-                    player_gold += bet_amount * 35  # x35 payout
-                    embed.add_field(name="🎊 Congratulations! 🎊", 
-                                    value=f"You won {bet_amount * 35:,}! Your new balance: 💰 **{player_gold:,}**", 
-                                    inline=False)
-                else:
-                    # Only color matched
-                    player_gold += bet_amount * 2  # Double the bet
-                    embed.add_field(name="Win 🎉", 
-                                    value=f"You won {bet_amount * 2:,}! Your new balance: 💰 **{player_gold:,}**", 
-                                    inline=False)
-            else:
-                embed.add_field(name="Loss 😞", 
-                                value=f"You lost {bet_amount:,}! Your new balance: 💰 **{player_gold:,}**", inline=False)
+            # 3. Update Message
+            await interaction.response.edit_message(embed=embed, view=race_view)
 
-            await message.edit(embed=embed)
-            await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
-            #await asyncio.sleep(10)
-            #await message.delete()
-            await number_response.delete()
-        except asyncio.TimeoutError:
-            await interaction.followup.send("You took too long to respond. The roulette game has ended.")
-            await message.delete()
-        finally:
-            self.bot.state_manager.clear_active(interaction.user.id)
-
-    async def play_wheel(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
-        """Simulate a Wheel of Fortune game."""
-        # Define wheel segments and their weights
-        segments = [
-            (0, 50),   # 50% chance to lose (0x)
-            (1, 30),   # 30% chance to break even (1x)
-            (2, 15),   # 15% chance to double (2x)
-            (5, 4),    # 4% chance for 5x
-            (25, 1)    # 1% chance for 25x 
-        ]
-        outcomes = [multiplier for multiplier, weight in segments for _ in range(weight)]
-        result_multiplier = random.choice(outcomes)
-
-        # Calculate winnings
-        player_gold -= bet_amount  # Deduct the bet
-        winnings = bet_amount * result_multiplier
-        player_gold += winnings
-
-        # Update the embed with results
-        embed.clear_fields()
-        embed.title = "Wheel of Fortune Results 🎢"
-        embed.description = f"The wheel spins...\nResult: **{result_multiplier}x** multiplier!"
-
-        if result_multiplier > 0:
-            embed.add_field(
-                name="Congratulations!",
-                value=f"You won 💰 **{winnings:,}**!\nYour new balance: 💰 **{player_gold:,}**",
-                inline=False
-            )
-        else:
-            embed.add_field(
-                name="Oh no!",
-                value=f"You lost! Your new balance: 💰 **{player_gold:,}**",
-                inline=False
-            )
-
-        await message.edit(embed=embed)
-        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
-        #await asyncio.sleep(10)
-        #await message.delete()
-
-    async def play_crash(self, interaction: Interaction, player_gold: int, bet_amount: int, message, embed) -> None:
-        """Simulate a Crash game."""
-        player_gold -= bet_amount  # Deduct the bet
-        await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
-
-        # Ask for target multiplier
-        embed.clear_fields()
-        embed.title = "Crash 🚀"
-        embed.description = "Enter your target multiplier (e.g., 2.0, between 1.1 and 10.0):"
-        await message.edit(embed=embed)
-        await message.clear_reactions()
-
-        def multiplier_check(m):
-            try:
-                value = float(m.content)
-                return (m.author == interaction.user and 
-                        m.channel == interaction.channel and 
-                        1.1 <= value <= 10.0)
-            except ValueError:
-                return False
-
-        try:
-            multiplier_response = await self.bot.wait_for('message', timeout=60.0, check=multiplier_check)
-            target_multiplier = float(multiplier_response.content)
-
-            # Generate crash point using an exponential distribution
-            # This gives a realistic spread (most crashes between 1.1x and 3x, rare high values)
-            crash_point = round(min(10.0, -math.log(random.random()) / 2), 2)
-
-            # Determine outcome
-            embed.title = "Crash Results 🚀"
-            embed.description = f"The rocket soared to **{crash_point}x** before crashing!"
-
-            if crash_point >= target_multiplier:
-                winnings = int(bet_amount * target_multiplier)
-                player_gold += winnings
-                embed.add_field(
-                    name="Congratulations! 🎉",
-                    value=f"You cashed out at **{target_multiplier}x**!\n"
-                          f"You won 💰 **{winnings:,}**!\nYour new balance: 💰 **{player_gold:,}**",
-                    inline=False
-                )
-            else:
-                embed.add_field(
-                    name="Crash! 💥",
-                    value=f"The rocket crashed at **{crash_point}x**. You lost 💰 **{bet_amount:,}**!\n"
-                          f"Your new balance: 💰 **{player_gold:,}**",
-                    inline=False
-                )
-
-            await message.edit(embed=embed)
-            await self.bot.database.users.set_gold(interaction.user.id, player_gold)  # Update gold in DB
-            #await asyncio.sleep(10)
-            #await message.delete()
-            await multiplier_response.delete()
-        except asyncio.TimeoutError:
-            await interaction.followup.send("You took too long to respond. The crash game has ended.")
-            await message.delete()
-        finally:
-            self.bot.state_manager.clear_active(interaction.user.id)
 
 
     @app_commands.command(
