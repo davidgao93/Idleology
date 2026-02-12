@@ -1,20 +1,19 @@
-Leather Boots
-Chainmail Boots
-Crystal-Studded Sandals
-Iron Greaves
-Enchanted Woolen Boots
-Gladiator's Footwear
-Winged Slippers
-Fur-Lined Travel Boots
-Spiked Leather Boots
-Shadowstep Boots
-Elven Silk Shoes
-Heavy Steel Sabatons
-Frostbite Boots
-Warlock's Stompers
-Dragonhide Footguards
-Thief's Padded Slippers
-Mystic Sandals
-Adventurer's Climbing Boots
-Barbed Caligae
-Spiritwalker Boots
+Boots
+Sandals
+Greaves
+Sabatons
+Slippers
+Shoes
+Footguards
+Caligae
+Stompers
+Treads
+Striders
+Walkers
+Steps
+Footwraps
+Moccasins
+Galoshes
+Hoofs
+Trekboots
+Warboots

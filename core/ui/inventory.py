@@ -27,31 +27,30 @@ class InventoryUI:
 
         display_text = ""
         for index, item in enumerate(items):
-            # Safety Truncation: Stop if text gets too long before adding next item
-            # Max field value length is 1024 characters.
-            if len(display_text) > 950: # Leave some buffer for final message and footer
+            if len(display_text) > 950:
                 display_text += f"\n... and {len(items) - index} more on this page."
                 break
 
-            # Status flags
             is_equipped = (item.item_id == equipped_id)
             status_icon = " [E]" if is_equipped else ""
             
-            # Details string construction
+            enhancement_str = ""
+            if isinstance(item, Weapon) and item.refinement_lvl > 0:
+                enhancement_str = f" (+{item.refinement_lvl})"
+            elif hasattr(item, 'passive_lvl') and item.passive_lvl > 0:
+                enhancement_str = f" (+{item.passive_lvl})"
+
             details = []
             if hasattr(item, 'passive') and item.passive != "none":
-                p_lvl = getattr(item, 'passive_lvl', '')
-                p_lvl_str = f" {p_lvl}" if p_lvl != '' and p_lvl > 0 else "" # Only add level if it's there and > 0
-                details.append(f"{item.passive.title()}{p_lvl_str}")
+                details.append(f"{item.passive.title()}")
             
-            # Weapon specific extra passives
             if isinstance(item, Weapon):
                 if item.p_passive != "none": details.append(item.p_passive.title())
                 if item.u_passive != "none": details.append(item.u_passive.title())
 
             details_str = f" - {', '.join(details)}" if details else ""
             
-            display_text += f"**{index + 1}.**{status_icon} **{item.name}** (i{item.level}){details_str}\n"
+            display_text += f"**{index + 1}.**{status_icon} **{item.name}**{enhancement_str} (i{item.level}){details_str}\n"
 
         embed.add_field(name="Items", value=display_text, inline=False)
         embed.set_footer(text="Select an item number to view details/actions.")

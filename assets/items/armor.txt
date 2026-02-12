@@ -2,25 +2,19 @@ Robes
 Vestments
 Tunic
 Cloak
-Leather Jerkin
-Hide Armor
-Chain Shirt
+Jerkin
+Hide
+Mail
 Hauberk
-Mail Vest
-Scale Shirt
-Lamellar Armor
+Vest
+Scale
+Lamellar
 Brigandine
-Splint Mail
+Splint
 Breastplate
 Cuirass
-Full Plate
-Gambeson
-Quilted Armor
-Bone Armor
-Chitin Armor
 Plate
-Dragonhide
-Sage's Robes
-Enchanted Vestments
-Arcane Mantle
-Brigand Suit
+Gambeson
+Quilted
+Bone
+Chitin

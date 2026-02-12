@@ -1,3 +1,12 @@
+### Version 0.6
+CONTENT
+
+FIXES
+- Rewrote random events, leprechaun now grants a curio
+- Inventory management rewrite, still same commands but cleaner now
+- Discard equipment has no confirmation for non-valuable items (ie: 0 refines / 0 forges, etc)
+- 
+
 ### Version 0.5
 CONTENT
 - Giga engine work
