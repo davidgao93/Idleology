@@ -102,9 +102,9 @@ def create_victory_embed(player: Player, monster: Monster, rewards: Dict[str, An
 
     # Add single Loot field
     if loot_lines:
-        embed.add_field(name="✨ Loot", value="\n\n".join(loot_lines), inline=False)
+        embed.add_field(name="✨__Loot__✨", value="\n".join(loot_lines), inline=False)
     else:
-        embed.add_field(name="✨ Loot", value="None", inline=False)
+        embed.add_field(name="✨__Loot__✨", value="None", inline=False)
 
     return embed
 

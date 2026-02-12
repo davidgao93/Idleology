@@ -171,3 +171,9 @@ CREATE TABLE IF NOT EXISTS helmets (
     is_equipped BOOLEAN DEFAULT 0,
     potential_remaining INTEGER DEFAULT 5
 );
+
+
+CREATE TABLE IF NOT EXISTS guild_settings (
+    guild_id TEXT PRIMARY KEY,
+    event_channel_id TEXT
+);
