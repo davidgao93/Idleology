@@ -76,6 +76,7 @@ class ForgeView(BaseUpgradeView):
             description=desc,
             color=discord.Color.green() if has_res else discord.Color.red()
         )
+        self.embed.set_thumbnail(url="https://i.imgur.com/k8nPS3E.jpeg")
         self.costs = costs # Store for callback
         
         # Update Button State
@@ -112,9 +113,9 @@ class ForgeView(BaseUpgradeView):
             result_embed.description = f"🔥 **Success!**\nNew Passive: **{new_passive.title()}**\nForges Remaining: {self.item.forges_remaining}"
             result_embed.color = discord.Color.gold()
         else:
-            # DB Update: None (except resources lost above)
-            # Item State: forges_remaining stays the same
-            result_embed.description = f"💨 **Failed.**\nThe magic fizzled out. Resources were consumed, but the hammer didn't strike true.\n\nForges Remaining: {self.item.forges_remaining}"
+            self.item.forges_remaining -= 1
+            await self.bot.database.equipment.update_counter(self.item.item_id, 'weapon', 'forges_remaining', self.item.forges_remaining)
+            result_embed.description = f"💨 **Failed.**\nThe hammer didn't strike true, resources consumed.\n\nForges Remaining: {self.item.forges_remaining}"
             result_embed.color = discord.Color.dark_grey()
 
         # 4. Update UI (Pause state)
@@ -162,6 +163,7 @@ class RefineView(BaseUpgradeView):
             self.confirm_refine.disabled = not has_funds
 
         self.embed = discord.Embed(title=f"Refine {self.item.name}", description=desc, color=discord.Color.blue())
+        self.embed.set_thumbnail(url="https://i.imgur.com/jgq4aGA.jpeg")
         self.cost = cost
         
         if interaction.response.is_done():
@@ -204,6 +206,7 @@ class RefineView(BaseUpgradeView):
         res_str = ", ".join([f"+{v} {k.title()}" for k,v in stats.items() if v > 0]) or "No stats gained."
         
         embed = discord.Embed(title="Refine Complete! ✨", color=discord.Color.green())
+        self.embed.set_thumbnail(url="https://i.imgur.com/jgq4aGA.jpeg")
         embed.description = f"**Gains:** {res_str}\n\n**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
         
         # UI Update
@@ -247,6 +250,7 @@ class PotentialView(BaseUpgradeView):
 
         self.cost = cost
         self.embed = discord.Embed(title=f"Enchant {self.item.name}", description=desc, color=discord.Color.purple())
+        self.embed.set_thumbnail(url="https://i.imgur.com/Tkikr5b.jpeg")
         
         self.confirm_btn.disabled = (gold < cost or not has_attempts or is_capped)
         
@@ -269,6 +273,7 @@ class PotentialView(BaseUpgradeView):
         self.item.potential_remaining -= 1
         await self.bot.database.equipment.update_counter(self.item.item_id, itype, 'potential_remaining', self.item.potential_remaining)
         result_embed = discord.Embed(title="Enchantment Result")
+        result_embed.set_thumbnail(url="https://i.imgur.com/83Ahb6w.jpeg")
         if success:
             if self.item.passive == "none":
                 new_p = EquipmentMechanics.get_new_passive(itype)
@@ -313,6 +318,7 @@ class ShatterView(BaseUpgradeView):
             description=f"Destroy **{self.item.name}**?\nReturns: **{runes_back}** Refinement Runes.\nCost: 1 Shatter Rune.",
             color=discord.Color.dark_red()
         )
+        embed.set_thumbnail(url="https://i.imgur.com/83Ahb6w.jpeg")
         self.runes_back = runes_back
         
         if interaction.response.is_done():
@@ -523,6 +529,7 @@ class VoidforgeView(BaseUpgradeView):
             description="Select a weapon to sacrifice.\nCost: 1 Void Key.\n\n**Effects:**\n25%: Add Passive as Pinnacle/Utmost\n25%: Overwrite Main Passive\n50%: Failure (Item Lost)",
             color=discord.Color.dark_purple()
         )
+        embed.set_thumbnail(url="https://i.imgur.com/rZnRu0R.jpeg")
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
         else:
@@ -539,6 +546,12 @@ class VoidforgeView(BaseUpgradeView):
         await self.bot.database.users.modify_currency(self.user_id, 'void_keys', -1)
         await self.bot.database.equipment.discard(target.item_id, 'weapon')
 
+        inventory_view = self.parent_view.parent
+        inventory_view.items = [i for i in inventory_view.items if i.item_id != target.item_id]
+        
+        inventory_view.total_pages = (len(inventory_view.items) + inventory_view.items_per_page - 1) // inventory_view.items_per_page if inventory_view.items else 1
+        inventory_view.update_buttons() 
+        
         # Logic
         roll = random.random()
         res_txt = ""
