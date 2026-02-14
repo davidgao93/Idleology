@@ -25,8 +25,12 @@ async def generate_encounter(player, monster, is_treasure):
         difficulty_multiplier = random.randint(2, 5)
     elif player.level <= 70:
         difficulty_multiplier = random.randint(2, 6)
+    elif player.level <= 80:
+        difficulty_multiplier = random.randint(2, 7)
+    elif player.level <= 90:
+        difficulty_multiplier = random.randint(3, 8)
     else:
-        difficulty_multiplier = random.randint(3, 6)
+        difficulty_multiplier = random.randint(5, 15)
     
     monster.level = random.randint(player.level + player.ascension, player.level + player.ascension + difficulty_multiplier)
 
@@ -270,9 +274,15 @@ def calculate_monster_stats(monster):
     elif monster.level > 60 and monster.level <= 70:
         base_attack = monster.level ** random.uniform(1.28, 1.29)
         base_defence = monster.level ** random.uniform(1.28, 1.29)
-    else:
+    elif monster.level > 70 and monster.level <= 80:
         base_attack = monster.level ** random.uniform(1.29, 1.3)
         base_defence = monster.level ** random.uniform(1.29, 1.3)
+    elif monster.level > 80 and monster.level <= 90:
+        base_attack = monster.level ** random.uniform(1.3, 1.31)
+        base_defence = monster.level ** random.uniform(1.3, 1.31)
+    else:
+        base_attack = monster.level ** random.uniform(1.4, 1.5)
+        base_defence = monster.level ** random.uniform(1.4, 1.5)
 
     monster.attack = int(base_attack)
     monster.defence = int(base_defence)
