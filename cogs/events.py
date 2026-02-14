@@ -46,7 +46,7 @@ class Events(commands.Cog, name="events"):
             ephemeral=True
         )
 
-    @tasks.loop(minutes=30)
+    @tasks.loop(minutes=120)
     async def random_event_loop(self):
         """Triggers a random event in all configured channels."""
         # 50% chance to trigger globally per cycle (or you can make this per-guild logic)

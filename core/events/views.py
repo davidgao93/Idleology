@@ -5,7 +5,7 @@ from discord.ui import View, Button
 
 class RandomEventView(View):
     def __init__(self, bot, event_type: str):
-        super().__init__(timeout=300) # 5 minutes
+        super().__init__(timeout=600) # 10 minutes
         self.bot = bot
         self.event_type = event_type
         self.claimed_users = set()
