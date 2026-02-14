@@ -105,7 +105,7 @@ class DiscardConfirmView(View):
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.origin_view.user_id
 
-    @discord.ui.button(label="CONFIRM DELETE", style=ButtonStyle.danger)
+    @discord.ui.button(label="Discard", style=ButtonStyle.danger)
     async def confirm(self, interaction: Interaction, button: Button):
         # Call back to the main view to handle logic
         await self.origin_view.finalize_discard(interaction)
@@ -219,6 +219,7 @@ class ItemDetailView(View):
         
         await self.fetch_data() # Re-check keys/status for button display
         embed = InventoryUI.get_item_details_embed(self.item, self.is_equipped)
+        embed.set_thumbnail(url="https://i.imgur.com/Kr0xq5N.png")
         await interaction.response.edit_message(embed=embed, view=self)
 
     # --- DISCARD LOGIC ---

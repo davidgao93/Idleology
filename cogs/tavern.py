@@ -255,7 +255,7 @@ class Tavern(commands.Cog, name="tavern"):
                     description=desc,
                     color=0xFFCC00
                 )
-            embed.set_image(url="https://i.imgur.com/NUEdC7a.jpeg")
+            embed.set_image(url="https://i.imgur.com/Nv1JbrO.jpeg")
             message = await interaction.response.send_message(embed=embed)
             message: Message = await interaction.original_response()
             # If player has more than 400 gold or their scaled amount, offer bypass

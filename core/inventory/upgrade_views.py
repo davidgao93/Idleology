@@ -77,7 +77,7 @@ class ForgeView(BaseUpgradeView):
             description=desc,
             color=discord.Color.green() if has_res else discord.Color.red()
         )
-        self.embed.set_thumbnail(url="https://i.imgur.com/k8nPS3E.jpeg")
+        self.embed.set_thumbnail(url="https://i.imgur.com/jzEMUxe.jpeg")
         self.costs = costs # Store for callback
         
         # --- DYNAMIC BUTTON BUILD ---
@@ -171,7 +171,7 @@ class RefineView(BaseUpgradeView):
         self.add_back_button()
 
         self.embed = discord.Embed(title=f"Refine {self.item.name}", description=desc, color=discord.Color.blue())
-        self.embed.set_thumbnail(url="https://i.imgur.com/jgq4aGA.jpeg")
+        self.embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
         self.cost = cost
         
         if interaction.response.is_done():
@@ -213,7 +213,7 @@ class RefineView(BaseUpgradeView):
         res_str = ", ".join([f"+{v} {k.title()}" for k,v in stats.items() if v > 0]) or "No stats gained."
         
         embed = discord.Embed(title="Refine Complete! ✨", color=discord.Color.green())
-        self.embed.set_thumbnail(url="https://i.imgur.com/jgq4aGA.jpeg")
+        embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
         embed.description = f"**Gains:** {res_str}\n\n**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
         
         # --- RESULT UI BUILD ---
@@ -256,7 +256,7 @@ class PotentialView(BaseUpgradeView):
 
         self.cost = cost
         self.embed = discord.Embed(title=f"Enchant {self.item.name}", description=desc, color=discord.Color.purple())
-        self.embed.set_thumbnail(url="https://i.imgur.com/Tkikr5b.jpeg")
+        self.embed.set_thumbnail(url="https://i.imgur.com/hqVvn68.jpeg")
         
         # --- DYNAMIC BUTTON BUILD ---
         self.clear_items()
@@ -285,7 +285,7 @@ class PotentialView(BaseUpgradeView):
         await self.bot.database.equipment.update_counter(self.item.item_id, itype, 'potential_remaining', self.item.potential_remaining)
 
         result_embed = discord.Embed(title="Enchantment Result")
-        result_embed.set_thumbnail(url="https://i.imgur.com/83Ahb6w.jpeg")
+        result_embed.set_thumbnail(url="https://i.imgur.com/hqVvn68.jpeg")
         if success:
             if self.item.passive == "none":
                 new_p = EquipmentMechanics.get_new_passive(itype)
@@ -362,6 +362,7 @@ class TemperView(BaseUpgradeView):
         self.add_back_button()
         
         embed = discord.Embed(title="Temper Armor", description=desc, color=discord.Color.blue() if has_res else discord.Color.red())
+        embed.set_thumbnail(url="https://i.imgur.com/tpEyVBm.png")
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
         else:
@@ -378,6 +379,7 @@ class TemperView(BaseUpgradeView):
         success, stat, amount = EquipmentMechanics.roll_temper_outcome(self.item)
         
         res_embed = discord.Embed(title="Temper Result")
+        res_embed.set_thumbnail(url="https://i.imgur.com/tpEyVBm.png")
         if success:
             self.item.temper_remaining -= 1
             await self.bot.database.equipment.update_counter(self.item.item_id, 'armor', 'temper_remaining', self.item.temper_remaining)
@@ -415,7 +417,7 @@ class ImbueView(BaseUpgradeView):
             description=f"Cost: 1 Rune of Imbuing (Owned: {runes})\nSuccess Rate: **50%**\n\nGrants a powerful passive ability.",
             color=discord.Color.purple()
         )
-        
+        embed.set_thumbnail(url="https://i.imgur.com/tpEyVBm.png")
         self.clear_items()
         confirm_btn = Button(label="Imbue", style=ButtonStyle.primary, disabled=(runes == 0))
         confirm_btn.callback = self.confirm
@@ -434,6 +436,7 @@ class ImbueView(BaseUpgradeView):
         await self.bot.database.equipment.update_counter(self.item.item_id, 'armor', 'imbue_remaining', 0)
 
         embed = discord.Embed(title="Imbue Result")
+        embed.set_thumbnail(url="https://i.imgur.com/tpEyVBm.png")
         if random.random() <= 0.5:
             new_p = random.choice(["Invulnerable", "Mystical Might", "Omnipotent", "Treasure Hunter", "Unlimited Wealth", "Everlasting Blessing"])
             self.item.passive = new_p
@@ -483,7 +486,7 @@ class VoidforgeView(BaseUpgradeView):
             description="Select a weapon to sacrifice.\nCost: 1 Void Key.\n\n**Effects:**\n25%: Add Passive as Pinnacle/Utmost\n25%: Overwrite Main Passive\n50%: Failure (Item Lost)",
             color=discord.Color.dark_purple()
         )
-        
+        embed.set_thumbnail(url="https://i.imgur.com/rZnRu0R.jpeg")
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
         else:
@@ -537,7 +540,7 @@ class VoidforgeView(BaseUpgradeView):
             res_txt = "❌ **Failure.**\nThe essence dissipated into the void."
 
         embed = discord.Embed(title="Voidforge Result", description=res_txt, color=color)
-        
+        embed.set_thumbnail(url="https://i.imgur.com/rZnRu0R.jpeg")
         # --- RESULT UI BUILD ---
         self.clear_items()
         
@@ -565,7 +568,7 @@ class ShatterView(BaseUpgradeView):
             description=f"Destroy **{self.item.name}**?\n\n**Returns:** {runes_back} Refinement Runes\n**Cost:** 1 Shatter Rune\n\n⚠️ **This cannot be undone.**",
             color=discord.Color.dark_red()
         )
-        
+        embed.set_thumbnail(url="https://i.imgur.com/KSTfiW3.png")
         # --- DYNAMIC BUTTON BUILD ---
         self.clear_items()
         

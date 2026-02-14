@@ -1,32 +1,6 @@
-Abandoned Samurai,https://i.imgur.com/FCrcvWo.jpeg
-Alien Li,https://i.imgur.com/uFf8RYz.jpeg
-Angel Of Despair,https://i.imgur.com/m5lJVF8.jpeg
-Ascended Shieldmaiden,https://i.imgur.com/7hHTQGz.jpeg
-Ascended Witch,https://i.imgur.com/8A80Iqe.jpeg
-Betrothed Axe Wielder,https://i.imgur.com/4umynKB.jpeg
-Chained Anubis,https://i.imgur.com/42Iwo3q.jpeg
-Chrono Prisoner,https://i.imgur.com/fUz81YR.jpeg
-Cosmic Dragon,https://i.imgur.com/be1Bz0Z.jpeg
-Dragonborn Berserker,https://i.imgur.com/4B3Lq9Y.jpeg
-Duneslayer,https://i.imgur.com/97LcAwx.jpeg
-Elemental Phoenix,https://i.imgur.com/dEn6bWv.jpeg
-Evolved Elemental,https://i.imgur.com/ghhCcTB.jpeg
-Fallen Cloister,https://i.imgur.com/T9BmccJ.jpeg
-Galactic Elemental,https://i.imgur.com/gpon39q.jpeg
-Gravebound Deity,https://i.imgur.com/esKBBLh.jpeg
-Hellbound Pugilist,https://i.imgur.com/CK95GXg.jpeg
-Holy Elemental,https://i.imgur.com/OTy8BHI.jpeg
-Infernal Archmage,https://i.imgur.com/vgZ1ok3.jpeg
-Infernal Grappler,https://i.imgur.com/6nlHgjE.jpeg
-Jagged Monstrosity,https://i.imgur.com/bgt7l0m.jpeg
-Malicious Mirth,https://i.imgur.com/iJ7X8gf.jpeg
-Opulent Matriarch,https://i.imgur.com/WYqDsdk.jpeg
-Planet Eater,https://i.imgur.com/qS84IMa.jpeg
-Prowling Sentinel,https://i.imgur.com/jzOQPLL.jpeg
-Red Emperor,https://i.imgur.com/9wxObkP.jpeg
-Scarlet Seraphim,https://i.imgur.com/wMVbdZJ.jpeg
-Sinister Trickster,https://i.imgur.com/0z3a1jT.jpeg
-Twilight Inkshade,https://i.imgur.com/8tEOtx8.jpeg
-Unknown Lifeform,https://i.imgur.com/ZUomByM.jpeg
-Verdant Huntress,https://i.imgur.com/s7POJPd.jpeg
-Wasteland Monstrosity,https://i.imgur.com/sri52ig.jpeg
+Boots_Gloves_Helm_Potential: https://i.imgur.com/8EFfnZh.jpeg
+Forge_Weapon: https://i.imgur.com/jzEMUxe.jpeg
+Imbue_Armor: https://i.imgur.com/tpEyVBm.png
+Innkeeper: https://i.imgur.com/Nv1JbrO.jpeg
+Jewelry_Potential: https://i.imgur.com/hqVvn68.jpeg
+Weapon_Refine: https://i.imgur.com/NNB21Ix.jpeg
