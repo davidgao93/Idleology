@@ -273,14 +273,14 @@ class Trade(commands.Cog, name="trade"):
             if str(reaction.emoji) == "✅":
                 # Reduce the key count from the sender and add to the receiver
                 if key_type.lower() == "angelic":
-                    await self.bot.database.users.modify_currency(user_id, 'angel_key', -1)
-                    await self.bot.database.users.modify_currency(str(receiver.id), 'angel_key', 1)
+                    await self.bot.database.users.modify_currency(user_id, 'angel_key', 1)
+                    await self.bot.database.users.modify_currency(str(receiver.id), 'angel_key', -1)
                 elif key_type.lower() == "draconic":
-                    await self.bot.database.users.modify_currency(user_id, 'dragon_key', -1)
-                    await self.bot.database.users.modify_currency(str(receiver.id), 'dragon_key', 1)
+                    await self.bot.database.users.modify_currency(user_id, 'dragon_key', 1)
+                    await self.bot.database.users.modify_currency(str(receiver.id), 'dragon_key', -1)
                 elif key_type.lower() == "void":
-                    await self.bot.database.users.modify_currency(user_id, 'void_frags', -1)
-                    await self.bot.database.users.modify_currency(str(receiver.id), 'void_frags', 1)
+                    await self.bot.database.users.modify_currency(user_id, 'void_frags', 1)
+                    await self.bot.database.users.modify_currency(str(receiver.id), 'void_frags', -1)
 
                 # Update the embed to indicate success
                 embed.description = f"Successfully sent to {receiver.mention}! 🎉"

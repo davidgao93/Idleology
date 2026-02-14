@@ -1,10 +1,10 @@
 import discord
-import random
 from discord import Interaction, ButtonStyle, SelectOption
 from discord.ui import View, Button, Select
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
 from core.items.factory import create_weapon
+import random
 
 class BaseUpgradeView(View):
     """Base class for all upgrade interaction views."""
@@ -21,21 +21,22 @@ class BaseUpgradeView(View):
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
-        # Try to return to parent view if possible, or just disable
-        try:
-            await self.parent_view.message.edit(view=self.parent_view)
+        try: await self.parent_view.message.edit(view=self.parent_view)
         except: pass
 
     async def go_back(self, interaction: Interaction):
         # Return to item details
+        await self.parent_view.fetch_data()
         from core.ui.inventory import InventoryUI
         embed = InventoryUI.get_item_details_embed(self.item, self.item.item_id == self.parent_view.parent.equipped_id)
         await interaction.response.edit_message(embed=embed, view=self.parent_view)
         self.stop()
 
-    @discord.ui.button(label="Back", style=ButtonStyle.secondary, row=4)
-    async def back_btn(self, interaction: Interaction, button: Button):
-        await self.go_back(interaction)
+    def add_back_button(self):
+        """Helper to re-add the back button after clearing items."""
+        btn = Button(label="Back", style=ButtonStyle.secondary, row=4)
+        btn.callback = self.go_back
+        self.add_item(btn)
 
 class ForgeView(BaseUpgradeView):
     def __init__(self, bot, user_id, item: Weapon, parent_view):
@@ -53,7 +54,6 @@ class ForgeView(BaseUpgradeView):
         fish = await self.bot.database.skills.get_data(uid, gid, 'fishing')
         gold = await self.bot.database.users.get_gold(uid, gid)
 
-        # Check sufficiency
         ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
         log_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}.get(costs['log_type'])
         bone_idx = {'desiccated': 3, 'regular': 4, 'sturdy': 5, 'reinforced': 6, 'titanium': 7}.get(costs['bone_type'])
@@ -66,11 +66,12 @@ class ForgeView(BaseUpgradeView):
         )
 
         desc = (f"**Cost:**\n"
-                f"⛏️ {costs['ore_qty']} {costs['ore_type'].title()} Ore ({mining[ore_idx]:,})\n"
-                f"🪓 {costs['log_qty']} {costs['log_type'].title()} Logs ({wood[log_idx]:,})\n"
-                f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} Bones ({fish[bone_idx]:,})\n"
+                f"⛏️ {costs['ore_qty']} {costs['ore_type'].title()} Ore ({mining[ore_idx]})\n"
+                f"🪓 {costs['log_qty']} {costs['log_type'].title()} Logs ({wood[log_idx]})\n"
+                f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} Bones ({fish[bone_idx]})\n"
                 f"💰 {costs['gold']:,} Gold ({gold:,})")
 
+        self.costs = costs 
         self.embed = discord.Embed(
             title=f"Forge {self.item.name}",
             description=desc,
@@ -79,38 +80,40 @@ class ForgeView(BaseUpgradeView):
         self.embed.set_thumbnail(url="https://i.imgur.com/k8nPS3E.jpeg")
         self.costs = costs # Store for callback
         
-        # Update Button State
-        self.confirm_forge.disabled = not has_res
+        # --- DYNAMIC BUTTON BUILD ---
+        self.clear_items()
+        
+        forge_btn = Button(label="Forge!", style=ButtonStyle.success, disabled=not has_res)
+        forge_btn.callback = self.confirm_forge
+        self.add_item(forge_btn)
+        
+        self.add_back_button()
         
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=self.embed, view=self)
         else:
             await interaction.response.edit_message(embed=self.embed, view=self)
 
-    @discord.ui.button(label="Forge!", style=ButtonStyle.success)
-    async def confirm_forge(self, interaction: Interaction, button: Button):
+    async def confirm_forge(self, interaction: Interaction):
         uid, gid = self.user_id, str(interaction.guild.id)
         
-        # 1. Deduct Resources
+        # Deduct
         await self.bot.database.skills.update_single_resource(uid, gid, 'mining', self.costs['ore_type'], -self.costs['ore_qty'])
         await self.bot.database.skills.update_single_resource(uid, gid, 'woodcutting', f"{self.costs['log_type']}_logs", -self.costs['log_qty'])
         await self.bot.database.skills.update_single_resource(uid, gid, 'fishing', f"{self.costs['bone_type']}_bones", -self.costs['bone_qty'])
         await self.bot.database.users.modify_gold(uid, -self.costs['gold'])
 
-        # 2. Roll Outcome
+        # Roll
         success, new_passive = EquipmentMechanics.roll_forge_outcome(self.item)
         
         result_embed = discord.Embed(title="Forge Result")
-        
-        # 3. Handle Logic (Only decrement on Success)
         if success:
-            self.item.forges_remaining -= 1
+            self.item.forges_remaining -= 1 # Only decrement on success
             self.item.passive = new_passive
-            # DB Updates
             await self.bot.database.equipment.update_passive(self.item.item_id, 'weapon', new_passive)
             await self.bot.database.equipment.update_counter(self.item.item_id, 'weapon', 'forges_remaining', self.item.forges_remaining)
             
-            result_embed.description = f"🔥 **Success!**\nNew Passive: **{new_passive.title()}**\nForges Remaining: {self.item.forges_remaining}"
+            result_embed.description = f"🔥 **Success!**\nNew Passive: **{new_passive.title()}**"
             result_embed.color = discord.Color.gold()
         else:
             self.item.forges_remaining -= 1
@@ -118,17 +121,16 @@ class ForgeView(BaseUpgradeView):
             result_embed.description = f"💨 **Failed.**\nThe hammer didn't strike true, resources consumed.\n\nForges Remaining: {self.item.forges_remaining}"
             result_embed.color = discord.Color.dark_grey()
 
-        # 4. Update UI (Pause state)
-        self.clear_items() # Remove old buttons
-
-        # Add "Forge Again" button if possible
+        # --- RESULT UI BUILD ---
+        self.clear_items()
+        
         if self.item.forges_remaining > 0:
             again_btn = Button(label="Forge Again", style=ButtonStyle.success)
-            again_btn.callback = self.render # Re-calls render to calc new costs and show menu
+            again_btn.callback = self.render # Points back to render to refresh costs/buttons
             self.add_item(again_btn)
+            
+        self.add_back_button()
 
-        self.add_item(self.back_btn) # Add standard back button
-        
         await interaction.response.edit_message(embed=result_embed, view=self)
 
 
@@ -143,7 +145,6 @@ class RefineView(BaseUpgradeView):
         has_funds = gold >= cost
         has_refines = self.item.refines_remaining > 0
         
-        # Check Runes if no refines left
         runes = 0
         if not has_refines:
             runes = await self.bot.database.users.get_currency(self.user_id, 'refinement_runes')
@@ -152,15 +153,22 @@ class RefineView(BaseUpgradeView):
                 f"**Refinement Level:** +{self.item.refinement_lvl}\n"
                 f"**Cost:** {cost:,} Gold ({gold:,})\n")
         
+        # --- DYNAMIC BUTTON BUILD ---
+        self.clear_items()
+        
+        action_btn = Button(label="Refine", style=ButtonStyle.success)
+        
         if not has_refines:
             desc += f"\n**0 Refines left!** Use a Rune? (Owned: {runes})"
-            self.confirm_refine.label = "Use Rune"
-            self.confirm_refine.style = ButtonStyle.primary
-            self.confirm_refine.disabled = (runes == 0)
+            action_btn.label = "Use Rune"
+            action_btn.style = ButtonStyle.primary
+            action_btn.disabled = (runes == 0)
         else:
-            self.confirm_refine.label = "Refine"
-            self.confirm_refine.style = ButtonStyle.success
-            self.confirm_refine.disabled = not has_funds
+            action_btn.disabled = not has_funds
+
+        action_btn.callback = self.confirm_refine
+        self.add_item(action_btn)
+        self.add_back_button()
 
         self.embed = discord.Embed(title=f"Refine {self.item.name}", description=desc, color=discord.Color.blue())
         self.embed.set_thumbnail(url="https://i.imgur.com/jgq4aGA.jpeg")
@@ -171,14 +179,13 @@ class RefineView(BaseUpgradeView):
         else:
             await interaction.response.edit_message(embed=self.embed, view=self)
 
-    @discord.ui.button(label="Refine", style=ButtonStyle.success)
-    async def confirm_refine(self, interaction: Interaction, button: Button):
+    async def confirm_refine(self, interaction: Interaction):
         # Rune Logic
         if self.item.refines_remaining <= 0:
             await self.bot.database.users.modify_currency(self.user_id, 'refinement_runes', -1)
             await self.bot.database.equipment.update_counter(self.item.item_id, 'weapon', 'refines_remaining', 1)
             self.item.refines_remaining += 1
-            await self.render(interaction)
+            await self.render(interaction) # Refresh UI immediately
             return
 
         # Gold Logic
@@ -202,33 +209,33 @@ class RefineView(BaseUpgradeView):
         await self.bot.database.equipment.update_counter(self.item.item_id, 'weapon', 'refines_remaining', self.item.refines_remaining)
         await self.bot.database.equipment.increase_stat(self.item.item_id, 'weapon', 'refinement_lvl', 1)
 
-        # RESULT DISPLAY LOGIC:
+        # Result Logic
         res_str = ", ".join([f"+{v} {k.title()}" for k,v in stats.items() if v > 0]) or "No stats gained."
         
         embed = discord.Embed(title="Refine Complete! ✨", color=discord.Color.green())
         self.embed.set_thumbnail(url="https://i.imgur.com/jgq4aGA.jpeg")
         embed.description = f"**Gains:** {res_str}\n\n**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
         
-        # UI Update
+        # --- RESULT UI BUILD ---
         self.clear_items()
         
-        if self.item.refines_remaining > 0 or (await self.bot.database.users.get_currency(self.user_id, 'refinement_runes')) > 0:
+        # Allow chain refining
+        runes = await self.bot.database.users.get_currency(self.user_id, 'refinement_runes')
+        if self.item.refines_remaining > 0 or runes > 0:
             again_btn = Button(label="Refine Again", style=ButtonStyle.primary)
             again_btn.callback = self.render
             self.add_item(again_btn)
             
-        self.add_item(self.back_btn)
+        self.add_back_button()
         
         await interaction.response.edit_message(embed=embed, view=self)
 
 
 class PotentialView(BaseUpgradeView):
-    """Handles Potential/Enchanting for Accessories, Gloves, Boots, Helmets."""
     def __init__(self, bot, user_id, item, parent_view):
         super().__init__(bot, user_id, item, parent_view)
 
     async def render(self, interaction: Interaction):
-        # Determine cost function based on item type
         if isinstance(self.item, Accessory):
             cost = EquipmentMechanics.calculate_potential_cost(self.item.passive_lvl)
         else:
@@ -236,7 +243,6 @@ class PotentialView(BaseUpgradeView):
             
         gold = await self.bot.database.users.get_gold(self.user_id, str(interaction.guild.id))
         
-        # Cap logic
         max_lvl = 10 if isinstance(self.item, Accessory) else (5 if isinstance(self.item, (Glove, Helmet)) else 6)
         is_capped = self.item.passive_lvl >= max_lvl
         has_attempts = self.item.potential_remaining > 0
@@ -252,26 +258,32 @@ class PotentialView(BaseUpgradeView):
         self.embed = discord.Embed(title=f"Enchant {self.item.name}", description=desc, color=discord.Color.purple())
         self.embed.set_thumbnail(url="https://i.imgur.com/Tkikr5b.jpeg")
         
-        self.confirm_btn.disabled = (gold < cost or not has_attempts or is_capped)
+        # --- DYNAMIC BUTTON BUILD ---
+        self.clear_items()
+        
+        enchant_btn = Button(label="Enchant", style=ButtonStyle.success, disabled=(gold < cost or not has_attempts or is_capped))
+        enchant_btn.callback = self.confirm_enchant
+        self.add_item(enchant_btn)
+        
+        self.add_back_button()
         
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=self.embed, view=self)
         else:
             await interaction.response.edit_message(embed=self.embed, view=self)
 
-    @discord.ui.button(label="Enchant", style=ButtonStyle.success)
-    async def confirm_btn(self, interaction: Interaction, button: Button):
+    async def confirm_enchant(self, interaction: Interaction):
         await self.bot.database.users.modify_gold(self.user_id, -self.cost)
         
         success = EquipmentMechanics.roll_potential_outcome(self.item.passive_lvl)
         
-        # Determine Item Type String for DB calls
         itype = 'accessory' if isinstance(self.item, Accessory) else \
                 ('glove' if isinstance(self.item, Glove) else \
                 ('boot' if isinstance(self.item, Boot) else 'helmet'))
 
         self.item.potential_remaining -= 1
         await self.bot.database.equipment.update_counter(self.item.item_id, itype, 'potential_remaining', self.item.potential_remaining)
+
         result_embed = discord.Embed(title="Enchantment Result")
         result_embed.set_thumbnail(url="https://i.imgur.com/83Ahb6w.jpeg")
         if success:
@@ -281,95 +293,31 @@ class PotentialView(BaseUpgradeView):
                 self.item.passive_lvl = 1
                 await self.bot.database.equipment.update_passive(self.item.item_id, itype, new_p)
                 await self.bot.database.equipment.update_counter(self.item.item_id, itype, 'passive_lvl', 1)
+                msg = f"Unlocked **{new_p}**!"
             else:
                 self.item.passive_lvl += 1
                 await self.bot.database.equipment.update_counter(self.item.item_id, itype, 'passive_lvl', self.item.passive_lvl)
+                msg = f"Upgraded to Level **{self.item.passive_lvl}**!"
+            
             result_embed.color = discord.Color.gold()
-            result_embed.description = f"✨ **Success!**\nItem is now **{self.item.passive} (+{self.item.passive_lvl})**"
+            result_embed.description = f"✨ **Success!**\n{msg}"
         else:
             result_embed.color = discord.Color.dark_grey()
-            result_embed.description = "💔 **Failed.**\nThe magic failed to take hold."   
-        # UI Update
+            result_embed.description = "💔 **Failed.**\nThe magic failed to take hold."
+
+        # --- RESULT UI BUILD ---
         self.clear_items()
         
-        # Check max level cap again for the "Again" button
         max_lvl = 10 if isinstance(self.item, Accessory) else (5 if isinstance(self.item, (Glove, Helmet)) else 6)
-        
         if self.item.potential_remaining > 0 and self.item.passive_lvl < max_lvl:
             again_btn = Button(label="Enchant Again", style=ButtonStyle.success)
             again_btn.callback = self.render
             self.add_item(again_btn)
 
-        self.add_item(self.back_btn)
+        self.add_back_button()
         
         await interaction.response.edit_message(embed=result_embed, view=self)
 
-class ShatterView(BaseUpgradeView):
-    def __init__(self, bot, user_id, item: Weapon, parent_view):
-        super().__init__(bot, user_id, item, parent_view)
-        
-    async def render(self, interaction: Interaction):
-        runes_back = max(0, int(self.item.refinement_lvl - 5 * 0.8))
-        if self.item.attack > 0 and self.item.defence > 0 and self.item.rarity > 0:
-            runes_back += 1
-            
-        embed = discord.Embed(
-            title="Shatter Weapon",
-            description=f"Destroy **{self.item.name}**?\nReturns: **{runes_back}** Refinement Runes.\nCost: 1 Shatter Rune.",
-            color=discord.Color.dark_red()
-        )
-        embed.set_thumbnail(url="https://i.imgur.com/83Ahb6w.jpeg")
-        self.runes_back = runes_back
-        
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=embed, view=self)
-        else:
-            await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="CONFIRM SHATTER", style=ButtonStyle.danger)
-    async def confirm(self, interaction: Interaction, button: Button):
-        await self.bot.database.equipment.discard(self.item.item_id, 'weapon')
-        await self.bot.database.users.modify_currency(self.user_id, 'refinement_runes', self.runes_back)
-        await self.bot.database.users.modify_currency(self.user_id, 'shatter_runes', -1)
-        
-        await interaction.response.edit_message(content=f"Shattered! Gained {self.runes_back} runes.", embed=None, view=None)
-        
-        # Remove item from parent view list
-        self.parent_view.parent.items = [i for i in self.parent_view.parent.items if i.item_id != self.item.item_id]
-        self.parent_view.parent.update_buttons()
-        self.stop()
-
-
-class BaseUpgradeView(View):
-    def __init__(self, bot, user_id: str, item, parent_view):
-        super().__init__(timeout=120)
-        self.bot = bot
-        self.user_id = user_id
-        self.item = item
-        self.parent_view = parent_view
-        self.embed = None
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        try: await self.parent_view.message.edit(view=self.parent_view)
-        except: pass
-
-    async def go_back(self, interaction: Interaction):
-        # Refresh parent data if needed
-        await self.parent_view.fetch_data() 
-        from core.ui.inventory import InventoryUI
-        embed = InventoryUI.get_item_details_embed(self.item, self.item.item_id == self.parent_view.parent.equipped_id)
-        await interaction.response.edit_message(embed=embed, view=self.parent_view)
-        self.stop()
-
-    @discord.ui.button(label="Back", style=ButtonStyle.secondary, row=4)
-    async def back_btn(self, interaction: Interaction, button: Button):
-        await self.go_back(interaction)
-
-# --- ARMOR VIEWS ---
 
 class TemperView(BaseUpgradeView):
     def __init__(self, bot, user_id, item: Armor, parent_view):
@@ -379,7 +327,6 @@ class TemperView(BaseUpgradeView):
         costs = EquipmentMechanics.calculate_temper_cost(self.item)
         if not costs: return await interaction.response.send_message("No tempers remaining.", ephemeral=True)
 
-        # Resource Checks (Copy logic from ForgeView or abstract it)
         uid, gid = self.user_id, str(interaction.guild.id)
         mining = await self.bot.database.skills.get_data(uid, gid, 'mining')
         wood = await self.bot.database.skills.get_data(uid, gid, 'woodcutting')
@@ -404,7 +351,15 @@ class TemperView(BaseUpgradeView):
                 f"💰 {costs['gold']:,} Gold")
 
         self.costs = costs
-        self.confirm_temper.disabled = not has_res
+        
+        # --- DYNAMIC BUTTON BUILD ---
+        self.clear_items()
+        
+        temper_btn = Button(label="Temper!", style=ButtonStyle.success, disabled=not has_res)
+        temper_btn.callback = self.confirm_temper
+        self.add_item(temper_btn)
+        
+        self.add_back_button()
         
         embed = discord.Embed(title="Temper Armor", description=desc, color=discord.Color.blue() if has_res else discord.Color.red())
         if interaction.response.is_done():
@@ -412,8 +367,7 @@ class TemperView(BaseUpgradeView):
         else:
             await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.button(label="Temper!", style=ButtonStyle.success)
-    async def confirm_temper(self, interaction: Interaction, button: Button):
+    async def confirm_temper(self, interaction: Interaction):
         uid, gid = self.user_id, str(interaction.guild.id)
         # Deduct
         await self.bot.database.skills.update_single_resource(uid, gid, 'mining', self.costs['ore_type'], -self.costs['ore_qty'])
@@ -423,11 +377,10 @@ class TemperView(BaseUpgradeView):
 
         success, stat, amount = EquipmentMechanics.roll_temper_outcome(self.item)
         
-        self.item.temper_remaining -= 1
-        await self.bot.database.equipment.update_counter(self.item.item_id, 'armor', 'temper_remaining', self.item.temper_remaining)
-
         res_embed = discord.Embed(title="Temper Result")
         if success:
+            self.item.temper_remaining -= 1
+            await self.bot.database.equipment.update_counter(self.item.item_id, 'armor', 'temper_remaining', self.item.temper_remaining)
             await self.bot.database.equipment.increase_stat(self.item.item_id, 'armor', stat, amount)
             if stat == 'pdr': self.item.pdr += amount
             elif stat == 'fdr': self.item.fdr += amount
@@ -438,6 +391,7 @@ class TemperView(BaseUpgradeView):
             res_embed.color = discord.Color.dark_grey()
             res_embed.description = "🔨 **Failed.**\nThe metal cooled too quickly. Materials consumed."
 
+        # --- RESULT UI BUILD ---
         self.clear_items()
         
         if self.item.temper_remaining > 0:
@@ -445,10 +399,9 @@ class TemperView(BaseUpgradeView):
             again_btn.callback = self.render
             self.add_item(again_btn)
             
-        self.add_item(self.back_btn)
+        self.add_back_button()
 
         await interaction.response.edit_message(embed=res_embed, view=self)
-
 
 class ImbueView(BaseUpgradeView):
     def __init__(self, bot, user_id, item: Armor, parent_view):
@@ -462,18 +415,21 @@ class ImbueView(BaseUpgradeView):
             description=f"Cost: 1 Rune of Imbuing (Owned: {runes})\nSuccess Rate: **50%**\n\nGrants a powerful passive ability.",
             color=discord.Color.purple()
         )
-        self.confirm.disabled = (runes == 0)
+        
+        self.clear_items()
+        confirm_btn = Button(label="Imbue", style=ButtonStyle.primary, disabled=(runes == 0))
+        confirm_btn.callback = self.confirm
+        self.add_item(confirm_btn)
+        self.add_back_button()
         
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
         else:
             await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.button(label="Imbue", style=ButtonStyle.primary)
-    async def confirm(self, interaction: Interaction, button: Button):
+    async def confirm(self, interaction: Interaction):
         await self.bot.database.users.modify_currency(self.user_id, 'imbue_runes', -1)
         
-        # Remove imbue slot regardless of outcome
         self.item.imbue_remaining = 0
         await self.bot.database.equipment.update_counter(self.item.item_id, 'armor', 'imbue_remaining', 0)
 
@@ -488,11 +444,9 @@ class ImbueView(BaseUpgradeView):
             embed.color = discord.Color.dark_grey()
             embed.description = "The Rune shattered without effect."
 
-        self.confirm.disabled = True
+        self.clear_items()
+        self.add_back_button()
         await interaction.response.edit_message(embed=embed, view=self)
-
-
-# --- VOIDFORGE VIEW ---
 
 class VoidforgeView(BaseUpgradeView):
     def __init__(self, bot, user_id, item: Weapon, parent_view):
@@ -519,39 +473,45 @@ class VoidforgeView(BaseUpgradeView):
         select = Select(placeholder="Select Sacrifice Weapon...", options=options)
         select.callback = self.select_callback
         
-        # Replace items with just the select and back button
+        # --- DYNAMIC BUTTON BUILD ---
         self.clear_items()
         self.add_item(select)
-        self.add_item(self.back_btn)
+        self.add_back_button()
 
         embed = discord.Embed(
             title="Voidforge",
             description="Select a weapon to sacrifice.\nCost: 1 Void Key.\n\n**Effects:**\n25%: Add Passive as Pinnacle/Utmost\n25%: Overwrite Main Passive\n50%: Failure (Item Lost)",
             color=discord.Color.dark_purple()
         )
-        embed.set_thumbnail(url="https://i.imgur.com/rZnRu0R.jpeg")
+        
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
         else:
             await interaction.response.edit_message(embed=embed, view=self)
 
     async def select_callback(self, interaction: Interaction):
-        # User selected an item
         target_id = int(interaction.data['values'][0])
         target = next((w for w in self.candidates if w.item_id == target_id), None)
         
         if not target: return
 
-        # Consume Cost
         await self.bot.database.users.modify_currency(self.user_id, 'void_keys', -1)
         await self.bot.database.equipment.discard(target.item_id, 'weapon')
 
         inventory_view = self.parent_view.parent
         inventory_view.items = [i for i in inventory_view.items if i.item_id != target.item_id]
         
-        inventory_view.total_pages = (len(inventory_view.items) + inventory_view.items_per_page - 1) // inventory_view.items_per_page if inventory_view.items else 1
-        inventory_view.update_buttons() 
+        # Recalculate pagination (in case pages decreased)
+        inventory_view.total_pages = (len(inventory_view.items) + inventory_view.items_per_page - 1) // inventory_view.items_per_page
+        if inventory_view.total_pages == 0: inventory_view.total_pages = 1 # Prevent div by zero errors elsewhere
         
+        # Adjust current page if we were on the last page and it disappeared
+        if inventory_view.current_page >= inventory_view.total_pages:
+            inventory_view.current_page = max(0, inventory_view.total_pages - 1)
+            
+        # Refresh the buttons on the inventory view so they represent the new state when we go back
+        inventory_view.update_buttons()
+
         # Logic
         roll = random.random()
         res_txt = ""
@@ -564,22 +524,87 @@ class VoidforgeView(BaseUpgradeView):
             if slot == "pinnacle_passive": self.item.p_passive = target.passive
             else: self.item.u_passive = target.passive
             
-            res_txt = f"🌌 **Success!** {target.passive.title()} added as {slot.replace('_', ' ').title()}."
+            res_txt = f"🌌 **Success!**\n{target.passive.title()} added as {slot.replace('_', ' ').title()}."
             color = discord.Color.purple()
             
         elif roll < 0.50:
             # Overwrite main
             await self.bot.database.equipment.update_passive(self.item.item_id, 'weapon', target.passive)
             self.item.passive = target.passive
-            res_txt = f"🔄 **Chaos!** Main passive overwritten with {target.passive.title()}."
+            res_txt = f"🔄 **Chaos!**\nMain passive overwritten with {target.passive.title()}."
             color = discord.Color.orange()
         else:
-            res_txt = "❌ **Failure.** The essence dissipated."
+            res_txt = "❌ **Failure.**\nThe essence dissipated into the void."
 
         embed = discord.Embed(title="Voidforge Result", description=res_txt, color=color)
         
-        # Remove buttons, show result
+        # --- RESULT UI BUILD ---
         self.clear_items()
-        self.add_item(self.back_btn)
+        
+        # Voidforge is typically one-off due to key cost/rarity, but we can offer 'Voidforge Again' 
+        # if they have more keys and candidates. For now, Back is sufficient.
+        self.add_back_button()
         
         await interaction.response.edit_message(embed=embed, view=self)
+
+
+class ShatterView(BaseUpgradeView):
+    def __init__(self, bot, user_id, item: Weapon, parent_view):
+        super().__init__(bot, user_id, item, parent_view)
+        
+    async def render(self, interaction: Interaction):
+        # Calculate Runes Back
+        runes_back = max(0, int(self.item.refinement_lvl - 5 * 0.8))
+        if self.item.attack > 0 and self.item.defence > 0 and self.item.rarity > 0:
+            runes_back += 1
+            
+        self.runes_back = runes_back
+        
+        embed = discord.Embed(
+            title="Shatter Weapon",
+            description=f"Destroy **{self.item.name}**?\n\n**Returns:** {runes_back} Refinement Runes\n**Cost:** 1 Shatter Rune\n\n⚠️ **This cannot be undone.**",
+            color=discord.Color.dark_red()
+        )
+        
+        # --- DYNAMIC BUTTON BUILD ---
+        self.clear_items()
+        
+        confirm_btn = Button(label="CONFIRM SHATTER", style=ButtonStyle.danger)
+        confirm_btn.callback = self.confirm
+        self.add_item(confirm_btn)
+        
+        self.add_back_button()
+        
+        if interaction.response.is_done():
+            await interaction.edit_original_response(embed=embed, view=self)
+        else:
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    async def confirm(self, interaction: Interaction):
+        # Execute
+        await self.bot.database.equipment.discard(self.item.item_id, 'weapon')
+        await self.bot.database.users.modify_currency(self.user_id, 'refinement_runes', self.runes_back)
+        await self.bot.database.users.modify_currency(self.user_id, 'shatter_runes', -1)
+        
+        # Update Parent List (since item is gone)
+        self.parent_view.parent.items = [i for i in self.parent_view.parent.items if i.item_id != self.item.item_id]
+        self.parent_view.parent.update_buttons() # Refresh page buttons
+        
+        embed = discord.Embed(title="Shattered", color=discord.Color.red())
+        embed.description = f"Item destroyed.\nYou gained **{self.runes_back}** Refinement Runes."
+
+        # --- RESULT UI BUILD ---
+        self.clear_items()
+        
+        # Since item is gone, "Back" implies "Back to Inventory List"
+        return_btn = Button(label="Return to Inventory", style=ButtonStyle.secondary)
+        return_btn.callback = self.return_to_list
+        self.add_item(return_btn)
+        
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def return_to_list(self, interaction: Interaction):
+        # Go back to the Inventory List (grandparent view)
+        embed = await self.parent_view.parent.get_current_embed(interaction.user.display_name)
+        await interaction.response.edit_message(embed=embed, view=self.parent_view.parent)
+        self.stop()
