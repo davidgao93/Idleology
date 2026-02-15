@@ -50,7 +50,7 @@ class Combat(commands.Cog, name="combat"):
         if equipped_boot and equipped_boot[9] == "speedster":
             temp_cooldown_reduction = equipped_boot[12] * 20 
 
-        current_duration = self.COMBAT_COOLDOWN_DURATION - timedelta(seconds=temp_cooldown_reduction)
+        current_duration = self.COMBAT_COOLDOWN - timedelta(seconds=temp_cooldown_reduction)
         current_duration = max(timedelta(seconds=10), current_duration)
 
         last_combat_str = existing_user[24]
