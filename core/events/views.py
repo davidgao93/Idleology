@@ -2,6 +2,7 @@ import discord
 import random
 from discord import Interaction, ButtonStyle
 from discord.ui import View, Button
+from core.skills.mechanics import SkillMechanics
 
 class RandomEventView(View):
     def __init__(self, bot, event_type: str):
@@ -50,31 +51,28 @@ class RandomEventView(View):
         elif self.event_type == "meteorite":
             data = await self.bot.database.skills.get_data(user_id, server_id, 'mining')
             if not data:
-                return await interaction.response.send_message("You need a Pickaxe (Mining) to participate!", ephemeral=True)
+                return await interaction.response.send_message("You need a Pickaxe to mine!", ephemeral=True)
             
-            # Use Skills Cog logic to calculate yield based on tier
-            skills_cog = self.bot.get_cog("skills")
-            resources = await skills_cog.gather_mining_resources(data[2]) # data[2] is tier
+            # Static call
+            resources = SkillMechanics.calculate_yield('mining', data[2])
             await self.bot.database.skills.update_batch(user_id, server_id, 'mining', resources)
             reward_msg = "mined the meteor!"
 
         elif self.event_type == "dryad":
             data = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
             if not data:
-                return await interaction.response.send_message("You need an Axe (Woodcutting) to participate!", ephemeral=True)
+                return await interaction.response.send_message("You need an Axe!", ephemeral=True)
             
-            skills_cog = self.bot.get_cog("skills")
-            resources = await skills_cog.gather_woodcutting_resources(data[2])
+            resources = SkillMechanics.calculate_yield('woodcutting', data[2])
             await self.bot.database.skills.update_batch(user_id, server_id, 'woodcutting', resources)
             reward_msg = "claimed the Dryad's blessing!"
 
         elif self.event_type == "high_tide":
             data = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
             if not data:
-                return await interaction.response.send_message("You need a Rod (Fishing) to participate!", ephemeral=True)
+                return await interaction.response.send_message("You need a Fishing Rod!", ephemeral=True)
             
-            skills_cog = self.bot.get_cog("skills")
-            resources = await skills_cog.gather_fishing_resources(data[2])
+            resources = SkillMechanics.calculate_yield('fishing', data[2])
             await self.bot.database.skills.update_batch(user_id, server_id, 'fishing', resources)
             reward_msg = "caught fish from the High Tide!"
 

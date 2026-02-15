@@ -74,20 +74,20 @@ class InventoryListView(View):
         self.current_page = max(0, self.current_page - 1)
         self.update_buttons()
         embed = await self.get_current_embed(interaction.user.display_name)
-        await interaction.response.edit_message(embed=embed, view=self)
+        await interaction.response.edit_message(content=None, embed=embed, view=self)
 
     async def next_page(self, interaction: Interaction):
         self.current_page = min(self.total_pages - 1, self.current_page + 1)
         self.update_buttons()
         embed = await self.get_current_embed(interaction.user.display_name)
-        await interaction.response.edit_message(embed=embed, view=self)
+        await interaction.response.edit_message(content=None, embed=embed, view=self)
 
     async def select_item(self, interaction: Interaction, item: Any):
         # Transition to Detail View
         detail_view = ItemDetailView(self.bot, self.user_id, item, self)
         await detail_view.fetch_data()
         embed = InventoryUI.get_item_details_embed(item, item.item_id == self.equipped_id)
-        await interaction.response.edit_message(embed=embed, view=detail_view)
+        await interaction.response.edit_message(content=None, embed=embed, view=detail_view)
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
@@ -268,15 +268,13 @@ class ItemDetailView(View):
         
         embed = await self.parent.get_current_embed(interaction.user.display_name)
         
-        # Check if called from Confirmation View (already deferred usually) or direct button
+        # We explicitly set content="Item discarded". 
+        # Since we updated prev_page/next_page above, this text will vanish 
+        # as soon as the user interacts with the list again.
         if interaction.response.is_done():
-            await interaction.edit_original_response(content="🗑️ Item discarded.", embed=embed, view=self.parent)
+            await interaction.edit_original_response(content="🗑️ **Item discarded.**", embed=embed, view=self.parent)
         else:
-            await interaction.response.edit_message(content="🗑️ Item discarded.", embed=embed, view=self.parent)
-
-    async def go_back(self, interaction: Interaction):
-        embed = await self.parent.get_current_embed(interaction.user.display_name)
-        await interaction.response.edit_message(embed=embed, view=self.parent)
+            await interaction.response.edit_message(content="🗑️ **Item discarded.**", embed=embed, view=self.parent)
 
     async def go_back(self, interaction: Interaction):
         embed = await self.parent.get_current_embed(interaction.user.display_name)

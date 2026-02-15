@@ -14,6 +14,7 @@ from core.items.factory import load_player
 from core.combat import engine, ui, rewards
 from core.combat.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot, generate_helmet
 from core.combat.gen_mob import generate_encounter, generate_boss
+from core.skills.mechanics import SkillMechanics
 
 class Combat(commands.Cog, name="combat"):
     def __init__(self, bot) -> None:
@@ -353,13 +354,36 @@ class Combat(commands.Cog, name="combat"):
 
     async def handle_victory(self, interaction: Interaction, message: Message, player: Player, monster: Monster):
         user_id = player.id
-        
+        server_id = str(interaction.guild.id) # Need server_id for skills
         # 1. Rewards Calculation
         reward_data = rewards.calculate_rewards(player, monster)
         
         # 2. Special Drops & Boss Logic
         special_flags = rewards.check_special_drops(player, monster)
         reward_data['special'] = []
+
+        if player.equipped_boot and player.equipped_boot.passive == "skiller":
+            proc_chance = player.equipped_boot.passive_lvl * 0.05
+            if random.random() < proc_chance:
+                skill_type_roll = random.choice(['mining', 'woodcutting', 'fishing'])
+                
+                # Fetch tool tier
+                # Note: We need to access the skills repo via bot.database
+                skill_row = await self.bot.database.skills.get_data(user_id, server_id, skill_type_roll)
+                
+                if skill_row:
+                    tool_tier = skill_row[2]
+                    # Use static mechanic
+                    resources = SkillMechanics.calculate_yield(skill_type_roll, tool_tier)
+                    
+                    # Update DB
+                    await self.bot.database.skills.update_batch(user_id, server_id, skill_type_roll, resources)
+                    
+                    # Add to reward messages
+                    msg_map = {
+                        'mining': "ores", 'woodcutting': "logs", 'fishing': "fish"
+                    }
+                    reward_data['msgs'].append(f"👢 **Skiller ({player.equipped_boot.passive_lvl})** found extra {msg_map[skill_type_roll]}!")
         
         if special_flags.get('draconic_key'):
             await self.bot.database.users.modify_currency(user_id, 'dragon_key', 1)

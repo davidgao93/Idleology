@@ -3,6 +3,7 @@ from discord import app_commands, Interaction, ButtonStyle
 from discord.ext import commands
 from discord.ui import Button, View
 from core.combat.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot
+from core.skills.mechanics import SkillMechanics
 import random
 import csv
 
@@ -184,19 +185,23 @@ class CurioView(View):
                     amount_mapping = {"100k": 100000, "50k": 50000, "10k": 10000, "5k": 5000, "1k": 1000}
                     await self.bot.database.users.modify_gold(user_id, amount_mapping[reward] * count)
                 elif reward == "Ore":
+                    # Multiplier for curio reward
                     for _ in range(count * 5):
                         mining_data = await self.bot.database.skills.get_data(user_id, server_id, 'mining')
-                        resources = await self.skills_cog.gather_mining_resources(mining_data[2])
+                        # Use static method
+                        resources = SkillMechanics.calculate_yield('mining', mining_data[2])
                         await self.bot.database.skills.update_batch(user_id, server_id, 'mining', resources)
+
                 elif reward == "Wood":
                     for _ in range(count * 5):
-                        woodcutting_data = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
-                        resources = await self.skills_cog.gather_woodcutting_resources(woodcutting_data[2])
+                        wood_data = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
+                        resources = SkillMechanics.calculate_yield('woodcutting', wood_data[2])
                         await self.bot.database.skills.update_batch(user_id, server_id, 'woodcutting', resources)
+
                 elif reward == "Fish":
                     for _ in range(count * 5):
-                        fishing_data = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
-                        resources = await self.skills_cog.gather_fishing_resources(fishing_data[2])
+                        fish_data = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
+                        resources = SkillMechanics.calculate_yield('fishing', fish_data[2])
                         await self.bot.database.skills.update_batch(user_id, server_id, 'fishing', resources)
 
             # Summarize rewards

@@ -25,11 +25,25 @@ class BaseUpgradeView(View):
         except: pass
 
     async def go_back(self, interaction: Interaction):
-        # Return to item details
-        await self.parent_view.fetch_data()
+        # 1. Import inside method to avoid circular import at top of file
+        from core.inventory.views import ItemDetailView
         from core.ui.inventory import InventoryUI
-        embed = InventoryUI.get_item_details_embed(self.item, self.item.item_id == self.parent_view.parent.equipped_id)
-        await interaction.response.edit_message(embed=embed, view=self.parent_view)
+
+        # 2. Get the Grandparent (Inventory List) to pass down
+        inventory_view = self.parent_view.parent
+        
+        # 3. Create a FRESH ItemDetailView
+        # This resets the timeout counter (180s) and regenerates buttons cleanly
+        new_detail_view = ItemDetailView(self.bot, self.user_id, self.item, inventory_view)
+        await new_detail_view.fetch_data() # Ensure keys/currency checks run
+        
+        # 4. Check equipped status using the Grandparent's state
+        is_equipped = (self.item.item_id == inventory_view.equipped_id)
+        
+        embed = InventoryUI.get_item_details_embed(self.item, is_equipped)
+        
+        # 5. Edit message with NEW view and clear any status content
+        await interaction.response.edit_message(content=None, embed=embed, view=new_detail_view)
         self.stop()
 
     def add_back_button(self):
