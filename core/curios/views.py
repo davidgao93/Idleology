@@ -44,8 +44,8 @@ class CurioView(ui.View):
         h_count = await self.bot.database.equipment.get_count(self.user_id, 'helmet')
 
         if (w_count > 60 or a_count > 60 or 
-            ar_count > 60 or g_count or
-            b_count or h_count): # Simplified check
+            ar_count > 60 or g_count > 60 or
+            b_count > 60 or h_count > 60): # Simplified check
             return await interaction.response.send_message("Inventory full! Clear some space.", ephemeral=True)
 
         await interaction.response.defer()
