@@ -5,7 +5,7 @@ from discord.ext import commands
 from discord import app_commands, Interaction, ButtonStyle
 from datetime import datetime, timedelta
 from discord.ui import View, Button
-
+import asyncio
 from core.models import Player, Monster
 from core.items.factory import load_player
 from core.combat import engine, ui
@@ -36,6 +36,7 @@ class DoorPromptView(View):
 
     @discord.ui.button(label="Leave", style=ButtonStyle.secondary)
     async def leave(self, interaction: Interaction, button: Button):
+        await interaction.response.defer()
         self.stop()
 
 class Combat(commands.Cog, name="combat"):
@@ -111,12 +112,12 @@ class Combat(commands.Cog, name="combat"):
                 combat_phases = EncounterManager.get_boss_phases(boss_type)
                 await self.bot.database.users.update_timer(user_id, 'last_combat')
             else:
-                # If rejected, proceed to normal combat or exit?
-                # Legacy code implies if rejected, it fades. 
-                # Let's assume we fall back to normal combat or just exit.
-                # Usually better UX to fall back to normal combat so cooldown isn't wasted if they misclick.
-                await interaction.edit_original_response(content="You step away from the door...", view=None, embed=None)
-                # Proceeding to normal combat...
+                await interaction.edit_original_response(
+                    content="*You turn away from the ominous presence...*", 
+                    embed=None, 
+                    view=None
+                )
+                await asyncio.sleep(1.0)
         
         if not is_boss:
             await self.bot.database.users.update_timer(user_id, 'last_combat')
