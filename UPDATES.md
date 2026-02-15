@@ -1,7 +1,7 @@
 ### Version 0.6
 CONTENT
 
-FIXES
+MECHANIC CHANGES / FIXES
 - Rewrote random events, leprechaun now grants a curio
 - Inventory management rewrite, still same commands but cleaner now
 - Discard equipment has no confirmation for non-valuable items (ie: 0 refines / 0 forges, etc)
@@ -12,6 +12,7 @@ FIXES
 - Rewrote shop to use buttons
 - Rewrote PVP to use buttons
 - Upgrade actions for gear are now more easily repeatable
+- Curios now opens an interface, /bulk_curios lets you open as many as you want
 
 ### Version 0.5
 CONTENT

@@ -107,6 +107,9 @@ class Character(commands.Cog, name="character"):
         pdr = p.get_total_pdr()
         if pdr > 0: embed.add_field(name="🛡️ PDR", value=f"{pdr}%", inline=True)
 
+        fdr = p.get_total_fdr()
+        if fdr > 0: embed.add_field(name="🛡️ FDR", value=f"{fdr}%", inline=True)
+
         # Passives List
         passives = []
         
