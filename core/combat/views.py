@@ -166,6 +166,43 @@ class CombatView(ui.View):
         await self.bot.database.users.update_from_player_object(self.player)
         self.stop()
 
+
+    @ui.button(label="Fast Auto", style=ButtonStyle.secondary, emoji="⚡", row=1)
+    async def fast_auto_btn(self, interaction: Interaction, button: ui.Button):
+        # Double check level just in case
+        if self.player.level < 20:
+            return await interaction.response.send_message("Fast Auto unlocks at Level 20!", ephemeral=True)
+
+        await interaction.response.defer()
+        
+        turns_processed = 0
+        
+        # Loop 10 times (Instant calculation, no sleep)
+        for _ in range(10):
+            # Stop conditions
+            if self.player.current_hp <= (self.player.max_hp * 0.2) or self.monster.hp <= 0:
+                break
+            
+            # Logic
+            p_log = engine.process_player_turn(self.player, self.monster)
+            m_log = ""
+            if self.monster.hp > 0:
+                m_log = engine.process_monster_turn(self.player, self.monster)
+            
+            # Keep only the latest log to prevent embed overflow
+            self.logs = {self.player.name: p_log, self.monster.name: m_log}
+            turns_processed += 1
+
+        # Append status log
+        status_msg = f"⚡ You flash forward in time, **{turns_processed}** turns have gone by."
+        if self.player.current_hp <= (self.player.max_hp * 0.2) and self.monster.hp > 0:
+            status_msg += "\n🛑 Paused: Low HP Protection triggered!"
+            
+        self.logs["System"] = status_msg
+
+        # Update UI / Check Win/Loss
+        await self.check_combat_state(interaction)
+
     async def check_combat_state(self, interaction: Interaction):
         """Checks if player died or monster died."""
         if self.player.current_hp <= 0 or self.monster.hp <= 0:
