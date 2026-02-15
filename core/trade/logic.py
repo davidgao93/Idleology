@@ -60,7 +60,8 @@ class TradeManager:
     @staticmethod
     async def transfer_gold(bot, sender_id: str, receiver_id: str, amount: int) -> bool:
         sender_gold = await bot.database.users.get_gold(sender_id)
-        
+        if sender_gold < amount:
+            return False
         await bot.database.users.modify_gold(sender_id, -amount)
         await bot.database.users.modify_gold(receiver_id, amount)
         return True

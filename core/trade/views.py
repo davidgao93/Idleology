@@ -247,7 +247,7 @@ class TradeRootView(ui.View):
         try:
             if self.tx_type == "gold":
                 # Re-verify funds
-                bal = await self.bot.database.users.get_gold(self.user_id, self.server_id)
+                bal = await self.bot.database.users.get_gold(self.user_id)
                 if bal < self.tx_amount:
                     return await interaction.edit_original_response(content="❌ Funds changed. Trade failed.", embed=None, view=None)
                 
