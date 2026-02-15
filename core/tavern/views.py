@@ -26,8 +26,27 @@ class ShopView(ui.View):
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
-        try: await self.message.delete()
-        except: pass
+        
+        # Disable buttons
+        for child in self.children:
+            child.disabled = True
+            
+        try:
+            embed = self.message.embeds[0]
+            # Update the tavernkeeper field to indicate closing
+            found = False
+            for i, field in enumerate(embed.fields):
+                if "tavernkeeper" in field.name.lower():
+                    embed.set_field_at(i, name="The tavernkeeper", value="*Zzz...* (The shop has closed)", inline=False)
+                    found = True
+                    break
+            
+            if not found:
+                embed.set_footer(text="Shop session timed out.")
+
+            await self.message.edit(embed=embed, view=self)
+        except:
+            pass
 
     def update_buttons(self):
         # Update button states based on funds/stock

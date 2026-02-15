@@ -42,6 +42,7 @@ class Inventory(commands.Cog, name="inventory"):
         embed = await view.get_current_embed(interaction.user.display_name)
         
         await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
     # --- Commands ---
 

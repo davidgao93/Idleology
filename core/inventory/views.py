@@ -95,6 +95,23 @@ class InventoryListView(View):
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
+    async def on_timeout(self):
+        self.bot.state_manager.clear_active(self.user_id)
+        
+        # Disable all buttons
+        for child in self.children:
+            child.disabled = True
+            
+        try:
+            # We need to fetch the current embed to preserve it, but update the footer
+            # Note: View.message is populated if we assigned it in the Cog (standard practice)
+            if hasattr(self, 'message') and self.message:
+                embed = self.message.embeds[0]
+                embed.set_footer(text="Session Timed Out.")
+                await self.message.edit(embed=embed, view=self)
+        except (discord.NotFound, discord.HTTPException):
+            pass
+
 
 class DiscardConfirmView(View):
     """Simple Yes/No view for deleting valuable items."""
@@ -203,6 +220,23 @@ class ItemDetailView(View):
             await view.render(interaction)
         else:
             await interaction.followup.send("Unknown action.", ephemeral=True)
+
+    async def on_timeout(self):
+        self.bot.state_manager.clear_active(self.user_id)
+        
+        # Disable all buttons
+        for child in self.children:
+            child.disabled = True
+            
+        try:
+            # We need to fetch the current embed to preserve it, but update the footer
+            # Note: View.message is populated if we assigned it in the Cog (standard practice)
+            if hasattr(self, 'message') and self.message:
+                embed = self.message.embeds[0]
+                embed.set_footer(text="Session Timed Out.")
+                await self.message.edit(embed=embed, view=self)
+        except (discord.NotFound, discord.HTTPException):
+            pass
 
     # --- Actions ---
 

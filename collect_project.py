@@ -15,6 +15,8 @@ IGNORE_DIRS = {
     "env", 
     ".idea", 
     ".vscode", 
+    "assets",
+    "tests",
     DEST_DIR_NAME  # Don't copy the output folder into itself
 }
 
@@ -24,12 +26,41 @@ IGNORE_FILES = {
     ".env",               # Security: Don't upload tokens
     "discord.log",        # Logs are local only
     ".DS_Store",          # Mac junk
-    "Thumbs.db"           # Windows junk
+    "Thumbs.db",           # Windows junk
+    "run_app.bat",
+    "requirements.txt",
+    "icon.png",
+    "config.json",
+    "README.md",
+    "UPDATES.md",
+    ".gitattributes",
+    ".gitignore"
 }
 
 # If you want to include the database, remove "database.db" from this list.
 # Usually, you exclude the binary DB file when uploading code changes.
 IGNORE_FILES.add("database.db") 
+
+def build_flat_name(src_path: Path) -> str:
+    """
+    Given a source file path under SOURCE_DIR, build a flattened filename
+    that includes its relative directory as a prefix, joined by underscores.
+    
+    Examples:
+      SOURCE_DIR/combat/views.py  -> combat_views.py
+      SOURCE_DIR/curios/views.py  -> curios_views.py
+      SOURCE_DIR/a/b/c/file.py    -> a_b_c_file.py
+      SOURCE_DIR/main.py          -> main.py
+    """
+    rel = src_path.relative_to(SOURCE_DIR)  # e.g. combat/views.py
+
+    parent_parts = rel.parent.parts  # ('combat',) or ('a','b','c') or ()
+    if parent_parts:
+        prefix = "_".join(parent_parts)
+        return f"{prefix}_{rel.name}"
+    else:
+        # File in project root: keep its name
+        return rel.name
 
 def main():
     print(f"📦 Starting collection from: {SOURCE_DIR}")
@@ -44,6 +75,8 @@ def main():
             print("❌ Error: Close any files open in the '_upload_ready' folder and try again.")
             return
 
+    DEST_DIR.mkdir(parents=True, exist_ok=True)
+
     copied_count = 0
 
     # 2. Walk and Copy
@@ -51,28 +84,32 @@ def main():
         # Filter directories in-place to prevent walking into ignored folders
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
         
-        # Calculate relative path to mirror structure
-        rel_path = Path(root).relative_to(SOURCE_DIR)
-        target_path = DEST_DIR / rel_path
-
-        # Create the directory in destination
-        if not target_path.exists():
-            target_path.mkdir(parents=True, exist_ok=True)
-
         for file in files:
             if file in IGNORE_FILES:
                 continue
-            
+
             # Skip compiled python files if they aren't in __pycache__
             if file.endswith(".pyc"):
                 continue
 
             src_file = Path(root) / file
-            dst_file = target_path / file
+            flat_name = build_flat_name(src_file)
+            dst_file = DEST_DIR / flat_name
+
+            # Optional: detect collisions
+            # Optional: detect collisions even after prefixing
+            if dst_file.exists():
+                raise FileExistsError(
+                    f"Flattened name collision: '{flat_name}' already exists.\n"
+                    f"Current file: {src_file.relative_to(SOURCE_DIR)}"
+                )
 
             shutil.copy2(src_file, dst_file)
             copied_count += 1
-            print(f"   📄 Copied: {rel_path / file}")
+            print(
+                f"   📄 Copied: {src_file.relative_to(SOURCE_DIR)} "
+                f"-> {flat_name}"
+            )
 
     print("-" * 40)
     print(f"✅ Success! Copied {copied_count} files.")

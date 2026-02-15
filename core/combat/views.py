@@ -86,8 +86,25 @@ class CombatView(ui.View):
         return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
+        # Only trigger flee logic if the fight is still active
+        if self.player.current_hp > 0 and self.monster.hp > 0:
+            self.logs["Timeout"] = "You hesitated too long! You failed to step up to the challenge."
+        
+            self.update_buttons() 
+            
+            embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
+            embed.set_footer(text="Combat ended due to timeout.")
+            
+            try:
+                await self.message.edit(embed=embed, view=None)
+            except (discord.NotFound, discord.HTTPException):
+                pass
+
+            # Save state (HP/XP changes if any occurred prior)
+            await self.bot.database.users.update_from_player_object(self.player)
+
         self.bot.state_manager.clear_active(self.user_id)
-        # Optional: Edit message to show timeout/flee
+        self.stop()
         
     def update_buttons(self):
         # Disable buttons if fight is over

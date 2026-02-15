@@ -63,8 +63,18 @@ class TradeRootView(ui.View):
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
-        try: await self.message.delete()
-        except: pass
+        
+        embed = discord.Embed(
+            title="Trade Cancelled",
+            description="The trade session timed out.",
+            color=discord.Color.red()
+        )
+        
+        try:
+            if hasattr(self, 'message'):
+                await self.message.edit(embed=embed, view=None)
+        except: 
+            pass
 
     # --- MENUS ---
 

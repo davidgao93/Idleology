@@ -146,7 +146,6 @@ class Character(commands.Cog, name="character"):
             embed.add_field(name="__Active Passives__", value="\n".join(passives), inline=False)
 
         await interaction.response.send_message(embed=embed)
-
     '''
     
     MISCELLANEOUS COMMANDS

@@ -5,7 +5,13 @@ FIXES
 - Rewrote random events, leprechaun now grants a curio
 - Inventory management rewrite, still same commands but cleaner now
 - Discard equipment has no confirmation for non-valuable items (ie: 0 refines / 0 forges, etc)
-- 
+- Rewrote combat / ascent to use buttons, ascent by default auto-skips, combat now lets you do 10 turns at a time (no auto), or full auto but slow
+- Rewrote trade to use a menu
+- Rewrote registration to use a menu
+- Rewrote skills to use buttons
+- Rewrote shop to use buttons
+- Rewrote PVP to use buttons
+- Upgrade actions for gear are now more easily repeatable
 
 ### Version 0.5
 CONTENT

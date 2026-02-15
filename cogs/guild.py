@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
 from core.items.factory import load_player
-from core.character.views import RegistrationView
+from core.character.views import RegistrationView, UnregisterView
 import json
 from discord.ext.tasks import asyncio
 from discord import app_commands, Interaction, Message
@@ -65,6 +65,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
         
         view = RegistrationView(self.bot, user_id, name)
         await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
     @app_commands.command(name="unregister", description="Unregister as an adventurer.")
     async def unregister_adventurer(self, interaction: Interaction) -> None:
@@ -77,48 +78,19 @@ class Guild(commands.Cog, name="adventurer's guild"):
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
+        if not await self.bot.check_is_active(interaction, user_id): return
 
+        # 2. State Lock
+        self.bot.state_manager.set_active(user_id, "unregister")
         embed = discord.Embed(
             title="Confirm Unregistration",
-            description=("Are you sure you want to unregister as an adventurer? "
-                         "This action is **permanent**."),
+            description=("Are you sure you want to unregister as an adventurer? \n"
+                         "**This action is permanent and deletes all progress.**"),
             color=0xFFCC00
-        )
-        await interaction.response.send_message(embed=embed)
-        message: Message = await interaction.original_response()
-        reactions = ["✅", "❌"]
-        await asyncio.gather(*(message.add_reaction(emoji) for emoji in reactions))
-
-        def check(reaction, user):
-            return user == interaction.user and reaction.message.id == message.id and str(reaction.emoji) in ["✅", "❌"]
-
-        try:
-            reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-
-            if str(reaction.emoji) == "✅":
-                user_ideology = existing_user[8]
-                followers_count = await self.bot.database.social.get_follower_count(user_ideology)
-                await self.bot.database.social.update_followers(user_ideology, followers_count - 1)
-                await self.bot.database.users.unregister(user_id, server_id)
-                embed = discord.Embed(
-                    title="Retirement",
-                    description="You have been successfully unregistered.",
-                    color=0x00FF00,
-                )
-                await message.edit(embed=embed)
-                await message.clear_reactions()
-            else:
-                embed = discord.Embed(
-                    title="Good choice",
-                    description="Your story doesn't end here.",
-                    color=0x00FF00
-                )
-                await message.edit(embed=embed)
-                await message.clear_reactions()
-
-        except asyncio.TimeoutError:
-            await message.delete()
-            self.bot.state_manager.clear_active(user_id)  
+        )        # 3. View Instantiation
+        view = UnregisterView(self.bot, user_id, existing_user[8]) # existing_user[8] is ideology
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
 async def setup(bot):
     await bot.add_cog(Guild(bot))

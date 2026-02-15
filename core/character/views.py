@@ -1,5 +1,5 @@
 import discord
-from discord import Interaction, ButtonStyle, SelectOption
+from discord import ui, Interaction, ButtonStyle, SelectOption
 from discord.ui import View, Button, Select, Modal, TextInput
 import csv
 import re
@@ -227,3 +227,61 @@ class PassiveAllocateView(View):
     @discord.ui.button(emoji="❤️", style=ButtonStyle.success)
     async def hp_btn(self, interaction: Interaction, button: Button):
         await self.process_allocation(interaction, 'max_hp')
+
+class UnregisterView(ui.View):
+    def __init__(self, bot, user_id: str, ideology: str):
+        super().__init__(timeout=60)
+        self.bot = bot
+        self.user_id = user_id
+        self.ideology = ideology
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        self.bot.state_manager.clear_active(self.user_id)
+        
+        # Create a "Cancelled" embed
+        embed = discord.Embed(
+            title="Unregistration Cancelled",
+            description="The request timed out. Your character remains safe.",
+            color=discord.Color.light_grey()
+        )
+        
+        try:
+            # Edit the original message to remove buttons and show cancellation
+            if hasattr(self, 'message'):
+                await self.message.edit(embed=embed, view=None)
+        except (discord.NotFound, discord.HTTPException):
+            pass
+
+    @ui.button(label="Confirm Retirement", style=ButtonStyle.danger, emoji="✅")
+    async def confirm(self, interaction: Interaction, button: ui.Button):
+        # 1. Update Social Followers
+        followers_count = await self.bot.database.social.get_follower_count(self.ideology)
+        if followers_count > 0:
+            await self.bot.database.social.update_followers(self.ideology, followers_count - 1)
+        
+        # 2. Delete User Data
+        # Note: Repositories should handle cascade, but explicit call here is fine based on your repo logic
+        await self.bot.database.users.unregister(self.user_id, str(interaction.guild.id))
+        
+        embed = discord.Embed(
+            title="Retirement",
+            description="You have been successfully unregistered. We hope to see you again.",
+            color=0x00FF00,
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
+
+    @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="❌")
+    async def cancel(self, interaction: Interaction, button: ui.Button):
+        embed = discord.Embed(
+            title="Good choice",
+            description="Your story doesn't end here.",
+            color=0x00FF00
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()

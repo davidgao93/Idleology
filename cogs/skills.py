@@ -37,6 +37,7 @@ class Skills(commands.Cog, name="skills"):
         embed = view.get_embed()
         
         await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
     @app_commands.command(name="mining", description="Check mining stats and upgrade pickaxe.")
     async def mining(self, interaction: Interaction):
