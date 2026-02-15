@@ -10,7 +10,8 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     results = {
         "xp": 0,
         "gold": 0,
-        "msgs": []
+        "msgs": [],
+        "items": []
     }
 
     # --- XP Calculation ---
