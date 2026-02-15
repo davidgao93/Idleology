@@ -66,7 +66,7 @@ class ForgeView(BaseUpgradeView):
         mining = await self.bot.database.skills.get_data(uid, gid, 'mining')
         wood = await self.bot.database.skills.get_data(uid, gid, 'woodcutting')
         fish = await self.bot.database.skills.get_data(uid, gid, 'fishing')
-        gold = await self.bot.database.users.get_gold(uid, gid)
+        gold = await self.bot.database.users.get_gold(uid)
 
         ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
         log_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}.get(costs['log_type'])
@@ -154,7 +154,7 @@ class RefineView(BaseUpgradeView):
 
     async def render(self, interaction: Interaction):
         cost = EquipmentMechanics.calculate_refine_cost(self.item)
-        gold = await self.bot.database.users.get_gold(self.user_id, str(interaction.guild.id))
+        gold = await self.bot.database.users.get_gold(self.user_id)
         
         has_funds = gold >= cost
         has_refines = self.item.refines_remaining > 0
@@ -255,7 +255,7 @@ class PotentialView(BaseUpgradeView):
         else:
             cost = EquipmentMechanics.calculate_ap_cost(self.item.passive_lvl)
             
-        gold = await self.bot.database.users.get_gold(self.user_id, str(interaction.guild.id))
+        gold = await self.bot.database.users.get_gold(self.user_id)
         
         max_lvl = 10 if isinstance(self.item, Accessory) else (5 if isinstance(self.item, (Glove, Helmet)) else 6)
         is_capped = self.item.passive_lvl >= max_lvl
@@ -345,7 +345,7 @@ class TemperView(BaseUpgradeView):
         mining = await self.bot.database.skills.get_data(uid, gid, 'mining')
         wood = await self.bot.database.skills.get_data(uid, gid, 'woodcutting')
         fish = await self.bot.database.skills.get_data(uid, gid, 'fishing')
-        gold = await self.bot.database.users.get_gold(uid, gid)
+        gold = await self.bot.database.users.get_gold(uid)
 
         ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
         log_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}.get(costs['log_type'])

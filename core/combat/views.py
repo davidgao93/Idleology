@@ -172,11 +172,11 @@ class CombatView(ui.View):
         self.stop()
 
 
-    @ui.button(label="Fast Auto", style=ButtonStyle.secondary, emoji="⚡", row=1)
+    @ui.button(label="10 Turns", style=ButtonStyle.secondary, emoji="⚡", row=1)
     async def fast_auto_btn(self, interaction: Interaction, button: ui.Button):
         # Double check level just in case
         if self.player.level < 20:
-            return await interaction.response.send_message("Fast Auto unlocks at Level 20!", ephemeral=True)
+            return await interaction.response.send_message("This unlocks at Level 20!", ephemeral=True)
 
         await interaction.response.defer()
         

@@ -22,9 +22,6 @@ class AscentView(ui.View):
         self.cumulative_gold = 0
         self.logs = start_logs or {}
         
-        # We cache base stats to reset transient buffs between stages if needed
-        # (Though engine.apply_stat_effects usually handles reductions, we trust the logic flow)
-        
         self.update_buttons()
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -197,8 +194,6 @@ class AscentView(ui.View):
         engine.apply_stat_effects(self.player, self.monster)
         self.logs = engine.apply_combat_start_passives(self.player, self.monster)
         
-        # Re-render View
-        # Need to re-fetch message object if we slept
         msg_obj = message if message else (await interaction.original_response())
         
         embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs, title_override=f"Ascent Stage {self.stage} | {self.player.name}")

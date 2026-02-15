@@ -161,10 +161,10 @@ class UserRepository:
     # Currency & Resources (Gold, Keys, Runes, Curios)
     # ---------------------------------------------------------
 
-    async def get_gold(self, user_id: str, server_id: str) -> int:
+    async def get_gold(self, user_id: str) -> int:
         rows = await self.connection.execute(
-            "SELECT gold FROM users WHERE user_id = ? AND server_id = ?",
-            (user_id, server_id)
+            "SELECT gold FROM users WHERE user_id = ?",
+            (user_id)
         )
         result = await rows.fetchone()
         return result[0] if result else 0

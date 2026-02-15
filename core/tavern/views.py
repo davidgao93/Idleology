@@ -157,7 +157,7 @@ class CasinoMenuView(ui.View):
 
     async def _check_funds(self, interaction: Interaction):
         # Re-check funds before starting game
-        gold = await self.bot.database.users.get_gold(self.user_id, str(interaction.guild.id))
+        gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < self.bet_amount:
             await interaction.response.send_message("Insufficient funds!", ephemeral=True)
             return False
