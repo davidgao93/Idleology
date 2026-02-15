@@ -97,7 +97,12 @@ class CombatView(ui.View):
 
     async def refresh_embed(self, interaction: Interaction):
         embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
-        await interaction.response.edit_message(embed=embed, view=self)
+        
+        # Check if we have already deferred or responded (e.g. via Fast Auto)
+        if interaction.response.is_done():
+            await interaction.edit_original_response(embed=embed, view=self)
+        else:
+            await interaction.response.edit_message(embed=embed, view=self)
 
     @ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️")
     async def attack_btn(self, interaction: Interaction, button: ui.Button):
