@@ -68,7 +68,7 @@ class LuciferChoiceView(ui.View):
 
 
 class CombatView(ui.View):
-    def __init__(self, bot, user_id: str, player: Player, monster: Monster, initial_logs: dict = None):
+    def __init__(self, bot, user_id: str, player: Player, monster: Monster, initial_logs: dict, combat_phases=None):
         super().__init__(timeout=300)
         self.bot = bot
         self.user_id = user_id
@@ -76,8 +76,8 @@ class CombatView(ui.View):
         self.monster = monster
         self.logs = initial_logs or {}
         
-        # Determine if this is a chain/boss fight for logic handling
-        self.combat_phases = [] 
+        # Boss / Chain Handling
+        self.combat_phases = combat_phases or [] # List of dicts
         self.current_phase_index = 0
         
         self.update_buttons()

@@ -233,7 +233,7 @@ class Owner(commands.Cog, name="owner"):
                 description=f"**Core**: Refreshed\n**Database**: Refreshed\n**Cogs**: {len(current_extensions)} reloaded.",
                 color=0x00FF00
             )
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error(f"Critical failure during system reload: {e}")
