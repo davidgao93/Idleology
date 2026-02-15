@@ -20,6 +20,7 @@ class InventoryUI:
             description=f"{player_name}'s Inventory (Page {page + 1}/{total_pages})",
             color=0x00FF00
         )
+        embed.set_thumbnail(url="https://i.imgur.com/Kr0xq5N.png")
         
         if not items:
             embed.description = "This pouch is empty."
