@@ -58,7 +58,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
         
         embed = discord.Embed(
             title="Character Creation",
-            description=f"Welcome, **{name}**!\nFirst, please select your biological sex for appearance options.",
+            description=f"Welcome, **{name}**!\nPlease select your appearance.",
             color=0x00FF00
         )
         embed.set_image(url="https://i.imgur.com/6pRwl0k.jpeg") # Default silhouette

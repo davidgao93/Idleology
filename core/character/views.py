@@ -2,12 +2,12 @@ import discord
 from discord import Interaction, ButtonStyle, SelectOption
 from discord.ui import View, Button, Select, Modal, TextInput
 import csv
-from core.util import load_list
+import re
 
 class RegistrationView(View):
     """
     Step 1: Gender Selection (Buttons)
-    Step 2: Appearance Selection (Select Menu)
+    Step 2: Appearance Selection (Select Menu + Preview) -> Confirm Button
     Step 3: Ideology (Modal)
     """
     def __init__(self, bot, user_id, name):
@@ -18,9 +18,8 @@ class RegistrationView(View):
         self.gender = None
         self.appearance_url = None
         
-        # Step 1: Gender Buttons
-        self.add_item(Button(label="Male", emoji="♂️", style=ButtonStyle.primary, custom_id="gender_m"))
-        self.add_item(Button(label="Female", emoji="♀️", style=ButtonStyle.danger, custom_id="gender_f"))
+        # NOTE: We do NOT manually add buttons here because we use decorators below.
+        # This fixes the duplicate button issue.
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
@@ -31,51 +30,17 @@ class RegistrationView(View):
     def _load_appearances(self, gender_code: str):
         apps = []
         try:
-            # Adjust path relative to execution root
             with open('assets/profiles.csv', mode='r') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
                     if row['Sex'].upper() == gender_code:
                         apps.append(row['URL'])
         except Exception: 
-            pass # Handle gracefully if file missing
+            pass 
         return apps
 
-    # Handle Button Clicks (Gender)
-    async def custom_id_callback(self, interaction: Interaction):
-        custom_id = interaction.data['custom_id']
-        
-        if custom_id.startswith("gender_"):
-            self.gender = "M" if custom_id == "gender_m" else "F"
-            
-            # Prepare Step 2: Appearance
-            urls = self._load_appearances(self.gender)
-            if not urls:
-                # Fallback if CSV missing
-                self.appearance_url = interaction.user.display_avatar.url
-                return await self.prompt_ideology(interaction)
+    # --- STEP 1: GENDER SELECTION ---
 
-            # Build Select Menu for Images
-            self.clear_items()
-            
-            # Since URLs aren't user-friendly names, we'll index them
-            options = []
-            for i, url in enumerate(urls[:25]): # Discord limit
-                options.append(SelectOption(label=f"Option {i+1}", value=url))
-            
-            select = Select(placeholder="Choose your appearance...", options=options)
-            select.callback = self.appearance_callback
-            self.add_item(select)
-            
-            # Show preview of first option
-            embed = interaction.message.embeds[0]
-            embed.title = "Select Appearance"
-            embed.description = "Choose an avatar from the menu below."
-            embed.set_image(url=urls[0])
-            
-            await interaction.response.edit_message(embed=embed, view=self)
-
-    # -- Redoing Gender with Decorators for cleaner code --
     @discord.ui.button(label="Male", emoji="♂️", style=ButtonStyle.primary)
     async def male_btn(self, interaction: Interaction, button: Button):
         await self.process_gender(interaction, "M")
@@ -88,39 +53,58 @@ class RegistrationView(View):
         self.gender = gender
         urls = self._load_appearances(gender)
         
-        self.clear_items()
+        self.clear_items() # Clear gender buttons
         
         if not urls:
-            self.appearance_url = "https://i.imgur.com/6pRwl0k.jpeg" # Default
-            await self.prompt_ideology(interaction)
+            # Fallback if no images found
+            self.appearance_url = "https://i.imgur.com/6pRwl0k.jpeg"
+            # Skip straight to modal button if no images
+            confirm_btn = Button(label="Confirm Setup", style=ButtonStyle.success)
+            confirm_btn.callback = self.on_confirm_appearance
+            self.add_item(confirm_btn)
+            await interaction.response.edit_message(view=self)
             return
 
-        # Add Select Menu
+        # 1. Default to first image
+        self.appearance_url = urls[0]
+
+        # 2. Build Select Menu
         options = []
         for i, url in enumerate(urls[:25]):
             options.append(SelectOption(label=f"Portrait {i+1}", value=url))
         
-        select = Select(placeholder="Choose Appearance", options=options)
-        select.callback = self.appearance_callback
+        select = Select(placeholder="Preview Appearance...", options=options)
+        select.callback = self.on_select_appearance # Updates preview only
         self.add_item(select)
+
+        # 3. Build Confirm Button
+        confirm_btn = Button(label="Confirm Appearance", style=ButtonStyle.success, row=1)
+        confirm_btn.callback = self.on_confirm_appearance # Moves to next step
+        self.add_item(confirm_btn)
         
+        # 4. Update Embed to show first image immediately
         embed = interaction.message.embeds[0]
-        embed.set_image(url=urls[0])
+        embed.description = f"Gender: **{'Male' if gender == 'M' else 'Female'}**\nSelect an appearance from the menu to preview it."
+        embed.set_image(url=self.appearance_url)
+        
         await interaction.response.edit_message(embed=embed, view=self)
 
-    async def appearance_callback(self, interaction: Interaction):
-        # User selected an image
+    # --- STEP 2: PREVIEW & CONFIRM ---
+
+    async def on_select_appearance(self, interaction: Interaction):
+        """Updates the embed image without progressing state."""
         self.appearance_url = interaction.data['values'][0]
         
-        # Update embed to show selection
         embed = interaction.message.embeds[0]
         embed.set_image(url=self.appearance_url)
         
-        # Move to Ideology (Modal)
-        # We need a button to trigger the Modal because Select menus can't trigger Modals directly in all contexts,
-        # but actually, interaction response CAN be a modal.
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def on_confirm_appearance(self, interaction: Interaction):
+        """Triggered when user is happy with the preview."""
         await interaction.response.send_modal(IdeologyModal(self))
 
+    # --- FINALIZATION ---
 
     async def complete_registration(self, interaction: Interaction, ideology: str):
         # 1. Register User
@@ -138,7 +122,7 @@ class RegistrationView(View):
         await self.bot.database.users.modify_gold(self.user_id, 200)
         await self.bot.database.users.modify_stat(self.user_id, 'potions', 10)
         
-        # 4. Handle Ideology Logic (Follow/Create)
+        # 4. Handle Ideology Logic
         ideologies = await self.bot.database.social.get_all_by_server(sid)
         
         embed = discord.Embed(title="Registration Complete! 🎉", color=0x00FF00)
@@ -153,11 +137,8 @@ class RegistrationView(View):
             await self.bot.database.social.update_followers(ideology, 1)
             embed.description = f"Welcome, **{self.name}**!\nYou have founded a new ideology: **{ideology}**!"
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=embed, view=None)
-        else:
-            await interaction.response.edit_message(embed=embed, view=None)
-            
+        # Clear buttons
+        await interaction.response.edit_message(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
@@ -170,16 +151,12 @@ class IdeologyModal(Modal, title="Choose Your Path"):
         self.parent_view = parent_view
 
     async def on_submit(self, interaction: Interaction):
-        import re
         val = self.ideology.value.strip()
         
         if not re.match(r'^[A-Za-z0-9\s]+$', val):
             return await interaction.response.send_message("Invalid characters in ideology name.", ephemeral=True)
             
-        # Defer to allow DB ops in parent
-        await interaction.response.defer()
         await self.parent_view.complete_registration(interaction, val)
-
 
 class PassiveAllocateView(View):
     def __init__(self, bot, user_id, user_data):
