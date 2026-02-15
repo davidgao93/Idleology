@@ -97,7 +97,7 @@ class TradeRootView(ui.View):
     # --- CALLBACKS: GOLD ---
     
     async def gold_callback(self, interaction: Interaction):
-        current_gold = await self.bot.database.users.get_gold(self.user_id, self.server_id)
+        current_gold = await self.bot.database.users.get_gold(self.user_id)
         await interaction.response.send_modal(GoldModal(self, current_gold))
 
     # --- CALLBACKS: RESOURCES ---
