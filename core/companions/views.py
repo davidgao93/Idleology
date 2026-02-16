@@ -28,6 +28,12 @@ class CompanionListView(ui.View):
         try: await self.message.edit(view=None)
         except: pass
 
+    async def close_view(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
+
     def update_buttons(self):
         self.clear_items()
         
@@ -59,7 +65,7 @@ class CompanionListView(ui.View):
         self.add_item(collect_btn)
         
         close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=1)
-        close_btn.callback = self.close
+        close_btn.callback = self.close_view
         self.add_item(close_btn)
 
     def get_embed(self):
