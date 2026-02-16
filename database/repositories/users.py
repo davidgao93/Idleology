@@ -190,6 +190,7 @@ class UserRepository:
         """
         Generic handler for keys, runes, and misc counters.
         Allowed columns: dragon_key, angel_key, void_keys, soul_cores, void_frags, 
+                        balance fragment, partnership_runes
                          refinement_runes, potential_runes, imbue_runes, shatter_runes,
                          curios, curios_purchased_today
         """

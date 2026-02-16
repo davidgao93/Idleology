@@ -139,7 +139,7 @@ class TradeRootView(ui.View):
         # Filter RESOURCE_MAP based on category
         # This is a bit manual but effective
         choices = []
-        if cat == "keys": keys = ["Draconic Key", "Angelic Key", "Void Key", "Soul Core", "Void Fragment", "Curio"]
+        if cat == "keys": keys = ["Draconic Key", "Angelic Key", "Void Key", "Soul Core", "Void Fragment", "Fragment of Balance", "Curio"]
         elif cat == "runes": keys = [k for k in TradeManager.RESOURCE_MAP if "Rune" in k]
         elif cat == "mining": keys = ["Iron Ore", "Coal", "Gold Ore", "Platinum Ore"]
         elif cat == "wood": keys = ["Oak Logs", "Willow Logs", "Mahogany Logs", "Magic Logs"]
@@ -190,9 +190,7 @@ class TradeRootView(ui.View):
         options = []
         for i in items[:25]:
             # i schema: id(0), uid(1), name(2), lvl(3)...
-            is_eq = " [E]" if i[8] else "" # Index 8 is is_equipped for armor/wep? Need to verify per schema.
-            # Actually schema varies slightly but is_equipped is usually present.
-            # Using generic assumption index 8 or 10. Let's just show Name + Lvl
+            is_eq = " [E]" if i[8] else "" # Index 8 is is_equipped
             lbl = f"{i[2]} (Lv{i[3]})"[:100]
             val = str(i[0])
             options.append(SelectOption(label=lbl, value=val, description=f"ID: {val}{is_eq}"))
@@ -206,8 +204,6 @@ class TradeRootView(ui.View):
         # Closure to capture item type
         async def equip_callback(inter):
             item_id = int(inter.data['values'][0])
-            # Fetch specific name for confirmation
-            # We already have it in options, but for safety fetch DB
             item_row = await self.bot.database.equipment.get_by_id(item_id, itype)
             item_name = item_row[2]
             

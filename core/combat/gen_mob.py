@@ -307,10 +307,15 @@ async def fetch_monster_image(level, monster_data):
                 monster_url = row['url']
                 monster_level = int(row['level']) * 10
                 flavor_txt = row['flavor']
-                monsters.append((monster_name, monster_url, monster_level, flavor_txt))
+                monster_species = row.get('species', monster_name) 
+                monsters.append((monster_name, monster_url, monster_level, flavor_txt, monster_species))
     except Exception as e:
         print(f"Error reading monsters.csv: {e}")
-        return "Commoner", "https://i.imgur.com/v1BrB1M.png", "stares pleadingly at"
+        monster_data.name = "Commoner"
+        monster_data.image = "https://i.imgur.com/v1BrB1M.png"
+        monster_data.flavor = "stares pleadingly at"
+        monster_data.species = "Humanoid"
+        return monster_data
     
     if 444 <= level <= 888:
         for monster in monsters:
@@ -319,6 +324,7 @@ async def fetch_monster_image(level, monster_data):
                 monster_data.name = monster[0]
                 monster_data.image = monster[1]
                 monster_data.flavor = monster[3]
+                monster_data.species = monster[4]
                 return monster_data
     else:
         if level == 999:
@@ -334,12 +340,14 @@ async def fetch_monster_image(level, monster_data):
             monster_data.name = "Commoner"
             monster_data.image = "https://i.imgur.com/v1BrB1M.png"
             monster_data.flavor = "says how did you find me???"
+            monster_data.species = "Humanoid"
             return monster_data
 
         selected_monster = random.choice(selected_monsters)
         monster_data.name = selected_monster[0]
         monster_data.image = selected_monster[1]
         monster_data.flavor = selected_monster[3]
+        monster_data.species = selected_monster[4]
         return monster_data
         
     

@@ -89,7 +89,8 @@ class Combat(commands.Cog, name="combat"):
         # We construct a currency dict manually or fetch via helper
         currencies = {
             'dragon_key': existing_user[25], 'angel_key': existing_user[26],
-            'soul_cores': existing_user[28], 'void_frags': existing_user[29]
+            'soul_cores': existing_user[28], 'void_frags': existing_user[29],
+            'balance_fragment': await self.bot.database.users.get_currency(user_id, 'balance_fragment')
         }
         
         triggered, boss_type, cost_dict = EncounterManager.check_boss_door(player.level, currencies)

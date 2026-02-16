@@ -4,6 +4,7 @@ from .repositories.equipment import EquipmentRepository
 from .repositories.skills import SkillRepository
 from .repositories.social import SocialRepository
 from .repositories.settings import SettingsRepository
+from .repositories.companions import CompanionRepository
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -15,3 +16,4 @@ class DatabaseManager:
         self.skills = SkillRepository(connection)
         self.social = SocialRepository(connection)
         self.settings = SettingsRepository(connection)
+        self.companions = CompanionRepository(connection)

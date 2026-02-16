@@ -9,6 +9,7 @@ from core.models import Player, Monster
 from core.combat import engine, ui as combat_ui, rewards
 from core.combat.drops import DropManager
 from core.combat.gen_mob import generate_boss, generate_encounter
+from core.companions.mechanics import CompanionMechanics
 
 
 class LuciferChoiceView(ui.View):
@@ -317,6 +318,9 @@ class CombatView(ui.View):
                     elif key == 'void_frag':
                         await self.bot.database.users.modify_currency(self.user_id, 'void_frags', 1)
                         reward_data['special'].append("Void Fragment")
+                    elif key == 'balance_fragment':
+                        await self.bot.database.users.modify_currency(self.user_id, 'balance_fragment', 1)
+                        reward_data['special'].append("Fragment of Balance")
                     elif key == 'curio':
                         await self.bot.database.users.modify_currency(self.user_id, 'curios', 1)
                         reward_data['curios'] = 1
@@ -337,13 +341,15 @@ class CombatView(ui.View):
                         await self.bot.database.users.modify_currency(self.user_id, 'shatter_runes', 1)
                         reward_data['special'].append("Rune of Shattering")
 
+                    elif key == 'partnership_rune':
+                        await self.bot.database.users.modify_currency(self.user_id, 'partnership_runes', 1)
+                        reward_data['special'].append("Rune of Partnership")
+
             # Process Drops
             server_id = str(interaction.guild.id)
             await DropManager.process_drops(self.bot, self.user_id, server_id, self.player, self.monster.level, reward_data)
             
             # Handle XP / Level Up
-            # Note: We need to load exp table json here, or pass it. 
-            # Assuming Cog passed it or we load it here.
             import json
             with open('assets/exp.json') as f: exp_table = json.load(f)
             await DropManager.handle_level_up(self.bot, self.user_id, self.player, reward_data, exp_table)
@@ -351,6 +357,26 @@ class CombatView(ui.View):
             # DB Commits
             self.player.exp += reward_data['xp']
             await self.bot.database.users.modify_gold(self.user_id, reward_data['gold'])
+
+            # Companions
+            current_pet_count = await self.bot.database.companions.get_count(self.user_id)
+
+            if not self.monster.is_boss and current_pet_count < 20 and random.random() < 0.05:
+                # Roll Stats
+                p_type, p_tier = CompanionMechanics.roll_new_passive(is_capture=True)
+                
+                # Add to DB
+                await self.bot.database.companions.add_companion(
+                    self.user_id,
+                    name=self.monster.name,
+                    species=self.monster.species,
+                    image=self.monster.image,
+                    p_type=p_type,
+                    p_tier=p_tier
+                )
+                
+                # Add notification
+                reward_data['msgs'].append(f"🕸️ Following it's defeat, the {self.monster.name} decides to join you on your journey!")
             
             embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
             

@@ -243,6 +243,10 @@ class General(commands.Cog, name="general"):
                 ("cooldowns", "Check command timers"),
                 ("unregister", "Delete your character (Permanent!)")
             ],
+            "🐾 Companions": [
+                ("companions list", "Manage active pets & reroll stats"),
+                ("companions collect", "Collect passive loot")
+            ],
             "⚔️ Combat": [
                 ("combat", "Fight monsters for XP and loot"),
                 ("ascent", "Wave-based survival mode (Lvl 100+)"),

@@ -1,4 +1,4 @@
-from core.models import Player, Weapon, Accessory, Armor, Glove, Boot, Helmet
+from core.models import Player, Weapon, Accessory, Armor, Glove, Boot, Helmet, Companion
 
 def create_weapon(data: tuple) -> Weapon:
     """
@@ -150,6 +150,27 @@ def create_helmet(data: tuple) -> Helmet:
         is_equipped=bool(data[10]), potential_remaining=data[11], description=""
     )
 
+
+def create_companion(data: tuple) -> Companion:
+    """
+    Maps a database tuple from table `companions` to a Companion object.
+    Schema: id(0), user_id(1), name(2), species(3), image_url(4), 
+            level(5), exp(6), passive_type(7), passive_tier(8), is_active(9), created_at(10)
+    """
+    if not data: return None
+    return Companion(
+        id=data[0],
+        user_id=data[1],
+        name=data[2],
+        species=data[3],
+        image_url=data[4],
+        level=data[5],
+        exp=data[6],
+        passive_type=data[7],
+        passive_tier=data[8],
+        is_active=bool(data[9])
+    )
+
 async def load_player(user_id: str, user_data: tuple, database) -> Player:
     """
     Creates a Player object from the user tuple and asynchronously fetches 
@@ -205,6 +226,10 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     helmet_data = await database.equipment.get_equipped(user_id, "helmet")
     if helmet_data:
         player.equipped_helmet = create_helmet(helmet_data)
+
+    comp_rows = await database.companions.get_active(user_id)
+    if comp_rows:
+        player.active_companions = [create_companion(row) for row in comp_rows]
 
     # 3. Calculate Combat Initialization Stats (Optional but helpful)
     # This pre-calculates the ward pool based on equipped gear percentages

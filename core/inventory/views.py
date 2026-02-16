@@ -8,6 +8,7 @@ from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
 from core.ui.inventory import InventoryUI
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.inventory.upgrade_views import ForgeView, RefineView, PotentialView, ShatterView, TemperView, ImbueView, VoidforgeView
+from core.companions.mechanics import CompanionMechanics
 
 class InventoryListView(View):
     """
@@ -288,6 +289,55 @@ class ItemDetailView(View):
     async def finalize_discard(self, interaction: Interaction):
         """Performs the actual DB deletion and returns to list."""
         itype = self._get_db_type()
+
+        # --- [FEED LOGIC] ---
+        # 1. Get ONLY active companions
+        active_rows = await self.bot.database.companions.get_active(self.user_id)
+        
+        if active_rows:
+            # Calculate XP
+            total_xp_val = CompanionMechanics.calculate_feed_xp(self.item)
+            # Integer division to split evenly
+            xp_per_pet = total_xp_val // len(active_rows)
+            
+            if xp_per_pet > 0:
+                leveled_up_names = []
+                
+                for row in active_rows:
+                    # Unpack tuple: id(0), ..., level(5), exp(6)
+                    comp_id = row[0]
+                    name = row[2]
+                    current_lvl = row[5]
+                    current_exp = row[6]
+                    
+                    # Add XP
+                    current_exp += xp_per_pet
+                    
+                    # Handle Level Up Loop
+                    did_level = False
+                    while current_lvl < 100:
+                        req_xp = CompanionMechanics.calculate_next_level_xp(current_lvl)
+                        if current_exp >= req_xp:
+                            current_exp -= req_xp
+                            current_lvl += 1
+                            did_level = True
+                        else:
+                            break
+                    
+                    # Commit changes
+                    await self.bot.database.companions.update_stats(comp_id, current_lvl, current_exp)
+                    if did_level:
+                        leveled_up_names.append(f"{name} (Lv.{current_lvl})")
+
+                # Feedback
+                msg = f"🍖 Fed to pets! +{xp_per_pet} XP each."
+                if leveled_up_names:
+                    msg += f"\n🎉 **Level Up:** {', '.join(leveled_up_names)}!"
+                
+                try: await interaction.followup.send(msg, ephemeral=True)
+                except: pass
+        # --------------------
+
         await self.bot.database.equipment.discard(self.item.item_id, itype)
         
         # Remove from parent View's list so it doesn't show up again

@@ -1,3 +1,7 @@
+ALTER TABLE users ADD COLUMN partnership_runes INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN last_companion_collect_time TEXT;
+ALTER TABLE users ADD COLUMN balance_fragment INTEGER DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
   `user_id` TEXT NOT NULL UNIQUE,
@@ -176,4 +180,18 @@ CREATE TABLE IF NOT EXISTS helmets (
 CREATE TABLE IF NOT EXISTS guild_settings (
     guild_id TEXT PRIMARY KEY,
     event_channel_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS companions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    name TEXT,              -- User custom name
+    species TEXT,           -- e.g. "Goblin", "Dragon"
+    image_url TEXT,
+    level INTEGER DEFAULT 1,
+    exp INTEGER DEFAULT 0,
+    passive_type TEXT,      -- 'atk', 'def', 'pdr', 'fdr', 'ward', 'hit', 'crit', 'rarity', 's_rarity'
+    passive_tier INTEGER,   -- 1-5
+    is_active INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

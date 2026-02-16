@@ -1,0 +1,172 @@
+# core/companions/mechanics.py
+
+import random
+from datetime import datetime
+from typing import Tuple, List, Dict, Any
+from core.models import Companion, Weapon, Armor, Accessory, Glove, Boot, Helmet
+
+class CompanionMechanics:
+    
+    # --- CONSTANTS ---
+    PASSIVE_TYPES = ['atk', 'def', 'hit', 'crit', 'ward', 'rarity', 'fdr', 'pdr']
+    RARE_PASSIVE_TYPES = ['s_rarity'] # Special Rarity is rarer
+    
+    MAX_LEVEL = 100
+    COLLECTION_INTERVAL_SECONDS = 1800 # 30 Minutes
+    MAX_COLLECTION_CYCLES = 48 # 24 Hours max accumulation
+
+    # --- XP & LEVELING ---
+
+    @staticmethod
+    def calculate_next_level_xp(current_level: int) -> int:
+        """XP needed to reach next level: Level * 100."""
+        if current_level >= CompanionMechanics.MAX_LEVEL:
+            return 999999999
+        return current_level * 100
+
+    @staticmethod
+    def calculate_feed_xp(item: Any) -> int:
+        """Determines XP value of an item based on its stats/type."""
+        xp = 10 # Base for generic junk
+        
+        # Scale based on item level
+        if hasattr(item, 'level'):
+            xp += item.level // 2
+            
+        # Bonus for Rarity/Enchantments
+        if isinstance(item, Weapon):
+            if item.rarity > 0: xp += 10
+            if item.refinement_lvl > 0: xp += (item.refinement_lvl * 50)
+            if item.passive != 'none': xp += 50
+            
+        elif hasattr(item, 'passive_lvl') and item.passive_lvl > 0:
+            xp += (item.passive_lvl * 50)
+            
+        return xp
+
+    # --- PASSIVE GENERATION ---
+
+    @staticmethod
+    def roll_new_passive(is_capture: bool = True) -> Tuple[str, int]:
+        """
+        Generates a (Type, Tier) tuple.
+        is_capture: Weighted heavily towards T1/T2.
+        """
+        # Roll Type
+        if random.random() < 0.05: # 5% chance for Special Rarity
+            p_type = 's_rarity'
+        else:
+            p_type = random.choice(CompanionMechanics.PASSIVE_TYPES)
+
+        # Roll Tier
+        roll = random.random()
+        tier = 1
+        
+        if is_capture:
+            # Capture Weights: T3(4%), T4(0.9%), T5(0.1%)
+            if roll > 0.95: tier = 3
+            elif roll > 0.80: tier = 2
+        else:
+            # Reroll/Generation Weights (Slightly better): T1(50%), T2(30%), T3(15%), T4(4%), T5(1%)
+            if roll > 0.99: tier = 5
+            elif roll > 0.95: tier = 4
+            elif roll > 0.80: tier = 3
+            elif roll > 0.50: tier = 2
+
+        return p_type, tier
+
+    @staticmethod
+    def reroll_passive(current_tier: int) -> Tuple[str, int, bool]:
+        """
+        Rerolls passive using a Rune.
+        Returns: (NewType, NewTier, DidTierUp)
+        Logic: 
+        - 10% Chance to Upgrade Tier (Max 5)
+        - 90% Chance to Keep Tier
+        - Type is always rerolled
+        """
+        # Roll Type
+        if random.random() < 0.05:
+            p_type = 's_rarity'
+        else:
+            p_type = random.choice(CompanionMechanics.PASSIVE_TYPES)
+            
+        # Roll Tier Change
+        new_tier = current_tier
+        upgraded = False
+        
+        roll = random.random()
+        if roll < 0.10 and current_tier < 5: # 10% upgrade chance
+            new_tier += 1
+            upgraded = True
+        
+        # Safety: Ensure within bounds
+        new_tier = max(1, min(5, new_tier))
+        
+        return p_type, new_tier, upgraded
+
+    # --- PASSIVE COLLECTION ---
+
+    @staticmethod
+    def calculate_collection_rewards(companions: List[Companion], last_collect_str: str) -> Dict[str, Any]:
+        """
+        Calculates passive rewards based on time elapsed and active companions.
+        """
+        if not last_collect_str or not companions:
+            return {"items": [], "cycles": 0, "can_collect": False}
+
+        try:
+            last_time = datetime.fromisoformat(last_collect_str)
+        except ValueError:
+            return {"items": [], "cycles": 0, "can_collect": False}
+
+        diff = (datetime.now() - last_time).total_seconds()
+        cycles = int(diff // CompanionMechanics.COLLECTION_INTERVAL_SECONDS)
+        
+        if cycles <= 0:
+            return {"items": [], "cycles": 0, "can_collect": False}
+
+        # Cap cycles
+        cycles = min(cycles, CompanionMechanics.MAX_COLLECTION_CYCLES)
+
+        loot_bag = []
+
+        # Loot Weights (Sum = 105, random.choices handles normalization)
+        loot_types = [
+            "Gold", "Boss Key", "Rune of Refinement", 
+            "Rune of Potential", "Rune of Shattering", "Equipment"
+        ]
+        loot_weights = [50, 20, 5, 5, 10, 10]
+
+        for comp in companions:
+            # Chance to find *anything* this cycle: 1% per level
+            find_chance = comp.level * 0.01
+            
+            # Optimization: If 100% chance (Lvl 100), just generate 'cycles' amount of loot
+            # Otherwise, simulate checks
+            successful_rolls = 0
+            if find_chance >= 1.0:
+                successful_rolls = cycles
+            else:
+                # Binomial simulation approx or simple loop
+                for _ in range(cycles):
+                    if random.random() < find_chance:
+                        successful_rolls += 1
+            
+            if successful_rolls > 0:
+                # Batch roll types
+                results = random.choices(loot_types, weights=loot_weights, k=successful_rolls)
+                
+                for res in results:
+                    if res == "Gold":
+                        # Gold Amount: Level * 200 (e.g. Lvl 50 = 10000g, Lvl 100 = 20000g)
+                        amount = comp.level * 200
+                        loot_bag.append(("Gold", amount))
+                    else:
+                        loot_bag.append((res, 1))
+
+        return {
+            "items": loot_bag, # List of tuples: ("Type", Amount/1)
+            "cycles": cycles,
+            "can_collect": True
+        }

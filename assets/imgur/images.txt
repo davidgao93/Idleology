@@ -1,6 +1,8 @@
-Boots_Gloves_Helm_Potential: https://i.imgur.com/8EFfnZh.jpeg
-Forge_Weapon: https://i.imgur.com/jzEMUxe.jpeg
-Imbue_Armor: https://i.imgur.com/tpEyVBm.png
-Innkeeper: https://i.imgur.com/Nv1JbrO.jpeg
-Jewelry_Potential: https://i.imgur.com/hqVvn68.jpeg
-Weapon_Refine: https://i.imgur.com/NNB21Ix.jpeg
+Balance_Fragment: https://i.imgur.com/ooJ2MdC.png
+Combined: https://i.imgur.com/lDOo8zj.png
+Divine: https://i.imgur.com/ndSizEP.jpeg
+Doors_Of_Balance: https://i.imgur.com/em9ZGer.png
+Loot: https://i.imgur.com/aIwcF3A.png
+Menagerie: https://i.imgur.com/oQBm9HF.png
+Mortal: https://i.imgur.com/fWWdyA0.jpeg
+Partner_Rune: https://i.imgur.com/Lb3b53X.png

@@ -62,6 +62,7 @@ class Inventory(commands.Cog, name="inventory"):
         g_count = await self.bot.database.equipment.get_count(user_id, 'glove')
         b_count = await self.bot.database.equipment.get_count(user_id, 'boot')
         h_count = await self.bot.database.equipment.get_count(user_id, 'helmet')
+        pet_count = await self.bot.database.companions.get_count(user_id)
 
         # 2. Currencies (Indices based on your schema comments)
         gold = existing_user[6]
@@ -72,6 +73,8 @@ class Inventory(commands.Cog, name="inventory"):
         r_potential = existing_user[21]
         r_imbue = existing_user[27]
         r_shatter = existing_user[31]
+        k_balance = await self.bot.database.users.get_currency(user_id, 'balance_fragment')
+        r_partner = await self.bot.database.users.get_currency(user_id, 'partnership_runes')
 
         # Keys/Misc
         k_dragon = existing_user[25]
@@ -89,12 +92,13 @@ class Inventory(commands.Cog, name="inventory"):
         embed.set_thumbnail(url=existing_user[7])
 
         embed.add_field(name="📦 **Equipment**", 
-            value=(f"⚔️ Weapons: {w_count}\n"
-                   f"🛡️ Armor: {ar_count}\n"
-                   f"📿 Accessories: {a_count}\n"
-                   f"🧤 Gloves: {g_count}\n"
-                   f"👢 Boots: {b_count}\n"
-                   f"🪖 Helmets: {h_count}"), 
+            value=(f"⚔️ Weapons: {w_count}/60\n"
+                   f"🛡️ Armor: {ar_count}/60\n"
+                   f"📿 Accessories: {a_count}/60\n"
+                   f"🧤 Gloves: {g_count}/60\n"
+                   f"👢 Boots: {b_count}/60\n"
+                   f"🪖 Helmets: {h_count}/60\n"
+                   f"🐾 Companions: {pet_count}/20"), 
             inline=True
         )
 
@@ -102,7 +106,8 @@ class Inventory(commands.Cog, name="inventory"):
             value=(f"🔨 Refinement: {r_refine}\n"
                    f"✨ Potential: {r_potential}\n"
                    f"🔮 Imbuing: {r_imbue}\n"
-                   f"💥 Shatter: {r_shatter}"), 
+                   f"💥 Shatter: {r_shatter}\n"
+                   f"🤝 Partnership: {r_partner}"), 
             inline=True
         )
 
@@ -110,6 +115,7 @@ class Inventory(commands.Cog, name="inventory"):
             value=(f"🐉 Draconic Keys: {k_dragon}\n"
                    f"🪽 Angelic Keys: {k_angel}\n"
                    f"🗝️ Void Keys: {k_void}\n"
+                   f"⚖️ Balance Frags: {k_balance}\n"
                    f"❤️‍🔥 Soul Cores: {soul_cores}\n"
                    f"🟣 Void Frags: {void_frags}\n"
                    f"🎁 Curios: {curios}"), 

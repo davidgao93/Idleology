@@ -119,6 +119,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         if random.random() < (0.08 + special_drop_chance): drops['soul_core'] = True
         if random.random() < (0.05 + special_drop_chance): drops['void_frag'] = True
         if random.random() < (0.01 + special_drop_chance): drops['shatter_rune'] = True
+        if random.random() < (0.05 + special_drop_chance): drops['balance_fragment'] = True
 
     return drops
 

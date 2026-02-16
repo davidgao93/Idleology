@@ -17,10 +17,15 @@ class EncounterManager:
         # 2. Lucifer (Infernal)
         elif player_level >= 20 and currencies['soul_cores'] >= 5 and 0.20 <= roll < 0.40:
             return True, "lucifer", {'soul_cores': 5}
+        
+        elif player_level >= 30 and currencies.get('balance_fragment', 0) > 0 and 0.80 <= roll < 0.90:
+            return True, "gemini", {'balance_fragment': 2}
 
         # 3. NEET (Void)
         elif player_level >= 40 and currencies['void_frags'] >= 3 and 0.60 <= roll < 0.80:
             return True, "NEET", {'void_frags': 3}
+    
+
 
         return False, "", {}
 
@@ -47,6 +52,13 @@ class EncounterManager:
                 "img": "https://i.imgur.com/6f9OJ4s.jpeg",
                 "cost_str": "-3 Void Fragments"
             }
+        elif boss_type == "gemini":
+            return {
+                "title": "The Twin Gates",
+                "desc": "Your **Fragments of Balance** hums in resonance.\nWill you attempt to merge them?",
+                "img": "https://i.imgur.com/em9ZGer.png", 
+                "cost_str": "-2 Fragment of Balance"
+            }
         return {}
 
     @staticmethod
@@ -70,5 +82,11 @@ class EncounterManager:
                 {"name": "NEET, Madge", "level": 445, "modifiers_count": 2, "hp_multiplier": 1.5},
                 {"name": "NEET, REEEEEE", "level": 446, "modifiers_count": 3, "hp_multiplier": 1.75},
                 {"name": "NEET, Deadge", "level": 447, "modifiers_count": 5, "hp_multiplier": 0.2},
+            ]
+        elif boss_type == 'gemini':
+            return [
+                {"name": "Castor the Mortal", "level": 555, "modifiers_count": 3, "hp_multiplier": 1.2}, # High Phys Def
+                {"name": "Pollux the Divine", "level": 556, "modifiers_count": 3, "hp_multiplier": 1.2}, # High Magic/Dodge
+                {"name": "The Gemini Twins", "level": 557, "modifiers_count": 5, "hp_multiplier": 2.0}, # Enraged
             ]
         return []

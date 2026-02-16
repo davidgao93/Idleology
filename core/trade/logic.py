@@ -12,6 +12,7 @@ class TradeManager:
         "Void Key": ("users", "void_keys"),
         "Soul Core": ("users", "soul_cores"),
         "Void Fragment": ("users", "void_frags"),
+        "Fragment of Balance": ("users", "balance_fragment"),
         "Curio": ("users", "curios"),
         # Runes
         "Rune of Refinement": ("users", "refinement_runes"),
