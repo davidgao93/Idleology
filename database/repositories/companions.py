@@ -113,8 +113,8 @@ class CompanionRepository:
         await self.connection.commit()
 
 
-async def update_stats(self, companion_id: int, new_level: int, new_exp: int) -> None:
-        """Updates Level and XP atomically."""
+    async def update_stats(self, companion_id: int, new_level: int, new_exp: int) -> None:
+        """Updates Level and XP in a single transaction."""
         await self.connection.execute(
             "UPDATE companions SET level = ?, exp = ? WHERE id = ?",
             (new_level, new_exp, companion_id)
