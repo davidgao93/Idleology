@@ -213,15 +213,6 @@ class BlackjackView(View):
         p_score = self.deck.calculate_score(self.player_hand)
         embed = discord.Embed(title="🃏 Blackjack Table", color=discord.Color.gold())
         embed.set_thumbnail(url="https://i.imgur.com/D8HlsQX.jpeg")
-        
-        if self.game_over:
-            d_score = self.deck.calculate_score(self.dealer_hand)
-            embed.add_field(name=f"Dealer's Hand ({d_score})", value=self.deck.format_hand(self.dealer_hand), inline=False)
-        else:
-            embed.add_field(name="Dealer's Hand", value=self.deck.format_hand(self.dealer_hand, hide_second=True), inline=False)
-
-        embed.add_field(name=f"Your Hand ({p_score})", value=self.deck.format_hand(self.player_hand), inline=False)
-        embed.set_footer(text=f"Current Bet: {self.bet_amount:,} gold")
 
         if self.game_over:
             d_score = self.deck.calculate_score(self.dealer_hand)
@@ -648,7 +639,7 @@ class HorseRaceView(View):
         await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
-        
+
 
     async def _pick_horse(self, interaction: Interaction, index: int):
         self.selected_horse_index = index
