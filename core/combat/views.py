@@ -107,10 +107,10 @@ class CombatView(ui.View):
         self.stop()
         
     def update_buttons(self):
-        # Disable buttons if fight is over
-        if self.player.current_hp <= 0 or self.monster.hp <= 0:
-            for child in self.children:
-                child.disabled = True
+        # Toggle buttons based on current state (Enabled if both alive, Disabled if one dead)
+        is_over = self.player.current_hp <= 0 or self.monster.hp <= 0
+        for child in self.children:
+            child.disabled = is_over
 
     async def refresh_embed(self, interaction: Interaction):
         embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
@@ -280,6 +280,8 @@ class CombatView(ui.View):
                 trans_embed.set_thumbnail(url=self.monster.image)
                 await message.edit(embed=trans_embed, view=None)
                 await asyncio.sleep(2)
+                
+                self.update_buttons()
                 
                 # Restart View with new Monster
                 embed = combat_ui.create_combat_embed(self.player, self.monster, new_logs, 

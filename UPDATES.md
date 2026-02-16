@@ -1,5 +1,6 @@
 ### Version 0.6
 CONTENT
+- Lose money faster than ever before with restart options when /gambleing
 
 MECHANIC CHANGES / FIXES
 - Rewrote random events, leprechaun now grants a curio
@@ -13,7 +14,6 @@ MECHANIC CHANGES / FIXES
 - Rewrote PVP to use buttons
 - Upgrade actions for gear are now more easily repeatable
 - Curios now opens an interface, /bulk_curios lets you open as many as you want
-- Gambles now let you restart any game
 - Inventory now displays more stats next to items
 
 ### Version 0.5
