@@ -105,7 +105,7 @@ class RouletteView(View):
             embed.add_field(name="Winner!", value=f"You bet on **{target_display}** and won **{payout:,} gold**!", inline=False)
         else:
             embed.add_field(name="Loss", value=f"You bet on **{target_display}**. Better luck next time.", inline=False)
-            
+        self.clear_items()    
         embed.set_footer(text="Game Over")
         
         # Add Restart Button
