@@ -288,6 +288,10 @@ class ItemDetailView(View):
 
     async def finalize_discard(self, interaction: Interaction):
         """Performs the actual DB deletion and returns to list."""
+        # 1. Defer immediately to prevent timeout errors and allow heavy DB logic
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
         itype = self._get_db_type()
 
         # --- [FEED LOGIC] ---
@@ -334,6 +338,7 @@ class ItemDetailView(View):
                 if leveled_up_names:
                     msg += f"\n🎉 **Level Up:** {', '.join(leveled_up_names)}!"
                 
+                # Now safe to use followup because we deferred
                 try: await interaction.followup.send(msg, ephemeral=True)
                 except: pass
         # --------------------
@@ -352,13 +357,8 @@ class ItemDetailView(View):
         
         embed = await self.parent.get_current_embed(interaction.user.display_name)
         
-        # We explicitly set content="Item discarded". 
-        # Since we updated prev_page/next_page above, this text will vanish 
-        # as soon as the user interacts with the list again.
-        if interaction.response.is_done():
-            await interaction.edit_original_response(content="🗑️ **Item discarded.**", embed=embed, view=self.parent)
-        else:
-            await interaction.response.edit_message(content="🗑️ **Item discarded.**", embed=embed, view=self.parent)
+        # Since we deferred at the start, we MUST use edit_original_response
+        await interaction.edit_original_response(content="🗑️ **Item discarded.**", embed=embed, view=self.parent)
 
     async def go_back(self, interaction: Interaction):
         embed = await self.parent.get_current_embed(interaction.user.display_name)
