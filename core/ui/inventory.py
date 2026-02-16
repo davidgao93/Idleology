@@ -1,6 +1,6 @@
 import discord
 from typing import List, Union
-from core.models import Weapon, Armor, Accessory, Glove, Boot
+from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
 
 Equipment = Union[Weapon, Armor, Accessory, Glove, Boot]
 
@@ -42,6 +42,25 @@ class InventoryUI:
                 enhancement_str = f" (+{item.passive_lvl})"
 
             details = []
+
+                        # 1. Armor Specifics (Block/Evasion)
+            if isinstance(item, Armor):
+                if item.block > 0: details.append(f"🛑{item.block}")
+                if item.evasion > 0: details.append(f"💨{item.evasion}")
+
+            # 2. Defensive Stats (PDR/FDR/Ward) - Applies to Armor, Gloves, Boots, Helmets
+            if hasattr(item, 'ward') and item.ward > 0:
+                details.append(f"🔮{item.ward}%")
+            if hasattr(item, 'pdr') and item.pdr > 0:
+                details.append(f"🛡️{item.pdr}%")
+            if hasattr(item, 'fdr') and item.fdr > 0:
+                details.append(f"🛡️-{item.fdr}")
+                
+            # 3. Gear Primary Stats (Atk/Def on non-weapons)
+            if isinstance(item, (Glove, Boot, Helmet)):
+                if hasattr(item, 'attack') and item.attack > 0: details.append(f"⚔️{item.attack}")
+                if hasattr(item, 'defence') and item.defence > 0: details.append(f"🛡️{item.defence}")
+
             if hasattr(item, 'passive') and item.passive != "none":
                 details.append(f"{item.passive.title()}")
             

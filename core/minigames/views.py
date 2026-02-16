@@ -3,6 +3,16 @@ from discord import Interaction, ButtonStyle, TextStyle
 from discord.ui import View, Button, Modal, TextInput
 from .logic import BlackjackLogic, RouletteLogic, CrashLogic, HorseRaceLogic
 import asyncio 
+
+
+async def check_funds(bot, user_id, amount, interaction):
+    user_data = await bot.database.users.get(user_id, interaction.guild.id)
+    if user_data[6] < amount:
+        await interaction.response.send_message(f"Insufficient funds to restart! You need {amount:,} gold.", ephemeral=True)
+        return False
+    return True
+
+
 # ==============================================================================
 #  ROULETTE COMPONENTS
 # ==============================================================================
@@ -98,14 +108,41 @@ class RouletteView(View):
             
         embed.set_footer(text="Game Over")
         
-        # Clear buttons
-        await self.original_interaction.edit_original_response(embed=embed, view=None)
+        # Add Restart Button
+        restart_btn = Button(label="Place Another Bet", style=ButtonStyle.primary, emoji="🔄")
+        restart_btn.callback = self.reset_table
+        self.add_item(restart_btn)
         
-        # If this was called via Modal (interaction is deferred), use followup
-        # If called via Button (interaction is direct), use response check
-        if not interaction.response.is_done():
-            await interaction.response.defer() # Just acknowledge button press if handled above
+        quit_btn = Button(label="Leave", style=ButtonStyle.secondary)
+        quit_btn.callback = self.quit_game
+        self.add_item(quit_btn)
 
+        await interaction.response.edit_message(embed=embed, view=self)
+
+
+    async def reset_table(self, interaction: Interaction):
+        # Verify they still have money for the base bet size
+        if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
+            return
+
+        self.game_over = False
+        self.clear_items()
+        
+        # Re-add betting buttons
+        self.add_item(self.bet_red)
+        self.add_item(self.bet_black)
+        self.add_item(self.bet_even)
+        self.add_item(self.bet_odd)
+        self.add_item(self.bet_number)
+        
+        embed = discord.Embed(title="🎡 Roulette Table", description=f"Betting **{self.bet_amount:,} gold**.\nChoose your wager:", color=discord.Color.red())
+        embed.set_thumbnail(url="https://i.imgur.com/D8HlsQX.jpeg")
+        
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def quit_game(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
@@ -187,7 +224,17 @@ class BlackjackView(View):
         embed.set_footer(text=f"Current Bet: {self.bet_amount:,} gold")
 
         if self.game_over:
-            for child in self.children: child.disabled = True
+            d_score = self.deck.calculate_score(self.dealer_hand)
+            embed.add_field(name=f"Dealer's Hand ({d_score})", value=self.deck.format_hand(self.dealer_hand), inline=False)
+        else:
+            embed.add_field(name="Dealer's Hand", value=self.deck.format_hand(self.dealer_hand, hide_second=True), inline=False)
+
+        embed.add_field(name=f"Your Hand ({p_score})", value=self.deck.format_hand(self.player_hand), inline=False)
+        embed.set_footer(text=f"Current Bet: {self.bet_amount:,} gold")
+
+        # Instead of disabling all, clear items to remove Hit/Stand, we will add Restart later
+        if self.game_over:
+            self.clear_items()
         
         target = interaction.response if interaction else self.original_interaction
         if interaction: await target.edit_message(embed=embed, view=self)
@@ -217,14 +264,35 @@ class BlackjackView(View):
         
         final_embed = (await self.original_interaction.original_response()).embeds[0]
         final_embed.description = msg
-        if result in ["win", "blackjack"]: final_embed.color = discord.Color.green()
-        elif result == "push": final_embed.color = discord.Color.light_grey()
-        else: final_embed.color = discord.Color.red()
         
+        # Add Restart Button
+        restart_btn = Button(label="Play Again", style=ButtonStyle.primary, emoji="🔄")
+        restart_btn.callback = self.restart_game
+        self.add_item(restart_btn)
+        
+        quit_btn = Button(label="Leave", style=ButtonStyle.secondary)
+        quit_btn.callback = self.quit_game
+        self.add_item(quit_btn)
+
         target_func = interaction.edit_original_response if interaction else self.original_interaction.edit_original_response
         await target_func(embed=final_embed, view=self)
+
+    async def restart_game(self, interaction: Interaction):
+        if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
+            return
+        
+        # Create a FRESH view instance
+        new_view = BlackjackView(self.bot, self.user_id, self.bet_amount, self.original_interaction)
+        await interaction.response.edit_message(content="Shuffling deck...", embed=None, view=None)
+        await new_view.start_game()
+        self.stop() # Kill old view
+
+    async def quit_game(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
+
 
     @discord.ui.button(label="Hit", style=ButtonStyle.primary, emoji="👊")
     async def hit_button(self, interaction: Interaction, button: Button):
@@ -311,7 +379,7 @@ class CrashView(View):
             # Initial State
             embed = discord.Embed(title="🚀 Crash", color=discord.Color.blue())
             embed.description = f"Current Multiplier: **1.00x**\nPotential Win: **{self.bet_amount:,}**"
-            embed.set_footer(text="Click 'Cash Out' before it crashes!")
+            embed.set_footer(text="⚠️ Risk increases significantly after 2.00x! Click Cash out before it crashes!")
             
             await self.original_interaction.edit_original_response(embed=embed, view=self)
             await asyncio.sleep(1.0) # Initial suspense
@@ -361,44 +429,62 @@ class CrashView(View):
             self.bot.logger.error(f"Crash loop error: {e}")
             self.is_running = False
 
+
+    async def _add_restart_buttons(self):
+        self.clear_items()
+        
+        restart_btn = Button(label="Play Again", style=ButtonStyle.primary, emoji="🔄")
+        restart_btn.callback = self.restart_game
+        self.add_item(restart_btn)
+        
+        quit_btn = Button(label="Leave", style=ButtonStyle.secondary)
+        quit_btn.callback = self.quit_game
+        self.add_item(quit_btn)
+        
+        await self.original_interaction.edit_original_response(view=self)
+
     async def _handle_crash(self):
         self.is_running = False
         embed = discord.Embed(title="💥 CRASHED!", color=discord.Color.red())
         embed.description = f"The rocket crashed at **{self.crash_point:.2f}x**.\nYou lost **{self.bet_amount:,} gold**."
-        #embed.set_thumbnail(url="https://i.imgur.com/P9721k6.png") # Explosion/Crash icon
         
-        # Disable button
-        self.cash_out_button.disabled = True
-        self.cash_out_button.label = "Crashed"
-        self.cash_out_button.style = ButtonStyle.danger
-        
-        await self.original_interaction.edit_original_response(embed=embed, view=self)
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
+        await self.original_interaction.edit_original_response(embed=embed, view=None) # clear buttons briefly
+        await self._add_restart_buttons()
 
     @discord.ui.button(label="Cash Out", style=ButtonStyle.success, emoji="💰")
     async def cash_out_button(self, interaction: Interaction, button: Button):
         if not self.is_running or self.cashed_out:
-            return await interaction.response.defer() # Ignore clicks if ended
+            return await interaction.response.defer()
 
         self.cashed_out = True
         self.is_running = False
-        if self.task: self.task.cancel() # Stop the loop immediately
+        if self.task: self.task.cancel()
 
-        # Calculate Winnings
-        # Use current_multiplier
         winnings = int(self.bet_amount * self.current_multiplier)
         await self.bot.database.users.modify_gold(self.user_id, winnings)
 
-        # UI Update
         embed = discord.Embed(title="✅ Cashed Out!", color=discord.Color.green())
         embed.description = f"You ejected at **{self.current_multiplier:.2f}x**!\n\n**Winnings:** {winnings:,} gold\n**Profit:** {winnings - self.bet_amount:,} gold"
         embed.add_field(name="Rocket Status", value=f"It would have crashed at **{self.crash_point:.2f}x**")
         
-        button.disabled = True
-        button.label = "Claimed"
+        await interaction.response.edit_message(embed=embed, view=None)
+        await self._add_restart_buttons()
+
+
+    async def restart_game(self, interaction: Interaction):
+        if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
+            return
         
-        await interaction.response.edit_message(embed=embed, view=self)
+        new_view = CrashView(self.bot, self.user_id, self.bet_amount, self.original_interaction)
+        # Update embed to showing it's starting
+        embed = discord.Embed(title="🚀 Preparing Launch...", description=f"Fueling up for a bet of **{self.bet_amount:,} gold**.", color=discord.Color.blue())
+        await interaction.response.edit_message(embed=embed, view=new_view)
+        await new_view.start_game()
+        self.stop()
+
+    async def quit_game(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
@@ -522,9 +608,47 @@ class HorseRaceView(View):
             embed.color = discord.Color.red()
             embed.add_field(name="Loss", value=f"You bet on **{picked_horse['name']}**. Better luck next time.", inline=False)
 
-        await self.original_interaction.edit_original_response(embed=embed)
+        self.clear_items()
+        
+        restart_btn = Button(label="Play Again", style=ButtonStyle.primary, emoji="🔄")
+        restart_btn.callback = self.restart_game
+        self.add_item(restart_btn)
+        
+        quit_btn = Button(label="Leave", style=ButtonStyle.secondary)
+        quit_btn.callback = self.quit_game
+        self.add_item(quit_btn)
+
+        await self.original_interaction.edit_original_response(embed=embed, view=self)
+
+
+    async def restart_game(self, interaction: Interaction):
+        if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
+            return
+        
+        # New view instance
+        new_view = HorseRaceView(self.bot, self.user_id, self.bet_amount, self.original_interaction)
+        
+        # Reconstruct selection embed
+        embed = discord.Embed(
+            title="🐎 Horse Racing", 
+            description=f"Betting **{self.bet_amount:,} gold**.\nPick your champion! (4x Payout)", 
+            color=discord.Color.green()
+        )
+        embed.add_field(name="1. Thunder Hoof 🐎", value="Balanced speed.", inline=True)
+        embed.add_field(name="2. Lightning Bolt 🦄", value="High risk, high speed.", inline=True)
+        embed.add_field(name="3. Old Reliable 🦓", value="Consistent pace.", inline=True)
+        embed.add_field(name="4. Dark Horse 🐫", value="Unpredictable.", inline=True)
+        
+        await interaction.response.edit_message(embed=embed, view=new_view)
+        self.stop()
+
+
+    async def quit_game(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
+        
 
     async def _pick_horse(self, interaction: Interaction, index: int):
         self.selected_horse_index = index
