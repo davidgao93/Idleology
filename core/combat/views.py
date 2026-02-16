@@ -223,7 +223,11 @@ class CombatView(ui.View):
         self.logs["System"] = status_msg
 
         # Update UI / Check Win/Loss
-        await self.check_combat_state(interaction)
+        if self.player.current_hp <= 0 or self.monster.hp <= 0:
+            await self.handle_end_state(interaction.message, interaction)
+        else:
+            # Combat still going, just refresh UI
+            await self.check_combat_state(interaction)
 
     async def check_combat_state(self, interaction: Interaction):
         """Checks if player died or monster died."""
@@ -282,7 +286,7 @@ class CombatView(ui.View):
                 await asyncio.sleep(2)
                 
                 self.update_buttons()
-                
+
                 # Restart View with new Monster
                 embed = combat_ui.create_combat_embed(self.player, self.monster, new_logs, 
                                                     title_override=f"⚔️ BOSS PHASE {self.current_phase_index+1}")
