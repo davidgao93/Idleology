@@ -184,12 +184,39 @@ class CompanionDetailView(ui.View):
         await interaction.response.send_modal(modal)
 
     async def reroll_passive(self, interaction: Interaction):
-        # Check Rune
-        # Assuming rune logic implemented in DB or logic
-        # For brevity, asking confirmation
-        # Check Rune of Partnership
-        # Implementation of rune check skipped for brevity, assumed separate logic
-        await interaction.response.send_message("Reroll system requires Rune of Partnership (Implementation pending)", ephemeral=True)
+        # 1. Check Rune Balance
+        runes = await self.bot.database.users.get_currency(self.user_id, 'partnership_runes')
+        if runes < 1:
+            return await interaction.response.send_message(
+                "You need a **Rune of Partnership** to reroll passives.", 
+                ephemeral=True
+            )
+
+        # 2. Defer interaction (DB writes involved)
+        await interaction.response.defer()
+
+        # 3. Consume Rune
+        await self.bot.database.users.modify_currency(self.user_id, 'partnership_runes', -1)
+
+        # 4. Calculate New Passive via Mechanics
+        # Logic: Rerolls Type, 10% chance to Upgrade Tier, 90% chance to keep Tier
+        old_tier = self.comp.passive_tier
+        new_type, new_tier, upgraded = CompanionMechanics.reroll_passive(old_tier)
+
+        # 5. Update Database
+        await self.bot.database.companions.update_passive(self.comp.id, new_type, new_tier)
+
+        # 6. Update Local Object (to reflect changes in UI immediately)
+        self.comp.passive_type = new_type
+        self.comp.passive_tier = new_tier
+
+        # 7. Update UI & Send Feedback
+        msg = f"🎲 Passive rerolled to **{self.comp.description}**!"
+        if upgraded:
+            msg += f"\n🌟 **TIER UPGRADE!** (T{old_tier} ➡️ T{new_tier})"
+        
+        await interaction.edit_original_response(embed=self.get_embed(), view=self)
+        await interaction.followup.send(msg, ephemeral=True)
 
     async def release_confirm(self, interaction: Interaction):
         await self.bot.database.companions.delete_companion(self.comp.id, self.user_id)

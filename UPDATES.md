@@ -1,12 +1,33 @@
 ### Version 0.6
 CONTENT
 - Lose money faster than ever before with restart options when /gambleing
+- Added companions AKA pets
+    Your menagerie has a limit of 20 companions
+    You can have up to 3 active companions at a time
+    You have a 5% chance of capturing any victiorious monster encounter as a companion, excluding bosses
+    Companions can roll from t1 - t3
+    Companions have passives:
+    Base Atk boost
+    Base Def Boost
+    + to all hit rolls
+    + to all crit rolls
+    % hp as ward
+    % base rarity
+    % special loot rarity
+    + FDR
+    + PDR
+
+    You can upgrade companion passives using the rune of partnership, dropped from the new Gemini Twins boss, which can be accessed with Fragments of Balance
+    Using a rune rerolls the passive, with a chance of tiering up
+    Companions are fully tradeable.
+    Companions gather loot every 30 minutes, saving loot up to 2 days. You can collect with /companions collect
+    Loot quality increases with levels.
+    Companions level up when you discard equipment, only active ones gain exp, which is distributed evenly.
 
 MECHANIC CHANGES / FIXES
 - Rewrote random events, leprechaun now grants a curio
 - Inventory management rewrite, still same commands but cleaner now
-- Discard equipment has no confirmation for non-valuable items (ie: 0 refines / 0 forges, etc)
-- Rewrote combat / ascent to use buttons, ascent by default auto-skips, combat now lets you do 10 turns at a time (no auto), or full auto but slow
+- Rewrote combat / ascent to use buttons, ascent by default auto-skips, combat now lets you do 10 turns at a time (no auto), or full auto but 1s per turn
 - Rewrote trade to use a menu
 - Rewrote registration to use a menu
 - Rewrote skills to use buttons

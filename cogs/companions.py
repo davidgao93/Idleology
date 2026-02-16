@@ -31,6 +31,7 @@ class Companions(commands.Cog):
         self.bot.state_manager.set_active(user_id, "companions")
         view = CompanionListView(self.bot, user_id, companions)
         embed = view.get_embed()
+        embed.set_thumbnail(url="https://i.imgur.com/oQBm9HF.png")
         
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()

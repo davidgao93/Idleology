@@ -18,10 +18,11 @@ class EncounterManager:
         elif player_level >= 20 and currencies['soul_cores'] >= 5 and 0.20 <= roll < 0.40:
             return True, "lucifer", {'soul_cores': 5}
         
-        elif player_level >= 30 and currencies.get('balance_fragment', 0) > 0 and 0.80 <= roll < 0.90:
+        # 3. Gemini
+        elif player_level >= 30 and currencies.get('balance_fragment', 0) > 0 and 0.40 <= roll < 0.60:
             return True, "gemini", {'balance_fragment': 2}
 
-        # 3. NEET (Void)
+        # 4. NEET (Void)
         elif player_level >= 40 and currencies['void_frags'] >= 3 and 0.60 <= roll < 0.80:
             return True, "NEET", {'void_frags': 3}
     

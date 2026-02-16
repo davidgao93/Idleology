@@ -99,6 +99,10 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         if random.random() < 0.33: drops['refinement_rune'] = True
         if random.random() < 0.66: drops['potential_rune'] = True
         return drops
+    
+    if "Gemini" in monster.name:
+        if random.random() < 0.5: drops['partnership_rune'] = True
+        return drops
 
     # --- STANDARD MOBS ---
     rare_monsters = ["Treasure Chest", "Random Korean Lady", "KPOP STAR", "Loot Goblin", "Yggdrasil", "Capybara Sauna"]
