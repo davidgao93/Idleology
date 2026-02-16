@@ -454,7 +454,7 @@ class ImbueView(BaseUpgradeView):
         if random.random() <= 0.5:
             new_p = random.choice(["Invulnerable", "Mystical Might", "Omnipotent", "Treasure Hunter", "Unlimited Wealth", "Everlasting Blessing"])
             self.item.passive = new_p
-            await self.bot.database.equipment.update_passive(self.item.item_id, 'armor', new_p)
+            await self.bot.database.equipment.update_passive(self.item.item_id, 'armor', new_p, 'armor_passive')
             embed.color = discord.Color.gold()
             embed.description = f"✨ Success! Imbued with **{new_p}**!"
         else:

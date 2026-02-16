@@ -243,7 +243,7 @@ class EquipmentMechanics:
     @staticmethod
     def calculate_ap_cost(level: int) -> int:
         """Returns Gold cost based on current passive level (0-9)."""
-        costs = [1000, 5000, 25000, 50000, 100000]
+        costs = [1000, 5000, 25000, 50000, 100000, 200000]
         if level < len(costs):
             return costs[level]
         return 999999999
