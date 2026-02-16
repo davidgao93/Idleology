@@ -107,6 +107,7 @@ class RegistrationView(View):
     # --- FINALIZATION ---
 
     async def complete_registration(self, interaction: Interaction, ideology: str):
+        await interaction.response.defer()
         # 1. Register User
         await self.bot.database.users.register(
             self.user_id, str(interaction.guild.id), self.name, self.appearance_url, ideology
