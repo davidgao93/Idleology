@@ -27,19 +27,20 @@ class LuciferChoiceView(ui.View):
         embed = interaction.message.embeds[0]
         embed.add_field(name="Choice", value=msg, inline=False)
         await interaction.response.edit_message(embed=embed, view=None)
+        self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
     @ui.button(label="Enraged", emoji="❤️‍🔥", style=ButtonStyle.danger) 
     async def enraged(self, interaction: Interaction, button: ui.Button):
         adj = random.randint(-1, 2)
         await self.bot.database.users.modify_stat(self.user_id, 'attack', adj)
-        await self._conclude(interaction, f"Enraged! Attack changed by {adj}.")
+        await self._conclude(interaction, f"Enraged! Attack changed by {adj:+}.")
 
     @ui.button(label="Solidified", emoji="💙", style=ButtonStyle.primary) 
     async def solidified(self, interaction: Interaction, button: ui.Button):
         adj = random.randint(-1, 2)
         await self.bot.database.users.modify_stat(self.user_id, 'defence', adj)
-        await self._conclude(interaction, f"Solidified! Defence changed by {adj}.")
+        await self._conclude(interaction, f"Solidified! Defence changed by {adj:+}.")
 
     @ui.button(label="Unstable", emoji="💔", style=ButtonStyle.secondary)
     async def unstable(self, interaction: Interaction, button: ui.Button):
@@ -65,7 +66,7 @@ class LuciferChoiceView(ui.View):
     @ui.button(label="Original", emoji="🖤", style=ButtonStyle.success) 
     async def original(self, interaction: Interaction, button: ui.Button):
         await self.bot.database.users.modify_currency(self.user_id, 'soul_cores', 1)
-        await self._conclude(interaction, "You pocketed a Soul Core.")
+        await self._conclude(interaction, "You pocket a Soul Core.")
 
 
 class CombatView(ui.View):

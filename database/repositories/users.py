@@ -218,6 +218,23 @@ class UserRepository:
         )
         await self.connection.commit()
 
+
+    async def initialize_companion_timer(self, user_id: str) -> None:
+        """
+        Sets the companion collection timer to NOW, but ONLY if it hasn't been set yet.
+        This prevents resetting pending rewards when activating a 2nd or 3rd pet.
+        """
+        current_time = datetime.now().isoformat()
+        await self.connection.execute(
+            """
+            UPDATE users 
+            SET last_companion_collect_time = ? 
+            WHERE user_id = ? AND last_companion_collect_time IS NULL
+            """,
+            (current_time, user_id)
+        )
+        await self.connection.commit()
+
     # ---------------------------------------------------------
     # Leaderboards
     # ---------------------------------------------------------

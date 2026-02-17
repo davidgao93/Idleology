@@ -176,6 +176,9 @@ class CompanionDetailView(ui.View):
         if not success:
             return await interaction.response.send_message("You already have 3 active companions!", ephemeral=True)
         
+        if new_state:
+            await self.bot.database.users.initialize_companion_timer(self.user_id)
+        
         self.comp.is_active = new_state
         self.update_buttons()
         
