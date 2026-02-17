@@ -1,3 +1,8 @@
+### Version 0.7
+
+MECHANIC CHANGES / FIXES
+- speedster buffed - combat cooldown reduced by ~~20/40/60/80/100/120s ~~ -> 60/120/180/240/300/360s
+
 ### Version 0.6
 CONTENT
 - Lose money faster than ever before with restart options when /gambleing

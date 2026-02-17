@@ -159,8 +159,8 @@ class CompanionMechanics:
                 
                 for res in results:
                     if res == "Gold":
-                        # Gold Amount: Level * 200 (e.g. Lvl 50 = 10000g, Lvl 100 = 20000g)
-                        amount = comp.level * 200
+                        # Gold Amount: Level * 1000 (e.g. Lvl 50 = 50000g, Lvl 100 = 100000g)
+                        amount = comp.level * 1000
                         loot_bag.append(("Gold", amount))
                     else:
                         loot_bag.append((res, 1))
@@ -169,4 +169,50 @@ class CompanionMechanics:
             "items": loot_bag, # List of tuples: ("Type", Amount/1)
             "cycles": cycles,
             "can_collect": True
+        }
+    
+
+    @staticmethod
+    def calculate_cumulative_xp(level: int, current_exp: int) -> int:
+        """
+        Converts Level + CurrentXP into Total Cumulative XP.
+        Formula: Sum of (i * 100) for i=1 to level-1.
+        Arithmetic Series Sum: S = n/2 * (2a + (n-1)d) -> simplified: 50 * L * (L-1)
+        """
+        if level <= 1: return current_exp
+        
+        # XP required to reach current_level from level 1
+        xp_to_reach_level = 50 * level * (level - 1)
+        return xp_to_reach_level + current_exp
+
+    @staticmethod
+    def calculate_level_from_xp(total_xp: int) -> Tuple[int, int]:
+        """
+        Converts Total Cumulative XP back into (Level, CurrentXP).
+        Max Level 100.
+        """
+        level = 1
+        while level < CompanionMechanics.MAX_LEVEL:
+            req_xp = level * 100
+            if total_xp >= req_xp:
+                total_xp -= req_xp
+                level += 1
+            else:
+                break
+        return level, total_xp
+
+    @staticmethod
+    def fuse_attributes(comp_a, comp_b) -> dict:
+        """
+        Picks random traits from parents.
+        """
+        # Coin flips for traits
+        base_source = random.choice([comp_a, comp_b])
+        
+        return {
+            "name": base_source.name,
+            "species": base_source.species,
+            "image_url": base_source.image_url,
+            "passive_type": random.choice([comp_a.passive_type, comp_b.passive_type]),
+            "passive_tier": random.choice([comp_a.passive_tier, comp_b.passive_tier])
         }

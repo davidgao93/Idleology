@@ -12,6 +12,7 @@ from core.combat import engine, ui
 from core.combat.gen_mob import generate_encounter, generate_boss
 from core.combat.views import CombatView
 from core.combat.encounters import EncounterManager
+from core.combat.dummy_views import DummyConfigView
 
 class DoorPromptView(View):
     def __init__(self, bot, user_id, cost_dict, boss_type):
@@ -49,7 +50,7 @@ class Combat(commands.Cog, name="combat"):
         temp_cooldown_reduction = 0
         equipped_boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
         if equipped_boot and equipped_boot[9] == "speedster":
-            temp_cooldown_reduction = equipped_boot[12] * 20 
+            temp_cooldown_reduction = equipped_boot[12] * 60 
 
         current_duration = self.COMBAT_COOLDOWN - timedelta(seconds=temp_cooldown_reduction)
         current_duration = max(timedelta(seconds=10), current_duration)
@@ -146,6 +147,29 @@ class Combat(commands.Cog, name="combat"):
             await interaction.edit_original_response(embed=embed, view=view)
         else:
             await interaction.response.send_message(embed=embed, view=view)
+
+    @app_commands.command(name="dojo", description="Test your DPS against a customizable dummy.")
+    async def dojo(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        # 1. Validation
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user): return
+        if not await self.bot.check_is_active(interaction, user_id): return
+
+        self.bot.state_manager.set_active(user_id, "dojo")
+
+        # 2. Load Player
+        from core.items.factory import load_player
+        player = await load_player(user_id, existing_user, self.bot.database)
+
+        # 3. Launch View
+        view = DummyConfigView(self.bot, user_id, player)
+        embed = view.build_embed()
+        
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
 async def setup(bot):
     await bot.add_cog(Combat(bot))

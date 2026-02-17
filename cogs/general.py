@@ -181,7 +181,7 @@ class General(commands.Cog, name="general"):
         elif category == 'boot':
             embed.title = "👢 Boot Passive Scaling (Max Lvl 6)"
             passives = {
-                "Speedster": lambda l: f"Cooldown reduced by **{l*20}s**",
+                "Speedster": lambda l: f"Cooldown reduced by **{l}m**",
                 "Skiller": lambda l: f"**{l*5}%** chance for extra skill mats",
                 "Treasure-Tracker": lambda l: f"Treasure Mob chance +**{l*0.5}%**",
                 "Hearty": lambda l: f"Max HP +**{l*5}%**",

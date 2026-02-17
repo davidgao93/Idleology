@@ -244,6 +244,6 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
             player.current_hp += bonus_hp
         
         if player.equipped_boot.passive == "speedster" and player.equipped_boot.passive_lvl > 0:
-            player.combat_cooldown_reduction_seconds = player.equipped_boot.passive_lvl * 20
+            player.combat_cooldown_reduction_seconds = player.equipped_boot.passive_lvl * 60
 
     return player

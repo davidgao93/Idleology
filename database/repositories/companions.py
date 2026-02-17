@@ -120,3 +120,39 @@ class CompanionRepository:
             (new_level, new_exp, companion_id)
         )
         await self.connection.commit()
+
+
+    async def fuse_companions(self, user_id: str, id_a: int, id_b: int, 
+                            new_stats: dict, cost: int) -> None:
+        """
+        Atomic fusion transaction.
+        1. Deduct Gold
+        2. Delete Parent A & B
+        3. Create Child
+        """
+        # new_stats dict keys: name, species, image_url, passive_type, passive_tier, level, exp
+        
+        # 1. Deduct Gold
+        await self.connection.execute(
+            "UPDATE users SET gold = gold - ? WHERE user_id = ?", 
+            (cost, user_id)
+        )
+        
+        # 2. Delete Parents
+        await self.connection.execute(
+            "DELETE FROM companions WHERE id IN (?, ?) AND user_id = ?",
+            (id_a, id_b, user_id)
+        )
+        
+        # 3. Create Child
+        # Note: Child starts inactive (is_active=0)
+        await self.connection.execute(
+            """INSERT INTO companions (user_id, name, species, image_url, 
+               passive_type, passive_tier, level, exp, is_active) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)""",
+            (user_id, new_stats['name'], new_stats['species'], new_stats['image_url'],
+             new_stats['passive_type'], new_stats['passive_tier'], 
+             new_stats['level'], new_stats['exp'])
+        )
+        
+        await self.connection.commit()
