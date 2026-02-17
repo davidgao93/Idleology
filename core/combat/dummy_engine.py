@@ -3,11 +3,9 @@ from dataclasses import dataclass
 from core.models import Player, Monster
 from core.combat.calcs import (
     calculate_hit_chance, 
-    check_for_crit_bonus, 
-    check_for_burn_bonus, 
-    check_for_spark_bonus, 
     check_for_echo_bonus,
-    check_for_poison_bonus
+    check_for_poison_bonus,
+    get_player_passive_indices  # [NEW IMPORT]
 )
 
 @dataclass
@@ -40,6 +38,10 @@ class DummyEngine:
         helmet_passive = player.get_helmet_passive()
         helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
 
+        # Define lists for weapon logic lookup
+        burning_passives = ["burning", "flaming", "scorching", "incinerating", "carbonising"]
+        sparking_passives = ["sparking", "shocking", "discharging", "electrocuting", "vapourising"]
+
         for _ in range(turns):
             attack_multiplier = 1.0
             
@@ -57,8 +59,6 @@ class DummyEngine:
                 attack_multiplier *= 10.0
 
             if helmet_passive == "frenzy" and helmet_lvl > 0:
-                # Assume dummy fight implies 100% HP start, so Frenzy does nothing 
-                # unless we want to simulate low HP. For accurate "potential", let's assume current HP.
                 if player.max_hp > 0:
                     missing_hp_pct = (1 - (player.current_hp / player.max_hp)) * 100
                     multiplier_bonus = (missing_hp_pct * (0.005 * helmet_lvl))
@@ -91,9 +91,7 @@ class DummyEngine:
             damage = 0
             
             if is_hit and attack_multiplier > 0:
-                # --- Crit ---
-                weapon_crit_bonus = 0 # (Logic inside check_for_crit_bonus handled in calcs, assume 0 for raw sim or replicate)
-                # Replicating simple check
+                # --- Crit Check ---
                 crit_target = player.get_current_crit_target()
                 
                 if random.randint(0, 100) > crit_target and "Impenetrable" not in monster.modifiers:
@@ -118,16 +116,32 @@ class DummyEngine:
                     damage = int(base_dmg * attack_multiplier)
                     
                 else:
-                    # NORMAL
+                    # NORMAL HIT
                     hits += 1
                     base_max = player.get_total_attack()
                     base_min = 1
                     
+                    # 1. Adroit (Glove)
                     if glove_passive == "adroit":
                         base_min = max(base_min, int(base_max * (glove_lvl * 0.02)))
                     
-                    # Burn/Spark logic is tricky to replicate perfectly without passing strings
-                    # Assuming standard roll for dummy
+                    # 2. Burn (Weapon) - Increases Max Damage
+                    burn_indices = get_player_passive_indices(player, burning_passives)
+                    if burn_indices:
+                        max_idx = max(burn_indices)
+                        # (Tier Index + 1) * 8%
+                        burn_bonus = int(player.get_total_attack() * ((max_idx + 1) * 0.08))
+                        base_max += burn_bonus
+
+                    # 3. Spark (Weapon) - Increases Min Damage based on Max
+                    spark_indices = get_player_passive_indices(player, sparking_passives)
+                    if spark_indices:
+                        max_idx = max(spark_indices)
+                        # (Tier Index + 1) * 8%
+                        spark_min_pct = (max_idx + 1) * 0.08
+                        base_min = max(base_min, int(base_max * spark_min_pct))
+                    
+                    # Roll Logic
                     rolled = random.randint(base_min, base_max)
                     damage = int(rolled * attack_multiplier)
                     
