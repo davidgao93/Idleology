@@ -11,14 +11,12 @@ class DelveState:
     pickaxe_tier: str = "iron"
     shards_found: int = 0
     curios_found: int = 0
-    # Map generation
-    hazards: List[str] = field(default_factory=list) # "safe", "gravel", "gas", "magma"
+    hazards: List[str] = field(default_factory=list)
     revealed_indices: List[int] = field(default_factory=list)
 
 class DelveMechanics:
     HAZARDS = ["Safe", "Gravel", "Gas Pocket", "Magma Flow"]
     
-    # Mitigation per pickaxe tier (Iron -> Ideal)
     TIER_MITIGATION = {
         'iron': 0.0, 'steel': 0.10, 'gold': 0.20, 
         'platinum': 0.30, 'ideal': 0.50
@@ -26,41 +24,47 @@ class DelveMechanics:
 
     @staticmethod
     def get_max_fuel(level: int) -> int:
-        # Base 20, +5 per level
         return 20 + ((level - 1) * 5)
 
     @staticmethod
     def get_reinforce_power(level: int) -> int:
-        # Base 15%, +5% per level
         return 15 + ((level - 1) * 5)
 
     @staticmethod
     def get_survey_range(level: int) -> int:
-        # Lvl 1-3: 1 tile, Lvl 4-7: 2 tiles, Lvl 8+: 3 tiles
         if level >= 8: return 3
         if level >= 4: return 2
         return 1
 
     @staticmethod
     def get_upgrade_cost(current_level: int) -> int:
-        # Cost in Obsidian Shards
         return current_level * 5
 
     @staticmethod
+    def get_entry_cost(fuel_level: int) -> int:
+        return 1000 + (fuel_level * 500)
+
+    @staticmethod
+    def calculate_level_from_xp(total_xp: int) -> int:
+        if total_xp <= 0: return 1
+        return int((total_xp / 50) ** 0.5) + 1
+
+    @staticmethod
+    def get_level_reward(level: int) -> int:
+        return 5 + (level * 2)
+
+    @staticmethod
     def generate_layer(depth: int) -> str:
-        """Generates a hazard based on depth difficulty."""
         roll = random.random()
-        
-        # Danger scales with depth. 
-        # Depth 0-10: Mostly safe.
-        # Depth 50+: High magma chance.
-        danger_factor = min(0.8, depth * 0.015) 
-        
-        if roll > (0.7 - danger_factor):
+        danger_factor = min(0.90, depth * 0.03) 
+        safe_threshold = max(0.1, 0.8 - danger_factor)
+
+        if roll > safe_threshold:
             sub_roll = random.random()
-            if sub_roll < 0.5: return "Gravel" # Low dmg
-            if sub_roll < 0.8: return "Gas Pocket" # Med dmg
-            return "Magma Flow" # High dmg
+            magma_chance = min(0.6, depth * 0.02)
+            if sub_roll < magma_chance: return "Magma Flow"
+            if sub_roll < 0.6: return "Gas Pocket"
+            return "Gravel"
             
         return "Safe"
 
@@ -78,16 +82,16 @@ class DelveMechanics:
 
     @staticmethod
     def check_rewards(depth: int) -> Tuple[int, int]:
-        """Returns (Curios, Shards) found at this specific depth."""
         curios = 0
         shards = 0
         
-        # Curio Milestones
-        if depth % 10 == 0: curios = 1
-        if depth % 50 == 0: curios += 1 # Bonus at 50
+        if depth > 0 and depth % 25 == 0: 
+            curios = 1
+            if depth >= 50: curios = 2 
         
-        # Shard Random Drops
-        if random.random() < 0.20:
-            shards = random.randint(1, 3)
+        if depth > 15:
+            chance = min(0.30, (depth - 10) * 0.005)
+            if random.random() < chance:
+                shards = random.randint(1, 2)
             
         return curios, shards

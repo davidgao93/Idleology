@@ -1,8 +1,5 @@
-Balance_Fragment: https://i.imgur.com/ooJ2MdC.png
-Combined: https://i.imgur.com/lDOo8zj.png
-Divine: https://i.imgur.com/ndSizEP.jpeg
-Doors_Of_Balance: https://i.imgur.com/em9ZGer.png
-Loot: https://i.imgur.com/aIwcF3A.png
-Menagerie: https://i.imgur.com/oQBm9HF.png
-Mortal: https://i.imgur.com/fWWdyA0.jpeg
-Partner_Rune: https://i.imgur.com/Lb3b53X.png
+Failure: https://i.imgur.com/HbDOrUp.png
+Main_Screen: https://i.imgur.com/C7W0IkJ.png
+Obsidian: https://i.imgur.com/mwOBHSj.png
+Permit: https://i.imgur.com/qRyUGXU.png
+Reinforce: https://i.imgur.com/mX0u3uc.png

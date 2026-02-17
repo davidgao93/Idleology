@@ -19,7 +19,7 @@ class EncounterManager:
             return True, "lucifer", {'soul_cores': 5}
         
         # 3. Gemini
-        elif player_level >= 30 and currencies.get('balance_fragment', 0) > 0 and 0.40 <= roll < 0.60:
+        elif player_level >= 30 and currencies['balance_fragment'] >= 2 and 0.40 <= roll < 0.60:
             return True, "gemini", {'balance_fragment': 2}
 
         # 4. NEET (Void)

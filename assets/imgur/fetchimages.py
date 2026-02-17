@@ -25,7 +25,7 @@ def save_images_with_names_or_titles(images, filename='images.txt'):
             file.write(f"{formatted_name}: {image_url}\n")
 
 def main():
-    album_id = 'pMVYWLc'  # Replace with the Imgur album ID
+    album_id = 'DkQK9cX'  # Replace with the Imgur album ID
     access_token = '13767a4ef279ce38ecf274e0a99b065390fdc4f6'  # Replace with your access token
 
     images = get_album_images(album_id, access_token)
