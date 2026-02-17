@@ -71,14 +71,25 @@ class DelveMechanics:
     @staticmethod
     def calculate_damage(hazard: str, pickaxe_tier: str) -> int:
         base_dmg = 0
-        if hazard == "Gravel": base_dmg = 15
-        elif hazard == "Gas Pocket": base_dmg = 30
-        elif hazard == "Magma Flow": base_dmg = 50
-        
-        if base_dmg == 0: return 0
-        
+        if hazard == "Gravel":
+            base_dmg = 15
+        elif hazard == "Gas Pocket":
+            base_dmg = 30
+        elif hazard == "Magma Flow":
+            base_dmg = 50
+
+        if base_dmg == 0:
+            return 0
+
         mitigation = DelveMechanics.TIER_MITIGATION.get(pickaxe_tier, 0.0)
-        return int(base_dmg * (1 - mitigation))
+        mitigated = base_dmg * (1 - mitigation)
+
+        # Damage variance: e.g. ±20% around mitigated value
+        variance_min = 0.8
+        variance_max = 1.2
+        randomized = mitigated * random.uniform(variance_min, variance_max)
+
+        return int(randomized)
 
     @staticmethod
     def check_rewards(depth: int) -> Tuple[int, int]:

@@ -223,21 +223,19 @@ class DelveView(ui.View):
         if reason == "collapse":
             embed = discord.Embed(title="💥 MINE COLLAPSED", description="You died in the depths.", color=discord.Color.red())
             embed.add_field(name="Lost Cargo", value=f"🎁 {self.state.curios_found} Curios\n💎 {self.state.shards_found} Shards")
-            embed.set_thumbnail(url="https://i.imgur.com/HbDOrUp.png") 
-            # Logic: Lose everything (or half? Strictrogue-like usually implies loss)
-            # Let's say lose everything for high stakes.
+            embed.set_thumbnail(url="https://i.imgur.com/HbDOrUp.png")
         elif reason == "fuel":
             embed = discord.Embed(title="⚡ OUT OF FUEL", description="Life support failed.", color=discord.Color.red())
             embed.add_field(name="Lost Cargo", value=f"🎁 {self.state.curios_found} Curios\n💎 {self.state.shards_found} Shards")
-            embed.set_thumbnail(url="https://i.imgur.com/HbDOrUp.png") 
+            embed.set_thumbnail(url="https://i.imgur.com/HbDOrUp.png")
         else:
-            # 1. Secured Loot
+            # Success - Commit to DB
             if self.state.curios_found > 0:
                 await self.bot.database.users.modify_currency(self.user_id, 'curios', self.state.curios_found)
             if self.state.shards_found > 0:
                 await self.bot.database.delve.modify_shards(self.user_id, self.server_id, self.state.shards_found)
             
-            # 2. Handle XP and Leveling
+            # Handle XP and Leveling
             old_lvl, new_lvl = await self.bot.database.delve.add_xp(self.user_id, self.server_id, self.state.depth)
             
             reward_msg = ""
@@ -247,17 +245,18 @@ class DelveView(ui.View):
                     total_reward_shards += DelveMechanics.get_level_reward(lvl)
                 
                 await self.bot.database.delve.modify_shards(self.user_id, self.server_id, total_reward_shards)
-                reward_msg = f"\n📈 **Delve Level Up!** ({old_lvl} -> {new_lvl})\n💎 **Bonus:** +{total_reward_shards} Shards"
+                reward_msg = f"\n📈 **Delve Level Up!** ({old_lvl} -> {new_lvl})\n💎 **Discovery Bonus:** +{total_reward_shards} Shards"
 
             embed = discord.Embed(title="✅ EXTRACTION SUCCESSFUL", color=discord.Color.green())
             embed.set_thumbnail(url="https://i.imgur.com/mX0u3uc.png") 
             embed.description = f"Reached Depth **{self.state.depth}**."
             embed.add_field(name="Loot Secured", value=f"🎁 **{self.state.curios_found}** Curios\n💎 **{self.state.shards_found}** Obsidian Shards", inline=False)
             embed.add_field(name="Progression", value=f"📈 +{self.state.depth} Delve XP{reward_msg}", inline=False)
-            
-            await interaction.response.edit_message(embed=embed, view=None)
-            self.bot.state_manager.clear_active(self.user_id)
-            self.stop()
+
+        await interaction.edit_original_response(embed=embed, view=None)
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
+
 
 class DelveUpgradeView(ui.View):
     def __init__(self, bot, user_id, server_id, stats):
