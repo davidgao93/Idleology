@@ -110,6 +110,9 @@ class Character(commands.Cog, name="character"):
         fdr = p.get_total_fdr()
         if fdr > 0: embed.add_field(name="🛡️ FDR", value=f"{fdr}", inline=True)
 
+        rarity = p.get_total_rarity()
+        if rarity > 0: embed.add_field(name="✨ Rarity", value=f"{rarity}%", inline=True)
+
         # Passives List
         passives = []
         

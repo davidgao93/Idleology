@@ -9,12 +9,13 @@ from core.combat.gen_mob import generate_ascent_monster
 from core.ascent.mechanics import AscentMechanics
 
 class AscentView(ui.View):
-    def __init__(self, bot, user_id: str, player: Player, initial_monster: Monster, start_logs: dict):
+    def __init__(self, bot, user_id: str, player: Player, initial_monster: Monster, start_logs: dict, clean_stats: dict):
         super().__init__(timeout=300)
         self.bot = bot
         self.user_id = user_id
         self.player = player
         self.monster = initial_monster
+        self.clean_stats = clean_stats # [FIX] Store original stats
         
         # State
         self.stage = 1
@@ -72,18 +73,28 @@ class AscentView(ui.View):
         await interaction.response.defer()
         message = interaction.message
         
-        # Run until stage clear or low HP
+        # [FIX] Run batches of 10 turns
         while self.player.current_hp > (self.player.max_hp * 0.2) and self.monster.hp > 0:
-            p_log = engine.process_player_turn(self.player, self.monster)
-            m_log = ""
-            if self.monster.hp > 0:
-                m_log = engine.process_monster_turn(self.player, self.monster)
             
-            self.logs = {self.player.name: p_log, self.monster.name: m_log}
-            
-            # Update UI periodically
-            await self.refresh_ui(message=message)
-            await asyncio.sleep(1.0)
+            # Process up to 10 turns instantly
+            for _ in range(10):
+                if self.player.current_hp <= (self.player.max_hp * 0.2) or self.monster.hp <= 0:
+                    break
+                
+                p_log = engine.process_player_turn(self.player, self.monster)
+                m_log = ""
+                if self.monster.hp > 0:
+                    m_log = engine.process_monster_turn(self.player, self.monster)
+                
+                # Update logs continuously so the last one seen is accurate
+                self.logs = {self.player.name: p_log, self.monster.name: m_log}
+
+            # Update UI periodically (after every batch)
+            if self.monster.hp > 0 and self.player.current_hp > (self.player.max_hp * 0.2):
+                await self.refresh_ui(message=message)
+                await asyncio.sleep(1.0) # Small delay for visual pacing
+            else:
+                break # Exit main loop to handle state
 
         # Check why loop ended
         if self.player.current_hp <= (self.player.max_hp * 0.2) and self.monster.hp > 0:
@@ -127,13 +138,11 @@ class AscentView(ui.View):
         self.player.exp += xp_gain
         
         # 2. Check Level Up / Ascension
-        # Assuming we can load exp table here or pass it. Using localized logic for brevity.
         level_msgs = []
         try:
             with open('assets/exp.json') as f: exp_table = json.load(f)
             exp_threshold = exp_table["levels"].get(str(self.player.level), 999999999)
             
-            # Simple Ascension check
             gained_levels = 0
             while self.player.exp >= exp_threshold and self.player.level >= 100:
                 self.player.ascension += 1
@@ -176,7 +185,11 @@ class AscentView(ui.View):
     async def next_stage(self, interaction, message):
         self.stage += 1
         
-        # Reset transient player stats
+        # [FIX] Reset transient player stats from clean snapshot
+        self.player.base_attack = self.clean_stats['attack']
+        self.player.base_defence = self.clean_stats['defence']
+        self.player.base_crit_chance_target = self.clean_stats['crit_target']
+        
         self.player.combat_ward = self.player.get_combat_ward_value()
         self.player.is_invulnerable_this_combat = False
         
@@ -190,7 +203,7 @@ class AscentView(ui.View):
         next_monster = await generate_ascent_monster(self.player, next_monster, m_level, n_mods, b_mods)
         self.monster = next_monster
         
-        # Apply Start Effects
+        # Apply Start Effects (these modify base stats again for this stage only)
         engine.apply_stat_effects(self.player, self.monster)
         self.logs = engine.apply_combat_start_passives(self.player, self.monster)
         

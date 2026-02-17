@@ -17,6 +17,7 @@ IGNORE_DIRS = {
     ".vscode", 
     "assets",
     "tests",
+    ".pytest_cache",
     DEST_DIR_NAME  # Don't copy the output folder into itself
 }
 
@@ -34,7 +35,10 @@ IGNORE_FILES = {
     "README.md",
     "UPDATES.md",
     ".gitattributes",
-    ".gitignore"
+    ".gitignore",
+    "config_test.json",
+    "conftest.py",
+    "tests.py"
 }
 
 # If you want to include the database, remove "database.db" from this list.

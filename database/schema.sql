@@ -195,3 +195,14 @@ CREATE TABLE IF NOT EXISTS companions (
     is_active INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS delve_progress (
+    user_id TEXT NOT NULL,
+    server_id TEXT NOT NULL,
+    delve_xp INTEGER DEFAULT 0,
+    obsidian_shards INTEGER DEFAULT 0,
+    fuel_level INTEGER DEFAULT 1,
+    struct_level INTEGER DEFAULT 1,
+    sensor_level INTEGER DEFAULT 1,
+    PRIMARY KEY (user_id, server_id)
+);
