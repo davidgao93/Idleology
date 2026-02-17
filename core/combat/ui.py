@@ -63,7 +63,7 @@ def create_victory_embed(player: Player, monster: Monster, rewards: Dict[str, An
         description=f"{player.name} has slain the {monster.name} with {player.current_hp} ❤️ remaining!",
         color=0x00FF00,
     )
-    
+    embed.set_thumbnail(url="https://i.imgur.com/jr5PUj5.png")
     # Passive Proc Messages (Prosper, Infinite Wisdom, etc)
     if rewards.get('msgs'):
         for msg in rewards['msgs']:

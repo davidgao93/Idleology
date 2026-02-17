@@ -8,22 +8,25 @@ class DelveEntryView(ui.View):
         self.bot = bot
         self.user_id = user_id
         self.cost = cost
-        self.start_callback = start_callback # Function to call if confirmed
+        self.start_callback = start_callback 
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
 
+    async def on_timeout(self):
+        # Only clear if we timed out here. If start_callback was called, it handles state.
+        if not self.is_finished():
+            self.bot.state_manager.clear_active(self.user_id)
+            try: await self.message.edit(content="Permit request timed out.", view=None, embed=None)
+            except: pass
+
     @ui.button(label="Pay Permit & Descend", style=ButtonStyle.success, emoji="🎟️")
     async def confirm(self, interaction: Interaction, button: ui.Button):
-        # 1. Final Funds Check
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < self.cost:
             return await interaction.response.send_message("You cannot afford the permit fee.", ephemeral=True)
 
-        # 2. Deduct Gold
         await self.bot.database.users.modify_gold(self.user_id, -self.cost)
-        
-        # 3. Handover to Main Game logic
         await self.start_callback(interaction)
         self.stop()
 
@@ -33,7 +36,6 @@ class DelveEntryView(ui.View):
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
-
 class DelveView(ui.View):
     def __init__(self, bot, user_id, server_id, state: DelveState, stats: dict):
         super().__init__(timeout=180)
@@ -41,11 +43,10 @@ class DelveView(ui.View):
         self.user_id = user_id
         self.server_id = server_id
         self.state = state
-        self.stats = stats # {fuel_lvl, struct_lvl, sensor_lvl}
+        self.stats = stats 
         
-        self.processing = False
-
-        # Pre-generate next 10 layers if empty
+        self.processing = False 
+        
         self._expand_map()
         self.update_buttons()
 
@@ -57,38 +58,33 @@ class DelveView(ui.View):
         return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
-        # Auto-fail if abandoned deep underground
         self.bot.state_manager.clear_active(self.user_id)
-        if self.state.depth > 0:
-            try: await self.message.edit(content="⚠️ **Signal Lost.** The mine collapsed while you were idle.", view=None, embed=None)
-            except: pass
+        # If timed out during active play
+        if self.state.depth > 0 and self.children: # Children list check ensures not already cleared
+             try: await self.message.edit(content="⚠️ **Signal Lost.** The mine collapsed while you were idle.", view=None, embed=None)
+             except: pass
 
     def update_buttons(self):
-        # Drill: Always enabled unless dead
-        self.children[0].disabled = False
+        self.children[0].disabled = False # Drill
         
-        # Survey: Requires Fuel
         survey_cost = 2
-        self.children[1].disabled = self.state.current_fuel < survey_cost
+        self.children[1].disabled = self.state.current_fuel < survey_cost # Survey
         
-        # Reinforce: Requires Fuel and Stability < 100
         reinf_cost = 5
-        self.children[2].disabled = (self.state.current_fuel < reinf_cost) or (self.state.stability >= 100)
+        self.children[2].disabled = (self.state.current_fuel < reinf_cost) or (self.state.stability >= 100) # Reinforce
         
-        # Extract: Requires Depth > 0
-        self.children[3].disabled = self.state.depth == 0
+        self.children[3].disabled = self.state.depth == 0 # Extract
 
     def build_embed(self, last_action: str = "") -> discord.Embed:
         # Visual Bars
         stab_fill = int(self.state.stability / 10)
         stab_bar = "▓" * stab_fill + "░" * (10 - stab_fill)
-        stab_color = "🟢" if self.state.stability > 50 else ("🟡" if self.state.stability > 20 else "🔴")
         
         fuel_fill = int((self.state.current_fuel / self.state.max_fuel) * 10)
         fuel_bar = "⚡" * fuel_fill + "⚫" * (10 - fuel_fill)
 
         embed = discord.Embed(title=f"⛏️ Deep Delve (Depth: {self.state.depth})", color=discord.Color.dark_grey())
-        embed.set_thumbnail(url="https://i.imgur.com/C7W0IkJ.png") 
+        embed.set_thumbnail(url="https://i.imgur.com/C7W0IkJ.png")
         status = (f"**Structure:** `{stab_bar}` {self.state.stability}%\n"
                   f"**Fuel:** {fuel_bar} ({self.state.current_fuel}/{self.state.max_fuel})")
         
@@ -117,36 +113,15 @@ class DelveView(ui.View):
             
         return embed
 
-    # --- ACTIONS ---
-
     async def _safe_process(self, interaction: Interaction, callback):
-        """Helper to handle locking and errors."""
         if self.processing:
-            # If clicked while processing, defer silently so it doesn't error out on client
             try: await interaction.response.defer()
             except: pass
             return
 
         self.processing = True
         try:
-            await interaction.response.defer() # [FIX] Prevents timeout errors
-            await callback(interaction)
-        except Exception as e:
-            print(f"Delve Error: {e}")
-        finally:
-            self.processing = False
-
-    async def _safe_process(self, interaction: Interaction, callback):
-        """Helper to handle locking and errors."""
-        if self.processing:
-            # If clicked while processing, defer silently so it doesn't error out on client
-            try: await interaction.response.defer()
-            except: pass
-            return
-
-        self.processing = True
-        try:
-            await interaction.response.defer() # [FIX] Prevents timeout errors
+            await interaction.response.defer()
             await callback(interaction)
         except Exception as e:
             print(f"Delve Error: {e}")
@@ -170,8 +145,8 @@ class DelveView(ui.View):
         if dmg > 0: msg += f" Hit {hazard}! -{dmg}% Stability."
         
         c, s = DelveMechanics.check_rewards(self.state.depth)
-        if c > 0: msg += f" Found {c} Curio!"
-        if s > 0: msg += f" Found {s} Shards!"
+        if c > 0: msg += f" 🎁 **FOUND CURIO!**"
+        if s > 0: msg += f" 💎 Found {s} Shards!"
         self.state.curios_found += c
         self.state.shards_found += s
 
@@ -220,6 +195,8 @@ class DelveView(ui.View):
 
     async def game_over(self, interaction: Interaction, reason: str):
         embed = None
+        
+        # 1. Determine End State & Embed
         if reason == "collapse":
             embed = discord.Embed(title="💥 MINE COLLAPSED", description="You died in the depths.", color=discord.Color.red())
             embed.add_field(name="Lost Cargo", value=f"🎁 {self.state.curios_found} Curios\n💎 {self.state.shards_found} Shards")
@@ -253,10 +230,59 @@ class DelveView(ui.View):
             embed.add_field(name="Loot Secured", value=f"🎁 **{self.state.curios_found}** Curios\n💎 **{self.state.shards_found}** Obsidian Shards", inline=False)
             embed.add_field(name="Progression", value=f"📈 +{self.state.depth} Delve XP{reward_msg}", inline=False)
 
-        await interaction.edit_original_response(embed=embed, view=None)
-        self.bot.state_manager.clear_active(self.user_id)
+        # 2. Add Restart Options
+        self.clear_items()
+        
+        cost = DelveMechanics.get_entry_cost(self.stats['fuel_lvl'])
+        
+        restart_btn = ui.Button(label=f"Restart ({cost:,} G)", style=ButtonStyle.success, emoji="🔄")
+        restart_btn.callback = self.restart_callback
+        self.add_item(restart_btn)
+        
+        leave_btn = ui.Button(label="Leave", style=ButtonStyle.secondary)
+        leave_btn.callback = self.leave_callback
+        self.add_item(leave_btn)
+
+        await interaction.edit_original_response(embed=embed, view=self)
+        
+        # Note: We do NOT clear_active here, as we are waiting for Restart/Leave input.
+
+    async def restart_callback(self, interaction: Interaction):
+        # 1. Validate Funds
+        cost = DelveMechanics.get_entry_cost(self.stats['fuel_lvl'])
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        
+        if gold < cost:
+            return await interaction.response.send_message(f"Insufficient funds! You need {cost:,} gold.", ephemeral=True)
+
+        await interaction.response.defer()
+
+        # 2. Deduct
+        await self.bot.database.users.modify_gold(self.user_id, -cost)
+
+        # 3. Create Fresh State
+        max_fuel = DelveMechanics.get_max_fuel(self.stats['fuel_lvl'])
+        new_state = DelveState(
+            max_fuel=max_fuel,
+            current_fuel=max_fuel,
+            pickaxe_tier=self.state.pickaxe_tier # Preserve tool
+        )
+
+        # 4. Create New View & Replace Message
+        # We reuse self.stats because levels haven't changed (shop is separate)
+        new_view = DelveView(self.bot, self.user_id, self.server_id, new_state, self.stats)
+        embed = new_view.build_embed("Systems re-initialized. Permit renewed.")
+        
+        await interaction.edit_original_response(embed=embed, view=new_view)
+        
+        # 5. Stop Old View
         self.stop()
 
+    async def leave_callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
 
 class DelveUpgradeView(ui.View):
     def __init__(self, bot, user_id, server_id, stats):
@@ -273,17 +299,14 @@ class DelveUpgradeView(ui.View):
     def update_buttons(self):
         shards = self.stats['shards']
         
-        # Fuel
         fuel_cost = DelveMechanics.get_upgrade_cost(self.stats['fuel_lvl'])
         self.children[0].label = f"Fuel Lvl {self.stats['fuel_lvl']} ({fuel_cost} 💎)"
         self.children[0].disabled = shards < fuel_cost or self.stats['fuel_lvl'] >= 10
 
-        # Reinforce
         struct_cost = DelveMechanics.get_upgrade_cost(self.stats['struct_lvl'])
         self.children[1].label = f"Struct Lvl {self.stats['struct_lvl']} ({struct_cost} 💎)"
         self.children[1].disabled = shards < struct_cost or self.stats['struct_lvl'] >= 10
 
-        # Sensor
         sensor_cost = DelveMechanics.get_upgrade_cost(self.stats['sensor_lvl'])
         self.children[2].label = f"Sensor Lvl {self.stats['sensor_lvl']} ({sensor_cost} 💎)"
         self.children[2].disabled = shards < sensor_cost or self.stats['sensor_lvl'] >= 8
@@ -292,7 +315,6 @@ class DelveUpgradeView(ui.View):
         cost = DelveMechanics.get_upgrade_cost(self.stats[stat_key])
         await self.bot.database.delve.upgrade_stat(self.user_id, self.server_id, db_col, cost)
         
-        # Update local
         self.stats['shards'] -= cost
         self.stats[stat_key] += 1
         
