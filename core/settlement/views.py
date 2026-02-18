@@ -189,7 +189,7 @@ class BuildConstructionView(ui.View):
         options = []
         for key, cost in self.COSTS.items():
             lbl = key.replace("_", " ").title()
-            desc = f"Cost: {cost.get('gold',0)}g, 🪵{cost.get('timber',0)}, 🪨{cost.get('stone',0)}"
+            desc = f"Cost: {cost.get('gold',0)}g, {cost.get('timber',0)} Timber, {cost.get('stone',0)} Stone"
             options.append(SelectOption(label=lbl, value=key, description=desc))
             
         select = ui.Select(placeholder="Choose Blueprint...", options=options)
