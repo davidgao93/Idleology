@@ -246,6 +246,14 @@ class CombatView(ui.View):
         else:
             await self.refresh_embed(interaction)
 
+    def _get_boss_pet_image(self, boss_name: str) -> str:
+        if "NEET" in boss_name: return "https://i.imgur.com/V5Hd9d9.png"
+        if "Aphrodite" in boss_name: return "https://i.imgur.com/LjE5VZF.png"
+        if "Gemini" in boss_name: return "https://i.imgur.com/PqViP3D.png"
+        if "Lucifer" in boss_name: return "https://i.imgur.com/tIcLLI1.png"
+        return None
+
+
     async def handle_end_state(self, message, interaction: Interaction):
         """Processes victory or defeat with Phase Logic."""
         
@@ -361,8 +369,51 @@ class CombatView(ui.View):
 
             # Companions
             current_pet_count = await self.bot.database.companions.get_count(self.user_id)
+            boss_pet_triggered = False
 
-            if not self.monster.is_boss and current_pet_count < 20 and random.random() < 0.05:
+            # 1. BOSS PET CHECK (3% Chance, Tier 3 Fixed)
+            boss_img = self._get_boss_pet_image(self.monster.name)
+            
+            if self.monster.is_boss and boss_img and current_pet_count < 20:
+                if random.random() < 0.03: # 3% Drop Rate
+                    boss_pet_triggered = True
+                    
+                    # Generate Tier 3 Passive
+                    p_type, p_tier = CompanionMechanics.roll_boss_passive()
+                    
+                    # Add to DB
+                    # We strip title/epithets for the pet name (e.g. "Lucifer, Fallen" -> "Lucifer")
+                    pet_name = self.monster.name.split(",")[0]
+                    
+                    await self.bot.database.companions.add_companion(
+                        self.user_id,
+                        name=pet_name,
+                        species="Boss",
+                        image=boss_img,
+                        p_type=p_type,
+                        p_tier=p_tier
+                    )
+                    
+                    # Initialize Collection Timer (Standard pet behavior)
+                    await self.bot.database.users.initialize_companion_timer(self.user_id)
+
+                    # --- SPECIAL EVENT: TAMING CUTSCENE ---
+                    tame_embed = discord.Embed(
+                        title="⚠️ ANOMALY DETECTED ⚠️",
+                        description=f"The spirit of **{pet_name}** refuses to fade...\nIt binds itself to your soul!",
+                        color=discord.Color.dark_theme() # Almost black background
+                    )
+                    tame_embed.set_image(url=boss_img)
+                    tame_embed.add_field(name="LEGENDARY TAMING", value=f"You have obtained **{pet_name}** (Tier {p_tier} Passive)!", inline=False)
+                    tame_embed.set_footer(text="A Boss Companion has joined your roster.")
+                    
+                    # Show the cutscene for 5 seconds
+                    await message.edit(embed=tame_embed, view=None)
+                    await asyncio.sleep(5)
+                    
+                    reward_data['msgs'].append(f"👑 **LEGENDARY:** {pet_name} joined your roster!")
+
+            if not boss_pet_triggered and not self.monster.is_boss and current_pet_count < 20 and random.random() < 0.05:
                 # Roll Stats
                 p_type, p_tier = CompanionMechanics.roll_new_passive(is_capture=True)
                 

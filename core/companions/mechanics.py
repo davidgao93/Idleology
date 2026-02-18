@@ -216,3 +216,18 @@ class CompanionMechanics:
             "passive_type": random.choice([comp_a.passive_type, comp_b.passive_type]),
             "passive_tier": random.choice([comp_a.passive_tier, comp_b.passive_tier])
         }
+    
+    @staticmethod
+    def roll_boss_passive() -> Tuple[str, int]:
+        """
+        Generates a passive for a Boss Pet.
+        Always Tier 3 (as per specification).
+        """
+        # 5% chance for Special Rarity, otherwise standard types
+        if random.random() < 0.05:
+            p_type = 's_rarity'
+        else:
+            p_type = random.choice(CompanionMechanics.PASSIVE_TYPES)
+            
+        # Fixed Tier 3
+        return p_type, 3
