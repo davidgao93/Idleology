@@ -76,22 +76,39 @@ class CompanionMechanics:
         return p_type, tier
 
     @staticmethod
-    def reroll_passive(current_tier: int) -> Tuple[str, int, bool]:
+    def reroll_passive(current_tier: int, current_type: str = None) -> Tuple[str, int, bool]:
         """
         Rerolls passive using a Rune.
         Returns: (NewType, NewTier, DidTierUp)
-        Logic: 
-        - 10% Chance to Upgrade Tier (Max 5)
-        - 90% Chance to Keep Tier
-        - Type is always rerolled
+        Logic:
+        - 10% Chance to Upgrade Tier (Max 5).
+        - 90% Chance to Keep Tier.
+        - Type is ALWAYS different from current_type.
         """
-        # Roll Type
-        if random.random() < 0.05:
-            p_type = 's_rarity'
+        
+        # 1. Determine New Type
+        # Logic: 5% chance for s_rarity, 95% for standard.
+        # Constraint: Must not be current_type.
+        
+        new_type = None
+        
+        # Helper to pick from standard list excluding current
+        def pick_standard():
+            pool = [p for p in CompanionMechanics.PASSIVE_TYPES if p != current_type]
+            return random.choice(pool)
+
+        if current_type == 's_rarity':
+            # If we currently have Special Rarity, we FORCE a standard roll 
+            # (since we can't be s_rarity again)
+            new_type = pick_standard()
         else:
-            p_type = random.choice(CompanionMechanics.PASSIVE_TYPES)
-            
-        # Roll Tier Change
+            # If standard, we roll for s_rarity or different standard
+            if random.random() < 0.05:
+                new_type = 's_rarity'
+            else:
+                new_type = pick_standard()
+
+        # 2. Roll Tier Change
         new_tier = current_tier
         upgraded = False
         
@@ -100,10 +117,10 @@ class CompanionMechanics:
             new_tier += 1
             upgraded = True
         
-        # Safety: Ensure within bounds
+        # Safety bounds
         new_tier = max(1, min(5, new_tier))
         
-        return p_type, new_tier, upgraded
+        return new_type, new_tier, upgraded
 
     # --- PASSIVE COLLECTION ---
 

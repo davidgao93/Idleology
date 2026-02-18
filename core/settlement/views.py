@@ -4,6 +4,134 @@ from datetime import datetime
 from core.models import Settlement, Building
 from core.settlement.mechanics import SettlementMechanics
 
+class TownHallView(ui.View):
+    def __init__(self, bot, user_id, settlement, parent_view):
+        super().__init__(timeout=120)
+        self.bot = bot
+        self.user_id = user_id
+        self.settlement = settlement
+        self.parent = parent_view
+        self.setup_ui()
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    def _get_upgrade_cost(self, target_tier):
+        # Town Hall is expensive. Base costs higher than normal buildings.
+        base_wood = 500
+        base_stone = 500
+        base_gold = 10000
+        
+        cost = {
+            "timber": int(base_wood * (target_tier ** 1.6)),
+            "stone": int(base_stone * (target_tier ** 1.6)),
+            "gold": int(base_gold * (target_tier ** 1.6))
+        }
+        
+        # Special Materials
+        if target_tier >= 3:
+            cost['special_key'] = "spirit_shard"
+            cost['special_name'] = "Spirit Shard"
+            cost['special_qty'] = target_tier - 2 # 1 at T3, 2 at T4, 3 at T5
+            
+        return cost
+
+    def build_embed(self):
+        tier = self.settlement.town_hall_tier
+        slots = self.settlement.building_slots
+        
+        # Calculate next tier benefits
+        next_slots = slots + 1
+        
+        desc = (
+            f"**Level:** {tier}/5\n"
+            f"**Building Slots:** {slots}\n"
+            f"**Follower Cap Buff:** +{tier * 10}%\n" 
+        )
+        
+        embed = discord.Embed(title="🏛️ Town Hall", description=desc, color=discord.Color.dark_blue())
+        
+        if tier < 5:
+            costs = self._get_upgrade_cost(tier + 1)
+            cost_str = f"🪵 {costs['timber']:,} | 🪨 {costs['stone']:,} | 💰 {costs['gold']:,}"
+            if 'special_key' in costs:
+                cost_str += f" | ✨ {costs['special_name']} x{costs['special_qty']}"
+                
+            embed.add_field(name="Upgrade Benefits", value=f"Slots: {slots} ➡️ **{next_slots}**", inline=False)
+            embed.add_field(name="Upgrade Cost", value=cost_str, inline=False)
+        else:
+            embed.add_field(name="Status", value="🌟 Maximum Authority Reached", inline=False)
+        embed.set_thumbnail(url="https://i.imgur.com/xNY7tPj.png")    
+        return embed
+
+    def setup_ui(self):
+        self.clear_items()
+        
+        btn_up = ui.Button(label="Upgrade Hall", style=ButtonStyle.success, emoji="⬆️", disabled=(self.settlement.town_hall_tier >= 5))
+        btn_up.callback = self.upgrade
+        self.add_item(btn_up)
+        
+        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary)
+        btn_back.callback = self.go_back
+        self.add_item(btn_back)
+
+    async def upgrade(self, interaction: Interaction):
+        target_tier = self.settlement.town_hall_tier + 1
+        costs = self._get_upgrade_cost(target_tier)
+        
+        # 1. Check Resources
+        if (self.settlement.timber < costs['timber'] or 
+            self.settlement.stone < costs['stone']):
+            return await interaction.response.send_message("Insufficient Timber or Stone!", ephemeral=True)
+            
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < costs['gold']:
+            return await interaction.response.send_message("Insufficient Gold!", ephemeral=True)
+
+        if 'special_key' in costs:
+            col = costs['special_key']
+            req = costs['special_qty']
+            async with self.bot.database.connection.execute(f"SELECT {col} FROM users WHERE user_id = ?", (self.user_id,)) as c:
+                owned = (await c.fetchone())[0]
+            
+            if owned < req:
+                return await interaction.response.send_message(f"Need {req}x {costs['special_name']}!", ephemeral=True)
+            
+            await self.bot.database.users.modify_currency(self.user_id, col, -req)
+
+        await interaction.response.defer()
+
+        # 2. Consume Resources
+        changes = {'gold': -costs['gold'], 'timber': -costs['timber'], 'stone': -costs['stone']}
+        await self.bot.database.settlement.commit_production(self.user_id, self.parent.server_id, changes)
+
+        # 3. Update DB (Settlements Table)
+        # Upgrading Town Hall adds 1 building slot
+        await self.bot.database.connection.execute(
+            """UPDATE settlements 
+               SET town_hall_tier = town_hall_tier + 1, 
+                   building_slots = building_slots + 1 
+               WHERE user_id = ? AND server_id = ?""",
+            (self.user_id, self.parent.server_id)
+        )
+        await self.bot.database.connection.commit()
+
+        # 4. Update Local State
+        self.settlement.town_hall_tier += 1
+        self.settlement.building_slots += 1
+        self.settlement.timber -= costs['timber']
+        self.settlement.stone -= costs['stone']
+
+        # 5. Refresh
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+
+    async def go_back(self, interaction: Interaction):
+        # We need to refresh the parent grid because slots might have increased
+        self.parent.update_grid() 
+        await interaction.response.edit_message(embed=self.parent.build_embed(), view=self.parent)
+        self.stop()
+
+
 class SettlementDashboardView(ui.View):
     def __init__(self, bot, user_id, server_id, settlement: Settlement, follower_count: int):
         super().__init__(timeout=180)
@@ -52,36 +180,66 @@ class SettlementDashboardView(ui.View):
             if pending_txt:
                 embed.add_field(name="Pending Production", value=pending_txt, inline=False)
 
+        if self.settlement.buildings:
+            lines = []
+            for b in self.settlement.buildings:
+                info = BuildingDetailView.BUILDING_INFO.get(b.building_type)
+                if info:
+                    lines.append(f"• **{b.name} (T{b.tier})** – {info}")
+                else:
+                    lines.append(f"• **{b.name} (T{b.tier})**")
+            
+            embed.add_field(
+                name="Buildings",
+                value="\n".join(lines),
+                inline=False
+            )
+
         return embed
 
     def update_grid(self):
         self.clear_items()
         
         # 1. Building Slots
-        # We display up to the max slots allowed by Town Hall
-        # Map existing buildings to their slot index
         built_map = {b.slot_index: b for b in self.settlement.buildings}
         
+        # Iterate up to current max slots
         for i in range(self.settlement.building_slots):
-            row = i // 3
+            row = i // 3 # 3 buttons per row
+            # Safety: Discord max row is 4 (index 0-4). 
+            # If slots > 12, we need pagination. For now (max 8), this is fine.
+            
             if i in built_map:
                 b = built_map[i]
                 status = "🟢" if b.workers_assigned > 0 else "🔴"
                 btn = ui.Button(label=f"{b.name} (T{b.tier}) {status}", style=ButtonStyle.secondary, row=row)
                 btn.callback = lambda inter, b=b: self.open_building(inter, b)
             else:
-                btn = ui.Button(label="[ Empty Lot ]", style=ButtonStyle.gray, row=row)
+                btn = ui.Button(label=f"Slot {i+1} [Empty]", style=ButtonStyle.gray, row=row)
                 btn.callback = lambda inter, slot=i: self.open_build_menu(inter, slot)
             self.add_item(btn)
 
-        # 2. Controls
-        collect_btn = ui.Button(label="Collect Resources", style=ButtonStyle.success, row=3, emoji="🚜")
+        # 2. Controls (Row 3 or 4 depending on slots)
+        # With max 8 slots, the grid uses Row 0, 1, 2. Controls go to Row 3.
+        ctrl_row = (self.settlement.building_slots // 3) + 1
+        if ctrl_row > 4: ctrl_row = 4 # Cap at bottom row
+
+        # Town Hall Button
+        th_btn = ui.Button(label=f"Town Hall (T{self.settlement.town_hall_tier})", style=ButtonStyle.primary, row=ctrl_row, emoji="🏛️")
+        th_btn.callback = self.open_town_hall
+        self.add_item(th_btn)
+
+        collect_btn = ui.Button(label="Collect", style=ButtonStyle.success, row=ctrl_row, emoji="🚜")
         collect_btn.callback = self.collect_resources
         self.add_item(collect_btn)
         
-        close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=3)
+        close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=ctrl_row)
         close_btn.callback = self.close_view
         self.add_item(close_btn)
+
+    async def open_town_hall(self, interaction: Interaction):
+        view = TownHallView(self.bot, self.user_id, self.settlement, self)
+        await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
     async def open_build_menu(self, interaction: Interaction, slot_index: int):
         view = BuildConstructionView(self.bot, self.user_id, slot_index, self)
@@ -174,29 +332,34 @@ class BuildConstructionView(ui.View):
         embed.set_thumbnail(url="https://i.imgur.com/cZcEKhS.png")
         return embed
 
+
     def setup_select(self):
-        BUILDING_INFO = {
-            "logging_camp": "Generates Timber. Required for upgrades.",
-            "quarry":       "Generates Stone. Required for upgrades.",
-            "foundry":      "Converts Ore -> Ingots (Weapon/Armor crafting).",
-            "sawmill":      "Converts Logs -> Planks (Structure upgrades).",
-            "reliquary":    "Converts Bones -> Essence (Enchantments).",
-            "market":       "Generates Passive Gold based on workforce.",
-            "barracks":     "Passive: +1% Atk/Def per tier.",
-            "temple":       "Passive: +5% Propagate growth per tier."
-        }
-                
+        self.clear_items()
+
+        # 1. Identify Existing Buildings
+        # We look at the parent settlement object to see what is already built
+        existing_types = {b.building_type for b in self.parent.settlement.buildings}
+
         options = []
         for key, cost in self.COSTS.items():
+            # SKIP if this building type already exists
+            if key in existing_types:
+                continue
+
             lbl = key.replace("_", " ").title()
-            desc = f"Cost: {cost.get('gold',0)}g, {cost.get('timber',0)} Timber, {cost.get('stone',0)} Stone"
+            desc = f"Cost: {cost.get('gold',0)}g, 🪵{cost.get('timber',0)}, 🪨{cost.get('stone',0)}"
             options.append(SelectOption(label=lbl, value=key, description=desc))
             
-        select = ui.Select(placeholder="Choose Blueprint...", options=options)
-        select.callback = self.on_select
-        self.add_item(select)
+        # 2. Handle Edge Case: All buildings constructed?
+        if not options:
+            btn_full = ui.Button(label="No New Blueprints Available", style=ButtonStyle.gray, disabled=True, row=0)
+            self.add_item(btn_full)
+        else:
+            select = ui.Select(placeholder="Choose Blueprint...", options=options, row=0)
+            select.callback = self.on_select
+            self.add_item(select)
         
-        cancel = ui.Button(label="Cancel", style=ButtonStyle.danger)
+        cancel = ui.Button(label="Cancel", style=ButtonStyle.danger, row=1)
         cancel.callback = self.cancel
         self.add_item(cancel)
 
@@ -277,6 +440,17 @@ class BuildingDetailView(ui.View):
         "temple": "https://i.imgur.com/4bmHF4u.png",
     }
 
+    BUILDING_INFO = {
+        "logging_camp": "Generates Timber. Required for upgrades.",
+        "quarry":       "Generates Stone. Required for upgrades.",
+        "foundry":      "Converts Ore -> Ingots (Crafting/Upgrades).",
+        "sawmill":      "Converts Logs -> Planks (Crafting/Upgrades).",
+        "reliquary":    "Converts Bones -> Essence (Crafting/Upgrades).",
+        "market":       "Generates Passive Gold based on workforce.",
+        "barracks":     "Passive: +1% Atk/Def per tier.",
+        "temple":       "Passive: +5% Propagate growth per tier."
+    }
+
     # Helper for display names
     ITEM_NAMES = {
         "magma_core": "Magma Core",
@@ -302,6 +476,10 @@ class BuildingDetailView(ui.View):
         thumb = self.THUMBNAILS.get(self.building.building_type)
         if thumb:
             embed.set_thumbnail(url=thumb)
+
+        info = self.BUILDING_INFO.get(self.building.building_type)
+        if info:
+            embed.add_field(name="Function", value=info, inline=False)
 
         # Upgrade Cost Preview (Simplified for display)
         next_cost = self._get_upgrade_cost(self.building.tier + 1)

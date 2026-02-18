@@ -6,6 +6,62 @@ from core.models import Companion
 from core.companions.mechanics import CompanionMechanics
 from core.companions.logic import CompanionLogic
 
+
+class RerollConfirmView(ui.View):
+    def __init__(self, bot, user_id, companion, runes_owned, origin_view):
+        super().__init__(timeout=60)
+        self.bot = bot
+        self.user_id = user_id
+        self.comp = companion
+        self.runes_owned = runes_owned
+        self.origin_view = origin_view # The Detail View
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    @ui.button(label="Confirm Reroll", style=ButtonStyle.success, emoji="🎲")
+    async def confirm(self, interaction: Interaction, button: ui.Button):
+        # Double check funds just in case
+        runes = await self.bot.database.users.get_currency(self.user_id, 'partnership_runes')
+        if runes < 1:
+            return await interaction.response.send_message("You ran out of runes!", ephemeral=True)
+
+        await interaction.response.defer()
+
+        # 1. Deduct
+        await self.bot.database.users.modify_currency(self.user_id, 'partnership_runes', -1)
+
+        # 2. Logic
+        old_tier = self.comp.passive_tier
+        old_type = self.comp.passive_type
+        
+        # Pass current type to ensure change
+        new_type, new_tier, upgraded = CompanionMechanics.reroll_passive(old_tier, old_type)
+
+        # 3. Update DB
+        await self.bot.database.companions.update_passive(self.comp.id, new_type, new_tier)
+
+        # 4. Update Local Object
+        self.comp.passive_type = new_type
+        self.comp.passive_tier = new_tier
+
+        # 5. Return to Detail View
+        embed = self.origin_view.get_embed()
+        embed.color = discord.Color.green()
+        
+        msg = f"🎲 **Reroll Complete!**\nPrevious: T{old_tier} {old_type.upper()}\n**New:** T{new_tier} **{new_type.upper()}**"
+        if upgraded:
+            msg += "\n🌟 **TIER UPGRADE!**"
+            
+        await interaction.edit_original_response(content=msg, embed=embed, view=self.origin_view)
+        self.stop()
+
+    @ui.button(label="Cancel", style=ButtonStyle.secondary)
+    async def cancel(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.edit_message(content="Reroll cancelled.", embed=self.origin_view.get_embed(), view=self.origin_view)
+        self.stop()
+
+
 class CompanionListView(ui.View):
     def __init__(self, bot, user_id: str, companions: list[Companion]):
         super().__init__(timeout=180)
@@ -201,31 +257,19 @@ class CompanionDetailView(ui.View):
                 ephemeral=True
             )
 
-        # 2. Defer interaction (DB writes involved)
-        await interaction.response.defer()
-
-        # 3. Consume Rune
-        await self.bot.database.users.modify_currency(self.user_id, 'partnership_runes', -1)
-
-        # 4. Calculate New Passive via Mechanics
-        # Logic: Rerolls Type, 10% chance to Upgrade Tier, 90% chance to keep Tier
-        old_tier = self.comp.passive_tier
-        new_type, new_tier, upgraded = CompanionMechanics.reroll_passive(old_tier)
-
-        # 5. Update Database
-        await self.bot.database.companions.update_passive(self.comp.id, new_type, new_tier)
-
-        # 6. Update Local Object (to reflect changes in UI immediately)
-        self.comp.passive_type = new_type
-        self.comp.passive_tier = new_tier
-
-        # 7. Update UI & Send Feedback
-        msg = f"🎲 Passive rerolled to **{self.comp.description}**!"
-        if upgraded:
-            msg += f"\n🌟 **TIER UPGRADE!** (T{old_tier} ➡️ T{new_tier})"
+        # 2. Create Confirmation Embed
+        embed = discord.Embed(
+            title="🎲 Reroll Companion Passive?",
+            description=f"**Companion:** {self.comp.name}\n**Current:** T{self.comp.passive_tier} {self.comp.passive_type.upper()}",
+            color=discord.Color.purple()
+        )
+        embed.add_field(name="Cost", value=f"1 Rune of Partnership\n(Owned: {runes})", inline=True)
+        embed.add_field(name="Mechanics", value="• Guaranteed **New Passive Type**\n• **10% Chance** to Upgrade Tier", inline=True)
         
-        await interaction.edit_original_response(embed=self.get_embed(), view=self)
-        await interaction.followup.send(msg, ephemeral=True)
+        confirm_view = RerollConfirmView(self.bot, self.user_id, self.comp, runes, self)
+        
+        # 3. Swap View
+        await interaction.response.edit_message(content=None, embed=embed, view=confirm_view)
 
     async def release_confirm(self, interaction: Interaction):
         await self.bot.database.companions.delete_companion(self.comp.id, self.user_id)

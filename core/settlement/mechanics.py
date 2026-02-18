@@ -12,8 +12,8 @@ class SettlementMechanics:
     # Building Definitions
     # 'type': generator (creates from thin air), converter (consumes input), passive (buff)
     BUILDINGS = {
-        "logging_camp": {"type": "generator", "output": "timber", "base_rate": 10},
-        "quarry":       {"type": "generator", "output": "stone", "base_rate": 10},
+        "logging_camp": {"type": "generator", "output": "timber", "base_rate": 1},
+        "quarry":       {"type": "generator", "output": "stone", "base_rate": 1},
         "market":       {"type": "generator", "output": "gold", "base_rate": 50}, # 50 gold per worker/hr
         
         "foundry": {
@@ -22,7 +22,7 @@ class SettlementMechanics:
                 ("iron", "iron_bar"), ("coal", "steel_bar"), 
                 ("gold", "gold_bar"), ("platinum", "platinum_bar"), ("idea", "idea_bar")
             ],
-            "base_rate": 5 # 5 conversions per worker/hr
+            "base_rate": 1 # 5 conversions per worker/hr
         },
         "sawmill": {
             "type": "converter",
@@ -30,7 +30,7 @@ class SettlementMechanics:
                 ("oak_logs", "oak_plank"), ("willow_logs", "willow_plank"),
                 ("mahogany_logs", "mahogany_plank"), ("magic_logs", "magic_plank"), ("idea_logs", "idea_plank")
             ],
-            "base_rate": 5
+            "base_rate": 1
         },
         "reliquary": {
             "type": "converter",
@@ -38,7 +38,7 @@ class SettlementMechanics:
                 ("desiccated_bones", "desiccated_essence"), ("regular_bones", "regular_essence"),
                 ("sturdy_bones", "sturdy_essence"), ("reinforced_bones", "reinforced_essence"), ("titanium_bones", "titanium_essence")
             ],
-            "base_rate": 5
+            "base_rate": 1
         },
         
         "barracks": {"type": "passive", "effect": "combat_stats"},
@@ -49,7 +49,7 @@ class SettlementMechanics:
     @staticmethod
     def get_max_workers(tier: int) -> int:
         """Higher tier buildings can hold more workers."""
-        return 10 * tier
+        return 100 * tier
 
     @staticmethod
     def calculate_production(
@@ -72,9 +72,9 @@ class SettlementMechanics:
         changes = {}
         
         # Rate = Base * Tier * Workers
-        # Example: T1 Logging Camp w/ 10 workers = 10 * 1 * 10 = 100 Timber/hr
+        # Example: T1 Logging Camp w/ 10 workers = 10 * 1 = 100 Timber/hr
         # Example: T5 Foundry w/ 50 workers = 5 * 5 * 50 = 1250 Ingots/hr
-        production_capacity = int(b_data["base_rate"] * tier * workers * hours_elapsed)
+        production_capacity = int(b_data["base_rate"] * tier * int(workers / 10) * hours_elapsed)
 
         if b_data["type"] == "generator":
             changes[b_data["output"]] = production_capacity
