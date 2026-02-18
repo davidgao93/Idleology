@@ -148,5 +148,52 @@ class Inventory(commands.Cog, name="inventory"):
     async def helmets(self, interaction: Interaction):
         await self._generic_inventory_command(interaction, "helmet", create_helmet, "🪖")
 
+    @app_commands.command(name="resources", description="View refined materials and settlement resources.")
+    async def resources(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        # Fetch Data
+        settlement = await self.bot.database.settlement.get_settlement(user_id, server_id)
+        
+        # Raw SQL fetch for speed/simplicity given the number of columns
+        async with self.bot.database.connection.execute(
+            "SELECT iron_bar, steel_bar, gold_bar, platinum_bar, idea_bar FROM mining WHERE user_id=? AND server_id=?", 
+            (user_id, server_id)
+        ) as c:
+            ingots = await c.fetchone() or (0,0,0,0,0)
+
+        async with self.bot.database.connection.execute(
+            "SELECT oak_plank, willow_plank, mahogany_plank, magic_plank, idea_plank FROM woodcutting WHERE user_id=? AND server_id=?", 
+            (user_id, server_id)
+        ) as c:
+            planks = await c.fetchone() or (0,0,0,0,0)
+
+        async with self.bot.database.connection.execute(
+            "SELECT desiccated_essence, regular_essence, sturdy_essence, reinforced_essence, titanium_essence FROM fishing WHERE user_id=? AND server_id=?", 
+            (user_id, server_id)
+        ) as c:
+            essence = await c.fetchone() or (0,0,0,0,0)
+
+        specials = await self.bot.database.users.get(user_id, server_id)
+        # Indexes: 32=magma, 33=life, 34=spirit (Check your exact schema order or use named row factory)
+        # Using specific select for safety:
+        async with self.bot.database.connection.execute(
+            "SELECT magma_core, life_root, spirit_shard FROM users WHERE user_id=?", (user_id,)
+        ) as c:
+            rares = await c.fetchone() or (0,0,0)
+
+        embed = discord.Embed(title="Storage Warehouse", color=discord.Color.dark_orange())
+        
+        embed.add_field(name="🏭 Settlement", value=f"🪵 Timber: {settlement.timber:,}\n🪨 Stone: {settlement.stone:,}", inline=False)
+        
+        embed.add_field(name="🧱 Ingots", value=f"Iron: {ingots[0]}\nSteel: {ingots[1]}\nGold: {ingots[2]}\nPlat: {ingots[3]}\nIdea: {ingots[4]}", inline=True)
+        embed.add_field(name="🪵 Planks", value=f"Oak: {planks[0]}\nWillow: {planks[1]}\nMahog: {planks[2]}\nMagic: {planks[3]}\nIdea: {planks[4]}", inline=True)
+        embed.add_field(name="⚗️ Essence", value=f"Desic: {essence[0]}\nReg: {essence[1]}\nSturdy: {essence[2]}\nReinf: {essence[3]}\nTitan: {essence[4]}", inline=True)
+        
+        embed.add_field(name="✨ Rare Materials", value=f"🔥 Magma Core: {rares[0]}\n🌿 Life Root: {rares[1]}\n👻 Spirit Shard: {rares[2]}", inline=False)
+
+        await interaction.response.send_message(embed=embed)
+
 async def setup(bot):
     await bot.add_cog(Inventory(bot))

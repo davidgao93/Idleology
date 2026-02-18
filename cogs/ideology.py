@@ -94,24 +94,29 @@ class Ideology(commands.Cog, name="ideology"):
         # Add random variation (±10%)
         variation = random.uniform(0.9, 1.1)
         follower_increase = int(follower_increase * variation)
+
+        temple_tier = await self.bot.database.settlement.get_building_tier(user_id, server_id, "temple")
+        bonus_msg = ""
+        
+        if temple_tier > 0:
+            # 5% per tier
+            multiplier = 1 + (temple_tier * 0.05)
+            old_increase = follower_increase
+            follower_increase = int(follower_increase * multiplier)
+            bonus = follower_increase - old_increase
+            bonus_msg = f" (Temple T{temple_tier}: +{bonus})"
+
         new_followers_count = followers_count + follower_increase
 
-        # Calculate gold reward (linear)
-        base_gold = 1000
-        gold_per_follower = 50
-        gold_reward = base_gold + (followers_count * gold_per_follower)
-
         # Update database
-        self.bot.logger.info(f"Propogate {user_ideology}, awarding {user_id} with {gold_reward}")
+        self.bot.logger.info(f"Propogate {user_ideology}")
         await self.bot.database.social.update_followers(user_ideology, new_followers_count)
-        await self.bot.database.users.modify_gold(user_id, gold_reward)
         await self.bot.database.users.update_timer(user_id, 'last_propagate_time')
 
         # Send response
         await interaction.response.send_message(
             f"You advocate for **{user_ideology}** and it spreads!\n"
-            f"New followers gained: **{follower_increase}** (Total: **{new_followers_count}**).\n"
-            f"Gold collected from followers: **{gold_reward:,} GP**."
+            f"New followers gained: **{follower_increase}**{bonus_msg} (Total: **{new_followers_count}**).\n"
         )
 
 async def setup(bot) -> None:

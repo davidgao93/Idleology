@@ -206,3 +206,53 @@ CREATE TABLE IF NOT EXISTS delve_progress (
     sensor_level INTEGER DEFAULT 1,
     PRIMARY KEY (user_id, server_id)
 );
+
+-- 1. New Settlement Tables
+CREATE TABLE IF NOT EXISTS settlements (
+    user_id TEXT,
+    server_id TEXT,
+    town_hall_tier INTEGER DEFAULT 1,
+    building_slots INTEGER DEFAULT 3, 
+    timber INTEGER DEFAULT 0, -- Specific settlement resource
+    stone INTEGER DEFAULT 0,  -- Specific settlement resource
+    last_collection_time TEXT,
+    PRIMARY KEY (user_id, server_id)
+);
+
+CREATE TABLE IF NOT EXISTS buildings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    server_id TEXT,
+    building_type TEXT, -- 'foundry', 'sawmill', 'market', etc.
+    tier INTEGER DEFAULT 1,
+    slot_index INTEGER,
+    workers_assigned INTEGER DEFAULT 0,
+    UNIQUE(user_id, server_id, slot_index)
+);
+
+-- 2. Add Refined Columns to Skill Tables
+-- Mining
+ALTER TABLE mining ADD COLUMN iron_bar INTEGER DEFAULT 0;
+ALTER TABLE mining ADD COLUMN steel_bar INTEGER DEFAULT 0; -- Mapped from Coal
+ALTER TABLE mining ADD COLUMN gold_bar INTEGER DEFAULT 0;
+ALTER TABLE mining ADD COLUMN platinum_bar INTEGER DEFAULT 0;
+ALTER TABLE mining ADD COLUMN idea_bar INTEGER DEFAULT 0;
+
+-- Woodcutting
+ALTER TABLE woodcutting ADD COLUMN oak_plank INTEGER DEFAULT 0;
+ALTER TABLE woodcutting ADD COLUMN willow_plank INTEGER DEFAULT 0;
+ALTER TABLE woodcutting ADD COLUMN mahogany_plank INTEGER DEFAULT 0;
+ALTER TABLE woodcutting ADD COLUMN magic_plank INTEGER DEFAULT 0;
+ALTER TABLE woodcutting ADD COLUMN idea_plank INTEGER DEFAULT 0;
+
+-- Fishing
+ALTER TABLE fishing ADD COLUMN desiccated_essence INTEGER DEFAULT 0;
+ALTER TABLE fishing ADD COLUMN regular_essence INTEGER DEFAULT 0;
+ALTER TABLE fishing ADD COLUMN sturdy_essence INTEGER DEFAULT 0;
+ALTER TABLE fishing ADD COLUMN reinforced_essence INTEGER DEFAULT 0;
+ALTER TABLE fishing ADD COLUMN titanium_essence INTEGER DEFAULT 0;
+
+-- Special Settlement Upgrade Materials
+ALTER TABLE users ADD COLUMN magma_core INTEGER DEFAULT 0;   -- Foundry/Smithing upgrades
+ALTER TABLE users ADD COLUMN life_root INTEGER DEFAULT 0;    -- Sawmill/Logging upgrades
+ALTER TABLE users ADD COLUMN spirit_shard INTEGER DEFAULT 0; -- Reliquary/Temple upgrades

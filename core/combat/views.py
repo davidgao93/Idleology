@@ -353,6 +353,15 @@ class CombatView(ui.View):
                     elif key == 'partnership_rune':
                         await self.bot.database.users.modify_currency(self.user_id, 'partnership_runes', 1)
                         reward_data['special'].append("Rune of Partnership")
+                    elif key == 'magma_core':
+                        await self.bot.database.users.modify_currency(self.user_id, 'magma_core', 1)
+                        reward_data['special'].append("Magma Core")
+                    elif key == 'life_root':
+                        await self.bot.database.users.modify_currency(self.user_id, 'life_root', 1)
+                        reward_data['special'].append("Life Root")
+                    elif key == 'spirit_shard':
+                        await self.bot.database.users.modify_currency(self.user_id, 'spirit_shard', 1)
+                        reward_data['special'].append("Spirit Shard")
 
             # Process Drops
             server_id = str(interaction.guild.id)

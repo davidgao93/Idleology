@@ -116,6 +116,14 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     if player.equipped_boot and player.equipped_boot.passive == "thrill-seeker":
         special_drop_chance += (player.equipped_boot.passive_lvl * 0.01)
     
+
+    if random.random() < 0.05: # 5% from Fire mobs
+        drops['magma_core'] = True
+    if random.random() < 0.05:
+        drops['life_root'] = True
+    if random.random() < 0.05:
+        drops['spirit_shard'] = True
+
     # Level 20+ Drops
     if player.level > 20:
         if random.random() < (0.03 + special_drop_chance): drops['draconic_key'] = True

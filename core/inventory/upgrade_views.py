@@ -63,36 +63,73 @@ class ForgeView(BaseUpgradeView):
 
         # Fetch Resources
         uid, gid = self.user_id, str(interaction.guild.id)
-        mining = await self.bot.database.skills.get_data(uid, gid, 'mining')
-        wood = await self.bot.database.skills.get_data(uid, gid, 'woodcutting')
-        fish = await self.bot.database.skills.get_data(uid, gid, 'fishing')
+        # 1. Fetch Raw AND Refined
+        # We need to map raw resource names to their refined counterparts in the DB
+        # Iron -> iron_bar, Coal -> steel_bar, Gold -> gold_bar, etc.
+        raw_ore = costs['ore_type']
+        refined_ore = f"{raw_ore if raw_ore != 'coal' else 'steel'}_bar" # Coal -> Steel special case
+        
+        raw_log = costs['log_type']
+        refined_log = f"{raw_log}_plank"
+        
+        raw_bone = costs['bone_type']
+        refined_bone = f"{raw_bone}_essence"
+
+        # Fetch quantities via helper to handle DB tuple mapping
+        # (Assuming TradeManager logic or direct SQL here for precision)
+        # For simplicity in this example, we execute a direct select
+        async with self.bot.database.connection.execute(
+            f"SELECT {raw_ore}, {refined_ore} FROM mining WHERE user_id=? AND server_id=?", (uid, gid)
+        ) as cursor:
+            mining_res = await cursor.fetchone() or (0, 0)
+
+        async with self.bot.database.connection.execute(
+            f"SELECT {raw_log}_logs, {refined_log} FROM woodcutting WHERE user_id=? AND server_id=?", (uid, gid)
+        ) as cursor:
+            wood_res = await cursor.fetchone() or (0, 0)
+
+        async with self.bot.database.connection.execute(
+            f"SELECT {raw_bone}_bones, {refined_bone} FROM fishing WHERE user_id=? AND server_id=?", (uid, gid)
+        ) as cursor:
+            fish_res = await cursor.fetchone() or (0, 0)
+
         gold = await self.bot.database.users.get_gold(uid)
 
-        ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
-        log_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}.get(costs['log_type'])
-        bone_idx = {'desiccated': 3, 'regular': 4, 'sturdy': 5, 'reinforced': 6, 'titanium': 7}.get(costs['bone_type'])
+        # 2. Logic: Total Available = Raw + Refined
+        total_ore = mining_res[0] + mining_res[1]
+        total_log = wood_res[0] + wood_res[1]
+        total_bone = fish_res[0] + fish_res[1]
 
         has_res = (
-            mining[ore_idx] >= costs['ore_qty'] and
-            wood[log_idx] >= costs['log_qty'] and
-            fish[bone_idx] >= costs['bone_qty'] and
+            total_ore >= costs['ore_qty'] and
+            total_log >= costs['log_qty'] and
+            total_bone >= costs['bone_qty'] and
             gold >= costs['gold']
         )
 
-        desc = (f"**Cost:**\n"
-                f"⛏️ {costs['ore_qty']} {costs['ore_type'].title()} Ore ({mining[ore_idx]})\n"
-                f"🪓 {costs['log_qty']} {costs['log_type'].title()} Logs ({wood[log_idx]})\n"
-                f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} Bones ({fish[bone_idx]})\n"
-                f"💰 {costs['gold']:,} Gold ({gold:,})")
+        # 3. Store data for logic
+        self.costs = costs
+        self.inventory_snapshot = {
+            'ore': {'raw_col': raw_ore, 'ref_col': refined_ore, 'raw_amt': mining_res[0], 'ref_amt': mining_res[1]},
+            'log': {'raw_col': f"{raw_log}_logs", 'ref_col': refined_log, 'raw_amt': wood_res[0], 'ref_amt': wood_res[1]},
+            'bone': {'raw_col': f"{raw_bone}_bones", 'ref_col': refined_bone, 'raw_amt': fish_res[0], 'ref_amt': fish_res[1]}
+        }
 
-        self.costs = costs 
+        desc = (f"**Cost:**\n"
+                f"⛏️ {costs['ore_qty']} {costs['ore_type'].title()} (Have: {total_ore})\n"
+                f"🪓 {costs['log_qty']} {costs['log_type'].title()} (Have: {total_log})\n"
+                f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} (Have: {total_bone})\n"
+                f"💰 {costs['gold']:,} Gold")
+        
+        if total_ore >= costs['ore_qty'] and mining_res[0] < costs['ore_qty']:
+            desc += "\n*Using Refined Ingots to substitute missing Ore.*"
+
         self.embed = discord.Embed(
             title=f"Forge {self.item.name}",
             description=desc,
             color=discord.Color.green() if has_res else discord.Color.red()
         )
         self.embed.set_thumbnail(url="https://i.imgur.com/jzEMUxe.jpeg")
-        self.costs = costs # Store for callback
         
         # --- DYNAMIC BUTTON BUILD ---
         self.clear_items()
@@ -100,7 +137,6 @@ class ForgeView(BaseUpgradeView):
         forge_btn = Button(label="Forge!", style=ButtonStyle.success, disabled=not has_res)
         forge_btn.callback = self.confirm_forge
         self.add_item(forge_btn)
-        
         self.add_back_button()
         
         if interaction.response.is_done():
@@ -111,13 +147,31 @@ class ForgeView(BaseUpgradeView):
     async def confirm_forge(self, interaction: Interaction):
         uid, gid = self.user_id, str(interaction.guild.id)
         
-        # Deduct
-        await self.bot.database.skills.update_single_resource(uid, gid, 'mining', self.costs['ore_type'], -self.costs['ore_qty'])
-        await self.bot.database.skills.update_single_resource(uid, gid, 'woodcutting', f"{self.costs['log_type']}_logs", -self.costs['log_qty'])
-        await self.bot.database.skills.update_single_resource(uid, gid, 'fishing', f"{self.costs['bone_type']}_bones", -self.costs['bone_qty'])
-        await self.bot.database.users.modify_gold(uid, -self.costs['gold'])
+        # Helper for atomic deduction
+        # Logic: Deduct from Raw first. If goes negative, add back to Raw (set to 0) and deduct remainder from Refined.
+        async def deduct_smart(table, raw_col, ref_col, raw_held, cost):
+            to_take_raw = min(raw_held, cost)
+            to_take_ref = cost - to_take_raw
+            
+            if to_take_raw > 0:
+                await self.bot.database.connection.execute(
+                    f"UPDATE {table} SET {raw_col} = {raw_col} - ? WHERE user_id=? AND server_id=?", 
+                    (to_take_raw, uid, gid)
+                )
+            if to_take_ref > 0:
+                await self.bot.database.connection.execute(
+                    f"UPDATE {table} SET {ref_col} = {ref_col} - ? WHERE user_id=? AND server_id=?", 
+                    (to_take_ref, uid, gid)
+                )
 
-        # Roll
+        # Execute Deductions
+        await deduct_smart('mining', self.inventory_snapshot['ore']['raw_col'], self.inventory_snapshot['ore']['ref_col'], self.inventory_snapshot['ore']['raw_amt'], self.costs['ore_qty'])
+        await deduct_smart('woodcutting', self.inventory_snapshot['log']['raw_col'], self.inventory_snapshot['log']['ref_col'], self.inventory_snapshot['log']['raw_amt'], self.costs['log_qty'])
+        await deduct_smart('fishing', self.inventory_snapshot['bone']['raw_col'], self.inventory_snapshot['bone']['ref_col'], self.inventory_snapshot['bone']['raw_amt'], self.costs['bone_qty'])
+        
+        await self.bot.database.users.modify_gold(uid, -self.costs['gold'])
+        await self.bot.database.connection.commit()
+
         success, new_passive = EquipmentMechanics.roll_forge_outcome(self.item)
         
         result_embed = discord.Embed(title="Forge Result")
@@ -342,54 +396,104 @@ class TemperView(BaseUpgradeView):
         if not costs: return await interaction.response.send_message("No tempers remaining.", ephemeral=True)
 
         uid, gid = self.user_id, str(interaction.guild.id)
-        mining = await self.bot.database.skills.get_data(uid, gid, 'mining')
-        wood = await self.bot.database.skills.get_data(uid, gid, 'woodcutting')
-        fish = await self.bot.database.skills.get_data(uid, gid, 'fishing')
+
+        # 1. Fetch Raw AND Refined (Mapped Identically to ForgeView)
+        raw_ore = costs['ore_type']
+        refined_ore = f"{raw_ore if raw_ore != 'coal' else 'steel'}_bar"
+        
+        raw_log = costs['log_type']
+        refined_log = f"{raw_log}_plank"
+        
+        raw_bone = costs['bone_type']
+        refined_bone = f"{raw_bone}_essence"
+
+        # Direct SQL fetch for precision
+        async with self.bot.database.connection.execute(
+            f"SELECT {raw_ore}, {refined_ore} FROM mining WHERE user_id=? AND server_id=?", (uid, gid)
+        ) as cursor:
+            mining_res = await cursor.fetchone() or (0, 0)
+
+        async with self.bot.database.connection.execute(
+            f"SELECT {raw_log}_logs, {refined_log} FROM woodcutting WHERE user_id=? AND server_id=?", (uid, gid)
+        ) as cursor:
+            wood_res = await cursor.fetchone() or (0, 0)
+
+        async with self.bot.database.connection.execute(
+            f"SELECT {raw_bone}_bones, {refined_bone} FROM fishing WHERE user_id=? AND server_id=?", (uid, gid)
+        ) as cursor:
+            fish_res = await cursor.fetchone() or (0, 0)
+
         gold = await self.bot.database.users.get_gold(uid)
 
-        ore_idx = {'iron': 3, 'coal': 4, 'gold': 5, 'platinum': 6, 'idea': 7}.get(costs['ore_type'])
-        log_idx = {'oak': 3, 'willow': 4, 'mahogany': 5, 'magic': 6, 'idea': 7}.get(costs['log_type'])
-        bone_idx = {'desiccated': 3, 'regular': 4, 'sturdy': 5, 'reinforced': 6, 'titanium': 7}.get(costs['bone_type'])
+        # 2. Logic: Total Available = Raw + Refined
+        total_ore = mining_res[0] + mining_res[1]
+        total_log = wood_res[0] + wood_res[1]
+        total_bone = fish_res[0] + fish_res[1]
 
         has_res = (
-            mining[ore_idx] >= costs['ore_qty'] and
-            wood[log_idx] >= costs['log_qty'] and
-            fish[bone_idx] >= costs['bone_qty'] and
+            total_ore >= costs['ore_qty'] and
+            total_log >= costs['log_qty'] and
+            total_bone >= costs['bone_qty'] and
             gold >= costs['gold']
         )
 
+        # 3. Store Snapshot for Confirm Logic
+        self.costs = costs
+        self.inventory_snapshot = {
+            'ore': {'raw_col': raw_ore, 'ref_col': refined_ore, 'raw_amt': mining_res[0], 'ref_amt': mining_res[1]},
+            'log': {'raw_col': f"{raw_log}_logs", 'ref_col': refined_log, 'raw_amt': wood_res[0], 'ref_amt': wood_res[1]},
+            'bone': {'raw_col': f"{raw_bone}_bones", 'ref_col': refined_bone, 'raw_amt': fish_res[0], 'ref_amt': fish_res[1]}
+        }
+
         desc = (f"**Temper Cost:**\n"
-                f"⛏️ {costs['ore_qty']} {costs['ore_type'].title()} Ore\n"
-                f"🪓 {costs['log_qty']} {costs['log_type'].title()} Logs\n"
-                f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} Bones\n"
+                f"⛏️ {costs['ore_qty']} {costs['ore_type'].title()} (Have: {total_ore})\n"
+                f"🪓 {costs['log_qty']} {costs['log_type'].title()} (Have: {total_log})\n"
+                f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} (Have: {total_bone})\n"
                 f"💰 {costs['gold']:,} Gold")
 
-        self.costs = costs
-        
+        if total_ore >= costs['ore_qty'] and mining_res[0] < costs['ore_qty']:
+            desc += "\n*Using Refined Ingots to substitute missing Ore.*"
+
         # --- DYNAMIC BUTTON BUILD ---
         self.clear_items()
-        
         temper_btn = Button(label="Temper!", style=ButtonStyle.success, disabled=not has_res)
         temper_btn.callback = self.confirm_temper
         self.add_item(temper_btn)
-        
         self.add_back_button()
         
         embed = discord.Embed(title="Temper Armor", description=desc, color=discord.Color.blue() if has_res else discord.Color.red())
         embed.set_thumbnail(url="https://i.imgur.com/tpEyVBm.png")
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=embed, view=self)
-        else:
-            await interaction.response.edit_message(embed=embed, view=self)
+        
+        if interaction.response.is_done(): await interaction.edit_original_response(embed=embed, view=self)
+        else: await interaction.response.edit_message(embed=embed, view=self)
 
     async def confirm_temper(self, interaction: Interaction):
         uid, gid = self.user_id, str(interaction.guild.id)
-        # Deduct
-        await self.bot.database.skills.update_single_resource(uid, gid, 'mining', self.costs['ore_type'], -self.costs['ore_qty'])
-        await self.bot.database.skills.update_single_resource(uid, gid, 'woodcutting', f"{self.costs['log_type']}_logs", -self.costs['log_qty'])
-        await self.bot.database.skills.update_single_resource(uid, gid, 'fishing', f"{self.costs['bone_type']}_bones", -self.costs['bone_qty'])
-        await self.bot.database.users.modify_gold(uid, -self.costs['gold'])
+        
+        # Helper for atomic deduction (Raw First, then Refined)
+        async def deduct_smart(table, raw_col, ref_col, raw_held, cost):
+            to_take_raw = min(raw_held, cost)
+            to_take_ref = cost - to_take_raw
+            
+            if to_take_raw > 0:
+                await self.bot.database.connection.execute(
+                    f"UPDATE {table} SET {raw_col} = {raw_col} - ? WHERE user_id=? AND server_id=?", 
+                    (to_take_raw, uid, gid)
+                )
+            if to_take_ref > 0:
+                await self.bot.database.connection.execute(
+                    f"UPDATE {table} SET {ref_col} = {ref_col} - ? WHERE user_id=? AND server_id=?", 
+                    (to_take_ref, uid, gid)
+                )
 
+        # Execute Deductions
+        await deduct_smart('mining', self.inventory_snapshot['ore']['raw_col'], self.inventory_snapshot['ore']['ref_col'], self.inventory_snapshot['ore']['raw_amt'], self.costs['ore_qty'])
+        await deduct_smart('woodcutting', self.inventory_snapshot['log']['raw_col'], self.inventory_snapshot['log']['ref_col'], self.inventory_snapshot['log']['raw_amt'], self.costs['log_qty'])
+        await deduct_smart('fishing', self.inventory_snapshot['bone']['raw_col'], self.inventory_snapshot['bone']['ref_col'], self.inventory_snapshot['bone']['raw_amt'], self.costs['bone_qty'])
+        
+        await self.bot.database.users.modify_gold(uid, -self.costs['gold'])
+        
+        # ... (Roll logic and Result Embed identical to before) ...
         success, stat, amount = EquipmentMechanics.roll_temper_outcome(self.item)
         
         res_embed = discord.Embed(title="Temper Result")
@@ -407,14 +511,14 @@ class TemperView(BaseUpgradeView):
             res_embed.color = discord.Color.dark_grey()
             res_embed.description = "🔨 **Failed.**\nThe metal cooled too quickly. Materials consumed."
 
-        # --- RESULT UI BUILD ---
+        await self.bot.database.connection.commit()
+
+        # UI Refresh
         self.clear_items()
-        
         if self.item.temper_remaining > 0:
             again_btn = Button(label="Temper Again", style=ButtonStyle.success)
             again_btn.callback = self.render
             self.add_item(again_btn)
-            
         self.add_back_button()
 
         await interaction.response.edit_message(embed=res_embed, view=self)
