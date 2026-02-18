@@ -1,7 +1,38 @@
+### Version 0.71
+Pet rerolling can no longer hit the same passive, added confirm to partner rune
+Town hall has an upgrade option
+Settlements can no longer build dupe buildings and buildings have more info
+Fixed item menus not displaying correctly
+Fixed resources not being granted by settlements
+Add exp to next level for delve and an xp tracker to see how far you are
+
+
 ### Version 0.7
+CONTENT
+- You can now fuse pets together
+    Fusing pets picks a passive, look, tier randomly from each donor
+    The new pet level will be calculated based on the total exp of the donors
+
+- /combat dummy now generates a dummy to hit, you can simulate 100 turns of combat to calculate your damage per turn.
+- You can add a mod, a boss mod, or clear the mod list.
+- You can select from a variety of presets (your combat level, +10 combat, +20 combat, +50 combat)
+- Added the /delve minigame
+    You can delve for curios and obsidian shards
+    Spend obsidian shards at the /delve store for delving specific upgrades
+    Keep your fuel above 1 to return to the surface with your loot!
+    All loot is lost upon failure
+    Delve is infinitely repeatable as long as you have gp
+- Added the /settlement feature
+    You can assign followers to various buildings
+    Buildings can be upgraded with materials from the settlement, higher tiers of upgrades are attainable via refined skilling materials and special monster drops
+    You start with a 3 building capacity and can upgrade to add more buildings later on.
+    Forging weapons and tempering armor will can use both refined materials and unrefined materials at a 1:1 rate
+    Refined materials will be used for further enhancements in the future
+    You can see your accumulated resources with the /resources command
 
 MECHANIC CHANGES / FIXES
 - speedster buffed - combat cooldown reduced by ~~20/40/60/80/100/120s ~~ -> 60/120/180/240/300/360s
+- Propagate no longer provides gold
 
 ### Version 0.6
 CONTENT

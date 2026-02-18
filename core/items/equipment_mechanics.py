@@ -202,23 +202,22 @@ class EquipmentMechanics:
         }
 
     @staticmethod
-    def roll_temper_outcome(armor: Armor) -> Tuple[bool, str, int]:
+    def roll_temper_outcome(armor: Armor, bonus_chance: int = 0) -> Tuple[bool, str, int]:
         """
-        Returns (Success, StatIncreased, Amount)
-        StatIncreased is 'pdr' or 'fdr'.
+        Returns (Success, StatIncreased, Amount).
+        bonus_chance: Flat percentage added to success rate (e.g., 10).
         """
-        base_rate = 0.8
+        base_rate = 0.8 # 80% base
         max_tempers = 3
         if armor.level > 40: max_tempers = 4
         if armor.level > 80: max_tempers = 5
         
         current_step = max_tempers - armor.temper_remaining
-        success_rate = base_rate - (current_step * 0.05)
+        success_rate = base_rate - (current_step * 0.05) + (bonus_chance / 100.0)
 
         if random.random() > success_rate:
             return False, "", 0
 
-        # Success - Determine stat
         stat = 'fdr'
         amount = 0
         if armor.pdr > 0:
@@ -249,16 +248,15 @@ class EquipmentMechanics:
         return 999999999
 
     @staticmethod
-    def roll_potential_outcome(current_level: int, use_rune: bool = False) -> bool:
+    def roll_potential_outcome(current_level: int, bonus_chance: int = 0) -> bool:
         """
-        Calculates success based on level.
-        Base Success: 75% -> 70% -> ... (decreases by 5% per level, floor 30%)
+        Calculates success based on level + bonus.
+        bonus_chance: Flat percentage (e.g. 25 or 15).
         """
         base_chance = max(75 - (current_level * 5), 30)
-        if use_rune:
-            base_chance += 25
+        total_chance = base_chance + bonus_chance
         
-        return random.randint(1, 100) <= base_chance
+        return random.randint(1, 100) <= total_chance
 
     @staticmethod
     def get_new_passive(item_type: Literal['accessory', 'glove', 'boot', 'helmet']) -> str:

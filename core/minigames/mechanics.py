@@ -106,3 +106,18 @@ class DelveMechanics:
                 shards = random.randint(1, 2)
             
         return curios, shards
+    
+    @staticmethod
+    def calculate_level_from_xp(total_xp: int) -> int:
+        """Inverse: Level = sqrt(XP / 50) + 1"""
+        if total_xp <= 0: return 1
+        return int((total_xp / 50) ** 0.5) + 1
+
+    @staticmethod
+    def calculate_xp_for_level(target_level: int) -> int:
+        """
+        Forward: XP = 50 * (Level - 1)^2
+        Returns total accumulated XP required to reach target_level.
+        """
+        if target_level <= 1: return 0
+        return 50 * ((target_level - 1) ** 2)

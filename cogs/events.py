@@ -27,7 +27,8 @@ class Events(commands.Cog, name="events"):
         }
 
     async def cog_load(self):
-        self.random_event_loop.start()
+        pass
+        # self.random_event_loop.start()
 
     async def cog_unload(self):
         self.random_event_loop.cancel()

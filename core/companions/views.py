@@ -235,13 +235,21 @@ class CompanionDetailView(ui.View):
         if new_state:
             await self.bot.database.users.initialize_companion_timer(self.user_id)
         
+        # Update this companion object
         self.comp.is_active = new_state
-        self.update_buttons()
-        
+
         # Update parent list state locally
         for c in self.parent.companions:
-            if c.id == self.comp.id: c.is_active = new_state
-            
+            if c.id == self.comp.id:
+                c.is_active = new_state
+                break
+
+        # Rebuild the parent list buttons so icons (🟢 / ⚪) match
+        self.parent.update_buttons()
+
+        # Update this detail view’s buttons (label + styles)
+        self.update_buttons()
+        
         await interaction.response.edit_message(embed=self.get_embed(), view=self)
 
     async def rename_modal(self, interaction: Interaction):
@@ -281,6 +289,8 @@ class CompanionDetailView(ui.View):
         await interaction.response.edit_message(embed=self.parent.get_embed(), view=self.parent)
 
     async def go_back(self, interaction: Interaction):
+        # Rebuild parent buttons in case active states changed
+        self.parent.update_buttons()
         await interaction.response.edit_message(embed=self.parent.get_embed(), view=self.parent)
 
 class RenameModal(ui.Modal, title="Rename Companion"):

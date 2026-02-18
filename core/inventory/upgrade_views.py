@@ -304,47 +304,76 @@ class PotentialView(BaseUpgradeView):
         super().__init__(bot, user_id, item, parent_view)
 
     async def render(self, interaction: Interaction):
-        if isinstance(self.item, Accessory):
+        # 1. Determine Item Type & Bonus
+        is_accessory = isinstance(self.item, Accessory)
+        if is_accessory:
             cost = EquipmentMechanics.calculate_potential_cost(self.item.passive_lvl)
+            max_lvl = 10
+            rune_bonus = 25
         else:
             cost = EquipmentMechanics.calculate_ap_cost(self.item.passive_lvl)
+            max_lvl = 5 if isinstance(self.item, (Glove, Helmet)) else 6
+            rune_bonus = 15
             
+        # 2. Fetch User Data
         gold = await self.bot.database.users.get_gold(self.user_id)
+        runes = await self.bot.database.users.get_currency(self.user_id, 'potential_runes')
         
-        max_lvl = 10 if isinstance(self.item, Accessory) else (5 if isinstance(self.item, (Glove, Helmet)) else 6)
+        # 3. Logic
         is_capped = self.item.passive_lvl >= max_lvl
         has_attempts = self.item.potential_remaining > 0
-        
-        success_rate = max(75 - (self.item.passive_lvl * 5), 30)
+        base_rate = max(75 - (self.item.passive_lvl * 5), 30)
         
         desc = (f"**Current Level:** {self.item.passive_lvl}/{max_lvl}\n"
                 f"**Attempts Left:** {self.item.potential_remaining}\n"
-                f"**Success Rate:** {success_rate}%\n"
-                f"**Cost:** {cost:,} Gold ({gold:,})")
+                f"**Success Rate:** {base_rate}%\n"
+                f"**Cost:** {cost:,} Gold ({gold:,})\n\n"
+                f"💎 **Runes Owned:** {runes}")
 
         self.cost = cost
-        self.embed = discord.Embed(title=f"Enchant {self.item.name}", description=desc, color=discord.Color.purple())
-        self.embed.set_thumbnail(url="https://i.imgur.com/hqVvn68.jpeg")
+        self.rune_bonus = rune_bonus
         
-        # --- DYNAMIC BUTTON BUILD ---
+        embed = discord.Embed(title=f"Enchant {self.item.name}", description=desc, color=discord.Color.purple())
+        embed.set_thumbnail(url="https://i.imgur.com/hqVvn68.jpeg")
+        
+        # --- BUTTONS ---
         self.clear_items()
         
-        enchant_btn = Button(label="Enchant", style=ButtonStyle.success, disabled=(gold < cost or not has_attempts or is_capped))
-        enchant_btn.callback = self.confirm_enchant
-        self.add_item(enchant_btn)
+        # Standard Enchant
+        btn_std = Button(label=f"Enchant ({base_rate}%)", style=ButtonStyle.primary, row=0)
+        btn_std.disabled = (gold < cost or not has_attempts or is_capped)
+        btn_std.callback = lambda i: self.confirm_enchant(i, use_rune=False)
+        self.add_item(btn_std)
+
+        # Rune Enchant
+        boosted_rate = min(100, base_rate + rune_bonus)
+        btn_rune = Button(label=f"Use Rune ({boosted_rate}%)", style=ButtonStyle.success, emoji="💎", row=0)
+        btn_rune.disabled = (gold < cost or not has_attempts or is_capped or runes < 1)
+        btn_rune.callback = lambda i: self.confirm_enchant(i, use_rune=True)
+        self.add_item(btn_rune)
         
         self.add_back_button()
         
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=self.embed, view=self)
-        else:
-            await interaction.response.edit_message(embed=self.embed, view=self)
+        if interaction.response.is_done(): await interaction.edit_original_response(embed=embed, view=self)
+        else: await interaction.response.edit_message(embed=embed, view=self)
 
-    async def confirm_enchant(self, interaction: Interaction):
+    async def confirm_enchant(self, interaction: Interaction, use_rune: bool):
+        # Re-check funds/runes
+        if use_rune:
+            runes = await self.bot.database.users.get_currency(self.user_id, 'potential_runes')
+            if runes < 1: return await interaction.response.send_message("No Runes left!", ephemeral=True)
+            await self.bot.database.users.modify_currency(self.user_id, 'potential_runes', -1)
+            bonus = self.rune_bonus
+        else:
+            bonus = 0
+
+        # Deduct Gold
         await self.bot.database.users.modify_gold(self.user_id, -self.cost)
         
-        success = EquipmentMechanics.roll_potential_outcome(self.item.passive_lvl)
+        # Roll
+        success = EquipmentMechanics.roll_potential_outcome(self.item.passive_lvl, bonus_chance=bonus)
         
+        # DB Updates
         itype = 'accessory' if isinstance(self.item, Accessory) else \
                 ('glove' if isinstance(self.item, Glove) else \
                 ('boot' if isinstance(self.item, Boot) else 'helmet'))
@@ -354,6 +383,7 @@ class PotentialView(BaseUpgradeView):
 
         result_embed = discord.Embed(title="Enchantment Result")
         result_embed.set_thumbnail(url="https://i.imgur.com/hqVvn68.jpeg")
+        
         if success:
             if self.item.passive == "none":
                 new_p = EquipmentMechanics.get_new_passive(itype)
@@ -373,17 +403,15 @@ class PotentialView(BaseUpgradeView):
             result_embed.color = discord.Color.dark_grey()
             result_embed.description = "💔 **Failed.**\nThe magic failed to take hold."
 
-        # --- RESULT UI BUILD ---
+        # UI Refresh
         self.clear_items()
-        
         max_lvl = 10 if isinstance(self.item, Accessory) else (5 if isinstance(self.item, (Glove, Helmet)) else 6)
         if self.item.potential_remaining > 0 and self.item.passive_lvl < max_lvl:
-            again_btn = Button(label="Enchant Again", style=ButtonStyle.success)
+            again_btn = Button(label="Enchant Again", style=ButtonStyle.primary)
             again_btn.callback = self.render
             self.add_item(again_btn)
 
         self.add_back_button()
-        
         await interaction.response.edit_message(embed=result_embed, view=self)
 
 
@@ -454,11 +482,36 @@ class TemperView(BaseUpgradeView):
         if total_ore >= costs['ore_qty'] and mining_res[0] < costs['ore_qty']:
             desc += "\n*Using Refined Ingots to substitute missing Ore.*"
 
-        # --- DYNAMIC BUTTON BUILD ---
+        # New: Get Runes
+        runes = await self.bot.database.users.get_currency(self.user_id, 'potential_runes')
+        
+        # Calculate Rates
+        base_rate = 0.8
+        max_tempers = 3
+        if self.item.level > 40: max_tempers = 4
+        if self.item.level > 80: max_tempers = 5
+        current_step = max_tempers - self.item.temper_remaining
+        
+        current_pct = int((base_rate - (current_step * 0.05)) * 100)
+        boosted_pct = min(100, current_pct + 10)
+
+        desc += f"\n\n💎 **Runes Owned:** {runes}"
+
+        # --- BUTTONS ---
         self.clear_items()
-        temper_btn = Button(label="Temper!", style=ButtonStyle.success, disabled=not has_res)
-        temper_btn.callback = self.confirm_temper
-        self.add_item(temper_btn)
+        
+        # Standard Temper
+        btn_std = Button(label=f"Temper ({current_pct}%)", style=ButtonStyle.success, row=0)
+        btn_std.disabled = not has_res
+        btn_std.callback = lambda i: self.confirm_temper(i, use_rune=False)
+        self.add_item(btn_std)
+
+        # Rune Temper (+10%)
+        btn_rune = Button(label=f"Use Rune ({boosted_pct}%)", style=ButtonStyle.primary, emoji="💎", row=0)
+        btn_rune.disabled = (not has_res or runes < 1)
+        btn_rune.callback = lambda i: self.confirm_temper(i, use_rune=True)
+        self.add_item(btn_rune)
+        
         self.add_back_button()
         
         embed = discord.Embed(title="Temper Armor", description=desc, color=discord.Color.blue() if has_res else discord.Color.red())
@@ -467,7 +520,15 @@ class TemperView(BaseUpgradeView):
         if interaction.response.is_done(): await interaction.edit_original_response(embed=embed, view=self)
         else: await interaction.response.edit_message(embed=embed, view=self)
 
-    async def confirm_temper(self, interaction: Interaction):
+    async def confirm_temper(self, interaction: Interaction, use_rune: bool):
+        # Rune Check
+        if use_rune:
+            runes = await self.bot.database.users.get_currency(self.user_id, 'potential_runes')
+            if runes < 1: return await interaction.response.send_message("No Runes left!", ephemeral=True)
+            await self.bot.database.users.modify_currency(self.user_id, 'potential_runes', -1)
+            bonus = 10
+        else:
+            bonus = 0
         uid, gid = self.user_id, str(interaction.guild.id)
         
         # Helper for atomic deduction (Raw First, then Refined)
@@ -494,7 +555,7 @@ class TemperView(BaseUpgradeView):
         await self.bot.database.users.modify_gold(uid, -self.costs['gold'])
         
         # ... (Roll logic and Result Embed identical to before) ...
-        success, stat, amount = EquipmentMechanics.roll_temper_outcome(self.item)
+        success, stat, amount = EquipmentMechanics.roll_temper_outcome(self.item, bonus_chance=bonus)
         
         res_embed = discord.Embed(title="Temper Result")
         res_embed.set_thumbnail(url="https://i.imgur.com/tpEyVBm.png")

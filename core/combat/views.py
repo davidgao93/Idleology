@@ -70,7 +70,8 @@ class LuciferChoiceView(ui.View):
 
 
 class CombatView(ui.View):
-    def __init__(self, bot, user_id: str, player: Player, monster: Monster, initial_logs: dict, combat_phases=None):
+    def __init__(self, bot, user_id: str, player: Player, monster: Monster, 
+                 initial_logs: dict, combat_phases=None, clean_stats: dict = None):
         super().__init__(timeout=300)
         self.bot = bot
         self.user_id = user_id
@@ -78,6 +79,12 @@ class CombatView(ui.View):
         self.monster = monster
         self.logs = initial_logs or {}
         
+        self.clean_stats = clean_stats or {
+            'attack': player.base_attack,
+            'defence': player.base_defence,
+            'crit_target': player.base_crit_chance_target
+        }
+
         # Boss / Chain Handling
         self.combat_phases = combat_phases or [] # List of dicts
         self.current_phase_index = 0
@@ -276,6 +283,14 @@ class CombatView(ui.View):
                 # Prepare Next Phase
                 self.current_phase_index += 1
                 next_phase_data = self.combat_phases[self.current_phase_index]
+
+                self.player.base_attack = self.clean_stats['attack']
+                self.player.base_defence = self.clean_stats['defence']
+                self.player.base_crit_chance_target = self.clean_stats['crit_target']
+                
+                # Reset transients (Ward resets to base gear value, temporary invuln clears)
+                # self.player.combat_ward = self.player.get_combat_ward_value()
+                self.player.is_invulnerable_this_combat = False
                 
                 # Update Monster Object
                 self.monster = await generate_boss(self.player, self.monster, next_phase_data, self.current_phase_index)
@@ -284,6 +299,7 @@ class CombatView(ui.View):
                 # Apply Start Effects again
                 engine.apply_stat_effects(self.player, self.monster)
                 new_logs = engine.apply_combat_start_passives(self.player, self.monster)
+                self.logs = new_logs
                 
                 # Transition Embed
                 trans_embed = discord.Embed(

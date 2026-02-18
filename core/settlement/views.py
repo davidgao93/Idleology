@@ -3,6 +3,7 @@ from discord import ui, ButtonStyle, Interaction, SelectOption
 from datetime import datetime
 from core.models import Settlement, Building
 from core.settlement.mechanics import SettlementMechanics
+import asyncio
 
 class TownHallView(ui.View):
     def __init__(self, bot, user_id, settlement, parent_view):
@@ -12,6 +13,20 @@ class TownHallView(ui.View):
         self.settlement = settlement
         self.parent = parent_view
         self.setup_ui()
+
+    async def on_timeout(self):
+        try:
+            expired_embed = discord.Embed(
+                title="Town Hall Session Expired",
+                description="This Town Hall management session has timed out.\n\n"
+                            "Reopen your settlement dashboard to manage it again.",
+                color=discord.Color.dark_grey()
+            )
+            await self.parent.message.edit(embed=expired_embed, view=None)
+        except:
+            pass
+        finally:
+            self.stop()
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
@@ -23,9 +38,9 @@ class TownHallView(ui.View):
         base_gold = 10000
         
         cost = {
-            "timber": int(base_wood * (target_tier ** 1.6)),
-            "stone": int(base_stone * (target_tier ** 1.6)),
-            "gold": int(base_gold * (target_tier ** 1.6))
+            "timber": int(base_wood * (target_tier ** 1.5)),
+            "stone": int(base_stone * (target_tier ** 1.5)),
+            "gold": int(base_gold * (target_tier ** 1.5))
         }
         
         # Special Materials
@@ -140,16 +155,80 @@ class SettlementDashboardView(ui.View):
         self.server_id = server_id
         self.settlement = settlement
         self.follower_count = follower_count
-        
         self.update_grid()
+
+    RESOURCE_DISPLAY_NAMES = {
+        "timber": "Timber",
+        "stone": "Stone",
+        "gold": "Gold",
+        "iron": "Iron Ore",
+        "coal": "Coal",
+        "platinum": "Platinum Ore",
+        "idea": "Idea Ore",
+        "iron_bar": "Iron Bars",
+        "steel_bar": "Steel Bars",
+        "gold_bar": "Gold Bars",
+        "platinum_bar": "Platinum Bars",
+        "idea_bar": "Idea Bars",
+        "oak_logs": "Oak Logs",
+        "willow_logs": "Willow Logs",
+        "mahogany_logs": "Mahogany Logs",
+        "magic_logs": "Magic Logs",
+        "idea_logs": "Idea Logs",
+        "oak_plank": "Oak Planks",
+        "willow_plank": "Willow Planks",
+        "mahogany_plank": "Mahogany Planks",
+        "magic_plank": "Magic Planks",
+        "idea_plank": "Idea Planks",
+        "desiccated_bones": "Desiccated Bones",
+        "regular_bones": "Regular Bones",
+        "sturdy_bones": "Sturdy Bones",
+        "reinforced_bones": "Reinforced Bones",
+        "titanium_bones": "Titanium Bones",
+        "desiccated_essence": "Desiccated Essence",
+        "regular_essence": "Regular Essence",
+        "sturdy_essence": "Sturdy Essence",
+        "reinforced_essence": "Reinforced Essence",
+        "titanium_essence": "Titanium Essence",
+    }
+
+    def _format_changes(self, changes: dict) -> str:
+        positive_items = []
+        for key, value in changes.items():
+            if value <= 0:
+                continue
+            name = self.RESOURCE_DISPLAY_NAMES.get(
+                key, key.replace("_", " ").title()
+            )
+            emoji = ""
+            if key == "timber":
+                emoji = "🪵 "
+            elif key == "stone":
+                emoji = "🪨 "
+            elif key == "gold":
+                emoji = "💰 "
+            positive_items.append(f"{emoji}{name}: +{value:,}")
+
+        if not positive_items:
+            return "No resources produced (no workers, generators, or raw materials)."
+
+        return "\n".join(positive_items)
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
-        try: await self.message.edit(view=None)
-        except: pass
+        try:
+            expired_embed = discord.Embed(
+                title="Settlement Session Expired",
+                description="This settlement management session has timed out.\n\n"
+                            "Run the command again to reopen the dashboard.",
+                color=discord.Color.dark_grey()
+            )
+            await self.message.edit(embed=expired_embed, view=None)
+        except:
+            pass
 
     def build_embed(self) -> discord.Embed:
         workers_used = sum(b.workers_assigned for b in self.settlement.buildings)
@@ -170,13 +249,28 @@ class SettlementDashboardView(ui.View):
         
         if hours > 0.1:
             pending_txt = ""
+            # copy raw_inv logic from collect_resources, but using a snapshot
+            # If you don't want to fetch skills here again, just display *per-hour* rates:
             for b in self.settlement.buildings:
-                # Mock calculation for display (simplified, real calc handles limits)
-                if b.workers_assigned > 0:
-                    b_data = SettlementMechanics.BUILDINGS.get(b.building_type)
-                    rate = int(b_data['base_rate'] * b.tier * b.workers_assigned)
-                    pending_txt += f"• {b.name}: ~{int(rate * hours)} output\n"
-            
+                if b.workers_assigned <= 0:
+                    continue
+
+                b_data = SettlementMechanics.BUILDINGS.get(b.building_type)
+                if not b_data:
+                    continue
+
+                # Match the generator formula: base_rate * tier * (workers / 10)
+                per_hour = int(b_data['base_rate'] * b.tier * int(b.workers_assigned / 10))
+                if b_data["type"] == "generator":
+                    resource = b_data.get("output", "output")
+                    display = self.RESOURCE_DISPLAY_NAMES.get(
+                        resource, resource.replace("_", " ").title()
+                    )
+                    pending_txt += f"• {b.name}: ~{per_hour * hours:.0f} {display}\n"
+                else:
+                    # For converters and passives, either skip or add a generic line
+                    pending_txt += f"• {b.name}: Converts raw materials (see details)\n"
+
             if pending_txt:
                 embed.add_field(name="Pending Production", value=pending_txt, inline=False)
 
@@ -252,10 +346,9 @@ class SettlementDashboardView(ui.View):
     async def collect_resources(self, interaction: Interaction):
         await interaction.response.defer()
         
-        # 1. Fetch Inventory for limiting logic
         uid, sid = self.user_id, self.server_id
-        # We need raw materials to calc conversion limits
-        # Simplified fetch for brevity; ideally repo method
+
+        # 1. Fetch inventory for limiting logic
         mining = await self.bot.database.skills.get_data(uid, sid, 'mining')
         wood = await self.bot.database.skills.get_data(uid, sid, 'woodcutting')
         fish = await self.bot.database.skills.get_data(uid, sid, 'fishing')
@@ -266,39 +359,76 @@ class SettlementDashboardView(ui.View):
             'desiccated_bones': fish[3], 'regular_bones': fish[4], 'sturdy_bones': fish[5], 'reinforced_bones': fish[6], 'titanium_bones': fish[7]
         }
 
-        # 2. Calculate Time
+        # 2. Calculate time elapsed
         now = datetime.now()
         last = datetime.fromisoformat(self.settlement.last_collection_time)
         hours = (now - last).total_seconds() / 3600
         
-        if hours < 0.1: # Minimum 6 minutes
-            return await interaction.followup.send("Production cycle not yet complete.", ephemeral=True)
+        if hours < 0.1:  # Minimum 6 minutes
+            return await interaction.followup.send(
+                "Your workers haven't generated anything yet.",
+                ephemeral=True
+            )
 
-        # 3. Calculate Changes
-        total_changes = {}
+        # 3. Calculate changes
+        total_changes: dict[str, int] = {}
         for b in self.settlement.buildings:
             changes = SettlementMechanics.calculate_production(
                 b.building_type, b.tier, b.workers_assigned, hours, raw_inv
             )
-            # Merge changes
             for k, v in changes.items():
                 total_changes[k] = total_changes.get(k, 0) + v
-                # Temporarily update raw_inv so next building in loop sees reduced stock
-                if k in raw_inv: raw_inv[k] += v # v is negative for consumption
+                if k in raw_inv:
+                    raw_inv[k] += v
 
-        # 4. Commit
+        print("DEBUG total_changes AFTER MERGE:", total_changes)
+
+        # Make a copy specifically for display (so you can filter it safely)
+        display_changes = dict(total_changes)
+
+        # If you have any filtering logic, apply it to display_changes, NOT total_changes
+        # Example: if you had something like this before:
+        # total_changes = {k: v for k, v in total_changes.items() if v > 0}
+        # change it to:
+        # display_changes = {k: v for k, v in display_changes.items() if v > 0}
+
+        print("DEBUG display_changes BEFORE format:", display_changes)
+
+        # 4. Commit to DB with the full changes
         await self.bot.database.settlement.commit_production(uid, sid, total_changes)
         await self.bot.database.settlement.update_collection_timer(uid, sid)
-        
-        # 5. Update Local State & Refresh
-        self.settlement.timber += total_changes.get('timber', 0)
-        self.settlement.stone += total_changes.get('stone', 0)
+
+        # 5. Update local settlement state
+        self.settlement.timber += display_changes.get('timber', 0)
+        self.settlement.stone  += display_changes.get('stone', 0)
         self.settlement.last_collection_time = now.isoformat()
-        
-        summary = ", ".join([f"{k}: {v:+}" for k, v in total_changes.items() if v != 0])
-        if not summary: summary = "No resources produced (Lack of workers or raw materials)."
-        
-        await interaction.edit_original_response(content=f"✅ **Collection Complete**\n{summary}", embed=self.build_embed(), view=self)
+
+        # 6. Build updated embed
+        embed = self.build_embed()
+
+        # 7. Use display_changes for the Last Collection field
+        formatted_changes = self._format_changes(display_changes)
+        embed.add_field(
+            name="Last Collection",
+            value=(
+                f"⏱️ Time since last collection: {hours:.2f} hours\n\n"
+                f"📦 Yield:\n{formatted_changes}"
+            ),
+            inline=False
+        )
+
+        # 8. Content message depending on whether anything positive was produced
+        has_positive = any(v > 0 for v in display_changes.values())
+        if has_positive:
+            content = "✅ **Collection Complete**"
+        else:
+            content = "ℹ️ Collection complete, but no resources were produced."
+
+        await interaction.edit_original_response(
+            embed=embed,
+            view=self
+        )
+        await asyncio.sleep(1.0)
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
@@ -307,6 +437,18 @@ class SettlementDashboardView(ui.View):
         self.stop()
 
 class BuildConstructionView(ui.View):
+    # Class-level definitions for easy access in embed generation
+    BUILDING_INFO = {
+        "logging_camp": "Generates Timber over time.",
+        "quarry":       "Generates Stone over time.",
+        "foundry":      "Converts Ore into Ingots (for high-tier crafting).",
+        "sawmill":      "Converts Logs into Planks (for settlement upgrades).",
+        "reliquary":    "Converts Bones into Essence (for enchantments).",
+        "market":       "Generates Passive Gold based on workforce size.",
+        "barracks":     "Passive: Grants +1% Base Atk/Def per tier.",
+        "temple":       "Passive: Grants +5% Propagate follower gain per tier."
+    }
+
     def __init__(self, bot, user_id, slot_index, parent_view):
         super().__init__(timeout=60)
         self.bot = bot
@@ -315,8 +457,8 @@ class BuildConstructionView(ui.View):
         self.parent = parent_view
         
         self.COSTS = {
-            "logging_camp": {"gold": 1000},
-            "quarry":       {"gold": 1000},
+            "logging_camp": {"gold": 100, "stone": 0},
+            "quarry":       {"gold": 100, "timber": 0},
             "foundry":      {"gold": 5000, "timber": 200, "stone": 200},
             "sawmill":      {"gold": 5000, "timber": 200, "stone": 200},
             "reliquary":    {"gold": 5000, "timber": 200, "stone": 200},
@@ -328,38 +470,75 @@ class BuildConstructionView(ui.View):
         self.setup_select()
 
     def build_embed(self):
-        embed = discord.Embed(title="Construction Site", description="Select a building plan.", color=discord.Color.blue())
-        embed.set_thumbnail(url="https://i.imgur.com/cZcEKhS.png")
+        embed = discord.Embed(
+            title="🏗️ Construction Site", 
+            description="Select a blueprint to begin construction.\n\n__**Available Blueprints**__", 
+            color=discord.Color.blue()
+        )
+
+        existing_types = {b.building_type for b in self.parent.settlement.buildings}
+
+        for b_type, info in self.BUILDING_INFO.items():
+            # Formatting
+            name = b_type.replace("_", " ").title()
+            cost = self.COSTS[b_type]
+            
+            cost_str = f"💰 {cost.get('gold', 0):,}"
+            if cost.get('timber'): cost_str += f" | 🪵 {cost['timber']}"
+            if cost.get('stone'): cost_str += f" | 🪨 {cost['stone']}"
+
+            status_icon = "✅"
+            if b_type in existing_types:
+                status_icon = "🔒 (Already Built)"
+            
+            # Add field
+            embed.add_field(
+                name=f"{status_icon} {name}",
+                value=f"{info}\n*Cost: {cost_str}*",
+                inline=False
+            )
+            
         return embed
+    
+    async def on_timeout(self):
+        try:
+            expired_embed = discord.Embed(
+                title="Construction Menu Expired",
+                description="This construction selection session has timed out.\n\n"
+                            "Open the empty slot again from the settlement dashboard to build.",
+                color=discord.Color.dark_grey()
+            )
+            await self.parent.message.edit(embed=expired_embed, view=None)
+        except:
+            pass
+        finally:
+            self.stop()
 
 
     def setup_select(self):
         self.clear_items()
 
-        # 1. Identify Existing Buildings
-        # We look at the parent settlement object to see what is already built
         existing_types = {b.building_type for b in self.parent.settlement.buildings}
-
         options = []
+        
         for key, cost in self.COSTS.items():
-            # SKIP if this building type already exists
-            if key in existing_types:
-                continue
+            if key in existing_types: continue
 
             lbl = key.replace("_", " ").title()
-            desc = f"Cost: {cost.get('gold',0)}g, 🪵{cost.get('timber',0)}, 🪨{cost.get('stone',0)}"
+            # Brief description for dropdown
+            desc = f"Cost: {cost.get('gold',0)}g"
+            if cost.get('timber'): desc += f", {cost['timber']} Wood"
+            
             options.append(SelectOption(label=lbl, value=key, description=desc))
             
-        # 2. Handle Edge Case: All buildings constructed?
         if not options:
-            btn_full = ui.Button(label="No New Blueprints Available", style=ButtonStyle.gray, disabled=True, row=0)
-            self.add_item(btn_full)
+            self.add_item(ui.Button(label="No New Blueprints Available", style=ButtonStyle.gray, disabled=True))
         else:
-            select = ui.Select(placeholder="Choose Blueprint...", options=options, row=0)
+            select = ui.Select(placeholder="Select Blueprint...", options=options)
             select.callback = self.on_select
             self.add_item(select)
         
-        cancel = ui.Button(label="Cancel", style=ButtonStyle.danger, row=1)
+        cancel = ui.Button(label="Cancel", style=ButtonStyle.danger)
         cancel.callback = self.cancel
         self.add_item(cancel)
 
@@ -415,6 +594,21 @@ class BuildingDetailView(ui.View):
         self.parent = parent_view
         
         self.setup_ui()
+
+
+    async def on_timeout(self):
+        try:
+            expired_embed = discord.Embed(
+                title="Building Session Expired",
+                description=f"Management for **{self.building.name}** has timed out.\n\n"
+                            "Open the building again from the settlement dashboard to continue.",
+                color=discord.Color.dark_grey()
+            )
+            await self.parent.message.edit(embed=expired_embed, view=None)
+        except:
+            pass
+        finally:
+            self.stop()
 
     SPECIAL_MAP = {
         "foundry": "magma_core",
@@ -592,14 +786,34 @@ class BuildingDetailView(ui.View):
         target_amount = min(cap_per_building, free_followers)
         
         if target_amount == self.building.workers_assigned:
-            return await interaction.response.send_message("Building already at optimal capacity.", ephemeral=True)
+            return await interaction.response.send_message(
+                "Building already at optimal capacity.",
+                ephemeral=True
+            )
 
         await interaction.response.defer()
         
         await self.bot.database.settlement.assign_workers(self.building.id, target_amount)
-        self.building.workers_assigned = target_amount
+
+        # Refresh settlement from DB to sync worker counts for all buildings
+        self.parent.settlement = await self.bot.database.settlement.get_settlement(
+            self.user_id,
+            self.parent.server_id
+        )
+
+        # Refresh this building reference from the updated settlement
+        for b in self.parent.settlement.buildings:
+            if b.id == self.building.id:
+                self.building = b
+                break
+
+        # Rebuild parent grid (so button labels & 🟢/🔴 match)
+        self.parent.update_grid()
         
-        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+        await interaction.edit_original_response(
+            embed=self.build_embed(),
+            view=self
+        )
 
     async def upgrade_building(self, interaction: Interaction):
         target_tier = self.building.tier + 1
@@ -680,30 +894,56 @@ class WorkerModal(ui.Modal, title="Manage Workforce"):
     async def on_submit(self, interaction: Interaction):
         try:
             val = int(self.count.value)
-            if val < 0: raise ValueError
+            if val < 0:
+                raise ValueError
             
             # Validation: Cap check
             max_w = SettlementMechanics.get_max_workers(self.parent_view.building.tier)
             if val > max_w:
-                return await interaction.response.send_message(f"This building can only hold {max_w} workers.", ephemeral=True)
+                return await interaction.response.send_message(
+                    f"This building can only hold {max_w} workers.", ephemeral=True
+                )
             
             # Validation: Total Available
-            # We need to know how many are FREE. 
-            # Free = Total_Followers - (Currently_Assigned_Total - Workers_In_This_Building)
-            total_assigned_global = sum(b.workers_assigned for b in self.parent_view.parent.settlement.buildings)
+            total_assigned_global = sum(
+                b.workers_assigned for b in self.parent_view.parent.settlement.buildings
+            )
             currently_in_this = self.parent_view.building.workers_assigned
-            free_followers = self.parent_view.parent.follower_count - (total_assigned_global - currently_in_this)
+            free_followers = (
+                self.parent_view.parent.follower_count
+                - (total_assigned_global - currently_in_this)
+            )
             
             if val > free_followers:
-                return await interaction.response.send_message(f"You only have {free_followers} available followers.", ephemeral=True)
+                return await interaction.response.send_message(
+                    f"You only have {free_followers} available followers.", ephemeral=True
+                )
 
             # Update DB
-            await self.parent_view.bot.database.settlement.assign_workers(self.parent_view.building.id, val)
-            
-            # Update Local
-            self.parent_view.building.workers_assigned = val
-            
-            await interaction.response.edit_message(embed=self.parent_view.build_embed(), view=self.parent_view)
+            await self.parent_view.bot.database.settlement.assign_workers(
+                self.parent_view.building.id, val
+            )
+
+            # Refresh settlement from DB so the grid state is accurate
+            self.parent_view.parent.settlement = await self.parent_view.bot.database.settlement.get_settlement(
+                self.parent_view.user_id,
+                self.parent_view.parent.server_id
+            )
+
+            # Update local building reference (same object, but we re-sync)
+            # Find the updated building in the refreshed settlement
+            for b in self.parent_view.parent.settlement.buildings:
+                if b.id == self.parent_view.building.id:
+                    self.parent_view.building = b
+                    break
+
+            # Rebuild parent grid so green/red icons match worker assignments
+            self.parent_view.parent.update_grid()
+
+            await interaction.response.edit_message(
+                embed=self.parent_view.build_embed(),
+                view=self.parent_view
+            )
             
         except ValueError:
             await interaction.response.send_message("Invalid number.", ephemeral=True)

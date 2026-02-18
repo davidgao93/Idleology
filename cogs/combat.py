@@ -85,7 +85,11 @@ class Combat(commands.Cog, name="combat"):
 
         # 2. Load Player
         player = await load_player(user_id, existing_user, self.bot.database)
-        
+        clean_stats = {
+            'attack': player.base_attack,
+            'defence': player.base_defence,
+            'crit_target': player.base_crit_chance_target
+        }
         # 3. Check Door Encounter
         # We construct a currency dict manually or fetch via helper
         currencies = {
@@ -141,7 +145,8 @@ class Combat(commands.Cog, name="combat"):
         # 6. Launch View
         title = f"⚔️ BOSS PHASE 1" if is_boss else None
         embed = ui.create_combat_embed(player, monster, start_logs, title_override=title)
-        view = CombatView(self.bot, user_id, player, monster, start_logs, combat_phases if is_boss else None)
+        view = CombatView(self.bot, user_id, player, monster, start_logs, 
+                          combat_phases if is_boss else None, clean_stats)
         
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=view)

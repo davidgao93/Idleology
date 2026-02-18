@@ -85,7 +85,8 @@ def create_victory_embed(player: Player, monster: Monster, rewards: Dict[str, An
         "Draconic Key": "🐉", "Angelic Key": "🪽", "Soul Core": "❤️‍🔥",
         "Void Fragment": "🟣", "Void Key": "🗝️",
         "Rune of Potential": "💎", "Rune of Refinement": "🔨",
-        "Rune of Imbuing": "🔅", "Rune of Shattering": "💥"
+        "Rune of Imbuing": "🔅", "Rune of Shattering": "💥",
+        "Fragment of Balance": "⚖️"
     }
     
     for item_name in rewards.get('special', []):

@@ -37,40 +37,45 @@ class InventoryUI:
             
             enhancement_str = ""
             if isinstance(item, Weapon) and item.refinement_lvl > 0:
-                enhancement_str = f" (+{item.refinement_lvl})"
+                enhancement_str = f" **(+{item.refinement_lvl})**"
             elif hasattr(item, 'passive_lvl') and item.passive_lvl > 0:
-                enhancement_str = f" (+{item.passive_lvl})"
-
+                enhancement_str = f" **(+{item.passive_lvl} "
+                if hasattr(item, 'passive') and item.passive != "none":
+                    enhancement_str += (f"{item.passive.title()})**")
             details = []
 
-                        # 1. Armor Specifics (Block/Evasion)
+            # 1. Armor Specifics (Block/Evasion)
             if isinstance(item, Armor):
-                if item.block > 0: details.append(f"🛑{item.block}")
-                if item.evasion > 0: details.append(f"💨{item.evasion}")
-
+                if item.block > 0: details.append(f"{item.block}% 🛑Block")
+                if item.evasion > 0: details.append(f"{item.evasion}% 💨Evasion")
+            
+            # Base stats
+            if hasattr(item, 'attack') and item.attack > 0: details.append(f"{item.attack} ⚔️ATK")
+            if hasattr(item, 'defence') and item.defence > 0: details.append(f"{item.defence} 🛡️DEF")
+            if hasattr(item, 'rarity') and item.rarity > 0: details.append(f"{item.rarity}% ✨Rarity")
             # 2. Defensive Stats (PDR/FDR/Ward) - Applies to Armor, Gloves, Boots, Helmets
             if hasattr(item, 'ward') and item.ward > 0:
-                details.append(f"🔮{item.ward}%")
+                details.append(f"{item.ward}% HP as 🔮Ward")
             if hasattr(item, 'pdr') and item.pdr > 0:
-                details.append(f"🛡️{item.pdr}%")
+                details.append(f"{item.pdr}% 🛡️PDR")
             if hasattr(item, 'fdr') and item.fdr > 0:
-                details.append(f"🛡️-{item.fdr}")
+                details.append(f"{item.fdr} 🛡️FDR")
+            if hasattr(item, 'crit') and item.crit > 0:
+                details.append(f"{item.crit} 🗡️Crit")
                 
             # 3. Gear Primary Stats (Atk/Def on non-weapons)
-            if isinstance(item, (Glove, Boot, Helmet)):
-                if hasattr(item, 'attack') and item.attack > 0: details.append(f"⚔️{item.attack}")
-                if hasattr(item, 'defence') and item.defence > 0: details.append(f"🛡️{item.defence}")
+            # if isinstance(item, (Glove, Boot, Helmet)):
 
-            if hasattr(item, 'passive') and item.passive != "none":
-                details.append(f"{item.passive.title()}")
-            
+            passives = []
             if isinstance(item, Weapon):
-                if item.p_passive != "none": details.append(item.p_passive.title())
-                if item.u_passive != "none": details.append(item.u_passive.title())
+                if item.passive != "none": passives.append(item.passive.title())
+                if item.p_passive != "none": passives.append(item.p_passive.title())
+                if item.u_passive != "none": passives.append(item.u_passive.title())
 
-            details_str = f" - {', '.join(details)}" if details else ""
+            details_str = f" - {' | '.join(details)}" if details else ""
+            passives_str = f" - {', '.join(passives)}" if passives else ""
             
-            display_text += f"**{index + 1}.**{status_icon} **{item.name}**{enhancement_str} (i{item.level}){details_str}\n"
+            display_text += f"**{index + 1}.**{status_icon} lvl{item.level} {item.name}{enhancement_str}\n{details_str}\n{passives_str}\n"
 
         embed.add_field(name="Items", value=display_text, inline=False)
         embed.set_footer(text="Select an item number to view details/actions.")

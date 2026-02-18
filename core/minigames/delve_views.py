@@ -83,13 +83,29 @@ class DelveView(ui.View):
         fuel_fill = int((self.state.current_fuel / self.state.max_fuel) * 10)
         fuel_bar = "⚡" * fuel_fill + "⚫" * (10 - fuel_fill)
 
+        # --- XP Calculation ---
+        # Base XP stored in DB + XP gained this run (Depth)
+        current_total_xp = self.stats['xp'] + self.state.depth
+        current_lvl = DelveMechanics.calculate_level_from_xp(current_total_xp)
+        
+        # XP for Next Level
+        next_lvl_threshold = DelveMechanics.calculate_xp_for_level(current_lvl + 1)
+        # XP for Current Level floor (for bar calculation)
+        current_lvl_floor = DelveMechanics.calculate_xp_for_level(current_lvl)
+        
+        # Format: "Lv. 5 (450/800 XP)"
+        xp_display = f"**Lv. {current_lvl}** ({current_total_xp}/{next_lvl_threshold} XP)"
+
         embed = discord.Embed(title=f"⛏️ Deep Delve (Depth: {self.state.depth})", color=discord.Color.dark_grey())
         embed.set_thumbnail(url="https://i.imgur.com/C7W0IkJ.png")
+        
         status = (f"**Structure:** `{stab_bar}` {self.state.stability}%\n"
-                  f"**Fuel:** {fuel_bar} ({self.state.current_fuel}/{self.state.max_fuel})")
+                  f"**Fuel:** {fuel_bar} ({self.state.current_fuel}/{self.state.max_fuel})\n"
+                  f"**Proficiency:** {xp_display}") # Added Line
         
         embed.add_field(name="Status", value=status, inline=False)
         
+        # ... rest of the embed building (Scanner, Cargo, Footer) ...
         # Scanner Visuals
         scan_text = ""
         range_val = DelveMechanics.get_survey_range(self.stats['sensor_lvl'])
@@ -214,6 +230,7 @@ class DelveView(ui.View):
             
             # Handle XP and Leveling
             old_lvl, new_lvl = await self.bot.database.delve.add_xp(self.user_id, self.server_id, self.state.depth)
+            self.stats['xp'] += self.state.depth
             
             reward_msg = ""
             if new_lvl > old_lvl:
@@ -270,7 +287,16 @@ class DelveView(ui.View):
 
         # 4. Create New View & Replace Message
         # We reuse self.stats because levels haven't changed (shop is separate)
-        new_view = DelveView(self.bot, self.user_id, self.server_id, new_state, self.stats)
+        stats = await self.bot.database.delve.get_stats(self.user_id, self.server_id)
+        max_fuel = DelveMechanics.get_max_fuel(stats['fuel_lvl'])
+
+        new_state = DelveState(
+            max_fuel=max_fuel,
+            current_fuel=max_fuel,
+            pickaxe_tier=self.state.pickaxe_tier
+        )
+
+        new_view = DelveView(self.bot, self.user_id, self.server_id, new_state, stats)
         embed = new_view.build_embed("Systems re-initialized. Permit renewed.")
         
         await interaction.edit_original_response(embed=embed, view=new_view)
