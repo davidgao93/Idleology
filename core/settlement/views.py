@@ -33,7 +33,7 @@ class SettlementDashboardView(ui.View):
             f"🪵 **Timber:** {self.settlement.timber:,}\n"
             f"🪨 **Stone:** {self.settlement.stone:,}"
         )
-        embed.set_thumbnail(url="https://i.imgur.com/81jN8tA.jpeg") # Placeholder
+        embed.set_thumbnail(url="https://i.imgur.com/xNY7tPj.png")
         
         # Calculate Pending Resources (Visual Only)
         now = datetime.now()
@@ -171,6 +171,7 @@ class BuildConstructionView(ui.View):
 
     def build_embed(self):
         embed = discord.Embed(title="Construction Site", description="Select a building plan.", color=discord.Color.blue())
+        embed.set_thumbnail(url="https://i.imgur.com/cZcEKhS.png")
         return embed
 
     def setup_select(self):
@@ -264,6 +265,18 @@ class BuildingDetailView(ui.View):
         "town_hall": "spirit_shard"
     }
 
+    THUMBNAILS = {
+        "town_hall": "https://i.imgur.com/xNY7tPj.png",
+        "logging_camp": "https://i.imgur.com/CWhzIHy.png",
+        "quarry": "https://i.imgur.com/ChAHxnq.png",
+        "foundry": "https://i.imgur.com/WFr1Z31.png",   # Forge
+        "sawmill": "https://i.imgur.com/Cj8D00u.png",
+        "reliquary": "https://i.imgur.com/W9iiQtD.png",
+        "market": "https://i.imgur.com/FavvGUA.png",
+        "barracks": "https://i.imgur.com/RvhhUCJ.png",
+        "temple": "https://i.imgur.com/4bmHF4u.png",
+    }
+
     # Helper for display names
     ITEM_NAMES = {
         "magma_core": "Magma Core",
@@ -285,7 +298,11 @@ class BuildingDetailView(ui.View):
         )
         
         embed = discord.Embed(title=f"{self.building.name}", description=desc, color=discord.Color.gold())
-        
+            
+        thumb = self.THUMBNAILS.get(self.building.building_type)
+        if thumb:
+            embed.set_thumbnail(url=thumb)
+
         # Upgrade Cost Preview (Simplified for display)
         next_cost = self._get_upgrade_cost(self.building.tier + 1)
         if self.building.tier < 5:

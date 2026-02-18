@@ -1,4 +1,10 @@
-Gemini_Generated_Image_8K0Nbr8K0Nbr8K0N: https://i.imgur.com/V5Hd9d9.png
-Gemini_Generated_Image_Cci1Awcci1Awcci1: https://i.imgur.com/LjE5VZF.png
-Gemini_Generated_Image_Rscfnmrscfnmrscf: https://i.imgur.com/PqViP3D.png
-Gemini_Generated_Image_Y3Bo2Sy3Bo2Sy3Bo: https://i.imgur.com/tIcLLI1.png
+Barracks: https://i.imgur.com/RvhhUCJ.png
+Empty_Lot: https://i.imgur.com/cZcEKhS.png
+Forge: https://i.imgur.com/WFr1Z31.png
+Logging: https://i.imgur.com/CWhzIHy.png
+Market: https://i.imgur.com/FavvGUA.png
+Quarry: https://i.imgur.com/ChAHxnq.png
+Reliquary: https://i.imgur.com/W9iiQtD.png
+Sawmill: https://i.imgur.com/Cj8D00u.png
+Tc: https://i.imgur.com/xNY7tPj.png
+Temple: https://i.imgur.com/4bmHF4u.png
