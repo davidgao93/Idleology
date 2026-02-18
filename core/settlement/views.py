@@ -157,8 +157,8 @@ class BuildConstructionView(ui.View):
         self.parent = parent_view
         
         self.COSTS = {
-            "logging_camp": {"gold": 1000, "stone": 50},
-            "quarry":       {"gold": 1000, "timber": 50},
+            "logging_camp": {"gold": 1000},
+            "quarry":       {"gold": 1000},
             "foundry":      {"gold": 5000, "timber": 200, "stone": 200},
             "sawmill":      {"gold": 5000, "timber": 200, "stone": 200},
             "reliquary":    {"gold": 5000, "timber": 200, "stone": 200},
