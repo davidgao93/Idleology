@@ -4,6 +4,287 @@ from datetime import datetime
 from core.models import Settlement, Building
 from core.settlement.mechanics import SettlementMechanics
 import asyncio
+from core.items.factory import load_player
+from core.combat.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot, generate_helmet
+import random
+
+class BlackMarketView(ui.View):
+    def __init__(self, bot, user_id, parent_view, building: Building):
+        super().__init__(timeout=120)
+        self.bot = bot
+        self.user_id = user_id
+        self.parent = parent_view
+        self.building = building
+        self.setup_ui()
+
+    def _get_multiplier(self) -> float:
+        t = self.building.tier
+        if t == 1: return 1.0
+        if t == 2: return 1.2
+        if t == 3: return 1.3
+        if t == 4: return 1.4
+        if t == 5: return 1.5
+        return 1.0
+
+    def _get_upgrade_cost(self, target_tier):
+        base_wood = 5000
+        base_stone = 5000
+        base_gold = 50000
+        
+        cost = {
+            "timber": int(base_wood * (target_tier ** 1.5)),
+            "stone": int(base_stone * (target_tier ** 1.5)),
+            "gold": int(base_gold * (target_tier ** 1.5))
+        }
+        
+        # Special Material: Spirit Shard
+        if target_tier >= 3:
+            cost['special_key'] = "spirit_shard"
+            cost['special_name'] = "Spirit Shard"
+            cost['special_qty'] = target_tier - 1 # T3=2, T4=3, T5=4
+            
+        return cost
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        self.stop()
+
+    def setup_ui(self):
+        self.clear_items()
+        
+        mult = int((self._get_multiplier() - 1) * 100)
+        bonus_str = f" (+{mult}%)" if mult > 0 else ""
+
+        # 1. Caches
+        btn_equip = ui.Button(label=f"Equipment{bonus_str}", style=ButtonStyle.primary, emoji="🎒")
+        btn_equip.callback = self.buy_equip_cache
+        self.add_item(btn_equip)
+
+        btn_rune = ui.Button(label=f"Runes{bonus_str}", style=ButtonStyle.primary, emoji="💎")
+        btn_rune.callback = self.buy_rune_cache
+        self.add_item(btn_rune)
+
+        btn_key = ui.Button(label=f"Keys{bonus_str}", style=ButtonStyle.primary, emoji="🗝️")
+        btn_key.callback = self.buy_key_cache
+        self.add_item(btn_key)
+
+        # 2. Upgrade Button
+        if self.building.tier < 5:
+            btn_up = ui.Button(label="Upgrade Facility", style=ButtonStyle.success, emoji="⬆️", row=1)
+            btn_up.callback = self.upgrade_facility
+            self.add_item(btn_up)
+        else:
+            btn_max = ui.Button(label="Max Level", style=ButtonStyle.success, disabled=True, row=1)
+            self.add_item(btn_max)
+
+        # Back
+        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        btn_back.callback = self.go_back
+        self.add_item(btn_back)
+
+    def build_embed(self):
+        tier = self.building.tier
+        mult = self._get_multiplier()
+        
+        embed = discord.Embed(title=f"🕵️ The Black Market (Tier {tier})", color=discord.Color.dark_gray())
+        embed.description = f"**Loot Bonus:** {int((mult-1)*100)}%\nGoods acquired through... unconventional means.\n"
+        
+        embed.add_field(
+            name="🎒 Equipment Cache",
+            value="**Cost:** 50 Iron Bars, 50 Oak Planks, 50 Desiccated Essence\n**Contents:** Random Equipment",
+            inline=False
+        )
+        embed.add_field(
+            name="💎 Rune Cache",
+            value="**Cost:** 3 Rune of Shattering\n**Contents:** Random Runes (No Shatter)",
+            inline=False
+        )
+        embed.add_field(
+            name="🗝️ Boss Key Cache",
+            value="**Cost:** 1 Void Key\n**Contents:** Random Boss Keys",
+            inline=False
+        )
+        
+        if tier < 5:
+            costs = self._get_upgrade_cost(tier + 1)
+            cost_str = f"🪵 {costs['timber']:,} | 🪨 {costs['stone']:,} | 💰 {costs['gold']:,}"
+            if 'special_key' in costs:
+                cost_str += f" | ✨ {costs['special_name']} x{costs['special_qty']}"
+            embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
+
+        embed.set_thumbnail(url="https://i.imgur.com/71K2Q5z.png")
+        return embed
+
+    async def upgrade_facility(self, interaction: Interaction):
+        target_tier = self.building.tier + 1
+        costs = self._get_upgrade_cost(target_tier)
+        
+        # 1. Check Settlement Resources
+        if (self.parent.settlement.timber < costs['timber'] or 
+            self.parent.settlement.stone < costs['stone']):
+            return await interaction.response.send_message("Insufficient Timber or Stone!", ephemeral=True)
+            
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < costs['gold']:
+            return await interaction.response.send_message("Insufficient Gold!", ephemeral=True)
+
+        if 'special_key' in costs:
+            col = costs['special_key']
+            req = costs['special_qty']
+            async with self.bot.database.connection.execute(f"SELECT {col} FROM users WHERE user_id = ?", (self.user_id,)) as c:
+                owned = (await c.fetchone())[0]
+            if owned < req:
+                return await interaction.response.send_message(f"Need {req}x {costs['special_name']}!", ephemeral=True)
+            
+            await self.bot.database.users.modify_currency(self.user_id, col, -req)
+
+        await interaction.response.defer()
+
+        # 2. Consume Resources
+        changes = {'gold': -costs['gold'], 'timber': -costs['timber'], 'stone': -costs['stone']}
+        await self.bot.database.settlement.commit_production(self.user_id, self.parent.server_id, changes)
+
+        # 3. Update DB
+        await self.bot.database.connection.execute(
+            "UPDATE buildings SET tier = tier + 1 WHERE id = ?", (self.building.id,)
+        )
+        await self.bot.database.connection.commit()
+
+        # 4. Update Local State
+        self.building.tier += 1
+        self.parent.settlement.timber -= costs['timber']
+        self.parent.settlement.stone -= costs['stone']
+
+        # 5. Refresh
+        self.setup_ui()
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+
+    async def buy_equip_cache(self, interaction: Interaction):
+        uid, sid = self.user_id, self.parent.server_id
+        cost = 50
+        raw_user = await self.db.users.get(self.uid, self.gid)
+        player = await load_player(self.uid, raw_user, self.db)
+        await interaction.response.defer()
+        
+        try:
+            async with self.bot.database.connection.execute(
+                "UPDATE mining SET iron_bar = iron_bar - ? WHERE user_id=? AND server_id=? AND iron_bar >= ?", 
+                (cost, uid, sid, cost)) as c:
+                if c.rowcount == 0: raise ValueError("Not enough Iron Bars.")
+                
+            async with self.bot.database.connection.execute(
+                "UPDATE woodcutting SET oak_plank = oak_plank - ? WHERE user_id=? AND server_id=? AND oak_plank >= ?", 
+                (cost, uid, sid, cost)) as c:
+                if c.rowcount == 0: 
+                    raise ValueError("Not enough Oak Planks.")
+
+            async with self.bot.database.connection.execute(
+                "UPDATE fishing SET desiccated_essence = desiccated_essence - ? WHERE user_id=? AND server_id=? AND desiccated_essence >= ?", 
+                (cost, uid, sid, cost)) as c:
+                if c.rowcount == 0: raise ValueError("Not enough Desiccated Essence.")
+            
+            await self.bot.database.connection.commit()
+            
+            # Grant Rewards
+            base_qty = random.randint(3, 5)
+            final_qty = int(base_qty * self._get_multiplier())
+            log = []
+            for _ in range(final_qty):
+                # Random slot
+                # Weighted selection of slot
+                slot = random.choices(
+                    population=['weapon', 'armor', 'accessory', 
+                                'glove', 'boot', 'helmet'],
+                    weights=[35, 10, 25, 10, 10, 10],
+                    k=1
+                )[0]
+
+                item = None
+
+                # Generate item based on slot
+                if slot == 'weapon':
+                    item = await generate_weapon(uid, player.level, False)
+                elif slot == 'armor':
+                    item = await generate_armor(uid, player.level, False)
+                elif slot == 'accessory':
+                    item = await generate_accessory(uid, player.level, False)
+                elif slot == 'glove':
+                    item = await generate_glove(uid, player.level, False)
+                elif slot == 'boot':
+                    item = await generate_boot(uid, player.level, False)
+                elif slot == 'helmet':
+                    item = await generate_helmet(uid, player.level, False)
+
+                if item:
+                    # Save
+                    if slot == 'weapon':
+                        await self.bot.database.equipment.create_weapon(item)
+                    elif slot == 'armor':
+                        await self.bot.database.equipment.create_armor(item)
+                    elif slot == 'accessory':
+                        await self.bot.database.equipment.create_accessory(item)
+                    elif slot == 'glove':
+                        await self.bot.database.equipment.create_glove(item)
+                    elif slot == 'boot':
+                        await self.bot.database.equipment.create_boot(item)
+                    elif slot == 'helmet':
+                        await self.bot.database.equipment.create_helmet(item)
+
+                    log.append(item.name)
+            
+            await interaction.followup.send(f"📦 **Cache Opened:**\n{', '.join(log)}", ephemeral=True)
+
+        except ValueError as e:
+            await interaction.followup.send(f"Transaction failed: {e}", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send("An error occurred.", ephemeral=True)
+
+    async def buy_rune_cache(self, interaction: Interaction):
+        cost = 3
+        owned = await self.bot.database.users.get_currency(self.user_id, 'shatter_runes')
+        
+        if owned < cost:
+            return await interaction.response.send_message("Not enough Shatter Runes!", ephemeral=True)
+            
+        await interaction.response.defer()
+        await self.bot.database.users.modify_currency(self.user_id, 'shatter_runes', -cost)
+        
+        base_qty = random.randint(1, 5)
+        final_qty = int(base_qty * self._get_multiplier())
+        rewards = []
+        for _ in range(final_qty):
+            rtype = random.choice(['refinement_runes', 'potential_runes'])
+            await self.bot.database.users.modify_currency(self.user_id, rtype, 1)
+            rewards.append(rtype.replace("_", " ").title().replace("Runes", "Rune"))
+            
+        await interaction.followup.send(f"💎 **Rune Cache Opened:**\n{', '.join(rewards)}", ephemeral=True)
+
+    async def buy_key_cache(self, interaction: Interaction):
+        cost = 1
+        owned = await self.bot.database.users.get_currency(self.user_id, 'void_keys')
+        
+        if owned < cost:
+            return await interaction.response.send_message("Not enough Void Keys!", ephemeral=True)
+            
+        await interaction.response.defer()
+        await self.bot.database.users.modify_currency(self.user_id, 'void_keys', -cost)
+        
+        base_qty = random.randint(1, 5)
+        final_qty = int(base_qty * self._get_multiplier())
+        rewards = []
+        for _ in range(final_qty):
+            ktype = random.choice(['dragon_key', 'angel_key', 'soul_cores', 'balance_fragment'])
+            await self.bot.database.users.modify_currency(self.user_id, ktype, 1)
+            rewards.append(ktype.replace("_", " ").title())
+            
+        await interaction.followup.send(f"🗝️ **Boss Cache Opened:**\n{', '.join(rewards)}", ephemeral=True)
+
+    async def go_back(self, interaction: Interaction):
+        await interaction.response.edit_message(embed=self.parent.build_embed(), view=self.parent)
+        self.stop()
+
 
 class TownHallView(ui.View):
     def __init__(self, bot, user_id, settlement, parent_view):
@@ -340,8 +621,12 @@ class SettlementDashboardView(ui.View):
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
     async def open_building(self, interaction: Interaction, building: Building):
-        view = BuildingDetailView(self.bot, self.user_id, building, self)
-        await interaction.response.edit_message(embed=view.build_embed(), view=view)
+        if building.building_type == "black_market":
+            view = BlackMarketView(self.bot, self.user_id, self, building)
+            await interaction.response.edit_message(embed=view.build_embed(), view=view)
+        else:
+            view = BuildingDetailView(self.bot, self.user_id, building, self)
+            await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
     async def collect_resources(self, interaction: Interaction):
         await interaction.response.defer()
@@ -386,17 +671,40 @@ class SettlementDashboardView(ui.View):
         # Make a copy specifically for display (so you can filter it safely)
         display_changes = dict(total_changes)
 
-        # If you have any filtering logic, apply it to display_changes, NOT total_changes
-        # Example: if you had something like this before:
-        # total_changes = {k: v for k, v in total_changes.items() if v > 0}
-        # change it to:
-        # display_changes = {k: v for k, v in display_changes.items() if v > 0}
-
-        print("DEBUG display_changes BEFORE format:", display_changes)
+        cookie_xp = 0
+        if 'companion_cookie' in total_changes:
+            cookies = total_changes.pop('companion_cookie')
+            cookie_xp = cookies
+            
+            if 'companion_cookie' in display_changes:
+                display_changes['Companion XP'] = display_changes.pop('companion_cookie')
 
         # 4. Commit to DB with the full changes
         await self.bot.database.settlement.commit_production(uid, sid, total_changes)
         await self.bot.database.settlement.update_collection_timer(uid, sid)
+        
+        # Commit companion XP
+        xp_msg = ""
+        if cookie_xp > 0:
+            active_rows = await self.bot.database.companions.get_active(self.user_id)
+            if active_rows:
+                xp_per_pet = cookie_xp // len(active_rows)
+                for row in active_rows:
+                    comp_id, cur_lvl, cur_exp = row[0], row[5], row[6]
+                    
+                    # Add XP
+                    cur_exp += xp_per_pet
+                    # Level logic
+                    while cur_lvl < 100:
+                        req = CompanionMechanics.calculate_next_level_xp(cur_lvl)
+                        if cur_exp >= req:
+                            cur_exp -= req
+                            cur_lvl += 1
+                        else:
+                            break
+                    await self.bot.database.companions.update_stats(comp_id, cur_lvl, cur_exp)
+                
+                xp_msg = f"\n🐾 **Companion Ranch:** Distributed {cookie_xp:,} XP among active pets."
 
         # 5. Update local settlement state
         self.settlement.timber += display_changes.get('timber', 0)
@@ -407,7 +715,7 @@ class SettlementDashboardView(ui.View):
         embed = self.build_embed()
 
         # 7. Use display_changes for the Last Collection field
-        formatted_changes = self._format_changes(display_changes)
+        formatted_changes = self._format_changes(display_changes) + xp_msg
         embed.add_field(
             name="Last Collection",
             value=(
@@ -464,7 +772,10 @@ class BuildConstructionView(ui.View):
             "reliquary":    {"gold": 5000, "timber": 200, "stone": 200},
             "market":       {"gold": 10000, "timber": 500, "stone": 500},
             "barracks":     {"gold": 15000, "timber": 1000, "stone": 1000},
-            "temple":       {"gold": 20000, "timber": 1500, "stone": 1500}
+            "temple":       {"gold": 20000, "timber": 1500, "stone": 1500},
+            "apothecary":       {"gold": 25000, "timber": 2000, "stone": 2000},
+            "black_market":     {"gold": 50000, "timber": 5000, "stone": 5000},
+            "companion_ranch":  {"gold": 30000, "timber": 3000, "stone": 3000}
         }
         
         self.setup_select()
@@ -619,7 +930,9 @@ class BuildingDetailView(ui.View):
         "temple": "spirit_shard",
         "market": "spirit_shard",
         "barracks": "spirit_shard",
-        "town_hall": "spirit_shard"
+        "town_hall": "spirit_shard",
+        "apothecary": "life_root",
+        "companion_ranch": "life_root"
     }
 
     ITEM_NAMES = {
@@ -632,12 +945,15 @@ class BuildingDetailView(ui.View):
         "town_hall": "https://i.imgur.com/xNY7tPj.png",
         "logging_camp": "https://i.imgur.com/CWhzIHy.png",
         "quarry": "https://i.imgur.com/ChAHxnq.png",
-        "foundry": "https://i.imgur.com/WFr1Z31.png",   # Forge
+        "foundry": "https://i.imgur.com/WFr1Z31.png",
         "sawmill": "https://i.imgur.com/Cj8D00u.png",
         "reliquary": "https://i.imgur.com/W9iiQtD.png",
         "market": "https://i.imgur.com/FavvGUA.png",
         "barracks": "https://i.imgur.com/RvhhUCJ.png",
         "temple": "https://i.imgur.com/4bmHF4u.png",
+        "apothecary": "https://i.imgur.com/81jN8tA.jpeg", 
+        "black_market": "https://i.imgur.com/71K2Q5z.png",
+        "companion_ranch": "https://i.imgur.com/oQBm9HF.png"
     }
 
     BUILDING_INFO = {
@@ -648,14 +964,10 @@ class BuildingDetailView(ui.View):
         "reliquary":    "Converts Bones -> Essence (Crafting/Upgrades).",
         "market":       "Generates Passive Gold based on workforce.",
         "barracks":     "Passive: +1% Atk/Def per tier.",
-        "temple":       "Passive: +5% Propagate growth per tier."
-    }
-
-    # Helper for display names
-    ITEM_NAMES = {
-        "magma_core": "Magma Core",
-        "life_root": "Life Root",
-        "spirit_shard": "Spirit Shard"
+        "temple":       "Passive: +5% Propagate growth per tier.",
+        "apothecary": "Passive: Increases Potion Healing (+20 HP per tier).",
+        "black_market": "Special: Trade resources for Caches.",
+        "companion_ranch": "Generator: Produces XP Cookies for pets."
     }
 
     def build_embed(self):

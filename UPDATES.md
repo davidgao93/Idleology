@@ -1,3 +1,17 @@
+### Version 0.72
+Pet rerolling can no longer hit the same passive, added confirm to partner rune
+Town hall has an upgrade option
+Settlements can no longer build dupe buildings and buildings have more info
+Fixed item menus not displaying correctly
+Fixed resources not being granted by settlements
+Add exp to next level for delve and an xp tracker to see how far you are
+Player stats now reset properly between each boss phase and won't scale to infinity
+Boss pets can now drop, at a 3% drop rate, boss pets are always T3+
+Rune of potentials can once again be used to increase enchant chance on accessories
+    They can also be used for armor tempers (10% inc), glove/helm/boot passive increase (15% inc)
+
+
+
 ### Version 0.71
 Pet rerolling can no longer hit the same passive, added confirm to partner rune
 Town hall has an upgrade option
@@ -5,7 +19,11 @@ Settlements can no longer build dupe buildings and buildings have more info
 Fixed item menus not displaying correctly
 Fixed resources not being granted by settlements
 Add exp to next level for delve and an xp tracker to see how far you are
-
+Player stats now reset properly between each boss phase and won't scale to infinity
+Boss pets can now drop, at a 3% drop rate, boss pets are always T3+
+Rune of potentials can once again be used to increase enchant chance on accessories
+    They can also be used for armor tempers (10% inc), glove/helm/boot passive increase (15% inc)
+    
 
 ### Version 0.7
 CONTENT

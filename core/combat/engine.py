@@ -133,6 +133,12 @@ def process_heal(player: Player) -> str:
         heal_percentage += (player.equipped_boot.passive_lvl * 0.10)
         
     heal_amount = int((player.max_hp * heal_percentage) + random.randint(1, 6)) 
+
+    # T1=20, T2=40, T3=60, T4=80, T5=100
+    if player.apothecary_tier > 0:
+        flat_bonus = player.apothecary_tier * 20
+        heal_amount += flat_bonus
+
     # Apply Divine Logic from Helmet
     potential_hp = player.current_hp + heal_amount
     overheal = 0
@@ -146,7 +152,8 @@ def process_heal(player: Player) -> str:
     player.potions -= 1
     
     msg = f"{player.name} uses a potion and heals for **{heal_amount - overheal}** HP!"
-    
+    if player.apothecary_tier > 0:
+        msg += f" (Apothecary T{player.apothecary_tier}: +{player.apothecary_tier * 20})"
     if player.get_helmet_passive() == "divine" and overheal > 0:
         player.combat_ward += overheal
         msg += f"\n**Divine** converts **{overheal}** overheal into 🔮 Ward!"

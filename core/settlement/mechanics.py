@@ -43,7 +43,12 @@ class SettlementMechanics:
         
         "barracks": {"type": "passive", "effect": "combat_stats"},
         "temple":   {"type": "passive", "effect": "propagate_bonus"},
-        "town_hall": {"type": "core", "effect": "caps"}
+        "town_hall": {"type": "core", "effect": "caps"},
+        "apothecary": {"type": "passive", "effect": "potion_buff"},
+        # Type 'special' means it has no passive production, handled via custom View
+        "black_market": {"type": "special", "effect": "trading"},
+        # Generates 'companion_cookie' which is auto-converted to XP on collect
+        "companion_ranch": {"type": "generator", "output": "companion_cookie", "base_rate": 50}, # 50 XP per worker/hr
     }
 
     @staticmethod
