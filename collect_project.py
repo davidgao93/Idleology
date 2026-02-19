@@ -18,6 +18,7 @@ IGNORE_DIRS = {
     "assets",
     "tests",
     ".pytest_cache",
+    "database/backups",
     DEST_DIR_NAME  # Don't copy the output folder into itself
 }
 
@@ -38,7 +39,8 @@ IGNORE_FILES = {
     ".gitignore",
     "config_test.json",
     "conftest.py",
-    "tests.py"
+    "tests.py",
+    "prompt.txt"
 }
 
 # If you want to include the database, remove "database.db" from this list.
