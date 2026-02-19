@@ -19,7 +19,7 @@ class SettlementRepository:
         if not row:
             # Create Default
             await self.connection.execute(
-                "INSERT INTO settlements (user_id, server_id, town_hall_tier, building_slots, last_collection_time) VALUES (?, ?, 1, 3, datetime('now'))",
+                "INSERT INTO settlements (user_id, server_id, town_hall_tier, building_slots, last_collection_time) VALUES (?, ?, 1, 5, datetime('now'))",
                 (user_id, server_id)
             )
             await self.connection.commit()
@@ -60,9 +60,13 @@ class SettlementRepository:
         await self.connection.commit()
 
     async def update_collection_timer(self, user_id: str, server_id: str):
+        """Updates collection timer using Python time for consistency."""
+        from datetime import datetime
+        current_time = datetime.now().isoformat()
+        
         await self.connection.execute(
-            "UPDATE settlements SET last_collection_time = datetime('now') WHERE user_id = ? AND server_id = ?",
-            (user_id, server_id)
+            "UPDATE settlements SET last_collection_time = ? WHERE user_id = ? AND server_id = ?",
+            (current_time, user_id, server_id)
         )
         await self.connection.commit()
 

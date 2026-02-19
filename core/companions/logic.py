@@ -10,6 +10,7 @@ from core.combat.loot import (
     generate_weapon, generate_armor, generate_accessory, 
     generate_glove, generate_boot, generate_helmet
 )
+from datetime import datetime
 
 class CompanionLogic:
     @staticmethod
@@ -108,9 +109,11 @@ class CompanionLogic:
                 generated_gear_count += 1
 
         # 4. Update Timer
+
+        new_time = datetime.now().isoformat()
         await bot.database.connection.execute(
-            "UPDATE users SET last_companion_collect_time = CURRENT_TIMESTAMP WHERE user_id = ?", 
-            (user_id,)
+            "UPDATE users SET last_companion_collect_time = ? WHERE user_id = ?", 
+            (new_time, user_id)
         )
         await bot.database.connection.commit()
 

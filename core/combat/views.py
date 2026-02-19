@@ -468,6 +468,18 @@ class CombatView(ui.View):
                 await message.edit(embed=embed, view=None)
             elif "Lucifer" in self.monster.name:
                 embed.set_image(url="https://i.imgur.com/x9suAGK.png")
+                embed.add_field(
+                    name="❤️‍🔥 A Soul Core manifests...",
+                    value=(
+                        "**Choose how to absorb its power:**\n"
+                        "❤️‍🔥 **Enraged:** Modifies Attack (-1 to +2)\n"
+                        "💙 **Solidified:** Modifies Defence (1- to +2)\n"
+                        "💔 **Unstable:** Shuffles Stats towards equilibrium\n"
+                        "💞 **Inverse:** Swaps Attack and Defence values\n"
+                        "🖤 **Keep:** Store a singular Soul Core"
+                    ),
+                    inline=False
+                )
                 await message.edit(embed=embed, view=LuciferChoiceView(self.bot, self.user_id, self.player))
                 return # Lucifer View takes over
             else:

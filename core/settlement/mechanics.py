@@ -74,7 +74,7 @@ class SettlementMechanics:
         # Rate = Base * Tier * Workers
         # Example: T1 Logging Camp w/ 100 workers = 100 / 10 * 1 = 10 Timber/hr
         # Example: T5 Foundry w/ 500 workers = 5 * 5 * (500 / 10) = 1250 Ingots/hr
-        production_capacity = int(b_data["base_rate"] * tier * int(workers / 10) * hours_elapsed)
+        production_capacity = int(b_data["base_rate"] * tier * workers * hours_elapsed)
 
         if b_data["type"] == "generator":
             changes[b_data["output"]] = production_capacity

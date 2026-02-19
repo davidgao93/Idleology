@@ -71,7 +71,9 @@ class InventoryUI:
                 if item.passive != "none": passives.append(item.passive.title())
                 if item.p_passive != "none": passives.append(item.p_passive.title())
                 if item.u_passive != "none": passives.append(item.u_passive.title())
-
+            if isinstance(item, Armor):
+                if item.passive != "none" and item.passive != "":
+                    passives.append(f"✨{item.passive.title()}")
             details_str = f" - {' | '.join(details)}" if details else ""
             passives_str = f" - {', '.join(passives)}" if passives else ""
             

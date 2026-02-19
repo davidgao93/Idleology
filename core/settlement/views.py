@@ -259,8 +259,8 @@ class SettlementDashboardView(ui.View):
                 if not b_data:
                     continue
 
-                # Match the generator formula: base_rate * tier * (workers / 10)
-                per_hour = int(b_data['base_rate'] * b.tier * int(b.workers_assigned / 10))
+                # Match the generator formula: base_rate * tier * workers
+                per_hour = int(b_data['base_rate'] * b.tier * b.workers_assigned)
                 if b_data["type"] == "generator":
                     resource = b_data.get("output", "output")
                     display = self.RESOURCE_DISPLAY_NAMES.get(
@@ -622,6 +622,12 @@ class BuildingDetailView(ui.View):
         "town_hall": "spirit_shard"
     }
 
+    ITEM_NAMES = {
+        "magma_core": "Magma Core",
+        "life_root": "Life Root",
+        "spirit_shard": "Spirit Shard"
+    }
+
     THUMBNAILS = {
         "town_hall": "https://i.imgur.com/xNY7tPj.png",
         "logging_camp": "https://i.imgur.com/CWhzIHy.png",
@@ -678,13 +684,12 @@ class BuildingDetailView(ui.View):
         # Upgrade Cost Preview (Simplified for display)
         next_cost = self._get_upgrade_cost(self.building.tier + 1)
         if self.building.tier < 5:
-            cost_str = f"🪵 {next_cost.get('timber')} | 🪨 {next_cost.get('stone')} | 💰 {next_cost.get('gold')}"
+            cost_str = f"🪵 {next_cost.get('timber'):,} | 🪨 {next_cost.get('stone'):,} | 💰 {next_cost.get('gold'):,}"
             if 'special' in next_cost:
                 cost_str += f" | ✨ {next_cost['special']} x{next_cost['special_qty']}"
             embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
         else:
             embed.add_field(name="Status", value="🌟 Max Level Reached", inline=False)
-            
         return embed
 
     def _get_upgrade_cost(self, target_tier):
@@ -700,15 +705,18 @@ class BuildingDetailView(ui.View):
         }
         
         # Special Materials
-        if target_tier == 3:
-            cost['special'] = "Magma Core" if self.building.building_type == "foundry" else "Special Material"
-            cost['special_qty'] = 1
-        elif target_tier == 4:
-            cost['special'] = "Magma Core"
-            cost['special_qty'] = 2
-        elif target_tier == 5:
-            cost['special'] = "Magma Core"
-            cost['special_qty'] = 3
+        if target_tier >= 3:
+            # Map building type -> db_column -> Display Name
+            special_col = self.SPECIAL_MAP.get(self.building.building_type, "magma_core")
+            display_name = self.ITEM_NAMES.get(special_col, "Special Material")
+            
+            cost['special_key'] = special_col # For DB logic
+            cost['special'] = display_name    # For Display logic
+            
+            # Quantity Logic
+            if target_tier == 3: cost['special_qty'] = 1
+            elif target_tier == 4: cost['special_qty'] = 2
+            elif target_tier == 5: cost['special_qty'] = 3
             
         return cost
 
