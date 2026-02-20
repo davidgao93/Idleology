@@ -184,7 +184,7 @@ class Player:
     active_companions: List[Companion] = field(default_factory=list)
 
     # Settlement buffs
-    apothecary_tier: int = 0 
+    apothecary_workers: int = 0
 
     # Transient states (reset each combat)
     combat_ward: int = 0

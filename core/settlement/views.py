@@ -534,8 +534,6 @@ class SettlementDashboardView(ui.View):
         
         if hours > 0.1:
             pending_txt = ""
-            # copy raw_inv logic from collect_resources, but using a snapshot
-            # If you don't want to fetch skills here again, just display *per-hour* rates:
             for b in self.settlement.buildings:
                 if b.workers_assigned <= 0:
                     continue
@@ -544,20 +542,23 @@ class SettlementDashboardView(ui.View):
                 if not b_data:
                     continue
 
-                # Match the generator formula: base_rate * tier * workers
-                per_hour = int(b_data['base_rate'] * b.tier * b.workers_assigned)
-                if b_data["type"] == "generator":
+                # Safely pull base_rate (defaults to 0 for passives)
+                base_rate = b_data.get('base_rate', 0)
+                
+                if b_data.get("type") == "generator":
+                    per_hour = int(base_rate * b.tier * b.workers_assigned)
                     resource = b_data.get("output", "output")
                     display = self.RESOURCE_DISPLAY_NAMES.get(
                         resource, resource.replace("_", " ").title()
                     )
                     pending_txt += f"• {b.name}: ~{per_hour * hours:.0f} {display}\n"
+                elif b_data.get("type") == "converter":
+                    pending_txt += f"• {b.name}: Active (Converting materials)\n"
                 else:
-                    # For converters and passives, either skip or add a generic line
-                    pending_txt += f"• {b.name}: Converts raw materials (see details)\n"
+                    pending_txt += f"• {b.name}: Active (Providing passive buff)\n"
 
             if pending_txt:
-                embed.add_field(name="Pending Production", value=pending_txt, inline=False)
+                embed.add_field(name="Active Operations", value=pending_txt, inline=False)
 
         if self.settlement.buildings:
             lines = []
@@ -759,9 +760,9 @@ class BuildConstructionView(ui.View):
         "sawmill":      "Converts Logs into Planks (for settlement upgrades).",
         "reliquary":    "Converts Bones into Essence (for enchantments).",
         "market":       "Generates Passive Gold based on workforce size.",
-        "barracks":     "Passive: Grants +1% Base Atk/Def per tier.",
-        "temple":       "Passive: Grants +5% Propagate follower gain per tier.",
-        "apothecary": "Passive: Increases Potion Healing (+20 HP per tier).",
+        "barracks":     "Passive: +0.01% Base Atk/Def per assigned Worker.",
+        "temple":       "Passive: +0.05% Propagate follower gain per assigned Worker.",
+        "apothecary":   "Passive: Increases Potion Healing (+0.2 HP per assigned Worker).",
         "black_market": "Special: Trade resources for Caches.",
         "companion_ranch": "Generator: Produces XP Cookies for pets."
     }

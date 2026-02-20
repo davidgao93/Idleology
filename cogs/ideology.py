@@ -95,16 +95,16 @@ class Ideology(commands.Cog, name="ideology"):
         variation = random.uniform(0.9, 1.1)
         follower_increase = int(follower_increase * variation)
 
-        temple_tier = await self.bot.database.settlement.get_building_tier(user_id, server_id, "temple")
+        t_tier, t_workers = await self.bot.database.settlement.get_building_details(user_id, server_id, "temple")
         bonus_msg = ""
         
-        if temple_tier > 0:
-            # 5% per tier
-            multiplier = 1 + (temple_tier * 0.05)
+        if t_workers > 0:
+            # 1 Worker = 0.05% boost (0.0005). 100 Workers = 5%, 500 workers = 25%
+            multiplier = 1 + (t_workers * 0.0005)
             old_increase = follower_increase
             follower_increase = int(follower_increase * multiplier)
             bonus = follower_increase - old_increase
-            bonus_msg = f" (Temple T{temple_tier}: +{bonus})"
+            bonus_msg = f" (Temple: +{bonus})"
 
         new_followers_count = followers_count + follower_increase
 

@@ -131,6 +131,20 @@ class SettlementRepository:
         )
         row = await cursor.fetchone()
         return row[0] if row else 0
+    
+
+    async def get_building_details(self, user_id: str, server_id: str, building_type: str) -> tuple[int, int]:
+        """
+        Fetches the (tier, workers_assigned) of a specific building.
+        Returns (0, 0) if the building does not exist.
+        """
+        cursor = await self.connection.execute(
+            "SELECT tier, workers_assigned FROM buildings WHERE user_id = ? AND server_id = ? AND building_type = ?",
+            (user_id, server_id, building_type)
+        )
+        row = await cursor.fetchone()
+        return row if row else (0, 0)
+    
 
     async def get_used_slots_count(self, user_id: str, server_id: str) -> int:
         """Counts how many buildings a user has constructed."""
