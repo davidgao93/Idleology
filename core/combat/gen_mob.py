@@ -12,7 +12,6 @@ def get_boss_mods():
 
 async def generate_encounter(player, monster, is_treasure):
     """Generate an encounter with a monster based on the user's level."""
-    print(f'Generating a monster based off {monster}')
     if player.level < 5:
         difficulty_multiplier = random.randint(1, 2)
     elif player.level <= 20:
@@ -73,7 +72,6 @@ async def generate_encounter(player, monster, is_treasure):
                 modifier = random.choice(available_modifiers)
                 monster.modifiers.append(modifier)
                 available_modifiers.remove(modifier)  # Ensure no duplicate modifiers
-                print(f"Added modifier: {modifier}")
 
         if "Built-different" in monster.modifiers:
             monster.level += 2
@@ -95,7 +93,7 @@ async def generate_encounter(player, monster, is_treasure):
         if "Glutton" in monster.modifiers:
             monster.hp *= 2
             print(f"Glutton modifier applied: Monster HP doubled to {monster.hp}")
-
+    print(monster)
     return monster
 
 
@@ -255,44 +253,49 @@ async def generate_ascent_monster(player, monster_instance, ascent_stage_level, 
     return monster
 
 
+def level_exponent(level: int) -> float:
+    if level < 5:
+        return 1.0
+    
+    if level <= 20:
+        return random.uniform(1.1, 1.2)
+    elif level <= 40:
+        return random.uniform(1.25, 1.26)
+    elif level <= 50:
+        return random.uniform(1.26, 1.27)
+    elif level <= 60:
+        return random.uniform(1.27, 1.28)
+    elif level <= 70:
+        return random.uniform(1.28, 1.29)
+    elif level <= 80:
+        return random.uniform(1.29, 1.30)
+    elif level <= 100:
+        return random.uniform(1.30, 1.31)
+    elif level <= 110:
+        return random.uniform(1.33, 1.35)
+    elif level <= 120:
+        return random.uniform(1.4, 1.42)
+    elif level <= 130:
+        return random.uniform(1.42, 1.44)
+    elif level <= 140:
+        return random.uniform(1.44, 1.46)
+    elif level <= 150:
+        return random.uniform(1.46, 1.48)
+    elif level <= 160:
+        return random.uniform(1.48, 1.52)
+    else:
+        return random.uniform(1.52, 1.55)
+
 def calculate_monster_stats(monster):
     if monster.level < 5:
-        base_attack = monster.level
-        base_defence = monster.level
-    elif monster.level >= 5 and monster.level <= 20:
-        base_attack = monster.level ** random.uniform(1.1, 1.2)
-        base_defence = monster.level ** random.uniform(1.1, 1.2)
-    elif monster.level > 20 and monster.level <= 40:
-        base_attack = monster.level ** random.uniform(1.25, 1.26)
-        base_defence = monster.level ** random.uniform(1.25, 1.26)
-    elif monster.level > 40 and monster.level <= 50:
-        base_attack = monster.level ** random.uniform(1.26, 1.27)
-        base_defence = monster.level ** random.uniform(1.26, 1.27)
-    elif monster.level > 50 and monster.level <= 60:
-        base_attack = monster.level ** random.uniform(1.27, 1.28)
-        base_defence = monster.level ** random.uniform(1.27, 1.28)
-    elif monster.level > 60 and monster.level <= 70:
-        base_attack = monster.level ** random.uniform(1.28, 1.29)
-        base_defence = monster.level ** random.uniform(1.28, 1.29)
-    elif monster.level > 70 and monster.level <= 80:
-        base_attack = monster.level ** random.uniform(1.29, 1.3)
-        base_defence = monster.level ** random.uniform(1.29, 1.3)
-    elif monster.level > 80 and monster.level <= 90:
-        base_attack = monster.level ** random.uniform(1.3, 1.31)
-        base_defence = monster.level ** random.uniform(1.3, 1.31)
-    elif monster.level > 90 and monster.level <= 100:
-        base_attack = monster.level ** random.uniform(1.3, 1.31)
-        base_defence = monster.level ** random.uniform(1.3, 1.31)
-    elif monster.level > 100 and monster.level <= 110:
-        base_attack = monster.level ** random.uniform(1.32, 1.33)
-        base_defence = monster.level ** random.uniform(1.32, 1.33)
+        base_attack = base_defence = monster.level
     else:
-        base_attack = monster.level ** random.uniform(1.34, 1.35)
-        base_defence = monster.level ** random.uniform(1.34, 1.35)
-
+        exp = level_exponent(monster.level)
+        base_attack = monster.level ** exp
+        base_defence = monster.level ** exp
+    
     monster.attack = int(base_attack)
     monster.defence = int(base_defence)
-    
     return monster
 
 async def fetch_monster_image(level, monster_data):

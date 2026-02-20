@@ -1,10 +1,76 @@
-Barracks: https://i.imgur.com/RvhhUCJ.png
-Empty_Lot: https://i.imgur.com/cZcEKhS.png
-Forge: https://i.imgur.com/WFr1Z31.png
-Logging: https://i.imgur.com/CWhzIHy.png
-Market: https://i.imgur.com/FavvGUA.png
-Quarry: https://i.imgur.com/ChAHxnq.png
-Reliquary: https://i.imgur.com/W9iiQtD.png
-Sawmill: https://i.imgur.com/Cj8D00u.png
-Tc: https://i.imgur.com/xNY7tPj.png
-Temple: https://i.imgur.com/4bmHF4u.png
+Floating_Huge_Horns_Oni_Sword,https://i.imgur.com/zkUAGAN.jpeg
+Echnidna_Girl_Demon,https://i.imgur.com/35xr3Dm.jpeg
+Giant_Titan_Angel_Protector,https://i.imgur.com/bnP3vcm.jpeg
+Fire_Sorceress_Fireball,https://i.imgur.com/aAEWgg3.jpeg
+Foret_Rock_Golem_Monster,https://i.imgur.com/uvRjpsA.jpeg
+Fox_Girl_Fox_Spirit_Companions,https://i.imgur.com/etBZXmS.jpeg
+Fantasy_Red_Haired_Northern_Warrior_Princess,https://i.imgur.com/XFOiT3Q.jpeg
+Flower_Dahlia_Oni_Demoness,https://i.imgur.com/19ql3cp.jpeg
+Disdain_Warrior_Princess_Red_Sword,https://i.imgur.com/hafZUR2.jpeg
+Cute_Pink_Girl_Samurai,https://i.imgur.com/6rjI3Mt.jpeg
+Demon_Succubus_Trio_Bloodroses,https://i.imgur.com/PGKSKUY.jpeg
+Demon_Martial_Artist,https://i.imgur.com/ELZHbCo.jpeg
+Fierce_Warrior_Princess_Oni,https://i.imgur.com/hA7tTeQ.jpeg
+Elven_Fantansy_Girl_Archer,https://i.imgur.com/YoEouF5.jpeg
+Demon_Slayer_Blue,https://i.imgur.com/HUvYc4w.jpeg
+Blindfolded_Nun_Swordwielder,https://i.imgur.com/Oq7nlbt.jpeg
+Demon_Succubus_Red,https://i.imgur.com/GMIlyMx.jpeg
+Delicate_Elf_Swordswoman_Black_Armor,https://i.imgur.com/C6UxxvY.jpeg
+Demon_Warrior_Girl_Fire,https://i.imgur.com/3mIuhue.jpeg
+Advanced_Knight_Woman,https://i.imgur.com/1HuDWDq.jpeg
+Futuristic_Dual_Wielding_Machine_Man,https://i.imgur.com/SqxU4kr.jpeg
+Crimson_Sun_Knights_Group,https://i.imgur.com/Aa37ypr.jpeg
+Eagle_Made_Of_Clouds_Huge,https://i.imgur.com/iftKU7S.jpeg
+Blind_Folded_Knight_Woman,https://i.imgur.com/jSgH9Fs.jpeg
+Dark_Black_Witch,https://i.imgur.com/EHamGEx.jpeg
+Constellation_Girl,https://i.imgur.com/jIuB13Y.jpeg
+Dark_Celestial_Sword_Wielder,https://i.imgur.com/L5i2h5M.jpeg
+Desert_Bridal_Princess_Cloak,https://i.imgur.com/VI0dg55.jpeg
+Butterfly_Princess,https://i.imgur.com/MDuhjcH.jpeg
+Red_Eye_Priest,https://i.imgur.com/9Aa0okJ.jpeg
+Wild_Beast_Titan,https://i.imgur.com/jcFKZkJ.jpeg
+Red_Huge_Wings_Red_Girl,https://i.imgur.com/l4Axsm4.jpeg
+Water_Mage_Girl,https://i.imgur.com/hDN6hwR.jpeg
+White_Elf_Mage_Girl,https://i.imgur.com/DxF6n8v.jpeg
+White_Tiger_Dragon_Hybrid,https://i.imgur.com/jvbqQaR.jpeg
+Verdant_Elven_Archer_Woman,https://i.imgur.com/vCeZixP.jpeg
+Tiger_Warrior_Human_Hybrid,https://i.imgur.com/u72b6YT.jpeg
+Warbanner_Evil_Demon_Knight,https://i.imgur.com/SdI1Q2B.jpeg
+Skeletal_See_Through_Demon_Succubus,https://i.imgur.com/y3qkeMX.jpeg
+Steampunk_Urchin,https://i.imgur.com/F1ysW9y.jpeg
+Storm_Oni_Elemental_Girl,https://i.imgur.com/krqNCYk.jpeg
+Steampunk_Time_Duo,https://i.imgur.com/k3js0tv.jpeg
+Tattoo_Yakuza_Male,https://i.imgur.com/CCyQjkI.jpeg
+Spider_Arachnid_Girl_Puppeteer,https://i.imgur.com/zLzY3In.jpeg
+Snowflake_Sorceress,https://i.imgur.com/oL1AR9W.jpeg
+Sky_Sorcerer_Blue_Clouds,https://i.imgur.com/2tQy0gV.jpeg
+Shortsword_White_Angel_Girl,https://i.imgur.com/danqmTi.jpeg
+Ordinary_Mage_Girl,https://i.imgur.com/8WFDpRT.jpeg
+Queen_Fierce_Black_Armor,https://i.imgur.com/cT14G6E.jpeg
+Regal_Queen_Armored,https://i.imgur.com/fS4oQKu.jpeg
+Runic_Bear_Human_Axe_Hybrid,https://i.imgur.com/F1v8hvK.jpeg
+Runes_Sorceress,https://i.imgur.com/PjZkyJ2.jpeg
+Owl_Warrior,https://i.imgur.com/XdX4CKQ.jpeg
+Red_Girl_Scythe,https://i.imgur.com/LhcLhmv.jpeg
+Pink_Haired_Demon_Girl_Hairwhip,https://i.imgur.com/QjBwv0J.jpeg
+Pink_Sword_Knight_Princess,https://i.imgur.com/gwTYo7o.jpeg
+Purple_Male_Warrior_Scary,https://i.imgur.com/J7VmoCK.jpeg
+Nerubian_Egypt_Cat_Girl,https://i.imgur.com/qGLj7GY.jpeg
+Oni_Demon_Warrior_Girl,https://i.imgur.com/hgFEt0h.jpeg
+Oni_Blue_Serene_Warrior,https://i.imgur.com/C8jcmka.jpeg
+Muscular_Deity_Warrior,https://i.imgur.com/3ltFNgw.jpeg
+Old_Man_Pugilist,https://i.imgur.com/LVIT6Qa.jpeg
+Lunar_Crystal_Sorceress_Eastern,https://i.imgur.com/sanzy3F.jpeg
+Man_Bird_Hybrid,https://i.imgur.com/FvYvlsf.jpeg
+Hanfu_Korean_Yinyang_Girl_Martial,https://i.imgur.com/ZKz9ItF.jpeg
+Half_Angel_Half_Demon_Celestial,https://i.imgur.com/3LKMXmg.jpeg
+Girl_Warrior_Training,https://i.imgur.com/vgrEo0R.jpeg
+Joan_Knight_Girl_Greatsword,https://i.imgur.com/Z98afwg.jpeg
+Inkshadow_Samurai,https://i.imgur.com/yclITAT.jpeg
+Lazul_Mask_Samurai_Girl,https://i.imgur.com/NMPaR7N.jpeg
+Ice_Warrior_Elf_Hammer,https://i.imgur.com/ASk93NY.jpeg
+Heaven_Hell_Angels_Duo,https://i.imgur.com/tUG1fS7.jpeg
+Blue_Phoenix,https://i.imgur.com/RJTQlON.jpeg
+Ice_Dragon_Princess,https://i.imgur.com/V4oqmfC.jpeg
+Blue_Wolf_Spirit,https://i.imgur.com/gvI4paA.jpeg
+Anime_Demon_Girl_Armored,https://i.imgur.com/x4t7ABj.jpeg
