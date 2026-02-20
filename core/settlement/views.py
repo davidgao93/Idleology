@@ -93,17 +93,17 @@ class BlackMarketView(ui.View):
         
         embed.add_field(
             name="🎒 Equipment Cache",
-            value="**Cost:** 50 Iron Bars, 50 Oak Planks, 50 Desiccated Essence\n**Contents:** Random Equipment",
+            value="**Cost:** 1000 Iron Bars, 1000 Oak Planks, 1000 Desiccated Essence\n**Contents:** 3-5 Random Equipment",
             inline=False
         )
         embed.add_field(
             name="💎 Rune Cache",
-            value="**Cost:** 3 Rune of Shattering\n**Contents:** Random Runes (No Shatter)",
+            value="**Cost:** 3 Rune of Shattering\n**Contents:** 1-5 Random Runes (No Shatter)",
             inline=False
         )
         embed.add_field(
             name="🗝️ Boss Key Cache",
-            value="**Cost:** 1 Void Key\n**Contents:** Random Boss Keys",
+            value="**Cost:** 1 Void Key\n**Contents:** 1-5 Random Boss Keys",
             inline=False
         )
         
@@ -163,7 +163,7 @@ class BlackMarketView(ui.View):
 
     async def buy_equip_cache(self, interaction: Interaction):
         uid, sid = self.user_id, self.parent.server_id
-        cost = 50
+        cost = 1000
         data = await self.bot.database.users.get(uid, sid)
         if not await self.bot.check_user_registered(interaction, data): return
 
