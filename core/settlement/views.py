@@ -164,8 +164,11 @@ class BlackMarketView(ui.View):
     async def buy_equip_cache(self, interaction: Interaction):
         uid, sid = self.user_id, self.parent.server_id
         cost = 50
-        raw_user = await self.db.users.get(self.uid, self.gid)
-        player = await load_player(self.uid, raw_user, self.db)
+        data = await self.bot.database.users.get(uid, sid)
+        if not await self.bot.check_user_registered(interaction, data): return
+
+        # Use Core Model logic to calculate totals (including gear)
+        player = await load_player(uid, data, self.bot.database)
         await interaction.response.defer()
         
         try:
