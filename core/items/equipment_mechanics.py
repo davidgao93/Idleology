@@ -1,5 +1,5 @@
 import random
-from typing import Tuple, Dict, Optional, Literal
+from typing import Tuple, Dict, Optional, Literal, Any, List
 from core.models import Weapon, Armor, Accessory, Glove, Boot
 
 class EquipmentMechanics:
@@ -101,33 +101,72 @@ class EquipmentMechanics:
 
 # --- WEAPON REFINING LOGIC ---
     @staticmethod
-    def calculate_refine_cost(weapon: Weapon) -> int:
+    def calculate_refine_cost(weapon: Weapon) -> Dict[str, Any]:
         """
-        Calculates Gold cost for refining based on level and remaining attempts.
-        Returns the cost in GP.
+        Calculates Gold and Material costs for refining based on level and current refinement.
+        Returns: {'gold': int, 'materials': List[Dict]}
         """
         rem = weapon.refines_remaining
+        lvl = weapon.level
+        ref_lvl = weapon.refinement_lvl
         
-        # Default fallback
-        cost = 1000
-
-        if weapon.level <= 40:
-            # Low level logic (3 refines max)
+        # 1. Calculate Gold Cost (Existing Logic)
+        gold_cost = 1000
+        if lvl <= 40:
             costs = {3: 500, 2: 1000, 1: 5000}
-            cost = costs.get(rem, 1000)
-        elif weapon.level <= 80:
-            # Mid level (4 refines max)
-            # Original: [50000, 25000, 15000, 5000] for 1, 2, 3, 4 left
-            # Mapping remaining to cost:
+            gold_cost = costs.get(rem, 1000)
+        elif lvl <= 80:
             costs = {4: 5000, 3: 15000, 2: 25000, 1: 50000}
-            cost = costs.get(rem, 50000)
+            gold_cost = costs.get(rem, 50000)
         else:
-            # High level (5 refines max)
-            # Original: [200000, 100000, 50000, 30000, 10000] for 1, 2, 3, 4, 5 left
             costs = {5: 10000, 4: 30000, 3: 50000, 2: 100000, 1: 200000}
-            cost = costs.get(rem, 200000)
+            gold_cost = costs.get(rem, 200000)
+
+        # 2. Calculate Material Cost (New Logic > +100)
+        materials = []
+        
+        if ref_lvl >= 100:
+            qty = 0
+            tier_idx = 0 # 0=Iron/Oak/Desiccated, 1=Steel/Willow/Reg, etc.
             
-        return cost
+            # Logic Table
+            if 100 <= ref_lvl <= 120:
+                qty = 10
+                tier_idx = 0
+            elif 121 <= ref_lvl <= 140:
+                qty = 20
+                tier_idx = 1
+            elif 141 <= ref_lvl <= 160:
+                qty = 30
+                tier_idx = 2
+            elif 161 <= ref_lvl <= 180:
+                qty = 40
+                tier_idx = 3
+            elif 181 <= ref_lvl <= 200:
+                qty = 50
+                tier_idx = 4
+            else: # 201+
+                qty = 50 + (ref_lvl - 200)
+                tier_idx = 4 # Cap at Idea/Titanium tier
+
+            res_defs = [
+                ('iron_bar', 'oak_plank', 'desiccated_essence', 'Iron/Oak/Desiccated'),
+                ('steel_bar', 'willow_plank', 'regular_essence', 'Steel/Willow/Regular'),
+                ('gold_bar', 'mahogany_plank', 'sturdy_essence', 'Gold/Mahogany/Sturdy'),
+                ('platinum_bar', 'magic_plank', 'reinforced_essence', 'Platinum/Magic/Reinforced'),
+                ('idea_bar', 'idea_plank', 'titanium_essence', 'Idea/Titanium')
+            ]
+            
+            def_t = res_defs[tier_idx]
+            
+            materials.append({'table': 'mining', 'column': def_t[0], 'qty': qty, 'name': def_t[0].replace('_', ' ').title()})
+            materials.append({'table': 'woodcutting', 'column': def_t[1], 'qty': qty, 'name': def_t[1].replace('_', ' ').title()})
+            materials.append({'table': 'fishing', 'column': def_t[2], 'qty': qty, 'name': def_t[2].replace('_', ' ').title()})
+
+        return {
+            'gold': gold_cost,
+            'materials': materials
+        }
 
     @staticmethod
     def roll_refine_outcome(weapon: Weapon) -> Dict[str, int]:

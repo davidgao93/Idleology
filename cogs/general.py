@@ -259,6 +259,7 @@ class General(commands.Cog, name="general"):
                 ("accessory", "Manage accessories (Potential)"),
                 ("gloves", "Manage gloves"),
                 ("boots", "Manage boots"),
+                ("helmet", "Manage helmets"),
                 ("mod_details", "View gear passive info")
             ],
             "🌲 Gathering": [
@@ -268,6 +269,8 @@ class General(commands.Cog, name="general"):
             ],
             "🏙️ Social & Economy": [
                 ("shop", "Buy potions and curios"),
+                ("settlement", "Manage your settlement"),
+                ("resources", "Check your settlement resources"),
                 ("checkin", "Daily reward"),
                 ("rest", "Heal up at the tavern"),
                 ("gamble", "Play casino games"),

@@ -205,42 +205,77 @@ class ForgeView(BaseUpgradeView):
 class RefineView(BaseUpgradeView):
     def __init__(self, bot, user_id, item: Weapon, parent_view):
         super().__init__(bot, user_id, item, parent_view)
+        self.cost_data = {} # Store calculated costs
 
     async def render(self, interaction: Interaction):
-        cost = EquipmentMechanics.calculate_refine_cost(self.item)
-        gold = await self.bot.database.users.get_gold(self.user_id)
+        # 1. Calculate Costs
+        self.cost_data = EquipmentMechanics.calculate_refine_cost(self.item)
+        cost_gold = self.cost_data['gold']
+        materials = self.cost_data.get('materials', [])
+
+        # 2. Fetch User Data (Gold & Materials)
+        uid, sid = self.user_id, str(interaction.guild.id)
+        user_gold = await self.bot.database.users.get_gold(uid)
         
-        has_funds = gold >= cost
+        has_funds = user_gold >= cost_gold
+        has_mats = True
+        
+        # Build Material Status String & Check sufficiency
+        mat_status = ""
+        if materials:
+            mat_status = "\n**Required Materials:**"
+            for mat in materials:
+                # Fetch balance
+                # Note: TradeManager logic or raw SQL. Raw SQL is safest here for atomic check.
+                table = mat['table']
+                col = mat['column']
+                qty = mat['qty']
+                name = mat['name']
+                
+                async with self.bot.database.connection.execute(
+                    f"SELECT {col} FROM {table} WHERE user_id=? AND server_id=?", (uid, sid)
+                ) as c:
+                    row = await c.fetchone()
+                    owned = row[0] if row else 0
+                
+                status_icon = "✅" if owned >= qty else "❌"
+                if owned < qty: has_mats = False
+                
+                mat_status += f"\n{status_icon} {name}: {owned:,}/{qty:,}"
+
+        # 3. Logic
         has_refines = self.item.refines_remaining > 0
-        
         runes = 0
         if not has_refines:
             runes = await self.bot.database.users.get_currency(self.user_id, 'refinement_runes')
 
         desc = (f"**Refines Remaining:** {self.item.refines_remaining}\n"
                 f"**Refinement Level:** +{self.item.refinement_lvl}\n"
-                f"**Cost:** {cost:,} Gold ({gold:,})\n")
+                f"**Gold Cost:** {cost_gold:,} ({user_gold:,})")
         
+        if mat_status:
+            desc += f"\n{mat_status}"
+
         # --- DYNAMIC BUTTON BUILD ---
         self.clear_items()
         
         action_btn = Button(label="Refine", style=ButtonStyle.success)
         
         if not has_refines:
-            desc += f"\n**0 Refines left!** Use a Rune? (Owned: {runes})"
+            desc += f"\n\n**0 Refines left!** Use a Rune to add a slot? (Owned: {runes})"
             action_btn.label = "Use Rune"
             action_btn.style = ButtonStyle.primary
             action_btn.disabled = (runes == 0)
         else:
-            action_btn.disabled = not has_funds
+            action_btn.disabled = not (has_funds and has_mats)
 
         action_btn.callback = self.confirm_refine
         self.add_item(action_btn)
         self.add_back_button()
 
-        self.embed = discord.Embed(title=f"Refine {self.item.name}", description=desc, color=discord.Color.blue())
+        color = discord.Color.blue() if (has_funds and has_mats) else discord.Color.red()
+        self.embed = discord.Embed(title=f"Refine {self.item.name}", description=desc, color=color)
         self.embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
-        self.cost = cost
         
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=self.embed, view=self)
@@ -248,7 +283,7 @@ class RefineView(BaseUpgradeView):
             await interaction.response.edit_message(embed=self.embed, view=self)
 
     async def confirm_refine(self, interaction: Interaction):
-        # Rune Logic
+        # 1. Rune Logic (Adding Slot) - No Mat Cost
         if self.item.refines_remaining <= 0:
             await self.bot.database.users.modify_currency(self.user_id, 'refinement_runes', -1)
             await self.bot.database.equipment.update_counter(self.item.item_id, 'weapon', 'refines_remaining', 1)
@@ -256,47 +291,83 @@ class RefineView(BaseUpgradeView):
             await self.render(interaction) # Refresh UI immediately
             return
 
-        # Gold Logic
-        await self.bot.database.users.modify_gold(self.user_id, -self.cost)
+        # 2. Refine Logic (Consuming Slot) - Costs Apply
         
-        stats = EquipmentMechanics.roll_refine_outcome(self.item)
+        # Verify Gold
+        cost_gold = self.cost_data['gold']
         
-        # Commit Updates
-        if stats['attack']: 
-            self.item.attack += stats['attack']
-            await self.bot.database.equipment.increase_stat(self.item.item_id, 'weapon', 'attack', stats['attack'])
-        if stats['defence']: 
-            self.item.defence += stats['defence']
-            await self.bot.database.equipment.increase_stat(self.item.item_id, 'weapon', 'defence', stats['defence'])
-        if stats['rarity']: 
-            self.item.rarity += stats['rarity']
-            await self.bot.database.equipment.increase_stat(self.item.item_id, 'weapon', 'rarity', stats['rarity'])
+        # Verify Materials (DB Atomic Update check)
+        materials = self.cost_data.get('materials', [])
+        uid, sid = self.user_id, str(interaction.guild.id)
 
-        self.item.refines_remaining -= 1
-        self.item.refinement_lvl += 1
-        await self.bot.database.equipment.update_counter(self.item.item_id, 'weapon', 'refines_remaining', self.item.refines_remaining)
-        await self.bot.database.equipment.increase_stat(self.item.item_id, 'weapon', 'refinement_lvl', 1)
+        await interaction.response.defer()
 
-        # Result Logic
-        res_str = ", ".join([f"+{v} {k.title()}" for k,v in stats.items() if v > 0]) or "No stats gained."
-        
-        embed = discord.Embed(title="Refine Complete! ✨", color=discord.Color.green())
-        embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
-        embed.description = f"**Gains:** {res_str}\n\n**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
-        
-        # --- RESULT UI BUILD ---
-        self.clear_items()
-        
-        # Allow chain refining
-        runes = await self.bot.database.users.get_currency(self.user_id, 'refinement_runes')
-        if self.item.refines_remaining > 0 or runes > 0:
-            again_btn = Button(label="Refine Again", style=ButtonStyle.primary)
-            again_btn.callback = self.render
-            self.add_item(again_btn)
+        try:
+            # Deduct Mats
+            for mat in materials:
+                table = mat['table']
+                col = mat['column']
+                qty = mat['qty']
+                
+                # Update with check
+                async with self.bot.database.connection.execute(
+                    f"UPDATE {table} SET {col} = {col} - ? WHERE user_id=? AND server_id=? AND {col} >= ?",
+                    (qty, uid, sid, qty)
+                ) as c:
+                    if c.rowcount == 0:
+                        return await interaction.followup.send(f"Insufficient {mat['name']}!", ephemeral=True)
+
+            # Deduct Gold
+            await self.bot.database.users.modify_gold(self.user_id, -cost_gold)
             
-        self.add_back_button()
-        
-        await interaction.response.edit_message(embed=embed, view=self)
+            # Apply Stats
+            stats = EquipmentMechanics.roll_refine_outcome(self.item)
+            
+            if stats['attack']: 
+                self.item.attack += stats['attack']
+                await self.bot.database.equipment.increase_stat(self.item.item_id, 'weapon', 'attack', stats['attack'])
+            if stats['defence']: 
+                self.item.defence += stats['defence']
+                await self.bot.database.equipment.increase_stat(self.item.item_id, 'weapon', 'defence', stats['defence'])
+            if stats['rarity']: 
+                self.item.rarity += stats['rarity']
+                await self.bot.database.equipment.increase_stat(self.item.item_id, 'weapon', 'rarity', stats['rarity'])
+
+            self.item.refines_remaining -= 1
+            self.item.refinement_lvl += 1
+            
+            await self.bot.database.equipment.update_counter(self.item.item_id, 'weapon', 'refines_remaining', self.item.refines_remaining)
+            await self.bot.database.equipment.increase_stat(self.item.item_id, 'weapon', 'refinement_lvl', 1)
+            await self.bot.database.connection.commit()
+
+            # Result UI
+            res_str = ", ".join([f"+{v} {k.title()}" for k,v in stats.items() if v > 0]) or "No stats gained."
+            
+            embed = discord.Embed(title="Refine Complete! ✨", color=discord.Color.green())
+            embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
+            embed.description = (
+                f"**Gains:** {res_str}\n"
+                f"**Refinement:** +{self.item.refinement_lvl}\n\n"
+                f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
+            )
+            
+            # --- RESULT UI BUILD ---
+            self.clear_items()
+            
+            # Allow chain refining
+            runes = await self.bot.database.users.get_currency(self.user_id, 'refinement_runes')
+            if self.item.refines_remaining > 0 or runes > 0:
+                again_btn = Button(label="Refine Again", style=ButtonStyle.primary)
+                again_btn.callback = self.render
+                self.add_item(again_btn)
+                
+            self.add_back_button()
+            
+            await interaction.edit_original_response(embed=embed, view=self)
+
+        except Exception as e:
+            self.bot.logger.error(f"Refine Error: {e}")
+            await interaction.followup.send("An error occurred processing the refinement.", ephemeral=True)
 
 
 class PotentialView(BaseUpgradeView):

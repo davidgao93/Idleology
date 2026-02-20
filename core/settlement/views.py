@@ -754,7 +754,10 @@ class BuildConstructionView(ui.View):
         "reliquary":    "Converts Bones into Essence (for enchantments).",
         "market":       "Generates Passive Gold based on workforce size.",
         "barracks":     "Passive: Grants +1% Base Atk/Def per tier.",
-        "temple":       "Passive: Grants +5% Propagate follower gain per tier."
+        "temple":       "Passive: Grants +5% Propagate follower gain per tier.",
+        "apothecary": "Passive: Increases Potion Healing (+20 HP per tier).",
+        "black_market": "Special: Trade resources for Caches.",
+        "companion_ranch": "Generator: Produces XP Cookies for pets."
     }
 
     def __init__(self, bot, user_id, slot_index, parent_view):
@@ -839,6 +842,7 @@ class BuildConstructionView(ui.View):
             # Brief description for dropdown
             desc = f"Cost: {cost.get('gold',0)}g"
             if cost.get('timber'): desc += f", {cost['timber']} Wood"
+            if cost.get('stone'): desc += f", {cost['stone']} Stone"
             
             options.append(SelectOption(label=lbl, value=key, description=desc))
             

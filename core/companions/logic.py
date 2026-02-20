@@ -4,7 +4,7 @@ import discord
 import random
 from collections import defaultdict
 from core.companions.mechanics import CompanionMechanics
-from core.items.factory import create_companion
+from core.items.factory import create_companion, load_player
 # Import Generators
 from core.combat.loot import (
     generate_weapon, generate_armor, generate_accessory, 
@@ -121,7 +121,7 @@ class CompanionLogic:
         if not summary and generated_gear_count == 0:
             return f"Your companions returned empty-handed from {results['cycles']} cycles."
 
-        msg = f"**Companions returned after {results['cycles']} cycles!**\n"
+        msg = f"**Companions returned after {results['cycles']} adventures! They drop their gifts at your feet.**\n"
         
         # Gold
         if summary["Gold"] > 0:
@@ -131,7 +131,7 @@ class CompanionLogic:
         # Items
         items_list = [f"{k} x{v}" for k, v in summary.items()]
         if generated_gear_count > 0:
-            items_list.append(f"Unidentified Equipment x{generated_gear_count}")
+            items_list.append(f"Pieces of equipment x{generated_gear_count}")
             
         if items_list:
             msg += "📦 " + ", ".join(items_list)

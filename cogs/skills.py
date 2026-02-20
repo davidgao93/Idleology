@@ -2,7 +2,7 @@ import discord
 import random
 from discord.ext import commands, tasks
 from discord import app_commands, Interaction
-from core.skills.views import SkillDashboardView
+from core.skills.views import GatherView
 from core.skills.mechanics import SkillMechanics
 
 class Skills(commands.Cog, name="skills"):
@@ -15,66 +15,31 @@ class Skills(commands.Cog, name="skills"):
     async def cog_unload(self):
         self.schedule_skills.cancel()
 
-    async def _skill_command(self, interaction: Interaction, skill_type: str):
+    @app_commands.command(name="gather", description="Manage your gathering skills (Mining, Fishing, Woodcutting).")
+    async def gather(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        # 1. Checks
+        # 1. Validation
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user): return
         if not await self.bot.check_is_active(interaction, user_id): return
 
-        # 2. Fetch Data
-        skill_data = await self.bot.database.skills.get_data(user_id, server_id, skill_type)
-        if not skill_data:
-            # Should have been initialized on register, but safe fallback
-            return await interaction.response.send_message(f"Your {skill_type} stats are missing!", ephemeral=True)
+        # 2. State Lock
+        self.bot.state_manager.set_active(user_id, "gather")
 
-        self.bot.state_manager.set_active(user_id, "skills")
-
-        # 3. View
-        view = SkillDashboardView(self.bot, user_id, skill_type, existing_user, skill_data)
+        # 3. View Initialization
+        # We start with Mining by default
+        view = GatherView(self.bot, user_id, server_id, initial_skill="mining")
+        
+        # 4. Fetch Initial Data inside View
+        # We manually call refresh_state here before sending so the first embed is populated
+        await view.refresh_state()
+        
         embed = view.get_embed()
         
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
-
-    @app_commands.command(name="mining", description="Check mining stats and upgrade pickaxe.")
-    async def mining(self, interaction: Interaction):
-        await self._skill_command(interaction, "mining")
-
-    @app_commands.command(name="woodcutting", description="Check woodcutting stats and upgrade axe.")
-    async def woodcutting(self, interaction: Interaction):
-        await self._skill_command(interaction, "woodcutting")
-
-    @app_commands.command(name="fishing", description="Check fishing stats and upgrade rod.")
-    async def fishing(self, interaction: Interaction):
-        await self._skill_command(interaction, "fishing")
-
-    @app_commands.command(name="skills", description="Overview of all skills.")
-    async def skills_summary(self, interaction: Interaction):
-        """Displays a summary embed of all 3 skills (Read-only)."""
-        user_id = str(interaction.user.id)
-        server_id = str(interaction.guild.id)
-        
-        existing_user = await self.bot.database.users.get(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, existing_user): return
-
-        m_data = await self.bot.database.skills.get_data(user_id, server_id, 'mining')
-        f_data = await self.bot.database.skills.get_data(user_id, server_id, 'fishing')
-        w_data = await self.bot.database.skills.get_data(user_id, server_id, 'woodcutting')
-
-        embed = discord.Embed(title=f"{existing_user[3]}'s Skills", color=0x00FF00)
-        
-        # Helper to format
-        def fmt(data, tool_name):
-            return f"**{data[2].title()}** {tool_name}" if data else "Locked"
-
-        embed.add_field(name="⛏️ Mining", value=fmt(m_data, "Pickaxe"), inline=True)
-        embed.add_field(name="🎣 Fishing", value=fmt(f_data, "Rod"), inline=True)
-        embed.add_field(name="🪓 Woodcutting", value=fmt(w_data, "Axe"), inline=True)
-        
-        await interaction.response.send_message(embed=embed)
 
     # --- REGENERATION TASK ---
     

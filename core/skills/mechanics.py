@@ -2,6 +2,72 @@ import random
 from typing import Dict, Tuple, Optional, List
 
 class SkillMechanics:
+
+    SKILL_CONFIG = {
+    "mining": {
+        "display_name": "Mining",
+        "emoji": "⛏️",
+        "tool_name": "Pickaxe",
+        "image": "https://i.imgur.com/4OS6Blx.jpeg",
+        "resources": [
+            ("iron", "Iron Ore"),
+            ("coal", "Coal"),
+            ("gold", "Gold Ore"),
+            ("platinum", "Platinum Ore"),
+            ("idea", "Idea Ore")
+        ]
+    },
+    "woodcutting": {
+        "display_name": "Woodcutting",
+        "emoji": "🪓",
+        "tool_name": "Axe",
+        "image": "https://i.imgur.com/X0JdvX8.jpeg",
+        "resources": [
+            ("oak_logs", "Oak Logs"),
+            ("willow_logs", "Willow Logs"),
+            ("mahogany_logs", "Mahogany Logs"),
+            ("magic_logs", "Magic Logs"),
+            ("idea_logs", "Idea Logs")
+        ]
+    },
+    "fishing": {
+        "display_name": "Fishing",
+        "emoji": "🎣",
+        "tool_name": "Rod",
+        "image": "https://i.imgur.com/JpgyGlD.jpeg",
+        "resources": [
+            ("desiccated_bones", "Desiccated Bones"),
+            ("regular_bones", "Regular Bones"),
+            ("sturdy_bones", "Sturdy Bones"),
+            ("reinforced_bones", "Reinforced Bones"),
+            ("titanium_bones", "Titanium Bones")
+        ]
+        }
+    }
+
+    @staticmethod
+    def get_skill_info(skill: str) -> dict:
+        """Returns UI configuration for a specific skill."""
+        return SkillMechanics.SKILL_CONFIG.get(skill, {})
+
+    @staticmethod
+    def map_db_row_to_resources(skill: str, row: tuple) -> List[Tuple[str, int]]:
+        """
+        Maps a raw DB tuple to a list of (DisplayName, Amount).
+        Assumes DB row structure: [..., tool_tier, res1, res2, res3, res4, res5]
+        Indices 3-7 are resources.
+        """
+        config = SkillMechanics.SKILL_CONFIG.get(skill)
+        if not config or not row: return []
+        
+        mapped = []
+        # DB Indices 3 to 7 correspond to the 5 resources in order
+        for i, (db_col, display_name) in enumerate(config['resources']):
+            amount = row[i + 3]
+            mapped.append((display_name, amount))
+            
+        return mapped
+        
     @staticmethod
     def get_tool_tiers(skill: str) -> list[str]:
         if skill == "mining":
