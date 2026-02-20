@@ -974,9 +974,9 @@ class BuildingDetailView(ui.View):
         "sawmill":      "Converts Logs -> Planks (Crafting/Upgrades).",
         "reliquary":    "Converts Bones -> Essence (Crafting/Upgrades).",
         "market":       "Generates Passive Gold based on workforce.",
-        "barracks":     "Passive: +1% Atk/Def per tier.",
-        "temple":       "Passive: +5% Propagate growth per tier.",
-        "apothecary": "Passive: Increases Potion Healing (+20 HP per tier).",
+        "barracks":     "Passive: +0.01% Base Atk/Def per assigned Worker.",
+        "temple":       "Passive: +0.05% Propagate follower gain per assigned Worker.",
+        "apothecary":   "Passive: Increases Potion Healing (+0.2 HP per assigned Worker).",
         "black_market": "Special: Trade resources for Caches.",
         "companion_ranch": "Generator: Produces XP Cookies for pets."
     }
