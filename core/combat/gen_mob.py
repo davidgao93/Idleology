@@ -273,18 +273,8 @@ def level_exponent(level: int) -> float:
         return random.uniform(1.30, 1.31)
     elif level <= 110:
         return random.uniform(1.33, 1.35)
-    elif level <= 120:
-        return random.uniform(1.4, 1.42)
-    elif level <= 130:
-        return random.uniform(1.42, 1.44)
-    elif level <= 140:
-        return random.uniform(1.44, 1.46)
-    elif level <= 150:
-        return random.uniform(1.46, 1.48)
-    elif level <= 160:
-        return random.uniform(1.48, 1.52)
     else:
-        return random.uniform(1.52, 1.55)
+        return random.uniform(1.4)
 
 def calculate_monster_stats(monster):
     if monster.level < 5:
