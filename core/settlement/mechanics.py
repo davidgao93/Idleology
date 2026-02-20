@@ -74,12 +74,16 @@ class SettlementMechanics:
         b_data = SettlementMechanics.BUILDINGS.get(building_type)
         if not b_data: return {}
 
+        # Safely fetch base_rate. If 0 (passives/special), it produces nothing.
+        base_rate = b_data.get("base_rate", 0)
+        if base_rate == 0:
+            return {}
+
         changes = {}
         
         # Rate = Base * Tier * Workers
-        # Example: T1 Logging Camp w/ 100 workers = 100 / 10 * 1 = 10 Timber/hr
-        # Example: T5 Foundry w/ 500 workers = 5 * 5 * (500 / 10) = 1250 Ingots/hr
-        production_capacity = int(b_data["base_rate"] * tier * workers * hours_elapsed)
+        # Example: T1 Logging Camp w/ 100 workers = 1 * 1 * 100 = 100 Timber/hr
+        production_capacity = int(base_rate * tier * workers * hours_elapsed)
 
         if b_data["type"] == "generator":
             changes[b_data["output"]] = production_capacity
@@ -88,11 +92,6 @@ class SettlementMechanics:
             remaining_capacity = production_capacity
             
             # Iterate through tier mappings (Lowest to Highest)
-            # Tier 1 Building processes Index 0. Tier 5 processes up to Index 4.
-            # However, for simplicity, let's say higher tiers process EVERYTHING faster, 
-            # but we prioritize high-value or low-value? 
-            # Standard logic: Process lowest tier mats first (clearing junk).
-            
             for raw_key, refined_key in b_data["map"]:
                 if raw_key in raw_inventory:
                     available_raw = raw_inventory[raw_key]

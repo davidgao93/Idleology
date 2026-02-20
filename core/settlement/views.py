@@ -115,7 +115,7 @@ class BlackMarketView(ui.View):
                 cost_str += f" | ✨ {costs['special_name']} x{costs['special_qty']}"
             embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
 
-        embed.set_thumbnail(url="https://i.imgur.com/71K2Q5z.png")
+        embed.set_thumbnail(url="https://i.imgur.com/ZMle2mm.png")
         return embed
 
     async def upgrade_facility(self, interaction: Interaction):
