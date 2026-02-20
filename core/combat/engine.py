@@ -504,3 +504,67 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
 
     player.current_hp = max(0, player.current_hp)
     return monster_message
+
+
+def log_combat_debug(player: Player, monster: Monster, logger: logging.Logger) -> None:
+    """Calculates and logs the final stats and theoretical maximum damage of both entities."""
+    
+    # --- PLAYER MAX CALCULATION ---
+    p_atk = player.get_total_attack()
+    p_def = player.get_total_defence()
+    p_crit_chance = 100 - player.get_current_crit_target()
+    
+    # Base Crit multiplier logic
+    crit_mult = 2.0
+    helmet_passive = player.get_helmet_passive()
+    if helmet_passive == "insight":
+        lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+        crit_mult += (lvl * 0.1)
+    if "Smothering" in monster.modifiers:
+        crit_mult *= 0.8
+        
+    p_max_dmg = int(p_atk * crit_mult)
+
+    # Overwhelm/Instability/Mystical Might passives can make this jump wildly,
+    # but we just want the standard mechanical max hit for debugging bounds.
+    if player.get_glove_passive() == "instability":
+        lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
+        p_max_dmg = int(p_max_dmg * (1.50 + (lvl * 0.10)))
+
+    # --- MONSTER MAX CALCULATION ---
+    m_atk = monster.attack
+    m_def = monster.defence
+    
+    diff = max(0, m_atk - p_def)
+    
+    if m_atk <= 3: base_m_dmg = 5
+    elif m_atk <= 20: base_m_dmg = 6
+    else: base_m_dmg = 9 + int(monster.level // 10)
+    
+    # 3 is the max randint roll per 10 diff points
+    max_bonus_dmg = int(diff / 10) * 3 
+    base_m_dmg += max_bonus_dmg
+    
+    if "Celestial Watcher" in monster.modifiers: base_m_dmg = int(base_m_dmg * 1.2)
+    if "Hellborn" in monster.modifiers: base_m_dmg += 2
+    if "Hell's Fury" in monster.modifiers: base_m_dmg += 5
+    
+    # Mitigation Check
+    pdr = player.get_total_pdr()
+    if "Penetrator" in monster.modifiers: pdr = max(0, pdr - 20)
+    
+    fdr = player.get_total_fdr()
+    if "Clobberer" in monster.modifiers: fdr = max(0, fdr - 5)
+
+    m_max_dmg = int(base_m_dmg * (1 - (pdr / 100))) - fdr
+    m_max_dmg = max(0, m_max_dmg)
+    
+    if "Mirror Image" in monster.modifiers or "Unlimited Blade Works" in monster.modifiers:
+        m_max_dmg *= 2
+        
+    # --- LOG OUTPUT ---
+    logger.info(f"--- COMBAT DEBUG: {player.name} VS {monster.name} ---")
+    logger.info(f"PLAYER : HP {player.current_hp}/{player.max_hp} | Atk {p_atk} | Def {p_def} | Ward {player.combat_ward} | Crit {p_crit_chance}% | PDR {player.get_total_pdr()}% | FDR {player.get_total_fdr()}")
+    logger.info(f"MONSTER: HP {monster.hp}/{monster.max_hp} | Atk {m_atk} | Def {m_def} | Mods: {monster.modifiers}")
+    logger.info(f"THEORETICAL MAX HIT -> Player: ~{p_max_dmg} | Monster: ~{m_max_dmg}")
+    logger.info(f"--------------------------------------------------")

@@ -141,7 +141,7 @@ class Combat(commands.Cog, name="combat"):
         # 5. Apply Start Effects
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)
-
+        engine.log_combat_debug(player, monster, self.bot.logger)
         # 6. Launch View
         title = f"⚔️ BOSS PHASE 1" if is_boss else None
         embed = ui.create_combat_embed(player, monster, start_logs, title_override=title)

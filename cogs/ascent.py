@@ -76,7 +76,7 @@ class Ascent(commands.Cog, name="ascent"):
         player.combat_ward = player.get_combat_ward_value()
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)
-
+        engine.log_combat_debug(player, monster, self.bot.logger)
         # 5. View
         embed = ui.create_combat_embed(player, monster, start_logs, title_override=f"Ascent Stage 1 | {player.name}")
         

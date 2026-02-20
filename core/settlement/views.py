@@ -6,6 +6,7 @@ from core.settlement.mechanics import SettlementMechanics
 import asyncio
 from core.items.factory import load_player
 from core.combat.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot, generate_helmet
+from core.companions.mechanics import CompanionMechanics
 import random
 
 class BlackMarketView(ui.View):
@@ -590,6 +591,8 @@ class SettlementDashboardView(ui.View):
             if i in built_map:
                 b = built_map[i]
                 status = "🟢" if b.workers_assigned > 0 else "🔴"
+                if b.name == "Black Market":
+                    status = "⚫"
                 btn = ui.Button(label=f"{b.name} (T{b.tier}) {status}", style=ButtonStyle.secondary, row=row)
                 btn.callback = lambda inter, b=b: self.open_building(inter, b)
             else:
@@ -792,7 +795,7 @@ class BuildConstructionView(ui.View):
             description="Select a blueprint to begin construction.\n\n__**Available Blueprints**__", 
             color=discord.Color.blue()
         )
-
+        embed.set_thumbnail(url="https://i.imgur.com/cZcEKhS.png")
         existing_types = {b.building_type for b in self.parent.settlement.buildings}
 
         for b_type, info in self.BUILDING_INFO.items():
@@ -958,9 +961,9 @@ class BuildingDetailView(ui.View):
         "market": "https://i.imgur.com/FavvGUA.png",
         "barracks": "https://i.imgur.com/RvhhUCJ.png",
         "temple": "https://i.imgur.com/4bmHF4u.png",
-        "apothecary": "https://i.imgur.com/81jN8tA.jpeg", 
-        "black_market": "https://i.imgur.com/71K2Q5z.png",
-        "companion_ranch": "https://i.imgur.com/oQBm9HF.png"
+        "apothecary": "https://i.imgur.com/vfJuogU.png", 
+        "black_market": "https://i.imgur.com/ZMle2mm.png",
+        "companion_ranch": "https://i.imgur.com/7gPxP4N.png"
     }
 
     BUILDING_INFO = {
@@ -981,14 +984,24 @@ class BuildingDetailView(ui.View):
         b_data = SettlementMechanics.BUILDINGS.get(self.building.building_type)
         max_w = SettlementMechanics.get_max_workers(self.building.tier)
         
-        # Calculate Rate
-        rate = b_data['base_rate'] * self.building.tier * self.building.workers_assigned
+        # Calculate Rate Safely
+        base_rate = b_data.get('base_rate', 0)
+        rate = base_rate * self.building.tier * self.building.workers_assigned
         
-        desc = (
-            f"**Level:** {self.building.tier}/5\n"
-            f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
-            f"**Output:** ~{rate}/hr ({b_data.get('output', 'Refined Goods')})"
-        )
+        # Adjust description based on building type
+        if b_data.get('type') in ['generator', 'converter']:
+            output_name = b_data.get('output', 'Refined Goods').replace('_', ' ').title()
+            desc = (
+                f"**Level:** {self.building.tier}/5\n"
+                f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
+                f"**Output:** ~{rate}/hr ({output_name})"
+            )
+        else:
+            desc = (
+                f"**Level:** {self.building.tier}/5\n"
+                f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
+                f"**Type:** {b_data.get('type', 'Passive').title()}"
+            )
         
         embed = discord.Embed(title=f"{self.building.name}", description=desc, color=discord.Color.gold())
             
@@ -1000,7 +1013,7 @@ class BuildingDetailView(ui.View):
         if info:
             embed.add_field(name="Function", value=info, inline=False)
 
-        # Upgrade Cost Preview (Simplified for display)
+        # Upgrade Cost Preview
         next_cost = self._get_upgrade_cost(self.building.tier + 1)
         if self.building.tier < 5:
             cost_str = f"🪵 {next_cost.get('timber'):,} | 🪨 {next_cost.get('stone'):,} | 💰 {next_cost.get('gold'):,}"
