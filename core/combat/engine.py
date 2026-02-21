@@ -193,6 +193,7 @@ def process_player_turn(player: Player, monster: Monster) -> str:
         slayer_dmg_tiers = player.get_emblem_bonus("slayer_dmg")
         if slayer_dmg_tiers > 0:
             attack_multiplier *= (1 + (slayer_dmg_tiers * 0.05))
+
     acc_value_bonus = 0
     # Accuracy (e.g. +2 flat hit roll per tier)
     emblem_acc = player.get_emblem_bonus("accuracy")
@@ -231,9 +232,9 @@ def process_player_turn(player: Player, monster: Monster) -> str:
         passive_message += f"The monster's **Dodgy** nature makes it harder to hit!\n"
 
     attack_roll = random.randint(0, 100)
-    acc_value_bonus = 0
     wep_acc_passive_bonus, passive_message = check_for_accuracy(player, passive_message)
     acc_value_bonus += wep_acc_passive_bonus
+
     if acc_passive == "Lucky Strikes" and random.random() <= (acc_lvl * 0.10):
         attack_roll = max(attack_roll, random.randint(0, 100))
         passive_message += f"**Lucky Strikes ({acc_lvl})** activates! Hit chance is now 🍀 lucky!\n"
