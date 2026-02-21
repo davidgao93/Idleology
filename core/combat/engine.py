@@ -178,9 +178,10 @@ def process_player_turn(player: Player, monster: Monster) -> str:
     # --- Pre-Attack Multipliers ---
     # --- Emblem Multipliers ---
     # Base Damage (e.g. 2% per tier)
-    combat_dmg_tiers = player.get_emblem_bonus("combat_dmg")
-    if combat_dmg_tiers > 0:
-        attack_multiplier *= (1 + (combat_dmg_tiers * 0.02))
+    if not monster.is_boss:
+        combat_dmg_tiers = player.get_emblem_bonus("combat_dmg")
+        if combat_dmg_tiers > 0:
+            attack_multiplier *= (1 + (combat_dmg_tiers * 0.02))
 
     # Boss Damage (e.g. 5% per tier)
     if monster.is_boss:

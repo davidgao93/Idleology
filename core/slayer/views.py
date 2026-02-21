@@ -3,14 +3,6 @@ from discord import ui, ButtonStyle, Interaction, SelectOption
 import random
 from core.slayer.mechanics import SlayerMechanics
 
-PASSIVE_DISPLAY_NAMES = {
-    "none": "Empty Slot",
-    "slayer_dmg": "Slayer Damage",
-    "boss_dmg": "Boss Damage",
-    "combat_dmg": "Base Damage",
-    "gold_find": "Gold Find",
-    "xp_find": "XP Find"
-}
 
 class SlayerDashboardView(ui.View):
     def __init__(self, bot, user_id, server_id, profile, player_level):
@@ -136,8 +128,9 @@ class EmblemView(ui.View):
                 if data['type'] == 'none':
                     embed.add_field(name=f"Slot {slot}", value="*Empty - Needs Awakening*", inline=False)
                 else:
-                    name = PASSIVE_DISPLAY_NAMES.get(data['type'], data['type'])
-                    embed.add_field(name=f"Slot {slot} (Tier {data['tier']})", value=f"**{name}**", inline=False)
+                    # FETCH DYNAMIC DESCRIPTION
+                    desc = SlayerMechanics.get_passive_description(data['type'], data['tier'])
+                    embed.add_field(name=f"Slot {slot} (Tier {data['tier']})", value=f"**{desc}**", inline=False)
             else:
                 embed.add_field(name=f"Slot {slot} 🔒", value=f"Unlocks at Slayer Level {unlock_reqs[slot]}", inline=False)
                 
@@ -150,8 +143,15 @@ class EmblemView(ui.View):
         options = []
         for slot in range(1, self.unlocked_slots + 1):
             data = self.emblem.get(slot, {'type': 'none', 'tier': 1})
-            lbl = f"Slot {slot} - {PASSIVE_DISPLAY_NAMES.get(data['type'], 'Empty')}"
-            options.append(SelectOption(label=lbl, value=str(slot)))
+            
+            if data['type'] == 'none':
+                lbl = f"Slot {slot} - Empty"
+            else:
+                # Provide a clean label for the dropdown
+                desc = SlayerMechanics.get_passive_description(data['type'], data['tier'])
+                lbl = f"Slot {slot} - {desc}"
+                
+            options.append(SelectOption(label=lbl[:100], value=str(slot))) # Cap at 100 chars for Discord limits
             
         if options:
             select = ui.Select(placeholder="Select a slot to modify...", options=options)
@@ -203,12 +203,17 @@ class SlotManageView(ui.View):
         if p_type == 'none':
             embed.description += "**Status:** Empty\nUse 1 Violent Essence to Awaken a random Tier 1 passive."
         else:
-            name = PASSIVE_DISPLAY_NAMES.get(p_type, p_type)
+            # USE DYNAMIC DESCRIPTION
+            desc = SlayerMechanics.get_passive_description(p_type, p_tier)
             success_rate = max(0, int((1.0 - (p_tier * 0.20)) * 100))
             downgrade_rate = 0 if p_tier == 1 else int(((p_tier - 1) * 0.20) * 100)
             
-            embed.add_field(name="Current Passive", value=f"**{name}** (Tier {p_tier})", inline=False)
+            embed.add_field(name="Current Passive", value=f"**{desc}**", inline=False)
             if p_tier < 5:
+                # Add a preview of what the NEXT tier looks like
+                next_desc = SlayerMechanics.get_passive_description(p_type, p_tier + 1)
+                embed.add_field(name="Next Tier Preview", value=f"*{next_desc}*", inline=False)
+                
                 embed.add_field(name="Upgrade Odds", value=f"🟢 Success: {success_rate}%\n🔴 Downgrade: {downgrade_rate}%", inline=False)
             else:
                 embed.add_field(name="Upgrade Status", value="🌟 Max Tier Reached!", inline=False)
@@ -257,7 +262,8 @@ class SlotManageView(ui.View):
         await self.bot.database.slayer.update_emblem_slot(self.user_id, self.server_id, self.slot_num, new_type, 1)
         
         self.setup_ui()
-        await interaction.followup.send(f"Slot Awakened! Gained: **{PASSIVE_DISPLAY_NAMES[new_type]}**", ephemeral=True)
+        new_desc = SlayerMechanics.get_passive_description(new_type, 1)
+        await interaction.followup.send(f"Slot Awakened! Gained: **{new_desc}**", ephemeral=True)
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def upgrade_slot(self, interaction: Interaction):
@@ -303,7 +309,8 @@ class SlotManageView(ui.View):
         await self.bot.database.slayer.update_emblem_slot(self.user_id, self.server_id, self.slot_num, new_type, self.slot_data['tier'])
         
         self.setup_ui()
-        await interaction.followup.send(f"❤️ **Rerolled!** New Passive: {PASSIVE_DISPLAY_NAMES[new_type]}", ephemeral=True)
+        new_desc = SlayerMechanics.get_passive_description(new_type, self.slot_data['tier'])
+        await interaction.followup.send(f"❤️ **Rerolled!** New Passive: **{new_desc}**", ephemeral=True)
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def go_back(self, interaction: Interaction):
