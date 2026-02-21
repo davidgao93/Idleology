@@ -193,7 +193,7 @@ def process_player_turn(player: Player, monster: Monster) -> str:
         slayer_dmg_tiers = player.get_emblem_bonus("slayer_dmg")
         if slayer_dmg_tiers > 0:
             attack_multiplier *= (1 + (slayer_dmg_tiers * 0.05))
-
+    acc_value_bonus = 0
     # Accuracy (e.g. +2 flat hit roll per tier)
     emblem_acc = player.get_emblem_bonus("accuracy")
     if emblem_acc > 0:
@@ -503,7 +503,7 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
                 if slayer_def_tiers > 0:
                     mitigation = min(0.50, slayer_def_tiers * 0.02) # Cap at 50%
                     total_damage = int(total_damage * (1 - mitigation))
-                    
+
             if total_damage > 0:
                 damage_dealt_this_turn += total_damage
                 player.current_hp -= total_damage
