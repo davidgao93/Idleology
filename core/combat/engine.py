@@ -231,7 +231,7 @@ def process_player_turn(player: Player, monster: Monster) -> str:
         passive_message += f"The monster's **Dodgy** nature makes it harder to hit!\n"
 
     attack_roll = random.randint(0, 100)
-    
+    acc_value_bonus = 0
     wep_acc_passive_bonus, passive_message = check_for_accuracy(player, passive_message)
     acc_value_bonus += wep_acc_passive_bonus
     if acc_passive == "Lucky Strikes" and random.random() <= (acc_lvl * 0.10):
