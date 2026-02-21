@@ -16,6 +16,10 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
 
     # --- XP Calculation ---
     base_xp = monster.xp
+
+    xp_find_tiers = player.get_emblem_bonus("xp_find")
+    if xp_find_tiers > 0:
+        base_xp = int(base_xp * (1 + (xp_find_tiers * 0.03)))
     
     # Scale XP for low levels (from original combat.py)
     if monster.level <= 20: 
@@ -71,6 +75,11 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         results["msgs"].append(f"**Plundering** snatches an extra {player.plundering_bonus_gold_pending:,} Gold!")
         player.plundering_bonus_gold_pending = 0 # Reset
 
+    # Gold find
+    gold_find_tiers = player.get_emblem_bonus("gold_find")
+    if gold_find_tiers > 0:
+        gold_award = int(gold_award * (1 + (gold_find_tiers * 0.03)))
+        
     results["gold"] = gold_award
     
     return results

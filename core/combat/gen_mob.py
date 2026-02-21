@@ -10,7 +10,7 @@ def get_monster_mods():
 def get_boss_mods():
     return load_list("assets/mobs/bossmods.txt")
 
-async def generate_encounter(player, monster, is_treasure):
+async def generate_encounter(player, monster, is_treasure, task_species=None):
     """Generate an encounter with a monster based on the user's level."""
     if player.level < 5:
         difficulty_multiplier = random.randint(1, 2)
@@ -37,9 +37,9 @@ async def generate_encounter(player, monster, is_treasure):
     monster = calculate_monster_stats(monster)
 
     if is_treasure:
-        monster = await fetch_monster_image(999, monster)
+        monster = await fetch_monster_image(999, monster, None)
     else:
-        monster = await fetch_monster_image(monster.level, monster)
+        monster = await fetch_monster_image(monster.level, monster, task_species)
 
     if player.level == 1:
         monster.hp = 10
@@ -288,7 +288,7 @@ def calculate_monster_stats(monster):
     monster.defence = int(base_defence)
     return monster
 
-async def fetch_monster_image(level, monster_data):
+async def fetch_monster_image(level, monster_data, task_species=None):
     """Fetches a monster image from the monsters.csv file based on the encounter level."""
     csv_file_path = os.path.join(os.path.dirname(__file__), '../../assets/monsters.csv')
     monsters = []
@@ -335,6 +335,11 @@ async def fetch_monster_image(level, monster_data):
             monster_data.flavor = "says how did you find me???"
             monster_data.species = "Humanoid"
             return monster_data
+        
+        if task_species and random.random() < 0.50:
+            task_specific_mobs = [m for m in selected_monsters if m[4] == task_species] # m[4] is species
+            if task_specific_mobs:
+                selected_monsters = task_specific_mobs
 
         selected_monster = random.choice(selected_monsters)
         monster_data.name = selected_monster[0]

@@ -10,6 +10,7 @@ from core.combat import engine, ui as combat_ui, rewards
 from core.combat.drops import DropManager
 from core.combat.gen_mob import generate_boss, generate_encounter
 from core.companions.mechanics import CompanionMechanics
+import core.slayer.mechanics
 
 
 class LuciferChoiceView(ui.View):
@@ -454,7 +455,56 @@ class CombatView(ui.View):
                 
                 # Add notification
                 reward_data['msgs'].append(f"🕸️ Following it's defeat, the {self.monster.name} decides to join you on your journey!")
-            
+            # --- SLAYER INTEGRATION ---
+            if not self.monster.is_boss:
+                s_profile = await self.bot.database.slayer.get_profile(self.user_id, server_id)
+
+                if s_profile['active_task_species'] == self.monster.species:
+                    # 1. Base Slayer XP + Drops
+                    await self.bot.database.slayer.add_rewards(self.user_id, server_id, xp=100, points=0)
+                    
+                    ess, heart = core.slayer.mechanics.SlayerMechanics.roll_drops(self.monster.level)
+                                    # Scavenger passive (e.g. 5% chance per tier to double drops)
+                    drop_bonus_tiers = self.player.get_emblem_bonus("slayer_drops")
+                    if drop_bonus_tiers > 0 and random.random() < (drop_bonus_tiers * 0.05):
+                        ess *= 2
+                        heart *= 2
+
+                    if ess > 0: await self.bot.database.slayer.modify_materials(self.user_id, server_id, 'violent_essence', ess)
+                    if heart > 0: await self.bot.database.slayer.modify_materials(self.user_id, server_id, 'imbued_heart', heart)
+                    
+                    # Log additions
+                    reward_data['msgs'].append(f"🩸 **Slayer:** +100 Slayer XP")
+                    if ess > 0: reward_data['msgs'].append("🩸 Found a **Violent Essence**!")
+                    if heart > 0: reward_data['msgs'].append("❤️ Found an **Imbued Heart**!")
+
+                    # Taskmaster passive (e.g. 5% chance per tier for double progress)
+                    prog_gain = 1
+                    task_tiers = self.player.get_emblem_bonus("task_progress")
+                    if task_tiers > 0 and random.random() < (task_tiers * 0.05):
+                        prog_gain = 2
+                        reward_data['msgs'].append("⚡ **Taskmaster** granted double task progress!")
+                    
+                    # 2. Progress Tracker
+                    new_prog = s_profile['active_task_progress'] + prog_gain    
+                    
+                    if new_prog >= s_profile['active_task_amount']:
+                        # Task Complete!
+                        burst_xp, burst_pts = core.slayer.mechanics.SlayerMechanics.calculate_task_rewards(s_profile['active_task_amount'])
+                        await self.bot.database.slayer.add_rewards(self.user_id, server_id, xp=burst_xp, points=burst_pts)
+                        await self.bot.database.slayer.clear_task(self.user_id, server_id)
+                        reward_data['msgs'].append(f"🏆 **Task Complete!** +{burst_xp} Slayer XP | +{burst_pts} Slayer Pts")
+                    else:
+                        await self.bot.database.slayer.update_task_progress(self.user_id, server_id, 1)
+                        reward_data['msgs'].append(f"📋 Progress: {new_prog}/{s_profile['active_task_amount']} {self.monster.species}")
+                    
+                    # 3. Level Up Check
+                    new_s_xp = s_profile['xp'] + 100 + (burst_xp if new_prog >= s_profile['active_task_amount'] else 0)
+                    new_s_lvl = core.slayer.mechanics.SlayerMechanics.calculate_level_from_xp(new_s_xp)
+                    if new_s_lvl > s_profile['level']:
+                        await self.bot.database.slayer.update_level(self.user_id, server_id, new_s_lvl)
+                        reward_data['msgs'].append(f"🎉 **Slayer Level Up!** You are now Level {new_s_lvl}.")
+            # --------------------------
             embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
             
             # Final Boss Scenes

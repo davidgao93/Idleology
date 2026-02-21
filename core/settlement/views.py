@@ -421,7 +421,7 @@ class TownHallView(ui.View):
         self.settlement.building_slots += 1
         self.settlement.timber -= costs['timber']
         self.settlement.stone -= costs['stone']
-
+        self.setup_ui()
         # 5. Refresh
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
@@ -1018,8 +1018,8 @@ class BuildingDetailView(ui.View):
         next_cost = self._get_upgrade_cost(self.building.tier + 1)
         if self.building.tier < 5:
             cost_str = f"🪵 {next_cost.get('timber'):,} | 🪨 {next_cost.get('stone'):,} | 💰 {next_cost.get('gold'):,}"
-            if 'special' in next_cost:
-                cost_str += f" | ✨ {next_cost['special']} x{next_cost['special_qty']}"
+            if 'special_name' in next_cost:
+                cost_str += f" | ✨ {next_cost['special_name']} x{next_cost['special_qty']}"
             embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
         else:
             embed.add_field(name="Status", value="🌟 Max Level Reached", inline=False)
@@ -1044,7 +1044,7 @@ class BuildingDetailView(ui.View):
             display_name = self.ITEM_NAMES.get(special_col, "Special Material")
             
             cost['special_key'] = special_col # For DB logic
-            cost['special'] = display_name    # For Display logic
+            cost['special_name'] = display_name    # For Display logic
             
             # Quantity Logic
             if target_tier == 3: cost['special_qty'] = 1
@@ -1218,7 +1218,7 @@ class BuildingDetailView(ui.View):
         self.building.tier += 1
         self.parent.settlement.timber -= costs['timber']
         self.parent.settlement.stone -= costs['stone']
-        
+        self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def go_back(self, interaction: Interaction):

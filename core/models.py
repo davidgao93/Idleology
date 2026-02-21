@@ -186,6 +186,10 @@ class Player:
     # Settlement buffs
     apothecary_workers: int = 0
 
+    # Slayer
+    slayer_emblem: dict = field(default_factory=dict)
+    active_task_species: str = None # Store this so the engine knows if we are fighting a task mob
+
     # Transient states (reset each combat)
     combat_ward: int = 0
     is_invulnerable_this_combat: bool = False
@@ -324,6 +328,17 @@ class Player:
     
     def get_helmet_passive(self) -> str:
         return self.equipped_helmet.passive if self.equipped_helmet else "none"
+    
+    def get_emblem_bonus(self, passive_type: str) -> int:
+        """
+        Calculates the total tier value for a specific emblem passive.
+        e.g., Two slots with Tier 3 'boss_dmg' returns 6.
+        """
+        total_tiers = 0
+        for slot_data in self.slayer_emblem.values():
+            if slot_data['type'] == passive_type:
+                total_tiers += slot_data['tier']
+        return total_tiers
 
 @dataclass
 class Monster:

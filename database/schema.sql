@@ -230,29 +230,27 @@ CREATE TABLE IF NOT EXISTS buildings (
     UNIQUE(user_id, server_id, slot_index)
 );
 
--- -- 2. Add Refined Columns to Skill Tables
--- -- Mining
--- ALTER TABLE mining ADD COLUMN iron_bar INTEGER DEFAULT 0;
--- ALTER TABLE mining ADD COLUMN steel_bar INTEGER DEFAULT 0; -- Mapped from Coal
--- ALTER TABLE mining ADD COLUMN gold_bar INTEGER DEFAULT 0;
--- ALTER TABLE mining ADD COLUMN platinum_bar INTEGER DEFAULT 0;
--- ALTER TABLE mining ADD COLUMN idea_bar INTEGER DEFAULT 0;
+CREATE TABLE IF NOT EXISTS slayer_profiles (
+    user_id TEXT,
+    server_id TEXT,
+    level INTEGER DEFAULT 1,
+    xp INTEGER DEFAULT 0,
+    slayer_points INTEGER DEFAULT 0,
+    violent_essence INTEGER DEFAULT 0,
+    imbued_heart INTEGER DEFAULT 0,
+    active_task_species TEXT,
+    active_task_amount INTEGER DEFAULT 0,
+    active_task_progress INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, server_id)
+);
 
--- -- Woodcutting
--- ALTER TABLE woodcutting ADD COLUMN oak_plank INTEGER DEFAULT 0;
--- ALTER TABLE woodcutting ADD COLUMN willow_plank INTEGER DEFAULT 0;
--- ALTER TABLE woodcutting ADD COLUMN mahogany_plank INTEGER DEFAULT 0;
--- ALTER TABLE woodcutting ADD COLUMN magic_plank INTEGER DEFAULT 0;
--- ALTER TABLE woodcutting ADD COLUMN idea_plank INTEGER DEFAULT 0;
-
--- -- Fishing
--- ALTER TABLE fishing ADD COLUMN desiccated_essence INTEGER DEFAULT 0;
--- ALTER TABLE fishing ADD COLUMN regular_essence INTEGER DEFAULT 0;
--- ALTER TABLE fishing ADD COLUMN sturdy_essence INTEGER DEFAULT 0;
--- ALTER TABLE fishing ADD COLUMN reinforced_essence INTEGER DEFAULT 0;
--- ALTER TABLE fishing ADD COLUMN titanium_essence INTEGER DEFAULT 0;
-
--- -- Special Settlement Upgrade Materials
--- ALTER TABLE users ADD COLUMN magma_core INTEGER DEFAULT 0;   -- Foundry/Smithing upgrades
--- ALTER TABLE users ADD COLUMN life_root INTEGER DEFAULT 0;    -- Sawmill/Logging upgrades
--- ALTER TABLE users ADD COLUMN spirit_shard INTEGER DEFAULT 0; -- Reliquary/Temple upgrades
+CREATE TABLE IF NOT EXISTS slayer_emblems (
+    user_id TEXT,
+    server_id TEXT,
+    slot_1_type TEXT DEFAULT 'none', slot_1_tier INTEGER DEFAULT 1,
+    slot_2_type TEXT DEFAULT 'none', slot_2_tier INTEGER DEFAULT 1,
+    slot_3_type TEXT DEFAULT 'none', slot_3_tier INTEGER DEFAULT 1,
+    slot_4_type TEXT DEFAULT 'none', slot_4_tier INTEGER DEFAULT 1,
+    slot_5_type TEXT DEFAULT 'none', slot_5_tier INTEGER DEFAULT 1,
+    PRIMARY KEY (user_id, server_id)
+);

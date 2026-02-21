@@ -129,13 +129,16 @@ class Combat(commands.Cog, name="combat"):
             await self.bot.database.users.update_timer(user_id, 'last_combat')
 
         # 4. Generate Initial Monster
+        slayer_profile = await self.bot.database.slayer.get_profile(user_id, server_id)
+        task_species = slayer_profile['active_task_species']
+
         monster = Monster(name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0, modifiers=[], image="", flavor="")
         
         if is_boss:
             monster = await generate_boss(player, monster, combat_phases[0], 0)
             monster.is_boss = True
         else:
-            monster = await generate_encounter(player, monster, is_treasure=False)
+            monster = await generate_encounter(player, monster, is_treasure=False, task_species=task_species) # <--- PASS IT HERE
             combat_phases = [None] # Dummy for View logic
 
         # 5. Apply Start Effects

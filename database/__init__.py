@@ -7,6 +7,7 @@ from .repositories.settings import SettingsRepository
 from .repositories.companions import CompanionRepository
 from .repositories.delve import DelveRepository
 from .repositories.settlement import SettlementRepository
+from .repositories.slayer import SlayerRepository
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -21,3 +22,4 @@ class DatabaseManager:
         self.companions = CompanionRepository(connection)
         self.delve = DelveRepository(connection)
         self.settlement = SettlementRepository(connection)
+        self.slayer = SlayerRepository(connection)

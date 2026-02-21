@@ -247,6 +247,18 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     if comp_rows:
         player.active_companions = [create_companion(row) for row in comp_rows]
 
+    # --- Fetch Slayer Data ---
+    try:
+        # Load Emblem
+        player.slayer_emblem = await database.slayer.get_emblem(user_id, server_id)
+        # Load Active Task to check for Slayer-specific buffs
+        profile = await database.slayer.get_profile(user_id, server_id)
+        player.active_task_species = profile.get('active_task_species')
+    except Exception as e:
+        # Failsafe if player hasn't opened /slayer yet
+        player.slayer_emblem = {}
+        player.active_task_species = None
+        
     # 3. Calculate Combat Initialization Stats (Optional but helpful)
     # This pre-calculates the ward pool based on equipped gear percentages
     player.combat_ward = player.get_combat_ward_value()

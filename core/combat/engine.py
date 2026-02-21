@@ -176,6 +176,29 @@ def process_player_turn(player: Player, monster: Monster) -> str:
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
 
     # --- Pre-Attack Multipliers ---
+    # --- Emblem Multipliers ---
+    # Base Damage (e.g. 2% per tier)
+    combat_dmg_tiers = player.get_emblem_bonus("combat_dmg")
+    if combat_dmg_tiers > 0:
+        attack_multiplier *= (1 + (combat_dmg_tiers * 0.02))
+
+    # Boss Damage (e.g. 5% per tier)
+    if monster.is_boss:
+        boss_dmg_tiers = player.get_emblem_bonus("boss_dmg")
+        if boss_dmg_tiers > 0:
+            attack_multiplier *= (1 + (boss_dmg_tiers * 0.05))
+            
+    # Slayer Task Damage (e.g. 5% per tier)
+    if player.active_task_species == monster.species:
+        slayer_dmg_tiers = player.get_emblem_bonus("slayer_dmg")
+        if slayer_dmg_tiers > 0:
+            attack_multiplier *= (1 + (slayer_dmg_tiers * 0.05))
+
+    # Accuracy (e.g. +2 flat hit roll per tier)
+    emblem_acc = player.get_emblem_bonus("accuracy")
+    if emblem_acc > 0:
+        acc_value_bonus += (emblem_acc * 2)
+
     if glove_passive == "instability" and glove_lvl > 0:
         if random.random() < 0.5:
             attack_multiplier *= 0.5
@@ -209,8 +232,8 @@ def process_player_turn(player: Player, monster: Monster) -> str:
 
     attack_roll = random.randint(0, 100)
     
-    acc_value_bonus, passive_message = check_for_accuracy(player, passive_message)
-
+    wep_acc_passive_bonus, passive_message = check_for_accuracy(player, passive_message)
+    acc_value_bonus += wep_acc_passive_bonus
     if acc_passive == "Lucky Strikes" and random.random() <= (acc_lvl * 0.10):
         attack_roll = max(attack_roll, random.randint(0, 100))
         passive_message += f"**Lucky Strikes ({acc_lvl})** activates! Hit chance is now 🍀 lucky!\n"
@@ -249,14 +272,19 @@ def process_player_turn(player: Player, monster: Monster) -> str:
         if glove_passive == "deftness" and glove_lvl > 0:
             crit_damage_floor_multiplier = min(0.75, crit_damage_floor_multiplier + (glove_lvl * 0.05))
             passive_message += f"**Deftness ({glove_lvl})** hones your crits!\n"
+            
         
         crit_min = max(1, int(max_hit_calc * crit_damage_floor_multiplier) + 1)
         # Ensure max >= min
         crit_max = max(crit_min, max_hit_calc)
         
         crit_base_damage = int(random.randint(crit_min, crit_max) * 2.0)
-        # Apply Insight
+        # Emblem crit bonus
+        crit_dmg_tiers = player.get_emblem_bonus("crit_dmg")
+        if crit_dmg_tiers > 0:
+            crit_base_damage = crit_base_damage * (1 + (crit_dmg_tiers * 0.05))
 
+        # Apply Insight
         if helmet_passive == "insight" and helmet_lvl > 0:
             # Add 0.1x multiplier per level
             extra_mult = helmet_lvl * 0.1
@@ -468,7 +496,14 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
                     monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {player.combat_ward} damage, but shatters!\n"
                     total_damage -= player.combat_ward
                     player.combat_ward = 0
-            
+
+            # Slayer Resilience (e.g. 2% damage reduction per tier against task mobs)
+            if player.active_task_species == monster.species:
+                slayer_def_tiers = player.get_emblem_bonus("slayer_def")
+                if slayer_def_tiers > 0:
+                    mitigation = min(0.50, slayer_def_tiers * 0.02) # Cap at 50%
+                    total_damage = int(total_damage * (1 - mitigation))
+                    
             if total_damage > 0:
                 damage_dealt_this_turn += total_damage
                 player.current_hp -= total_damage
