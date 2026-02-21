@@ -37,7 +37,7 @@ class SlayerDashboardView(ui.View):
         next_xp = lvl * 1000
 
         embed = discord.Embed(title="💀 Slayer Master", color=discord.Color.dark_red())
-        embed.set_thumbnail(url="https://i.imgur.com/v1BrB1M.png") # Placeholder, use a skull or slayer master image
+        embed.set_thumbnail(url="https://i.imgur.com/oMkaM34.jpeg") # slayer master image
         
         embed.add_field(name="Profile", value=f"**Level:** {lvl}\n**XP:** {xp:,}/{next_xp:,}\n**Points:** {pts}", inline=True)
         embed.add_field(name="Materials", value=f"🩸 **Violent Essence:** {self.profile['violent_essence']}\n❤️ **Imbued Hearts:** {self.profile['imbued_heart']}", inline=True)
@@ -124,8 +124,8 @@ class EmblemView(ui.View):
         return str(interaction.user.id) == self.user_id
 
     def build_embed(self) -> discord.Embed:
-        embed = discord.Embed(title="🛡️ Slayer Emblem", description="Enhance your combat prowess.", color=discord.Color.dark_purple())
-        
+        embed = discord.Embed(title="💀 Slayer Emblem", description="Enhance your combat prowess.", color=discord.Color.dark_purple())
+        embed.set_thumbnail(url="https://i.imgur.com/sEbbos9.png")
         # Display Slots
         unlock_reqs = {1: 1, 2: 20, 3: 40, 4: 60, 5: 80}
         
