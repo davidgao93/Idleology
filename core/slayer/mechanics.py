@@ -104,3 +104,18 @@ class SlayerMechanics:
         if slayer_level >= 40: return 3
         if slayer_level >= 20: return 2
         return 1
+    
+
+    @staticmethod
+    def get_xp_progress(total_xp: int) -> Tuple[int, int]:
+        """
+        Returns (xp_into_current_level, xp_needed_for_next_level).
+        Converts cumulative DB XP into a clean UI format.
+        """
+        lvl = 1
+        rem_xp = total_xp
+        while rem_xp >= (lvl * 1000):
+            rem_xp -= (lvl * 1000)
+            lvl += 1
+            
+        return rem_xp, (lvl * 1000)

@@ -32,14 +32,15 @@ class SlayerDashboardView(ui.View):
 
     def build_embed(self) -> discord.Embed:
         lvl = self.profile['level']
-        xp = self.profile['xp']
         pts = self.profile['points']
-        next_xp = lvl * 1000
+        
+        # Parse cumulative XP into normalized visual progress
+        current_xp_prog, next_xp_req = SlayerMechanics.get_xp_progress(self.profile['xp'])
 
         embed = discord.Embed(title="💀 Slayer Master", color=discord.Color.dark_red())
         embed.set_thumbnail(url="https://i.imgur.com/oMkaM34.jpeg") # slayer master image
         
-        embed.add_field(name="Profile", value=f"**Level:** {lvl}\n**XP:** {xp:,}/{next_xp:,}\n**Points:** {pts}", inline=True)
+        embed.add_field(name="Profile", value=f"**Level:** {lvl}\n**XP:** {current_xp_prog:,}/{next_xp_req:,}\n**Points:** {pts}", inline=True)
         embed.add_field(name="Materials", value=f"🩸 **Violent Essence:** {self.profile['violent_essence']}\n❤️ **Imbued Hearts:** {self.profile['imbued_heart']}", inline=True)
 
         if self.profile['active_task_species']:
@@ -242,8 +243,10 @@ class SlotManageView(ui.View):
     async def awaken_slot(self, interaction: Interaction):
         await interaction.response.defer()
         
-        # Deduct
-        await self.bot.database.slayer.modify_materials(self.user_id, self.server_id, 'violent_essence', -1)
+        # ATOMIC DEDUCTION CHECK
+        if not await self.bot.database.slayer.consume_material(self.user_id, self.server_id, 'violent_essence', 1):
+            return await interaction.followup.send("Not enough Violent Essence!", ephemeral=True)
+            
         self.profile['violent_essence'] -= 1
         
         # Assign random
@@ -260,7 +263,10 @@ class SlotManageView(ui.View):
     async def upgrade_slot(self, interaction: Interaction):
         await interaction.response.defer()
         
-        await self.bot.database.slayer.modify_materials(self.user_id, self.server_id, 'violent_essence', -1)
+        # ATOMIC DEDUCTION CHECK
+        if not await self.bot.database.slayer.consume_material(self.user_id, self.server_id, 'violent_essence', 1):
+            return await interaction.followup.send("Not enough Violent Essence!", ephemeral=True)
+            
         self.profile['violent_essence'] -= 1
         
         old_tier = self.slot_data['tier']
@@ -283,7 +289,10 @@ class SlotManageView(ui.View):
     async def reroll_slot(self, interaction: Interaction):
         await interaction.response.defer()
         
-        await self.bot.database.slayer.modify_materials(self.user_id, self.server_id, 'imbued_heart', -1)
+        # ATOMIC DEDUCTION CHECK
+        if not await self.bot.database.slayer.consume_material(self.user_id, self.server_id, 'imbued_heart', 1):
+            return await interaction.followup.send("Not enough Imbued Hearts!", ephemeral=True)
+            
         self.profile['imbued_heart'] -= 1
         
         # Pick new random (exclude current)

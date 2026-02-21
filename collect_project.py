@@ -28,7 +28,7 @@ IGNORE_FILES = {
     ".env",               # Security: Don't upload tokens
     "discord.log",        # Logs are local only
     ".DS_Store",          # Mac junk
-    "Thumbs.db",           # Windows junk
+    "Thumbs.db",          # Windows junk
     "run_app.bat",
     "requirements.txt",
     "icon.png",
@@ -51,21 +51,14 @@ def build_flat_name(src_path: Path) -> str:
     """
     Given a source file path under SOURCE_DIR, build a flattened filename
     that includes its relative directory as a prefix, joined by underscores.
-    
-    Examples:
-      SOURCE_DIR/combat/views.py  -> combat_views.py
-      SOURCE_DIR/curios/views.py  -> curios_views.py
-      SOURCE_DIR/a/b/c/file.py    -> a_b_c_file.py
-      SOURCE_DIR/main.py          -> main.py
     """
-    rel = src_path.relative_to(SOURCE_DIR)  # e.g. combat/views.py
+    rel = src_path.relative_to(SOURCE_DIR)
 
-    parent_parts = rel.parent.parts  # ('combat',) or ('a','b','c') or ()
+    parent_parts = rel.parent.parts
     if parent_parts:
         prefix = "_".join(parent_parts)
         return f"{prefix}_{rel.name}"
     else:
-        # File in project root: keep its name
         return rel.name
 
 def main():
@@ -84,6 +77,7 @@ def main():
     DEST_DIR.mkdir(parents=True, exist_ok=True)
 
     copied_count = 0
+    copied_files = []  # NEW: track copied destination files in order
 
     # 2. Walk and Copy
     for root, dirs, files in os.walk(SOURCE_DIR):
@@ -103,7 +97,6 @@ def main():
             dst_file = DEST_DIR / flat_name
 
             # Optional: detect collisions
-            # Optional: detect collisions even after prefixing
             if dst_file.exists():
                 raise FileExistsError(
                     f"Flattened name collision: '{flat_name}' already exists.\n"
@@ -112,10 +105,52 @@ def main():
 
             shutil.copy2(src_file, dst_file)
             copied_count += 1
+            copied_files.append((src_file, dst_file))  # NEW: remember src & dst
+
             print(
                 f"   📄 Copied: {src_file.relative_to(SOURCE_DIR)} "
                 f"-> {flat_name}"
             )
+
+    # 3. Build combined file for LLM consumption  # NEW
+    if copied_files:
+        combined_path = DEST_DIR / "ALL_CODE_COMBINED.txt"
+        print(f"🧬 Creating combined file: {combined_path}")
+
+        with combined_path.open("w", encoding="utf-8") as combined:
+            combined.write(
+                "=========== PROJECT CODE BUNDLE START ===========\n"
+                "Each section below represents one source file.\n"
+                "Use the FILE START/END markers to navigate.\n"
+                "===============================================\n\n"
+            )
+
+            for src_file, dst_file in copied_files:
+                rel = src_file.relative_to(SOURCE_DIR)
+                header = (
+                    "---------- FILE START ----------\n"
+                    f"ORIGINAL_PATH: {rel}\n"
+                    f"FLATTENED_NAME: {dst_file.name}\n"
+                    "---------- FILE CONTENT ----------\n\n"
+                )
+                footer = (
+                    "\n---------- FILE END ------------\n\n"
+                )
+
+                combined.write(header)
+                try:
+                    # Read as text; for non-text files this may fail.
+                    combined.write(dst_file.read_text(encoding="utf-8"))
+                except UnicodeDecodeError:
+                    # If you want to skip non-text files silently:
+                    combined.write("[BINARY OR NON‑TEXT FILE OMITTED]\n")
+                combined.write(footer)
+
+            combined.write("=========== PROJECT CODE BUNDLE END ============\n")
+
+        print(f"✅ Combined file created at: {combined_path}")
+    else:
+        print("⚠️ No files were copied; combined file not created.")
 
     print("-" * 40)
     print(f"✅ Success! Copied {copied_count} files.")

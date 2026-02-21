@@ -90,3 +90,15 @@ class SlayerRepository:
             (p_type, p_tier, user_id, server_id)
         )
         await self.connection.commit()
+
+    async def consume_material(self, user_id: str, server_id: str, col: str, amount: int) -> bool:
+        """
+        Atomically attempts to deduct a material. 
+        Returns True if successful, False if insufficient balance.
+        """
+        cursor = await self.connection.execute(
+            f"UPDATE slayer_profiles SET {col} = {col} - ? WHERE user_id = ? AND server_id = ? AND {col} >= ?",
+            (amount, user_id, server_id, amount)
+        )
+        await self.connection.commit()
+        return cursor.rowcount > 0
