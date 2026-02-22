@@ -5,6 +5,7 @@ from discord import app_commands, Interaction
 # Core
 from core.items.factory import create_weapon, create_armor, create_accessory, create_glove, create_boot, create_helmet
 from core.inventory.views import InventoryListView
+from core.character.profile_hub import ProfileBuilder, ProfileHubView
 
 class Inventory(commands.Cog, name="inventory"):
     def __init__(self, bot):
@@ -48,81 +49,27 @@ class Inventory(commands.Cog, name="inventory"):
 
     @app_commands.command(name="inventory", description="Check your inventory summary.")
     async def inventory_summary(self, interaction: Interaction):
-        """Fetch and display the user's inventory status."""
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
-
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user): return
 
-        # 1. Counts
-        w_count = await self.bot.database.equipment.get_count(user_id, 'weapon')
-        a_count = await self.bot.database.equipment.get_count(user_id, 'accessory') # Note: 'accessory' not 'accessories' based on type map
-        ar_count = await self.bot.database.equipment.get_count(user_id, 'armor')
-        g_count = await self.bot.database.equipment.get_count(user_id, 'glove')
-        b_count = await self.bot.database.equipment.get_count(user_id, 'boot')
-        h_count = await self.bot.database.equipment.get_count(user_id, 'helmet')
-        pet_count = await self.bot.database.companions.get_count(user_id)
+        view = ProfileHubView(self.bot, user_id, server_id, "inventory")
+        embed = await ProfileBuilder.build_inventory(self.bot, user_id, server_id)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
-        # 2. Currencies (Indices based on your schema comments)
-        gold = existing_user[6]
-        potions = existing_user[16]
-        
-        # Runes
-        r_refine = existing_user[19]
-        r_potential = existing_user[21]
-        r_imbue = existing_user[27]
-        r_shatter = existing_user[31]
-        k_balance = await self.bot.database.users.get_currency(user_id, 'balance_fragment')
-        r_partner = await self.bot.database.users.get_currency(user_id, 'partnership_runes')
+    @app_commands.command(name="resources", description="View refined materials and settlement resources.")
+    async def resources(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user): return
 
-        # Keys/Misc
-        k_dragon = existing_user[25]
-        k_angel = existing_user[26]
-        k_void = existing_user[30]
-        soul_cores = existing_user[28]
-        void_frags = existing_user[29]
-        curios = existing_user[22]
-
-        embed = discord.Embed(
-            title=f"{existing_user[3]}'s Bag 🎒",
-            description=f"💰 **Gold:** {gold:,}\n🧪 **Potions:** {potions:,}",
-            color=0x00FF00
-        )
-        embed.set_thumbnail(url=existing_user[7])
-
-        embed.add_field(name="📦 **Equipment**", 
-            value=(f"⚔️ Weapons: {w_count}/60\n"
-                   f"🛡️ Armor: {ar_count}/60\n"
-                   f"📿 Accessories: {a_count}/60\n"
-                   f"🧤 Gloves: {g_count}/60\n"
-                   f"👢 Boots: {b_count}/60\n"
-                   f"🪖 Helmets: {h_count}/60\n"
-                   f"🐾 Companions: {pet_count}/20"), 
-            inline=True
-        )
-
-        embed.add_field(name="💎 **Runes**", 
-            value=(f"🔨 Refinement: {r_refine}\n"
-                   f"✨ Potential: {r_potential}\n"
-                   f"🔮 Imbuing: {r_imbue}\n"
-                   f"💥 Shatter: {r_shatter}\n"
-                   f"🤝 Partnership: {r_partner}"), 
-            inline=True
-        )
-
-        embed.add_field(name="🔑 **Key Items**", 
-            value=(f"🐉 Draconic Keys: {k_dragon}\n"
-                   f"🪽 Angelic Keys: {k_angel}\n"
-                   f"🗝️ Void Keys: {k_void}\n"
-                   f"⚖️ Balance Frags: {k_balance}\n"
-                   f"❤️‍🔥 Soul Cores: {soul_cores}\n"
-                   f"🟣 Void Frags: {void_frags}\n"
-                   f"🎁 Curios: {curios}"), 
-            inline=True
-        )
-
-        await interaction.response.send_message(embed=embed)
+        view = ProfileHubView(self.bot, user_id, server_id, "resources")
+        embed = await ProfileBuilder.build_resources(self.bot, user_id, server_id)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
     @app_commands.command(name="weapons", description="Manage your weapons.")
     async def weapons(self, interaction: Interaction):
@@ -147,53 +94,6 @@ class Inventory(commands.Cog, name="inventory"):
     @app_commands.command(name="helmets", description="Manage your helmets.")
     async def helmets(self, interaction: Interaction):
         await self._generic_inventory_command(interaction, "helmet", create_helmet, "🪖")
-
-    @app_commands.command(name="resources", description="View refined materials and settlement resources.")
-    async def resources(self, interaction: Interaction):
-        user_id = str(interaction.user.id)
-        server_id = str(interaction.guild.id)
-
-        # Fetch Data
-        settlement = await self.bot.database.settlement.get_settlement(user_id, server_id)
-        
-        # Raw SQL fetch for speed/simplicity given the number of columns
-        async with self.bot.database.connection.execute(
-            "SELECT iron_bar, steel_bar, gold_bar, platinum_bar, idea_bar FROM mining WHERE user_id=? AND server_id=?", 
-            (user_id, server_id)
-        ) as c:
-            ingots = await c.fetchone() or (0,0,0,0,0)
-
-        async with self.bot.database.connection.execute(
-            "SELECT oak_plank, willow_plank, mahogany_plank, magic_plank, idea_plank FROM woodcutting WHERE user_id=? AND server_id=?", 
-            (user_id, server_id)
-        ) as c:
-            planks = await c.fetchone() or (0,0,0,0,0)
-
-        async with self.bot.database.connection.execute(
-            "SELECT desiccated_essence, regular_essence, sturdy_essence, reinforced_essence, titanium_essence FROM fishing WHERE user_id=? AND server_id=?", 
-            (user_id, server_id)
-        ) as c:
-            essence = await c.fetchone() or (0,0,0,0,0)
-
-        specials = await self.bot.database.users.get(user_id, server_id)
-        # Indexes: 32=magma, 33=life, 34=spirit (Check your exact schema order or use named row factory)
-        # Using specific select for safety:
-        async with self.bot.database.connection.execute(
-            "SELECT magma_core, life_root, spirit_shard FROM users WHERE user_id=?", (user_id,)
-        ) as c:
-            rares = await c.fetchone() or (0,0,0)
-
-        embed = discord.Embed(title="Storage Warehouse", color=discord.Color.dark_orange())
-        
-        embed.add_field(name="🏭 Settlement", value=f"🪵 Timber: {settlement.timber:,}\n🪨 Stone: {settlement.stone:,}", inline=False)
-        
-        embed.add_field(name="🧱 Ingots", value=f"Iron: {ingots[0]}\nSteel: {ingots[1]}\nGold: {ingots[2]}\nPlat: {ingots[3]}\nIdea: {ingots[4]}", inline=True)
-        embed.add_field(name="🪵 Planks", value=f"Oak: {planks[0]}\nWillow: {planks[1]}\nMahog: {planks[2]}\nMagic: {planks[3]}\nIdea: {planks[4]}", inline=True)
-        embed.add_field(name="⚗️ Essence", value=f"Desic: {essence[0]}\nReg: {essence[1]}\nSturdy: {essence[2]}\nReinf: {essence[3]}\nTitan: {essence[4]}", inline=True)
-        
-        embed.add_field(name="✨ Rare Materials", value=f"🔥 Magma Core: {rares[0]}\n🌿 Life Root: {rares[1]}\n👻 Spirit Shard: {rares[2]}", inline=False)
-
-        await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Inventory(bot))

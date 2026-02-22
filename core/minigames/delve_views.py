@@ -287,7 +287,7 @@ class DelveView(ui.View):
 
         # 4. Create New View & Replace Message
         # We reuse self.stats because levels haven't changed (shop is separate)
-        stats = await self.bot.database.delve.get_stats(self.user_id, self.server_id)
+        stats = await self.bot.database.delve.get_profile(self.user_id, self.server_id)
         max_fuel = DelveMechanics.get_max_fuel(stats['fuel_lvl'])
 
         new_state = DelveState(

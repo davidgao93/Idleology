@@ -226,6 +226,7 @@ class AscentView(ui.View):
             await interaction_or_msg.edit(embed=embed, view=None)
             
         self.bot.state_manager.clear_active(self.user_id)
+        await self.bot.database.users.update_from_player_object(self.player)
         self.stop()
 
     async def handle_defeat(self, interaction, message):

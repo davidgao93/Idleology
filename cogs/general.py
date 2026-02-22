@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from typing import Literal
 from core.combat.gen_mob import get_modifier_description
+from core.character.profile_hub import ProfileBuilder, ProfileHubView
 
 class General(commands.Cog, name="general"):
     def __init__(self, bot) -> None:
@@ -334,35 +335,13 @@ class General(commands.Cog, name="general"):
     async def cooldowns(self, interaction: discord.Interaction) -> None:
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
-
         user = await self.bot.database.users.get(user_id, server_id)
-        if not user:
-            await interaction.response.send_message("Please /register first.", ephemeral=True)
-            return
+        if not await self.bot.check_user_registered(interaction, user): return
 
-        # Schema indices: 13=Rest, 17=Checkin, 14=Propagate, 24=Combat
-        from datetime import datetime, timedelta
-        
-        def get_remaining(time_str, cooldown_hours=0, cooldown_mins=0):
-            if not time_str: return "Ready!"
-            try:
-                last = datetime.fromisoformat(time_str)
-                diff = datetime.now() - last
-                cd = timedelta(hours=cooldown_hours, minutes=cooldown_mins)
-                if diff < cd:
-                    rem = cd - diff
-                    return f"**{rem.seconds // 3600}h {(rem.seconds // 60) % 60}m {rem.seconds % 60}s**"
-                return "Ready!"
-            except: return "Error"
-
-        # Checkin (18h), Rest (2h), Propagate (18h), Combat (10m)
-        embed = discord.Embed(title="Timers", color=0x00FF00)
-        embed.add_field(name="/combat ⚔️", value=get_remaining(user[24], cooldown_mins=10))
-        embed.add_field(name="/rest 🛏️", value=get_remaining(user[13], cooldown_hours=2))
-        embed.add_field(name="/checkin 🛖", value=get_remaining(user[17], cooldown_hours=18))
-        embed.add_field(name="/propagate 💡", value=get_remaining(user[14], cooldown_hours=18))
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        view = ProfileHubView(self.bot, user_id, server_id, "cooldowns")
+        embed = await ProfileBuilder.build_cooldowns(self.bot, user_id, server_id)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
     @app_commands.command(name="ids", description="Fetch your user ID and all item IDs.")
     async def ids(self, interaction: discord.Interaction) -> None:

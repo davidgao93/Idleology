@@ -3,9 +3,7 @@ from discord.ext import commands, tasks
 from discord import app_commands, Interaction, Message
 from core.items.factory import load_player
 from core.character.views import PassiveAllocateView
-import asyncio
-import random
-import json
+from core.character.profile_hub import ProfileBuilder, ProfileHubView
 
 """
 Index	Attribute Description
@@ -71,87 +69,29 @@ class Character(commands.Cog, name="character"):
                 await self.bot.database.users.update_hp(user_id, new_hp)
 
 
+    @app_commands.command(name="card", description="View your adventurer license.")
+    async def card(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+        data = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, data): return
+
+        view = ProfileHubView(self.bot, user_id, server_id, "card")
+        embed = await ProfileBuilder.build_card(self.bot, user_id, server_id)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
+
     @app_commands.command(name="stats", description="Detailed character sheet.")
     async def stats(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
-
         data = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, data): return
 
-        # Use Core Model logic to calculate totals (including gear)
-        p = await load_player(user_id, data, self.bot.database)
-        
-        embed = discord.Embed(title=f"Stats: {p.name}", color=0x00FF00)
-        embed.set_thumbnail(url=data[7])
-
-        # Base + Bonus display
-        atk_bonus = p.get_total_attack() - p.base_attack
-        def_bonus = p.get_total_defence() - p.base_defence
-        
-        atk_str = f"{p.base_attack}" + (f" (+{atk_bonus})" if atk_bonus > 0 else "")
-        def_str = f"{p.base_defence}" + (f" (+{def_bonus})" if def_bonus > 0 else "")
-        
-        embed.add_field(name="⚔️ Attack", value=atk_str, inline=True)
-        embed.add_field(name="🛡️ Defence", value=def_str, inline=True)
-        embed.add_field(name="❤️ HP", value=f"{p.current_hp}/{p.max_hp}", inline=True)
-        
-        # Advanced Stats
-        ward = p.get_total_ward_percentage()
-        if ward > 0: embed.add_field(name="🔮 Ward", value=f"{ward}%", inline=True)
-        
-        crit_target = p.get_current_crit_target()
-        crit_chance = 100 - crit_target
-        if crit_chance > 5: embed.add_field(name="🎯 Crit Chance", value=f"{crit_chance}%", inline=True)
-        
-        pdr = p.get_total_pdr()
-        if pdr > 0: embed.add_field(name="🛡️ PDR", value=f"{pdr}%", inline=True)
-
-        fdr = p.get_total_fdr()
-        if fdr > 0: embed.add_field(name="🛡️ FDR", value=f"{fdr}", inline=True)
-
-        rarity = p.get_total_rarity()
-        if rarity > 0: embed.add_field(name="✨ Rarity", value=f"{rarity}%", inline=True)
-
-        # Passives List
-        passives = []
-        
-        # Weapon
-        if p.equipped_weapon:
-            p_list = []
-            if p.equipped_weapon.passive != 'none': p_list.append(p.equipped_weapon.passive.title())
-            if p.equipped_weapon.p_passive != 'none': p_list.append(p.equipped_weapon.p_passive.title())
-            if p.equipped_weapon.u_passive != 'none': p_list.append(p.equipped_weapon.u_passive.title())
-            if p_list: passives.append(f"**Weapon:** {', '.join(p_list)}")
-
-        # Armor
-        if p.equipped_armor and p.equipped_armor.passive != 'none':
-            passives.append(f"**Armor:** {p.equipped_armor.passive.title()}")
-
-        # Accessory
-        if p.equipped_accessory and p.equipped_accessory.passive != 'none':
-            lvl = p.equipped_accessory.passive_lvl
-            passives.append(f"**Accessory:** {p.equipped_accessory.passive.title()} ({lvl})")
-
-        # Glove
-        if p.equipped_glove and p.equipped_glove.passive != 'none':
-            lvl = p.equipped_glove.passive_lvl
-            passives.append(f"**Glove:** {p.equipped_glove.passive.title()} ({lvl})")
-
-        # Boot
-        if p.equipped_boot and p.equipped_boot.passive != 'none':
-            lvl = p.equipped_boot.passive_lvl
-            passives.append(f"**Boot:** {p.equipped_boot.passive.title()} ({lvl})")
-
-        # Helmet
-        if p.equipped_helmet and p.equipped_helmet.passive != 'none':
-            lvl = p.equipped_helmet.passive_lvl
-            passives.append(f"**Helmet:** {p.equipped_helmet.passive.title()} ({lvl})")
-        
-        if passives:
-            embed.add_field(name="__Active Passives__", value="\n".join(passives), inline=False)
-
-        await interaction.response.send_message(embed=embed)
+        view = ProfileHubView(self.bot, user_id, server_id, "stats")
+        embed = await ProfileBuilder.build_stats(self.bot, user_id, server_id)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
     '''
     
     MISCELLANEOUS COMMANDS
