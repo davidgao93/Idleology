@@ -102,3 +102,20 @@ class SlayerRepository:
         )
         await self.connection.commit()
         return cursor.rowcount > 0
+    
+
+    async def get_leaderboard(self, limit: int = 10):
+        # Join with users table to get the player's name
+        rows = await self.connection.execute(
+            """
+            SELECT u.name, s.level, s.xp 
+            FROM slayer_profiles s 
+            JOIN users u ON s.user_id = u.user_id AND s.server_id = u.server_id
+            WHERE s.level > 1 
+            ORDER BY s.level DESC, s.xp DESC 
+            LIMIT ?
+            """,
+            (limit,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchall()

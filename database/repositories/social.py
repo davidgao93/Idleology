@@ -43,3 +43,11 @@ class SocialRepository:
             (new_count, ideology_name)
         )
         await self.connection.commit()
+
+    async def get_ideology_leaderboard(self, limit: int = 10):
+        rows = await self.connection.execute(
+            "SELECT name, followers FROM ideologies ORDER BY followers DESC LIMIT ?",
+            (limit,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchall()

@@ -13,6 +13,7 @@ from core.combat.gen_mob import generate_encounter, generate_boss
 from core.combat.views import CombatView
 from core.combat.encounters import EncounterManager
 from core.combat.dummy_views import DummyConfigView
+from core.combat.warning_views import LowHealthWarningView
 
 class DoorPromptView(View):
     def __init__(self, bot, user_id, cost_dict, boss_type):
@@ -90,6 +91,20 @@ class Combat(commands.Cog, name="combat"):
             'defence': player.base_defence,
             'crit_target': player.base_crit_chance_target
         }
+
+        # 3. Health Check Interceptor
+        if player.current_hp < (player.max_hp * 0.25):
+            view = LowHealthWarningView(self.bot, user_id, server_id, existing_user, player, clean_stats, self._execute_combat)
+            await interaction.response.send_message(embed=view.build_embed(), view=view)
+            view.message = await interaction.original_response()
+            return # Pause execution here. The view will call _execute_combat if they proceed.
+            
+        # If health is fine, proceed immediately. We defer because the logic below can take a moment.
+        await interaction.response.defer()
+        await self._execute_combat(interaction, user_id, server_id, existing_user, player, clean_stats)
+
+    async def _execute_combat(self, interaction: Interaction, user_id: str, server_id: str, existing_user: tuple, player, clean_stats: dict):
+        """The actual combat generation and UI loading logic. Called directly or via the Warning View."""
         # 3. Check Door Encounter
         doors_enabled = await self.bot.database.users.get_doors_enabled(user_id)
         triggered = False
@@ -114,7 +129,7 @@ class Combat(commands.Cog, name="combat"):
             embed.set_footer(text=f"Cost: {details['cost_str']}")
             
             view = DoorPromptView(self.bot, user_id, cost_dict, boss_type)
-            await interaction.response.send_message(embed=embed, view=view)
+            await interaction.edit_original_response(content=None,embed=embed, view=view)
             await view.wait()
             
             if view.accepted:

@@ -265,3 +265,12 @@ class UserRepository:
             (val, user_id)
         )
         await self.connection.commit()
+
+
+    async def get_wealth_leaderboard(self, limit: int = 10):
+        rows = await self.connection.execute(
+            "SELECT name, gold FROM users ORDER BY gold DESC LIMIT ?",
+            (limit,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchall()

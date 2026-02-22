@@ -4,6 +4,7 @@ from discord import app_commands, Interaction, Message
 from core.items.factory import load_player
 from core.character.views import PassiveAllocateView
 from core.character.profile_hub import ProfileBuilder, ProfileHubView
+from core.character.leaderboard_views import LeaderboardHubView
 
 """
 Index	Attribute Description
@@ -98,43 +99,11 @@ class Character(commands.Cog, name="character"):
     
     '''
 
-    @app_commands.command(name="leaderboard", description="Show the top adventurers sorted by level.")
+    @app_commands.command(name="leaderboard", description="View the server hiscores.")
     async def leaderboard(self, interaction: Interaction) -> None:
-        """Fetch and display the top 10 adventurers sorted by level."""
-        top_users = await self.bot.database.users.get_leaderboard(limit=10)
-
-        if not top_users:
-            await interaction.response.send_message("No adventurers found.")
-            return
-
-        # Create an embed for the leaderboard
-        embed = discord.Embed(
-            title="Hiscores 🏆",
-            color=0x00FF00
-        )
-
-        # Construct the leaderboard information
-        leaderboard_lines = []
-        for idx, user in enumerate(top_users, start=1):
-            user_name = user[3]  # Assuming player name is at index 3
-            user_level = user[4]  # Assuming level is at index 4
-            user_asc = user[15] # Ascension level
-
-            # Build leaderboard line with the appropriate emoji
-            if idx == 1:
-                leaderboard_lines.append(f"🥇 **{user_name}** - Level {user_level} - (Ascension {user_asc} 🌟)")
-            elif idx == 2:
-                leaderboard_lines.append(f"🥈 **{user_name}** - Level {user_level} - (Ascension {user_asc} 🌟)")
-            elif idx == 3:
-                leaderboard_lines.append(f"🥉 **{user_name}** - Level {user_level} - (Ascension {user_asc} 🌟)")
-            else:
-                leaderboard_lines.append(f"**{idx}: {user_name}** - Level {user_level} - (Ascension {user_asc} 🌟)")
-
-        leaderboard_text = "\n".join(leaderboard_lines)
-        embed.add_field(name="Top Adventurers:", value=leaderboard_text, inline=False)
-
-        await interaction.response.send_message(embed=embed)
-        message: Message = await interaction.original_response()
+        view = LeaderboardHubView(self.bot, "levels")
+        embed = await view.build_embed()
+        await interaction.response.send_message(embed=embed, view=view)
 
 
     @app_commands.command(name="passives", description="Spend passive points.")

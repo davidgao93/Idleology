@@ -1,6 +1,9 @@
 import discord
 from discord import ui, ButtonStyle, Interaction
 from datetime import datetime, timedelta
+from core.combat import engine
+from core.companions.logic import CompanionLogic
+from core.settlement.mechanics import SettlementMechanics
 from core.items.factory import load_player
 
 class ProfileBuilder:
