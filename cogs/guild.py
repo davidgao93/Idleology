@@ -15,34 +15,6 @@ class Guild(commands.Cog, name="adventurer's guild"):
         with open('assets/exp.json') as file:
             return json.load(file)
 
-    @app_commands.command(name="card", description="See your adventurer card.")
-    async def card(self, interaction: Interaction):
-        user_id = str(interaction.user.id)
-        server_id = str(interaction.guild.id)
-
-        data = await self.bot.database.users.get(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, data): return
-
-        # Load Player Model for consistent stat calculation (optional, but good practice)
-        player = await load_player(user_id, data, self.bot.database)
-        
-        exp_table = self.load_exp_table()
-        exp_needed = exp_table["levels"].get(str(player.level), 0)
-        pct = (player.exp / exp_needed * 100) if exp_needed > 0 else 100
-
-        embed = discord.Embed(title=f"**{player.name}**", color=0x808080)
-        
-        lvl_str = f"{player.level}"
-        if player.ascension > 0: lvl_str += f" (Ascension {player.ascension} 🌟)"
-        
-        embed.add_field(name="Level", value=lvl_str, inline=True)
-        embed.add_field(name="EXP", value=f"{player.exp:,} ({pct:.1f}%)", inline=True)
-        embed.add_field(name="Gold", value=f"{data[6]:,}", inline=True)
-        embed.add_field(name="Ideology", value=data[8], inline=True)
-        embed.set_thumbnail(url=data[7]) # Appearance
-
-        await interaction.response.send_message(embed=embed)
-
     @app_commands.command(name="register", description="Start your journey.")
     async def register(self, interaction: Interaction, name: str):
         user_id = str(interaction.user.id)
