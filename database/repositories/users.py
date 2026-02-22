@@ -246,3 +246,22 @@ class UserRepository:
         )
         async with rows as cursor:
             return await cursor.fetchall()
+        
+
+    async def get_doors_enabled(self, user_id: str) -> bool:
+        """Fetches the boss door preference for a user. Defaults to True."""
+        # Using a try/except or safe fetch in case the column was just added
+        cursor = await self.connection.execute(
+            "SELECT doors_enabled FROM users WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return bool(row[0]) if row else True
+
+    async def toggle_doors(self, user_id: str, status: bool) -> None:
+        """Updates the boss door preference."""
+        val = 1 if status else 0
+        await self.connection.execute(
+            "UPDATE users SET doors_enabled = ? WHERE user_id = ?",
+            (val, user_id)
+        )
+        await self.connection.commit()

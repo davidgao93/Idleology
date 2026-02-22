@@ -1,6 +1,4 @@
--- ALTER TABLE users ADD COLUMN partnership_runes INTEGER DEFAULT 0;
--- ALTER TABLE users ADD COLUMN last_companion_collect_time TEXT;
--- ALTER TABLE users ADD COLUMN balance_fragment INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN doors_enabled INTEGER DEFAULT 1;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,

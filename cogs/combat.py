@@ -91,17 +91,21 @@ class Combat(commands.Cog, name="combat"):
             'crit_target': player.base_crit_chance_target
         }
         # 3. Check Door Encounter
-        # We construct a currency dict manually or fetch via helper
-        currencies = {
-            'dragon_key': existing_user[25], 'angel_key': existing_user[26],
-            'soul_cores': existing_user[28], 'void_frags': existing_user[29],
-            'balance_fragment': await self.bot.database.users.get_currency(user_id, 'balance_fragment')
-        }
-        
-        triggered, boss_type, cost_dict = EncounterManager.check_boss_door(player.level, currencies)
-        
+        doors_enabled = await self.bot.database.users.get_doors_enabled(user_id)
+        triggered = False
         is_boss = False
         combat_phases = []
+        cost_dict = {}
+        boss_type = ""
+
+        if doors_enabled:
+            currencies = {
+                'dragon_key': existing_user[25], 'angel_key': existing_user[26],
+                'soul_cores': existing_user[28], 'void_frags': existing_user[29],
+                'balance_fragment': await self.bot.database.users.get_currency(user_id, 'balance_fragment')
+            }
+            
+            triggered, boss_type, cost_dict = EncounterManager.check_boss_door(player.level, currencies)
         
         if triggered:
             details = EncounterManager.get_door_details(boss_type)
