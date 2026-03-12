@@ -171,19 +171,17 @@ class CombatView(ui.View):
             
             self.logs = {self.player.name: p_log, self.monster.name: m_log}
             
-            # Update UI every turn for visual effect (slows it down but looks better)
-            # Or update every 3-5 turns for speed.
             embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
             await message.edit(embed=embed, view=self)
             await asyncio.sleep(1.0)
 
         # Loop finished
-        if self.player.current_hp <= (self.player.max_hp * 0.2) and self.monster.hp > 0:
+        if 0 < self.player.current_hp <= (self.player.max_hp * 0.2) and self.monster.hp > 0:
             self.logs["Auto-Battle"] = "🛑 Paused: Low HP Protection triggered!"
             embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
             await message.edit(embed=embed, view=self)
         else:
-            # Handle End State manually since we deferred
+            # Handle End State manually (handles both victory and death)
             await self.handle_end_state(message, interaction)
 
     @ui.button(label="Flee", style=ButtonStyle.secondary, emoji="🏃")
@@ -201,33 +199,28 @@ class CombatView(ui.View):
 
     @ui.button(label="10 Turns", style=ButtonStyle.secondary, emoji="⚡", row=1)
     async def fast_auto_btn(self, interaction: Interaction, button: ui.Button):
-        # Double check level just in case
         if self.player.level < 20:
             return await interaction.response.send_message("This unlocks at Level 20!", ephemeral=True)
 
         await interaction.response.defer()
-        
         turns_processed = 0
         
-        # Loop 10 times (Instant calculation, no sleep)
         for _ in range(10):
-            # Stop conditions
             if self.player.current_hp <= (self.player.max_hp * 0.2) or self.monster.hp <= 0:
                 break
             
-            # Logic
             p_log = engine.process_player_turn(self.player, self.monster)
             m_log = ""
             if self.monster.hp > 0:
                 m_log = engine.process_monster_turn(self.player, self.monster)
             
-            # Keep only the latest log to prevent embed overflow
             self.logs = {self.player.name: p_log, self.monster.name: m_log}
             turns_processed += 1
 
-        # Append status log
         status_msg = f"⚡ You flash forward in time, **{turns_processed}** turns have gone by."
-        if self.player.current_hp <= (self.player.max_hp * 0.2) and self.monster.hp > 0:
+        
+        # FIX: Ensure HP is strictly greater than 0 to append the pause message
+        if 0 < self.player.current_hp <= (self.player.max_hp * 0.2) and self.monster.hp > 0:
             status_msg += "\n🛑 Paused: Low HP Protection triggered!"
             
         self.logs["System"] = status_msg
@@ -236,7 +229,6 @@ class CombatView(ui.View):
         if self.player.current_hp <= 0 or self.monster.hp <= 0:
             await self.handle_end_state(interaction.message, interaction)
         else:
-            # Combat still going, just refresh UI
             await self.check_combat_state(interaction)
 
     async def check_combat_state(self, interaction: Interaction):

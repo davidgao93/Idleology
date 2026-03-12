@@ -183,9 +183,9 @@ class EquipmentRepository:
 
     async def fetch_void_forge_candidates(self, user_id: str) -> List[Tuple]:
         """Specific query for Voidforge eligibility."""
-        # Requirements: Refinement >= 5, Forges = 0, Unequipped
+        # Requirements: Unequipped, has an active passive. No refinement/forge limits.
         rows = await self.connection.execute(
-            "SELECT * FROM items WHERE user_id = ? AND refinement_lvl >= 5 AND forges_remaining = 0 AND is_equipped = 0",
+            "SELECT * FROM items WHERE user_id = ? AND passive != 'none' AND is_equipped = 0",
             (user_id,)
         )
         async with rows as cursor:

@@ -28,8 +28,8 @@ class BlackMarketView(ui.View):
         return 1.0
 
     def _get_upgrade_cost(self, target_tier):
-        base_wood = 5000
-        base_stone = 5000
+        base_wood = 50000
+        base_stone = 50000
         base_gold = 50000
         
         cost = {
@@ -40,8 +40,8 @@ class BlackMarketView(ui.View):
         
         # Special Material: Spirit Shard
         if target_tier >= 3:
-            cost['special_key'] = "spirit_shard"
-            cost['special_name'] = "Spirit Shard"
+            cost['special_key'] = "magma_core"
+            cost['special_name'] = "Magma Core"
             cost['special_qty'] = target_tier - 1 # T3=2, T4=3, T5=4
             
         return cost
@@ -316,26 +316,6 @@ class TownHallView(ui.View):
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
 
-    def _get_upgrade_cost(self, target_tier):
-        # Town Hall is expensive. Base costs higher than normal buildings.
-        base_wood = 500
-        base_stone = 500
-        base_gold = 10000
-        
-        cost = {
-            "timber": int(base_wood * (target_tier ** 1.5)),
-            "stone": int(base_stone * (target_tier ** 1.5)),
-            "gold": int(base_gold * (target_tier ** 1.5))
-        }
-        
-        # Special Materials
-        if target_tier >= 3:
-            cost['special_key'] = "spirit_shard"
-            cost['special_name'] = "Spirit Shard"
-            cost['special_qty'] = target_tier - 2 # 1 at T3, 2 at T4, 3 at T5
-            
-        return cost
-
     def build_embed(self):
         tier = self.settlement.town_hall_tier
         slots = self.settlement.building_slots
@@ -354,8 +334,11 @@ class TownHallView(ui.View):
         if tier < 5:
             costs = self._get_upgrade_cost(tier + 1)
             cost_str = f"🪵 {costs['timber']:,} | 🪨 {costs['stone']:,} | 💰 {costs['gold']:,}"
-            if 'special_key' in costs:
-                cost_str += f" | ✨ {costs['special_name']} x{costs['special_qty']}"
+            
+            # Format multiple special materials
+            if 'specials' in costs:
+                reqs = [f"{s['name']} x{s['qty']}" for s in costs['specials']]
+                cost_str += f"\n✨ **Requires:** {', '.join(reqs)}"
                 
             embed.add_field(name="Upgrade Benefits", value=f"Slots: {slots} ➡️ **{next_slots}**", inline=False)
             embed.add_field(name="Upgrade Cost", value=cost_str, inline=False)
@@ -388,25 +371,29 @@ class TownHallView(ui.View):
         if gold < costs['gold']:
             return await interaction.response.send_message("Insufficient Gold!", ephemeral=True)
 
-        if 'special_key' in costs:
-            col = costs['special_key']
-            req = costs['special_qty']
-            async with self.bot.database.connection.execute(f"SELECT {col} FROM users WHERE user_id = ?", (self.user_id,)) as c:
-                owned = (await c.fetchone())[0]
+        # 2. Check multiple special materials safely
+        if 'specials' in costs:
+            # Validate ALL balances before deducting any to prevent partial consumption on failure
+            for sp in costs['specials']:
+                async with self.bot.database.connection.execute(
+                    f"SELECT {sp['key']} FROM users WHERE user_id = ?", (self.user_id,)
+                ) as c:
+                    owned = (await c.fetchone())[0]
+                
+                if owned < sp['qty']:
+                    return await interaction.response.send_message(f"Need {sp['qty']}x {sp['name']}! (You have {owned})", ephemeral=True)
             
-            if owned < req:
-                return await interaction.response.send_message(f"Need {req}x {costs['special_name']}!", ephemeral=True)
-            
-            await self.bot.database.users.modify_currency(self.user_id, col, -req)
+            # If all checks pass, deduct them
+            for sp in costs['specials']:
+                await self.bot.database.users.modify_currency(self.user_id, sp['key'], -sp['qty'])
 
         await interaction.response.defer()
 
-        # 2. Consume Resources
+        # 3. Consume Resources
         changes = {'gold': -costs['gold'], 'timber': -costs['timber'], 'stone': -costs['stone']}
         await self.bot.database.settlement.commit_production(self.user_id, self.parent.server_id, changes)
 
-        # 3. Update DB (Settlements Table)
-        # Upgrading Town Hall adds 1 building slot
+        # 4. Update DB (Settlements Table)
         await self.bot.database.connection.execute(
             """UPDATE settlements 
                SET town_hall_tier = town_hall_tier + 1, 
@@ -416,13 +403,12 @@ class TownHallView(ui.View):
         )
         await self.bot.database.connection.commit()
 
-        # 4. Update Local State
+        # 5. Update Local State & Refresh
         self.settlement.town_hall_tier += 1
         self.settlement.building_slots += 1
         self.settlement.timber -= costs['timber']
         self.settlement.stone -= costs['stone']
         self.setup_ui()
-        # 5. Refresh
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def go_back(self, interaction: Interaction):
@@ -936,11 +922,11 @@ class BuildingDetailView(ui.View):
         "foundry": "magma_core",
         "quarry": "magma_core",
         "sawmill": "life_root",
+        "barracks": "magma_core",
         "logging_camp": "life_root",
         "reliquary": "spirit_shard",
         "temple": "spirit_shard",
         "market": "spirit_shard",
-        "barracks": "spirit_shard",
         "town_hall": "spirit_shard",
         "apothecary": "life_root",
         "companion_ranch": "life_root"
@@ -1072,7 +1058,7 @@ class BuildingDetailView(ui.View):
 
         if self.building.building_type != "town_hall":
             btn_demo = ui.Button(label="Demolish", style=ButtonStyle.danger, row=1)
-            btn_demo.callback = self.demolish_building
+            btn_demo.callback = self.demolish_prompt
             self.add_item(btn_demo)
         
         # Back
@@ -1080,10 +1066,36 @@ class BuildingDetailView(ui.View):
         btn_back.callback = self.go_back
         self.add_item(btn_back)
 
-    async def demolish_building(self, interaction: Interaction):
-        # Refunds? No. In idle games, demolition usually destroys materials.
-        # But we must return the workers to the pool.
+    async def demolish_prompt(self, interaction: Interaction):
+        """Swaps UI to ask for confirmation to prevent accidental deletion."""
+        self.clear_items()
         
+        confirm_btn = ui.Button(label="CONFIRM DEMOLISH", style=ButtonStyle.danger, emoji="⚠️")
+        confirm_btn.callback = self.execute_demolish
+        self.add_item(confirm_btn)
+        
+        cancel_btn = ui.Button(label="Cancel", style=ButtonStyle.secondary)
+        cancel_btn.callback = self.cancel_demolish
+        self.add_item(cancel_btn)
+        
+        # Overwrite embed to show warning
+        embed = self.build_embed()
+        embed.color = discord.Color.red()
+        embed.add_field(
+            name="⚠️ DEMOLITION WARNING", 
+            value="Are you sure you want to demolish this building?\nWorkers will be returned, but **all materials spent on construction and upgrades will be permanently lost.**", 
+            inline=False
+        )
+        
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def cancel_demolish(self, interaction: Interaction):
+        """Reverts back to the standard building UI."""
+        self.setup_ui()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def execute_demolish(self, interaction: Interaction):
+        """The actual database execution after confirmation."""
         await interaction.response.defer()
         
         # 1. Remove from DB
@@ -1093,7 +1105,6 @@ class BuildingDetailView(ui.View):
         await self.bot.database.connection.commit()
         
         # 2. Update Local State
-        # Remove building from parent list so it vanishes from grid
         self.parent.settlement.buildings = [
             b for b in self.parent.settlement.buildings if b.id != self.building.id
         ]

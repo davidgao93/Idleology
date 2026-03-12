@@ -73,10 +73,8 @@ class AscentView(ui.View):
         await interaction.response.defer()
         message = interaction.message
         
-        # [FIX] Run batches of 10 turns
         while self.player.current_hp > (self.player.max_hp * 0.2) and self.monster.hp > 0:
             
-            # Process up to 10 turns instantly
             for _ in range(10):
                 if self.player.current_hp <= (self.player.max_hp * 0.2) or self.monster.hp <= 0:
                     break
@@ -86,18 +84,15 @@ class AscentView(ui.View):
                 if self.monster.hp > 0:
                     m_log = engine.process_monster_turn(self.player, self.monster)
                 
-                # Update logs continuously so the last one seen is accurate
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
-            # Update UI periodically (after every batch)
             if self.monster.hp > 0 and self.player.current_hp > (self.player.max_hp * 0.2):
                 await self.refresh_ui(message=message)
-                await asyncio.sleep(1.0) # Small delay for visual pacing
+                await asyncio.sleep(1.0)
             else:
-                break # Exit main loop to handle state
+                break 
 
-        # Check why loop ended
-        if self.player.current_hp <= (self.player.max_hp * 0.2) and self.monster.hp > 0:
+        if 0 < self.player.current_hp <= (self.player.max_hp * 0.2) and self.monster.hp > 0:
             self.logs["Auto-Battle"] = "Paused: Low HP protection!"
             await self.refresh_ui(message=message)
         else:

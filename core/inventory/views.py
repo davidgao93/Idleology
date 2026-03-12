@@ -2,6 +2,7 @@ import discord
 from discord import Interaction, ButtonStyle
 from discord.ui import View, Button
 from typing import List, Any
+import asyncio
 
 # Core Imports
 from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
@@ -9,6 +10,97 @@ from core.ui.inventory import InventoryUI
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.inventory.upgrade_views import ForgeView, RefineView, PotentialView, ShatterView, TemperView, ImbueView, VoidforgeView
 from core.companions.mechanics import CompanionMechanics
+
+class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
+    level_input = discord.ui.TextInput(
+        label="Max Item Level to Discard",
+        placeholder="e.g. 50 (Discards <= 50)",
+        min_length=1,
+        max_length=3
+    )
+    
+    def __init__(self, parent_view):
+        super().__init__()
+        self.parent_view = parent_view
+        
+    async def on_submit(self, interaction: Interaction):
+        try:
+            level_limit = int(self.level_input.value)
+        except ValueError:
+            return await interaction.response.send_message("Please enter a valid number.", ephemeral=True)
+            
+        # Filter logic: Must not be equipped, must be <= requested level
+        items_to_delete = [
+            item for item in self.parent_view.items 
+            if not getattr(item, 'is_equipped', False) and item.level <= level_limit
+        ]
+        
+        if not items_to_delete:
+            return await interaction.response.send_message(f"No unequipped items found at or below level {level_limit}.", ephemeral=True)
+            
+        await interaction.response.defer()
+        
+        itype = self.parent_view._get_db_type()
+        total_xp_val = 0
+        
+        # Execute DB Deletions
+        for item in items_to_delete:
+            total_xp_val += CompanionMechanics.calculate_feed_xp(item)
+            await self.parent_view.bot.database.equipment.discard(item.item_id, itype)
+            
+        # Distribute XP
+        xp_msg = ""
+        active_rows = await self.parent_view.bot.database.companions.get_active(self.parent_view.user_id)
+        
+        if active_rows and total_xp_val > 0:
+            xp_per_pet = total_xp_val // len(active_rows)
+            if xp_per_pet > 0:
+                leveled_up_names = []
+                for row in active_rows:
+                    comp_id, name, current_lvl, current_exp = row[0], row[2], row[5], row[6]
+                    current_exp += xp_per_pet
+                    
+                    did_level = False
+                    while current_lvl < 100: # 100 is max level
+                        req_xp = CompanionMechanics.calculate_next_level_xp(current_lvl)
+                        if current_exp >= req_xp:
+                            current_exp -= req_xp
+                            current_lvl += 1
+                            did_level = True
+                        else:
+                            break
+                            
+                    await self.parent_view.bot.database.companions.update_stats(comp_id, current_lvl, current_exp)
+                    if did_level:
+                        leveled_up_names.append(f"{name} (Lv.{current_lvl})")
+                        
+                xp_msg = f"\n🐾 Active pets gained **{xp_per_pet:,} XP** each."
+                if leveled_up_names:
+                    xp_msg += f"\n🎉 **Level Up:** {', '.join(leveled_up_names)}"
+        
+        # Update List State
+        deleted_ids = {i.item_id for i in items_to_delete}
+        self.parent_view.items = [i for i in self.parent_view.items if i.item_id not in deleted_ids]
+        
+        # Recalculate pages
+        self.parent_view.total_pages = max(1, (len(self.parent_view.items) + self.parent_view.items_per_page - 1) // self.parent_view.items_per_page)
+        if self.parent_view.current_page >= self.parent_view.total_pages:
+            self.parent_view.current_page = max(0, self.parent_view.total_pages - 1)
+            
+        self.parent_view.update_buttons()
+        
+        # Show temporary popup
+        temp_embed = discord.Embed(title="Mass Discard Complete", color=discord.Color.red())
+        temp_embed.description = f"🗑️ Dismantled **{len(items_to_delete)}** items (Level <= {level_limit}).{xp_msg}"
+        
+        await interaction.edit_original_response(content=None, embed=temp_embed, view=None)
+        
+        await asyncio.sleep(1.5)
+        
+        # Revert to List View
+        list_embed = await self.parent_view.get_current_embed(interaction.user.display_name)
+        await interaction.edit_original_response(embed=list_embed, view=self.parent_view)
+
 
 class InventoryListView(View):
     """
@@ -25,40 +117,60 @@ class InventoryListView(View):
         self.current_page = 0
         self.items_per_page = 5
         self.total_pages = (len(items) + self.items_per_page - 1) // self.items_per_page
+        if self.total_pages == 0: self.total_pages = 1
         
         # Equipped ID tracking
-        self.equipped_id = next((i.item_id for i in items if i.is_equipped), None)
+        self.equipped_id = next((i.item_id for i in items if getattr(i, 'is_equipped', False)), None)
 
         self.update_buttons()
 
+    def _get_db_type(self) -> str:
+        """Helper to determine the item type currently being displayed."""
+        if not self.items: return 'weapon'
+        item = self.items[0]
+        if isinstance(item, Weapon): return 'weapon'
+        if isinstance(item, Armor): return 'armor'
+        if isinstance(item, Accessory): return 'accessory'
+        if isinstance(item, Glove): return 'glove'
+        if isinstance(item, Boot): return 'boot'
+        if isinstance(item, Helmet): return 'helmet'
+        return 'weapon'
+
     def update_buttons(self):
         self.clear_items()
-        
 
-        # Selection Buttons (1-5)
+        # Selection Buttons (1-5) Row 0
         start = self.current_page * self.items_per_page
         end = start + self.items_per_page
         current_batch = self.items[start:end]
 
         for i, item in enumerate(current_batch):
-            btn = Button(label=f"{i+1}", style=ButtonStyle.primary, custom_id=f"select_{i}")
+            btn = Button(label=f"{i+1}", style=ButtonStyle.primary, custom_id=f"select_{i}", row=0)
             btn.callback = lambda i_interaction, it=item: self.select_item(i_interaction, it)
             self.add_item(btn)
 
-        # Navigation Buttons
+        # Navigation Buttons (Row 1)
         if self.total_pages > 1:
-            prev_btn = Button(label="Prev", custom_id="prev", disabled=(self.current_page == 0))
+            prev_btn = Button(label="Prev", custom_id="prev", disabled=(self.current_page == 0), row=1)
             prev_btn.callback = self.prev_page
             self.add_item(prev_btn)
 
-            next_btn = Button(label="Next", custom_id="next", disabled=(self.current_page == self.total_pages - 1))
+            next_btn = Button(label="Next", custom_id="next", disabled=(self.current_page == self.total_pages - 1), row=1)
             next_btn.callback = self.next_page
             self.add_item(next_btn)
 
-        # 3. Close
-        close_btn = Button(label="Close", style=ButtonStyle.danger, custom_id="close")
+        # Bottom Controls (Row 2)
+        mass_btn = Button(label="Mass Discard", style=ButtonStyle.danger, custom_id="mass_discard", emoji="🗑️", row=2)
+        mass_btn.disabled = len(self.items) == 0
+        mass_btn.callback = self.mass_discard_callback
+        self.add_item(mass_btn)
+
+        close_btn = Button(label="Close", style=ButtonStyle.secondary, custom_id="close", row=2)
         close_btn.callback = self.close_view
         self.add_item(close_btn)
+
+    async def mass_discard_callback(self, interaction: Interaction):
+        await interaction.response.send_modal(MassDiscardModal(self))
 
     async def get_current_embed(self, user_name: str):
         start = self.current_page * self.items_per_page
@@ -175,7 +287,7 @@ class ItemDetailView(View):
                 self.add_upgrade_button("Forge", ButtonStyle.success, "forge")
             self.add_upgrade_button("Refine", ButtonStyle.secondary, "refine")
             
-            if self.void_keys > 0 and self.is_equipped and self.item.u_passive == 'none':
+            if self.void_keys > 0 and self.item.passive != 'none' and self.item.u_passive == 'none':
                  self.add_upgrade_button("Voidforge", ButtonStyle.primary, "voidforge")
             self.add_upgrade_button("Shatter", ButtonStyle.danger, "shatter")  
 
@@ -287,37 +399,29 @@ class ItemDetailView(View):
             await self.finalize_discard(interaction)
 
     async def finalize_discard(self, interaction: Interaction):
-        """Performs the actual DB deletion and returns to list."""
-        # 1. Defer immediately to prevent timeout errors and allow heavy DB logic
+        """Performs the actual DB deletion and returns to list via a brief flash."""
         if not interaction.response.is_done():
             await interaction.response.defer()
 
         itype = self._get_db_type()
 
         # --- [FEED LOGIC] ---
-        # 1. Get ONLY active companions
         active_rows = await self.bot.database.companions.get_active(self.user_id)
+        xp_msg = ""
         
         if active_rows:
-            # Calculate XP
             total_xp_val = CompanionMechanics.calculate_feed_xp(self.item)
-            # Integer division to split evenly
             xp_per_pet = total_xp_val // len(active_rows)
             
             if xp_per_pet > 0:
                 leveled_up_names = []
-                
                 for row in active_rows:
-                    # Unpack tuple: id(0), ..., level(5), exp(6)
                     comp_id = row[0]
                     name = row[2]
                     current_lvl = row[5]
                     current_exp = row[6]
                     
-                    # Add XP
                     current_exp += xp_per_pet
-                    
-                    # Handle Level Up Loop
                     did_level = False
                     while current_lvl < 100:
                         req_xp = CompanionMechanics.calculate_next_level_xp(current_lvl)
@@ -327,38 +431,35 @@ class ItemDetailView(View):
                             did_level = True
                         else:
                             break
-                    
-                    # Commit changes
+                            
                     await self.bot.database.companions.update_stats(comp_id, current_lvl, current_exp)
                     if did_level:
                         leveled_up_names.append(f"{name} (Lv.{current_lvl})")
 
-                # Feedback
-                msg = f"🍖 Fed to pets! +{xp_per_pet} XP each."
+                xp_msg = f"\n🐾 Active pets gained **{xp_per_pet:,} XP** each."
                 if leveled_up_names:
-                    msg += f"\n🎉 **Level Up:** {', '.join(leveled_up_names)}!"
-                
-                # Now safe to use followup because we deferred
-                try: await interaction.followup.send(msg, ephemeral=True)
-                except: pass
-        # --------------------
-
+                    xp_msg += f"\n🎉 **Level Up:** {', '.join(leveled_up_names)}"
+        
+        # Discard DB
         await self.bot.database.equipment.discard(self.item.item_id, itype)
         
-        # Remove from parent View's list so it doesn't show up again
+        # Update List State
         self.parent.items = [i for i in self.parent.items if i.item_id != self.item.item_id]
-        
-        # Update parent pagination in case we deleted the last item on a page
-        self.parent.total_pages = (len(self.parent.items) + self.parent.items_per_page - 1) // self.parent.items_per_page if self.parent.items else 1
+        self.parent.total_pages = max(1, (len(self.parent.items) + self.parent.items_per_page - 1) // self.parent.items_per_page)
         if self.parent.current_page >= self.parent.total_pages:
             self.parent.current_page = max(0, self.parent.total_pages - 1)
-            
         self.parent.update_buttons()
         
-        embed = await self.parent.get_current_embed(interaction.user.display_name)
+        # Brief Popup (Replaces the annoying ephemeral followup)
+        temp_embed = discord.Embed(title="Item Discarded", color=discord.Color.red())
+        temp_embed.description = f"🗑️ **{self.item.name}** was dismantled.{xp_msg}"
         
-        # Since we deferred at the start, we MUST use edit_original_response
-        await interaction.edit_original_response(content="🗑️ **Item discarded.**", embed=embed, view=self.parent)
+        await interaction.edit_original_response(content=None, embed=temp_embed, view=None)
+        await asyncio.sleep(1.0) # Wait 1.5s
+        
+        # Return to List View
+        embed = await self.parent.get_current_embed(interaction.user.display_name)
+        await interaction.edit_original_response(embed=embed, view=self.parent)
 
     async def go_back(self, interaction: Interaction):
         embed = await self.parent.get_current_embed(interaction.user.display_name)

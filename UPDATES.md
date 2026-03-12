@@ -1,3 +1,12 @@
+### Version 0.73
+Added mass discard, you can pick an item level threshold to discard all excess equipment
+Discarding equipment no longer spams you with discard messages
+Removed random equipment from pet loot and moved it to gold
+Discarding equipment pet exp has been increased by 500%
+Pet drops have been adjusted
+Pet ranch exp rates have been adjusted
+Demolishing buildings now asks you to confirm
+
 ### Version 0.72
 3 new settlement buildings:
     Companion Ranch - generates companion cookies that provide XP for pets

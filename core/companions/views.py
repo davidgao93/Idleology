@@ -218,8 +218,12 @@ class CompanionDetailView(ui.View):
         embed.add_field(name="Status", value=status, inline=True)
         embed.add_field(name="Level", value=f"{self.comp.level}", inline=True)
         
-        next_xp = CompanionMechanics.calculate_next_level_xp(self.comp.level)
-        embed.add_field(name="EXP", value=f"{self.comp.exp}/{next_xp}", inline=True)
+        # Cleanly display Max Level
+        if self.comp.level >= CompanionMechanics.MAX_LEVEL:
+            embed.add_field(name="EXP", value="Max Level", inline=True)
+        else:
+            next_xp = CompanionMechanics.calculate_next_level_xp(self.comp.level)
+            embed.add_field(name="EXP", value=f"{self.comp.exp}/{next_xp}", inline=True)
         
         embed.add_field(name="Passive", value=f"T{self.comp.passive_tier} **{self.comp.description}**", inline=False)
         embed.set_footer(text=f"Species: {self.comp.species}")

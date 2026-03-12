@@ -42,7 +42,7 @@ class CompanionMechanics:
         elif hasattr(item, 'passive_lvl') and item.passive_lvl > 0:
             xp += (item.passive_lvl * 50)
             
-        return xp
+        return xp * 5
 
     # --- PASSIVE GENERATION ---
 
@@ -53,7 +53,7 @@ class CompanionMechanics:
         is_capture: Weighted heavily towards T1/T2.
         """
         # Roll Type
-        if random.random() < 0.05: # 5% chance for Special Rarity
+        if random.random() < 0.01: # 1% chance for Special Rarity
             p_type = 's_rarity'
         else:
             p_type = random.choice(CompanionMechanics.PASSIVE_TYPES)
@@ -103,7 +103,7 @@ class CompanionMechanics:
             new_type = pick_standard()
         else:
             # If standard, we roll for s_rarity or different standard
-            if random.random() < 0.05:
+            if random.random() < 0.01:
                 new_type = 's_rarity'
             else:
                 new_type = pick_standard()
@@ -151,25 +151,23 @@ class CompanionMechanics:
         # Loot Weights (Sum = 105, random.choices handles normalization)
         loot_types = [
             "Gold", "Boss Key", "Rune of Refinement", 
-            "Rune of Potential", "Rune of Shattering", "Equipment"
+            "Rune of Potential", "Rune of Shattering",
         ]
-        loot_weights = [50, 20, 5, 5, 10, 10]
+        loot_weights = [75, 10, 5, 5, 5]
 
         for comp in companions:
-            # Chance to find *anything* this cycle: 1% per level
-            find_chance = comp.level * 0.01
+            # Chance to find *anything* this cycle: 0.5% per level
+            find_chance = comp.level * 0.005
             
             # Optimization: If 100% chance (Lvl 100), just generate 'cycles' amount of loot
             # Otherwise, simulate checks
             successful_rolls = 0
-            if find_chance >= 1.0:
-                successful_rolls = cycles
-            else:
-                # Binomial simulation approx or simple loop
-                for _ in range(cycles):
-                    if random.random() < find_chance:
-                        successful_rolls += 1
-            
+
+            # Binomial simulation approx or simple loop
+            for _ in range(cycles):
+                if random.random() < find_chance:
+                    successful_rolls += 1
+        
             if successful_rolls > 0:
                 # Batch roll types
                 results = random.choices(loot_types, weights=loot_weights, k=successful_rolls)
@@ -241,7 +239,7 @@ class CompanionMechanics:
         Always Tier 3 (as per specification).
         """
         # 5% chance for Special Rarity, otherwise standard types
-        if random.random() < 0.05:
+        if random.random() < 0.25:
             p_type = 's_rarity'
         else:
             p_type = random.choice(CompanionMechanics.PASSIVE_TYPES)
