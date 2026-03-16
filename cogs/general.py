@@ -193,14 +193,22 @@ class General(commands.Cog, name="general"):
             content_added = True
 
         elif category == 'armor':
-            embed.title = "🛡️ Armor Passives (Unique Effects)"
+            embed.title = "🛡️ Armor Passives"
             armor_text = (
-                "**Invulnerable**: 20% chance to take 0 damage for the whole fight.\n\n"
-                "**Mystical Might**: 20% chance to deal 10x damage (Combat Start).\n\n"
-                "**Omnipotent**: 50% chance to Double Atk, Def, and gain Max HP as Ward (Combat Start).\n\n"
-                "**Treasure Hunter**: +5% chance to encounter Treasure Mobs.\n\n"
-                "**Unlimited Wealth**: 20% chance to multiply Player Rarity by 5x (2x vs Bosses).\n\n"
-                "**Everlasting Blessing**: 10% chance on victory to trigger Ideology Propagation."
+                "**Standard Passives:**\n"
+                "**Invulnerable**: 20% chance to take 0 damage for the whole fight.\n"
+                "**Mystical Might**: 20% chance to deal 10x damage (Combat Start).\n"
+                "**Omnipotent**: 50% chance to Double Atk, Def, and gain Max HP as Ward (Combat Start).\n"
+                "**Treasure Hunter**: +5% chance to encounter Treasure Mobs.\n"
+                "**Unlimited Wealth**: 20% chance to multiply Player Rarity by 5x (2x vs Bosses).\n"
+                "**Everlasting Blessing**: 10% chance on victory to trigger Ideology Propagation.\n\n"
+                "**🌌 Celestial Passives (Engram):**\n"
+                "**Celestial Ward Regen**: Generate 50-150 Ward every turn.\n"
+                "**Celestial Double Block**: Doubles Block Chance, but Blocked hits deal 50% Bleedthrough damage.\n"
+                "**Celestial Triple Evade No Helmet**: Triples Evasion Chance, but entirely disables your Helmet.\n"
+                "**Celestial Unlucky Enemy**: Enemies roll their final damage twice and apply the lower result.\n"
+                "**Celestial Vow**: Once per combat, survive a fatal blow at 1 HP and gain 50% Max HP as Ward.\n"
+                "**Celestial Fortress**: Gain +1% Percent Damage Reduction for every 5% missing HP."
             )
             embed.description = armor_text
             content_added = True

@@ -1,4 +1,5 @@
 -- ALTER TABLE users ADD COLUMN doors_enabled INTEGER DEFAULT 1;
+ALTER TABLE armor ADD COLUMN celestial_armor_passive TEXT DEFAULT 'none';
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -90,7 +91,8 @@ CREATE TABLE IF NOT EXISTS `armor` (
   `temper_remaining` INTEGER DEFAULT 0,
   `imbue_remaining` INTEGER DEFAULT 1,
   `pdr` INTEGER DEFAULT 0,
-  `fdr` INTEGER DEFAULT 0
+  `fdr` INTEGER DEFAULT 0,
+  `celestial_armor_passive` TEXT NOT NULL DEFAULT 'none'
 );
 
 CREATE TABLE IF NOT EXISTS `gloves` (
@@ -214,6 +216,7 @@ CREATE TABLE IF NOT EXISTS settlements (
     timber INTEGER DEFAULT 0, -- Specific settlement resource
     stone INTEGER DEFAULT 0,  -- Specific settlement resource
     last_collection_time TEXT,
+    celestial_stone INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );
 
@@ -250,5 +253,14 @@ CREATE TABLE IF NOT EXISTS slayer_emblems (
     slot_3_type TEXT DEFAULT 'none', slot_3_tier INTEGER DEFAULT 1,
     slot_4_type TEXT DEFAULT 'none', slot_4_tier INTEGER DEFAULT 1,
     slot_5_type TEXT DEFAULT 'none', slot_5_tier INTEGER DEFAULT 1,
+    PRIMARY KEY (user_id, server_id)
+);
+
+CREATE TABLE IF NOT EXISTS uber_progress (
+    user_id TEXT NOT NULL,
+    server_id TEXT NOT NULL,
+    celestial_sigils INTEGER DEFAULT 0,
+    celestial_engrams INTEGER DEFAULT 0,
+    celestial_blueprint_unlocked INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );

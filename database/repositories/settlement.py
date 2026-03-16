@@ -9,9 +9,8 @@ class SettlementRepository:
         self.connection = connection
 
     async def get_settlement(self, user_id: str, server_id: str) -> Settlement:
-        """Fetches settlement or creates default if missing."""
         cursor = await self.connection.execute(
-            "SELECT * FROM settlements WHERE user_id = ? AND server_id = ?",
+            "SELECT user_id, server_id, town_hall_tier, building_slots, timber, stone, last_collection_time, celestial_stone FROM settlements WHERE user_id = ? AND server_id = ?",
             (user_id, server_id)
         )
         row = await cursor.fetchone()
@@ -19,19 +18,19 @@ class SettlementRepository:
         if not row:
             # Create Default
             await self.connection.execute(
-                "INSERT INTO settlements (user_id, server_id, town_hall_tier, building_slots, last_collection_time) VALUES (?, ?, 1, 5, datetime('now'))",
+                "INSERT INTO settlements (user_id, server_id, town_hall_tier, building_slots, last_collection_time, celestial_stone) VALUES (?, ?, 1, 5, datetime('now'), 0)",
                 (user_id, server_id)
             )
             await self.connection.commit()
-            return await self.get_settlement(user_id, server_id) # Recurse once
+            return await self.get_settlement(user_id, server_id)
 
         # Fetch Buildings
         settlement = Settlement(
             user_id=row[0], server_id=row[1], town_hall_tier=row[2],
             building_slots=row[3], timber=row[4], stone=row[5], 
-            last_collection_time=row[6]
+            last_collection_time=row[6], celestial_stone=row[7] # <-- MAPPED HERE
         )
-        
+
         b_cursor = await self.connection.execute(
             "SELECT * FROM buildings WHERE user_id = ? AND server_id = ? ORDER BY slot_index ASC",
             (user_id, server_id)
@@ -44,6 +43,13 @@ class SettlementRepository:
         ]
         
         return settlement
+
+    async def modify_celestial_stone(self, user_id: str, server_id: str, amount: int) -> None:
+        await self.connection.execute(
+            "UPDATE settlements SET celestial_stone = celestial_stone + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id)
+        )
+        await self.connection.commit()
 
     async def build_structure(self, user_id: str, server_id: str, b_type: str, slot: int) -> None:
         await self.connection.execute(

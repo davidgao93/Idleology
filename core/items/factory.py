@@ -60,7 +60,7 @@ def create_armor(data: tuple) -> Armor:
     Maps a database tuple from table `armor` to an Armor object.
     Schema: item_id(0), user_id(1), item_name(2), item_level(3), block(4), evasion(5), 
             ward(6), armor_passive(7), is_equipped(8), temper_remaining(9), 
-            imbue_remaining(10), pdr(11), fdr(12)
+            imbue_remaining(10), pdr(11), fdr(12), celestial_armor_passive(13)
     """
     if not data: 
         return None
@@ -79,6 +79,7 @@ def create_armor(data: tuple) -> Armor:
         imbue_remaining=data[10],
         pdr=data[11],
         fdr=data[12],
+        celestial_passive=data[13] if len(data) > 13 else "none", # Safely fetch the new column
         description=""
     )
 
@@ -273,4 +274,8 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         
         if player.equipped_boot.passive == "speedster" and player.equipped_boot.passive_lvl > 0:
             player.combat_cooldown_reduction_seconds = player.equipped_boot.passive_lvl * 60
+    
+    if player.get_celestial_armor_passive() == "celestial_triple_evade_no_helmet":
+        player.equipped_helmet = None # Completely nullify the helmet stats/passives
+
     return player

@@ -267,6 +267,28 @@ class EquipmentMechanics:
             amount = max(1, random.randint(int(armor.level // 100), int(armor.level // 25)))
         
         return True, stat, amount
+    
+
+    @staticmethod
+    def roll_celestial_passive(current_passive: str) -> str:
+        """
+        Rolls a new Celestial Armor passive. 
+        Guarantees a different passive if the armor already has one.
+        """
+        # Placeholder list for Phase 1. We will expand this in Phase 2.
+        pool = ["celestial_ward_regen", 
+            "celestial_double_block", 
+            "celestial_triple_evade_no_helmet",
+            "celestial_unlucky_enemy",
+            "celestial_vow",
+            "celestial_fortress"
+        ]
+        
+        available = [p for p in pool if p != current_passive]
+        if not available:
+            available = pool # Fallback
+            
+        return random.choice(available)
 
     # --- POTENTIAL (Accessory) LOGIC ---
     @staticmethod

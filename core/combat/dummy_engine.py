@@ -174,3 +174,51 @@ class DummyEngine:
             average_damage=total_damage / turns,
             turns=turns
         )
+
+    @staticmethod
+    def assess_readiness(player: Player, target: str) -> str:
+        """Runs a fast simulation against a target proxy to gauge difficulty."""
+        if target == "aphrodite_uber":
+            # Approximate the Uber stats to test against
+            ref_lvl = player.level + player.ascension + 20
+            m_atk = int(ref_lvl * 1.5) + 25  # Level scaling + Absolute mod estimate
+            m_def = int(ref_lvl * 1.5) + 25
+            
+            proxy_boss = Monster(
+                name="Proxy", level=ref_lvl, hp=999999, max_hp=999999, xp=0,
+                attack=m_atk, defence=m_def,
+                modifiers=["Radiant Protection"], # Important for DPS reduction
+                image="", flavor=""
+            )
+            
+            # 1. Test Player DPS
+            res = DummyEngine.run_simulation(player, proxy_boss, turns=50)
+            dps = res.average_damage
+            
+            # 2. Test Player Survivability (Estimate incoming dmg)
+            from core.combat.calcs import calculate_monster_hit_chance, calculate_damage_taken
+            
+            # Fast manual simulation of incoming damage over 10 turns
+            total_inc_dmg = 0
+            for _ in range(10):
+                hit_chance = calculate_monster_hit_chance(player, proxy_boss)
+                if random.random() <= hit_chance:
+                    total_inc_dmg += calculate_damage_taken(player, proxy_boss)
+            
+            avg_inc_dmg = total_inc_dmg / 10.0
+            
+            # 3. Evaluate Results
+            # Baseline assumptions:
+            # Uber HP is ~ 10x (Level^1.4) 
+            # If DPS is very low, or Incoming Dmg is high relative to max HP = Not Ready
+            
+            time_to_die = player.max_hp / avg_inc_dmg if avg_inc_dmg > 0 else 999
+            
+            if time_to_die < 5:
+                return "You feel as if you are **not ready**. The aura alone crushes you."
+            elif dps < (player.max_hp * 0.1) and time_to_die < 15:
+                return "You feel this would be a **tough battle**. Survival is uncertain."
+            else:
+                return "You are **filled with determination**. Press onwards."
+                
+        return "Unknown target."

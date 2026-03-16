@@ -610,7 +610,8 @@ class SettlementDashboardView(ui.View):
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
     async def open_build_menu(self, interaction: Interaction, slot_index: int):
-        view = BuildConstructionView(self.bot, self.user_id, slot_index, self)
+        uber_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+        view = BuildConstructionView(self.bot, self.user_id, slot_index, self, uber_prog)
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
     async def open_building(self, interaction: Interaction, building: Building):
@@ -750,16 +751,18 @@ class BuildConstructionView(ui.View):
         "temple":       "Passive: +0.05% Propagate follower gain per assigned Worker.",
         "apothecary":   "Passive: Increases Potion Healing (+0.2 HP per assigned Worker).",
         "black_market": "Special: Trade resources for Caches.",
-        "companion_ranch": "Generator: Produces XP Cookies for pets."
+        "companion_ranch": "Generator: Produces XP Cookies for pets.",
+        "celestial_shrine": "Passive: Increases chance to find Celestial Sigils from Aphrodite."
     }
 
-    def __init__(self, bot, user_id, slot_index, parent_view):
+    def __init__(self, bot, user_id, slot_index, parent_view, uber_prog):
         super().__init__(timeout=60)
         self.bot = bot
         self.user_id = user_id
         self.slot_index = slot_index
         self.parent = parent_view
-        
+        self.uber_prog = uber_prog
+
         self.COSTS = {
             "logging_camp": {"gold": 100, "stone": 0},
             "quarry":       {"gold": 100, "timber": 0},
@@ -771,7 +774,8 @@ class BuildConstructionView(ui.View):
             "temple":       {"gold": 20000, "timber": 1500, "stone": 1500},
             "apothecary":       {"gold": 25000, "timber": 2000, "stone": 2000},
             "black_market":     {"gold": 50000, "timber": 5000, "stone": 5000},
-            "companion_ranch":  {"gold": 30000, "timber": 3000, "stone": 3000}
+            "companion_ranch":  {"gold": 30000, "timber": 3000, "stone": 3000},
+            "celestial_shrine": {"gold": 100000, "timber": 100000, "stone": 100000}
         }
         
         self.setup_select()
@@ -830,6 +834,9 @@ class BuildConstructionView(ui.View):
         
         for key, cost in self.COSTS.items():
             if key in existing_types: continue
+
+            if key == "celestial_shrine" and self.uber_prog['celestial_blueprint_unlocked'] == 0:
+                continue
 
             lbl = key.replace("_", " ").title()
             # Brief description for dropdown
@@ -929,7 +936,8 @@ class BuildingDetailView(ui.View):
         "market": "spirit_shard",
         "town_hall": "spirit_shard",
         "apothecary": "life_root",
-        "companion_ranch": "life_root"
+        "companion_ranch": "life_root",
+        "celestial_shrine": "celestial_stone"
     }
 
     ITEM_NAMES = {
@@ -950,7 +958,8 @@ class BuildingDetailView(ui.View):
         "temple": "https://i.imgur.com/4bmHF4u.png",
         "apothecary": "https://i.imgur.com/vfJuogU.png", 
         "black_market": "https://i.imgur.com/ZMle2mm.png",
-        "companion_ranch": "https://i.imgur.com/7gPxP4N.png"
+        "companion_ranch": "https://i.imgur.com/7gPxP4N.png",
+        "celestial_shrine": "https://i.imgur.com/4bmHF4u.png",
     }
 
     BUILDING_INFO = {

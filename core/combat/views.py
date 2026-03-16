@@ -320,6 +320,24 @@ class CombatView(ui.View):
             special_flags = rewards.check_special_drops(self.player, self.monster)
             reward_data['special'] = []
             
+
+            if "Aphrodite" in self.monster.name and not getattr(self.monster, 'is_uber', False):
+                _, shrine_workers = await self.bot.database.settlement.get_building_details(self.user_id, self.server_id, "celestial_shrine")
+                
+                # Base 10% chance. +1% per assigned worker.
+                total_chance = 0.10 + (shrine_workers * 0.0001)
+                guaranteed_sigils = int(total_chance)
+                fractional_chance = total_chance - guaranteed_sigils
+                
+                sigils_dropped = guaranteed_sigils
+                if random.random() < fractional_chance:
+                    sigils_dropped += 1
+                    
+                if sigils_dropped > 0:
+                    await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, sigils_dropped)
+                    reward_data['special'].extend(["Celestial Sigil"] * sigils_dropped)
+
+
             # Grant Currencies based on flags
             for key, val in special_flags.items():
                 if val:
@@ -530,3 +548,75 @@ class CombatView(ui.View):
             self.bot.state_manager.clear_active(self.user_id)
             await self.bot.database.users.update_from_player_object(self.player)
             self.stop()
+
+
+    async def _handle_uber_end_state(self, message, interaction: Interaction):
+        """Specialized logic for the Uber Aphrodite encounter."""
+        max_hp = self.monster.max_hp
+        rem_hp = max(0, self.monster.hp)
+        
+        # Calculate Damage Fraction
+        dmg_frac = max(0.0, min(1.0, (max_hp - rem_hp) / max_hp))
+
+        # 1. Curio Rewards (Scale with Damage)
+        curios = 1
+        if dmg_frac >= 1.0: curios = 5
+        elif dmg_frac >= 0.75: curios = 4
+        elif dmg_frac >= 0.50: curios = 3
+        elif dmg_frac >= 0.25: curios = 2
+
+        await self.bot.database.users.modify_currency(self.user_id, 'curios', curios)
+        log_msgs = [f"🎁 You dealt {dmg_frac*100:.1f}% damage and extracted **{curios} Curious Curios**!"]
+
+        # 2. Defeat vs Victory
+        if self.player.current_hp <= 0:
+            # Defeat
+            xp_loss = int(self.player.exp * 0.10)
+            self.player.exp = max(0, self.player.exp - xp_loss)
+            self.player.current_hp = 1
+            
+            embed = combat_ui.create_defeat_embed(self.player, self.monster, xp_loss)
+            embed.title = "The Apex Remains Unbroken"
+            embed.add_field(name="Extracts", value="\n".join(log_msgs), inline=False)
+            
+            await message.edit(embed=embed, view=None)
+
+        else:
+            # Full Kill Victory
+            reward_data = rewards.calculate_rewards(self.player, self.monster)
+            
+            # Double Base XP & Gold
+            reward_data['xp'] *= 2
+            reward_data['gold'] *= 2
+            
+            # 3. Celestial Engram Roll (10%)
+            if random.random() < 0.10:
+                await self.bot.database.uber.increment_engrams(self.user_id, self.server_id, 1)
+                log_msgs.append("🌌 **A Celestial Engram materializes from Aphrodite's shattered form...**")
+            
+            # 4. Blueprint / Stone Roll (10%)
+            if random.random() < 0.10:
+                u_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+                if u_prog['celestial_blueprint_unlocked'] == 0:
+                    await self.bot.database.uber.set_blueprint_unlocked(self.user_id, self.server_id, True)
+                    log_msgs.append("📜 **You found the Celestial Shrine Blueprint!**")
+                else:
+                    await self.bot.database.settlement.modify_celestial_stone(self.user_id, self.server_id, 1)
+                    log_msgs.append("🪨 **You found a Celestial Stone!**")
+                    
+            reward_data['msgs'].extend(log_msgs)
+            
+            # DB Commits
+            self.player.exp += reward_data['xp']
+            await self.bot.database.users.modify_gold(self.user_id, reward_data['gold'])
+            
+            # Show Standard Victory UI with modifications
+            embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+            embed.title = "🌌 DEICIDE: Apex Shattered!"
+            embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg") 
+            await message.edit(embed=embed, view=None)
+
+        # Cleanup
+        self.bot.state_manager.clear_active(self.user_id)
+        await self.bot.database.users.update_from_player_object(self.player)
+        self.stop()

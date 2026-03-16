@@ -52,6 +52,7 @@ class Armor:
     is_equipped: bool = False
     temper_remaining: int = 0
     imbue_remaining: int = 0
+    celestial_passive: str = 'none'
 
 @dataclass
 class Glove:
@@ -194,7 +195,8 @@ class Player:
     combat_ward: int = 0
     is_invulnerable_this_combat: bool = False
     combat_cooldown_reduction_seconds: int = 0
-
+    celestial_vow_used: bool = False
+    
     # Glove passives
     equilibrium_bonus_xp_pending: int = 0
     plundering_bonus_gold_pending: int = 0
@@ -317,6 +319,9 @@ class Player:
     def get_armor_passive(self) -> str:
         return self.equipped_armor.passive if self.equipped_armor else "none"
     
+    def get_celestial_armor_passive(self) -> str:
+        return self.equipped_armor.celestial_passive if self.equipped_armor else "none"
+    
     def get_accessory_passive(self) -> str:
         return self.equipped_accessory.passive if self.equipped_accessory else "none"
     
@@ -392,6 +397,7 @@ class Settlement:
     timber: int
     stone: int
     last_collection_time: str
+    celestial_stone: int = 0 
     # Helper to hold building objects after fetching
     buildings: List['Building'] = field(default_factory=list)
 

@@ -6,6 +6,7 @@ Discarding equipment pet exp has been increased by 500%
 Pet drops have been adjusted
 Pet ranch exp rates have been adjusted
 Demolishing buildings now asks you to confirm
+Fixed an issue where low hp protection could protect you while you were dead
 
 ### Version 0.72
 3 new settlement buildings:

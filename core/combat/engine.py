@@ -55,6 +55,8 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         player.base_defence += total_def
         player.combat_ward += player.max_hp
 
+    celestial_passive = player.get_celestial_armor_passive()
+
     # 3. Accessory Passives
     acc_passive = player.get_accessory_passive()
     if acc_passive == "Absorb" and player.equipped_accessory:
@@ -332,6 +334,12 @@ def process_player_turn(player: Player, monster: Monster) -> str:
 
     # --- Apply Damage Reductions ---
     actual_hit = actual_hit_pre_ward_gen
+
+    if "Radiant Protection" in monster.modifiers and actual_hit > 0:
+        reduction = int(actual_hit * 0.60)
+        actual_hit = max(0, actual_hit - reduction)
+        attack_message += f"\n✨ **Radiant Protection** mitigates {reduction} damage!"
+
     if "Titanium" in monster.modifiers and actual_hit > 0:
         reduction = int(actual_hit * 0.10)
         actual_hit = max(0, actual_hit - reduction) 
@@ -368,6 +376,13 @@ def process_player_turn(player: Player, monster: Monster) -> str:
             player.current_hp = min(player.max_hp, player.current_hp + heal_amt)
             attack_message += f"\n**Leeching** drains life, healing you for **{heal_amt}** HP."
 
+    # Ward-regen (Celestial armor passive)
+    if player.get_celestial_armor_passive() == 'celestial_ward_regen':
+        regen_amount = random.randint(50, 200)
+        if regen_amount > 0:
+            player.combat_ward += regen_amount
+            attack_message += f"\n✨ **Celestial Light** restores **{regen_amount}** 🔮 Ward!"
+
     # --- Pending XP/Gold Tracking ---
     if actual_hit > 0:
         if glove_passive == "equilibrium" and glove_lvl > 0:
@@ -398,7 +413,7 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
     # --- Hit Chance Calculation ---
     base_hit_chance = calculate_monster_hit_chance(player, monster)
     effective_hit_chance = max(0.05, base_hit_chance)
-
+    celestial_passive = player.get_celestial_armor_passive()
     monster_attack_roll = random.random()
 
     if "Prescient" in monster.modifiers:
@@ -413,122 +428,157 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
     monster_message = ""
     
     if monster_attack_roll <= effective_hit_chance: # Monster Hits
-        damage_taken_base = calculate_damage_taken(player, monster)
-
-        if "Celestial Watcher" in monster.modifiers: damage_taken_base = int(damage_taken_base * 1.2)
-        if "Hellborn" in monster.modifiers: damage_taken_base += 2
-        if "Hell's Fury" in monster.modifiers: damage_taken_base += 5
-        if "Mirror Image" in monster.modifiers and random.random() < 0.2: damage_taken_base *= 2
-        if "Unlimited Blade Works" in monster.modifiers: damage_taken_base *= 2
-
-        # PDR / FDR Mitigation
+        
+        # 1. PDR / FDR Setup & Celestial Fortress
         effective_pdr = player.get_total_pdr()
-        if "Penetrator" in monster.modifiers: effective_pdr = max(0, effective_pdr - 20)
-        damage_taken_base = max(0, int(damage_taken_base * (1 - (effective_pdr / 100))))
+        if celestial_passive == 'celestial_fortress':
+            missing_hp_pct = (1 - (player.current_hp / player.max_hp)) * 100
+            effective_pdr += int(missing_hp_pct / 5.0) # +1% PDR per 5% missing HP
 
         effective_fdr = player.get_total_fdr()
-        if "Clobberer" in monster.modifiers: effective_fdr = max(0, effective_fdr - 5)
-        damage_taken_base = max(0, damage_taken_base - effective_fdr)
 
-        # Minions
-        minion_damage = 0
-        if "Summoner" in monster.modifiers: minion_damage += int(damage_taken_base * (1/3))
-        if "Infernal Legion" in monster.modifiers: minion_damage += damage_taken_base
+        # 2. Damage Roll Helper
+        def roll_monster_dmg():
+            dmg = calculate_damage_taken(player, monster)
+            if "Celestial Watcher" in monster.modifiers: dmg = int(dmg * 1.2)
+            if "Hellborn" in monster.modifiers: dmg += 2
+            if "Hell's Fury" in monster.modifiers: dmg += 5
+            if "Mirror Image" in monster.modifiers and random.random() < 0.2: dmg *= 2
+            if "Unlimited Blade Works" in monster.modifiers: dmg *= 2
+
+            # Mitigation
+            pdr = effective_pdr
+            if "Penetrator" in monster.modifiers: pdr = max(0, pdr - 20)
+            dmg = max(0, int(dmg * (1 - (pdr / 100))))
+            
+            fdr = effective_fdr
+            if "Clobberer" in monster.modifiers: fdr = max(0, fdr - 5)
+            dmg = max(0, dmg - fdr)
+
+            # Minions
+            minions = 0
+            if "Summoner" in monster.modifiers: minions += int(dmg * (1/3))
+            if "Infernal Legion" in monster.modifiers: minions += dmg
+            minions = max(0, minions - fdr)
+
+            return dmg + minions, dmg, minions
+
+        # 3. Base Damage & Unlucky Enemy Logic
+        total_damage, dmg_base, minion_dmg = roll_monster_dmg()
         
-        # Apply FDR to minions as well (implied in original logic via separate calculation, but grouping helps)
-        minion_damage = max(0, minion_damage - effective_fdr)
+        if celestial_passive == 'celestial_unlucky_enemy':
+            alt_total, alt_base, alt_minion = roll_monster_dmg()
+            if alt_total < total_damage:
+                total_damage, dmg_base, minion_dmg = alt_total, alt_base, alt_minion
 
-        total_damage = damage_taken_base + minion_damage
-
-        # Multistrike
+        # 4. Multistrike & Executioner
         multistrike_damage = 0
         if "Multistrike" in monster.modifiers and random.random() <= effective_hit_chance:
             multistrike_damage = max(0, int(calculate_damage_taken(player, monster) * 0.5) - effective_fdr)
             total_damage += multistrike_damage
 
-        # Executioner
         is_executed = False
         if "Executioner" in monster.modifiers and random.random() < 0.01:
             total_damage = max(total_damage, int(player.current_hp * 0.90))
             is_executed = True
 
-        # Block & Dodge
+        # 5. Block & Dodge (With Celestial Overrides)
         is_blocked = False
         is_dodged = False
         
         if "Unblockable" not in monster.modifiers:
             equipped_armor = player.equipped_armor
             block_chance = equipped_armor.block / 100 if equipped_armor else 0
+            if celestial_passive == 'celestial_double_block':
+                block_chance *= 2.0
             if random.random() <= block_chance:
                 is_blocked = True
                 
         if "Unavoidable" not in monster.modifiers:
             equipped_armor = player.equipped_armor
             dodge_chance = equipped_armor.evasion / 100 if equipped_armor else 0
+            if celestial_passive == 'celestial_triple_evade_no_helmet':
+                dodge_chance *= 3.0
             if random.random() <= dodge_chance:
                 is_dodged = True
 
-        if is_blocked:
-            monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ blocks all damage!\n"
-            # Thorns (Reflect on Block)
-            if helmet_passive == "thorns" and helmet_lvl > 0:
-                # 100% * Level reflect
-                reflect_dmg = int(calculate_damage_taken(player, monster) * (helmet_lvl * 1.0))
-                monster.hp -= reflect_dmg
-                monster_message += f"**Thorns ({helmet_lvl})** reflects **{reflect_dmg}** damage back!\n"
-
-        elif is_dodged:
+        # 6. Resolve Mitigation States
+        if is_dodged:
             monster_message = f"{monster.name} {monster.flavor}, but you 🏃 nimbly step aside!\n"
-            # Ghosted (Evasion -> Ward)
+            total_damage = 0
             if helmet_passive == "ghosted" and helmet_lvl > 0:
                 ward_gain = helmet_lvl * 10
                 player.combat_ward += ward_gain
                 monster_message += f"**Ghosted ({helmet_lvl})** manifests **{ward_gain}** 🔮 Ward from the movement!\n"
-        else:
-            # Apply to Ward then HP
+                
+        elif is_blocked:
+            if celestial_passive == 'celestial_double_block':
+                total_damage = int(total_damage * 0.5)
+                monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ partially blocks it (Bleedthrough: {total_damage})!\n"
+            else:
+                monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ blocks all damage!\n"
+                total_damage = 0
+                
+            if helmet_passive == "thorns" and helmet_lvl > 0:
+                reflect_dmg = int(dmg_base * (helmet_lvl * 1.0))
+                monster.hp -= reflect_dmg
+                monster_message += f"**Thorns ({helmet_lvl})** reflects **{reflect_dmg}** damage back!\n"
+
+        # 7. Apply Final Damage to Ward/HP
+        if total_damage > 0 and not is_dodged:
             damage_dealt_this_turn = 0
-            if player.combat_ward > 0 and total_damage > 0:
+            
+            if player.combat_ward > 0:
                 if total_damage <= player.combat_ward:
                     damage_dealt_this_turn = total_damage
                     player.combat_ward -= total_damage
-                    monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {total_damage} damage!\n"
+                    if not is_blocked:
+                        monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {total_damage} damage!\n"
                     total_damage = 0
                 else:
                     damage_dealt_this_turn = player.combat_ward
-                    monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {player.combat_ward} damage, but shatters!\n"
+                    if not is_blocked:
+                        monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {player.combat_ward} damage, but shatters!\n"
                     total_damage -= player.combat_ward
                     player.combat_ward = 0
 
-            # Slayer Resilience (e.g. 2% damage reduction per tier against task mobs)
+            # Slayer Resilience
             if player.active_task_species == monster.species:
                 slayer_def_tiers = player.get_emblem_bonus("slayer_def")
                 if slayer_def_tiers > 0:
-                    mitigation = min(0.50, slayer_def_tiers * 0.02) # Cap at 50%
+                    mitigation = min(0.50, slayer_def_tiers * 0.02)
                     total_damage = int(total_damage * (1 - mitigation))
 
+            # HP Application & Celestial Vow
             if total_damage > 0:
-                damage_dealt_this_turn += total_damage
-                player.current_hp -= total_damage
-                monster_message += f"{monster.name} {monster.flavor}. You take 💔 **{total_damage}** damage!\n"
+                if celestial_passive == 'celestial_vow' and (player.current_hp - total_damage <= 0) and not getattr(player, 'celestial_vow_used', False):
+                    player.current_hp = 1
+                    ward_gain = int(player.max_hp * 0.5)
+                    player.combat_ward += ward_gain
+                    player.celestial_vow_used = True
+                    monster_message += f"\n✨ **Celestial Vow** activates! You survive the fatal blow and gain {ward_gain} 🔮 Ward!"
+                    damage_dealt_this_turn += (player.current_hp - 1)
+                else:
+                    damage_dealt_this_turn += total_damage
+                    player.current_hp -= total_damage
+                    if not is_blocked or celestial_passive != 'celestial_double_block':
+                        monster_message += f"{monster.name} {monster.flavor}. You take 💔 **{total_damage}** damage!\n"
 
-            # Volatile (Ward Break Explosion)
+            # Volatile Explosion
             if helmet_passive == "volatile" and helmet_lvl > 0:
-                # If we had ward, and now we don't (and damage was dealt)
                 if previous_ward > 0 and player.combat_ward == 0:
-                    print(player.max_hp)
-                    print(helmet_lvl)
                     boom_dmg = int(player.max_hp * helmet_lvl)
                     monster.hp -= boom_dmg
                     monster_message += f"\n💥 **Volatile** Shield shatters, dealing **{boom_dmg}** damage to {monster.name}!\n"
                     
+            # Vampiric Mod
             if "Vampiric" in monster.modifiers and damage_dealt_this_turn > 0:
                 heal_amount = damage_dealt_this_turn * 10
                 monster.hp = min(monster.max_hp, monster.hp + heal_amount)
                 monster_message += f"The monster's **Vampiric** essence siphons life, healing it for **{heal_amount}** HP!\n"
 
-            # Flavor messages for procs
             if is_executed: monster_message += f"The {monster.name}'s **Executioner** ability cleaves through you!\n"
-            if minion_damage > 0: monster_message += f"Their minions strike for an additional {minion_damage} damage!\n"
+            if minion_dmg > 0: monster_message += f"Their minions strike for an additional {minion_dmg} damage!\n"
             if multistrike_damage > 0: monster_message += f"{monster.name} strikes again for {multistrike_damage} damage!\n"
             if not monster_message: monster_message = f"{monster.name} {monster.flavor}, but you mitigate all its damage."
 

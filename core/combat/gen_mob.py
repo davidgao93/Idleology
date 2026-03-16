@@ -386,5 +386,50 @@ def get_modifier_description(modifier):
         "Hell's Fury": "+5 each successful hit (boss)",
         "Absolute": "+25 Attack, +25 defence (boss)",
         "Infernal Legion": "Has minions that echo hits (boss)",
+        "Radiant Protection": "Globally reduces all incoming damage by 60% (Uber)", # Start uber list here
         }
     return descriptions.get(modifier, "") 
+
+async def generate_uber_aphrodite(player, monster):
+    """Generate the single-phase Uber Aphrodite boss fight."""
+    # Base level is ~20 levels above the player's effective level
+    ref_level = player.level + player.ascension + 20
+    monster.level = ref_level
+    
+    # Calculate base stats
+    monster = calculate_monster_stats(monster)
+    
+    # Single long fight: Massive HP Multiplier
+    base_hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.35, 1.45)))
+    monster.hp = int(base_hp * 4.0) 
+    monster.max_hp = monster.hp
+    monster.xp = monster.hp * 2 # Generous XP for the difficulty
+    
+    monster.name = "Aphrodite, Celestial Apex"
+    monster.image = "https://i.imgur.com/QYLnAAi.png" # Uber form
+    monster.flavor = "radiates an overwhelming aura"
+    monster.species = "Celestial"
+    monster.is_boss = True
+    
+    # Assign Modifiers
+    monster.modifiers = ["Radiant Protection", "Absolute"]
+    
+    # Add 1 to 2 random boss modifiers to keep it dynamic
+    available_boss_mods = get_boss_mods()
+    random.shuffle(available_boss_mods)
+    
+    # Exclude mods that might break the encounter scaling
+    exclude = ["Unlimited Blade Works", "Glutton", "Built-different", "Absolute"]
+    valid_mods = [m for m in available_boss_mods if m not in exclude][:random.randint(1, 2)]
+    monster.modifiers.extend(valid_mods)
+    
+    # Flat stat augmentations to ensure she hits extremely hard
+    if "Absolute" in monster.modifiers:
+        monster.attack += 25
+        monster.defence += 25
+    
+    # Additional baseline Uber buffs
+    monster.attack += int(monster.level * 0.5)
+    monster.defence += int(monster.level * 0.5)
+
+    return monster

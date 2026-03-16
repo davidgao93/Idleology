@@ -74,6 +74,8 @@ class InventoryUI:
             if isinstance(item, Armor):
                 if item.passive != "none" and item.passive != "":
                     passives.append(f"✨{item.passive.title()}")
+                if getattr(item, 'celestial_passive', 'none') != 'none':
+                    passives.append(f"🌌{item.celestial_passive.title()}")
             details_str = f" - {' | '.join(details)}" if details else ""
             passives_str = f" - {', '.join(passives)}" if passives else ""
             
@@ -121,6 +123,10 @@ class InventoryUI:
             embed.add_field(name="Passive", value=f"{main_passive.title()}{lvl_str}", inline=False)
             # Note: Detailed effect description would require importing the 'general' logic helper or similar
         
+        if isinstance(item, Armor):
+            if getattr(item, 'celestial_passive', 'none') != 'none':
+                embed.add_field(name="Celestial Passive", value=f"🌌 {item.celestial_passive.title()}", inline=False)
+
         # Weapon Specifics
         if isinstance(item, Weapon):
             if item.p_passive != 'none':

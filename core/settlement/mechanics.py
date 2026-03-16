@@ -49,6 +49,7 @@ class SettlementMechanics:
         "black_market": {"type": "special", "effect": "trading"},
         # Generates 'companion_cookie' which is auto-converted to XP on collect
         "companion_ranch": {"type": "generator", "output": "companion_cookie", "base_rate": 1}, # 1 XP per worker/hr
+        "celestial_shrine": {"type": "passive", "effect": "sigil_bonus"},
     }
 
     @staticmethod
