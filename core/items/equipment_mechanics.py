@@ -271,22 +271,18 @@ class EquipmentMechanics:
 
     @staticmethod
     def roll_celestial_passive(current_passive: str) -> str:
-        """
-        Rolls a new Celestial Armor passive. 
-        Guarantees a different passive if the armor already has one.
-        """
-        # Placeholder list for Phase 1. We will expand this in Phase 2.
-        pool = ["celestial_ward_regen", 
-            "celestial_double_block", 
-            "celestial_triple_evade_no_helmet",
-            "celestial_unlucky_enemy",
+        """Rolls a new Celestial Armor passive."""
+        pool = [
+            "celestial_ghostreaver", 
+            "celestial_glancing_blows", 
+            "celestial_wind_dancer",
+            "celestial_sanctity",
             "celestial_vow",
             "celestial_fortress"
         ]
         
         available = [p for p in pool if p != current_passive]
-        if not available:
-            available = pool # Fallback
+        if not available: available = pool 
             
         return random.choice(available)
 

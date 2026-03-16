@@ -275,7 +275,7 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         if player.equipped_boot.passive == "speedster" and player.equipped_boot.passive_lvl > 0:
             player.combat_cooldown_reduction_seconds = player.equipped_boot.passive_lvl * 60
     
-    if player.get_celestial_armor_passive() == "celestial_triple_evade_no_helmet":
+    if player.get_celestial_armor_passive() == "celestial_wind_dancer":
         player.equipped_helmet = None # Completely nullify the helmet stats/passives
 
     return player

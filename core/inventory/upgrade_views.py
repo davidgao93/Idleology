@@ -933,14 +933,14 @@ class EngramView(BaseUpgradeView):
     async def render(self, interaction: Interaction):
         server_id = str(interaction.guild.id)
         
-        # Fetch Uber Progress for Engrams
         uber_prog = await self.bot.database.uber.get_uber_progress(self.user_id, server_id)
         self.engrams = uber_prog['celestial_engrams']
 
         current_passive = getattr(self.item, 'celestial_passive', 'none')
+        display_passive = current_passive.replace('_', ' ').title()
         
         desc = (
-            f"**Current Celestial Passive:** {current_passive.title()}\n"
+            f"**Current Celestial Passive:** {display_passive}\n"
             f"**Celestial Engrams Owned:** {self.engrams}\n\n"
             "Consuming an Engram will imbue your armor with a powerful Celestial passive, or reroll your existing one."
         )
@@ -948,13 +948,10 @@ class EngramView(BaseUpgradeView):
         self.embed = discord.Embed(title=f"🌌 Imbue {self.item.name}", description=desc, color=discord.Color.purple())
         self.embed.set_thumbnail(url="https://i.imgur.com/LjE5VZF.png")
         
-        # --- BUTTONS ---
         self.clear_items()
-        
         btn_consume = Button(label="Consume Engram", style=ButtonStyle.danger, emoji="🌌", disabled=(self.engrams < 1))
         btn_consume.callback = self.confirm_engram
         self.add_item(btn_consume)
-        
         self.add_back_button()
         
         if interaction.response.is_done():
@@ -964,45 +961,31 @@ class EngramView(BaseUpgradeView):
 
     async def confirm_engram(self, interaction: Interaction):
         server_id = str(interaction.guild.id)
-        
-        # Re-verify
         uber_prog = await self.bot.database.uber.get_uber_progress(self.user_id, server_id)
         if uber_prog['celestial_engrams'] < 1:
             return await interaction.response.send_message("You do not have any Celestial Engrams!", ephemeral=True)
 
         await interaction.response.defer()
-
-        # 1. Deduct Engram
         await self.bot.database.uber.increment_engrams(self.user_id, server_id, -1)
 
-        # 2. Roll Logic
         current_p = getattr(self.item, 'celestial_passive', 'none')
         new_passive = EquipmentMechanics.roll_celestial_passive(current_p)
 
-        # 3. Update DB
         await self.bot.database.equipment.update_passive(
-            self.item.item_id, 
-            'armor', 
-            new_passive, 
-            'celestial_armor_passive'
+            self.item.item_id, 'armor', new_passive, 'celestial_armor_passive'
         )
-
-        # 4. Update Local State
         self.item.celestial_passive = new_passive
 
-        # 5. UI Result
+        display_new = new_passive.replace('_', ' ').title()
         res_embed = discord.Embed(title="🌌 Engram Resonated!", color=discord.Color.gold())
-        res_embed.description = f"The Engram shatters, weaving divine energy into your armor.\n\n**New Passive:** {new_passive.title()}"
+        res_embed.description = f"The Engram shatters, weaving divine energy into your armor.\n\n**New Passive:** {display_new}"
         res_embed.set_thumbnail(url="https://i.imgur.com/LjE5VZF.png")
         
         self.clear_items()
-        
-        # Allow chain-rolling if they have more engrams
         if uber_prog['celestial_engrams'] - 1 > 0:
             btn_again = Button(label="Roll Again", style=ButtonStyle.primary)
             btn_again.callback = self.render
             self.add_item(btn_again)
             
         self.add_back_button()
-        
         await interaction.edit_original_response(embed=res_embed, view=self)

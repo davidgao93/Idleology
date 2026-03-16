@@ -555,7 +555,6 @@ class CombatView(ui.View):
         max_hp = self.monster.max_hp
         rem_hp = max(0, self.monster.hp)
         
-        # Calculate Damage Fraction
         dmg_frac = max(0.0, min(1.0, (max_hp - rem_hp) / max_hp))
 
         # 1. Curio Rewards (Scale with Damage)
@@ -566,7 +565,6 @@ class CombatView(ui.View):
         elif dmg_frac >= 0.25: curios = 2
 
         await self.bot.database.users.modify_currency(self.user_id, 'curios', curios)
-        log_msgs = [f"🎁 You dealt {dmg_frac*100:.1f}% damage and extracted **{curios} Curious Curios**!"]
 
         # 2. Defeat vs Victory
         if self.player.current_hp <= 0:
@@ -575,10 +573,8 @@ class CombatView(ui.View):
             self.player.exp = max(0, self.player.exp - xp_loss)
             self.player.current_hp = 1
             
-            embed = combat_ui.create_defeat_embed(self.player, self.monster, xp_loss)
-            embed.title = "The Apex Remains Unbroken"
-            embed.add_field(name="Extracts", value="\n".join(log_msgs), inline=False)
-            
+            # Pass data directly into updated defeat embed
+            embed = combat_ui.create_defeat_embed(self.player, self.monster, xp_loss, curios_gained=curios, dmg_frac=dmg_frac)
             await message.edit(embed=embed, view=None)
 
         else:
@@ -589,28 +585,33 @@ class CombatView(ui.View):
             reward_data['xp'] *= 2
             reward_data['gold'] *= 2
             
+            # Setup Curios and Specials for the standard Loot UI parser
+            reward_data['curios'] = curios
+            reward_data['special'] = []
+            
             # 3. Celestial Engram Roll (10%)
             if random.random() < 0.10:
                 await self.bot.database.uber.increment_engrams(self.user_id, self.server_id, 1)
-                log_msgs.append("🌌 **A Celestial Engram materializes from Aphrodite's shattered form...**")
+                reward_data['special'].append("Celestial Engram")
+                reward_data['msgs'].append("🌌 **A Celestial Engram materializes from Aphrodite's shattered form...**")
             
             # 4. Blueprint / Stone Roll (10%)
             if random.random() < 0.10:
                 u_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
                 if u_prog['celestial_blueprint_unlocked'] == 0:
                     await self.bot.database.uber.set_blueprint_unlocked(self.user_id, self.server_id, True)
-                    log_msgs.append("📜 **You found the Celestial Shrine Blueprint!**")
+                    reward_data['special'].append("Celestial Shrine Blueprint")
+                    reward_data['msgs'].append("📜 **You found the Celestial Shrine Blueprint!**")
                 else:
                     await self.bot.database.settlement.modify_celestial_stone(self.user_id, self.server_id, 1)
-                    log_msgs.append("🪨 **You found a Celestial Stone!**")
-                    
-            reward_data['msgs'].extend(log_msgs)
+                    reward_data['special'].append("Celestial Stone")
+                    reward_data['msgs'].append("🪨 **You found a Celestial Stone!**")
             
             # DB Commits
             self.player.exp += reward_data['xp']
             await self.bot.database.users.modify_gold(self.user_id, reward_data['gold'])
             
-            # Show Standard Victory UI with modifications
+            # Generate Standard Victory UI (It will naturally parse the specials and curios now)
             embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
             embed.title = "🌌 DEICIDE: Apex Shattered!"
             embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg") 

@@ -99,7 +99,7 @@ class BlackMarketView(ui.View):
         )
         embed.add_field(
             name="💎 Rune Cache",
-            value="**Cost:** 3 Rune of Shattering\n**Contents:** 1-5 Random Runes (No Shatter)",
+            value="**Cost:** 10 Rune of Shattering\n**Contents:** 1-5 Random Runes (No Shatter)",
             inline=False
         )
         embed.add_field(
@@ -246,7 +246,7 @@ class BlackMarketView(ui.View):
             await interaction.followup.send("An error occurred.", ephemeral=True)
 
     async def buy_rune_cache(self, interaction: Interaction):
-        cost = 3
+        cost = 10
         owned = await self.bot.database.users.get_currency(self.user_id, 'shatter_runes')
         
         if owned < cost:

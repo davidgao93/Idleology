@@ -49,7 +49,7 @@ class UberLobbyView(ui.View):
         embed.set_thumbnail(url="https://i.imgur.com/LjE5VZF.png")
         
         desc = (
-            "The heavens tremble. Aphrodite has ascended past her mortal constraints.\n\n"
+            "A chibi Aphrodite appears and says: ME HUNGRY, FEED ME SIGILS PWETTY PWEASE?.\n\n"
             f"**Entry Cost:** 3 Celestial Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}"

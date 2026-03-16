@@ -377,11 +377,11 @@ def process_player_turn(player: Player, monster: Monster) -> str:
             attack_message += f"\n**Leeching** drains life, healing you for **{heal_amt}** HP."
 
     # Ward-regen (Celestial armor passive)
-    if player.get_celestial_armor_passive() == 'celestial_ward_regen':
+    if player.get_celestial_armor_passive() == 'celestial_ghostreaver':
         regen_amount = random.randint(50, 200)
         if regen_amount > 0:
             player.combat_ward += regen_amount
-            attack_message += f"\n✨ **Celestial Light** restores **{regen_amount}** 🔮 Ward!"
+            attack_message += f"\n✨ **Celestial Ghostreaver** restores **{regen_amount}** 🔮 Ward!"
 
     # --- Pending XP/Gold Tracking ---
     if actual_hit > 0:
@@ -466,7 +466,7 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
         # 3. Base Damage & Unlucky Enemy Logic
         total_damage, dmg_base, minion_dmg = roll_monster_dmg()
         
-        if celestial_passive == 'celestial_unlucky_enemy':
+        if celestial_passive == 'celestial_sanctity':
             alt_total, alt_base, alt_minion = roll_monster_dmg()
             if alt_total < total_damage:
                 total_damage, dmg_base, minion_dmg = alt_total, alt_base, alt_minion
@@ -489,7 +489,7 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
         if "Unblockable" not in monster.modifiers:
             equipped_armor = player.equipped_armor
             block_chance = equipped_armor.block / 100 if equipped_armor else 0
-            if celestial_passive == 'celestial_double_block':
+            if celestial_passive == 'celestial_glancing_blows':
                 block_chance *= 2.0
             if random.random() <= block_chance:
                 is_blocked = True
@@ -497,7 +497,7 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
         if "Unavoidable" not in monster.modifiers:
             equipped_armor = player.equipped_armor
             dodge_chance = equipped_armor.evasion / 100 if equipped_armor else 0
-            if celestial_passive == 'celestial_triple_evade_no_helmet':
+            if celestial_passive == 'celestial_wind_dancer':
                 dodge_chance *= 3.0
             if random.random() <= dodge_chance:
                 is_dodged = True
@@ -512,7 +512,7 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
                 monster_message += f"**Ghosted ({helmet_lvl})** manifests **{ward_gain}** 🔮 Ward from the movement!\n"
                 
         elif is_blocked:
-            if celestial_passive == 'celestial_double_block':
+            if celestial_passive == 'celestial_glancing_blows':
                 total_damage = int(total_damage * 0.5)
                 monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ partially blocks it (Bleedthrough: {total_damage})!\n"
             else:
@@ -561,7 +561,7 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
                 else:
                     damage_dealt_this_turn += total_damage
                     player.current_hp -= total_damage
-                    if not is_blocked or celestial_passive != 'celestial_double_block':
+                    if not is_blocked or celestial_passive != 'celestial_glancing_blows':
                         monster_message += f"{monster.name} {monster.flavor}. You take 💔 **{total_damage}** damage!\n"
 
             # Volatile Explosion

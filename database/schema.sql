@@ -1,5 +1,5 @@
 -- ALTER TABLE users ADD COLUMN doors_enabled INTEGER DEFAULT 1;
-ALTER TABLE armor ADD COLUMN celestial_armor_passive TEXT DEFAULT 'none';
+-- ALTER TABLE armor ADD COLUMN celestial_armor_passive TEXT DEFAULT 'none';
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
