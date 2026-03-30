@@ -3,12 +3,117 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.combat import engine
 from core.combat import ui as combat_ui
-from core.combat.gen_mob import generate_uber_aphrodite
+from core.combat.gen_mob import generate_uber_aphrodite, generate_uber_lucifer
 from core.combat.views import CombatView  # Reuse the battle engine
 from core.models import Monster, Player
 
 
-class UberLobbyView(ui.View):
+class UberHubView(ui.View):
+    def __init__(self, bot, user_id: str, server_id: str, player: Player, uber_data: dict):
+        super().__init__(timeout=120)
+        self.bot = bot
+        self.user_id = user_id
+        self.server_id = server_id
+        self.player = player
+        self.uber_data = uber_data
+        self.message = None
+        self._build_buttons()
+
+    def _build_buttons(self):
+        self.clear_items()
+
+        btn_aphro = ui.Button(
+            label="Aphrodite, Celestial Apex",
+            style=ButtonStyle.blurple,
+            emoji="🌌",
+            row=0,
+        )
+        btn_aphro.callback = self.open_aphrodite
+        self.add_item(btn_aphro)
+
+        btn_lucifer = ui.Button(
+            label="Lucifer, Infernal Sovereign",
+            style=ButtonStyle.danger,
+            emoji="🔥",
+            row=0,
+        )
+        btn_lucifer.callback = self.open_lucifer
+        self.add_item(btn_lucifer)
+
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
+        btn_close.callback = self.close_view
+        self.add_item(btn_close)
+
+    def build_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="⚔️ Uber Encounters",
+            description=(
+                "These are the most powerful beings in existence. "
+                "Only the truly prepared dare to challenge them.\n\n"
+                "Select a boss to view your readiness and available keys."
+            ),
+            color=discord.Color.dark_gold(),
+        )
+        embed.add_field(
+            name="🌌 Aphrodite, Celestial Apex",
+            value=(
+                f"A fearsome beauty radiating divine power.\n"
+                f"**Keys:** {self.uber_data['celestial_sigils']} Celestial Sigils *(costs 3)*"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="🔥 Lucifer, Infernal Sovereign",
+            value=(
+                f"A titan of pure aggression — strikes hard, dies hard.\n"
+                f"**Keys:** {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*"
+            ),
+            inline=False,
+        )
+        return embed
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        try:
+            await self.message.edit(view=None)
+        except Exception:
+            pass
+
+    async def close_view(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
+        self.stop()
+
+    async def open_aphrodite(self, interaction: Interaction):
+        from core.combat.dummy_engine import DummyEngine
+
+        await interaction.response.defer()
+        readiness_text = DummyEngine.assess_readiness(self.player, target="aphrodite_uber")
+        lobby = UberAphroditeLobbyView(
+            self.bot, self.user_id, self.server_id, self.player, self.uber_data, readiness_text
+        )
+        embed = lobby.build_embed()
+        await interaction.edit_original_response(embed=embed, view=lobby)
+        lobby.message = await interaction.original_response()
+        self.stop()
+
+    async def open_lucifer(self, interaction: Interaction):
+        from core.combat.dummy_engine import DummyEngine
+
+        await interaction.response.defer()
+        readiness_text = DummyEngine.assess_readiness(self.player, target="lucifer_uber")
+        lobby = UberLuciferLobbyView(
+            self.bot, self.user_id, self.server_id, self.player, self.uber_data, readiness_text
+        )
+        embed = lobby.build_embed()
+        await interaction.edit_original_response(embed=embed, view=lobby)
+        lobby.message = await interaction.original_response()
+        self.stop()
+
+
+class UberAphroditeLobbyView(ui.View):
     def __init__(
         self,
         bot,
@@ -26,19 +131,10 @@ class UberLobbyView(ui.View):
         self.uber_data = uber_data
         self.readiness_text = readiness_text
         self.sigils = uber_data["celestial_sigils"]
+        self.message = None
+        self._build_buttons()
 
-        self.setup_ui()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        try:
-            await self.message.edit(view=None)
-        except:
-            pass
-
-    def setup_ui(self):
+    def _build_buttons(self):
         self.clear_items()
 
         btn_start = ui.Button(
@@ -46,11 +142,16 @@ class UberLobbyView(ui.View):
             style=ButtonStyle.danger if self.sigils >= 3 else ButtonStyle.secondary,
             disabled=(self.sigils < 3),
             emoji="⚔️",
+            row=0,
         )
         btn_start.callback = self.start_uber
         self.add_item(btn_start)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary)
+        btn_back = ui.Button(label="← Back", style=ButtonStyle.secondary, row=1)
+        btn_back.callback = self.go_back
+        self.add_item(btn_back)
+
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
         btn_close.callback = self.close_view
         self.add_item(btn_close)
 
@@ -66,7 +167,6 @@ class UberLobbyView(ui.View):
         )
         embed.description = desc
 
-        # Show unlocks if applicable
         bp_status = (
             "✅ Unlocked"
             if self.uber_data["celestial_blueprint_unlocked"]
@@ -81,17 +181,33 @@ class UberLobbyView(ui.View):
 
         return embed
 
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        try:
+            await self.message.edit(view=None)
+        except Exception:
+            pass
+
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
         await interaction.delete_original_response()
         self.stop()
 
+    async def go_back(self, interaction: Interaction):
+        await interaction.response.defer()
+        uber_data = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+        hub = UberHubView(self.bot, self.user_id, self.server_id, self.player, uber_data)
+        embed = hub.build_embed()
+        await interaction.edit_original_response(embed=embed, view=hub)
+        hub.message = await interaction.original_response()
+        self.stop()
+
     async def start_uber(self, interaction: Interaction):
-        # 1. State Check
         if not await self.bot.check_is_active(interaction, self.user_id):
             return
 
-        # 2. Final verify and deduct
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
@@ -105,7 +221,6 @@ class UberLobbyView(ui.View):
         await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, -3)
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
 
-        # 3. Generate the Boss
         monster = Monster(
             name="",
             level=0,
@@ -120,24 +235,171 @@ class UberLobbyView(ui.View):
         )
         monster = await generate_uber_aphrodite(self.player, monster)
 
-        # 4. Snapshot clean stats
         clean_stats = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
             "crit_target": self.player.base_crit_chance_target,
         }
 
-        # 5. Combat Initialization
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
 
-        # 6. Launch Combat View
-        # We pass a flag 'is_uber=True' (we will handle the custom reward logic in CombatView shortly)
         monster.is_uber = True
 
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="🌌 UBER ENCOUNTER"
+        )
+        view = CombatView(
+            self.bot,
+            self.user_id,
+            self.player,
+            monster,
+            start_logs,
+            combat_phases=None,
+            clean_stats=clean_stats,
+        )
+
+        await interaction.edit_original_response(embed=embed, view=view)
+        self.stop()
+
+
+class UberLuciferLobbyView(ui.View):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        player: Player,
+        uber_data: dict,
+        readiness_text: str,
+    ):
+        super().__init__(timeout=120)
+        self.bot = bot
+        self.user_id = user_id
+        self.server_id = server_id
+        self.player = player
+        self.uber_data = uber_data
+        self.readiness_text = readiness_text
+        self.sigils = uber_data["infernal_sigils"]
+        self.message = None
+        self._build_buttons()
+
+    def _build_buttons(self):
+        self.clear_items()
+
+        btn_start = ui.Button(
+            label="Challenge Lucifer",
+            style=ButtonStyle.danger if self.sigils >= 3 else ButtonStyle.secondary,
+            disabled=(self.sigils < 3),
+            emoji="⚔️",
+            row=0,
+        )
+        btn_start.callback = self.start_uber
+        self.add_item(btn_start)
+
+        btn_back = ui.Button(label="← Back", style=ButtonStyle.secondary, row=1)
+        btn_back.callback = self.go_back
+        self.add_item(btn_back)
+
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
+        btn_close.callback = self.close_view
+        self.add_item(btn_close)
+
+    def build_embed(self) -> discord.Embed:
+        embed = discord.Embed(title="🔥 The Infernal Sovereign", color=discord.Color.dark_red())
+
+        desc = (
+            "The air reeks of sulphur. A voice like grinding stone echoes from the abyss:\n"
+            "*\"You dare enter my domain? I will grind your bones to ash.\"*\n\n"
+            f"**Entry Cost:** 3 Infernal Sigils\n"
+            f"**Owned:** {self.sigils}\n\n"
+            f"**Assessment:** {self.readiness_text}"
+        )
+        embed.description = desc
+
+        bp_status = (
+            "✅ Unlocked"
+            if self.uber_data["infernal_blueprint_unlocked"]
+            else "🔒 Locked"
+        )
+        embed.add_field(
+            name="Infernal Engrams",
+            value=str(self.uber_data["infernal_engrams"]),
+            inline=True,
+        )
+        embed.add_field(name="Infernal Forge Blueprint", value=bp_status, inline=True)
+
+        return embed
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        try:
+            await self.message.edit(view=None)
+        except Exception:
+            pass
+
+    async def close_view(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
+        self.stop()
+
+    async def go_back(self, interaction: Interaction):
+        await interaction.response.defer()
+        uber_data = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+        hub = UberHubView(self.bot, self.user_id, self.server_id, self.player, uber_data)
+        embed = hub.build_embed()
+        await interaction.edit_original_response(embed=embed, view=hub)
+        hub.message = await interaction.original_response()
+        self.stop()
+
+    async def start_uber(self, interaction: Interaction):
+        if not await self.bot.check_is_active(interaction, self.user_id):
+            return
+
+        current_data = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
+        )
+        if current_data["infernal_sigils"] < 3:
+            return await interaction.response.send_message(
+                "You do not have enough Infernal Sigils.", ephemeral=True
+            )
+
+        await interaction.response.defer()
+
+        await self.bot.database.uber.increment_infernal_sigils(self.user_id, self.server_id, -3)
+        self.bot.state_manager.set_active(self.user_id, "uber_boss")
+
+        monster = Monster(
+            name="",
+            level=0,
+            hp=0,
+            max_hp=0,
+            xp=0,
+            attack=0,
+            defence=0,
+            modifiers=[],
+            image="",
+            flavor="",
+        )
+        monster = await generate_uber_lucifer(self.player, monster)
+
+        clean_stats = {
+            "attack": self.player.base_attack,
+            "defence": self.player.base_defence,
+            "crit_target": self.player.base_crit_chance_target,
+        }
+
+        self.player.combat_ward = self.player.get_combat_ward_value()
+        engine.apply_stat_effects(self.player, monster)
+        start_logs = engine.apply_combat_start_passives(self.player, monster)
+
+        monster.is_uber = True
+
+        embed = combat_ui.create_combat_embed(
+            self.player, monster, start_logs, title_override="🔥 UBER ENCOUNTER"
         )
         view = CombatView(
             self.bot,

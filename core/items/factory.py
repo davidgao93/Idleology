@@ -25,6 +25,7 @@ def create_weapon(data: tuple) -> Weapon:
         refinement_lvl=data[11],
         p_passive=data[12] if len(data) > 12 else "none",
         u_passive=data[13] if len(data) > 13 else "none",
+        infernal_passive=data[14] if len(data) > 14 else "none",
         description="" # Description is typically generated dynamically in views
     )
 

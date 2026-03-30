@@ -258,7 +258,10 @@ class CombatView(ui.View):
         """Processes victory or defeat with Phase Logic."""
 
         if getattr(self.monster, 'is_uber', False):
-            await self._handle_uber_end_state(message, interaction)
+            if "Lucifer" in self.monster.name:
+                await self._handle_uber_lucifer_end_state(message, interaction)
+            else:
+                await self._handle_uber_end_state(message, interaction)
             return
 
         if self.player.current_hp <= 0:
@@ -324,6 +327,22 @@ class CombatView(ui.View):
             special_flags = rewards.check_special_drops(self.player, self.monster)
             reward_data['special'] = []
             
+
+            if "Lucifer" in self.monster.name and not getattr(self.monster, 'is_uber', False):
+                _, forge_workers = await self.bot.database.settlement.get_building_details(
+                    self.user_id, self.server_id, "infernal_forge"
+                )
+                total_chance = 0.10 + (forge_workers * 0.0001)
+                guaranteed = int(total_chance)
+                fractional = total_chance - guaranteed
+                sigils_dropped = guaranteed
+                if random.random() < fractional:
+                    sigils_dropped += 1
+                if sigils_dropped > 0:
+                    await self.bot.database.uber.increment_infernal_sigils(
+                        self.user_id, self.server_id, sigils_dropped
+                    )
+                    reward_data["special"].extend(["Infernal Sigil"] * sigils_dropped)
 
             if "Aphrodite" in self.monster.name and not getattr(self.monster, 'is_uber', False):
                 _, shrine_workers = await self.bot.database.settlement.get_building_details(self.user_id, self.server_id, "celestial_shrine")
@@ -549,6 +568,10 @@ class CombatView(ui.View):
             else:
                 await message.edit(embed=embed, view=None)
 
+            # Soulreap: restore HP to full after every successful encounter
+            if self.player.get_weapon_infernal() == "soulreap":
+                self.player.current_hp = self.player.max_hp
+
             self.bot.state_manager.clear_active(self.user_id)
             await self.bot.database.users.update_from_player_object(self.player)
             self.stop()
@@ -621,7 +644,203 @@ class CombatView(ui.View):
             embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg") 
             await message.edit(embed=embed, view=None)
 
+        # Soulreap: restore HP to full after a successful uber kill
+        if self.player.get_weapon_infernal() == "soulreap" and self.player.current_hp > 0:
+            self.player.current_hp = self.player.max_hp
+
         # Cleanup
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)
+        self.stop()
+
+    async def _handle_uber_lucifer_end_state(self, message, interaction: Interaction):
+        """Specialized logic for the Uber Lucifer encounter."""
+        max_hp = self.monster.max_hp
+        rem_hp = max(0, self.monster.hp)
+        dmg_frac = max(0.0, min(1.0, (max_hp - rem_hp) / max_hp))
+
+        # 1. Curio Rewards (scale with damage dealt)
+        curios = 1
+        if dmg_frac >= 1.0:
+            curios = 5
+        elif dmg_frac >= 0.75:
+            curios = 4
+        elif dmg_frac >= 0.50:
+            curios = 3
+        elif dmg_frac >= 0.25:
+            curios = 2
+
+        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
+
+        # 2. Defeat vs Victory
+        if self.player.current_hp <= 0:
+            xp_loss = int(self.player.exp * 0.10)
+            self.player.exp = max(0, self.player.exp - xp_loss)
+            self.player.current_hp = 1
+
+            embed = combat_ui.create_defeat_embed(
+                self.player, self.monster, xp_loss, curios_gained=curios, dmg_frac=dmg_frac
+            )
+            await message.edit(embed=embed, view=None)
+            self.bot.state_manager.clear_active(self.user_id)
+            await self.bot.database.users.update_from_player_object(self.player)
+            self.stop()
+
+        else:
+            # Full Kill Victory
+            reward_data = rewards.calculate_rewards(self.player, self.monster)
+            reward_data["xp"] *= 2
+            reward_data["gold"] *= 2
+            reward_data["curios"] = curios
+            reward_data["special"] = []
+
+            # 3. Infernal Engram Roll (10%)
+            if random.random() < 0.10:
+                await self.bot.database.uber.increment_infernal_engrams(
+                    self.user_id, self.server_id, 1
+                )
+                reward_data["special"].append("Infernal Engram")
+                reward_data["msgs"].append(
+                    "🔥 **An Infernal Engram crystallises from Lucifer's shattered crown...**"
+                )
+
+            # 4. Infernal Forge Blueprint / Refinement Rune Roll (10%)
+            if random.random() < 0.10:
+                u_prog = await self.bot.database.uber.get_uber_progress(
+                    self.user_id, self.server_id
+                )
+                if u_prog["infernal_blueprint_unlocked"] == 0:
+                    await self.bot.database.uber.set_infernal_blueprint_unlocked(
+                        self.user_id, self.server_id, True
+                    )
+                    reward_data["special"].append("Infernal Forge Blueprint")
+                    reward_data["msgs"].append(
+                        "📜 **You found the Infernal Forge Blueprint!**"
+                    )
+                else:
+                    await self.bot.database.users.modify_currency(
+                        self.user_id, "refinement_runes", 3
+                    )
+                    reward_data["special"].append("Refinement Runes (×3)")
+                    reward_data["msgs"].append(
+                        "🔨 **The forge echoes. You gain 3 Refinement Runes.**"
+                    )
+
+            # DB commits
+            self.player.exp += reward_data["xp"]
+            await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
+
+            # Soulreap: restore HP to full after kill
+            if self.player.get_weapon_infernal() == "soulreap":
+                self.player.current_hp = self.player.max_hp
+
+            await self.bot.database.users.update_from_player_object(self.player)
+
+            embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+            embed.title = "🔥 DEICIDE: Sovereign Shattered!"
+            embed.set_image(url="https://i.imgur.com/x9suAGK.png")
+
+            # Present the Infernal Contract
+            contract_view = InfernalContractView(
+                self.bot, self.user_id, self.player, self.server_id, message
+            )
+            embed.add_field(
+                name="🩸 An Infernal Contract materialises...",
+                value=contract_view.contract_summary(),
+                inline=False,
+            )
+            await message.edit(embed=embed, view=contract_view)
+            self.stop()
+
+
+class InfernalContractView(ui.View):
+    """Presents a randomly-generated stat contract after killing Uber Lucifer."""
+
+    STAT_LABELS = {"attack": "⚔️ ATK", "defence": "🛡️ DEF", "hp": "❤️ HP"}
+
+    def __init__(self, bot, user_id: str, player, server_id: str, message):
+        super().__init__(timeout=60)
+        self.bot = bot
+        self.user_id = user_id
+        self.player = player
+        self.server_id = server_id
+        self.message = message
+
+        self.contract = self._roll_contract()
+
+    def _roll_contract(self) -> dict:
+        roll = random.random()
+        if roll < 0.05:       # 5%  — all positive
+            signs = [1, 1, 1]
+        elif roll < 0.25:     # 20% — 2 positive 1 negative
+            signs = [1, 1, -1]
+        else:                 # 75% — 1 positive 2 negative
+            signs = [1, -1, -1]
+
+        random.shuffle(signs)
+        stats = ["attack", "defence", "hp"]
+        random.shuffle(stats)
+
+        return {stat: signs[i] * random.randint(5, 20) for i, stat in enumerate(stats)}
+
+    def contract_summary(self) -> str:
+        parts = []
+        for stat, delta in self.contract.items():
+            sign = "+" if delta > 0 else ""
+            parts.append(f"{self.STAT_LABELS[stat]}: **{sign}{delta}**")
+        return (
+            "\n".join(parts)
+            + "\n\n*Lucifer offers a deal. Most deals are poor. This may be too.*"
+        )
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        self.bot.state_manager.clear_active(self.user_id)
+        try:
+            await self.message.edit(view=None)
+        except Exception:
+            pass
+
+    @ui.button(label="Accept Contract", style=discord.ButtonStyle.danger, emoji="🩸")
+    async def accept(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+
+        atk_delta = self.contract.get("attack", 0)
+        def_delta = self.contract.get("defence", 0)
+        hp_delta = self.contract.get("hp", 0)
+
+        self.player.base_attack = max(1, self.player.base_attack + atk_delta)
+        self.player.base_defence = max(1, self.player.base_defence + def_delta)
+        self.player.max_hp = max(10, self.player.max_hp + hp_delta)
+        self.player.current_hp = min(self.player.current_hp, self.player.max_hp)
+
+        await self.bot.database.users.update_from_player_object(self.player)
+
+        parts = []
+        for stat, delta in self.contract.items():
+            sign = "+" if delta > 0 else ""
+            parts.append(f"{self.STAT_LABELS[stat]}: **{sign}{delta}**")
+
+        embed = discord.Embed(
+            title="🩸 Contract Signed",
+            description="The ink dries in flame. Your soul bears the mark.\n\n" + "\n".join(parts),
+            color=discord.Color.dark_red(),
+        )
+        embed.set_footer(text="There is no going back.")
+        self.bot.state_manager.clear_active(self.user_id)
+        await interaction.edit_original_response(embed=embed, view=None)
+        self.stop()
+
+    @ui.button(label="Reject Contract", style=discord.ButtonStyle.secondary, emoji="🖤")
+    async def reject(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+        embed = discord.Embed(
+            title="🖤 Contract Rejected",
+            description="Lucifer watches you walk away. *He will remember.*",
+            color=discord.Color.dark_grey(),
+        )
+        self.bot.state_manager.clear_active(self.user_id)
+        await interaction.edit_original_response(embed=embed, view=None)
         self.stop()

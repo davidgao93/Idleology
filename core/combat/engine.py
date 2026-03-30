@@ -120,6 +120,46 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         player.base_attack += atk_bonus
         logs["Helmet Passive"] = f"**Juggernaut ({helmet_lvl})** empowers your strikes!\n⚔️ Attack boosted by **{atk_bonus}**."
 
+    # Infernal Weapon Passives (combat-start effects)
+    infernal = player.get_weapon_infernal()
+
+    if infernal == "inverted_edge" and player.equipped_weapon:
+        wep_atk = player.equipped_weapon.attack
+        wep_def = player.equipped_weapon.defence
+        player.equipped_weapon.attack = wep_def
+        player.equipped_weapon.defence = wep_atk
+        logs["Infernal Passive"] = (
+            f"🔥 **Inverted Edge** warps the blade!\n"
+            f"Weapon attack and defence are swapped ({wep_atk} ↔ {wep_def})."
+        )
+
+    elif infernal == "gilded_hunger" and player.equipped_weapon:
+        rarity_bonus = int(player.equipped_weapon.rarity * 0.5)
+        if rarity_bonus > 0:
+            player.base_attack += rarity_bonus
+            logs["Infernal Passive"] = (
+                f"🔥 **Gilded Hunger** devours the weapon's rarity!\n"
+                f"⚔️ Attack boosted by **{rarity_bonus}**."
+            )
+
+    elif infernal == "diabolic_pact":
+        hp_cost = int(player.current_hp * 0.5)
+        player.current_hp = max(1, player.current_hp - hp_cost)
+        player.base_attack *= 2
+        logs["Infernal Passive"] = (
+            f"🔥 **Diabolic Pact** sealed in blood!\n"
+            f"💀 Lost **{hp_cost}** HP.\n"
+            f"⚔️ Attack **doubled** for this combat!"
+        )
+
+    elif infernal == "cursed_precision":
+        player.base_crit_chance_target = max(1, player.base_crit_chance_target - 20)
+        player.cursed_precision_active = True
+        logs["Infernal Passive"] = (
+            f"🔥 **Cursed Precision** clouds your strikes!\n"
+            f"🎯 Crit chance greatly increased, but crits roll for the lower result."
+        )
+
     return logs
 
 def process_heal(player: Player) -> str:
@@ -261,6 +301,12 @@ def process_player_turn(player: Player, monster: Monster) -> str:
     is_crit = False
     weapon_crit_bonus_chance = check_for_crit_bonus(player)
     crit_target = player.get_current_crit_target() - weapon_crit_bonus_chance
+
+    # Voracious: each round without a crit lowers crit target by 5 (stacking)
+    infernal = player.get_weapon_infernal()
+    if infernal == "voracious" and player.voracious_stacks > 0:
+        crit_target = max(1, crit_target - (player.voracious_stacks * 5))
+
     crit_roll = random.randint(0, 100)
     if is_hit and crit_roll > crit_target and "Impenetrable" not in monster.modifiers:
         is_crit = True
@@ -299,8 +345,27 @@ def process_player_turn(player: Player, monster: Monster) -> str:
             crit_base_damage = int(crit_base_damage * 0.80)
             passive_message += f"The monster's **Smothering** aura dampens your critical hit!\n"
 
+        # Cursed Precision: roll twice, take lower
+        if player.cursed_precision_active:
+            alt_base = int(random.randint(crit_min, crit_max) * 2.0)
+            if alt_base < crit_base_damage:
+                crit_base_damage = alt_base
+            passive_message += f"**Cursed Precision** — the weaker roll applies!\n"
+
         actual_hit_pre_ward_gen = int(crit_base_damage * attack_multiplier)
-        
+
+        # Last Rites: bonus 10% of enemy current HP on crit
+        if infernal == "last_rites" and monster.hp > 0:
+            last_rites_bonus = int(monster.hp * 0.10)
+            actual_hit_pre_ward_gen += last_rites_bonus
+            passive_message += f"**Last Rites** seals {monster.name}'s fate! (+{last_rites_bonus})\n"
+
+        # Voracious: reset stacks on crit
+        if infernal == "voracious":
+            if player.voracious_stacks > 0:
+                passive_message += f"**Voracious** resets after a crit! ({player.voracious_stacks} stacks lost)\n"
+            player.voracious_stacks = 0
+
         glimmer = "The weapon glimmers with power!\n" if weapon_crit_bonus_chance > 0 else ""
         attack_message = passive_message + glimmer + f"Critical Hit! Damage: 🗡️ **{actual_hit_pre_ward_gen}**"
 
@@ -320,17 +385,35 @@ def process_player_turn(player: Player, monster: Monster) -> str:
 
         actual_hit_pre_ward_gen, echo_hit, echo_damage = check_for_echo_bonus(player, actual_hit_pre_ward_gen)
 
+        # Voracious: increment stacks on non-crit hit
+        if infernal == "voracious":
+            player.voracious_stacks += 1
+            passive_message += f"**Voracious** charges! ({player.voracious_stacks} stack{'s' if player.voracious_stacks != 1 else ''})\n"
+
         attack_message = passive_message + attack_message + f"Hit! Damage: 💥 **{actual_hit_pre_ward_gen - echo_damage}**"
         if echo_hit:
             attack_message += f"\nThe hit is 🎶 echoed!\nEcho damage: 💥 **{echo_damage}**"
 
-    else: # Miss
+    else:  # Miss
         poison_damage_on_miss = check_for_poison_bonus(player, attack_multiplier)
-        if poison_damage_on_miss > 0:
+
+        # Perdition: misses deal 75% weapon attack
+        if infernal == "perdition" and player.equipped_weapon:
+            perdition_dmg = int(player.equipped_weapon.attack * 0.75)
+            if perdition_dmg > 0:
+                attack_message = passive_message + f"Miss! But **Perdition** tears through, dealing 🔥 **{perdition_dmg}** damage."
+                actual_hit_pre_ward_gen = perdition_dmg
+            else:
+                attack_message = passive_message + "Miss!"
+        elif poison_damage_on_miss > 0:
             attack_message = passive_message + f"Miss!\nHowever, the lingering poison 🐍 deals **{poison_damage_on_miss}** damage."
-            actual_hit_pre_ward_gen = poison_damage_on_miss 
-        else: 
+            actual_hit_pre_ward_gen = poison_damage_on_miss
+        else:
             attack_message = passive_message + "Miss!"
+
+        # Voracious: increment stacks on miss too
+        if infernal == "voracious":
+            player.voracious_stacks += 1
 
     # --- Apply Damage Reductions ---
     actual_hit = actual_hit_pre_ward_gen

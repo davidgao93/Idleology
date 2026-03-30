@@ -390,6 +390,48 @@ def get_modifier_description(modifier):
         }
     return descriptions.get(modifier, "") 
 
+async def generate_uber_lucifer(player, monster):
+    """Generate the single-phase Uber Lucifer boss fight. Heavy attack, minimal defence."""
+    ref_level = player.level + player.ascension + 20
+    monster.level = ref_level
+
+    monster = calculate_monster_stats(monster)
+
+    # Slightly less raw HP than Aphrodite — Lucifer is meant to kill you, not outlast you
+    base_hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.30, 1.40)))
+    monster.hp = int(base_hp * 3.0)
+    monster.max_hp = monster.hp
+    monster.xp = monster.hp * 2
+
+    monster.name = "Lucifer, Infernal Sovereign"
+    monster.image = "https://i.imgur.com/x9suAGK.png"
+    monster.flavor = "exudes an overwhelming killing intent"
+    monster.species = "Demon"
+    monster.is_boss = True
+
+    # Identity: triple attack, minimal defence
+    monster.attack = int(monster.attack * 3.0)
+    monster.defence = int(monster.defence * 0.3)
+
+    # Core modifiers — Hell's Fury stacks attack per hit; Absolute gives flat boost
+    monster.modifiers = ["Hell's Fury", "Absolute"]
+    if "Absolute" in monster.modifiers:
+        monster.attack += 25
+        monster.defence += 25
+
+    # Extra per-level scaling weighted heavily toward attack
+    monster.attack += int(monster.level * 1.0)
+    monster.defence += int(monster.level * 0.2)
+
+    # One random boss modifier for variety (exclude modifiers that conflict with identity)
+    available_boss_mods = get_boss_mods()
+    exclude = ["Absolute", "Hell's Fury", "Infernal Legion"]
+    valid_mods = [m for m in available_boss_mods if m not in exclude]
+    monster.modifiers.append(random.choice(valid_mods))
+
+    return monster
+
+
 async def generate_uber_aphrodite(player, monster):
     """Generate the single-phase Uber Aphrodite boss fight."""
     # Base level is ~20 levels above the player's effective level

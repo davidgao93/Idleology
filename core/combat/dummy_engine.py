@@ -220,5 +220,45 @@ class DummyEngine:
                 return "You feel this would be a **tough battle**. Survival is uncertain."
             else:
                 return "You are **filled with determination**. Press onwards."
-                
+
+        if target == "lucifer_uber":
+            ref_lvl = player.level + player.ascension + 20
+            # Lucifer proxy: triple attack, minimal defence
+            m_atk = int(ref_lvl ** 1.3 * 3.0) + 25 + int(ref_lvl * 1.0)
+            m_def = int(ref_lvl ** 1.3 * 0.3) + 25 + int(ref_lvl * 0.2)
+
+            proxy_boss = Monster(
+                name="Proxy",
+                level=ref_lvl,
+                hp=999999,
+                max_hp=999999,
+                xp=0,
+                attack=m_atk,
+                defence=m_def,
+                modifiers=["Hell's Fury"],
+                image="",
+                flavor="",
+            )
+
+            res = DummyEngine.run_simulation(player, proxy_boss, turns=50)
+            dps = res.average_damage
+
+            from core.combat.calcs import calculate_monster_hit_chance, calculate_damage_taken
+
+            total_inc_dmg = 0
+            for _ in range(10):
+                hit_chance = calculate_monster_hit_chance(player, proxy_boss)
+                if random.random() <= hit_chance:
+                    total_inc_dmg += calculate_damage_taken(player, proxy_boss)
+
+            avg_inc_dmg = total_inc_dmg / 10.0
+            time_to_die = player.max_hp / avg_inc_dmg if avg_inc_dmg > 0 else 999
+
+            if time_to_die < 3:
+                return "You feel as if you are **not ready**. His strikes alone would end you."
+            elif dps < (player.max_hp * 0.1) and time_to_die < 10:
+                return "You feel this would be a **tough battle**. Survival is uncertain."
+            else:
+                return "You are **filled with determination**. Press onwards."
+
         return "Unknown target."
