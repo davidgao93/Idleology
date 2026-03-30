@@ -90,21 +90,29 @@ class ProfileBuilder:
 
         k_balance = await bot.database.users.get_currency(user_id, 'balance_fragment')
         r_partner = await bot.database.users.get_currency(user_id, 'partnership_runes')
+        uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
 
         embed = discord.Embed(title=f"Inventory Summary", description=f"💰 **Gold:** {user[6]:,}\n🧪 **Potions:** {user[16]:,}", color=0x00FF00)
         embed.set_thumbnail(url=user[7])
 
-        embed.add_field(name="📦 **Equipment**", 
+        embed.add_field(name="📦 **Equipment**",
             value=(f"⚔️ Weapons: {w_count}/60\n🛡️ Armor: {ar_count}/60\n📿 Accessories: {a_count}/60\n"
                    f"🧤 Gloves: {g_count}/60\n👢 Boots: {b_count}/60\n🪖 Helmets: {h_count}/60\n🐾 Companions: {pet_count}/20"), inline=True)
 
-        embed.add_field(name="💎 **Runes**", 
+        embed.add_field(name="💎 **Runes**",
             value=(f"🔨 Refinement: {user[19]}\n✨ Potential: {user[21]}\n🔮 Imbuing: {user[27]}\n"
                    f"💥 Shatter: {user[31]}\n🤝 Partnership: {r_partner}"), inline=True)
 
-        embed.add_field(name="🔑 **Key Items**", 
+        embed.add_field(name="🔑 **Key Items**",
             value=(f"🐉 Draconic Keys: {user[25]}\n🪽 Angelic Keys: {user[26]}\n🗝️ Void Keys: {user[30]}\n"
                    f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {user[28]}\n🟣 Void Frags: {user[29]}\n🎁 Curios: {user[22]}"), inline=True)
+
+        bp_status = "✅ Unlocked" if uber_data['celestial_blueprint_unlocked'] else "🔒 Locked"
+        embed.add_field(name="🌌 **Uber Drops**",
+            value=(f"🔮 Celestial Sigils: {uber_data['celestial_sigils']}\n"
+                   f"💠 Celestial Engrams: {uber_data['celestial_engrams']}\n"
+                   f"📜 Shrine Blueprint: {bp_status}"), inline=True)
+
         return embed
 
     @staticmethod
