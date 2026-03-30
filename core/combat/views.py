@@ -256,7 +256,11 @@ class CombatView(ui.View):
 
     async def handle_end_state(self, message, interaction: Interaction):
         """Processes victory or defeat with Phase Logic."""
-        
+
+        if getattr(self.monster, 'is_uber', False):
+            await self._handle_uber_end_state(message, interaction)
+            return
+
         if self.player.current_hp <= 0:
             # Defeat Logic (Same as before)
             xp_loss = int(self.player.exp * 0.10)
