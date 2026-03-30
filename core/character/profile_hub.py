@@ -108,10 +108,16 @@ class ProfileBuilder:
                    f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {user[28]}\n🟣 Void Frags: {user[29]}\n🎁 Curios: {user[22]}"), inline=True)
 
         bp_status = "✅ Unlocked" if uber_data['celestial_blueprint_unlocked'] else "🔒 Locked"
-        embed.add_field(name="🌌 **Uber Drops**",
+        embed.add_field(name="🌌 **Celestial Drops**",
             value=(f"🔮 Celestial Sigils: {uber_data['celestial_sigils']}\n"
                    f"💠 Celestial Engrams: {uber_data['celestial_engrams']}\n"
                    f"📜 Shrine Blueprint: {bp_status}"), inline=True)
+
+        infernal_bp_status = "✅ Unlocked" if uber_data['infernal_blueprint_unlocked'] else "🔒 Locked"
+        embed.add_field(name="🔥 **Infernal Drops**",
+            value=(f"🔥 Infernal Sigils: {uber_data['infernal_sigils']}\n"
+                   f"🔴 Infernal Engrams: {uber_data['infernal_engrams']}\n"
+                   f"📜 Infernal Forge Blueprint: {infernal_bp_status}"), inline=True)
 
         return embed
 

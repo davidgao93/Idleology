@@ -18,6 +18,7 @@ class Weapon:
     forges_remaining: int = 0
     refines_remaining: int = 0
     refinement_lvl: int = 0
+    infernal_passive: str = 'none'
 
 @dataclass
 class Accessory:
@@ -196,7 +197,11 @@ class Player:
     is_invulnerable_this_combat: bool = False
     combat_cooldown_reduction_seconds: int = 0
     celestial_vow_used: bool = False
-    
+
+    # Infernal passive transients
+    voracious_stacks: int = 0
+    cursed_precision_active: bool = False
+
     # Glove passives
     equilibrium_bonus_xp_pending: int = 0
     plundering_bonus_gold_pending: int = 0
@@ -306,6 +311,9 @@ class Player:
         
         # [SAFETY CAP] Hard cap special rarity bonus at 20%
         return min(20, bonus)
+
+    def get_weapon_infernal(self) -> str:
+        return self.equipped_weapon.infernal_passive if self.equipped_weapon else "none"
 
     def get_weapon_passive(self) -> str:
         return self.equipped_weapon.passive if self.equipped_weapon else "none"

@@ -1,5 +1,9 @@
 -- ALTER TABLE users ADD COLUMN doors_enabled INTEGER DEFAULT 1;
 -- ALTER TABLE armor ADD COLUMN celestial_armor_passive TEXT DEFAULT 'none';
+-- ALTER TABLE items ADD COLUMN infernal_passive TEXT NOT NULL DEFAULT 'none';
+-- ALTER TABLE uber_progress ADD COLUMN infernal_sigils INTEGER DEFAULT 0;
+-- ALTER TABLE uber_progress ADD COLUMN infernal_engrams INTEGER DEFAULT 0;
+-- ALTER TABLE uber_progress ADD COLUMN infernal_blueprint_unlocked INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -262,5 +266,8 @@ CREATE TABLE IF NOT EXISTS uber_progress (
     celestial_sigils INTEGER DEFAULT 0,
     celestial_engrams INTEGER DEFAULT 0,
     celestial_blueprint_unlocked INTEGER DEFAULT 0,
+    infernal_sigils INTEGER DEFAULT 0,
+    infernal_engrams INTEGER DEFAULT 0,
+    infernal_blueprint_unlocked INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );

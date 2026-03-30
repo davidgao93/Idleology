@@ -273,17 +273,38 @@ class EquipmentMechanics:
     def roll_celestial_passive(current_passive: str) -> str:
         """Rolls a new Celestial Armor passive."""
         pool = [
-            "celestial_ghostreaver", 
-            "celestial_glancing_blows", 
+            "celestial_ghostreaver",
+            "celestial_glancing_blows",
             "celestial_wind_dancer",
             "celestial_sanctity",
             "celestial_vow",
-            "celestial_fortress"
+            "celestial_fortress",
         ]
-        
+
         available = [p for p in pool if p != current_passive]
-        if not available: available = pool 
-            
+        if not available:
+            available = pool
+
+        return random.choice(available)
+
+    @staticmethod
+    def roll_infernal_passive(current_passive: str) -> str:
+        """Rolls a new Infernal Weapon passive."""
+        pool = [
+            "soulreap",
+            "inverted_edge",
+            "gilded_hunger",
+            "cursed_precision",
+            "diabolic_pact",
+            "perdition",
+            "voracious",
+            "last_rites",
+        ]
+
+        available = [p for p in pool if p != current_passive]
+        if not available:
+            available = pool
+
         return random.choice(available)
 
     # --- POTENTIAL (Accessory) LOGIC ---

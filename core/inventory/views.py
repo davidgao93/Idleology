@@ -8,7 +8,7 @@ import asyncio
 from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
 from core.ui.inventory import InventoryUI
 from core.items.equipment_mechanics import EquipmentMechanics
-from core.inventory.upgrade_views import ForgeView, RefineView, PotentialView, ShatterView, TemperView, ImbueView, VoidforgeView, EngramView
+from core.inventory.upgrade_views import ForgeView, RefineView, PotentialView, ShatterView, TemperView, ImbueView, VoidforgeView, EngramView, InfernalEngramView
 from core.companions.mechanics import CompanionMechanics
 
 class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
@@ -286,10 +286,11 @@ class ItemDetailView(View):
             if self.item.forges_remaining > 0:
                 self.add_upgrade_button("Forge", ButtonStyle.success, "forge")
             self.add_upgrade_button("Refine", ButtonStyle.secondary, "refine")
-            
+
             if self.void_keys > 0 and self.item.passive != 'none' and self.item.u_passive == 'none':
-                 self.add_upgrade_button("Voidforge", ButtonStyle.primary, "voidforge")
-            self.add_upgrade_button("Shatter", ButtonStyle.danger, "shatter")  
+                self.add_upgrade_button("Voidforge", ButtonStyle.primary, "voidforge")
+            self.add_upgrade_button("Infernal Engram", ButtonStyle.danger, "infernal_engram")
+            self.add_upgrade_button("Shatter", ButtonStyle.danger, "shatter")
 
         elif isinstance(self.item, Armor):
             if self.item.temper_remaining > 0:
@@ -325,7 +326,8 @@ class ItemDetailView(View):
         view_map = {
             "forge": ForgeView, "refine": RefineView, "temper": TemperView,
             "imbue": ImbueView, "potential": PotentialView, "voidforge": VoidforgeView,
-            "shatter": ShatterView, "engram": EngramView
+            "shatter": ShatterView, "engram": EngramView,
+            "infernal_engram": InfernalEngramView,
         }
         
         view_class = view_map.get(action_type)
