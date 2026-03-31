@@ -1,10 +1,3 @@
--- ALTER TABLE users ADD COLUMN doors_enabled INTEGER DEFAULT 1;
--- ALTER TABLE armor ADD COLUMN celestial_armor_passive TEXT DEFAULT 'none';
--- ALTER TABLE items ADD COLUMN infernal_passive TEXT NOT NULL DEFAULT 'none';
--- ALTER TABLE uber_progress ADD COLUMN infernal_sigils INTEGER DEFAULT 0;
--- ALTER TABLE uber_progress ADD COLUMN infernal_engrams INTEGER DEFAULT 0;
--- ALTER TABLE uber_progress ADD COLUMN infernal_blueprint_unlocked INTEGER DEFAULT 0;
-
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
   `user_id` TEXT NOT NULL UNIQUE,
@@ -66,7 +59,8 @@ CREATE TABLE IF NOT EXISTS `items` (
   `refines_remaining` INTEGER DEFAULT 0,
   `refinement_lvl` INTEGER DEFAULT 0,
   `pinnacle_passive` TEXT NOT NULL DEFAULT 'none',
-  `utmost_passive` TEXT NOT NULL DEFAULT 'none'
+  `utmost_passive` TEXT NOT NULL DEFAULT 'none',
+  `infernal_passive` TEXT NOT NULL DEFAULT 'none',
 );
 
 CREATE TABLE IF NOT EXISTS `accessories` (
@@ -82,7 +76,8 @@ CREATE TABLE IF NOT EXISTS `accessories` (
   `passive` TEXT NOT NULL DEFAULT 'none',
   `is_equipped` BOOLEAN DEFAULT FALSE,
   `potential_remaining` INTEGER DEFAULT 10,
-  `passive_lvl` INTEGER DEFAULT 0
+  `passive_lvl` INTEGER DEFAULT 0,
+  `void_passive` TEXT DEFAULT 'none'
 );
 
 CREATE TABLE IF NOT EXISTS `armor` (
@@ -223,9 +218,6 @@ CREATE TABLE IF NOT EXISTS settlements (
     timber INTEGER DEFAULT 0, -- Specific settlement resource
     stone INTEGER DEFAULT 0,  -- Specific settlement resource
     last_collection_time TEXT,
-    celestial_stone INTEGER DEFAULT 0,
-    -- ALTER TABLE settlements ADD COLUMN void_crystal INTEGER DEFAULT 0;
-    void_crystal INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );
 
@@ -264,8 +256,6 @@ CREATE TABLE IF NOT EXISTS slayer_emblems (
     slot_5_type TEXT DEFAULT 'none', slot_5_tier INTEGER DEFAULT 1,
     PRIMARY KEY (user_id, server_id)
 );
-
--- ALTER TABLE accessories ADD COLUMN void_passive TEXT DEFAULT 'none';
 
 CREATE TABLE IF NOT EXISTS uber_progress (
     user_id TEXT NOT NULL,
