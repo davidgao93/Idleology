@@ -648,7 +648,7 @@ class CombatView(ui.View):
                     reward_data['special'].append("Celestial Shrine Blueprint")
                     reward_data['msgs'].append("📜 **You found the Celestial Shrine Blueprint!**")
                 else:
-                    await self.bot.database.settlement.modify_celestial_stone(self.user_id, self.server_id, 1)
+                    await self.bot.database.users.modify_currency(self.user_id, "celestial_stone", 1)
                     reward_data['special'].append("Celestial Stone")
                     reward_data['msgs'].append("🪨 **You found a Celestial Stone!**")
             
@@ -737,11 +737,11 @@ class CombatView(ui.View):
                     )
                 else:
                     await self.bot.database.users.modify_currency(
-                        self.user_id, "refinement_runes", 3
+                        self.user_id, "infernal_cinder", 1
                     )
-                    reward_data["special"].append("Refinement Runes (×3)")
+                    reward_data["special"].append("Infernal Cinder")
                     reward_data["msgs"].append(
-                        "🔨 **The forge echoes. You gain 3 Refinement Runes.**"
+                        "🔥 **The forge roars. You extract an Infernal Cinder.**"
                     )
 
             # DB commits
@@ -828,11 +828,16 @@ class CombatView(ui.View):
                         "📜 **You found the Void Sanctum Blueprint!**"
                     )
                 else:
-                    await self.bot.database.settlement.modify_void_crystal(
-                        self.user_id, self.server_id, 1
+                    await self.bot.database.users.modify_currency(
+                        self.user_id, "void_crystal", 1
                     )
                     reward_data["special"].append("Void Crystal")
                     reward_data["msgs"].append("🔮 **The void yields a Void Crystal.**")
+
+            # 5. Void Key (guaranteed on victory)
+            await self.bot.database.users.modify_currency(self.user_id, "void_keys", 1)
+            reward_data["special"].append("Void Key")
+            reward_data["msgs"].append("🗝️ **A Void Key manifests from the collapsing rift.**")
 
             # DB commits
             self.player.exp += reward_data["xp"]

@@ -263,6 +263,9 @@ CREATE TABLE IF NOT EXISTS slayer_emblems (
 );
 
 -- ALTER TABLE accessories ADD COLUMN void_passive TEXT DEFAULT 'none';
+-- ALTER TABLE users ADD COLUMN celestial_stone INTEGER DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN void_crystal INTEGER DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN infernal_cinder INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS uber_progress (
     user_id TEXT NOT NULL,
