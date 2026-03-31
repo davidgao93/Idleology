@@ -50,6 +50,8 @@ class SettlementMechanics:
         # Generates 'companion_cookie' which is auto-converted to XP on collect
         "companion_ranch": {"type": "generator", "output": "companion_cookie", "base_rate": 1}, # 1 XP per worker/hr
         "celestial_shrine": {"type": "passive", "effect": "sigil_bonus"},
+        "infernal_forge": {"type": "passive", "effect": "infernal_sigil_bonus"},
+        "void_sanctum": {"type": "passive", "effect": "void_shard_bonus"},
     }
 
     @staticmethod

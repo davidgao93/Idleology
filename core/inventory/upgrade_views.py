@@ -1007,6 +1007,85 @@ class InfernalEngramView(BaseUpgradeView):
         await interaction.edit_original_response(embed=res_embed, view=self)
 
 
+class VoidEngramView(BaseUpgradeView):
+    """Allows consuming a Void Engram to unlock or reroll a void accessory passive."""
+
+    def __init__(self, bot, user_id, item: Accessory, parent_view):
+        super().__init__(bot, user_id, item, parent_view)
+
+    async def render(self, interaction: Interaction):
+        server_id = str(interaction.guild.id)
+
+        uber_prog = await self.bot.database.uber.get_uber_progress(self.user_id, server_id)
+        self.engrams = uber_prog["void_engrams"]
+
+        current_passive = getattr(self.item, "void_passive", "none")
+        display_passive = current_passive.replace("_", " ").title() if current_passive != "none" else "None"
+
+        desc = (
+            f"**Current Void Passive:** {display_passive}\n"
+            f"**Void Engrams Owned:** {self.engrams}\n\n"
+            "Consuming an Engram will corrupt your accessory with a Void passive, or reroll your existing one."
+        )
+
+        self.embed = discord.Embed(
+            title=f"⬛ Void Corruption: {self.item.name}",
+            description=desc,
+            color=discord.Color.dark_theme(),
+        )
+
+        self.clear_items()
+        btn_consume = Button(
+            label="Consume Engram",
+            style=ButtonStyle.secondary,
+            emoji="⬛",
+            disabled=(self.engrams < 1),
+        )
+        btn_consume.callback = self.confirm_engram
+        self.add_item(btn_consume)
+        self.add_back_button()
+
+        if interaction.response.is_done():
+            await interaction.edit_original_response(embed=self.embed, view=self)
+        else:
+            await interaction.response.edit_message(embed=self.embed, view=self)
+
+    async def confirm_engram(self, interaction: Interaction):
+        server_id = str(interaction.guild.id)
+        uber_prog = await self.bot.database.uber.get_uber_progress(self.user_id, server_id)
+        if uber_prog["void_engrams"] < 1:
+            return await interaction.response.send_message(
+                "You do not have any Void Engrams!", ephemeral=True
+            )
+
+        await interaction.response.defer()
+        await self.bot.database.uber.increment_void_engrams(self.user_id, server_id, -1)
+
+        current_p = getattr(self.item, "void_passive", "none")
+        new_passive = EquipmentMechanics.roll_void_passive(current_p)
+
+        await self.bot.database.equipment.update_passive(
+            self.item.item_id, "accessory", new_passive, "void_passive"
+        )
+        self.item.void_passive = new_passive
+
+        display_new = new_passive.replace("_", " ").title()
+        res_embed = discord.Embed(
+            title="⬛ Engram Absorbed!",
+            description=f"The Engram dissolves into the void, reshaping your accessory.\n\n**New Passive:** {display_new}",
+            color=discord.Color.dark_theme(),
+        )
+
+        self.clear_items()
+        if uber_prog["void_engrams"] - 1 > 0:
+            btn_again = Button(label="Roll Again", style=ButtonStyle.primary)
+            btn_again.callback = self.render
+            self.add_item(btn_again)
+
+        self.add_back_button()
+        await interaction.edit_original_response(embed=res_embed, view=self)
+
+
 class EngramView(BaseUpgradeView):
     def __init__(self, bot, user_id, item: Armor, parent_view):
         super().__init__(bot, user_id, item, parent_view)

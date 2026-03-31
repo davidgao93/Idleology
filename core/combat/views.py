@@ -260,6 +260,8 @@ class CombatView(ui.View):
         if getattr(self.monster, 'is_uber', False):
             if "Lucifer" in self.monster.name:
                 await self._handle_uber_lucifer_end_state(message, interaction)
+            elif "NEET" in self.monster.name:
+                await self._handle_uber_neet_end_state(message, interaction)
             else:
                 await self._handle_uber_end_state(message, interaction)
             return
@@ -343,6 +345,22 @@ class CombatView(ui.View):
                         self.user_id, self.server_id, sigils_dropped
                     )
                     reward_data["special"].extend(["Infernal Sigil"] * sigils_dropped)
+
+            if "NEET" in self.monster.name and not getattr(self.monster, 'is_uber', False):
+                _, sanctum_workers = await self.bot.database.settlement.get_building_details(
+                    self.user_id, self.server_id, "void_sanctum"
+                )
+                total_chance = 0.10 + (sanctum_workers * 0.0001)
+                guaranteed = int(total_chance)
+                fractional = total_chance - guaranteed
+                shards_dropped = guaranteed
+                if random.random() < fractional:
+                    shards_dropped += 1
+                if shards_dropped > 0:
+                    await self.bot.database.uber.increment_void_shards(
+                        self.user_id, self.server_id, shards_dropped
+                    )
+                    reward_data["special"].extend(["Void Shard"] * shards_dropped)
 
             if "Aphrodite" in self.monster.name and not getattr(self.monster, 'is_uber', False):
                 _, shrine_workers = await self.bot.database.settlement.get_building_details(self.user_id, self.server_id, "celestial_shrine")
@@ -630,7 +648,7 @@ class CombatView(ui.View):
                     reward_data['special'].append("Celestial Shrine Blueprint")
                     reward_data['msgs'].append("📜 **You found the Celestial Shrine Blueprint!**")
                 else:
-                    await self.bot.database.settlement.modify_celestial_stone(self.user_id, self.server_id, 1)
+                    await self.bot.database.users.modify_currency(self.user_id, "celestial_stone", 1)
                     reward_data['special'].append("Celestial Stone")
                     reward_data['msgs'].append("🪨 **You found a Celestial Stone!**")
             
@@ -719,11 +737,11 @@ class CombatView(ui.View):
                     )
                 else:
                     await self.bot.database.users.modify_currency(
-                        self.user_id, "refinement_runes", 3
+                        self.user_id, "infernal_cinder", 1
                     )
-                    reward_data["special"].append("Refinement Runes (×3)")
+                    reward_data["special"].append("Infernal Cinder")
                     reward_data["msgs"].append(
-                        "🔨 **The forge echoes. You gain 3 Refinement Runes.**"
+                        "🔥 **The forge roars. You extract an Infernal Cinder.**"
                     )
 
             # DB commits
@@ -751,6 +769,101 @@ class CombatView(ui.View):
             )
             await message.edit(embed=embed, view=contract_view)
             self.stop()
+
+    async def _handle_uber_neet_end_state(self, message, interaction: Interaction):
+        """Specialized logic for the Uber NEET encounter."""
+        max_hp = self.monster.max_hp
+        rem_hp = max(0, self.monster.hp)
+        dmg_frac = max(0.0, min(1.0, (max_hp - rem_hp) / max_hp))
+
+        # 1. Curio Rewards (scale with damage dealt)
+        curios = 1
+        if dmg_frac >= 1.0:   curios = 5
+        elif dmg_frac >= 0.75: curios = 4
+        elif dmg_frac >= 0.50: curios = 3
+        elif dmg_frac >= 0.25: curios = 2
+
+        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
+
+        # 2. Defeat vs Victory
+        if self.player.current_hp <= 0:
+            xp_loss = int(self.player.exp * 0.10)
+            self.player.exp = max(0, self.player.exp - xp_loss)
+            self.player.current_hp = 1
+
+            embed = combat_ui.create_defeat_embed(
+                self.player, self.monster, xp_loss, curios_gained=curios, dmg_frac=dmg_frac
+            )
+            await message.edit(embed=embed, view=None)
+
+        else:
+            # Full Kill Victory
+            reward_data = rewards.calculate_rewards(self.player, self.monster)
+            reward_data["xp"] *= 2
+            reward_data["gold"] *= 2
+            reward_data["curios"] = curios
+            reward_data["special"] = []
+
+            # 3. Void Engram Roll (10%)
+            if random.random() < 0.10:
+                await self.bot.database.uber.increment_void_engrams(
+                    self.user_id, self.server_id, 1
+                )
+                reward_data["special"].append("Void Engram")
+                reward_data["msgs"].append(
+                    "⬛ **A Void Engram crystallises from the collapsing rift...**"
+                )
+
+            # 4. Void Sanctum Blueprint / Void Crystal Roll (10%)
+            if random.random() < 0.10:
+                u_prog = await self.bot.database.uber.get_uber_progress(
+                    self.user_id, self.server_id
+                )
+                if u_prog["void_blueprint_unlocked"] == 0:
+                    await self.bot.database.uber.set_void_blueprint_unlocked(
+                        self.user_id, self.server_id, True
+                    )
+                    reward_data["special"].append("Void Sanctum Blueprint")
+                    reward_data["msgs"].append(
+                        "📜 **You found the Void Sanctum Blueprint!**"
+                    )
+                else:
+                    await self.bot.database.users.modify_currency(
+                        self.user_id, "void_crystal", 1
+                    )
+                    reward_data["special"].append("Void Crystal")
+                    reward_data["msgs"].append("🔮 **The void yields a Void Crystal.**")
+
+            # 5. Void Key (guaranteed on victory)
+            await self.bot.database.users.modify_currency(self.user_id, "void_keys", 1)
+            reward_data["special"].append("Void Key")
+            reward_data["msgs"].append("🗝️ **A Void Key manifests from the collapsing rift.**")
+
+            # DB commits
+            self.player.exp += reward_data["xp"]
+            await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
+
+            # Soulreap: restore HP to full after kill
+            if self.player.get_weapon_infernal() == "soulreap":
+                self.player.current_hp = self.player.max_hp
+
+            await self.bot.database.users.update_from_player_object(self.player)
+
+            embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+            embed.title = "⬛ DEICIDE: Void Sovereign Collapsed!"
+            embed.set_image(url="https://i.imgur.com/7UmY4Mo.jpeg")
+            await message.edit(embed=embed, view=None)
+            self.bot.state_manager.clear_active(self.user_id)
+            self.stop()
+            return
+
+        # Soulreap on uber defeat (if player survived via vow etc.)
+        if self.player.get_weapon_infernal() == "soulreap" and self.player.current_hp > 0:
+            self.player.current_hp = self.player.max_hp
+
+        self.bot.state_manager.clear_active(self.user_id)
+        await self.bot.database.users.update_from_player_object(self.player)
+        self.stop()
 
 
 class InfernalContractView(ui.View):

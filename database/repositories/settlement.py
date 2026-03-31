@@ -51,6 +51,13 @@ class SettlementRepository:
         )
         await self.connection.commit()
 
+    async def modify_void_crystal(self, user_id: str, server_id: str, amount: int) -> None:
+        await self.connection.execute(
+            "UPDATE settlements SET void_crystal = void_crystal + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id)
+        )
+        await self.connection.commit()
+
     async def build_structure(self, user_id: str, server_id: str, b_type: str, slot: int) -> None:
         await self.connection.execute(
             "INSERT INTO buildings (user_id, server_id, building_type, slot_index) VALUES (?, ?, ?, ?)",

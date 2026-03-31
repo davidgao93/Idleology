@@ -53,6 +53,7 @@ def create_accessory(data: tuple) -> Accessory:
         is_equipped=bool(data[10]),
         potential_remaining=data[11],
         passive_lvl=data[12],
+        void_passive=data[13] if len(data) > 13 else "none",
         description=""
     )
 

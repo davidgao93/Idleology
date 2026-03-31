@@ -160,6 +160,36 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
             f"🎯 Crit chance greatly increased, but crits roll for the lower result."
         )
 
+    # Void Accessory Passives (combat-start effects)
+    void_passive = player.get_accessory_void_passive()
+
+    if void_passive == "entropy" and player.equipped_weapon:
+        atk_transfer = int(player.equipped_weapon.attack * 0.20)
+        def_transfer = int(player.equipped_weapon.defence * 0.20)
+        player.equipped_weapon.attack = player.equipped_weapon.attack - atk_transfer + def_transfer
+        player.equipped_weapon.defence = player.equipped_weapon.defence - def_transfer + atk_transfer
+        logs["Void Passive"] = (
+            f"⬛ **Entropy** warps the weapon!\n"
+            f"20% ATK↔DEF transferred (±{atk_transfer} ATK / ±{def_transfer} DEF)."
+        )
+
+    elif void_passive == "void_echo" and player.equipped_accessory:
+        echo_bonus = int(player.base_attack * 0.15)
+        if echo_bonus > 0:
+            player.equipped_accessory.attack += echo_bonus
+            logs["Void Passive"] = (
+                f"⬛ **Void Echo** resonates with your power!\n"
+                f"Accessory ATK boosted by **{echo_bonus}**."
+            )
+
+    elif void_passive == "unravelling" and monster.defence > 0:
+        strip = int(monster.defence * 0.20)
+        monster.defence = max(0, monster.defence - strip)
+        logs["Void Passive"] = (
+            f"⬛ **Unravelling** tears at {monster.name}'s defenses!\n"
+            f"🛡️ Monster defence reduced by **{strip}** (20%)."
+        )
+
     return logs
 
 def process_heal(player: Player) -> str:
@@ -366,6 +396,19 @@ def process_player_turn(player: Player, monster: Monster) -> str:
                 passive_message += f"**Voracious** resets after a crit! ({player.voracious_stacks} stacks lost)\n"
             player.voracious_stacks = 0
 
+        # Void Gaze: each crit reduces monster ATK by 1% (max 30 stacks)
+        void_passive_crit = player.get_accessory_void_passive()
+        if void_passive_crit == "void_gaze" and player.gaze_stacks < 30 and monster.attack > 0:
+            player.gaze_stacks += 1
+            atk_reduction = max(1, int(monster.attack * 0.01))
+            monster.attack = max(0, monster.attack - atk_reduction)
+            passive_message += f"⬛ **Void Gaze** ({player.gaze_stacks}/30) — {monster.name}'s ATK -{atk_reduction}!\n"
+
+        # Fracture: 5% chance on crit to instantly kill (no uber bosses)
+        if void_passive_crit == "fracture" and not getattr(monster, 'is_uber', False) and random.random() < 0.05:
+            actual_hit_pre_ward_gen = monster.hp
+            passive_message += "💀 **Fracture** tears open a void rift — **instant kill!**\n"
+
         glimmer = "The weapon glimmers with power!\n" if weapon_crit_bonus_chance > 0 else ""
         attack_message = passive_message + glimmer + f"Critical Hit! Damage: 🗡️ **{actual_hit_pre_ward_gen}**"
 
@@ -396,18 +439,33 @@ def process_player_turn(player: Player, monster: Monster) -> str:
 
     else:  # Miss
         poison_damage_on_miss = check_for_poison_bonus(player, attack_multiplier)
+        void_passive_miss = player.get_accessory_void_passive()
+        miss_dmg_parts = []
 
         # Perdition: misses deal 75% weapon attack
         if infernal == "perdition" and player.equipped_weapon:
             perdition_dmg = int(player.equipped_weapon.attack * 0.75)
             if perdition_dmg > 0:
-                attack_message = passive_message + f"Miss! But **Perdition** tears through, dealing 🔥 **{perdition_dmg}** damage."
-                actual_hit_pre_ward_gen = perdition_dmg
-            else:
-                attack_message = passive_message + "Miss!"
-        elif poison_damage_on_miss > 0:
-            attack_message = passive_message + f"Miss!\nHowever, the lingering poison 🐍 deals **{poison_damage_on_miss}** damage."
-            actual_hit_pre_ward_gen = poison_damage_on_miss
+                actual_hit_pre_ward_gen += perdition_dmg
+                miss_dmg_parts.append(f"**Perdition** tears through for 🔥 **{perdition_dmg}**")
+
+        # Poison on miss
+        if poison_damage_on_miss > 0:
+            actual_hit_pre_ward_gen += poison_damage_on_miss
+            miss_dmg_parts.append(f"poison 🐍 deals **{poison_damage_on_miss}**")
+
+        # Oblivion: converts miss into 50% of min damage, stacks with all miss sources
+        if void_passive_miss == "oblivion":
+            base_max = player.get_total_attack()
+            glove_p = player.get_glove_passive()
+            glove_l = player.equipped_glove.passive_lvl if player.equipped_glove else 0
+            base_min = max(1, int(base_max * (glove_l * 0.02))) if glove_p == "adroit" and glove_l > 0 else 1
+            oblivion_dmg = max(1, int(base_min * 0.5))
+            actual_hit_pre_ward_gen += oblivion_dmg
+            miss_dmg_parts.append(f"**Oblivion** phases through for ⬛ **{oblivion_dmg}**")
+
+        if miss_dmg_parts:
+            attack_message = passive_message + "Miss! But " + ", ".join(miss_dmg_parts) + " damage."
         else:
             attack_message = passive_message + "Miss!"
 
@@ -509,7 +567,15 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
         effective_hit_chance = 1.0
 
     monster_message = ""
-    
+
+    # Void Drain: siphons player ATK/DEF every monster turn (regardless of hit)
+    if "Void Aura" in monster.modifiers:
+        drain_atk = max(1, int(player.base_attack * 0.05))
+        drain_def = max(0, int(player.base_defence * 0.05))
+        player.base_attack = max(1, player.base_attack - drain_atk)
+        player.base_defence = max(0, player.base_defence - drain_def)
+        monster_message += f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!\n"
+
     if monster_attack_roll <= effective_hit_chance: # Monster Hits
         
         # 1. PDR / FDR Setup & Celestial Fortress
@@ -610,7 +676,13 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
         # 7. Apply Final Damage to Ward/HP
         if total_damage > 0 and not is_dodged:
             damage_dealt_this_turn = 0
-            
+
+            # Nullfield: 15% chance to absorb the hit entirely into the void
+            void_passive_def = player.get_accessory_void_passive()
+            if void_passive_def == "nullfield" and random.random() < 0.15:
+                monster_message += f"⬛ **Nullfield** absorbs the strike into the void!\n"
+                total_damage = 0
+
             if player.combat_ward > 0:
                 if total_damage <= player.combat_ward:
                     damage_dealt_this_turn = total_damage
@@ -646,6 +718,22 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
                     player.current_hp -= total_damage
                     if not is_blocked or celestial_passive != 'celestial_glancing_blows':
                         monster_message += f"{monster.name} {monster.flavor}. You take 💔 **{total_damage}** damage!\n"
+
+            # Eternal Hunger: stacks per hit taken; at 10 stacks consume all and devour enemy HP
+            if void_passive_def == "eternal_hunger" and damage_dealt_this_turn > 0:
+                player.hunger_stacks += 1
+                if player.hunger_stacks >= 10:
+                    hunger_dmg = int(monster.max_hp * 0.10)
+                    monster.hp = max(0, monster.hp - hunger_dmg)
+                    player.current_hp = player.max_hp
+                    player.hunger_stacks = 0
+                    monster_message += (
+                        f"⬛ **Eternal Hunger** consumes the pain!\n"
+                        f"💀 Devoured **{hunger_dmg}** HP ({monster.name}'s max × 10%)!\n"
+                        f"❤️ Wounds consumed — HP restored to full!\n"
+                    )
+                else:
+                    monster_message += f"⬛ **Eternal Hunger** feeds ({player.hunger_stacks}/10 stacks).\n"
 
             # Volatile Explosion
             if helmet_passive == "volatile" and helmet_lvl > 0:

@@ -8,7 +8,7 @@ import asyncio
 from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
 from core.ui.inventory import InventoryUI
 from core.items.equipment_mechanics import EquipmentMechanics
-from core.inventory.upgrade_views import ForgeView, RefineView, PotentialView, ShatterView, TemperView, ImbueView, VoidforgeView, EngramView, InfernalEngramView
+from core.inventory.upgrade_views import ForgeView, RefineView, PotentialView, ShatterView, TemperView, ImbueView, VoidforgeView, EngramView, InfernalEngramView, VoidEngramView
 from core.companions.mechanics import CompanionMechanics
 
 class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
@@ -303,6 +303,8 @@ class ItemDetailView(View):
             max_lvl = 10 if isinstance(self.item, Accessory) else (5 if isinstance(self.item, (Glove, Helmet)) else 6)
             if hasattr(self.item, 'potential_remaining') and self.item.potential_remaining > 0 and self.item.passive_lvl < max_lvl:
                 self.add_upgrade_button("Enchant", ButtonStyle.success, "potential")
+            if isinstance(self.item, Accessory):
+                self.add_upgrade_button("Void Engram", ButtonStyle.secondary, "void_engram")
 
         # 3. Standard Actions
         discard_btn = Button(label="Discard", style=ButtonStyle.danger)
@@ -328,6 +330,7 @@ class ItemDetailView(View):
             "imbue": ImbueView, "potential": PotentialView, "voidforge": VoidforgeView,
             "shatter": ShatterView, "engram": EngramView,
             "infernal_engram": InfernalEngramView,
+            "void_engram": VoidEngramView,
         }
         
         view_class = view_map.get(action_type)

@@ -10,7 +10,8 @@ class UberRepository:
         """Fetches Uber progression data. Creates a default row if it doesn't exist."""
         cursor = await self.connection.execute(
             """SELECT celestial_sigils, celestial_engrams, celestial_blueprint_unlocked,
-                      infernal_sigils, infernal_engrams, infernal_blueprint_unlocked
+                      infernal_sigils, infernal_engrams, infernal_blueprint_unlocked,
+                      void_shards, void_engrams, void_blueprint_unlocked
                FROM uber_progress WHERE user_id = ? AND server_id = ?""",
             (user_id, server_id),
         )
@@ -29,6 +30,9 @@ class UberRepository:
                 "infernal_sigils": 0,
                 "infernal_engrams": 0,
                 "infernal_blueprint_unlocked": 0,
+                "void_shards": 0,
+                "void_engrams": 0,
+                "void_blueprint_unlocked": 0,
             }
 
         return {
@@ -38,6 +42,9 @@ class UberRepository:
             "infernal_sigils": row[3] if row[3] is not None else 0,
             "infernal_engrams": row[4] if row[4] is not None else 0,
             "infernal_blueprint_unlocked": row[5] if row[5] is not None else 0,
+            "void_shards": row[6] if row[6] is not None else 0,
+            "void_engrams": row[7] if row[7] is not None else 0,
+            "void_blueprint_unlocked": row[8] if row[8] is not None else 0,
         }
 
     # --- Celestial (Aphrodite) ---
@@ -90,6 +97,33 @@ class UberRepository:
         val = 1 if unlocked else 0
         await self.connection.execute(
             "UPDATE uber_progress SET infernal_blueprint_unlocked = ? WHERE user_id = ? AND server_id = ?",
+            (val, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    # --- Void (NEET) ---
+
+    async def increment_void_shards(self, user_id: str, server_id: str, amount: int) -> None:
+        """Modifies the void_shards count (can be negative)."""
+        await self.connection.execute(
+            "UPDATE uber_progress SET void_shards = void_shards + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def increment_void_engrams(self, user_id: str, server_id: str, amount: int) -> None:
+        """Modifies the void_engrams count (can be negative)."""
+        await self.connection.execute(
+            "UPDATE uber_progress SET void_engrams = void_engrams + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def set_void_blueprint_unlocked(self, user_id: str, server_id: str, unlocked: bool) -> None:
+        """Sets the void blueprint unlocked flag."""
+        val = 1 if unlocked else 0
+        await self.connection.execute(
+            "UPDATE uber_progress SET void_blueprint_unlocked = ? WHERE user_id = ? AND server_id = ?",
             (val, user_id, server_id),
         )
         await self.connection.commit()

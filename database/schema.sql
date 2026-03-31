@@ -221,6 +221,8 @@ CREATE TABLE IF NOT EXISTS settlements (
     stone INTEGER DEFAULT 0,  -- Specific settlement resource
     last_collection_time TEXT,
     celestial_stone INTEGER DEFAULT 0,
+    -- ALTER TABLE settlements ADD COLUMN void_crystal INTEGER DEFAULT 0;
+    void_crystal INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );
 
@@ -260,6 +262,11 @@ CREATE TABLE IF NOT EXISTS slayer_emblems (
     PRIMARY KEY (user_id, server_id)
 );
 
+-- ALTER TABLE accessories ADD COLUMN void_passive TEXT DEFAULT 'none';
+-- ALTER TABLE users ADD COLUMN celestial_stone INTEGER DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN void_crystal INTEGER DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN infernal_cinder INTEGER DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS uber_progress (
     user_id TEXT NOT NULL,
     server_id TEXT NOT NULL,
@@ -269,5 +276,8 @@ CREATE TABLE IF NOT EXISTS uber_progress (
     infernal_sigils INTEGER DEFAULT 0,
     infernal_engrams INTEGER DEFAULT 0,
     infernal_blueprint_unlocked INTEGER DEFAULT 0,
+    void_shards INTEGER DEFAULT 0,
+    void_engrams INTEGER DEFAULT 0,
+    void_blueprint_unlocked INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );
