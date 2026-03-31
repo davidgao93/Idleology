@@ -189,10 +189,10 @@ class UserRepository:
     async def modify_currency(self, user_id: str, currency_column: str, amount: int) -> None:
         """
         Generic handler for keys, runes, and misc counters.
-        Allowed columns: dragon_key, angel_key, void_keys, soul_cores, void_frags, 
-                        balance fragment, partnership_runes
+        Allowed columns: dragon_key, angel_key, void_keys, soul_cores, void_frags,
                          refinement_runes, potential_runes, imbue_runes, shatter_runes,
-                         curios, curios_purchased_today
+                         curios, curios_purchased_today,
+                         celestial_stone, void_crystal, infernal_cinder
         """
         # Could validate column names here to prevent SQL injection
         await self.connection.execute(

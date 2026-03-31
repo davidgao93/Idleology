@@ -413,7 +413,6 @@ class Settlement:
     timber: int
     stone: int
     last_collection_time: str
-    celestial_stone: int = 0 
     # Helper to hold building objects after fetching
     buildings: List['Building'] = field(default_factory=list)
 
