@@ -37,7 +37,10 @@ CREATE TABLE IF NOT EXISTS `users` (
   `soul_cores` INTEGER NOT NULL DEFAULT 0,
   `void_frags` INTEGER NOT NULL DEFAULT 0,
   `void_keys` INTEGER NOT NULL DEFAULT 0,
-  `shatter_runes` INTEGER NOT NULL DEFAULT 0
+  `shatter_runes` INTEGER NOT NULL DEFAULT 0,
+  `celestial_stone` INTEGER NOT NULL DEFAULT 0,
+  `void_crystal` INTEGER NOT NULL DEFAULT 0,
+  `infernal_cinder` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (
@@ -263,9 +266,6 @@ CREATE TABLE IF NOT EXISTS slayer_emblems (
 );
 
 -- ALTER TABLE accessories ADD COLUMN void_passive TEXT DEFAULT 'none';
--- ALTER TABLE users ADD COLUMN celestial_stone INTEGER DEFAULT 0;
--- ALTER TABLE users ADD COLUMN void_crystal INTEGER DEFAULT 0;
--- ALTER TABLE users ADD COLUMN infernal_cinder INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS uber_progress (
     user_id TEXT NOT NULL,
