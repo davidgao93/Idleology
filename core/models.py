@@ -36,6 +36,7 @@ class Accessory:
     item_id: Optional[int] = None
     is_equipped: bool = False
     potential_remaining: int = 0
+    void_passive: str = 'none'
 
 @dataclass
 class Armor:
@@ -202,6 +203,10 @@ class Player:
     voracious_stacks: int = 0
     cursed_precision_active: bool = False
 
+    # Void passive transients
+    gaze_stacks: int = 0
+    hunger_stacks: int = 0
+
     # Glove passives
     equilibrium_bonus_xp_pending: int = 0
     plundering_bonus_gold_pending: int = 0
@@ -332,6 +337,9 @@ class Player:
     
     def get_accessory_passive(self) -> str:
         return self.equipped_accessory.passive if self.equipped_accessory else "none"
+
+    def get_accessory_void_passive(self) -> str:
+        return self.equipped_accessory.void_passive if self.equipped_accessory else "none"
     
     def get_glove_passive(self) -> str:
         return self.equipped_glove.passive if self.equipped_glove else "none"

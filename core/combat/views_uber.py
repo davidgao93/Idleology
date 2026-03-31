@@ -3,7 +3,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.combat import engine
 from core.combat import ui as combat_ui
-from core.combat.gen_mob import generate_uber_aphrodite, generate_uber_lucifer
+from core.combat.gen_mob import generate_uber_aphrodite, generate_uber_lucifer, generate_uber_neet
 from core.combat.views import CombatView  # Reuse the battle engine
 from core.models import Monster, Player
 
@@ -40,7 +40,16 @@ class UberHubView(ui.View):
         btn_lucifer.callback = self.open_lucifer
         self.add_item(btn_lucifer)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
+        btn_neet = ui.Button(
+            label="NEET, Void Sovereign",
+            style=ButtonStyle.secondary,
+            emoji="⬛",
+            row=1,
+        )
+        btn_neet.callback = self.open_neet
+        self.add_item(btn_neet)
+
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=2)
         btn_close.callback = self.close_view
         self.add_item(btn_close)
 
@@ -67,6 +76,14 @@ class UberHubView(ui.View):
             value=(
                 f"A titan of pure aggression — strikes hard, dies hard.\n"
                 f"**Keys:** {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="⬛ NEET, Void Sovereign",
+            value=(
+                f"An entropic void that drains all it touches. Every round counts.\n"
+                f"**Keys:** {self.uber_data['void_shards']} Void Shards *(costs 3)*"
             ),
             inline=False,
         )
@@ -105,6 +122,19 @@ class UberHubView(ui.View):
         await interaction.response.defer()
         readiness_text = DummyEngine.assess_readiness(self.player, target="lucifer_uber")
         lobby = UberLuciferLobbyView(
+            self.bot, self.user_id, self.server_id, self.player, self.uber_data, readiness_text
+        )
+        embed = lobby.build_embed()
+        await interaction.edit_original_response(embed=embed, view=lobby)
+        lobby.message = await interaction.original_response()
+        self.stop()
+
+    async def open_neet(self, interaction: Interaction):
+        from core.combat.dummy_engine import DummyEngine
+
+        await interaction.response.defer()
+        readiness_text = DummyEngine.assess_readiness(self.player, target="neet_uber")
+        lobby = UberNEETLobbyView(
             self.bot, self.user_id, self.server_id, self.player, self.uber_data, readiness_text
         )
         embed = lobby.build_embed()
@@ -400,6 +430,158 @@ class UberLuciferLobbyView(ui.View):
 
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="🔥 UBER ENCOUNTER"
+        )
+        view = CombatView(
+            self.bot,
+            self.user_id,
+            self.player,
+            monster,
+            start_logs,
+            combat_phases=None,
+            clean_stats=clean_stats,
+        )
+
+        await interaction.edit_original_response(embed=embed, view=view)
+        self.stop()
+
+
+class UberNEETLobbyView(ui.View):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        player: Player,
+        uber_data: dict,
+        readiness_text: str,
+    ):
+        super().__init__(timeout=120)
+        self.bot = bot
+        self.user_id = user_id
+        self.server_id = server_id
+        self.player = player
+        self.uber_data = uber_data
+        self.readiness_text = readiness_text
+        self.shards = uber_data["void_shards"]
+        self.message = None
+        self._build_buttons()
+
+    def _build_buttons(self):
+        self.clear_items()
+
+        btn_start = ui.Button(
+            label="Challenge NEET",
+            style=ButtonStyle.danger if self.shards >= 3 else ButtonStyle.secondary,
+            disabled=(self.shards < 3),
+            emoji="⚔️",
+            row=0,
+        )
+        btn_start.callback = self.start_uber
+        self.add_item(btn_start)
+
+        btn_back = ui.Button(label="← Back", style=ButtonStyle.secondary, row=1)
+        btn_back.callback = self.go_back
+        self.add_item(btn_back)
+
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
+        btn_close.callback = self.close_view
+        self.add_item(btn_close)
+
+    def build_embed(self) -> discord.Embed:
+        embed = discord.Embed(title="⬛ The Void Sovereign", color=discord.Color.dark_theme())
+
+        desc = (
+            "The world goes quiet. Reality fractures at the edges.\n"
+            "*\"You have wandered too far into the void. There is no going back.\"*\n\n"
+            f"**Entry Cost:** 3 Void Shards\n"
+            f"**Owned:** {self.shards}\n\n"
+            f"**Assessment:** {self.readiness_text}\n\n"
+            "⚠️ **Void Drain** siphons 5% of your ATK and DEF each round. Fight fast."
+        )
+        embed.description = desc
+
+        bp_status = (
+            "✅ Unlocked"
+            if self.uber_data["void_blueprint_unlocked"]
+            else "🔒 Locked"
+        )
+        embed.add_field(
+            name="Void Engrams",
+            value=str(self.uber_data["void_engrams"]),
+            inline=True,
+        )
+        embed.add_field(name="Void Sanctum Blueprint", value=bp_status, inline=True)
+
+        return embed
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        try:
+            await self.message.edit(view=None)
+        except Exception:
+            pass
+
+    async def close_view(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
+        self.stop()
+
+    async def go_back(self, interaction: Interaction):
+        await interaction.response.defer()
+        uber_data = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+        hub = UberHubView(self.bot, self.user_id, self.server_id, self.player, uber_data)
+        embed = hub.build_embed()
+        await interaction.edit_original_response(embed=embed, view=hub)
+        hub.message = await interaction.original_response()
+        self.stop()
+
+    async def start_uber(self, interaction: Interaction):
+        if not await self.bot.check_is_active(interaction, self.user_id):
+            return
+
+        current_data = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
+        )
+        if current_data["void_shards"] < 3:
+            return await interaction.response.send_message(
+                "You do not have enough Void Shards.", ephemeral=True
+            )
+
+        await interaction.response.defer()
+
+        await self.bot.database.uber.increment_void_shards(self.user_id, self.server_id, -3)
+        self.bot.state_manager.set_active(self.user_id, "uber_boss")
+
+        monster = Monster(
+            name="",
+            level=0,
+            hp=0,
+            max_hp=0,
+            xp=0,
+            attack=0,
+            defence=0,
+            modifiers=[],
+            image="",
+            flavor="",
+        )
+        monster = generate_uber_neet(self.player, monster)
+
+        clean_stats = {
+            "attack": self.player.base_attack,
+            "defence": self.player.base_defence,
+            "crit_target": self.player.base_crit_chance_target,
+        }
+
+        self.player.combat_ward = self.player.get_combat_ward_value()
+        engine.apply_stat_effects(self.player, monster)
+        start_logs = engine.apply_combat_start_passives(self.player, monster)
+
+        monster.is_uber = True
+
+        embed = combat_ui.create_combat_embed(
+            self.player, monster, start_logs, title_override="⬛ UBER ENCOUNTER"
         )
         view = CombatView(
             self.bot,

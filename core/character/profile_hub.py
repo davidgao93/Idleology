@@ -119,6 +119,12 @@ class ProfileBuilder:
                    f"🔴 Infernal Engrams: {uber_data['infernal_engrams']}\n"
                    f"📜 Infernal Forge Blueprint: {infernal_bp_status}"), inline=True)
 
+        void_bp_status = "✅ Unlocked" if uber_data.get('void_blueprint_unlocked', 0) else "🔒 Locked"
+        embed.add_field(name="⬛ **Void Drops**",
+            value=(f"⬛ Void Shards: {uber_data.get('void_shards', 0)}\n"
+                   f"🔮 Void Engrams: {uber_data.get('void_engrams', 0)}\n"
+                   f"📜 Void Sanctum Blueprint: {void_bp_status}"), inline=True)
+
         return embed
 
     @staticmethod

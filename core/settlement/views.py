@@ -752,7 +752,8 @@ class BuildConstructionView(ui.View):
         "apothecary":   "Passive: Increases Potion Healing (+0.2 HP per assigned Worker).",
         "black_market": "Special: Trade resources for Caches.",
         "companion_ranch": "Generator: Produces XP Cookies for pets.",
-        "celestial_shrine": "Passive: Increases chance to find Celestial Sigils from Aphrodite."
+        "celestial_shrine": "Passive: Increases chance to find Celestial Sigils from Aphrodite.",
+        "void_sanctum": "Passive: Increases chance to find Void Shards from NEET."
     }
 
     def __init__(self, bot, user_id, slot_index, parent_view, uber_prog):
@@ -775,7 +776,8 @@ class BuildConstructionView(ui.View):
             "apothecary":       {"gold": 25000, "timber": 2000, "stone": 2000},
             "black_market":     {"gold": 50000, "timber": 5000, "stone": 5000},
             "companion_ranch":  {"gold": 30000, "timber": 3000, "stone": 3000},
-            "celestial_shrine": {"gold": 100000, "timber": 100000, "stone": 100000}
+            "celestial_shrine": {"gold": 100000, "timber": 100000, "stone": 100000},
+            "void_sanctum":     {"gold": 100000, "timber": 100000, "stone": 100000}
         }
         
         self.setup_select()
@@ -836,6 +838,9 @@ class BuildConstructionView(ui.View):
             if key in existing_types: continue
 
             if key == "celestial_shrine" and self.uber_prog['celestial_blueprint_unlocked'] == 0:
+                continue
+
+            if key == "void_sanctum" and self.uber_prog.get('void_blueprint_unlocked', 0) == 0:
                 continue
 
             lbl = key.replace("_", " ").title()
@@ -937,13 +942,16 @@ class BuildingDetailView(ui.View):
         "town_hall": "spirit_shard",
         "apothecary": "life_root",
         "companion_ranch": "life_root",
-        "celestial_shrine": "celestial_stone"
+        "celestial_shrine": "celestial_stone",
+        "void_sanctum": "void_crystal"
     }
 
     ITEM_NAMES = {
         "magma_core": "Magma Core",
         "life_root": "Life Root",
-        "spirit_shard": "Spirit Shard"
+        "spirit_shard": "Spirit Shard",
+        "celestial_stone": "Celestial Stone",
+        "void_crystal": "Void Crystal"
     }
 
     THUMBNAILS = {
@@ -960,6 +968,7 @@ class BuildingDetailView(ui.View):
         "black_market": "https://i.imgur.com/ZMle2mm.png",
         "companion_ranch": "https://i.imgur.com/7gPxP4N.png",
         "celestial_shrine": "https://i.imgur.com/4bmHF4u.png",
+        "void_sanctum": "https://i.imgur.com/4bmHF4u.png",
     }
 
     BUILDING_INFO = {
@@ -973,7 +982,8 @@ class BuildingDetailView(ui.View):
         "temple":       "Passive: +0.05% Propagate follower gain per assigned Worker.",
         "apothecary":   "Passive: Increases Potion Healing (+0.2 HP per assigned Worker).",
         "black_market": "Special: Trade resources for Caches.",
-        "companion_ranch": "Generator: Produces XP Cookies for pets."
+        "companion_ranch": "Generator: Produces XP Cookies for pets.",
+        "void_sanctum": "Passive: Increases chance to find Void Shards from NEET."
     }
 
     def build_embed(self):

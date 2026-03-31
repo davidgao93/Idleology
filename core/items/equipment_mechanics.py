@@ -307,6 +307,26 @@ class EquipmentMechanics:
 
         return random.choice(available)
 
+    @staticmethod
+    def roll_void_passive(current_passive: str) -> str:
+        """Rolls a new Void Accessory passive."""
+        pool = [
+            "entropy",
+            "void_gaze",
+            "nullfield",
+            "eternal_hunger",
+            "fracture",
+            "void_echo",
+            "oblivion",
+            "unravelling",
+        ]
+
+        available = [p for p in pool if p != current_passive]
+        if not available:
+            available = pool
+
+        return random.choice(available)
+
     # --- POTENTIAL (Accessory) LOGIC ---
     @staticmethod
     def calculate_potential_cost(level: int) -> int:

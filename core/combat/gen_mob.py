@@ -387,6 +387,7 @@ def get_modifier_description(modifier):
         "Absolute": "+25 Attack, +25 defence (boss)",
         "Infernal Legion": "Has minions that echo hits (boss)",
         "Radiant Protection": "Globally reduces all incoming damage by 60% (Uber)", # Start uber list here
+        "Void Aura": "Siphons 5% ATK and DEF from player each round (Uber)",
         }
     return descriptions.get(modifier, "") 
 
@@ -426,6 +427,48 @@ async def generate_uber_lucifer(player, monster):
     # One random boss modifier for variety (exclude modifiers that conflict with identity)
     available_boss_mods = get_boss_mods()
     exclude = ["Absolute", "Hell's Fury", "Infernal Legion"]
+    valid_mods = [m for m in available_boss_mods if m not in exclude]
+    monster.modifiers.append(random.choice(valid_mods))
+
+    return monster
+
+
+def generate_uber_neet(player, monster):
+    """Generate the single-phase Uber NEET boss fight. High defence, attrition-focused."""
+    ref_level = player.level + player.ascension + 20
+    monster.level = ref_level
+
+    monster = calculate_monster_stats(monster)
+
+    # Highest HP of all three — built to outlast the player via Void Drain
+    base_hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.35, 1.45)))
+    monster.hp = int(base_hp * 3.5)
+    monster.max_hp = monster.hp
+    monster.xp = monster.hp * 2
+
+    monster.name = "NEET, the Void Sovereign"
+    monster.image = "https://i.imgur.com/7UmY4Mo.jpeg"
+    monster.flavor = "radiates an entropic void"
+    monster.species = "Void"
+    monster.is_boss = True
+
+    # Identity: moderate attack, very high defence — punishes passive play
+    monster.attack = int(monster.attack * 1.5)
+    monster.defence = int(monster.defence * 2.0)
+
+    # Core modifiers — Void Aura siphons per round; Absolute gives flat boost
+    monster.modifiers = ["Void Aura", "Absolute"]
+    if "Absolute" in monster.modifiers:
+        monster.attack += 25
+        monster.defence += 25
+
+    # Per-level scaling weighted toward attack (fights get harder with levels)
+    monster.attack += int(monster.level * 0.8)
+    monster.defence += int(monster.level * 0.5)
+
+    # One random boss modifier for variety
+    available_boss_mods = get_boss_mods()
+    exclude = ["Absolute", "Void Aura", "Hell's Fury", "Infernal Legion", "Radiant Protection"]
     valid_mods = [m for m in available_boss_mods if m not in exclude]
     monster.modifiers.append(random.choice(valid_mods))
 
