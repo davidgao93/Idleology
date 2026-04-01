@@ -754,7 +754,8 @@ class BuildConstructionView(ui.View):
         "companion_ranch": "Generator: Produces XP Cookies for pets.",
         "celestial_shrine": "Passive: Increases chance to find Celestial Sigils from Aphrodite.",
         "infernal_forge": "Passive: Increases chance to find Infernal Sigils from Lucifer.",
-        "void_sanctum": "Passive: Increases chance to find Void Shards from NEET."
+        "void_sanctum": "Passive: Increases chance to find Void Shards from NEET.",
+        "twin_shrine": "Passive: Increases chance to find Gemini Sigils from the Gemini Twins."
     }
 
     def __init__(self, bot, user_id, slot_index, parent_view, uber_prog):
@@ -779,7 +780,8 @@ class BuildConstructionView(ui.View):
             "companion_ranch":  {"gold": 30000, "timber": 3000, "stone": 3000},
             "celestial_shrine": {"gold": 100000, "timber": 100000, "stone": 100000},
             "infernal_forge":   {"gold": 100000, "timber": 100000, "stone": 100000},
-            "void_sanctum":     {"gold": 100000, "timber": 100000, "stone": 100000}
+            "void_sanctum":     {"gold": 100000, "timber": 100000, "stone": 100000},
+            "twin_shrine":      {"gold": 100000, "timber": 100000, "stone": 100000}
         }
         
         self.setup_select()
@@ -846,6 +848,9 @@ class BuildConstructionView(ui.View):
                 continue
 
             if key == "void_sanctum" and self.uber_prog.get('void_blueprint_unlocked', 0) == 0:
+                continue
+
+            if key == "twin_shrine" and self.uber_prog.get('gemini_blueprint_unlocked', 0) == 0:
                 continue
 
             lbl = key.replace("_", " ").title()
@@ -949,7 +954,8 @@ class BuildingDetailView(ui.View):
         "companion_ranch": "life_root",
         "celestial_shrine": "celestial_stone",
         "infernal_forge": "infernal_cinder",
-        "void_sanctum": "void_crystal"
+        "void_sanctum": "void_crystal",
+        "twin_shrine": "bound_crystal"
     }
 
     ITEM_NAMES = {
@@ -958,7 +964,8 @@ class BuildingDetailView(ui.View):
         "spirit_shard": "Spirit Shard",
         "celestial_stone": "Celestial Stone",
         "infernal_cinder": "Infernal Cinder",
-        "void_crystal": "Void Crystal"
+        "void_crystal": "Void Crystal",
+        "bound_crystal": "Bound Crystal"
     }
 
     THUMBNAILS = {
@@ -977,6 +984,7 @@ class BuildingDetailView(ui.View):
         "celestial_shrine": "https://i.imgur.com/4bmHF4u.png",
         "infernal_forge": "https://i.imgur.com/x9suAGK.png",
         "void_sanctum": "https://i.imgur.com/4bmHF4u.png",
+        "twin_shrine": "https://i.imgur.com/4bmHF4u.png",
     }
 
     BUILDING_INFO = {
@@ -993,7 +1001,8 @@ class BuildingDetailView(ui.View):
         "companion_ranch": "Generator: Produces XP Cookies for pets.",
         "celestial_shrine": "Passive: Increases chance to find Celestial Sigils from Aphrodite.",
         "infernal_forge": "Passive: Increases chance to find Infernal Sigils from Lucifer.",
-        "void_sanctum": "Passive: Increases chance to find Void Shards from NEET."
+        "void_sanctum": "Passive: Increases chance to find Void Shards from NEET.",
+        "twin_shrine": "Passive: Increases chance to find Gemini Sigils from the Gemini Twins."
     }
 
     def build_embed(self):
@@ -1040,7 +1049,7 @@ class BuildingDetailView(ui.View):
             embed.add_field(name="Status", value="🌟 Max Level Reached", inline=False)
         return embed
 
-    UBER_BUILDINGS = {"celestial_shrine", "infernal_forge", "void_sanctum"}
+    UBER_BUILDINGS = {"celestial_shrine", "infernal_forge", "void_sanctum", "twin_shrine"}
 
     def _get_upgrade_cost(self, target_tier):
         # Uber buildings use a flat linear formula: target_tier * 100k each

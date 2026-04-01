@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `shatter_runes` INTEGER NOT NULL DEFAULT 0,
   `celestial_stone` INTEGER NOT NULL DEFAULT 0,
   `void_crystal` INTEGER NOT NULL DEFAULT 0,
-  `infernal_cinder` INTEGER NOT NULL DEFAULT 0
+  `infernal_cinder` INTEGER NOT NULL DEFAULT 0,
+  `bound_crystal` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (
@@ -79,6 +80,13 @@ CREATE TABLE IF NOT EXISTS `accessories` (
   `passive_lvl` INTEGER DEFAULT 0,
   `void_passive` TEXT DEFAULT 'none'
 );
+
+-- ALTER TABLE companions ADD COLUMN balanced_passive TEXT DEFAULT 'none';
+-- ALTER TABLE companions ADD COLUMN balanced_passive_tier INTEGER DEFAULT 0;
+-- ALTER TABLE uber_progress ADD COLUMN gemini_sigils INTEGER DEFAULT 0;
+-- ALTER TABLE uber_progress ADD COLUMN gemini_engrams INTEGER DEFAULT 0;
+-- ALTER TABLE uber_progress ADD COLUMN gemini_blueprint_unlocked INTEGER DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN bound_crystal INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `armor` (
   `item_id` INTEGER PRIMARY KEY,
@@ -195,6 +203,8 @@ CREATE TABLE IF NOT EXISTS companions (
     passive_type TEXT,      -- 'atk', 'def', 'pdr', 'fdr', 'ward', 'hit', 'crit', 'rarity', 's_rarity'
     passive_tier INTEGER,   -- 1-5
     is_active INTEGER DEFAULT 0,
+    balanced_passive TEXT DEFAULT 'none',
+    balanced_passive_tier INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -269,5 +279,8 @@ CREATE TABLE IF NOT EXISTS uber_progress (
     void_shards INTEGER DEFAULT 0,
     void_engrams INTEGER DEFAULT 0,
     void_blueprint_unlocked INTEGER DEFAULT 0,
+    gemini_sigils INTEGER DEFAULT 0,
+    gemini_engrams INTEGER DEFAULT 0,
+    gemini_blueprint_unlocked INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );

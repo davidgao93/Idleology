@@ -105,6 +105,14 @@ class CompanionRepository:
         )
         await self.connection.commit()
 
+    async def update_balanced_passive(self, companion_id: int, b_type: str, b_tier: int) -> None:
+        """Sets the balanced (secondary) passive from a Gemini Engram."""
+        await self.connection.execute(
+            "UPDATE companions SET balanced_passive = ?, balanced_passive_tier = ? WHERE id = ?",
+            (b_type, b_tier, companion_id)
+        )
+        await self.connection.commit()
+
     async def rename(self, companion_id: int, new_name: str) -> None:
         await self.connection.execute(
             "UPDATE companions SET name = ? WHERE id = ?",

@@ -52,6 +52,7 @@ class SettlementMechanics:
         "celestial_shrine": {"type": "passive", "effect": "sigil_bonus"},
         "infernal_forge": {"type": "passive", "effect": "infernal_sigil_bonus"},
         "void_sanctum": {"type": "passive", "effect": "void_shard_bonus"},
+        "twin_shrine": {"type": "passive", "effect": "gemini_sigil_bonus"},
     }
 
     @staticmethod

@@ -262,6 +262,8 @@ class CombatView(ui.View):
                 await self._handle_uber_lucifer_end_state(message, interaction)
             elif "NEET" in self.monster.name:
                 await self._handle_uber_neet_end_state(message, interaction)
+            elif "Castor" in self.monster.name:
+                await self._handle_uber_gemini_end_state(message, interaction)
             else:
                 await self._handle_uber_end_state(message, interaction)
             return
@@ -860,6 +862,99 @@ class CombatView(ui.View):
         # Soulreap on uber defeat (if player survived via vow etc.)
         if self.player.get_weapon_infernal() == "soulreap" and self.player.current_hp > 0:
             self.player.current_hp = self.player.max_hp
+
+        self.bot.state_manager.clear_active(self.user_id)
+        await self.bot.database.users.update_from_player_object(self.player)
+        self.stop()
+
+
+    async def _handle_uber_gemini_end_state(self, message, interaction: Interaction):
+        """Specialized logic for the Uber Gemini Twins encounter."""
+        max_hp = self.monster.max_hp
+        rem_hp = max(0, self.monster.hp)
+        dmg_frac = max(0.0, min(1.0, (max_hp - rem_hp) / max_hp))
+
+        # 1. Curio Rewards (scale with damage dealt)
+        curios = 1
+        if dmg_frac >= 1.0:   curios = 5
+        elif dmg_frac >= 0.75: curios = 4
+        elif dmg_frac >= 0.50: curios = 3
+        elif dmg_frac >= 0.25: curios = 2
+
+        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
+
+        # 2. Defeat vs Victory
+        if self.player.current_hp <= 0:
+            xp_loss = int(self.player.exp * 0.10)
+            self.player.exp = max(0, self.player.exp - xp_loss)
+            self.player.current_hp = 1
+
+            embed = combat_ui.create_defeat_embed(
+                self.player, self.monster, xp_loss, curios_gained=curios, dmg_frac=dmg_frac
+            )
+            await message.edit(embed=embed, view=None)
+
+        else:
+            # Full Kill Victory
+            reward_data = rewards.calculate_rewards(self.player, self.monster)
+            reward_data["xp"] *= 2
+            reward_data["gold"] *= 2
+            reward_data["curios"] = curios
+            reward_data["special"] = []
+
+            # 3. Gemini Engram Roll (10%)
+            if random.random() < 0.10:
+                await self.bot.database.uber.increment_gemini_engrams(
+                    self.user_id, self.server_id, 1
+                )
+                reward_data["special"].append("Gemini Engram")
+                reward_data["msgs"].append(
+                    "♊ **A Gemini Engram crystallises from the twins' shattered bond...**"
+                )
+
+            # 4. Twin Shrine Blueprint / Bound Crystal Roll (10%)
+            if random.random() < 0.10:
+                u_prog = await self.bot.database.uber.get_uber_progress(
+                    self.user_id, self.server_id
+                )
+                if u_prog["gemini_blueprint_unlocked"] == 0:
+                    await self.bot.database.uber.set_gemini_blueprint_unlocked(
+                        self.user_id, self.server_id, True
+                    )
+                    reward_data["special"].append("Twin Shrine Blueprint")
+                    reward_data["msgs"].append(
+                        "📜 **You found the Twin Shrine Blueprint!**"
+                    )
+                else:
+                    await self.bot.database.users.modify_currency(
+                        self.user_id, "bound_crystal", 1
+                    )
+                    reward_data["special"].append("Bound Crystal")
+                    reward_data["msgs"].append(
+                        "💎 **The twins' bond yields a Bound Crystal.**"
+                    )
+
+            # 5. Gemini Key (guaranteed on victory)
+            await self.bot.database.uber.increment_gemini_sigils(
+                self.user_id, self.server_id, 1
+            )
+            reward_data["special"].append("Gemini Sigil")
+            reward_data["msgs"].append("♊ **A Gemini Sigil forms from the fractured constellation.**")
+
+            # DB commits
+            self.player.exp += reward_data["xp"]
+            await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
+
+            # Soulreap: restore HP to full after kill
+            if self.player.get_weapon_infernal() == "soulreap":
+                self.player.current_hp = self.player.max_hp
+
+            await self.bot.database.users.update_from_player_object(self.player)
+
+            embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+            embed.title = "♊ DEICIDE: The Bound Sovereigns Shattered!"
+            embed.set_image(url="https://i.imgur.com/PqViP3D.png")
+            await message.edit(embed=embed, view=None)
 
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)

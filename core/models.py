@@ -119,6 +119,8 @@ class Companion:
     passive_type: str
     passive_tier: int
     is_active: bool = False
+    balanced_passive: str = 'none'
+    balanced_passive_tier: int = 0
 
     @property
     def passive_value(self) -> int:
@@ -156,6 +158,47 @@ class Companion:
             'pdr': f"+{val}% Phys Dmg Red."
         }
         return p_map.get(self.passive_type, "Unknown Effect")
+
+    @property
+    def balanced_passive_value(self) -> int:
+        """Calculates the numerical value of the secondary balanced passive."""
+        if self.balanced_passive == 'none' or self.balanced_passive_tier == 0:
+            return 0
+        t = self.balanced_passive_tier
+        if self.balanced_passive in ['atk', 'def']:
+            return 4 + t
+        elif self.balanced_passive in ['hit', 'crit']:
+            return t
+        elif self.balanced_passive == 'ward':
+            return t * 5
+        elif self.balanced_passive == 'rarity':
+            return t * 3
+        elif self.balanced_passive == 's_rarity':
+            return t
+        elif self.balanced_passive == 'fdr':
+            return 1 + t
+        elif self.balanced_passive == 'pdr':
+            return 2 + t
+        return 0
+
+    @property
+    def balanced_description(self) -> str:
+        """Returns formatted string for the balanced passive."""
+        if self.balanced_passive == 'none' or self.balanced_passive_tier == 0:
+            return "Not Awakened"
+        val = self.balanced_passive_value
+        p_map = {
+            'atk': f"+{val}% Atk",
+            'def': f"+{val}% Def",
+            'hit': f"+{val} Hit Chance",
+            'crit': f"+{val} Crit Chance",
+            'ward': f"+{val}% HP as Ward",
+            'rarity': f"+{val}% Rarity",
+            's_rarity': f"+{val}% Special Drop Rate",
+            'fdr': f"+{val} Flat Dmg Red.",
+            'pdr': f"+{val}% Phys Dmg Red."
+        }
+        return p_map.get(self.balanced_passive, "Unknown Effect")
 
 
 @dataclass
@@ -222,7 +265,9 @@ class Player:
         return total
     
     def _get_companion_bonus(self, p_type: str) -> int:
-        return sum(c.passive_value for c in self.active_companions if c.passive_type == p_type)
+        primary = sum(c.passive_value for c in self.active_companions if c.passive_type == p_type)
+        balanced = sum(c.balanced_passive_value for c in self.active_companions if c.balanced_passive == p_type)
+        return primary + balanced
 
     # Methods to calculate total states
     def get_total_attack(self) -> int:
@@ -375,6 +420,7 @@ class Monster:
     flavor: str
     species: str = "Unknown"
     is_boss: bool = False
+    combat_round: int = 0
 
 @dataclass
 class DungeonRoomOption:

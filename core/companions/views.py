@@ -200,6 +200,11 @@ class CompanionDetailView(ui.View):
         btn_reroll.callback = self.reroll_passive
         self.add_item(btn_reroll)
 
+        # Balanced Engram
+        btn_engram = ui.Button(label="Balanced Engram", style=ButtonStyle.blurple, emoji="♊", row=1)
+        btn_engram.callback = self.open_balanced_engram
+        self.add_item(btn_engram)
+
         # Release
         btn_release = ui.Button(label="Release", style=ButtonStyle.danger, row=1)
         btn_release.callback = self.release_confirm
@@ -226,6 +231,12 @@ class CompanionDetailView(ui.View):
             embed.add_field(name="EXP", value=f"{self.comp.exp}/{next_xp}", inline=True)
         
         embed.add_field(name="Passive", value=f"T{self.comp.passive_tier} **{self.comp.description}**", inline=False)
+        if self.comp.balanced_passive != 'none' and self.comp.balanced_passive_tier > 0:
+            embed.add_field(
+                name="Balanced Passive",
+                value=f"T{self.comp.balanced_passive_tier} **{self.comp.balanced_description}**",
+                inline=False
+            )
         embed.set_footer(text=f"Species: {self.comp.species}")
         return embed
 
@@ -282,6 +293,12 @@ class CompanionDetailView(ui.View):
         
         # 3. Swap View
         await interaction.response.edit_message(content=None, embed=embed, view=confirm_view)
+
+    async def open_balanced_engram(self, interaction: Interaction):
+        await interaction.response.defer()
+        from core.inventory.upgrade_views import BalancedEngramView
+        view = BalancedEngramView(self.bot, self.user_id, self.comp, self)
+        await view.render(interaction)
 
     async def release_confirm(self, interaction: Interaction):
         await self.bot.database.companions.delete_companion(self.comp.id, self.user_id)

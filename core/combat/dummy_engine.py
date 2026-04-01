@@ -304,4 +304,47 @@ class DummyEngine:
             else:
                 return "You are **filled with determination**. The void beckons."
 
+        if target == "gemini_uber":
+            ref_lvl = player.level + player.ascension + 20
+            # Gemini proxy: perfectly balanced — equal ATK and DEF scaling
+            m_atk = int(ref_lvl ** 1.3) + 25 + int(ref_lvl * 0.65)
+            m_def = int(ref_lvl ** 1.3) + 25 + int(ref_lvl * 0.65)
+
+            proxy_boss = Monster(
+                name="Proxy",
+                level=ref_lvl,
+                hp=999999,
+                max_hp=999999,
+                xp=0,
+                attack=m_atk,
+                defence=m_def,
+                modifiers=[],
+                image="",
+                flavor="",
+            )
+
+            res = DummyEngine.run_simulation(player, proxy_boss, turns=50)
+            dps = res.average_damage
+
+            from core.combat.calcs import calculate_monster_hit_chance, calculate_damage_taken
+
+            total_inc_dmg = 0
+            for _ in range(10):
+                hit_chance = calculate_monster_hit_chance(player, proxy_boss)
+                if random.random() <= hit_chance:
+                    total_inc_dmg += calculate_damage_taken(player, proxy_boss)
+
+            avg_inc_dmg = total_inc_dmg / 10.0
+            time_to_die = player.max_hp / avg_inc_dmg if avg_inc_dmg > 0 else 999
+
+            # Twin Strike doubles incoming damage every other round — factor this in
+            if dps < (player.max_hp * 0.05):
+                return "You feel as if you are **not ready**. The twins would outlast you entirely."
+            elif time_to_die < 4:
+                return "You feel as if you are **not ready**. Their Twin Strike would end you too quickly."
+            elif dps < (player.max_hp * 0.10) and time_to_die < 10:
+                return "You feel this would be a **tough battle**. The twins' rhythm is relentless."
+            else:
+                return "You are **filled with determination**. The constellation awaits."
+
         return "Unknown target."

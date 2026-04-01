@@ -243,6 +243,19 @@ class CompanionMechanics:
             p_type = 's_rarity'
         else:
             p_type = random.choice(CompanionMechanics.PASSIVE_TYPES)
-            
+
         # Fixed Tier 3
         return p_type, 3
+
+    @staticmethod
+    def roll_balanced_passive(primary_type: str, primary_tier: int) -> tuple:
+        """
+        Rolls a secondary balanced passive for a companion awakened by a Gemini Engram.
+        Type is always different from the primary passive.
+        Tier = max(1, primary_tier - 2) — rewards higher-tier primaries.
+        """
+        all_types = CompanionMechanics.PASSIVE_TYPES + CompanionMechanics.RARE_PASSIVE_TYPES
+        pool = [p for p in all_types if p != primary_type]
+        new_type = random.choice(pool)
+        new_tier = max(1, primary_tier - 2)
+        return new_type, new_tier
