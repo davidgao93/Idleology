@@ -1,3 +1,86 @@
+### Version 0.8
+* Added `/doors` command, this allows you to enable or disable boss doors
+* Added Uber bosses for existing bosses:
+  - Aphrodite
+  - Lucifer
+  - NEET
+  - Gemini Twins
+
+* You can access Uber bosses by using the `/uber` command
+* Each boss takes 3 key fragment drops, which are dropped by the normal boss encounter
+* All uber bosses drop 1–5 curios depending on damage dealt to the boss
+* Uber Aphrodite drops the following:
+  - Celestial Engram (10%)
+  - Celestial Blueprint (10%) — duplicate drops award a **Celestial Stone** instead
+* Uber Lucifer drops the following:
+  - Infernal Engram (10%)
+  - Infernal Blueprint (10%) — duplicate drops award an **Infernal Cinder** instead
+  - An **Infernal Contract** on victory — choose a permanent stat modification or pocket a Soul Core
+* Uber NEET drops the following:
+  - Void Key (100% on victory)
+  - Void Engram (10%)
+  - Void Blueprint (10%) — duplicate drops award a **Void Crystal** instead
+* Uber Gemini drops the following:
+  - Gemini Sigil (100% on victory — 1 returned of the 3 spent)
+  - Gemini Engram (10%)
+  - Twin Shrine Blueprint (10%) — duplicate drops award a **Bound Crystal** instead
+
+---
+
+* The **Celestial Engram** allows you to etch a new celestial passive onto your armor pieces; duplicate engrams allow you to reroll. They are the following:
+  - **Celestial Ghostreaver**: Generate 50–150 Ward every turn.
+  - **Celestial Glancing Blows**: Doubles Block Chance; blocked hits deal 50% damage instead of zero.
+  - **Celestial Wind Dancer**: Triples Evasion Chance, but entirely disables your Helmet.
+  - **Celestial Sanctity**: Enemies roll their final damage twice and apply the lower result.
+  - **Celestial Vow**: Once per combat, survive a fatal blow at 1 HP and gain 50% Max HP as Ward.
+  - **Celestial Fortress**: Gain +1% Percent Damage Reduction for every 5% missing HP.
+* The Celestial Blueprint unlocks the ability to build a **Celestial Shrine** in your settlement, which passively increases the drop rate of Celestial Sigils from Aphrodite.
+
+---
+
+* The **Infernal Engram** allows you to etch a new infernal passive onto your weapons; duplicate engrams allow you to reroll. They are the following:
+  - **Soulreap**: Restore HP to full after every combat victory.
+  - **Inverted Edge**: At combat start, swap your weapon's ATK and DEF values.
+  - **Gilded Hunger**: At combat start, convert 50% of your weapon's Rarity into bonus ATK.
+  - **Cursed Precision**: At combat start, lower your Crit Target by 20 — but your crits roll twice and take the lower damage result.
+  - **Diabolic Pact**: At combat start, sacrifice 50% of your current HP to double your base ATK.
+  - **Perdition**: Misses deal 75% of your weapon's ATK as fire damage.
+  - **Voracious**: Each non-crit hit or miss adds a stack. Each stack lowers your Crit Target by 5. Stacks reset on crit.
+  - **Last Rites**: Crits deal bonus damage equal to 10% of the enemy's current HP.
+* The Infernal Blueprint unlocks the ability to build an **Infernal Forge** in your settlement, which passively increases the drop rate of Infernal Sigils from Lucifer.
+
+---
+
+* The **Void Engram** allows you to corrupt an accessory with a void passive; duplicate engrams allow you to reroll. They are the following:
+  - **Entropy**: At combat start, 20% of your weapon's ATK is transferred to DEF and vice versa.
+  - **Void Gaze**: Each crit reduces the enemy's ATK by 1% (stacks up to 30 times).
+  - **Nullfield**: 15% chance each round to absorb the monster's entire hit into the void.
+  - **Eternal Hunger**: Each hit taken adds a stack. At 10 stacks, consume all stacks to deal 10% of the monster's max HP and restore your HP to full.
+  - **Fracture**: 5% chance on crit to instantly kill non-uber enemies.
+  - **Void Echo**: At combat start, copy 15% of your base ATK onto your accessory as bonus ATK.
+  - **Oblivion**: Misses deal 50% of your minimum damage — stacks with Perdition and all other miss mechanics.
+  - **Unravelling**: At combat start, strip 20% of the monster's defence.
+* The Void Blueprint unlocks the ability to build a **Void Sanctum** in your settlement, which passively increases the drop rate of Void Shards from NEET.
+
+---
+
+* The **Gemini (Balanced) Engram** allows you to awaken a companion's hidden second passive slot. It is the following:
+  - Grants a secondary passive of a **different type** from the companion's primary passive.
+  - The secondary passive tier is `max(1, primary_tier − 2)` — higher-tier companions unlock stronger secondaries.
+  - All standard passive types are available as the secondary slot (ATK, DEF, Hit, Crit, Ward, Rarity, Special Drop Rate, FDR, PDR).
+  - Consuming additional Gemini Engrams on the same companion rerolls the secondary passive type.
+  - The secondary passive bonus is automatically counted toward your total stats when the companion is active.
+* The Gemini Blueprint unlocks the ability to build a **Twin Shrine** in your settlement, which passively increases the drop rate of Gemini Sigils from the Gemini Twins.
+
+---
+
+* All four uber settlement buildings (Celestial Shrine, Infernal Forge, Void Sanctum, Twin Shrine) share the same upgrade structure:
+  - Tier 1: 100 worker cap → Tier 5: 500 worker cap
+  - Upgrade costs scale linearly: `Tier × 100,000` Gold, Timber, and Stone
+  - A special material (Celestial Stone / Infernal Cinder / Void Crystal / Bound Crystal) is required from Tier 2 onwards, with quantity = `tier − 1` (1 at T2, 2 at T3, 3 at T4, 4 at T5)
+  - Special materials are awarded as duplicate blueprint drops from each respective uber boss
+
+
 ### Version 0.73
 Added mass discard, you can pick an item level threshold to discard all excess equipment
 Discarding equipment no longer spams you with discard messages

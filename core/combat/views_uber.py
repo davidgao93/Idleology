@@ -3,13 +3,19 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.combat import engine
 from core.combat import ui as combat_ui
-from core.combat.gen_mob import generate_uber_aphrodite, generate_uber_lucifer, generate_uber_neet
+from core.combat.gen_mob import (
+    generate_uber_aphrodite,
+    generate_uber_lucifer,
+    generate_uber_neet,
+)
 from core.combat.views import CombatView  # Reuse the battle engine
 from core.models import Monster, Player
 
 
 class UberHubView(ui.View):
-    def __init__(self, bot, user_id: str, server_id: str, player: Player, uber_data: dict):
+    def __init__(
+        self, bot, user_id: str, server_id: str, player: Player, uber_data: dict
+    ):
         super().__init__(timeout=120)
         self.bot = bot
         self.user_id = user_id
@@ -107,9 +113,16 @@ class UberHubView(ui.View):
         from core.combat.dummy_engine import DummyEngine
 
         await interaction.response.defer()
-        readiness_text = DummyEngine.assess_readiness(self.player, target="aphrodite_uber")
+        readiness_text = DummyEngine.assess_readiness(
+            self.player, target="aphrodite_uber"
+        )
         lobby = UberAphroditeLobbyView(
-            self.bot, self.user_id, self.server_id, self.player, self.uber_data, readiness_text
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            self.uber_data,
+            readiness_text,
         )
         embed = lobby.build_embed()
         await interaction.edit_original_response(embed=embed, view=lobby)
@@ -120,9 +133,16 @@ class UberHubView(ui.View):
         from core.combat.dummy_engine import DummyEngine
 
         await interaction.response.defer()
-        readiness_text = DummyEngine.assess_readiness(self.player, target="lucifer_uber")
+        readiness_text = DummyEngine.assess_readiness(
+            self.player, target="lucifer_uber"
+        )
         lobby = UberLuciferLobbyView(
-            self.bot, self.user_id, self.server_id, self.player, self.uber_data, readiness_text
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            self.uber_data,
+            readiness_text,
         )
         embed = lobby.build_embed()
         await interaction.edit_original_response(embed=embed, view=lobby)
@@ -135,7 +155,12 @@ class UberHubView(ui.View):
         await interaction.response.defer()
         readiness_text = DummyEngine.assess_readiness(self.player, target="neet_uber")
         lobby = UberNEETLobbyView(
-            self.bot, self.user_id, self.server_id, self.player, self.uber_data, readiness_text
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            self.uber_data,
+            readiness_text,
         )
         embed = lobby.build_embed()
         await interaction.edit_original_response(embed=embed, view=lobby)
@@ -227,8 +252,12 @@ class UberAphroditeLobbyView(ui.View):
 
     async def go_back(self, interaction: Interaction):
         await interaction.response.defer()
-        uber_data = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
-        hub = UberHubView(self.bot, self.user_id, self.server_id, self.player, uber_data)
+        uber_data = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
+        )
+        hub = UberHubView(
+            self.bot, self.user_id, self.server_id, self.player, uber_data
+        )
         embed = hub.build_embed()
         await interaction.edit_original_response(embed=embed, view=hub)
         hub.message = await interaction.original_response()
@@ -283,6 +312,7 @@ class UberAphroditeLobbyView(ui.View):
         view = CombatView(
             self.bot,
             self.user_id,
+            self.server_id,
             self.player,
             monster,
             start_logs,
@@ -337,11 +367,13 @@ class UberLuciferLobbyView(ui.View):
         self.add_item(btn_close)
 
     def build_embed(self) -> discord.Embed:
-        embed = discord.Embed(title="🔥 The Infernal Sovereign", color=discord.Color.dark_red())
+        embed = discord.Embed(
+            title="🔥 The Infernal Sovereign", color=discord.Color.dark_red()
+        )
 
         desc = (
             "The air reeks of sulphur. A voice like grinding stone echoes from the abyss:\n"
-            "*\"You dare enter my domain? I will grind your bones to ash.\"*\n\n"
+            '*"You dare enter my domain? I will grind your bones to ash."*\n\n'
             f"**Entry Cost:** 3 Infernal Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}"
@@ -378,8 +410,12 @@ class UberLuciferLobbyView(ui.View):
 
     async def go_back(self, interaction: Interaction):
         await interaction.response.defer()
-        uber_data = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
-        hub = UberHubView(self.bot, self.user_id, self.server_id, self.player, uber_data)
+        uber_data = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
+        )
+        hub = UberHubView(
+            self.bot, self.user_id, self.server_id, self.player, uber_data
+        )
         embed = hub.build_embed()
         await interaction.edit_original_response(embed=embed, view=hub)
         hub.message = await interaction.original_response()
@@ -399,7 +435,9 @@ class UberLuciferLobbyView(ui.View):
 
         await interaction.response.defer()
 
-        await self.bot.database.uber.increment_infernal_sigils(self.user_id, self.server_id, -3)
+        await self.bot.database.uber.increment_infernal_sigils(
+            self.user_id, self.server_id, -3
+        )
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
 
         monster = Monster(
@@ -434,6 +472,7 @@ class UberLuciferLobbyView(ui.View):
         view = CombatView(
             self.bot,
             self.user_id,
+            self.server_id,
             self.player,
             monster,
             start_logs,
@@ -488,11 +527,13 @@ class UberNEETLobbyView(ui.View):
         self.add_item(btn_close)
 
     def build_embed(self) -> discord.Embed:
-        embed = discord.Embed(title="⬛ The Void Sovereign", color=discord.Color.dark_theme())
+        embed = discord.Embed(
+            title="⬛ The Void Sovereign", color=discord.Color.dark_theme()
+        )
 
         desc = (
             "The world goes quiet. Reality fractures at the edges.\n"
-            "*\"You have wandered too far into the void. There is no going back.\"*\n\n"
+            '*"You have wandered too far into the void. There is no going back."*\n\n'
             f"**Entry Cost:** 3 Void Shards\n"
             f"**Owned:** {self.shards}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
@@ -501,9 +542,7 @@ class UberNEETLobbyView(ui.View):
         embed.description = desc
 
         bp_status = (
-            "✅ Unlocked"
-            if self.uber_data["void_blueprint_unlocked"]
-            else "🔒 Locked"
+            "✅ Unlocked" if self.uber_data["void_blueprint_unlocked"] else "🔒 Locked"
         )
         embed.add_field(
             name="Void Engrams",
@@ -530,8 +569,12 @@ class UberNEETLobbyView(ui.View):
 
     async def go_back(self, interaction: Interaction):
         await interaction.response.defer()
-        uber_data = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
-        hub = UberHubView(self.bot, self.user_id, self.server_id, self.player, uber_data)
+        uber_data = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
+        )
+        hub = UberHubView(
+            self.bot, self.user_id, self.server_id, self.player, uber_data
+        )
         embed = hub.build_embed()
         await interaction.edit_original_response(embed=embed, view=hub)
         hub.message = await interaction.original_response()
@@ -551,7 +594,9 @@ class UberNEETLobbyView(ui.View):
 
         await interaction.response.defer()
 
-        await self.bot.database.uber.increment_void_shards(self.user_id, self.server_id, -3)
+        await self.bot.database.uber.increment_void_shards(
+            self.user_id, self.server_id, -3
+        )
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
 
         monster = Monster(
@@ -587,6 +632,7 @@ class UberNEETLobbyView(ui.View):
             self.bot,
             self.user_id,
             self.player,
+            self.server_id,
             monster,
             start_logs,
             combat_phases=None,
