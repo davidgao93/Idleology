@@ -11,7 +11,8 @@ class UberRepository:
         cursor = await self.connection.execute(
             """SELECT celestial_sigils, celestial_engrams, celestial_blueprint_unlocked,
                       infernal_sigils, infernal_engrams, infernal_blueprint_unlocked,
-                      void_shards, void_engrams, void_blueprint_unlocked
+                      void_shards, void_engrams, void_blueprint_unlocked,
+                      gemini_sigils, gemini_engrams, gemini_blueprint_unlocked
                FROM uber_progress WHERE user_id = ? AND server_id = ?""",
             (user_id, server_id),
         )
@@ -33,6 +34,9 @@ class UberRepository:
                 "void_shards": 0,
                 "void_engrams": 0,
                 "void_blueprint_unlocked": 0,
+                "gemini_sigils": 0,
+                "gemini_engrams": 0,
+                "gemini_blueprint_unlocked": 0,
             }
 
         return {
@@ -45,6 +49,9 @@ class UberRepository:
             "void_shards": row[6] if row[6] is not None else 0,
             "void_engrams": row[7] if row[7] is not None else 0,
             "void_blueprint_unlocked": row[8] if row[8] is not None else 0,
+            "gemini_sigils": row[9] if row[9] is not None else 0,
+            "gemini_engrams": row[10] if row[10] is not None else 0,
+            "gemini_blueprint_unlocked": row[11] if row[11] is not None else 0,
         }
 
     # --- Celestial (Aphrodite) ---
@@ -124,6 +131,33 @@ class UberRepository:
         val = 1 if unlocked else 0
         await self.connection.execute(
             "UPDATE uber_progress SET void_blueprint_unlocked = ? WHERE user_id = ? AND server_id = ?",
+            (val, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    # --- Gemini (Twins) ---
+
+    async def increment_gemini_sigils(self, user_id: str, server_id: str, amount: int) -> None:
+        """Modifies the gemini_sigils count (can be negative)."""
+        await self.connection.execute(
+            "UPDATE uber_progress SET gemini_sigils = gemini_sigils + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def increment_gemini_engrams(self, user_id: str, server_id: str, amount: int) -> None:
+        """Modifies the gemini_engrams count (can be negative)."""
+        await self.connection.execute(
+            "UPDATE uber_progress SET gemini_engrams = gemini_engrams + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def set_gemini_blueprint_unlocked(self, user_id: str, server_id: str, unlocked: bool) -> None:
+        """Sets the gemini blueprint unlocked flag."""
+        val = 1 if unlocked else 0
+        await self.connection.execute(
+            "UPDATE uber_progress SET gemini_blueprint_unlocked = ? WHERE user_id = ? AND server_id = ?",
             (val, user_id, server_id),
         )
         await self.connection.commit()

@@ -545,6 +545,9 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
     """Executes the monster's turn, applies damage to player, and returns combat log."""
     if player.is_invulnerable_this_combat:
         return f"The **Invulnerable** armor protects {player.name}, absorbing all damage from {monster.name}!"
+
+    # Track combat round for Twin Strike
+    monster.combat_round += 1
     helmet_passive = player.get_helmet_passive()
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     
@@ -751,6 +754,14 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
             if is_executed: monster_message += f"The {monster.name}'s **Executioner** ability cleaves through you!\n"
             if minion_dmg > 0: monster_message += f"Their minions strike for an additional {minion_dmg} damage!\n"
             if multistrike_damage > 0: monster_message += f"{monster.name} strikes again for {multistrike_damage} damage!\n"
+
+            # Twin Strike: every even round, a second coordinated blow lands at 50% damage
+            if "Twin Strike" in monster.modifiers and monster.combat_round % 2 == 0:
+                twin_raw, _, _ = roll_monster_dmg()
+                twin_dmg = max(1, int(twin_raw * 0.5))
+                player.current_hp = max(0, player.current_hp - twin_dmg)
+                monster_message += f"⚡ **Twin Strike!** The bound sovereigns strike as one for **{twin_dmg}** damage!\n"
+
             if not monster_message: monster_message = f"{monster.name} {monster.flavor}, but you mitigate all its damage."
 
     else: # Miss

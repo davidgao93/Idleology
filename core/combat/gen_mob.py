@@ -475,6 +475,45 @@ def generate_uber_neet(player, monster):
     return monster
 
 
+def generate_uber_gemini(player, monster):
+    """Generate the single-phase Uber Gemini Twins boss fight. Perfectly balanced — equal ATK and DEF."""
+    ref_level = player.level + player.ascension + 20
+    monster.level = ref_level
+
+    monster = calculate_monster_stats(monster)
+
+    # Balanced HP — sustained fight designed to outlast reckless players
+    base_hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.35, 1.45)))
+    monster.hp = int(base_hp * 3.2)
+    monster.max_hp = monster.hp
+    monster.xp = monster.hp * 2
+
+    monster.name = "Castor & Pollux, Bound Sovereigns"
+    monster.image = "https://i.imgur.com/PqViP3D.png"
+    monster.flavor = "move in perfect synchrony"
+    monster.species = "Celestial"
+    monster.is_boss = True
+
+    # Identity: perfectly balanced — equal scaling on both stats
+    # (stats kept at base multiplier, Absolute provides the bump)
+    monster.modifiers = ["Twin Strike", "Absolute"]
+    if "Absolute" in monster.modifiers:
+        monster.attack += 25
+        monster.defence += 25
+
+    # Even per-level scaling on both stats — the twins reflect each other
+    monster.attack += int(monster.level * 0.65)
+    monster.defence += int(monster.level * 0.65)
+
+    # One random boss modifier for variety
+    available_boss_mods = get_boss_mods()
+    exclude = ["Absolute", "Twin Strike", "Void Aura", "Hell's Fury", "Infernal Legion"]
+    valid_mods = [m for m in available_boss_mods if m not in exclude]
+    monster.modifiers.append(random.choice(valid_mods))
+
+    return monster
+
+
 async def generate_uber_aphrodite(player, monster):
     """Generate the single-phase Uber Aphrodite boss fight."""
     # Base level is ~20 levels above the player's effective level

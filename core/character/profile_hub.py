@@ -125,6 +125,12 @@ class ProfileBuilder:
                    f"🔮 Void Engrams: {uber_data.get('void_engrams', 0)}\n"
                    f"📜 Void Sanctum Blueprint: {void_bp_status}"), inline=True)
 
+        gemini_bp_status = "✅ Unlocked" if uber_data.get('gemini_blueprint_unlocked', 0) else "🔒 Locked"
+        embed.add_field(name="♊ **Gemini Drops**",
+            value=(f"♊ Gemini Sigils: {uber_data.get('gemini_sigils', 0)}\n"
+                   f"💠 Gemini Engrams: {uber_data.get('gemini_engrams', 0)}\n"
+                   f"📜 Twin Shrine Blueprint: {gemini_bp_status}"), inline=True)
+
         return embed
 
     @staticmethod

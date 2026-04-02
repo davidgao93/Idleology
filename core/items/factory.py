@@ -171,7 +171,9 @@ def create_companion(data: tuple) -> Companion:
         exp=data[6],
         passive_type=data[7],
         passive_tier=data[8],
-        is_active=bool(data[9])
+        is_active=bool(data[9]),
+        balanced_passive=data[11] if len(data) > 11 and data[11] is not None else 'none',
+        balanced_passive_tier=data[12] if len(data) > 12 and data[12] is not None else 0,
     )
 
 async def load_player(user_id: str, user_data: tuple, database) -> Player:
