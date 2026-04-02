@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"ascension\\\\|level.*100\\\\|endgame\" /c/Users/yugao/Idleology/core --include=\"*.py\" ! -path \"*/.claude/*\" ! -path \"*/venv/*\")"
+    ]
+  }
+}

@@ -472,7 +472,7 @@ async def generate_uber_lucifer(player, monster):
     monster.is_boss = True
 
     # Identity: triple attack, minimal defence
-    monster.attack = int(monster.attack * 3.0)
+    monster.attack = int(monster.attack * 1.3)
     monster.defence = int(monster.defence * 0.3)
 
     # Core modifiers — Hell's Fury stacks attack per hit; Absolute gives flat boost
@@ -514,10 +514,6 @@ def generate_uber_neet(player, monster):
     monster.flavor = "radiates an entropic void"
     monster.species = "Void"
     monster.is_boss = True
-
-    # Identity: moderate attack, very high defence — punishes passive play
-    monster.attack = int(monster.attack * 1.5)
-    monster.defence = int(monster.defence * 2.0)
 
     # Core modifiers — Void Aura siphons per round; Absolute gives flat boost
     monster.modifiers = ["Void Aura", "Absolute"]
