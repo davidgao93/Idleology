@@ -119,8 +119,8 @@ class General(commands.Cog, name="general"):
 
     @app_commands.command(name="mod_details", description="Shows progression details for modifiers or passives.")
     @app_commands.describe(category="Choose the category of modifiers/passives to view.")
-    async def mod_details(self, interaction: discord.Interaction, 
-                          category: Literal['monster', 'weapon', 'accessory', 'helmet', 'armor', 'glove', 'boot']):
+    async def mod_details(self, interaction: discord.Interaction,
+                          category: Literal['monster', 'weapon', 'accessory', 'helmet', 'armor', 'glove', 'boot', 'uber']):
         
         embed = discord.Embed(color=discord.Color.blue())
         content_added = False
@@ -227,6 +227,27 @@ class General(commands.Cog, name="general"):
                     }
                     embed.description = self._generate_scaling_details(passives, 5)
                     content_added = True
+
+        elif category == 'uber':
+            embed.title = "⚔️ Uber Boss Modifier Details"
+            uber_text = (
+                "**Aphrodite, Celestial Apex**\n"
+                "**Radiant Protection**: Globally reduces all incoming damage by 60%.\n\n"
+                "**Lucifer, Infernal Sovereign**\n"
+                "**Hell's Fury**: +5 flat attack for every successful hit.\n\n"
+                "**NEET, Void Sovereign**\n"
+                "**Void Aura**: Siphons 5% of player ATK and DEF each round, regardless of hit.\n\n"
+                "**Castor & Pollux, Bound Sovereigns**\n"
+                "**Twin Strike**: Every even round, a second coordinated blow lands at 50% damage.\n\n"
+                "**Shared (All Uber Bosses)**\n"
+                "**Absolute**: +25 Attack, +25 Defence.\n\n"
+                "**Random Boss Modifier (one per encounter)**\n"
+                "**Celestial Watcher**: 100% hit chance; deals 20% increased damage.\n"
+                "**Unlimited Blade Works**: Doubles all damage dealt.\n"
+                "**Infernal Legion**: Minions echo every hit for full additional damage.\n"
+            )
+            embed.description = uber_text
+            content_added = True
 
         if not content_added:
             embed.description = "No details available."

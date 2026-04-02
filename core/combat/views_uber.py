@@ -5,9 +5,9 @@ from core.combat import engine
 from core.combat import ui as combat_ui
 from core.combat.gen_mob import (
     generate_uber_aphrodite,
+    generate_uber_gemini,
     generate_uber_lucifer,
     generate_uber_neet,
-    generate_uber_gemini,
 )
 from core.combat.views import CombatView  # Reuse the battle engine
 from core.models import Monster, Player
@@ -191,7 +191,12 @@ class UberHubView(ui.View):
         await interaction.response.defer()
         readiness_text = DummyEngine.assess_readiness(self.player, target="gemini_uber")
         lobby = UberGeminiLobbyView(
-            self.bot, self.user_id, self.server_id, self.player, self.uber_data, readiness_text
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            self.uber_data,
+            readiness_text,
         )
         embed = lobby.build_embed()
         await interaction.edit_original_response(embed=embed, view=lobby)
@@ -717,12 +722,15 @@ class UberGeminiLobbyView(ui.View):
         self.add_item(btn_close)
 
     def build_embed(self) -> discord.Embed:
-        embed = discord.Embed(title="♊ The Bound Sovereigns", color=discord.Color.blurple())
+        embed = discord.Embed(
+            title="♊ The Bound Sovereigns", color=discord.Color.blurple()
+        )
         embed.set_thumbnail(url="https://i.imgur.com/PqViP3D.png")
 
         desc = (
-            "Two stars circle in eternal orbit. A voice — no, two voices, perfectly in time:\n"
-            "*\"We are balance made flesh. For every blow you land, we answer in kind.\"*\n\n"
+            "You approach two chubby kids. A voice — no, two voices, perfectly in time:\n"
+            '*"We are balance made flesh. For every blow you land, we answer in kind."*\n'
+            '*"You think to yourself, I need to layoff the drugs..."*\n\n'
             f"**Entry Cost:** 3 Gemini Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
@@ -760,8 +768,12 @@ class UberGeminiLobbyView(ui.View):
 
     async def go_back(self, interaction: Interaction):
         await interaction.response.defer()
-        uber_data = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
-        hub = UberHubView(self.bot, self.user_id, self.server_id, self.player, uber_data)
+        uber_data = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
+        )
+        hub = UberHubView(
+            self.bot, self.user_id, self.server_id, self.player, uber_data
+        )
         embed = hub.build_embed()
         await interaction.edit_original_response(embed=embed, view=hub)
         hub.message = await interaction.original_response()
@@ -781,7 +793,9 @@ class UberGeminiLobbyView(ui.View):
 
         await interaction.response.defer()
 
-        await self.bot.database.uber.increment_gemini_sigils(self.user_id, self.server_id, -3)
+        await self.bot.database.uber.increment_gemini_sigils(
+            self.user_id, self.server_id, -3
+        )
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
 
         monster = Monster(
