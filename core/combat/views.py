@@ -446,17 +446,17 @@ class CombatView(ui.View):
                         self.user_id, self.server_id, "twin_shrine"
                     )
                 )
-                total_chance = 0.10 + (shrine_workers * 0.0001)
+                # 100% base drop, shrine workers give a fractional chance at a 2nd
+                total_chance = 1.0 + (shrine_workers * 0.0001)
                 guaranteed = int(total_chance)
                 fractional = total_chance - guaranteed
                 sigils_dropped = guaranteed
                 if random.random() < fractional:
                     sigils_dropped += 1
-                if sigils_dropped > 0:
-                    await self.bot.database.uber.increment_gemini_sigils(
-                        self.user_id, self.server_id, sigils_dropped
-                    )
-                    reward_data["special"].extend(["Gemini Sigil"] * sigils_dropped)
+                await self.bot.database.uber.increment_gemini_sigils(
+                    self.user_id, self.server_id, sigils_dropped
+                )
+                reward_data["special"].extend(["Gemini Sigil"] * sigils_dropped)
 
             # Grant Currencies based on flags
             for key, val in special_flags.items():
@@ -1172,13 +1172,6 @@ class CombatView(ui.View):
                     reward_data["msgs"].append(
                         "💎 **The twins' bond yields a Bound Crystal.**"
                     )
-
-            # 5. Gemini Key (guaranteed on victory)
-            await self.bot.database.uber.increment_gemini_sigils(
-                self.user_id, self.server_id, 1
-            )
-            reward_data["special"].append("Gemini Sigil")
-            reward_data["msgs"].append("♊ **A Gemini Sigil forms from the fractured constellation.**")
 
             # DB commits
             self.player.exp += reward_data["xp"]

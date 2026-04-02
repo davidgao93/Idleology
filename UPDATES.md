@@ -1,5 +1,7 @@
 ### Version 0.8
 * Added `/doors` command, this allows you to enable or disable boss doors
+* Added more information to /mod_details, which now include companions, slayer emblem, and uber boss mods.
+* The gemini twins now always drop a Gemini Sigil, which is required for the uber encounter.
 * Added Uber bosses for existing bosses:
   - Aphrodite
   - Lucifer
@@ -21,7 +23,6 @@
   - Void Engram (10%)
   - Void Blueprint (10%) — duplicate drops award a **Void Crystal** instead
 * Uber Gemini drops the following:
-  - Gemini Sigil (100% on victory — 1 returned of the 3 spent)
   - Gemini Engram (10%)
   - Twin Shrine Blueprint (10%) — duplicate drops award a **Bound Crystal** instead
 

@@ -1,14 +1,18 @@
+import csv
+import os
 import random
-import os 
-import csv 
+
 from core.models import Monster
 from core.util import load_list
+
 
 def get_monster_mods():
     return load_list("assets/mobs/mods.txt")
 
+
 def get_boss_mods():
     return load_list("assets/mobs/bossmods.txt")
+
 
 async def generate_encounter(player, monster, is_treasure, task_species=None):
     """Generate an encounter with a monster based on the user's level."""
@@ -30,8 +34,11 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
         difficulty_multiplier = random.randint(3, 8)
     else:
         difficulty_multiplier = random.randint(4, 10)
-    
-    monster.level = random.randint(player.level + player.ascension, player.level + player.ascension + difficulty_multiplier)
+
+    monster.level = random.randint(
+        player.level + player.ascension,
+        player.level + player.ascension + difficulty_multiplier,
+    )
 
     # print('Calculating monster stats')
     monster = calculate_monster_stats(monster)
@@ -46,7 +53,9 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
     elif player.level > 1 and player.level <= 5:
         monster.hp = max(10, random.randint(1, 4) + int(7 * monster.level))
     else:
-        monster.hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.4, 1.45)))
+        monster.hp = random.randint(0, 9) + int(
+            10 * (monster.level ** random.uniform(1.4, 1.45))
+        )
 
     monster.max_hp = monster.hp
     monster.xp = monster.max_hp
@@ -66,7 +75,7 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
             modifier_checks.append(50 + int(player.rarity / 10))
 
         available_modifiers = get_monster_mods()
-        
+
         for chance in modifier_checks:
             if random.randint(1, 100) <= chance and available_modifiers:
                 modifier = random.choice(available_modifiers)
@@ -80,13 +89,15 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
         if "Ascended" in monster.modifiers:
             monster.attack += 10
             monster.defence += 10
-            print(f"Ascended modifier applied: m.atk/m.def +10")
+            print("Ascended modifier applied: m.atk/m.def +10")
 
         # Apply Steel-born modifier
         if "Steel-born" in monster.modifiers:
             monster.defence = int(monster.defence * 1.1)
-            print(f"Steel-born modifier applied: Monster defence increased to {monster.defence}")
-        
+            print(
+                f"Steel-born modifier applied: Monster defence increased to {monster.defence}"
+            )
+
         if "Mighty" in monster.modifiers:
             monster.attack = int(monster.attack * 1.1)
 
@@ -99,15 +110,19 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
 
 async def generate_boss(player, monster, phase, phase_index):
     """Generate a boss with a phase based on the user's level."""
-    print(f'Generating a boss based on {phase}')
+    print(f"Generating a boss based on {phase}")
     difficulty_multiplier = int(player.level / 15)
-    
-    monster.level = player.level + player.ascension + difficulty_multiplier + phase_index
+
+    monster.level = (
+        player.level + player.ascension + difficulty_multiplier + phase_index
+    )
 
     monster = calculate_monster_stats(monster)
     monster = await fetch_monster_image(phase["level"], monster)
 
-    monster.hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.25, 1.35)))
+    monster.hp = random.randint(0, 9) + int(
+        10 * (monster.level ** random.uniform(1.25, 1.35))
+    )
     monster.hp = int(monster.hp * phase["hp_multiplier"])
     monster.max_hp = monster.hp
     monster.xp = monster.hp
@@ -116,26 +131,26 @@ async def generate_boss(player, monster, phase, phase_index):
     available_modifiers.remove("Glutton")
     available_modifiers.remove("Built-different")
     monster.modifiers = []
-    if ('Lucifer' in phase["name"]):
+    if "Lucifer" in phase["name"]:
         boss_modifiers = get_boss_mods()
         boss_mod = random.choice(boss_modifiers)
-        if (boss_mod == "Celestial Watcher"):
+        if boss_mod == "Celestial Watcher":
             available_modifiers.remove("All-seeing")
             available_modifiers.remove("Venomous")
-        elif (boss_mod == "Unlimited Blade Works"):
+        elif boss_mod == "Unlimited Blade Works":
             available_modifiers.remove("Mirror Image")
-        elif (boss_mod == "Hell's Fury"):
+        elif boss_mod == "Hell's Fury":
             available_modifiers.remove("Strengthened")
-        elif (boss_mod == "Hell's Precision"):
+        elif boss_mod == "Hell's Precision":
             available_modifiers.remove("Hellborn")
-        elif (boss_mod == "Absolute"):
+        elif boss_mod == "Absolute":
             available_modifiers.remove("Ascended")
-        elif (boss_mod == "Infernal Legion"):
+        elif boss_mod == "Infernal Legion":
             available_modifiers.remove("Summoner")
         monster.modifiers.append(boss_mod)
         print(monster)
 
-    if ('NEET' in phase["name"]):
+    if "NEET" in phase["name"]:
         boss_modifiers = get_boss_mods()
         for _ in range(phase["modifiers_count"]):
             if available_modifiers:
@@ -149,7 +164,7 @@ async def generate_boss(player, monster, phase, phase_index):
             monster.modifiers.append(modifier)
             available_modifiers.remove(modifier)
     print(monster)
-            
+
     if "Absolute" in monster.modifiers:
         monster.attack += 25
         monster.defence += 25
@@ -166,55 +181,74 @@ async def generate_boss(player, monster, phase, phase_index):
     return monster
 
 
-async def generate_ascent_monster(player, monster_instance, ascent_stage_level, num_normal_mods, num_boss_mods):
+async def generate_ascent_monster(
+    player, monster_instance, ascent_stage_level, num_normal_mods, num_boss_mods
+):
     """Generates a monster for the ascent mode."""
     monster = monster_instance
-    monster.level = ascent_stage_level # This is the base level for the stage
+    monster.level = ascent_stage_level  # This is the base level for the stage
 
     # Calculate initial stats based on the stage level
     # We use a temporary monster object for stat calculation to avoid altering monster.level if "Built-different" applies
-    temp_monster_for_stats = Monster(name="", level=monster.level, hp=0,max_hp=0,xp=0,attack=0,defence=0,modifiers=[],image="",flavor="")
+    temp_monster_for_stats = Monster(
+        name="",
+        level=monster.level,
+        hp=0,
+        max_hp=0,
+        xp=0,
+        attack=0,
+        defence=0,
+        modifiers=[],
+        image="",
+        flavor="",
+    )
     temp_monster_for_stats = calculate_monster_stats(temp_monster_for_stats)
     monster.attack = temp_monster_for_stats.attack
     monster.defence = temp_monster_for_stats.defence
 
     # Fetch image, name, and flavor text using the stage level
-    monster = await fetch_monster_image(random.randint(20,120), monster)
+    monster = await fetch_monster_image(random.randint(20, 120), monster)
 
     # HP Calculation based on stage level
-    monster.hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.3, 1.4)))
-    
+    monster.hp = random.randint(0, 9) + int(
+        10 * (monster.level ** random.uniform(1.3, 1.4))
+    )
+
     monster.max_hp = monster.hp
-    monster.xp = int(monster.max_hp * (1 + ascent_stage_level / 50)) # XP scales with stage level
+    monster.xp = int(
+        monster.max_hp * (1 + ascent_stage_level / 50)
+    )  # XP scales with stage level
 
     monster.modifiers = []
-    
+
     # Apply Normal Modifiers
     all_normal_mods = get_monster_mods()
-    available_normal_mods = [m for m in all_normal_mods] # Create a mutable copy
-    random.shuffle(available_normal_mods) 
+    available_normal_mods = [m for m in all_normal_mods]  # Create a mutable copy
+    random.shuffle(available_normal_mods)
 
     count_normal_applied = 0
     while count_normal_applied < num_normal_mods and available_normal_mods:
         modifier = available_normal_mods.pop(0)
         monster.modifiers.append(modifier)
         count_normal_applied += 1
-        
+
     # Apply Boss Modifiers
     all_boss_mods = get_boss_mods()
     # Ensure boss mods are not already present if they can also be normal mods
-    available_boss_mods = [m for m in all_boss_mods if m not in monster.modifiers] 
+    available_boss_mods = [m for m in all_boss_mods if m not in monster.modifiers]
     random.shuffle(available_boss_mods)
 
     count_boss_applied = 0
     while count_boss_applied < num_boss_mods and available_boss_mods:
         modifier = available_boss_mods.pop(0)
-        monster.modifiers.append(modifier) # Assumes boss mods are distinct enough or effects are additive
-        count_boss_applied +=1
+        monster.modifiers.append(
+            modifier
+        )  # Assumes boss mods are distinct enough or effects are additive
+        count_boss_applied += 1
 
     # Apply effects of chosen modifiers
     # Handle "Built-different" first as it affects stat calculation level
-    effective_stat_level = monster.level # Start with the base stage level
+    effective_stat_level = monster.level  # Start with the base stage level
     if "Built-different" in monster.modifiers:
         effective_stat_level += 2
         # Recalculate attack/defense based on this effective level
@@ -222,41 +256,45 @@ async def generate_ascent_monster(player, monster_instance, ascent_stage_level, 
         temp_monster_for_stats = calculate_monster_stats(temp_monster_for_stats)
         monster.attack = temp_monster_for_stats.attack
         monster.defence = temp_monster_for_stats.defence
-        print(f"Built-different modifier applied: m.atk/m.def recalculated for effective level {effective_stat_level}")
+        print(
+            f"Built-different modifier applied: m.atk/m.def recalculated for effective level {effective_stat_level}"
+        )
 
     # Apply other stat-modifying effects on top of (potentially) recalculated stats
     if "Ascended" in monster.modifiers:
         monster.attack += 10
         monster.defence += 10
-        print(f"Ascended modifier applied: m.atk/m.def +10")
-    
-    if "Absolute" in monster.modifiers: # Typically a boss mod
+        print("Ascended modifier applied: m.atk/m.def +10")
+
+    if "Absolute" in monster.modifiers:  # Typically a boss mod
         monster.attack += 25
         monster.defence += 25
-        print(f"Absolute modifier applied: m.atk/m.def +25")
+        print("Absolute modifier applied: m.atk/m.def +25")
 
     if "Steel-born" in monster.modifiers:
         monster.defence = int(monster.defence * 1.1)
-        print(f"Steel-born modifier applied: Monster defence increased to {monster.defence}")
-    
+        print(
+            f"Steel-born modifier applied: Monster defence increased to {monster.defence}"
+        )
+
     if "Mighty" in monster.modifiers:
         monster.attack = int(monster.attack * 1.1)
         print(f"Mighty modifier applied: Monster attack increased to {monster.attack}")
 
     # Glutton applies to HP calculated from STAGE level, after other HP calculations
     if "Glutton" in monster.modifiers:
-        monster.hp = int(monster.hp * 2) 
-        monster.max_hp = monster.hp # Ensure max_hp matches
+        monster.hp = int(monster.hp * 2)
+        monster.max_hp = monster.hp  # Ensure max_hp matches
         print(f"Glutton modifier applied: Monster HP doubled to {monster.hp}")
 
-    monster.is_boss = True # Ascent monsters are considered bosses
+    monster.is_boss = True  # Ascent monsters are considered bosses
     return monster
 
 
 def level_exponent(level: int) -> float:
     if level < 5:
         return 1.0
-    
+
     if level <= 20:
         return random.uniform(1.1, 1.2)
     elif level <= 40:
@@ -273,35 +311,49 @@ def level_exponent(level: int) -> float:
         return random.uniform(1.30, 1.31)
     elif level <= 110:
         return random.uniform(1.33, 1.35)
+    elif level <= 120:
+        return random.uniform(1.4, 1.42)
+    elif level <= 130:
+        return random.uniform(1.42, 1.45)
     else:
-        return 1.4
+        return random.uniform(1.45, 1.5)
+
 
 def calculate_monster_stats(monster):
     if monster.level < 5:
         base_attack = base_defence = monster.level
     else:
         exp = level_exponent(monster.level)
-        base_attack = monster.level ** exp
-        base_defence = monster.level ** exp
-    
+        base_attack = monster.level**exp
+        base_defence = monster.level**exp
+
     monster.attack = int(base_attack)
     monster.defence = int(base_defence)
     return monster
 
+
 async def fetch_monster_image(level, monster_data, task_species=None):
     """Fetches a monster image from the monsters.csv file based on the encounter level."""
-    csv_file_path = os.path.join(os.path.dirname(__file__), '../../assets/monsters.csv')
+    csv_file_path = os.path.join(os.path.dirname(__file__), "../../assets/monsters.csv")
     monsters = []
     try:
-        with open(csv_file_path, newline='') as csvfile:
+        with open(csv_file_path, newline="") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                monster_name = row['name']
-                monster_url = row['url']
-                monster_level = int(row['level']) * 10
-                flavor_txt = row['flavor']
-                monster_species = row.get('species', monster_name) 
-                monsters.append((monster_name, monster_url, monster_level, flavor_txt, monster_species))
+                monster_name = row["name"]
+                monster_url = row["url"]
+                monster_level = int(row["level"]) * 10
+                flavor_txt = row["flavor"]
+                monster_species = row.get("species", monster_name)
+                monsters.append(
+                    (
+                        monster_name,
+                        monster_url,
+                        monster_level,
+                        flavor_txt,
+                        monster_species,
+                    )
+                )
     except Exception as e:
         print(f"Error reading monsters.csv: {e}")
         monster_data.name = "Commoner"
@@ -309,11 +361,11 @@ async def fetch_monster_image(level, monster_data, task_species=None):
         monster_data.flavor = "stares pleadingly at"
         monster_data.species = "Humanoid"
         return monster_data
-    
+
     if 444 <= level <= 888:
         for monster in monsters:
-            if (monster[2] == level * 10):
-                print('Monster matched')
+            if monster[2] == level * 10:
+                print("Monster matched")
                 monster_data.name = monster[0]
                 monster_data.image = monster[1]
                 monster_data.flavor = monster[3]
@@ -321,13 +373,17 @@ async def fetch_monster_image(level, monster_data, task_species=None):
                 return monster_data
     else:
         if level == 999:
-            selected_monsters = [monster for monster in monsters if monster[2] == level * 10]
+            selected_monsters = [
+                monster for monster in monsters if monster[2] == level * 10
+            ]
         else:
             if level > 110:
                 level = 100
             min_level = max(1, level - 20)
             max_level = min(110, level + 10)
-            selected_monsters = [monster for monster in monsters if min_level <= monster[2] <= max_level]
+            selected_monsters = [
+                monster for monster in monsters if min_level <= monster[2] <= max_level
+            ]
 
         if not selected_monsters:
             monster_data.name = "Commoner"
@@ -335,9 +391,11 @@ async def fetch_monster_image(level, monster_data, task_species=None):
             monster_data.flavor = "says how did you find me???"
             monster_data.species = "Humanoid"
             return monster_data
-        
+
         if task_species and random.random() < 0.50:
-            task_specific_mobs = [m for m in selected_monsters if m[4] == task_species] # m[4] is species
+            task_specific_mobs = [
+                m for m in selected_monsters if m[4] == task_species
+            ]  # m[4] is species
             if task_specific_mobs:
                 selected_monsters = task_specific_mobs
 
@@ -347,8 +405,8 @@ async def fetch_monster_image(level, monster_data, task_species=None):
         monster_data.flavor = selected_monster[3]
         monster_data.species = selected_monster[4]
         return monster_data
-        
-    
+
+
 def get_modifier_description(modifier):
     """Helper method to get modifier descriptions."""
     descriptions = {
@@ -381,15 +439,16 @@ def get_modifier_description(modifier):
         "Dodgy": "Evasion increased by 10%",
         "Prescient": "10% more likely to hit",
         "Vampiric": "Heals for 10 times damage dealt",
-        "Celestial Watcher": "Never miss (boss)", # Start boss list here
+        "Celestial Watcher": "Never miss (boss)",  # Start boss list here
         "Unlimited Blade Works": "Double damage (boss)",
         "Hell's Fury": "+5 each successful hit (boss)",
         "Absolute": "+25 Attack, +25 defence (boss)",
         "Infernal Legion": "Has minions that echo hits (boss)",
-        "Radiant Protection": "Globally reduces all incoming damage by 60% (Uber)", # Start uber list here
+        "Radiant Protection": "Globally reduces all incoming damage by 60% (Uber)",  # Start uber list here
         "Void Aura": "Siphons 5% ATK and DEF from player each round (Uber)",
-        }
-    return descriptions.get(modifier, "") 
+    }
+    return descriptions.get(modifier, "")
+
 
 async def generate_uber_lucifer(player, monster):
     """Generate the single-phase Uber Lucifer boss fight. Heavy attack, minimal defence."""
@@ -399,13 +458,15 @@ async def generate_uber_lucifer(player, monster):
     monster = calculate_monster_stats(monster)
 
     # Slightly less raw HP than Aphrodite — Lucifer is meant to kill you, not outlast you
-    base_hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.30, 1.40)))
+    base_hp = random.randint(0, 9) + int(
+        10 * (monster.level ** random.uniform(1.30, 1.40))
+    )
     monster.hp = int(base_hp * 3.0)
     monster.max_hp = monster.hp
     monster.xp = monster.hp * 2
 
     monster.name = "Lucifer, Infernal Sovereign"
-    monster.image = "https://i.imgur.com/x9suAGK.png"
+    monster.image = "https://i.imgur.com/e1VWY6l.png"
     monster.flavor = "exudes an overwhelming killing intent"
     monster.species = "Demon"
     monster.is_boss = True
@@ -441,13 +502,15 @@ def generate_uber_neet(player, monster):
     monster = calculate_monster_stats(monster)
 
     # Highest HP of all three — built to outlast the player via Void Drain
-    base_hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.35, 1.45)))
+    base_hp = random.randint(0, 9) + int(
+        10 * (monster.level ** random.uniform(1.35, 1.45))
+    )
     monster.hp = int(base_hp * 3.5)
     monster.max_hp = monster.hp
     monster.xp = monster.hp * 2
 
     monster.name = "NEET, the Void Sovereign"
-    monster.image = "https://i.imgur.com/7UmY4Mo.jpeg"
+    monster.image = "https://i.imgur.com/ltLBLBR.png"
     monster.flavor = "radiates an entropic void"
     monster.species = "Void"
     monster.is_boss = True
@@ -468,7 +531,13 @@ def generate_uber_neet(player, monster):
 
     # One random boss modifier for variety
     available_boss_mods = get_boss_mods()
-    exclude = ["Absolute", "Void Aura", "Hell's Fury", "Infernal Legion", "Radiant Protection"]
+    exclude = [
+        "Absolute",
+        "Void Aura",
+        "Hell's Fury",
+        "Infernal Legion",
+        "Radiant Protection",
+    ]
     valid_mods = [m for m in available_boss_mods if m not in exclude]
     monster.modifiers.append(random.choice(valid_mods))
 
@@ -483,13 +552,15 @@ def generate_uber_gemini(player, monster):
     monster = calculate_monster_stats(monster)
 
     # Balanced HP — sustained fight designed to outlast reckless players
-    base_hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.35, 1.45)))
+    base_hp = random.randint(0, 9) + int(
+        10 * (monster.level ** random.uniform(1.35, 1.45))
+    )
     monster.hp = int(base_hp * 3.2)
     monster.max_hp = monster.hp
     monster.xp = monster.hp * 2
 
     monster.name = "Castor & Pollux, Bound Sovereigns"
-    monster.image = "https://i.imgur.com/PqViP3D.png"
+    monster.image = "https://i.imgur.com/vC0JFZW.png"
     monster.flavor = "move in perfect synchrony"
     monster.species = "Celestial"
     monster.is_boss = True
@@ -519,39 +590,43 @@ async def generate_uber_aphrodite(player, monster):
     # Base level is ~20 levels above the player's effective level
     ref_level = player.level + player.ascension + 20
     monster.level = ref_level
-    
+
     # Calculate base stats
     monster = calculate_monster_stats(monster)
-    
+
     # Single long fight: Massive HP Multiplier
-    base_hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.35, 1.45)))
-    monster.hp = int(base_hp * 4.0) 
+    base_hp = random.randint(0, 9) + int(
+        10 * (monster.level ** random.uniform(1.45, 1.55))
+    )
+    monster.hp = int(base_hp * 4.0)
     monster.max_hp = monster.hp
-    monster.xp = monster.hp * 2 # Generous XP for the difficulty
-    
+    monster.xp = monster.hp * 2  # Generous XP for the difficulty
+
     monster.name = "Aphrodite, Celestial Apex"
-    monster.image = "https://i.imgur.com/QYLnAAi.png" # Uber form
+    monster.image = "https://i.imgur.com/QYLnAAi.png"  # Uber form
     monster.flavor = "radiates an overwhelming aura"
     monster.species = "Celestial"
     monster.is_boss = True
-    
+
     # Assign Modifiers
     monster.modifiers = ["Radiant Protection", "Absolute"]
-    
+
     # Add 1 to 2 random boss modifiers to keep it dynamic
     available_boss_mods = get_boss_mods()
     random.shuffle(available_boss_mods)
-    
+
     # Exclude mods that might break the encounter scaling
     exclude = ["Unlimited Blade Works", "Glutton", "Built-different", "Absolute"]
-    valid_mods = [m for m in available_boss_mods if m not in exclude][:random.randint(1, 2)]
+    valid_mods = [m for m in available_boss_mods if m not in exclude][
+        : random.randint(1, 2)
+    ]
     monster.modifiers.extend(valid_mods)
-    
+
     # Flat stat augmentations to ensure she hits extremely hard
     if "Absolute" in monster.modifiers:
         monster.attack += 25
         monster.defence += 25
-    
+
     # Additional baseline Uber buffs
     monster.attack += int(monster.level * 0.5)
     monster.defence += int(monster.level * 0.5)

@@ -120,7 +120,7 @@ class General(commands.Cog, name="general"):
     @app_commands.command(name="mod_details", description="Shows progression details for modifiers or passives.")
     @app_commands.describe(category="Choose the category of modifiers/passives to view.")
     async def mod_details(self, interaction: discord.Interaction,
-                          category: Literal['monster', 'weapon', 'accessory', 'helmet', 'armor', 'glove', 'boot', 'uber']):
+                          category: Literal['monster', 'weapon', 'accessory', 'helmet', 'armor', 'glove', 'boot', 'uber', 'companion', 'slayer']):
         
         embed = discord.Embed(color=discord.Color.blue())
         content_added = False
@@ -150,7 +150,18 @@ class General(commands.Cog, name="general"):
 
         elif category == 'weapon':
             embed.title = "⚔️ Weapon Passive Progression"
-            embed.description = self._generate_weapon_details()
+            infernal_text = (
+                "\n**🔥 Infernal Passives (Engram):**\n"
+                "**Soulreap**: Restore HP to full after every successful encounter.\n"
+                "**Inverted Edge**: At combat start, swap weapon Attack and Defence.\n"
+                "**Gilded Hunger**: At combat start, gain Attack equal to 50% of weapon Rarity.\n"
+                "**Cursed Precision**: Crit threshold reduced by 20, but crits always roll for the lower damage result.\n"
+                "**Diabolic Pact**: At combat start, lose 50% HP and double your Attack for the fight.\n"
+                "**Perdition**: Missed attacks still deal 75% weapon Attack.\n"
+                "**Voracious**: Each non-crit hit adds a stack; each stack reduces crit threshold by 5. Stacks reset on crit.\n"
+                "**Last Rites**: Critical hits deal an additional 10% of the enemy's current HP."
+            )
+            embed.description = self._generate_weapon_details() + infernal_text
             content_added = True
 
         elif category == 'accessory':
@@ -162,7 +173,18 @@ class General(commands.Cog, name="general"):
                 "Infinite Wisdom": lambda l: f"**{l * 5}%** chance to Double XP",
                 "Lucky Strikes": lambda l: f"**{l * 10}%** chance for Lucky Hit Rolls"
             }
-            embed.description = self._generate_scaling_details(passives, 10)
+            void_text = (
+                "\n**⬛ Void Passives (Engram):**\n"
+                "**Entropy**: At combat start, 20% of weapon ATK is transferred to DEF and vice versa.\n"
+                "**Void Echo**: At combat start, gain 15% of base Attack added to accessory Attack.\n"
+                "**Unravelling**: At combat start, reduce monster Defence by 20%.\n"
+                "**Void Gaze**: On crit, reduce monster Attack by 1% per stack (up to 30 stacks).\n"
+                "**Fracture**: On crit, 5% chance to instantly kill (disabled vs Uber bosses).\n"
+                "**Nullfield**: 15% chance to completely absorb incoming damage.\n"
+                "**Eternal Hunger**: Each hit adds a stack; at 10 stacks deal 10% of monster max HP and restore full HP.\n"
+                "**Oblivion**: Missed attacks still deal 50% of minimum attack damage."
+            )
+            embed.description = self._generate_scaling_details(passives, 10) + void_text
             content_added = True
 
         elif category == 'glove':
@@ -227,6 +249,44 @@ class General(commands.Cog, name="general"):
                     }
                     embed.description = self._generate_scaling_details(passives, 5)
                     content_added = True
+
+        elif category == 'companion':
+            embed.title = "🐾 Companion Passive Scaling (Tiers 1–5)"
+            comp_passives = {
+                "ATK (+% Attack)":        lambda t: f"+**{4 + t}%** Attack",
+                "DEF (+% Defence)":       lambda t: f"+**{4 + t}%** Defence",
+                "HIT (Flat Hit Chance)":  lambda t: f"+**{t}** Hit Chance",
+                "CRIT (Flat Crit Chance)":lambda t: f"+**{t}** Crit Chance",
+                "WARD (+% HP as Ward)":   lambda t: f"+**{t * 5}%** HP as Ward",
+                "RARITY (+% Rarity)":     lambda t: f"+**{t * 3}%** Rarity",
+                "S_RARITY (+% Special Drop Rate)": lambda t: f"+**{t}%** Special Drop Rate",
+                "FDR (Flat Dmg Reduction)": lambda t: f"+**{1 + t}** Flat Damage Reduction",
+                "PDR (% Dmg Reduction)":  lambda t: f"+**{2 + t}%** Percent Damage Reduction",
+            }
+            comp_text = self._generate_scaling_details(comp_passives, 5)
+            comp_text += (
+                "\n**Balanced Passive:** A companion's secondary passive, unlocked via Awakening. "
+                "Uses the same types and tier scaling as the primary passive."
+            )
+            embed.description = comp_text
+            content_added = True
+
+        elif category == 'slayer':
+            embed.title = "🗡️ Slayer Emblem Passive Scaling (Tiers 1–5)"
+            slayer_passives = {
+                "Slayer Target Damage": lambda t: f"+**{t * 5}%** damage vs assigned slayer species",
+                "Boss Damage":          lambda t: f"+**{t * 5}%** damage vs bosses",
+                "Normal Monster Damage":lambda t: f"+**{t * 2}%** damage vs normal monsters",
+                "Slayer Target Defence":lambda t: f"+**{t * 2}%** defence vs assigned slayer species",
+                "Crit Damage":          lambda t: f"+**{t * 5}%** critical hit damage multiplier",
+                "Accuracy":             lambda t: f"+**{t * 2}** flat accuracy roll",
+                "Gold Find":            lambda t: f"+**{t * 3}%** gold from combat",
+                "XP Find":              lambda t: f"+**{t * 3}%** XP from combat",
+                "Double Task Progress": lambda t: f"**{t * 5}%** chance for a task kill to count twice",
+                "Slayer Drop Rate":     lambda t: f"**{t * 5}%** chance for extra slayer material drops",
+            }
+            embed.description = self._generate_scaling_details(slayer_passives, 5)
+            content_added = True
 
         elif category == 'uber':
             embed.title = "⚔️ Uber Boss Modifier Details"

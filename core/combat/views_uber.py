@@ -30,7 +30,7 @@ class UberHubView(ui.View):
         self.clear_items()
 
         btn_aphro = ui.Button(
-            label="Aphrodite, Celestial Apex",
+            label="Challenge Aphrodite",
             style=ButtonStyle.blurple,
             emoji="🌌",
             row=0,
@@ -39,7 +39,7 @@ class UberHubView(ui.View):
         self.add_item(btn_aphro)
 
         btn_lucifer = ui.Button(
-            label="Lucifer, Infernal Sovereign",
+            label="Challenge Lucifer",
             style=ButtonStyle.danger,
             emoji="🔥",
             row=0,
@@ -48,7 +48,7 @@ class UberHubView(ui.View):
         self.add_item(btn_lucifer)
 
         btn_neet = ui.Button(
-            label="NEET, Void Sovereign",
+            label="Challenge NEET",
             style=ButtonStyle.secondary,
             emoji="⬛",
             row=1,
@@ -57,7 +57,7 @@ class UberHubView(ui.View):
         self.add_item(btn_neet)
 
         btn_gemini = ui.Button(
-            label="Castor & Pollux, Bound Sovereigns",
+            label="Challenge Gemini",
             style=ButtonStyle.blurple,
             emoji="♊",
             row=2,
@@ -82,7 +82,7 @@ class UberHubView(ui.View):
         embed.add_field(
             name="🌌 Aphrodite, Celestial Apex",
             value=(
-                f"A fearsome beauty radiating divine power.\n"
+                f"Aphrodite's fury has been unleashed.\n"
                 f"**Keys:** {self.uber_data['celestial_sigils']} Celestial Sigils *(costs 3)*"
             ),
             inline=False,
@@ -90,7 +90,7 @@ class UberHubView(ui.View):
         embed.add_field(
             name="🔥 Lucifer, Infernal Sovereign",
             value=(
-                f"A titan of pure aggression — strikes hard, dies hard.\n"
+                f"Lucifer's fury knows no bounds.\n"
                 f"**Keys:** {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*"
             ),
             inline=False,
@@ -98,7 +98,7 @@ class UberHubView(ui.View):
         embed.add_field(
             name="⬛ NEET, Void Sovereign",
             value=(
-                f"An entropic void that drains all it touches. Every round counts.\n"
+                f"NEET's pain has no known depths.\n"
                 f"**Keys:** {self.uber_data['void_shards']} Void Shards *(costs 3)*"
             ),
             inline=False,
@@ -106,7 +106,7 @@ class UberHubView(ui.View):
         embed.add_field(
             name="♊ Castor & Pollux, Bound Sovereigns",
             value=(
-                f"Two souls, one will. Their balance is absolute.\n"
+                f"The Gemini's balance is absolute.\n"
                 f"**Keys:** {self.uber_data['gemini_sigils']} Gemini Sigils *(costs 3)*"
             ),
             inline=False,
@@ -251,7 +251,7 @@ class UberAphroditeLobbyView(ui.View):
         embed.set_thumbnail(url="https://i.imgur.com/LjE5VZF.png")
 
         desc = (
-            "A chibi Aphrodite appears and says: ME HUNGRY, FEED ME SIGILS PWETTY PWEASE?\n\n"
+            "A chibi Aphrodite appears and says: ME HUNGRY, FEED ME SIGILS!\n\n"
             f"**Entry Cost:** 3 Celestial Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}"
@@ -329,7 +329,7 @@ class UberAphroditeLobbyView(ui.View):
             flavor="",
         )
         monster = await generate_uber_aphrodite(self.player, monster)
-
+        print(monster)
         clean_stats = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
@@ -408,8 +408,9 @@ class UberLuciferLobbyView(ui.View):
         )
 
         desc = (
-            "The air reeks of sulphur. A voice like grinding stone echoes from the abyss:\n"
-            '*"You dare enter my domain? I will grind your bones to ash."*\n\n'
+            "A chibi Lucifer appears and says:\n"
+            '*"You dare enter my domain? I will grind your bones to ash."*\n'
+            '*"Give me your sigils and I may let you live..."*\n\n'
             f"**Entry Cost:** 3 Infernal Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}"
@@ -427,7 +428,7 @@ class UberLuciferLobbyView(ui.View):
             inline=True,
         )
         embed.add_field(name="Infernal Forge Blueprint", value=bp_status, inline=True)
-
+        embed.set_thumbnail(url="https://i.imgur.com/tIcLLI1.png")
         return embed
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -489,7 +490,7 @@ class UberLuciferLobbyView(ui.View):
             flavor="",
         )
         monster = await generate_uber_lucifer(self.player, monster)
-
+        print(monster)
         clean_stats = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
@@ -568,8 +569,8 @@ class UberNEETLobbyView(ui.View):
         )
 
         desc = (
-            "The world goes quiet. Reality fractures at the edges.\n"
-            '*"You have wandered too far into the void. There is no going back."*\n\n'
+            "A Chibi voidling NEET appears:\n"
+            '*"You have wandered too far into the void. Give me some shards and I may guide you back."*\n\n'
             f"**Entry Cost:** 3 Void Shards\n"
             f"**Owned:** {self.shards}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
@@ -586,7 +587,7 @@ class UberNEETLobbyView(ui.View):
             inline=True,
         )
         embed.add_field(name="Void Sanctum Blueprint", value=bp_status, inline=True)
-
+        embed.set_thumbnail(url="https://i.imgur.com/V5Hd9d9.png")
         return embed
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -648,7 +649,7 @@ class UberNEETLobbyView(ui.View):
             flavor="",
         )
         monster = generate_uber_neet(self.player, monster)
-
+        print(monster)
         clean_stats = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
@@ -667,8 +668,8 @@ class UberNEETLobbyView(ui.View):
         view = CombatView(
             self.bot,
             self.user_id,
-            self.player,
             self.server_id,
+            self.player,
             monster,
             start_logs,
             combat_phases=None,
@@ -811,7 +812,7 @@ class UberGeminiLobbyView(ui.View):
             flavor="",
         )
         monster = generate_uber_gemini(self.player, monster)
-
+        print(monster)
         clean_stats = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
@@ -830,6 +831,7 @@ class UberGeminiLobbyView(ui.View):
         view = CombatView(
             self.bot,
             self.user_id,
+            self.server_id,
             self.player,
             monster,
             start_logs,
