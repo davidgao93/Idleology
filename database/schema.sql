@@ -1,3 +1,10 @@
+-- ALTER TABLE `companions` ADD COLUMN `balanced_passive` TEXT DEFAULT 'none';
+-- ALTER TABLE `companions` ADD COLUMN `balanced_passive_tier` INTEGER DEFAULT 0;
+-- ALTER TABLE `uber_progress` ADD COLUMN `gemini_sigils` INTEGER DEFAULT 0;
+-- ALTER TABLE `uber_progress` ADD COLUMN `gemini_engrams` INTEGER DEFAULT 0;
+-- ALTER TABLE `uber_progress` ADD COLUMN `gemini_blueprint_unlocked` INTEGER DEFAULT 0;
+-- ALTER TABLE `users` ADD COLUMN `bound_crystal` INTEGER DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
   `user_id` TEXT NOT NULL UNIQUE,
@@ -61,7 +68,7 @@ CREATE TABLE IF NOT EXISTS `items` (
   `refinement_lvl` INTEGER DEFAULT 0,
   `pinnacle_passive` TEXT NOT NULL DEFAULT 'none',
   `utmost_passive` TEXT NOT NULL DEFAULT 'none',
-  `infernal_passive` TEXT NOT NULL DEFAULT 'none',
+  `infernal_passive` TEXT NOT NULL DEFAULT 'none'
 );
 
 CREATE TABLE IF NOT EXISTS `accessories` (
@@ -80,13 +87,6 @@ CREATE TABLE IF NOT EXISTS `accessories` (
   `passive_lvl` INTEGER DEFAULT 0,
   `void_passive` TEXT DEFAULT 'none'
 );
-
--- ALTER TABLE companions ADD COLUMN balanced_passive TEXT DEFAULT 'none';
--- ALTER TABLE companions ADD COLUMN balanced_passive_tier INTEGER DEFAULT 0;
--- ALTER TABLE uber_progress ADD COLUMN gemini_sigils INTEGER DEFAULT 0;
--- ALTER TABLE uber_progress ADD COLUMN gemini_engrams INTEGER DEFAULT 0;
--- ALTER TABLE uber_progress ADD COLUMN gemini_blueprint_unlocked INTEGER DEFAULT 0;
--- ALTER TABLE users ADD COLUMN bound_crystal INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `armor` (
   `item_id` INTEGER PRIMARY KEY,
