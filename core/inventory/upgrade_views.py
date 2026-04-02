@@ -272,6 +272,12 @@ class RefineView(BaseUpgradeView):
 
         action_btn.callback = self.confirm_refine
         self.add_item(action_btn)
+
+        if has_refines and has_funds and has_mats:
+            maxx_btn = Button(label="Refinemaxx", style=ButtonStyle.danger)
+            maxx_btn.callback = self.refinemaxx
+            self.add_item(maxx_btn)
+
         self.add_back_button()
 
         color = discord.Color.blue() if (has_funds and has_mats) else discord.Color.red()
@@ -369,6 +375,114 @@ class RefineView(BaseUpgradeView):
         except Exception as e:
             self.bot.logger.error(f"Refine Error: {e}")
             await interaction.followup.send("An error occurred processing the refinement.", ephemeral=True)
+
+    async def refinemaxx(self, interaction: Interaction):
+        """Loop-refine until the player runs out of a required resource."""
+        await interaction.response.defer()
+
+        uid, sid = self.user_id, str(interaction.guild.id)
+        refines_done = 0
+        total_gains = {'attack': 0, 'defence': 0, 'rarity': 0}
+        stop_reason = "Refines exhausted."
+
+        while True:
+            if self.item.refines_remaining <= 0:
+                stop_reason = "No refine slots remaining."
+                break
+
+            cost_data = EquipmentMechanics.calculate_refine_cost(self.item)
+            cost_gold = cost_data['gold']
+            materials = cost_data.get('materials', [])
+
+            # Check gold
+            user_gold = await self.bot.database.users.get_gold(uid)
+            if user_gold < cost_gold:
+                stop_reason = "Ran out of Gold."
+                break
+
+            # Check materials
+            insufficient = None
+            for mat in materials:
+                async with self.bot.database.connection.execute(
+                    f"SELECT {mat['column']} FROM {mat['table']} WHERE user_id=? AND server_id=?",
+                    (uid, sid)
+                ) as c:
+                    row = await c.fetchone()
+                    owned = row[0] if row else 0
+                if owned < mat['qty']:
+                    insufficient = mat['name']
+                    break
+
+            if insufficient:
+                stop_reason = f"Ran out of {insufficient}."
+                break
+
+            # Deduct materials
+            failed = False
+            for mat in materials:
+                async with self.bot.database.connection.execute(
+                    f"UPDATE {mat['table']} SET {mat['column']} = {mat['column']} - ? "
+                    f"WHERE user_id=? AND server_id=? AND {mat['column']} >= ?",
+                    (mat['qty'], uid, sid, mat['qty'])
+                ) as c:
+                    if c.rowcount == 0:
+                        failed = True
+                        stop_reason = f"Ran out of {mat['name']}."
+                        break
+            if failed:
+                break
+
+            # Deduct gold
+            await self.bot.database.users.modify_gold(uid, -cost_gold)
+
+            # Apply stats
+            stats = EquipmentMechanics.roll_refine_outcome(self.item)
+            for key in ('attack', 'defence', 'rarity'):
+                if stats[key]:
+                    self.item.__dict__[key] += stats[key]
+                    total_gains[key] += stats[key]
+                    await self.bot.database.equipment.increase_stat(
+                        self.item.item_id, 'weapon', key, stats[key]
+                    )
+
+            self.item.refines_remaining -= 1
+            self.item.refinement_lvl += 1
+            await self.bot.database.equipment.update_counter(
+                self.item.item_id, 'weapon', 'refines_remaining', self.item.refines_remaining
+            )
+            await self.bot.database.equipment.increase_stat(
+                self.item.item_id, 'weapon', 'refinement_lvl', 1
+            )
+            await self.bot.database.connection.commit()
+            refines_done += 1
+
+        if refines_done == 0:
+            await interaction.followup.send(stop_reason, ephemeral=True)
+            return
+
+        gains_str = ", ".join(
+            [f"+{v} {k.title()}" for k, v in total_gains.items() if v > 0]
+        ) or "No stat gains."
+
+        embed = discord.Embed(title="Refinemaxx Complete! ⚡", color=discord.Color.gold())
+        embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
+        embed.description = (
+            f"**Refines Performed:** {refines_done}\n"
+            f"**Stopped Because:** {stop_reason}\n\n"
+            f"**Total Gains:** {gains_str}\n"
+            f"**Refinement Level:** +{self.item.refinement_lvl}\n\n"
+            f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
+        )
+
+        self.clear_items()
+        runes = await self.bot.database.users.get_currency(self.user_id, 'refinement_runes')
+        if self.item.refines_remaining > 0 or runes > 0:
+            again_btn = Button(label="Back to Refine", style=ButtonStyle.primary)
+            again_btn.callback = self.render
+            self.add_item(again_btn)
+        self.add_back_button()
+
+        await interaction.edit_original_response(embed=embed, view=self)
 
 
 class PotentialView(BaseUpgradeView):

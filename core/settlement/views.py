@@ -9,6 +9,47 @@ from core.combat.loot import generate_weapon, generate_armor, generate_accessory
 from core.companions.mechanics import CompanionMechanics
 import random
 
+
+class BulkTradeModal(ui.Modal):
+    TRADES = {
+        "equip":  {"label": "Equipment Caches (1000 Iron/Oak/Essence each)", "key": "equip"},
+        "rune":   {"label": "Rune Caches (10 Shatter Runes each)",           "key": "rune"},
+        "key":    {"label": "Boss Key Caches (1 Void Key each)",             "key": "key"},
+    }
+
+    quantity = ui.TextInput(
+        label="How many trades?",
+        placeholder="Enter a number e.g. 5",
+        min_length=1,
+        max_length=4,
+    )
+
+    def __init__(self, market_view: "BlackMarketView", trade_key: str):
+        trade_info = self.TRADES[trade_key]
+        super().__init__(title=f"Bulk Trade-In: {trade_info['label']}")
+        self.market_view = market_view
+        self.trade_key = trade_key
+
+    async def on_submit(self, interaction: Interaction):
+        try:
+            requested = int(self.quantity.value)
+            if requested <= 0:
+                raise ValueError
+        except ValueError:
+            return await interaction.response.send_message("Please enter a positive integer.", ephemeral=True)
+
+        await interaction.response.defer(ephemeral=True)
+        mv = self.market_view
+        uid, sid = mv.user_id, mv.parent.server_id
+
+        if self.trade_key == "equip":
+            await mv._bulk_equip_cache(interaction, requested)
+        elif self.trade_key == "rune":
+            await mv._bulk_rune_cache(interaction, requested)
+        elif self.trade_key == "key":
+            await mv._bulk_key_cache(interaction, requested)
+
+
 class BlackMarketView(ui.View):
     def __init__(self, bot, user_id, parent_view, building: Building):
         super().__init__(timeout=120)
@@ -71,7 +112,12 @@ class BlackMarketView(ui.View):
         btn_key.callback = self.buy_key_cache
         self.add_item(btn_key)
 
-        # 2. Upgrade Button
+        # 2. Bulk trade-in
+        btn_bulk = ui.Button(label="Bulk Trade-In", style=ButtonStyle.secondary, emoji="📦", row=1)
+        btn_bulk.callback = self.open_bulk_trade
+        self.add_item(btn_bulk)
+
+        # 3. Upgrade Button
         if self.building.tier < 5:
             btn_up = ui.Button(label="Upgrade Facility", style=ButtonStyle.success, emoji="⬆️", row=1)
             btn_up.callback = self.upgrade_facility
@@ -284,6 +330,153 @@ class BlackMarketView(ui.View):
             rewards.append(ktype.replace("_", " ").title())
             
         await interaction.followup.send(f"🗝️ **Boss Cache Opened:**\n{', '.join(rewards)}", ephemeral=True)
+
+    async def open_bulk_trade(self, interaction: Interaction):
+        class TradeSelect(ui.Select):
+            def __init__(self_inner):
+                options = [
+                    SelectOption(label="Equipment Cache", description="1000 Iron/Oak/Essence each", emoji="🎒", value="equip"),
+                    SelectOption(label="Rune Cache",      description="10 Shatter Runes each",      emoji="💎", value="rune"),
+                    SelectOption(label="Boss Key Cache",  description="1 Void Key each",            emoji="🗝️", value="key"),
+                ]
+                super().__init__(placeholder="Select trade type...", options=options, min_values=1, max_values=1)
+
+            async def callback(self_inner, inner_interaction: Interaction):
+                modal = BulkTradeModal(self, self_inner.values[0])
+                await inner_interaction.response.send_modal(modal)
+
+        select_view = ui.View(timeout=60)
+        select_view.add_item(TradeSelect())
+        await interaction.response.send_message("Select which trade to bulk execute:", view=select_view, ephemeral=True)
+
+    async def _bulk_equip_cache(self, interaction: Interaction, requested: int):
+        uid, sid = self.user_id, self.parent.server_id
+        cost = 1000
+
+        # Compute how many trades we can actually do
+        async with self.bot.database.connection.execute(
+            "SELECT iron_bar FROM mining WHERE user_id=? AND server_id=?", (uid, sid)) as c:
+            row = await c.fetchone(); iron = row[0] if row else 0
+        async with self.bot.database.connection.execute(
+            "SELECT oak_plank FROM woodcutting WHERE user_id=? AND server_id=?", (uid, sid)) as c:
+            row = await c.fetchone(); oak = row[0] if row else 0
+        async with self.bot.database.connection.execute(
+            "SELECT desiccated_essence FROM fishing WHERE user_id=? AND server_id=?", (uid, sid)) as c:
+            row = await c.fetchone(); essence = row[0] if row else 0
+
+        possible = min(requested, iron // cost, oak // cost, essence // cost)
+        if possible <= 0:
+            return await interaction.followup.send("Not enough materials for even one Equipment Cache.", ephemeral=True)
+
+        actual_iron = possible * cost
+        actual_oak = possible * cost
+        actual_essence = possible * cost
+
+        await self.bot.database.connection.execute(
+            "UPDATE mining SET iron_bar = iron_bar - ? WHERE user_id=? AND server_id=?", (actual_iron, uid, sid))
+        await self.bot.database.connection.execute(
+            "UPDATE woodcutting SET oak_plank = oak_plank - ? WHERE user_id=? AND server_id=?", (actual_oak, uid, sid))
+        await self.bot.database.connection.execute(
+            "UPDATE fishing SET desiccated_essence = desiccated_essence - ? WHERE user_id=? AND server_id=?", (actual_essence, uid, sid))
+        await self.bot.database.connection.commit()
+
+        data = await self.bot.database.users.get(uid, sid)
+        player = await load_player(uid, data, self.bot.database)
+        log = []
+        for _ in range(possible):
+            base_qty = random.randint(3, 5)
+            final_qty = int(base_qty * self._get_multiplier())
+            for _ in range(final_qty):
+                slot = random.choices(
+                    ['weapon','armor','accessory','glove','boot','helmet'],
+                    weights=[35, 10, 25, 10, 10, 10], k=1)[0]
+                item = None
+                if slot == 'weapon':    item = await generate_weapon(uid, player.level, False)
+                elif slot == 'armor':   item = await generate_armor(uid, player.level, False)
+                elif slot == 'accessory': item = await generate_accessory(uid, player.level, False)
+                elif slot == 'glove':   item = await generate_glove(uid, player.level, False)
+                elif slot == 'boot':    item = await generate_boot(uid, player.level, False)
+                elif slot == 'helmet':  item = await generate_helmet(uid, player.level, False)
+                if item:
+                    if slot == 'weapon':    await self.bot.database.equipment.create_weapon(item)
+                    elif slot == 'armor':   await self.bot.database.equipment.create_armor(item)
+                    elif slot == 'accessory': await self.bot.database.equipment.create_accessory(item)
+                    elif slot == 'glove':   await self.bot.database.equipment.create_glove(item)
+                    elif slot == 'boot':    await self.bot.database.equipment.create_boot(item)
+                    elif slot == 'helmet':  await self.bot.database.equipment.create_helmet(item)
+                    log.append(item.name)
+
+        unused = requested - possible
+        msg = (f"📦 **Bulk Equipment Cache** ({possible}x opened)\n"
+               f"**Consumed:** {actual_iron:,} Iron Bars, {actual_oak:,} Oak Planks, {actual_essence:,} Desiccated Essence\n"
+               f"**Received:** {', '.join(log) or 'Nothing'}")
+        if unused > 0:
+            msg += f"\n*({unused} trades skipped — insufficient materials)*"
+        await interaction.followup.send(msg, ephemeral=True)
+
+    async def _bulk_rune_cache(self, interaction: Interaction, requested: int):
+        uid = self.user_id
+        cost_per = 10
+        owned = await self.bot.database.users.get_currency(uid, 'shatter_runes')
+        possible = min(requested, owned // cost_per)
+
+        if possible <= 0:
+            return await interaction.followup.send("Not enough Shatter Runes (need 10 per cache).", ephemeral=True)
+
+        total_cost = possible * cost_per
+        await self.bot.database.users.modify_currency(uid, 'shatter_runes', -total_cost)
+
+        rewards = []
+        for _ in range(possible):
+            base_qty = random.randint(1, 5)
+            final_qty = int(base_qty * self._get_multiplier())
+            for _ in range(final_qty):
+                rtype = random.choice(['refinement_runes', 'potential_runes'])
+                await self.bot.database.users.modify_currency(uid, rtype, 1)
+                rewards.append(rtype.replace("_", " ").title().replace("Runes", "Rune"))
+
+        from collections import Counter
+        tally = Counter(rewards)
+        tally_str = ", ".join(f"{v}x {k}" for k, v in tally.items())
+
+        unused = requested - possible
+        msg = (f"💎 **Bulk Rune Cache** ({possible}x opened)\n"
+               f"**Consumed:** {total_cost:,} Shatter Runes\n"
+               f"**Received:** {tally_str or 'Nothing'}")
+        if unused > 0:
+            msg += f"\n*({unused} trades skipped — only had {owned} Shatter Runes)*"
+        await interaction.followup.send(msg, ephemeral=True)
+
+    async def _bulk_key_cache(self, interaction: Interaction, requested: int):
+        uid = self.user_id
+        owned = await self.bot.database.users.get_currency(uid, 'void_keys')
+        possible = min(requested, owned)
+
+        if possible <= 0:
+            return await interaction.followup.send("No Void Keys available.", ephemeral=True)
+
+        await self.bot.database.users.modify_currency(uid, 'void_keys', -possible)
+
+        rewards = []
+        for _ in range(possible):
+            base_qty = random.randint(1, 5)
+            final_qty = int(base_qty * self._get_multiplier())
+            for _ in range(final_qty):
+                ktype = random.choice(['dragon_key', 'angel_key', 'soul_cores', 'balance_fragment'])
+                await self.bot.database.users.modify_currency(uid, ktype, 1)
+                rewards.append(ktype.replace("_", " ").title())
+
+        from collections import Counter
+        tally = Counter(rewards)
+        tally_str = ", ".join(f"{v}x {k}" for k, v in tally.items())
+
+        unused = requested - possible
+        msg = (f"🗝️ **Bulk Boss Key Cache** ({possible}x opened)\n"
+               f"**Consumed:** {possible} Void Key(s)\n"
+               f"**Received:** {tally_str or 'Nothing'}")
+        if unused > 0:
+            msg += f"\n*({unused} trades skipped — only had {owned} Void Keys)*"
+        await interaction.followup.send(msg, ephemeral=True)
 
     async def go_back(self, interaction: Interaction):
         await interaction.response.edit_message(embed=self.parent.build_embed(), view=self.parent)
