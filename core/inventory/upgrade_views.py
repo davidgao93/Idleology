@@ -246,22 +246,20 @@ class RefineView(BaseUpgradeView):
 
         # 3. Logic
         has_refines = self.item.refines_remaining > 0
-        runes = 0
-        if not has_refines:
-            runes = await self.bot.database.users.get_currency(self.user_id, 'refinement_runes')
+        runes = await self.bot.database.users.get_currency(self.user_id, 'refinement_runes')
 
         desc = (f"**Refines Remaining:** {self.item.refines_remaining}\n"
                 f"**Refinement Level:** +{self.item.refinement_lvl}\n"
                 f"**Gold Cost:** {cost_gold:,} ({user_gold:,})")
-        
+
         if mat_status:
             desc += f"\n{mat_status}"
 
         # --- DYNAMIC BUTTON BUILD ---
         self.clear_items()
-        
+
         action_btn = Button(label="Refine", style=ButtonStyle.success)
-        
+
         if not has_refines:
             desc += f"\n\n**0 Refines left!** Use a Rune to add a slot? (Owned: {runes})"
             action_btn.label = "Use Rune"
@@ -277,6 +275,11 @@ class RefineView(BaseUpgradeView):
             maxx_btn = Button(label="Refinemaxx", style=ButtonStyle.danger)
             maxx_btn.callback = self.refinemaxx
             self.add_item(maxx_btn)
+
+        if runes > 0:
+            maxx_rune_btn = Button(label="Refinemaxx ✨", style=ButtonStyle.danger)
+            maxx_rune_btn.callback = self.refinemaxx_with_runes_preview
+            self.add_item(maxx_rune_btn)
 
         self.add_back_button()
 
@@ -482,6 +485,196 @@ class RefineView(BaseUpgradeView):
             self.add_item(again_btn)
         self.add_back_button()
 
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    async def refinemaxx_with_runes_preview(self, interaction: Interaction):
+        """Simulate the full rune-extended refinemaxx and show a confirmation screen."""
+        await interaction.response.defer()
+        uid, sid = self.user_id, str(interaction.guild.id)
+
+        runes = await self.bot.database.users.get_currency(uid, 'refinement_runes')
+        if runes == 0:
+            await interaction.followup.send("You have no Refinement Runes.", ephemeral=True)
+            return
+
+        gold = await self.bot.database.users.get_gold(uid)
+
+        # Fetch all material quantities that refining could ever require
+        all_mat_cols = {
+            'mining':     ['iron_bar', 'steel_bar', 'gold_bar', 'platinum_bar', 'idea_bar'],
+            'woodcutting': ['oak_plank', 'willow_plank', 'mahogany_plank', 'magic_plank', 'idea_plank'],
+            'fishing':    ['desiccated_essence', 'regular_essence', 'sturdy_essence',
+                           'reinforced_essence', 'titanium_essence'],
+        }
+        sim_mats = {}
+        for table, cols in all_mat_cols.items():
+            col_str = ', '.join(cols)
+            async with self.bot.database.connection.execute(
+                f"SELECT {col_str} FROM {table} WHERE user_id=? AND server_id=?", (uid, sid)
+            ) as c:
+                row = await c.fetchone()
+                for i, col in enumerate(cols):
+                    sim_mats[col] = row[i] if row and row[i] else 0
+
+        # Simulate the full loop
+        import copy
+        sim = copy.copy(self.item)
+        sim_runes = runes
+        sim_gold = gold
+        total_cycles = 0
+        runes_used = 0
+        gold_used = 0
+        mat_used = {}
+        stop_reason = ""
+
+        while True:
+            if sim.refines_remaining == 0:
+                if sim_runes == 0:
+                    stop_reason = "Ran out of Refinement Runes."
+                    break
+                sim_runes -= 1
+                sim.refines_remaining = 1
+                runes_used += 1
+
+            cost_data = EquipmentMechanics.calculate_refine_cost(sim)
+            cost_gold = cost_data['gold']
+            materials = cost_data.get('materials', [])
+
+            if sim_gold < cost_gold:
+                stop_reason = "Ran out of Gold."
+                break
+
+            short = next((m for m in materials if sim_mats.get(m['column'], 0) < m['qty']), None)
+            if short:
+                stop_reason = f"Ran out of {short['name']}."
+                break
+
+            sim_gold -= cost_gold
+            gold_used += cost_gold
+            for mat in materials:
+                sim_mats[mat['column']] -= mat['qty']
+                mat_used[mat['name']] = mat_used.get(mat['name'], 0) + mat['qty']
+
+            sim.refines_remaining -= 1
+            sim.refinement_lvl += 1
+            total_cycles += 1
+
+            if total_cycles >= 10000:
+                stop_reason = "Reached simulation cap (10,000 refines)."
+                break
+
+        if total_cycles == 0:
+            await interaction.followup.send(f"No refines possible: {stop_reason}", ephemeral=True)
+            return
+
+        mat_lines = "\n".join(f"  {name}: {qty:,}" for name, qty in mat_used.items()) or "  None"
+
+        embed = discord.Embed(title="⚠️ Refinemaxx ✨ Confirmation", color=discord.Color.orange())
+        embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
+        embed.description = (
+            f"This will perform **{total_cycles:,}** refine(s) using up to **{runes_used}** Rune(s).\n\n"
+            f"**Estimated Resources Consumed:**\n"
+            f"💰 Gold: {gold_used:,}\n"
+            f"💎 Refinement Runes: {runes_used}\n"
+            f"📦 Materials:\n{mat_lines}\n\n"
+            f"*Stops when: {stop_reason}*\n\n"
+            f"Proceed?"
+        )
+
+        self.clear_items()
+        confirm_btn = Button(label="Confirm", style=ButtonStyle.danger)
+        confirm_btn.callback = self.refinemaxx_with_runes_execute
+        self.add_item(confirm_btn)
+
+        cancel_btn = Button(label="Cancel", style=ButtonStyle.secondary)
+        cancel_btn.callback = self.render
+        self.add_item(cancel_btn)
+
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    async def refinemaxx_with_runes_execute(self, interaction: Interaction):
+        """Execute the rune-extended refinemaxx after confirmation."""
+        await interaction.response.defer()
+        uid, sid = self.user_id, str(interaction.guild.id)
+
+        refines_done = 0
+        runes_used = 0
+        total_gains = {'attack': 0, 'defence': 0, 'rarity': 0}
+        stop_reason = "Complete."
+
+        while True:
+            if self.item.refines_remaining == 0:
+                runes = await self.bot.database.users.get_currency(uid, 'refinement_runes')
+                if runes == 0:
+                    stop_reason = "Ran out of Refinement Runes."
+                    break
+                await self.bot.database.users.modify_currency(uid, 'refinement_runes', -1)
+                await self.bot.database.equipment.update_counter(
+                    self.item.item_id, 'weapon', 'refines_remaining', 1
+                )
+                self.item.refines_remaining = 1
+                runes_used += 1
+
+            cost_data = EquipmentMechanics.calculate_refine_cost(self.item)
+            cost_gold = cost_data['gold']
+            materials = cost_data.get('materials', [])
+
+            user_gold = await self.bot.database.users.get_gold(uid)
+            if user_gold < cost_gold:
+                stop_reason = "Ran out of Gold."
+                break
+
+            failed_mat = None
+            for mat in materials:
+                async with self.bot.database.connection.execute(
+                    f"UPDATE {mat['table']} SET {mat['column']} = {mat['column']} - ? "
+                    f"WHERE user_id=? AND server_id=? AND {mat['column']} >= ?",
+                    (mat['qty'], uid, sid, mat['qty'])
+                ) as c:
+                    if c.rowcount == 0:
+                        failed_mat = mat['name']
+                        break
+            if failed_mat:
+                stop_reason = f"Ran out of {failed_mat}."
+                break
+
+            await self.bot.database.users.modify_gold(uid, -cost_gold)
+
+            stats = EquipmentMechanics.roll_refine_outcome(self.item)
+            for key in ('attack', 'defence', 'rarity'):
+                if stats[key]:
+                    self.item.__dict__[key] += stats[key]
+                    total_gains[key] += stats[key]
+                    await self.bot.database.equipment.increase_stat(
+                        self.item.item_id, 'weapon', key, stats[key]
+                    )
+
+            self.item.refines_remaining -= 1
+            self.item.refinement_lvl += 1
+            await self.bot.database.equipment.update_counter(
+                self.item.item_id, 'weapon', 'refines_remaining', self.item.refines_remaining
+            )
+            await self.bot.database.equipment.increase_stat(
+                self.item.item_id, 'weapon', 'refinement_lvl', 1
+            )
+            await self.bot.database.connection.commit()
+            refines_done += 1
+
+        gains_str = ", ".join(f"+{v} {k.title()}" for k, v in total_gains.items() if v > 0) or "No stat gains."
+
+        embed = discord.Embed(title="Refinemaxx ✨ Complete!", color=discord.Color.gold())
+        embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
+        embed.description = (
+            f"**Refines Performed:** {refines_done:,}\n"
+            f"**Runes Consumed:** {runes_used}\n"
+            f"**Stopped Because:** {stop_reason}\n\n"
+            f"**Total Gains:** {gains_str}\n"
+            f"**Refinement Level:** +{self.item.refinement_lvl}\n\n"
+            f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
+        )
+
+        self.clear_items()
+        self.add_back_button()
         await interaction.edit_original_response(embed=embed, view=self)
 
 
