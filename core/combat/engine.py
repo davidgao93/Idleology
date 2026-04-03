@@ -517,6 +517,14 @@ def process_player_turn(player: Player, monster: Monster) -> str:
             player.current_hp = min(player.max_hp, player.current_hp + heal_amt)
             attack_message += f"\n**Leeching** drains life, healing you for **{heal_amt}** HP."
 
+    # Codex Tome: Bloodthirst (heal % of damage dealt on a critical hit)
+    if is_crit and actual_hit > 0:
+        bloodthirst_pct = player.get_tome_bonus('bloodthirst')
+        if bloodthirst_pct > 0:
+            heal_amt = max(1, int(actual_hit * (bloodthirst_pct / 100)))
+            player.current_hp = min(player.max_hp, player.current_hp + heal_amt)
+            attack_message += f"\n**Bloodthirst** siphons **{heal_amt}** HP from the critical strike."
+
     # Ward-regen (Celestial armor passive)
     if player.get_celestial_armor_passive() == 'celestial_ghostreaver':
         regen_amount = random.randint(50, 200)
@@ -679,6 +687,12 @@ def process_monster_turn(player: Player, monster: Monster) -> str:
         # 7. Apply Final Damage to Ward/HP
         if total_damage > 0 and not is_dodged:
             damage_dealt_this_turn = 0
+
+            # Codex Tome: Tenacity (chance to halve incoming damage per hit)
+            tenacity_pct = player.get_tome_bonus('tenacity')
+            if tenacity_pct > 0 and random.random() < (tenacity_pct / 100):
+                total_damage = max(1, total_damage // 2)
+                monster_message += f"**Tenacity** braces the impact, halving the damage!\n"
 
             # Nullfield: 15% chance to absorb the hit entirely into the void
             void_passive_def = player.get_accessory_void_passive()

@@ -1,3 +1,82 @@
+__**Idleology v0.81 — The Codex**__
+
+__New Feature: The Codex (Lv 100+)__
+A new endgame gauntlet of curated chapters, each run built from a pool of 15 encounters.
+
+Run basics:
+• 5 random chapters per run, ordered by difficulty  
+• Each chapter = 7 waves (boss on wave 7)  
+• HP carries across waves and chapters  
+• Retreat = keep XP/Gold, lose fragments  
+• Death = run ends, no fragments, 5% XP penalty  
+
+Chapters apply a **signature modifier** (persistent debuff) for their duration
+(stat reductions, crit target penalties, ward disable, max HP reduction, etc).
+
+__Respite Boons (after waves 3 & 6)__
+Choose 1 of 2 random boons:
+• Stat boosts (ATK, DEF, ward, FDR, crit, rarity)  
+• Healing (two tiers)  
+• Fragment gain multiplier for the run  
+• Max HP increase (run-only)  
+• **Signature Nullifier** (~2%): cancels the next chapter’s modifier  
+
+Boon values are rolled within a range when offered.
+
+> Slayer emblems and companion bonuses are **disabled** during Codex runs.
+
+---
+
+__New System: Codex Tomes__
+Permanent passives that work in **all game modes**. Up to **5 slots**.
+
+Unlocking:
+• **Codex Pages**: 5% chance per chapter clear (up to 5 per run)  
+• Using a Page opens the next slot with a **random passive type**  
+• If all 5 slots are open, Pages give a **Reroll Token** instead  
+
+Upgrading:
+• 5 tiers, using **Codex Fragments** (from Codex runs)  
+• Each tier rolls a value in a range (perfect stats require high rolls)  
+• Reroll value (same tier/type) for half cost (min 3 Fragments)  
+• Reroll passive **type** with a Reroll Token (resets tier & value)  
+
+Upgrade costs: T1 5 • T2 10 • T3 20 • T4 40 • T5 80 (total 155)
+
+__The 10 Tome Passives__
+• 🌿 Vitality – +% Max HP (up to ~40%)  
+• 🔥 Wrath – +% of base DEF converted to ATK (up to ~42%)  
+• 🛡️ Bastion – +% of base ATK converted to DEF (up to ~42%)  
+• ⚡ Tenacity – Chance to halve incoming damage per hit (up to ~25%)  
+• 🩸 Bloodthirst – Heal % of crit damage dealt (up to ~25%)  
+• ✨ Providence – +% bonus total rarity (up to ~42%)  
+• 🎯 Precision – Flat crit target reduction (up to ~15)  
+• 💰 Affluence – +% XP & Gold from all combat (up to ~42%)  
+• 🪨 Bulwark – +% Percent Damage Reduction (to max 80%)  
+• 🔒 Resilience – +Flat Damage Reduction  
+
+---
+
+__Fragment Economy__
+• +6 Fragments per chapter cleared  
+• Perfect run (all 5, no deaths): ×1.5 fragment bonus  
+• Fragment Boost boon: +25–60% fragment multiplier for the run  
+
+Maxing a single tome (T5) costs **155 Fragments**.
+
+---
+
+__Commands__
+• `/codex` – Opens Codex menu (Lv 100+, 10m cooldown)  
+• `/mod_details codex` – Full tome passive list, ranges, costs, reroll info  
+
+---
+
+__Other Changes__
+• **Affluence** applies as a final XP/Gold multiplier in all content (Ascension + standard).  
+• **Tenacity** checks before ward on every incoming hit (does not trigger on dodges).  
+• **Bloodthirst** applies after all damage bonuses on crits, and stacks with Leeching helmet.
+
 ### Version 0.8
 * Added `/doors` command, this allows you to enable or disable boss doors
 * Added more information to /mod_details, which now include companions, slayer emblem, and uber boss mods.

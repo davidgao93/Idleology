@@ -120,7 +120,7 @@ class General(commands.Cog, name="general"):
     @app_commands.command(name="mod_details", description="Shows progression details for modifiers or passives.")
     @app_commands.describe(category="Choose the category of modifiers/passives to view.")
     async def mod_details(self, interaction: discord.Interaction,
-                          category: Literal['monster', 'weapon', 'accessory', 'helmet', 'armor', 'glove', 'boot', 'uber', 'companion', 'slayer']):
+                          category: Literal['monster', 'weapon', 'accessory', 'helmet', 'armor', 'glove', 'boot', 'uber', 'companion', 'slayer', 'codex']):
         
         embed = discord.Embed(color=discord.Color.blue())
         content_added = False
@@ -307,6 +307,39 @@ class General(commands.Cog, name="general"):
                 "**Infernal Legion**: Minions echo every hit for full additional damage.\n"
             )
             embed.description = uber_text
+            content_added = True
+
+        elif category == 'codex':
+            embed.title = "📖 Codex Tome Passive Details"
+            embed.description = (
+                "Tome slots are unlocked by spending **Codex Pages** (5% drop per chapter clear). "
+                "Each slot has a randomly assigned passive type. Upgrade tiers with **Codex Fragments**. "
+                "Values are **rolled within a range** at each tier — the maximum is aspirational.\n\n"
+                "**Upgrade Costs:** T0→T1: 5🔷 | T1→T2: 10🔷 | T2→T3: 20🔷 | T3→T4: 40🔷 | T4→T5: 80🔷\n"
+                "**Reroll Value:** 50% of current tier's upgrade cost (min 3🔷)\n"
+                "**Reroll Type:** 1 Reroll Token (resets tier and value to 0)\n"
+                "**Reroll Tokens:** Granted when a Page drops with all 5 slots already unlocked.\n\n"
+                "**🌿 Vitality** — +% Max HP *(T1: 3–7% | T5: 18–40%)*\n"
+                "Directly increases your max HP pool. Applies in all game modes.\n\n"
+                "**🔥 Wrath** — +% of base DEF as bonus ATK *(T1: 3–8% | T5: 18–42%)*\n"
+                "Rewards tanky builds with extra offensive power. Stacks with all other ATK sources.\n\n"
+                "**🛡️ Bastion** — +% of base ATK as bonus DEF *(T1: 3–8% | T5: 18–42%)*\n"
+                "Rewards aggressive builds with extra defensive depth. Stacks with all other DEF sources.\n\n"
+                "**⚡ Tenacity** — Chance per incoming hit to halve the damage *(T1: 2–5% | T5: 12–25%)*\n"
+                "Probabilistic mitigation. Does not trigger on dodged attacks. Applies before ward.\n\n"
+                "**🩸 Bloodthirst** — Heal % of critical hit damage dealt *(T1: 2–5% | T5: 12–25%)*\n"
+                "Sustain for crit-focused builds. Triggers after all damage bonuses, stacks with Leeching.\n\n"
+                "**✨ Providence** — +% bonus to total rarity *(T1: 3–8% | T5: 18–42%)*\n"
+                "A percentage multiplier on your full rarity after all other rarity sources are summed.\n\n"
+                "**🎯 Precision** — Flat crit target reduction *(T1: 1–3 | T5: 7–15)*\n"
+                "Lower crit target = easier to crit. Hard cap at 1. Stacks with gear and companions.\n\n"
+                "**💰 Affluence** — +% XP and Gold from all combat *(T1: 3–8% | T5: 18–42%)*\n"
+                "Applied as a final multiplier to XP and Gold in every game mode, including Ascension.\n\n"
+                "**🪨 Bulwark** — +% Percent Damage Reduction *(T1: 1–3% | T5: 7–15%)*\n"
+                "Adds to the PDR pool. Subject to the 80% PDR hard cap.\n\n"
+                "**🔒 Resilience** — +Flat Damage Reduction *(T1: 1–3 | T5: 7–15)*\n"
+                "Additive with all other FDR sources (armor, gloves, boots, helmets, companions)."
+            )
             content_added = True
 
         if not content_added:

@@ -1,0 +1,767 @@
+import asyncio
+import random
+import discord
+from discord import ui, ButtonStyle, Interaction
+
+from core.models import Player, Monster
+from core.combat import engine
+from core.combat import ui as combat_ui
+from core.combat.gen_mob import generate_ascent_monster
+from core.combat.rewards import calculate_rewards
+from core.codex.mechanics import (
+    CodexChapter, CodexBoon,
+    select_run_chapters, roll_boons,
+    snapshot_clean_stats, restore_clean_stats,
+    apply_signature_modifier, apply_per_wave_boons, apply_respite_boon,
+    calculate_wave_monster_level, get_wave_modifier_counts, calculate_run_fragments,
+)
+from database.repositories.codex import TOME_UPGRADE_COSTS, TOME_PASSIVE_TYPES, get_reroll_cost
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+_PASSIVE_LABELS = {
+    'vitality':    ('🌿 Vitality',    '+{v:.1f}% Max HP'),
+    'wrath':       ('🔥 Wrath',       '+{v:.1f}% DEF → ATK'),
+    'bastion':     ('🛡️ Bastion',     '+{v:.1f}% ATK → DEF'),
+    'tenacity':    ('⚡ Tenacity',    '{v:.1f}% chance halve dmg'),
+    'bloodthirst': ('🩸 Bloodthirst', '{v:.1f}% crit HP drain'),
+    'providence':  ('✨ Providence',  '+{v:.1f}% Rarity'),
+    'precision':   ('🎯 Precision',   '-{v:.1f} Crit Target'),
+    'affluence':   ('💰 Affluence',   '+{v:.1f}% XP & Gold'),
+    'bulwark':     ('🪨 Bulwark',     '+{v:.1f}% PDR'),
+    'resilience':  ('🔒 Resilience',  '+{v:.1f} FDR'),
+}
+
+def _tome_field(tome) -> tuple[str, str]:
+    """Returns (name, value) for an embed field showing a tome slot."""
+    name_tmpl, val_tmpl = _PASSIVE_LABELS.get(tome.passive_type, (tome.passive_type, '{v:.1f}'))
+    stat_str = val_tmpl.format(v=tome.value) if tome.value > 0 else 'Not upgraded'
+    return name_tmpl, f"Tier {tome.tier}/5 — {stat_str}"
+
+
+async def _generate_codex_wave_monster(player: Player, chapter: CodexChapter, wave_num: int) -> Monster:
+    """Generates a monster for a Codex wave using the ascent generator."""
+    m_level = calculate_wave_monster_level(player, chapter, wave_num)
+    n_mods, b_mods = get_wave_modifier_counts(wave_num, chapter.difficulty)
+    monster = Monster(
+        name="", level=0, hp=0, max_hp=0, xp=0,
+        attack=0, defence=0, modifiers=[], image="", flavor="",
+        is_boss=(wave_num == 7),
+    )
+    return await generate_ascent_monster(player, monster, m_level, n_mods, b_mods)
+
+
+# ---------------------------------------------------------------------------
+# Boon Button (dynamic, created per respite)
+# ---------------------------------------------------------------------------
+
+class BoonButton(ui.Button):
+    def __init__(self, boon: CodexBoon, run_view: 'CodexRunView', row: int):
+        super().__init__(
+            label=boon.label,
+            style=ButtonStyle.primary,
+            row=row,
+        )
+        self.boon = boon
+        self.run_view = run_view
+
+    async def callback(self, interaction: Interaction):
+        await self.run_view.handle_boon_choice(interaction, self.boon)
+
+
+# ---------------------------------------------------------------------------
+# CodexRunView — main run state machine
+# ---------------------------------------------------------------------------
+
+class CodexRunView(ui.View):
+    """
+    Manages a complete Codex run (5 chapters × 7 waves each).
+    State machine: "combat" | "respite" | "chapter_transition" | "done"
+    """
+
+    def __init__(self, bot, user_id: str, player: Player,
+                 chapters: list[CodexChapter], initial_monster: Monster,
+                 start_logs: dict, clean_stats: dict):
+        super().__init__(timeout=300)
+        self.bot = bot
+        self.user_id = user_id
+        self.player = player
+        self.chapters = chapters
+        self.chapter_idx = 0
+        self.wave_num = 1
+        self.monster = initial_monster
+        self.clean_stats = clean_stats
+        self.logs = start_logs or {}
+
+        # Run-level state
+        self.active_boons: list[CodexBoon] = []
+        self.run_state: dict = {'fragment_multiplier': 1.0, 'sig_nullify_next': False}
+        self.chapters_cleared = 0
+        self.waves_cleared_this_run = 0
+        self.page_drops: list[int] = []   # chapter ids where a page dropped
+
+        # XP/gold accumulation across the run
+        self.cumulative_xp = 0
+        self.cumulative_gold = 0
+
+    @property
+    def current_chapter(self) -> CodexChapter:
+        return self.chapters[self.chapter_idx]
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        self.bot.state_manager.clear_active(self.user_id)
+
+    # ------------------------------------------------------------------
+    # Embed builders
+    # ------------------------------------------------------------------
+
+    def _combat_embed(self) -> discord.Embed:
+        chapter = self.current_chapter
+        title = (f"📖 Codex — {chapter.name} | Wave {self.wave_num}/7 "
+                 f"(Chapter {self.chapter_idx + 1}/5)")
+        embed = combat_ui.create_combat_embed(
+            self.player, self.monster, self.logs, title_override=title
+        )
+        embed.color = discord.Color.dark_purple()
+        sig_label = chapter.signature_label
+        sig_desc = chapter.signature_description
+        if self.run_state.get('sig_nullify_next') and self.chapter_idx < len(self.chapters) - 1:
+            next_name = self.chapters[self.chapter_idx + 1].name
+            embed.set_footer(text=(
+                f"Signature: {sig_label} — {sig_desc} | "
+                f"⚡ Next chapter '{next_name}' signature NULLIFIED"
+            ))
+        else:
+            embed.set_footer(text=f"Signature: {sig_label} — {sig_desc}")
+        return embed
+
+    def _respite_embed(self, boons: list[CodexBoon]) -> discord.Embed:
+        chapter = self.current_chapter
+        embed = discord.Embed(
+            title=f"⚗️ Respite — {chapter.name}",
+            description=(
+                f"A moment of stillness between the waves.\n"
+                f"**{self.player.name}** — {self.player.current_hp}/{self.player.max_hp} ❤️"
+                + (f" ({self.player.combat_ward} 🔮)" if self.player.combat_ward > 0 else "")
+                + f"\n\nChoose one boon for the remaining waves:"
+            ),
+            color=discord.Color.teal(),
+        )
+        for i, boon in enumerate(boons, 1):
+            embed.add_field(name=f"Option {i}: {boon.label}", value=boon.description, inline=False)
+        if self.active_boons:
+            boon_summary = ", ".join(b.label for b in self.active_boons)
+            embed.set_footer(text=f"Active boons: {boon_summary}")
+        return embed
+
+    def _chapter_clear_embed(self, xp: int, gold: int, page_dropped: bool) -> discord.Embed:
+        chapter = self.current_chapter
+        embed = discord.Embed(
+            title=f"✅ Chapter Complete — {chapter.name}",
+            description=f"All 7 waves cleared!",
+            color=discord.Color.green(),
+        )
+        embed.add_field(name="📚 XP", value=f"{xp:,}", inline=True)
+        embed.add_field(name="💰 Gold", value=f"{gold:,}", inline=True)
+        if page_dropped:
+            embed.add_field(name="📄 Codex Page", value="A Codex Page dropped!", inline=False)
+        next_idx = self.chapter_idx + 1
+        if next_idx < len(self.chapters):
+            next_ch = self.chapters[next_idx]
+            nullified = self.run_state.get('sig_nullify_next', False)
+            sig_info = "~~" + next_ch.signature_label + "~~ (Nullified)" if nullified else (
+                f"{next_ch.signature_label}: {next_ch.signature_description}"
+            )
+            embed.add_field(
+                name=f"📖 Next: {next_ch.name}",
+                value=sig_info,
+                inline=False,
+            )
+            embed.set_footer(text="Continuing in 4 seconds...")
+        else:
+            embed.set_footer(text="Run complete! Finalising in 4 seconds...")
+        return embed
+
+    def _summary_embed(self, fragments: int, pages_dropped: int) -> discord.Embed:
+        is_perfect = (self.chapters_cleared == 5 and self.waves_cleared_this_run == 35)
+        embed = discord.Embed(
+            title="📕 Codex Run Complete",
+            description=(
+                f"**{self.player.name}** cleared **{self.chapters_cleared}/5** chapters."
+                + (" ✨ **Perfect Run!**" if is_perfect else "")
+            ),
+            color=discord.Color.gold() if is_perfect else discord.Color.blurple(),
+        )
+        embed.add_field(name="📚 Total XP", value=f"{self.cumulative_xp:,}", inline=True)
+        embed.add_field(name="💰 Total Gold", value=f"{self.cumulative_gold:,}", inline=True)
+        embed.add_field(name="🔷 Fragments Earned", value=str(fragments), inline=True)
+        if pages_dropped > 0:
+            embed.add_field(name="📄 Codex Pages", value=str(pages_dropped), inline=True)
+        chapters_text = "\n".join(
+            f"{'✅' if i < self.chapters_cleared else '❌'} {ch.name}"
+            for i, ch in enumerate(self.chapters)
+        )
+        embed.add_field(name="Chapters", value=chapters_text, inline=False)
+        return embed
+
+    # ------------------------------------------------------------------
+    # Wave lifecycle
+    # ------------------------------------------------------------------
+
+    async def _setup_next_wave(self, interaction: Interaction = None, message: discord.Message = None):
+        """Restore stats, apply chapter signature + accumulated boons, generate monster."""
+        chapter = self.current_chapter
+
+        restore_clean_stats(self.player, self.clean_stats)
+
+        nullify = self.run_state.get('sig_nullify_next', False)
+        if nullify:
+            # Consume the flag now that the next chapter's wave 1 is starting
+            self.run_state['sig_nullify_next'] = False
+        else:
+            apply_signature_modifier(self.player, chapter)
+        apply_per_wave_boons(self.player, self.active_boons)
+
+        self.player.voracious_stacks = 0
+        self.player.cursed_precision_active = False
+        self.player.gaze_stacks = 0
+        self.player.hunger_stacks = 0
+
+        self.monster = await _generate_codex_wave_monster(self.player, chapter, self.wave_num)
+        engine.apply_stat_effects(self.player, self.monster)
+        self.logs = engine.apply_combat_start_passives(self.player, self.monster)
+
+        embed = self._combat_embed()
+        msg_obj = message or (await interaction.original_response())
+        await msg_obj.edit(embed=embed, view=self)
+
+    async def _handle_wave_clear(self, interaction: Interaction = None, message: discord.Message = None):
+        """Called when monster HP drops to 0. Awards XP/Gold, decides next action."""
+        rewards = calculate_rewards(self.player, self.monster)
+        self.player.exp += rewards['xp']
+        self.cumulative_xp += rewards['xp']
+        self.cumulative_gold += rewards['gold']
+        await self.bot.database.users.modify_gold(self.user_id, rewards['gold'])
+        await self.bot.database.users.update_from_player_object(self.player)
+
+        self.waves_cleared_this_run += 1
+
+        # Respite check (after wave 3 and wave 6)
+        if self.wave_num in (3, 6):
+            await self._enter_respite(interaction, message)
+            return
+
+        # Chapter boss cleared (wave 7)
+        if self.wave_num == 7:
+            await self._handle_chapter_clear(interaction, message)
+            return
+
+        # Continue to next wave
+        self.wave_num += 1
+        await self._setup_next_wave(interaction, message)
+
+    async def _enter_respite(self, interaction: Interaction = None, message: discord.Message = None):
+        """Swap to respite state with 2 randomly weighted boons."""
+        boons = roll_boons(2)
+        self.clear_items()
+        self.add_item(BoonButton(boons[0], self, row=0))
+        self.add_item(BoonButton(boons[1], self, row=1))
+
+        embed = self._respite_embed(boons)
+        msg_obj = message or (await interaction.original_response() if interaction else None)
+        if msg_obj:
+            await msg_obj.edit(embed=embed, view=self)
+
+    async def handle_boon_choice(self, interaction: Interaction, boon: CodexBoon):
+        """Processes the player's respite boon selection."""
+        await interaction.response.defer()
+        result_msg = apply_respite_boon(
+            self.player, boon, self.active_boons, self.clean_stats, self.run_state
+        )
+
+        self.clear_items()
+        self._add_combat_buttons()
+
+        self.wave_num += 1
+        await self._setup_next_wave(message=await interaction.original_response())
+
+    async def _handle_chapter_clear(self, interaction: Interaction = None, message: discord.Message = None):
+        """Awards chapter completion, drops page, transitions to next chapter or run end."""
+        # Log chapter clear
+        await self.bot.database.codex.log_chapter_clear(
+            self.user_id, self.current_chapter.id, perfect=False
+        )
+        self.chapters_cleared += 1
+
+        # Page drop (5%)
+        page_dropped = random.random() < 0.05
+        if page_dropped:
+            await self.bot.database.users.modify_currency(self.user_id, 'codex_pages', 1)
+            self.page_drops.append(self.current_chapter.id)
+
+        # Show chapter clear embed (no buttons during transition)
+        embed = self._chapter_clear_embed(self.cumulative_xp, self.cumulative_gold, page_dropped)
+        msg_obj = message or (await interaction.original_response() if interaction else None)
+        if msg_obj:
+            await msg_obj.edit(embed=embed, view=None)
+
+        await asyncio.sleep(4)
+
+        # Advance to next chapter or end run
+        next_idx = self.chapter_idx + 1
+        if next_idx >= len(self.chapters):
+            await self._handle_run_complete(msg_obj)
+            return
+
+        self.chapter_idx = next_idx
+        self.wave_num = 1
+        self._add_combat_buttons()
+
+        if msg_obj:
+            await self._setup_next_wave(message=msg_obj)
+
+    async def _handle_run_complete(self, message: discord.Message = None):
+        """Finalises a completed run, awards all fragment rewards."""
+        fragments = calculate_run_fragments(
+            self.chapters_cleared,
+            is_perfect=(self.waves_cleared_this_run == 35),
+            fragment_multiplier=self.run_state.get('fragment_multiplier', 1.0),
+        )
+        await self.bot.database.users.modify_currency(self.user_id, 'codex_fragments', fragments)
+
+        embed = self._summary_embed(fragments, len(self.page_drops))
+        self.clear_items()
+        self.stop()
+        self.bot.state_manager.clear_active(self.user_id)
+
+        if message:
+            await message.edit(embed=embed, view=None)
+
+    # ------------------------------------------------------------------
+    # Defeat / Retreat
+    # ------------------------------------------------------------------
+
+    async def _handle_defeat(self, interaction: Interaction = None, message: discord.Message = None):
+        """Run ends on defeat. No fragment rewards. XP penalty applied."""
+        xp_loss = max(0, int(self.player.exp * 0.05))  # 5% XP loss (lighter than Ascension)
+        self.player.exp = max(0, self.player.exp - xp_loss)
+        self.player.current_hp = 1
+        await self.bot.database.users.update_from_player_object(self.player)
+
+        embed = discord.Embed(
+            title=f"💀 Defeated — {self.current_chapter.name}",
+            description=(
+                f"**{self.player.name}** was slain on Wave {self.wave_num} "
+                f"of Chapter {self.chapter_idx + 1}.\n"
+                f"Chapters cleared: **{self.chapters_cleared}/5**\n"
+                f"Lost **{xp_loss:,}** XP."
+            ),
+            color=discord.Color.red(),
+        )
+        embed.add_field(name="📚 XP Earned", value=f"{self.cumulative_xp:,}", inline=True)
+        embed.add_field(name="💰 Gold Earned", value=f"{self.cumulative_gold:,}", inline=True)
+        embed.add_field(name="Rewards", value="No Codex Fragments on defeat.", inline=False)
+
+        self.clear_items()
+        self.stop()
+        self.bot.state_manager.clear_active(self.user_id)
+
+        msg_obj = message or (await interaction.original_response() if interaction else None)
+        if msg_obj:
+            await msg_obj.edit(embed=embed, view=None)
+
+    # ------------------------------------------------------------------
+    # Combat button helpers
+    # ------------------------------------------------------------------
+
+    def _add_combat_buttons(self):
+        """Clears and re-adds the standard combat buttons."""
+        self.clear_items()
+        self.add_item(self._attack_btn)
+        self.add_item(self._heal_btn)
+        self.add_item(self._auto_btn)
+        self.add_item(self._retreat_btn)
+
+    async def _refresh_ui(self, interaction: Interaction = None, message: discord.Message = None):
+        embed = self._combat_embed()
+        if interaction and not interaction.response.is_done():
+            await interaction.response.edit_message(embed=embed, view=self)
+        elif message:
+            await message.edit(embed=embed, view=self)
+        elif interaction:
+            await interaction.edit_original_response(embed=embed, view=self)
+
+    async def _execute_turn(self, interaction: Interaction):
+        p_log = engine.process_player_turn(self.player, self.monster)
+        self.logs = {self.player.name: p_log}
+        if self.monster.hp > 0:
+            m_log = engine.process_monster_turn(self.player, self.monster)
+            self.logs[self.monster.name] = m_log
+        await self._check_state(interaction)
+
+    async def _check_state(self, interaction: Interaction = None, message: discord.Message = None):
+        if self.player.current_hp <= 0:
+            await self._handle_defeat(interaction, message)
+        elif self.monster.hp <= 0:
+            await self._handle_wave_clear(interaction, message)
+        else:
+            await self._refresh_ui(interaction, message)
+
+    # ------------------------------------------------------------------
+    # Static combat buttons (attached as instance attributes so _add_combat_buttons works)
+    # ------------------------------------------------------------------
+
+    @ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️", row=0)
+    async def _attack_btn(self, interaction: Interaction, button: ui.Button):
+        await self._execute_turn(interaction)
+
+    @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹", row=0)
+    async def _heal_btn(self, interaction: Interaction, button: ui.Button):
+        heal_log = engine.process_heal(self.player)
+        self.logs = {"Heal": heal_log}
+        if self.monster.hp > 0:
+            m_log = engine.process_monster_turn(self.player, self.monster)
+            self.logs[self.monster.name] = m_log
+        await self._check_state(interaction)
+
+    @ui.button(label="Auto Wave", style=ButtonStyle.primary, emoji="⏩", row=0)
+    async def _auto_btn(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+        message = interaction.message
+
+        while self.player.current_hp > (self.player.max_hp * 0.2) and self.monster.hp > 0:
+            for _ in range(10):
+                if self.player.current_hp <= (self.player.max_hp * 0.2) or self.monster.hp <= 0:
+                    break
+                p_log = engine.process_player_turn(self.player, self.monster)
+                m_log = ""
+                if self.monster.hp > 0:
+                    m_log = engine.process_monster_turn(self.player, self.monster)
+                self.logs = {self.player.name: p_log, self.monster.name: m_log}
+
+            if self.monster.hp > 0 and self.player.current_hp > (self.player.max_hp * 0.2):
+                await self._refresh_ui(message=message)
+                await asyncio.sleep(1.0)
+            else:
+                break
+
+        if 0 < self.player.current_hp <= (self.player.max_hp * 0.2) and self.monster.hp > 0:
+            self.logs["Auto-Wave"] = "Paused: Low HP protection!"
+            await self._refresh_ui(message=message)
+        else:
+            await self._check_state(message=message)
+
+    @ui.button(label="Retreat", style=ButtonStyle.secondary, emoji="🏃", row=1)
+    async def _retreat_btn(self, interaction: Interaction, button: ui.Button):
+        embed = discord.Embed(
+            title="📕 Codex Abandoned",
+            description=(
+                f"**{self.player.name}** retreated from the Codex.\n"
+                f"Chapters cleared: **{self.chapters_cleared}/5** — No rewards."
+            ),
+            color=discord.Color.light_grey(),
+        )
+        embed.add_field(name="📚 XP Earned (kept)", value=f"{self.cumulative_xp:,}", inline=True)
+        embed.add_field(name="💰 Gold Earned (kept)", value=f"{self.cumulative_gold:,}", inline=True)
+        await self.bot.database.users.update_from_player_object(self.player)
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
+        await interaction.response.edit_message(embed=embed, view=None)
+
+
+# ---------------------------------------------------------------------------
+# CodexTomsView — Tome management
+# ---------------------------------------------------------------------------
+
+class CodexTomsView(ui.View):
+    """Shows a player's 5 tome slots and allows upgrading/rerolling."""
+
+    def __init__(self, bot, user_id: str, player: Player, fragments: int, pages: int, rerolls: int):
+        super().__init__(timeout=120)
+        self.bot = bot
+        self.user_id = user_id
+        self.player = player
+        self.fragments = fragments
+        self.pages = pages
+        self.rerolls = rerolls
+        self.selected_slot: int | None = None
+        self._rebuild()
+
+    def _rebuild(self):
+        self.clear_items()
+        tomes = self.player.codex_tomes
+        slots = len(tomes)
+
+        # Slot select (if any slots are unlocked)
+        if slots > 0:
+            options = [
+                discord.SelectOption(
+                    label=f"Slot {t.slot + 1}: {_PASSIVE_LABELS.get(t.passive_type, (t.passive_type, ''))[0]}",
+                    value=str(t.slot),
+                    description=f"Tier {t.tier}/5",
+                )
+                for t in tomes
+            ]
+            select = ui.Select(placeholder="Select a tome slot...", options=options, row=0)
+            select.callback = self._on_slot_select
+            self.add_item(select)
+
+        # Unlock button (row 1)
+        can_unlock = slots < 5 and self.pages > 0
+        unlock_btn = ui.Button(
+            label=f"Unlock Slot ({self.pages} page{'s' if self.pages != 1 else ''})",
+            style=ButtonStyle.success,
+            disabled=not can_unlock,
+            row=1,
+        )
+        unlock_btn.callback = self._on_unlock
+        self.add_item(unlock_btn)
+
+        # Action buttons for selected slot (row 2)
+        if self.selected_slot is not None:
+            tome = next((t for t in tomes if t.slot == self.selected_slot), None)
+            if tome:
+                # Upgrade
+                can_upgrade = tome.tier < 5 and self.fragments >= TOME_UPGRADE_COSTS[tome.tier]
+                upgrade_cost = TOME_UPGRADE_COSTS[tome.tier] if tome.tier < 5 else 0
+                upgrade_btn = ui.Button(
+                    label=f"Upgrade T{tome.tier}→T{tome.tier+1} ({upgrade_cost}🔷)",
+                    style=ButtonStyle.primary,
+                    disabled=not can_upgrade,
+                    row=2,
+                )
+                upgrade_btn.callback = self._on_upgrade
+                self.add_item(upgrade_btn)
+
+                # Reroll value
+                reroll_val_cost = get_reroll_cost(tome.tier)
+                can_reroll_val = tome.tier > 0 and self.fragments >= reroll_val_cost
+                reroll_val_btn = ui.Button(
+                    label=f"Reroll Value ({reroll_val_cost}🔷)",
+                    style=ButtonStyle.secondary,
+                    disabled=not can_reroll_val,
+                    row=2,
+                )
+                reroll_val_btn.callback = self._on_reroll_value
+                self.add_item(reroll_val_btn)
+
+                # Reroll type (costs reroll token)
+                can_reroll_type = self.rerolls > 0
+                reroll_type_btn = ui.Button(
+                    label=f"Reroll Type ({self.rerolls} token{'s' if self.rerolls != 1 else ''})",
+                    style=ButtonStyle.danger,
+                    disabled=not can_reroll_type,
+                    row=2,
+                )
+                reroll_type_btn.callback = self._on_reroll_type
+                self.add_item(reroll_type_btn)
+
+        # Exit (row 3)
+        exit_btn = ui.Button(label="Close", style=ButtonStyle.secondary, row=3)
+        exit_btn.callback = self._on_exit
+        self.add_item(exit_btn)
+
+    def _build_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="📚 Codex Tomes",
+            color=discord.Color.dark_purple(),
+        )
+        embed.add_field(
+            name="Resources",
+            value=f"🔷 {self.fragments} Fragments  |  📄 {self.pages} Pages  |  🔁 {self.rerolls} Reroll Tokens",
+            inline=False,
+        )
+        tomes = self.player.codex_tomes
+        if not tomes:
+            embed.add_field(name="No slots unlocked", value="Use a Codex Page to unlock your first slot.", inline=False)
+        else:
+            for tome in tomes:
+                name, value = _tome_field(tome)
+                embed.add_field(name=f"Slot {tome.slot + 1}: {name}", value=value, inline=True)
+            unlocked = len(tomes)
+            if unlocked < 5:
+                for i in range(unlocked, 5):
+                    embed.add_field(name=f"Slot {i + 1}: 🔒 Locked", value="Requires a Codex Page", inline=True)
+
+        if self.selected_slot is not None:
+            tome = next((t for t in tomes if t.slot == self.selected_slot), None)
+            if tome:
+                name, _ = _PASSIVE_LABELS.get(tome.passive_type, (tome.passive_type, ''))
+                embed.set_footer(text=f"Selected: Slot {self.selected_slot + 1} — {name} (Tier {tome.tier}/5, Value {tome.value:.2f})")
+        return embed
+
+    async def _refresh(self, interaction: Interaction):
+        self._rebuild()
+        await interaction.response.edit_message(embed=self._build_embed(), view=self)
+
+    async def _on_slot_select(self, interaction: Interaction):
+        self.selected_slot = int(interaction.data['values'][0])
+        await self._refresh(interaction)
+
+    async def _on_unlock(self, interaction: Interaction):
+        await interaction.response.defer()
+        tome = await self.bot.database.codex.unlock_tome_slot(self.user_id)
+        if tome is None:
+            await interaction.followup.send("All 5 slots are already unlocked.", ephemeral=True)
+            return
+        await self.bot.database.users.modify_currency(self.user_id, 'codex_pages', -1)
+        self.pages -= 1
+        self.player.codex_tomes = await self.bot.database.codex.get_tomes(self.user_id)
+        self.selected_slot = tome.slot
+        self._rebuild()
+        await interaction.edit_original_response(embed=self._build_embed(), view=self)
+
+    async def _on_upgrade(self, interaction: Interaction):
+        await interaction.response.defer()
+        tome = next((t for t in self.player.codex_tomes if t.slot == self.selected_slot), None)
+        if not tome or tome.tier >= 5:
+            return
+        cost = TOME_UPGRADE_COSTS[tome.tier]
+        if self.fragments < cost:
+            await interaction.followup.send("Not enough Codex Fragments.", ephemeral=True)
+            return
+        ok, new_val = await self.bot.database.codex.upgrade_tome(self.user_id, self.selected_slot)
+        if ok:
+            await self.bot.database.users.modify_currency(self.user_id, 'codex_fragments', -cost)
+            self.fragments -= cost
+            self.player.codex_tomes = await self.bot.database.codex.get_tomes(self.user_id)
+        self._rebuild()
+        await interaction.edit_original_response(embed=self._build_embed(), view=self)
+
+    async def _on_reroll_value(self, interaction: Interaction):
+        await interaction.response.defer()
+        tome = next((t for t in self.player.codex_tomes if t.slot == self.selected_slot), None)
+        if not tome or tome.tier == 0:
+            return
+        cost = get_reroll_cost(tome.tier)
+        if self.fragments < cost:
+            await interaction.followup.send("Not enough Codex Fragments.", ephemeral=True)
+            return
+        ok, _ = await self.bot.database.codex.reroll_tome_value(self.user_id, self.selected_slot)
+        if ok:
+            await self.bot.database.users.modify_currency(self.user_id, 'codex_fragments', -cost)
+            self.fragments -= cost
+            self.player.codex_tomes = await self.bot.database.codex.get_tomes(self.user_id)
+        self._rebuild()
+        await interaction.edit_original_response(embed=self._build_embed(), view=self)
+
+    async def _on_reroll_type(self, interaction: Interaction):
+        await interaction.response.defer()
+        if self.rerolls <= 0:
+            await interaction.followup.send("No Reroll Tokens available.", ephemeral=True)
+            return
+        ok, _ = await self.bot.database.codex.reroll_tome_type(self.user_id, self.selected_slot)
+        if ok:
+            await self.bot.database.users.modify_currency(self.user_id, 'codex_rerolls', -1)
+            self.rerolls -= 1
+            self.player.codex_tomes = await self.bot.database.codex.get_tomes(self.user_id)
+        self._rebuild()
+        await interaction.edit_original_response(embed=self._build_embed(), view=self)
+
+    async def _on_exit(self, interaction: Interaction):
+        self.stop()
+        await interaction.response.edit_message(view=None)
+
+    async def on_timeout(self):
+        pass
+
+
+# ---------------------------------------------------------------------------
+# CodexMenuView — entry point
+# ---------------------------------------------------------------------------
+
+class CodexMenuView(ui.View):
+    def __init__(self, bot, user_id: str, player: Player,
+                 fragments: int, pages: int, rerolls: int, chapter_history: dict):
+        super().__init__(timeout=60)
+        self.bot = bot
+        self.user_id = user_id
+        self.player = player
+        self.fragments = fragments
+        self.pages = pages
+        self.rerolls = rerolls
+        self.chapter_history = chapter_history
+
+    def build_embed(self) -> discord.Embed:
+        tomes = self.player.codex_tomes
+        embed = discord.Embed(
+            title="📖 The Codex",
+            description=(
+                "An onslaught of curated chapters, each more brutal than the last.\n"
+                "Five chapters are drawn at random per run. Manage your Tomes for permanent power."
+            ),
+            color=discord.Color.dark_purple(),
+        )
+        embed.add_field(
+            name="Resources",
+            value=f"🔷 {self.fragments} Fragments  |  📄 {self.pages} Pages  |  🔁 {self.rerolls} Rerolls",
+            inline=False,
+        )
+        total_clears = sum(v['clears'] for v in self.chapter_history.values())
+        total_perfects = sum(v['perfect_clears'] for v in self.chapter_history.values())
+        embed.add_field(name="Chapter Clears", value=str(total_clears), inline=True)
+        embed.add_field(name="Perfect Clears", value=str(total_perfects), inline=True)
+        embed.add_field(name="Tome Slots Unlocked", value=f"{len(tomes)}/5", inline=True)
+        embed.set_footer(text="Level 100+ required to begin a run.")
+        return embed
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="📖", row=0)
+    async def begin_run(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+
+        self.bot.state_manager.set_active(self.user_id, "codex")
+        await self.bot.database.users.update_timer(self.user_id, 'last_combat')
+
+        # Strip Slayer and companion bonuses — they do not apply in the Codex
+        self.player.active_task_species = None
+        self.player.active_companions = []
+        self.player.slayer_emblem = {}
+
+        # Select 5 chapters for this run
+        chapters = select_run_chapters(5)
+        chapter = chapters[0]
+
+        # Snapshot clean stats (after gear/tome bonuses are baked in, before any modifiers)
+        clean_stats = snapshot_clean_stats(self.player)
+
+        # Apply chapter 1 signature + generate wave 1 monster
+        apply_signature_modifier(self.player, chapter)
+        monster = await _generate_codex_wave_monster(self.player, chapter, 1)
+        engine.apply_stat_effects(self.player, monster)
+        start_logs = engine.apply_combat_start_passives(self.player, monster)
+
+        view = CodexRunView(
+            self.bot, self.user_id, self.player,
+            chapters, monster, start_logs, clean_stats,
+        )
+
+        embed = view._combat_embed()
+        self.stop()
+        msg = await interaction.edit_original_response(embed=embed, view=view)
+        # Store message reference for auto-combat
+        view._message_ref = msg
+
+    @ui.button(label="Tomes", style=ButtonStyle.primary, emoji="📚", row=0)
+    async def view_tomes(self, interaction: Interaction, button: ui.Button):
+        tomes_view = CodexTomsView(
+            self.bot, self.user_id, self.player,
+            self.fragments, self.pages, self.rerolls,
+        )
+        await interaction.response.edit_message(embed=tomes_view._build_embed(), view=tomes_view)
+        self.stop()
+
+    @ui.button(label="Exit", style=ButtonStyle.secondary, row=0)
+    async def exit_btn(self, interaction: Interaction, button: ui.Button):
+        self.stop()
+        await interaction.response.edit_message(view=None)
+
+    async def on_timeout(self):
+        pass

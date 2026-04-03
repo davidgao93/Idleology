@@ -202,6 +202,14 @@ class Companion:
 
 
 @dataclass
+class CodexTome:
+    slot: int
+    passive_type: str
+    tier: int
+    value: float  # Actual rolled stat contribution (not a fixed tier value)
+
+
+@dataclass
 class Player:
     id: str
     name: str
@@ -236,6 +244,9 @@ class Player:
     slayer_emblem: dict = field(default_factory=dict)
     active_task_species: str = None # Store this so the engine knows if we are fighting a task mob
 
+    # Codex Tomes
+    codex_tomes: List[CodexTome] = field(default_factory=list)
+
     # Transient states (reset each combat)
     combat_ward: int = 0
     is_invulnerable_this_combat: bool = False
@@ -253,6 +264,9 @@ class Player:
     # Glove passives
     equilibrium_bonus_xp_pending: int = 0
     plundering_bonus_gold_pending: int = 0
+
+    # Codex run transients (reset per wave)
+    boon_fdr: int = 0
 
     @property
     def rarity(self) -> int:
@@ -280,6 +294,11 @@ class Player:
         comp_pct = self._get_companion_bonus('atk')
         if comp_pct > 0:
             total += int(self.base_attack * (comp_pct / 100))
+
+        # Wrath tome: converts a % of base DEF into bonus ATK
+        wrath_pct = self.get_tome_bonus('wrath')
+        if wrath_pct > 0:
+            total += int(self.base_defence * (wrath_pct / 100))
         return total
 
     def get_total_defence(self) -> int:
@@ -293,10 +312,15 @@ class Player:
         comp_pct = self._get_companion_bonus('def')
         if comp_pct > 0:
             total += int(self.base_defence * (comp_pct / 100))
+
+        # Bastion tome: converts a % of base ATK into bonus DEF
+        bastion_pct = self.get_tome_bonus('bastion')
+        if bastion_pct > 0:
+            total += int(self.base_attack * (bastion_pct / 100))
         return total
     
     def get_total_pdr(self) -> int:
-        total = 0 
+        total = 0
         if self.equipped_armor: total += self.equipped_armor.pdr
         if self.equipped_glove: total += self.equipped_glove.pdr
         if self.equipped_boot: total += self.equipped_boot.pdr
@@ -304,12 +328,15 @@ class Player:
 
         # Companions
         total += self._get_companion_bonus('pdr')
-        
+
+        # Bulwark tome: bonus PDR
+        total += int(self.get_tome_bonus('bulwark'))
+
         # Hard cap at 80%
         return min(80, total)
 
     def get_total_fdr(self) -> int:
-        total = 0 
+        total = 0
         if self.equipped_armor: total += self.equipped_armor.fdr
         if self.equipped_glove: total += self.equipped_glove.fdr
         if self.equipped_boot: total += self.equipped_boot.fdr
@@ -317,6 +344,12 @@ class Player:
 
         # Companions
         total += self._get_companion_bonus('fdr')
+
+        # Resilience tome: bonus flat damage reduction
+        total += int(self.get_tome_bonus('resilience'))
+
+        # Codex FDR boon (per-wave transient)
+        total += self.boon_fdr
         return total
 
     def get_total_ward_percentage(self) -> int:
@@ -337,6 +370,9 @@ class Player:
 
         # Companions (Flat Reduction)
         target -= self._get_companion_bonus('crit')
+
+        # Precision tome: flat crit target reduction
+        target -= int(self.get_tome_bonus('precision'))
         return max(1, target)
 
     def get_combat_ward_value(self) -> int:
@@ -345,8 +381,13 @@ class Player:
     
     def get_total_rarity(self) -> int:
         """Helper for base rarity total."""
-        total = self.rarity # Base + Gear
+        total = self.rarity  # Base + Gear
         total += self._get_companion_bonus('rarity')
+
+        # Providence tome: % bonus to total rarity
+        prov_pct = self.get_tome_bonus('providence')
+        if prov_pct > 0:
+            total = int(total * (1 + prov_pct / 100))
         return total
 
     def get_special_drop_bonus(self) -> int:
@@ -405,6 +446,17 @@ class Player:
             if slot_data['type'] == passive_type:
                 total_tiers += slot_data['tier']
         return total_tiers
+
+    def get_tome_bonus(self, passive_type: str) -> float:
+        """Returns the accumulated stat value for a given Codex tome passive type."""
+        return sum(t.value for t in self.codex_tomes if t.passive_type == passive_type)
+
+    def get_effective_max_hp(self) -> int:
+        """Max HP including the vitality tome bonus (+% max HP)."""
+        vitality_pct = self.get_tome_bonus('vitality')
+        if vitality_pct > 0:
+            return int(self.max_hp * (1 + vitality_pct / 100))
+        return self.max_hp
 
 @dataclass
 class Monster:

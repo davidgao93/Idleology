@@ -263,6 +263,12 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         # Failsafe if player hasn't opened /slayer yet
         player.slayer_emblem = {}
         player.active_task_species = None
+
+    # --- Fetch Codex Tomes ---
+    try:
+        player.codex_tomes = await database.codex.get_tomes(user_id)
+    except Exception:
+        player.codex_tomes = []
         
     # 3. Calculate Combat Initialization Stats (Optional but helpful)
     # This pre-calculates the ward pool based on equipped gear percentages

@@ -4,6 +4,9 @@
 -- ALTER TABLE `uber_progress` ADD COLUMN `gemini_engrams` INTEGER DEFAULT 0;
 -- ALTER TABLE `uber_progress` ADD COLUMN `gemini_blueprint_unlocked` INTEGER DEFAULT 0;
 -- ALTER TABLE `users` ADD COLUMN `bound_crystal` INTEGER DEFAULT 0;
+-- ALTER TABLE `users` ADD COLUMN `codex_fragments` INTEGER DEFAULT 0;
+-- ALTER TABLE `users` ADD COLUMN `codex_pages` INTEGER DEFAULT 0;
+-- ALTER TABLE `users` ADD COLUMN `codex_rerolls` INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -41,7 +44,10 @@ CREATE TABLE IF NOT EXISTS `users` (
   `celestial_stone` INTEGER NOT NULL DEFAULT 0,
   `void_crystal` INTEGER NOT NULL DEFAULT 0,
   `infernal_cinder` INTEGER NOT NULL DEFAULT 0,
-  `bound_crystal` INTEGER NOT NULL DEFAULT 0
+  `bound_crystal` INTEGER NOT NULL DEFAULT 0,
+  `codex_fragments` INTEGER NOT NULL DEFAULT 0,
+  `codex_pages` INTEGER NOT NULL DEFAULT 0,
+  `codex_rerolls` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (
@@ -283,4 +289,21 @@ CREATE TABLE IF NOT EXISTS uber_progress (
     gemini_engrams INTEGER DEFAULT 0,
     gemini_blueprint_unlocked INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
+);
+
+CREATE TABLE IF NOT EXISTS codex_progress (
+    user_id TEXT NOT NULL,
+    chapter_id INTEGER NOT NULL,
+    clears INTEGER NOT NULL DEFAULT 0,
+    perfect_clears INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, chapter_id)
+);
+
+CREATE TABLE IF NOT EXISTS codex_tomes (
+    user_id TEXT NOT NULL,
+    slot INTEGER NOT NULL,
+    passive_type TEXT NOT NULL,
+    tier INTEGER NOT NULL DEFAULT 0,
+    value REAL NOT NULL DEFAULT 0.0,
+    PRIMARY KEY (user_id, slot)
 );

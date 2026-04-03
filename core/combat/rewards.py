@@ -92,6 +92,13 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
 
     results["gold"] = gold_award
 
+    # Codex Tome: Affluence (+% XP and Gold from all combat)
+    affluence_pct = player.get_tome_bonus('affluence')
+    if affluence_pct > 0:
+        mult = 1 + (affluence_pct / 100)
+        results['xp'] = int(results['xp'] * mult)
+        results['gold'] = int(results['gold'] * mult)
+
     return results
 
 
