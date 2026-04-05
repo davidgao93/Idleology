@@ -173,6 +173,13 @@ class ForgeView(BaseUpgradeView):
         )
         forge_btn.callback = self.confirm_forge
         self.add_item(forge_btn)
+
+        forgemaxx_btn = Button(
+            label="Forgemaxx", style=ButtonStyle.danger, disabled=not has_res
+        )
+        forgemaxx_btn.callback = self.forgemaxx
+        self.add_item(forgemaxx_btn)
+
         self.add_back_button()
 
         if interaction.response.is_done():
@@ -232,14 +239,15 @@ class ForgeView(BaseUpgradeView):
         if success:
             self.item.forges_remaining -= 1  # Only decrement on success
             self.item.passive = new_passive
+            self.item.forge_tier += 1
             await self.bot.database.equipment.update_passive(
                 self.item.item_id, "weapon", new_passive
             )
             await self.bot.database.equipment.update_counter(
-                self.item.item_id,
-                "weapon",
-                "forges_remaining",
-                self.item.forges_remaining,
+                self.item.item_id, "weapon", "forges_remaining", self.item.forges_remaining,
+            )
+            await self.bot.database.equipment.update_counter(
+                self.item.item_id, "weapon", "forge_tier", self.item.forge_tier,
             )
 
             result_embed.description = (
@@ -249,10 +257,7 @@ class ForgeView(BaseUpgradeView):
         else:
             self.item.forges_remaining -= 1
             await self.bot.database.equipment.update_counter(
-                self.item.item_id,
-                "weapon",
-                "forges_remaining",
-                self.item.forges_remaining,
+                self.item.item_id, "weapon", "forges_remaining", self.item.forges_remaining,
             )
             result_embed.description = f"💨 **Failed.**\nThe hammer didn't strike true, resources consumed.\n\nForges Remaining: {self.item.forges_remaining}"
             result_embed.color = discord.Color.dark_grey()
@@ -262,14 +267,117 @@ class ForgeView(BaseUpgradeView):
 
         if self.item.forges_remaining > 0:
             again_btn = Button(label="Forge Again", style=ButtonStyle.success)
-            again_btn.callback = (
-                self.render
-            )  # Points back to render to refresh costs/buttons
+            again_btn.callback = self.render
             self.add_item(again_btn)
+
+            forgemaxx_btn = Button(label="Forgemaxx", style=ButtonStyle.danger)
+            forgemaxx_btn.callback = self.forgemaxx
+            self.add_item(forgemaxx_btn)
 
         self.add_back_button()
 
         await interaction.response.edit_message(embed=result_embed, view=self)
+
+    async def forgemaxx(self, interaction: Interaction):
+        """Loop-forge until the player runs out of resources or forge slots."""
+        await interaction.response.defer()
+        uid, gid = self.user_id, str(interaction.guild.id)
+        forges_done = 0
+        successes = 0
+        final_passive = self.item.passive
+
+        while self.item.forges_remaining > 0:
+            costs = EquipmentMechanics.calculate_forge_cost(self.item)
+            if not costs:
+                break
+
+            # Re-fetch inventory for current cost tier
+            raw_ore = costs["ore_type"]
+            refined_ore = f"{raw_ore if raw_ore != 'coal' else 'steel'}_bar"
+            raw_log = costs["log_type"]
+            refined_log = f"{raw_log}_plank"
+            raw_bone = costs["bone_type"]
+            refined_bone = f"{raw_bone}_essence"
+
+            async with self.bot.database.connection.execute(
+                f"SELECT {raw_ore}, {refined_ore} FROM mining WHERE user_id=? AND server_id=?",
+                (uid, gid),
+            ) as cursor:
+                mining_res = await cursor.fetchone() or (0, 0)
+            async with self.bot.database.connection.execute(
+                f"SELECT {raw_log}_logs, {refined_log} FROM woodcutting WHERE user_id=? AND server_id=?",
+                (uid, gid),
+            ) as cursor:
+                wood_res = await cursor.fetchone() or (0, 0)
+            async with self.bot.database.connection.execute(
+                f"SELECT {raw_bone}_bones, {refined_bone} FROM fishing WHERE user_id=? AND server_id=?",
+                (uid, gid),
+            ) as cursor:
+                fish_res = await cursor.fetchone() or (0, 0)
+
+            gold = await self.bot.database.users.get_gold(uid)
+            total_ore = mining_res[0] + mining_res[1]
+            total_log = wood_res[0] + wood_res[1]
+            total_bone = fish_res[0] + fish_res[1]
+
+            if total_ore < costs["ore_qty"] or total_log < costs["log_qty"] or total_bone < costs["bone_qty"] or gold < costs["gold"]:
+                break
+
+            # Deduct materials
+            async def deduct_smart(table, raw_col, ref_col, raw_held, cost):
+                to_take_raw = min(raw_held, cost)
+                to_take_ref = cost - to_take_raw
+                if to_take_raw > 0:
+                    await self.bot.database.connection.execute(
+                        f"UPDATE {table} SET {raw_col} = {raw_col} - ? WHERE user_id=? AND server_id=?",
+                        (to_take_raw, uid, gid),
+                    )
+                if to_take_ref > 0:
+                    await self.bot.database.connection.execute(
+                        f"UPDATE {table} SET {ref_col} = {ref_col} - ? WHERE user_id=? AND server_id=?",
+                        (to_take_ref, uid, gid),
+                    )
+
+            await deduct_smart("mining", raw_ore, refined_ore, mining_res[0], costs["ore_qty"])
+            await deduct_smart("woodcutting", f"{raw_log}_logs", refined_log, wood_res[0], costs["log_qty"])
+            await deduct_smart("fishing", f"{raw_bone}_bones", refined_bone, fish_res[0], costs["bone_qty"])
+            await self.bot.database.users.modify_gold(uid, -costs["gold"])
+            await self.bot.database.connection.commit()
+
+            success, new_passive = EquipmentMechanics.roll_forge_outcome(self.item)
+            self.item.forges_remaining -= 1
+            forges_done += 1
+
+            if success:
+                successes += 1
+                self.item.passive = new_passive
+                self.item.forge_tier += 1
+                final_passive = new_passive
+                await self.bot.database.equipment.update_passive(
+                    self.item.item_id, "weapon", new_passive
+                )
+                await self.bot.database.equipment.update_counter(
+                    self.item.item_id, "weapon", "forge_tier", self.item.forge_tier,
+                )
+
+            await self.bot.database.equipment.update_counter(
+                self.item.item_id, "weapon", "forges_remaining", self.item.forges_remaining,
+            )
+
+        result_embed = discord.Embed(
+            title="⚒️ Forgemaxx Complete",
+            description=(
+                f"**Attempts:** {forges_done}  |  **Successes:** {successes}\n"
+                f"**Final Passive:** {final_passive.title() if final_passive != 'none' else 'None'}\n"
+                f"**Forges Remaining:** {self.item.forges_remaining}"
+            ),
+            color=discord.Color.gold() if successes > 0 else discord.Color.dark_grey(),
+        )
+        result_embed.set_thumbnail(url="https://i.imgur.com/jzEMUxe.jpeg")
+
+        self.clear_items()
+        self.add_back_button()
+        await interaction.edit_original_response(embed=result_embed, view=self)
 
 
 class RefineView(BaseUpgradeView):

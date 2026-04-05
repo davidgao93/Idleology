@@ -55,11 +55,7 @@ class Codex(commands.Cog, name="codex"):
             )
             return
 
-        # 3. Cooldown (only prevents opening the run, not the menu)
-        if not await self._check_cooldown(interaction, user_id, existing_user):
-            return
-
-        # 4. Load player with all gear and tomes
+        # 3. Load player with all gear and tomes (cooldown is checked on Begin Run, not here)
         player = await load_player(user_id, existing_user, self.bot.database)
 
         # 5. Load Codex currencies (fetched by column name to avoid index fragility)

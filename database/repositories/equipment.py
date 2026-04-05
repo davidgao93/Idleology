@@ -167,8 +167,8 @@ class EquipmentRepository:
         """Updates an integer counter (potential, forges, refines, level)."""
         table = self.tables[item_type]
         # Basic validation to prevent arbitrary SQL injection if column comes from untrusted source
-        allowed = ["forges_remaining", "refines_remaining", "refinement_lvl", "potential_remaining", 
-                   "passive_lvl", "temper_remaining", "imbue_remaining"]
+        allowed = ["forges_remaining", "refines_remaining", "refinement_lvl", "potential_remaining",
+                   "passive_lvl", "temper_remaining", "imbue_remaining", "forge_tier"]
         if column not in allowed:
             raise ValueError(f"Invalid column for update_counter: {column}")
             

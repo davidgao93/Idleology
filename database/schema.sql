@@ -7,6 +7,8 @@
 -- ALTER TABLE `users` ADD COLUMN `codex_fragments` INTEGER DEFAULT 0;
 -- ALTER TABLE `users` ADD COLUMN `codex_pages` INTEGER DEFAULT 0;
 -- ALTER TABLE `users` ADD COLUMN `codex_rerolls` INTEGER DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN highest_ascension_stage INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE items ADD COLUMN forge_tier INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -47,7 +49,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `bound_crystal` INTEGER NOT NULL DEFAULT 0,
   `codex_fragments` INTEGER NOT NULL DEFAULT 0,
   `codex_pages` INTEGER NOT NULL DEFAULT 0,
-  `codex_rerolls` INTEGER NOT NULL DEFAULT 0
+  `codex_rerolls` INTEGER NOT NULL DEFAULT 0,
+  `highest_ascension_stage` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (
@@ -74,7 +77,8 @@ CREATE TABLE IF NOT EXISTS `items` (
   `refinement_lvl` INTEGER DEFAULT 0,
   `pinnacle_passive` TEXT NOT NULL DEFAULT 'none',
   `utmost_passive` TEXT NOT NULL DEFAULT 'none',
-  `infernal_passive` TEXT NOT NULL DEFAULT 'none'
+  `infernal_passive` TEXT NOT NULL DEFAULT 'none',
+  `forge_tier` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `accessories` (

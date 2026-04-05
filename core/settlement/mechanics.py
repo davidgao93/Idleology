@@ -14,7 +14,7 @@ class SettlementMechanics:
     BUILDINGS = {
         "logging_camp": {"type": "generator", "output": "timber", "base_rate": 1},
         "quarry":       {"type": "generator", "output": "stone", "base_rate": 1},
-        "market":       {"type": "generator", "output": "gold", "base_rate": 50}, # 50 gold per worker/hr
+        "market":       {"type": "generator", "output": "market_gold", "base_rate": 50}, # 50 gold (currency) per worker/hr
         
         "foundry": {
             "type": "converter", 

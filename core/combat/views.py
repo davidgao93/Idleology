@@ -382,17 +382,14 @@ class CombatView(ui.View):
                         self.user_id, self.server_id, "infernal_forge"
                     )
                 )
-                total_chance = 0.10 + (forge_workers * 0.0001)
-                guaranteed = int(total_chance)
-                fractional = total_chance - guaranteed
-                sigils_dropped = guaranteed
-                if random.random() < fractional:
+                # Always drops 1 sigil; Infernal Forge shrine gives a chance at a second
+                sigils_dropped = 1
+                if random.random() < (forge_workers * 0.0001):
                     sigils_dropped += 1
-                if sigils_dropped > 0:
-                    await self.bot.database.uber.increment_infernal_sigils(
-                        self.user_id, self.server_id, sigils_dropped
-                    )
-                    reward_data["special"].extend(["Infernal Sigil"] * sigils_dropped)
+                await self.bot.database.uber.increment_infernal_sigils(
+                    self.user_id, self.server_id, sigils_dropped
+                )
+                reward_data["special"].extend(["Infernal Sigil"] * sigils_dropped)
 
             if "NEET" in self.monster.name and not getattr(
                 self.monster, "is_uber", False
@@ -402,17 +399,14 @@ class CombatView(ui.View):
                         self.user_id, self.server_id, "void_sanctum"
                     )
                 )
-                total_chance = 0.10 + (sanctum_workers * 0.0001)
-                guaranteed = int(total_chance)
-                fractional = total_chance - guaranteed
-                shards_dropped = guaranteed
-                if random.random() < fractional:
+                # Always drops 1 shard; Void Sanctum shrine gives a chance at a second
+                shards_dropped = 1
+                if random.random() < (sanctum_workers * 0.0001):
                     shards_dropped += 1
-                if shards_dropped > 0:
-                    await self.bot.database.uber.increment_void_shards(
-                        self.user_id, self.server_id, shards_dropped
-                    )
-                    reward_data["special"].extend(["Void Shard"] * shards_dropped)
+                await self.bot.database.uber.increment_void_shards(
+                    self.user_id, self.server_id, shards_dropped
+                )
+                reward_data["special"].extend(["Void Shard"] * shards_dropped)
 
             if "Aphrodite" in self.monster.name and not getattr(
                 self.monster, "is_uber", False
@@ -422,21 +416,14 @@ class CombatView(ui.View):
                         self.user_id, self.server_id, "celestial_shrine"
                     )
                 )
-
-                # Base 10% chance. +1% per assigned worker.
-                total_chance = 0.10 + (shrine_workers * 0.0001)
-                guaranteed_sigils = int(total_chance)
-                fractional_chance = total_chance - guaranteed_sigils
-
-                sigils_dropped = guaranteed_sigils
-                if random.random() < fractional_chance:
+                # Always drops 1 sigil; Celestial Shrine gives a chance at a second
+                sigils_dropped = 1
+                if random.random() < (shrine_workers * 0.0001):
                     sigils_dropped += 1
-
-                if sigils_dropped > 0:
-                    await self.bot.database.uber.increment_sigils(
-                        self.user_id, self.server_id, sigils_dropped
-                    )
-                    reward_data["special"].extend(["Celestial Sigil"] * sigils_dropped)
+                await self.bot.database.uber.increment_sigils(
+                    self.user_id, self.server_id, sigils_dropped
+                )
+                reward_data["special"].extend(["Celestial Sigil"] * sigils_dropped)
 
             if "Gemini" in self.monster.name and not getattr(
                 self.monster, "is_uber", False

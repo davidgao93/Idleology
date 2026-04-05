@@ -243,10 +243,13 @@ class CodexRunView(ui.View):
     async def _handle_wave_clear(self, interaction: Interaction = None, message: discord.Message = None):
         """Called when monster HP drops to 0. Awards XP/Gold, decides next action."""
         rewards = calculate_rewards(self.player, self.monster)
-        self.player.exp += rewards['xp']
-        self.cumulative_xp += rewards['xp']
-        self.cumulative_gold += rewards['gold']
-        await self.bot.database.users.modify_gold(self.user_id, rewards['gold'])
+        # Codex runs 35 waves in rapid succession — nerf to ~30% to keep Ascension premier
+        wave_xp = int(rewards['xp'] * 0.30)
+        wave_gold = int(rewards['gold'] * 0.30)
+        self.player.exp += wave_xp
+        self.cumulative_xp += wave_xp
+        self.cumulative_gold += wave_gold
+        await self.bot.database.users.modify_gold(self.user_id, wave_gold)
         await self.bot.database.users.update_from_player_object(self.player)
 
         self.waves_cleared_this_run += 1
@@ -735,6 +738,28 @@ class CodexMenuView(ui.View):
 
     @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="📖", row=0)
     async def begin_run(self, interaction: Interaction, button: ui.Button):
+        # Cooldown check (10 min, reduced by speedster boot)
+        from datetime import datetime, timedelta
+        CODEX_COOLDOWN = timedelta(minutes=10)
+        temp_reduction = 0
+        boot = await self.bot.database.equipment.get_equipped(self.user_id, "boot")
+        if boot and boot[9] == "speedster":
+            temp_reduction = boot[12] * 20
+        cooldown_duration = max(timedelta(seconds=10), CODEX_COOLDOWN - timedelta(seconds=temp_reduction))
+        existing_user = await self.bot.database.users.get(self.user_id, str(interaction.guild_id))
+        last_combat = existing_user[24] if existing_user else None
+        if last_combat:
+            try:
+                dt = datetime.fromisoformat(last_combat)
+                if datetime.now() - dt < cooldown_duration:
+                    rem = cooldown_duration - (datetime.now() - dt)
+                    return await interaction.response.send_message(
+                        f"Codex cooldown: **{rem.seconds // 60}m {rem.seconds % 60}s** remaining.",
+                        ephemeral=True,
+                    )
+            except Exception:
+                pass
+
         await interaction.response.defer()
 
         self.bot.state_manager.set_active(self.user_id, "codex")

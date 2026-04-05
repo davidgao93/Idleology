@@ -19,30 +19,33 @@ class EquipmentMechanics:
         if weapon.forges_remaining < 1:
             return None
 
-        # Determine Tier
+        # Determine Tier by forge_tier (successful forges completed), NOT forges_remaining.
+        # This means a failed attempt does not escalate material costs for the next attempt.
+        ft = weapon.forge_tier  # 0 = no successes yet, 1 = first success done, etc.
+
         if weapon.level <= 40:
             tier_data = {
-                3: {'ore': 'iron', 'log': 'oak', 'bone': 'desiccated', 'qty': 10, 'gold': 100},
-                2: {'ore': 'coal', 'log': 'willow', 'bone': 'regular', 'qty': 10, 'gold': 400},
-                1: {'ore': 'gold', 'log': 'mahogany', 'bone': 'sturdy', 'qty': 10, 'gold': 1000}
+                0: {'ore': 'iron', 'log': 'oak', 'bone': 'desiccated', 'qty': 10, 'gold': 100},
+                1: {'ore': 'coal', 'log': 'willow', 'bone': 'regular', 'qty': 10, 'gold': 400},
+                2: {'ore': 'gold', 'log': 'mahogany', 'bone': 'sturdy', 'qty': 10, 'gold': 1000}
             }
         elif weapon.level <= 80:
             tier_data = {
-                4: {'ore': 'iron', 'log': 'oak', 'bone': 'desiccated', 'qty': 25, 'gold': 250},
-                3: {'ore': 'coal', 'log': 'willow', 'bone': 'regular', 'qty': 25, 'gold': 1000},
+                0: {'ore': 'iron', 'log': 'oak', 'bone': 'desiccated', 'qty': 25, 'gold': 250},
+                1: {'ore': 'coal', 'log': 'willow', 'bone': 'regular', 'qty': 25, 'gold': 1000},
                 2: {'ore': 'gold', 'log': 'mahogany', 'bone': 'sturdy', 'qty': 25, 'gold': 2500},
-                1: {'ore': 'platinum', 'log': 'magic', 'bone': 'reinforced', 'qty': 25, 'gold': 5000}
+                3: {'ore': 'platinum', 'log': 'magic', 'bone': 'reinforced', 'qty': 25, 'gold': 5000}
             }
         else: # Level 80+
             tier_data = {
-                5: {'ore': 'iron', 'log': 'oak', 'bone': 'desiccated', 'qty': 50, 'gold': 500},
-                4: {'ore': 'coal', 'log': 'willow', 'bone': 'regular', 'qty': 50, 'gold': 2000},
-                3: {'ore': 'gold', 'log': 'mahogany', 'bone': 'sturdy', 'qty': 50, 'gold': 5000},
-                2: {'ore': 'platinum', 'log': 'magic', 'bone': 'reinforced', 'qty': 50, 'gold': 10000},
-                1: {'ore': 'idea', 'log': 'idea', 'bone': 'titanium', 'qty': 50, 'gold': 20000}
+                0: {'ore': 'iron', 'log': 'oak', 'bone': 'desiccated', 'qty': 50, 'gold': 500},
+                1: {'ore': 'coal', 'log': 'willow', 'bone': 'regular', 'qty': 50, 'gold': 2000},
+                2: {'ore': 'gold', 'log': 'mahogany', 'bone': 'sturdy', 'qty': 50, 'gold': 5000},
+                3: {'ore': 'platinum', 'log': 'magic', 'bone': 'reinforced', 'qty': 50, 'gold': 10000},
+                4: {'ore': 'idea', 'log': 'idea', 'bone': 'titanium', 'qty': 50, 'gold': 20000}
             }
 
-        cost = tier_data.get(weapon.forges_remaining)
+        cost = tier_data.get(ft) or tier_data.get(max(tier_data.keys()))
         if not cost: return None
 
         return {

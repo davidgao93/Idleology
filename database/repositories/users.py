@@ -246,6 +246,22 @@ class UserRepository:
         )
         async with rows as cursor:
             return await cursor.fetchall()
+
+    async def get_ascension_leaderboard(self, limit: int = 10):
+        rows = await self.connection.execute(
+            "SELECT name, highest_ascension_stage, level FROM users ORDER BY highest_ascension_stage DESC, level DESC LIMIT ?",
+            (limit,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchall()
+
+    async def update_highest_ascension_stage(self, user_id: str, stage: int) -> None:
+        """Records the stage if it's higher than the player's current record."""
+        await self.connection.execute(
+            "UPDATE users SET highest_ascension_stage = MAX(highest_ascension_stage, ?) WHERE user_id = ?",
+            (stage, user_id)
+        )
+        await self.connection.commit()
         
 
     async def get_doors_enabled(self, user_id: str) -> bool:

@@ -19,6 +19,7 @@ class Weapon:
     refines_remaining: int = 0
     refinement_lvl: int = 0
     infernal_passive: str = 'none'
+    forge_tier: int = 0
 
 @dataclass
 class Accessory:

@@ -152,6 +152,7 @@ class AscentView(ui.View):
         # 3. DB Updates
         await self.bot.database.users.modify_gold(self.user_id, gold_gain)
         await self.bot.database.users.update_from_player_object(self.player)
+        await self.bot.database.users.update_highest_ascension_stage(self.user_id, self.stage)
         
         # Special Drops (Curios)
         special_loot = []

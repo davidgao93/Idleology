@@ -26,6 +26,7 @@ def create_weapon(data: tuple) -> Weapon:
         p_passive=data[12] if len(data) > 12 else "none",
         u_passive=data[13] if len(data) > 13 else "none",
         infernal_passive=data[14] if len(data) > 14 else "none",
+        forge_tier=data[15] if len(data) > 15 else 0,
         description="" # Description is typically generated dynamically in views
     )
 

@@ -1081,8 +1081,16 @@ class SettlementDashboardView(ui.View):
                     "companion_cookie"
                 )
 
+        # Pop market gold before committing to skill tables (it belongs in users.gold)
+        market_gold = 0
+        if "market_gold" in total_changes:
+            market_gold = total_changes.pop("market_gold")
+            display_changes["Market Gold"] = display_changes.pop("market_gold", market_gold)
+
         # 4. Commit to DB with the full changes
         await self.bot.database.settlement.commit_production(uid, sid, total_changes)
+        if market_gold > 0:
+            await self.bot.database.users.modify_gold(uid, market_gold)
         await self.bot.database.settlement.update_collection_timer(uid, sid)
 
         # Commit companion XP

@@ -13,6 +13,7 @@ class LeaderboardHubView(ui.View):
         
         tabs = [
             ("levels", "Highest Levels", "🏆"),
+            ("ascensions", "Top Ascensions", "🌟"),
             ("wealth", "Wealthiest", "💰"),
             ("slayer", "Top Slayers", "💀"),
             ("ideologies", "Ideologies", "💡")
@@ -41,7 +42,12 @@ class LeaderboardHubView(ui.View):
             data = await self.bot.database.users.get_leaderboard(10)
             embed = discord.Embed(title="Hiscores: Highest Levels 🏆", color=0x00FF00)
             lines = [f"**{i+1}. {row[3]}** - Level {row[4]} (Ascension {row[15]} 🌟)" for i, row in enumerate(data)]
-            
+
+        elif self.active_tab == "ascensions":
+            data = await self.bot.database.users.get_ascension_leaderboard(10)
+            embed = discord.Embed(title="Hiscores: Highest Ascent Stage 🌟", color=0xFF8C00)
+            lines = [f"**{i+1}. {row[0]}** - Stage {row[1]} 🌟 (Level {row[2]})" for i, row in enumerate(data)]
+
         elif self.active_tab == "wealth":
             data = await self.bot.database.users.get_wealth_leaderboard(10)
             embed = discord.Embed(title="Hiscores: Wealthiest 💰", color=0xFFD700)
