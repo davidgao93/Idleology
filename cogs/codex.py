@@ -62,14 +62,10 @@ class Codex(commands.Cog, name="codex"):
         # 4. Load player with all gear and tomes
         player = await load_player(user_id, existing_user, self.bot.database)
 
-        # 5. Load Codex currencies
-        # users schema: codex_fragments=36, codex_pages=37, codex_rerolls=38
-        try:
-            fragments = existing_user[36] or 0
-            pages     = existing_user[37] or 0
-            rerolls   = existing_user[38] or 0
-        except (IndexError, TypeError):
-            fragments = pages = rerolls = 0
+        # 5. Load Codex currencies (fetched by column name to avoid index fragility)
+        fragments = await self.bot.database.users.get_currency(user_id, 'codex_fragments')
+        pages     = await self.bot.database.users.get_currency(user_id, 'codex_pages')
+        rerolls   = await self.bot.database.users.get_currency(user_id, 'codex_rerolls')
 
         # 6. Load chapter history for display
         try:

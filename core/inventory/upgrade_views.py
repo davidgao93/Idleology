@@ -1601,7 +1601,8 @@ class InfernalEngramView(BaseUpgradeView):
 
         desc = (
             f"**Current Infernal Passive:** {display_passive}\n"
-            f"**Infernal Engrams Owned:** {self.engrams}\n\n"
+            f"**Infernal Engrams Owned:** {self.engrams}\n"
+            f"**Gold Cost:** 25,000,000\n\n"
             "Consuming an Engram will imbue your weapon with a powerful Infernal passive, or reroll your existing one."
         )
 
@@ -1638,7 +1639,14 @@ class InfernalEngramView(BaseUpgradeView):
                 "You do not have any Infernal Engrams!", ephemeral=True
             )
 
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < 25_000_000:
+            return await interaction.response.send_message(
+                "You need **25,000,000 gold** to use an Infernal Engram.", ephemeral=True
+            )
+
         await interaction.response.defer()
+        await self.bot.database.users.modify_gold(self.user_id, -25_000_000)
         await self.bot.database.uber.increment_infernal_engrams(
             self.user_id, server_id, -1
         )
@@ -1804,7 +1812,8 @@ class VoidEngramView(BaseUpgradeView):
 
         desc = (
             f"**Current Void Passive:** {display_passive}\n"
-            f"**Void Engrams Owned:** {self.engrams}\n\n"
+            f"**Void Engrams Owned:** {self.engrams}\n"
+            f"**Gold Cost:** 25,000,000\n\n"
             "Consuming an Engram will corrupt your accessory with a Void passive, or reroll your existing one."
         )
 
@@ -1840,7 +1849,14 @@ class VoidEngramView(BaseUpgradeView):
                 "You do not have any Void Engrams!", ephemeral=True
             )
 
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < 25_000_000:
+            return await interaction.response.send_message(
+                "You need **25,000,000 gold** to use a Void Engram.", ephemeral=True
+            )
+
         await interaction.response.defer()
+        await self.bot.database.users.modify_gold(self.user_id, -25_000_000)
         await self.bot.database.uber.increment_void_engrams(self.user_id, server_id, -1)
 
         current_p = getattr(self.item, "void_passive", "none")
@@ -1885,7 +1901,8 @@ class EngramView(BaseUpgradeView):
 
         desc = (
             f"**Current Celestial Passive:** {display_passive}\n"
-            f"**Celestial Engrams Owned:** {self.engrams}\n\n"
+            f"**Celestial Engrams Owned:** {self.engrams}\n"
+            f"**Gold Cost:** 25,000,000\n\n"
             "Consuming an Engram will imbue your armor with a powerful Celestial passive, or reroll your existing one."
         )
 
@@ -1922,7 +1939,14 @@ class EngramView(BaseUpgradeView):
                 "You do not have any Celestial Engrams!", ephemeral=True
             )
 
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < 25_000_000:
+            return await interaction.response.send_message(
+                "You need **25,000,000 gold** to use a Celestial Engram.", ephemeral=True
+            )
+
         await interaction.response.defer()
+        await self.bot.database.users.modify_gold(self.user_id, -25_000_000)
         await self.bot.database.uber.increment_engrams(self.user_id, server_id, -1)
 
         current_p = getattr(self.item, "celestial_passive", "none")

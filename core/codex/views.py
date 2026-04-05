@@ -481,7 +481,7 @@ class CodexRunView(ui.View):
 class CodexTomsView(ui.View):
     """Shows a player's 5 tome slots and allows upgrading/rerolling."""
 
-    def __init__(self, bot, user_id: str, player: Player, fragments: int, pages: int, rerolls: int):
+    def __init__(self, bot, user_id: str, player: Player, fragments: int, pages: int, rerolls: int, chapter_history: dict):
         super().__init__(timeout=120)
         self.bot = bot
         self.user_id = user_id
@@ -489,6 +489,7 @@ class CodexTomsView(ui.View):
         self.fragments = fragments
         self.pages = pages
         self.rerolls = rerolls
+        self.chapter_history = chapter_history
         self.selected_slot: int | None = None
         self._rebuild()
 
@@ -530,7 +531,7 @@ class CodexTomsView(ui.View):
                 can_upgrade = tome.tier < 5 and self.fragments >= TOME_UPGRADE_COSTS[tome.tier]
                 upgrade_cost = TOME_UPGRADE_COSTS[tome.tier] if tome.tier < 5 else 0
                 upgrade_btn = ui.Button(
-                    label=f"Upgrade T{tome.tier}→T{tome.tier+1} ({upgrade_cost}🔷)",
+                    label=f"Upgrade T{tome.tier}→T{tome.tier+1} ({upgrade_cost}🔷 + 10m💰)",
                     style=ButtonStyle.primary,
                     disabled=not can_upgrade,
                     row=2,
@@ -542,7 +543,7 @@ class CodexTomsView(ui.View):
                 reroll_val_cost = get_reroll_cost(tome.tier)
                 can_reroll_val = tome.tier > 0 and self.fragments >= reroll_val_cost
                 reroll_val_btn = ui.Button(
-                    label=f"Reroll Value ({reroll_val_cost}🔷)",
+                    label=f"Reroll Value ({reroll_val_cost}🔷 + 10m💰)",
                     style=ButtonStyle.secondary,
                     disabled=not can_reroll_val,
                     row=2,
@@ -553,7 +554,7 @@ class CodexTomsView(ui.View):
                 # Reroll type (costs reroll token)
                 can_reroll_type = self.rerolls > 0
                 reroll_type_btn = ui.Button(
-                    label=f"Reroll Type ({self.rerolls} token{'s' if self.rerolls != 1 else ''})",
+                    label=f"Reroll Type ({self.rerolls}🔁 + 10m💰)",
                     style=ButtonStyle.danger,
                     disabled=not can_reroll_type,
                     row=2,
@@ -625,9 +626,14 @@ class CodexTomsView(ui.View):
         if self.fragments < cost:
             await interaction.followup.send("Not enough Codex Fragments.", ephemeral=True)
             return
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < 10_000_000:
+            await interaction.followup.send("You need **10,000,000 gold** to upgrade a Tome tier.", ephemeral=True)
+            return
         ok, new_val = await self.bot.database.codex.upgrade_tome(self.user_id, self.selected_slot)
         if ok:
             await self.bot.database.users.modify_currency(self.user_id, 'codex_fragments', -cost)
+            await self.bot.database.users.modify_gold(self.user_id, -10_000_000)
             self.fragments -= cost
             self.player.codex_tomes = await self.bot.database.codex.get_tomes(self.user_id)
         self._rebuild()
@@ -642,9 +648,14 @@ class CodexTomsView(ui.View):
         if self.fragments < cost:
             await interaction.followup.send("Not enough Codex Fragments.", ephemeral=True)
             return
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < 10_000_000:
+            await interaction.followup.send("You need **10,000,000 gold** to reroll a Tome value.", ephemeral=True)
+            return
         ok, _ = await self.bot.database.codex.reroll_tome_value(self.user_id, self.selected_slot)
         if ok:
             await self.bot.database.users.modify_currency(self.user_id, 'codex_fragments', -cost)
+            await self.bot.database.users.modify_gold(self.user_id, -10_000_000)
             self.fragments -= cost
             self.player.codex_tomes = await self.bot.database.codex.get_tomes(self.user_id)
         self._rebuild()
@@ -655,9 +666,14 @@ class CodexTomsView(ui.View):
         if self.rerolls <= 0:
             await interaction.followup.send("No Reroll Tokens available.", ephemeral=True)
             return
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < 10_000_000:
+            await interaction.followup.send("You need **10,000,000 gold** to reroll a Tome type.", ephemeral=True)
+            return
         ok, _ = await self.bot.database.codex.reroll_tome_type(self.user_id, self.selected_slot)
         if ok:
             await self.bot.database.users.modify_currency(self.user_id, 'codex_rerolls', -1)
+            await self.bot.database.users.modify_gold(self.user_id, -10_000_000)
             self.rerolls -= 1
             self.player.codex_tomes = await self.bot.database.codex.get_tomes(self.user_id)
         self._rebuild()
@@ -665,7 +681,11 @@ class CodexTomsView(ui.View):
 
     async def _on_exit(self, interaction: Interaction):
         self.stop()
-        await interaction.response.edit_message(view=None)
+        menu = CodexMenuView(
+            self.bot, self.user_id, self.player,
+            self.fragments, self.pages, self.rerolls, self.chapter_history,
+        )
+        await interaction.response.edit_message(embed=menu.build_embed(), view=menu)
 
     async def on_timeout(self):
         pass
@@ -720,10 +740,10 @@ class CodexMenuView(ui.View):
         self.bot.state_manager.set_active(self.user_id, "codex")
         await self.bot.database.users.update_timer(self.user_id, 'last_combat')
 
-        # Strip Slayer and companion bonuses — they do not apply in the Codex
+        # Clear active task species — prevents slayer task completion and species-gated
+        # emblem bonuses (slayer_dmg / slayer_def), which are tied to assigned tasks.
+        # All other emblem and companion bonuses apply normally.
         self.player.active_task_species = None
-        self.player.active_companions = []
-        self.player.slayer_emblem = {}
 
         # Select 5 chapters for this run
         chapters = select_run_chapters(5)
@@ -753,10 +773,10 @@ class CodexMenuView(ui.View):
     async def view_tomes(self, interaction: Interaction, button: ui.Button):
         tomes_view = CodexTomsView(
             self.bot, self.user_id, self.player,
-            self.fragments, self.pages, self.rerolls,
+            self.fragments, self.pages, self.rerolls, self.chapter_history,
         )
-        await interaction.response.edit_message(embed=tomes_view._build_embed(), view=tomes_view)
         self.stop()
+        await interaction.response.edit_message(embed=tomes_view._build_embed(), view=tomes_view)
 
     @ui.button(label="Exit", style=ButtonStyle.secondary, row=0)
     async def exit_btn(self, interaction: Interaction, button: ui.Button):

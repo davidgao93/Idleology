@@ -122,6 +122,11 @@ class EquipmentMechanics:
             costs = {5: 10000, 4: 30000, 3: 50000, 2: 100000, 1: 200000}
             gold_cost = costs.get(rem, 200000)
 
+        # 1b. High-refinement gold scaling (overrides base cost at ref_lvl 100+)
+        # 100–199 → 300k, 200–299 → 400k, +100k per 100 ref_lvl bracket
+        if ref_lvl >= 100:
+            gold_cost = (ref_lvl // 100 + 2) * 100_000
+
         # 2. Calculate Material Cost (New Logic > +100)
         materials = []
         
