@@ -119,7 +119,11 @@ class CompanionListView(ui.View):
         collect_btn = ui.Button(label="Collect Loot", style=ButtonStyle.success, emoji="💰", row=1)
         collect_btn.callback = self.collect_loot
         self.add_item(collect_btn)
-        
+
+        fusion_btn = ui.Button(label="Fusion", style=ButtonStyle.primary, emoji="🧬", row=1)
+        fusion_btn.callback = self.open_fusion
+        self.add_item(fusion_btn)
+
         close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=1)
         close_btn.callback = self.close_view
         self.add_item(close_btn)
@@ -162,14 +166,33 @@ class CompanionListView(ui.View):
         await interaction.response.edit_message(embed=view.get_embed(), view=view)
 
     async def collect_loot(self, interaction: Interaction):
-        # Delegate to Logic
         result_msg = await CompanionLogic.collect_passive_rewards(
-            self.bot, 
-            self.user_id, 
+            self.bot,
+            self.user_id,
             str(interaction.guild.id)
         )
-        
         await interaction.response.send_message(result_msg, ephemeral=True)
+
+    async def open_fusion(self, interaction: Interaction):
+        from core.companions.fusion_views import FusionWizardView
+
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < 50000:
+            return await interaction.response.send_message(
+                "Fusion costs **50,000 Gold**. You cannot afford it.", ephemeral=True
+            )
+        if len(self.companions) < 2:
+            return await interaction.response.send_message(
+                "You need at least **2** companions to perform fusion.", ephemeral=True
+            )
+
+        view = FusionWizardView(self.bot, self.user_id, self.companions, parent_list_view=self)
+        embed = discord.Embed(
+            title="🧬 Companion Fusion",
+            description="Combine two companions to merge their XP and randomize their traits.\n\n**Cost:** 50,000 Gold\nSelect your **Primary** companion below.",
+            color=discord.Color.blue()
+        )
+        await interaction.response.edit_message(embed=embed, view=view)
 
 class CompanionDetailView(ui.View):
     def __init__(self, bot, user_id, companion, parent_view):

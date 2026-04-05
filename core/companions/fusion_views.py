@@ -3,12 +3,13 @@ from discord import ui, ButtonStyle, Interaction, SelectOption
 from core.companions.mechanics import CompanionMechanics
 
 class FusionWizardView(ui.View):
-    def __init__(self, bot, user_id: str, companions: list):
+    def __init__(self, bot, user_id: str, companions: list, parent_list_view=None):
         super().__init__(timeout=180)
         self.bot = bot
         self.user_id = user_id
         self.all_companions = companions
-        
+        self.parent_list_view = parent_list_view
+
         # State
         self.parent_a = None
         self.parent_b = None
@@ -20,9 +21,16 @@ class FusionWizardView(ui.View):
         return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        try: await self.message.edit(content="Fusion session timed out.", view=None, embed=None)
-        except: pass
+        if self.parent_list_view is None:
+            self.bot.state_manager.clear_active(self.user_id)
+        try:
+            if self.parent_list_view:
+                self.parent_list_view.update_buttons()
+                await self.message.edit(embed=self.parent_list_view.get_embed(), view=self.parent_list_view)
+            else:
+                await self.message.edit(content="Fusion session timed out.", view=None, embed=None)
+        except:
+            pass
 
     # --- STEP 1: Select First ---
     def setup_step_one(self):
@@ -153,19 +161,46 @@ class FusionWizardView(ui.View):
         )
 
         # 4. Result
-        embed = discord.Embed(title="🧬 Fusion Complete!", color=discord.Color.green())
-        embed.set_thumbnail(url=new_attrs['image_url'])
-        embed.description = (
+        result_embed = discord.Embed(title="🧬 Fusion Complete!", color=discord.Color.green())
+        result_embed.set_thumbnail(url=new_attrs['image_url'])
+        result_embed.description = (
             f"A new companion is born: **{new_attrs['name']}**!\n"
             f"**Level:** {lvl}\n"
             f"**Passive:** T{new_attrs['passive_tier']} {new_attrs['passive_type'].upper()}"
         )
-        
-        await interaction.edit_original_response(embed=embed, view=None)
-        self.bot.state_manager.clear_active(self.user_id)
+
+        if self.parent_list_view:
+            # Refresh companion list and return to it
+            from core.items.factory import create_companion
+            rows = await self.bot.database.companions.get_all(self.user_id)
+            self.parent_list_view.companions = [create_companion(row) for row in rows]
+            self.parent_list_view.total_pages = max(
+                1,
+                (len(self.parent_list_view.companions) + self.parent_list_view.items_per_page - 1)
+                // self.parent_list_view.items_per_page,
+            )
+            self.parent_list_view.current_page = 0
+            self.parent_list_view.update_buttons()
+            result_embed.set_footer(text="Returning to companions list…")
+            await interaction.edit_original_response(embed=result_embed, view=None)
+            import asyncio
+            await asyncio.sleep(2.0)
+            await interaction.edit_original_response(
+                embed=self.parent_list_view.get_embed(), view=self.parent_list_view
+            )
+        else:
+            await interaction.edit_original_response(embed=result_embed, view=None)
+            self.bot.state_manager.clear_active(self.user_id)
+
         self.stop()
 
     async def cancel_callback(self, interaction: Interaction):
-        await interaction.response.edit_message(content="Fusion cancelled.", embed=None, view=None)
-        self.bot.state_manager.clear_active(self.user_id)
+        if self.parent_list_view:
+            self.parent_list_view.update_buttons()
+            await interaction.response.edit_message(
+                content=None, embed=self.parent_list_view.get_embed(), view=self.parent_list_view
+            )
+        else:
+            await interaction.response.edit_message(content="Fusion cancelled.", embed=None, view=None)
+            self.bot.state_manager.clear_active(self.user_id)
         self.stop()

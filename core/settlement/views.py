@@ -892,109 +892,96 @@ class SettlementDashboardView(ui.View):
         )
         embed.set_thumbnail(url="https://i.imgur.com/xNY7tPj.png")
 
-        # Calculate Pending Resources (Visual Only)
-        now = datetime.now()
-        last = datetime.fromisoformat(self.settlement.last_collection_time)
-        hours = (now - last).total_seconds() / 3600
-
-        if hours > 0.1:
-            pending_txt = ""
-            for b in self.settlement.buildings:
-                if b.workers_assigned <= 0:
-                    continue
-
-                b_data = SettlementMechanics.BUILDINGS.get(b.building_type)
-                if not b_data:
-                    continue
-
-                # Safely pull base_rate (defaults to 0 for passives)
-                base_rate = b_data.get("base_rate", 0)
-
-                if b_data.get("type") == "generator":
-                    per_hour = int(base_rate * b.tier * b.workers_assigned)
-                    resource = b_data.get("output", "output")
-                    display = self.RESOURCE_DISPLAY_NAMES.get(
-                        resource, resource.replace("_", " ").title()
-                    )
-                    pending_txt += f"• {b.name}: ~{per_hour * hours:.0f} {display}\n"
-                elif b_data.get("type") == "converter":
-                    pending_txt += f"• {b.name}: Active (Converting materials)\n"
-                else:
-                    pending_txt += f"• {b.name}: Active (Providing passive buff)\n"
-
-            if pending_txt:
-                embed.add_field(
-                    name="Active Operations", value=pending_txt, inline=False
-                )
-
         if self.settlement.buildings:
             lines = []
             for b in self.settlement.buildings:
-                info = BuildingDetailView.BUILDING_INFO.get(b.building_type)
-                if info:
-                    lines.append(f"• **{b.name} (T{b.tier})** – {info}")
-                else:
-                    lines.append(f"• **{b.name} (T{b.tier})**")
-
+                status = "🟢" if b.workers_assigned > 0 else "🔴"
+                if b.name == "Black Market":
+                    status = "⚫"
+                lines.append(f"• **{b.name}** (T{b.tier}) {status}")
             embed.add_field(name="Buildings", value="\n".join(lines), inline=False)
+        else:
+            embed.add_field(name="Buildings", value="No buildings constructed yet.", inline=False)
 
         return embed
 
     def update_grid(self):
         self.clear_items()
 
-        # 1. Building Slots
         built_map = {b.slot_index: b for b in self.settlement.buildings}
 
-        # Iterate up to current max slots
+        # Row 0 — Select dropdown (all slots: built + empty)
+        options = []
         for i in range(self.settlement.building_slots):
-            row = i // 3  # 3 buttons per row
-            # Safety: Discord max row is 4 (index 0-4).
-            # If slots > 12, we need pagination. For now (max 8), this is fine.
-
             if i in built_map:
                 b = built_map[i]
                 status = "🟢" if b.workers_assigned > 0 else "🔴"
                 if b.name == "Black Market":
                     status = "⚫"
-                btn = ui.Button(
-                    label=f"{b.name} (T{b.tier}) {status}",
-                    style=ButtonStyle.secondary,
-                    row=row,
-                )
-                btn.callback = lambda inter, b=b: self.open_building(inter, b)
+                options.append(SelectOption(
+                    label=f"{b.name} (T{b.tier})",
+                    value=f"built_{i}",
+                    description=f"Workers: {b.workers_assigned} | Status: {status}",
+                    emoji=status,
+                ))
             else:
-                btn = ui.Button(
-                    label=f"Slot {i+1} [Empty]", style=ButtonStyle.gray, row=row
-                )
-                btn.callback = lambda inter, slot=i: self.open_build_menu(inter, slot)
-            self.add_item(btn)
+                options.append(SelectOption(
+                    label=f"Slot {i+1} — Empty",
+                    value=f"empty_{i}",
+                    description="Click to construct a new building",
+                    emoji="🔨",
+                ))
 
-        # 2. Controls (Row 3 or 4 depending on slots)
-        # With max 8 slots, the grid uses Row 0, 1, 2. Controls go to Row 3.
-        ctrl_row = (self.settlement.building_slots // 3) + 1
-        if ctrl_row > 4:
-            ctrl_row = 4  # Cap at bottom row
+        if options:
+            select = ui.Select(
+                placeholder="Select a building to manage...",
+                options=options,
+                row=0,
+            )
+            async def _on_select(interaction: Interaction, s=select):
+                value = s.values[0]
+                if value.startswith("built_"):
+                    slot = int(value.split("_")[1])
+                    await self.open_building(interaction, built_map[slot])
+                else:
+                    slot = int(value.split("_")[1])
+                    await self.open_build_menu(interaction, slot)
+            select.callback = _on_select
+            self.add_item(select)
 
-        # Town Hall Button
+        # Row 1 — Controls
         th_btn = ui.Button(
             label=f"Town Hall (T{self.settlement.town_hall_tier})",
             style=ButtonStyle.primary,
-            row=ctrl_row,
+            row=1,
             emoji="🏛️",
         )
         th_btn.callback = self.open_town_hall
         self.add_item(th_btn)
 
         collect_btn = ui.Button(
-            label="Collect", style=ButtonStyle.success, row=ctrl_row, emoji="🚜"
+            label="Collect", style=ButtonStyle.success, row=1, emoji="🚜"
         )
         collect_btn.callback = self.collect_resources
         self.add_item(collect_btn)
 
-        close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=ctrl_row)
+        guide_btn = ui.Button(label="Guide", style=ButtonStyle.secondary, row=1, emoji="📖")
+        guide_btn.callback = self.show_guide
+        self.add_item(guide_btn)
+
+        close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=1)
         close_btn.callback = self.close_view
         self.add_item(close_btn)
+
+    async def show_guide(self, interaction: Interaction):
+        embed = discord.Embed(title="📖 Building Guide", color=discord.Color.blue())
+        for btype, info in BuildConstructionView.BUILDING_INFO.items():
+            embed.add_field(
+                name=btype.replace("_", " ").title(),
+                value=info,
+                inline=False,
+            )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def open_town_hall(self, interaction: Interaction):
         view = TownHallView(self.bot, self.user_id, self.settlement, self)

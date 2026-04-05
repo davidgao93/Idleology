@@ -20,8 +20,7 @@ def create_combat_embed(player: Player, monster: Monster, logs: Dict[str, str] =
 
     mod_text = ""
     if monster.modifiers:
-        from core.combat.gen_mob import get_modifier_description
-        mod_text = "\n__Modifiers__\n" + "\n".join([f"**{m}**: {get_modifier_description(m)}" for m in monster.modifiers])
+        mod_text = "\n__Modifiers:__ " + ", ".join(f"**{m}**" for m in monster.modifiers)
     
     description = (f"A level **{monster.level}** {monster.name} approaches!\n"
                    f"{mod_text}\n\n"

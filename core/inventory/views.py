@@ -479,6 +479,7 @@ class ItemDetailView(View):
         await interaction.edit_original_response(embed=embed, view=self.parent)
 
     async def go_back(self, interaction: Interaction):
+        self.parent.update_buttons()
         embed = await self.parent.get_current_embed(interaction.user.display_name)
         await interaction.response.edit_message(embed=embed, view=self.parent)
 

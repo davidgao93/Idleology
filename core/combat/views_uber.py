@@ -726,7 +726,7 @@ class UberGeminiLobbyView(ui.View):
         embed = discord.Embed(
             title="♊ The Bound Sovereigns", color=discord.Color.blurple()
         )
-        embed.set_thumbnail(url="https://i.imgur.com/PqViP3D.png")
+        embed.set_thumbnail(url="https://i.imgur.com/LjE5VZF.png")
 
         desc = (
             "You approach two chubby kids. A voice — no, two voices, perfectly in time:\n"

@@ -33,14 +33,14 @@ CHAPTER_POOL: list[CodexChapter] = [
         id=1, name="The Iron Horde",
         flavor="Steel-born warriors march in endless formation.",
         signature_key="weakened", signature_label="Weakened",
-        signature_description="-15% base ATK",
+        signature_description="-30% base ATK",
         level_offset=5, difficulty=1,
     ),
     CodexChapter(
         id=2, name="Blighted Wastes",
         flavor="Venomous creatures swarm from the rotting earth.",
         signature_key="decaying", signature_label="Decaying",
-        signature_description="-15% max HP",
+        signature_description="-30% max HP",
         level_offset=5, difficulty=1,
     ),
     CodexChapter(
@@ -54,84 +54,84 @@ CHAPTER_POOL: list[CodexChapter] = [
         id=4, name="Unending Hunger",
         flavor="Titanic creatures bloated on ruin and excess.",
         signature_key="depleted", signature_label="Depleted",
-        signature_description="-20% base DEF",
+        signature_description="-40% base DEF",
         level_offset=7, difficulty=2,
     ),
     CodexChapter(
         id=5, name="Celestial Tribunal",
         flavor="Celestial arbiters pass judgment without mercy.",
         signature_key="humbled", signature_label="Humbled",
-        signature_description="-10% base ATK and -10% base DEF",
+        signature_description="-20% base ATK and -20% base DEF",
         level_offset=9, difficulty=2,
     ),
     CodexChapter(
         id=6, name="The Void Rift",
         flavor="Reality tears apart. Shield-breakers pour through the cracks.",
         signature_key="unravelled", signature_label="Unravelled",
-        signature_description="Ward disabled and -10% base DEF",
+        signature_description="Ward disabled and -20% base DEF",
         level_offset=9, difficulty=3,
     ),
     CodexChapter(
         id=7, name="Storm's Eye",
         flavor="Lightning blinds. Thunder deafens. The Mighty rise.",
         signature_key="blinded", signature_label="Blinded",
-        signature_description="Crit target +20 (critical hits are far harder to land)",
+        signature_description="Crit target +40 (critical hits are far harder to land)",
         level_offset=11, difficulty=3,
     ),
     CodexChapter(
         id=8, name="The Ashen Field",
         flavor="A battlefield scorched clean of all hope.",
         signature_key="scorched", signature_label="Scorched",
-        signature_description="-15% base DEF and -10% base ATK",
+        signature_description="-30% base DEF and -20% base ATK",
         level_offset=11, difficulty=3,
     ),
     CodexChapter(
         id=9, name="Midnight Spire",
         flavor="Ancient curses nest in the dark, feeding on vitality.",
         signature_key="cursed", signature_label="Cursed",
-        signature_description="-20% max HP",
+        signature_description="-40% max HP",
         level_offset=13, difficulty=4,
     ),
     CodexChapter(
         id=10, name="Crimson Tide",
         flavor="Ascended legions spill across the horizon in an endless wave.",
         signature_key="frenzied", signature_label="Frenzied",
-        signature_description="-15% base DEF and crit target +15",
+        signature_description="-30% base DEF and crit target +30",
         level_offset=13, difficulty=4,
     ),
     CodexChapter(
         id=11, name="The Abyssal Gate",
         flavor="Something from the abyss gazes back. It is not impressed.",
         signature_key="abyss_taint", signature_label="Abyss-Tainted",
-        signature_description="-20% base ATK and -20% base DEF",
+        signature_description="-40% base ATK and -40% base DEF",
         level_offset=15, difficulty=4,
     ),
     CodexChapter(
         id=12, name="Shattered Realm",
         flavor="Laws of reality buckle under impossible weight.",
         signature_key="broken", signature_label="Broken",
-        signature_description="Ward disabled and -15% base DEF",
+        signature_description="Ward disabled and -30% base DEF",
         level_offset=15, difficulty=4,
     ),
     CodexChapter(
         id=13, name="The Final Theorem",
         flavor="Numbers made flesh. Perfection made enemy.",
         signature_key="absolute_zero", signature_label="Absolute Zero",
-        signature_description="-25% base ATK and crit target +20",
+        signature_description="-50% base ATK and crit target +40",
         level_offset=17, difficulty=5,
     ),
     CodexChapter(
         id=14, name="Apex Convergence",
         flavor="Every threat converges into one merciless point.",
         signature_key="convergence", signature_label="Convergence",
-        signature_description="-15% base ATK, -15% base DEF, ward disabled",
+        signature_description="-30% base ATK, -30% base DEF, ward disabled",
         level_offset=20, difficulty=5,
     ),
     CodexChapter(
         id=15, name="The Eternal Archive",
         flavor="The archive catalogues your failures. You are just another entry.",
         signature_key="erased", signature_label="Erased",
-        signature_description="-25% base ATK and -25% base DEF",
+        signature_description="-50% base ATK and -50% base DEF",
         level_offset=22, difficulty=5,
     ),
 ]
@@ -252,61 +252,61 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
     key = chapter.signature_key
 
     if key == "weakened":
-        player.base_attack = int(player.base_attack * 0.85)
+        player.base_attack = int(player.base_attack * 0.70)
 
     elif key == "decaying":
-        player.max_hp = int(player.max_hp * 0.85)
+        player.max_hp = int(player.max_hp * 0.70)
         player.current_hp = min(player.current_hp, player.max_hp)
 
     elif key == "exposed":
         player.combat_ward = 0
 
     elif key == "depleted":
-        player.base_defence = int(player.base_defence * 0.80)
+        player.base_defence = int(player.base_defence * 0.60)
 
     elif key == "humbled":
-        player.base_attack = int(player.base_attack * 0.90)
-        player.base_defence = int(player.base_defence * 0.90)
-
-    elif key == "unravelled":
-        player.combat_ward = 0
-        player.base_defence = int(player.base_defence * 0.90)
-
-    elif key == "blinded":
-        player.base_crit_chance_target += 20
-
-    elif key == "scorched":
-        player.base_defence = int(player.base_defence * 0.85)
-        player.base_attack = int(player.base_attack * 0.90)
-
-    elif key == "cursed":
-        player.max_hp = int(player.max_hp * 0.80)
-        player.current_hp = min(player.current_hp, player.max_hp)
-
-    elif key == "frenzied":
-        player.base_defence = int(player.base_defence * 0.85)
-        player.base_crit_chance_target += 15
-
-    elif key == "abyss_taint":
         player.base_attack = int(player.base_attack * 0.80)
         player.base_defence = int(player.base_defence * 0.80)
 
+    elif key == "unravelled":
+        player.combat_ward = 0
+        player.base_defence = int(player.base_defence * 0.80)
+
+    elif key == "blinded":
+        player.base_crit_chance_target += 40
+
+    elif key == "scorched":
+        player.base_defence = int(player.base_defence * 0.70)
+        player.base_attack = int(player.base_attack * 0.80)
+
+    elif key == "cursed":
+        player.max_hp = int(player.max_hp * 0.60)
+        player.current_hp = min(player.current_hp, player.max_hp)
+
+    elif key == "frenzied":
+        player.base_defence = int(player.base_defence * 0.70)
+        player.base_crit_chance_target += 30
+
+    elif key == "abyss_taint":
+        player.base_attack = int(player.base_attack * 0.60)
+        player.base_defence = int(player.base_defence * 0.60)
+
     elif key == "broken":
         player.combat_ward = 0
-        player.base_defence = int(player.base_defence * 0.85)
+        player.base_defence = int(player.base_defence * 0.70)
 
     elif key == "absolute_zero":
-        player.base_attack = int(player.base_attack * 0.75)
-        player.base_crit_chance_target += 20
+        player.base_attack = int(player.base_attack * 0.50)
+        player.base_crit_chance_target += 40
 
     elif key == "convergence":
-        player.base_attack = int(player.base_attack * 0.85)
-        player.base_defence = int(player.base_defence * 0.85)
+        player.base_attack = int(player.base_attack * 0.70)
+        player.base_defence = int(player.base_defence * 0.70)
         player.combat_ward = 0
 
     elif key == "erased":
-        player.base_attack = int(player.base_attack * 0.75)
-        player.base_defence = int(player.base_defence * 0.75)
+        player.base_attack = int(player.base_attack * 0.50)
+        player.base_defence = int(player.base_defence * 0.50)
 
 
 # ---------------------------------------------------------------------------
