@@ -4,7 +4,8 @@
       "Bash(grep -r \"ascension\\\\|level.*100\\\\|endgame\" /c/Users/yugao/Idleology/core --include=\"*.py\" ! -path \"*/.claude/*\" ! -path \"*/venv/*\")",
       "Bash(grep -n \"^  \\\\`\" database/schema.sql)",
       "Bash(python3:*)",
-      "Bash(grep -n '`')"
+      "Bash(grep -n '`')",
+      "Bash(find /c/Users/yugao/Idleology -type f -name *.py)"
     ]
   }
 }

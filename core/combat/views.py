@@ -191,34 +191,46 @@ class CombatView(ui.View):
 
         self._auto_running = True
         message = interaction.message
-        while self.player.current_hp > hp_threshold and self.monster.hp > 0:
-            p_log = engine.process_player_turn(self.player, self.monster)
-            m_log = ""
-            if self.monster.hp > 0:
-                m_log = engine.process_monster_turn(self.player, self.monster)
 
-            self.logs = {self.player.name: p_log, self.monster.name: m_log}
+        while True:
+            # Inner loop: fight the current phase to completion
+            while self.player.current_hp > hp_threshold and self.monster.hp > 0:
+                p_log = engine.process_player_turn(self.player, self.monster)
+                m_log = ""
+                if self.monster.hp > 0:
+                    m_log = engine.process_monster_turn(self.player, self.monster)
 
-            embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
-            await message.edit(embed=embed, view=self)
-            await asyncio.sleep(1.0)
+                self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
-        was_auto = self._auto_running
-        self._auto_running = False
+                embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
+                await message.edit(embed=embed, view=self)
+                await asyncio.sleep(1.0)
 
-        # Loop finished
-        if (
-            not is_boss
-            and 0 < self.player.current_hp <= (self.player.max_hp * 0.2)
-            and self.monster.hp > 0
-        ):
-            self.logs["Auto-Battle"] = "🛑 Paused: Low HP Protection triggered!"
-            embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
-            await message.edit(embed=embed, view=self)
-        else:
-            # Handle End State manually (handles both victory and death)
+            was_auto = self._auto_running
+            self._auto_running = False
+
+            # Low HP pause (non-boss only)
+            if (
+                not is_boss
+                and 0 < self.player.current_hp <= (self.player.max_hp * 0.2)
+                and self.monster.hp > 0
+            ):
+                self.logs["Auto-Battle"] = "🛑 Paused: Low HP Protection triggered!"
+                embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
+                await message.edit(embed=embed, view=self)
+                break
+
+            # Handle end state (victory, defeat, or phase transition)
             self._was_auto = was_auto
             await self.handle_end_state(message, interaction)
+
+            # Phase transition: handle_end_state replaces self.monster with the next
+            # phase boss (hp > 0) and returns without stopping the view.
+            # In all other cases (final victory, defeat) self.monster.hp stays 0.
+            if was_auto and self.monster.hp > 0 and self.player.current_hp > 0:
+                self._auto_running = True  # Resume auto for the new phase
+                continue
+            break
 
     @ui.button(label="Flee", style=ButtonStyle.secondary, emoji="🏃")
     async def flee_btn(self, interaction: Interaction, button: ui.Button):

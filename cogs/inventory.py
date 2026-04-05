@@ -1,15 +1,52 @@
+import asyncio
+
 import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
 
 # Core
 from core.items.factory import create_weapon, create_armor, create_accessory, create_glove, create_boot, create_helmet
-from core.inventory.views import InventoryListView
+from core.inventory.views import InventoryListView, GearView, SLOT_ORDER
 from core.character.profile_hub import ProfileBuilder, ProfileHubView
+
+
+async def _fetch_all_slots(bot, user_id: str) -> dict:
+    """Fetch and factory-create all six equipment slots concurrently."""
+    factories = {
+        "weapon": create_weapon, "armor": create_armor, "helmet": create_helmet,
+        "glove": create_glove,   "boot": create_boot,   "accessory": create_accessory,
+    }
+    raw_results = await asyncio.gather(
+        *[bot.database.equipment.get_all(user_id, slot) for slot in SLOT_ORDER]
+    )
+    all_items = {}
+    for slot, rows in zip(SLOT_ORDER, raw_results):
+        items = [factories[slot](row) for row in rows]
+        items.sort(key=lambda x: (getattr(x, 'is_equipped', False), x.level), reverse=True)
+        all_items[slot] = items
+    return all_items
+
 
 class Inventory(commands.Cog, name="inventory"):
     def __init__(self, bot):
         self.bot = bot
+
+    async def _generic_gear_command(self, interaction: Interaction, initial_slot: str):
+        user_id   = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user): return
+        if not await self.bot.check_is_active(interaction, user_id): return
+
+        self.bot.state_manager.set_active(user_id, "inventory")
+
+        all_items = await _fetch_all_slots(self.bot, user_id)
+
+        view  = GearView(self.bot, user_id, all_items, initial_slot=initial_slot)
+        embed = view.build_embed(interaction.user.display_name)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
     async def _generic_inventory_command(self, interaction: Interaction, item_type: str, factory_func, emoji: str):
         user_id = str(interaction.user.id)
@@ -47,6 +84,10 @@ class Inventory(commands.Cog, name="inventory"):
 
     # --- Commands ---
 
+    @app_commands.command(name="gear", description="Manage all your equipped gear in one place.")
+    async def gear(self, interaction: Interaction):
+        await self._generic_gear_command(interaction, initial_slot="weapon")
+
     @app_commands.command(name="inventory", description="Check your inventory summary.")
     async def inventory_summary(self, interaction: Interaction):
         user_id = str(interaction.user.id)
@@ -73,27 +114,27 @@ class Inventory(commands.Cog, name="inventory"):
 
     @app_commands.command(name="weapons", description="Manage your weapons.")
     async def weapons(self, interaction: Interaction):
-        await self._generic_inventory_command(interaction, "weapon", create_weapon, "⚔️")
+        await self._generic_gear_command(interaction, initial_slot="weapon")
 
     @app_commands.command(name="armor", description="Manage your armor.")
     async def armor(self, interaction: Interaction):
-        await self._generic_inventory_command(interaction, "armor", create_armor, "🛡️")
+        await self._generic_gear_command(interaction, initial_slot="armor")
 
     @app_commands.command(name="accessory", description="Manage your accessories.")
     async def accessory(self, interaction: Interaction):
-        await self._generic_inventory_command(interaction, "accessory", create_accessory, "📿")
+        await self._generic_gear_command(interaction, initial_slot="accessory")
 
     @app_commands.command(name="gloves", description="Manage your gloves.")
     async def gloves(self, interaction: Interaction):
-        await self._generic_inventory_command(interaction, "glove", create_glove, "🧤")
+        await self._generic_gear_command(interaction, initial_slot="glove")
 
     @app_commands.command(name="boots", description="Manage your boots.")
     async def boots(self, interaction: Interaction):
-        await self._generic_inventory_command(interaction, "boot", create_boot, "👢")
+        await self._generic_gear_command(interaction, initial_slot="boot")
 
     @app_commands.command(name="helmets", description="Manage your helmets.")
     async def helmets(self, interaction: Interaction):
-        await self._generic_inventory_command(interaction, "helmet", create_helmet, "🪖")
+        await self._generic_gear_command(interaction, initial_slot="helmet")
 
 async def setup(bot):
     await bot.add_cog(Inventory(bot))

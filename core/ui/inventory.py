@@ -2,6 +2,16 @@ import discord
 from typing import List, Union
 from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
 
+_SLOT_EMOJIS = {
+    "weapon": "⚔️", "armor": "🛡️", "helmet": "🪖",
+    "glove": "🧤", "boot": "👢", "accessory": "📿",
+}
+_SLOT_LABELS = {
+    "weapon": "Weapon", "armor": "Armor", "helmet": "Helmet",
+    "glove": "Glove", "boot": "Boot", "accessory": "Accessory",
+}
+_SLOT_ORDER = ["weapon", "armor", "helmet", "glove", "boot", "accessory"]
+
 Equipment = Union[Weapon, Armor, Accessory, Glove, Boot]
 
 class InventoryUI:
@@ -135,5 +145,108 @@ class InventoryUI:
             if item.u_passive != 'none':
                 embed.add_field(name="Utmost Passive", value=item.u_passive.title(), inline=False)
             embed.add_field(name="Refinement", value=f"+{item.refinement_lvl}", inline=True)
-        
+
+        return embed
+
+    @staticmethod
+    def _build_equipped_stats(item) -> str:
+        """Compact multi-line stats string for the equipped item panel in the gear embed."""
+        parts = []
+        if getattr(item, 'attack', 0) > 0:    parts.append(f"⚔️ ATK: {item.attack}")
+        if getattr(item, 'defence', 0) > 0:   parts.append(f"🛡️ DEF: {item.defence}")
+        if getattr(item, 'rarity', 0) > 0:    parts.append(f"✨ Rarity: {item.rarity}%")
+        if getattr(item, 'ward', 0) > 0:      parts.append(f"🔮 Ward: {item.ward}%")
+        if getattr(item, 'crit', 0) > 0:      parts.append(f"🎯 Crit: {item.crit}")
+        if getattr(item, 'block', 0) > 0:     parts.append(f"🛑 Block: {item.block}%")
+        if getattr(item, 'evasion', 0) > 0:   parts.append(f"💨 Eva: {item.evasion}%")
+        if getattr(item, 'pdr', 0) > 0:       parts.append(f"🛡️ PDR: {item.pdr}%")
+        if getattr(item, 'fdr', 0) > 0:       parts.append(f"🛡️ FDR: {item.fdr}")
+        if isinstance(item, Weapon) and item.refinement_lvl > 0:
+            parts.append(f"🔧 Refine: +{item.refinement_lvl}")
+
+        passives = []
+        if getattr(item, 'passive', 'none') not in ('none', ''):
+            passives.append(item.passive.title())
+        if isinstance(item, Weapon):
+            if getattr(item, 'p_passive', 'none') not in ('none', ''):
+                passives.append(item.p_passive.title())
+            if getattr(item, 'u_passive', 'none') not in ('none', ''):
+                passives.append(item.u_passive.title())
+            if getattr(item, 'infernal_passive', 'none') not in ('none', ''):
+                passives.append(item.infernal_passive.title())
+        if isinstance(item, Armor) and getattr(item, 'celestial_passive', 'none') not in ('none', ''):
+            passives.append(f"🌌 {item.celestial_passive.title()}")
+
+        stat_line = " · ".join(parts)
+        passive_line = ("Passives: " + ", ".join(passives)) if passives else ""
+
+        if stat_line and passive_line:
+            return f"{stat_line}\n{passive_line}"
+        return stat_line or passive_line or "No stats"
+
+    @staticmethod
+    def get_gear_embed(
+        player_name: str,
+        all_items: dict,
+        active_slot: str,
+        equipped_ids: dict,
+        current_page: int,
+        total_pages: int,
+    ) -> discord.Embed:
+        """
+        Main embed for the unified GearView.
+        Shows the currently equipped item's stats and a one-line overview of all slots.
+        """
+        slot_emoji = _SLOT_EMOJIS.get(active_slot, "🎒")
+        slot_label = _SLOT_LABELS.get(active_slot, active_slot.title())
+
+        embed = discord.Embed(
+            title=f"{slot_emoji} {player_name}'s {slot_label}s",
+            color=0x2B2D31,
+        )
+
+        # --- Equipped item panel ---
+        equipped_id = equipped_ids.get(active_slot)
+        equipped_item = None
+        if equipped_id:
+            for item in all_items.get(active_slot, []):
+                if item.item_id == equipped_id:
+                    equipped_item = item
+                    break
+
+        if equipped_item:
+            stats = InventoryUI._build_equipped_stats(equipped_item)
+            embed.add_field(
+                name="Equipped",
+                value=f"**{equipped_item.name}** (Lv.{equipped_item.level})\n{stats}",
+                inline=False,
+            )
+        else:
+            embed.add_field(name="Equipped", value="*— None equipped —*", inline=False)
+
+        # --- Slot overview ---
+        lines = []
+        for slot in _SLOT_ORDER:
+            emoji  = _SLOT_EMOJIS[slot]
+            label  = _SLOT_LABELS[slot]
+            count  = len(all_items.get(slot, []))
+            eid    = equipped_ids.get(slot)
+            e_name = "None"
+            if eid:
+                for item in all_items.get(slot, []):
+                    if item.item_id == eid:
+                        e_name = f"{item.name} (Lv.{item.level})"
+                        break
+            line = f"{emoji} **{label}** — {e_name} [{count} owned]"
+            if slot == active_slot:
+                line = f"**→ {line}**"
+            lines.append(line)
+
+        embed.add_field(name="Gear Overview", value="\n".join(lines), inline=False)
+
+        if total_pages > 1:
+            embed.set_footer(text=f"Page {current_page + 1}/{total_pages} · Select an item from the menu below.")
+        else:
+            embed.set_footer(text="Select an item from the menu below.")
+
         return embed
