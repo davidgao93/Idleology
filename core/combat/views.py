@@ -107,6 +107,8 @@ class CombatView(ui.View):
         # Boss / Chain Handling
         self.combat_phases = combat_phases or []  # List of dicts
         self.current_phase_index = 0
+        self._auto_running = False
+        self._was_auto = False
 
         self.update_buttons()
 
@@ -179,13 +181,17 @@ class CombatView(ui.View):
 
     @ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
     async def auto_btn(self, interaction: Interaction, button: ui.Button):
-        # Simple Auto: Process turns in a loop until < 20% HP or Win
+        # Simple Auto: Process turns in a loop.
+        # For bosses: run all the way through without HP protection.
+        # For regular enemies: pause at < 20% HP.
         await interaction.response.defer()
 
+        is_boss = getattr(self.monster, 'is_boss', False)
+        hp_threshold = 0 if is_boss else (self.player.max_hp * 0.2)
+
+        self._auto_running = True
         message = interaction.message
-        while (
-            self.player.current_hp > (self.player.max_hp * 0.2) and self.monster.hp > 0
-        ):
+        while self.player.current_hp > hp_threshold and self.monster.hp > 0:
             p_log = engine.process_player_turn(self.player, self.monster)
             m_log = ""
             if self.monster.hp > 0:
@@ -197,9 +203,13 @@ class CombatView(ui.View):
             await message.edit(embed=embed, view=self)
             await asyncio.sleep(1.0)
 
+        was_auto = self._auto_running
+        self._auto_running = False
+
         # Loop finished
         if (
-            0 < self.player.current_hp <= (self.player.max_hp * 0.2)
+            not is_boss
+            and 0 < self.player.current_hp <= (self.player.max_hp * 0.2)
             and self.monster.hp > 0
         ):
             self.logs["Auto-Battle"] = "🛑 Paused: Low HP Protection triggered!"
@@ -207,6 +217,7 @@ class CombatView(ui.View):
             await message.edit(embed=embed, view=self)
         else:
             # Handle End State manually (handles both victory and death)
+            self._was_auto = was_auto
             await self.handle_end_state(message, interaction)
 
     @ui.button(label="Flee", style=ButtonStyle.secondary, emoji="🏃")
@@ -759,7 +770,9 @@ class CombatView(ui.View):
                     ),
                     inline=False,
                 )
+                ping_content = f"<@{self.user_id}> A Soul Core has manifested — make your choice!" if self._was_auto else None
                 await message.edit(
+                    content=ping_content,
                     embed=embed,
                     view=LuciferChoiceView(self.bot, self.user_id, self.player),
                 )
