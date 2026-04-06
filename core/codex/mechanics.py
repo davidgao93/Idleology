@@ -22,6 +22,9 @@ class CodexBoon:
     label: str
     description: str
     value: float        # Rolled stat value; 0.0 for flag boons (sig_nullify)
+    downside_type: str | None = None   # 'atk_penalty' | 'def_penalty' | 'crit_penalty' | 'hp_penalty' | 'atk_def_penalty'
+    downside_value: float = 0.0
+    downside_label: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -169,10 +172,37 @@ def select_run_chapters(count: int = 5) -> list[CodexChapter]:
     return selected
 
 
+_RARITY_BOOST_DOWNSIDES = [
+    ('atk_penalty',  lambda v: round(v * 0.5), '-{:.0f}% ATK per wave'),
+    ('def_penalty',  lambda v: round(v * 0.5), '-{:.0f}% DEF per wave'),
+    ('crit_penalty', lambda v: round(v * 0.7), '+{:.0f} Crit Target per wave'),
+]
+
+_FRAGMENT_BOOST_DOWNSIDES = [
+    ('hp_penalty',      lambda v: round(v * 0.35), '-{:.0f}% Max HP (permanent)'),
+    ('atk_def_penalty', lambda v: round(v * 0.25), '-{:.0f}% ATK & DEF (permanent)'),
+    ('crit_penalty',    lambda v: round(v * 0.5),  '+{:.0f} Crit Target (permanent)'),
+]
+
+
+def _roll_downside(boon_type: str, boon_value: float) -> tuple[str | None, float, str]:
+    """Returns (downside_type, downside_value, downside_label) for boons that carry a cost."""
+    if boon_type == 'rarity_boost':
+        dt, scale_fn, label_tmpl = random.choice(_RARITY_BOOST_DOWNSIDES)
+        dv = float(scale_fn(boon_value))
+        return dt, dv, label_tmpl.format(dv)
+    if boon_type == 'fragment_boost':
+        dt, scale_fn, label_tmpl = random.choice(_FRAGMENT_BOOST_DOWNSIDES)
+        dv = float(scale_fn(boon_value))
+        return dt, dv, label_tmpl.format(dv)
+    return None, 0.0, ""
+
+
 def roll_boons(count: int = 2) -> list[CodexBoon]:
     """
     Weighted-random sample of `count` distinct boon types.
     Returns CodexBoon instances with values already rolled.
+    Rarity and fragment boons carry an attached downside penalty.
     """
     pool = list(_BOON_DEFINITIONS)
     chosen = []
@@ -199,7 +229,13 @@ def roll_boons(count: int = 2) -> list[CodexBoon]:
             value = round(random.uniform(*value_range), 1)
             label = label_tmpl.format(v=value)
             description = desc_tmpl.format(v=value)
-        boons.append(CodexBoon(type=boon_type, label=label, description=description, value=value))
+        downside_type, downside_value, downside_label = _roll_downside(boon_type, value)
+        if downside_label:
+            description = f"{description}\n⚠️ Cost: {downside_label}"
+        boons.append(CodexBoon(
+            type=boon_type, label=label, description=description, value=value,
+            downside_type=downside_type, downside_value=downside_value, downside_label=downside_label,
+        ))
     return boons
 
 
@@ -330,6 +366,13 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
             player.combat_ward += int(player.max_hp * (v / 100))
         elif t == "rarity_boost":
             player.base_rarity = int(player.base_rarity * (1 + v / 100))
+            dt, dv = boon.downside_type, boon.downside_value
+            if dt == 'atk_penalty':
+                player.base_attack = int(player.base_attack * (1 - dv / 100))
+            elif dt == 'def_penalty':
+                player.base_defence = int(player.base_defence * (1 - dv / 100))
+            elif dt == 'crit_penalty':
+                player.base_crit_chance_target += int(dv)
         elif t == "fdr_boost":
             player.boon_fdr += int(v)
 
@@ -369,10 +412,22 @@ def apply_respite_boon(
         clean_stats['max_hp'] = new_max
         return f"Max HP increased by **{gained:,}** → **{player.max_hp:,}**"
 
-    # --- One-shot: fragment multiplier ---
+    # --- One-shot: fragment multiplier (with permanent downside applied to clean_stats) ---
     if t == "fragment_boost":
         run_state['fragment_multiplier'] = run_state.get('fragment_multiplier', 1.0) * (1 + v / 100)
-        return f"Fragment gain boosted by **+{v:.0f}%** this run"
+        dt, dv = boon.downside_type, boon.downside_value
+        if dt == 'hp_penalty':
+            new_max = int(clean_stats['max_hp'] * (1 - dv / 100))
+            clean_stats['max_hp'] = new_max
+            player.max_hp = new_max
+            player.current_hp = min(player.current_hp, new_max)
+        elif dt == 'atk_def_penalty':
+            clean_stats['attack'] = int(clean_stats['attack'] * (1 - dv / 100))
+            clean_stats['defence'] = int(clean_stats['defence'] * (1 - dv / 100))
+        elif dt == 'crit_penalty':
+            clean_stats['crit_target'] = clean_stats['crit_target'] + int(dv)
+        suffix = f" (Cost: {boon.downside_label})" if boon.downside_label else ""
+        return f"Fragment gain boosted by **+{v:.0f}%** this run{suffix}"
 
     # --- One-shot: nullify next chapter signature ---
     if t == "sig_nullify":

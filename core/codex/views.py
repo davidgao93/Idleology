@@ -71,6 +71,20 @@ class BoonButton(ui.Button):
         await self.run_view.handle_boon_choice(interaction, self.boon)
 
 
+class RerollButton(ui.Button):
+    def __init__(self, run_view: 'CodexRunView'):
+        super().__init__(
+            label="Reroll Choices",
+            style=ButtonStyle.secondary,
+            emoji="🔄",
+            row=2,
+        )
+        self.run_view = run_view
+
+    async def callback(self, interaction: Interaction):
+        await self.run_view.handle_reroll(interaction)
+
+
 # ---------------------------------------------------------------------------
 # CodexRunView — main run state machine
 # ---------------------------------------------------------------------------
@@ -98,6 +112,7 @@ class CodexRunView(ui.View):
         # Run-level state
         self.active_boons: list[CodexBoon] = []
         self.run_state: dict = {'fragment_multiplier': 1.0, 'sig_nullify_next': False}
+        self.reroll_used_chapters: set[int] = set()  # chapter indices that consumed their reroll
         self.chapters_cleared = 0
         self.waves_cleared_this_run = 0
         self.page_drops: list[int] = []   # chapter ids where a page dropped
@@ -140,15 +155,36 @@ class CodexRunView(ui.View):
             embed.set_footer(text=f"Signature: {sig_label} — {sig_desc}")
         return embed
 
-    def _respite_embed(self, boons: list[CodexBoon]) -> discord.Embed:
+    def _respite_embed(self, boons: list[CodexBoon], reroll_available: bool = False) -> discord.Embed:
         chapter = self.current_chapter
+        p = self.player
+
+        atk = p.get_total_attack()
+        def_ = p.get_total_defence()
+        eff_max_hp = p.get_effective_max_hp()
+        crit = p.get_current_crit_target()
+        rarity = p.get_total_rarity()
+        fdr = p.get_total_fdr()
+        pdr = p.get_total_pdr()
+
+        hp_line = f"❤️ **{p.current_hp:,}/{eff_max_hp:,}**"
+        if p.combat_ward > 0:
+            hp_line += f"  🔮 Ward: **{p.combat_ward:,}**"
+        stats_block = (
+            f"⚔️ ATK: **{atk:,}**  🛡️ DEF: **{def_:,}**\n"
+            f"{hp_line}\n"
+            f"🎯 Crit Target: **{crit}**  ✨ Rarity: **{rarity}%**"
+        )
+        if fdr > 0 or pdr > 0:
+            stats_block += f"\n🔒 FDR: **{fdr}**  🪨 PDR: **{pdr}%**"
+
+        reroll_hint = "\n*(🔄 Reroll available — one use per chapter)*" if reroll_available else ""
         embed = discord.Embed(
             title=f"⚗️ Respite — {chapter.name}",
             description=(
-                f"A moment of stillness between the waves.\n"
-                f"**{self.player.name}** — {self.player.current_hp}/{self.player.max_hp} ❤️"
-                + (f" ({self.player.combat_ward} 🔮)" if self.player.combat_ward > 0 else "")
-                + f"\n\nChoose one boon for the remaining waves:"
+                f"A moment of stillness between the waves.\n\n"
+                f"{stats_block}\n\n"
+                f"Choose one boon for the remaining waves:{reroll_hint}"
             ),
             color=discord.Color.teal(),
         )
@@ -271,14 +307,30 @@ class CodexRunView(ui.View):
     async def _enter_respite(self, interaction: Interaction = None, message: discord.Message = None):
         """Swap to respite state with 2 randomly weighted boons."""
         boons = roll_boons(2)
+        reroll_available = self.chapter_idx not in self.reroll_used_chapters
         self.clear_items()
         self.add_item(BoonButton(boons[0], self, row=0))
         self.add_item(BoonButton(boons[1], self, row=1))
+        if reroll_available:
+            self.add_item(RerollButton(self))
 
-        embed = self._respite_embed(boons)
+        embed = self._respite_embed(boons, reroll_available=reroll_available)
         msg_obj = message or (await interaction.original_response() if interaction else None)
         if msg_obj:
             await msg_obj.edit(embed=embed, view=self)
+
+    async def handle_reroll(self, interaction: Interaction):
+        """Re-rolls both boon choices (once per chapter)."""
+        await interaction.response.defer()
+        self.reroll_used_chapters.add(self.chapter_idx)
+        boons = roll_boons(2)
+        self.clear_items()
+        self.add_item(BoonButton(boons[0], self, row=0))
+        self.add_item(BoonButton(boons[1], self, row=1))
+        # Reroll button intentionally not re-added — one use per chapter consumed
+
+        embed = self._respite_embed(boons, reroll_available=False)
+        await (await interaction.original_response()).edit(embed=embed, view=self)
 
     async def handle_boon_choice(self, interaction: Interaction, boon: CodexBoon):
         """Processes the player's respite boon selection."""
