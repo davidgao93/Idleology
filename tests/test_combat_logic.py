@@ -3,7 +3,7 @@ import pytest
 import random
 from core.models import Player, Monster, Weapon, Armor
 from core.combat import engine
-from core.combat.calcs import calculate_hit_chance, calculate_damage_taken
+from core.combat.calcs import calculate_hit_chance, calculate_damage_taken, get_weapon_tier
 
 # ==========================================
 # 1. FIXTURES (Setup Data)

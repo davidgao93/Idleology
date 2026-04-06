@@ -1,196 +1,253 @@
 import random
 import logging
-from typing import Tuple, Dict
+from dataclasses import dataclass
+from typing import Dict
 
 from core.models import Player, Monster
 from core.combat.calcs import (
-    calculate_hit_chance, 
-    calculate_monster_hit_chance, 
-    calculate_damage_taken, 
-    check_cull, 
-    check_for_accuracy, 
-    check_for_crit_bonus, 
-    check_for_burn_bonus, 
-    check_for_spark_bonus, 
-    check_for_echo_bonus,
-    check_for_poison_bonus
+    calculate_hit_chance,
+    calculate_monster_hit_chance,
+    calculate_damage_taken,
+    get_weapon_tier,
 )
 
 logger = logging.getLogger("discord_bot")
 
+
+# ---------------------------------------------------------------------------
+# Turn Result Types
+#
+# Both turn functions return a result dataclass rather than a plain str.
+# __str__ returns the log so all existing callers that store the result as a
+# Discord embed field value continue to work without modification.
+# The numeric fields are used by DummyEngine to collect simulation stats
+# without duplicating any combat logic.
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PlayerTurnResult:
+    log: str
+    damage: int      # actual damage dealt to monster this turn (0 on full miss/block)
+    is_hit: bool     # True for both normal hits and crits
+    is_crit: bool    # True only for crits (subset of is_hit)
+
+    def __str__(self) -> str:
+        return self.log
+
+
+@dataclass
+class MonsterTurnResult:
+    log: str
+    hp_damage: int   # net HP lost by the player this turn (0 if dodged/blocked/invulnerable)
+
+    def __str__(self) -> str:
+        return self.log
+
+
+# ---------------------------------------------------------------------------
+# Monster Stat Effects
+# Applied once at combat start via apply_stat_effects().
+# ---------------------------------------------------------------------------
+
+_MONSTER_STAT_EFFECTS: dict[str, callable] = {
+    "Shield-breaker": lambda p, m: setattr(p, "combat_ward", 0),
+    "Impenetrable":   lambda p, m: setattr(p, "base_crit_chance_target", max(1, p.base_crit_chance_target - 5)),
+    "Enfeeble":       lambda p, m: setattr(p, "base_attack", int(p.base_attack * 0.9)),
+}
+
+
 def apply_stat_effects(player: Player, monster: Monster) -> None:
     """Applies monster modifiers that alter player stats at the start of combat."""
-    modifier_effects = {
-        "Shield-breaker": lambda p, m: setattr(p, "combat_ward", 0),
-        "Impenetrable": lambda p, m: setattr(p, "base_crit_chance_target", max(1, p.base_crit_chance_target - 5)), 
-        "Enfeeble": lambda p, m: setattr(p, "base_attack", int(p.base_attack * 0.9)),
-    }
-    
     for modifier in monster.modifiers:
-        if modifier in modifier_effects:
-            modifier_effects[modifier](player, monster)
+        if modifier in _MONSTER_STAT_EFFECTS:
+            _MONSTER_STAT_EFFECTS[modifier](player, monster)
+
+
+# ---------------------------------------------------------------------------
+# Combat-Start Passive Handlers
+#
+# Source slots covered:
+#   Armor       → get_armor_passive()
+#   Accessory   → get_accessory_passive()
+#   Helmet      → get_helmet_passive()
+#   Infernal    → get_weapon_infernal()
+#   Void        → get_accessory_void_passive()
+#   Weapon tier → get_weapon_passive() / get_weapon_pinnacle() / get_weapon_utmost()
+#                 (polished and sturdy families only; all others apply mid-turn)
+#
+# Each handler receives (player, monster) and returns a log string or None.
+# ---------------------------------------------------------------------------
+
+def _cs_invulnerable(player, monster):
+    if random.random() < 0.2:
+        player.is_invulnerable_this_combat = True
+        return f"The **Invulnerable** armor imbues with power!\n{player.name} receives divine protection."
+
+def _cs_omnipotent(player, monster):
+    if random.random() < 0.5:
+        total_atk = player.get_total_attack()
+        total_def = player.get_total_defence()
+        player.base_attack  += total_atk
+        player.base_defence += total_def
+        player.combat_ward  += player.max_hp
+        return (f"The **Omnipotent** armor imbues with power!\nYou feel **empowered**.\n"
+                f"⚔️ Attack boosted by **{total_atk}**\n"
+                f"🛡️ Defence boosted by **{total_def}**\n"
+                f"🔮 Gain **{player.max_hp}** ward")
+
+def _cs_absorb(player, monster):
+    if not player.equipped_accessory:
+        return
+    chance = player.equipped_accessory.passive_lvl * 0.10
+    if random.random() <= chance:
+        total = monster.attack + monster.defence
+        if total > 0:
+            amount = max(1, int(total * 0.10))
+            player.base_attack  += amount
+            player.base_defence += amount
+            return (f"The accessory's 🌀 **Absorb ({player.equipped_accessory.passive_lvl})** activates!\n"
+                    f"⚔️ Attack boosted by **{amount}**\n"
+                    f"🛡️ Defence boosted by **{amount}**")
+
+def _cs_juggernaut(player, monster):
+    lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+    if lvl <= 0:
+        return
+    bonus = int(player.get_total_defence() * (lvl * 0.04))
+    player.base_attack += bonus
+    return f"**Juggernaut ({lvl})** empowers your strikes!\n⚔️ Attack boosted by **{bonus}**."
+
+def _cs_inverted_edge(player, monster):
+    if not player.equipped_weapon:
+        return
+    wep_atk, wep_def = player.equipped_weapon.attack, player.equipped_weapon.defence
+    player.equipped_weapon.attack  = wep_def
+    player.equipped_weapon.defence = wep_atk
+    return (f"🔥 **Inverted Edge** warps the blade!\n"
+            f"Weapon attack and defence are swapped ({wep_atk} ↔ {wep_def}).")
+
+def _cs_gilded_hunger(player, monster):
+    if not player.equipped_weapon:
+        return
+    bonus = int(player.equipped_weapon.rarity * 0.5)
+    if bonus > 0:
+        player.base_attack += bonus
+        return (f"🔥 **Gilded Hunger** devours the weapon's rarity!\n"
+                f"⚔️ Attack boosted by **{bonus}**.")
+
+def _cs_diabolic_pact(player, monster):
+    cost = int(player.current_hp * 0.5)
+    player.current_hp    = max(1, player.current_hp - cost)
+    player.base_attack  *= 2
+    return (f"🔥 **Diabolic Pact** sealed in blood!\n"
+            f"💀 Lost **{cost}** HP.\n"
+            f"⚔️ Attack **doubled** for this combat!")
+
+def _cs_cursed_precision(player, monster):
+    player.base_crit_chance_target = max(1, player.base_crit_chance_target - 20)
+    player.cursed_precision_active = True
+    return (f"🔥 **Cursed Precision** clouds your strikes!\n"
+            f"🎯 Crit chance greatly increased, but crits roll for the lower result.")
+
+def _cs_entropy(player, monster):
+    if not player.equipped_weapon:
+        return
+    atk_t = int(player.equipped_weapon.attack  * 0.20)
+    def_t = int(player.equipped_weapon.defence * 0.20)
+    player.equipped_weapon.attack  = player.equipped_weapon.attack  - atk_t + def_t
+    player.equipped_weapon.defence = player.equipped_weapon.defence - def_t + atk_t
+    return (f"⬛ **Entropy** warps the weapon!\n"
+            f"20% ATK↔DEF transferred (±{atk_t} ATK / ±{def_t} DEF).")
+
+def _cs_void_echo(player, monster):
+    if not player.equipped_accessory:
+        return
+    bonus = int(player.base_attack * 0.15)
+    if bonus > 0:
+        player.equipped_accessory.attack += bonus
+        return (f"⬛ **Void Echo** resonates with your power!\n"
+                f"Accessory ATK boosted by **{bonus}**.")
+
+def _cs_unravelling(player, monster):
+    if monster.defence <= 0:
+        return
+    strip = int(monster.defence * 0.20)
+    monster.defence = max(0, monster.defence - strip)
+    return (f"⬛ **Unravelling** tears at {monster.name}'s defenses!\n"
+            f"🛡️ Monster defence reduced by **{strip}** (20%).")
+
+
+_ARMOR_START_HANDLERS: dict[str, callable] = {
+    "Invulnerable": _cs_invulnerable,
+    "Omnipotent":   _cs_omnipotent,
+}
+_ACCESSORY_START_HANDLERS: dict[str, callable] = {
+    "Absorb": _cs_absorb,
+}
+_HELMET_START_HANDLERS: dict[str, callable] = {
+    "juggernaut": _cs_juggernaut,
+}
+_INFERNAL_START_HANDLERS: dict[str, callable] = {
+    "inverted_edge":    _cs_inverted_edge,
+    "gilded_hunger":    _cs_gilded_hunger,
+    "diabolic_pact":    _cs_diabolic_pact,
+    "cursed_precision": _cs_cursed_precision,
+}
+_VOID_START_HANDLERS: dict[str, callable] = {
+    "entropy":     _cs_entropy,
+    "void_echo":   _cs_void_echo,
+    "unravelling": _cs_unravelling,
+}
+
 
 def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, str]:
     """Applies player passives that trigger at the start of combat. Returns UI log strings."""
-    logs = {}
-    
-    # 1. Reset transient states
     player.is_invulnerable_this_combat = False
+    logs: Dict[str, str] = {}
 
-    # 2. Armor Passives
-    armor_passive = player.get_armor_passive()
+    def _dispatch(registry, key, log_key):
+        handler = registry.get(key)
+        if handler and (msg := handler(player, monster)):
+            logs[log_key] = msg
 
-    if armor_passive == "Invulnerable" and random.random() < 0.2:
-        logs["Armor Passive"] = f"The **Invulnerable** armor imbues with power!\n{player.name} receives divine protection."
-        player.is_invulnerable_this_combat = True
+    _dispatch(_ARMOR_START_HANDLERS,     player.get_armor_passive(),          "Armor Passive")
+    _dispatch(_ACCESSORY_START_HANDLERS, player.get_accessory_passive(),      "Accessory Passive")
+    _dispatch(_HELMET_START_HANDLERS,    player.get_helmet_passive(),         "Helmet Passive")
+    _dispatch(_INFERNAL_START_HANDLERS,  player.get_weapon_infernal(),        "Infernal Passive")
+    _dispatch(_VOID_START_HANDLERS,      player.get_accessory_void_passive(), "Void Passive")
 
-    if armor_passive == "Omnipotent" and random.random() < 0.5:
-        total_atk = player.get_total_attack()
-        total_def = player.get_total_defence()
-        logs["Armor Passive"] = (f"The **Omnipotent** armor imbues with power!\nYou feel **empowered**.\n"
-                                 f"⚔️ Attack boosted by **{total_atk}**\n"
-                                 f"🛡️ Defence boosted by **{total_def}**\n"
-                                 f"🔮 Gain **{player.max_hp}** ward")
-        player.base_attack += total_atk
-        player.base_defence += total_def
-        player.combat_ward += player.max_hp
+    # Tiered weapon passives that resolve at combat start
+    weapon_parts = []
 
-    celestial_passive = player.get_celestial_armor_passive()
-
-    # 3. Accessory Passives
-    acc_passive = player.get_accessory_passive()
-    if acc_passive == "Absorb" and player.equipped_accessory:
-        absorb_chance = player.equipped_accessory.passive_lvl * 0.10
-        if random.random() <= absorb_chance:
-            monster_stats_total = monster.attack + monster.defence
-            if monster_stats_total > 0:
-                absorb_amount = max(1, int(monster_stats_total * 0.10))
-                player.base_attack += absorb_amount
-                player.base_defence += absorb_amount
-                logs["Accessory Passive"] = (f"The accessory's 🌀 **Absorb ({player.equipped_accessory.passive_lvl})** activates!\n"
-                                             f"⚔️ Attack boosted by **{absorb_amount}**\n"
-                                             f"🛡️ Defence boosted by **{absorb_amount}**")
-
-    
-    # 4. Weapon Passives (Polished/Sturdy/Impenetrable)
-    # Collect all active passives (Main, Pinnacle, Utmost)
-    active_passives = [player.get_weapon_passive(), player.get_weapon_pinnacle(), player.get_weapon_utmost()]
-    
-    # Polished: Reduces Monster Defence
-    polished_list = ["polished", "honed", "gleaming", "tempered", "flaring"]
-    polished_indices = [polished_list.index(p) for p in active_passives if p in polished_list]
-    
-    if polished_indices:
-        max_idx = max(polished_indices)
-        pct_reduction = (max_idx + 1) * 0.08
-        flat_reduction = int(monster.defence * pct_reduction)
-        monster.defence = max(0, monster.defence - flat_reduction)
-        logs["Weapon Passive"] = (f"The **{polished_list[max_idx]}** weapon 💫 shines!\n"
-                                  f"Reduces {monster.name}'s defence by {flat_reduction} ({int(pct_reduction*100)}%).")
-
-    # Sturdy / Impenetrable: Increases Player Defence
-    # Note: 'impenetrable' is the final tier of the 'sturdy' line
-    sturdy_list = ["sturdy", "reinforced", "thickened", "impregnable", "impenetrable"]
-    sturdy_indices = [sturdy_list.index(p) for p in active_passives if p in sturdy_list]
-
-    if sturdy_indices:
-        max_idx = max(sturdy_indices)
-        pct_bonus = (max_idx + 1) * 0.08
-        current_def = player.get_total_defence()
-        flat_bonus = int(current_def * pct_bonus)
-        player.base_defence += flat_bonus
-        
-        passive_name = sturdy_list[max_idx]
-        msg = (f"The **{passive_name}** weapon strengthens resolve!\n"
-               f"🛡️ Player defence boosted by **{flat_bonus}**!")
-        
-        if "Weapon Passive" in logs:
-            logs["Weapon Passive"] += f"\n{msg}"
-        else:
-            logs["Weapon Passive"] = msg
-
-    # Helmet Passive: Juggernaut (Def -> Atk)
-    helmet_passive = player.get_helmet_passive()
-    helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
-
-    if helmet_passive == "juggernaut" and helmet_lvl > 0:
-        defence = player.get_total_defence()
-        # 4% per level conversion
-        atk_bonus = int(defence * (helmet_lvl * 0.04))
-        player.base_attack += atk_bonus
-        logs["Helmet Passive"] = f"**Juggernaut ({helmet_lvl})** empowers your strikes!\n⚔️ Attack boosted by **{atk_bonus}**."
-
-    # Infernal Weapon Passives (combat-start effects)
-    infernal = player.get_weapon_infernal()
-
-    if infernal == "inverted_edge" and player.equipped_weapon:
-        wep_atk = player.equipped_weapon.attack
-        wep_def = player.equipped_weapon.defence
-        player.equipped_weapon.attack = wep_def
-        player.equipped_weapon.defence = wep_atk
-        logs["Infernal Passive"] = (
-            f"🔥 **Inverted Edge** warps the blade!\n"
-            f"Weapon attack and defence are swapped ({wep_atk} ↔ {wep_def})."
+    idx, name = get_weapon_tier(player, 'polished')
+    if idx >= 0:
+        pct  = (idx + 1) * 0.08
+        flat = int(monster.defence * pct)
+        monster.defence = max(0, monster.defence - flat)
+        weapon_parts.append(
+            f"The **{name}** weapon 💫 shines!\n"
+            f"Reduces {monster.name}'s defence by {flat} ({int(pct * 100)}%)."
         )
 
-    elif infernal == "gilded_hunger" and player.equipped_weapon:
-        rarity_bonus = int(player.equipped_weapon.rarity * 0.5)
-        if rarity_bonus > 0:
-            player.base_attack += rarity_bonus
-            logs["Infernal Passive"] = (
-                f"🔥 **Gilded Hunger** devours the weapon's rarity!\n"
-                f"⚔️ Attack boosted by **{rarity_bonus}**."
-            )
-
-    elif infernal == "diabolic_pact":
-        hp_cost = int(player.current_hp * 0.5)
-        player.current_hp = max(1, player.current_hp - hp_cost)
-        player.base_attack *= 2
-        logs["Infernal Passive"] = (
-            f"🔥 **Diabolic Pact** sealed in blood!\n"
-            f"💀 Lost **{hp_cost}** HP.\n"
-            f"⚔️ Attack **doubled** for this combat!"
+    idx, name = get_weapon_tier(player, 'sturdy')
+    if idx >= 0:
+        pct  = (idx + 1) * 0.08
+        flat = int(player.get_total_defence() * pct)
+        player.base_defence += flat
+        weapon_parts.append(
+            f"The **{name}** weapon strengthens resolve!\n"
+            f"🛡️ Player defence boosted by **{flat}**!"
         )
 
-    elif infernal == "cursed_precision":
-        player.base_crit_chance_target = max(1, player.base_crit_chance_target - 20)
-        player.cursed_precision_active = True
-        logs["Infernal Passive"] = (
-            f"🔥 **Cursed Precision** clouds your strikes!\n"
-            f"🎯 Crit chance greatly increased, but crits roll for the lower result."
-        )
-
-    # Void Accessory Passives (combat-start effects)
-    void_passive = player.get_accessory_void_passive()
-
-    if void_passive == "entropy" and player.equipped_weapon:
-        atk_transfer = int(player.equipped_weapon.attack * 0.20)
-        def_transfer = int(player.equipped_weapon.defence * 0.20)
-        player.equipped_weapon.attack = player.equipped_weapon.attack - atk_transfer + def_transfer
-        player.equipped_weapon.defence = player.equipped_weapon.defence - def_transfer + atk_transfer
-        logs["Void Passive"] = (
-            f"⬛ **Entropy** warps the weapon!\n"
-            f"20% ATK↔DEF transferred (±{atk_transfer} ATK / ±{def_transfer} DEF)."
-        )
-
-    elif void_passive == "void_echo" and player.equipped_accessory:
-        echo_bonus = int(player.base_attack * 0.15)
-        if echo_bonus > 0:
-            player.equipped_accessory.attack += echo_bonus
-            logs["Void Passive"] = (
-                f"⬛ **Void Echo** resonates with your power!\n"
-                f"Accessory ATK boosted by **{echo_bonus}**."
-            )
-
-    elif void_passive == "unravelling" and monster.defence > 0:
-        strip = int(monster.defence * 0.20)
-        monster.defence = max(0, monster.defence - strip)
-        logs["Void Passive"] = (
-            f"⬛ **Unravelling** tears at {monster.name}'s defenses!\n"
-            f"🛡️ Monster defence reduced by **{strip}** (20%)."
-        )
+    if weapon_parts:
+        logs["Weapon Passive"] = "\n".join(weapon_parts)
 
     return logs
+
+
+# ---------------------------------------------------------------------------
+# Healing
+# ---------------------------------------------------------------------------
 
 def process_heal(player: Player) -> str:
     """Handles the logic of a player using a potion."""
@@ -200,17 +257,16 @@ def process_heal(player: Player) -> str:
     if player.current_hp >= player.max_hp:
         return f"{player.name} is already full HP!"
 
-    heal_percentage = 0.30 # Base 30%
+    heal_pct = 0.30
     if player.equipped_boot and player.equipped_boot.passive == "cleric":
-        heal_percentage += (player.equipped_boot.passive_lvl * 0.10)
-        
-    heal_amount = int((player.max_hp * heal_percentage) + random.randint(1, 6)) 
+        heal_pct += (player.equipped_boot.passive_lvl * 0.10)
+
+    heal_amount = int((player.max_hp * heal_pct) + random.randint(1, 6))
 
     if player.apothecary_workers > 0:
         flat_bonus = int(player.apothecary_workers * 0.2)
         heal_amount += flat_bonus
 
-    # Apply Divine Logic from Helmet
     potential_hp = player.current_hp + heal_amount
     overheal = 0
     if potential_hp > player.max_hp:
@@ -219,635 +275,710 @@ def process_heal(player: Player) -> str:
         player.current_hp = player.max_hp
     else:
         player.current_hp = potential_hp
-    
+
     player.potions -= 1
-    
+
     msg = f"{player.name} uses a potion and heals for **{heal_amount - overheal}** HP!"
     if player.apothecary_workers > 0:
         msg += f" (Apothecary: +{int(player.apothecary_workers * 0.2)})"
-    
+
     if player.get_helmet_passive() == "divine" and overheal > 0:
         player.combat_ward += overheal
         msg += f"\n**Divine** converts **{overheal}** overheal into 🔮 Ward!"
-        
+
     msg += f"\n**{player.potions}** potions left."
     return msg
 
-def process_player_turn(player: Player, monster: Monster) -> str:
-    """Executes the player's turn, applying damage to the monster and returning the combat log."""
-    attack_message = ""
-    passive_message = ""
-    attack_multiplier = 1.0
+
+# ---------------------------------------------------------------------------
+# Player Turn — Phase Helpers
+#
+# Each helper appends its own messages to `log` and returns a value needed
+# by the next phase. process_player_turn() calls them in sequence.
+#
+# Source slots active during the player turn:
+#   Glove       → get_glove_passive()                (multiplier, hit floors, ward gen, pending)
+#   Accessory   → get_accessory_passive()            (multiplier, hit roll)
+#   Armor       → get_armor_passive()                (multiplier)
+#   Helmet      → get_helmet_passive()               (multiplier, crit dmg, leech)
+#   Infernal    → get_weapon_infernal()              (crit stack, miss dmg, crit triggers)
+#   Void        → get_accessory_void_passive()       (crit triggers, miss dmg)
+#   Weapon tier → get_weapon_tier(player, family)    (accuracy, crit, burn, spark, echo, poison, cull)
+#   Emblem      → get_emblem_bonus(key)              (multiplier, accuracy, crit dmg)
+#   Codex tomes → get_tome_bonus(key)               (bloodthirst)
+#   Celestial   → get_celestial_armor_passive()      (ghostreaver ward regen)
+# ---------------------------------------------------------------------------
+
+def _pt_attack_multiplier(player: Player, monster: Monster, log: list[str]) -> float:
+    """Phase 1 — compute the pre-hit attack multiplier from emblems and passive sources."""
+    mult = 1.0
+
+    if not monster.is_boss:
+        tiers = player.get_emblem_bonus("combat_dmg")
+        if tiers > 0:
+            mult *= (1 + tiers * 0.02)
+    if monster.is_boss:
+        tiers = player.get_emblem_bonus("boss_dmg")
+        if tiers > 0:
+            mult *= (1 + tiers * 0.05)
+    if player.active_task_species == monster.species:
+        tiers = player.get_emblem_bonus("slayer_dmg")
+        if tiers > 0:
+            mult *= (1 + tiers * 0.05)
 
     glove_passive = player.get_glove_passive()
-    glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
-    acc_passive = player.get_accessory_passive()
-    acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
-    armor_passive = player.get_armor_passive()
-    helmet_passive = player.get_helmet_passive()
-    helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
-
-    # --- Pre-Attack Multipliers ---
-    # --- Emblem Multipliers ---
-    # Base Damage (e.g. 2% per tier)
-    if not monster.is_boss:
-        combat_dmg_tiers = player.get_emblem_bonus("combat_dmg")
-        if combat_dmg_tiers > 0:
-            attack_multiplier *= (1 + (combat_dmg_tiers * 0.02))
-
-    # Boss Damage (e.g. 5% per tier)
-    if monster.is_boss:
-        boss_dmg_tiers = player.get_emblem_bonus("boss_dmg")
-        if boss_dmg_tiers > 0:
-            attack_multiplier *= (1 + (boss_dmg_tiers * 0.05))
-            
-    # Slayer Task Damage (e.g. 5% per tier)
-    if player.active_task_species == monster.species:
-        slayer_dmg_tiers = player.get_emblem_bonus("slayer_dmg")
-        if slayer_dmg_tiers > 0:
-            attack_multiplier *= (1 + (slayer_dmg_tiers * 0.05))
-
-    acc_value_bonus = 0
-    # Accuracy (e.g. +2 flat hit roll per tier)
-    emblem_acc = player.get_emblem_bonus("accuracy")
-    if emblem_acc > 0:
-        acc_value_bonus += (emblem_acc * 2)
-
+    glove_lvl     = player.equipped_glove.passive_lvl if player.equipped_glove else 0
     if glove_passive == "instability" and glove_lvl > 0:
         if random.random() < 0.5:
-            attack_multiplier *= 0.5
+            mult *= 0.5
         else:
-            attack_multiplier *= 1.50 + (glove_lvl * 0.10) 
-        passive_message += f"**Instability ({glove_lvl})** gives you {int(attack_multiplier * 100)}% damage.\n"
+            mult *= 1.50 + (glove_lvl * 0.10)
+        log.append(f"**Instability ({glove_lvl})** gives you {int(mult * 100)}% damage.")
 
+    acc_passive = player.get_accessory_passive()
+    acc_lvl     = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
     if acc_passive == "Obliterate" and random.random() <= (acc_lvl * 0.02):
-        passive_message += f"**Obliterate ({acc_lvl})** activates, doubling 💥 damage dealt!\n"
-        attack_multiplier *= 2.0
+        log.append(f"**Obliterate ({acc_lvl})** activates, doubling 💥 damage dealt!")
+        mult *= 2.0
 
-    if armor_passive == "Mystical Might" and random.random() < 0.2:
-        attack_multiplier *= 10.0
-        passive_message += "The **Mystical Might** armor imbues with power, massively increasing damage!\n"
+    if player.get_armor_passive() == "Mystical Might" and random.random() < 0.2:
+        mult *= 10.0
+        log.append("The **Mystical Might** armor imbues with power, massively increasing damage!")
 
-    # Frenzy (Low HP Scaling)
-    # Scale: 0.5% (L1) -> 2.5% (L5) per 1% HP missing
+    helmet_passive = player.get_helmet_passive()
+    helmet_lvl     = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     if helmet_passive == "frenzy" and helmet_lvl > 0:
-        missing_hp_pct = (1 - (player.current_hp / player.max_hp)) * 100
-        scaling_factor = 0.005 * helmet_lvl 
-        multiplier_bonus = (missing_hp_pct * scaling_factor)
-        
-        attack_multiplier *= (1 + multiplier_bonus)
-        passive_message += f"**Frenzy ({helmet_lvl})** rage increases damage by {int(multiplier_bonus*100)}%!\n"
-    
-    # --- Hit Chance Calculation ---
+        missing_pct = (1 - (player.current_hp / player.max_hp)) * 100
+        bonus       = missing_pct * (0.005 * helmet_lvl)
+        mult *= (1 + bonus)
+        log.append(f"**Frenzy ({helmet_lvl})** rage increases damage by {int(bonus * 100)}%!")
+
+    return mult
+
+
+def _pt_resolve_hit(player: Player, monster: Monster, attack_multiplier: float,
+                    log: list[str]) -> tuple[bool, float]:
+    """Phase 2 — hit chance roll. Returns (is_hit, attack_multiplier).
+    Multiplier may be zeroed by Shields-up, which propagates to miss-phase damage."""
     hit_chance = calculate_hit_chance(player, monster)
     if "Dodgy" in monster.modifiers:
         hit_chance = max(0.05, hit_chance - 0.10)
-        passive_message += f"The monster's **Dodgy** nature makes it harder to hit!\n"
+        log.append(f"The monster's **Dodgy** nature makes it harder to hit!")
 
+    acc_bonus = player.get_emblem_bonus("accuracy") * 2
+
+    idx, name = get_weapon_tier(player, 'accuracy')
+    if idx >= 0:
+        wep_acc = (idx + 1) * 4
+        acc_bonus += wep_acc
+        log.append(f"The **{name}** weapon boosts 🎯 accuracy roll by **{wep_acc}**!")
+
+    acc_passive = player.get_accessory_passive()
+    acc_lvl     = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
     attack_roll = random.randint(0, 100)
-    wep_acc_passive_bonus, passive_message = check_for_accuracy(player, passive_message)
-    acc_value_bonus += wep_acc_passive_bonus
 
     if acc_passive == "Lucky Strikes" and random.random() <= (acc_lvl * 0.10):
         attack_roll = max(attack_roll, random.randint(0, 100))
-        passive_message += f"**Lucky Strikes ({acc_lvl})** activates! Hit chance is now 🍀 lucky!\n"
+        log.append(f"**Lucky Strikes ({acc_lvl})** activates! Hit chance is now 🍀 lucky!")
 
     if "Suffocator" in monster.modifiers and random.random() < 0.2:
-        passive_message += f"The {monster.name}'s **Suffocator** aura stifles your attack! Hit chance is now 💀 unlucky!\n"
+        log.append(f"The {monster.name}'s **Suffocator** aura stifles your attack! Hit chance is now 💀 unlucky!")
         attack_roll = min(attack_roll, random.randint(0, 100))
-        
+
     if "Shields-up" in monster.modifiers and random.random() < 0.1:
         attack_multiplier = 0
-        passive_message += f"{monster.name} projects a magical barrier, nullifying the hit!\n"
+        log.append(f"{monster.name} projects a magical barrier, nullifying the hit!")
 
-    final_miss_threshold = 100 - int(hit_chance * 100)
-    is_hit = False
-    if attack_multiplier > 0: 
-        effective_attack_roll = attack_roll + acc_value_bonus
-        if effective_attack_roll >= final_miss_threshold:
-            is_hit = True
+    miss_threshold = 100 - int(hit_chance * 100)
+    is_hit = (attack_multiplier > 0) and ((attack_roll + acc_bonus) >= miss_threshold)
+    return is_hit, attack_multiplier
 
-    # --- Crit Check ---
-    is_crit = False
-    weapon_crit_bonus_chance = check_for_crit_bonus(player)
-    crit_target = player.get_current_crit_target() - weapon_crit_bonus_chance
 
-    # Voracious: each round without a crit lowers crit target by 5 (stacking)
+def _pt_resolve_crit(player: Player, monster: Monster, is_hit: bool, log: list[str]) -> bool:
+    """Phase 3 — crit roll against (crit_target - weapon_crit_bonus - voracious_stacks)."""
+    if not is_hit:
+        return False
+
+    idx, _ = get_weapon_tier(player, 'crit')
+    crit_bonus = (idx + 1) * 5 if idx >= 0 else 0
+    crit_target = player.get_current_crit_target() - crit_bonus
+
     infernal = player.get_weapon_infernal()
     if infernal == "voracious" and player.voracious_stacks > 0:
         crit_target = max(1, crit_target - (player.voracious_stacks * 5))
 
-    crit_roll = random.randint(0, 100)
-    if is_hit and crit_roll > crit_target and "Impenetrable" not in monster.modifiers:
-        is_crit = True
+    return random.randint(0, 100) > crit_target and "Impenetrable" not in monster.modifiers
 
-    # --- Damage Calculation ---
-    actual_hit_pre_ward_gen = 0
-    echo_hit = False
-    echo_damage = 0
+
+def _pt_crit_damage(player: Player, monster: Monster, attack_multiplier: float,
+                    log: list[str]) -> int:
+    """Phase 4a — crit damage. Returns pre-reduction damage."""
+    max_atk = player.get_total_attack()
+
+    crit_floor = 0.5
+    glove_passive = player.get_glove_passive()
+    glove_lvl     = player.equipped_glove.passive_lvl if player.equipped_glove else 0
+    if glove_passive == "deftness" and glove_lvl > 0:
+        crit_floor = min(0.75, crit_floor + (glove_lvl * 0.05))
+        log.append(f"**Deftness ({glove_lvl})** hones your crits!")
+
+    crit_min = max(1, int(max_atk * crit_floor) + 1)
+    crit_max = max(crit_min, max_atk)
+    base_dmg = int(random.randint(crit_min, crit_max) * 2.0)
+
+    crit_dmg_tiers = player.get_emblem_bonus("crit_dmg")
+    if crit_dmg_tiers > 0:
+        base_dmg = int(base_dmg * (1 + crit_dmg_tiers * 0.05))
+
+    helmet_passive = player.get_helmet_passive()
+    helmet_lvl     = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+    if helmet_passive == "insight" and helmet_lvl > 0:
+        extra = helmet_lvl * 0.1
+        base_dmg = int(base_dmg * (1 + extra))
+        log.append(f"**Insight ({helmet_lvl})** exposes a weak point! (Crit Dmg +{int(extra * 100)}%)")
+
+    if "Smothering" in monster.modifiers:
+        base_dmg = int(base_dmg * 0.80)
+        log.append(f"The monster's **Smothering** aura dampens your critical hit!")
+
+    if player.cursed_precision_active:
+        alt = int(random.randint(crit_min, crit_max) * 2.0)
+        if alt < base_dmg:
+            base_dmg = alt
+        log.append(f"**Cursed Precision** — the weaker roll applies!")
+
+    damage = int(base_dmg * attack_multiplier)
+
+    infernal = player.get_weapon_infernal()
+    if infernal == "last_rites" and monster.hp > 0:
+        bonus = int(monster.hp * 0.10)
+        damage += bonus
+        log.append(f"**Last Rites** seals {monster.name}'s fate! (+{bonus})")
+
+    if infernal == "voracious":
+        if player.voracious_stacks > 0:
+            log.append(f"**Voracious** resets after a crit! ({player.voracious_stacks} stacks lost)")
+        player.voracious_stacks = 0
+
+    void_passive = player.get_accessory_void_passive()
+    if void_passive == "void_gaze" and player.gaze_stacks < 30 and monster.attack > 0:
+        player.gaze_stacks += 1
+        reduction = max(1, int(monster.attack * 0.01))
+        monster.attack = max(0, monster.attack - reduction)
+        log.append(f"⬛ **Void Gaze** ({player.gaze_stacks}/30) — {monster.name}'s ATK -{reduction}!")
+
+    if void_passive == "fracture" and not getattr(monster, 'is_uber', False) and random.random() < 0.05:
+        damage = monster.hp
+        log.append("💀 **Fracture** tears open a void rift — **instant kill!**")
+
+    idx, _ = get_weapon_tier(player, 'crit')
+    if idx >= 0:
+        log.append("The weapon glimmers with power!")
+    log.append(f"Critical Hit! Damage: 🗡️ **{damage}**")
+    return damage
+
+
+def _pt_hit_damage(player: Player, monster: Monster, attack_multiplier: float,
+                   log: list[str]) -> int:
+    """Phase 4b — normal hit damage. Returns pre-reduction damage."""
+    base_max = player.get_total_attack()
+    base_min = 1
+
+    glove_passive = player.get_glove_passive()
+    glove_lvl     = player.equipped_glove.passive_lvl if player.equipped_glove else 0
+    if glove_passive == "adroit" and glove_lvl > 0:
+        base_min = max(base_min, int(base_max * (glove_lvl * 0.02)))
+        log.append(f"**Adroit ({glove_lvl})** sharpens your technique!")
+
+    idx, name = get_weapon_tier(player, 'burn')
+    if idx >= 0:
+        bonus    = int(player.get_total_attack() * ((idx + 1) * 0.08))
+        base_max += bonus
+        log.append(f"The **{name}** weapon 🔥 burns bright!\nAttack damage potential boosted by **{bonus}**.")
+
+    idx, name = get_weapon_tier(player, 'spark')
+    if idx >= 0:
+        base_min = max(base_min, int(base_max * ((idx + 1) * 0.08)))
+        log.append(f"The **{name}** weapon surges with ⚡ lightning, ensuring solid impact!")
+
+    rolled = random.randint(min(base_min, base_max), base_max)
+    damage = int(rolled * attack_multiplier)
+
+    echo_idx, _ = get_weapon_tier(player, 'echo')
+    echo_damage  = 0
+    if echo_idx >= 0:
+        echo_damage = int(damage * (echo_idx + 1) * 0.10)
+        damage += echo_damage
+
+    infernal = player.get_weapon_infernal()
+    if infernal == "voracious":
+        player.voracious_stacks += 1
+        log.append(f"**Voracious** charges! ({player.voracious_stacks} stack{'s' if player.voracious_stacks != 1 else ''})")
+
+    log.append(f"Hit! Damage: 💥 **{damage - echo_damage}**")
+    if echo_damage:
+        log.append(f"The hit is 🎶 echoed!\nEcho damage: 💥 **{echo_damage}**")
+    return damage
+
+
+def _pt_miss_damage(player: Player, monster: Monster, attack_multiplier: float,
+                    log: list[str]) -> int:
+    """Phase 4c — miss, any on-miss damage sources. Returns total miss damage."""
+    damage     = 0
+    miss_parts = []
+
+    infernal = player.get_weapon_infernal()
+    if infernal == "perdition" and player.equipped_weapon:
+        perdition_dmg = int(player.equipped_weapon.attack * 0.75)
+        if perdition_dmg > 0:
+            damage += perdition_dmg
+            miss_parts.append(f"**Perdition** tears through for 🔥 **{perdition_dmg}**")
+
+    idx, _ = get_weapon_tier(player, 'poison')
+    if idx >= 0:
+        poison_pct = (idx + 1) * 0.08
+        poison_dmg = int(random.randint(1, int(player.get_total_attack() * poison_pct)) * attack_multiplier)
+        if poison_dmg > 0:
+            damage += poison_dmg
+            miss_parts.append(f"poison 🐍 deals **{poison_dmg}**")
+
+    void_passive = player.get_accessory_void_passive()
+    if void_passive == "oblivion":
+        glove_p = player.get_glove_passive()
+        glove_l = player.equipped_glove.passive_lvl if player.equipped_glove else 0
+        base_max = player.get_total_attack()
+        base_min = max(1, int(base_max * (glove_l * 0.02))) if glove_p == "adroit" and glove_l > 0 else 1
+        oblivion_dmg = max(1, int(base_min * 0.5))
+        damage += oblivion_dmg
+        miss_parts.append(f"**Oblivion** phases through for ⬛ **{oblivion_dmg}**")
+
+    if infernal == "voracious":
+        player.voracious_stacks += 1
+
+    if miss_parts:
+        log.append("Miss! But " + ", ".join(miss_parts) + " damage.")
+    else:
+        log.append("Miss!")
+    return damage
+
+
+def _pt_apply_reductions(monster: Monster, damage: int, log: list[str]) -> int:
+    """Phase 5 — apply monster damage-reduction modifiers."""
+    if "Radiant Protection" in monster.modifiers and damage > 0:
+        reduction = int(damage * 0.60)
+        damage    = max(0, damage - reduction)
+        log.append(f"✨ **Radiant Protection** mitigates {reduction} damage!")
+
+    if "Titanium" in monster.modifiers and damage > 0:
+        reduction = int(damage * 0.10)
+        damage    = max(0, damage - reduction)
+        log.append(f"{monster.name}'s **Titanium** plating reduces damage by {reduction}.")
+
+    return damage
+
+
+def _pt_generate_ward(player: Player, raw_damage: int, is_crit: bool, log: list[str]) -> None:
+    """Phase 6 — glove ward generation on hit (uses pre-reduction damage, matching original)."""
+    glove_passive = player.get_glove_passive()
+    glove_lvl     = player.equipped_glove.passive_lvl if player.equipped_glove else 0
+
+    if not is_crit and glove_passive == "ward-touched" and glove_lvl > 0 and raw_damage > 0:
+        ward = int(raw_damage * (glove_lvl * 0.01))
+        if ward > 0:
+            player.combat_ward += ward
+            log.append(f"**Ward-Touched ({glove_lvl})** generates 🔮 **{ward}** ward!")
+
+    if is_crit and glove_passive == "ward-fused" and glove_lvl > 0 and raw_damage > 0:
+        ward = int(raw_damage * (glove_lvl * 0.02))
+        if ward > 0:
+            player.combat_ward += ward
+            log.append(f"**Ward-Fused ({glove_lvl})** generates 🔮 **{ward}** ward!")
+
+
+def _pt_apply_to_monster(player: Player, monster: Monster, damage: int, log: list[str]) -> int:
+    """Phase 7 — apply damage to monster HP, respecting Time Lord. Returns damage actually dealt."""
+    if damage >= monster.hp:
+        if "Time Lord" in monster.modifiers and random.random() < 0.80 and monster.hp > 1:
+            damage = monster.hp - 1
+            log.append(f"A fatal blow was dealt, but **{monster.name}** cheated death via **Time Lord**!")
+        else:
+            damage = monster.hp
+    monster.hp -= damage
+    return damage
+
+
+def _pt_post_hit_effects(player: Player, monster: Monster, damage: int, is_crit: bool,
+                          log: list[str]) -> None:
+    """Phase 8 — effects that fire after damage lands: leech, bloodthirst, ward regen."""
+    if damage <= 0:
+        return
+
+    helmet_passive = player.get_helmet_passive()
+    helmet_lvl     = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+    if helmet_passive == "leeching" and helmet_lvl > 0:
+        heal = int(damage * (0.02 * helmet_lvl))
+        if heal > 0:
+            player.current_hp = min(player.max_hp, player.current_hp + heal)
+            log.append(f"**Leeching** drains life, healing you for **{heal}** HP.")
 
     if is_crit:
-        max_hit_calc = player.get_total_attack()
-        crit_damage_floor_multiplier = 0.5
-        if glove_passive == "deftness" and glove_lvl > 0:
-            crit_damage_floor_multiplier = min(0.75, crit_damage_floor_multiplier + (glove_lvl * 0.05))
-            passive_message += f"**Deftness ({glove_lvl})** hones your crits!\n"
-            
-        
-        crit_min = max(1, int(max_hit_calc * crit_damage_floor_multiplier) + 1)
-        # Ensure max >= min
-        crit_max = max(crit_min, max_hit_calc)
-        
-        crit_base_damage = int(random.randint(crit_min, crit_max) * 2.0)
-        # Emblem crit bonus
-        crit_dmg_tiers = player.get_emblem_bonus("crit_dmg")
-        if crit_dmg_tiers > 0:
-            crit_base_damage = crit_base_damage * (1 + (crit_dmg_tiers * 0.05))
-
-        # Apply Insight
-        if helmet_passive == "insight" and helmet_lvl > 0:
-            # Add 0.1x multiplier per level
-            extra_mult = helmet_lvl * 0.1
-            crit_base_damage = int(crit_base_damage * (1 + extra_mult))
-            passive_message += f"**Insight ({helmet_lvl})** exposes a weak point! (Crit Dmg +{int(extra_mult*100)}%)\n"
-
-        if "Smothering" in monster.modifiers:
-            crit_base_damage = int(crit_base_damage * 0.80)
-            passive_message += f"The monster's **Smothering** aura dampens your critical hit!\n"
-
-        # Cursed Precision: roll twice, take lower
-        if player.cursed_precision_active:
-            alt_base = int(random.randint(crit_min, crit_max) * 2.0)
-            if alt_base < crit_base_damage:
-                crit_base_damage = alt_base
-            passive_message += f"**Cursed Precision** — the weaker roll applies!\n"
-
-        actual_hit_pre_ward_gen = int(crit_base_damage * attack_multiplier)
-
-        # Last Rites: bonus 10% of enemy current HP on crit
-        if infernal == "last_rites" and monster.hp > 0:
-            last_rites_bonus = int(monster.hp * 0.10)
-            actual_hit_pre_ward_gen += last_rites_bonus
-            passive_message += f"**Last Rites** seals {monster.name}'s fate! (+{last_rites_bonus})\n"
-
-        # Voracious: reset stacks on crit
-        if infernal == "voracious":
-            if player.voracious_stacks > 0:
-                passive_message += f"**Voracious** resets after a crit! ({player.voracious_stacks} stacks lost)\n"
-            player.voracious_stacks = 0
-
-        # Void Gaze: each crit reduces monster ATK by 1% (max 30 stacks)
-        void_passive_crit = player.get_accessory_void_passive()
-        if void_passive_crit == "void_gaze" and player.gaze_stacks < 30 and monster.attack > 0:
-            player.gaze_stacks += 1
-            atk_reduction = max(1, int(monster.attack * 0.01))
-            monster.attack = max(0, monster.attack - atk_reduction)
-            passive_message += f"⬛ **Void Gaze** ({player.gaze_stacks}/30) — {monster.name}'s ATK -{atk_reduction}!\n"
-
-        # Fracture: 5% chance on crit to instantly kill (no uber bosses)
-        if void_passive_crit == "fracture" and not getattr(monster, 'is_uber', False) and random.random() < 0.05:
-            actual_hit_pre_ward_gen = monster.hp
-            passive_message += "💀 **Fracture** tears open a void rift — **instant kill!**\n"
-
-        glimmer = "The weapon glimmers with power!\n" if weapon_crit_bonus_chance > 0 else ""
-        attack_message = passive_message + glimmer + f"Critical Hit! Damage: 🗡️ **{actual_hit_pre_ward_gen}**"
-
-    elif is_hit:
-        base_damage_max = player.get_total_attack()
-        base_damage_min = 1
-
-        if glove_passive == "adroit" and glove_lvl > 0:
-            base_damage_min = max(base_damage_min, int(base_damage_max * (glove_lvl * 0.02)))
-            passive_message += f"**Adroit ({glove_lvl})** sharpens your technique!\n"
-
-        base_damage_max, attack_message = check_for_burn_bonus(player, base_damage_max, attack_message)
-        base_damage_min, attack_message = check_for_spark_bonus(player, base_damage_min, base_damage_max, attack_message)
-
-        rolled_damage = random.randint(min(base_damage_min, base_damage_max), base_damage_max)
-        actual_hit_pre_ward_gen = int(rolled_damage * attack_multiplier)
-
-        actual_hit_pre_ward_gen, echo_hit, echo_damage = check_for_echo_bonus(player, actual_hit_pre_ward_gen)
-
-        # Voracious: increment stacks on non-crit hit
-        if infernal == "voracious":
-            player.voracious_stacks += 1
-            passive_message += f"**Voracious** charges! ({player.voracious_stacks} stack{'s' if player.voracious_stacks != 1 else ''})\n"
-
-        attack_message = passive_message + attack_message + f"Hit! Damage: 💥 **{actual_hit_pre_ward_gen - echo_damage}**"
-        if echo_hit:
-            attack_message += f"\nThe hit is 🎶 echoed!\nEcho damage: 💥 **{echo_damage}**"
-
-    else:  # Miss
-        poison_damage_on_miss = check_for_poison_bonus(player, attack_multiplier)
-        void_passive_miss = player.get_accessory_void_passive()
-        miss_dmg_parts = []
-
-        # Perdition: misses deal 75% weapon attack
-        if infernal == "perdition" and player.equipped_weapon:
-            perdition_dmg = int(player.equipped_weapon.attack * 0.75)
-            if perdition_dmg > 0:
-                actual_hit_pre_ward_gen += perdition_dmg
-                miss_dmg_parts.append(f"**Perdition** tears through for 🔥 **{perdition_dmg}**")
-
-        # Poison on miss
-        if poison_damage_on_miss > 0:
-            actual_hit_pre_ward_gen += poison_damage_on_miss
-            miss_dmg_parts.append(f"poison 🐍 deals **{poison_damage_on_miss}**")
-
-        # Oblivion: converts miss into 50% of min damage, stacks with all miss sources
-        if void_passive_miss == "oblivion":
-            base_max = player.get_total_attack()
-            glove_p = player.get_glove_passive()
-            glove_l = player.equipped_glove.passive_lvl if player.equipped_glove else 0
-            base_min = max(1, int(base_max * (glove_l * 0.02))) if glove_p == "adroit" and glove_l > 0 else 1
-            oblivion_dmg = max(1, int(base_min * 0.5))
-            actual_hit_pre_ward_gen += oblivion_dmg
-            miss_dmg_parts.append(f"**Oblivion** phases through for ⬛ **{oblivion_dmg}**")
-
-        if miss_dmg_parts:
-            attack_message = passive_message + "Miss! But " + ", ".join(miss_dmg_parts) + " damage."
-        else:
-            attack_message = passive_message + "Miss!"
-
-        # Voracious: increment stacks on miss too
-        if infernal == "voracious":
-            player.voracious_stacks += 1
-
-    # --- Apply Damage Reductions ---
-    actual_hit = actual_hit_pre_ward_gen
-
-    if "Radiant Protection" in monster.modifiers and actual_hit > 0:
-        reduction = int(actual_hit * 0.60)
-        actual_hit = max(0, actual_hit - reduction)
-        attack_message += f"\n✨ **Radiant Protection** mitigates {reduction} damage!"
-
-    if "Titanium" in monster.modifiers and actual_hit > 0:
-        reduction = int(actual_hit * 0.10)
-        actual_hit = max(0, actual_hit - reduction) 
-        attack_message += f"\n{monster.name}'s **Titanium** plating reduces damage by {reduction}."
-
-    # --- Glove Ward Passives ---
-    if not is_crit and glove_passive == "ward-touched" and glove_lvl > 0 and actual_hit_pre_ward_gen > 0:
-        ward_gained = int(actual_hit_pre_ward_gen * (glove_lvl * 0.01))
-        if ward_gained > 0:
-            player.combat_ward += ward_gained
-            attack_message += f"\n**Ward-Touched ({glove_lvl})** generates 🔮 **{ward_gained}** ward!"
-    
-    if is_crit and glove_passive == "ward-fused" and glove_lvl > 0 and actual_hit_pre_ward_gen > 0:
-        ward_gained = int(actual_hit_pre_ward_gen * (glove_lvl * 0.02))
-        if ward_gained > 0:
-            player.combat_ward += ward_gained
-            attack_message += f"\n**Ward-Fused ({glove_lvl})** generates 🔮 **{ward_gained}** ward!"
-
-    # --- Apply Final HP Deduction ---
-    if actual_hit >= monster.hp: 
-        if "Time Lord" in monster.modifiers and random.random() < 0.80 and monster.hp > 1: 
-            actual_hit = monster.hp - 1 
-            attack_message += f"\nA fatal blow was dealt, but **{monster.name}** cheated death via **Time Lord**!"
-        else: 
-            actual_hit = monster.hp 
-    
-    monster.hp -= actual_hit
-
-    # Leeching (Helmet passive)
-    if actual_hit > 0 and helmet_passive == "leeching" and helmet_lvl > 0:
-        leech_pct = 0.02 * helmet_lvl # 2% to 10%
-        heal_amt = int(actual_hit * leech_pct)
-        if heal_amt > 0:
-            player.current_hp = min(player.max_hp, player.current_hp + heal_amt)
-            attack_message += f"\n**Leeching** drains life, healing you for **{heal_amt}** HP."
-
-    # Codex Tome: Bloodthirst (heal % of damage dealt on a critical hit)
-    if is_crit and actual_hit > 0:
         bloodthirst_pct = player.get_tome_bonus('bloodthirst')
         if bloodthirst_pct > 0:
-            heal_amt = max(1, int(actual_hit * (bloodthirst_pct / 100)))
-            player.current_hp = min(player.max_hp, player.current_hp + heal_amt)
-            attack_message += f"\n**Bloodthirst** siphons **{heal_amt}** HP from the critical strike."
+            heal = max(1, int(damage * (bloodthirst_pct / 100)))
+            player.current_hp = min(player.max_hp, player.current_hp + heal)
+            log.append(f"**Bloodthirst** siphons **{heal}** HP from the critical strike.")
 
-    # Ward-regen (Celestial armor passive)
     if player.get_celestial_armor_passive() == 'celestial_ghostreaver':
-        regen_amount = random.randint(50, 200)
-        if regen_amount > 0:
-            player.combat_ward += regen_amount
-            attack_message += f"\n✨ **Celestial Ghostreaver** restores **{regen_amount}** 🔮 Ward!"
-
-    # --- Pending XP/Gold Tracking ---
-    if actual_hit > 0:
-        if glove_passive == "equilibrium" and glove_lvl > 0:
-            player.equilibrium_bonus_xp_pending += int(actual_hit * (glove_lvl * 0.05))
-        if glove_passive == "plundering" and glove_lvl > 0:
-            player.plundering_bonus_gold_pending += int(actual_hit * (glove_lvl * 0.10))
-
-    # --- Culling Check ---
-    if monster.hp > 0 and check_cull(player, monster):
-        cull_damage = monster.hp - 1
-        if cull_damage > 0:
-            monster.hp = 1
-            attack_message += f"\n{player.name}'s weapon culls the weakened {monster.name}, dealing an additional 🪓 __**{cull_damage}**__ damage!"
-
-    return attack_message
+        regen = random.randint(50, 200)
+        player.combat_ward += regen
+        log.append(f"✨ **Celestial Ghostreaver** restores **{regen}** 🔮 Ward!")
 
 
-def process_monster_turn(player: Player, monster: Monster) -> str:
+def _pt_track_pending(player: Player, damage: int, log: list[str]) -> None:
+    """Phase 9 — accumulate pending XP/gold from glove passives (no log output)."""
+    if damage <= 0:
+        return
+    glove_passive = player.get_glove_passive()
+    glove_lvl     = player.equipped_glove.passive_lvl if player.equipped_glove else 0
+    if glove_passive == "equilibrium" and glove_lvl > 0:
+        player.equilibrium_bonus_xp_pending   += int(damage * (glove_lvl * 0.05))
+    if glove_passive == "plundering" and glove_lvl > 0:
+        player.plundering_bonus_gold_pending  += int(damage * (glove_lvl * 0.10))
+
+
+def _pt_check_cull(player: Player, monster: Monster, log: list[str]) -> None:
+    """Phase 10 — culling strike: if monster HP is below threshold, reduce to 1."""
+    if monster.hp <= 0:
+        return
+    idx, _ = get_weapon_tier(player, 'cull')
+    if idx >= 0:
+        threshold = (idx + 1) * 0.08
+        if monster.hp <= (monster.max_hp * threshold):
+            cull_dmg = monster.hp - 1
+            if cull_dmg > 0:
+                monster.hp = 1
+                log.append(
+                    f"{player.name}'s weapon culls the weakened {monster.name}, "
+                    f"dealing an additional 🪓 __**{cull_dmg}**__ damage!"
+                )
+
+
+def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
+    """Executes the player's turn, applying damage to the monster and returning the combat log."""
+    log: list[str] = []
+
+    attack_multiplier          = _pt_attack_multiplier(player, monster, log)
+    is_hit, attack_multiplier  = _pt_resolve_hit(player, monster, attack_multiplier, log)
+    is_crit                    = _pt_resolve_crit(player, monster, is_hit, log)
+
+    if is_crit:
+        raw_damage = _pt_crit_damage(player, monster, attack_multiplier, log)
+    elif is_hit:
+        raw_damage = _pt_hit_damage(player, monster, attack_multiplier, log)
+    else:
+        raw_damage = _pt_miss_damage(player, monster, attack_multiplier, log)
+
+    actual_damage = _pt_apply_reductions(monster, raw_damage, log)
+    _pt_generate_ward(player, raw_damage, is_crit, log)          # ward uses pre-reduction value
+    final_hit     = _pt_apply_to_monster(player, monster, actual_damage, log)
+    _pt_post_hit_effects(player, monster, final_hit, is_crit, log)
+    _pt_track_pending(player, final_hit, log)
+    _pt_check_cull(player, monster, log)
+
+    return PlayerTurnResult(
+        log="\n".join(log),
+        damage=final_hit,
+        is_hit=is_hit,
+        is_crit=is_crit,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Monster Turn
+#
+# Source slots active during the monster turn:
+#   Celestial   → get_celestial_armor_passive()   (fortress PDR, sanctity re-roll, vow, ghostreaver)
+#   Armor       → equipped_armor.block / .evasion  (block/dodge chance)
+#   Helmet      → get_helmet_passive()             (ghosted, thorns, volatile)
+#   Void        → get_accessory_void_passive()     (nullfield, eternal_hunger)
+#   Codex tomes → get_tome_bonus('tenacity')
+#   Emblem      → get_emblem_bonus('slayer_def')
+# ---------------------------------------------------------------------------
+
+def _roll_monster_damage(player: Player, monster: Monster,
+                         effective_pdr: int, effective_fdr: int) -> tuple[int, int, int]:
+    """Rolls a single monster damage hit including modifiers, PDR, FDR, and minions.
+    Returns (total_damage, base_damage, minion_damage)."""
+    dmg = calculate_damage_taken(player, monster)
+
+    if "Celestial Watcher"       in monster.modifiers: dmg = int(dmg * 1.2)
+    if "Hellborn"                in monster.modifiers: dmg += 2
+    if "Hell's Fury"             in monster.modifiers: dmg += 5
+    if "Mirror Image"            in monster.modifiers and random.random() < 0.2: dmg *= 2
+    if "Unlimited Blade Works"   in monster.modifiers: dmg *= 2
+
+    pdr = max(0, effective_pdr - (20 if "Penetrator" in monster.modifiers else 0))
+    dmg = max(0, int(dmg * (1 - pdr / 100)))
+
+    fdr = max(0, effective_fdr - (5 if "Clobberer" in monster.modifiers else 0))
+    dmg = max(0, dmg - fdr)
+
+    minions = 0
+    if "Summoner"       in monster.modifiers: minions += int(dmg * (1 / 3))
+    if "Infernal Legion" in monster.modifiers: minions += dmg
+    minions = max(0, minions - fdr)
+
+    return dmg + minions, dmg, minions
+
+
+def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     """Executes the monster's turn, applies damage to player, and returns combat log."""
     if player.is_invulnerable_this_combat:
-        return f"The **Invulnerable** armor protects {player.name}, absorbing all damage from {monster.name}!"
+        return MonsterTurnResult(
+            log=f"The **Invulnerable** armor protects {player.name}, absorbing all damage from {monster.name}!",
+            hp_damage=0,
+        )
 
-    # Track combat round for Twin Strike
     monster.combat_round += 1
+    prev_hp = player.current_hp
+    log: list[str] = []
+
+    celestial  = player.get_celestial_armor_passive()
     helmet_passive = player.get_helmet_passive()
-    helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
-    
-    # Store previous ward to check for break later
-    previous_ward = player.combat_ward
+    helmet_lvl     = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+    previous_ward  = player.combat_ward
 
-    # --- Hit Chance Calculation ---
-    base_hit_chance = calculate_monster_hit_chance(player, monster)
-    effective_hit_chance = max(0.05, base_hit_chance)
-    celestial_passive = player.get_celestial_armor_passive()
-    monster_attack_roll = random.random()
+    # --- Hit chance ---
+    hit_chance = calculate_monster_hit_chance(player, monster)
+    if "Prescient"         in monster.modifiers: hit_chance = min(0.95, hit_chance + 0.10)
+    if "All-seeing"        in monster.modifiers: hit_chance = min(0.95, hit_chance * 1.10)
+    if "Celestial Watcher" in monster.modifiers: hit_chance = 1.0
 
-    if "Prescient" in monster.modifiers:
-        effective_hit_chance = min(0.95, effective_hit_chance + 0.10)
+    monster_roll = random.random()
     if "Lucifer-touched" in monster.modifiers and random.random() < 0.5:
-        monster_attack_roll = min(monster_attack_roll, random.random())
-    if "All-seeing" in monster.modifiers:
-        effective_hit_chance = min(0.95, effective_hit_chance * 1.10)
-    if "Celestial Watcher" in monster.modifiers:
-        effective_hit_chance = 1.0
+        monster_roll = min(monster_roll, random.random())
 
-    monster_message = ""
-
-    # Void Drain: siphons player ATK/DEF every monster turn (regardless of hit)
+    # --- Void Aura drain (regardless of hit) ---
     if "Void Aura" in monster.modifiers:
-        drain_atk = max(1, int(player.base_attack * 0.05))
+        drain_atk = max(1, int(player.base_attack  * 0.05))
         drain_def = max(0, int(player.base_defence * 0.05))
-        player.base_attack = max(1, player.base_attack - drain_atk)
+        player.base_attack  = max(1, player.base_attack  - drain_atk)
         player.base_defence = max(0, player.base_defence - drain_def)
-        monster_message += f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!\n"
+        log.append(f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!")
 
-    if monster_attack_roll <= effective_hit_chance: # Monster Hits
-        
-        # 1. PDR / FDR Setup & Celestial Fortress
+    if monster_roll <= hit_chance:
+        # --- PDR / FDR setup ---
         effective_pdr = player.get_total_pdr()
-        if celestial_passive == 'celestial_fortress':
-            missing_hp_pct = (1 - (player.current_hp / player.max_hp)) * 100
-            effective_pdr += int(missing_hp_pct / 5.0) # +1% PDR per 5% missing HP
-
+        if celestial == 'celestial_fortress':
+            missing_pct   = (1 - (player.current_hp / player.max_hp)) * 100
+            effective_pdr += int(missing_pct / 5.0)
         effective_fdr = player.get_total_fdr()
 
-        # 2. Damage Roll Helper
-        def roll_monster_dmg():
-            dmg = calculate_damage_taken(player, monster)
-            if "Celestial Watcher" in monster.modifiers: dmg = int(dmg * 1.2)
-            if "Hellborn" in monster.modifiers: dmg += 2
-            if "Hell's Fury" in monster.modifiers: dmg += 5
-            if "Mirror Image" in monster.modifiers and random.random() < 0.2: dmg *= 2
-            if "Unlimited Blade Works" in monster.modifiers: dmg *= 2
-
-            # Mitigation
-            pdr = effective_pdr
-            if "Penetrator" in monster.modifiers: pdr = max(0, pdr - 20)
-            dmg = max(0, int(dmg * (1 - (pdr / 100))))
-            
-            fdr = effective_fdr
-            if "Clobberer" in monster.modifiers: fdr = max(0, fdr - 5)
-            dmg = max(0, dmg - fdr)
-
-            # Minions
-            minions = 0
-            if "Summoner" in monster.modifiers: minions += int(dmg * (1/3))
-            if "Infernal Legion" in monster.modifiers: minions += dmg
-            minions = max(0, minions - fdr)
-
-            return dmg + minions, dmg, minions
-
-        # 3. Base Damage & Unlucky Enemy Logic
-        total_damage, dmg_base, minion_dmg = roll_monster_dmg()
-        
-        if celestial_passive == 'celestial_sanctity':
-            alt_total, alt_base, alt_minion = roll_monster_dmg()
+        # --- Base damage roll (Celestial Sanctity takes the lower of two) ---
+        total_damage, dmg_base, minion_dmg = _roll_monster_damage(player, monster, effective_pdr, effective_fdr)
+        if celestial == 'celestial_sanctity':
+            alt_total, alt_base, alt_minion = _roll_monster_damage(player, monster, effective_pdr, effective_fdr)
             if alt_total < total_damage:
                 total_damage, dmg_base, minion_dmg = alt_total, alt_base, alt_minion
 
-        # 4. Multistrike & Executioner
+        # --- Multistrike & Executioner ---
         multistrike_damage = 0
-        if "Multistrike" in monster.modifiers and random.random() <= effective_hit_chance:
+        if "Multistrike" in monster.modifiers and random.random() <= hit_chance:
             multistrike_damage = max(0, int(calculate_damage_taken(player, monster) * 0.5) - effective_fdr)
             total_damage += multistrike_damage
 
         is_executed = False
         if "Executioner" in monster.modifiers and random.random() < 0.01:
             total_damage = max(total_damage, int(player.current_hp * 0.90))
-            is_executed = True
+            is_executed  = True
 
-        # 5. Block & Dodge (With Celestial Overrides)
+        # --- Dodge & Block ---
+        is_dodged  = False
         is_blocked = False
-        is_dodged = False
-        
-        if "Unblockable" not in monster.modifiers:
-            equipped_armor = player.equipped_armor
-            block_chance = equipped_armor.block / 100 if equipped_armor else 0
-            if celestial_passive == 'celestial_glancing_blows':
-                block_chance *= 2.0
-            if random.random() <= block_chance:
-                is_blocked = True
-                
+        equipped_armor = player.equipped_armor
+
         if "Unavoidable" not in monster.modifiers:
-            equipped_armor = player.equipped_armor
             dodge_chance = equipped_armor.evasion / 100 if equipped_armor else 0
-            if celestial_passive == 'celestial_wind_dancer':
+            if celestial == 'celestial_wind_dancer':
                 dodge_chance *= 3.0
             if random.random() <= dodge_chance:
                 is_dodged = True
 
-        # 6. Resolve Mitigation States
+        if not is_dodged and "Unblockable" not in monster.modifiers:
+            block_chance = equipped_armor.block / 100 if equipped_armor else 0
+            if celestial == 'celestial_glancing_blows':
+                block_chance *= 2.0
+            if random.random() <= block_chance:
+                is_blocked = True
+
+        # --- Resolve mitigation states ---
         if is_dodged:
-            monster_message = f"{monster.name} {monster.flavor}, but you 🏃 nimbly step aside!\n"
             total_damage = 0
+            log.append(f"{monster.name} {monster.flavor}, but you 🏃 nimbly step aside!")
             if helmet_passive == "ghosted" and helmet_lvl > 0:
                 ward_gain = helmet_lvl * 10
                 player.combat_ward += ward_gain
-                monster_message += f"**Ghosted ({helmet_lvl})** manifests **{ward_gain}** 🔮 Ward from the movement!\n"
-                
+                log.append(f"**Ghosted ({helmet_lvl})** manifests **{ward_gain}** 🔮 Ward from the movement!")
+
         elif is_blocked:
-            if celestial_passive == 'celestial_glancing_blows':
+            if celestial == 'celestial_glancing_blows':
                 total_damage = int(total_damage * 0.5)
-                monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ partially blocks it (Bleedthrough: {total_damage})!\n"
+                log.append(f"{monster.name} {monster.flavor}, but your armor 🛡️ partially blocks it (Bleedthrough: {total_damage})!")
             else:
-                monster_message = f"{monster.name} {monster.flavor}, but your armor 🛡️ blocks all damage!\n"
                 total_damage = 0
-                
+                log.append(f"{monster.name} {monster.flavor}, but your armor 🛡️ blocks all damage!")
+
             if helmet_passive == "thorns" and helmet_lvl > 0:
-                reflect_dmg = int(dmg_base * (helmet_lvl * 1.0))
-                monster.hp -= reflect_dmg
-                monster_message += f"**Thorns ({helmet_lvl})** reflects **{reflect_dmg}** damage back!\n"
+                reflect = int(dmg_base * helmet_lvl)
+                monster.hp -= reflect
+                log.append(f"**Thorns ({helmet_lvl})** reflects **{reflect}** damage back!")
 
-        # 7. Apply Final Damage to Ward/HP
+        # --- Apply damage to ward / HP ---
         if total_damage > 0 and not is_dodged:
-            damage_dealt_this_turn = 0
+            damage_dealt = 0
 
-            # Codex Tome: Tenacity (chance to halve incoming damage per hit)
-            tenacity_pct = player.get_tome_bonus('tenacity')
-            if tenacity_pct > 0 and random.random() < (tenacity_pct / 100):
+            if player.get_tome_bonus('tenacity') > 0 and random.random() < (player.get_tome_bonus('tenacity') / 100):
                 total_damage = max(1, total_damage // 2)
-                monster_message += f"**Tenacity** braces the impact, halving the damage!\n"
+                log.append(f"**Tenacity** braces the impact, halving the damage!")
 
-            # Nullfield: 15% chance to absorb the hit entirely into the void
-            void_passive_def = player.get_accessory_void_passive()
-            if void_passive_def == "nullfield" and random.random() < 0.15:
-                monster_message += f"⬛ **Nullfield** absorbs the strike into the void!\n"
+            void_passive = player.get_accessory_void_passive()
+            if void_passive == "nullfield" and random.random() < 0.15:
+                log.append(f"⬛ **Nullfield** absorbs the strike into the void!")
                 total_damage = 0
 
-            if player.combat_ward > 0:
+            if player.combat_ward > 0 and total_damage > 0:
                 if total_damage <= player.combat_ward:
-                    damage_dealt_this_turn = total_damage
+                    damage_dealt       = total_damage
                     player.combat_ward -= total_damage
                     if not is_blocked:
-                        monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {total_damage} damage!\n"
+                        log.append(f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {total_damage} damage!")
                     total_damage = 0
                 else:
-                    damage_dealt_this_turn = player.combat_ward
+                    damage_dealt       = player.combat_ward
                     if not is_blocked:
-                        monster_message += f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {player.combat_ward} damage, but shatters!\n"
-                    total_damage -= player.combat_ward
+                        log.append(f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {player.combat_ward} damage, but shatters!")
+                    total_damage      -= player.combat_ward
                     player.combat_ward = 0
 
-            # Slayer Resilience
-            if player.active_task_species == monster.species:
-                slayer_def_tiers = player.get_emblem_bonus("slayer_def")
-                if slayer_def_tiers > 0:
-                    mitigation = min(0.50, slayer_def_tiers * 0.02)
-                    total_damage = int(total_damage * (1 - mitigation))
-
-            # HP Application & Celestial Vow
             if total_damage > 0:
-                if celestial_passive == 'celestial_vow' and (player.current_hp - total_damage <= 0) and not getattr(player, 'celestial_vow_used', False):
-                    player.current_hp = 1
-                    ward_gain = int(player.max_hp * 0.5)
-                    player.combat_ward += ward_gain
-                    player.celestial_vow_used = True
-                    monster_message += f"\n✨ **Celestial Vow** activates! You survive the fatal blow and gain {ward_gain} 🔮 Ward!"
-                    damage_dealt_this_turn += (player.current_hp - 1)
-                else:
-                    damage_dealt_this_turn += total_damage
-                    player.current_hp -= total_damage
-                    if not is_blocked or celestial_passive != 'celestial_glancing_blows':
-                        monster_message += f"{monster.name} {monster.flavor}. You take 💔 **{total_damage}** damage!\n"
+                if player.active_task_species == monster.species:
+                    tiers = player.get_emblem_bonus("slayer_def")
+                    if tiers > 0:
+                        total_damage = int(total_damage * (1 - min(0.50, tiers * 0.02)))
 
-            # Eternal Hunger: stacks per hit taken; at 10 stacks consume all and devour enemy HP
-            if void_passive_def == "eternal_hunger" and damage_dealt_this_turn > 0:
+                if (celestial == 'celestial_vow'
+                        and (player.current_hp - total_damage <= 0)
+                        and not getattr(player, 'celestial_vow_used', False)):
+                    player.current_hp       = 1
+                    ward_gain               = int(player.max_hp * 0.5)
+                    player.combat_ward     += ward_gain
+                    player.celestial_vow_used = True
+                    damage_dealt           += (player.current_hp - 1)
+                    log.append(f"\n✨ **Celestial Vow** activates! You survive the fatal blow and gain {ward_gain} 🔮 Ward!")
+                else:
+                    damage_dealt      += total_damage
+                    player.current_hp -= total_damage
+                    if not is_blocked or celestial != 'celestial_glancing_blows':
+                        log.append(f"{monster.name} {monster.flavor}. You take 💔 **{total_damage}** damage!")
+
+            if void_passive == "eternal_hunger" and damage_dealt > 0:
                 player.hunger_stacks += 1
                 if player.hunger_stacks >= 10:
-                    hunger_dmg = int(monster.max_hp * 0.10)
-                    monster.hp = max(0, monster.hp - hunger_dmg)
-                    player.current_hp = player.max_hp
+                    hunger_dmg         = int(monster.max_hp * 0.10)
+                    monster.hp         = max(0, monster.hp - hunger_dmg)
+                    player.current_hp  = player.max_hp
                     player.hunger_stacks = 0
-                    monster_message += (
+                    log.append(
                         f"⬛ **Eternal Hunger** consumes the pain!\n"
                         f"💀 Devoured **{hunger_dmg}** HP ({monster.name}'s max × 10%)!\n"
-                        f"❤️ Wounds consumed — HP restored to full!\n"
+                        f"❤️ Wounds consumed — HP restored to full!"
                     )
                 else:
-                    monster_message += f"⬛ **Eternal Hunger** feeds ({player.hunger_stacks}/10 stacks).\n"
+                    log.append(f"⬛ **Eternal Hunger** feeds ({player.hunger_stacks}/10 stacks).")
 
-            # Volatile Explosion
             if helmet_passive == "volatile" and helmet_lvl > 0:
                 if previous_ward > 0 and player.combat_ward == 0:
-                    boom_dmg = int(player.max_hp * helmet_lvl)
-                    monster.hp -= boom_dmg
-                    monster_message += f"\n💥 **Volatile** Shield shatters, dealing **{boom_dmg}** damage to {monster.name}!\n"
-                    
-            # Vampiric Mod
-            if "Vampiric" in monster.modifiers and damage_dealt_this_turn > 0:
-                heal_amount = damage_dealt_this_turn * 10
-                monster.hp = min(monster.max_hp, monster.hp + heal_amount)
-                monster_message += f"The monster's **Vampiric** essence siphons life, healing it for **{heal_amount}** HP!\n"
+                    boom = int(player.max_hp * helmet_lvl)
+                    monster.hp -= boom
+                    log.append(f"\n💥 **Volatile** Shield shatters, dealing **{boom}** damage to {monster.name}!")
 
-            if is_executed: monster_message += f"The {monster.name}'s **Executioner** ability cleaves through you!\n"
-            if minion_dmg > 0: monster_message += f"Their minions strike for an additional {minion_dmg} damage!\n"
-            if multistrike_damage > 0: monster_message += f"{monster.name} strikes again for {multistrike_damage} damage!\n"
+            if "Vampiric" in monster.modifiers and damage_dealt > 0:
+                heal = damage_dealt * 10
+                monster.hp = min(monster.max_hp, monster.hp + heal)
+                log.append(f"The monster's **Vampiric** essence siphons life, healing it for **{heal}** HP!")
 
-            # Twin Strike: every even round, a second coordinated blow lands at 50% damage
+            if is_executed:    log.append(f"The {monster.name}'s **Executioner** ability cleaves through you!")
+            if minion_dmg > 0: log.append(f"Their minions strike for an additional {minion_dmg} damage!")
+            if multistrike_damage > 0: log.append(f"{monster.name} strikes again for {multistrike_damage} damage!")
+
             if "Twin Strike" in monster.modifiers and monster.combat_round % 2 == 0:
-                twin_raw, _, _ = roll_monster_dmg()
-                twin_dmg = max(1, int(twin_raw * 0.5))
+                twin_raw, _, _ = _roll_monster_damage(player, monster, effective_pdr, effective_fdr)
+                twin_dmg       = max(1, int(twin_raw * 0.5))
                 player.current_hp = max(0, player.current_hp - twin_dmg)
-                monster_message += f"⚡ **Twin Strike!** The bound sovereigns strike as one for **{twin_dmg}** damage!\n"
+                log.append(f"⚡ **Twin Strike!** The bound sovereigns strike as one for **{twin_dmg}** damage!")
 
-            if not monster_message: monster_message = f"{monster.name} {monster.flavor}, but you mitigate all its damage."
+        if not log:
+            log.append(f"{monster.name} {monster.flavor}, but you mitigate all its damage.")
 
-    else: # Miss
+    else:  # Miss
         if "Venomous" in monster.modifiers:
             player.current_hp = max(1, player.current_hp - 1)
-            monster_message = f"{monster.name} misses, but their **Venomous** aura deals **1** 🐍 damage!"
+            log.append(f"{monster.name} misses, but their **Venomous** aura deals **1** 🐍 damage!")
         else:
-            monster_message = f"{monster.name} misses!"
+            log.append(f"{monster.name} misses!")
 
     player.current_hp = max(0, player.current_hp)
-    return monster_message
+    return MonsterTurnResult(
+        log="\n".join(log),
+        hp_damage=max(0, prev_hp - player.current_hp),
+    )
 
+
+# ---------------------------------------------------------------------------
+# Debug Logging
+# ---------------------------------------------------------------------------
 
 def log_combat_debug(player: Player, monster: Monster, logger: logging.Logger) -> None:
     """Calculates and logs the final stats and theoretical maximum damage of both entities."""
-    
-    # --- PLAYER MAX CALCULATION ---
-    p_atk = player.get_total_attack()
-    p_def = player.get_total_defence()
-    p_crit_chance = 100 - player.get_current_crit_target()
-    
-    # Base Crit multiplier logic
+    p_atk  = player.get_total_attack()
+    p_def  = player.get_total_defence()
+    p_crit = 100 - player.get_current_crit_target()
+
     crit_mult = 2.0
-    helmet_passive = player.get_helmet_passive()
-    if helmet_passive == "insight":
+    if player.get_helmet_passive() == "insight":
         lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
         crit_mult += (lvl * 0.1)
     if "Smothering" in monster.modifiers:
         crit_mult *= 0.8
-        
     p_max_dmg = int(p_atk * crit_mult)
-
-    # Overwhelm/Instability/Mystical Might passives can make this jump wildly,
-    # but we just want the standard mechanical max hit for debugging bounds.
     if player.get_glove_passive() == "instability":
         lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
         p_max_dmg = int(p_max_dmg * (1.50 + (lvl * 0.10)))
 
-    # --- MONSTER MAX CALCULATION ---
     m_atk = monster.attack
     m_def = monster.defence
-    
-    diff = max(0, m_atk - p_def)
-    
-    if m_atk <= 3: base_m_dmg = 5
-    elif m_atk <= 20: base_m_dmg = 6
-    else: base_m_dmg = 9 + int(monster.level // 10)
-    
-    # 3 is the max randint roll per 10 diff points
-    max_bonus_dmg = int(diff / 10) * 3 
-    base_m_dmg += max_bonus_dmg
-    
-    if "Celestial Watcher" in monster.modifiers: base_m_dmg = int(base_m_dmg * 1.2)
-    if "Hellborn" in monster.modifiers: base_m_dmg += 2
-    if "Hell's Fury" in monster.modifiers: base_m_dmg += 5
-    
-    # Mitigation Check
+    diff  = max(0, m_atk - p_def)
+
+    if m_atk <= 3:   base_m = 5
+    elif m_atk <= 20: base_m = 6
+    else:             base_m = 9 + int(monster.level // 10)
+    base_m += int(diff / 10) * 3
+
+    if "Celestial Watcher"     in monster.modifiers: base_m = int(base_m * 1.2)
+    if "Hellborn"              in monster.modifiers: base_m += 2
+    if "Hell's Fury"           in monster.modifiers: base_m += 5
+
     pdr = player.get_total_pdr()
     if "Penetrator" in monster.modifiers: pdr = max(0, pdr - 20)
-    
     fdr = player.get_total_fdr()
-    if "Clobberer" in monster.modifiers: fdr = max(0, fdr - 5)
+    if "Clobberer"  in monster.modifiers: fdr = max(0, fdr - 5)
 
-    m_max_dmg = int(base_m_dmg * (1 - (pdr / 100))) - fdr
-    m_max_dmg = max(0, m_max_dmg)
-    
+    m_max_dmg = max(0, int(base_m * (1 - pdr / 100)) - fdr)
     if "Mirror Image" in monster.modifiers or "Unlimited Blade Works" in monster.modifiers:
         m_max_dmg *= 2
-        
-    # --- LOG OUTPUT ---
+
     logger.info(f"--- COMBAT DEBUG: {player.name} VS {monster.name} ---")
-    logger.info(f"PLAYER : HP {player.current_hp}/{player.max_hp} | Atk {p_atk} | Def {p_def} | Ward {player.combat_ward} | Crit {p_crit_chance}% | PDR {player.get_total_pdr()}% | FDR {player.get_total_fdr()}")
+    logger.info(f"PLAYER : HP {player.current_hp}/{player.max_hp} | Atk {p_atk} | Def {p_def} | Ward {player.combat_ward} | Crit {p_crit}% | PDR {player.get_total_pdr()}% | FDR {player.get_total_fdr()}")
     logger.info(f"MONSTER: HP {monster.hp}/{monster.max_hp} | Atk {m_atk} | Def {m_def} | Mods: {monster.modifiers}")
     logger.info(f"THEORETICAL MAX HIT -> Player: ~{p_max_dmg} | Monster: ~{m_max_dmg}")
     logger.info(f"--------------------------------------------------")

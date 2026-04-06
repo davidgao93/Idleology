@@ -166,9 +166,9 @@ class TestIdleology(unittest.IsolatedAsyncioTestCase):
         log_def = engine.process_monster_turn(player, monster)
 
         # 4. Assertions
-        self.assertIsInstance(log_atk, str)
-        self.assertIsInstance(log_def, str)
-        self.assertTrue(monster.hp < 50 or "Miss" in log_atk, "Monster should take damage or miss")
+        self.assertIsInstance(str(log_atk), str)
+        self.assertIsInstance(str(log_def), str)
+        self.assertTrue(monster.hp < 50 or "Miss" in str(log_atk), "Monster should take damage or miss")
         self.assertTrue(player.current_hp <= player.max_hp)
 
     async def test_rewards_calculation(self):
@@ -561,7 +561,7 @@ class TestWeaponsAdvanced(unittest.IsolatedAsyncioTestCase):
                 log = engine.process_player_turn(player, monster)
         
         # 'Burning' logic adds text to the attack log
-        self.assertIn("burns bright", log)
+        self.assertIn("burns bright", str(log))
 
 if __name__ == "__main__":
     unittest.main()
