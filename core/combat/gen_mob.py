@@ -33,12 +33,9 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
     elif player.level <= 90:
         difficulty_multiplier = random.randint(3, 8)
     else:
-        difficulty_multiplier = random.randint(4, 10)
+        difficulty_multiplier = random.randint(10, 30)
 
-    monster.level = random.randint(
-        player.level + player.ascension,
-        player.level + player.ascension + difficulty_multiplier,
-    )
+    monster.level = player.level + player.ascension + difficulty_multiplier
 
     # print('Calculating monster stats')
     monster = calculate_monster_stats(monster)
@@ -111,7 +108,7 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
 async def generate_boss(player, monster, phase, phase_index):
     """Generate a boss with a phase based on the user's level."""
     print(f"Generating a boss based on {phase}")
-    difficulty_multiplier = int(player.level / 15)
+    difficulty_multiplier = int(player.level / 5)
 
     monster.level = (
         player.level + player.ascension + difficulty_multiplier + phase_index

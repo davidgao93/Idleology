@@ -193,7 +193,7 @@ class CombatView(ui.View):
         # For regular enemies: pause at < 20% HP.
         await interaction.response.defer()
 
-        is_boss = getattr(self.monster, 'is_boss', False)
+        is_boss = getattr(self.monster, "is_boss", False)
         hp_threshold = 0 if is_boss else (self.player.max_hp * 0.2)
 
         self._auto_running = True
@@ -209,7 +209,9 @@ class CombatView(ui.View):
 
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
-                embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
+                embed = combat_ui.create_combat_embed(
+                    self.player, self.monster, self.logs
+                )
                 await message.edit(embed=embed, view=self)
                 await asyncio.sleep(1.0)
 
@@ -223,7 +225,9 @@ class CombatView(ui.View):
                 and self.monster.hp > 0
             ):
                 self.logs["Auto-Battle"] = "🛑 Paused: Low HP Protection triggered!"
-                embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
+                embed = combat_ui.create_combat_embed(
+                    self.player, self.monster, self.logs
+                )
                 await message.edit(embed=embed, view=self)
                 break
 
@@ -340,7 +344,9 @@ class CombatView(ui.View):
             xp_loss = int(self.player.exp * 0.10)
             self.player.exp = max(0, self.player.exp - xp_loss)
             self.player.current_hp = 1
-            embed = combat_ui.create_defeat_embed(self.player, self.monster, xp_loss, killing_blow=self.killing_blow)
+            embed = combat_ui.create_defeat_embed(
+                self.player, self.monster, xp_loss, killing_blow=self.killing_blow
+            )
             await message.edit(embed=embed, view=None)
             self.bot.state_manager.clear_active(self.user_id)
             await self.bot.database.users.update_from_player_object(self.player)
@@ -669,7 +675,7 @@ class CombatView(ui.View):
                 if s_profile["active_task_species"] == self.monster.species:
                     # 1. Base Slayer XP + Drops
                     await self.bot.database.slayer.add_rewards(
-                        self.user_id, server_id, xp=100, points=0
+                        self.user_id, server_id, xp=200, points=0
                     )
 
                     ess, heart = core.slayer.mechanics.SlayerMechanics.roll_drops(
@@ -693,7 +699,7 @@ class CombatView(ui.View):
                         )
 
                     # Log additions
-                    reward_data["msgs"].append("🩸 **Slayer:** +100 Slayer XP")
+                    reward_data["msgs"].append("🩸 **Slayer:** +200 Slayer XP")
                     if ess > 0:
                         reward_data["msgs"].append("🩸 Found a **Violent Essence**!")
                     if heart > 0:
@@ -789,7 +795,11 @@ class CombatView(ui.View):
                     ),
                     inline=False,
                 )
-                ping_content = f"<@{self.user_id}> A Soul Core has manifested — make your choice!" if self._was_auto else None
+                ping_content = (
+                    f"<@{self.user_id}> A Soul Core has manifested — make your choice!"
+                    if self._was_auto
+                    else None
+                )
                 await message.edit(
                     content=ping_content,
                     embed=embed,
@@ -1128,7 +1138,6 @@ class CombatView(ui.View):
         await self.bot.database.users.update_from_player_object(self.player)
         self.stop()
 
-
     async def _handle_uber_gemini_end_state(self, message, interaction: Interaction):
         """Specialized logic for the Uber Gemini Twins encounter."""
         max_hp = self.monster.max_hp
@@ -1137,10 +1146,14 @@ class CombatView(ui.View):
 
         # 1. Curio Rewards (scale with damage dealt)
         curios = 1
-        if dmg_frac >= 1.0:   curios = 5
-        elif dmg_frac >= 0.75: curios = 4
-        elif dmg_frac >= 0.50: curios = 3
-        elif dmg_frac >= 0.25: curios = 2
+        if dmg_frac >= 1.0:
+            curios = 5
+        elif dmg_frac >= 0.75:
+            curios = 4
+        elif dmg_frac >= 0.50:
+            curios = 3
+        elif dmg_frac >= 0.25:
+            curios = 2
 
         await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
 
@@ -1151,7 +1164,12 @@ class CombatView(ui.View):
             self.player.current_hp = 1
 
             embed = combat_ui.create_defeat_embed(
-                self.player, self.monster, xp_loss, curios_gained=curios, dmg_frac=dmg_frac, killing_blow=self.killing_blow
+                self.player,
+                self.monster,
+                xp_loss,
+                curios_gained=curios,
+                dmg_frac=dmg_frac,
+                killing_blow=self.killing_blow,
             )
             await message.edit(embed=embed, view=None)
 
@@ -1205,7 +1223,9 @@ class CombatView(ui.View):
 
             await self.bot.database.users.update_from_player_object(self.player)
 
-            embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+            embed = combat_ui.create_victory_embed(
+                self.player, self.monster, reward_data
+            )
             embed.title = "♊ DEICIDE: The Bound Sovereigns Shattered!"
             embed.set_image(url="https://i.imgur.com/PqViP3D.png")
             await message.edit(embed=embed, view=None)
