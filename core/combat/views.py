@@ -109,6 +109,7 @@ class CombatView(ui.View):
         self.current_phase_index = 0
         self._auto_running = False
         self._was_auto = False
+        self.killing_blow = 0
 
         self.update_buttons()
 
@@ -144,6 +145,12 @@ class CombatView(ui.View):
         for child in self.children:
             child.disabled = is_over
 
+    def _do_monster_turn(self) -> str:
+        hp_before = self.player.current_hp
+        log = engine.process_monster_turn(self.player, self.monster)
+        self.killing_blow = hp_before - max(0, self.player.current_hp)
+        return log
+
     async def refresh_embed(self, interaction: Interaction):
         embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
 
@@ -161,7 +168,7 @@ class CombatView(ui.View):
 
         # 2. Monster Turn (if alive)
         if self.monster.hp > 0:
-            m_log = engine.process_monster_turn(self.player, self.monster)
+            m_log = self._do_monster_turn()
             self.logs[self.monster.name] = m_log
 
         # 3. Check End State
@@ -174,7 +181,7 @@ class CombatView(ui.View):
 
         # Monster still hits you when you potion
         if self.monster.hp > 0:
-            m_log = engine.process_monster_turn(self.player, self.monster)
+            m_log = self._do_monster_turn()
             self.logs[self.monster.name] = m_log
 
         await self.check_combat_state(interaction)
@@ -198,7 +205,7 @@ class CombatView(ui.View):
                 p_log = engine.process_player_turn(self.player, self.monster)
                 m_log = ""
                 if self.monster.hp > 0:
-                    m_log = engine.process_monster_turn(self.player, self.monster)
+                    m_log = self._do_monster_turn()
 
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
@@ -264,7 +271,7 @@ class CombatView(ui.View):
             p_log = engine.process_player_turn(self.player, self.monster)
             m_log = ""
             if self.monster.hp > 0:
-                m_log = engine.process_monster_turn(self.player, self.monster)
+                m_log = self._do_monster_turn()
 
             self.logs = {self.player.name: p_log, self.monster.name: m_log}
             turns_processed += 1
@@ -333,7 +340,7 @@ class CombatView(ui.View):
             xp_loss = int(self.player.exp * 0.10)
             self.player.exp = max(0, self.player.exp - xp_loss)
             self.player.current_hp = 1
-            embed = combat_ui.create_defeat_embed(self.player, self.monster, xp_loss)
+            embed = combat_ui.create_defeat_embed(self.player, self.monster, xp_loss, killing_blow=self.killing_blow)
             await message.edit(embed=embed, view=None)
             self.bot.state_manager.clear_active(self.user_id)
             await self.bot.database.users.update_from_player_object(self.player)
@@ -834,6 +841,7 @@ class CombatView(ui.View):
                 xp_loss,
                 curios_gained=curios,
                 dmg_frac=dmg_frac,
+                killing_blow=self.killing_blow,
             )
             await message.edit(embed=embed, view=None)
 
@@ -934,6 +942,7 @@ class CombatView(ui.View):
                 xp_loss,
                 curios_gained=curios,
                 dmg_frac=dmg_frac,
+                killing_blow=self.killing_blow,
             )
             await message.edit(embed=embed, view=None)
             self.bot.state_manager.clear_active(self.user_id)
@@ -1039,6 +1048,7 @@ class CombatView(ui.View):
                 xp_loss,
                 curios_gained=curios,
                 dmg_frac=dmg_frac,
+                killing_blow=self.killing_blow,
             )
             await message.edit(embed=embed, view=None)
 
@@ -1141,7 +1151,7 @@ class CombatView(ui.View):
             self.player.current_hp = 1
 
             embed = combat_ui.create_defeat_embed(
-                self.player, self.monster, xp_loss, curios_gained=curios, dmg_frac=dmg_frac
+                self.player, self.monster, xp_loss, curios_gained=curios, dmg_frac=dmg_frac, killing_blow=self.killing_blow
             )
             await message.edit(embed=embed, view=None)
 

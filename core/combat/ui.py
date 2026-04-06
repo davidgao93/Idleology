@@ -107,9 +107,10 @@ def create_victory_embed(player: Player, monster: Monster, rewards: Dict[str, An
 
     return embed
 
-def create_defeat_embed(player: Player, monster: Monster, lost_xp: int, curios_gained: int = 0, dmg_frac: float = 0.0) -> discord.Embed:
+def create_defeat_embed(player: Player, monster: Monster, lost_xp: int, curios_gained: int = 0, dmg_frac: float = 0.0, killing_blow: int = 0) -> discord.Embed:
     total_damage_dealt = monster.max_hp - monster.hp
-    description = (f"The {monster.name} deals a fatal blow!\n"
+    killing_blow_str = f" (**{killing_blow:,}** killing blow)" if killing_blow > 0 else ""
+    description = (f"The {monster.name} deals a fatal blow{killing_blow_str}!\n"
                    f"{player.name} has been defeated after dealing {total_damage_dealt:,} damage.\n"
                    f"The {monster.name} leaves with {monster.hp:,} health remaining.\n"
                    f"Death 💀 takes away {lost_xp:,} XP from your essence...")
