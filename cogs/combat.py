@@ -1,6 +1,7 @@
 # cogs/combat.py
 
 import asyncio
+import random
 from datetime import datetime, timedelta
 
 import discord
@@ -210,8 +211,14 @@ class Combat(commands.Cog, name="combat"):
             monster = await generate_boss(player, monster, combat_phases[0], 0)
             monster.is_boss = True
         else:
+            treasure_chance = 1.0
+            if player.get_armor_passive() == "Treasure Hunter":
+                treasure_chance += 5.0
+            if player.get_boot_passive() == "treasure-tracker":
+                treasure_chance += player.equipped_boot.passive_lvl * 0.5
+            is_treasure = random.random() * 100 < treasure_chance
             monster = await generate_encounter(
-                player, monster, is_treasure=False, task_species=task_species
+                player, monster, is_treasure=is_treasure, task_species=task_species
             )  # <--- PASS IT HERE
             combat_phases = [None]  # Dummy for View logic
 

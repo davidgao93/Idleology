@@ -16,7 +16,8 @@ class LeaderboardHubView(ui.View):
             ("ascensions", "Top Ascensions", "🌟"),
             ("wealth", "Wealthiest", "💰"),
             ("slayer", "Top Slayers", "💀"),
-            ("ideologies", "Ideologies", "💡")
+            ("ideologies", "Ideologies", "💡"),
+            ("duels", "Top Duelists", "⚔️"),
         ]
         
         for tab_id, label, emoji in tabs:
@@ -62,6 +63,19 @@ class LeaderboardHubView(ui.View):
             data = await self.bot.database.social.get_ideology_leaderboard(10)
             embed = discord.Embed(title="Hiscores: Dominant Ideologies 💡", color=0x00BFFF)
             lines = [f"**{i+1}. {row[0]}** - {row[1]:,} Followers" for i, row in enumerate(data)]
+
+        elif self.active_tab == "duels":
+            data = await self.bot.database.duels.get_leaderboard(10)
+            embed = discord.Embed(title="Hiscores: Top Duelists ⚔️", color=0xFFD700)
+            lines = []
+            for i, (user_id, wins, losses) in enumerate(data):
+                try:
+                    user = await self.bot.fetch_user(int(user_id))
+                    name = user.display_name
+                except Exception:
+                    name = f"Unknown ({user_id})"
+                wl = f"{wins}W / {losses}L"
+                lines.append(f"**{i+1}. {name}** - {wl}")
 
         embed.description = "\n".join(lines) if lines else "No data found."
         return embed

@@ -10,6 +10,7 @@ from .repositories.settlement import SettlementRepository
 from .repositories.slayer import SlayerRepository
 from .repositories.uber import UberRepository
 from .repositories.codex import CodexRepository
+from .repositories.duels import DuelStatsRepository
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -27,3 +28,4 @@ class DatabaseManager:
         self.slayer = SlayerRepository(connection)
         self.uber = UberRepository(connection)
         self.codex = CodexRepository(connection)
+        self.duels = DuelStatsRepository(connection)

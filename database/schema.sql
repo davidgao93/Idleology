@@ -311,3 +311,9 @@ CREATE TABLE IF NOT EXISTS codex_tomes (
     value REAL NOT NULL DEFAULT 0.0,
     PRIMARY KEY (user_id, slot)
 );
+
+CREATE TABLE IF NOT EXISTS duel_stats (
+    user_id TEXT PRIMARY KEY,
+    wins INTEGER NOT NULL DEFAULT 0,
+    losses INTEGER NOT NULL DEFAULT 0
+);
