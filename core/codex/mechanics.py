@@ -230,8 +230,6 @@ def roll_boons(count: int = 2) -> list[CodexBoon]:
             label = label_tmpl.format(v=value)
             description = desc_tmpl.format(v=value)
         downside_type, downside_value, downside_label = _roll_downside(boon_type, value)
-        if downside_label:
-            description = f"{description}\n⚠️ Cost: {downside_label}"
         boons.append(CodexBoon(
             type=boon_type, label=label, description=description, value=value,
             downside_type=downside_type, downside_value=downside_value, downside_label=downside_label,
@@ -259,20 +257,17 @@ def snapshot_clean_stats(player: Player) -> dict:
 
 def restore_clean_stats(player: Player, clean_stats: dict) -> None:
     """
-    Resets mutable base stats back to the clean snapshot.
-    Call this at the start of every wave before applying signature + boons.
+    Resets base stats to the clean snapshot taken at run start.
+    Called only at chapter boundaries (wave_num == 1) so that the outgoing
+    chapter's signature modifier doesn't compound into the next chapter.
+    Stats and HP are otherwise permanent throughout the run.
     """
     player.base_attack = clean_stats['attack']
     player.base_defence = clean_stats['defence']
     player.base_crit_chance_target = clean_stats['crit_target']
     player.max_hp = clean_stats['max_hp']
     player.base_rarity = clean_stats['rarity']
-
-    # Reset per-wave transients
-    player.boon_fdr = 0
-    player.is_invulnerable_this_combat = False
-    player.celestial_vow_used = False
-    player.combat_ward = player.get_combat_ward_value()
+    player.boon_fdr = 0  # re-applied immediately by apply_per_wave_boons
 
 
 # ---------------------------------------------------------------------------

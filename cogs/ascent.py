@@ -19,7 +19,7 @@ class Ascent(commands.Cog, name="ascent"):
         temp_reduction = 0
         boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
         if boot and boot[9] == "speedster":
-            temp_reduction = boot[12] * 20 
+            temp_reduction = boot[12] * 60
 
         duration = max(timedelta(seconds=10), self.ASCENT_COOLDOWN - timedelta(seconds=temp_reduction))
         

@@ -642,7 +642,6 @@ class GearView(View):
                 label=label,
                 value=str(item.item_id),
                 description=self._build_select_description(item),
-                default=is_equipped,
             ))
         return options
 

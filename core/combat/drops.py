@@ -93,38 +93,41 @@ class DropManager:
 
     @staticmethod
     async def handle_level_up(bot, user_id: str, player: Player, reward_data: dict, exp_table: dict):
-        """Calculates level ups and commits stat changes."""
-        exp_threshold = exp_table["levels"].get(str(player.level), 999999999)
-        
-        # Ascension
-        if player.level >= 100 and player.exp >= exp_threshold:
-            player.ascension += 1
-            player.exp -= exp_threshold
-            await bot.database.users.modify_currency(user_id, 'passive_points', 2)
-            reward_data['msgs'].append(f"🌟 **ASCENSION LEVEL UP!** ({player.ascension})")
-            reward_data['msgs'].append("✨ Gained **2** Passive Points!")
-            
-        # Normal Level Up
-        elif player.level < 100 and player.exp >= exp_threshold:
-            player.level += 1
-            player.exp -= exp_threshold
-            
-            atk_inc = random.randint(1, 5)
-            def_inc = random.randint(1, 5)
-            hp_inc = random.randint(1, 5)
-            
-            player.base_attack += atk_inc
-            player.base_defence += def_inc
-            player.max_hp += hp_inc
-            player.current_hp = player.max_hp # Full heal on level up
-            
-            await bot.database.users.modify_stat(user_id, 'attack', atk_inc)
-            await bot.database.users.modify_stat(user_id, 'defence', def_inc)
-            await bot.database.users.modify_stat(user_id, 'max_hp', hp_inc)
-            
-            reward_data['msgs'].append(f"🎉 **LEVEL UP!** ({player.level})")
-            reward_data['msgs'].append(f"📈 +{atk_inc} Atk, +{def_inc} Def, +{hp_inc} HP")
-            
-            if player.level % 10 == 0:
+        """Calculates level ups and commits stat changes. Loops until XP is exhausted."""
+        while True:
+            exp_threshold = exp_table["levels"].get(str(player.level), 999999999)
+            if player.exp < exp_threshold:
+                break
+
+            # Ascension (level 100+)
+            if player.level >= 100:
+                player.ascension += 1
+                player.exp -= exp_threshold
                 await bot.database.users.modify_currency(user_id, 'passive_points', 2)
-                reward_data['msgs'].append("✨ **Milestone!** Gained **2** Passive Points!")
+                reward_data['msgs'].append(f"🌟 **ASCENSION LEVEL UP!** ({player.ascension})")
+                reward_data['msgs'].append("✨ Gained **2** Passive Points!")
+
+            # Normal Level Up (pre-100)
+            else:
+                player.level += 1
+                player.exp -= exp_threshold
+
+                atk_inc = random.randint(1, 5)
+                def_inc = random.randint(1, 5)
+                hp_inc = random.randint(1, 5)
+
+                player.base_attack += atk_inc
+                player.base_defence += def_inc
+                player.max_hp += hp_inc
+                player.current_hp = player.max_hp  # Full heal on level up
+
+                await bot.database.users.modify_stat(user_id, 'attack', atk_inc)
+                await bot.database.users.modify_stat(user_id, 'defence', def_inc)
+                await bot.database.users.modify_stat(user_id, 'max_hp', hp_inc)
+
+                reward_data['msgs'].append(f"🎉 **LEVEL UP!** ({player.level})")
+                reward_data['msgs'].append(f"📈 +{atk_inc} Atk, +{def_inc} Def, +{hp_inc} HP")
+
+                if player.level % 10 == 0:
+                    await bot.database.users.modify_currency(user_id, 'passive_points', 2)
+                    reward_data['msgs'].append("✨ **Milestone!** Gained **2** Passive Points!")

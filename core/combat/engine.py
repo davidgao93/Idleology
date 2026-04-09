@@ -51,7 +51,7 @@ class MonsterTurnResult:
 
 _MONSTER_STAT_EFFECTS: dict[str, callable] = {
     "Shield-breaker": lambda p, m: setattr(p, "combat_ward", 0),
-    "Impenetrable":   lambda p, m: setattr(p, "base_crit_chance_target", max(1, p.base_crit_chance_target - 5)),
+    "Impenetrable":   lambda p, m: setattr(p, "base_crit_chance_target", min(100, p.base_crit_chance_target + 5)),
     "Enfeeble":       lambda p, m: setattr(p, "base_attack", int(p.base_attack * 0.9)),
 }
 
@@ -81,7 +81,7 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
 def _cs_invulnerable(player, monster):
     if random.random() < 0.2:
         player.is_invulnerable_this_combat = True
-        return f"The **Invulnerable** armor imbues with power!\n{player.name} receives divine protection."
+        return f"**Invulnerable** armor activates! {player.name} receives divine protection."
 
 def _cs_omnipotent(player, monster):
     if random.random() < 0.5:
@@ -90,10 +90,8 @@ def _cs_omnipotent(player, monster):
         player.base_attack  += total_atk
         player.base_defence += total_def
         player.combat_ward  += player.max_hp
-        return (f"The **Omnipotent** armor imbues with power!\nYou feel **empowered**.\n"
-                f"⚔️ Attack boosted by **{total_atk}**\n"
-                f"🛡️ Defence boosted by **{total_def}**\n"
-                f"🔮 Gain **{player.max_hp}** ward")
+        return (f"**Omnipotent** empowers you! "
+                f"⚔️ +**{total_atk}** ATK, 🛡️ +**{total_def}** DEF, 🔮 +**{player.max_hp}** Ward")
 
 def _cs_absorb(player, monster):
     if not player.equipped_accessory:
@@ -105,9 +103,8 @@ def _cs_absorb(player, monster):
             amount = max(1, int(total * 0.10))
             player.base_attack  += amount
             player.base_defence += amount
-            return (f"The accessory's 🌀 **Absorb ({player.equipped_accessory.passive_lvl})** activates!\n"
-                    f"⚔️ Attack boosted by **{amount}**\n"
-                    f"🛡️ Defence boosted by **{amount}**")
+            return (f"🌀 **Absorb ({player.equipped_accessory.passive_lvl})** activates! "
+                    f"⚔️ +**{amount}** ATK, 🛡️ +**{amount}** DEF")
 
 def _cs_juggernaut(player, monster):
     lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
@@ -115,7 +112,7 @@ def _cs_juggernaut(player, monster):
         return
     bonus = int(player.get_total_defence() * (lvl * 0.04))
     player.base_attack += bonus
-    return f"**Juggernaut ({lvl})** empowers your strikes!\n⚔️ Attack boosted by **{bonus}**."
+    return f"**Juggernaut ({lvl})** empowers your strikes! ⚔️ +**{bonus}** ATK"
 
 def _cs_inverted_edge(player, monster):
     if not player.equipped_weapon:
@@ -123,8 +120,7 @@ def _cs_inverted_edge(player, monster):
     wep_atk, wep_def = player.equipped_weapon.attack, player.equipped_weapon.defence
     player.equipped_weapon.attack  = wep_def
     player.equipped_weapon.defence = wep_atk
-    return (f"🔥 **Inverted Edge** warps the blade!\n"
-            f"Weapon attack and defence are swapped ({wep_atk} ↔ {wep_def}).")
+    return f"🔥 **Inverted Edge**: weapon ATK ↔ DEF swapped ({wep_atk} ↔ {wep_def})."
 
 def _cs_gilded_hunger(player, monster):
     if not player.equipped_weapon:
@@ -132,22 +128,18 @@ def _cs_gilded_hunger(player, monster):
     bonus = int(player.equipped_weapon.rarity * 0.5)
     if bonus > 0:
         player.base_attack += bonus
-        return (f"🔥 **Gilded Hunger** devours the weapon's rarity!\n"
-                f"⚔️ Attack boosted by **{bonus}**.")
+        return f"🔥 **Gilded Hunger** devours rarity! ⚔️ +**{bonus}** ATK"
 
 def _cs_diabolic_pact(player, monster):
     cost = int(player.current_hp * 0.5)
     player.current_hp    = max(1, player.current_hp - cost)
     player.base_attack  *= 2
-    return (f"🔥 **Diabolic Pact** sealed in blood!\n"
-            f"💀 Lost **{cost}** HP.\n"
-            f"⚔️ Attack **doubled** for this combat!")
+    return f"🔥 **Diabolic Pact** sealed in blood! 💀 -{cost} HP → ⚔️ ATK doubled!"
 
 def _cs_cursed_precision(player, monster):
     player.base_crit_chance_target = max(1, player.base_crit_chance_target - 20)
     player.cursed_precision_active = True
-    return (f"🔥 **Cursed Precision** clouds your strikes!\n"
-            f"🎯 Crit chance greatly increased, but crits roll for the lower result.")
+    return f"🔥 **Cursed Precision**: 🎯 Crit chance greatly increased, but crits roll for the lower result."
 
 def _cs_entropy(player, monster):
     if not player.equipped_weapon:
@@ -156,8 +148,7 @@ def _cs_entropy(player, monster):
     def_t = int(player.equipped_weapon.defence * 0.20)
     player.equipped_weapon.attack  = player.equipped_weapon.attack  - atk_t + def_t
     player.equipped_weapon.defence = player.equipped_weapon.defence - def_t + atk_t
-    return (f"⬛ **Entropy** warps the weapon!\n"
-            f"20% ATK↔DEF transferred (±{atk_t} ATK / ±{def_t} DEF).")
+    return f"⬛ **Entropy** warps the weapon! 20% ATK↔DEF transferred (±{atk_t} ATK / ±{def_t} DEF)"
 
 def _cs_void_echo(player, monster):
     if not player.equipped_accessory:
@@ -165,16 +156,14 @@ def _cs_void_echo(player, monster):
     bonus = int(player.base_attack * 0.15)
     if bonus > 0:
         player.equipped_accessory.attack += bonus
-        return (f"⬛ **Void Echo** resonates with your power!\n"
-                f"Accessory ATK boosted by **{bonus}**.")
+        return f"⬛ **Void Echo** resonates! Accessory ⚔️ +**{bonus}** ATK"
 
 def _cs_unravelling(player, monster):
     if monster.defence <= 0:
         return
     strip = int(monster.defence * 0.20)
     monster.defence = max(0, monster.defence - strip)
-    return (f"⬛ **Unravelling** tears at {monster.name}'s defenses!\n"
-            f"🛡️ Monster defence reduced by **{strip}** (20%).")
+    return f"⬛ **Unravelling** strips {monster.name}'s 🛡️ DEF by **{strip}** (20%)"
 
 
 _ARMOR_START_HANDLERS: dict[str, callable] = {
@@ -225,8 +214,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         flat = int(monster.defence * pct)
         monster.defence = max(0, monster.defence - flat)
         weapon_parts.append(
-            f"The **{name}** weapon 💫 shines!\n"
-            f"Reduces {monster.name}'s defence by {flat} ({int(pct * 100)}%)."
+            f"💫 **{name}**: strips {monster.name}'s 🛡️ DEF by **{flat}** ({int(pct * 100)}%)"
         )
 
     idx, name = get_weapon_tier(player, 'sturdy')
@@ -235,8 +223,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         flat = int(player.get_total_defence() * pct)
         player.base_defence += flat
         weapon_parts.append(
-            f"The **{name}** weapon strengthens resolve!\n"
-            f"🛡️ Player defence boosted by **{flat}**!"
+            f"🛡️ **{name}**: defence boosted by **{flat}** ({int(pct * 100)}%)"
         )
 
     if weapon_parts:
@@ -407,7 +394,7 @@ def _pt_resolve_crit(player: Player, monster: Monster, is_hit: bool, log: list[s
     if infernal == "voracious" and player.voracious_stacks > 0:
         crit_target = max(1, crit_target - (player.voracious_stacks * 5))
 
-    return random.randint(0, 100) > crit_target and "Impenetrable" not in monster.modifiers
+    return random.randint(0, 100) > crit_target
 
 
 def _pt_crit_damage(player: Player, monster: Monster, attack_multiplier: float,

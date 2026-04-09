@@ -229,16 +229,21 @@ class CombatView(ui.View):
                     self.player, self.monster, self.logs
                 )
                 await message.edit(embed=embed, view=self)
+                await message.channel.send(
+                    f"<@{self.user_id}> ⚠️ Low HP Protection triggered — auto paused!",
+                    delete_after=15,
+                )
                 break
 
             # Handle end state (victory, defeat, or phase transition)
             self._was_auto = was_auto
+            player_was_alive = self.player.current_hp > 0
             await self.handle_end_state(message, interaction)
 
             # Phase transition: handle_end_state replaces self.monster with the next
             # phase boss (hp > 0) and returns without stopping the view.
             # In all other cases (final victory, defeat) self.monster.hp stays 0.
-            if was_auto and self.monster.hp > 0 and self.player.current_hp > 0:
+            if was_auto and self.monster.hp > 0 and player_was_alive:
                 self._auto_running = True  # Resume auto for the new phase
                 continue
             break
@@ -284,11 +289,12 @@ class CombatView(ui.View):
             f"⚡ You flash forward in time, **{turns_processed}** turns have gone by."
         )
 
-        # FIX: Ensure HP is strictly greater than 0 to append the pause message
-        if (
+        # Ensure HP is strictly greater than 0 to append the pause message
+        low_hp_triggered = (
             0 < self.player.current_hp <= (self.player.max_hp * 0.2)
             and self.monster.hp > 0
-        ):
+        )
+        if low_hp_triggered:
             status_msg += "\n🛑 Paused: Low HP Protection triggered!"
 
         self.logs["System"] = status_msg
@@ -297,6 +303,11 @@ class CombatView(ui.View):
         if self.player.current_hp <= 0 or self.monster.hp <= 0:
             await self.handle_end_state(interaction.message, interaction)
         else:
+            if low_hp_triggered:
+                await interaction.message.channel.send(
+                    f"<@{self.user_id}> ⚠️ Low HP Protection triggered — auto paused!",
+                    delete_after=15,
+                )
             await self.check_combat_state(interaction)
 
     async def check_combat_state(self, interaction: Interaction):
@@ -1013,7 +1024,7 @@ class CombatView(ui.View):
                 self.player, self.monster, reward_data
             )
             embed.title = "🔥 DEICIDE: Sovereign Shattered!"
-            embed.set_image(url="https://i.imgur.com/x9suAGK.png")
+            embed.set_image(url="https://i.imgur.com/ngTUw77.png")
 
             # Present the Infernal Contract
             contract_view = InfernalContractView(
@@ -1227,7 +1238,7 @@ class CombatView(ui.View):
                 self.player, self.monster, reward_data
             )
             embed.title = "♊ DEICIDE: The Bound Sovereigns Shattered!"
-            embed.set_image(url="https://i.imgur.com/PqViP3D.png")
+            embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
             await message.edit(embed=embed, view=None)
 
         self.bot.state_manager.clear_active(self.user_id)

@@ -420,7 +420,7 @@ def get_modifier_description(modifier):
         "Ascended": "+10 Attack, +10 Defence",
         "Summoner": "Has minions that deal 33% damage",
         "Shield-breaker": "Disables ward at start of combat",
-        "Impenetrable": "Base crit immunity",
+        "Impenetrable": "+5 to crit threshold",
         "Unblockable": "Cannot be blocked",
         "Unavoidable": "Cannot be evaded",
         "Built-different": "+2 to level",
@@ -553,7 +553,7 @@ def generate_uber_gemini(player, monster):
     monster.xp = monster.hp * 2
 
     monster.name = "Castor & Pollux, Bound Sovereigns"
-    monster.image = "https://i.imgur.com/vC0JFZW.png"
+    monster.image = "https://i.imgur.com/PqViP3D.png"
     monster.flavor = "move in perfect synchrony"
     monster.species = "Celestial"
     monster.is_boss = True

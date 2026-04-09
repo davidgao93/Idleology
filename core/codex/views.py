@@ -1,4 +1,5 @@
 import asyncio
+import json
 import random
 import discord
 from discord import ui, ButtonStyle, Interaction
@@ -59,8 +60,11 @@ async def _generate_codex_wave_monster(player: Player, chapter: CodexChapter, wa
 
 class BoonButton(ui.Button):
     def __init__(self, boon: CodexBoon, run_view: 'CodexRunView', row: int):
+        label = boon.label
+        if boon.downside_label:
+            label = f"{label} / ⚠️ {boon.downside_label}"
         super().__init__(
-            label=boon.label,
+            label=label[:80],
             style=ButtonStyle.primary,
             row=row,
         )
@@ -97,7 +101,8 @@ class CodexRunView(ui.View):
 
     def __init__(self, bot, user_id: str, player: Player,
                  chapters: list[CodexChapter], initial_monster: Monster,
-                 start_logs: dict, clean_stats: dict):
+                 start_logs: dict, clean_stats: dict,
+                 chapter_wave_baseline: dict = None):
         super().__init__(timeout=300)
         self.bot = bot
         self.user_id = user_id
@@ -108,6 +113,11 @@ class CodexRunView(ui.View):
         self.monster = initial_monster
         self.clean_stats = clean_stats
         self.logs = start_logs or {}
+
+        # Baseline snapshot taken after chapter setup (signature + boons applied) but before
+        # combat passives fire. Reset at the start of every wave so that sturdy/omnipotent/
+        # absorb etc. don't compound across waves.
+        self.chapter_wave_baseline: dict = chapter_wave_baseline or {}
 
         # Run-level state
         self.active_boons: list[CodexBoon] = []
@@ -155,6 +165,36 @@ class CodexRunView(ui.View):
             embed.set_footer(text=f"Signature: {sig_label} — {sig_desc}")
         return embed
 
+    def _snapshot_wave_baseline(self):
+        """Snapshot base stats after chapter/boon setup but before combat passives fire.
+        Restored at the top of every wave so combat-start passives (sturdy, omnipotent,
+        absorb, juggernaut, gilded_hunger, diabolic_pact, cursed_precision, Enfeeble,
+        Impenetrable) don't compound across waves."""
+        self.chapter_wave_baseline = {
+            'attack':     self.player.base_attack,
+            'defence':    self.player.base_defence,
+            'crit_target': self.player.base_crit_chance_target,
+        }
+
+    def _restore_wave_baseline(self):
+        """Restore base stats to the post-setup snapshot before combat passives fire."""
+        if not self.chapter_wave_baseline:
+            return
+        self.player.base_attack = self.chapter_wave_baseline['attack']
+        self.player.base_defence = self.chapter_wave_baseline['defence']
+        self.player.base_crit_chance_target = self.chapter_wave_baseline['crit_target']
+
+    def _projected_ward(self) -> int:
+        """Ward the player will have at the start of the next wave.
+        Respite is always mid-chapter, so ward carries over from the current value.
+        Boon ward additions are included since they fire every wave.
+        """
+        ward = self.player.combat_ward
+        for boon in self.active_boons:
+            if boon.type == "ward_boost":
+                ward += int(self.player.max_hp * (boon.value / 100))
+        return ward
+
     def _respite_embed(self, boons: list[CodexBoon], reroll_available: bool = False) -> discord.Embed:
         chapter = self.current_chapter
         p = self.player
@@ -168,8 +208,9 @@ class CodexRunView(ui.View):
         pdr = p.get_total_pdr()
 
         hp_line = f"❤️ **{p.current_hp:,}/{eff_max_hp:,}**"
-        if p.combat_ward > 0:
-            hp_line += f"  🔮 Ward: **{p.combat_ward:,}**"
+        proj_ward = self._projected_ward()
+        if proj_ward > 0:
+            hp_line += f"  🔮 Ward (next wave): **{proj_ward:,}**"
         stats_block = (
             f"⚔️ ATK: **{atk:,}**  🛡️ DEF: **{def_:,}**\n"
             f"{hp_line}\n"
@@ -188,8 +229,12 @@ class CodexRunView(ui.View):
             ),
             color=discord.Color.teal(),
         )
+        embed.set_thumbnail(url="https://i.imgur.com/hiLIsNI.png")
         for i, boon in enumerate(boons, 1):
-            embed.add_field(name=f"Option {i}: {boon.label}", value=boon.description, inline=False)
+            field_name = f"Option {i}: {boon.label}"
+            if boon.downside_label:
+                field_name += f"  ⚠️ {boon.downside_label}"
+            embed.add_field(name=field_name, value=boon.description, inline=False)
         if self.active_boons:
             boon_summary = ", ".join(b.label for b in self.active_boons)
             embed.set_footer(text=f"Active boons: {boon_summary}")
@@ -243,6 +288,7 @@ class CodexRunView(ui.View):
             for i, ch in enumerate(self.chapters)
         )
         embed.add_field(name="Chapters", value=chapters_text, inline=False)
+        embed.set_thumbnail(url="https://i.imgur.com/CYoQQLk.png")
         return embed
 
     # ------------------------------------------------------------------
@@ -250,31 +296,46 @@ class CodexRunView(ui.View):
     # ------------------------------------------------------------------
 
     async def _setup_next_wave(self, interaction: Interaction = None, message: discord.Message = None):
-        """Restore stats, apply chapter signature + accumulated boons, generate monster."""
+        """Set up the next wave. Stats only reset at chapter start (wave_num == 1)."""
         chapter = self.current_chapter
 
-        restore_clean_stats(self.player, self.clean_stats)
+        if self.wave_num == 1:
+            # Chapter start: wipe the previous chapter's signature so it doesn't stack,
+            # then apply the new signature and re-apply all accumulated boons on top.
+            restore_clean_stats(self.player, self.clean_stats)
+            self.player.combat_ward = self.player.get_combat_ward_value()
 
-        nullify = self.run_state.get('sig_nullify_next', False)
-        if nullify:
-            # Consume the flag now that the next chapter's wave 1 is starting
-            self.run_state['sig_nullify_next'] = False
+            nullify = self.run_state.get('sig_nullify_next', False)
+            if nullify:
+                self.run_state['sig_nullify_next'] = False
+            else:
+                apply_signature_modifier(self.player, chapter)
+            apply_per_wave_boons(self.player, self.active_boons)
+
+            # Snapshot post-setup stats for this chapter so combat passives
+            # (sturdy, omnipotent, absorb, Enfeeble, Impenetrable, etc.) are
+            # restored to this value at the start of every subsequent wave.
+            self._snapshot_wave_baseline()
         else:
-            apply_signature_modifier(self.player, chapter)
-        apply_per_wave_boons(self.player, self.active_boons)
+            # Mid-chapter: restore to post-setup baseline before combat passives fire
+            self._restore_wave_baseline()
 
+        # Per-combat transients reset every wave regardless
         self.player.voracious_stacks = 0
         self.player.cursed_precision_active = False
         self.player.gaze_stacks = 0
         self.player.hunger_stacks = 0
+        self.player.is_invulnerable_this_combat = False
+        self.player.celestial_vow_used = False
 
         self.monster = await _generate_codex_wave_monster(self.player, chapter, self.wave_num)
         engine.apply_stat_effects(self.player, self.monster)
         self.logs = engine.apply_combat_start_passives(self.player, self.monster)
 
         embed = self._combat_embed()
-        msg_obj = message or (await interaction.original_response())
-        await msg_obj.edit(embed=embed, view=self)
+        msg_obj = message or (await interaction.original_response() if interaction else None)
+        if msg_obj:
+            await msg_obj.edit(embed=embed, view=self)
 
     async def _handle_wave_clear(self, interaction: Interaction = None, message: discord.Message = None):
         """Called when monster HP drops to 0. Awards XP/Gold, decides next action."""
@@ -286,6 +347,45 @@ class CodexRunView(ui.View):
         self.cumulative_xp += wave_xp
         self.cumulative_gold += wave_gold
         await self.bot.database.users.modify_gold(self.user_id, wave_gold)
+
+        # Level-up loop (mirrors ascent — handles multiple levels/ascensions at once)
+        try:
+            with open('assets/exp.json') as f:
+                exp_table = json.load(f)
+            while True:
+                exp_threshold = exp_table["levels"].get(str(self.player.level), 999999999)
+                if self.player.exp < exp_threshold:
+                    break
+                if self.player.level >= 100:
+                    self.player.ascension += 1
+                    self.player.exp -= exp_threshold
+                    await self.bot.database.users.modify_currency(self.user_id, 'passive_points', 2)
+                else:
+                    self.player.level += 1
+                    self.player.exp -= exp_threshold
+                    atk_inc = random.randint(1, 5)
+                    def_inc = random.randint(1, 5)
+                    hp_inc = random.randint(1, 5)
+                    self.player.base_attack += atk_inc
+                    self.player.base_defence += def_inc
+                    self.player.max_hp += hp_inc
+                    # HP does not restore on level-up mid-run; max_hp increase is enough
+                    await self.bot.database.users.modify_stat(self.user_id, 'attack', atk_inc)
+                    await self.bot.database.users.modify_stat(self.user_id, 'defence', def_inc)
+                    await self.bot.database.users.modify_stat(self.user_id, 'max_hp', hp_inc)
+                    if self.player.level % 10 == 0:
+                        await self.bot.database.users.modify_currency(self.user_id, 'passive_points', 2)
+                    # Update the wave baseline so subsequent waves use the levelled stats
+                    if self.chapter_wave_baseline:
+                        self.chapter_wave_baseline['attack'] += atk_inc
+                        self.chapter_wave_baseline['defence'] += def_inc
+                    # Also update clean_stats so next chapter reset uses the levelled base
+                    self.clean_stats['attack'] += atk_inc
+                    self.clean_stats['defence'] += def_inc
+                    self.clean_stats['max_hp'] += hp_inc
+        except Exception:
+            pass
+
         await self.bot.database.users.update_from_player_object(self.player)
 
         self.waves_cleared_this_run += 1
@@ -451,13 +551,13 @@ class CodexRunView(ui.View):
         elif interaction:
             await interaction.edit_original_response(embed=embed, view=self)
 
-    async def _execute_turn(self, interaction: Interaction):
+    async def _execute_turn(self, message: discord.Message):
         p_log = engine.process_player_turn(self.player, self.monster)
         self.logs = {self.player.name: p_log}
         if self.monster.hp > 0:
             m_log = engine.process_monster_turn(self.player, self.monster)
             self.logs[self.monster.name] = m_log
-        await self._check_state(interaction)
+        await self._check_state(message=message)
 
     async def _check_state(self, interaction: Interaction = None, message: discord.Message = None):
         if self.player.current_hp <= 0:
@@ -473,16 +573,19 @@ class CodexRunView(ui.View):
 
     @ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️", row=0)
     async def _attack_btn(self, interaction: Interaction, button: ui.Button):
-        await self._execute_turn(interaction)
+        await interaction.response.defer()
+        await self._execute_turn(message=interaction.message)
 
     @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹", row=0)
     async def _heal_btn(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+        message = interaction.message
         heal_log = engine.process_heal(self.player)
         self.logs = {"Heal": heal_log}
         if self.monster.hp > 0:
             m_log = engine.process_monster_turn(self.player, self.monster)
             self.logs[self.monster.name] = m_log
-        await self._check_state(interaction)
+        await self._check_state(message=message)
 
     @ui.button(label="Auto Wave", style=ButtonStyle.primary, emoji="⏩", row=0)
     async def _auto_btn(self, interaction: Interaction, button: ui.Button):
@@ -506,8 +609,12 @@ class CodexRunView(ui.View):
                 break
 
         if 0 < self.player.current_hp <= (self.player.max_hp * 0.2) and self.monster.hp > 0:
-            self.logs["Auto-Wave"] = "Paused: Low HP protection!"
+            self.logs["Auto-Wave"] = "🛑 Paused: Low HP Protection triggered!"
             await self._refresh_ui(message=message)
+            await message.channel.send(
+                f"<@{self.player.id}> ⚠️ Low HP Protection triggered — auto paused!",
+                delete_after=15,
+            )
         else:
             await self._check_state(message=message)
 
@@ -649,6 +756,7 @@ class CodexTomsView(ui.View):
             if tome:
                 name, _ = _PASSIVE_LABELS.get(tome.passive_type, (tome.passive_type, ''))
                 embed.set_footer(text=f"Selected: Slot {self.selected_slot + 1} — {name} (Tier {tome.tier}/5, Value {tome.value:.2f})")
+        embed.set_thumbnail(url="https://i.imgur.com/qvqtxUC.png")
         return embed
 
     async def _refresh(self, interaction: Interaction):
@@ -782,6 +890,7 @@ class CodexMenuView(ui.View):
         embed.add_field(name="Chapter Clears", value=str(total_clears), inline=True)
         embed.add_field(name="Perfect Clears", value=str(total_perfects), inline=True)
         embed.add_field(name="Tome Slots Unlocked", value=f"{len(tomes)}/5", inline=True)
+        embed.set_thumbnail(url="https://i.imgur.com/OylfbeA.png")
         embed.set_footer(text="Level 100+ required to begin a run.")
         return embed
 
@@ -796,7 +905,7 @@ class CodexMenuView(ui.View):
         temp_reduction = 0
         boot = await self.bot.database.equipment.get_equipped(self.user_id, "boot")
         if boot and boot[9] == "speedster":
-            temp_reduction = boot[12] * 20
+            temp_reduction = boot[12] * 60
         cooldown_duration = max(timedelta(seconds=10), CODEX_COOLDOWN - timedelta(seconds=temp_reduction))
         existing_user = await self.bot.database.users.get(self.user_id, str(interaction.guild_id))
         last_combat = existing_user[24] if existing_user else None
@@ -830,7 +939,16 @@ class CodexMenuView(ui.View):
         clean_stats = snapshot_clean_stats(self.player)
 
         # Apply chapter 1 signature + generate wave 1 monster
+        self.player.combat_ward = self.player.get_combat_ward_value()
         apply_signature_modifier(self.player, chapter)
+
+        # Snapshot post-setup stats before combat passives fire
+        wave_baseline = {
+            'attack':     self.player.base_attack,
+            'defence':    self.player.base_defence,
+            'crit_target': self.player.base_crit_chance_target,
+        }
+
         monster = await _generate_codex_wave_monster(self.player, chapter, 1)
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
@@ -838,6 +956,7 @@ class CodexMenuView(ui.View):
         view = CodexRunView(
             self.bot, self.user_id, self.player,
             chapters, monster, start_logs, clean_stats,
+            chapter_wave_baseline=wave_baseline,
         )
 
         embed = view._combat_embed()
@@ -855,10 +974,11 @@ class CodexMenuView(ui.View):
         self.stop()
         await interaction.response.edit_message(embed=tomes_view._build_embed(), view=tomes_view)
 
-    @ui.button(label="Exit", style=ButtonStyle.secondary, row=0)
+    @ui.button(label="Close", style=ButtonStyle.secondary, row=0)
     async def exit_btn(self, interaction: Interaction, button: ui.Button):
         self.stop()
-        await interaction.response.edit_message(view=None)
+        await interaction.response.defer()
+        await interaction.delete_original_response()
 
     async def on_timeout(self):
         pass
