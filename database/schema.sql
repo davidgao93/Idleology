@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `codex_fragments` INTEGER NOT NULL DEFAULT 0,
   `codex_pages` INTEGER NOT NULL DEFAULT 0,
   `codex_rerolls` INTEGER NOT NULL DEFAULT 0,
-  `highest_ascension_stage` INTEGER NOT NULL DEFAULT 0
+  `highest_ascension_stage` INTEGER NOT NULL DEFAULT 0,
+  `spirit_stones` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (
@@ -309,6 +310,19 @@ CREATE TABLE IF NOT EXISTS codex_tomes (
     passive_type TEXT NOT NULL,
     tier INTEGER NOT NULL DEFAULT 0,
     value REAL NOT NULL DEFAULT 0.0,
+    PRIMARY KEY (user_id, slot)
+);
+
+CREATE TABLE IF NOT EXISTS alchemy_data (
+    user_id TEXT PRIMARY KEY,
+    level INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS potion_passives (
+    user_id TEXT NOT NULL,
+    slot INTEGER NOT NULL,
+    passive_type TEXT NOT NULL,
+    passive_value REAL NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, slot)
 );
 

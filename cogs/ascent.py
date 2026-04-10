@@ -81,7 +81,7 @@ class Ascent(commands.Cog, name="ascent"):
         embed = ui.create_combat_embed(player, monster, start_logs, title_override=f"Ascent Stage 1 | {player.name}")
         
         # [FIX] Pass clean_stats to View
-        view = AscentView(self.bot, user_id, player, monster, start_logs, clean_stats)
+        view = AscentView(self.bot, user_id, server_id, player, monster, start_logs, clean_stats)
         
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()

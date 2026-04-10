@@ -191,7 +191,7 @@ class CombatView(ui.View):
 
     @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
     async def heal_btn(self, interaction: Interaction, button: ui.Button):
-        h_log = engine.process_heal(self.player)
+        h_log = engine.process_heal(self.player, self.monster)
         self.logs = {"Heal": h_log}
 
         # Monster still hits you when you potion
@@ -584,6 +584,11 @@ class CombatView(ui.View):
                             self.user_id, "spirit_shard", 1
                         )
                         reward_data["special"].append("Spirit Shard")
+                    elif key == "spirit_stone":
+                        await self.bot.database.users.modify_currency(
+                            self.user_id, "spirit_stones", 1
+                        )
+                        reward_data["special"].append("🔮 Spirit Stone")
 
             # Process Drops
             server_id = str(interaction.guild.id)

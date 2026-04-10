@@ -109,7 +109,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     """
     drops = {}
 
-    # --- BOSS DROPS (Aphrodite, Lucifer, NEET) ---
+    # --- BOSS DROPS (Aphrodite, Lucifer, NEET, Gemini) ---
     if "Aphrodite" in monster.name:
         if random.random() < 0.33:
             drops["refinement_rune"] = True
@@ -118,6 +118,8 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         if random.random() < 0.33:
             drops["imbue_rune"] = True
         drops["curio"] = True
+        if random.random() < 0.05:
+            drops["spirit_stone"] = True
         return drops
 
     if "Lucifer" in monster.name:
@@ -125,6 +127,8 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["refinement_rune"] = True
         if random.random() < 0.33:
             drops["potential_rune"] = True
+        if random.random() < 0.05:
+            drops["spirit_stone"] = True
         return drops
 
     if "NEET" in monster.name:
@@ -132,11 +136,15 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["refinement_rune"] = True
         if random.random() < 0.66:
             drops["potential_rune"] = True
+        if random.random() < 0.05:
+            drops["spirit_stone"] = True
         return drops
 
     if "Gemini" in monster.name:
         if random.random() < 0.5:
             drops["partnership_rune"] = True
+        if random.random() < 0.05:
+            drops["spirit_stone"] = True
         return drops
 
     # --- STANDARD MOBS ---

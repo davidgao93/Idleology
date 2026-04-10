@@ -256,6 +256,17 @@ class Player:
     # Codex Tomes
     codex_tomes: List[CodexTome] = field(default_factory=list)
 
+    # Alchemy — Potion Passives (loaded from DB, list of dicts)
+    potion_passives: List[dict] = field(default_factory=list)
+
+    # Alchemy — Transient combat state (reset each combat)
+    alchemy_atk_boost_pct: float = 0.0          # Warrior's Draft: % ATK boost this heal
+    alchemy_dmg_reduction_pct: float = 0.0      # Iron Skin / Dulled Pain: % incoming dmg reduction
+    alchemy_dmg_reduction_turns: int = 0        # Turns remaining for dmg reduction
+    alchemy_linger_hp: int = 0                  # Lingering Remedy: heal per turn
+    alchemy_linger_turns: int = 0               # Turns remaining for lingering heal
+    alchemy_guaranteed_hit: bool = False        # Bottled Courage: next attack cannot miss
+
     # Transient states (reset each combat)
     combat_ward: int = 0
     is_invulnerable_this_combat: bool = False

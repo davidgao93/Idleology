@@ -580,7 +580,7 @@ class CodexRunView(ui.View):
     async def _heal_btn(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         message = interaction.message
-        heal_log = engine.process_heal(self.player)
+        heal_log = engine.process_heal(self.player, self.monster)
         self.logs = {"Heal": heal_log}
         if self.monster.hp > 0:
             m_log = engine.process_monster_turn(self.player, self.monster)

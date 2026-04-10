@@ -6,31 +6,36 @@ from core.skills.mechanics import SkillMechanics
 
 class DropManager:
     @staticmethod
+    async def proc_skiller(bot, user_id: str, server_id: str, player: Player) -> str | None:
+        """
+        Rolls the Skiller boot passive. Returns a log message string if it procs, else None.
+        Shared by standard combat and ascent — do NOT call from codex.
+        """
+        if not (player.equipped_boot and player.equipped_boot.passive == "skiller"):
+            return None
+        proc_chance = player.equipped_boot.passive_lvl * 0.05
+        if random.random() >= proc_chance:
+            return None
+        skill_type = random.choice(['mining', 'woodcutting', 'fishing'])
+        skill_row = await bot.database.skills.get_data(user_id, server_id, skill_type)
+        if not skill_row:
+            return None
+        tool_tier = skill_row[2]
+        resources = SkillMechanics.calculate_yield(skill_type, tool_tier)
+        await bot.database.skills.update_batch(user_id, server_id, skill_type, resources)
+        msg_map = {'mining': "ores", 'woodcutting': "logs", 'fishing': "fish"}
+        return f"👢 **Skiller** found extra {msg_map[skill_type]}!"
+
+    @staticmethod
     async def process_drops(bot, user_id: str, server_id: str, player: Player, monster_level: int, reward_data: dict):
         """
         Handles DB updates for items, runes, and skill procs.
         """
-        
+
         # 1. Skiller Boot Passive (Skill Mats)
-        if player.equipped_boot and player.equipped_boot.passive == "skiller":
-            proc_chance = player.equipped_boot.passive_lvl * 0.05
-            if random.random() < proc_chance:
-                skill_type = random.choice(['mining', 'woodcutting', 'fishing'])
-                
-                # Fetch tool tier
-                skill_row = await bot.database.skills.get_data(user_id, server_id, skill_type)
-                
-                if skill_row:
-                    tool_tier = skill_row[2] # Index 2 is usually the tool column based on repositories
-                    # Calculate Yield
-                    resources = SkillMechanics.calculate_yield(skill_type, tool_tier)
-                    
-                    # Update DB
-                    await bot.database.skills.update_batch(user_id, server_id, skill_type, resources)
-                    
-                    # Log message
-                    msg_map = {'mining': "ores", 'woodcutting': "logs", 'fishing': "fish"}
-                    reward_data['msgs'].append(f"👢 **Skiller** found extra {msg_map[skill_type]}!")
+        skiller_msg = await DropManager.proc_skiller(bot, user_id, server_id, player)
+        if skiller_msg:
+            reward_data['msgs'].append(skiller_msg)
                 
         # 2. Gear Drops
         drop_roll = random.randint(1, 100)

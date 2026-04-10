@@ -5,14 +5,16 @@ from discord import ui, ButtonStyle, Interaction
 
 from core.models import Player, Monster
 from core.combat import engine, ui as combat_ui
+from core.combat.drops import DropManager
 from core.combat.gen_mob import generate_ascent_monster
 from core.ascent.mechanics import AscentMechanics
 
 class AscentView(ui.View):
-    def __init__(self, bot, user_id: str, player: Player, initial_monster: Monster, start_logs: dict, clean_stats: dict):
+    def __init__(self, bot, user_id: str, server_id: str, player: Player, initial_monster: Monster, start_logs: dict, clean_stats: dict):
         super().__init__(timeout=300)
         self.bot = bot
         self.user_id = user_id
+        self.server_id = server_id
         self.player = player
         self.monster = initial_monster
         self.clean_stats = clean_stats # [FIX] Store original stats
@@ -59,7 +61,7 @@ class AscentView(ui.View):
 
     @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
     async def heal(self, interaction: Interaction, button: ui.Button):
-        heal_log = engine.process_heal(self.player)
+        heal_log = engine.process_heal(self.player, self.monster)
         self.logs = {"Heal": heal_log}
         
         if self.monster.hp > 0:
@@ -155,12 +157,17 @@ class AscentView(ui.View):
         await self.bot.database.users.update_highest_ascension_stage(self.user_id, self.stage)
         
         # Special Drops (Curios)
+        import random
         special_loot = []
         if self.stage % 3 == 0:
-            import random
             if random.random() < 0.25:
                 await self.bot.database.users.modify_currency(self.user_id, 'curios', 1)
                 special_loot.append("Curious Curio")
+
+        # Skiller Boot Passive
+        skiller_msg = await DropManager.proc_skiller(self.bot, self.user_id, self.server_id, self.player)
+        if skiller_msg:
+            special_loot.append(skiller_msg)
 
         # 4. Display Clear Embed
         embed = discord.Embed(title=f"Stage {self.stage} Cleared!", color=discord.Color.green())

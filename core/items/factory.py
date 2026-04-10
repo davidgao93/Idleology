@@ -270,6 +270,12 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         player.codex_tomes = await database.codex.get_tomes(user_id)
     except Exception:
         player.codex_tomes = []
+
+    # --- Fetch Alchemy Potion Passives ---
+    try:
+        player.potion_passives = await database.alchemy.get_potion_passives(user_id)
+    except Exception:
+        player.potion_passives = []
         
     # 3. Calculate Combat Initialization Stats (Optional but helpful)
     # This pre-calculates the ward pool based on equipped gear percentages
