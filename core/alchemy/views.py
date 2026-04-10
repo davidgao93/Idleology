@@ -562,7 +562,7 @@ class AlchemyPotionLabView(ui.View):
             current_stones = user_row[SPIRIT_STONES_COL] if user_row else 0
             if current_stones < cost:
                 await interaction.response.send_message(
-                    f"Not enough Spirit Stones to roll! Need 🔮 {cost}, have {current_stones}.",
+                    f"Not enough Spirit Stones to synthesize! Need 🔮 {cost}, have {current_stones}.",
                     ephemeral=True)
                 return
             await self.bot.database.users.modify_currency(self.user_id, "spirit_stones", -cost)
@@ -580,11 +580,10 @@ class AlchemyPotionLabView(ui.View):
         name = info.get("name", passive_type)
         emoji = info.get("emoji", "⚗️")
         desc = AlchemyMechanics.format_passive(passive_type, passive_value)
-        cost_note = "*(free — one-time grant)*" if is_free else f"(-🔮 {AlchemyMechanics.REROLL_COST})"
 
         embed = self.build_embed()
         await interaction.response.edit_message(
-            content=f"🎲 **Slot {slot}** rolled: {emoji} **{name}** — *{desc}*! {cost_note}",
+            content=f"🌟 **Your potion has gained {emoji} **{name}** — *{desc}*!",
             embed=embed, view=self)
 
     async def _on_clear(self, interaction: Interaction):
@@ -609,8 +608,7 @@ class AlchemyPotionLabView(ui.View):
             title="🗑️ Clear Passive?",
             description=(
                 f"Are you sure you want to clear **Slot {slot}**?\n\n"
-                f"Current passive: {emoji} **{name}**\n\n"
-                f"The slot will be empty and your next roll on it will be **free**."
+                f"Current passive: {emoji} **{name}**"
             ),
             color=discord.Color.red()
         )
