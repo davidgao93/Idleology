@@ -250,61 +250,69 @@ def process_heal(player: Player, monster=None) -> str:
     if player.equipped_boot and player.equipped_boot.passive == "cleric":
         heal_pct += (player.equipped_boot.passive_lvl * 0.10)
 
-    # --- Alchemy: Potent Concoction ---
     potion_passives_by_type = {p["passive_type"]: p["passive_value"] for p in player.potion_passives}
 
-    potent = potion_passives_by_type.get("potent_concoction", 0)
-    if potent:
-        heal_pct += potent / 100.0
+    # --- Alchemy: Fermented Brew (bonus heal %) ---
+    fermented = potion_passives_by_type.get("fermented_brew", 0)
+    if fermented:
+        heal_pct += fermented / 100.0
 
     heal_amount = int((player.max_hp * heal_pct) + random.randint(1, 6))
 
-    # --- Alchemy: Overflowing Vigor ---
-    vigor = potion_passives_by_type.get("overflowing_vigor", 0)
-    if vigor:
-        missing_hp = player.max_hp - player.current_hp
-        vigor_bonus = int(missing_hp * (vigor / 100.0))
-        heal_amount += vigor_bonus
-
-    # --- Alchemy: Alchemical Frenzy ---
-    frenzy = potion_passives_by_type.get("alchemical_frenzy", 0)
-    if frenzy and random.random() < (frenzy / 100.0):
-        heal_amount *= 2
+    # --- Alchemy: Unstable Mixture (50% double / 50% halve) ---
+    if potion_passives_by_type.get("unstable_mixture"):
+        if random.random() < 0.5:
+            heal_amount *= 2
+            _unstable_result = "doubled"
+        else:
+            heal_amount = max(1, heal_amount // 2)
+            _unstable_result = "halved"
+    else:
+        _unstable_result = None
 
     if player.apothecary_workers > 0:
         flat_bonus = int(player.apothecary_workers * 0.2)
         heal_amount += flat_bonus
 
-    # --- Alchemy: Second Wind (chance to not consume potion) ---
-    second_wind = potion_passives_by_type.get("second_wind", 0)
-    consume_potion = not (second_wind and random.random() < (second_wind / 100.0))
+    # --- Overcap Brew: can we store overheal as temp HP? ---
+    overcap = potion_passives_by_type.get("overcap_brew", 0)
+    overcap_cap = int(player.max_hp * (overcap / 100.0)) if overcap else 0
 
     potential_hp = player.current_hp + heal_amount
     overheal = 0
     if potential_hp > player.max_hp:
+        excess = potential_hp - player.max_hp
         helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
-        overheal = (potential_hp - player.max_hp) * helmet_lvl
+        overheal = excess * helmet_lvl  # Divine helmet
+
+        if overcap_cap > 0:
+            stored = min(excess, overcap_cap)
+            player.alchemy_overcap_hp = stored
         player.current_hp = player.max_hp
     else:
         player.current_hp = potential_hp
 
-    if consume_potion:
-        player.potions -= 1
+    player.potions -= 1
 
     msg = f"{player.name} uses a potion and heals for **{heal_amount - overheal}** HP!"
-    if not consume_potion:
-        msg += "\n💨 **Second Wind** — potion not consumed!"
     if player.apothecary_workers > 0:
         msg += f" (Apothecary: +{int(player.apothecary_workers * 0.2)})"
+
+    if _unstable_result:
+        icon = "🌀" if _unstable_result == "doubled" else "🌀"
+        msg += f"\n🌀 **Unstable Mixture** — heal was {_unstable_result}!"
 
     if player.get_helmet_passive() == "divine" and overheal > 0:
         player.combat_ward += overheal
         msg += f"\n**Divine** converts **{overheal}** overheal into 🔮 Ward!"
 
-    # --- Alchemy: Ward Infusion ---
+    if overcap_cap > 0 and getattr(player, 'alchemy_overcap_hp', 0) > 0:
+        msg += f"\n💥 **Overcap Brew** — stored **{player.alchemy_overcap_hp}** temp HP!"
+
+    # --- Alchemy: Ward Infusion (% of heal amount as Ward) ---
     ward_inf = potion_passives_by_type.get("ward_infusion", 0)
     if ward_inf:
-        ward_gain = int(player.max_hp * (ward_inf / 100.0))
+        ward_gain = int(heal_amount * (ward_inf / 100.0))
         player.combat_ward += ward_gain
         msg += f"\n🔮 **Ward Infusion** generates **{ward_gain}** Ward!"
 
@@ -320,25 +328,32 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_guaranteed_hit = True
         msg += "\n⚔️ **Bottled Courage** — your next attack cannot miss!"
 
-    # --- Alchemy: Warrior's Draft ---
+    # --- Alchemy: Warrior's Draft (next attack only) ---
     draft = potion_passives_by_type.get("warriors_draft", 0)
     if draft:
-        player.alchemy_atk_boost_pct += draft / 100.0
-        msg += f"\n💪 **Warrior's Draft** — +{draft:.0f}% ATK!"
+        player.alchemy_atk_boost_pct = draft / 100.0
+        msg += f"\n💪 **Warrior's Draft** — +{draft:.0f}% ATK on next attack!"
 
-    # --- Alchemy: Iron Skin ---
+    # --- Alchemy: Iron Skin (+DEF for 2 monster turns) ---
     iron = potion_passives_by_type.get("iron_skin", 0)
     if iron:
-        player.alchemy_dmg_reduction_pct = iron / 100.0
-        player.alchemy_dmg_reduction_turns = 3
-        msg += f"\n🛡️ **Iron Skin** — -{iron:.0f}% incoming damage for 3 turns!"
+        player.alchemy_def_boost_pct = iron / 100.0
+        player.alchemy_def_boost_turns = 2
+        msg += f"\n🛡️ **Iron Skin** — +{iron:.0f}% DEF for 2 monster turns!"
 
-    # --- Alchemy: Venomous Tincture ---
-    venom = potion_passives_by_type.get("venomous_tincture", 0)
-    if venom and monster is not None and monster.hp > 0:
-        venom_dmg = int(venom)
+    # --- Alchemy: Dulled Pain (next monster attack) ---
+    dulled = potion_passives_by_type.get("dulled_pain", 0)
+    if dulled:
+        player.alchemy_dmg_reduction_pct = dulled / 100.0
+        player.alchemy_dmg_reduction_turns = 1
+        msg += f"\n🩹 **Dulled Pain** — -{dulled:.0f}% damage from next monster attack!"
+
+    # --- Alchemy: Venom Cure (deal N× heal as damage) ---
+    venom_mult = potion_passives_by_type.get("venom_cure", 0)
+    if venom_mult and monster is not None and monster.hp > 0:
+        venom_dmg = int(heal_amount * venom_mult)
         monster.hp = max(0, monster.hp - venom_dmg)
-        msg += f"\n🐍 **Venomous Tincture** poisons the enemy for **{venom_dmg}** damage!"
+        msg += f"\n🐍 **Venom Cure** courses through the enemy for **{venom_dmg}** damage!"
 
     msg += f"\n**{player.potions}** potions left."
     return msg
@@ -399,10 +414,11 @@ def _pt_attack_multiplier(player: Player, monster: Monster, log: list[str]) -> f
         mult *= 10.0
         log.append("The **Mystical Might** armor imbues with power, massively increasing damage!")
 
-    # --- Alchemy: Warrior's Draft ---
+    # --- Alchemy: Warrior's Draft (one-shot, reset after this attack) ---
     if player.alchemy_atk_boost_pct > 0:
         mult *= (1 + player.alchemy_atk_boost_pct)
         log.append(f"💪 **Warrior's Draft** boosts damage! (+{int(player.alchemy_atk_boost_pct * 100)}% ATK)")
+        player.alchemy_atk_boost_pct = 0.0
 
     helmet_passive = player.get_helmet_passive()
     helmet_lvl     = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
@@ -907,16 +923,25 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 log.append(f"**Thorns ({helmet_lvl})** reflects **{reflect}** damage back!")
 
         # --- Apply damage to ward / HP ---
-        # --- Alchemy: Iron Skin (applied before other reductions) ---
+        # --- Alchemy: Iron Skin (+DEF for N monster turns) ---
+        if player.alchemy_def_boost_turns > 0 and total_damage > 0:
+            reduction = int(total_damage * player.alchemy_def_boost_pct)
+            total_damage = max(0, total_damage - reduction)
+            player.alchemy_def_boost_turns -= 1
+            if reduction > 0:
+                log.append(f"🛡️ **Iron Skin** absorbs **{reduction}** damage! "
+                           f"({player.alchemy_def_boost_turns} turn{'s' if player.alchemy_def_boost_turns != 1 else ''} left)")
+            if player.alchemy_def_boost_turns <= 0:
+                player.alchemy_def_boost_pct = 0.0
+
+        # --- Alchemy: Dulled Pain (% reduction on next monster attack only) ---
         if player.alchemy_dmg_reduction_turns > 0 and total_damage > 0:
             reduction = int(total_damage * player.alchemy_dmg_reduction_pct)
             total_damage = max(0, total_damage - reduction)
-            player.alchemy_dmg_reduction_turns -= 1
+            player.alchemy_dmg_reduction_turns = 0
+            player.alchemy_dmg_reduction_pct = 0.0
             if reduction > 0:
-                log.append(f"🛡️ **Iron Skin** reduces damage by **{reduction}**! "
-                           f"({player.alchemy_dmg_reduction_turns} turn{'s' if player.alchemy_dmg_reduction_turns != 1 else ''} left)")
-            if player.alchemy_dmg_reduction_turns <= 0:
-                player.alchemy_dmg_reduction_pct = 0.0
+                log.append(f"🩹 **Dulled Pain** reduces damage by **{reduction}**!")
 
         if total_damage > 0 and not is_dodged:
             damage_dealt = 0
@@ -929,6 +954,13 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             if void_passive == "nullfield" and random.random() < 0.15:
                 log.append(f"⬛ **Nullfield** absorbs the strike into the void!")
                 total_damage = 0
+
+            # --- Alchemy: Overcap Brew (temp HP absorbs damage first, then is lost) ---
+            if player.alchemy_overcap_hp > 0 and total_damage > 0:
+                absorbed = min(player.alchemy_overcap_hp, total_damage)
+                player.alchemy_overcap_hp = 0  # always fully lost on any hit
+                total_damage -= absorbed
+                log.append(f"💥 **Overcap Brew** temp HP absorbs **{absorbed}** damage and shatters!")
 
             if player.combat_ward > 0 and total_damage > 0:
                 if total_damage <= player.combat_ward:

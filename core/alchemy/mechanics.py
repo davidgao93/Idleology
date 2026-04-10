@@ -3,135 +3,145 @@ from typing import Optional, Tuple
 
 
 class AlchemyMechanics:
-    MAX_LEVEL = 10
+    MAX_LEVEL = 5
 
-    # Gold cost to advance from level N to N+1
+    # Spirit Stone cost to advance from level N to N+1
     LEVEL_COSTS: dict[int, int] = {
-        0: 500,
-        1: 1_500,
-        2: 3_000,
-        3: 5_000,
-        4: 8_000,
-        5: 12_000,
-        6: 18_000,
-        7: 25_000,
-        8: 35_000,
-        9: 50_000,
+        1: 10,
+        2: 15,
+        3: 25,
+        4: 40,
     }
 
     # ------------------------------------------------------------------
-    # Slot progression
+    # Slot progression — 1 slot per level (level 1 = 1 slot, level 5 = 5 slots)
     # ------------------------------------------------------------------
 
     @staticmethod
     def get_slot_count(level: int) -> int:
         """Number of active potion-passive slots unlocked at *level*."""
-        if level >= 10: return 5
-        if level >= 7:  return 4
-        if level >= 5:  return 3
-        if level >= 3:  return 2
-        if level >= 1:  return 1
-        return 0
+        return max(0, min(level, AlchemyMechanics.MAX_LEVEL))
+
+    # ------------------------------------------------------------------
+    # Transmutation ratios (depends on alchemy level)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_upgrade_ratio(alchemy_level: int) -> int:
+        """Number of lower-tier resources needed to produce 1 higher-tier resource."""
+        if alchemy_level >= 5:
+            return 2
+        if alchemy_level >= 3:
+            return 3
+        return 4  # level 1-2
+
+    @staticmethod
+    def get_downgrade_ratio(alchemy_level: int) -> int:
+        """Number of lower-tier resources received when breaking down 1 higher-tier resource."""
+        if alchemy_level >= 5:
+            return 4
+        if alchemy_level >= 3:
+            return 3
+        return 2  # level 1-2
 
     # ------------------------------------------------------------------
     # Potion Passives
     # ------------------------------------------------------------------
 
     # Keys mirror the passive_type stored in DB.
-    # min_val / max_val are the FULL range at level 10.
-    # At level 1 only 30 % of the range above min is accessible; each level
-    # adds 7 percentage points, capping at 100 % at level 10.
+    # min_val / max_val are the full range across levels 1–5.
+    # At level 1: min_val; at level 5: up to max_val.
     PASSIVES: dict[str, dict] = {
-        "potent_concoction": {
-            "name":    "Potent Concoction",
-            "emoji":   "🧪",
-            "desc":    "+{value:.0f}% base heal from potions",
-            "min_val": 5.0,
-            "max_val": 30.0,
+        "fermented_brew": {
+            "name":    "Fermented Brew",
+            "emoji":   "🍺",
+            "desc":    "+{value:.0f}% bonus to heal amount",
+            "min_val": 15.0,
+            "max_val": 45.0,
             "unit":    "%",
         },
-        "alchemical_frenzy": {
-            "name":    "Alchemical Frenzy",
-            "emoji":   "🌀",
-            "desc":    "{value:.0f}% chance to double your heal",
-            "min_val": 5.0,
-            "max_val": 40.0,
-            "unit":    "%",
-        },
-        "second_wind": {
-            "name":    "Second Wind",
-            "emoji":   "💨",
-            "desc":    "{value:.0f}% chance potion is not consumed on use",
-            "min_val": 5.0,
-            "max_val": 40.0,
-            "unit":    "%",
-        },
-        "overflowing_vigor": {
-            "name":    "Overflowing Vigor",
-            "emoji":   "💧",
-            "desc":    "Gain {value:.0f}% of missing HP as bonus healing",
-            "min_val": 5.0,
-            "max_val": 25.0,
-            "unit":    "%",
-        },
-        "ward_infusion": {
-            "name":    "Ward Infusion",
-            "emoji":   "🔮",
-            "desc":    "Generate {value:.0f}% of max HP as Ward on heal",
+        "venom_cure": {
+            "name":    "Venom Cure",
+            "emoji":   "🐍",
+            "desc":    "Deal damage equal to {value:.1f}× the heal to the enemy",
             "min_val": 2.0,
-            "max_val": 12.0,
-            "unit":    "%",
-        },
-        "lingering_remedy": {
-            "name":    "Lingering Remedy",
-            "emoji":   "🌿",
-            "desc":    "Heal {value:.0f} HP per turn for 3 turns",
-            "min_val": 10.0,
-            "max_val": 60.0,
-            "unit":    "flat",
-        },
-        "bottled_courage": {
-            "name":    "Bottled Courage",
-            "emoji":   "⚔️",
-            "desc":    "Your next attack cannot miss after using a potion",
-            "min_val": 1.0,
-            "max_val": 1.0,
-            "unit":    "bool",
+            "max_val": 6.0,
+            "unit":    "mult",
         },
         "warriors_draft": {
             "name":    "Warrior's Draft",
             "emoji":   "💪",
-            "desc":    "+{value:.0f}% ATK for the rest of combat after using a potion",
-            "min_val": 5.0,
-            "max_val": 30.0,
+            "desc":    "+{value:.0f}% ATK on your next attack this combat",
+            "min_val": 8.0,
+            "max_val": 20.0,
             "unit":    "%",
         },
         "iron_skin": {
             "name":    "Iron Skin",
             "emoji":   "🛡️",
-            "desc":    "-{value:.0f}% incoming damage for 3 turns after potion",
-            "min_val": 5.0,
-            "max_val": 30.0,
+            "desc":    "+{value:.0f}% DEF for the next 2 monster turns",
+            "min_val": 8.0,
+            "max_val": 20.0,
             "unit":    "%",
         },
-        "venomous_tincture": {
-            "name":    "Venomous Tincture",
-            "emoji":   "🐍",
-            "desc":    "Deal {value:.0f} damage to your foe when you use a potion",
+        "ward_infusion": {
+            "name":    "Ward Infusion",
+            "emoji":   "🔮",
+            "desc":    "Restore Ward equal to {value:.0f}% of the heal amount",
             "min_val": 15.0,
-            "max_val": 80.0,
+            "max_val": 40.0,
+            "unit":    "%",
+        },
+        "overcap_brew": {
+            "name":    "Overcap Brew",
+            "emoji":   "💥",
+            "desc":    "Overheal stored as temp HP up to {value:.0f}% of max HP (lost on hit)",
+            "min_val": 20.0,
+            "max_val": 50.0,
+            "unit":    "%",
+        },
+        "unstable_mixture": {
+            "name":    "Unstable Mixture",
+            "emoji":   "🌀",
+            "desc":    "50% chance to double the heal — 50% chance to halve it",
+            "min_val": 1.0,
+            "max_val": 1.0,
+            "unit":    "bool",
+        },
+        "dulled_pain": {
+            "name":    "Dulled Pain",
+            "emoji":   "🩹",
+            "desc":    "Take {value:.0f}% less damage from the monster's next attack",
+            "min_val": 25.0,
+            "max_val": 50.0,
+            "unit":    "%",
+        },
+        "lingering_remedy": {
+            "name":    "Lingering Remedy",
+            "emoji":   "🌿",
+            "desc":    "Restore {value:.0f} HP at the start of each of your next 3 turns",
+            "min_val": 5.0,
+            "max_val": 20.0,
             "unit":    "flat",
+        },
+        "bottled_courage": {
+            "name":    "Bottled Courage",
+            "emoji":   "⚔️",
+            "desc":    "After healing, your next hit cannot miss",
+            "min_val": 1.0,
+            "max_val": 1.0,
+            "unit":    "bool",
         },
     }
 
-    # Gold cost to roll a passive into a given slot (1-indexed)
-    ROLL_COSTS: dict[int, int] = {1: 500, 2: 1_000, 3: 2_000, 4: 4_000, 5: 8_000}
+    # Spirit Stone cost to reroll any slot (flat 1 per reroll)
+    REROLL_COST: int = 1  # spirit stones
 
     # ------------------------------------------------------------------
-    # Transmutation
+    # Transmutation resource definitions
     # ------------------------------------------------------------------
 
-    # Ordered resource columns per skill
+    # Ordered resource columns per skill (index 0 = tier 1, index 4 = tier 5)
     SKILL_TIERS: dict[str, list[str]] = {
         "mining":      ["iron", "coal", "gold", "platinum", "idea"],
         "fishing":     ["desiccated_bones", "regular_bones", "sturdy_bones",
@@ -147,14 +157,11 @@ class AlchemyMechanics:
         "woodcutting": ["Oak",     "Willow",  "Mahogany", "Magic",       "Idea Logs"],
     }
 
-    # Source resources required per 1 destination resource (always 8:1)
-    TRANSMUTE_RATIO: int = 8
+    # Gold cost per upgrade transmutation, keyed by destination tier index (1=T2 … 4=T5)
+    TRANSMUTE_UPGRADE_GOLD: dict[int, int] = {1: 2_000, 2: 8_000, 3: 25_000, 4: 75_000}
 
-    # Gold cost per single transmutation, indexed by source-tier index (0 = T1→T2)
-    TRANSMUTE_GOLD: dict[int, int] = {0: 50, 1: 150, 2: 400, 3: 1_000}
-
-    # Spirit-stone → resource rates  {tier_index: qty_per_stone}
-    SPIRIT_STONE_RATES: dict[int, int] = {3: 5, 4: 2}
+    # Gold cost per downgrade transmutation, keyed by source tier index (1=T2 … 4=T5)
+    TRANSMUTE_DOWNGRADE_GOLD: dict[int, int] = {1: 500, 2: 2_000, 3: 6_000, 4: 20_000}
 
     # ------------------------------------------------------------------
     # Helpers
@@ -162,7 +169,7 @@ class AlchemyMechanics:
 
     @staticmethod
     def get_level_up_cost(current_level: int) -> Optional[int]:
-        """Gold cost to advance to the next level; None if already at max."""
+        """Spirit Stone cost to advance to the next level; None if already at max."""
         if current_level >= AlchemyMechanics.MAX_LEVEL:
             return None
         return AlchemyMechanics.LEVEL_COSTS.get(current_level)
@@ -171,7 +178,7 @@ class AlchemyMechanics:
     def roll_passive(alchemy_level: int) -> Tuple[str, float]:
         """
         Randomly selects a passive type and rolls a value appropriate for
-        the current alchemy level.  Higher level = larger possible values.
+        the current alchemy level.  Level 1 = min value; level 5 = full range.
         """
         passive_type = random.choice(list(AlchemyMechanics.PASSIVES.keys()))
         info = AlchemyMechanics.PASSIVES[passive_type]
@@ -179,8 +186,8 @@ class AlchemyMechanics:
         if info["unit"] == "bool":
             return passive_type, 1.0
 
-        # Scale: level 1 → 30 % of range; level 10 → 100 % of range
-        scale = min(1.0, 0.30 + 0.077 * (alchemy_level - 1))
+        # Scale: level 1 → min_val only; level 5 → full range
+        scale = (alchemy_level - 1) / (AlchemyMechanics.MAX_LEVEL - 1)
         lo = info["min_val"]
         hi = lo + (info["max_val"] - lo) * scale
         value = round(random.uniform(lo, hi), 1)

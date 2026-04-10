@@ -3,12 +3,13 @@
 -- ALTER TABLE `uber_progress` ADD COLUMN `gemini_sigils` INTEGER DEFAULT 0;
 -- ALTER TABLE `uber_progress` ADD COLUMN `gemini_engrams` INTEGER DEFAULT 0;
 -- ALTER TABLE `uber_progress` ADD COLUMN `gemini_blueprint_unlocked` INTEGER DEFAULT 0;
--- ALTER TABLE `users` ADD COLUMN `bound_crystal` INTEGER DEFAULT 0;
+-- ALTER TABLE `users` ADD COLUMN `spirit_stones` INTEGER DEFAULT 0;
 -- ALTER TABLE `users` ADD COLUMN `codex_fragments` INTEGER DEFAULT 0;
 -- ALTER TABLE `users` ADD COLUMN `codex_pages` INTEGER DEFAULT 0;
 -- ALTER TABLE `users` ADD COLUMN `codex_rerolls` INTEGER DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN highest_ascension_stage INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE items ADD COLUMN forge_tier INTEGER DEFAULT 0;
+
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -315,7 +316,7 @@ CREATE TABLE IF NOT EXISTS codex_tomes (
 
 CREATE TABLE IF NOT EXISTS alchemy_data (
     user_id TEXT PRIMARY KEY,
-    level INTEGER NOT NULL DEFAULT 0
+    level INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS potion_passives (

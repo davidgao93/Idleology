@@ -10,9 +10,23 @@ class AlchemyRepository:
     # Alchemy Level
     # ------------------------------------------------------------------
 
+    async def initialize_if_new(self, user_id: str) -> bool:
+        """Insert a level-1 row if none exists. Returns True if this is a new user."""
+        async with self.connection.execute(
+            "SELECT COUNT(*) FROM alchemy_data WHERE user_id = ?", (user_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row[0] == 0:
+            await self.connection.execute(
+                "INSERT INTO alchemy_data (user_id, level) VALUES (?, 1)", (user_id,)
+            )
+            await self.connection.commit()
+            return True
+        return False
+
     async def _ensure_row(self, user_id: str) -> None:
         await self.connection.execute(
-            "INSERT OR IGNORE INTO alchemy_data (user_id) VALUES (?)",
+            "INSERT OR IGNORE INTO alchemy_data (user_id, level) VALUES (?, 1)",
             (user_id,)
         )
 
@@ -22,7 +36,15 @@ class AlchemyRepository:
             "SELECT level FROM alchemy_data WHERE user_id = ?", (user_id,)
         ) as cursor:
             row = await cursor.fetchone()
-        return row[0] if row else 0
+        level = row[0] if row else 1
+        # Migrate legacy level-0 users to level 1
+        if level == 0:
+            await self.connection.execute(
+                "UPDATE alchemy_data SET level = 1 WHERE user_id = ?", (user_id,)
+            )
+            await self.connection.commit()
+            return 1
+        return level
 
     async def set_level(self, user_id: str, level: int) -> None:
         await self._ensure_row(user_id)

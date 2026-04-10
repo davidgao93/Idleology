@@ -260,9 +260,12 @@ class Player:
     potion_passives: List[dict] = field(default_factory=list)
 
     # Alchemy — Transient combat state (reset each combat)
-    alchemy_atk_boost_pct: float = 0.0          # Warrior's Draft: % ATK boost this heal
-    alchemy_dmg_reduction_pct: float = 0.0      # Iron Skin / Dulled Pain: % incoming dmg reduction
-    alchemy_dmg_reduction_turns: int = 0        # Turns remaining for dmg reduction
+    alchemy_atk_boost_pct: float = 0.0          # Warrior's Draft: % ATK boost on next attack (resets after use)
+    alchemy_def_boost_pct: float = 0.0          # Iron Skin: % damage reduction for N monster turns
+    alchemy_def_boost_turns: int = 0            # Turns remaining for Iron Skin DEF boost
+    alchemy_dmg_reduction_pct: float = 0.0      # Dulled Pain: % incoming dmg reduction (next attack only)
+    alchemy_dmg_reduction_turns: int = 0        # Turns remaining for Dulled Pain (1 = next attack)
+    alchemy_overcap_hp: int = 0                 # Overcap Brew: temporary HP above max (lost on hit)
     alchemy_linger_hp: int = 0                  # Lingering Remedy: heal per turn
     alchemy_linger_turns: int = 0               # Turns remaining for lingering heal
     alchemy_guaranteed_hit: bool = False        # Bottled Courage: next attack cannot miss

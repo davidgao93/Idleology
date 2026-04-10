@@ -148,6 +148,10 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         return drops
 
     # --- STANDARD MOBS ---
+    # 1% Spirit Stone drop from any normal combat encounter
+    if random.random() < 0.01:
+        drops["spirit_stone"] = True
+
     rare_monsters = [
         "Treasure Chest",
         "Random Korean Lady",

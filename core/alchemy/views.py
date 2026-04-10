@@ -61,7 +61,7 @@ class AlchemyHubView(ui.View):
             f"**Passive Slots:** {slot_count} unlocked",
         ]
         if level_cost is not None:
-            info.append(f"**Next Level Cost:** 💰 {level_cost:,}")
+            info.append(f"**Next Level Cost:** 🔮 {level_cost} Spirit Stones")
         else:
             info.append("**Level:** ✨ MAX")
         embed.description = "\n".join(info)
@@ -84,14 +84,14 @@ class AlchemyHubView(ui.View):
             embed.add_field(name="🧪 Potion Passives",
                             value="Level up Alchemy to unlock passive slots.", inline=False)
 
-        embed.set_footer(text="Potions in combat trigger your passives automatically.")
+        embed.set_footer(text="Rerolling costs 1 🔮 Spirit Stone per slot. Potions trigger passives automatically.")
         return embed
 
     @ui.button(label="Transmute", style=ButtonStyle.blurple, emoji="🔄", row=0)
     async def transmute(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         view = AlchemyTransmuteView(self.bot, self.user_id, self.server_id,
-                                    self.player_gold, self.spirit_stones)
+                                    self.alchemy_level, self.player_gold, self.spirit_stones)
         embed = await view.build_embed()
         msg = await interaction.edit_original_response(embed=embed, view=view)
         view.message = msg
@@ -101,7 +101,7 @@ class AlchemyHubView(ui.View):
     async def potion_lab(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         view = AlchemyPotionLabView(self.bot, self.user_id, self.server_id,
-                                    self.alchemy_level, self.passives, self.player_gold)
+                                    self.alchemy_level, self.passives, self.spirit_stones)
         embed = view.build_embed()
         msg = await interaction.edit_original_response(embed=embed, view=view)
         view.message = msg
@@ -114,20 +114,24 @@ class AlchemyHubView(ui.View):
             await interaction.response.send_message(
                 "You are already at maximum alchemy level!", ephemeral=True)
             return
-        if self.player_gold < cost:
+        if self.spirit_stones < cost:
             await interaction.response.send_message(
-                f"Not enough gold! Need **{cost:,}**, have **{self.player_gold:,}**.",
+                f"Not enough Spirit Stones! Need 🔮 **{cost}**, have **{self.spirit_stones}**.",
                 ephemeral=True)
             return
 
         view = _LevelUpConfirmView(self.bot, self.user_id, self.server_id,
                                    self.alchemy_level, cost)
+        new_level = self.alchemy_level + 1
         embed = discord.Embed(
             title="⬆️ Level Up Alchemy?",
             description=(
-                f"Upgrade from **Level {self.alchemy_level}** → **Level {self.alchemy_level + 1}**\n\n"
-                f"Cost: 💰 **{cost:,}** gold\n"
-                f"New slot count: **{AlchemyMechanics.get_slot_count(self.alchemy_level + 1)}**"
+                f"Upgrade from **Level {self.alchemy_level}** → **Level {new_level}**\n\n"
+                f"Cost: 🔮 **{cost}** Spirit Stones\n"
+                f"New slot count: **{AlchemyMechanics.get_slot_count(new_level)}**\n"
+                f"New transmutation ratio: **{AlchemyMechanics.get_upgrade_ratio(new_level)}:1** upgrade / "
+                f"**1:{AlchemyMechanics.get_downgrade_ratio(new_level)}** downgrade\n\n"
+                f"✨ The new slot will be rolled for free!"
             ),
             color=discord.Color.gold()
         )
@@ -169,20 +173,36 @@ class _LevelUpConfirmView(ui.View):
     @ui.button(label="Confirm", style=ButtonStyle.green, emoji="✅")
     async def confirm(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
-        # Double-check gold
         user_row = await self.bot.database.users.get(self.user_id, self.server_id)
-        if not user_row or user_row[6] < self.cost:
-            await interaction.followup.send("Not enough gold!", ephemeral=True)
+        current_stones = user_row[SPIRIT_STONES_COL] if user_row else 0
+        if current_stones < self.cost:
+            await interaction.followup.send(
+                f"Not enough Spirit Stones! Need 🔮 {self.cost}, have {current_stones}.",
+                ephemeral=True)
             return
 
-        await self.bot.database.users.modify_gold(self.user_id, -self.cost)
+        await self.bot.database.users.modify_currency(self.user_id, "spirit_stones", -self.cost)
         new_level = self.current_level + 1
         await self.bot.database.alchemy.set_level(self.user_id, new_level)
+
+        # Auto-roll the newly unlocked slot for free
+        new_slot = AlchemyMechanics.get_slot_count(new_level)
+        passive_type, passive_value = AlchemyMechanics.roll_passive(new_level)
+        await self.bot.database.alchemy.set_passive(
+            self.user_id, new_slot, passive_type, passive_value)
+
+        info = AlchemyMechanics.PASSIVES.get(passive_type, {})
+        free_roll_desc = (
+            f"\n✨ **Slot {new_slot}** (free roll): "
+            f"{info.get('emoji', '⚗️')} **{info.get('name', passive_type)}** — "
+            f"*{AlchemyMechanics.format_passive(passive_type, passive_value)}*"
+        )
 
         view = await _hub_from_db(self.bot, self.user_id, self.server_id)
         embed = view.build_embed()
         embed.colour = discord.Color.gold()
         embed.title = f"✨ Alchemy leveled up to **{new_level}**!"
+        embed.description = (embed.description or "") + free_roll_desc
         msg = await interaction.edit_original_response(embed=embed, view=view)
         view.message = msg
         self.stop()
@@ -221,11 +241,13 @@ class _TransmuteSelect(ui.Select):
 
 
 class AlchemyTransmuteView(ui.View):
-    def __init__(self, bot, user_id: str, server_id: str, player_gold: int, spirit_stones: int):
+    def __init__(self, bot, user_id: str, server_id: str, alchemy_level: int,
+                 player_gold: int, spirit_stones: int):
         super().__init__(timeout=120)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
+        self.alchemy_level = alchemy_level
         self.player_gold = player_gold
         self.spirit_stones = spirit_stones
         self.message = None
@@ -244,6 +266,9 @@ class AlchemyTransmuteView(ui.View):
 
     async def build_embed(self) -> discord.Embed:
         """Fetch resource amounts, build select options, (re)attach to view, return embed."""
+        up_ratio = AlchemyMechanics.get_upgrade_ratio(self.alchemy_level)
+        dn_ratio = AlchemyMechanics.get_downgrade_ratio(self.alchemy_level)
+
         # Fetch current resource amounts
         amounts: dict[tuple, int] = {}
         for skill, cols in AlchemyMechanics.SKILL_TIERS.items():
@@ -253,38 +278,47 @@ class AlchemyTransmuteView(ui.View):
 
         self._options_data = []
 
-        # Skill-tier upgrades (4 upgrades × 3 skills = 12 options)
+        # Upgrades (T1→T2, T2→T3, T3→T4, T4→T5) × 3 skills = 12 options
         for skill, cols in AlchemyMechanics.SKILL_TIERS.items():
             names = AlchemyMechanics.SKILL_TIER_NAMES[skill]
             for i in range(len(cols) - 1):
                 src_col = cols[i]
                 dst_col = cols[i + 1]
                 src_amt = amounts.get((skill, src_col), 0)
-                gold_cost = AlchemyMechanics.TRANSMUTE_GOLD[i]
-                ratio = AlchemyMechanics.TRANSMUTE_RATIO
+                dst_tier_idx = i + 1  # 1=T2 … 4=T5
+                gold_cost = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD[dst_tier_idx]
                 self._options_data.append({
-                    "type": "skill",
+                    "type": "upgrade",
                     "skill": skill,
                     "src_col": src_col,
                     "dst_col": dst_col,
-                    "src_tier": i,
-                    "label": f"{names[i]} → {names[i + 1]} ({skill.title()})",
-                    "desc": f"{ratio}× {names[i]} → 1× {names[i + 1]} | have {src_amt} | {gold_cost}g",
+                    "src_tier_idx": i,
+                    "dst_tier_idx": dst_tier_idx,
+                    "label": f"↑ {names[i]} → {names[i + 1]} ({skill.title()})",
+                    "desc": f"{up_ratio}× {names[i]} → 1× {names[i + 1]} | have {src_amt} | {gold_cost:,}g",
                     "gold_cost": gold_cost,
-                    "ratio": ratio,
+                    "ratio": up_ratio,
                 })
 
-        # Spirit-stone → resource conversions (2 tiers × 3 skills = 6 options)
+        # Downgrades (T2→T1, T3→T2, T4→T3, T5→T4) × 3 skills = 12 options
         for skill, cols in AlchemyMechanics.SKILL_TIERS.items():
             names = AlchemyMechanics.SKILL_TIER_NAMES[skill]
-            for tier_idx, qty in AlchemyMechanics.SPIRIT_STONE_RATES.items():
+            for i in range(1, len(cols)):
+                src_col = cols[i]
+                dst_col = cols[i - 1]
+                src_amt = amounts.get((skill, src_col), 0)
+                src_tier_idx = i  # 1=T2 … 4=T5
+                gold_cost = AlchemyMechanics.TRANSMUTE_DOWNGRADE_GOLD[src_tier_idx]
                 self._options_data.append({
-                    "type": "spirit_stone",
+                    "type": "downgrade",
                     "skill": skill,
-                    "dst_col": cols[tier_idx],
-                    "label": f"🔮 Stone → {qty}× {names[tier_idx]} ({skill.title()})",
-                    "desc": f"1 Spirit Stone → {qty}× {names[tier_idx]} | {self.spirit_stones} stones",
-                    "qty": qty,
+                    "src_col": src_col,
+                    "dst_col": dst_col,
+                    "src_tier_idx": src_tier_idx,
+                    "label": f"↓ {names[i]} → {names[i - 1]} ({skill.title()})",
+                    "desc": f"1× {names[i]} → {dn_ratio}× {names[i - 1]} | have {src_amt} | {gold_cost:,}g",
+                    "gold_cost": gold_cost,
+                    "ratio": dn_ratio,
                 })
 
         # Rebuild items
@@ -302,9 +336,10 @@ class AlchemyTransmuteView(ui.View):
 
         embed = discord.Embed(title="🔄 Transmute Resources", color=discord.Color.blurple())
         embed.description = (
-            "Convert lower-tier skilling resources into higher ones.\n"
-            f"**Ratio:** {AlchemyMechanics.TRANSMUTE_RATIO}:1 | "
-            f"**Gold:** 💰 {self.player_gold:,} | **Spirit Stones:** 🔮 {self.spirit_stones}\n\n"
+            f"Convert resources between tiers using Alchemy.\n"
+            f"**Upgrade ratio:** {up_ratio}:1 | **Downgrade ratio:** 1:{dn_ratio} "
+            f"(improves with alchemy level)\n"
+            f"**Gold:** 💰 {self.player_gold:,}\n\n"
             "Select a conversion and press **Confirm**."
         )
         return embed
@@ -316,28 +351,25 @@ class AlchemyTransmuteView(ui.View):
             return
 
         opt = self._options_data[self._select.selected_index]
+        gold_cost = opt["gold_cost"]
+        ratio = opt["ratio"]
 
-        if opt["type"] == "skill":
-            ratio = opt["ratio"]
-            gold_cost = opt["gold_cost"]
+        user_row = await self.bot.database.users.get(self.user_id, self.server_id)
+        current_gold = user_row[6] if user_row else 0
+        if current_gold < gold_cost:
+            await interaction.response.send_message(
+                f"Not enough gold! Need 💰 {gold_cost:,}, have {current_gold:,}.",
+                ephemeral=True)
+            return
 
+        if opt["type"] == "upgrade":
             src_amt = await self.bot.database.alchemy.get_resource_amount(
                 self.user_id, self.server_id, opt["skill"], opt["src_col"])
-
             if src_amt < ratio:
                 await interaction.response.send_message(
                     f"Not enough **{opt['src_col']}**! Need {ratio}, have {src_amt}.",
                     ephemeral=True)
                 return
-
-            user_row = await self.bot.database.users.get(self.user_id, self.server_id)
-            current_gold = user_row[6] if user_row else 0
-            if current_gold < gold_cost:
-                await interaction.response.send_message(
-                    f"Not enough gold! Need 💰 {gold_cost:,}, have {current_gold:,}.",
-                    ephemeral=True)
-                return
-
             await self.bot.database.alchemy.transmute(
                 self.user_id, self.server_id, opt["skill"],
                 opt["src_col"], -ratio,
@@ -345,30 +377,29 @@ class AlchemyTransmuteView(ui.View):
             )
             await self.bot.database.users.modify_gold(self.user_id, -gold_cost)
             self.player_gold = max(0, self.player_gold - gold_cost)
-
             await interaction.response.send_message(
                 f"✅ Transmuted **{ratio}×** {opt['src_col']} → **1×** {opt['dst_col']}! "
                 f"(-💰 {gold_cost:,})",
                 ephemeral=True)
 
-        elif opt["type"] == "spirit_stone":
-            user_row = await self.bot.database.users.get(self.user_id, self.server_id)
-            current_stones = user_row[SPIRIT_STONES_COL] if user_row else 0
-            if current_stones < 1:
+        else:  # downgrade
+            src_amt = await self.bot.database.alchemy.get_resource_amount(
+                self.user_id, self.server_id, opt["skill"], opt["src_col"])
+            if src_amt < 1:
                 await interaction.response.send_message(
-                    "You have no 🔮 Spirit Stones!", ephemeral=True)
+                    f"You have no **{opt['src_col']}** to break down!",
+                    ephemeral=True)
                 return
-
-            await self.bot.database.users.modify_currency(self.user_id, "spirit_stones", -1)
-            self.spirit_stones = max(0, self.spirit_stones - 1)
-
-            await self.bot.database.skills.update_batch(
+            await self.bot.database.alchemy.transmute(
                 self.user_id, self.server_id, opt["skill"],
-                {opt["dst_col"]: opt["qty"]}
+                opt["src_col"], -1,
+                opt["dst_col"], ratio,
             )
-
+            await self.bot.database.users.modify_gold(self.user_id, -gold_cost)
+            self.player_gold = max(0, self.player_gold - gold_cost)
             await interaction.response.send_message(
-                f"✅ Converted 🔮 Spirit Stone → **{opt['qty']}×** {opt['dst_col']}!",
+                f"✅ Broke down **1×** {opt['src_col']} → **{ratio}×** {opt['dst_col']}! "
+                f"(-💰 {gold_cost:,})",
                 ephemeral=True)
 
     async def _on_back(self, interaction: Interaction):
@@ -400,14 +431,14 @@ class _SlotSelect(ui.Select):
 
 class AlchemyPotionLabView(ui.View):
     def __init__(self, bot, user_id: str, server_id: str, alchemy_level: int,
-                 passives: list, player_gold: int):
+                 passives: list, spirit_stones: int):
         super().__init__(timeout=120)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
         self.alchemy_level = alchemy_level
         self.passives = passives
-        self.player_gold = player_gold
+        self.spirit_stones = spirit_stones
         self.message = None
         self._slot_select: _SlotSelect | None = None
 
@@ -416,7 +447,7 @@ class AlchemyPotionLabView(ui.View):
             self._slot_select = _SlotSelect(slot_count)
             self.add_item(self._slot_select)
 
-        roll_btn = ui.Button(label="Roll Passive", style=ButtonStyle.primary, emoji="🎲", row=1)
+        roll_btn = ui.Button(label="Reroll Slot", style=ButtonStyle.primary, emoji="🎲", row=1)
         roll_btn.callback = self._on_roll
         self.add_item(roll_btn)
 
@@ -443,11 +474,9 @@ class AlchemyPotionLabView(ui.View):
         embed = discord.Embed(title="⚗️ Potion Lab", color=discord.Color.green())
 
         embed.description = (
-            f"**Level:** {self.alchemy_level} | **Gold:** 💰 {self.player_gold:,}\n\n"
-            "**Roll Costs:** " +
-            " | ".join(f"Slot {s}: {AlchemyMechanics.ROLL_COSTS[s]:,}g"
-                       for s in range(1, slot_count + 1)) +
-            "\n\nSelect a slot, then roll or clear it."
+            f"**Level:** {self.alchemy_level} | **Spirit Stones:** 🔮 {self.spirit_stones}\n\n"
+            f"**Reroll cost:** 🔮 {AlchemyMechanics.REROLL_COST} Spirit Stone per slot\n\n"
+            "Select a slot, then reroll or clear it."
         )
 
         passive_by_slot = {p["slot"]: p for p in self.passives}
@@ -467,7 +496,7 @@ class AlchemyPotionLabView(ui.View):
 
         all_passives = AlchemyMechanics.PASSIVES
         passive_list = "\n".join(
-            f"{v['emoji']} **{v['name']}**: {v['desc'].format(value=0).replace(' 0', ' …')}"
+            f"{v['emoji']} **{v['name']}**: {v['desc'].format(value=0).replace(' 0', ' …') if v['unit'] != 'bool' else v['desc']}"
             for v in all_passives.values()
         )
         embed.add_field(name="Possible Passives", value=passive_list[:1024], inline=False)
@@ -479,20 +508,20 @@ class AlchemyPotionLabView(ui.View):
             await interaction.response.send_message("Please select a slot first.", ephemeral=True)
             return
 
-        cost = AlchemyMechanics.ROLL_COSTS.get(slot, 9999)
+        cost = AlchemyMechanics.REROLL_COST
         user_row = await self.bot.database.users.get(self.user_id, self.server_id)
-        current_gold = user_row[6] if user_row else 0
-        if current_gold < cost:
+        current_stones = user_row[SPIRIT_STONES_COL] if user_row else 0
+        if current_stones < cost:
             await interaction.response.send_message(
-                f"Not enough gold for Slot {slot}! Need 💰 {cost:,}, have {current_gold:,}.",
+                f"Not enough Spirit Stones! Need 🔮 {cost}, have {current_stones}.",
                 ephemeral=True)
             return
 
         passive_type, passive_value = AlchemyMechanics.roll_passive(self.alchemy_level)
         await self.bot.database.alchemy.set_passive(
             self.user_id, slot, passive_type, passive_value)
-        await self.bot.database.users.modify_gold(self.user_id, -cost)
-        self.player_gold = max(0, self.player_gold - cost)
+        await self.bot.database.users.modify_currency(self.user_id, "spirit_stones", -cost)
+        self.spirit_stones = max(0, self.spirit_stones - cost)
 
         # Refresh passives list
         self.passives = await self.bot.database.alchemy.get_potion_passives(self.user_id)
@@ -504,7 +533,7 @@ class AlchemyPotionLabView(ui.View):
 
         embed = self.build_embed()
         await interaction.response.edit_message(
-            content=f"🎲 **Slot {slot}** rolled: {emoji} **{name}** — *{desc}*! (-💰 {cost:,})",
+            content=f"🎲 **Slot {slot}** rolled: {emoji} **{name}** — *{desc}*! (-🔮 {cost})",
             embed=embed, view=self)
 
     async def _on_clear(self, interaction: Interaction):
