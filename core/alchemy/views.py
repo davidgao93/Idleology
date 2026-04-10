@@ -78,13 +78,12 @@ class AlchemyHubView(ui.View):
                     desc = AlchemyMechanics.format_passive(p["passive_type"], p["passive_value"])
                     lines.append(f"**[{s}]** {emoji} {name}: *{desc}*")
                 else:
-                    lines.append(f"**[{s}]** *Empty slot — first roll is free!*")
+                    lines.append(f"**[{s}]** *Empty slot*")
             embed.add_field(name="🧪 Potion Passives", value="\n".join(lines), inline=False)
         else:
             embed.add_field(name="🧪 Potion Passives",
-                            value="Level up Alchemy to unlock passive slots.", inline=False)
+                            value="Level up Alchemy to unlock additional passive slots.", inline=False)
 
-        embed.set_footer(text="Empty slots roll free. Rerolling a filled slot costs 1 🔮 Spirit Stone.")
         return embed
 
     @ui.button(label="Transmute", style=ButtonStyle.blurple, emoji="🔄", row=0)
@@ -493,11 +492,11 @@ class AlchemyPotionLabView(ui.View):
             self._slot_select = _SlotSelect(slot_count)
             self.add_item(self._slot_select)
 
-        roll_btn = ui.Button(label="Roll Slot", style=ButtonStyle.primary, emoji="🎲", row=1)
+        roll_btn = ui.Button(label="Synthesize", style=ButtonStyle.primary, emoji="🌟", row=1)
         roll_btn.callback = self._on_roll
         self.add_item(roll_btn)
 
-        clear_btn = ui.Button(label="Clear Slot", style=ButtonStyle.danger, emoji="🗑️", row=1)
+        clear_btn = ui.Button(label="Destroy", style=ButtonStyle.danger, emoji="🗑️", row=1)
         clear_btn.callback = self._on_clear
         self.add_item(clear_btn)
 
@@ -519,11 +518,9 @@ class AlchemyPotionLabView(ui.View):
         slot_count = AlchemyMechanics.get_slot_count(self.alchemy_level)
         embed = discord.Embed(title="⚗️ Potion Lab", color=discord.Color.green())
 
-        free_note = " *(your first roll ever is free!)*" if not self.free_roll_used else ""
         embed.description = (
             f"**Level:** {self.alchemy_level} | **Spirit Stones:** 🔮 {self.spirit_stones}\n\n"
-            f"**Roll cost:** 🔮 {AlchemyMechanics.REROLL_COST} Spirit Stone per slot{free_note}\n\n"
-            "Select a slot, then roll or clear it."
+            "Select a slot, then synthesize or destroy it."
         )
 
         passive_by_slot = {p["slot"]: p for p in self.passives}
