@@ -23,9 +23,24 @@ class LuciferChoiceView(ui.View):
         self.bot = bot
         self.user_id = user_id
         self.player = player
+        self.message = None  # Set by caller after send
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        self.bot.state_manager.clear_active(self.user_id)
+        if self.message:
+            try:
+                embed = self.message.embeds[0]
+                embed.add_field(
+                    name="Contract Expired",
+                    value="*You hesitated too long. The Soul Core crumbles to ash.*",
+                    inline=False,
+                )
+                await self.message.edit(embed=embed, view=None)
+            except Exception:
+                pass
 
     async def _conclude(self, interaction, msg):
         embed = interaction.message.embeds[0]
@@ -193,8 +208,7 @@ class CombatView(ui.View):
         # For regular enemies: pause at < 20% HP.
         await interaction.response.defer()
 
-        is_boss = getattr(self.monster, "is_boss", False)
-        hp_threshold = 0 if is_boss else (self.player.max_hp * 0.2)
+        hp_threshold = self.player.max_hp * 0.2
 
         self._auto_running = True
         message = interaction.message
@@ -218,10 +232,9 @@ class CombatView(ui.View):
             was_auto = self._auto_running
             self._auto_running = False
 
-            # Low HP pause (non-boss only)
+            # Low HP pause — applies to all fight types including bosses
             if (
-                not is_boss
-                and 0 < self.player.current_hp <= (self.player.max_hp * 0.2)
+                0 < self.player.current_hp <= (self.player.max_hp * 0.2)
                 and self.monster.hp > 0
             ):
                 self.logs["Auto-Battle"] = "🛑 Paused: Low HP Protection triggered!"
@@ -811,11 +824,13 @@ class CombatView(ui.View):
                     if self._was_auto
                     else None
                 )
+                contract_choice_view = LuciferChoiceView(self.bot, self.user_id, self.player)
                 await message.edit(
                     content=ping_content,
                     embed=embed,
-                    view=LuciferChoiceView(self.bot, self.user_id, self.player),
+                    view=contract_choice_view,
                 )
+                contract_choice_view.message = message
                 return  # Lucifer View takes over
             else:
                 await message.edit(embed=embed, view=None)
@@ -907,6 +922,14 @@ class CombatView(ui.View):
                     )
                     reward_data["special"].append("Celestial Stone")
                     reward_data["msgs"].append("🪨 **You found a Celestial Stone!**")
+
+            # Handle XP / Level Up
+            import json
+            with open("assets/exp.json") as f:
+                exp_table = json.load(f)
+            await DropManager.handle_level_up(
+                self.bot, self.user_id, self.player, reward_data, exp_table
+            )
 
             # DB Commits
             self.player.exp += reward_data["xp"]
@@ -1009,6 +1032,14 @@ class CombatView(ui.View):
                     reward_data["msgs"].append(
                         "🔥 **The forge roars. You extract an Infernal Cinder.**"
                     )
+
+            # Handle XP / Level Up
+            import json
+            with open("assets/exp.json") as f:
+                exp_table = json.load(f)
+            await DropManager.handle_level_up(
+                self.bot, self.user_id, self.player, reward_data, exp_table
+            )
 
             # DB commits
             self.player.exp += reward_data["xp"]
@@ -1118,6 +1149,14 @@ class CombatView(ui.View):
                 "🗝️ **A Void Key manifests from the collapsing rift.**"
             )
 
+            # Handle XP / Level Up
+            import json
+            with open("assets/exp.json") as f:
+                exp_table = json.load(f)
+            await DropManager.handle_level_up(
+                self.bot, self.user_id, self.player, reward_data, exp_table
+            )
+
             # DB commits
             self.player.exp += reward_data["xp"]
             await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
@@ -1224,6 +1263,14 @@ class CombatView(ui.View):
                         "💎 **The twins' bond yields a Bound Crystal.**"
                     )
 
+            # Handle XP / Level Up
+            import json
+            with open("assets/exp.json") as f:
+                exp_table = json.load(f)
+            await DropManager.handle_level_up(
+                self.bot, self.user_id, self.player, reward_data, exp_table
+            )
+
             # DB commits
             self.player.exp += reward_data["xp"]
             await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
@@ -1304,11 +1351,29 @@ class InfernalContractView(ui.View):
         def_delta = self.contract.get("defence", 0)
         hp_delta = self.contract.get("hp", 0)
 
-        self.player.base_attack = max(1, self.player.base_attack + atk_delta)
-        self.player.base_defence = max(1, self.player.base_defence + def_delta)
-        self.player.max_hp = max(10, self.player.max_hp + hp_delta)
+        # Clamp to minimums first, then derive actual deltas applied
+        new_atk = max(1, self.player.base_attack + atk_delta)
+        new_def = max(1, self.player.base_defence + def_delta)
+        new_hp = max(10, self.player.max_hp + hp_delta)
+
+        actual_atk_delta = new_atk - self.player.base_attack
+        actual_def_delta = new_def - self.player.base_defence
+        actual_hp_delta = new_hp - self.player.max_hp
+
+        self.player.base_attack = new_atk
+        self.player.base_defence = new_def
+        self.player.max_hp = new_hp
         self.player.current_hp = min(self.player.current_hp, self.player.max_hp)
 
+        # update_from_player_object does not write attack/defence/max_hp,
+        # so we must persist those via modify_stat directly.
+        if actual_atk_delta:
+            await self.bot.database.users.modify_stat(self.user_id, "attack", actual_atk_delta)
+        if actual_def_delta:
+            await self.bot.database.users.modify_stat(self.user_id, "defence", actual_def_delta)
+        if actual_hp_delta:
+            await self.bot.database.users.modify_stat(self.user_id, "max_hp", actual_hp_delta)
+        # Persist current_hp (may have been clamped above) and other player fields
         await self.bot.database.users.update_from_player_object(self.player)
 
         parts = []

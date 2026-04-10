@@ -329,11 +329,11 @@ class BlackMarketView(ui.View):
                 elif slot == "accessory":
                     item = await generate_accessory(uid, player.level, False)
                 elif slot == "glove":
-                    item = await generate_glove(uid, player.level, False)
+                    item = await generate_glove(uid, player.level)
                 elif slot == "boot":
-                    item = await generate_boot(uid, player.level, False)
+                    item = await generate_boot(uid, player.level)
                 elif slot == "helmet":
-                    item = await generate_helmet(uid, player.level, False)
+                    item = await generate_helmet(uid, player.level)
 
                 if item:
                     # Save
@@ -522,11 +522,11 @@ class BlackMarketView(ui.View):
                 elif slot == "accessory":
                     item = await generate_accessory(uid, player.level, False)
                 elif slot == "glove":
-                    item = await generate_glove(uid, player.level, False)
+                    item = await generate_glove(uid, player.level)
                 elif slot == "boot":
-                    item = await generate_boot(uid, player.level, False)
+                    item = await generate_boot(uid, player.level)
                 elif slot == "helmet":
-                    item = await generate_helmet(uid, player.level, False)
+                    item = await generate_helmet(uid, player.level)
                 if item:
                     if slot == "weapon":
                         await self.bot.database.equipment.create_weapon(item)

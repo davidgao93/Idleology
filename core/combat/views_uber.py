@@ -254,7 +254,9 @@ class UberAphroditeLobbyView(ui.View):
             "A chibi Aphrodite appears and says: ME HUNGRY, FEED ME SIGILS!\n\n"
             f"**Entry Cost:** 3 Celestial Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
-            f"**Assessment:** {self.readiness_text}"
+            f"**Assessment:** {self.readiness_text}\n\n"
+            "🛡️ **Radiant Protection** — globally reduces all incoming damage by 60%. "
+            "Raw burst damage is your only path to victory."
         )
         embed.description = desc
 
@@ -413,7 +415,10 @@ class UberLuciferLobbyView(ui.View):
             '*"Give me your sigils and I may let you live..."*\n\n'
             f"**Entry Cost:** 3 Infernal Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
-            f"**Assessment:** {self.readiness_text}"
+            f"**Assessment:** {self.readiness_text}\n\n"
+            "🔥 **Hell's Fury** — each successful hit permanently stacks +5 damage for that fight. "
+            "The longer it lasts, the deadlier Lucifer becomes. Kill fast.\n"
+            "⚔️ **Absolute** — +25 ATK and +25 DEF at fight start."
         )
         embed.description = desc
 
