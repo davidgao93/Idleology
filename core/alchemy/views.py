@@ -53,7 +53,7 @@ class AlchemyHubView(ui.View):
         level_cost = AlchemyMechanics.get_level_up_cost(self.alchemy_level)
 
         embed = discord.Embed(title="⚗️ Alchemy", color=discord.Color.purple())
-
+        embed.set_thumbnail(url="https://i.imgur.com/tPQiPaM.png")
         info = [
             f"**Level:** {self.alchemy_level} / {AlchemyMechanics.MAX_LEVEL}",
             f"**Spirit Stones:** 🔮 {self.spirit_stones}",
