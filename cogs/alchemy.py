@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
 
-from core.alchemy.mechanics import AlchemyMechanics
 from core.alchemy.views import AlchemyHubView, SPIRIT_STONES_COL
 
 
@@ -22,17 +21,13 @@ class Alchemy(commands.Cog, name="alchemy"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        # 2. Initialize alchemy row if this is a first visit; auto-roll slot 1 for free
+        # 2. Initialize alchemy row if this is a first visit
         is_new = await self.bot.database.alchemy.initialize_if_new(user_id)
         welcome_msg = None
         if is_new:
-            passive_type, passive_value = AlchemyMechanics.roll_passive(1)
-            await self.bot.database.alchemy.set_passive(user_id, 1, passive_type, passive_value)
-            info = AlchemyMechanics.PASSIVES.get(passive_type, {})
             welcome_msg = (
-                f"✨ **Welcome to Alchemy!** You start at Level 1 with 1 passive slot.\n"
-                f"**Slot 1** (free roll): {info.get('emoji', '⚗️')} **{info.get('name', passive_type)}** — "
-                f"*{AlchemyMechanics.format_passive(passive_type, passive_value)}*"
+                "✨ **Welcome to Alchemy!** You start at Level 1 with 1 passive slot.\n"
+                "Head to the **Potion Lab** to roll your first passive for free!"
             )
 
         # 3. Fetch alchemy state

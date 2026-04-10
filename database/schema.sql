@@ -9,6 +9,7 @@
 -- ALTER TABLE `users` ADD COLUMN `codex_rerolls` INTEGER DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN highest_ascension_stage INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE items ADD COLUMN forge_tier INTEGER DEFAULT 0;
+-- ALTER TABLE alchemy_data ADD COLUMN free_roll_used INTEGER NOT NULL DEFAULT 0;
 
 
 CREATE TABLE IF NOT EXISTS `users` (
@@ -316,7 +317,8 @@ CREATE TABLE IF NOT EXISTS codex_tomes (
 
 CREATE TABLE IF NOT EXISTS alchemy_data (
     user_id TEXT PRIMARY KEY,
-    level INTEGER NOT NULL DEFAULT 1
+    level INTEGER NOT NULL DEFAULT 1,
+    free_roll_used INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS potion_passives (

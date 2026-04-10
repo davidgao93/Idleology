@@ -202,3 +202,22 @@ class AlchemyMechanics:
         if info["unit"] == "bool":
             return info["desc"]
         return info["desc"].format(value=passive_value)
+
+    @staticmethod
+    def format_passive_range(passive_type: str) -> str:
+        """Returns the passive description showing the full min–max value range."""
+        import re
+        info = AlchemyMechanics.PASSIVES.get(passive_type)
+        if not info:
+            return passive_type
+        if info["unit"] == "bool":
+            return info["desc"]
+        lo = info["min_val"]
+        hi = info["max_val"]
+        # Detect decimal places from the format spec in the desc, e.g. {value:.1f} → 1 dp
+        match = re.search(r"\{value:\.(\d)f\}", info["desc"])
+        dp = int(match.group(1)) if match else 0
+        fmt = f".{dp}f"
+        range_str = f"{lo:{fmt}}–{hi:{fmt}}"
+        result = re.sub(r"\{value[^}]*\}", range_str, info["desc"])
+        return result

@@ -54,6 +54,21 @@ class AlchemyRepository:
         )
         await self.connection.commit()
 
+    async def get_free_roll_used(self, user_id: str) -> bool:
+        await self._ensure_row(user_id)
+        async with self.connection.execute(
+            "SELECT free_roll_used FROM alchemy_data WHERE user_id = ?", (user_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+        return bool(row[0]) if row else False
+
+    async def set_free_roll_used(self, user_id: str) -> None:
+        await self._ensure_row(user_id)
+        await self.connection.execute(
+            "UPDATE alchemy_data SET free_roll_used = 1 WHERE user_id = ?", (user_id,)
+        )
+        await self.connection.commit()
+
     # ------------------------------------------------------------------
     # Potion Passives
     # ------------------------------------------------------------------
