@@ -153,7 +153,7 @@ class AlchemySynthesisHubView(ui.View):
         embed.description = (
             f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}\n"
             f"**Gold:** 💰 {self.player_gold:,}\n"
-            f"**Alchemy Lv {level}** — {mins}m per key · {discount}% synthesis discount"
+            f"**Alchemy Lv {level}** — {mins}min per item · {discount}% dust discount"
         )
 
         # --- Queue status ---
@@ -189,7 +189,7 @@ class AlchemySynthesisHubView(ui.View):
         else:
             embed.add_field(
                 name   = "🔨 Disenchant Queue",
-                value  = "*No active task. Queue up boss keys to convert them into Cosmic Dust.*",
+                value  = "*No active task. Disenchant items to begin.*",
                 inline = False,
             )
 
@@ -202,7 +202,7 @@ class AlchemySynthesisHubView(ui.View):
             lines.append(
                 f"{emoji} **{name}** — disenchant: {yield_val} ✨  |  synthesize: {synth_cost} ✨ + 💰 100k"
             )
-        embed.add_field(name="📋 Key Rates", value="\n".join(lines), inline=False)
+        embed.add_field(name="📋 Dust Rates", value="\n".join(lines), inline=False)
 
         return embed
 
@@ -282,7 +282,7 @@ class AlchemySynthesisHubView(ui.View):
 # Disenchant — key-type select + quantity modal
 # ---------------------------------------------------------------------------
 
-class _DisenchantQuantityModal(ui.Modal, title="How many keys to disenchant?"):
+class _DisenchantQuantityModal(ui.Modal, title="How many items to disenchant?"):
     quantity = ui.TextInput(
         label       = "Quantity",
         placeholder = "Enter a number (e.g. 5)",
@@ -360,15 +360,15 @@ class _DisenchantKeySelect(ui.Select):
             if d["owned"] > 0
         ]
         if not opts:
-            opts = [discord.SelectOption(label="No keys owned", value="_none")]
-        super().__init__(placeholder="Select a key type to disenchant…", options=opts)
+            opts = [discord.SelectOption(label="No valid items owned", value="_none")]
+        super().__init__(placeholder="Select an item to disenchant…", options=opts)
         self._data_by_col = {d["col"]: d for d in options_data}
         self.selected: str | None = None
 
     async def callback(self, interaction: Interaction) -> None:
         if self.values[0] == "_none":
             await interaction.response.send_message(
-                "You have no boss keys to disenchant.", ephemeral=True)
+                "You have no valid items to disenchant.", ephemeral=True)
             return
         self.selected = self.values[0]
         await interaction.response.defer()
@@ -407,7 +407,7 @@ class _DisenchantSelectView(ui.View):
                 "name":        name,
                 "emoji":       AlchemyMechanics.KEY_EMOJIS[col],
                 "owned":       owned,
-                "select_desc": f"Own: {owned}  ·  {AlchemyMechanics.DUST_YIELD[col]} ✨/key  ·  {mins}m/key",
+                "select_desc": f"Own: {owned}  ·  {AlchemyMechanics.DUST_YIELD[col]} ✨/item  ·  {mins}m/item",
             })
 
         self.clear_items()
@@ -424,17 +424,17 @@ class _DisenchantSelectView(ui.View):
         back_btn.callback = self._on_back
         self.add_item(back_btn)
 
-        embed = discord.Embed(title="🔨 Disenchant Keys", color=discord.Color.blurple())
+        embed = discord.Embed(title="🔨 Disenchant Items", color=discord.Color.blurple())
         lines = []
         for d in self._options_data:
             owned_str = f"**{d['owned']}** owned" if d["owned"] > 0 else "*none owned*"
             lines.append(
                 f"{d['emoji']} **{d['name']}** — {owned_str}  ·  "
-                f"✨ {AlchemyMechanics.DUST_YIELD[d['col']]} dust/key  ·  ⏳ {mins}m/key"
+                f"✨ {AlchemyMechanics.DUST_YIELD[d['col']]} dust/item  ·  ⏳ {mins}m/item"
             )
         embed.description = (
-            f"Select a key type, enter a quantity, and queue them for disenchanting.\n"
-            f"Each key takes **{mins} minutes** at Alchemy Level {self.alchemy_level}.\n\n"
+            f"Select an item type, enter a quantity, and queue them for disenchanting.\n"
+            f"Each item takes **{mins} minutes** at Alchemy Level {self.alchemy_level}.\n\n"
             + "\n".join(lines)
         )
         return embed
@@ -442,13 +442,13 @@ class _DisenchantSelectView(ui.View):
     async def _on_confirm(self, interaction: Interaction) -> None:
         if not self._select or not self._select.selected:
             await interaction.response.send_message(
-                "Please select a key type first.", ephemeral=True)
+                "Please select an item type first.", ephemeral=True)
             return
         col  = self._select.selected
         data = next(d for d in self._options_data if d["col"] == col)
         if data["owned"] == 0:
             await interaction.response.send_message(
-                "You don't have any of those keys.", ephemeral=True)
+                "You don't have any valid items.", ephemeral=True)
             return
         await interaction.response.send_modal(
             _DisenchantQuantityModal(self, col, data["owned"]))
@@ -477,7 +477,7 @@ class _SynthesizeKeySelect(ui.Select):
             )
             for d in options_data
         ]
-        super().__init__(placeholder="Select a key to synthesize…", options=opts)
+        super().__init__(placeholder="Select an item to synthesize…", options=opts)
         self.selected: str | None = None
 
     async def callback(self, interaction: Interaction) -> None:
@@ -609,11 +609,11 @@ class _SynthesizeSelectView(ui.View):
         level    = self.alchemy_level
         discount = level   # 1 % per level
 
-        embed = discord.Embed(title="🔑 Synthesize Key", color=discord.Color.purple())
+        embed = discord.Embed(title="Synthesize Item", color=discord.Color.purple())
         embed.description = (
             f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}  |  **Gold:** 💰 {self.player_gold:,}\n"
             f"**Synthesis Discount:** {discount}% (Alchemy Level {level})\n\n"
-            "Select a key type, then press **Synthesize** to confirm."
+            "Select an item, then press **Synthesize** to confirm."
         )
 
         lines = []
@@ -633,7 +633,7 @@ class _SynthesizeSelectView(ui.View):
     async def _on_confirm(self, interaction: Interaction) -> None:
         if not self._select.selected:
             await interaction.response.send_message(
-                "Please select a key type first.", ephemeral=True)
+                "Please select an item first.", ephemeral=True)
             return
 
         col       = self._select.selected
