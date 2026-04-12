@@ -107,7 +107,6 @@ Young Green Dragon,https://i.imgur.com/vJfOlCs.png,4,"belches a toxic cloud of e
 Young Red Dragon,https://i.imgur.com/BbGl77Z.png,4,"spits a jet of raw, searing flame",Humanoid
 Young Silver Dragon,https://i.imgur.com/1EPC4Jv.png,4,exhales a cutting blast of argent winter,Humanoid
 Young White Dragon,https://i.imgur.com/5WnkMv4.png,4,"huffs a cone of biting, brittle frost",Humanoid
-Abandoned Samurai,https://i.imgur.com/FCrcvWo.jpeg,6,"draws his blade and cuts with a weary, perfect stroke",Fey
 Sinister Trickster,https://i.imgur.com/0z3a1jT.jpeg,4,"winks and strikes with a cruel, mocking flourish",Fiend
 Sylvan River Warden,https://i.imgur.com/gAkIRYm.jpeg,4,calls the river to crush around you,Fey
 Hollowshade Enchantress,https://i.imgur.com/Vlp8uC2.jpeg,4,funnels emptiness into a cursed hex,Humanoid
@@ -115,6 +114,7 @@ Ivory Outrider,https://i.imgur.com/GpY41pM.jpeg,4,draws and fires with spotless 
 Crimson Sun Knightly Company,https://i.imgur.com/Aa37ypr.jpeg,4,crashes together in a wall of steel and sunfire that tramples everything in its path,Humanoid
 Training Yard Battlette,https://i.imgur.com/vgrEo0R.jpeg,4,"stumbles, adjusts her stance, then surges forward with a training strike that hits like a real battle",Humanoid
 Abyssplate Demoness,https://i.imgur.com/x4t7ABj.jpeg,4,"steps from her armor’s shadow and turns the weight of the abyss into a single, crushing blow",Fiend
+Novice Arrowheart,https://i.imgur.com/wzClD84.jpeg,4,looses a heartseeking starshot,Humanoid
 Air Elemental,https://i.imgur.com/CG2nohi.png,5,rips through you on a slicing gale,Elemental
 Alluring Witch,https://i.imgur.com/8APYquL.jpeg,5,whispers a seductive curse under her breath,Humanoid
 Androsphinx,https://i.imgur.com/Dk1oGzX.png,5,roars a riddle that shakes your very soul,Monstrosity
@@ -161,6 +161,19 @@ Ivorywood Elven Thaumaturge,https://i.imgur.com/DxF6n8v.jpeg,5,"traces a sigil i
 Verdant Sylvan Marksman,https://i.imgur.com/vCeZixP.jpeg,5,melts into the undergrowth and looses a single arrow that finds the gap in your armor,Humanoid
 Tempest Oni Channeler,https://i.imgur.com/krqNCYk.jpeg,5,draws storm-signs in the air and sends a thunderbolt screaming down the length of her blade,Fiend
 Joan of the Argent Greatsword,https://i.imgur.com/Z98afwg.jpeg,5,"plants her greatsword in the earth and charges, turning duty and steel into an unstoppable line",Humanoid
+Adult Black Dragon,https://i.imgur.com/fSO1mu9.png,5,belches a stream of caustic black acid,Dragon
+Adult Blue Dragon,https://i.imgur.com/xZx46zD.png,5,unleashes a crackling bolt of desert lightning,Dragon
+Adult Brass Dragon,https://i.imgur.com/sfNfMoW.png,5,scours you with a furnace-hot sandstorm,Dragon
+Adult Bronze Dragon,https://i.imgur.com/4FtPQzm.png,5,erupts in a storm of lightning-charged spray,Dragon
+Adult Copper Dragon,https://i.imgur.com/6EM6bp4.png,5,spits a torrent of searing corrosive slime,Dragon
+Adult Gold Dragon,https://i.imgur.com/Yq9qORB.png,5,engulfs you in a cone of consecrated fire,Dragon
+Adult Green Dragon,https://i.imgur.com/gozH5L8.png,5,breathes a choking cloud of virulent poison,Dragon
+Adult Red Dragon,https://i.imgur.com/v1Aakcs.png,5,immolates you in a roaring inferno,Dragon
+Adult Silver Dragon,https://i.imgur.com/tU2NWQH.png,5,wreathes you in a blizzard of razored ice,Dragon
+Adult White Dragon,https://i.imgur.com/lT4XB79.png,5,exhales a killing blast of razor-edged frost,Dragon
+Aetherkin Fox Spirit,https://i.imgur.com/MZNDonw.jpeg,5,scatters starlit foxfire darts,Fey
+Steelfin Dolphin Trooper,https://i.imgur.com/NLkCMeR.jpeg,5,torpedoes ahead in steelwave impact,Humanoid
+Abandoned Samurai,https://i.imgur.com/FCrcvWo.jpeg,6,"draws his blade and cuts with a weary, perfect stroke",Fey
 Anhkeg,https://i.imgur.com/OhS8vYU.png,6,erupts from the earth in a spray of acidic loam,Monstrosity
 Ape,https://i.imgur.com/s7StUuZ.png,6,"pummels you with brutish, bone-cracking fists",Beast
 Basilisk,https://i.imgur.com/qJFR6Mp.png,6,"fixes you with a petrifying, basilisk stare",Fiend
@@ -217,17 +230,14 @@ Runesong Enchantress,https://i.imgur.com/PjZkyJ2.jpeg,6,"sings a single note tha
 Owlspear Sentinel,https://i.imgur.com/XdX4CKQ.jpeg,6,"drops from the rafters without a sound and pins you in place with a single, surgical thrust",Humanoid
 Inkshadow Ronin,https://i.imgur.com/yclITAT.jpeg,6,"steps between lantern light and darkness, carving across your guard in a trail of inky afterimages",Humanoid
 Sapphire Phoenix,https://i.imgur.com/RJTQlON.jpeg,6,"bursts from blue flame and wheels overhead, raining down feathers that strike like burning spears",Celestial
+Rosy Hammer Haremaid,https://i.imgur.com/GWDDh2U.jpeg,6,crashes down in petalburst smites,Beast
+Arena Serpent Magistra,https://i.imgur.com/16xlsU3.jpeg,6,lashes out in coiling arena ruin,Monstrosity
+Emberleaf Elven Pyromancer,https://i.imgur.com/ygh0zCV.jpeg,6,hurls a wreath of burning leaves,Humanoid
+Panda Fist Disciple,https://i.imgur.com/f9tDZ2Y.jpeg,6,drives a pawstrike like falling stone,Humanoid
+Houndhandler Cyber Trooper,https://i.imgur.com/t9kDP5l.jpeg,6,unleashes a pack of steeljaw hounds,Humanoid
+Pale Dawn Gunslinger,https://i.imgur.com/5dBD4bz.jpeg,6,fans the pale horizon in ringing shots,Humanoid
+Aegis of the White Oath,https://i.imgur.com/ZgzvOrv.jpeg,6,locks the line in oathbound shieldcrash,Humanoid
 Abyssal Wyrm,https://i.imgur.com/TaMIVmT.jpeg,7,lashes out with a tide of abyssal venom,Dragon
-Adult Black Dragon,https://i.imgur.com/fSO1mu9.png,5,belches a stream of caustic black acid,Dragon
-Adult Blue Dragon,https://i.imgur.com/xZx46zD.png,5,unleashes a crackling bolt of desert lightning,Dragon
-Adult Brass Dragon,https://i.imgur.com/sfNfMoW.png,5,scours you with a furnace-hot sandstorm,Dragon
-Adult Bronze Dragon,https://i.imgur.com/4FtPQzm.png,5,erupts in a storm of lightning-charged spray,Dragon
-Adult Copper Dragon,https://i.imgur.com/6EM6bp4.png,5,spits a torrent of searing corrosive slime,Dragon
-Adult Gold Dragon,https://i.imgur.com/Yq9qORB.png,5,engulfs you in a cone of consecrated fire,Dragon
-Adult Green Dragon,https://i.imgur.com/gozH5L8.png,5,breathes a choking cloud of virulent poison,Dragon
-Adult Red Dragon,https://i.imgur.com/v1Aakcs.png,5,immolates you in a roaring inferno,Dragon
-Adult Silver Dragon,https://i.imgur.com/tU2NWQH.png,5,wreathes you in a blizzard of razored ice,Dragon
-Adult White Dragon,https://i.imgur.com/lT4XB79.png,5,exhales a killing blast of razor-edged frost,Dragon
 Archmage,https://i.imgur.com/evLhuhh.png,7,unleashes a storm of world-rending arcana,Humanoid
 Awakened Tree,https://i.imgur.com/wopqvsr.png,7,brings titanic limbs crashing down like falling oaks,Dragon
 Azer,https://i.imgur.com/wOeFuhi.png,7,hurls molten hammer-blows of living brass,Plant
@@ -283,6 +293,19 @@ Aged Ironfist Monk,https://i.imgur.com/LVIT6Qa.jpeg,7,"sidesteps with weary grac
 Harrier Manwing Hybrid,https://i.imgur.com/FvYvlsf.jpeg,7,"dives from above with a shriek of wind and talons, tearing through your formation in a single pass",Humanoid
 Lazul Mask Blade Dancer,https://i.imgur.com/NMPaR7N.jpeg,7,"spins in a sapphire blur, mask flashing, blades tracing a lattice of cuts you only feel after",Humanoid
 Frostscale Dragon Princess,https://i.imgur.com/V4oqmfC.jpeg,7,"snaps her tail and sends shards of hoarfrost spiraling, each one biting deeper than steel",Dragon
+Cloudstride Bladebloom,https://i.imgur.com/y0tFr02.jpeg,7,surges through air in a blooming cut,Fey
+Dualis Gearmaid Katana,https://i.imgur.com/50II868.jpeg,7,splits reality with twin clockwork slashes,Construct
+Carnival of Crimson Jesters,https://i.imgur.com/3qhktQN.jpeg,7,erupts in laughing scarlet havoc,Fiend
+Gildscale Lamia Sovereign,https://i.imgur.com/NyzCXkv.jpeg,7,strikes with coiling treasurefanged wrath,Monstrosity
+Glacierwyrm Crown Princess,https://i.imgur.com/ou3CQoD.jpeg,7,unleashes a crown of killing frost,Dragon
+Argent Masquerade Harlequina,https://i.imgur.com/zJpkUIi.jpeg,7,twirls through battle in argent killing jest,Humanoid
+Hollow Oracle in Saffron Robes,https://i.imgur.com/MSvBCzX.jpeg,7,speaks in echoing saffron doom,Undead
+Crimson Qipao Dragon Fist,https://i.imgur.com/5NJoRQG.jpeg,7,erupts in red silk dragon fury,Humanoid
+Barrel-Belly Sea Captain,https://i.imgur.com/mYVEk32.jpeg,7,swings a cask cracking tidal blow,Humanoid
+Ossuary Seraph,https://i.imgur.com/uDTY5hq.jpeg,7,spills bonewhite wings in gravefire smite,Celestial
+Snowborne Valkyrie,https://i.imgur.com/cvv1xqJ.jpeg,7,descends in frost crowned spearstrike,Celestial
+Ivory Raiment Warmaiden,https://i.imgur.com/mPXK0aT.jpeg,7,steps in with spotless killing grace,Humanoid
+Ivory Night Succubus,https://i.imgur.com/rdabTUL.jpeg,7,whispers a kiss of starving moonlight,Fiend
 Colossal Kraken,https://i.imgur.com/XDeXmR5.jpeg,8,"drags you beneath the waves with titanic, coiling limbs",Aberration
 Upper Deva,https://i.imgur.com/y6IjeT9.png,8,unleashes a higher radiance that scours corruption,Celestial
 Djinni,https://i.imgur.com/XuHZNll.png,8,summons a cyclone of razored desert winds,Elemental
@@ -343,6 +366,21 @@ Lunar Crystal Onmyoji,https://i.imgur.com/sanzy3F.jpeg,8,aligns paper charms wit
 Hanfu Yin-Yang Disciple,https://i.imgur.com/ZKz9ItF.jpeg,8,"turns her palm from yin to yang mid-strike, reversing your attack and sending it back into your chest",Humanoid
 Frosthammer Elven Warder,https://i.imgur.com/ASk93NY.jpeg,8,brings her hammer down in a crack of ice and judgment that freezes you where you stand,Humanoid
 Azure Wolf Spirit,https://i.imgur.com/gvI4paA.jpeg,8,"pads silently at your flank, then lunges with a howl that calls the storm to tear you apart",Celestial
+Valkyrion Seraphblade,https://i.imgur.com/qLlcNS0.jpeg,8,unleashes a halo cleaving descent,Celestial
+Azurewyrm Crown Princess,https://i.imgur.com/yPj64n4.jpeg,8,shatters the sky in draconic radiance,Dragon
+Demonblood Crown Heiress,https://i.imgur.com/7woFSpM.jpeg,8,erupts in royal bloodflame onslaught,Fiend
+Weeping Lotus Oni Empress,https://i.imgur.com/gfRZvuc.jpeg,8,weeps then blooms into bleeding slaughter,Fiend
+Bulwark Shieldmaiden,https://i.imgur.com/obq6WXI.jpeg,8,raises a wall of unbroken steel,Humanoid
+Chirurgeon of the Ivory Mask,https://i.imgur.com/nTz8hn8.jpeg,8,carves with immaculate surgical horror,Humanoid
+Firebrand Seraph Champion,https://i.imgur.com/7ELINWi.jpeg,8,dives in a wingborne blaze of justice,Celestial
+Galaxion Doomblade,https://i.imgur.com/Kny3HBU.jpeg,8,falls in a horizon cutting stroke,Fiend
+Auric Dragon Vanguard,https://i.imgur.com/xI2N3Al.jpeg,8,storms forward in blazing aurum fury,Dragon
+Scorpionedge Blade Maiden,https://i.imgur.com/5LmoVEb.jpeg,8,lashes out in hooked stinger arcs,Humanoid
+Skyfist Masked Master,https://i.imgur.com/p4r6036.jpeg,8,drops from above in masked skyblows,Humanoid
+Chronomancer of the Hourglass,https://i.imgur.com/QqI6LKW.jpeg,8,shatters the moment in glassfine timebreak,Humanoid
+Wilting Blossom Bladesinger,https://i.imgur.com/Mjurwjw.jpeg,8,sways then blooms in fading petal cuts,Humanoid
+Alabaster Serpent Maiden,https://i.imgur.com/sa8ViFP.jpeg,8,strikes with coiled marbleblood fury,Monstrosity
+Clawcore Cyber Lynx Maiden,https://i.imgur.com/biFG7YZ.jpeg,8,pounces in neon clawstrike barrage,Construct
 Alien (I),https://i.imgur.com/dFVTPAz.jpeg,9,"assails your mind with alien, buzzing thoughts",Aberration
 Ancient Black Dragon,https://i.imgur.com/OwstMI7.png,9,"drowns you beneath an ancient, black tide of acid",Dragon
 Ancient Blue Dragon,https://i.imgur.com/mR56mLS.png,9,shatters the sky with a cataclysmic lightning storm,Dragon
@@ -398,6 +436,14 @@ Titanic Wildbeast,https://i.imgur.com/jcFKZkJ.jpeg,9,"crashes through trees and 
 Phantasmal Bone Succubus,https://i.imgur.com/y3qkeMX.jpeg,9,"steps out of your peripheral vision and siphons warmth and will with a gentle, skeletal touch",Fiend
 Violet Terrorblade,https://i.imgur.com/J7VmoCK.jpeg,9,"raises a blade of violet dread that hums with fear, then carves your courage out from within",Humanoid
 Choir of Heaven and Hell,https://i.imgur.com/tUG1fS7.jpeg,9,lets angelic hymns and demonic screams merge into a chorus that shatters stone and sanity,Celestial
+Fallen Seraph Warmonger,https://i.imgur.com/n4pA2MP.jpeg,9,falls like a broken aurora of ruin,Celestial
+Cosmic Whisper Abomination,https://i.imgur.com/FBk7RCk.jpeg,9,speaks a universe shattering hush,Aberration
+Gilded Skywyrm Princess,https://i.imgur.com/RwBuiuB.jpeg,9,sweeps down in radiant coinfire gusts,Dragon
+Seraphic Mechrome Siren,https://i.imgur.com/srjo4ZU.jpeg,9,sings a hymn of gleaming servo death,Construct
+Aetherglass Phantomspear,https://i.imgur.com/Q32zuOS.jpeg,9,thrusts through souls in silent fracture,Undead
+Profane Dreadknight Dame,https://i.imgur.com/9W9Rg0s.jpeg,9,rides forth in unholy iron charge,Undead
+Gildsteel Seraphim,https://i.imgur.com/NqeKEvE.jpeg,9,falls as a choir of razored halos,Celestial
+Arachnomech Lolita Overseer,https://i.imgur.com/8mEcroY.jpeg,9,drops a web of clicking doll limbed doom,Construct
 Arbiter of Creation,https://i.imgur.com/PPVhcZP.jpeg,10,speaks a word that shapes reality around you,Celestial
 Archangel,https://i.imgur.com/oNxmJGM.jpeg,10,cleaves you with a sword of purest radiance,Celestial
 Armored Bear,https://i.imgur.com/XaimgGV.jpeg,10,"mauls you with crushing, steel-clad claws",Beast
@@ -438,6 +484,15 @@ Celestial Mystery,https://i.imgur.com/e7AbFUt.jpeg,10,speaks a riddle that twist
 Chaos Deity,https://i.imgur.com/2uJbpoK.jpeg,10,tears the fabric of order with a chaotic pulse,Giant
 Cosmic Being,https://i.imgur.com/HhkE2kR.jpeg,10,unfurls the cosmos and crushes you with star-matter,Aberration
 Open Minded,https://i.imgur.com/tM5L4pw.jpeg,10,opens their thoughts and assails you with mental force,Humanoid
+Marble Warden Effigy,https://i.imgur.com/qhjapXY.jpeg,10,grinds forward in sanctified stonefuror,Construct
+Halo-Horn Crusadia,https://i.imgur.com/bC9ugzx.jpeg,10,charges in hornlit shieldstorm,Celestial
+Cyberfelid Vanguard,https://i.imgur.com/svyZzuP.jpeg,10,pounces in chromeclaw overdrive,Construct
+Reapermaiden Noctiscythe,https://i.imgur.com/0A1pilK.jpeg,10,harvests souls with a midnight arc,Undead
+Skullborne Dread Enchantress,https://i.imgur.com/SPjlTgW.jpeg,10,breathes a curse of bone deep terror,Undead
+Verdant Abyss Devourer,https://i.imgur.com/veEU4XD.jpeg,10,drags foes into swallowing green hunger,Monstrosity
+Jaguarine Warstalker,https://i.imgur.com/gaK8Xoh.jpeg,10,pounces in silent bloodbright motion,Beast
+Puppeteer of the Abomination,https://i.imgur.com/RdvN8hR.jpeg,10,jerks unseen strings in fleshbound ruin,Aberration
+Prismatic Ravager Chimera,https://i.imgur.com/Hf6HQaA.jpeg,10,tears forward in many hued slaughter,Monstrosity
 "NEET, Sadge",https://i.imgur.com/6f9OJ4s.jpeg,444,complains loudly. Your void fragments react,Humanoid
 "NEET, Madge",https://i.imgur.com/j5JfiOK.jpeg,445,casts a chuuni spell,Humanoid
 "NEET, REEEEE",https://i.imgur.com/hd9Ymqe.jpeg,446,communes with the void fragments. They unleash a devastating shockwave,Humanoid
