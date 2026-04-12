@@ -128,3 +128,55 @@ class AlchemyRepository:
             (src_delta, dst_delta, user_id, server_id)
         )
         await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Cosmic Dust
+    # ------------------------------------------------------------------
+
+    async def get_cosmic_dust(self, user_id: str) -> int:
+        await self._ensure_row(user_id)
+        async with self.connection.execute(
+            "SELECT cosmic_dust FROM alchemy_data WHERE user_id = ?", (user_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row[0] if row else 0
+
+    async def modify_cosmic_dust(self, user_id: str, delta: int) -> None:
+        await self._ensure_row(user_id)
+        await self.connection.execute(
+            "UPDATE alchemy_data SET cosmic_dust = cosmic_dust + ? WHERE user_id = ?",
+            (delta, user_id)
+        )
+        await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Synthesis Queue
+    # ------------------------------------------------------------------
+
+    async def get_synthesis_queue(self, user_id: str):
+        """Returns (item_type, quantity, start_time) or None."""
+        async with self.connection.execute(
+            "SELECT item_type, quantity, start_time FROM synthesis_queue WHERE user_id = ?",
+            (user_id,)
+        ) as cursor:
+            return await cursor.fetchone()
+
+    async def start_disenchant(self, user_id: str, item_type: str,
+                                quantity: int, start_time: str) -> None:
+        """Insert or replace the active disenchant task for this user."""
+        await self.connection.execute(
+            """INSERT INTO synthesis_queue (user_id, item_type, quantity, start_time)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(user_id) DO UPDATE SET
+                   item_type  = excluded.item_type,
+                   quantity   = excluded.quantity,
+                   start_time = excluded.start_time""",
+            (user_id, item_type, quantity, start_time)
+        )
+        await self.connection.commit()
+
+    async def clear_synthesis_queue(self, user_id: str) -> None:
+        await self.connection.execute(
+            "DELETE FROM synthesis_queue WHERE user_id = ?", (user_id,)
+        )
+        await self.connection.commit()

@@ -1,3 +1,4 @@
+import math
 import random
 from typing import Optional, Tuple
 
@@ -202,6 +203,71 @@ class AlchemyMechanics:
         if info["unit"] == "bool":
             return info["desc"]
         return info["desc"].format(value=passive_value)
+
+    # ------------------------------------------------------------------
+    # Synthesis — Boss Key Disenchanting & Crafting
+    # ------------------------------------------------------------------
+
+    # DB column → human-readable name (also defines display order)
+    KEY_DISPLAY_NAMES: dict[str, str] = {
+        "dragon_key":       "Dragon Key",
+        "angel_key":        "Angel Key",
+        "soul_cores":       "Soul Core",
+        "void_frags":       "Void Fragment",
+        "balance_fragment": "Fragment of Balance",
+    }
+
+    KEY_EMOJIS: dict[str, str] = {
+        "dragon_key":       "🐉",
+        "angel_key":        "👼",
+        "soul_cores":       "💀",
+        "void_frags":       "🌀",
+        "balance_fragment": "⚖️",
+    }
+
+    # Cosmic Dust granted when disenchanting one key of each type.
+    DUST_YIELD: dict[str, int] = {
+        "dragon_key":       80,
+        "angel_key":        80,
+        "soul_cores":       35,
+        "void_frags":       55,
+        "balance_fragment": 65,
+    }
+
+    # Base Cosmic Dust cost to synthesize one key (before alchemy discount).
+    # Each synthesis also costs SYNTHESIS_GOLD_COST gold.
+    # All costs are well above the corresponding DUST_YIELD even at max discount,
+    # preventing any profitable disenchant → re-synthesize loop.
+    SYNTHESIS_DUST_BASE: dict[str, int] = {
+        "dragon_key":       130,
+        "angel_key":        130,
+        "soul_cores":        60,
+        "void_frags":        90,
+        "balance_fragment": 105,
+    }
+
+    SYNTHESIS_GOLD_COST: int = 100_000
+
+    @staticmethod
+    def get_disenchant_minutes(level: int) -> int:
+        """
+        Minutes required to disenchant a single key at the given alchemy level.
+        L1 = 50 min, L2 = 40, L3 = 30, L4 = 20, L5 = 10.
+        """
+        return (6 - level) * 10
+
+    @staticmethod
+    def get_synthesis_dust_cost(level: int, item_type: str) -> int:
+        """
+        Dust cost to synthesize one key, reduced by 1 % per alchemy level (max 5 %).
+        Uses math.ceil so the cost is always a whole number and never drops below
+        the corresponding DUST_YIELD (guaranteed by the base values chosen).
+        """
+        base = AlchemyMechanics.SYNTHESIS_DUST_BASE[item_type]
+        discount = level * 0.01          # 0.01 … 0.05
+        return math.ceil(base * (1.0 - discount))
+
+    # ------------------------------------------------------------------
 
     @staticmethod
     def format_passive_range(passive_type: str) -> str:

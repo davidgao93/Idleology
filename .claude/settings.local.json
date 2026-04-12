@@ -5,7 +5,8 @@
       "Bash(grep -n \"^  \\\\`\" database/schema.sql)",
       "Bash(python3:*)",
       "Bash(grep -n '`')",
-      "Bash(find /c/Users/yugao/Idleology -type f -name *.py)"
+      "Bash(find /c/Users/yugao/Idleology -type f -name *.py)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

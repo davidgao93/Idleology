@@ -3,6 +3,8 @@ import random
 from discord.ext import commands, tasks
 from discord import app_commands, Interaction
 from core.skills.views import GatherView
+from core.skills.fishing_view import FishingView
+from core.skills.forestry_view import ForestryView
 from core.skills.mechanics import SkillMechanics
 
 class Skills(commands.Cog, name="skills"):
@@ -39,6 +41,42 @@ class Skills(commands.Cog, name="skills"):
         embed = view.get_embed()
         
         await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
+
+    @app_commands.command(name="fish", description="Go fishing with your rod.")
+    async def fish(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user): return
+        if not await self.bot.check_is_active(interaction, user_id): return
+
+        self.bot.state_manager.set_active(user_id, "fishing")
+
+        view = FishingView(self.bot, user_id, server_id, interaction.user.mention)
+        await view.refresh_data()
+        view.setup_ui()
+
+        await interaction.response.send_message(embed=view.get_embed(), view=view)
+        view.message = await interaction.original_response()
+
+    @app_commands.command(name="chop", description="Head into the forest to chop wood.")
+    async def chop(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user): return
+        if not await self.bot.check_is_active(interaction, user_id): return
+
+        self.bot.state_manager.set_active(user_id, "forestry")
+
+        view = ForestryView(self.bot, user_id, server_id)
+        await view.refresh_data()
+        view.setup_ui()
+
+        await interaction.response.send_message(embed=view.get_embed(), view=view)
         view.message = await interaction.original_response()
 
     # --- REGENERATION TASK ---

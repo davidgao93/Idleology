@@ -108,6 +108,14 @@ class SkillRepository:
         await self.connection.execute("UPDATE users SET gold = gold - ? WHERE user_id = ?", (gp, user_id))
         await self.connection.commit()
 
+    async def charge_entry_cost(self, user_id: str, gold_amount: int) -> None:
+        """Deducts gold from a user for a minigame entry cost (bait / forestry pass)."""
+        await self.connection.execute(
+            "UPDATE users SET gold = gold - ? WHERE user_id = ?",
+            (gold_amount, user_id),
+        )
+        await self.connection.commit()
+
     async def upgrade_fishing_rod(self, user_id: str, server_id: str, new_tier: str, costs: tuple) -> None:
         des, reg, stu, rein, gp = costs
         await self.connection.execute(

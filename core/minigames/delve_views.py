@@ -1,6 +1,7 @@
 import discord
 from discord import ui, ButtonStyle, Interaction
 from core.minigames.mechanics import DelveMechanics, DelveState
+from core.skills.mechanics import SkillMechanics
 
 class DelveEntryView(ui.View):
     def __init__(self, bot, user_id, server_id, cost, start_callback):
@@ -114,7 +115,7 @@ class DelveView(ui.View):
             idx = self.state.depth + i
             if idx in self.state.revealed_indices:
                 hazard = self.state.hazards[idx]
-                icon = "🟢" if hazard == "Safe" else ("🪨" if hazard == "Gravel" else ("☣️" if hazard == "Gas Pocket" else "🔥"))
+                icon = "🟢" if hazard == "Safe" else ("⛏️" if hazard == "Ore Vein" else ("🪨" if hazard == "Gravel" else ("☣️" if hazard == "Gas Pocket" else "🔥")))
                 scan_text += f"`Depth {idx}:` {icon} **{hazard}**\n"
             else:
                 scan_text += f"`Depth {idx}:` ❓ Unknown\n"
@@ -122,6 +123,10 @@ class DelveView(ui.View):
         embed.add_field(name=f"Scanner (Lvl {self.stats['sensor_lvl']})", value=scan_text, inline=False)
         
         loot = f"🎁 Curios: **{self.state.curios_found}**\n💎 Shards: **{self.state.shards_found}**"
+        if self.state.ore_found:
+            name_map = {col: label for col, label in SkillMechanics.get_skill_info("mining")["resources"]}
+            ore_lines = "\n".join(f"{name_map.get(col, col)}: **{amt}**" for col, amt in self.state.ore_found.items() if amt > 0)
+            loot += f"\n⛏️ Ore:\n{ore_lines}"
         embed.add_field(name="Cargo", value=loot, inline=True)
         
         if last_action:
@@ -159,7 +164,15 @@ class DelveView(ui.View):
         
         msg = f"Drilled to Depth {self.state.depth}."
         if dmg > 0: msg += f" Hit {hazard}! -{dmg}% Stability."
-        
+
+        if hazard == "Ore Vein":
+            ore_yield = SkillMechanics.calculate_yield("mining", self.state.pickaxe_tier)
+            name_map = {col: label for col, label in SkillMechanics.get_skill_info("mining")["resources"]}
+            for col, amt in ore_yield.items():
+                self.state.ore_found[col] = self.state.ore_found.get(col, 0) + amt
+            ore_parts = [f"+{amt} {name_map.get(col, col)}" for col, amt in ore_yield.items() if amt > 0]
+            msg += f" ⛏️ **Ore Vein!** {', '.join(ore_parts)}"
+
         c, s = DelveMechanics.check_rewards(self.state.depth)
         if c > 0: msg += f" 🎁 **FOUND CURIO!**"
         if s > 0: msg += f" 💎 Found {s} Shards!"
@@ -213,38 +226,47 @@ class DelveView(ui.View):
         embed = None
         
         # 1. Determine End State & Embed
-        if reason == "collapse":
-            embed = discord.Embed(title="💥 MINE COLLAPSED", description="You died in the depths.", color=discord.Color.red())
-            embed.add_field(name="Lost Cargo", value=f"🎁 {self.state.curios_found} Curios\n💎 {self.state.shards_found} Shards")
+        if reason in ("collapse", "fuel"):
+            title = "💥 MINE COLLAPSED" if reason == "collapse" else "⚡ OUT OF FUEL"
+            desc  = "You died in the depths." if reason == "collapse" else "Life support failed."
+            embed = discord.Embed(title=title, description=desc, color=discord.Color.red())
             embed.set_thumbnail(url="https://i.imgur.com/HbDOrUp.png")
-        elif reason == "fuel":
-            embed = discord.Embed(title="⚡ OUT OF FUEL", description="Life support failed.", color=discord.Color.red())
-            embed.add_field(name="Lost Cargo", value=f"🎁 {self.state.curios_found} Curios\n💎 {self.state.shards_found} Shards")
-            embed.set_thumbnail(url="https://i.imgur.com/HbDOrUp.png")
+            lost = f"🎁 {self.state.curios_found} Curios\n💎 {self.state.shards_found} Shards"
+            if self.state.ore_found:
+                name_map = {col: label for col, label in SkillMechanics.get_skill_info("mining")["resources"]}
+                ore_parts = ", ".join(f"{amt} {name_map.get(col, col)}" for col, amt in self.state.ore_found.items() if amt > 0)
+                lost += f"\n⛏️ {ore_parts}"
+            embed.add_field(name="Lost Cargo", value=lost)
         else:
             # Success - Commit to DB
             if self.state.curios_found > 0:
                 await self.bot.database.users.modify_currency(self.user_id, 'curios', self.state.curios_found)
             if self.state.shards_found > 0:
                 await self.bot.database.delve.modify_shards(self.user_id, self.server_id, self.state.shards_found)
-            
+            if self.state.ore_found:
+                await self.bot.database.skills.update_batch(self.user_id, self.server_id, "mining", self.state.ore_found)
+
             # Handle XP and Leveling
             old_lvl, new_lvl = await self.bot.database.delve.add_xp(self.user_id, self.server_id, self.state.depth)
             self.stats['xp'] += self.state.depth
-            
+
             reward_msg = ""
             if new_lvl > old_lvl:
                 total_reward_shards = 0
                 for lvl in range(old_lvl + 1, new_lvl + 1):
                     total_reward_shards += DelveMechanics.get_level_reward(lvl)
-                
                 await self.bot.database.delve.modify_shards(self.user_id, self.server_id, total_reward_shards)
                 reward_msg = f"\n📈 **Delve Level Up!** ({old_lvl} -> {new_lvl})\n💎 **Discovery Bonus:** +{total_reward_shards} Shards"
 
             embed = discord.Embed(title="✅ EXTRACTION SUCCESSFUL", color=discord.Color.green())
-            embed.set_thumbnail(url="https://i.imgur.com/mX0u3uc.png") 
+            embed.set_thumbnail(url="https://i.imgur.com/mX0u3uc.png")
             embed.description = f"Reached Depth **{self.state.depth}**."
-            embed.add_field(name="Loot Secured", value=f"🎁 **{self.state.curios_found}** Curios\n💎 **{self.state.shards_found}** Obsidian Shards", inline=False)
+            loot_value = f"🎁 **{self.state.curios_found}** Curios\n💎 **{self.state.shards_found}** Obsidian Shards"
+            embed.add_field(name="Loot Secured", value=loot_value, inline=False)
+            if self.state.ore_found:
+                name_map = {col: label for col, label in SkillMechanics.get_skill_info("mining")["resources"]}
+                ore_lines = "\n".join(f"{name_map.get(col, col)}: **{amt}**" for col, amt in self.state.ore_found.items() if amt > 0)
+                embed.add_field(name="⛏️ Ore Extracted", value=ore_lines, inline=False)
             embed.add_field(name="Progression", value=f"📈 +{self.state.depth} Delve XP{reward_msg}", inline=False)
 
         # 2. Add Restart Options

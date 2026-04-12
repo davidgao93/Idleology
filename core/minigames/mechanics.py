@@ -11,6 +11,7 @@ class DelveState:
     pickaxe_tier: str = "iron"
     shards_found: int = 0
     curios_found: int = 0
+    ore_found: Dict[str, int] = field(default_factory=dict)
     hazards: List[str] = field(default_factory=list)
     revealed_indices: List[int] = field(default_factory=list)
 
@@ -55,8 +56,13 @@ class DelveMechanics:
 
     @staticmethod
     def generate_layer(depth: int) -> str:
+        # Ore Vein: rare bonus stage, independent of the hazard roll.
+        # Available from depth 5 onward at a flat 7% chance.
+        if depth >= 5 and random.random() < 0.07:
+            return "Ore Vein"
+
         roll = random.random()
-        danger_factor = min(0.90, depth * 0.03) 
+        danger_factor = min(0.90, depth * 0.03)
         safe_threshold = max(0.1, 0.8 - danger_factor)
 
         if roll > safe_threshold:
@@ -65,7 +71,7 @@ class DelveMechanics:
             if sub_roll < magma_chance: return "Magma Flow"
             if sub_roll < 0.6: return "Gas Pocket"
             return "Gravel"
-            
+
         return "Safe"
 
     @staticmethod

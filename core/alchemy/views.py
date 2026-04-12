@@ -2,6 +2,7 @@ import discord
 from discord import ui, ButtonStyle, Interaction
 
 from core.alchemy.mechanics import AlchemyMechanics
+from core.alchemy.synthesis_views import _build_synthesis_hub
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -85,6 +86,15 @@ class AlchemyHubView(ui.View):
                             value="Level up Alchemy to unlock additional passive slots.", inline=False)
 
         return embed
+
+    @ui.button(label="Synthesis", style=ButtonStyle.secondary, emoji="⚗️", row=0)
+    async def synthesis(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+        view  = await _build_synthesis_hub(self.bot, self.user_id, self.server_id)
+        embed = view.build_embed()
+        msg   = await interaction.edit_original_response(embed=embed, view=view)
+        view.message = msg
+        self.stop()
 
     @ui.button(label="Transmute", style=ButtonStyle.blurple, emoji="🔄", row=0)
     async def transmute(self, interaction: Interaction, button: ui.Button):

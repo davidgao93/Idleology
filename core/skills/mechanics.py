@@ -3,6 +3,74 @@ from typing import Dict, Tuple, Optional, List
 
 class SkillMechanics:
 
+    # --- Minigame Config ---
+
+    # Fishing: (min_wait_seconds, max_wait_seconds) per rod tier
+    FISHING_TIMINGS = {
+        "desiccated": (270, 330),
+        "regular":    (210, 270),
+        "sturdy":     (150, 210),
+        "reinforced": (90,  150),
+        "titanium":   (45,  75),
+    }
+
+    # Forestry: cooldown in seconds after a tree is felled, per axe tier
+    FORESTRY_COOLDOWNS = {
+        "flimsy":    300,
+        "carved":    240,
+        "chopping":  180,
+        "magic":     120,
+        "felling":    60,
+    }
+
+    # Gold cost to buy bait / forestry pass, per tool tier
+    MINIGAME_ENTRY_COSTS = {
+        "fishing": {
+            "desiccated": 1_000,
+            "regular":    5_000,
+            "sturdy":     15_000,
+            "reinforced": 30_000,
+            "titanium":   50_000,
+        },
+        "forestry": {
+            "flimsy":    1_000,
+            "carved":    5_000,
+            "chopping":  15_000,
+            "magic":     30_000,
+            "felling":   50_000,
+        },
+    }
+
+    # Number of Swing clicks needed to fell a tree, per axe tier
+    FORESTRY_SWINGS = {
+        "flimsy":   8,
+        "carved":   6,
+        "chopping": 5,
+        "magic":    4,
+        "felling":  3,
+    }
+
+    @staticmethod
+    def get_fishing_wait(rod_tier: str) -> int:
+        """Returns a randomised wait time in seconds for the given rod tier."""
+        lo, hi = SkillMechanics.FISHING_TIMINGS.get(rod_tier, (270, 330))
+        return random.randint(lo, hi)
+
+    @staticmethod
+    def get_forestry_cooldown(axe_tier: str) -> int:
+        """Returns the post-fell cooldown in seconds for the given axe tier."""
+        return SkillMechanics.FORESTRY_COOLDOWNS.get(axe_tier, 300)
+
+    @staticmethod
+    def get_entry_cost(activity: str, tool_tier: str) -> int:
+        """Returns the gold entry cost for a single fishing cast or forestry session."""
+        return SkillMechanics.MINIGAME_ENTRY_COSTS.get(activity, {}).get(tool_tier, 1_000)
+
+    @staticmethod
+    def get_swings_needed(axe_tier: str) -> int:
+        """Returns the number of Swing clicks required to fell a tree."""
+        return SkillMechanics.FORESTRY_SWINGS.get(axe_tier, 8)
+
     SKILL_CONFIG = {
     "mining": {
         "display_name": "Mining",

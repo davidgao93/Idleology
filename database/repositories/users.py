@@ -101,20 +101,28 @@ class UserRepository:
     async def update_from_player_object(self, player: Player) -> None:
         """
         Syncs a core.models.Player object back to the DB.
-        Useful for saving state after combat or heavy logic.
+        Skips updating experience if the player has exp_protection enabled.
         """
         await self.connection.execute(
             """
-            UPDATE users SET 
-                level = ?, 
-                ascension = ?, 
-                experience = ?, 
-                current_hp = ?, 
+            UPDATE users SET
+                level = ?,
+                ascension = ?,
+                current_hp = ?,
                 potions = ?
             WHERE user_id = ?
             """,
-            (player.level, player.ascension, player.exp, player.current_hp, player.potions, player.id)
+            (player.level, player.ascension, player.current_hp, player.potions, player.id)
         )
+        cursor = await self.connection.execute(
+            "SELECT exp_protection FROM users WHERE user_id = ?", (player.id,)
+        )
+        row = await cursor.fetchone()
+        if not row or not row[0]:
+            await self.connection.execute(
+                "UPDATE users SET experience = ? WHERE user_id = ?",
+                (player.exp, player.id)
+            )
         await self.connection.commit()
 
     async def update_hp(self, user_id: str, hp: int) -> None:
@@ -282,6 +290,22 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def get_exp_protection(self, user_id: str) -> bool:
+        """Fetches the exp protection preference for a user. Defaults to False."""
+        cursor = await self.connection.execute(
+            "SELECT exp_protection FROM users WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return bool(row[0]) if row else False
+
+    async def toggle_exp_protection(self, user_id: str, status: bool) -> None:
+        """Updates the exp protection preference."""
+        val = 1 if status else 0
+        await self.connection.execute(
+            "UPDATE users SET exp_protection = ? WHERE user_id = ?",
+            (val, user_id)
+        )
+        await self.connection.commit()
 
     async def get_wealth_leaderboard(self, limit: int = 10):
         rows = await self.connection.execute(
