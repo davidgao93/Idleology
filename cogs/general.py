@@ -175,14 +175,14 @@ class General(commands.Cog, name="general"):
             }
             void_text = (
                 "\n**⬛ Void Passives (Engram):**\n"
-                "**Entropy**: At combat start, 20% of weapon ATK is transferred to DEF and vice versa.\n"
-                "**Void Echo**: At combat start, gain 15% of base Attack added to accessory Attack.\n"
+                "**Entropy**: At combat start, 20% of weapon ATK is added to DEF and vice versa.\n"
+                "**Void Echo**: At combat start, 15% of weapon Attack is copied to your accessory.\n"
                 "**Unravelling**: At combat start, reduce monster Defence by 20%.\n"
                 "**Void Gaze**: On crit, reduce monster Attack by 1% per stack (up to 30 stacks).\n"
                 "**Fracture**: On crit, 5% chance to instantly kill (disabled vs Uber bosses).\n"
                 "**Nullfield**: 15% chance to completely absorb incoming damage.\n"
                 "**Eternal Hunger**: Each hit adds a stack; at 10 stacks deal 10% of monster max HP and restore full HP.\n"
-                "**Oblivion**: Missed attacks still deal 50% of minimum attack damage."
+                "**Oblivion**: Missed attacks still deal 50% of your total attack damage."
             )
             embed.description = self._generate_scaling_details(passives, 10) + void_text
             content_added = True

@@ -153,7 +153,7 @@ def _cs_entropy(player, monster):
 def _cs_void_echo(player, monster):
     if not player.equipped_accessory:
         return
-    bonus = int(player.base_attack * 0.15)
+    bonus = int(player.equipped_weapon.attack * 0.15)
     if bonus > 0:
         player.equipped_accessory.attack += bonus
         return f"⬛ **Void Echo** resonates! Accessory ⚔️ +**{bonus}** ATK"
