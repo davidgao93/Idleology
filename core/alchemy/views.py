@@ -8,14 +8,11 @@ from core.alchemy.synthesis_views import _build_synthesis_hub
 # Helpers
 # ---------------------------------------------------------------------------
 
-SPIRIT_STONES_COL = 40  # index of spirit_stones in the users table row
-
-
 async def _hub_from_db(bot, user_id: str, server_id: str) -> "AlchemyHubView":
     """Re-fetches all alchemy data from the DB and returns a fresh hub view."""
     user_row = await bot.database.users.get(user_id, server_id)
     gold = user_row[6] if user_row else 0
-    spirit_stones = user_row[SPIRIT_STONES_COL] if user_row else 0
+    spirit_stones = await bot.database.users.get_currency(user_id, "spirit_stones")
     alchemy_level = await bot.database.alchemy.get_level(user_id)
     passives = await bot.database.alchemy.get_potion_passives(user_id)
     return AlchemyHubView(bot, user_id, server_id, alchemy_level, passives, gold, spirit_stones)
@@ -185,8 +182,7 @@ class _LevelUpConfirmView(ui.View):
     @ui.button(label="Confirm", style=ButtonStyle.green, emoji="✅")
     async def confirm(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
-        user_row = await self.bot.database.users.get(self.user_id, self.server_id)
-        current_stones = user_row[SPIRIT_STONES_COL] if user_row else 0
+        current_stones = await self.bot.database.users.get_currency(self.user_id, "spirit_stones")
         if current_stones < self.cost:
             await interaction.followup.send(
                 f"Not enough Spirit Stones! Need 🔮 {self.cost}, have {current_stones}.",
@@ -568,8 +564,7 @@ class AlchemyPotionLabView(ui.View):
         else:
             is_free = False
             cost = AlchemyMechanics.REROLL_COST
-            user_row = await self.bot.database.users.get(self.user_id, self.server_id)
-            current_stones = user_row[SPIRIT_STONES_COL] if user_row else 0
+            current_stones = await self.bot.database.users.get_currency(self.user_id, "spirit_stones")
             if current_stones < cost:
                 await interaction.response.send_message(
                     f"Not enough Spirit Stones to synthesize! Need 🔮 {cost}, have {current_stones}.",

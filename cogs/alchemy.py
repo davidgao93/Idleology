@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
 
-from core.alchemy.views import AlchemyHubView, SPIRIT_STONES_COL
+from core.alchemy.views import AlchemyHubView
 
 
 class Alchemy(commands.Cog, name="alchemy"):
@@ -34,7 +34,7 @@ class Alchemy(commands.Cog, name="alchemy"):
         alchemy_level = await self.bot.database.alchemy.get_level(user_id)
         passives      = await self.bot.database.alchemy.get_potion_passives(user_id)
         gold          = existing_user[6]
-        spirit_stones = existing_user[SPIRIT_STONES_COL]
+        spirit_stones = await self.bot.database.users.get_currency(user_id, "spirit_stones")
 
         # 4. Open hub
         view  = AlchemyHubView(self.bot, user_id, server_id,
