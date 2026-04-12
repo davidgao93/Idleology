@@ -1860,7 +1860,14 @@ class BalancedEngramView(BaseUpgradeView):
                 "You do not have any Gemini Engrams!", ephemeral=True
             )
 
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < 25_000_000:
+            return await interaction.response.send_message(
+                "You need **25,000,000 gold** to use a Balanced Engram.", ephemeral=True
+            )
+
         await interaction.response.defer()
+        await self.bot.database.users.modify_gold(self.user_id, -25_000_000)
         await self.bot.database.uber.increment_gemini_engrams(
             self.user_id, server_id, -1
         )

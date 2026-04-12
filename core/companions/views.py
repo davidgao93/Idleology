@@ -145,7 +145,8 @@ class CompanionListView(ui.View):
         for comp in self.companions[start:end]:
             status = "**[Active]**" if comp.is_active else ""
             desc += f"{status} **{comp.name}** ({comp.species})\n"
-            desc += f"Lv.{comp.level} | T{comp.passive_tier} {comp.description}\n\n"
+            balanced_str = f" | T{comp.balanced_passive_tier} {comp.balanced_description}" if comp.balanced_passive != "none" else ""
+            desc += f"Lv.{comp.level} | T{comp.passive_tier} {comp.description}{balanced_str}\n\n"
             
         embed.description = desc
         return embed

@@ -616,6 +616,12 @@ class GearView(View):
                 passives.append(item.p_passive.title())
             if getattr(item, 'u_passive', 'none') not in ('none', ''):
                 passives.append(item.u_passive.title())
+            if getattr(item, 'infernal_passive', 'none') not in ('none', ''):
+                passives.append(f"🔥{item.infernal_passive.title()}")
+        if isinstance(item, Armor) and getattr(item, 'celestial_passive', 'none') not in ('none', ''):
+            passives.append(f"🌌{item.celestial_passive.title()}")
+        if isinstance(item, Accessory) and getattr(item, 'void_passive', 'none') not in ('none', ''):
+            passives.append(f"🌀{item.void_passive.title()}")
 
         stat_str = " ".join(parts)
         passive_str = " · ".join(passives)

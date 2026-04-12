@@ -81,12 +81,18 @@ class InventoryUI:
                 if item.passive != "none": passives.append(item.passive.title())
                 if item.p_passive != "none": passives.append(item.p_passive.title())
                 if item.u_passive != "none": passives.append(item.u_passive.title())
+                if getattr(item, 'infernal_passive', 'none') not in ('none', ''):
+                    passives.append(f"🔥{item.infernal_passive.title()}")
             if isinstance(item, Armor):
                 if item.passive != "none" and item.passive != "":
                     passives.append(f"✨{item.passive.title()}")
                 if getattr(item, 'celestial_passive', 'none') != 'none':
-                    display_passive = item.celestial_passive.replace('_', ' ').title()
                     passives.append(f"🌌{item.celestial_passive.title()}")
+            if isinstance(item, Accessory):
+                if item.passive != "none" and item.passive != "":
+                    passives.append(item.passive.title())
+                if getattr(item, 'void_passive', 'none') not in ('none', ''):
+                    passives.append(f"🌀{item.void_passive.title()}")
             details_str = f" - {' | '.join(details)}" if details else ""
             passives_str = f" - {', '.join(passives)}" if passives else ""
             
@@ -138,12 +144,18 @@ class InventoryUI:
             if getattr(item, 'celestial_passive', 'none') != 'none':
                 embed.add_field(name="Celestial Passive", value=f"🌌 {item.celestial_passive.title()}", inline=False)
 
+        if isinstance(item, Accessory):
+            if getattr(item, 'void_passive', 'none') not in ('none', ''):
+                embed.add_field(name="Void Passive", value=f"🌀 {item.void_passive.title()}", inline=False)
+
         # Weapon Specifics
         if isinstance(item, Weapon):
             if item.p_passive != 'none':
                 embed.add_field(name="Pinnacle Passive", value=item.p_passive.title(), inline=False)
             if item.u_passive != 'none':
                 embed.add_field(name="Utmost Passive", value=item.u_passive.title(), inline=False)
+            if getattr(item, 'infernal_passive', 'none') not in ('none', ''):
+                embed.add_field(name="Infernal Passive", value=f"🔥 {item.infernal_passive.title()}", inline=False)
             embed.add_field(name="Refinement", value=f"+{item.refinement_lvl}", inline=True)
 
         return embed
@@ -176,6 +188,8 @@ class InventoryUI:
                 passives.append(item.infernal_passive.title())
         if isinstance(item, Armor) and getattr(item, 'celestial_passive', 'none') not in ('none', ''):
             passives.append(f"🌌 {item.celestial_passive.title()}")
+        if isinstance(item, Accessory) and getattr(item, 'void_passive', 'none') not in ('none', ''):
+            passives.append(f"🌀 {item.void_passive.title()}")
 
         stat_line = " · ".join(parts)
         passive_line = ("Passives: " + ", ".join(passives)) if passives else ""
