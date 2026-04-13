@@ -335,6 +335,7 @@ class Player:
 
     # Methods to calculate total states
     def get_total_attack(self) -> int:
+        from core.items.essence_mechanics import compute_essence_stat_bonus
         total = self.base_attack
         if self.equipped_weapon:
             total += self.equipped_weapon.attack
@@ -353,9 +354,15 @@ class Player:
         wrath_pct = self.get_tome_bonus("wrath")
         if wrath_pct > 0:
             total += int(self.base_defence * (wrath_pct / 100))
+
+        # Essence bonuses (glove + boot only — helmets have no attack)
+        for item in (self.equipped_glove, self.equipped_boot):
+            if item:
+                total += compute_essence_stat_bonus(item).get("attack", 0)
         return total
 
     def get_total_defence(self) -> int:
+        from core.items.essence_mechanics import compute_essence_stat_bonus
         total = self.base_defence
         if self.equipped_weapon:
             total += self.equipped_weapon.defence
@@ -376,9 +383,15 @@ class Player:
         bastion_pct = self.get_tome_bonus("bastion")
         if bastion_pct > 0:
             total += int(self.base_attack * (bastion_pct / 100))
+
+        # Essence bonuses
+        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
+            if item:
+                total += compute_essence_stat_bonus(item).get("defence", 0)
         return total
 
     def get_total_pdr(self) -> int:
+        from core.items.essence_mechanics import compute_essence_stat_bonus
         total = 0
         if self.equipped_armor:
             total += self.equipped_armor.pdr
@@ -395,10 +408,16 @@ class Player:
         # Bulwark tome: bonus PDR
         total += int(self.get_tome_bonus("bulwark"))
 
+        # Essence bonuses
+        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
+            if item:
+                total += compute_essence_stat_bonus(item).get("pdr", 0)
+
         # Hard cap at 80%
         return min(80, total)
 
     def get_total_fdr(self) -> int:
+        from core.items.essence_mechanics import compute_essence_stat_bonus
         total = 0
         if self.equipped_armor:
             total += self.equipped_armor.fdr
@@ -417,9 +436,15 @@ class Player:
 
         # Codex FDR boon (per-wave transient)
         total += self.boon_fdr
+
+        # Essence bonuses
+        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
+            if item:
+                total += compute_essence_stat_bonus(item).get("fdr", 0)
         return total
 
     def get_total_ward_percentage(self) -> int:
+        from core.items.essence_mechanics import compute_essence_stat_bonus
         total = 0
         if self.equipped_accessory:
             total += self.equipped_accessory.ward
@@ -434,9 +459,15 @@ class Player:
 
         # Companions
         total += self._get_companion_bonus("ward")
+
+        # Essence bonuses (ward % bonus)
+        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
+            if item:
+                total += compute_essence_stat_bonus(item).get("ward", 0)
         return total
 
     def get_current_crit_target(self) -> int:
+        from core.items.essence_mechanics import compute_essence_stat_bonus
         target = self.base_crit_chance_target
         if self.equipped_accessory:
             target -= self.equipped_accessory.crit
@@ -446,7 +477,30 @@ class Player:
 
         # Precision tome: flat crit target reduction
         target -= int(self.get_tome_bonus("precision"))
+
+        # Essence bonuses (Insight)
+        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
+            if item:
+                target -= compute_essence_stat_bonus(item).get("crit", 0)
         return max(1, target)
+
+    def get_total_evasion(self) -> int:
+        """Total evasion including armor base and any essence bonuses on glove/boot/helmet."""
+        from core.items.essence_mechanics import compute_essence_stat_bonus
+        total = self.equipped_armor.evasion if self.equipped_armor else 0
+        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
+            if item:
+                total += compute_essence_stat_bonus(item).get("evasion", 0)
+        return total
+
+    def get_total_block(self) -> int:
+        """Total block including armor base and any essence bonuses on glove/boot/helmet."""
+        from core.items.essence_mechanics import compute_essence_stat_bonus
+        total = self.equipped_armor.block if self.equipped_armor else 0
+        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
+            if item:
+                total += compute_essence_stat_bonus(item).get("block", 0)
+        return total
 
     def get_combat_ward_value(self) -> int:
         ward_percent = self.get_total_ward_percentage()

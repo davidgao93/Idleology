@@ -887,14 +887,14 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         equipped_armor = player.equipped_armor
 
         if "Unavoidable" not in monster.modifiers:
-            dodge_chance = equipped_armor.evasion / 100 if equipped_armor else 0
+            dodge_chance = player.get_total_evasion() / 100
             if celestial == 'celestial_wind_dancer':
                 dodge_chance *= 3.0
             if random.random() <= dodge_chance:
                 is_dodged = True
 
         if not is_dodged and "Unblockable" not in monster.modifiers:
-            block_chance = equipped_armor.block / 100 if equipped_armor else 0
+            block_chance = player.get_total_block() / 100
             if celestial == 'celestial_glancing_blows':
                 block_chance *= 2.0
             if random.random() <= block_chance:
