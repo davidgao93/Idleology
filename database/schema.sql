@@ -1,25 +1,25 @@
 -- Essence system migrations (run once on existing DBs)
-ALTER TABLE gloves ADD COLUMN essence_1 TEXT DEFAULT 'none';
-ALTER TABLE gloves ADD COLUMN essence_1_val REAL DEFAULT 0;
-ALTER TABLE gloves ADD COLUMN essence_2 TEXT DEFAULT 'none';
-ALTER TABLE gloves ADD COLUMN essence_2_val REAL DEFAULT 0;
-ALTER TABLE gloves ADD COLUMN essence_3 TEXT DEFAULT 'none';
-ALTER TABLE gloves ADD COLUMN essence_3_val REAL DEFAULT 0;
-ALTER TABLE gloves ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
-ALTER TABLE boots ADD COLUMN essence_1 TEXT DEFAULT 'none';
-ALTER TABLE boots ADD COLUMN essence_1_val REAL DEFAULT 0;
-ALTER TABLE boots ADD COLUMN essence_2 TEXT DEFAULT 'none';
-ALTER TABLE boots ADD COLUMN essence_2_val REAL DEFAULT 0;
-ALTER TABLE boots ADD COLUMN essence_3 TEXT DEFAULT 'none';
-ALTER TABLE boots ADD COLUMN essence_3_val REAL DEFAULT 0;
-ALTER TABLE boots ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
-ALTER TABLE helmets ADD COLUMN essence_1 TEXT DEFAULT 'none';
-ALTER TABLE helmets ADD COLUMN essence_1_val REAL DEFAULT 0;
-ALTER TABLE helmets ADD COLUMN essence_2 TEXT DEFAULT 'none';
-ALTER TABLE helmets ADD COLUMN essence_2_val REAL DEFAULT 0;
-ALTER TABLE helmets ADD COLUMN essence_3 TEXT DEFAULT 'none';
-ALTER TABLE helmets ADD COLUMN essence_3_val REAL DEFAULT 0;
-ALTER TABLE helmets ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
+-- ALTER TABLE gloves ADD COLUMN essence_1 TEXT DEFAULT 'none';
+-- ALTER TABLE gloves ADD COLUMN essence_1_val REAL DEFAULT 0;
+-- ALTER TABLE gloves ADD COLUMN essence_2 TEXT DEFAULT 'none';
+-- ALTER TABLE gloves ADD COLUMN essence_2_val REAL DEFAULT 0;
+-- ALTER TABLE gloves ADD COLUMN essence_3 TEXT DEFAULT 'none';
+-- ALTER TABLE gloves ADD COLUMN essence_3_val REAL DEFAULT 0;
+-- ALTER TABLE gloves ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
+-- ALTER TABLE boots ADD COLUMN essence_1 TEXT DEFAULT 'none';
+-- ALTER TABLE boots ADD COLUMN essence_1_val REAL DEFAULT 0;
+-- ALTER TABLE boots ADD COLUMN essence_2 TEXT DEFAULT 'none';
+-- ALTER TABLE boots ADD COLUMN essence_2_val REAL DEFAULT 0;
+-- ALTER TABLE boots ADD COLUMN essence_3 TEXT DEFAULT 'none';
+-- ALTER TABLE boots ADD COLUMN essence_3_val REAL DEFAULT 0;
+-- ALTER TABLE boots ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
+-- ALTER TABLE helmets ADD COLUMN essence_1 TEXT DEFAULT 'none';
+-- ALTER TABLE helmets ADD COLUMN essence_1_val REAL DEFAULT 0;
+-- ALTER TABLE helmets ADD COLUMN essence_2 TEXT DEFAULT 'none';
+-- ALTER TABLE helmets ADD COLUMN essence_2_val REAL DEFAULT 0;
+-- ALTER TABLE helmets ADD COLUMN essence_3 TEXT DEFAULT 'none';
+-- ALTER TABLE helmets ADD COLUMN essence_3_val REAL DEFAULT 0;
+-- ALTER TABLE helmets ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
 
 -- ALTER TABLE `companions` ADD COLUMN `balanced_passive` TEXT DEFAULT 'none';
 -- ALTER TABLE `companions` ADD COLUMN `balanced_passive_tier` INTEGER DEFAULT 0;
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `codex_rerolls` INTEGER NOT NULL DEFAULT 0,
   `highest_ascension_stage` INTEGER NOT NULL DEFAULT 0,
   `spirit_stones` INTEGER NOT NULL DEFAULT 0,
-  `exp_protection` INTEGER NOT NULL DEFAULT 0,
+  `exp_protection` INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (
@@ -212,7 +212,7 @@ CREATE TABLE IF NOT EXISTS `mining` (
     `steel_bar` INTEGER DEFAULT 0,
     `gold_bar` INTEGER DEFAULT 0,
     `platinum_bar` INTEGER DEFAULT 0,
-    `idea_bar` INTEGER DEFAULT 0,
+    `idea_bar` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `fishing` (
