@@ -169,10 +169,7 @@ class ProfileBuilder:
 
         embed.add_field(
             name="📦 **Misc Items**",
-            value=(
-                f"🗝️ Void Keys: {user[30]}\n🎁 Curios: {user[22]}"
-                f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {user[28]}\n🗝️ Void Keys: {user[30]}\n🎁 Curios: {user[22]}"
-            ),
+            value=(f"🗝️ Void Keys: {user[30]}\n🎁 Curios: {user[22]}"),
             inline=True,
         )
 

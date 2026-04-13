@@ -268,10 +268,16 @@ class ForgeView(BaseUpgradeView):
                 self.item.item_id, "weapon", new_passive
             )
             await self.bot.database.equipment.update_counter(
-                self.item.item_id, "weapon", "forges_remaining", self.item.forges_remaining,
+                self.item.item_id,
+                "weapon",
+                "forges_remaining",
+                self.item.forges_remaining,
             )
             await self.bot.database.equipment.update_counter(
-                self.item.item_id, "weapon", "forge_tier", self.item.forge_tier,
+                self.item.item_id,
+                "weapon",
+                "forge_tier",
+                self.item.forge_tier,
             )
 
             result_embed.description = (
@@ -281,7 +287,10 @@ class ForgeView(BaseUpgradeView):
         else:
             self.item.forges_remaining -= 1
             await self.bot.database.equipment.update_counter(
-                self.item.item_id, "weapon", "forges_remaining", self.item.forges_remaining,
+                self.item.item_id,
+                "weapon",
+                "forges_remaining",
+                self.item.forges_remaining,
             )
             result_embed.description = f"💨 **Failed.**\nThe hammer didn't strike true, resources consumed.\n\nForges Remaining: {self.item.forges_remaining}"
             result_embed.color = discord.Color.dark_grey()
@@ -344,7 +353,12 @@ class ForgeView(BaseUpgradeView):
             total_log = wood_res[0] + wood_res[1]
             total_bone = fish_res[0] + fish_res[1]
 
-            if total_ore < costs["ore_qty"] or total_log < costs["log_qty"] or total_bone < costs["bone_qty"] or gold < costs["gold"]:
+            if (
+                total_ore < costs["ore_qty"]
+                or total_log < costs["log_qty"]
+                or total_bone < costs["bone_qty"]
+                or gold < costs["gold"]
+            ):
                 break
 
             # Deduct materials
@@ -362,9 +376,23 @@ class ForgeView(BaseUpgradeView):
                         (to_take_ref, uid, gid),
                     )
 
-            await deduct_smart("mining", raw_ore, refined_ore, mining_res[0], costs["ore_qty"])
-            await deduct_smart("woodcutting", f"{raw_log}_logs", refined_log, wood_res[0], costs["log_qty"])
-            await deduct_smart("fishing", f"{raw_bone}_bones", refined_bone, fish_res[0], costs["bone_qty"])
+            await deduct_smart(
+                "mining", raw_ore, refined_ore, mining_res[0], costs["ore_qty"]
+            )
+            await deduct_smart(
+                "woodcutting",
+                f"{raw_log}_logs",
+                refined_log,
+                wood_res[0],
+                costs["log_qty"],
+            )
+            await deduct_smart(
+                "fishing",
+                f"{raw_bone}_bones",
+                refined_bone,
+                fish_res[0],
+                costs["bone_qty"],
+            )
             await self.bot.database.users.modify_gold(uid, -costs["gold"])
             await self.bot.database.connection.commit()
 
@@ -381,11 +409,17 @@ class ForgeView(BaseUpgradeView):
                     self.item.item_id, "weapon", new_passive
                 )
                 await self.bot.database.equipment.update_counter(
-                    self.item.item_id, "weapon", "forge_tier", self.item.forge_tier,
+                    self.item.item_id,
+                    "weapon",
+                    "forge_tier",
+                    self.item.forge_tier,
                 )
 
             await self.bot.database.equipment.update_counter(
-                self.item.item_id, "weapon", "forges_remaining", self.item.forges_remaining,
+                self.item.item_id,
+                "weapon",
+                "forges_remaining",
+                self.item.forges_remaining,
             )
 
         result_embed = discord.Embed(
@@ -1668,7 +1702,7 @@ class ShatterView(BaseUpgradeView):
 
     async def render(self, interaction: Interaction):
         # Calculate Runes Back
-        runes_back = max(0, int(self.item.refinement_lvl - 5 * 0.8))
+        runes_back = max(0, int(self.item.refinement_lvl - 6 * 0.8))
         if self.item.attack > 0 and self.item.defence > 0 and self.item.rarity > 0:
             runes_back += 1
 
@@ -1798,7 +1832,8 @@ class InfernalEngramView(BaseUpgradeView):
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < 25_000_000:
             return await interaction.response.send_message(
-                "You need **25,000,000 gold** to use an Infernal Engram.", ephemeral=True
+                "You need **25,000,000 gold** to use an Infernal Engram.",
+                ephemeral=True,
             )
 
         await interaction.response.defer()
@@ -2105,7 +2140,8 @@ class EngramView(BaseUpgradeView):
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < 25_000_000:
             return await interaction.response.send_message(
-                "You need **25,000,000 gold** to use a Celestial Engram.", ephemeral=True
+                "You need **25,000,000 gold** to use a Celestial Engram.",
+                ephemeral=True,
             )
 
         await interaction.response.defer()

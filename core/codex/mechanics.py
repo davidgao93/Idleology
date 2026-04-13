@@ -90,7 +90,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Reality tears apart. Shield-breakers pour through the cracks.",
         signature_key="unravelled",
         signature_label="Unravelled",
-        signature_description="Ward disabled and -20% base DEF",
+        signature_description="Ward disabled at start and -20% base DEF",
         level_offset=9,
         difficulty=3,
     ),
@@ -150,7 +150,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Laws of reality buckle under impossible weight.",
         signature_key="broken",
         signature_label="Broken",
-        signature_description="Ward disabled and -30% base DEF",
+        signature_description="Ward disabled at start and -30% base DEF",
         level_offset=15,
         difficulty=4,
     ),
@@ -170,7 +170,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Every threat converges into one merciless point.",
         signature_key="convergence",
         signature_label="Convergence",
-        signature_description="-30% base ATK, -30% base DEF, ward disabled",
+        signature_description="-30% base ATK, -30% base DEF, ward disabled at start",
         level_offset=20,
         difficulty=5,
     ),
@@ -292,9 +292,9 @@ _RARITY_BOOST_DOWNSIDES = [
 ]
 
 _FRAGMENT_BOOST_DOWNSIDES = [
-    ("hp_penalty", lambda v: round(v * 0.35), "-{:.0f}% Max HP (permanent)"),
-    ("atk_def_penalty", lambda v: round(v * 0.25), "-{:.0f}% ATK & DEF (permanent)"),
-    ("crit_penalty", lambda v: round(v * 0.5), "+{:.0f} Crit Target (permanent)"),
+    ("hp_penalty", lambda v: round(v * 0.35), "-{:.0f}% Max HP"),
+    ("atk_def_penalty", lambda v: round(v * 0.25), "-{:.0f}% ATK & DEF"),
+    ("crit_penalty", lambda v: round(v * 0.5), "+{:.0f} Crit Target"),
 ]
 
 

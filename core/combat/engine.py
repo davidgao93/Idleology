@@ -53,6 +53,7 @@ class MonsterTurnResult:
 # corrupted essence (ward gains doubled) is applied consistently.
 # ---------------------------------------------------------------------------
 
+
 def _add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
     """
     Adds ward to the player, doubling if the NEET helmet corrupted essence is active.
@@ -63,7 +64,9 @@ def _add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
     if player.get_helmet_corrupted_essence() == "neet":
         amount *= 2
         if label:
-            log.append(f"🌑 **Void Resonance** doubles ward gain! ({label}: +{amount} 🔮)")
+            log.append(
+                f"🌑 **Void Resonance** doubles ward gain! ({label}: +{amount} 🔮)"
+            )
     player.combat_ward += amount
     return amount
 
@@ -87,7 +90,10 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
     for modifier in monster.modifiers:
         if modifier in _MONSTER_STAT_EFFECTS:
             # Aphrodite helmet: ward cannot be forcibly disabled by monster modifiers
-            if modifier == "Shield-breaker" and player.get_helmet_corrupted_essence() == "aphrodite":
+            if (
+                modifier == "Shield-breaker"
+                and player.get_helmet_corrupted_essence() == "aphrodite"
+            ):
                 continue
             _MONSTER_STAT_EFFECTS[modifier](player, monster)
 
@@ -1148,13 +1154,17 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     f"💥 **Overcap Brew** temp HP absorbs **{absorbed}** damage and shatters!"
                 )
 
-            glove_corrupted  = player.get_glove_corrupted_essence()
+            glove_corrupted = player.get_glove_corrupted_essence()
             helmet_corrupted = player.get_helmet_corrupted_essence()
 
             # --- Gemini helmet: split damage evenly between ward and HP simultaneously ---
-            if helmet_corrupted == "gemini" and player.combat_ward > 0 and total_damage > 0:
+            if (
+                helmet_corrupted == "gemini"
+                and player.combat_ward > 0
+                and total_damage > 0
+            ):
                 ward_half = total_damage // 2
-                hp_half   = total_damage - ward_half
+                hp_half = total_damage - ward_half
                 ward_absorbed = min(ward_half, player.combat_ward)
                 player.combat_ward -= ward_absorbed
                 damage_dealt = ward_absorbed
@@ -1188,7 +1198,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     if helmet_corrupted == "lucifer" and player.lucifer_pdr_burst == 0:
                         player.lucifer_pdr_burst = 15
                         log.append(
-                            f"🔥 **Infernal Resilience** — ward shattered, gaining **+15%** PDR for this combat!"
+                            "🔥 **Infernal Resilience** — ward shattered, gaining **+15%** PDR for this combat!"
                         )
 
             if total_damage > 0:
@@ -1237,10 +1247,16 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
 
             # Volatile: normal trigger (ward fully drained this turn)
             # Aphrodite glove extends this to fire whenever ward was touched at all
-            ward_was_hit = (damage_dealt > 0 and previous_ward > 0)
-            aphrodite_glove_active = (glove_corrupted == "aphrodite" and ward_was_hit and player.combat_ward > 0)
+            ward_was_hit = damage_dealt > 0 and previous_ward > 0
+            aphrodite_glove_active = (
+                glove_corrupted == "aphrodite"
+                and ward_was_hit
+                and player.combat_ward > 0
+            )
             if helmet_passive == "volatile" and helmet_lvl > 0:
-                if previous_ward > 0 and (player.combat_ward == 0 or aphrodite_glove_active):
+                if previous_ward > 0 and (
+                    player.combat_ward == 0 or aphrodite_glove_active
+                ):
                     boom = int(player.max_hp * helmet_lvl)
                     monster.hp -= boom
                     if player.combat_ward == 0:

@@ -123,9 +123,9 @@ def create_victory_embed(
         "Spirit Shard": "👻",
         "Rune of Partnership": "🤝",
         "Celestial Sigil": "🌌",
-        "Celestial Engram": "💠",
-        "Celestial Shrine Blueprint": "📜",
-        "Celestial Stone": "🪨",
+        "Infernal Sigil": "🔥",
+        "Void Sigil": "🟣",
+        "Gemini Sigil": "⚖️",
     }
 
     for item_name in rewards.get("special", []):

@@ -319,7 +319,9 @@ class CodexRunView(ui.View):
             embed.set_footer(text="Run complete! Finalising in 4 seconds...")
         return embed
 
-    def _summary_embed(self, fragments: int, pages_dropped: int, exp_changes: dict) -> discord.Embed:
+    def _summary_embed(
+        self, fragments: int, pages_dropped: int, exp_changes: dict
+    ) -> discord.Embed:
         is_perfect = self.chapters_cleared == 5 and self.waves_cleared_this_run == 35
         embed = discord.Embed(
             title="📕 Codex Run Complete",
@@ -337,7 +339,9 @@ class CodexRunView(ui.View):
         )
         if exp_changes["ascensions_gained"]:
             embed.add_field(
-                name="✨ Ascensions", value=str(exp_changes["ascensions_gained"]), inline=True
+                name="✨ Ascensions",
+                value=str(exp_changes["ascensions_gained"]),
+                inline=True,
             )
         embed.add_field(name="🔷 Fragments Earned", value=str(fragments), inline=True)
         if pages_dropped > 0:
@@ -708,10 +712,14 @@ class CodexRunView(ui.View):
             color=discord.Color.light_grey(),
         )
         embed.add_field(
-            name="📚 XP Accumulated (lost)", value=f"{self.cumulative_xp:,}", inline=True
+            name="📚 XP Accumulated (lost)",
+            value=f"{self.cumulative_xp:,}",
+            inline=True,
         )
         embed.add_field(
-            name="💰 Gold Accumulated (lost)", value=f"{self.cumulative_gold:,}", inline=True
+            name="💰 Gold Accumulated (lost)",
+            value=f"{self.cumulative_gold:,}",
+            inline=True,
         )
         await self.bot.database.users.update_from_player_object(self.player)
         self.bot.state_manager.clear_active(self.user_id)
@@ -1037,7 +1045,7 @@ class CodexMenuView(ui.View):
             title="📖 The Codex",
             description=(
                 "An onslaught of curated chapters, each more brutal than the last.\n"
-                "Five chapters are drawn at random per run. Manage your Tomes for permanent power."
+                "Five chapters are drawn at random per run. Manage your Tomes of power."
             ),
             color=discord.Color.dark_purple(),
         )
