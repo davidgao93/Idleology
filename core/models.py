@@ -305,6 +305,9 @@ class Player:
     gaze_stacks: int = 0
     hunger_stacks: int = 0
 
+    # Corrupted essence transients (reset each combat)
+    lucifer_pdr_burst: int = 0      # Lucifer helmet: flat PDR added after ward breaks
+
     # Glove passives
     equilibrium_bonus_xp_pending: int = 0
     plundering_bonus_gold_pending: int = 0
@@ -412,6 +415,9 @@ class Player:
         for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
             if item:
                 total += compute_essence_stat_bonus(item).get("pdr", 0)
+
+        # Corrupted essence: Lucifer helmet — PDR burst on ward break (transient, persists rest of combat)
+        total += self.lucifer_pdr_burst
 
         # Hard cap at 80%
         return min(80, total)
@@ -564,6 +570,15 @@ class Player:
 
     def get_helmet_passive(self) -> str:
         return self.equipped_helmet.passive if self.equipped_helmet else "none"
+
+    def get_glove_corrupted_essence(self) -> str:
+        return (self.equipped_glove.corrupted_essence if self.equipped_glove else "none") or "none"
+
+    def get_boot_corrupted_essence(self) -> str:
+        return (self.equipped_boot.corrupted_essence if self.equipped_boot else "none") or "none"
+
+    def get_helmet_corrupted_essence(self) -> str:
+        return (self.equipped_helmet.corrupted_essence if self.equipped_helmet else "none") or "none"
 
     def get_emblem_bonus(self, passive_type: str) -> int:
         """

@@ -61,11 +61,14 @@ class DropManager:
             return None
         tool_tier = skill_row[2]
         resources = SkillMechanics.calculate_yield(skill_type, tool_tier)
-        await bot.database.skills.update_batch(
-            user_id, server_id, skill_type, resources
-        )
+        await bot.database.skills.update_batch(user_id, server_id, skill_type, resources)
+        # NEET boot: Void Echo doubles skilling resource yield on proc
+        neet_suffix = ""
+        if player.get_boot_corrupted_essence() == "neet":
+            await bot.database.skills.update_batch(user_id, server_id, skill_type, resources)
+            neet_suffix = " (**Void Echo** doubled the yield!)"
         msg_map = {"mining": "ores", "woodcutting": "logs", "fishing": "fish"}
-        return f"👢 **Skiller** found extra {msg_map[skill_type]}!"
+        return f"👢 **Skiller** found extra {msg_map[skill_type]}!{neet_suffix}"
 
     @staticmethod
     async def process_drops(
@@ -96,7 +99,10 @@ class DropManager:
             reward_data["essences"].append(essence_type)
 
         # 2. Gear Drops
+        # Aphrodite boot: lucky gear drops — roll twice, take the lower (more likely to beat threshold)
         drop_roll = random.randint(1, 100)
+        if player.get_boot_corrupted_essence() == "aphrodite":
+            drop_roll = min(drop_roll, random.randint(1, 100))
         drop_threshold = rewards.calculate_item_drop_chance(player)
 
         if drop_roll <= drop_threshold:

@@ -470,7 +470,7 @@ class CombatView(ui.View):
                 await self.bot.database.uber.increment_void_shards(
                     self.user_id, self.server_id, shards_dropped
                 )
-                reward_data["special"].extend(["Void Shard"] * shards_dropped)
+                reward_data["special"].extend(["Void Sigil"] * shards_dropped)
 
             if "Aphrodite" in self.monster.name and not getattr(
                 self.monster, "is_uber", False
@@ -625,10 +625,15 @@ class CombatView(ui.View):
             boss_pet_triggered = False
 
             # 1. BOSS PET CHECK (3% Chance, Tier 3 Fixed)
+            # Gemini boot: pet drop chance doubled (3% -> 6% boss, 5% -> 10% regular)
+            _gemini_boot = self.player.get_boot_corrupted_essence() == "gemini"
+            boss_pet_chance    = 0.06 if _gemini_boot else 0.03
+            regular_pet_chance = 0.10 if _gemini_boot else 0.05
+
             boss_img = self._get_boss_pet_image(self.monster.name)
 
             if self.monster.is_boss and boss_img and current_pet_count < 20:
-                if random.random() < 0.03:  # 3% Drop Rate
+                if random.random() < boss_pet_chance:
                     boss_pet_triggered = True
 
                     # Generate Tier 3 Passive
@@ -680,7 +685,7 @@ class CombatView(ui.View):
                 not boss_pet_triggered
                 and not self.monster.is_boss
                 and current_pet_count < 20
-                and random.random() < 0.05
+                and random.random() < regular_pet_chance
             ):
                 # Roll Stats
                 p_type, p_tier = CompanionMechanics.roll_new_passive(is_capture=True)

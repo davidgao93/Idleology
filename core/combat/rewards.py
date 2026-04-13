@@ -90,6 +90,15 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     if gold_find_tiers > 0:
         gold_award = int(gold_award * (1 + (gold_find_tiers * 0.03)))
 
+    # Lucifer boot: gold increases 10% per modifier on the monster (cap 50%)
+    if player.get_boot_corrupted_essence() == "lucifer" and monster.modifiers:
+        lucifer_bonus_pct = min(0.50, len(monster.modifiers) * 0.10)
+        bonus_gold = int(gold_award * lucifer_bonus_pct)
+        gold_award += bonus_gold
+        results["msgs"].append(
+            f"🔥 **Infernal Plunder** — {len(monster.modifiers)} modifiers grant +{int(lucifer_bonus_pct * 100)}% gold! (+{bonus_gold:,})"
+        )
+
     results["gold"] = gold_award
 
     # Codex Tome: Affluence (+% XP and Gold from all combat)

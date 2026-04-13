@@ -48,6 +48,27 @@ class MonsterTurnResult:
 
 
 # ---------------------------------------------------------------------------
+# Ward addition helper
+# All combat_ward increments should go through this so the NEET helmet
+# corrupted essence (ward gains doubled) is applied consistently.
+# ---------------------------------------------------------------------------
+
+def _add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
+    """
+    Adds ward to the player, doubling if the NEET helmet corrupted essence is active.
+    Returns the final amount added. Logs only if label is provided.
+    """
+    if amount <= 0:
+        return 0
+    if player.get_helmet_corrupted_essence() == "neet":
+        amount *= 2
+        if label:
+            log.append(f"🌑 **Void Resonance** doubles ward gain! ({label}: +{amount} 🔮)")
+    player.combat_ward += amount
+    return amount
+
+
+# ---------------------------------------------------------------------------
 # Monster Stat Effects
 # Applied once at combat start via apply_stat_effects().
 # ---------------------------------------------------------------------------
@@ -65,6 +86,9 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
     """Applies monster modifiers that alter player stats at the start of combat."""
     for modifier in monster.modifiers:
         if modifier in _MONSTER_STAT_EFFECTS:
+            # Aphrodite helmet: ward cannot be forcibly disabled by monster modifiers
+            if modifier == "Shield-breaker" and player.get_helmet_corrupted_essence() == "aphrodite":
+                continue
             _MONSTER_STAT_EFFECTS[modifier](player, monster)
 
 
@@ -96,10 +120,10 @@ def _cs_omnipotent(player, monster):
         total_def = player.get_total_defence()
         player.base_attack += total_atk
         player.base_defence += total_def
-        player.combat_ward += player.max_hp
+        ward_added = _add_ward(player, player.max_hp, [], "Omnipotent")
         return (
             f"**Omnipotent** empowers you! "
-            f"⚔️ +**{total_atk}** ATK, 🛡️ +**{total_def}** DEF, 🔮 +**{player.max_hp}** Ward"
+            f"⚔️ +**{total_atk}** ATK, 🛡️ +**{total_def}** DEF, 🔮 +**{ward_added}** Ward"
         )
 
 
@@ -332,8 +356,8 @@ def process_heal(player: Player, monster=None) -> str:
         msg += f"\n🌀 **Unstable Mixture** — heal was {_unstable_result}!"
 
     if player.get_helmet_passive() == "divine" and overheal > 0:
-        player.combat_ward += overheal
-        msg += f"\n**Divine** converts **{overheal}** overheal into 🔮 Ward!"
+        added = _add_ward(player, overheal, [], "Divine")
+        msg += f"\n**Divine** converts **{added}** overheal into 🔮 Ward!"
 
     if overcap_cap > 0 and getattr(player, "alchemy_overcap_hp", 0) > 0:
         msg += (
@@ -344,8 +368,8 @@ def process_heal(player: Player, monster=None) -> str:
     ward_inf = potion_passives_by_type.get("ward_infusion", 0)
     if ward_inf:
         ward_gain = int(heal_amount * (ward_inf / 100.0))
-        player.combat_ward += ward_gain
-        msg += f"\n🔮 **Ward Infusion** generates **{ward_gain}** Ward!"
+        added = _add_ward(player, ward_gain, [], "Ward Infusion")
+        msg += f"\n🔮 **Ward Infusion** generates **{added}** Ward!"
 
     # --- Alchemy: Lingering Remedy ---
     linger = potion_passives_by_type.get("lingering_remedy", 0)
@@ -613,6 +637,21 @@ def _pt_crit_damage(
         damage = monster.hp
         log.append("💀 **Fracture** tears open a void rift — **instant kill!**")
 
+    # Lucifer glove: bonus flat damage equal to 15% of current ward
+    if player.get_glove_corrupted_essence() == "lucifer" and player.combat_ward > 0:
+        ward_bonus = int(player.combat_ward * 0.15)
+        if ward_bonus > 0:
+            damage += ward_bonus
+            log.append(f"🔥 **Soul Burn** — ward fuels the crit! (+{ward_bonus})")
+
+    # Gemini glove: second strike at 40-60% of crit damage
+    if player.get_glove_corrupted_essence() == "gemini":
+        second_pct = random.uniform(0.40, 0.60)
+        second_hit = int(damage * second_pct)
+        if second_hit > 0:
+            damage += second_hit
+            log.append(f"⚖️ **Twin Strike** — a second blow lands! (+{second_hit})")
+
     idx, _ = get_weapon_tier(player, "crit")
     if idx >= 0:
         log.append("The weapon glimmers with power!")
@@ -663,6 +702,13 @@ def _pt_hit_damage(
         log.append(
             f"**Voracious** charges! ({player.voracious_stacks} stack{'s' if player.voracious_stacks != 1 else ''})"
         )
+
+    # Lucifer glove: bonus flat damage equal to 15% of current ward
+    if player.get_glove_corrupted_essence() == "lucifer" and player.combat_ward > 0:
+        ward_bonus = int(player.combat_ward * 0.15)
+        if ward_bonus > 0:
+            damage += ward_bonus
+            log.append(f"🔥 **Soul Burn** — ward fuels the strike! (+{ward_bonus})")
 
     log.append(f"Hit! Damage: 💥 **{damage - echo_damage}**")
     if echo_damage:
@@ -751,14 +797,14 @@ def _pt_generate_ward(
     ):
         ward = int(raw_damage * (glove_lvl * 0.01))
         if ward > 0:
-            player.combat_ward += ward
-            log.append(f"**Ward-Touched ({glove_lvl})** generates 🔮 **{ward}** ward!")
+            added = _add_ward(player, ward, log)
+            log.append(f"**Ward-Touched ({glove_lvl})** generates 🔮 **{added}** ward!")
 
     if is_crit and glove_passive == "ward-fused" and glove_lvl > 0 and raw_damage > 0:
         ward = int(raw_damage * (glove_lvl * 0.02))
         if ward > 0:
-            player.combat_ward += ward
-            log.append(f"**Ward-Fused ({glove_lvl})** generates 🔮 **{ward}** ward!")
+            added = _add_ward(player, ward, log)
+            log.append(f"**Ward-Fused ({glove_lvl})** generates 🔮 **{added}** ward!")
 
 
 def _pt_apply_to_monster(
@@ -807,8 +853,8 @@ def _pt_post_hit_effects(
 
     if player.get_celestial_armor_passive() == "celestial_ghostreaver":
         regen = random.randint(50, 200)
-        player.combat_ward += regen
-        log.append(f"✨ **Celestial Ghostreaver** restores **{regen}** 🔮 Ward!")
+        added = _add_ward(player, regen, log)
+        log.append(f"✨ **Celestial Ghostreaver** restores **{added}** 🔮 Ward!")
 
 
 def _pt_track_pending(player: Player, damage: int, log: list[str]) -> None:
@@ -858,6 +904,11 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     attack_multiplier = _pt_attack_multiplier(player, monster, log)
     is_hit, attack_multiplier = _pt_resolve_hit(player, monster, attack_multiplier, log)
     is_crit = _pt_resolve_crit(player, monster, is_hit, log)
+
+    # NEET glove: all normal hits are treated as misses; crits are unaffected
+    if is_hit and not is_crit and player.get_glove_corrupted_essence() == "neet":
+        is_hit = False
+        log.append("🌑 **Void Form** — the strike phases through as nothingness!")
 
     if is_crit:
         raw_damage = _pt_crit_damage(player, monster, attack_multiplier, log)
@@ -1027,9 +1078,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             )
             if helmet_passive == "ghosted" and helmet_lvl > 0:
                 ward_gain = helmet_lvl * 10
-                player.combat_ward += ward_gain
+                added = _add_ward(player, ward_gain, log)
                 log.append(
-                    f"**Ghosted ({helmet_lvl})** manifests **{ward_gain}** 🔮 Ward from the movement!"
+                    f"**Ghosted ({helmet_lvl})** manifests **{added}** 🔮 Ward from the movement!"
                 )
 
         elif is_blocked:
@@ -1097,7 +1148,25 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     f"💥 **Overcap Brew** temp HP absorbs **{absorbed}** damage and shatters!"
                 )
 
-            if player.combat_ward > 0 and total_damage > 0:
+            glove_corrupted  = player.get_glove_corrupted_essence()
+            helmet_corrupted = player.get_helmet_corrupted_essence()
+
+            # --- Gemini helmet: split damage evenly between ward and HP simultaneously ---
+            if helmet_corrupted == "gemini" and player.combat_ward > 0 and total_damage > 0:
+                ward_half = total_damage // 2
+                hp_half   = total_damage - ward_half
+                ward_absorbed = min(ward_half, player.combat_ward)
+                player.combat_ward -= ward_absorbed
+                damage_dealt = ward_absorbed
+                if not is_blocked:
+                    log.append(
+                        f"{monster.name} {monster.flavor}.\n"
+                        f"**Twin Balance** splits the blow — 🔮 {ward_absorbed} to ward, 💔 {hp_half} bleeds through!"
+                    )
+                total_damage = hp_half  # remaining leaks to HP unconditionally
+
+            elif player.combat_ward > 0 and total_damage > 0:
+                # Standard ward absorption
                 if total_damage <= player.combat_ward:
                     damage_dealt = total_damage
                     player.combat_ward -= total_damage
@@ -1115,6 +1184,13 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     total_damage -= player.combat_ward
                     player.combat_ward = 0
 
+                    # Lucifer helmet: gain flat PDR burst when ward fully breaks
+                    if helmet_corrupted == "lucifer" and player.lucifer_pdr_burst == 0:
+                        player.lucifer_pdr_burst = 15
+                        log.append(
+                            f"🔥 **Infernal Resilience** — ward shattered, gaining **+15%** PDR for this combat!"
+                        )
+
             if total_damage > 0:
                 if player.active_task_species == monster.species:
                     tiers = player.get_emblem_bonus("slayer_def")
@@ -1128,11 +1204,11 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 ):
                     player.current_hp = 1
                     ward_gain = int(player.max_hp * 0.5)
-                    player.combat_ward += ward_gain
+                    added = _add_ward(player, ward_gain, log)
                     player.celestial_vow_used = True
                     damage_dealt += player.current_hp - 1
                     log.append(
-                        f"\n✨ **Celestial Vow** activates! You survive the fatal blow and gain {ward_gain} 🔮 Ward!"
+                        f"\n✨ **Celestial Vow** activates! You survive the fatal blow and gain {added} 🔮 Ward!"
                     )
                 else:
                     damage_dealt += total_damage
@@ -1159,13 +1235,22 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                         f"⬛ **Eternal Hunger** feeds ({player.hunger_stacks}/10 stacks)."
                     )
 
+            # Volatile: normal trigger (ward fully drained this turn)
+            # Aphrodite glove extends this to fire whenever ward was touched at all
+            ward_was_hit = (damage_dealt > 0 and previous_ward > 0)
+            aphrodite_glove_active = (glove_corrupted == "aphrodite" and ward_was_hit and player.combat_ward > 0)
             if helmet_passive == "volatile" and helmet_lvl > 0:
-                if previous_ward > 0 and player.combat_ward == 0:
+                if previous_ward > 0 and (player.combat_ward == 0 or aphrodite_glove_active):
                     boom = int(player.max_hp * helmet_lvl)
                     monster.hp -= boom
-                    log.append(
-                        f"\n💥 **Volatile** Shield shatters, dealing **{boom}** damage to {monster.name}!"
-                    )
+                    if player.combat_ward == 0:
+                        log.append(
+                            f"\n💥 **Volatile** Shield shatters, dealing **{boom}** damage to {monster.name}!"
+                        )
+                    else:
+                        log.append(
+                            f"\n💥 **Volatile** (Aphrodite) — ward struck, dealing **{boom}** damage to {monster.name}!"
+                        )
 
             if "Vampiric" in monster.modifiers and damage_dealt > 0:
                 heal = damage_dealt * 10

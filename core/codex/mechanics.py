@@ -289,8 +289,12 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
         player.max_hp = int(player.max_hp * 0.70)
         player.current_hp = min(player.current_hp, player.max_hp)
 
+    # Helper: only zero ward if Aphrodite helmet corrupted essence is not active
+    _ward_immune = player.get_helmet_corrupted_essence() == "aphrodite"
+
     elif key == "exposed":
-        player.combat_ward = 0
+        if not _ward_immune:
+            player.combat_ward = 0
 
     elif key == "depleted":
         player.base_defence = int(player.base_defence * 0.60)
@@ -300,7 +304,8 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
         player.base_defence = int(player.base_defence * 0.80)
 
     elif key == "unravelled":
-        player.combat_ward = 0
+        if not _ward_immune:
+            player.combat_ward = 0
         player.base_defence = int(player.base_defence * 0.80)
 
     elif key == "blinded":
@@ -323,7 +328,8 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
         player.base_defence = int(player.base_defence * 0.60)
 
     elif key == "broken":
-        player.combat_ward = 0
+        if not _ward_immune:
+            player.combat_ward = 0
         player.base_defence = int(player.base_defence * 0.70)
 
     elif key == "absolute_zero":
@@ -333,7 +339,8 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
     elif key == "convergence":
         player.base_attack = int(player.base_attack * 0.70)
         player.base_defence = int(player.base_defence * 0.70)
-        player.combat_ward = 0
+        if not _ward_immune:
+            player.combat_ward = 0
 
     elif key == "erased":
         player.base_attack = int(player.base_attack * 0.50)

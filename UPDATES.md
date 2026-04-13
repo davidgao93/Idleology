@@ -231,7 +231,7 @@ __Other Changes__
   - **Void Echo**: At combat start, copy 15% of your base ATK onto your accessory as bonus ATK.
   - **Oblivion**: Misses deal 50% of your minimum damage — stacks with Perdition and all other miss mechanics.
   - **Unravelling**: At combat start, strip 20% of the monster's defence.
-* The Void Blueprint unlocks the ability to build a **Void Sanctum** in your settlement, which passively increases the drop rate of Void Shards from NEET.
+* The Void Blueprint unlocks the ability to build a **Void Sanctum** in your settlement, which passively increases the drop rate of Void Sigils from NEET.
 
 ---
 

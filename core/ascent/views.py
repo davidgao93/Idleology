@@ -169,6 +169,11 @@ class AscentView(ui.View):
             self.bot, self.user_id, self.player, xp_gain
         )
 
+        # Keep clean_stats in sync so next_stage doesn't revert level-up gains
+        if exp_changes["levels_gained"]:
+            self.clean_stats["attack"] = self.player.base_attack
+            self.clean_stats["defence"] = self.player.base_defence
+
         self.cumulative_xp += exp_changes["xp_added"]
         self.cumulative_gold += gold_gain
         level_msgs = exp_changes["msgs"]

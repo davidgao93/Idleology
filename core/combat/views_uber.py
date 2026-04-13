@@ -99,7 +99,7 @@ class UberHubView(ui.View):
             name="⬛ NEET, Void Sovereign",
             value=(
                 f"NEET's pain has no known depths.\n"
-                f"**Keys:** {self.uber_data['void_shards']} Void Shards *(costs 3)*"
+                f"**Keys:** {self.uber_data['void_shards']} Void Sigils *(costs 3)*"
             ),
             inline=False,
         )
@@ -576,7 +576,7 @@ class UberNEETLobbyView(ui.View):
         desc = (
             "A Chibi voidling NEET appears:\n"
             '*"You have wandered too far into the void. Give me some shards and I may guide you back."*\n\n'
-            f"**Entry Cost:** 3 Void Shards\n"
+            f"**Entry Cost:** 3 Void Sigils\n"
             f"**Owned:** {self.shards}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "⚠️ **Void Drain** siphons 5% of your ATK and DEF each round. Fight fast."
@@ -631,7 +631,7 @@ class UberNEETLobbyView(ui.View):
         )
         if current_data["void_shards"] < 3:
             return await interaction.response.send_message(
-                "You do not have enough Void Shards.", ephemeral=True
+                "You do not have enough Void Sigils.", ephemeral=True
             )
 
         await interaction.response.defer()

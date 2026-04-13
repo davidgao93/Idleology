@@ -393,7 +393,7 @@ class ProfileBuilder:
         embed.add_field(
             name="**NEET**",
             value=(
-                f"⬛ Void Shards: {uber_data.get('void_shards', 0)}\n"
+                f"⬛ Void Sigils: {uber_data.get('void_shards', 0)}\n"
                 f"🔮 Void Engrams: {uber_data.get('void_engrams', 0)}\n"
                 f"💎 Void Crystal: {specials[2]}\n"
                 f"📜 Void Sanctum Blueprint: {void_bp_status}"

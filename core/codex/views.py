@@ -319,7 +319,7 @@ class CodexRunView(ui.View):
             embed.set_footer(text="Run complete! Finalising in 4 seconds...")
         return embed
 
-    def _summary_embed(self, fragments: int, pages_dropped: int) -> discord.Embed:
+    def _summary_embed(self, fragments: int, pages_dropped: int, exp_changes: dict) -> discord.Embed:
         is_perfect = self.chapters_cleared == 5 and self.waves_cleared_this_run == 35
         embed = discord.Embed(
             title="📕 Codex Run Complete",
@@ -335,10 +335,18 @@ class CodexRunView(ui.View):
         embed.add_field(
             name="💰 Total Gold", value=f"{self.cumulative_gold:,}", inline=True
         )
+        if exp_changes["ascensions_gained"]:
+            embed.add_field(
+                name="✨ Ascensions", value=str(exp_changes["ascensions_gained"]), inline=True
+            )
         embed.add_field(name="🔷 Fragments Earned", value=str(fragments), inline=True)
         if pages_dropped > 0:
             embed.add_field(
                 name="📄 Codex Pages", value=str(pages_dropped), inline=True
+            )
+        if exp_changes["msgs"]:
+            embed.add_field(
+                name="Level Ups", value="\n".join(exp_changes["msgs"]), inline=False
             )
         chapters_text = "\n".join(
             f"{'✅' if i < self.chapters_cleared else '❌'} {ch.name}"
@@ -405,36 +413,11 @@ class CodexRunView(ui.View):
     ):
         """Called when monster HP drops to 0. Awards XP/Gold, decides next action."""
         rewards = calculate_rewards(self.player, self.monster)
-        # Codex runs 35 waves in rapid succession — nerf to ~30% to keep Ascension premier
-        wave_xp = int(rewards["xp"] * 0.30)
-        wave_gold = int(rewards["gold"] * 0.30)
-        self.player.exp += wave_xp
+        # Codex runs 35 waves in rapid succession — nerf to ~5%
+        wave_xp = int(rewards["xp"] * 0.05)
+        wave_gold = int(rewards["gold"] * 0.05)
         self.cumulative_xp += wave_xp
         self.cumulative_gold += wave_gold
-        await self.bot.database.users.modify_gold(self.user_id, wave_gold)
-
-        exp_changes = await ExperienceManager.add_experience(
-            self.bot, self.user_id, self.player, wave_xp
-        )
-
-        # Apply the ACTUAL XP gained (0 if protected) to accumulators
-        self.cumulative_xp += exp_changes["xp_added"]
-        await self.bot.database.users.modify_gold(self.user_id, wave_gold)
-
-        # Safely update Codex Snapshots using the returned deltas
-        atk_inc = exp_changes["atk_gained"]
-        def_inc = exp_changes["def_gained"]
-        hp_inc = exp_changes["hp_gained"]
-
-        if atk_inc > 0 or def_inc > 0 or hp_inc > 0:
-            if self.chapter_wave_baseline:
-                self.chapter_wave_baseline["attack"] += atk_inc
-                self.chapter_wave_baseline["defence"] += def_inc
-            self.clean_stats["attack"] += atk_inc
-            self.clean_stats["defence"] += def_inc
-            self.clean_stats["max_hp"] += hp_inc
-
-        await self.bot.database.users.update_from_player_object(self.player)
 
         self.waves_cleared_this_run += 1
 
@@ -551,7 +534,14 @@ class CodexRunView(ui.View):
             self.user_id, "codex_fragments", fragments
         )
 
-        embed = self._summary_embed(fragments, len(self.page_drops))
+        await self.bot.database.users.modify_gold(self.user_id, self.cumulative_gold)
+
+        exp_changes = await ExperienceManager.add_experience(
+            self.bot, self.user_id, self.player, self.cumulative_xp
+        )
+        await self.bot.database.users.update_from_player_object(self.player)
+
+        embed = self._summary_embed(fragments, len(self.page_drops), exp_changes)
         self.clear_items()
         self.stop()
         self.bot.state_manager.clear_active(self.user_id)
@@ -718,10 +708,10 @@ class CodexRunView(ui.View):
             color=discord.Color.light_grey(),
         )
         embed.add_field(
-            name="📚 XP Earned (kept)", value=f"{self.cumulative_xp:,}", inline=True
+            name="📚 XP Accumulated (lost)", value=f"{self.cumulative_xp:,}", inline=True
         )
         embed.add_field(
-            name="💰 Gold Earned (kept)", value=f"{self.cumulative_gold:,}", inline=True
+            name="💰 Gold Accumulated (lost)", value=f"{self.cumulative_gold:,}", inline=True
         )
         await self.bot.database.users.update_from_player_object(self.player)
         self.bot.state_manager.clear_active(self.user_id)
