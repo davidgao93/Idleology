@@ -77,6 +77,13 @@ class Glove:
     description: str = ""
     is_equipped: bool = False
     potential_remaining: int = 0
+    essence_1: str = "none"
+    essence_1_val: float = 0.0
+    essence_2: str = "none"
+    essence_2_val: float = 0.0
+    essence_3: str = "none"
+    essence_3_val: float = 0.0
+    corrupted_essence: str = "none"
 
 
 @dataclass
@@ -95,6 +102,13 @@ class Boot:
     description: str = ""
     is_equipped: bool = False
     potential_remaining: int = 0
+    essence_1: str = "none"
+    essence_1_val: float = 0.0
+    essence_2: str = "none"
+    essence_2_val: float = 0.0
+    essence_3: str = "none"
+    essence_3_val: float = 0.0
+    corrupted_essence: str = "none"
 
 
 @dataclass
@@ -112,6 +126,13 @@ class Helmet:
     description: str = ""
     is_equipped: bool = False
     potential_remaining: int = 0
+    essence_1: str = "none"
+    essence_1_val: float = 0.0
+    essence_2: str = "none"
+    essence_2_val: float = 0.0
+    essence_3: str = "none"
+    essence_3_val: float = 0.0
+    corrupted_essence: str = "none"
 
 
 @dataclass
@@ -528,6 +549,7 @@ class Monster:
     species: str = "Unknown"
     is_boss: bool = False
     combat_round: int = 0
+    is_essence: bool = False
 
 
 @dataclass

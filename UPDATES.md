@@ -1,3 +1,94 @@
+Patch 0.9 - Essences Update
+
+Added /chop and /fish as side activities to gather skilling materials. /delve now grants mining materials occasionally.
+Alchemy now lets you synthesize boss entry fragments from cosmic dust that you can obtain from disenchanting boss entry fragments.
+
+Changes:
+
+* Equipment no longer scale infinitely with item level, but instead are capped at a certain point.
+* Higher item level drops equipment closer to the cap, here are the new caps for stats:
+_WEAPON_CAPS = {"attack": 80, "defence": 80, "rarity": 200}
+_ACC_CAPS = {"attack": 80, "defence": 80, "rarity": 200, "ward": 60, "crit": 20}
+_ARMOR_CAPS = {"block": 50, "evasion": 50, "ward": 100, "pdr": 40, "fdr": 80}
+_GLOVE_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
+_BOOT_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
+_HELM_CAPS = {"defence": 40, "ward": 80, "pdr": 15, "fdr": 50}
+* Temper for armor has been changed accordingly to grant ~5% PDR per temper and 10 FDR per temper based on ilvl
+* Refines for weapons has been changed accordingly to grant ~1-20 ATK per refine, ~1-20 DEF per refine, ~5-50% rarity per refine based on ilvl
+     odds to hit each stat are unchanged (80% to roll atk, 50% to roll def, 20% to roll rar)
+
+Patch 0.82 – Alchemy Update
+
+New Skill: Alchemy
+• New Alchemy skill added (Level 1–5)
+• Uses Spirit Stones (🔮) to level up
+• 1 Potion Passive slot per level (up to 5)
+• Higher level = better transmute ratios and stronger passives
+
+Alchemy Hub
+• View Alchemy level, Spirit Stones, Gold, and passive slots
+• Buttons:
+🔄 Transmute – convert skill resources between tiers
+
+⚗️ Potion Lab – manage potion passives
+
+⬆️ Level Up – spend Spirit Stones to upgrade Alchemy
+
+❌ Close – exit the menu
+• Level up costs:
+L1→2: 10 🔮
+L2→3: 15 🔮
+L3→4: 25 🔮
+L4→5: 40 🔮
+
+Transmutation
+• Works for Mining, Fishing, Woodcutting
+Mining: Iron → Coal → Gold → Platinum → Idea Ore
+Fishing: Desiccated → Regular → Sturdy → Reinforced → Titanium Bones
+Woodcutting: Oak → Willow → Mahogany → Magic → Idea Logs
+
+Upgrade ratios (low → high tier):
+• Alch 1–2: 4 : 1
+• Alch 3–4: 3 : 1
+• Alch 5: 2 : 1
+
+Downgrade ratios (high → low tier):
+• Alch 1–2: 1 : 2
+• Alch 3–4: 1 : 3
+• Alch 5: 1 : 4
+
+Upgrade gold cost (per craft):
+• → T2: 2,000g
+• → T3: 8,000g
+• → T4: 25,000g
+• → T5: 75,000g
+
+Downgrade gold cost (per craft):
+• T2→T1: 500g
+• T3→T2: 2,000g
+• T4→T3: 6,000g
+• T5→T4: 20,000g
+
+Potion Lab
+• View and manage your potion passives 
+
+Potion Passives (examples)
+• 🍺 Fermented Brew: Bonus % heal
+• 🐍 Venom Cure: Deal damage based on heal
+• 💪 Warrior’s Draft: Bonus ATK on next attack
+• 🛡️ Iron Skin: Bonus DEF for 2 monster turns
+• 🔮 Ward Infusion: Restore Ward based on heal
+• 💥 Overcap Brew: Overheal becomes temp HP
+• 🌀 Unstable Mixture: 50% double heal / 50% half heal
+• 🩹 Dulled Pain: Reduced damage from next hit
+• 🌿 Lingering Remedy: Heal over 3 turns
+• ⚔️ Bottled Courage: Next hit after healing cannot miss
+
+Notes
+• Potion passives trigger automatically when you drink a potion
+• Reroll cost is always 1 Spirit Stone per slot
+• Passive strength scales with your Alchemy level (L1 = minimum, L5 = maximum)
+
 __**Idleology v0.81 — The Codex**__
 
 __New Feature: The Codex (Lv 100+)__

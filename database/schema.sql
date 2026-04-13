@@ -1,3 +1,26 @@
+-- Essence system migrations (run once on existing DBs)
+ALTER TABLE gloves ADD COLUMN essence_1 TEXT DEFAULT 'none';
+ALTER TABLE gloves ADD COLUMN essence_1_val REAL DEFAULT 0;
+ALTER TABLE gloves ADD COLUMN essence_2 TEXT DEFAULT 'none';
+ALTER TABLE gloves ADD COLUMN essence_2_val REAL DEFAULT 0;
+ALTER TABLE gloves ADD COLUMN essence_3 TEXT DEFAULT 'none';
+ALTER TABLE gloves ADD COLUMN essence_3_val REAL DEFAULT 0;
+ALTER TABLE gloves ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
+ALTER TABLE boots ADD COLUMN essence_1 TEXT DEFAULT 'none';
+ALTER TABLE boots ADD COLUMN essence_1_val REAL DEFAULT 0;
+ALTER TABLE boots ADD COLUMN essence_2 TEXT DEFAULT 'none';
+ALTER TABLE boots ADD COLUMN essence_2_val REAL DEFAULT 0;
+ALTER TABLE boots ADD COLUMN essence_3 TEXT DEFAULT 'none';
+ALTER TABLE boots ADD COLUMN essence_3_val REAL DEFAULT 0;
+ALTER TABLE boots ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
+ALTER TABLE helmets ADD COLUMN essence_1 TEXT DEFAULT 'none';
+ALTER TABLE helmets ADD COLUMN essence_1_val REAL DEFAULT 0;
+ALTER TABLE helmets ADD COLUMN essence_2 TEXT DEFAULT 'none';
+ALTER TABLE helmets ADD COLUMN essence_2_val REAL DEFAULT 0;
+ALTER TABLE helmets ADD COLUMN essence_3 TEXT DEFAULT 'none';
+ALTER TABLE helmets ADD COLUMN essence_3_val REAL DEFAULT 0;
+ALTER TABLE helmets ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
+
 -- ALTER TABLE `companions` ADD COLUMN `balanced_passive` TEXT DEFAULT 'none';
 -- ALTER TABLE `companions` ADD COLUMN `balanced_passive_tier` INTEGER DEFAULT 0;
 -- ALTER TABLE `uber_progress` ADD COLUMN `gemini_sigils` INTEGER DEFAULT 0;
@@ -142,7 +165,14 @@ CREATE TABLE IF NOT EXISTS `gloves` (
   `passive` TEXT NOT NULL DEFAULT 'none',
   `is_equipped` BOOLEAN DEFAULT FALSE,
   `potential_remaining` INTEGER DEFAULT 5,
-  `passive_lvl` INTEGER DEFAULT 0
+  `passive_lvl` INTEGER DEFAULT 0,
+  `essence_1` TEXT DEFAULT 'none',
+  `essence_1_val` REAL DEFAULT 0,
+  `essence_2` TEXT DEFAULT 'none',
+  `essence_2_val` REAL DEFAULT 0,
+  `essence_3` TEXT DEFAULT 'none',
+  `essence_3_val` REAL DEFAULT 0,
+  `corrupted_essence` TEXT DEFAULT 'none'
 );
 
 CREATE TABLE IF NOT EXISTS `boots` (
@@ -158,7 +188,14 @@ CREATE TABLE IF NOT EXISTS `boots` (
   `passive` TEXT NOT NULL DEFAULT 'none',
   `is_equipped` BOOLEAN DEFAULT FALSE,
   `potential_remaining` INTEGER DEFAULT 6,
-  `passive_lvl` INTEGER DEFAULT 0
+  `passive_lvl` INTEGER DEFAULT 0,
+  `essence_1` TEXT DEFAULT 'none',
+  `essence_1_val` REAL DEFAULT 0,
+  `essence_2` TEXT DEFAULT 'none',
+  `essence_2_val` REAL DEFAULT 0,
+  `essence_3` TEXT DEFAULT 'none',
+  `essence_3_val` REAL DEFAULT 0,
+  `corrupted_essence` TEXT DEFAULT 'none'
 );
 
 
@@ -217,12 +254,19 @@ CREATE TABLE IF NOT EXISTS helmets (
     item_level INTEGER NOT NULL,
     defence INTEGER DEFAULT 0,
     ward INTEGER DEFAULT 0,
-    pdr INTEGER DEFAULT 0, 
+    pdr INTEGER DEFAULT 0,
     fdr INTEGER DEFAULT 0,
     passive TEXT DEFAULT 'none',
     passive_lvl INTEGER DEFAULT 0,
     is_equipped BOOLEAN DEFAULT 0,
-    potential_remaining INTEGER DEFAULT 5
+    potential_remaining INTEGER DEFAULT 5,
+    essence_1 TEXT DEFAULT 'none',
+    essence_1_val REAL DEFAULT 0,
+    essence_2 TEXT DEFAULT 'none',
+    essence_2_val REAL DEFAULT 0,
+    essence_3 TEXT DEFAULT 'none',
+    essence_3_val REAL DEFAULT 0,
+    corrupted_essence TEXT DEFAULT 'none'
 );
 
 
@@ -366,4 +410,11 @@ CREATE TABLE IF NOT EXISTS duel_stats (
     user_id TEXT PRIMARY KEY,
     wins INTEGER NOT NULL DEFAULT 0,
     losses INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS player_essences (
+    user_id TEXT NOT NULL,
+    essence_type TEXT NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, essence_type)
 );

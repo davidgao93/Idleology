@@ -2,7 +2,7 @@ import aiosqlite
 from typing import Literal, Optional, List, Tuple
 from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
 
-ItemType = Literal["weapon", "armor", "accessory", "glove", "boot"]
+ItemType = Literal["weapon", "armor", "accessory", "glove", "boot", "helmet"]
 
 class EquipmentRepository:
     def __init__(self, connection: aiosqlite.Connection):
@@ -168,7 +168,8 @@ class EquipmentRepository:
         table = self.tables[item_type]
         # Basic validation to prevent arbitrary SQL injection if column comes from untrusted source
         allowed = ["forges_remaining", "refines_remaining", "refinement_lvl", "potential_remaining",
-                   "passive_lvl", "temper_remaining", "imbue_remaining", "forge_tier"]
+                   "passive_lvl", "temper_remaining", "imbue_remaining", "forge_tier",
+                   "essence_1_val", "essence_2_val", "essence_3_val"]
         if column not in allowed:
             raise ValueError(f"Invalid column for update_counter: {column}")
             
@@ -180,6 +181,111 @@ class EquipmentRepository:
         table = self.tables[item_type]
         await self.connection.execute(f"UPDATE {table} SET {stat} = {stat} + ? WHERE item_id = ?", (amount, item_id))
         await self.connection.commit()
+
+    # ---------------------------------------------------------
+    # Essence Management
+    # ---------------------------------------------------------
+
+    _ESSENCE_ITEM_TYPES = {"glove", "boot", "helmet"}
+
+    def _validate_essence_item_type(self, item_type: ItemType) -> None:
+        if item_type not in self._ESSENCE_ITEM_TYPES:
+            raise ValueError(f"Essences can only be applied to glove, boot, or helmet (got '{item_type}')")
+
+    async def get_essence_slots(self, item_id: int, item_type: ItemType) -> list:
+        """
+        Returns a list of up to 3 occupied regular essence slots as (slot_index, type, value) tuples.
+        slot_index is 1-based.
+        """
+        self._validate_essence_item_type(item_type)
+        table = self.tables[item_type]
+        cursor = await self.connection.execute(
+            f"SELECT essence_1, essence_1_val, essence_2, essence_2_val, "
+            f"essence_3, essence_3_val FROM {table} WHERE item_id = ?",
+            (item_id,)
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return []
+        slots = []
+        for i in range(3):
+            t, v = row[i * 2], row[i * 2 + 1]
+            if t and t != "none":
+                slots.append((i + 1, t, v or 0.0))
+        return slots
+
+    async def apply_essence(self, item_id: int, item_type: ItemType, slot: int, essence_type: str, value: float) -> None:
+        """Writes a regular essence into the given slot (1, 2, or 3)."""
+        self._validate_essence_item_type(item_type)
+        if slot not in (1, 2, 3):
+            raise ValueError(f"Invalid essence slot: {slot}")
+        table = self.tables[item_type]
+        col_type = f"essence_{slot}"
+        col_val = f"essence_{slot}_val"
+        await self.connection.execute(
+            f"UPDATE {table} SET {col_type} = ?, {col_val} = ? WHERE item_id = ?",
+            (essence_type, value, item_id)
+        )
+        await self.connection.commit()
+
+    async def apply_corrupted_essence(self, item_id: int, item_type: ItemType, essence_type: str) -> None:
+        """Sets the corrupted essence slot."""
+        self._validate_essence_item_type(item_type)
+        table = self.tables[item_type]
+        await self.connection.execute(
+            f"UPDATE {table} SET corrupted_essence = ? WHERE item_id = ?",
+            (essence_type, item_id)
+        )
+        await self.connection.commit()
+
+    async def clear_essences(self, item_id: int, item_type: ItemType) -> None:
+        """Removes all 3 regular essence slots (Essence of Cleansing)."""
+        self._validate_essence_item_type(item_type)
+        table = self.tables[item_type]
+        await self.connection.execute(
+            f"UPDATE {table} SET essence_1 = 'none', essence_1_val = 0, "
+            f"essence_2 = 'none', essence_2_val = 0, "
+            f"essence_3 = 'none', essence_3_val = 0 WHERE item_id = ?",
+            (item_id,)
+        )
+        await self.connection.commit()
+
+    async def reroll_essences(self, item_id: int, item_type: ItemType, new_values: list) -> None:
+        """
+        Replaces the values of all occupied regular essence slots (Essence of Chaos).
+        new_values must be a list of floats matching the number of occupied slots in order.
+        """
+        self._validate_essence_item_type(item_type)
+        slots = await self.get_essence_slots(item_id, item_type)
+        if len(new_values) != len(slots):
+            raise ValueError(f"Expected {len(slots)} new values, got {len(new_values)}")
+        table = self.tables[item_type]
+        for (slot_index, _, _), new_val in zip(slots, new_values):
+            col_val = f"essence_{slot_index}_val"
+            await self.connection.execute(
+                f"UPDATE {table} SET {col_val} = ? WHERE item_id = ?",
+                (new_val, item_id)
+            )
+        await self.connection.commit()
+
+    async def remove_random_essence(self, item_id: int, item_type: ItemType) -> int:
+        """
+        Removes one random occupied regular essence slot (Essence of Annulment).
+        Returns the slot index that was removed, or 0 if no slots were occupied.
+        """
+        import random
+        self._validate_essence_item_type(item_type)
+        slots = await self.get_essence_slots(item_id, item_type)
+        if not slots:
+            return 0
+        slot_index, _, _ = random.choice(slots)
+        table = self.tables[item_type]
+        await self.connection.execute(
+            f"UPDATE {table} SET essence_{slot_index} = 'none', essence_{slot_index}_val = 0 WHERE item_id = ?",
+            (item_id,)
+        )
+        await self.connection.commit()
+        return slot_index
 
     async def fetch_void_forge_candidates(self, user_id: str) -> List[Tuple]:
         """Specific query for Voidforge eligibility."""

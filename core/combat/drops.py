@@ -4,6 +4,34 @@ from core.combat import rewards
 from core.combat.loot import generate_weapon, generate_armor, generate_accessory, generate_glove, generate_boot, generate_helmet
 from core.skills.mechanics import SkillMechanics
 
+# ---------------------------------------------------------------------------
+# Essence Drop Tables
+# ---------------------------------------------------------------------------
+
+_REGULAR_ESSENCE_TABLE = [
+    ("power",      35),
+    ("protection", 30),
+    ("insight",    12),
+    ("evasion",     8),
+    ("warding",     8),
+    ("cleansing",   3),
+    ("chaos",       2),
+    ("annulment",   1),
+]
+_REGULAR_ESSENCE_POOL   = [e for e, w in _REGULAR_ESSENCE_TABLE for _ in range(w)]
+_CORRUPTED_ESSENCE_POOL = ["aphrodite", "lucifer", "gemini", "neet"]
+_CORRUPTED_CHANCE       = 0.03   # 3% of all essence drops are corrupted
+
+
+def roll_essence_drop() -> str:
+    """
+    Returns an essence type string for an essence-infused monster kill.
+    3% chance to return a corrupted essence, otherwise weighted regular table.
+    """
+    if random.random() < _CORRUPTED_CHANCE:
+        return random.choice(_CORRUPTED_ESSENCE_POOL)
+    return random.choice(_REGULAR_ESSENCE_POOL)
+
 class DropManager:
     @staticmethod
     async def proc_skiller(bot, user_id: str, server_id: str, player: Player) -> str | None:
@@ -27,16 +55,25 @@ class DropManager:
         return f"👢 **Skiller** found extra {msg_map[skill_type]}!"
 
     @staticmethod
-    async def process_drops(bot, user_id: str, server_id: str, player: Player, monster_level: int, reward_data: dict):
+    async def process_drops(bot, user_id: str, server_id: str, player: Player, monster_level: int, reward_data: dict, monster=None):
         """
         Handles DB updates for items, runes, and skill procs.
         """
+
+        # 0. Ensure essences list exists in reward_data
+        reward_data.setdefault('essences', [])
 
         # 1. Skiller Boot Passive (Skill Mats)
         skiller_msg = await DropManager.proc_skiller(bot, user_id, server_id, player)
         if skiller_msg:
             reward_data['msgs'].append(skiller_msg)
-                
+
+        # 1b. Essence Monster Drop
+        if monster is not None and getattr(monster, 'is_essence', False):
+            essence_type = roll_essence_drop()
+            await bot.database.essences.add(user_id, essence_type)
+            reward_data['essences'].append(essence_type)
+
         # 2. Gear Drops
         drop_roll = random.randint(1, 100)
         drop_threshold = rewards.calculate_item_drop_chance(player)

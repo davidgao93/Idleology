@@ -89,11 +89,13 @@ def create_armor(data: tuple) -> Armor:
 def create_glove(data: tuple) -> Glove:
     """
     Maps a database tuple from table `gloves` to a Glove object.
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5), 
-            ward(6), pdr(7), fdr(8), passive(9), is_equipped(10), 
-            potential_remaining(11), passive_lvl(12)
+    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5),
+            ward(6), pdr(7), fdr(8), passive(9), is_equipped(10),
+            potential_remaining(11), passive_lvl(12),
+            essence_1(13), essence_1_val(14), essence_2(15), essence_2_val(16),
+            essence_3(17), essence_3_val(18), corrupted_essence(19)
     """
-    if not data: 
+    if not data:
         return None
 
     return Glove(
@@ -110,17 +112,26 @@ def create_glove(data: tuple) -> Glove:
         is_equipped=bool(data[10]),
         potential_remaining=data[11],
         passive_lvl=data[12],
+        essence_1=data[13] if len(data) > 13 and data[13] is not None else "none",
+        essence_1_val=data[14] if len(data) > 14 and data[14] is not None else 0.0,
+        essence_2=data[15] if len(data) > 15 and data[15] is not None else "none",
+        essence_2_val=data[16] if len(data) > 16 and data[16] is not None else 0.0,
+        essence_3=data[17] if len(data) > 17 and data[17] is not None else "none",
+        essence_3_val=data[18] if len(data) > 18 and data[18] is not None else 0.0,
+        corrupted_essence=data[19] if len(data) > 19 and data[19] is not None else "none",
         description=""
     )
 
 def create_boot(data: tuple) -> Boot:
     """
     Maps a database tuple from table `boots` to a Boot object.
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5), 
-            ward(6), pdr(7), fdr(8), passive(9), is_equipped(10), 
-            potential_remaining(11), passive_lvl(12)
+    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5),
+            ward(6), pdr(7), fdr(8), passive(9), is_equipped(10),
+            potential_remaining(11), passive_lvl(12),
+            essence_1(13), essence_1_val(14), essence_2(15), essence_2_val(16),
+            essence_3(17), essence_3_val(18), corrupted_essence(19)
     """
-    if not data: 
+    if not data:
         return None
 
     return Boot(
@@ -137,21 +148,40 @@ def create_boot(data: tuple) -> Boot:
         is_equipped=bool(data[10]),
         potential_remaining=data[11],
         passive_lvl=data[12],
+        essence_1=data[13] if len(data) > 13 and data[13] is not None else "none",
+        essence_1_val=data[14] if len(data) > 14 and data[14] is not None else 0.0,
+        essence_2=data[15] if len(data) > 15 and data[15] is not None else "none",
+        essence_2_val=data[16] if len(data) > 16 and data[16] is not None else 0.0,
+        essence_3=data[17] if len(data) > 17 and data[17] is not None else "none",
+        essence_3_val=data[18] if len(data) > 18 and data[18] is not None else 0.0,
+        corrupted_essence=data[19] if len(data) > 19 and data[19] is not None else "none",
         description=""
     )
 
 def create_helmet(data: tuple) -> Helmet:
     """
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), defence(4), 
-            ward(5), passive(6), passive_lvl(7), is_equipped(8), potential_remaining(9)
+    Schema: item_id(0), user_id(1), item_name(2), item_level(3), defence(4),
+            ward(5), pdr(6), fdr(7), passive(8), passive_lvl(9),
+            is_equipped(10), potential_remaining(11),
+            essence_1(12), essence_1_val(13), essence_2(14), essence_2_val(15),
+            essence_3(16), essence_3_val(17), corrupted_essence(18)
     """
-    if not data: return None
+    if not data:
+        return None
     return Helmet(
         item_id=data[0], user=data[1], name=data[2], level=data[3],
-        defence=data[4], ward=data[5], 
+        defence=data[4], ward=data[5],
         pdr=data[6], fdr=data[7],
         passive=data[8], passive_lvl=data[9],
-        is_equipped=bool(data[10]), potential_remaining=data[11], description=""
+        is_equipped=bool(data[10]), potential_remaining=data[11],
+        essence_1=data[12] if len(data) > 12 and data[12] is not None else "none",
+        essence_1_val=data[13] if len(data) > 13 and data[13] is not None else 0.0,
+        essence_2=data[14] if len(data) > 14 and data[14] is not None else "none",
+        essence_2_val=data[15] if len(data) > 15 and data[15] is not None else 0.0,
+        essence_3=data[16] if len(data) > 16 and data[16] is not None else "none",
+        essence_3_val=data[17] if len(data) > 17 and data[17] is not None else 0.0,
+        corrupted_essence=data[18] if len(data) > 18 and data[18] is not None else "none",
+        description=""
     )
 
 

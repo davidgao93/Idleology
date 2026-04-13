@@ -599,6 +599,7 @@ class CombatView(ui.View):
                 self.player,
                 self.monster.level,
                 reward_data,
+                monster=self.monster,
             )
 
             # Handle XP / Level Up

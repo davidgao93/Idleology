@@ -176,6 +176,16 @@ class EquipmentMechanics:
             'materials': materials
         }
 
+    # Per-refine soft caps. get_scaled_stat approaches these asymptotically via a
+    # hyperbolic curve: expected = cap * (level / (level + 100)), ±20% variance.
+    _REFINE_CAPS = {"attack": 15, "defence": 10, "rarity": 50}
+
+    @staticmethod
+    def _refine_roll(level: int, cap: float) -> int:
+        """Hyperbolic soft-cap roll for a single refine stat gain."""
+        expected = cap * (level / (level + 100))
+        return max(1, int(random.uniform(expected * 0.8, expected * 1.2)))
+
     @staticmethod
     def roll_refine_outcome(weapon: Weapon) -> Dict[str, int]:
         """
@@ -183,24 +193,16 @@ class EquipmentMechanics:
         Returns dict: {'attack': val, 'defence': val, 'rarity': val}
         """
         stats = {'attack': 0, 'defence': 0, 'rarity': 0}
-        
-        # Success chances
-        atk_success = random.randint(0, 100) < 80 # 80%
-        def_success = random.randint(0, 100) < 50 # 50%
-        rar_success = random.randint(0, 100) < 20 # 20%
-        
-        # Range calculation: 1 to (Lvl/10 + 2)
-        max_gain = int(weapon.level / 10) + 2
-        
-        if atk_success:
-            stats['attack'] = random.randint(1, max_gain)
-        
-        if def_success:
-            stats['defence'] = random.randint(1, max_gain)
-            
-        if rar_success:
-            stats['rarity'] = random.randint(1, max_gain) * 5 # Rarity scales higher visually usually
-            
+
+        if random.randint(0, 100) < 80:  # 80% attack
+            stats['attack'] = EquipmentMechanics._refine_roll(weapon.level, EquipmentMechanics._REFINE_CAPS["attack"])
+
+        if random.randint(0, 100) < 50:  # 50% defence
+            stats['defence'] = EquipmentMechanics._refine_roll(weapon.level, EquipmentMechanics._REFINE_CAPS["defence"])
+
+        if random.randint(0, 100) < 20:  # 20% rarity
+            stats['rarity'] = EquipmentMechanics._refine_roll(weapon.level, EquipmentMechanics._REFINE_CAPS["rarity"])
+
         return stats
 
     # --- ARMOR TEMPERING LOGIC ---

@@ -101,6 +101,9 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
         if "Glutton" in monster.modifiers:
             monster.hp *= 2
             print(f"Glutton modifier applied: Monster HP doubled to {monster.hp}")
+
+        _roll_essence_spawn(monster)
+
     print(monster)
     return monster
 
@@ -402,6 +405,25 @@ async def fetch_monster_image(level, monster_data, task_species=None):
         monster_data.flavor = selected_monster[3]
         monster_data.species = selected_monster[4]
         return monster_data
+
+
+_ESSENCE_SPAWN_CHANCES = {0: 0.0, 1: 0.05, 2: 0.12, 3: 0.22}
+_ESSENCE_SPAWN_CHANCE_MAX = 0.35  # 4+ modifiers
+
+
+def _roll_essence_spawn(monster) -> None:
+    """
+    Mutates monster in-place if it becomes essence-infused (Calcified).
+    Only applicable to non-treasure, non-boss monsters.
+    Chance scales with modifier count.
+    """
+    num_mods = len(monster.modifiers)
+    if num_mods == 0:
+        return
+    chance = _ESSENCE_SPAWN_CHANCES.get(num_mods, _ESSENCE_SPAWN_CHANCE_MAX)
+    if random.random() < chance:
+        monster.is_essence = True
+        monster.name = f"Calcified {monster.name}"
 
 
 def get_modifier_description(modifier):
