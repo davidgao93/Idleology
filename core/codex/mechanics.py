@@ -100,7 +100,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Lightning blinds. Thunder deafens. The Mighty rise.",
         signature_key="blinded",
         signature_label="Blinded",
-        signature_description="Crit target +40 (critical hits are far harder to land)",
+        signature_description="-40% crit chance",
         level_offset=11,
         difficulty=3,
     ),
@@ -130,7 +130,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Ascended legions spill across the horizon in an endless wave.",
         signature_key="frenzied",
         signature_label="Frenzied",
-        signature_description="-30% base DEF and crit target +30",
+        signature_description="-30% base DEF and -30% crit chance",
         level_offset=13,
         difficulty=4,
     ),
@@ -160,7 +160,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Numbers made flesh. Perfection made enemy.",
         signature_key="absolute_zero",
         signature_label="Absolute Zero",
-        signature_description="-50% base ATK and crit target +40",
+        signature_description="-50% base ATK and -40% crit chance",
         level_offset=17,
         difficulty=5,
     ),
@@ -218,8 +218,8 @@ _BOON_DEFINITIONS = [
     ),
     (
         "crit_boost",
-        "-{v:.0f} Crit Target",
-        "Crit target reduced by {v:.0f} for remaining waves",
+        "+{v:.0f}% crit",
+        "Crit increased by {v:.0f} for remaining waves",
         20,
         (3.0, 8.0),
     ),
@@ -574,7 +574,9 @@ def apply_respite_boon(
     # --- One-shot: guarantee next chapter page drop (at -80% fragment gain) ---
     if t == "page_drop":
         run_state["guaranteed_page_next"] = True
-        run_state["fragment_multiplier"] = run_state.get("fragment_multiplier", 1.0) * 0.20
+        run_state["fragment_multiplier"] = (
+            run_state.get("fragment_multiplier", 1.0) * 0.20
+        )
         return "The next chapter clear is **guaranteed** to drop a Codex Page (−80% Fragments this run)"
 
     # --- Per-wave boon: store and apply immediately for current wave ---

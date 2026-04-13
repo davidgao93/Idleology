@@ -82,13 +82,13 @@ def _format_slot_value(essence_type: str, value: float, item) -> str:
         return f"+{pdr_bonus}% PDR, +{fdr_bonus} FDR  ({value:.0f}% of base)"
 
     elif essence_type == "insight":
-        return f"+{int(value)} Crit Target Reduction"
+        return f"+{int(value)}% Crit Chance"
 
     elif essence_type == "evasion":
-        return f"+{int(value)} Evasion"
+        return f"+{int(value)}% Evasion"
 
     elif essence_type == "warding":
-        return f"+{int(value)} Block Chance"
+        return f"+{int(value)}% Block Chance"
 
     return str(value)
 
@@ -402,9 +402,7 @@ class EssenceView(View):
 
         # Row 0 — apply buttons
         if len(slots) < 3:
-            apply_btn = Button(
-                label="Apply Essence", style=ButtonStyle.success, row=0
-            )
+            apply_btn = Button(label="Apply Essence", style=ButtonStyle.success, row=0)
             apply_btn.callback = self._open_apply_regular
             self.add_item(apply_btn)
 

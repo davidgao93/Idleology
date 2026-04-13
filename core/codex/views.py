@@ -37,7 +37,7 @@ _PASSIVE_LABELS = {
     "tenacity": ("⚡ Tenacity", "{v:.1f}% chance halve dmg"),
     "bloodthirst": ("🩸 Bloodthirst", "{v:.1f}% crit HP drain"),
     "providence": ("✨ Providence", "+{v:.1f}% Rarity"),
-    "precision": ("🎯 Precision", "-{v:.1f} Crit Target"),
+    "precision": ("🎯 Insight", "+{v:.1f} Crit Chance"),
     "affluence": ("💰 Affluence", "+{v:.1f}% XP & Gold"),
     "bulwark": ("🪨 Bulwark", "+{v:.1f}% PDR"),
     "resilience": ("🔒 Resilience", "+{v:.1f} FDR"),
@@ -510,7 +510,9 @@ class CodexRunView(ui.View):
         self.chapters_cleared += 1
 
         # Page drop (5%, or guaranteed if page_drop boon was taken)
-        page_dropped = self.run_state.pop("guaranteed_page_next", False) or random.random() < 0.05
+        page_dropped = (
+            self.run_state.pop("guaranteed_page_next", False) or random.random() < 0.05
+        )
         if page_dropped:
             await self.bot.database.users.modify_currency(
                 self.user_id, "codex_pages", 1

@@ -75,9 +75,9 @@ class General(commands.Cog, name="general"):
                 ["sturdy", "reinforced", "thickened", "impregnable", "impenetrable"],
                 lambda i: f"Player Def +{int(i*0.08*100)}%",
             ),
-            "Piercing (Crit Target)": (
+            "Piercing (Crit Rate)": (
                 ["piercing", "keen", "incisive", "puncturing", "penetrating"],
-                lambda i: f"Crit Threshold reduced by {i*5} (Easier Crits)",
+                lambda i: f"Crit Rolls increased by {i*5} (Easier Crits)",
             ),
             "Strengthened (Cull)": (
                 [
@@ -391,10 +391,10 @@ class General(commands.Cog, name="general"):
                 "Sustain for crit-focused builds. Triggers after all damage bonuses, stacks with Leeching.\n\n"
                 "**✨ Providence** — +% bonus to total rarity *(T1: 3–8% | T5: 18–42%)*\n"
                 "A percentage multiplier on your full rarity after all other rarity sources are summed.\n\n"
-                "**🎯 Precision** — Flat crit target reduction *(T1: 1–3 | T5: 7–15)*\n"
-                "Lower crit target = easier to crit. Hard cap at 1. Stacks with gear and companions.\n\n"
+                "**🎯 Precision** — Flat crit chance increase *(T1: 1–3 | T5: 7–15)*\n"
+                "Increased crit rate = easier to crit.\n\n"
                 "**💰 Affluence** — +% XP and Gold from all combat *(T1: 3–8% | T5: 18–42%)*\n"
-                "Applied as a final multiplier to XP and Gold in every game mode, including Ascension.\n\n"
+                "Applied as a final multiplier to XP and Gold.\n\n"
                 "**🪨 Bulwark** — +% Percent Damage Reduction *(T1: 1–3% | T5: 7–15%)*\n"
                 "Adds to the PDR pool. Subject to the 80% PDR hard cap.\n\n"
                 "**🔒 Resilience** — +Flat Damage Reduction *(T1: 1–3 | T5: 7–15)*\n"
