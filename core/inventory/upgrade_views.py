@@ -207,26 +207,50 @@ class ForgeView(BaseUpgradeView):
                     (to_take_ref, uid, gid),
                 )
 
+        # Re-fetch live inventory counts so that any settlement collection that ran
+        # between render and confirm doesn't cause raw columns to go negative.
+        ore = self.inventory_snapshot["ore"]
+        log = self.inventory_snapshot["log"]
+        bone = self.inventory_snapshot["bone"]
+
+        async with self.bot.database.connection.execute(
+            f"SELECT {ore['raw_col']}, {ore['ref_col']} FROM mining WHERE user_id=? AND server_id=?",
+            (uid, gid),
+        ) as cur:
+            live_ore = await cur.fetchone() or (0, 0)
+
+        async with self.bot.database.connection.execute(
+            f"SELECT {log['raw_col']}, {log['ref_col']} FROM woodcutting WHERE user_id=? AND server_id=?",
+            (uid, gid),
+        ) as cur:
+            live_log = await cur.fetchone() or (0, 0)
+
+        async with self.bot.database.connection.execute(
+            f"SELECT {bone['raw_col']}, {bone['ref_col']} FROM fishing WHERE user_id=? AND server_id=?",
+            (uid, gid),
+        ) as cur:
+            live_bone = await cur.fetchone() or (0, 0)
+
         # Execute Deductions
         await deduct_smart(
             "mining",
-            self.inventory_snapshot["ore"]["raw_col"],
-            self.inventory_snapshot["ore"]["ref_col"],
-            self.inventory_snapshot["ore"]["raw_amt"],
+            ore["raw_col"],
+            ore["ref_col"],
+            live_ore[0],
             self.costs["ore_qty"],
         )
         await deduct_smart(
             "woodcutting",
-            self.inventory_snapshot["log"]["raw_col"],
-            self.inventory_snapshot["log"]["ref_col"],
-            self.inventory_snapshot["log"]["raw_amt"],
+            log["raw_col"],
+            log["ref_col"],
+            live_log[0],
             self.costs["log_qty"],
         )
         await deduct_smart(
             "fishing",
-            self.inventory_snapshot["bone"]["raw_col"],
-            self.inventory_snapshot["bone"]["ref_col"],
-            self.inventory_snapshot["bone"]["raw_amt"],
+            bone["raw_col"],
+            bone["ref_col"],
+            live_bone[0],
             self.costs["bone_qty"],
         )
 
@@ -1285,26 +1309,50 @@ class TemperView(BaseUpgradeView):
                     (to_take_ref, uid, gid),
                 )
 
+        # Re-fetch live inventory counts so that any settlement collection that ran
+        # between render and confirm doesn't cause raw columns to go negative.
+        ore = self.inventory_snapshot["ore"]
+        log = self.inventory_snapshot["log"]
+        bone = self.inventory_snapshot["bone"]
+
+        async with self.bot.database.connection.execute(
+            f"SELECT {ore['raw_col']}, {ore['ref_col']} FROM mining WHERE user_id=? AND server_id=?",
+            (uid, gid),
+        ) as cur:
+            live_ore = await cur.fetchone() or (0, 0)
+
+        async with self.bot.database.connection.execute(
+            f"SELECT {log['raw_col']}, {log['ref_col']} FROM woodcutting WHERE user_id=? AND server_id=?",
+            (uid, gid),
+        ) as cur:
+            live_log = await cur.fetchone() or (0, 0)
+
+        async with self.bot.database.connection.execute(
+            f"SELECT {bone['raw_col']}, {bone['ref_col']} FROM fishing WHERE user_id=? AND server_id=?",
+            (uid, gid),
+        ) as cur:
+            live_bone = await cur.fetchone() or (0, 0)
+
         # Execute Deductions
         await deduct_smart(
             "mining",
-            self.inventory_snapshot["ore"]["raw_col"],
-            self.inventory_snapshot["ore"]["ref_col"],
-            self.inventory_snapshot["ore"]["raw_amt"],
+            ore["raw_col"],
+            ore["ref_col"],
+            live_ore[0],
             self.costs["ore_qty"],
         )
         await deduct_smart(
             "woodcutting",
-            self.inventory_snapshot["log"]["raw_col"],
-            self.inventory_snapshot["log"]["ref_col"],
-            self.inventory_snapshot["log"]["raw_amt"],
+            log["raw_col"],
+            log["ref_col"],
+            live_log[0],
             self.costs["log_qty"],
         )
         await deduct_smart(
             "fishing",
-            self.inventory_snapshot["bone"]["raw_col"],
-            self.inventory_snapshot["bone"]["ref_col"],
-            self.inventory_snapshot["bone"]["raw_amt"],
+            bone["raw_col"],
+            bone["ref_col"],
+            live_bone[0],
             self.costs["bone_qty"],
         )
 

@@ -74,13 +74,7 @@ class SettlementRepository:
         Applies a batch of resource changes (Mining, Woodcutting, Fishing, Gold, Settlement).
         This is a complex transaction crossing multiple tables.
         """
-        # 1. Gold
-        if "gold" in changes:
-            await self.connection.execute(
-                "UPDATE users SET gold = gold + ? WHERE user_id = ?", (changes.pop("gold"), user_id)
-            )
-
-        # 2. Settlement Resources
+        # 1. Settlement Resources
         if "timber" in changes or "stone" in changes:
             t = changes.pop("timber", 0)
             s = changes.pop("stone", 0)

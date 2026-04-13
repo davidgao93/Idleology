@@ -269,10 +269,14 @@ class EquipmentMechanics:
         amount = 0
         if armor.pdr > 0:
             stat = 'pdr'
-            amount = max(1, random.randint(int(armor.level // 33), int(armor.level // 16)))
+            # Each temper adds up to ~5 PDR, approaching the per-temper cap asymptotically
+            expected = 5 * (armor.level / (armor.level + 100))
+            amount = max(1, int(random.uniform(expected * 0.8, expected * 1.2)))
         elif armor.fdr > 0:
             stat = 'fdr'
-            amount = max(1, random.randint(int(armor.level // 100), int(armor.level // 25)))
+            # Each temper adds up to ~10 FDR
+            expected = 10 * (armor.level / (armor.level + 100))
+            amount = max(1, int(random.uniform(expected * 0.8, expected * 1.2)))
         
         return True, stat, amount
     

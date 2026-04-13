@@ -12,7 +12,7 @@
 -- ALTER TABLE alchemy_data ADD COLUMN free_roll_used INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN doors_enabled INTEGER NOT NULL DEFAULT 1;
 -- ALTER TABLE users ADD COLUMN exp_protection INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE alchemy_data ADD COLUMN cosmic_dust INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE alchemy_data ADD COLUMN cosmic_dust INTEGER NOT NULL DEFAULT 0;
 
 
 CREATE TABLE IF NOT EXISTS `users` (
@@ -48,6 +48,13 @@ CREATE TABLE IF NOT EXISTS `users` (
   `void_frags` INTEGER NOT NULL DEFAULT 0,
   `void_keys` INTEGER NOT NULL DEFAULT 0,
   `shatter_runes` INTEGER NOT NULL DEFAULT 0,
+  `partnership_runes` INTEGER NOT NULL DEFAULT 0,
+  `last_companion_collect_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `balance_fragment` INTEGER NOT NULL DEFAULT 0,
+  `magma_core` INTEGER NOT NULL DEFAULT 0,
+  `life_root` INTEGER NOT NULL DEFAULT 0,
+  `spirit_shard` INTEGER NOT NULL DEFAULT 0,
+  `doors_enabled` INTEGER NOT NULL DEFAULT 0,
   `celestial_stone` INTEGER NOT NULL DEFAULT 0,
   `void_crystal` INTEGER NOT NULL DEFAULT 0,
   `infernal_cinder` INTEGER NOT NULL DEFAULT 0,
@@ -56,7 +63,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `codex_pages` INTEGER NOT NULL DEFAULT 0,
   `codex_rerolls` INTEGER NOT NULL DEFAULT 0,
   `highest_ascension_stage` INTEGER NOT NULL DEFAULT 0,
-  `spirit_stones` INTEGER NOT NULL DEFAULT 0
+  `spirit_stones` INTEGER NOT NULL DEFAULT 0,
+  `exp_protection` INTEGER NOT NULL DEFAULT 0,
 );
 
 CREATE TABLE IF NOT EXISTS `ideologies` (
@@ -162,7 +170,12 @@ CREATE TABLE IF NOT EXISTS `mining` (
     `coal` INTEGER DEFAULT 0,
     `gold` INTEGER DEFAULT 0,
     `platinum` INTEGER DEFAULT 0,
-    `idea` INTEGER DEFAULT 0
+    `idea` INTEGER DEFAULT 0,
+    `iron_bar` INTEGER DEFAULT 0,
+    `steel_bar` INTEGER DEFAULT 0,
+    `gold_bar` INTEGER DEFAULT 0,
+    `platinum_bar` INTEGER DEFAULT 0,
+    `idea_bar` INTEGER DEFAULT 0,
 );
 
 CREATE TABLE IF NOT EXISTS `fishing` (
@@ -173,7 +186,12 @@ CREATE TABLE IF NOT EXISTS `fishing` (
     `regular_bones` INTEGER DEFAULT 0,
     `sturdy_bones` INTEGER DEFAULT 0,
     `reinforced_bones` INTEGER DEFAULT 0,
-    `titanium_bones` INTEGER DEFAULT 0
+    `titanium_bones` INTEGER DEFAULT 0,
+    `desiccated_essence` INTEGER DEFAULT 0,
+    `regular_essence` INTEGER DEFAULT 0,
+    `sturdy_essence` INTEGER DEFAULT 0,
+    `reinforced_essence` INTEGER DEFAULT 0,
+    `titanium_essence` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `woodcutting` (
@@ -184,7 +202,12 @@ CREATE TABLE IF NOT EXISTS `woodcutting` (
     `willow_logs` INTEGER DEFAULT 0,
     `mahogany_logs` INTEGER DEFAULT 0,
     `magic_logs` INTEGER DEFAULT 0,
-    `idea_logs` INTEGER DEFAULT 0
+    `idea_logs` INTEGER DEFAULT 0,
+    `oak_plank` INTEGER DEFAULT 0,
+    `willow_plank` INTEGER DEFAULT 0,
+    `mahogany_plank` INTEGER DEFAULT 0,
+    `magic_plank` INTEGER DEFAULT 0,
+    `idea_plank` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS helmets (
@@ -219,9 +242,9 @@ CREATE TABLE IF NOT EXISTS companions (
     passive_type TEXT,      -- 'atk', 'def', 'pdr', 'fdr', 'ward', 'hit', 'crit', 'rarity', 's_rarity'
     passive_tier INTEGER,   -- 1-5
     is_active INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     balanced_passive TEXT DEFAULT 'none',
-    balanced_passive_tier INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    balanced_passive_tier INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS delve_progress (

@@ -141,7 +141,7 @@ class ProfileBuilder:
         embed.set_thumbnail(url=user[7])
 
         embed.add_field(
-            name="📦 **Equipment**",
+            name="⚔️ **Gear**",
             value=(
                 f"⚔️ Weapons: {w_count}/60\n🛡️ Armor: {ar_count}/60\n📿 Accessories: {a_count}/60\n"
                 f"🧤 Gloves: {g_count}/60\n👢 Boots: {b_count}/60\n🪖 Helmets: {h_count}/60\n🐾 Companions: {pet_count}/20"
@@ -159,10 +159,19 @@ class ProfileBuilder:
         )
 
         embed.add_field(
-            name="🔑 **Key Items**",
+            name="🔑 **Boss Items**",
             value=(
-                f"🐉 Draconic Keys: {user[25]}\n🪽 Angelic Keys: {user[26]}\n🗝️ Void Keys: {user[30]}\n"
-                f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {user[28]}\n🟣 Void Frags: {user[29]}\n🎁 Curios: {user[22]}"
+                f"🐉 Draconic Keys: {user[25]}\n🪽 Angelic Keys: {user[26]}\n🟣 Void Frags: {user[29]}\n"
+                f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {user[28]}"
+            ),
+            inline=True,
+        )
+
+        embed.add_field(
+            name="📦 **Misc Items**",
+            value=(
+                f"🗝️ Void Keys: {user[30]}\n🎁 Curios: {user[22]}"
+                f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {user[28]}\n🗝️ Void Keys: {user[30]}\n🎁 Curios: {user[22]}"
             ),
             inline=True,
         )

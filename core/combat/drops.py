@@ -106,6 +106,11 @@ class DropManager:
 
             # Ascension (level 100+)
             if player.level >= 100:
+                # XP cost scales with ascension bracket: 101-200 = 2x, 201-300 = 3x, etc.
+                bracket = (player.ascension // 100) + 1
+                exp_threshold *= bracket
+                if player.exp < exp_threshold:
+                    break
                 player.ascension += 1
                 player.exp -= exp_threshold
                 await bot.database.users.modify_currency(user_id, 'passive_points', 2)

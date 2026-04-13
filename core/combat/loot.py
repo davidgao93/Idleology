@@ -1,6 +1,30 @@
 import random
+
+from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 from core.util import load_list
-from core.models import Player, Weapon, Accessory, Armor, Glove, Boot, Helmet
+
+# Soft caps for each stat per equipment type.
+# get_scaled_stat approaches these asymptotically — they are never literally hit.
+_WEAPON_CAPS = {"attack": 80, "defence": 80, "rarity": 200}
+_ACC_CAPS = {"attack": 80, "defence": 80, "rarity": 200, "ward": 60, "crit": 20}
+_ARMOR_CAPS = {"block": 50, "evasion": 50, "ward": 100, "pdr": 40, "fdr": 80}
+_GLOVE_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
+_BOOT_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
+_HELM_CAPS = {"defence": 40, "ward": 80, "pdr": 15, "fdr": 50}
+
+
+def get_scaled_stat(
+    level: int, cap: float, halfway_point: int = 100, variance: float = 0.2
+) -> float:
+    """
+    Soft-capped stat roll using a hyperbolic curve.
+    The expected value approaches `cap` asymptotically; at `halfway_point` levels it sits at 50% of cap.
+    """
+    expected = cap * (level / (level + halfway_point))
+    return max(
+        1.0, random.uniform(expected * (1 - variance), expected * (1 + variance))
+    )
+
 
 async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
     """Generate a unique loot item."""
@@ -8,7 +32,7 @@ async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
     weapon_type = random.choice(load_list("assets/items/wep.txt"))
     suffix = random.choice(load_list("assets/items/suff.txt"))
     item_name = f"{prefix} {weapon_type} {suffix}"
-    
+
     weapon = Weapon(
         user="",
         name="",
@@ -19,40 +43,38 @@ async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
         passive="",
         description="",
         p_passive="",
-        u_passive=""
+        u_passive="",
     )
-    weapon.user=user_id
-    weapon.name=item_name
-    weapon.level=level
+    weapon.user = user_id
+    weapon.name = item_name
+    weapon.level = level
     # If a rune cannot be dropped, set attack mod to always be true (curio case)
-    if (drop_rune):
+    if drop_rune:
         if random.randint(0, 100) < 80:  # 80% chance for attack roll
-            attack_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-            weapon.attack = attack_modifier
+            weapon.attack = int(get_scaled_stat(level, _WEAPON_CAPS["attack"]))
     else:
-        attack_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        weapon.attack = attack_modifier
+        weapon.attack = int(get_scaled_stat(level, _WEAPON_CAPS["attack"]))
 
     if random.randint(0, 100) < 50:  # 50% chance for defense roll
-        defence_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        weapon.defence = defence_modifier
+        weapon.defence = int(get_scaled_stat(level, _WEAPON_CAPS["defence"]))
 
     if random.randint(0, 100) < 20:  # 20% chance for rarity roll
-        rarity_modifier = max(1, random.randint(int(level // 7), int(level // 5))) * 5
-        weapon.rarity = rarity_modifier
+        weapon.rarity = int(get_scaled_stat(level, _WEAPON_CAPS["rarity"]))
 
     if weapon.attack > 0 or weapon.defence > 0 or weapon.rarity > 0:
         weapon.passive = "none"
-        weapon.description = ((f"**{weapon.name}**\n(Level {weapon.level})\n") +
-            (f"+{weapon.attack} Attack\n" if weapon.attack > 0 else "") +
-            (f"+{weapon.defence} Defence\n" if weapon.defence > 0 else "") +
-            (f"+{weapon.rarity}% Rarity\n" if weapon.rarity > 0 else "")
+        weapon.description = (
+            (f"**{weapon.name}**\n(Level {weapon.level})\n")
+            + (f"+{weapon.attack} Attack\n" if weapon.attack > 0 else "")
+            + (f"+{weapon.defence} Defence\n" if weapon.defence > 0 else "")
+            + (f"+{weapon.rarity}% Rarity\n" if weapon.rarity > 0 else "")
         )
     else:
         weapon.name = "Rune of Refinement"
         weapon.description = f"{weapon.name}\nAdds a refinement attempt if the weapon is no longer refinable."
 
     return weapon
+
 
 async def generate_accessory(user_id: str, level: int, drop_rune: bool) -> str:
     """Generate a unique accessory item."""
@@ -64,7 +86,7 @@ async def generate_accessory(user_id: str, level: int, drop_rune: bool) -> str:
     attack_modifier = 0
     defence_modifier = 0
     rarity_modifier = 0
-    if (drop_rune):
+    if drop_rune:
         randroll = random.randint(0, 100)
     else:
         randroll = random.randint(0, 90)
@@ -80,39 +102,37 @@ async def generate_accessory(user_id: str, level: int, drop_rune: bool) -> str:
         crit=0,
         passive="",
         passive_lvl=0,
-        description=f"**{acc_name}**\n(Level {level})\n"
+        description=f"**{acc_name}**\n(Level {level})\n",
     )
-    
+
     if randroll <= 18:  # 18% chance for attack roll
-        attack_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        acc.attack=attack_modifier
-        acc.description += f"+{attack_modifier} Attack"
+        acc.attack = int(get_scaled_stat(level, _ACC_CAPS["attack"]))
+        acc.description += f"+{acc.attack} Attack"
     elif randroll > 18 and randroll <= 36:  # 18% chance for defense roll
-        defence_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        acc.defence=defence_modifier
-        acc.description += f"+{defence_modifier} Defence"
+        acc.defence = int(get_scaled_stat(level, _ACC_CAPS["defence"]))
+        acc.description += f"+{acc.defence} Defence"
     elif randroll > 36 and randroll <= 54:
-        rarity_modifier = max(1, random.randint(int(level // 7), int(level // 5))) * 5
-        acc.rarity=rarity_modifier
-        acc.description += f"+{rarity_modifier}% Rarity"
+        acc.rarity = int(get_scaled_stat(level, _ACC_CAPS["rarity"]))
+        acc.description += f"+{acc.rarity}% Rarity"
     elif randroll > 54 and randroll <= 72:
-        ward_modifier = max(1, random.randint(int(level // 7), int(level // 5))) * 2
-        acc.ward=ward_modifier
-        acc.description += f"+{ward_modifier}% Ward"
+        acc.ward = int(get_scaled_stat(level, _ACC_CAPS["ward"]))
+        acc.description += f"+{acc.ward}% Ward"
     elif randroll > 72 and randroll <= 90:
-        crit_modifier = max(1, random.randint(int(level // 10), int(level // 9)))
-        acc.crit=crit_modifier
-        acc.description += f"+{crit_modifier}% Crit"
+        acc.crit = int(get_scaled_stat(level, _ACC_CAPS["crit"]))
+        acc.description += f"+{acc.crit}% Crit"
     else:
         acc.name = "Rune of Potential"
         acc.description = f"{acc.name}\n25% increased chance to succeed at increasing an accessory's potential level."
-        
+
     return acc
+
 
 async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
     """Generate a unique armor item."""
     prefix = random.choice(load_list("assets/items/armor_pref.txt"))
-    armor_type = random.choice(load_list('assets/items/armor.txt'))  # Load names from armor.txt
+    armor_type = random.choice(
+        load_list("assets/items/armor.txt")
+    )  # Load names from armor.txt
     suffix = random.choice(load_list("assets/items/armor_suff.txt"))
     armor_name = f"{prefix} {armor_type} {suffix}"
 
@@ -130,7 +150,7 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
         pdr=0,
         fdr=0,
         passive="",
-        description=f"**{armor_name}**\n(Level {level})\n"
+        description=f"**{armor_name}**\n(Level {level})\n",
     )
 
     if drop_rune:
@@ -139,81 +159,75 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
         randroll = random.randint(0, 90)
     print(f"Armor attribute roll: {randroll}")
     if randroll <= 30:  # 30% chance for block roll
-        block_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        armor.block = block_modifier
-        armor.description += f"+{block_modifier} Block\n"
+        armor.block = int(get_scaled_stat(level, _ARMOR_CAPS["block"]))
+        armor.description += f"+{armor.block} Block\n"
     elif randroll > 30 and randroll <= 60:  # 30% chance for evasion roll
-        evasion_modifier = max(1, random.randint(int(level // 7), int(level // 5)))
-        armor.evasion = evasion_modifier
-        armor.description += f"+{evasion_modifier} Evasion\n"
+        armor.evasion = int(get_scaled_stat(level, _ARMOR_CAPS["evasion"]))
+        armor.description += f"+{armor.evasion} Evasion\n"
     elif randroll > 60 and randroll <= 90:  # 30% chance for ward roll
-        ward_modifier = max(1, random.randint(int(level // 7), int(level // 5))) * 2
-        armor.ward = ward_modifier
-        armor.description += f"+{ward_modifier}% Ward\n"
+        armor.ward = int(get_scaled_stat(level, _ARMOR_CAPS["ward"]))
+        armor.description += f"+{armor.ward}% Ward\n"
     else:
         armor.name = "Rune of Imbuing"
-        armor.description = f"{armor.name}\nPotentially imbues a powerful passive onto your armor."
+        armor.description = (
+            f"{armor.name}\nPotentially imbues a powerful passive onto your armor."
+        )
 
     # Roll for PDR or FDR
-    if (armor.name != "Rune of Imbuing"):
-        if (random.random() < 0.5):
-            pdr_mod = max(1, random.randint(int(level // 33), int(level // 16)))
-            armor.pdr = pdr_mod
+    if armor.name != "Rune of Imbuing":
+        if random.random() < 0.5:
+            armor.pdr = int(get_scaled_stat(level, _ARMOR_CAPS["pdr"]))
             armor.description += f"+{armor.pdr}% Percent Damage Reduction"
         else:
-            fdr_mod = max(1, random.randint(int(level // 100), int(level // 25)))
-            armor.fdr = fdr_mod
+            armor.fdr = int(get_scaled_stat(level, _ARMOR_CAPS["fdr"]))
             armor.description += f"+{armor.fdr} Flat Damage Reduction"
 
     return armor
 
 
-async def generate_glove(user_id: str, level: int) -> Glove: # drop_rune parameter removed
+async def generate_glove(
+    user_id: str, level: int
+) -> Glove:  # drop_rune parameter removed
     """Generate a unique glove item. Gloves roll one primary stat (Atk, Def, or Ward)
     and one secondary stat (PDR or FDR). They do not drop runes."""
     try:
         prefix = random.choice(load_list("assets/items/armor_pref.txt"))
-        glove_type_name = random.choice(load_list("assets/items/gloves.txt")) # Renamed to avoid conflict
+        glove_type_name = random.choice(
+            load_list("assets/items/gloves.txt")
+        )  # Renamed to avoid conflict
         suffix = random.choice(load_list("assets/items/armor_suff.txt"))
         glove_name = f"{prefix} {glove_type_name} {suffix}"
-    except FileNotFoundError: 
+    except FileNotFoundError:
         glove_name = f"Training Gloves of Level {level}"
 
     glove = Glove(
         user=user_id,
         name=glove_name,
         level=level,
-        description=f"**{glove_name}**\n(Level {level})\n"
+        description=f"**{glove_name}**\n(Level {level})\n",
     )
-    
+
     # 1. Primary Stat Roll (Attack, Defence, or Ward)
-    # Each has an equal chance (1/3)
     primary_stat_roll = random.randint(0, 2)
 
     if primary_stat_roll == 0:  # Attack
-        attack_modifier = max(1, random.randint(int(level // 8), int(level // 6)))
-        glove.attack = attack_modifier
-        glove.description += f"+{attack_modifier} Attack\n"
-    elif primary_stat_roll == 1: # Defence
-        defence_modifier = max(1, random.randint(int(level // 8), int(level // 6)))
-        glove.defence = defence_modifier
-        glove.description += f"+{defence_modifier} Defence\n"
-    else: # Ward (primary_stat_roll == 2)
-        ward_modifier = max(1, random.randint(int(level // 8), int(level // 6))) * 2 # Ward is %
-        glove.ward = ward_modifier
-        glove.description += f"+{ward_modifier}% Ward\n"
+        glove.attack = int(get_scaled_stat(level, _GLOVE_CAPS["attack"]))
+        glove.description += f"+{glove.attack} Attack\n"
+    elif primary_stat_roll == 1:  # Defence
+        glove.defence = int(get_scaled_stat(level, _GLOVE_CAPS["defence"]))
+        glove.description += f"+{glove.defence} Defence\n"
+    else:  # Ward
+        glove.ward = int(get_scaled_stat(level, _GLOVE_CAPS["ward"]))
+        glove.description += f"+{glove.ward}% Ward\n"
 
-    # 2. Secondary Stat Roll (PDR or FDR - always one of them)
-    # 50/50 chance for PDR or FDR
-    if random.random() < 0.5: 
-        pdr_modifier = max(1, random.randint(int(level // 11), int(level // 7))) # PDR is %
-        glove.pdr = pdr_modifier
-        glove.description += f"+{pdr_modifier}% Percentage Damage Reduction\n"
-    else: 
-        fdr_modifier = max(1, random.randint(int(level // 25), int(level // 10))) # FDR is flat
-        glove.fdr = fdr_modifier
-        glove.description += f"+{fdr_modifier} Flat Damage Reduction\n"
-        
+    # 2. Secondary Stat Roll (PDR or FDR)
+    if random.random() < 0.5:
+        glove.pdr = int(get_scaled_stat(level, _GLOVE_CAPS["pdr"]))
+        glove.description += f"+{glove.pdr}% Percentage Damage Reduction\n"
+    else:
+        glove.fdr = int(get_scaled_stat(level, _GLOVE_CAPS["fdr"]))
+        glove.description += f"+{glove.fdr} Flat Damage Reduction\n"
+
     return glove
 
 
@@ -226,75 +240,72 @@ async def generate_boot(user_id: str, level: int) -> Boot:
         boot_type_name = random.choice(load_list("assets/items/boots.txt"))
         suffix = random.choice(load_list("assets/items/armor_suff.txt"))
         boot_name = f"{prefix} {boot_type_name} {suffix}"
-    except FileNotFoundError: 
-        boot_name = f"Sturdy Boots of Level {level}" # Fallback name
+    except FileNotFoundError:
+        boot_name = f"Sturdy Boots of Level {level}"  # Fallback name
 
     boot = Boot(
         user=user_id,
         name=boot_name,
         level=level,
-        description=f"**{boot_name}**\n(Level {level})\n"
+        description=f"**{boot_name}**\n(Level {level})\n",
     )
-    
+
     # 1. Primary Stat Roll (Attack, Defence, or Ward)
     primary_stat_roll = random.randint(0, 2)
 
     if primary_stat_roll == 0:  # Attack
-        attack_modifier = max(1, random.randint(int(level // 8), int(level // 6)))
-        boot.attack = attack_modifier
-        boot.description += f"+{attack_modifier} Attack\n"
-    elif primary_stat_roll == 1: # Defence
-        defence_modifier = max(1, random.randint(int(level // 8), int(level // 6)))
-        boot.defence = defence_modifier
-        boot.description += f"+{defence_modifier} Defence\n"
-    else: # Ward 
-        ward_modifier = max(1, random.randint(int(level // 8), int(level // 6))) * 2 
-        boot.ward = ward_modifier
-        boot.description += f"+{ward_modifier}% Ward\n"
+        boot.attack = int(get_scaled_stat(level, _BOOT_CAPS["attack"]))
+        boot.description += f"+{boot.attack} Attack\n"
+    elif primary_stat_roll == 1:  # Defence
+        boot.defence = int(get_scaled_stat(level, _BOOT_CAPS["defence"]))
+        boot.description += f"+{boot.defence} Defence\n"
+    else:  # Ward
+        boot.ward = int(get_scaled_stat(level, _BOOT_CAPS["ward"]))
+        boot.description += f"+{boot.ward}% Ward\n"
 
-    # 2. Secondary Stat Roll (PDR or FDR - always one of them)
-    if random.random() < 0.5: 
-        pdr_modifier = max(1, random.randint(int(level // 10), int(level // 7))) 
-        boot.pdr = pdr_modifier
-        boot.description += f"+{pdr_modifier}% Percentage Damage Reduction\n"
-    else: 
-        fdr_modifier = max(1, random.randint(int(level // 12), int(level // 9))) 
-        boot.fdr = fdr_modifier
-        boot.description += f"+{fdr_modifier} Flat Damage Reduction\n"
-        
+    # 2. Secondary Stat Roll (PDR or FDR)
+    if random.random() < 0.5:
+        boot.pdr = int(get_scaled_stat(level, _BOOT_CAPS["pdr"]))
+        boot.description += f"+{boot.pdr}% Percentage Damage Reduction\n"
+    else:
+        boot.fdr = int(get_scaled_stat(level, _BOOT_CAPS["fdr"]))
+        boot.description += f"+{boot.fdr} Flat Damage Reduction\n"
+
     return boot
+
 
 async def generate_helmet(user_id: str, level: int) -> Helmet:
     try:
         prefix = random.choice(load_list("assets/items/armor_pref.txt"))
-        helm_type = random.choice(["Helm", "Coif", "Sallet", "Bascinet", "Armet", "Visor"])
+        helm_type = random.choice(
+            ["Helm", "Coif", "Sallet", "Bascinet", "Armet", "Visor"]
+        )
         suffix = random.choice(load_list("assets/items/armor_suff.txt"))
         name = f"{prefix} {helm_type} {suffix}"
-    except: name = f"Sturdy Helm of Level {level}"
+    except:
+        name = f"Sturdy Helm of Level {level}"
 
-    helm = Helmet(user=user_id, name=name, level=level, description=f"**{name}**\n(Level {level})\n")
+    helm = Helmet(
+        user=user_id,
+        name=name,
+        level=level,
+        description=f"**{name}**\n(Level {level})\n",
+    )
 
     # 1. Primary Stat Roll (Defence OR Ward)
     if random.random() < 0.5:
-        defence = max(1, random.randint(int(level // 8), int(level // 5)))
-        helm.defence = defence
-        helm.description += f"+{defence} Defence\n"
+        helm.defence = int(get_scaled_stat(level, _HELM_CAPS["defence"]))
+        helm.description += f"+{helm.defence} Defence\n"
     else:
-        ward = max(1, random.randint(int(level // 8), int(level // 5))) * 2
-        helm.ward = ward
-        helm.description += f"+{ward}% Ward\n"
+        helm.ward = int(get_scaled_stat(level, _HELM_CAPS["ward"]))
+        helm.description += f"+{helm.ward}% Ward\n"
 
     # 2. Secondary Stat Roll (PDR OR FDR)
-    # 50/50 Chance
     if random.random() < 0.5:
-        # PDR scaling: approx 1% per 8 levels
-        pdr = max(1, random.randint(int(level // 12), int(level // 8)))
-        helm.pdr = pdr
-        helm.description += f"+{pdr}% PDR\n"
+        helm.pdr = int(get_scaled_stat(level, _HELM_CAPS["pdr"]))
+        helm.description += f"+{helm.pdr}% PDR\n"
     else:
-        # FDR scaling: approx 1 per 6 levels
-        fdr = max(1, random.randint(int(level // 10), int(level // 6)))
-        helm.fdr = fdr
-        helm.description += f"+{fdr} FDR\n"
+        helm.fdr = int(get_scaled_stat(level, _HELM_CAPS["fdr"]))
+        helm.description += f"+{helm.fdr} FDR\n"
 
     return helm
