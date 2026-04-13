@@ -10,6 +10,7 @@ import core.slayer.mechanics
 from core.combat import engine, rewards
 from core.combat import ui as combat_ui
 from core.combat.drops import DropManager
+from core.combat.experience import ExperienceManager
 from core.combat.gen_mob import generate_boss
 from core.companions.mechanics import CompanionMechanics
 from core.models import Monster, Player
@@ -365,8 +366,11 @@ class CombatView(ui.View):
 
         if self.player.current_hp <= 0:
             # Defeat Logic (Same as before)
-            xp_loss = int(self.player.exp * 0.10)
-            self.player.exp = max(0, self.player.exp - xp_loss)
+            base_loss = int(self.player.exp * 0.10)
+            xp_loss = await ExperienceManager.remove_experience(
+                self.bot, self.user_id, self.player, base_loss
+            )
+
             self.player.current_hp = 1
             embed = combat_ui.create_defeat_embed(
                 self.player, self.monster, xp_loss, killing_blow=self.killing_blow
@@ -603,16 +607,15 @@ class CombatView(ui.View):
             )
 
             # Handle XP / Level Up
-            import json
-
-            with open("assets/exp.json") as f:
-                exp_table = json.load(f)
-            await DropManager.handle_level_up(
-                self.bot, self.user_id, self.player, reward_data, exp_table
+            exp_changes = await ExperienceManager.add_experience(
+                self.bot, self.user_id, self.player, reward_data["xp"]
             )
 
+            # Update reward_data so the Embed correctly shows 0 XP gained if protected
+            reward_data["xp"] = exp_changes["xp_added"]
+            reward_data["msgs"].extend(exp_changes["msgs"])
+
             # DB Commits
-            self.player.exp += reward_data["xp"]
             await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
 
             # Companions
@@ -830,7 +833,9 @@ class CombatView(ui.View):
                     if self._was_auto
                     else None
                 )
-                contract_choice_view = LuciferChoiceView(self.bot, self.user_id, self.player)
+                contract_choice_view = LuciferChoiceView(
+                    self.bot, self.user_id, self.player
+                )
                 await message.edit(
                     content=ping_content,
                     embed=embed,
@@ -872,20 +877,19 @@ class CombatView(ui.View):
         # 2. Defeat vs Victory
         if self.player.current_hp <= 0:
             # Defeat
-            xp_loss = int(self.player.exp * 0.10)
-            self.player.exp = max(0, self.player.exp - xp_loss)
-            self.player.current_hp = 1
+            base_loss = int(self.player.exp * 0.10)
+            xp_loss = await ExperienceManager.remove_experience(
+                self.bot, self.user_id, self.player, base_loss
+            )
 
-            # Pass data directly into updated defeat embed
+            self.player.current_hp = 1
             embed = combat_ui.create_defeat_embed(
-                self.player,
-                self.monster,
-                xp_loss,
-                curios_gained=curios,
-                dmg_frac=dmg_frac,
-                killing_blow=self.killing_blow,
+                self.player, self.monster, xp_loss, killing_blow=self.killing_blow
             )
             await message.edit(embed=embed, view=None)
+            self.bot.state_manager.clear_active(self.user_id)
+            await self.bot.database.users.update_from_player_object(self.player)
+            self.stop()
 
         else:
             # Full Kill Victory
@@ -930,15 +934,15 @@ class CombatView(ui.View):
                     reward_data["msgs"].append("🪨 **You found a Celestial Stone!**")
 
             # Handle XP / Level Up
-            import json
-            with open("assets/exp.json") as f:
-                exp_table = json.load(f)
-            await DropManager.handle_level_up(
-                self.bot, self.user_id, self.player, reward_data, exp_table
+            exp_changes = await ExperienceManager.add_experience(
+                self.bot, self.user_id, self.player, reward_data["xp"]
             )
 
+            # Update reward_data so the Embed correctly shows 0 XP gained if protected
+            reward_data["xp"] = exp_changes["xp_added"]
+            reward_data["msgs"].extend(exp_changes["msgs"])
+
             # DB Commits
-            self.player.exp += reward_data["xp"]
             await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
 
             # Generate Standard Victory UI (It will naturally parse the specials and curios now)
@@ -982,17 +986,14 @@ class CombatView(ui.View):
 
         # 2. Defeat vs Victory
         if self.player.current_hp <= 0:
-            xp_loss = int(self.player.exp * 0.10)
-            self.player.exp = max(0, self.player.exp - xp_loss)
-            self.player.current_hp = 1
+            base_loss = int(self.player.exp * 0.10)
+            xp_loss = await ExperienceManager.remove_experience(
+                self.bot, self.user_id, self.player, base_loss
+            )
 
+            self.player.current_hp = 1
             embed = combat_ui.create_defeat_embed(
-                self.player,
-                self.monster,
-                xp_loss,
-                curios_gained=curios,
-                dmg_frac=dmg_frac,
-                killing_blow=self.killing_blow,
+                self.player, self.monster, xp_loss, killing_blow=self.killing_blow
             )
             await message.edit(embed=embed, view=None)
             self.bot.state_manager.clear_active(self.user_id)
@@ -1040,15 +1041,15 @@ class CombatView(ui.View):
                     )
 
             # Handle XP / Level Up
-            import json
-            with open("assets/exp.json") as f:
-                exp_table = json.load(f)
-            await DropManager.handle_level_up(
-                self.bot, self.user_id, self.player, reward_data, exp_table
+            exp_changes = await ExperienceManager.add_experience(
+                self.bot, self.user_id, self.player, reward_data["xp"]
             )
 
-            # DB commits
-            self.player.exp += reward_data["xp"]
+            # Update reward_data so the Embed correctly shows 0 XP gained if protected
+            reward_data["xp"] = exp_changes["xp_added"]
+            reward_data["msgs"].extend(exp_changes["msgs"])
+
+            # DB Commits
             await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
 
             # Soulreap: restore HP to full after kill
@@ -1096,19 +1097,19 @@ class CombatView(ui.View):
 
         # 2. Defeat vs Victory
         if self.player.current_hp <= 0:
-            xp_loss = int(self.player.exp * 0.10)
-            self.player.exp = max(0, self.player.exp - xp_loss)
-            self.player.current_hp = 1
+            base_loss = int(self.player.exp * 0.10)
+            xp_loss = await ExperienceManager.remove_experience(
+                self.bot, self.user_id, self.player, base_loss
+            )
 
+            self.player.current_hp = 1
             embed = combat_ui.create_defeat_embed(
-                self.player,
-                self.monster,
-                xp_loss,
-                curios_gained=curios,
-                dmg_frac=dmg_frac,
-                killing_blow=self.killing_blow,
+                self.player, self.monster, xp_loss, killing_blow=self.killing_blow
             )
             await message.edit(embed=embed, view=None)
+            self.bot.state_manager.clear_active(self.user_id)
+            await self.bot.database.users.update_from_player_object(self.player)
+            self.stop()
 
         else:
             # Full Kill Victory
@@ -1156,15 +1157,15 @@ class CombatView(ui.View):
             )
 
             # Handle XP / Level Up
-            import json
-            with open("assets/exp.json") as f:
-                exp_table = json.load(f)
-            await DropManager.handle_level_up(
-                self.bot, self.user_id, self.player, reward_data, exp_table
+            exp_changes = await ExperienceManager.add_experience(
+                self.bot, self.user_id, self.player, reward_data["xp"]
             )
 
-            # DB commits
-            self.player.exp += reward_data["xp"]
+            # Update reward_data so the Embed correctly shows 0 XP gained if protected
+            reward_data["xp"] = exp_changes["xp_added"]
+            reward_data["msgs"].extend(exp_changes["msgs"])
+
+            # DB Commits
             await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
 
             # Soulreap: restore HP to full after kill
@@ -1215,19 +1216,19 @@ class CombatView(ui.View):
 
         # 2. Defeat vs Victory
         if self.player.current_hp <= 0:
-            xp_loss = int(self.player.exp * 0.10)
-            self.player.exp = max(0, self.player.exp - xp_loss)
-            self.player.current_hp = 1
+            base_loss = int(self.player.exp * 0.10)
+            xp_loss = await ExperienceManager.remove_experience(
+                self.bot, self.user_id, self.player, base_loss
+            )
 
+            self.player.current_hp = 1
             embed = combat_ui.create_defeat_embed(
-                self.player,
-                self.monster,
-                xp_loss,
-                curios_gained=curios,
-                dmg_frac=dmg_frac,
-                killing_blow=self.killing_blow,
+                self.player, self.monster, xp_loss, killing_blow=self.killing_blow
             )
             await message.edit(embed=embed, view=None)
+            self.bot.state_manager.clear_active(self.user_id)
+            await self.bot.database.users.update_from_player_object(self.player)
+            self.stop()
 
         else:
             # Full Kill Victory
@@ -1270,15 +1271,15 @@ class CombatView(ui.View):
                     )
 
             # Handle XP / Level Up
-            import json
-            with open("assets/exp.json") as f:
-                exp_table = json.load(f)
-            await DropManager.handle_level_up(
-                self.bot, self.user_id, self.player, reward_data, exp_table
+            exp_changes = await ExperienceManager.add_experience(
+                self.bot, self.user_id, self.player, reward_data["xp"]
             )
 
-            # DB commits
-            self.player.exp += reward_data["xp"]
+            # Update reward_data so the Embed correctly shows 0 XP gained if protected
+            reward_data["xp"] = exp_changes["xp_added"]
+            reward_data["msgs"].extend(exp_changes["msgs"])
+
+            # DB Commits
             await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
 
             # Soulreap: restore HP to full after kill
@@ -1374,11 +1375,17 @@ class InfernalContractView(ui.View):
         # update_from_player_object does not write attack/defence/max_hp,
         # so we must persist those via modify_stat directly.
         if actual_atk_delta:
-            await self.bot.database.users.modify_stat(self.user_id, "attack", actual_atk_delta)
+            await self.bot.database.users.modify_stat(
+                self.user_id, "attack", actual_atk_delta
+            )
         if actual_def_delta:
-            await self.bot.database.users.modify_stat(self.user_id, "defence", actual_def_delta)
+            await self.bot.database.users.modify_stat(
+                self.user_id, "defence", actual_def_delta
+            )
         if actual_hp_delta:
-            await self.bot.database.users.modify_stat(self.user_id, "max_hp", actual_hp_delta)
+            await self.bot.database.users.modify_stat(
+                self.user_id, "max_hp", actual_hp_delta
+            )
         # Persist current_hp (may have been clamped above) and other player fields
         await self.bot.database.users.update_from_player_object(self.player)
 
