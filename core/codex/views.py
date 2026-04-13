@@ -149,6 +149,9 @@ class CodexRunView(ui.View):
         # absorb etc. don't compound across waves.
         self.chapter_wave_baseline: dict = chapter_wave_baseline or {}
 
+        # Respite interaction guard — prevents double-processing from rapid clicks
+        self._boon_processing: bool = False
+
         # Run-level state
         self.active_boons: list[CodexBoon] = []
         self.run_state: dict = {"fragment_multiplier": 1.0, "sig_nullify_next": False}
@@ -213,6 +216,7 @@ class CodexRunView(ui.View):
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
             "crit_target": self.player.base_crit_chance_target,
+            "combat_ward": self.player.combat_ward,
         }
 
     def _restore_wave_baseline(self):
@@ -222,6 +226,7 @@ class CodexRunView(ui.View):
         self.player.base_attack = self.chapter_wave_baseline["attack"]
         self.player.base_defence = self.chapter_wave_baseline["defence"]
         self.player.base_crit_chance_target = self.chapter_wave_baseline["crit_target"]
+        self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
 
     def _projected_ward(self) -> int:
         """Ward the player will have at the start of the next wave.
@@ -243,7 +248,7 @@ class CodexRunView(ui.View):
         atk = p.get_total_attack()
         def_ = p.get_total_defence()
         eff_max_hp = p.get_effective_max_hp()
-        crit = p.get_current_crit_target()
+        crit_chance = max(0, 100 - p.get_current_crit_target())
         rarity = p.get_total_rarity()
         fdr = p.get_total_fdr()
         pdr = p.get_total_pdr()
@@ -255,7 +260,7 @@ class CodexRunView(ui.View):
         stats_block = (
             f"⚔️ ATK: **{atk:,}**  🛡️ DEF: **{def_:,}**\n"
             f"{hp_line}\n"
-            f"🎯 Crit Target: **{crit}**  ✨ Rarity: **{rarity}%**"
+            f"🎯 Crit Chance: **{crit_chance}%**  ✨ Rarity: **{rarity}%**"
         )
         if fdr > 0 or pdr > 0:
             stats_block += f"\n🔒 FDR: **{fdr}**  🪨 PDR: **{pdr}%**"
@@ -281,8 +286,13 @@ class CodexRunView(ui.View):
                 field_name += f"  ⚠️ {boon.downside_label}"
             embed.add_field(name=field_name, value=boon.description, inline=False)
         if self.active_boons:
-            boon_summary = ", ".join(b.label for b in self.active_boons)
-            embed.set_footer(text=f"Active boons: {boon_summary}")
+            boon_parts = []
+            for b in self.active_boons:
+                entry = b.label
+                if b.downside_label:
+                    entry += f" (⚠️ {b.downside_label})"
+                boon_parts.append(entry)
+            embed.set_footer(text=f"Active boons: {', '.join(boon_parts)}")
         return embed
 
     def _chapter_clear_embed(
@@ -425,6 +435,10 @@ class CodexRunView(ui.View):
 
         self.waves_cleared_this_run += 1
 
+        # Soulreap: restore HP to full after every wave clear
+        if self.player.get_weapon_infernal() == "soulreap":
+            self.player.current_hp = self.player.max_hp
+
         # Respite check (after wave 3 and wave 6)
         if self.wave_num in (3, 6):
             await self._enter_respite(interaction, message)
@@ -473,6 +487,10 @@ class CodexRunView(ui.View):
 
     async def handle_boon_choice(self, interaction: Interaction, boon: CodexBoon):
         """Processes the player's respite boon selection."""
+        if self._boon_processing:
+            await interaction.response.defer()
+            return
+        self._boon_processing = True
         await interaction.response.defer()
         result_msg = apply_respite_boon(
             self.player, boon, self.active_boons, self.clean_stats, self.run_state
@@ -529,11 +547,16 @@ class CodexRunView(ui.View):
 
     async def _handle_run_complete(self, message: discord.Message = None):
         """Finalises a completed run, awards all fragment rewards."""
+        is_perfect = self.waves_cleared_this_run == 35
         fragments = calculate_run_fragments(
             self.chapters_cleared,
-            is_perfect=(self.waves_cleared_this_run == 35),
+            is_perfect=is_perfect,
             fragment_multiplier=self.run_state.get("fragment_multiplier", 1.0),
         )
+        if is_perfect:
+            chapter_ids = [ch.id for ch in self.chapters[: self.chapters_cleared]]
+            await self.bot.database.codex.log_perfect_run(self.user_id, chapter_ids)
+
         await self.bot.database.users.modify_currency(
             self.user_id, "codex_fragments", fragments
         )
@@ -1123,6 +1146,7 @@ class CodexMenuView(ui.View):
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
             "crit_target": self.player.base_crit_chance_target,
+            "combat_ward": self.player.combat_ward,
         }
 
         monster = await _generate_codex_wave_monster(self.player, chapter, 1)

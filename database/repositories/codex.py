@@ -168,6 +168,17 @@ class CodexRepository:
         )
         await self.connection.commit()
 
+    async def log_perfect_run(self, user_id: str, chapter_ids: list[int]):
+        """Increments perfect_clears for each chapter cleared in a perfect run.
+        Called separately from log_chapter_clear so clears aren't double-counted."""
+        for chapter_id in chapter_ids:
+            await self.connection.execute(
+                """UPDATE codex_progress SET perfect_clears = perfect_clears + 1
+                   WHERE user_id = ? AND chapter_id = ?""",
+                (user_id, chapter_id)
+            )
+        await self.connection.commit()
+
     async def get_chapter_clears(self, user_id: str) -> dict[int, dict]:
         """Returns {chapter_id: {'clears': int, 'perfect_clears': int}}."""
         cursor = await self.connection.execute(
