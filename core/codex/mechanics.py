@@ -272,6 +272,13 @@ _BOON_DEFINITIONS = [
         2,
         None,
     ),
+    (
+        "page_drop",
+        "Guaranteed Page",
+        "Guarantees a Codex Page drops from the next chapter clear",
+        2,
+        None,
+    ),
 ]
 
 
@@ -288,13 +295,13 @@ def select_run_chapters(count: int = 5) -> list[CodexChapter]:
 _RARITY_BOOST_DOWNSIDES = [
     ("atk_penalty", lambda v: round(v * 0.5), "-{:.0f}% ATK per wave"),
     ("def_penalty", lambda v: round(v * 0.5), "-{:.0f}% DEF per wave"),
-    ("crit_penalty", lambda v: round(v * 0.7), "+{:.0f} Crit Target per wave"),
+    ("crit_penalty", lambda v: round(v * 0.7), "-{:.0f}% Crit Chance per wave"),
 ]
 
 _FRAGMENT_BOOST_DOWNSIDES = [
     ("hp_penalty", lambda v: round(v * 0.35), "-{:.0f}% Max HP"),
     ("atk_def_penalty", lambda v: round(v * 0.25), "-{:.0f}% ATK & DEF"),
-    ("crit_penalty", lambda v: round(v * 0.5), "+{:.0f} Crit Target"),
+    ("crit_penalty", lambda v: round(v * 0.5), "-{:.0f}% Crit Chance"),
 ]
 
 
@@ -308,6 +315,8 @@ def _roll_downside(boon_type: str, boon_value: float) -> tuple[str | None, float
         dt, scale_fn, label_tmpl = random.choice(_FRAGMENT_BOOST_DOWNSIDES)
         dv = float(scale_fn(boon_value))
         return dt, dv, label_tmpl.format(dv)
+    if boon_type == "page_drop":
+        return "fragment_penalty", 80.0, "-80% Fragments"
     return None, 0.0, ""
 
 
@@ -561,6 +570,12 @@ def apply_respite_boon(
     if t == "sig_nullify":
         run_state["sig_nullify_next"] = True
         return "The next chapter's signature modifier will be **nullified**"
+
+    # --- One-shot: guarantee next chapter page drop (at -80% fragment gain) ---
+    if t == "page_drop":
+        run_state["guaranteed_page_next"] = True
+        run_state["fragment_multiplier"] = run_state.get("fragment_multiplier", 1.0) * 0.20
+        return "The next chapter clear is **guaranteed** to drop a Codex Page (−80% Fragments this run)"
 
     # --- Per-wave boon: store and apply immediately for current wave ---
     active_boons.append(boon)

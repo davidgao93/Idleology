@@ -230,14 +230,10 @@ class CodexRunView(ui.View):
 
     def _projected_ward(self) -> int:
         """Ward the player will have at the start of the next wave.
-        Respite is always mid-chapter, so ward carries over from the current value.
-        Boon ward additions are included since they fire every wave.
+        Uses the chapter wave baseline (snapshotted after signature + boons at chapter start),
+        which is exactly what _restore_wave_baseline will set combat_ward to.
         """
-        ward = self.player.combat_ward
-        for boon in self.active_boons:
-            if boon.type == "ward_boost":
-                ward += int(self.player.max_hp * (boon.value / 100))
-        return ward
+        return self.chapter_wave_baseline.get("combat_ward", self.player.combat_ward)
 
     def _respite_embed(
         self, boons: list[CodexBoon], reroll_available: bool = False
@@ -457,6 +453,7 @@ class CodexRunView(ui.View):
         self, interaction: Interaction = None, message: discord.Message = None
     ):
         """Swap to respite state with 2 randomly weighted boons."""
+        self._boon_processing = False  # reset guard for each new respite
         boons = roll_boons(2)
         reroll_available = self.chapter_idx not in self.reroll_used_chapters
         self.clear_items()
@@ -512,8 +509,8 @@ class CodexRunView(ui.View):
         )
         self.chapters_cleared += 1
 
-        # Page drop (5%)
-        page_dropped = random.random() < 0.05
+        # Page drop (5%, or guaranteed if page_drop boon was taken)
+        page_dropped = self.run_state.pop("guaranteed_page_next", False) or random.random() < 0.05
         if page_dropped:
             await self.bot.database.users.modify_currency(
                 self.user_id, "codex_pages", 1
