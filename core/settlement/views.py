@@ -901,7 +901,9 @@ class SettlementDashboardView(ui.View):
                 lines.append(f"• **{b.name}** (T{b.tier}) {status}")
             embed.add_field(name="Buildings", value="\n".join(lines), inline=False)
         else:
-            embed.add_field(name="Buildings", value="No buildings constructed yet.", inline=False)
+            embed.add_field(
+                name="Buildings", value="No buildings constructed yet.", inline=False
+            )
 
         return embed
 
@@ -918,19 +920,23 @@ class SettlementDashboardView(ui.View):
                 status = "🟢" if b.workers_assigned > 0 else "🔴"
                 if b.name == "Black Market":
                     status = "⚫"
-                options.append(SelectOption(
-                    label=f"{b.name} (T{b.tier})",
-                    value=f"built_{i}",
-                    description=f"Workers: {b.workers_assigned} | Status: {status}",
-                    emoji=status,
-                ))
+                options.append(
+                    SelectOption(
+                        label=f"{b.name} (T{b.tier})",
+                        value=f"built_{i}",
+                        description=f"Workers: {b.workers_assigned} | Status: {status}",
+                        emoji=status,
+                    )
+                )
             else:
-                options.append(SelectOption(
-                    label=f"Slot {i+1} — Empty",
-                    value=f"empty_{i}",
-                    description="Click to construct a new building",
-                    emoji="🔨",
-                ))
+                options.append(
+                    SelectOption(
+                        label=f"Slot {i+1} — Empty",
+                        value=f"empty_{i}",
+                        description="Click to construct a new building",
+                        emoji="🔨",
+                    )
+                )
 
         if options:
             select = ui.Select(
@@ -938,6 +944,7 @@ class SettlementDashboardView(ui.View):
                 options=options,
                 row=0,
             )
+
             async def _on_select(interaction: Interaction, s=select):
                 value = s.values[0]
                 if value.startswith("built_"):
@@ -946,6 +953,7 @@ class SettlementDashboardView(ui.View):
                 else:
                     slot = int(value.split("_")[1])
                     await self.open_build_menu(interaction, slot)
+
             select.callback = _on_select
             self.add_item(select)
 
@@ -965,7 +973,9 @@ class SettlementDashboardView(ui.View):
         collect_btn.callback = self.collect_resources
         self.add_item(collect_btn)
 
-        guide_btn = ui.Button(label="Guide", style=ButtonStyle.secondary, row=1, emoji="📖")
+        guide_btn = ui.Button(
+            label="Guide", style=ButtonStyle.secondary, row=1, emoji="📖"
+        )
         guide_btn.callback = self.show_guide
         self.add_item(guide_btn)
 
@@ -1072,7 +1082,9 @@ class SettlementDashboardView(ui.View):
         market_gold = 0
         if "market_gold" in total_changes:
             market_gold = total_changes.pop("market_gold")
-            display_changes["Market Gold"] = display_changes.pop("market_gold", market_gold)
+            display_changes["Market Gold"] = display_changes.pop(
+                "market_gold", market_gold
+            )
 
         # 4. Commit to DB with the full changes
         await self.bot.database.settlement.commit_production(uid, sid, total_changes)
@@ -1157,7 +1169,7 @@ class BuildConstructionView(ui.View):
         "companion_ranch": "Generator: Produces XP Cookies for pets.",
         "celestial_shrine": "Passive: Increases chance to find Celestial Sigils from Aphrodite.",
         "infernal_forge": "Passive: Increases chance to find Infernal Sigils from Lucifer.",
-        "void_sanctum": "Passive: Increases chance to find Void Shards from NEET.",
+        "void_sanctum": "Passive: Increases chance to find Void Sigils from NEET.",
         "twin_shrine": "Passive: Increases chance to find Gemini Sigils from the Gemini Twins.",
     }
 
@@ -1455,7 +1467,7 @@ class BuildingDetailView(ui.View):
         "companion_ranch": "Generator: Produces XP Cookies for pets.",
         "celestial_shrine": "Passive: Increases chance to find Celestial Sigils from Aphrodite.",
         "infernal_forge": "Passive: Increases chance to find Infernal Sigils from Lucifer.",
-        "void_sanctum": "Passive: Increases chance to find Void Shards from NEET.",
+        "void_sanctum": "Passive: Increases chance to find Void Sigils from NEET.",
         "twin_shrine": "Passive: Increases chance to find Gemini Sigils from the Gemini Twins.",
     }
 

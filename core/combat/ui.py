@@ -142,10 +142,10 @@ def create_victory_embed(
         "cleansing": ("✦ Essence of Cleansing", "🌊"),
         "chaos": ("✦ Essence of Chaos", "🌀"),
         "annulment": ("✦ Essence of Annulment", "✂️"),
-        "aphrodite": ("✦ Essence of Aphrodite's Disciple", "💠"),
-        "lucifer": ("✦ Essence of Lucifer's Heir", "💠"),
-        "gemini": ("✦ Essence of Gemini's Lost Twin", "💠"),
-        "neet": ("✦ Essence of NEET's Voidling", "💠"),
+        "aphrodite": ("✦ Essence of Aphrodite's Disciple", "💎"),
+        "lucifer": ("✦ Essence of Lucifer's Heir", "💎"),
+        "gemini": ("✦ Essence of Gemini's Lost Twin", "💎"),
+        "neet": ("✦ Essence of NEET's Voidling", "💎"),
     }
     for essence_type in rewards.get("essences", []):
         label, emoji = _ESSENCE_DISPLAY.get(

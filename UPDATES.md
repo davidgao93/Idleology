@@ -1,21 +1,188 @@
-Patch 0.9 - Essences Update
+**Patch 0.83 - Essences Update**
 
-Added /chop and /fish as side activities to gather skilling materials. /delve now grants mining materials occasionally.
-Alchemy now lets you synthesize boss entry fragments from cosmic dust that you can obtain from disenchanting boss entry fragments.
+## ⚙️ Essence System & Calcified Mobs
 
-Changes:
+**New: Calcified Monsters**
+- Regular monsters (non-treasure) can now spawn as **Calcified** variants  
+- Spawn chance scales with modifiers:
+  - 1 modifier → **5%**
+  - 2 modifiers → **12%**
+  - 3 modifiers → **22%**
+  - 4+ modifiers → **35%**
+- Calcified monsters:
+  - Get the **"Calcified \<Name\>"** prefix  
+  - Are visually highlighted with a **white combat embed**  
+  - Can drop **Essences** on defeat
 
-* Equipment no longer scale infinitely with item level, but instead are capped at a certain point.
-* Higher item level drops equipment closer to the cap, here are the new caps for stats:
+**New: Essence Drops**
+- Calcified monsters roll for an **Essence** on death  
+- Drop logic:
+  - `3%` chance for a **Corrupted Essence**
+  - `97%` chance for a **Regular Essence** from a weighted table:
+    - **Essence of Power** (35) – +20–100% of item's main stat (ATK / DEF / WARD)  
+    - **Essence of Protection** (30) – +20–80% of item's PDR/FDR as extra PDR/FDR  
+    - **Essence of Insight** (12) – +1–10 flat crit chance  
+    - **Essence of Evasion** (8) – Flat evasion
+    - **Essence of Warding** (8) – Flat block chance
+    - **Essence of Cleansing** (3) – Clears all essences on an item  
+    - **Essence of Chaos** (2) – Rerolls all essence % values on an item  
+    - **Essence of Annulment** (1) – Removes a essence slot at random
+- **Corrupted Essences**:
+  - 4 types, tied to item slot (glove/boot/helmet)
+  - Drop from the **corrupted essence pool** (very rare)
+  - Shown in victory screen with a 💠 icon
+- Victory screens now display any essence drops with proper labels & emojis  
+
+---
+
+## 💠 Corrupted Essences
+
+### Essence of Aphrodite's Disciple  
+*Divine / Heaven*
+
+**Gloves – Ward-breaking Specialist**
+- All **ward-affecting hits** now count as **ward-breaking**
+- Volatile effects that require a ward break (on monsters) can trigger even if:
+  - The ward was hit **but didn’t fully break**, and  
+
+**Boots – Lucky Gear Hunter**
+- Gear drop rolls now roll **twice**, and the **better (lucky) result** is kept  
+  - Internally: the system takes the roll that is more likely to pass the drop threshold, making gear drops effectively luckier
+
+**Helmet – Shieldbreaker Immunity**
+- Your ward **cannot be forcibly disabled** by *Shield-breaker*  
+- Shield-breaker stat effect is ignored if your helmet has **Aphrodite**
+
+---
+
+### Essence of Lucifer's Heir  
+*Infernal / Wrath*
+
+**Gloves – Ward-Fueled Strikes**
+- Your attacks gain **bonus flat damage** equal to **15% of your current ward**  
+
+**Boots – Modifier-Scaled Gold**
+- Gold rewards are increased based on **monster modifiers**:
+  - +10% gold per modifier, up to **+50% max**
+  - Example: 3 modifiers → +30% gold
+
+**Helmet – Ward-Shatter Fortification**
+- When your ward **breaks from >0 to 0**:
+  - Gain a **flat +15% PDR** for the **rest of the combat**
+- This bonus is persistent for the entire fight after your ward first shatters
+
+---
+
+### Essence of Gemini's Twin  
+*Duality*
+
+**Gloves – Double Crits**
+- **Critical hits strike twice**:
+  - First hit: full crit damage  
+  - Second hit: **40–60%** of the first hit’s damage  
+
+**Boots – Pet Finder**
+- **Pet drop chance is doubled**:
+  - Regular mobs: **5% → 10%**  
+  - Bosses: **3% → 6%**
+
+**Helmet – Split Pain**
+- Incoming damage is **split 50/50 between Ward and HP simultaneously** but damage taken is **halved**.
+- Effects:
+  - Ward depletes at **half speed**, but  
+  - Your HP **always takes chip damage** even while ward is up  
+- This split logic **replaces** normal ward absorption while active
+
+---
+
+### Essence of NEET's Voidling  
+*Void*
+
+**Gloves - always miss**
+- All non-crit attacks are treated as **misses**
+- Crits still:
+  - Roll as normal  
+  - Deal full crit damage when they occur  
+- On converted misses, any **on-miss effects** (perdition, poison, oblivion, etc.) still apply
+
+**Boots – Double Skilling Payout**
+- When you gain **skilling resources via combat**, you immediately gain **the same batch again**
+
+**Helmet – Ward Amplifier**
+- Any ward you gain in combat is **doubled**
+- Affects:
+  - Ghosted / divine / ward-infused / ward-touched / ward-fused sources  
+  - Celestial Ghostreaver & Celestial Vow  
+  - Initial ward at combat start
+
+---
+
+## 🔧 Minor updates
+
+- Added /chop and /fish as side activities to gather skilling materials. /delve now grants mining materials occasionally.
+- Alchemy now lets you synthesize boss entry fragments from cosmic dust that you can obtain from disenchanting boss entry fragments.
+
+### Integrity Change:📈 Gear Scaling
+
+**Finite Gear Scaling**
+- Equipment no longer scales infinitely with item level  
+- Each slot now has a **hard cap** on key stats  
+- Higher item levels will roll stats **closer to these caps**, rather than surpassing them
+
+**New Stat Caps**
+
+**Weapons**
+```py
 _WEAPON_CAPS = {"attack": 80, "defence": 80, "rarity": 200}
+```
+
+**Accessories**
+```py
 _ACC_CAPS = {"attack": 80, "defence": 80, "rarity": 200, "ward": 60, "crit": 20}
+```
+
+**Armor**
+```py
 _ARMOR_CAPS = {"block": 50, "evasion": 50, "ward": 100, "pdr": 40, "fdr": 80}
+```
+
+**Gloves**
+```py
 _GLOVE_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
+```
+
+**Boots**
+```py
 _BOOT_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
+```
+
+**Helmets**
+```py
 _HELM_CAPS = {"defence": 40, "ward": 80, "pdr": 15, "fdr": 50}
-* Temper for armor has been changed accordingly to grant ~5% PDR per temper and 10 FDR per temper based on ilvl
-* Refines for weapons has been changed accordingly to grant ~1-20 ATK per refine, ~1-20 DEF per refine, ~5-50% rarity per refine based on ilvl
-     odds to hit each stat are unchanged (80% to roll atk, 50% to roll def, 20% to roll rar)
+```
+
+---
+
+### 🛡️ Temper (Armor) Rework
+
+- Armor **Temper** values have been rescaled around the new caps  
+- Each temper now aims to grant approximately:
+  - **~5% PDR per temper** (scaled by item level)  
+  - **~10 FDR per temper** (scaled by item level)  
+
+---
+
+### ⚔️ Weapon Refine Rework
+
+- Weapon **Refines** have been adjusted to respect the new caps while staying impactful:
+  - **~1–20 ATK per refine** (based on item level)
+  - **~1–20 DEF per refine** (based on item level)
+  - **~5–50% rarity per refine** (based on item level)
+- Roll odds per refine are unchanged:
+  - 80% chance to roll **ATK**
+  - 50% chance to roll **DEF**
+  - 20% chance to roll **RARITY**
+
 
 Patch 0.82 – Alchemy Update
 

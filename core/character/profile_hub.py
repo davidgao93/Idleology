@@ -419,6 +419,59 @@ class ProfileBuilder:
 
         return embed
 
+    @staticmethod
+    async def build_essences(bot, user_id: str, server_id: str) -> discord.Embed:
+        user = await bot.database.users.get(user_id, server_id)
+
+        # Fetch essence inventory
+        essence_data = await bot.database.essences.get_all(user_id)
+
+        embed = discord.Embed(
+            title="Essence Vault",
+            description="Essences used to enchant and upgrade equipment.",
+            color=0x9B59B6,
+        )
+        embed.set_thumbnail(url=user[7])
+
+        if not essence_data:
+            embed.add_field(
+                name="Empty", value="No essence data found for your account."
+            )
+            return embed
+
+        # Safely parse the database return, ignoring primary/foreign keys
+        items = {}
+        if hasattr(essence_data, "keys"):  # Dict or aiosqlite.Row
+            items = {
+                k: v
+                for k, v in dict(essence_data).items()
+                if k not in ("user_id", "server_id", "id")
+            }
+
+        if not items:
+            embed.add_field(name="Empty", value="No essence data available.")
+            return embed
+
+        # Format lines dynamically (Showing ALL essences, including 0s)
+        lines = []
+        for e_type, count in items.items():
+            safe_count = count if count is not None else 0
+            name = str(e_type).replace("_", " ").title()
+            lines.append(f"✦ **{name}**: {safe_count:,}")
+
+        # Split into columns to make it look clean (12 items per column)
+        chunk_size = 12
+        for i in range(0, len(lines), chunk_size):
+            chunk = lines[i : i + chunk_size]
+            # Use an invisible character for the title if there are multiple columns
+            embed.add_field(
+                name="Stored Essences" if i == 0 else "\u200b",
+                value="\n".join(chunk),
+                inline=True,
+            )
+
+        return embed
+
 
 class ProfileHubView(ui.View):
     def __init__(self, bot, user_id: str, server_id: str, active_tab: str):
@@ -450,6 +503,7 @@ class ProfileHubView(ui.View):
             ("cooldowns", "Cooldowns", "⏰"),
             ("resources", "Resources", "📦"),
             ("uber", "Uber", "⚔️"),
+            ("essences", "Essences", "💎"),
         ]
 
         for tab_id, label, emoji in tabs:
@@ -495,6 +549,10 @@ class ProfileHubView(ui.View):
             )
         elif tab_id == "uber":
             embed = await ProfileBuilder.build_uber(
+                self.bot, self.user_id, self.server_id
+            )
+        elif tab_id == "essences":
+            embed = await ProfileBuilder.build_essences(
                 self.bot, self.user_id, self.server_id
             )
 

@@ -316,6 +316,10 @@ class ItemDetailView(View):
                 self.add_upgrade_button("Enchant", ButtonStyle.success, "potential")
             if isinstance(self.item, Accessory):
                 self.add_upgrade_button("Void Engram", ButtonStyle.secondary, "void_engram")
+            if isinstance(self.item, (Glove, Boot, Helmet)):
+                essence_btn          = Button(label="Essences", style=ButtonStyle.primary, emoji="💎")
+                essence_btn.callback = self._open_essences
+                self.add_item(essence_btn)
 
         # 3. Standard Actions
         discard_btn = Button(label="Discard", style=ButtonStyle.danger)
@@ -351,13 +355,21 @@ class ItemDetailView(View):
         else:
             await interaction.followup.send("Unknown action.", ephemeral=True)
 
+    async def _open_essences(self, interaction: Interaction):
+        await interaction.response.defer()
+        from core.items.essence_views import EssenceView
+        item_type         = self._get_db_type()
+        essence_inventory = await self.bot.database.essences.get_all(self.user_id)
+        view              = EssenceView(self.bot, self.user_id, self.item, item_type, self, essence_inventory)
+        await interaction.edit_original_response(embed=view._get_embed(), view=view)
+
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
-        
+
         # Disable all buttons
         for child in self.children:
             child.disabled = True
-            
+
         try:
             # We need to fetch the current embed to preserve it, but update the footer
             # Note: View.message is populated if we assigned it in the Cog (standard practice)
