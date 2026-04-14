@@ -78,9 +78,7 @@ def _add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
 
 _MONSTER_STAT_EFFECTS: dict[str, callable] = {
     "Shield-breaker": lambda p, m: setattr(p, "combat_ward", 0),
-    "Impenetrable": lambda p, m: setattr(
-        p, "base_crit_chance", max(0, p.base_crit_chance - 5)
-    ),
+    "Impenetrable": lambda p, m: setattr(p, "bonus_crit", p.bonus_crit - 5),
     "Enfeeble": lambda p, m: setattr(
         p, "bonus_atk", p.bonus_atk - int(p.flat_atk * 0.10)
     ),
@@ -130,7 +128,7 @@ def _cs_omnipotent(player, monster):
         total_def = player.get_total_defence()
         player.bonus_atk += total_atk
         player.bonus_def += total_def
-        ward_added = _add_ward(player, player.max_hp, [], "Omnipotent")
+        ward_added = _add_ward(player, player.total_max_hp, [], "Omnipotent")
         return f"**🛡️ Omnipotent** increases your ⚔️ +**{total_atk}** ATK, 🛡️ +**{total_def}** DEF, and 🔮 +**{ward_added}** Ward."
 
 
@@ -175,16 +173,16 @@ def _cs_gilded_hunger(player, monster):
 
 
 def _cs_diabolic_pact(player, monster):
-    cost = int(player.max_hp * 0.9)
-    player.max_hp = max(1, player.max_hp - cost)
-    if player.current_hp > player.max_hp:
-        player.current_hp = player.max_hp
+    cost = int(player.total_max_hp * 0.9)
+    player.bonus_max_hp -= cost
+    if player.current_hp > player.total_max_hp:
+        player.current_hp = player.total_max_hp
     player.atk_multiplier *= 2.0
     return f"🔥 **Diabolic Pact** sealed in blood! 💀 -{cost} HP → ⚔️ ATK doubled!"
 
 
 def _cs_cursed_precision(player, monster):
-    player.base_crit_chance += 20
+    player.bonus_crit += 20
     player.cursed_precision_active = True
     return "🔥 **Cursed Precision**: 🎯 Crit chance greatly increased, but crits roll for the lower result."
 
@@ -298,7 +296,7 @@ def process_heal(player: Player, monster=None) -> str:
     if player.potions <= 0:
         return f"{player.name} has no potions left to use!"
 
-    if player.current_hp >= player.max_hp:
+    if player.current_hp >= player.total_max_hp:
         return f"{player.name} is already full HP!"
 
     heal_pct = 0.30
@@ -314,7 +312,7 @@ def process_heal(player: Player, monster=None) -> str:
     if fermented:
         heal_pct += fermented / 100.0
 
-    heal_amount = int((player.max_hp * heal_pct) + random.randint(1, 6))
+    heal_amount = int((player.total_max_hp * heal_pct) + random.randint(1, 6))
 
     # --- Alchemy: Unstable Mixture (50% double / 50% halve) ---
     if potion_passives_by_type.get("unstable_mixture"):
@@ -333,19 +331,19 @@ def process_heal(player: Player, monster=None) -> str:
 
     # --- Overcap Brew: can we store overheal as temp HP? ---
     overcap = potion_passives_by_type.get("overcap_brew", 0)
-    overcap_cap = int(player.max_hp * (overcap / 100.0)) if overcap else 0
+    overcap_cap = int(player.total_max_hp * (overcap / 100.0)) if overcap else 0
 
     potential_hp = player.current_hp + heal_amount
     overheal = 0
-    if potential_hp > player.max_hp:
-        excess = potential_hp - player.max_hp
+    if potential_hp > player.total_max_hp:
+        excess = potential_hp - player.total_max_hp
         helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
         overheal = excess * helmet_lvl  # Divine helmet
 
         if overcap_cap > 0:
             stored = min(excess, overcap_cap)
             player.alchemy_overcap_hp = stored
-        player.current_hp = player.max_hp
+        player.current_hp = player.total_max_hp
     else:
         player.current_hp = potential_hp
 
@@ -491,7 +489,7 @@ def _pt_attack_multiplier(player: Player, monster: Monster, log: list[str]) -> f
     helmet_passive = player.get_helmet_passive()
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     if helmet_passive == "frenzy" and helmet_lvl > 0:
-        missing_pct = (1 - (player.current_hp / player.max_hp)) * 100
+        missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
         bonus = missing_pct * (0.005 * helmet_lvl)
         mult *= 1 + bonus
         log.append(
@@ -844,14 +842,14 @@ def _pt_post_hit_effects(
     if helmet_passive == "leeching" and helmet_lvl > 0:
         heal = int(damage * (0.02 * helmet_lvl))
         if heal > 0:
-            player.current_hp = min(player.max_hp, player.current_hp + heal)
+            player.current_hp = min(player.total_max_hp, player.current_hp + heal)
             log.append(f"**Leeching** drains life, healing you for **{heal}** HP.")
 
     if is_crit:
         bloodthirst_pct = player.get_tome_bonus("bloodthirst")
         if bloodthirst_pct > 0:
             heal = max(1, int(damage * (bloodthirst_pct / 100)))
-            player.current_hp = min(player.max_hp, player.current_hp + heal)
+            player.current_hp = min(player.total_max_hp, player.current_hp + heal)
             log.append(
                 f"**Bloodthirst** siphons **{heal}** HP from the critical strike."
             )
@@ -898,7 +896,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     # --- Alchemy: Lingering Remedy (tick at start of player's turn) ---
     if player.alchemy_linger_turns > 0:
         player.current_hp = min(
-            player.max_hp, player.current_hp + player.alchemy_linger_hp
+            player.total_max_hp, player.current_hp + player.alchemy_linger_hp
         )
         log.append(
             f"🌿 **Lingering Remedy** restores **{player.alchemy_linger_hp}** HP! "
@@ -1028,7 +1026,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         # --- PDR / FDR setup ---
         effective_pdr = player.get_total_pdr()
         if celestial == "celestial_fortress":
-            missing_pct = (1 - (player.current_hp / player.max_hp)) * 100
+            missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
             effective_pdr += int(missing_pct / 5.0)
         effective_fdr = player.get_total_fdr()
 
@@ -1212,7 +1210,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     and not getattr(player, "celestial_vow_used", False)
                 ):
                     player.current_hp = 1
-                    ward_gain = int(player.max_hp * 0.5)
+                    ward_gain = int(player.total_max_hp * 0.5)
                     added = _add_ward(player, ward_gain, log)
                     player.celestial_vow_used = True
                     damage_dealt += player.current_hp - 1
@@ -1232,7 +1230,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 if player.hunger_stacks >= 10:
                     hunger_dmg = int(monster.max_hp * 0.10)
                     monster.hp = max(0, monster.hp - hunger_dmg)
-                    player.current_hp = player.max_hp
+                    player.current_hp = player.total_max_hp
                     player.hunger_stacks = 0
                     log.append(
                         f"⬛ **Eternal Hunger** consumes the pain!\n"
@@ -1256,7 +1254,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 if previous_ward > 0 and (
                     player.combat_ward == 0 or aphrodite_glove_active
                 ):
-                    boom = int(player.max_hp * helmet_lvl)
+                    boom = int(player.total_max_hp * helmet_lvl)
                     monster.hp -= boom
                     if player.combat_ward == 0:
                         log.append(

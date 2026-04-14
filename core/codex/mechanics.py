@@ -371,30 +371,15 @@ def roll_boons(count: int = 2) -> list[CodexBoon]:
 # ---------------------------------------------------------------------------
 
 
-def snapshot_clean_stats(player: Player) -> dict:
+def restore_clean_stats(player: Player) -> None:
     """
-    Captures the player's mutable base stats before any wave modifiers are applied.
-    Store this once at run start (and update max_hp if max_hp_boost boon is taken).
+    Resets per-chapter bonus stats at chapter boundaries so that the outgoing
+    chapter's signature and boon effects don't carry into the next chapter.
+    run_* fields are permanent for the whole codex run and are NOT touched here.
     """
-    return {
-        "crit_chance": player.base_crit_chance,
-        "max_hp": player.max_hp,
-        "rarity": player.base_rarity,
-    }
-
-
-def restore_clean_stats(player: Player, clean_stats: dict) -> None:
-    """
-    Resets base stats to the clean snapshot taken at run start.
-    Called only at chapter boundaries (wave_num == 1) so that the outgoing
-    chapter's signature modifier doesn't compound into the next chapter.
-    Stats and HP are otherwise permanent throughout the run.
-    """
-    player.base_crit_chance = clean_stats["crit_chance"]
-    player.max_hp = clean_stats["max_hp"]
-    player.base_rarity = clean_stats["rarity"]
+    player.bonus_rarity = 0
     player.boon_fdr = 0  # re-applied immediately by apply_per_wave_boons
-    player.reset_combat_bonus()  # zeros bonus_atk/def, resets atk/def_multiplier
+    player.reset_combat_bonus()  # zeros bonus_atk/def/crit/max_hp, resets multipliers
 
 
 # ---------------------------------------------------------------------------
@@ -406,7 +391,7 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
     """
     Applies the chapter's signature modifier to the player.
     Must be called AFTER restore_clean_stats and BEFORE apply_per_wave_boons.
-    HP-capping is enforced so current_hp never exceeds a reduced max_hp.
+    HP reductions go into bonus_max_hp so max_hp stays immutable.
     """
     key = chapter.signature_key
     # Helper: only zero ward if Aphrodite helmet corrupted essence is not active
@@ -416,8 +401,8 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
         player.atk_multiplier *= 0.70
 
     elif key == "decaying":
-        player.max_hp = int(player.max_hp * 0.70)
-        player.current_hp = min(player.current_hp, player.max_hp)
+        player.bonus_max_hp -= int(player.max_hp * 0.30)
+        player.current_hp = min(player.current_hp, player.total_max_hp)
 
     elif key == "exposed":
         if not _ward_immune:
@@ -436,19 +421,19 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
         player.def_multiplier *= 0.80
 
     elif key == "blinded":
-        player.base_crit_chance -= 40
+        player.bonus_crit -= 40
 
     elif key == "scorched":
         player.def_multiplier *= 0.70
         player.atk_multiplier *= 0.80
 
     elif key == "cursed":
-        player.max_hp = int(player.max_hp * 0.60)
-        player.current_hp = min(player.current_hp, player.max_hp)
+        player.bonus_max_hp -= int(player.max_hp * 0.40)
+        player.current_hp = min(player.current_hp, player.total_max_hp)
 
     elif key == "frenzied":
         player.def_multiplier *= 0.70
-        player.base_crit_chance -= 30
+        player.bonus_crit -= 30
 
     elif key == "abyss_taint":
         player.atk_multiplier *= 0.60
@@ -461,7 +446,7 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
 
     elif key == "absolute_zero":
         player.atk_multiplier *= 0.50
-        player.base_crit_chance -= 40
+        player.bonus_crit -= 40
 
     elif key == "convergence":
         player.atk_multiplier *= 0.70
@@ -491,18 +476,20 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
         elif t == "def_boost":
             player.def_multiplier *= (1 + v / 100)
         elif t == "crit_boost":
-            player.base_crit_chance += int(v)
+            player.bonus_crit += int(v)
         elif t == "ward_boost":
-            player.combat_ward += int(player.max_hp * (v / 100))
+            player.combat_ward += int(player.total_max_hp * (v / 100))
         elif t == "rarity_boost":
-            player.base_rarity = int(player.base_rarity * (1 + v / 100))
+            # Scale off clean gear/companion/tome rarity (excludes accumulated bonus_rarity)
+            flat_rarity = player.get_total_rarity() - player.bonus_rarity
+            player.bonus_rarity += int(flat_rarity * (v / 100))
             dt, dv = boon.downside_type, boon.downside_value
             if dt == "atk_penalty":
                 player.atk_multiplier *= (1 - dv / 100)
             elif dt == "def_penalty":
                 player.def_multiplier *= (1 - dv / 100)
             elif dt == "crit_penalty":
-                player.base_crit_chance -= int(dv)
+                player.bonus_crit -= int(dv)
         elif t == "fdr_boost":
             player.boon_fdr += int(v)
 
@@ -511,7 +498,6 @@ def apply_respite_boon(
     player: Player,
     boon: CodexBoon,
     active_boons: list[CodexBoon],
-    clean_stats: dict,
     run_state: dict,
 ) -> str:
     """
@@ -528,37 +514,33 @@ def apply_respite_boon(
 
     # --- One-shot: healing ---
     if t in ("heal", "big_heal"):
-        healed = int(player.max_hp * (v / 100))
-        player.current_hp = min(player.max_hp, player.current_hp + healed)
-        return f"Restored **{healed:,} HP** ({player.current_hp:,}/{player.max_hp:,})"
+        healed = int(player.total_max_hp * (v / 100))
+        player.current_hp = min(player.total_max_hp, player.current_hp + healed)
+        return f"Restored **{healed:,} HP** ({player.current_hp:,}/{player.total_max_hp:,})"
 
     # --- One-shot: permanent run max HP boost ---
     if t == "max_hp_boost":
-        old_max = player.max_hp
-        new_max = int(player.max_hp * (1 + v / 100))
-        gained = new_max - old_max
-        player.max_hp = new_max
-        # Persist through clean-stat resets for the rest of the run
-        clean_stats["max_hp"] = new_max
-        return f"Max HP increased by **{gained:,}** → **{player.max_hp:,}**"
+        gained = int(player.total_max_hp * (v / 100))
+        player.run_max_hp_bonus += gained
+        return f"Max HP increased by **{gained:,}** → **{player.total_max_hp:,}**"
 
-    # --- One-shot: fragment multiplier (with permanent downside applied to clean_stats) ---
+    # --- One-shot: fragment multiplier (with permanent run downside) ---
     if t == "fragment_boost":
         run_state["fragment_multiplier"] = run_state.get("fragment_multiplier", 1.0) * (
             1 + v / 100
         )
         dt, dv = boon.downside_type, boon.downside_value
         if dt == "hp_penalty":
-            new_max = int(clean_stats["max_hp"] * (1 - dv / 100))
-            clean_stats["max_hp"] = new_max
-            player.max_hp = new_max
-            player.current_hp = min(player.current_hp, new_max)
+            # Permanent run penalty — scales off current total_max_hp
+            penalty = int(player.total_max_hp * (dv / 100))
+            player.run_max_hp_bonus -= penalty
+            player.current_hp = min(player.current_hp, player.total_max_hp)
         elif dt == "atk_def_penalty":
             # Permanent penalty for this run — subtracted in get_total_attack/defence
             player.run_atk_penalty += int(player.flat_atk * (dv / 100))
             player.run_def_penalty += int(player.flat_def * (dv / 100))
         elif dt == "crit_penalty":
-            clean_stats["crit_chance"] = clean_stats["crit_chance"] - int(dv)
+            player.run_crit_penalty += int(dv)
         suffix = f" (Cost: {boon.downside_label})" if boon.downside_label else ""
         return f"Fragment gain boosted by **+{v:.0f}%** this run{suffix}"
 

@@ -73,7 +73,7 @@ class ExperienceManager:
                 player.base_attack += atk_inc
                 player.base_defence += def_inc
                 player.max_hp += hp_inc
-                player.current_hp = player.max_hp  # Full heal on level up
+                player.current_hp = player.total_max_hp  # Full heal on level up
                 player.compute_flat_stats()  # Refresh flat cache with new base values
 
                 changes["atk_gained"] += atk_inc

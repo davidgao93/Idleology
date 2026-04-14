@@ -120,7 +120,7 @@ class DummyConfigView(ui.View):
             incoming = (
                 f"**Avg / Turn:** {results.avg_damage_taken:,.1f}\n"
                 f"**Max Single Hit:** {results.max_damage_taken:,} ({lethal_icon})\n"
-                f"**Your HP:** {self.player.max_hp:,}"
+                f"**Your HP:** {self.player.total_max_hp:,}"
             )
             embed.add_field(name=f"⚔️ Outgoing DPS ({total_turns} turns)", value=outgoing, inline=True)
             embed.add_field(name="💔 Incoming Damage", value=incoming, inline=True)

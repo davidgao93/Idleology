@@ -98,7 +98,7 @@ class DummyEngine:
             total_damage_taken=total_damage_taken,
             avg_damage_taken=total_damage_taken / turns,
             max_damage_taken=max_damage_taken,
-            is_max_lethal=(max_damage_taken >= player.max_hp),
+            is_max_lethal=(max_damage_taken >= player.total_max_hp),
         )
 
     # ---------------------------------------------------------------------- #
@@ -129,10 +129,10 @@ class DummyEngine:
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
             avg_taken   = res.avg_damage_taken
-            time_to_die = player.max_hp / avg_taken if avg_taken > 0 else 999
+            time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
             if time_to_die < 5:
                 return "You feel as if you are **not ready**. The aura alone crushes you."
-            elif res.average_damage < (player.max_hp * 0.1) and time_to_die < 15:
+            elif res.average_damage < (player.total_max_hp * 0.1) and time_to_die < 15:
                 return "You feel this would be a **tough battle**. Survival is uncertain."
             return "You are **filled with determination**. Press onwards."
 
@@ -148,10 +148,10 @@ class DummyEngine:
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
             avg_taken   = res.avg_damage_taken
-            time_to_die = player.max_hp / avg_taken if avg_taken > 0 else 999
+            time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
             if time_to_die < 3:
                 return "You feel as if you are **not ready**. His strikes alone would end you."
-            elif res.average_damage < (player.max_hp * 0.1) and time_to_die < 10:
+            elif res.average_damage < (player.total_max_hp * 0.1) and time_to_die < 10:
                 return "You feel this would be a **tough battle**. Survival is uncertain."
             return "You are **filled with determination**. Press onwards."
 
@@ -165,12 +165,12 @@ class DummyEngine:
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
             avg_taken   = res.avg_damage_taken
-            time_to_die = player.max_hp / avg_taken if avg_taken > 0 else 999
-            if res.average_damage < (player.max_hp * 0.05):
+            time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
+            if res.average_damage < (player.total_max_hp * 0.05):
                 return "You feel as if you are **not ready**. The void would consume you before you land a dent."
             elif time_to_die < 5:
                 return "You feel as if you are **not ready**. Its strikes alone would end you."
-            elif res.average_damage < (player.max_hp * 0.10) and time_to_die < 12:
+            elif res.average_damage < (player.total_max_hp * 0.10) and time_to_die < 12:
                 return "You feel this would be a **tough battle**. The void slowly drains everything."
             return "You are **filled with determination**. The void beckons."
 
@@ -184,12 +184,12 @@ class DummyEngine:
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
             avg_taken   = res.avg_damage_taken
-            time_to_die = player.max_hp / avg_taken if avg_taken > 0 else 999
-            if res.average_damage < (player.max_hp * 0.05):
+            time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
+            if res.average_damage < (player.total_max_hp * 0.05):
                 return "You feel as if you are **not ready**. The twins would outlast you entirely."
             elif time_to_die < 4:
                 return "You feel as if you are **not ready**. Their Twin Strike would end you too quickly."
-            elif res.average_damage < (player.max_hp * 0.10) and time_to_die < 10:
+            elif res.average_damage < (player.total_max_hp * 0.10) and time_to_die < 10:
                 return "You feel this would be a **tough battle**. The twins' rhythm is relentless."
             return "You are **filled with determination**. The constellation awaits."
 

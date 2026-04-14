@@ -14,8 +14,7 @@ def base_player():
     """Creates a standard Level 10 Player for testing."""
     return Player(
         id="123", name="TestHero", level=10, ascension=0, exp=0,
-        current_hp=100, max_hp=100, base_attack=20, base_defence=20, potions=5,
-        base_crit_chance=0
+        current_hp=100, max_hp=100, base_attack=20, base_defence=20, potions=5
     )
 
 @pytest.fixture

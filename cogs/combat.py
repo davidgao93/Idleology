@@ -100,19 +100,15 @@ class Combat(commands.Cog, name="combat"):
 
         # 2. Load Player
         player = await load_player(user_id, existing_user, self.bot.database)
-        clean_stats = {
-            "crit_chance": player.base_crit_chance,
-        }
 
         # 3. Health Check Interceptor
-        if player.current_hp < (player.max_hp * 0.25):
+        if player.current_hp < (player.total_max_hp * 0.25):
             view = LowHealthWarningView(
                 self.bot,
                 user_id,
                 server_id,
                 existing_user,
                 player,
-                clean_stats,
                 self._execute_combat,
             )
             await interaction.response.send_message(embed=view.build_embed(), view=view)
@@ -122,7 +118,7 @@ class Combat(commands.Cog, name="combat"):
         # If health is fine, proceed immediately. We defer because the logic below can take a moment.
         await interaction.response.defer()
         await self._execute_combat(
-            interaction, user_id, server_id, existing_user, player, clean_stats
+            interaction, user_id, server_id, existing_user, player
         )
 
     async def _execute_combat(
@@ -132,7 +128,6 @@ class Combat(commands.Cog, name="combat"):
         server_id: str,
         existing_user: tuple,
         player,
-        clean_stats: dict,
     ):
         """The actual combat generation and UI loading logic. Called directly or via the Warning View."""
         # 3. Check Door Encounter
@@ -237,7 +232,6 @@ class Combat(commands.Cog, name="combat"):
             monster,
             start_logs,
             combat_phases if is_boss else None,
-            clean_stats,
         )
 
         if interaction.response.is_done():

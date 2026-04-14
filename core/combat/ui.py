@@ -65,7 +65,7 @@ def create_combat_embed(
     embed.add_field(name="🐲 HP", value=f"{monster.hp}/{monster.max_hp}", inline=True)
     embed.add_field(
         name="❤️ HP",
-        value=get_hp_display(player.current_hp, player.max_hp, player.combat_ward),
+        value=get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward),
         inline=True,
     )
 

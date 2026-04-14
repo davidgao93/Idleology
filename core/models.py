@@ -251,8 +251,6 @@ class Player:
     potions: int  # Moved UP: Mandatory field from DB
 
     # Fields with Defaults come LAST
-    base_rarity: int = 0
-    base_crit_chance: int = 0
 
     # Equipped Gear
     equipped_weapon: Optional[Weapon] = None
@@ -326,39 +324,54 @@ class Player:
     flat_def: int = 0
 
     # -----------------------------------------------------------------------
-    # Per-combat bonus accumulator  (reset each combat / wave)
-    # Zeroed by reset_combat_bonus().  All combat-start passives (juggernaut,
-    # omnipotent, absorb, gilded_hunger, Void Aura drain, etc.) write here
-    # instead of mutating base_attack / base_defence.
+    # Per-combat bonus accumulators  (reset each combat / wave)
+    # Zeroed by reset_combat_bonus().  All combat-start passives and chapter
+    # signature modifiers write here instead of mutating base stats.
     # -----------------------------------------------------------------------
     bonus_atk: int = 0
     bonus_def: int = 0
+    bonus_crit: int = 0   # Impenetrable, Cursed Precision, chapter signatures, crit boons
+    bonus_max_hp: int = 0  # Chapter signatures (Decaying, Cursed), Diabolic Pact
 
     # -----------------------------------------------------------------------
-    # Unified stat multiplier  (reset each combat / wave)
+    # Unified stat multipliers  (reset each combat / wave)
     # Applied as  (flat + bonus) × multiplier  at the end of get_total_*.
     # Covers codex signatures/boons AND strong combat passives (diabolic_pact).
     # Reset to 1.0 by reset_combat_bonus().
     # -----------------------------------------------------------------------
     atk_multiplier: float = 1.0
     def_multiplier: float = 1.0
+    crit_multiplier: float = 1.0  # Insight helmet passive, future multiplicative crit mods
 
     # -----------------------------------------------------------------------
-    # Codex run permanent penalties  (NOT reset by reset_combat_bonus)
-    # Accumulated by fragment_boost downsides; zero for a fresh run.
+    # Codex run permanent modifiers  (NOT reset by reset_combat_bonus)
+    # Accumulated by fragment_boost downsides and max_hp_boost boon.
+    # Zero for a fresh run.
     # -----------------------------------------------------------------------
     run_atk_penalty: int = 0
     run_def_penalty: int = 0
+    run_crit_penalty: int = 0   # fragment_boost crit downside
+    run_max_hp_bonus: int = 0   # max_hp_boost boon (+) and fragment_boost hp_penalty (−)
+    bonus_rarity: int = 0       # per-wave rarity boon accumulator; reset at chapter boundary
 
     @property
     def rarity(self) -> int:
-        """Calculates total effective rarity from base stats and equipped gear."""
-        total = self.base_rarity
+        """Gear rarity from weapon and accessory. Use get_total_rarity() for the full total."""
+        total = 0
         if self.equipped_weapon:
             total += self.equipped_weapon.rarity
         if self.equipped_accessory:
             total += self.equipped_accessory.rarity
         return total
+
+    @property
+    def total_max_hp(self) -> int:
+        """Effective max HP including run bonuses, chapter penalties, and vitality tome."""
+        vitality_pct = self.get_tome_bonus("vitality")
+        base = self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp
+        if vitality_pct > 0:
+            base = int(base * (1 + vitality_pct / 100))
+        return max(1, base)
 
     def _get_companion_bonus(self, p_type: str) -> int:
         primary = sum(
@@ -436,15 +449,18 @@ class Player:
 
     def reset_combat_bonus(self) -> None:
         """
-        Zeros per-combat bonus stats and resets the stat multipliers to 1.0.
+        Zeros per-combat bonus stats and resets stat multipliers to 1.0.
         Call at the start of every combat or wave to prevent passive effects
-        from compounding across fights.  Does NOT touch run_atk/def_penalty
+        from compounding across fights.  Does NOT touch run_* fields
         (those are permanent within a codex run).
         """
         self.bonus_atk = 0
         self.bonus_def = 0
+        self.bonus_crit = 0
+        self.bonus_max_hp = 0
         self.atk_multiplier = 1.0
         self.def_multiplier = 1.0
+        self.crit_multiplier = 1.0
 
     # -----------------------------------------------------------------------
     # Total stat calculations
@@ -581,7 +597,8 @@ class Player:
 
     def get_current_crit_chance(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
-        chance = self.base_crit_chance
+        # Flat sources: gear + companions + essences + tomes
+        chance = 0
         if self.equipped_accessory:
             chance += self.equipped_accessory.crit
 
@@ -595,6 +612,15 @@ class Player:
         for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
             if item:
                 chance += compute_essence_stat_bonus(item).get("crit", 0)
+
+        # Per-combat/chapter bonus accumulator and permanent run penalty
+        chance += self.bonus_crit
+        chance -= self.run_crit_penalty
+
+        # Multiplicative layer (Insight helmet passive, future mods)
+        if self.crit_multiplier != 1.0:
+            chance = int(chance * self.crit_multiplier)
+
         return max(0, chance)
 
     def get_total_evasion(self) -> int:
@@ -617,17 +643,20 @@ class Player:
 
     def get_combat_ward_value(self) -> int:
         ward_percent = self.get_total_ward_percentage()
-        return int((ward_percent / 100) * self.max_hp) if ward_percent > 0 else 0
+        return int((ward_percent / 100) * self.total_max_hp) if ward_percent > 0 else 0
 
     def get_total_rarity(self) -> int:
-        """Helper for base rarity total."""
-        total = self.rarity  # Base + Gear
+        """Full rarity total: gear + companions + tome multiplier + codex boon bonus."""
+        total = self.rarity  # Gear only (weapon + accessory)
         total += self._get_companion_bonus("rarity")
 
         # Providence tome: % bonus to total rarity
         prov_pct = self.get_tome_bonus("providence")
         if prov_pct > 0:
             total = int(total * (1 + prov_pct / 100))
+
+        # Codex rarity boon accumulator
+        total += self.bonus_rarity
         return total
 
     def get_special_drop_bonus(self) -> int:
@@ -703,11 +732,8 @@ class Player:
         return sum(t.value for t in self.codex_tomes if t.passive_type == passive_type)
 
     def get_effective_max_hp(self) -> int:
-        """Max HP including the vitality tome bonus (+% max HP)."""
-        vitality_pct = self.get_tome_bonus("vitality")
-        if vitality_pct > 0:
-            return int(self.max_hp * (1 + vitality_pct / 100))
-        return self.max_hp
+        """Alias for total_max_hp — kept for display call sites."""
+        return self.total_max_hp
 
 
 @dataclass

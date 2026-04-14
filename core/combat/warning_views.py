@@ -3,14 +3,13 @@ from discord import ui, ButtonStyle, Interaction
 from core.combat import engine
 
 class LowHealthWarningView(ui.View):
-    def __init__(self, bot, user_id, server_id, existing_user, player, clean_stats, continue_callback):
+    def __init__(self, bot, user_id, server_id, existing_user, player, continue_callback):
         super().__init__(timeout=60)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
         self.existing_user = existing_user
         self.player = player
-        self.clean_stats = clean_stats
         self.continue_callback = continue_callback # The function to call to actually start combat
         
         self.update_buttons()
@@ -32,7 +31,7 @@ class LowHealthWarningView(ui.View):
         self.add_item(btn_heal)
         
         # Fight Button (Changes color if safe)
-        is_safe = self.player.current_hp >= (self.player.max_hp * 0.25)
+        is_safe = self.player.current_hp >= (self.player.total_max_hp * 0.25)
         btn_fight = ui.Button(label="Fight" if is_safe else "Fight Anyway", style=ButtonStyle.primary if is_safe else ButtonStyle.danger, emoji="⚔️")
         btn_fight.callback = self.fight
         self.add_item(btn_fight)
@@ -43,11 +42,11 @@ class LowHealthWarningView(ui.View):
         self.add_item(btn_flee)
 
     def build_embed(self) -> discord.Embed:
-        is_safe = self.player.current_hp >= (self.player.max_hp * 0.25)
+        is_safe = self.player.current_hp >= (self.player.total_max_hp * 0.25)
         color = discord.Color.orange() if is_safe else discord.Color.red()
         
         embed = discord.Embed(title="⚠️ Warning: Low Health", color=color)
-        embed.description = f"You are about to enter combat with **{self.player.current_hp}/{self.player.max_hp} HP**.\nDeath results in a 10% XP penalty."
+        embed.description = f"You are about to enter combat with **{self.player.current_hp}/{self.player.total_max_hp} HP**.\nDeath results in a 10% XP penalty."
         return embed
 
     async def heal(self, interaction: Interaction):
@@ -62,7 +61,7 @@ class LowHealthWarningView(ui.View):
         await interaction.response.defer()
         
         # We pass control back to the Cog to run the rest of the combat logic
-        await self.continue_callback(interaction, self.user_id, self.server_id, self.existing_user, self.player, self.clean_stats)
+        await self.continue_callback(interaction, self.user_id, self.server_id, self.existing_user, self.player)
         self.stop()
 
     async def flee(self, interaction: Interaction):

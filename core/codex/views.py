@@ -16,7 +16,6 @@ from core.codex.mechanics import (
     restore_clean_stats,
     roll_boons,
     select_run_chapters,
-    snapshot_clean_stats,
 )
 from core.combat import engine
 from core.combat import ui as combat_ui
@@ -130,7 +129,6 @@ class CodexRunView(ui.View):
         chapters: list[CodexChapter],
         initial_monster: Monster,
         start_logs: dict,
-        clean_stats: dict,
         chapter_wave_baseline: dict = None,
     ):
         super().__init__(timeout=300)
@@ -141,7 +139,6 @@ class CodexRunView(ui.View):
         self.chapter_idx = 0
         self.wave_num = 1
         self.monster = initial_monster
-        self.clean_stats = clean_stats
         self.logs = start_logs or {}
 
         # Baseline snapshot taken after chapter setup (signature + boons applied) but before
@@ -213,7 +210,7 @@ class CodexRunView(ui.View):
         absorb, juggernaut, gilded_hunger, diabolic_pact, cursed_precision, Enfeeble,
         Impenetrable) don't compound across waves."""
         self.chapter_wave_baseline = {
-            "crit_chance": self.player.base_crit_chance,
+            "bonus_crit": self.player.bonus_crit,
             "combat_ward": self.player.combat_ward,
             "atk_multiplier": self.player.atk_multiplier,
             "def_multiplier": self.player.def_multiplier,
@@ -225,9 +222,9 @@ class CodexRunView(ui.View):
         the bonus accumulator and multipliers need restoring."""
         if not self.chapter_wave_baseline:
             return
-        # Zero bonus_atk/def and reset multipliers, then re-apply from snapshot
+        # Zero per-combat bonuses and multipliers, then re-apply chapter baseline from snapshot
         self.player.reset_combat_bonus()
-        self.player.base_crit_chance = self.chapter_wave_baseline["crit_chance"]
+        self.player.bonus_crit = self.chapter_wave_baseline["bonus_crit"]
         self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
         self.player.atk_multiplier = self.chapter_wave_baseline.get("atk_multiplier", 1.0)
         self.player.def_multiplier = self.chapter_wave_baseline.get("def_multiplier", 1.0)
@@ -383,7 +380,7 @@ class CodexRunView(ui.View):
         if self.wave_num == 1:
             # Chapter start: wipe the previous chapter's signature so it doesn't stack,
             # then apply the new signature and re-apply all accumulated boons on top.
-            restore_clean_stats(self.player, self.clean_stats)
+            restore_clean_stats(self.player)
             self.player.combat_ward = self.player.get_combat_ward_value()
 
             nullify = self.run_state.get("sig_nullify_next", False)
@@ -437,7 +434,7 @@ class CodexRunView(ui.View):
 
         # Soulreap: restore HP to full after every wave clear
         if self.player.get_weapon_infernal() == "soulreap":
-            self.player.current_hp = self.player.max_hp
+            self.player.current_hp = self.player.total_max_hp
 
         # Respite check (after wave 3 and wave 6)
         if self.wave_num in (3, 6):
@@ -494,7 +491,7 @@ class CodexRunView(ui.View):
         self._boon_processing = True
         await interaction.response.defer()
         result_msg = apply_respite_boon(
-            self.player, boon, self.active_boons, self.clean_stats, self.run_state
+            self.player, boon, self.active_boons, self.run_state
         )
 
         self.clear_items()
@@ -692,11 +689,11 @@ class CodexRunView(ui.View):
         message = interaction.message
 
         while (
-            self.player.current_hp > (self.player.max_hp * 0.2) and self.monster.hp > 0
+            self.player.current_hp > (self.player.total_max_hp * 0.2) and self.monster.hp > 0
         ):
             for _ in range(10):
                 if (
-                    self.player.current_hp <= (self.player.max_hp * 0.2)
+                    self.player.current_hp <= (self.player.total_max_hp * 0.2)
                     or self.monster.hp <= 0
                 ):
                     break
@@ -707,7 +704,7 @@ class CodexRunView(ui.View):
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
             if self.monster.hp > 0 and self.player.current_hp > (
-                self.player.max_hp * 0.2
+                self.player.total_max_hp * 0.2
             ):
                 await self._refresh_ui(message=message)
                 await asyncio.sleep(1.0)
@@ -715,7 +712,7 @@ class CodexRunView(ui.View):
                 break
 
         if (
-            0 < self.player.current_hp <= (self.player.max_hp * 0.2)
+            0 < self.player.current_hp <= (self.player.total_max_hp * 0.2)
             and self.monster.hp > 0
         ):
             self.logs["Auto-Wave"] = "🛑 Paused: Low HP Protection triggered!"
@@ -1137,16 +1134,13 @@ class CodexMenuView(ui.View):
         chapters = select_run_chapters(5)
         chapter = chapters[0]
 
-        # Snapshot clean stats (after gear/tome bonuses are baked in, before any modifiers)
-        clean_stats = snapshot_clean_stats(self.player)
-
         # Apply chapter 1 signature + generate wave 1 monster
         self.player.combat_ward = self.player.get_combat_ward_value()
         apply_signature_modifier(self.player, chapter)
 
         # Snapshot post-setup stats before combat passives fire
         wave_baseline = {
-            "crit_chance": self.player.base_crit_chance,
+            "bonus_crit": self.player.bonus_crit,
             "combat_ward": self.player.combat_ward,
             "atk_multiplier": self.player.atk_multiplier,
             "def_multiplier": self.player.def_multiplier,
@@ -1163,7 +1157,6 @@ class CodexMenuView(ui.View):
             chapters,
             monster,
             start_logs,
-            clean_stats,
             chapter_wave_baseline=wave_baseline,
         )
 

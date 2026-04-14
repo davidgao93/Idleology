@@ -21,7 +21,6 @@ class AscentView(ui.View):
         player: Player,
         initial_monster: Monster,
         start_logs: dict,
-        clean_stats: dict,
     ):
         super().__init__(timeout=300)
         self.bot = bot
@@ -29,7 +28,6 @@ class AscentView(ui.View):
         self.server_id = server_id
         self.player = player
         self.monster = initial_monster
-        self.clean_stats = clean_stats  # [FIX] Store original stats
 
         # State
         self.stage = 1
@@ -94,12 +92,12 @@ class AscentView(ui.View):
         message = interaction.message
 
         while (
-            self.player.current_hp > (self.player.max_hp * 0.2) and self.monster.hp > 0
+            self.player.current_hp > (self.player.total_max_hp * 0.2) and self.monster.hp > 0
         ):
 
             for _ in range(10):
                 if (
-                    self.player.current_hp <= (self.player.max_hp * 0.2)
+                    self.player.current_hp <= (self.player.total_max_hp * 0.2)
                     or self.monster.hp <= 0
                 ):
                     break
@@ -112,7 +110,7 @@ class AscentView(ui.View):
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
             if self.monster.hp > 0 and self.player.current_hp > (
-                self.player.max_hp * 0.2
+                self.player.total_max_hp * 0.2
             ):
                 await self.refresh_ui(message=message)
                 await asyncio.sleep(1.0)
@@ -120,7 +118,7 @@ class AscentView(ui.View):
                 break
 
         if (
-            0 < self.player.current_hp <= (self.player.max_hp * 0.2)
+            0 < self.player.current_hp <= (self.player.total_max_hp * 0.2)
             and self.monster.hp > 0
         ):
             self.logs["Auto-Battle"] = "Paused: Low HP protection!"
@@ -212,7 +210,7 @@ class AscentView(ui.View):
 
         embed.description = desc
         embed.set_footer(
-            text=f"HP: {self.player.current_hp}/{self.player.max_hp} | Next stage in 3s..."
+            text=f"HP: {self.player.current_hp}/{self.player.total_max_hp} | Next stage in 3s..."
         )
 
         target = (
@@ -229,9 +227,8 @@ class AscentView(ui.View):
     async def next_stage(self, interaction, message):
         self.stage += 1
 
-        # Reset per-combat bonus accumulator and restore crit chance
+        # Reset per-combat bonus accumulator
         self.player.reset_combat_bonus()
-        self.player.base_crit_chance = self.clean_stats["crit_chance"]
 
         self.player.combat_ward = self.player.get_combat_ward_value()
         self.player.is_invulnerable_this_combat = False

@@ -65,8 +65,9 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     )
 
     # Rarity Bonus
-    if player.rarity > 0:
-        gold_award = int(gold_award * (1.5 + player.rarity / 100))
+    rarity = player.get_total_rarity()
+    if rarity > 0:
+        gold_award = int(gold_award * (1.5 + rarity / 100))
 
     gold_award += 20  # Base flat amount
 
@@ -216,8 +217,7 @@ def calculate_item_drop_chance(player: Player) -> int:
 
     scaling_constant = 100.0
 
-    # Prevent negative rarity from breaking math (optional safety)
-    rarity = max(0, player.rarity)
+    rarity = max(0, player.get_total_rarity())
 
     # Formula: MaxBonus * ( R / (R + K) )
     # As R gets huge, the fraction approaches 1.0, giving the full MaxBonus.

@@ -231,8 +231,6 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         base_defence=user_data[10],
         potions=user_data[16],
         # Defaults
-        base_rarity=0,
-        base_crit_chance=0,
         combat_ward=0
     )
 
@@ -314,7 +312,7 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         if player.equipped_boot.passive == "hearty" and player.equipped_boot.passive_lvl > 0:
             hp_bonus_percentage = player.equipped_boot.passive_lvl * 0.05 # 5% per level
             bonus_hp = int(player.max_hp * hp_bonus_percentage)
-            player.max_hp += bonus_hp
+            player.run_max_hp_bonus += bonus_hp
             player.current_hp += bonus_hp
         
         if player.equipped_boot.passive == "speedster" and player.equipped_boot.passive_lvl > 0:

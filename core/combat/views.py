@@ -104,7 +104,6 @@ class CombatView(ui.View):
         monster: Monster,
         initial_logs: dict,
         combat_phases=None,
-        clean_stats: dict = None,
     ):
         super().__init__(timeout=300)
         self.bot = bot
@@ -113,10 +112,6 @@ class CombatView(ui.View):
         self.player = player
         self.monster = monster
         self.logs = initial_logs or {}
-
-        self.clean_stats = clean_stats or {
-            "crit_chance": player.base_crit_chance,
-        }
 
         # Boss / Chain Handling
         self.combat_phases = combat_phases or []  # List of dicts
@@ -207,7 +202,7 @@ class CombatView(ui.View):
         # For regular enemies: pause at < 20% HP.
         await interaction.response.defer()
 
-        hp_threshold = self.player.max_hp * 0.2
+        hp_threshold = self.player.total_max_hp * 0.2
 
         self._auto_running = True
         message = interaction.message
@@ -233,7 +228,7 @@ class CombatView(ui.View):
 
             # Low HP pause — applies to all fight types including bosses
             if (
-                0 < self.player.current_hp <= (self.player.max_hp * 0.2)
+                0 < self.player.current_hp <= (self.player.total_max_hp * 0.2)
                 and self.monster.hp > 0
             ):
                 self.logs["Auto-Battle"] = "🛑 Paused: Low HP Protection triggered!"
@@ -284,7 +279,7 @@ class CombatView(ui.View):
 
         for _ in range(10):
             if (
-                self.player.current_hp <= (self.player.max_hp * 0.2)
+                self.player.current_hp <= (self.player.total_max_hp * 0.2)
                 or self.monster.hp <= 0
             ):
                 break
@@ -303,7 +298,7 @@ class CombatView(ui.View):
 
         # Ensure HP is strictly greater than 0 to append the pause message
         low_hp_triggered = (
-            0 < self.player.current_hp <= (self.player.max_hp * 0.2)
+            0 < self.player.current_hp <= (self.player.total_max_hp * 0.2)
             and self.monster.hp > 0
         )
         if low_hp_triggered:
@@ -388,7 +383,6 @@ class CombatView(ui.View):
                 next_phase_data = self.combat_phases[self.current_phase_index]
 
                 self.player.reset_combat_bonus()
-                self.player.base_crit_chance = self.clean_stats["crit_chance"]
 
                 # Reset transients (Ward resets to base gear value, temporary invuln clears)
                 # self.player.combat_ward = self.player.get_combat_ward_value()
@@ -850,7 +844,7 @@ class CombatView(ui.View):
 
             # Soulreap: restore HP to full after every successful encounter
             if self.player.get_weapon_infernal() == "soulreap":
-                self.player.current_hp = self.player.max_hp
+                self.player.current_hp = self.player.total_max_hp
 
             self.bot.state_manager.clear_active(self.user_id)
             await self.bot.database.users.update_from_player_object(self.player)
@@ -960,7 +954,7 @@ class CombatView(ui.View):
             self.player.get_weapon_infernal() == "soulreap"
             and self.player.current_hp > 0
         ):
-            self.player.current_hp = self.player.max_hp
+            self.player.current_hp = self.player.total_max_hp
 
         # Cleanup
         self.bot.state_manager.clear_active(self.user_id)
@@ -1056,7 +1050,7 @@ class CombatView(ui.View):
 
             # Soulreap: restore HP to full after kill
             if self.player.get_weapon_infernal() == "soulreap":
-                self.player.current_hp = self.player.max_hp
+                self.player.current_hp = self.player.total_max_hp
 
             await self.bot.database.users.update_from_player_object(self.player)
 
@@ -1172,7 +1166,7 @@ class CombatView(ui.View):
 
             # Soulreap: restore HP to full after kill
             if self.player.get_weapon_infernal() == "soulreap":
-                self.player.current_hp = self.player.max_hp
+                self.player.current_hp = self.player.total_max_hp
 
             await self.bot.database.users.update_from_player_object(self.player)
 
@@ -1191,7 +1185,7 @@ class CombatView(ui.View):
             self.player.get_weapon_infernal() == "soulreap"
             and self.player.current_hp > 0
         ):
-            self.player.current_hp = self.player.max_hp
+            self.player.current_hp = self.player.total_max_hp
 
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)
@@ -1286,7 +1280,7 @@ class CombatView(ui.View):
 
             # Soulreap: restore HP to full after kill
             if self.player.get_weapon_infernal() == "soulreap":
-                self.player.current_hp = self.player.max_hp
+                self.player.current_hp = self.player.total_max_hp
 
             await self.bot.database.users.update_from_player_object(self.player)
 
@@ -1372,7 +1366,7 @@ class InfernalContractView(ui.View):
         self.player.base_attack = new_atk
         self.player.base_defence = new_def
         self.player.max_hp = new_hp
-        self.player.current_hp = min(self.player.current_hp, self.player.max_hp)
+        self.player.current_hp = min(self.player.current_hp, self.player.total_max_hp)
         self.player.compute_flat_stats()  # Refresh flat cache with new base values
 
         # update_from_player_object does not write attack/defence/max_hp,

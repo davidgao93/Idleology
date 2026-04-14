@@ -332,10 +332,6 @@ class UberAphroditeLobbyView(ui.View):
         )
         monster = await generate_uber_aphrodite(self.player, monster)
         print(monster)
-        clean_stats = {
-            "crit_chance": self.player.base_crit_chance,
-        }
-
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
@@ -353,7 +349,6 @@ class UberAphroditeLobbyView(ui.View):
             monster,
             start_logs,
             combat_phases=None,
-            clean_stats=clean_stats,
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
@@ -494,10 +489,6 @@ class UberLuciferLobbyView(ui.View):
         )
         monster = await generate_uber_lucifer(self.player, monster)
         print(monster)
-        clean_stats = {
-            "crit_chance": self.player.base_crit_chance,
-        }
-
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
@@ -515,7 +506,6 @@ class UberLuciferLobbyView(ui.View):
             monster,
             start_logs,
             combat_phases=None,
-            clean_stats=clean_stats,
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
@@ -651,10 +641,6 @@ class UberNEETLobbyView(ui.View):
         )
         monster = generate_uber_neet(self.player, monster)
         print(monster)
-        clean_stats = {
-            "crit_chance": self.player.base_crit_chance,
-        }
-
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
@@ -672,7 +658,6 @@ class UberNEETLobbyView(ui.View):
             monster,
             start_logs,
             combat_phases=None,
-            clean_stats=clean_stats,
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
@@ -812,10 +797,6 @@ class UberGeminiLobbyView(ui.View):
         )
         monster = generate_uber_gemini(self.player, monster)
         print(monster)
-        clean_stats = {
-            "crit_chance": self.player.base_crit_chance,
-        }
-
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
@@ -833,7 +814,6 @@ class UberGeminiLobbyView(ui.View):
             monster,
             start_logs,
             combat_phases=None,
-            clean_stats=clean_stats,
         )
 
         await interaction.edit_original_response(embed=embed, view=view)

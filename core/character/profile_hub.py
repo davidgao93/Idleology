@@ -58,7 +58,7 @@ class ProfileBuilder:
             ),
             inline=True,
         )
-        embed.add_field(name="❤️ HP", value=f"{p.current_hp}/{p.max_hp}", inline=True)
+        embed.add_field(name="❤️ HP", value=f"{p.current_hp}/{p.total_max_hp}", inline=True)
 
         ward = p.get_total_ward_percentage()
         if ward > 0:

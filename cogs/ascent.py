@@ -58,11 +58,6 @@ class Ascent(commands.Cog, name="ascent"):
         # 2. Init Player
         player = await load_player(user_id, existing_user, self.bot.database)
         
-        # Snapshot crit chance (the only base stat mutated during combat)
-        clean_stats = {
-            'crit_chance': player.base_crit_chance,
-        }
-        
         # 3. Generate Stage 1
         monster = Monster(name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0, modifiers=[], image="", flavor="", is_boss=True)
         m_level = AscentMechanics.calculate_monster_level(player.level, player.ascension, 1)
@@ -78,8 +73,7 @@ class Ascent(commands.Cog, name="ascent"):
         # 5. View
         embed = ui.create_combat_embed(player, monster, start_logs, title_override=f"Ascent Stage 1 | {player.name}")
         
-        # [FIX] Pass clean_stats to View
-        view = AscentView(self.bot, user_id, server_id, player, monster, start_logs, clean_stats)
+        view = AscentView(self.bot, user_id, server_id, player, monster, start_logs)
         
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
