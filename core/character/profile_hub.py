@@ -64,8 +64,8 @@ class ProfileBuilder:
         if ward > 0:
             embed.add_field(name="🔮 Ward", value=f"{ward}%", inline=True)
 
-        crit_chance = 100 - p.get_current_crit_target()
-        if crit_chance > 5:
+        crit_chance = p.get_current_crit_chance()
+        if crit_chance > 0:
             embed.add_field(name="🎯 Crit Chance", value=f"{crit_chance}%", inline=True)
 
         pdr = p.get_total_pdr()
@@ -292,6 +292,21 @@ class ProfileBuilder:
         settlement = await bot.database.settlement.get_settlement(user_id, server_id)
 
         async with bot.database.connection.execute(
+            "SELECT iron, coal, gold, platinum, idea FROM mining WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        ) as c:
+            ores = await c.fetchone() or (0, 0, 0, 0, 0)
+        async with bot.database.connection.execute(
+            "SELECT oak_logs, willow_logs, mahogany_logs, magic_logs, idea_logs FROM woodcutting WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        ) as c:
+            logs = await c.fetchone() or (0, 0, 0, 0, 0)
+        async with bot.database.connection.execute(
+            "SELECT desiccated_bones, regular_bones, sturdy_bones, reinforced_bones, titanium_bones FROM fishing WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        ) as c:
+            bones = await c.fetchone() or (0, 0, 0, 0, 0)
+        async with bot.database.connection.execute(
             "SELECT iron_bar, steel_bar, gold_bar, platinum_bar, idea_bar FROM mining WHERE user_id=? AND server_id=?",
             (user_id, server_id),
         ) as c:
@@ -321,18 +336,33 @@ class ProfileBuilder:
             inline=False,
         )
         embed.add_field(
+            name="⛏️ Ores",
+            value=f"Iron Ore: {ores[0]:,}\nCoal: {ores[1]:,}\nGold Ore: {ores[2]:,}\nPlatinum Ore: {ores[3]:,}\nIdea Ore: {ores[4]:,}",
+            inline=True,
+        )
+        embed.add_field(
+            name="🪓 Logs",
+            value=f"Oak Logs: {logs[0]:,}\nWillow Logs: {logs[1]:,}\nMahogany Logs: {logs[2]:,}\nMagic Logs: {logs[3]:,}\nIdea Logs: {logs[4]:,}",
+            inline=True,
+        )
+        embed.add_field(
+            name="🎣 Bones",
+            value=f"Desiccated Bones: {bones[0]:,}\nRegular Bones: {bones[1]:,}\nSturdy Bones: {bones[2]:,}\nReinforced Bones: {bones[3]:,}\nTitanium Bones: {bones[4]:,}",
+            inline=True,
+        )
+        embed.add_field(
             name="🧱 Ingots",
-            value=f"Iron: {ingots[0]}\nSteel: {ingots[1]}\nGold: {ingots[2]}\nPlat: {ingots[3]}\nIdea: {ingots[4]}",
+            value=f"Iron: {ingots[0]:,}\nSteel: {ingots[1]:,}\nGold: {ingots[2]:,}\nPlat: {ingots[3]:,}\nIdea: {ingots[4]:,}",
             inline=True,
         )
         embed.add_field(
             name="🪵 Planks",
-            value=f"Oak: {planks[0]}\nWillow: {planks[1]}\nMahog: {planks[2]}\nMagic: {planks[3]}\nIdea: {planks[4]}",
+            value=f"Oak: {planks[0]:,}\nWillow: {planks[1]:,}\nMahog: {planks[2]:,}\nMagic: {planks[3]:,}\nIdea: {planks[4]:,}",
             inline=True,
         )
         embed.add_field(
             name="⚗️ Essence",
-            value=f"Desic: {essence[0]}\nReg: {essence[1]}\nSturdy: {essence[2]}\nReinf: {essence[3]}\nTitan: {essence[4]}",
+            value=f"Desic: {essence[0]:,}\nReg: {essence[1]:,}\nSturdy: {essence[2]:,}\nReinf: {essence[3]:,}\nTitan: {essence[4]:,}",
             inline=True,
         )
         embed.add_field(

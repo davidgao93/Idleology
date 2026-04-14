@@ -157,14 +157,19 @@ class InventoryUI:
                 v = getattr(item, f"essence_{i}_val", 0.0) or 0.0
                 if t != "none":
                     e_name, emoji = ESSENCE_DISPLAY.get(t, (t.title(), "✦"))
-                    stat_str      = _format_slot_value(t, v, item)
-                    lines.append(f"{emoji} {e_name} — {stat_str}")
+                    stat_str = _format_slot_value(t, v, item)
+                    lines.append(f"**Slot {i}:** {emoji} {e_name}\n   ↳ {stat_str}")
+                else:
+                    lines.append(f"**Slot {i}:** *— Empty —*")
             corrupted = getattr(item, "corrupted_essence", "none") or "none"
             if corrupted != "none":
                 c_name, c_emoji = ESSENCE_DISPLAY.get(corrupted, (corrupted.title(), "💠"))
-                lines.append(f"{c_emoji} {c_name} *(Corrupted)*")
-            if lines:
-                embed.add_field(name="Essences", value="\n".join(lines), inline=False)
+                from core.items.essence_views import ESSENCE_BRIEF
+                c_brief = ESSENCE_BRIEF.get(corrupted, "")
+                lines.append(f"**Corrupted:** {c_emoji} {c_name}\n   ↳ {c_brief}")
+            else:
+                lines.append("**Corrupted:** *— Empty —*")
+            embed.add_field(name="💎 Essences", value="\n".join(lines), inline=False)
 
         # Weapon Specifics
         if isinstance(item, Weapon):

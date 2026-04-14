@@ -379,7 +379,7 @@ def snapshot_clean_stats(player: Player) -> dict:
     return {
         "attack": player.base_attack,
         "defence": player.base_defence,
-        "crit_target": player.base_crit_chance_target,
+        "crit_chance": player.base_crit_chance,
         "max_hp": player.max_hp,
         "rarity": player.base_rarity,
     }
@@ -394,7 +394,7 @@ def restore_clean_stats(player: Player, clean_stats: dict) -> None:
     """
     player.base_attack = clean_stats["attack"]
     player.base_defence = clean_stats["defence"]
-    player.base_crit_chance_target = clean_stats["crit_target"]
+    player.base_crit_chance = clean_stats["crit_chance"]
     player.max_hp = clean_stats["max_hp"]
     player.base_rarity = clean_stats["rarity"]
     player.boon_fdr = 0  # re-applied immediately by apply_per_wave_boons
@@ -439,7 +439,7 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
         player.base_defence = int(player.base_defence * 0.80)
 
     elif key == "blinded":
-        player.base_crit_chance_target += 40
+        player.base_crit_chance -= 40
 
     elif key == "scorched":
         player.base_defence = int(player.base_defence * 0.70)
@@ -451,7 +451,7 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
 
     elif key == "frenzied":
         player.base_defence = int(player.base_defence * 0.70)
-        player.base_crit_chance_target += 30
+        player.base_crit_chance -= 30
 
     elif key == "abyss_taint":
         player.base_attack = int(player.base_attack * 0.60)
@@ -464,7 +464,7 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
 
     elif key == "absolute_zero":
         player.base_attack = int(player.base_attack * 0.50)
-        player.base_crit_chance_target += 40
+        player.base_crit_chance -= 40
 
     elif key == "convergence":
         player.base_attack = int(player.base_attack * 0.70)
@@ -494,9 +494,7 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
         elif t == "def_boost":
             player.base_defence = int(player.base_defence * (1 + v / 100))
         elif t == "crit_boost":
-            player.base_crit_chance_target = max(
-                1, player.base_crit_chance_target - int(v)
-            )
+            player.base_crit_chance += int(v)
         elif t == "ward_boost":
             player.combat_ward += int(player.max_hp * (v / 100))
         elif t == "rarity_boost":
@@ -507,7 +505,7 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
             elif dt == "def_penalty":
                 player.base_defence = int(player.base_defence * (1 - dv / 100))
             elif dt == "crit_penalty":
-                player.base_crit_chance_target += int(dv)
+                player.base_crit_chance -= int(dv)
         elif t == "fdr_boost":
             player.boon_fdr += int(v)
 
@@ -562,7 +560,7 @@ def apply_respite_boon(
             clean_stats["attack"] = int(clean_stats["attack"] * (1 - dv / 100))
             clean_stats["defence"] = int(clean_stats["defence"] * (1 - dv / 100))
         elif dt == "crit_penalty":
-            clean_stats["crit_target"] = clean_stats["crit_target"] + int(dv)
+            clean_stats["crit_chance"] = clean_stats["crit_chance"] - int(dv)
         suffix = f" (Cost: {boon.downside_label})" if boon.downside_label else ""
         return f"Fragment gain boosted by **+{v:.0f}%** this run{suffix}"
 

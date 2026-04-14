@@ -215,7 +215,7 @@ class CodexRunView(ui.View):
         self.chapter_wave_baseline = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
-            "crit_target": self.player.base_crit_chance_target,
+            "crit_chance": self.player.base_crit_chance,
             "combat_ward": self.player.combat_ward,
         }
 
@@ -225,7 +225,7 @@ class CodexRunView(ui.View):
             return
         self.player.base_attack = self.chapter_wave_baseline["attack"]
         self.player.base_defence = self.chapter_wave_baseline["defence"]
-        self.player.base_crit_chance_target = self.chapter_wave_baseline["crit_target"]
+        self.player.base_crit_chance = self.chapter_wave_baseline["crit_chance"]
         self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
 
     def _projected_ward(self) -> int:
@@ -244,7 +244,7 @@ class CodexRunView(ui.View):
         atk = p.get_total_attack()
         def_ = p.get_total_defence()
         eff_max_hp = p.get_effective_max_hp()
-        crit_chance = max(0, 100 - p.get_current_crit_target())
+        crit_chance = p.get_current_crit_chance()
         rarity = p.get_total_rarity()
         fdr = p.get_total_fdr()
         pdr = p.get_total_pdr()
@@ -1144,7 +1144,7 @@ class CodexMenuView(ui.View):
         wave_baseline = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
-            "crit_target": self.player.base_crit_chance_target,
+            "crit_chance": self.player.base_crit_chance,
             "combat_ward": self.player.combat_ward,
         }
 

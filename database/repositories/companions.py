@@ -155,12 +155,15 @@ class CompanionRepository:
         # 3. Create Child
         # Note: Child starts inactive (is_active=0)
         await self.connection.execute(
-            """INSERT INTO companions (user_id, name, species, image_url, 
-               passive_type, passive_tier, level, exp, is_active) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)""",
+            """INSERT INTO companions (user_id, name, species, image_url,
+               passive_type, passive_tier, level, exp, is_active,
+               balanced_passive, balanced_passive_tier)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)""",
             (user_id, new_stats['name'], new_stats['species'], new_stats['image_url'],
-             new_stats['passive_type'], new_stats['passive_tier'], 
-             new_stats['level'], new_stats['exp'])
+             new_stats['passive_type'], new_stats['passive_tier'],
+             new_stats['level'], new_stats['exp'],
+             new_stats.get('balanced_passive', 'none'),
+             new_stats.get('balanced_passive_tier', 0))
         )
         
         await self.connection.commit()

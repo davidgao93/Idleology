@@ -103,6 +103,17 @@ class FusionWizardView(ui.View):
         xp_b = CompanionMechanics.calculate_cumulative_xp(self.parent_b.level, self.parent_b.exp)
         new_lvl, _ = CompanionMechanics.calculate_level_from_xp(xp_a + xp_b)
         
+        a_has_balanced = self.parent_a.balanced_passive != "none" and self.parent_a.balanced_passive_tier > 0
+        b_has_balanced = self.parent_b.balanced_passive != "none" and self.parent_b.balanced_passive_tier > 0
+
+        if a_has_balanced and b_has_balanced:
+            balanced_line = "• Balanced Passive: Random (50/50 between parents)"
+        elif a_has_balanced or b_has_balanced:
+            source = self.parent_a if a_has_balanced else self.parent_b
+            balanced_line = f"• Balanced Passive: 50% chance to inherit T{source.balanced_passive_tier} {source.balanced_passive.upper()}"
+        else:
+            balanced_line = "• Balanced Passive: None (neither parent is Awakened)"
+
         embed = discord.Embed(title="⚠️ Confirm Fusion", color=discord.Color.gold())
         embed.description = (
             f"**Parent 1:** {self.parent_a.name} (T{self.parent_a.passive_tier} {self.parent_a.passive_type})\n"
@@ -111,7 +122,8 @@ class FusionWizardView(ui.View):
             f"• Level: **{new_lvl}** (Merged XP)\n"
             f"• Appearance: Random (50/50)\n"
             f"• Passive: Random (50/50)\n"
-            f"• Tier: Random (50/50)\n\n"
+            f"• Tier: Random (50/50)\n"
+            f"{balanced_line}\n\n"
             f"**Cost:** {self.FUSION_COST:,} Gold"
         )
         embed.set_footer(text="This action is irreversible. Parents will be consumed.")

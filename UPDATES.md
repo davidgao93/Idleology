@@ -308,9 +308,9 @@ __The 10 Tome Passives__
 • ⚡ Tenacity – Chance to halve incoming damage per hit (up to ~25%)  
 • 🩸 Bloodthirst – Heal % of crit damage dealt (up to ~25%)  
 • ✨ Providence – +% bonus total rarity (up to ~42%)  
-• 🎯 Precision – Flat crit target reduction (up to ~15)  
+• 🎯 Precision – Flat crit chance increase (up to ~15%)  
 • 💰 Affluence – +% XP & Gold from all combat (up to ~42%)  
-• 🪨 Bulwark – +% Percent Damage Reduction (to max 80%)  
+• 🪨 Bulwark – +% Percent Damage Reduction (up to 8%)  
 • 🔒 Resilience – +Flat Damage Reduction  
 
 ---

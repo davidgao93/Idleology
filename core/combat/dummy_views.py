@@ -2,7 +2,7 @@ import discord
 from discord import ui, ButtonStyle, Interaction, SelectOption
 from core.combat.dummy_engine import DummyEngine
 from core.models import Monster
-from core.combat.gen_mob import get_monster_mods, get_boss_mods, get_modifier_description
+from core.combat.gen_mob import get_monster_mods, get_boss_mods, get_modifier_description, calculate_monster_stats
 
 # ---------------------------------------------------------------------------
 # Modifier catalogue
@@ -273,25 +273,25 @@ class DummyConfigView(ui.View):
     async def run_sim(self, interaction: Interaction):
         await interaction.response.defer()
 
-        lvl  = self.dummy_level
-        atk  = int(lvl * 1.3)
-        defn = int(lvl * 1.3)
-
-        # Apply stat-modifying mods to the dummy's base stats
-        if "Steel-born" in self.active_mods:  defn = int(defn * 1.1)
-        if "Mighty"     in self.active_mods:  atk  = int(atk  * 1.1)
-        if "Ascended"   in self.active_mods:  atk  += 10; defn += 10
-        if "Absolute"   in self.active_mods:  atk  += 25; defn += 25
+        lvl = self.dummy_level
 
         monster = Monster(
             name="Combat Dummy",
             level=lvl,
             hp=9_999_999, max_hp=9_999_999, xp=0,
-            attack=atk, defence=defn,
+            attack=0, defence=0,
             modifiers=list(self.active_mods),
             image="", flavor="",
             species="_dojo_dummy_",        # Unique species — Slayer won't match by default
         )
+        calculate_monster_stats(monster)
+
+        # Apply stat-modifying mods on top of the level-scaled base stats
+        if "Steel-born" in self.active_mods:  monster.defence = int(monster.defence * 1.1)
+        if "Mighty"     in self.active_mods:  monster.attack  = int(monster.attack  * 1.1)
+        if "Ascended"   in self.active_mods:  monster.attack  += 10; monster.defence += 10
+        if "Absolute"   in self.active_mods:  monster.attack  += 25; monster.defence += 25
+
         monster.is_boss = self.is_boss_mode
 
         # Temporarily override player species to match for Slayer emblem simulation

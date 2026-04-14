@@ -252,7 +252,7 @@ class Player:
 
     # Fields with Defaults come LAST
     base_rarity: int = 0
-    base_crit_chance_target: int = 95
+    base_crit_chance: int = 0
 
     # Equipped Gear
     equipped_weapon: Optional[Weapon] = None
@@ -472,23 +472,23 @@ class Player:
                 total += compute_essence_stat_bonus(item).get("ward", 0)
         return total
 
-    def get_current_crit_target(self) -> int:
+    def get_current_crit_chance(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
-        target = self.base_crit_chance_target
+        chance = self.base_crit_chance
         if self.equipped_accessory:
-            target -= self.equipped_accessory.crit
+            chance += self.equipped_accessory.crit
 
-        # Companions (Flat Reduction)
-        target -= self._get_companion_bonus("crit")
+        # Companions
+        chance += self._get_companion_bonus("crit")
 
-        # Precision tome: flat crit target reduction
-        target -= int(self.get_tome_bonus("precision"))
+        # Precision tome
+        chance += int(self.get_tome_bonus("precision"))
 
         # Essence bonuses (Insight)
         for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
             if item:
-                target -= compute_essence_stat_bonus(item).get("crit", 0)
-        return max(1, target)
+                chance += compute_essence_stat_bonus(item).get("crit", 0)
+        return max(0, chance)
 
     def get_total_evasion(self) -> int:
         """Total evasion including armor base and any essence bonuses on glove/boot/helmet."""

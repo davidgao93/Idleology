@@ -45,9 +45,9 @@ ESSENCE_DISPLAY = {
 ESSENCE_BRIEF = {
     "power": "Boosts item's main stat (ATK on gloves/boots, DEF+WARD on helmets)",
     "protection": "Amplifies existing PDR and FDR on the item",
-    "insight": "Grants flat critical hit chance reduction",
-    "evasion": "Grants flat evasion chance",
-    "warding": "Grants flat block chance",
+    "insight": "Grants crit chance",
+    "evasion": "Grants evasion chance",
+    "warding": "Grants block chance",
     "cleansing": "Removes all 3 regular essence slots from the item",
     "chaos": "Rerolls values on all occupied regular essence slots",
     "annulment": "Removes one random regular essence slot",
@@ -557,12 +557,28 @@ class EssenceView(View):
         factory = factories[self.item_type]
 
         rows = await self.bot.database.equipment.get_all(self.user_id, self.item_type)
+        new_item = None
         for row in rows:
-            new_item = factory(row)
-            if new_item.item_id == self.item.item_id:
-                self.item = new_item
-                self.parent.item = new_item  # keep ItemDetailView in sync
+            candidate = factory(row)
+            if candidate.item_id == self.item.item_id:
+                new_item = candidate
                 break
+
+        if new_item is not None:
+            self.item = new_item
+            self.parent.item = new_item  # keep ItemDetailView in sync
+
+            # Also refresh the stale entry in the parent list view so that navigating
+            # Back → Back → re-selecting the item shows the updated essence slots.
+            parent_list = self.parent.parent  # InventoryListView or GearView
+            if hasattr(parent_list, "items"):
+                item_list = parent_list.items
+                if isinstance(item_list, list):
+                    for i, it in enumerate(item_list):
+                        if getattr(it, "item_id", None) == new_item.item_id:
+                            item_list[i] = new_item
+                            break
+                    parent_list.update_buttons()
 
         self.essence_inventory = await self.bot.database.essences.get_all(self.user_id)
         self._build_buttons()

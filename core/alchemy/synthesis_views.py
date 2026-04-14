@@ -523,23 +523,33 @@ class _SynthesizeKeySelect(ui.Select):
         await interaction.response.defer()
 
 
-class _SynthesizeConfirmView(ui.View):
-    """Inline confirm/cancel shown after the player picks a key to synthesize."""
+class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
+    quantity = ui.TextInput(
+        label="Quantity",
+        placeholder="Enter a number (e.g. 3)",
+        min_length=1,
+        max_length=4,
+    )
 
     def __init__(
-        self, parent: _SynthesizeSelectView, item_type: str, dust_cost: int
+        self, parent: _SynthesizeSelectView, item_type: str, dust_cost_each: int
     ) -> None:
-        super().__init__(timeout=30)
+        super().__init__()
         self._parent = parent
         self._item_type = item_type
-        self._dust_cost = dust_cost
+        self._dust_cost_each = dust_cost_each
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self._parent.user_id
+    async def on_submit(self, interaction: Interaction) -> None:
+        raw = self.quantity.value.strip()
+        if not raw.isdigit() or int(raw) < 1:
+            await interaction.response.send_message(
+                "Please enter a positive whole number.", ephemeral=True
+            )
+            return
 
-    @ui.button(label="Confirm", style=ButtonStyle.green, emoji="✅")
-    async def confirm(self, interaction: Interaction, button: ui.Button) -> None:
-        await interaction.response.defer()
+        qty = int(raw)
+        total_dust = self._dust_cost_each * qty
+        total_gold = AlchemyMechanics.SYNTHESIS_GOLD_COST * qty
 
         # Re-validate live balances before committing.
         cosmic_dust = await self._parent.bot.database.alchemy.get_cosmic_dust(
@@ -547,29 +557,31 @@ class _SynthesizeConfirmView(ui.View):
         )
         gold = await self._parent.bot.database.users.get_gold(self._parent.user_id)
 
-        if cosmic_dust < self._dust_cost:
-            await interaction.followup.send(
-                f"Not enough Cosmic Dust! Need ✨ **{self._dust_cost:,}**, "
+        if cosmic_dust < total_dust:
+            await interaction.response.send_message(
+                f"Not enough Cosmic Dust! Need ✨ **{total_dust:,}** for {qty}×, "
                 f"have **{cosmic_dust:,}**.",
                 ephemeral=True,
             )
             return
-        if gold < AlchemyMechanics.SYNTHESIS_GOLD_COST:
-            await interaction.followup.send(
-                f"Not enough gold! Need 💰 **{AlchemyMechanics.SYNTHESIS_GOLD_COST:,}**, "
+        if gold < total_gold:
+            await interaction.response.send_message(
+                f"Not enough gold! Need 💰 **{total_gold:,}** for {qty}×, "
                 f"have **{gold:,}**.",
                 ephemeral=True,
             )
             return
 
+        await interaction.response.defer()
+
         await self._parent.bot.database.alchemy.modify_cosmic_dust(
-            self._parent.user_id, -self._dust_cost
+            self._parent.user_id, -total_dust
         )
         await self._parent.bot.database.users.modify_gold(
-            self._parent.user_id, -AlchemyMechanics.SYNTHESIS_GOLD_COST
+            self._parent.user_id, -total_gold
         )
         await self._parent.bot.database.users.modify_currency(
-            self._parent.user_id, self._item_type, 1
+            self._parent.user_id, self._item_type, qty
         )
 
         name = AlchemyMechanics.KEY_DISPLAY_NAMES[self._item_type]
@@ -580,22 +592,14 @@ class _SynthesizeConfirmView(ui.View):
         )
         embed = view.build_embed()
         embed.colour = discord.Color.gold()
-        embed.title = f"🔑 Synthesized: {emoji} {name}!"
+        embed.title = f"🔑 Synthesized: {qty}× {emoji} {name}!"
         embed.description = (
-            f"You spent ✨ **{self._dust_cost:,} Cosmic Dust** + 💰 **100,000 Gold** "
-            f"and received **1× {emoji} {name}**.\n\n"
+            f"You spent ✨ **{total_dust:,} Cosmic Dust** + 💰 **{total_gold:,} Gold** "
+            f"and received **{qty}× {emoji} {name}**.\n\n"
         ) + (embed.description or "")
         msg = await interaction.edit_original_response(embed=embed, view=view)
         view.message = msg
         self._parent.stop()
-        self.stop()
-
-    @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="⬅️")
-    async def cancel(self, interaction: Interaction, button: ui.Button) -> None:
-        await interaction.response.defer()
-        embed = self._parent.build_embed()
-        await interaction.edit_original_response(embed=embed, view=self._parent)
-        self.stop()
 
 
 class _SynthesizeSelectView(ui.View):
@@ -664,7 +668,7 @@ class _SynthesizeSelectView(ui.View):
         embed.description = (
             f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}  |  **Gold:** 💰 {self.player_gold:,}\n"
             f"**Synthesis Discount:** {discount}% (Alchemy Level {level})\n\n"
-            "Select an item, then press **Synthesize** to confirm."
+            "Select an item, then press **Synthesize** and enter a quantity."
         )
 
         lines = []
@@ -692,20 +696,9 @@ class _SynthesizeSelectView(ui.View):
 
         col = self._select.selected
         dust_cost = AlchemyMechanics.get_synthesis_dust_cost(self.alchemy_level, col)
-        name = AlchemyMechanics.KEY_DISPLAY_NAMES[col]
-        emoji = AlchemyMechanics.KEY_EMOJIS[col]
-
-        confirm_view = _SynthesizeConfirmView(self, col, dust_cost)
-        embed = discord.Embed(
-            title="🔑 Confirm Synthesis",
-            description=(
-                f"Synthesize **1× {emoji} {name}**?\n\n"
-                f"Cost: ✨ **{dust_cost:,} Cosmic Dust**  +  💰 **100,000 Gold**\n"
-                f"You have: ✨ {self.cosmic_dust:,}  |  💰 {self.player_gold:,}"
-            ),
-            color=discord.Color.gold(),
+        await interaction.response.send_modal(
+            _SynthesizeQuantityModal(self, col, dust_cost)
         )
-        await interaction.response.edit_message(embed=embed, view=confirm_view)
 
     async def _on_back(self, interaction: Interaction) -> None:
         await interaction.response.defer()

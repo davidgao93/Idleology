@@ -232,7 +232,7 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         potions=user_data[16],
         # Defaults
         base_rarity=0,
-        base_crit_chance_target=95,
+        base_crit_chance=0,
         combat_ward=0
     )
 

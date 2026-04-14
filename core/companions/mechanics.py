@@ -223,13 +223,37 @@ class CompanionMechanics:
         """
         # Coin flips for traits
         base_source = random.choice([comp_a, comp_b])
-        
+
+        # Determine balanced passive inheritance
+        a_has_balanced = comp_a.balanced_passive != "none" and comp_a.balanced_passive_tier > 0
+        b_has_balanced = comp_b.balanced_passive != "none" and comp_b.balanced_passive_tier > 0
+
+        if a_has_balanced and b_has_balanced:
+            # Both have one — 50/50 pick
+            chosen = random.choice([comp_a, comp_b])
+            child_balanced_type = chosen.balanced_passive
+            child_balanced_tier = chosen.balanced_passive_tier
+        elif a_has_balanced or b_has_balanced:
+            # Only one parent has it — 50% chance to pass it on
+            source = comp_a if a_has_balanced else comp_b
+            if random.random() < 0.5:
+                child_balanced_type = source.balanced_passive
+                child_balanced_tier = source.balanced_passive_tier
+            else:
+                child_balanced_type = "none"
+                child_balanced_tier = 0
+        else:
+            child_balanced_type = "none"
+            child_balanced_tier = 0
+
         return {
             "name": base_source.name,
             "species": base_source.species,
             "image_url": base_source.image_url,
             "passive_type": random.choice([comp_a.passive_type, comp_b.passive_type]),
-            "passive_tier": random.choice([comp_a.passive_tier, comp_b.passive_tier])
+            "passive_tier": random.choice([comp_a.passive_tier, comp_b.passive_tier]),
+            "balanced_passive": child_balanced_type,
+            "balanced_passive_tier": child_balanced_tier,
         }
     
     @staticmethod

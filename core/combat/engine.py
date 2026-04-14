@@ -79,7 +79,7 @@ def _add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
 _MONSTER_STAT_EFFECTS: dict[str, callable] = {
     "Shield-breaker": lambda p, m: setattr(p, "combat_ward", 0),
     "Impenetrable": lambda p, m: setattr(
-        p, "base_crit_chance_target", min(100, p.base_crit_chance_target + 5)
+        p, "base_crit_chance", max(0, p.base_crit_chance - 5)
     ),
     "Enfeeble": lambda p, m: setattr(p, "base_attack", int(p.base_attack * 0.9)),
 }
@@ -186,7 +186,7 @@ def _cs_diabolic_pact(player, monster):
 
 
 def _cs_cursed_precision(player, monster):
-    player.base_crit_chance_target = max(1, player.base_crit_chance_target - 20)
+    player.base_crit_chance += 20
     player.cursed_precision_active = True
     return "🔥 **Cursed Precision**: 🎯 Crit chance greatly increased, but crits roll for the lower result."
 
@@ -556,19 +556,20 @@ def _pt_resolve_hit(
 def _pt_resolve_crit(
     player: Player, monster: Monster, is_hit: bool, log: list[str]
 ) -> bool:
-    """Phase 3 — crit roll against (crit_target - weapon_crit_bonus - voracious_stacks)."""
+    """Phase 3 — crit check. Rolls 0-100; result must exceed (100 - crit_chance)."""
     if not is_hit:
         return False
 
     idx, _ = get_weapon_tier(player, "crit")
-    crit_bonus = (idx + 1) * 5 if idx >= 0 else 0
-    crit_target = player.get_current_crit_target() - crit_bonus
+    crit_chance = player.get_current_crit_chance() + ((idx + 1) * 5 if idx >= 0 else 0)
 
     infernal = player.get_weapon_infernal()
     if infernal == "voracious" and player.voracious_stacks > 0:
-        crit_target = max(1, crit_target - (player.voracious_stacks * 5))
+        crit_chance += player.voracious_stacks * 5
 
-    return random.randint(0, 100) > crit_target
+    if crit_chance >= 100:
+        return True
+    return random.randint(0, 100) > (100 - crit_chance)
 
 
 def _pt_crit_damage(
@@ -1328,7 +1329,7 @@ def log_combat_debug(player: Player, monster: Monster, logger: logging.Logger) -
     """Calculates and logs the final stats and theoretical maximum damage of both entities."""
     p_atk = player.get_total_attack()
     p_def = player.get_total_defence()
-    p_crit = 100 - player.get_current_crit_target()
+    p_crit = player.get_current_crit_chance()
 
     crit_mult = 2.0
     if player.get_helmet_passive() == "insight":

@@ -152,6 +152,7 @@ class General(commands.Cog, name="general"):
             "companion",
             "slayer",
             "codex",
+            "essence",
         ],
     ):
 
@@ -389,9 +390,9 @@ class General(commands.Cog, name="general"):
                 "Probabilistic mitigation. Does not trigger on dodged attacks. Applies before ward.\n\n"
                 "**🩸 Bloodthirst** — Heal % of critical hit damage dealt *(T1: 2–5% | T5: 12–25%)*\n"
                 "Sustain for crit-focused builds. Triggers after all damage bonuses, stacks with Leeching.\n\n"
-                "**✨ Providence** — +% bonus to total rarity *(T1: 3–8% | T5: 18–42%)*\n"
+                "**✨ Providence** — +% more to total rarity *(T1: 3–8% | T5: 18–42%)*\n"
                 "A percentage multiplier on your full rarity after all other rarity sources are summed.\n\n"
-                "**🎯 Precision** — Flat crit chance increase *(T1: 1–3 | T5: 7–15)*\n"
+                "**🎯 Insight** — Flat crit chance increase *(T1: 1–3 | T5: 7–15)*\n"
                 "Increased crit rate = easier to crit.\n\n"
                 "**💰 Affluence** — +% XP and Gold from all combat *(T1: 3–8% | T5: 18–42%)*\n"
                 "Applied as a final multiplier to XP and Gold.\n\n"
@@ -399,6 +400,56 @@ class General(commands.Cog, name="general"):
                 "Adds to the PDR pool. Subject to the 80% PDR hard cap.\n\n"
                 "**🔒 Resilience** — +Flat Damage Reduction *(T1: 1–3 | T5: 7–15)*\n"
                 "Additive with all other FDR sources (armor, gloves, boots, helmets, companions)."
+            )
+            content_added = True
+
+        elif category == "essence":
+            embed.title = "💎 Essence Details"
+            embed.description = (
+                "Essences are applied to **Gloves**, **Boots**, and **Helmets**. "
+                "Each item has **3 regular slots** and **1 corrupted slot**.\n"
+                "Regular slots can be cleansed, rerolled, or annulled. "
+                "Corrupted slots are **permanent** once applied.\n\n"
+                "**— Regular Essences —**\n\n"
+                "**🔆 Essence of Power**\n"
+                "Boosts the item's primary offensive stat. "
+                "Rolls **20–100%** of the item's base ATK (Glove/Boot) or base DEF+WARD% (Helmet) as a flat bonus.\n\n"
+                "**🛡️ Essence of Protection**\n"
+                "Amplifies existing damage reduction on the item. "
+                "Rolls **20–80%** of the item's base PDR and FDR values as a flat bonus to each.\n\n"
+                "**👁️ Essence of Insight**\n"
+                "Grants a flat crit chance increase. "
+                "Rolls **+1–10%** Crit Chance.\n\n"
+                "**💨 Essence of Evasion**\n"
+                "Grants a flat evasion chance bonus. "
+                "Rolls **+1–8%** Evasion.\n\n"
+                "**🧱 Essence of Unyielding**\n"
+                "Grants a flat block chance bonus. "
+                "Rolls **+1–8%** Block Chance.\n\n"
+                "**— Utility Essences (consumed on use) —**\n\n"
+                "**🌊 Essence of Cleansing**\n"
+                "Removes all 3 regular essence slots from the item, resetting them to empty.\n\n"
+                "**🌀 Essence of Chaos**\n"
+                "Rerolls the stat values on all occupied regular essence slots. Types are preserved.\n\n"
+                "**✂️ Essence of Annulment**\n"
+                "Removes one random occupied regular essence slot.\n\n"
+                "**— Corrupted Essences (permanent) —**\n\n"
+                "**💠 Essence of Aphrodite's Disciple**\n"
+                "**Glove:** All ward-affecting hits count as ward-breaking.\n"
+                "**Boot:** Your equipment drop chance is lucky.\n"
+                "**Helmet:** Your ward cannot be forcibly disabled.\n\n"
+                "**💠 Essence of Lucifer's Heir**\n"
+                "**Glove:** Each attack deals bonus flat damage equal to 15% of your current ward pool (only while ward > 0).\n"
+                "**Boot:** Gold drops are increased by 10% per modifier on the monster, up to a maximum of +50%.\n"
+                "**Helmet:** When your ward is fully broken, gain 15% PDR for the remainder of that combat.\n\n"
+                "**💠 Essence of Gemini's Lost Twin**\n"
+                "**Glove:** Critical hits strike twice — the second strike deals 40–60% of the first hit's damage.\n"
+                "**Boot:** Pet drop chance is doubled (5% → 10% from normal enemies; 3% → 6% from bosses).\n"
+                "**Helmet:** Incoming damage splits evenly between ward and HP simultaneously. Your damage taken is halved.\n\n"
+                "**💠 Essence of NEET's Voidling**\n"
+                "**Glove:** Your normal hits are now misses — only critical hits deal direct damage. Miss-triggered effects (Perdition, Oblivion, Poison) still apply.\n"
+                "**Boot:** Whenever you receive skilling resources during combat, gain it again.\n"
+                "**Helmet:** When you gain ward, gain twice the amount instead."
             )
             content_added = True
 
