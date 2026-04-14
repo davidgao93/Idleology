@@ -117,7 +117,7 @@ class CombatView(ui.View):
         self.clean_stats = clean_stats or {
             "attack": player.base_attack,
             "defence": player.base_defence,
-            "crit_target": player.base_crit_chance_target,
+            "crit_chance": player.base_crit_chance,
         }
 
         # Boss / Chain Handling
@@ -391,7 +391,7 @@ class CombatView(ui.View):
 
                 self.player.base_attack = self.clean_stats["attack"]
                 self.player.base_defence = self.clean_stats["defence"]
-                self.player.base_crit_chance_target = self.clean_stats["crit_target"]
+                self.player.base_crit_chance = self.clean_stats["crit_chance"]
 
                 # Reset transients (Ward resets to base gear value, temporary invuln clears)
                 # self.player.combat_ward = self.player.get_combat_ward_value()

@@ -233,7 +233,7 @@ class AscentView(ui.View):
         # [FIX] Reset transient player stats from clean snapshot
         self.player.base_attack = self.clean_stats["attack"]
         self.player.base_defence = self.clean_stats["defence"]
-        self.player.base_crit_chance_target = self.clean_stats["crit_target"]
+        self.player.base_crit_chance = self.clean_stats["crit_chance"]
 
         self.player.combat_ward = self.player.get_combat_ward_value()
         self.player.is_invulnerable_this_combat = False

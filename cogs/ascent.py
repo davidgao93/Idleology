@@ -62,7 +62,7 @@ class Ascent(commands.Cog, name="ascent"):
         clean_stats = {
             'attack': player.base_attack,
             'defence': player.base_defence,
-            'crit_target': player.base_crit_chance_target
+            'crit_chance': player.base_crit_chance
         }
         
         # 3. Generate Stage 1

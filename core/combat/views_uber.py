@@ -335,7 +335,7 @@ class UberAphroditeLobbyView(ui.View):
         clean_stats = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
-            "crit_target": self.player.base_crit_chance_target,
+            "crit_chance": self.player.base_crit_chance,
         }
 
         self.player.combat_ward = self.player.get_combat_ward_value()
@@ -499,7 +499,7 @@ class UberLuciferLobbyView(ui.View):
         clean_stats = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
-            "crit_target": self.player.base_crit_chance_target,
+            "crit_chance": self.player.base_crit_chance,
         }
 
         self.player.combat_ward = self.player.get_combat_ward_value()
@@ -658,7 +658,7 @@ class UberNEETLobbyView(ui.View):
         clean_stats = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
-            "crit_target": self.player.base_crit_chance_target,
+            "crit_chance": self.player.base_crit_chance,
         }
 
         self.player.combat_ward = self.player.get_combat_ward_value()
@@ -821,7 +821,7 @@ class UberGeminiLobbyView(ui.View):
         clean_stats = {
             "attack": self.player.base_attack,
             "defence": self.player.base_defence,
-            "crit_target": self.player.base_crit_chance_target,
+            "crit_chance": self.player.base_crit_chance,
         }
 
         self.player.combat_ward = self.player.get_combat_ward_value()

@@ -103,7 +103,7 @@ class Combat(commands.Cog, name="combat"):
         clean_stats = {
             "attack": player.base_attack,
             "defence": player.base_defence,
-            "crit_target": player.base_crit_chance_target,
+            "crit_chance": player.base_crit_chance,
         }
 
         # 3. Health Check Interceptor
