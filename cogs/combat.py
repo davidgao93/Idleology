@@ -101,8 +101,6 @@ class Combat(commands.Cog, name="combat"):
         # 2. Load Player
         player = await load_player(user_id, existing_user, self.bot.database)
         clean_stats = {
-            "attack": player.base_attack,
-            "defence": player.base_defence,
             "crit_chance": player.base_crit_chance,
         }
 

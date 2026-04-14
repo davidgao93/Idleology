@@ -115,8 +115,6 @@ class CombatView(ui.View):
         self.logs = initial_logs or {}
 
         self.clean_stats = clean_stats or {
-            "attack": player.base_attack,
-            "defence": player.base_defence,
             "crit_chance": player.base_crit_chance,
         }
 
@@ -389,8 +387,7 @@ class CombatView(ui.View):
                 self.current_phase_index += 1
                 next_phase_data = self.combat_phases[self.current_phase_index]
 
-                self.player.base_attack = self.clean_stats["attack"]
-                self.player.base_defence = self.clean_stats["defence"]
+                self.player.reset_combat_bonus()
                 self.player.base_crit_chance = self.clean_stats["crit_chance"]
 
                 # Reset transients (Ward resets to base gear value, temporary invuln clears)
@@ -1376,6 +1373,7 @@ class InfernalContractView(ui.View):
         self.player.base_defence = new_def
         self.player.max_hp = new_hp
         self.player.current_hp = min(self.player.current_hp, self.player.max_hp)
+        self.player.compute_flat_stats()  # Refresh flat cache with new base values
 
         # update_from_player_object does not write attack/defence/max_hp,
         # so we must persist those via modify_stat directly.

@@ -81,7 +81,7 @@ _MONSTER_STAT_EFFECTS: dict[str, callable] = {
     "Impenetrable": lambda p, m: setattr(
         p, "base_crit_chance", max(0, p.base_crit_chance - 5)
     ),
-    "Enfeeble": lambda p, m: setattr(p, "base_attack", int(p.base_attack * 0.9)),
+    "Enfeeble": lambda p, m: setattr(p, "bonus_atk", p.bonus_atk - int(p.flat_atk * 0.10)),
 }
 
 
@@ -124,8 +124,8 @@ def _cs_omnipotent(player, monster):
     if random.random() < 0.5:
         total_atk = player.get_total_attack()
         total_def = player.get_total_defence()
-        player.base_attack += total_atk
-        player.base_defence += total_def
+        player.bonus_atk += total_atk
+        player.bonus_def += total_def
         ward_added = _add_ward(player, player.max_hp, [], "Omnipotent")
         return (
             f"**Omnipotent** empowers you! "
@@ -141,8 +141,8 @@ def _cs_absorb(player, monster):
         total = monster.attack + monster.defence
         if total > 0:
             amount = max(1, int(total * 0.10))
-            player.base_attack += amount
-            player.base_defence += amount
+            player.bonus_atk += amount
+            player.bonus_def += amount
             return (
                 f"🌀 **Absorb ({player.equipped_accessory.passive_lvl})** activates! "
                 f"⚔️ +**{amount}** ATK, 🛡️ +**{amount}** DEF"
@@ -154,7 +154,7 @@ def _cs_juggernaut(player, monster):
     if lvl <= 0:
         return
     bonus = int(player.get_total_defence() * (lvl * 0.04))
-    player.base_attack += bonus
+    player.bonus_atk += bonus
     return f"**Juggernaut ({lvl})** empowers your strikes! ⚔️ +**{bonus}** ATK"
 
 
@@ -172,7 +172,7 @@ def _cs_gilded_hunger(player, monster):
         return
     bonus = int(player.equipped_weapon.rarity * 0.1)
     if bonus > 0:
-        player.base_attack += bonus
+        player.bonus_atk += bonus
         return f"🔥 **Gilded Hunger** devours rarity! ⚔️ +**{bonus}** ATK"
 
 
@@ -181,7 +181,7 @@ def _cs_diabolic_pact(player, monster):
     player.max_hp = max(1, player.max_hp - cost)
     if player.current_hp > player.max_hp:
         player.current_hp = player.max_hp
-    player.base_attack *= 2
+    player.atk_multiplier *= 2.0
     return f"🔥 **Diabolic Pact** sealed in blood! 💀 -{cost} HP → ⚔️ ATK doubled!"
 
 
@@ -277,7 +277,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
     if idx >= 0:
         pct = (idx + 1) * 0.08
         flat = int(player.get_total_defence() * pct)
-        player.base_defence += flat
+        player.bonus_def += flat
         weapon_parts.append(
             f"🛡️ **{name}**: defence boosted by **{flat}** ({int(pct * 100)}%)"
         )
@@ -1018,10 +1018,10 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
 
     # --- Void Aura drain (regardless of hit) ---
     if "Void Aura" in monster.modifiers:
-        drain_atk = max(1, int(player.base_attack * 0.05))
-        drain_def = max(0, int(player.base_defence * 0.05))
-        player.base_attack = max(1, player.base_attack - drain_atk)
-        player.base_defence = max(0, player.base_defence - drain_def)
+        drain_atk = max(1, int(player.flat_atk * 0.05))
+        drain_def = max(0, int(player.flat_def * 0.05))
+        player.bonus_atk -= drain_atk
+        player.bonus_def -= drain_def
         log.append(
             f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!"
         )

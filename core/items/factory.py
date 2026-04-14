@@ -301,7 +301,11 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     except Exception:
         player.potion_passives = []
         
-    # 3. Calculate Combat Initialization Stats (Optional but helpful)
+    # 3. Pre-compute flat stat cache (base + gear + essences + barracks).
+    # Must be done after all gear is attached and before any combat begins.
+    player.compute_flat_stats()
+
+    # 4. Calculate Combat Initialization Stats (Optional but helpful)
     # This pre-calculates the ward pool based on equipped gear percentages
     player.combat_ward = player.get_combat_ward_value()
 

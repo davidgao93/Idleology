@@ -377,8 +377,6 @@ def snapshot_clean_stats(player: Player) -> dict:
     Store this once at run start (and update max_hp if max_hp_boost boon is taken).
     """
     return {
-        "attack": player.base_attack,
-        "defence": player.base_defence,
         "crit_chance": player.base_crit_chance,
         "max_hp": player.max_hp,
         "rarity": player.base_rarity,
@@ -392,14 +390,11 @@ def restore_clean_stats(player: Player, clean_stats: dict) -> None:
     chapter's signature modifier doesn't compound into the next chapter.
     Stats and HP are otherwise permanent throughout the run.
     """
-    player.base_attack = clean_stats["attack"]
-    player.base_defence = clean_stats["defence"]
     player.base_crit_chance = clean_stats["crit_chance"]
     player.max_hp = clean_stats["max_hp"]
     player.base_rarity = clean_stats["rarity"]
     player.boon_fdr = 0  # re-applied immediately by apply_per_wave_boons
-    player.codex_atk_multiplier = 1.0
-    player.codex_def_multiplier = 1.0
+    player.reset_combat_bonus()  # zeros bonus_atk/def, resets atk/def_multiplier
 
 
 # ---------------------------------------------------------------------------
@@ -418,7 +413,7 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
     _ward_immune = player.get_helmet_corrupted_essence() == "aphrodite"
 
     if key == "weakened":
-        player.codex_atk_multiplier *= 0.70
+        player.atk_multiplier *= 0.70
 
     elif key == "decaying":
         player.max_hp = int(player.max_hp * 0.70)
@@ -429,54 +424,54 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
             player.combat_ward = 0
 
     elif key == "depleted":
-        player.codex_def_multiplier *= 0.60
+        player.def_multiplier *= 0.60
 
     elif key == "humbled":
-        player.codex_atk_multiplier *= 0.80
-        player.codex_def_multiplier *= 0.80
+        player.atk_multiplier *= 0.80
+        player.def_multiplier *= 0.80
 
     elif key == "unravelled":
         if not _ward_immune:
             player.combat_ward = 0
-        player.codex_def_multiplier *= 0.80
+        player.def_multiplier *= 0.80
 
     elif key == "blinded":
         player.base_crit_chance -= 40
 
     elif key == "scorched":
-        player.codex_def_multiplier *= 0.70
-        player.codex_atk_multiplier *= 0.80
+        player.def_multiplier *= 0.70
+        player.atk_multiplier *= 0.80
 
     elif key == "cursed":
         player.max_hp = int(player.max_hp * 0.60)
         player.current_hp = min(player.current_hp, player.max_hp)
 
     elif key == "frenzied":
-        player.codex_def_multiplier *= 0.70
+        player.def_multiplier *= 0.70
         player.base_crit_chance -= 30
 
     elif key == "abyss_taint":
-        player.codex_atk_multiplier *= 0.60
-        player.codex_def_multiplier *= 0.60
+        player.atk_multiplier *= 0.60
+        player.def_multiplier *= 0.60
 
     elif key == "broken":
         if not _ward_immune:
             player.combat_ward = 0
-        player.codex_def_multiplier *= 0.70
+        player.def_multiplier *= 0.70
 
     elif key == "absolute_zero":
-        player.codex_atk_multiplier *= 0.50
+        player.atk_multiplier *= 0.50
         player.base_crit_chance -= 40
 
     elif key == "convergence":
-        player.codex_atk_multiplier *= 0.70
-        player.codex_def_multiplier *= 0.70
+        player.atk_multiplier *= 0.70
+        player.def_multiplier *= 0.70
         if not _ward_immune:
             player.combat_ward = 0
 
     elif key == "erased":
-        player.codex_atk_multiplier *= 0.50
-        player.codex_def_multiplier *= 0.50
+        player.atk_multiplier *= 0.50
+        player.def_multiplier *= 0.50
 
 
 # ---------------------------------------------------------------------------
@@ -492,9 +487,9 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
     for boon in active_boons:
         t, v = boon.type, boon.value
         if t == "atk_boost":
-            player.codex_atk_multiplier *= (1 + v / 100)
+            player.atk_multiplier *= (1 + v / 100)
         elif t == "def_boost":
-            player.codex_def_multiplier *= (1 + v / 100)
+            player.def_multiplier *= (1 + v / 100)
         elif t == "crit_boost":
             player.base_crit_chance += int(v)
         elif t == "ward_boost":
@@ -503,9 +498,9 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
             player.base_rarity = int(player.base_rarity * (1 + v / 100))
             dt, dv = boon.downside_type, boon.downside_value
             if dt == "atk_penalty":
-                player.codex_atk_multiplier *= (1 - dv / 100)
+                player.atk_multiplier *= (1 - dv / 100)
             elif dt == "def_penalty":
-                player.codex_def_multiplier *= (1 - dv / 100)
+                player.def_multiplier *= (1 - dv / 100)
             elif dt == "crit_penalty":
                 player.base_crit_chance -= int(dv)
         elif t == "fdr_boost":
@@ -559,8 +554,9 @@ def apply_respite_boon(
             player.max_hp = new_max
             player.current_hp = min(player.current_hp, new_max)
         elif dt == "atk_def_penalty":
-            clean_stats["attack"] = int(clean_stats["attack"] * (1 - dv / 100))
-            clean_stats["defence"] = int(clean_stats["defence"] * (1 - dv / 100))
+            # Permanent penalty for this run — subtracted in get_total_attack/defence
+            player.run_atk_penalty += int(player.flat_atk * (dv / 100))
+            player.run_def_penalty += int(player.flat_def * (dv / 100))
         elif dt == "crit_penalty":
             clean_stats["crit_chance"] = clean_stats["crit_chance"] - int(dv)
         suffix = f" (Cost: {boon.downside_label})" if boon.downside_label else ""

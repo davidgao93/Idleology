@@ -213,24 +213,24 @@ class CodexRunView(ui.View):
         absorb, juggernaut, gilded_hunger, diabolic_pact, cursed_precision, Enfeeble,
         Impenetrable) don't compound across waves."""
         self.chapter_wave_baseline = {
-            "attack": self.player.base_attack,
-            "defence": self.player.base_defence,
             "crit_chance": self.player.base_crit_chance,
             "combat_ward": self.player.combat_ward,
-            "atk_multiplier": self.player.codex_atk_multiplier,
-            "def_multiplier": self.player.codex_def_multiplier,
+            "atk_multiplier": self.player.atk_multiplier,
+            "def_multiplier": self.player.def_multiplier,
         }
 
     def _restore_wave_baseline(self):
-        """Restore base stats to the post-setup snapshot before combat passives fire."""
+        """Reset per-combat bonuses and restore the post-setup snapshot before
+        combat passives fire.  base_attack/defence are never mutated so only
+        the bonus accumulator and multipliers need restoring."""
         if not self.chapter_wave_baseline:
             return
-        self.player.base_attack = self.chapter_wave_baseline["attack"]
-        self.player.base_defence = self.chapter_wave_baseline["defence"]
+        # Zero bonus_atk/def and reset multipliers, then re-apply from snapshot
+        self.player.reset_combat_bonus()
         self.player.base_crit_chance = self.chapter_wave_baseline["crit_chance"]
         self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
-        self.player.codex_atk_multiplier = self.chapter_wave_baseline.get("atk_multiplier", 1.0)
-        self.player.codex_def_multiplier = self.chapter_wave_baseline.get("def_multiplier", 1.0)
+        self.player.atk_multiplier = self.chapter_wave_baseline.get("atk_multiplier", 1.0)
+        self.player.def_multiplier = self.chapter_wave_baseline.get("def_multiplier", 1.0)
 
     def _projected_ward(self) -> int:
         """Ward the player will have at the start of the next wave.
@@ -1146,12 +1146,10 @@ class CodexMenuView(ui.View):
 
         # Snapshot post-setup stats before combat passives fire
         wave_baseline = {
-            "attack": self.player.base_attack,
-            "defence": self.player.base_defence,
             "crit_chance": self.player.base_crit_chance,
             "combat_ward": self.player.combat_ward,
-            "atk_multiplier": self.player.codex_atk_multiplier,
-            "def_multiplier": self.player.codex_def_multiplier,
+            "atk_multiplier": self.player.atk_multiplier,
+            "def_multiplier": self.player.def_multiplier,
         }
 
         monster = await _generate_codex_wave_monster(self.player, chapter, 1)

@@ -58,11 +58,9 @@ class Ascent(commands.Cog, name="ascent"):
         # 2. Init Player
         player = await load_player(user_id, existing_user, self.bot.database)
         
-        # [FIX] Snapshot clean base stats before any combat mods apply
+        # Snapshot crit chance (the only base stat mutated during combat)
         clean_stats = {
-            'attack': player.base_attack,
-            'defence': player.base_defence,
-            'crit_chance': player.base_crit_chance
+            'crit_chance': player.base_crit_chance,
         }
         
         # 3. Generate Stage 1

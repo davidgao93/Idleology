@@ -333,8 +333,6 @@ class UberAphroditeLobbyView(ui.View):
         monster = await generate_uber_aphrodite(self.player, monster)
         print(monster)
         clean_stats = {
-            "attack": self.player.base_attack,
-            "defence": self.player.base_defence,
             "crit_chance": self.player.base_crit_chance,
         }
 
@@ -497,8 +495,6 @@ class UberLuciferLobbyView(ui.View):
         monster = await generate_uber_lucifer(self.player, monster)
         print(monster)
         clean_stats = {
-            "attack": self.player.base_attack,
-            "defence": self.player.base_defence,
             "crit_chance": self.player.base_crit_chance,
         }
 
@@ -656,8 +652,6 @@ class UberNEETLobbyView(ui.View):
         monster = generate_uber_neet(self.player, monster)
         print(monster)
         clean_stats = {
-            "attack": self.player.base_attack,
-            "defence": self.player.base_defence,
             "crit_chance": self.player.base_crit_chance,
         }
 
@@ -819,8 +813,6 @@ class UberGeminiLobbyView(ui.View):
         monster = generate_uber_gemini(self.player, monster)
         print(monster)
         clean_stats = {
-            "attack": self.player.base_attack,
-            "defence": self.player.base_defence,
             "crit_chance": self.player.base_crit_chance,
         }
 

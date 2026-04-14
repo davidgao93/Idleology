@@ -316,10 +316,39 @@ class Player:
     # Codex run transients (reset per wave)
     boon_fdr: int = 0
 
-    # Codex run stat multipliers — applied at the end of get_total_attack/defence.
-    # Set by apply_signature_modifier and apply_per_wave_boons; reset by restore_clean_stats.
-    codex_atk_multiplier: float = 1.0
-    codex_def_multiplier: float = 1.0
+    # -----------------------------------------------------------------------
+    # Flat stat cache  (immutable during combat)
+    # Computed once by compute_flat_stats() at load time and after any
+    # permanent stat change (level-up, gear swap mid-session).
+    # Stores: base + all gear + essences + barracks.
+    # -----------------------------------------------------------------------
+    flat_atk: int = 0
+    flat_def: int = 0
+
+    # -----------------------------------------------------------------------
+    # Per-combat bonus accumulator  (reset each combat / wave)
+    # Zeroed by reset_combat_bonus().  All combat-start passives (juggernaut,
+    # omnipotent, absorb, gilded_hunger, Void Aura drain, etc.) write here
+    # instead of mutating base_attack / base_defence.
+    # -----------------------------------------------------------------------
+    bonus_atk: int = 0
+    bonus_def: int = 0
+
+    # -----------------------------------------------------------------------
+    # Unified stat multiplier  (reset each combat / wave)
+    # Applied as  (flat + bonus) × multiplier  at the end of get_total_*.
+    # Covers codex signatures/boons AND strong combat passives (diabolic_pact).
+    # Reset to 1.0 by reset_combat_bonus().
+    # -----------------------------------------------------------------------
+    atk_multiplier: float = 1.0
+    def_multiplier: float = 1.0
+
+    # -----------------------------------------------------------------------
+    # Codex run permanent penalties  (NOT reset by reset_combat_bonus)
+    # Accumulated by fragment_boost downsides; zero for a fresh run.
+    # -----------------------------------------------------------------------
+    run_atk_penalty: int = 0
+    run_def_penalty: int = 0
 
     @property
     def rarity(self) -> int:
@@ -391,46 +420,85 @@ class Player:
             total += int(total * (self.barracks_workers * 0.0001))
         return total
 
-    # Methods to calculate total states
-    def get_total_attack(self) -> int:
-        flat = self._get_flat_attack()
-        total = flat
+    # -----------------------------------------------------------------------
+    # Flat-stat cache management
+    # -----------------------------------------------------------------------
 
-        # Companions: % of flat total (gear-inclusive)
+    def compute_flat_stats(self) -> None:
+        """
+        Stores flat_atk and flat_def (base + gear + essences + barracks).
+        Call after load_player() and after any permanent base-stat change
+        (level-up, gear swap).  get_total_attack/defence read these cached
+        values, so this must be called before combat begins.
+        """
+        self.flat_atk = self._get_flat_attack()
+        self.flat_def = self._get_flat_defence()
+
+    def reset_combat_bonus(self) -> None:
+        """
+        Zeros per-combat bonus stats and resets the stat multipliers to 1.0.
+        Call at the start of every combat or wave to prevent passive effects
+        from compounding across fights.  Does NOT touch run_atk/def_penalty
+        (those are permanent within a codex run).
+        """
+        self.bonus_atk = 0
+        self.bonus_def = 0
+        self.atk_multiplier = 1.0
+        self.def_multiplier = 1.0
+
+    # -----------------------------------------------------------------------
+    # Total stat calculations
+    # -----------------------------------------------------------------------
+
+    def get_total_attack(self) -> int:
+        flat = self.flat_atk  # pre-computed; immutable during combat
+
+        # Layer 1: flat gear total + per-combat bonus accumulator
+        total = flat + self.bonus_atk
+
+        # Layer 2: always-on percentage bonuses (scale off flat, not base)
         comp_pct = self._get_companion_bonus("atk")
         if comp_pct > 0:
             total += int(flat * (comp_pct / 100))
 
-        # Wrath tome: converts % of flat total DEF into bonus ATK
+        # Wrath tome: converts % of flat DEF into bonus ATK
         wrath_pct = self.get_tome_bonus("wrath")
         if wrath_pct > 0:
-            total += int(self._get_flat_defence() * (wrath_pct / 100))
+            total += int(self.flat_def * (wrath_pct / 100))
 
-        # Codex run multiplier (signature debuffs + per-wave boons combined)
-        if self.codex_atk_multiplier != 1.0:
-            total = int(total * self.codex_atk_multiplier)
+        # Layer 3: permanent run penalty (fragment_boost downside in codex runs)
+        total -= self.run_atk_penalty
 
-        return total
+        # Layer 4: unified multiplier (codex signature/boon + diabolic_pact, etc.)
+        if self.atk_multiplier != 1.0:
+            total = int(total * self.atk_multiplier)
+
+        return max(0, total)
 
     def get_total_defence(self) -> int:
-        flat = self._get_flat_defence()
-        total = flat
+        flat = self.flat_def  # pre-computed; immutable during combat
 
-        # Companions: % of flat total (gear-inclusive)
+        # Layer 1: flat gear total + per-combat bonus accumulator
+        total = flat + self.bonus_def
+
+        # Layer 2: always-on percentage bonuses
         comp_pct = self._get_companion_bonus("def")
         if comp_pct > 0:
             total += int(flat * (comp_pct / 100))
 
-        # Bastion tome: converts % of flat total ATK into bonus DEF
+        # Bastion tome: converts % of flat ATK into bonus DEF
         bastion_pct = self.get_tome_bonus("bastion")
         if bastion_pct > 0:
-            total += int(self._get_flat_attack() * (bastion_pct / 100))
+            total += int(self.flat_atk * (bastion_pct / 100))
 
-        # Codex run multiplier (signature debuffs + per-wave boons combined)
-        if self.codex_def_multiplier != 1.0:
-            total = int(total * self.codex_def_multiplier)
+        # Layer 3: permanent run penalty
+        total -= self.run_def_penalty
 
-        return total
+        # Layer 4: unified multiplier
+        if self.def_multiplier != 1.0:
+            total = int(total * self.def_multiplier)
+
+        return max(0, total)
 
     def get_total_pdr(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus

@@ -169,10 +169,9 @@ class AscentView(ui.View):
             self.bot, self.user_id, self.player, xp_gain
         )
 
-        # Keep clean_stats in sync so next_stage doesn't revert level-up gains
+        # Recompute flat stats after level-up so the new base values are reflected
         if exp_changes["levels_gained"]:
-            self.clean_stats["attack"] = self.player.base_attack
-            self.clean_stats["defence"] = self.player.base_defence
+            self.player.compute_flat_stats()
 
         self.cumulative_xp += exp_changes["xp_added"]
         self.cumulative_gold += gold_gain
@@ -230,9 +229,8 @@ class AscentView(ui.View):
     async def next_stage(self, interaction, message):
         self.stage += 1
 
-        # [FIX] Reset transient player stats from clean snapshot
-        self.player.base_attack = self.clean_stats["attack"]
-        self.player.base_defence = self.clean_stats["defence"]
+        # Reset per-combat bonus accumulator and restore crit chance
+        self.player.reset_combat_bonus()
         self.player.base_crit_chance = self.clean_stats["crit_chance"]
 
         self.player.combat_ward = self.player.get_combat_ward_value()
