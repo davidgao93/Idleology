@@ -217,7 +217,7 @@ class General(commands.Cog, name="general"):
                 "**Inverted Edge**: At combat start, swap weapon Attack and Defence.\n"
                 "**Gilded Hunger**: Gain Attack equal to 10% of weapon rarity.\n"
                 "**Cursed Precision**: +20% Crit Chance. Your critical damage is unlucky.\n"
-                "**Diabolic Pact**: At combat start, lose 50% maximum HP and double your base Attack.\n"
+                "**Diabolic Pact**: At combat start, lose 90% maximum HP and double your Attack.\n"
                 "**Perdition**: Missed attacks deal 75% weapon Attack.\n"
                 "**Voracious**: Each non-crit hit adds a stack; each stack reduces crit threshold by 5. Stacks reset on crit.\n"
                 "**Last Rites**: Critical hits deal an additional 10% of the enemy's current HP."

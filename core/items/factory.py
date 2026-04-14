@@ -243,13 +243,7 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     a_tier, a_workers = await database.settlement.get_building_details(user_id, server_id, "apothecary")
     
     player.apothecary_workers = a_workers
-
-    if b_workers > 0:
-        atk_bonus = int(player.base_attack * (b_workers * 0.0001))
-        def_bonus = int(player.base_defence * (b_workers * 0.0001))
-        
-        player.base_attack += atk_bonus
-        player.base_defence += def_bonus
+    player.barracks_workers = b_workers
 
     
     # 2. Fetch and Attach Gear

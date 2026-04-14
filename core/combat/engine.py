@@ -177,7 +177,7 @@ def _cs_gilded_hunger(player, monster):
 
 
 def _cs_diabolic_pact(player, monster):
-    cost = int(player.max_hp * 0.5)
+    cost = int(player.max_hp * 0.9)
     player.max_hp = max(1, player.max_hp - cost)
     if player.current_hp > player.max_hp:
         player.current_hp = player.max_hp

@@ -267,6 +267,7 @@ class Player:
 
     # Settlement buffs
     apothecary_workers: int = 0
+    barracks_workers: int = 0
 
     # Slayer
     slayer_emblem: dict = field(default_factory=dict)
@@ -315,6 +316,11 @@ class Player:
     # Codex run transients (reset per wave)
     boon_fdr: int = 0
 
+    # Codex run stat multipliers — applied at the end of get_total_attack/defence.
+    # Set by apply_signature_modifier and apply_per_wave_boons; reset by restore_clean_stats.
+    codex_atk_multiplier: float = 1.0
+    codex_def_multiplier: float = 1.0
+
     @property
     def rarity(self) -> int:
         """Calculates total effective rarity from base stats and equipped gear."""
@@ -336,8 +342,14 @@ class Player:
         )
         return primary + balanced
 
-    # Methods to calculate total states
-    def get_total_attack(self) -> int:
+    # -----------------------------------------------------------------------
+    # Flat-total helpers (base + gear + essences + barracks, no % multipliers)
+    # These are the correct multiplicand for all percentage-based bonuses
+    # (companions, codex tomes, codex run multipliers) so that those bonuses
+    # scale with equipped gear rather than only with the small base stat.
+    # -----------------------------------------------------------------------
+
+    def _get_flat_attack(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
         total = self.base_attack
         if self.equipped_weapon:
@@ -348,23 +360,16 @@ class Player:
             total += self.equipped_glove.attack
         if self.equipped_boot:
             total += self.equipped_boot.attack
-
-        comp_pct = self._get_companion_bonus("atk")
-        if comp_pct > 0:
-            total += int(self.base_attack * (comp_pct / 100))
-
-        # Wrath tome: converts a % of base DEF into bonus ATK
-        wrath_pct = self.get_tome_bonus("wrath")
-        if wrath_pct > 0:
-            total += int(self.base_defence * (wrath_pct / 100))
-
-        # Essence bonuses (glove + boot only — helmets have no attack)
+        # Essence flat bonuses (glove + boot only — helmets have no attack)
         for item in (self.equipped_glove, self.equipped_boot):
             if item:
                 total += compute_essence_stat_bonus(item).get("attack", 0)
+        # Barracks: % of total gear-augmented attack
+        if self.barracks_workers > 0:
+            total += int(total * (self.barracks_workers * 0.0001))
         return total
 
-    def get_total_defence(self) -> int:
+    def _get_flat_defence(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
         total = self.base_defence
         if self.equipped_weapon:
@@ -377,20 +382,54 @@ class Player:
             total += self.equipped_boot.defence
         if self.equipped_helmet:
             total += self.equipped_helmet.defence
-
-        comp_pct = self._get_companion_bonus("def")
-        if comp_pct > 0:
-            total += int(self.base_defence * (comp_pct / 100))
-
-        # Bastion tome: converts a % of base ATK into bonus DEF
-        bastion_pct = self.get_tome_bonus("bastion")
-        if bastion_pct > 0:
-            total += int(self.base_attack * (bastion_pct / 100))
-
-        # Essence bonuses
+        # Essence flat bonuses
         for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
             if item:
                 total += compute_essence_stat_bonus(item).get("defence", 0)
+        # Barracks: % of total gear-augmented defence
+        if self.barracks_workers > 0:
+            total += int(total * (self.barracks_workers * 0.0001))
+        return total
+
+    # Methods to calculate total states
+    def get_total_attack(self) -> int:
+        flat = self._get_flat_attack()
+        total = flat
+
+        # Companions: % of flat total (gear-inclusive)
+        comp_pct = self._get_companion_bonus("atk")
+        if comp_pct > 0:
+            total += int(flat * (comp_pct / 100))
+
+        # Wrath tome: converts % of flat total DEF into bonus ATK
+        wrath_pct = self.get_tome_bonus("wrath")
+        if wrath_pct > 0:
+            total += int(self._get_flat_defence() * (wrath_pct / 100))
+
+        # Codex run multiplier (signature debuffs + per-wave boons combined)
+        if self.codex_atk_multiplier != 1.0:
+            total = int(total * self.codex_atk_multiplier)
+
+        return total
+
+    def get_total_defence(self) -> int:
+        flat = self._get_flat_defence()
+        total = flat
+
+        # Companions: % of flat total (gear-inclusive)
+        comp_pct = self._get_companion_bonus("def")
+        if comp_pct > 0:
+            total += int(flat * (comp_pct / 100))
+
+        # Bastion tome: converts % of flat total ATK into bonus DEF
+        bastion_pct = self.get_tome_bonus("bastion")
+        if bastion_pct > 0:
+            total += int(self._get_flat_attack() * (bastion_pct / 100))
+
+        # Codex run multiplier (signature debuffs + per-wave boons combined)
+        if self.codex_def_multiplier != 1.0:
+            total = int(total * self.codex_def_multiplier)
+
         return total
 
     def get_total_pdr(self) -> int:

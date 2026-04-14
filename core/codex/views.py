@@ -217,6 +217,8 @@ class CodexRunView(ui.View):
             "defence": self.player.base_defence,
             "crit_chance": self.player.base_crit_chance,
             "combat_ward": self.player.combat_ward,
+            "atk_multiplier": self.player.codex_atk_multiplier,
+            "def_multiplier": self.player.codex_def_multiplier,
         }
 
     def _restore_wave_baseline(self):
@@ -227,6 +229,8 @@ class CodexRunView(ui.View):
         self.player.base_defence = self.chapter_wave_baseline["defence"]
         self.player.base_crit_chance = self.chapter_wave_baseline["crit_chance"]
         self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
+        self.player.codex_atk_multiplier = self.chapter_wave_baseline.get("atk_multiplier", 1.0)
+        self.player.codex_def_multiplier = self.chapter_wave_baseline.get("def_multiplier", 1.0)
 
     def _projected_ward(self) -> int:
         """Ward the player will have at the start of the next wave.
@@ -1146,6 +1150,8 @@ class CodexMenuView(ui.View):
             "defence": self.player.base_defence,
             "crit_chance": self.player.base_crit_chance,
             "combat_ward": self.player.combat_ward,
+            "atk_multiplier": self.player.codex_atk_multiplier,
+            "def_multiplier": self.player.codex_def_multiplier,
         }
 
         monster = await _generate_codex_wave_monster(self.player, chapter, 1)
