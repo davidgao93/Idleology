@@ -286,7 +286,7 @@ class General(commands.Cog, name="general"):
                 "**Unlimited Wealth**: 20% chance to multiply Player Rarity by 5x (2x vs Bosses).\n"
                 "**Everlasting Blessing**: 10% chance on victory to trigger Ideology Propagation.\n\n"
                 "**🌌 Celestial Passives (Engram):**\n"
-                "**Celestial Ghostreaver**: Generate 50-150 Ward every turn.\n"
+                "**Celestial Ghostreaver**: Generate 50-200 Ward every turn.\n"
                 "**Celestial Glancing Blows**: Doubles Block Chance, Blocked hits deal 50% damage.\n"
                 "**Celestial Wind Dancer**: Triples Evasion Chance, but entirely disables your Helmet.\n"
                 "**Celestial Sanctity**: Enemies roll their final damage twice and apply the lower result.\n"

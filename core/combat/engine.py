@@ -81,7 +81,9 @@ _MONSTER_STAT_EFFECTS: dict[str, callable] = {
     "Impenetrable": lambda p, m: setattr(
         p, "base_crit_chance", max(0, p.base_crit_chance - 5)
     ),
-    "Enfeeble": lambda p, m: setattr(p, "bonus_atk", p.bonus_atk - int(p.flat_atk * 0.10)),
+    "Enfeeble": lambda p, m: setattr(
+        p, "bonus_atk", p.bonus_atk - int(p.flat_atk * 0.10)
+    ),
 }
 
 
@@ -117,7 +119,9 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
 def _cs_invulnerable(player, monster):
     if random.random() < 0.2:
         player.is_invulnerable_this_combat = True
-        return f"**Invulnerable** armor activates! {player.name} receives divine protection."
+        return (
+            f"**🛡️ Invulnerable** activates! {player.name} receives divine protection."
+        )
 
 
 def _cs_omnipotent(player, monster):
@@ -127,10 +131,7 @@ def _cs_omnipotent(player, monster):
         player.bonus_atk += total_atk
         player.bonus_def += total_def
         ward_added = _add_ward(player, player.max_hp, [], "Omnipotent")
-        return (
-            f"**Omnipotent** empowers you! "
-            f"⚔️ +**{total_atk}** ATK, 🛡️ +**{total_def}** DEF, 🔮 +**{ward_added}** Ward"
-        )
+        return f"**🛡️ Omnipotent** increases your ⚔️ +**{total_atk}** ATK, 🛡️ +**{total_def}** DEF, and 🔮 +**{ward_added}** Ward."
 
 
 def _cs_absorb(player, monster):
@@ -143,10 +144,7 @@ def _cs_absorb(player, monster):
             amount = max(1, int(total * 0.10))
             player.bonus_atk += amount
             player.bonus_def += amount
-            return (
-                f"🌀 **Absorb ({player.equipped_accessory.passive_lvl})** activates! "
-                f"⚔️ +**{amount}** ATK, 🛡️ +**{amount}** DEF"
-            )
+            return f"🌀 **Absorb** increases your ⚔️/🛡️ by +**{amount}**."
 
 
 def _cs_juggernaut(player, monster):
@@ -155,7 +153,7 @@ def _cs_juggernaut(player, monster):
         return
     bonus = int(player.get_total_defence() * (lvl * 0.04))
     player.bonus_atk += bonus
-    return f"**Juggernaut ({lvl})** empowers your strikes! ⚔️ +**{bonus}** ATK"
+    return f"**🪖 Juggernaut** empowers your strikes! ⚔️ +**{bonus}** ATK"
 
 
 def _cs_inverted_edge(player, monster):
