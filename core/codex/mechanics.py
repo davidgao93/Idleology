@@ -198,14 +198,14 @@ _BOON_DEFINITIONS = [
     (
         "atk_boost",
         "+{v:.0f}% ATK",
-        "+{v:.0f}% base ATK for remaining waves",
+        "+{v:.0f}% ATK this run",
         25,
         (12.0, 22.0),
     ),
     (
         "def_boost",
         "+{v:.0f}% DEF",
-        "+{v:.0f}% base DEF for remaining waves",
+        "+{v:.0f}% DEF this run",
         25,
         (12.0, 22.0),
     ),
@@ -219,28 +219,28 @@ _BOON_DEFINITIONS = [
     (
         "crit_boost",
         "+{v:.0f}% crit",
-        "Crit increased by {v:.0f} for remaining waves",
+        "Crit Chance +{v:.0f} this run",
         20,
         (3.0, 8.0),
     ),
     (
         "fdr_boost",
         "+{v:.0f} FDR",
-        "+{v:.0f} flat damage reduction per wave",
+        "+{v:.0f} FDR this run",
         15,
         (2.0, 8.0),
     ),
     (
         "ward_boost",
         "+{v:.0f}% Ward",
-        "+{v:.0f}% of max HP added as ward per wave",
+        "+{v:.0f}% Max HP as ward this run",
         15,
         (8.0, 18.0),
     ),
     (
         "rarity_boost",
         "+{v:.0f}% Rarity",
-        "+{v:.0f}% base rarity for remaining waves",
+        "+{v:.0f}% Rarity this run",
         12,
         (15.0, 35.0),
     ),
@@ -275,7 +275,7 @@ _BOON_DEFINITIONS = [
     (
         "page_drop",
         "Guaranteed Page",
-        "Guarantees a Codex Page drops from the next chapter clear",
+        "Guarantees a Codex Page upon completing the full run",
         2,
         None,
     ),
@@ -293,9 +293,9 @@ def select_run_chapters(count: int = 5) -> list[CodexChapter]:
 
 
 _RARITY_BOOST_DOWNSIDES = [
-    ("atk_penalty", lambda v: round(v * 0.5), "-{:.0f}% ATK per wave"),
-    ("def_penalty", lambda v: round(v * 0.5), "-{:.0f}% DEF per wave"),
-    ("crit_penalty", lambda v: round(v * 0.7), "-{:.0f}% Crit Chance per wave"),
+    ("atk_penalty", lambda v: round(v * 0.5), "-{:.0f}% ATK"),
+    ("def_penalty", lambda v: round(v * 0.5), "-{:.0f}% DEF"),
+    ("crit_penalty", lambda v: round(v * 0.7), "-{:.0f}% Crit"),
 ]
 
 _FRAGMENT_BOOST_DOWNSIDES = [
@@ -555,7 +555,7 @@ def apply_respite_boon(
         run_state["fragment_multiplier"] = (
             run_state.get("fragment_multiplier", 1.0) * 0.20
         )
-        return "The next chapter clear is **guaranteed** to drop a Codex Page (−80% Fragments this run)"
+        return "A Codex Page is **guaranteed** upon completing the full run (−80% Fragments this run)"
 
     # --- Per-wave boon: store and apply immediately for current wave ---
     active_boons.append(boon)

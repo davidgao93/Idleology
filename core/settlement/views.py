@@ -241,13 +241,13 @@ class BlackMarketView(ui.View):
 
         # 2. Consume Resources
         changes = {
-            "gold": -costs["gold"],
             "timber": -costs["timber"],
             "stone": -costs["stone"],
         }
         await self.bot.database.settlement.commit_production(
             self.user_id, self.parent.server_id, changes
         )
+        await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
 
         # 3. Update DB
         await self.bot.database.connection.execute(
@@ -762,13 +762,13 @@ class TownHallView(ui.View):
 
         # 3. Consume Resources
         changes = {
-            "gold": -costs["gold"],
             "timber": -costs["timber"],
             "stone": -costs["stone"],
         }
         await self.bot.database.settlement.commit_production(
             self.user_id, self.parent.server_id, changes
         )
+        await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
 
         # 4. Update DB (Settlements Table)
         await self.bot.database.connection.execute(
@@ -1351,13 +1351,13 @@ class BuildConstructionView(ui.View):
 
         # Deduct
         changes = {
-            "gold": -cost.get("gold", 0),
             "timber": -cost.get("timber", 0),
             "stone": -cost.get("stone", 0),
         }
         await self.bot.database.settlement.commit_production(
             self.user_id, self.parent.server_id, changes
         )
+        await self.bot.database.users.modify_gold(self.user_id, -cost.get("gold", 0))
 
         # Build
         await self.bot.database.settlement.build_structure(
@@ -1760,13 +1760,13 @@ class BuildingDetailView(ui.View):
 
         # Deduct
         changes = {
-            "gold": -costs["gold"],
             "timber": -costs["timber"],
             "stone": -costs["stone"],
         }
         await self.bot.database.settlement.commit_production(
             self.user_id, self.parent.server_id, changes
         )
+        await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
 
         # Upgrade DB
         await self.bot.database.connection.execute(

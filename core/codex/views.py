@@ -236,6 +236,70 @@ class CodexRunView(ui.View):
         """
         return self.chapter_wave_baseline.get("combat_ward", self.player.combat_ward)
 
+    def _run_modifiers_text(self) -> str:
+        """Compact summary of all active run-level stat modifiers from boons and their downsides."""
+        p = self.player
+        parts = []
+
+        # Per-wave boon bonuses
+        atk_boost  = sum(b.value for b in self.active_boons if b.type == "atk_boost")
+        def_boost  = sum(b.value for b in self.active_boons if b.type == "def_boost")
+        crit_boost = sum(int(b.value) for b in self.active_boons if b.type == "crit_boost")
+        fdr_boost  = sum(int(b.value) for b in self.active_boons if b.type == "fdr_boost")
+        ward_boost = sum(b.value for b in self.active_boons if b.type == "ward_boost")
+        rarity_boost = sum(b.value for b in self.active_boons if b.type == "rarity_boost")
+
+        # Per-wave downside penalties attached to rarity_boost boons
+        atk_pen_pct  = sum(b.downside_value for b in self.active_boons if b.downside_type == "atk_penalty")
+        def_pen_pct  = sum(b.downside_value for b in self.active_boons if b.downside_type == "def_penalty")
+        crit_pen_pw  = sum(int(b.downside_value) for b in self.active_boons if b.downside_type == "crit_penalty")
+
+        # Net ATK %
+        if atk_boost or atk_pen_pct:
+            net = atk_boost - atk_pen_pct
+            parts.append(f"ATK {'+' if net >= 0 else ''}{net:.0f}%")
+        # Permanent flat ATK penalty (fragment_boost downside)
+        if p.run_atk_penalty:
+            parts.append(f"ATK −{p.run_atk_penalty}")
+
+        # Net DEF %
+        if def_boost or def_pen_pct:
+            net = def_boost - def_pen_pct
+            parts.append(f"DEF {'+' if net >= 0 else ''}{net:.0f}%")
+        if p.run_def_penalty:
+            parts.append(f"DEF −{p.run_def_penalty}")
+
+        # Net Crit (per-wave penalties + permanent run penalty)
+        total_crit_pen = crit_pen_pw + p.run_crit_penalty
+        if crit_boost or total_crit_pen:
+            net = crit_boost - total_crit_pen
+            parts.append(f"Crit {'+' if net >= 0 else ''}{net}")
+
+        if fdr_boost:
+            parts.append(f"FDR +{fdr_boost}")
+        if ward_boost:
+            parts.append(f"Ward +{ward_boost:.0f}%")
+        if rarity_boost:
+            parts.append(f"Rarity +{rarity_boost:.0f}%")
+
+        # Fragment multiplier (fragment_boost boons and page_drop penalty)
+        frag_mult = self.run_state.get("fragment_multiplier", 1.0)
+        frag_pct = round((frag_mult - 1.0) * 100)
+        if frag_pct:
+            parts.append(f"Fragments {'+' if frag_pct >= 0 else ''}{frag_pct}%")
+
+        # Permanent max HP change (max_hp_boost and fragment_boost hp_penalty)
+        if p.run_max_hp_bonus:
+            parts.append(f"Max HP {'+' if p.run_max_hp_bonus >= 0 else ''}{p.run_max_hp_bonus:,}")
+
+        # One-shot flags still pending
+        if self.run_state.get("guaranteed_page_next"):
+            parts.append("📄 Page Guaranteed")
+        if self.run_state.get("sig_nullify_next"):
+            parts.append("⚡ Sig Nullified")
+
+        return " · ".join(parts) if parts else "None"
+
     def _respite_embed(
         self, boons: list[CodexBoon], reroll_available: bool = False
     ) -> discord.Embed:
@@ -272,7 +336,7 @@ class CodexRunView(ui.View):
             description=(
                 f"A moment of stillness between the waves.\n\n"
                 f"{stats_block}\n\n"
-                f"Choose one boon for the remaining waves:{reroll_hint}"
+                f"Choose a boon:{reroll_hint}"
             ),
             color=discord.Color.teal(),
         )
@@ -282,14 +346,11 @@ class CodexRunView(ui.View):
             if boon.downside_label:
                 field_name += f"  ⚠️ {boon.downside_label}"
             embed.add_field(name=field_name, value=boon.description, inline=False)
-        if self.active_boons:
-            boon_parts = []
-            for b in self.active_boons:
-                entry = b.label
-                if b.downside_label:
-                    entry += f" (⚠️ {b.downside_label})"
-                boon_parts.append(entry)
-            embed.set_footer(text=f"Active boons: {', '.join(boon_parts)}")
+        embed.add_field(
+            name="📊 Run Modifiers",
+            value=self._run_modifiers_text(),
+            inline=False,
+        )
         return embed
 
     def _chapter_clear_embed(
@@ -510,10 +571,8 @@ class CodexRunView(ui.View):
         )
         self.chapters_cleared += 1
 
-        # Page drop (5%, or guaranteed if page_drop boon was taken)
-        page_dropped = (
-            self.run_state.pop("guaranteed_page_next", False) or random.random() < 0.05
-        )
+        # Page drop (5% chance per chapter clear)
+        page_dropped = random.random() < 0.05
         if page_dropped:
             await self.bot.database.users.modify_currency(
                 self.user_id, "codex_pages", 1
@@ -560,6 +619,13 @@ class CodexRunView(ui.View):
         await self.bot.database.users.modify_currency(
             self.user_id, "codex_fragments", fragments
         )
+
+        # Guaranteed page boon: awarded only on full run completion
+        if self.run_state.pop("guaranteed_page_next", False):
+            await self.bot.database.users.modify_currency(
+                self.user_id, "codex_pages", 1
+            )
+            self.page_drops.append(-1)  # sentinel: full-run page drop
 
         await self.bot.database.users.modify_gold(self.user_id, self.cumulative_gold)
 

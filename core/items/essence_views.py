@@ -71,7 +71,13 @@ def _format_slot_value(essence_type: str, value: float, item) -> str:
         if is_helmet:
             def_bonus = int(item.defence * value / 100)
             ward_bonus = int(item.ward * value / 100)
-            return f"+{def_bonus} DEF, +{ward_bonus}% WARD  ({value:.0f}% of base)"
+            stat_parts = []
+            if def_bonus > 0:
+                stat_parts.append(f"+{def_bonus} DEF")
+            if ward_bonus > 0:
+                stat_parts.append(f"+{ward_bonus}% WARD")
+            stats = ", ".join(stat_parts) if stat_parts else "+0"
+            return f"{stats}  ({value:.0f}% of base)"
         else:
             atk_bonus = int(item.attack * value / 100)
             return f"+{atk_bonus} ATK  ({value:.0f}% of base)"
@@ -79,7 +85,13 @@ def _format_slot_value(essence_type: str, value: float, item) -> str:
     elif essence_type == "protection":
         pdr_bonus = int(item.pdr * value / 100)
         fdr_bonus = int(item.fdr * value / 100)
-        return f"+{pdr_bonus}% PDR, +{fdr_bonus} FDR  ({value:.0f}% of base)"
+        stat_parts = []
+        if pdr_bonus > 0:
+            stat_parts.append(f"+{pdr_bonus}% PDR")
+        if fdr_bonus > 0:
+            stat_parts.append(f"+{fdr_bonus} FDR")
+        stats = ", ".join(stat_parts) if stat_parts else "+0"
+        return f"{stats}  ({value:.0f}% of base)"
 
     elif essence_type == "insight":
         return f"+{int(value)}% Crit Chance"
