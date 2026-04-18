@@ -907,10 +907,10 @@ class CodexTomsView(ui.View):
                 reroll_val_btn.callback = self._on_reroll_value
                 self.add_item(reroll_val_btn)
 
-                # Reroll type (costs reroll token)
-                can_reroll_type = self.rerolls > 0
+                # Reroll type (costs 1 codex page)
+                can_reroll_type = self.pages > 0
                 reroll_type_btn = ui.Button(
-                    label=f"Reroll Type ({self.rerolls}🔁 + 10m💰)",
+                    label=f"Reroll Type (1📄 + 10m💰)",
                     style=ButtonStyle.danger,
                     disabled=not can_reroll_type,
                     row=2,
@@ -1060,9 +1060,9 @@ class CodexTomsView(ui.View):
 
     async def _on_reroll_type(self, interaction: Interaction):
         await interaction.response.defer()
-        if self.rerolls <= 0:
+        if self.pages <= 0:
             await interaction.followup.send(
-                "No Reroll Tokens available.", ephemeral=True
+                "No Codex Pages available.", ephemeral=True
             )
             return
         gold = await self.bot.database.users.get_gold(self.user_id)
@@ -1076,10 +1076,10 @@ class CodexTomsView(ui.View):
         )
         if ok:
             await self.bot.database.users.modify_currency(
-                self.user_id, "codex_rerolls", -1
+                self.user_id, "codex_pages", -1
             )
             await self.bot.database.users.modify_gold(self.user_id, -10_000_000)
-            self.rerolls -= 1
+            self.pages -= 1
             self.player.codex_tomes = await self.bot.database.codex.get_tomes(
                 self.user_id
             )
@@ -1140,7 +1140,7 @@ class CodexMenuView(ui.View):
         )
         embed.add_field(
             name="Resources",
-            value=f"🔷 {self.fragments} Fragments  |  📄 {self.pages} Pages  |  🔁 {self.rerolls} Rerolls",
+            value=f"🔷 {self.fragments} Fragments  |  📄 {self.pages} Pages",
             inline=False,
         )
         total_clears = sum(v["clears"] for v in self.chapter_history.values())

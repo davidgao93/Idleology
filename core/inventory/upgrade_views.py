@@ -1956,7 +1956,7 @@ class BalancedEngramView(BaseUpgradeView):
         )
 
         new_type, new_tier = CompanionMechanics.roll_balanced_passive(
-            self.comp.passive_type, self.comp.passive_tier
+            self.comp.passive_type, self.comp.passive_tier, self.comp.balanced_passive
         )
 
         await self.bot.database.companions.update_balanced_passive(

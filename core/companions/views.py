@@ -48,17 +48,17 @@ class RerollConfirmView(ui.View):
         # 5. Return to Detail View
         embed = self.origin_view.get_embed()
         embed.color = discord.Color.green()
-        
-        msg = f"🎲 **Reroll Complete!**\nPrevious: T{old_tier} {old_type.upper()}\n**New:** T{new_tier} **{new_type.upper()}**"
+        result = f"🎲 **Reroll Complete!**\nPrevious: T{old_tier} {old_type.upper()}\n**New:** T{new_tier} **{new_type.upper()}**"
         if upgraded:
-            msg += "\n🌟 **TIER UPGRADE!**"
-            
-        await interaction.edit_original_response(content=msg, embed=embed, view=self.origin_view)
+            result += "\n🌟 **TIER UPGRADE!**"
+        embed.description = (embed.description or "") + f"\n\n{result}"
+
+        await interaction.edit_original_response(content=None, embed=embed, view=self.origin_view)
         self.stop()
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary)
     async def cancel(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.edit_message(content="Reroll cancelled.", embed=self.origin_view.get_embed(), view=self.origin_view)
+        await interaction.response.edit_message(content=None, embed=self.origin_view.get_embed(), view=self.origin_view)
         self.stop()
 
 
