@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from core.tavern.views import ShopView, RestView, CasinoMenuView
 from core.tavern.mechanics import TavernMechanics
+from core.items.factory import load_player
 
 class Tavern(commands.Cog, name="tavern"):
     def __init__(self, bot) -> None:
@@ -62,7 +63,9 @@ class Tavern(commands.Cog, name="tavern"):
         if not await self.bot.check_user_registered(interaction, user): return
         if not await self.bot.check_is_active(interaction, user_id): return
 
-        current_hp, max_hp = user[11], user[12]
+        player = await load_player(user_id, user, self.bot.database)
+        current_hp = user[11]
+        max_hp = player.total_max_hp
         
         if current_hp >= max_hp:
             return await interaction.response.send_message(
