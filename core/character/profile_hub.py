@@ -132,6 +132,8 @@ class ProfileBuilder:
 
         k_balance = await bot.database.users.get_currency(user_id, "balance_fragment")
         r_partner = await bot.database.users.get_currency(user_id, "partnership_runes")
+        antique_tomes = await bot.database.users.get_currency(user_id, "antique_tome")
+        pinnacle_keys = await bot.database.users.get_currency(user_id, "pinnacle_key")
 
         embed = discord.Embed(
             title="Inventory Summary",
@@ -169,7 +171,10 @@ class ProfileBuilder:
 
         embed.add_field(
             name="📦 **Misc Items**",
-            value=(f"🗝️ Void Keys: {user[30]}\n🎁 Curios: {user[22]}"),
+            value=(
+                f"🗝️ Void Keys: {user[30]}\n🎁 Curios: {user[22]}\n"
+                f"📖 Antique Tomes: {antique_tomes}\n🗝️ Pinnacle Keys: {pinnacle_keys}"
+            ),
             inline=True,
         )
 

@@ -130,6 +130,10 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         drops["curio"] = True
         if random.random() < 0.05:
             drops["spirit_stone"] = True
+        if random.random() < 0.05:
+            drops["antique_tome"] = True
+        if random.random() < 0.05:
+            drops["pinnacle_key"] = True
         return drops
 
     if "Lucifer" in monster.name:
@@ -139,6 +143,10 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["potential_rune"] = True
         if random.random() < 0.05:
             drops["spirit_stone"] = True
+        if random.random() < 0.05:
+            drops["antique_tome"] = True
+        if random.random() < 0.05:
+            drops["pinnacle_key"] = True
         return drops
 
     if "NEET" in monster.name:
@@ -148,6 +156,10 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["potential_rune"] = True
         if random.random() < 0.05:
             drops["spirit_stone"] = True
+        if random.random() < 0.05:
+            drops["antique_tome"] = True
+        if random.random() < 0.05:
+            drops["pinnacle_key"] = True
         return drops
 
     if "Gemini" in monster.name:
@@ -155,6 +167,10 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["partnership_rune"] = True
         if random.random() < 0.05:
             drops["spirit_stone"] = True
+        if random.random() < 0.05:
+            drops["antique_tome"] = True
+        if random.random() < 0.05:
+            drops["pinnacle_key"] = True
         return drops
 
     # --- STANDARD MOBS ---
@@ -201,6 +217,12 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["shatter_rune"] = True
         if random.random() < (0.05 + special_drop_chance):
             drops["balance_fragment"] = True
+
+        key_drop_chance = 0.05 if monster.is_boss else 0.01
+        if random.random() < key_drop_chance:
+            drops["antique_tome"] = True
+        if random.random() < key_drop_chance:
+            drops["pinnacle_key"] = True
 
     return drops
 

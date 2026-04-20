@@ -206,7 +206,8 @@ class UserRepository:
         Allowed columns: dragon_key, angel_key, void_keys, soul_cores, void_frags,
                          refinement_runes, potential_runes, imbue_runes, shatter_runes,
                          curios, curios_purchased_today,
-                         celestial_stone, void_crystal, infernal_cinder
+                         celestial_stone, void_crystal, infernal_cinder,
+                         antique_tome, pinnacle_key
         """
         # Could validate column names here to prevent SQL injection
         await self.connection.execute(

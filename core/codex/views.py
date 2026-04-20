@@ -1088,6 +1088,7 @@ class CodexTomsView(ui.View):
 
     async def _on_exit(self, interaction: Interaction):
         self.stop()
+        antique_tomes = await self.bot.database.users.get_currency(self.user_id, "antique_tome")
         menu = CodexMenuView(
             self.bot,
             self.user_id,
@@ -1096,6 +1097,7 @@ class CodexTomsView(ui.View):
             self.pages,
             self.rerolls,
             self.chapter_history,
+            antique_tomes=antique_tomes,
         )
         await interaction.response.edit_message(embed=menu.build_embed(), view=menu)
 
@@ -1118,6 +1120,7 @@ class CodexMenuView(ui.View):
         pages: int,
         rerolls: int,
         chapter_history: dict,
+        antique_tomes: int = 0,
     ):
         super().__init__(timeout=60)
         self.bot = bot
@@ -1127,6 +1130,7 @@ class CodexMenuView(ui.View):
         self.pages = pages
         self.rerolls = rerolls
         self.chapter_history = chapter_history
+        self.antique_tomes = antique_tomes
 
     def build_embed(self) -> discord.Embed:
         tomes = self.player.codex_tomes
@@ -1140,7 +1144,10 @@ class CodexMenuView(ui.View):
         )
         embed.add_field(
             name="Resources",
-            value=f"🔷 {self.fragments} Fragments  |  📄 {self.pages} Pages",
+            value=(
+                f"📖 {self.antique_tomes} Antique Tome(s)  |  "
+                f"🔷 {self.fragments} Fragments  |  📄 {self.pages} Pages"
+            ),
             inline=False,
         )
         total_clears = sum(v["clears"] for v in self.chapter_history.values())
@@ -1186,8 +1193,16 @@ class CodexMenuView(ui.View):
             except Exception:
                 pass
 
+        # Antique Tome check — re-verify and deduct at run start
+        current_tomes = await self.bot.database.users.get_currency(self.user_id, "antique_tome")
+        if current_tomes < 1:
+            return await interaction.response.send_message(
+                "You need an **Antique Tome** to begin a Codex run.", ephemeral=True
+            )
+
         await interaction.response.defer()
 
+        await self.bot.database.users.modify_currency(self.user_id, "antique_tome", -1)
         self.bot.state_manager.set_active(self.user_id, "codex")
         await self.bot.database.users.update_timer(self.user_id, "last_combat")
 

@@ -50,8 +50,18 @@ class Ascent(commands.Cog, name="ascent"):
             await interaction.response.send_message("Come back at level 100.", ephemeral=True)
             return
 
+        pinnacle_keys = await self.bot.database.users.get_currency(user_id, "pinnacle_key")
+        if pinnacle_keys < 1:
+            await interaction.response.send_message(
+                "The Ascent requires a **Pinnacle Key** to begin. "
+                "Seek one from formidable foes.",
+                ephemeral=True,
+            )
+            return
+
         if not await self._check_cooldown(interaction, user_id, existing_user): return
 
+        await self.bot.database.users.modify_currency(user_id, "pinnacle_key", -1)
         self.bot.state_manager.set_active(user_id, "ascent")
         await self.bot.database.users.update_timer(user_id, 'last_combat')
 

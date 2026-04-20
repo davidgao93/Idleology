@@ -584,6 +584,16 @@ class CombatView(ui.View):
                             self.user_id, "spirit_stones", 1
                         )
                         reward_data["special"].append("🔮 Spirit Stone")
+                    elif key == "antique_tome":
+                        await self.bot.database.users.modify_currency(
+                            self.user_id, "antique_tome", 1
+                        )
+                        reward_data["special"].append("📖 Antique Tome")
+                    elif key == "pinnacle_key":
+                        await self.bot.database.users.modify_currency(
+                            self.user_id, "pinnacle_key", 1
+                        )
+                        reward_data["special"].append("🗝️ Pinnacle Key")
 
             # Process Drops
             server_id = str(interaction.guild.id)
