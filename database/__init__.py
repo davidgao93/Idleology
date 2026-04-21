@@ -13,6 +13,7 @@ from .repositories.codex import CodexRepository
 from .repositories.duels import DuelStatsRepository
 from .repositories.alchemy import AlchemyRepository
 from .repositories.essences import EssencesRepository
+from .repositories.ascension import AscensionRepository
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -33,3 +34,4 @@ class DatabaseManager:
         self.duels = DuelStatsRepository(connection)
         self.alchemy = AlchemyRepository(connection)
         self.essences = EssencesRepository(connection)
+        self.ascension = AscensionRepository(connection)

@@ -1,3 +1,21 @@
+v0.84 Patch Notes
+Antique Tomes & Pinnacle Keys
+Two new key items now drop from combat. Regular monsters have a 1% chance to drop either, bosses have a 5% chance. Both items appear in your profile inventory under Misc.
+
+Codex — Entry Cost
+The Codex now requires an Antique Tome to begin a run. You can still browse your tomes and manage upgrades freely; the tome is only consumed when you click Begin Run.
+
+Ascension — Full Rework
+Ascension has been rebuilt from an infinite scaling climb into a static progression system:
+
+Entry now costs a Pinnacle Key
+Floors start at level 100 and scale by +5 levels per floor, with modifiers added every 5 floors (normal) and 10 floors (boss)
+Your next run always starts 5 floors below your personal best
+Every 5 floors cleared grants a cache of milestone rewards: a Curio, a Rune Cache, an Equipment Cache, and a Boss Key Cache
+Every 25 floors (and at select later milestones up to floor 666) grants a permanent Pinnacle Unlock — one-time stat bonuses that persist across all content:
+ATK/DEF % bonuses, flat crit chance, hit accuracy, PDR, FDR, and Max HP
+XP and gold rewards have been removed from Ascension
+
 **Patch 0.83 - Essences Update**
 
 ## ⚙️ Essence System & Calcified Mobs

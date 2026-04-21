@@ -293,6 +293,12 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     except Exception:
         player.codex_tomes = []
 
+    # --- Fetch Ascension Pinnacle Unlocks ---
+    try:
+        player.ascension_unlocks = await database.ascension.get_unlocked_floors(user_id)
+    except Exception:
+        player.ascension_unlocks = set()
+
     # --- Fetch Alchemy Potion Passives ---
     try:
         player.potion_passives = await database.alchemy.get_potion_passives(user_id)

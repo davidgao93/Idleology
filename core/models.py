@@ -344,6 +344,9 @@ class Player:
     crit_multiplier: float = 1.0  # Insight helmet passive, future multiplicative crit mods
 
     # -----------------------------------------------------------------------
+    # Ascension pinnacle unlocks  (loaded once at session start, never mutated)
+    ascension_unlocks: set = field(default_factory=set)
+
     # Codex run permanent modifiers  (NOT reset by reset_combat_bonus)
     # Accumulated by fragment_boost downsides and max_hp_boost boon.
     # Zero for a fresh run.
@@ -368,7 +371,8 @@ class Player:
     def total_max_hp(self) -> int:
         """Effective max HP including run bonuses, chapter penalties, and vitality tome."""
         vitality_pct = self.get_tome_bonus("vitality")
-        base = self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp
+        asc_hp = self.get_ascension_bonuses()["hp"] if self.ascension_unlocks else 0
+        base = self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp + asc_hp
         if vitality_pct > 0:
             base = int(base * (1 + vitality_pct / 100))
         return max(1, base)
@@ -463,6 +467,14 @@ class Player:
         self.crit_multiplier = 1.0
 
     # -----------------------------------------------------------------------
+    # Ascension pinnacle bonus helper
+    # -----------------------------------------------------------------------
+
+    def get_ascension_bonuses(self) -> dict:
+        from core.ascent.mechanics import AscentMechanics
+        return AscentMechanics.get_cumulative_pinnacle_bonuses(self.ascension_unlocks)
+
+    # -----------------------------------------------------------------------
     # Total stat calculations
     # -----------------------------------------------------------------------
 
@@ -489,6 +501,12 @@ class Player:
         if self.atk_multiplier != 1.0:
             total = int(total * self.atk_multiplier)
 
+        # Layer 5: ascension pinnacle % bonus
+        if self.ascension_unlocks:
+            atk_pct = self.get_ascension_bonuses()["atk_pct"]
+            if atk_pct:
+                total = int(total * (1 + atk_pct / 100))
+
         return max(0, total)
 
     def get_total_defence(self) -> int:
@@ -513,6 +531,12 @@ class Player:
         # Layer 4: unified multiplier
         if self.def_multiplier != 1.0:
             total = int(total * self.def_multiplier)
+
+        # Layer 5: ascension pinnacle % bonus
+        if self.ascension_unlocks:
+            def_pct = self.get_ascension_bonuses()["def_pct"]
+            if def_pct:
+                total = int(total * (1 + def_pct / 100))
 
         return max(0, total)
 
@@ -542,6 +566,10 @@ class Player:
         # Corrupted essence: Lucifer helmet — PDR burst on ward break (transient, persists rest of combat)
         total += self.lucifer_pdr_burst
 
+        # Ascension pinnacle flat PDR
+        if self.ascension_unlocks:
+            total += self.get_ascension_bonuses()["pdr"]
+
         # Hard cap at 80%
         return min(80, total)
 
@@ -570,6 +598,11 @@ class Player:
         for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
             if item:
                 total += compute_essence_stat_bonus(item).get("fdr", 0)
+
+        # Ascension pinnacle flat FDR
+        if self.ascension_unlocks:
+            total += self.get_ascension_bonuses()["fdr"]
+
         return total
 
     def get_total_ward_percentage(self) -> int:
@@ -616,6 +649,10 @@ class Player:
         # Per-combat/chapter bonus accumulator and permanent run penalty
         chance += self.bonus_crit
         chance -= self.run_crit_penalty
+
+        # Ascension pinnacle flat crit
+        if self.ascension_unlocks:
+            chance += self.get_ascension_bonuses()["crit"]
 
         # Multiplicative layer (Insight helmet passive, future mods)
         if self.crit_multiplier != 1.0:

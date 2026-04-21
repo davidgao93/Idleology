@@ -59,12 +59,20 @@ def calculate_hit_chance(player, monster):
     """Calculate the chance to hit based on the player's attack and monster's defence."""
     difference = player.get_total_attack() - monster.defence
     if player.get_total_attack() <= 10:
-        return 0.9
+        base = 0.9
     elif player.get_total_attack() <= 20:
-        return 0.8
+        base = 0.8
     elif player.get_total_attack() <= 30:
-        return 0.7
-    return min(max(0.6 + (difference / 100), 0.6), 0.8)
+        base = 0.7
+    else:
+        base = min(max(0.6 + (difference / 100), 0.6), 0.8)
+
+    if player.ascension_unlocks:
+        hit_bonus = player.get_ascension_bonuses()["hit"]
+        if hit_bonus:
+            base = min(0.95, base + hit_bonus * 0.01)
+
+    return base
 
 
 def calculate_monster_hit_chance(player, monster):

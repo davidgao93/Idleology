@@ -1,15 +1,90 @@
 import asyncio
+import random
 
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.ascent.mechanics import AscentMechanics
+from core.ascent.mechanics import AscentMechanics, PINNACLE_REWARDS
 from core.combat import engine
 from core.combat import ui as combat_ui
 from core.combat.drops import DropManager
-from core.combat.experience import ExperienceManager
 from core.combat.gen_mob import generate_ascent_monster
+from core.combat.loot import (
+    generate_accessory,
+    generate_armor,
+    generate_boot,
+    generate_glove,
+    generate_helmet,
+    generate_weapon,
+)
 from core.models import Monster, Player
+
+
+# ---------------------------------------------------------------------------
+# Milestone reward helpers (every 5 floors)
+# ---------------------------------------------------------------------------
+
+_EQUIP_SLOTS = ["weapon", "armor", "accessory", "glove", "boot", "helmet"]
+_EQUIP_WEIGHTS = [35, 10, 25, 10, 10, 10]
+_RUNE_POOL = ["refinement_runes", "potential_runes"]
+_KEY_POOL = ["dragon_key", "angel_key", "soul_cores", "balance_fragment"]
+
+
+async def _grant_milestone_rewards(bot, user_id: str, server_id: str, player: Player, floor: int) -> list[str]:
+    """Grants curio + rune cache + equip cache + boss key cache. Returns display strings."""
+    log = []
+
+    # Curio
+    await bot.database.users.modify_currency(user_id, "curios", 1)
+    log.append("🎁 Curio")
+
+    # Rune cache (base Black Market values, no settlement multiplier)
+    rune_qty = random.randint(1, 5)
+    rune_names = []
+    for _ in range(rune_qty):
+        rtype = random.choice(_RUNE_POOL)
+        await bot.database.users.modify_currency(user_id, rtype, 1)
+        rune_names.append("Refinement" if rtype == "refinement_runes" else "Potential")
+    log.append(f"💎 Runes ×{rune_qty} ({', '.join(rune_names)})")
+
+    # Equipment cache (1 item, weighted slot)
+    slot = random.choices(_EQUIP_SLOTS, weights=_EQUIP_WEIGHTS, k=1)[0]
+    generators = {
+        "weapon": lambda: generate_weapon(user_id, player.level, False),
+        "armor": lambda: generate_armor(user_id, player.level, False),
+        "accessory": lambda: generate_accessory(user_id, player.level, False),
+        "glove": lambda: generate_glove(user_id, player.level),
+        "boot": lambda: generate_boot(user_id, player.level),
+        "helmet": lambda: generate_helmet(user_id, player.level),
+    }
+    item = await generators[slot]()
+    if item:
+        creators = {
+            "weapon": bot.database.equipment.create_weapon,
+            "armor": bot.database.equipment.create_armor,
+            "accessory": bot.database.equipment.create_accessory,
+            "glove": bot.database.equipment.create_glove,
+            "boot": bot.database.equipment.create_boot,
+            "helmet": bot.database.equipment.create_helmet,
+        }
+        await creators[slot](item)
+        log.append(f"⚔️ {item.name}")
+
+    # Boss key cache
+    key_qty = random.randint(1, 5)
+    key_names = []
+    for _ in range(key_qty):
+        ktype = random.choice(_KEY_POOL)
+        await bot.database.users.modify_currency(user_id, ktype, 1)
+        key_names.append(ktype.replace("_", " ").title())
+    log.append(f"🗝️ Keys ×{key_qty} ({', '.join(key_names)})")
+
+    return log
+
+
+# ---------------------------------------------------------------------------
+# AscentView
+# ---------------------------------------------------------------------------
 
 
 class AscentView(ui.View):
@@ -21,6 +96,8 @@ class AscentView(ui.View):
         player: Player,
         initial_monster: Monster,
         start_logs: dict,
+        starting_floor: int,
+        best_floor: int,
     ):
         super().__init__(timeout=300)
         self.bot = bot
@@ -28,40 +105,31 @@ class AscentView(ui.View):
         self.server_id = server_id
         self.player = player
         self.monster = initial_monster
-
-        # State
-        self.stage = 1
-        self.cumulative_xp = 0
-        self.cumulative_gold = 0
         self.logs = start_logs or {}
 
-        self.update_buttons()
+        self.current_floor = starting_floor
+        self.best_floor = best_floor
+
+        # Rewards accumulated this session for the summary embed
+        self.milestone_log: list[str] = []
+        self.pinnacle_log: list[str] = []
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
-        # Auto-retreat on timeout if still alive
         if self.player.current_hp > 0:
-            await self.handle_retreat(
-                self.message if hasattr(self, "message") else None
-            )
+            await self._end_run(self.message if hasattr(self, "message") else None, retreated=True)
         else:
             self.bot.state_manager.clear_active(self.user_id)
 
-    def update_buttons(self):
-        if self.player.current_hp <= 0:
-            for child in self.children:
-                child.disabled = True
+    def _floor_title(self) -> str:
+        return f"Ascent Floor {self.current_floor} | {self.player.name}"
 
-    async def refresh_ui(
-        self, interaction: Interaction = None, message: discord.Message = None
-    ):
-        title = f"Ascent Stage {self.stage} | {self.player.name}"
+    async def _refresh(self, interaction: Interaction = None, message: discord.Message = None):
         embed = combat_ui.create_combat_embed(
-            self.player, self.monster, self.logs, title_override=title
+            self.player, self.monster, self.logs, title_override=self._floor_title()
         )
-
         if interaction and not interaction.response.is_done():
             await interaction.response.edit_message(embed=embed, view=self)
         elif message:
@@ -69,222 +137,180 @@ class AscentView(ui.View):
         elif interaction:
             await interaction.edit_original_response(embed=embed, view=self)
 
-    # --- ACTIONS ---
+    # --- Buttons ---
 
     @ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️")
     async def attack(self, interaction: Interaction, button: ui.Button):
-        await self.execute_turn(interaction)
+        p_log = engine.process_player_turn(self.player, self.monster)
+        self.logs = {self.player.name: p_log}
+        if self.monster.hp > 0:
+            self.logs[self.monster.name] = engine.process_monster_turn(self.player, self.monster)
+        await self._check_state(interaction)
 
     @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
     async def heal(self, interaction: Interaction, button: ui.Button):
-        heal_log = engine.process_heal(self.player, self.monster)
-        self.logs = {"Heal": heal_log}
-
+        self.logs = {"Heal": engine.process_heal(self.player, self.monster)}
         if self.monster.hp > 0:
-            m_log = engine.process_monster_turn(self.player, self.monster)
-            self.logs[self.monster.name] = m_log
+            self.logs[self.monster.name] = engine.process_monster_turn(self.player, self.monster)
+        await self._check_state(interaction)
 
-        await self.check_state(interaction)
-
-    @ui.button(label="Auto Stage", style=ButtonStyle.primary, emoji="⏩")
+    @ui.button(label="Auto Floor", style=ButtonStyle.primary, emoji="⏩")
     async def auto(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         message = interaction.message
 
-        while (
-            self.player.current_hp > (self.player.total_max_hp * 0.2) and self.monster.hp > 0
-        ):
-
+        while self.player.current_hp > (self.player.total_max_hp * 0.2) and self.monster.hp > 0:
             for _ in range(10):
-                if (
-                    self.player.current_hp <= (self.player.total_max_hp * 0.2)
-                    or self.monster.hp <= 0
-                ):
+                if self.player.current_hp <= (self.player.total_max_hp * 0.2) or self.monster.hp <= 0:
                     break
-
                 p_log = engine.process_player_turn(self.player, self.monster)
-                m_log = ""
-                if self.monster.hp > 0:
-                    m_log = engine.process_monster_turn(self.player, self.monster)
-
+                m_log = engine.process_monster_turn(self.player, self.monster) if self.monster.hp > 0 else ""
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
-            if self.monster.hp > 0 and self.player.current_hp > (
-                self.player.total_max_hp * 0.2
-            ):
-                await self.refresh_ui(message=message)
+            if self.monster.hp > 0 and self.player.current_hp > (self.player.total_max_hp * 0.2):
+                await self._refresh(message=message)
                 await asyncio.sleep(1.0)
             else:
                 break
 
-        if (
-            0 < self.player.current_hp <= (self.player.total_max_hp * 0.2)
-            and self.monster.hp > 0
-        ):
+        if 0 < self.player.current_hp <= (self.player.total_max_hp * 0.2) and self.monster.hp > 0:
             self.logs["Auto-Battle"] = "Paused: Low HP protection!"
-            await self.refresh_ui(message=message)
+            await self._refresh(message=message)
         else:
-            # Stage cleared or dead
-            await self.check_state(interaction, message)
+            await self._check_state(interaction, message)
 
     @ui.button(label="Retreat", style=ButtonStyle.secondary, emoji="🏃")
     async def retreat(self, interaction: Interaction, button: ui.Button):
-        await self.handle_retreat(interaction)
+        await self._end_run(interaction, retreated=True)
 
-    # --- LOGIC ---
+    # --- Logic ---
 
-    async def execute_turn(self, interaction: Interaction):
-        p_log = engine.process_player_turn(self.player, self.monster)
-        self.logs = {self.player.name: p_log}
-
-        if self.monster.hp > 0:
-            m_log = engine.process_monster_turn(self.player, self.monster)
-            self.logs[self.monster.name] = m_log
-
-        await self.check_state(interaction)
-
-    async def check_state(
-        self, interaction: Interaction = None, message: discord.Message = None
-    ):
+    async def _check_state(self, interaction: Interaction = None, message: discord.Message = None):
         if self.player.current_hp <= 0:
-            await self.handle_defeat(interaction, message)
+            await self._handle_defeat(interaction, message)
         elif self.monster.hp <= 0:
-            await self.handle_stage_clear(interaction, message)
+            await self._handle_floor_clear(interaction, message)
         else:
-            await self.refresh_ui(interaction, message)
+            await self._refresh(interaction, message)
 
-    async def handle_stage_clear(
-        self, interaction: Interaction, message: discord.Message
-    ):
-        # Calculate base Rewards
-        xp_gain = self.monster.xp
-        gold_gain = AscentMechanics.calculate_stage_rewards(
-            self.monster.level, self.stage
-        )
+    async def _handle_floor_clear(self, interaction: Interaction, message: discord.Message):
+        floor = self.current_floor
 
-        # 1 & 2. Process XP and Check Level Up / Ascension
-        exp_changes = await ExperienceManager.add_experience(
-            self.bot, self.user_id, self.player, xp_gain
-        )
+        # Update best floor
+        if floor > self.best_floor:
+            self.best_floor = floor
+            await self.bot.database.ascension.update_highest_floor(self.user_id, floor)
 
-        # Recompute flat stats after level-up so the new base values are reflected
-        if exp_changes["levels_gained"]:
-            self.player.compute_flat_stats()
+        # Milestone rewards (every 5 floors)
+        if floor % 5 == 0:
+            rewards = await _grant_milestone_rewards(
+                self.bot, self.user_id, self.server_id, self.player, floor
+            )
+            self.milestone_log.append(f"**Floor {floor}:** " + " | ".join(rewards))
 
-        self.cumulative_xp += exp_changes["xp_added"]
-        self.cumulative_gold += gold_gain
-        level_msgs = exp_changes["msgs"]
+        # Pinnacle unlock
+        pinnacle_gained = None
+        if floor in PINNACLE_REWARDS and floor not in self.player.ascension_unlocks:
+            await self.bot.database.ascension.unlock_floor(self.user_id, floor)
+            self.player.ascension_unlocks.add(floor)
+            self.player.compute_flat_stats()  # refresh flat cache so new bonuses apply immediately
+            label = AscentMechanics.pinnacle_label(floor)
+            self.pinnacle_log.append(f"**Floor {floor}:** {label}")
+            pinnacle_gained = label
 
-        # 3. DB Updates
-        await self.bot.database.users.modify_gold(self.user_id, gold_gain)
-        await self.bot.database.users.update_from_player_object(self.player)
-        await self.bot.database.users.update_highest_ascension_stage(
-            self.user_id, self.stage
-        )
-
-        # Special Drops (Curios)
-        import random
-
-        special_loot = []
-        if self.stage % 3 == 0:
-            if random.random() < 0.25:
-                await self.bot.database.users.modify_currency(self.user_id, "curios", 1)
-                special_loot.append("Curious Curio")
-
-        # Skiller Boot Passive
+        # Skiller boot passive
         skiller_msg = await DropManager.proc_skiller(
             self.bot, self.user_id, self.server_id, self.player
         )
-        if skiller_msg:
-            special_loot.append(skiller_msg)
 
-        # 4. Display Clear Embed
+        # Build clear embed
         embed = discord.Embed(
-            title=f"Stage {self.stage} Cleared!", color=discord.Color.green()
+            title=f"Floor {floor} Cleared!",
+            color=discord.Color.green(),
         )
-        desc = f"**XP:** {exp_changes['xp_added']:,}\n**Gold:** {gold_gain:,}"
-        if level_msgs:
-            desc += "\n" + "\n".join(level_msgs)
-        if special_loot:
-            desc += "\n**Found:** " + ", ".join(special_loot)
-
-        embed.description = desc
-        embed.set_footer(
-            text=f"HP: {self.player.current_hp}/{self.player.total_max_hp} | Next stage in 3s..."
-        )
+        lines = []
+        if floor % 5 == 0 and self.milestone_log:
+            lines.append(f"📦 Milestone rewards granted!")
+        if pinnacle_gained:
+            lines.append(f"✨ **Pinnacle Unlock:** {pinnacle_gained}")
+        if skiller_msg:
+            lines.append(skiller_msg)
+        embed.description = "\n".join(lines) if lines else "Onwards..."
+        embed.set_footer(text=f"HP: {self.player.current_hp}/{self.player.total_max_hp} | Next floor in 3s...")
 
         target = (
             interaction.edit_original_response
             if interaction and interaction.response.is_done()
             else (interaction.response.edit_message if interaction else message.edit)
         )
-        await target(embed=embed, view=None)  # Hide buttons during transition
+        await target(embed=embed, view=None)
 
-        # 5. Transition
         await asyncio.sleep(3)
-        await self.next_stage(interaction, message)
+        await self._next_floor(interaction, message)
 
-    async def next_stage(self, interaction, message):
-        self.stage += 1
-
-        # Reset per-combat bonus accumulator
+    async def _next_floor(self, interaction, message):
+        self.current_floor += 1
         self.player.reset_combat_bonus()
-
         self.player.combat_ward = self.player.get_combat_ward_value()
         self.player.is_invulnerable_this_combat = False
 
-        # Generate Next Monster
-        # We create a fresh monster container
+        m_level = AscentMechanics.calculate_floor_monster_level(self.current_floor)
+        n_mods, b_mods = AscentMechanics.get_floor_modifier_counts(self.current_floor)
+
         next_monster = Monster(
-            name="",
-            level=0,
-            hp=0,
-            max_hp=0,
-            xp=0,
-            attack=0,
-            defence=0,
-            modifiers=[],
-            image="",
-            flavor="",
-            is_boss=True,
+            name="", level=0, hp=0, max_hp=0, xp=0,
+            attack=0, defence=0, modifiers=[], image="", flavor="", is_boss=True,
         )
-
-        m_level = AscentMechanics.calculate_monster_level(
-            self.player.level, self.player.ascension, self.stage
-        )
-        n_mods, b_mods = AscentMechanics.get_modifier_counts(self.stage)
-
-        next_monster = await generate_ascent_monster(
-            self.player, next_monster, m_level, n_mods, b_mods
-        )
+        next_monster = await generate_ascent_monster(self.player, next_monster, m_level, n_mods, b_mods)
         self.monster = next_monster
 
-        # Apply Start Effects (these modify base stats again for this stage only)
         engine.apply_stat_effects(self.player, self.monster)
         self.logs = engine.apply_combat_start_passives(self.player, self.monster)
 
         msg_obj = message if message else (await interaction.original_response())
-
         embed = combat_ui.create_combat_embed(
-            self.player,
-            self.monster,
-            self.logs,
-            title_override=f"Ascent Stage {self.stage} | {self.player.name}",
+            self.player, self.monster, self.logs,
+            title_override=self._floor_title(),
         )
         await msg_obj.edit(embed=embed, view=self)
 
-    async def handle_retreat(self, interaction_or_msg):
+    async def _handle_defeat(self, interaction, message):
+        self.player.current_hp = 1
+        embed = combat_ui.create_defeat_embed(self.player, self.monster, 0)
+        embed.title = f"Defeated on Floor {self.current_floor}"
+        embed.description = (embed.description or "") + f"\nBest floor this session: **{self.best_floor}**"
+
+        target = (
+            interaction.response.edit_message
+            if interaction and not interaction.response.is_done()
+            else (interaction.edit_original_response if interaction else message.edit)
+        )
+        await target(embed=embed, view=None)
+
+        self.bot.state_manager.clear_active(self.user_id)
+        await self.bot.database.users.update_from_player_object(self.player)
+        self.stop()
+
+    async def _end_run(self, interaction_or_msg, retreated: bool = True):
         embed = discord.Embed(
-            title="Ascent Ended",
-            description="You fled from the spire.",
-            color=discord.Color.light_grey(),
+            title="Ascent Complete" if not retreated else "Ascent Ended",
+            color=discord.Color.blurple() if not retreated else discord.Color.light_grey(),
         )
-        embed.add_field(name="Highest Stage", value=str(self.stage), inline=True)
-        embed.add_field(
-            name="Total Earnings",
-            value=f"XP: {self.cumulative_xp:,}\nGold: {self.cumulative_gold:,}",
-            inline=False,
-        )
+        embed.add_field(name="Best Floor", value=str(self.best_floor), inline=True)
+        embed.add_field(name="Floors Cleared", value=str(self.current_floor - 1), inline=True)
+
+        if self.milestone_log:
+            embed.add_field(
+                name="📦 Milestone Rewards",
+                value="\n".join(self.milestone_log[-5:]),  # cap to avoid embed overflow
+                inline=False,
+            )
+        if self.pinnacle_log:
+            embed.add_field(
+                name="✨ Pinnacle Unlocks",
+                value="\n".join(self.pinnacle_log),
+                inline=False,
+            )
 
         if isinstance(interaction_or_msg, Interaction):
             if not interaction_or_msg.response.is_done():
@@ -293,28 +319,6 @@ class AscentView(ui.View):
                 await interaction_or_msg.edit_original_response(embed=embed, view=None)
         elif interaction_or_msg:
             await interaction_or_msg.edit(embed=embed, view=None)
-
-        self.bot.state_manager.clear_active(self.user_id)
-        await self.bot.database.users.update_from_player_object(self.player)
-        self.stop()
-
-    async def handle_defeat(self, interaction, message):
-        base_loss = AscentMechanics.calculate_xp_loss(self.player.exp)
-        xp_loss = await ExperienceManager.remove_experience(
-            self.bot, self.user_id, self.player, base_loss
-        )
-
-        self.player.current_hp = 1
-
-        embed = combat_ui.create_defeat_embed(self.player, self.monster, xp_loss)
-        embed.title = f"Defeated on Stage {self.stage}"
-
-        target = (
-            interaction.response.edit_message
-            if interaction and not interaction.response.is_done()
-            else (interaction.edit_original_response if interaction else message.edit)
-        )
-        await target(embed=embed, view=None)
 
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)

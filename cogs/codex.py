@@ -55,23 +55,14 @@ class Codex(commands.Cog, name="codex"):
             )
             return
 
-        # 3. Antique Tome gate
-        antique_tomes = await self.bot.database.users.get_currency(user_id, "antique_tome")
-        if antique_tomes < 1:
-            await interaction.response.send_message(
-                "The Codex demands an **Antique Tome** to open its pages. "
-                "Hunt one down from monsters across the world.",
-                ephemeral=True,
-            )
-            return
-
-        # 4. Load player with all gear and tomes (cooldown is checked on Begin Run, not here)
+        # 3. Load player with all gear and tomes (cooldown is checked on Begin Run, not here)
         player = await load_player(user_id, existing_user, self.bot.database)
 
         # 5. Load Codex currencies (fetched by column name to avoid index fragility)
-        fragments = await self.bot.database.users.get_currency(user_id, 'codex_fragments')
-        pages     = await self.bot.database.users.get_currency(user_id, 'codex_pages')
-        rerolls   = await self.bot.database.users.get_currency(user_id, 'codex_rerolls')
+        fragments    = await self.bot.database.users.get_currency(user_id, 'codex_fragments')
+        pages        = await self.bot.database.users.get_currency(user_id, 'codex_pages')
+        rerolls      = await self.bot.database.users.get_currency(user_id, 'codex_rerolls')
+        antique_tomes = await self.bot.database.users.get_currency(user_id, 'antique_tome')
 
         # 6. Load chapter history for display
         try:

@@ -3,12 +3,14 @@ from discord.ext import commands
 from discord import app_commands, Interaction
 from datetime import datetime, timedelta
 
-from core.models import Player, Monster
+from core.models import Monster
 from core.items.factory import load_player
-from core.combat import engine, ui
+from core.combat import engine
+from core.combat import ui
 from core.combat.gen_mob import generate_ascent_monster
 from core.ascent.views import AscentView
 from core.ascent.mechanics import AscentMechanics
+
 
 class Ascent(commands.Cog, name="ascent"):
     def __init__(self, bot) -> None:
@@ -22,7 +24,7 @@ class Ascent(commands.Cog, name="ascent"):
             temp_reduction = boot[12] * 60
 
         duration = max(timedelta(seconds=10), self.ASCENT_COOLDOWN - timedelta(seconds=temp_reduction))
-        
+
         last_combat = existing_user[24]
         if last_combat:
             try:
@@ -33,7 +35,8 @@ class Ascent(commands.Cog, name="ascent"):
                         f"Ascent cooldown: {rem.seconds // 60}m {rem.seconds % 60}s.", ephemeral=True
                     )
                     return False
-            except: pass
+            except:
+                pass
         return True
 
     @app_commands.command(name="ascent", description="Begin your ascent (Lvl 100+).")
@@ -45,7 +48,7 @@ class Ascent(commands.Cog, name="ascent"):
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user): return
         if not await self.bot.check_is_active(interaction, user_id): return
-        
+
         if existing_user[4] < 100:
             await interaction.response.send_message("Come back at level 100.", ephemeral=True)
             return
@@ -65,28 +68,42 @@ class Ascent(commands.Cog, name="ascent"):
         self.bot.state_manager.set_active(user_id, "ascent")
         await self.bot.database.users.update_timer(user_id, 'last_combat')
 
-        # 2. Init Player
+        # 2. Init Player (ascension_unlocks loaded inside load_player)
         player = await load_player(user_id, existing_user, self.bot.database)
-        
-        # 3. Generate Stage 1
-        monster = Monster(name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0, modifiers=[], image="", flavor="", is_boss=True)
-        m_level = AscentMechanics.calculate_monster_level(player.level, player.ascension, 1)
-        n_mods, b_mods = AscentMechanics.get_modifier_counts(1)
-        
+
+        # 3. Determine starting floor
+        best_floor = await self.bot.database.ascension.get_highest_floor(user_id)
+        starting_floor = AscentMechanics.calculate_starting_floor(best_floor)
+
+        # 4. Generate starting floor monster
+        m_level = AscentMechanics.calculate_floor_monster_level(starting_floor)
+        n_mods, b_mods = AscentMechanics.get_floor_modifier_counts(starting_floor)
+
+        monster = Monster(
+            name="", level=0, hp=0, max_hp=0, xp=0,
+            attack=0, defence=0, modifiers=[], image="", flavor="", is_boss=True,
+        )
         monster = await generate_ascent_monster(player, monster, m_level, n_mods, b_mods)
 
-        # 4. Start Effects
+        # 5. Apply start effects
         player.combat_ward = player.get_combat_ward_value()
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)
         engine.log_combat_debug(player, monster, self.bot.logger)
-        # 5. View
-        embed = ui.create_combat_embed(player, monster, start_logs, title_override=f"Ascent Stage 1 | {player.name}")
-        
-        view = AscentView(self.bot, user_id, server_id, player, monster, start_logs)
-        
+
+        # 6. Send
+        embed = ui.create_combat_embed(
+            player, monster, start_logs,
+            title_override=f"Ascent Floor {starting_floor} | {player.name}",
+        )
+        view = AscentView(
+            self.bot, user_id, server_id, player, monster, start_logs,
+            starting_floor=starting_floor,
+            best_floor=best_floor,
+        )
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Ascent(bot))
