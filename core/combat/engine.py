@@ -958,9 +958,9 @@ def _roll_monster_damage(
     if "Celestial Watcher" in monster.modifiers:
         dmg = int(dmg * 1.2)
     if "Hellborn" in monster.modifiers:
-        dmg += 2
+        dmg = int(dmg * 1.12)
     if "Hell's Fury" in monster.modifiers:
-        dmg += 5
+        dmg = int(dmg * 1.25)
     if "Mirror Image" in monster.modifiers and random.random() < 0.2:
         dmg *= 2
     if "Unlimited Blade Works" in monster.modifiers:
@@ -969,7 +969,7 @@ def _roll_monster_damage(
     pdr = max(0, effective_pdr - (20 if "Penetrator" in monster.modifiers else 0))
     dmg = max(0, int(dmg * (1 - pdr / 100)))
 
-    fdr = max(0, effective_fdr - (5 if "Clobberer" in monster.modifiers else 0))
+    fdr = int(effective_fdr * (0.65 if "Clobberer" in monster.modifiers else 1.0))
     dmg = max(0, dmg - fdr)
 
     minions = 0
@@ -1266,7 +1266,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                         )
 
             if "Vampiric" in monster.modifiers and damage_dealt > 0:
-                heal = damage_dealt * 10
+                heal = int(monster.max_hp * 0.05)
                 monster.hp = min(monster.max_hp, monster.hp + heal)
                 log.append(
                     f"The monster's **Vampiric** essence siphons life, healing it for **{heal}** HP!"
@@ -1302,9 +1302,10 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
 
     else:  # Miss
         if "Venomous" in monster.modifiers:
-            player.current_hp = max(1, player.current_hp - 1)
+            venom_dmg = max(1, int(player.total_max_hp * 0.02))
+            player.current_hp = max(1, player.current_hp - venom_dmg)
             log.append(
-                f"{monster.name} misses, but their **Venomous** aura deals **1** 🐍 damage!"
+                f"{monster.name} misses, but their **Venomous** aura deals **{venom_dmg}** 🐍 damage!"
             )
         else:
             log.append(f"{monster.name} misses!")
@@ -1340,22 +1341,17 @@ def log_combat_debug(player: Player, monster: Monster, logger: logging.Logger) -
 
     m_atk = monster.attack
     m_def = monster.defence
-    diff = max(0, m_atk - p_def)
 
-    if m_atk <= 3:
-        base_m = 5
-    elif m_atk <= 20:
-        base_m = 6
-    else:
-        base_m = 9 + int(monster.level // 10)
-    base_m += int(diff / 10) * 3
-
+    # Theoretical max: full variance ceiling, no PDR/FDR applied yet
+    raw_base = m_atk * max(0.0, 1.0 - p_def / m_atk) if m_atk > 0 else 0.0
+    if "Strengthened" in monster.modifiers:
+        raw_base *= 1.5
     if "Celestial Watcher" in monster.modifiers:
-        base_m = int(base_m * 1.2)
+        raw_base *= 1.2
     if "Hellborn" in monster.modifiers:
-        base_m += 2
+        raw_base += 2
     if "Hell's Fury" in monster.modifiers:
-        base_m += 5
+        raw_base += 5
 
     pdr = player.get_total_pdr()
     if "Penetrator" in monster.modifiers:
@@ -1364,7 +1360,7 @@ def log_combat_debug(player: Player, monster: Monster, logger: logging.Logger) -
     if "Clobberer" in monster.modifiers:
         fdr = max(0, fdr - 5)
 
-    m_max_dmg = max(0, int(base_m * (1 - pdr / 100)) - fdr)
+    m_max_dmg = max(0, int(raw_base * 1.15 * (1 - pdr / 100)) - fdr)
     if (
         "Mirror Image" in monster.modifiers
         or "Unlimited Blade Works" in monster.modifiers

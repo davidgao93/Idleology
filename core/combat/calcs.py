@@ -55,60 +55,54 @@ def get_player_passive_indices(player, target_passives: list[str]) -> list[int]:
 # Core Combat Calculations
 # ---------------------------------------------------------------------------
 
-def calculate_hit_chance(player, monster):
-    """Calculate the chance to hit based on the player's attack and monster's defence."""
-    difference = player.get_total_attack() - monster.defence
-    if player.get_total_attack() <= 10:
-        base = 0.9
-    elif player.get_total_attack() <= 20:
-        base = 0.8
-    elif player.get_total_attack() <= 30:
-        base = 0.7
+_HIT_BASE        = 0.70   # hit chance at equal stats
+_HIT_SENSITIVITY = 0.30   # hit chance shift per 100% stat difference
+_HIT_MIN         = 0.20
+_HIT_MAX         = 0.95
+
+_MON_HIT_BASE        = 0.50
+_MON_HIT_SENSITIVITY = 0.30
+_MON_HIT_MIN         = 0.15
+_MON_HIT_MAX         = 0.80
+
+_DMG_VARIANCE = (0.85, 1.15)
+
+
+def calculate_hit_chance(player, monster) -> float:
+    """Player hit chance based on attack-vs-defence ratio. Equal stats → 70%."""
+    m_def = monster.defence
+    if m_def <= 0:
+        base = _HIT_MAX
     else:
-        base = min(max(0.6 + (difference / 100), 0.6), 0.8)
+        pct_diff = (player.get_total_attack() - m_def) / m_def
+        base = min(max(_HIT_BASE + pct_diff * _HIT_SENSITIVITY, _HIT_MIN), _HIT_MAX)
 
     if player.ascension_unlocks:
         hit_bonus = player.get_ascension_bonuses()["hit"]
         if hit_bonus:
-            base = min(0.95, base + hit_bonus * 0.01)
+            base = min(_HIT_MAX, base + hit_bonus * 0.01)
 
     return base
 
 
-def calculate_monster_hit_chance(player, monster):
-    """Calculate the player's chance to be hit based on stats."""
-    difference = monster.attack - player.get_total_defence()
-    if monster.attack <= 5:
-        return 0.2
-    elif monster.attack <= 10:
-        return 0.3
-    elif monster.attack <= 15:
-        return 0.4
-    return min(max(0.5 + (difference / 100), 0.3), 0.8)
+def calculate_monster_hit_chance(player, monster) -> float:
+    """Monster hit chance based on attack-vs-defence ratio. Equal stats → 50%."""
+    m_atk = monster.attack
+    if m_atk <= 0:
+        return _MON_HIT_MIN
+    pct_diff = (m_atk - player.get_total_defence()) / m_atk
+    return min(max(_MON_HIT_BASE + pct_diff * _MON_HIT_SENSITIVITY, _MON_HIT_MIN), _MON_HIT_MAX)
 
 
-def calculate_damage_taken(player, monster):
-    """Calculate damage taken based on monster's attack and player's defense."""
-    difference = monster.attack - player.get_total_defence()
-
+def calculate_damage_taken(player, monster) -> int:
+    """Raw monster damage before PDR/FDR. Reaches 0 when defence ≥ attack."""
+    m_atk = monster.attack
+    if m_atk <= 0:
+        return 0
+    raw = m_atk * max(0.0, 1.0 - player.get_total_defence() / m_atk)
     if "Strengthened" in monster.modifiers:
-        damage_ranges = [(1, 5), (1, 6), (1, 9)]
-    else:
-        damage_ranges = [(1, 2), (1, 3), (1, 6)]
-
-    if monster.attack <= 3:
-        damage = random.randint(*damage_ranges[0])
-        difference = 0
-    elif monster.attack <= 20:
-        damage = random.randint(*damage_ranges[1])
-        difference = 0
-    else:
-        damage = random.randint(*damage_ranges[2]) + int(monster.level // 10)
-
-    if difference > 0:
-        damage += int(sum(random.randint(1, 3) for _ in range(int(difference / 10))))
-
-    return max(0, random.randint(1, damage))
+        raw *= 1.5
+    return max(0, int(raw * random.uniform(*_DMG_VARIANCE)))
 
 
 # ---------------------------------------------------------------------------

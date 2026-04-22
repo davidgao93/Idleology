@@ -141,8 +141,6 @@ async def generate_boss(player, monster, phase, phase_index):
             available_modifiers.remove("Mirror Image")
         elif boss_mod == "Hell's Fury":
             available_modifiers.remove("Strengthened")
-        elif boss_mod == "Hell's Precision":
-            available_modifiers.remove("Hellborn")
         elif boss_mod == "Absolute":
             available_modifiers.remove("Ascended")
         elif boss_mod == "Infernal Legion":
@@ -434,9 +432,9 @@ def get_modifier_description(modifier):
         "Mirror Image": "20% to deal double damage",
         "Glutton": "2x HP",
         "Enfeeble": "Decrease player's attack by 10%",
-        "Venomous": "Aura deals 1 damage on every miss",
-        "Strengthened": "+3 max hit",
-        "Hellborn": "+2 to all hits",
+        "Venomous": "Aura deals 2% of your max HP on every miss",
+        "Strengthened": "Deals 50% more base damage",
+        "Hellborn": "12% bonus damage on all hits",
         "Lucifer-touched": "50% lucky attacks",
         "Titanium": "Reduce incoming damage by 10%",
         "Ascended": "+10 Attack, +10 Defence",
@@ -453,14 +451,14 @@ def get_modifier_description(modifier):
         "Time Lord": "80% chance to not die",
         "Suffocator": "20% for player hits to be unlucky",
         "Penetrator": "Ignores 20% of Percentage Damage Reduction",
-        "Clobberer": "Ignores 5 Flat Damage Reduction",
+        "Clobberer": "Bypasses 35% of your Flat Damage Reduction",
         "Smothering": "Critical hit damage is reduced by 20%",
         "Dodgy": "Evasion increased by 10%",
         "Prescient": "10% more likely to hit",
-        "Vampiric": "Heals for 10 times damage dealt",
+        "Vampiric": "Heals for 5% of max HP per hit",
         "Celestial Watcher": "Never miss (boss)",  # Start boss list here
         "Unlimited Blade Works": "Double damage (boss)",
-        "Hell's Fury": "+5 each successful hit (boss)",
+        "Hell's Fury": "25% bonus damage on each hit (boss)",
         "Absolute": "+25 Attack, +25 defence (boss)",
         "Infernal Legion": "Has minions that echo hits (boss)",
         "Radiant Protection": "Globally reduces all incoming damage by 60% (Uber)",  # Start uber list here
