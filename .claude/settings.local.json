@@ -8,7 +8,11 @@
       "Bash(find /c/Users/yugao/Idleology -type f -name *.py)",
       "Bash(xargs grep:*)",
       "Bash(grep -rn \"glove.*corrupted\\\\|boot.*corrupted\\\\|helmet.*corrupted\" /c/Users/yugao/Idleology/core/combat/*.py)",
-      "Bash(xargs ls *)"
+      "Bash(xargs ls *)",
+      "Bash(python -c ' *)",
+      "Bash(python -m pytest tests/test_combat_logic.py -q)",
+      "Bash(venv/Scripts/python -m pytest tests/test_combat_logic.py -q)",
+      "Bash(venv/Scripts/python -c ' *)"
     ]
   }
 }

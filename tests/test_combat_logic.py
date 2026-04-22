@@ -11,11 +11,16 @@ from core.combat.calcs import calculate_hit_chance, calculate_damage_taken, get_
 
 @pytest.fixture
 def base_player():
-    """Creates a standard Level 10 Player for testing."""
-    return Player(
+    """Creates a standard Level 10 Player for testing.
+    flat_atk/flat_def set directly since get_total_attack/defence read these, not base_attack/base_defence.
+    """
+    p = Player(
         id="123", name="TestHero", level=10, ascension=0, exp=0,
         current_hp=100, max_hp=100, base_attack=20, base_defence=20, potions=5
     )
+    p.flat_atk = 20
+    p.flat_def = 20
+    return p
 
 @pytest.fixture
 def base_monster():
@@ -39,41 +44,41 @@ def op_weapon():
 # ==========================================
 
 def test_hit_chance_calculation(base_player, base_monster):
-    """Test that higher attack increases hit chance."""
-    # Scenario A: Equal stats
-    base_chance = calculate_hit_chance(base_player, base_monster)
-    
-    # Scenario B: Player gets massive attack boost
-    base_player.base_attack = 200
-    boosted_chance = calculate_hit_chance(base_player, base_monster)
-    
-    assert boosted_chance > base_chance, "High attack should result in higher hit chance"
+    """Test that higher attack vs monster defence increases hit chance."""
+    # Scenario A: player attack below monster defence → penalty applied
+    base_player.flat_atk = 5
+    base_monster.defence = 20
+    low_chance = calculate_hit_chance(base_player, base_monster)
+
+    # Scenario B: player attack well above monster defence → bonus applied
+    base_player.flat_atk = 100
+    high_chance = calculate_hit_chance(base_player, base_monster)
+
+    assert high_chance > low_chance, "Higher attack relative to monster defence should increase hit chance"
 
 def test_damage_mitigation(base_player, base_monster):
-    """Test that player defence reduces incoming damage."""
-    # Force monster attack to be constant-ish for test
+    """Test that player defence reduces incoming damage to zero when defence >= attack."""
     base_monster.attack = 50
-    
-    # Case 1: 0 Defence
-    base_player.base_defence = 0
-    dmg_low_def = calculate_damage_taken(base_player, base_monster)
-    
-    # Case 2: 50 Defence
-    base_player.base_defence = 50
-    dmg_high_def = calculate_damage_taken(base_player, base_monster)
-    
-    # Note: Due to RNG in damage rolls, we run this multiple times to be sure, 
-    # or mock random.randint. For a simple test, we check averages logic.
-    assert dmg_high_def <= dmg_low_def
+
+    # Case 1: no defence — should take significant damage
+    base_player.flat_def = 0
+    dmg_no_def = calculate_damage_taken(base_player, base_monster)
+
+    # Case 2: defence equal to monster attack — raw damage is 0
+    base_player.flat_def = 50
+    dmg_full_def = calculate_damage_taken(base_player, base_monster)
+
+    assert dmg_no_def > 0, "Player with no defence should take damage"
+    assert dmg_full_def == 0, "Player defence equal to monster attack should reduce damage to 0"
 
 def test_weapon_passive_trigger(base_player, base_monster, op_weapon):
     """Test if 'polished' passive actually reduces monster defence."""
     base_player.equipped_weapon = op_weapon
+    base_monster.defence = 100  # large enough that 8% rounds to at least 1
     initial_monster_def = base_monster.defence
-    
-    # Run the start-of-combat logic
+
     logs = engine.apply_combat_start_passives(base_player, base_monster)
-    
+
     assert "Weapon Passive" in logs
     assert base_monster.defence < initial_monster_def
     print(f"\n[Passive Test] Monster Def dropped from {initial_monster_def} to {base_monster.defence}")

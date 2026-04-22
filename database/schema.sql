@@ -38,8 +38,8 @@
 -- ALTER TABLE alchemy_data ADD COLUMN cosmic_dust INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN antique_tome INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN pinnacle_key INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE users ADD COLUMN highest_ascension_floor INTEGER NOT NULL DEFAULT 0;
-CREATE TABLE IF NOT EXISTS ascension_unlocks (user_id TEXT NOT NULL, floor INTEGER NOT NULL, PRIMARY KEY (user_id, floor));
+-- ALTER TABLE users ADD COLUMN highest_ascension_floor INTEGER NOT NULL DEFAULT 0;
+
 
 
 CREATE TABLE IF NOT EXISTS `users` (
@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `pinnacle_key` INTEGER NOT NULL DEFAULT 0,
   `highest_ascension_floor` INTEGER NOT NULL DEFAULT 0
 );
+
 
 CREATE TABLE IF NOT EXISTS `ascension_unlocks` (
   `user_id` TEXT NOT NULL,

@@ -105,6 +105,15 @@ def calculate_damage_taken(player, monster) -> int:
     return max(0, int(raw * random.uniform(*_DMG_VARIANCE)))
 
 
+def calculate_crit_chance(player) -> float:
+    """Returns the effective crit chance (0–100) accounting for weapon tier and infernal."""
+    idx, _ = get_weapon_tier(player, 'crit')
+    chance = player.get_current_crit_chance() + ((idx + 1) * 5 if idx >= 0 else 0)
+    if player.get_weapon_infernal() == 'voracious' and player.voracious_stacks > 0:
+        chance += player.voracious_stacks * 5
+    return chance
+
+
 # ---------------------------------------------------------------------------
 # Legacy wrappers — retained for dummy_engine.py compatibility
 # ---------------------------------------------------------------------------

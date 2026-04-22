@@ -9,6 +9,7 @@ from discord import ButtonStyle, Interaction, ui
 import core.slayer.mechanics
 from core.combat import engine, rewards
 from core.combat import ui as combat_ui
+from core.combat.combat_log import CombatLogger
 from core.combat.drops import DropManager
 from core.combat.experience import ExperienceManager
 from core.combat.gen_mob import generate_boss
@@ -120,6 +121,9 @@ class CombatView(ui.View):
         self._was_auto = False
         self.killing_blow = 0
 
+        self.combat_logger = CombatLogger(player, monster)
+        self.combat_logger.log_combat_start(player, monster)
+
         self.update_buttons()
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -158,6 +162,7 @@ class CombatView(ui.View):
         hp_before = self.player.current_hp
         log = engine.process_monster_turn(self.player, self.monster)
         self.killing_blow = hp_before - max(0, self.player.current_hp)
+        self.combat_logger.log_monster_turn(log, self.player)
         return log
 
     async def refresh_embed(self, interaction: Interaction):
@@ -173,6 +178,7 @@ class CombatView(ui.View):
     async def attack_btn(self, interaction: Interaction, button: ui.Button):
         # 1. Player Turn
         p_log = engine.process_player_turn(self.player, self.monster)
+        self.combat_logger.log_player_turn(p_log, self.monster)
         self.logs = {self.player.name: p_log}
 
         # 2. Monster Turn (if alive)
@@ -211,6 +217,7 @@ class CombatView(ui.View):
             # Inner loop: fight the current phase to completion
             while self.player.current_hp > hp_threshold and self.monster.hp > 0:
                 p_log = engine.process_player_turn(self.player, self.monster)
+                self.combat_logger.log_player_turn(p_log, self.monster)
                 m_log = ""
                 if self.monster.hp > 0:
                     m_log = self._do_monster_turn()
@@ -285,6 +292,7 @@ class CombatView(ui.View):
                 break
 
             p_log = engine.process_player_turn(self.player, self.monster)
+            self.combat_logger.log_player_turn(p_log, self.monster)
             m_log = ""
             if self.monster.hp > 0:
                 m_log = self._do_monster_turn()
@@ -359,6 +367,7 @@ class CombatView(ui.View):
 
         if self.player.current_hp <= 0:
             # Defeat Logic (Same as before)
+            self.combat_logger.log_combat_end(self.player, self.monster, "defeat")
             base_loss = int(self.player.exp * 0.10)
             xp_loss = await ExperienceManager.remove_experience(
                 self.bot, self.user_id, self.player, base_loss
@@ -422,6 +431,7 @@ class CombatView(ui.View):
                 return  # Keep View Alive
 
             # --- FINAL VICTORY ---
+            self.combat_logger.log_combat_end(self.player, self.monster, "victory")
 
             reward_data = rewards.calculate_rewards(self.player, self.monster)
 
