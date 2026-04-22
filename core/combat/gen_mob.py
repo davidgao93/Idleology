@@ -205,7 +205,7 @@ async def generate_ascent_monster(
     monster.defence = temp_monster_for_stats.defence
 
     # Fetch image, name, and flavor text using the stage level
-    monster = await fetch_monster_image(random.randint(20, 120), monster)
+    monster = await fetch_monster_image(random.randint(30, 120), monster)
 
     # HP Calculation based on stage level
     monster.hp = random.randint(0, 9) + int(
