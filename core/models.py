@@ -220,11 +220,11 @@ class Companion:
             "def": f"+{val}% Def",
             "hit": f"+{val} Hit Chance",
             "crit": f"+{val} Crit Chance",
-            "ward": f"+{val}% HP as Ward",
+            "ward": f"+{val}% Ward",
             "rarity": f"+{val}% Rarity",
             "s_rarity": f"+{val}% Special Drop Rate",
-            "fdr": f"+{val} Flat Dmg Red.",
-            "pdr": f"+{val}% Phys Dmg Red.",
+            "fdr": f"+{val} FDR",
+            "pdr": f"+{val}% PDR",
         }
         return p_map.get(self.balanced_passive, "Unknown Effect")
 
@@ -280,15 +280,23 @@ class Player:
     potion_passives: List[dict] = field(default_factory=list)
 
     # Alchemy — Transient combat state (reset each combat)
-    alchemy_atk_boost_pct: float = 0.0          # Warrior's Draft: % ATK boost on next attack (resets after use)
-    alchemy_def_boost_pct: float = 0.0          # Iron Skin: % damage reduction for N monster turns
-    alchemy_def_boost_turns: int = 0            # Turns remaining for Iron Skin DEF boost
-    alchemy_dmg_reduction_pct: float = 0.0      # Dulled Pain: % incoming dmg reduction (next attack only)
-    alchemy_dmg_reduction_turns: int = 0        # Turns remaining for Dulled Pain (1 = next attack)
-    alchemy_overcap_hp: int = 0                 # Overcap Brew: temporary HP above max (lost on hit)
-    alchemy_linger_hp: int = 0                  # Lingering Remedy: heal per turn
-    alchemy_linger_turns: int = 0               # Turns remaining for lingering heal
-    alchemy_guaranteed_hit: bool = False        # Bottled Courage: next attack cannot miss
+    alchemy_atk_boost_pct: float = (
+        0.0  # Warrior's Draft: % ATK boost on next attack (resets after use)
+    )
+    alchemy_def_boost_pct: float = (
+        0.0  # Iron Skin: % damage reduction for N monster turns
+    )
+    alchemy_def_boost_turns: int = 0  # Turns remaining for Iron Skin DEF boost
+    alchemy_dmg_reduction_pct: float = (
+        0.0  # Dulled Pain: % incoming dmg reduction (next attack only)
+    )
+    alchemy_dmg_reduction_turns: int = (
+        0  # Turns remaining for Dulled Pain (1 = next attack)
+    )
+    alchemy_overcap_hp: int = 0  # Overcap Brew: temporary HP above max (lost on hit)
+    alchemy_linger_hp: int = 0  # Lingering Remedy: heal per turn
+    alchemy_linger_turns: int = 0  # Turns remaining for lingering heal
+    alchemy_guaranteed_hit: bool = False  # Bottled Courage: next attack cannot miss
 
     # Transient states (reset each combat)
     combat_ward: int = 0
@@ -305,7 +313,7 @@ class Player:
     hunger_stacks: int = 0
 
     # Corrupted essence transients (reset each combat)
-    lucifer_pdr_burst: int = 0      # Lucifer helmet: flat PDR added after ward breaks
+    lucifer_pdr_burst: int = 0  # Lucifer helmet: flat PDR added after ward breaks
 
     # Glove passives
     equilibrium_bonus_xp_pending: int = 0
@@ -330,7 +338,9 @@ class Player:
     # -----------------------------------------------------------------------
     bonus_atk: int = 0
     bonus_def: int = 0
-    bonus_crit: int = 0   # Impenetrable, Cursed Precision, chapter signatures, crit boons
+    bonus_crit: int = (
+        0  # Impenetrable, Cursed Precision, chapter signatures, crit boons
+    )
     bonus_max_hp: int = 0  # Chapter signatures (Decaying, Cursed), Diabolic Pact
 
     # -----------------------------------------------------------------------
@@ -341,7 +351,9 @@ class Player:
     # -----------------------------------------------------------------------
     atk_multiplier: float = 1.0
     def_multiplier: float = 1.0
-    crit_multiplier: float = 1.0  # Insight helmet passive, future multiplicative crit mods
+    crit_multiplier: float = (
+        1.0  # Insight helmet passive, future multiplicative crit mods
+    )
 
     # -----------------------------------------------------------------------
     # Ascension pinnacle unlocks  (loaded once at session start, never mutated)
@@ -353,9 +365,9 @@ class Player:
     # -----------------------------------------------------------------------
     run_atk_penalty: int = 0
     run_def_penalty: int = 0
-    run_crit_penalty: int = 0   # fragment_boost crit downside
-    run_max_hp_bonus: int = 0   # max_hp_boost boon (+) and fragment_boost hp_penalty (−)
-    bonus_rarity: int = 0       # per-wave rarity boon accumulator; reset at chapter boundary
+    run_crit_penalty: int = 0  # fragment_boost crit downside
+    run_max_hp_bonus: int = 0  # max_hp_boost boon (+) and fragment_boost hp_penalty (−)
+    bonus_rarity: int = 0  # per-wave rarity boon accumulator; reset at chapter boundary
 
     @property
     def rarity(self) -> int:
@@ -397,6 +409,7 @@ class Player:
 
     def _get_flat_attack(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
+
         total = self.base_attack
         if self.equipped_weapon:
             total += self.equipped_weapon.attack
@@ -417,6 +430,7 @@ class Player:
 
     def _get_flat_defence(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
+
         total = self.base_defence
         if self.equipped_weapon:
             total += self.equipped_weapon.defence
@@ -472,6 +486,7 @@ class Player:
 
     def get_ascension_bonuses(self) -> dict:
         from core.ascent.mechanics import AscentMechanics
+
         return AscentMechanics.get_cumulative_pinnacle_bonuses(self.ascension_unlocks)
 
     # -----------------------------------------------------------------------
@@ -542,6 +557,7 @@ class Player:
 
     def get_total_pdr(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
+
         total = 0
         if self.equipped_armor:
             total += self.equipped_armor.pdr
@@ -575,6 +591,7 @@ class Player:
 
     def get_total_fdr(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
+
         total = 0
         if self.equipped_armor:
             total += self.equipped_armor.fdr
@@ -607,6 +624,7 @@ class Player:
 
     def get_total_ward_percentage(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
+
         total = 0
         if self.equipped_accessory:
             total += self.equipped_accessory.ward
@@ -630,6 +648,7 @@ class Player:
 
     def get_current_crit_chance(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
+
         # Flat sources: gear + companions + essences + tomes
         chance = 0
         if self.equipped_accessory:
@@ -663,6 +682,7 @@ class Player:
     def get_total_evasion(self) -> int:
         """Total evasion including armor base and any essence bonuses on glove/boot/helmet."""
         from core.items.essence_mechanics import compute_essence_stat_bonus
+
         total = self.equipped_armor.evasion if self.equipped_armor else 0
         for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
             if item:
@@ -672,6 +692,7 @@ class Player:
     def get_total_block(self) -> int:
         """Total block including armor base and any essence bonuses on glove/boot/helmet."""
         from core.items.essence_mechanics import compute_essence_stat_bonus
+
         total = self.equipped_armor.block if self.equipped_armor else 0
         for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
             if item:
@@ -745,13 +766,19 @@ class Player:
         return self.equipped_helmet.passive if self.equipped_helmet else "none"
 
     def get_glove_corrupted_essence(self) -> str:
-        return (self.equipped_glove.corrupted_essence if self.equipped_glove else "none") or "none"
+        return (
+            self.equipped_glove.corrupted_essence if self.equipped_glove else "none"
+        ) or "none"
 
     def get_boot_corrupted_essence(self) -> str:
-        return (self.equipped_boot.corrupted_essence if self.equipped_boot else "none") or "none"
+        return (
+            self.equipped_boot.corrupted_essence if self.equipped_boot else "none"
+        ) or "none"
 
     def get_helmet_corrupted_essence(self) -> str:
-        return (self.equipped_helmet.corrupted_essence if self.equipped_helmet else "none") or "none"
+        return (
+            self.equipped_helmet.corrupted_essence if self.equipped_helmet else "none"
+        ) or "none"
 
     def get_emblem_bonus(self, passive_type: str) -> int:
         """

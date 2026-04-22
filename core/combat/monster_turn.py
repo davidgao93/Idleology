@@ -6,28 +6,47 @@ from core.models import Monster, Player
 
 
 def _roll_monster_damage(
-    player: Player, monster: Monster, effective_pdr: int, effective_fdr: int
+    player: Player, monster: Monster, effective_pdr: int, effective_fdr: int,
+    calc: list[str] | None = None,
 ) -> tuple[int, int, int]:
     """Rolls a single monster damage hit including modifiers, PDR, FDR, and minions.
     Returns (total_damage, base_damage, minion_damage)."""
+    import random as _random
+    m_atk = monster.attack
+    p_def = player.get_total_defence()
+    raw_ratio = max(0.0, 1.0 - p_def / m_atk) if m_atk > 0 else 0.0
     dmg = calculate_damage_taken(player, monster)
+
+    calc_notes: list[str] = [
+        f"m_atk={m_atk} p_def={p_def} ratio={raw_ratio:.3f} → raw≈{int(m_atk*raw_ratio)} rolled={dmg}"
+    ]
 
     if "Celestial Watcher" in monster.modifiers:
         dmg = int(dmg * 1.2)
+        calc_notes.append(f"celestial_watcher×1.200={dmg}")
     if "Hellborn" in monster.modifiers:
         dmg = int(dmg * 1.12)
+        calc_notes.append(f"hellborn×1.120={dmg}")
     if "Hell's Fury" in monster.modifiers:
         dmg = int(dmg * 1.25)
-    if "Mirror Image" in monster.modifiers and random.random() < 0.2:
+        calc_notes.append(f"hells_fury×1.250={dmg}")
+    if "Mirror Image" in monster.modifiers and _random.random() < 0.2:
         dmg *= 2
+        calc_notes.append(f"mirror_image×2={dmg}")
     if "Unlimited Blade Works" in monster.modifiers:
         dmg *= 2
+        calc_notes.append(f"unlimited_blade_works×2={dmg}")
 
     pdr = max(0, effective_pdr - (20 if "Penetrator" in monster.modifiers else 0))
+    pre_pdr = dmg
     dmg = max(0, int(dmg * (1 - pdr / 100)))
+    calc_notes.append(f"PDR={pdr}%({'-20pen' if 'Penetrator' in monster.modifiers else ''}) {pre_pdr}→{dmg}")
 
     fdr = int(effective_fdr * (0.65 if "Clobberer" in monster.modifiers else 1.0))
+    pre_fdr = dmg
     dmg = max(0, dmg - fdr)
+    if fdr > 0:
+        calc_notes.append(f"FDR={fdr}({'×0.65clobberer' if 'Clobberer' in monster.modifiers else ''}) {pre_fdr}→{dmg}")
 
     minions = 0
     if "Summoner" in monster.modifiers:
@@ -35,6 +54,11 @@ def _roll_monster_damage(
     if "Infernal Legion" in monster.modifiers:
         minions += dmg
     minions = max(0, minions - fdr)
+    if minions > 0:
+        calc_notes.append(f"minions={minions}")
+
+    if calc is not None:
+        calc.append("  dmg_roll: " + " → ".join(calc_notes) + f" | base={dmg} minions={minions} total={dmg+minions}")
 
     return dmg + minions, dmg, minions
 
@@ -50,6 +74,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     monster.combat_round += 1
     prev_hp = player.current_hp
     log: list[str] = []
+    calc: list[str] = []
 
     celestial = player.get_celestial_armor_passive()
     helmet_passive = player.get_helmet_passive()
@@ -57,17 +82,24 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     previous_ward = player.combat_ward
 
     # --- Hit chance ---
-    hit_chance = calculate_monster_hit_chance(player, monster)
+    hit_chance_base = calculate_monster_hit_chance(player, monster)
+    hit_chance = hit_chance_base
+    hit_mods: list[str] = [f"base={hit_chance_base*100:.1f}%"]
     if "Prescient" in monster.modifiers:
         hit_chance = min(0.95, hit_chance + 0.10)
+        hit_mods.append(f"+10%(prescient)={hit_chance*100:.1f}%")
     if "All-seeing" in monster.modifiers:
         hit_chance = min(0.95, hit_chance * 1.10)
+        hit_mods.append(f"×1.10(all-seeing)={hit_chance*100:.1f}%")
     if "Celestial Watcher" in monster.modifiers:
         hit_chance = 1.0
+        hit_mods.append("100%(celestial_watcher)")
 
     monster_roll = random.random()
+    lucifer_note = ""
     if "Lucifer-touched" in monster.modifiers and random.random() < 0.5:
         monster_roll = min(monster_roll, random.random())
+        lucifer_note = "(lucifer-unlucky)"
 
     # --- Void Aura drain (regardless of hit) ---
     if "Void Aura" in monster.modifiers:
@@ -79,17 +111,27 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!"
         )
 
-    if monster_roll <= hit_chance:
+    is_monster_hit = monster_roll <= hit_chance
+    calc.append(
+        f"  hit: {' → '.join(hit_mods)} | roll={monster_roll:.4f}{lucifer_note} "
+        f"→ {'HIT' if is_monster_hit else 'MISS'}"
+    )
+
+    if is_monster_hit:
         # --- PDR / FDR setup ---
         effective_pdr = player.get_total_pdr()
+        pdr_notes = [f"base={effective_pdr}%"]
         if celestial == "celestial_fortress":
             missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
-            effective_pdr += int(missing_pct / 5.0)
+            bonus_pdr = int(missing_pct / 5.0)
+            effective_pdr += bonus_pdr
+            pdr_notes.append(f"+{bonus_pdr}%(fortress,{missing_pct:.1f}%missing)={effective_pdr}%")
         effective_fdr = player.get_total_fdr()
+        calc.append(f"  PDR: {' → '.join(pdr_notes)} | FDR: {effective_fdr}")
 
         # --- Base damage roll (Celestial Sanctity takes the lower of two) ---
         total_damage, dmg_base, minion_dmg = _roll_monster_damage(
-            player, monster, effective_pdr, effective_fdr
+            player, monster, effective_pdr, effective_fdr, calc
         )
         if celestial == "celestial_sanctity":
             alt_total, alt_base, alt_minion = _roll_monster_damage(
@@ -97,6 +139,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             )
             if alt_total < total_damage:
                 total_damage, dmg_base, minion_dmg = alt_total, alt_base, alt_minion
+                calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
 
         # --- Multistrike & Executioner ---
         multistrike_damage = 0
@@ -105,11 +148,13 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 0, int(calculate_damage_taken(player, monster) * 0.5) - effective_fdr
             )
             total_damage += multistrike_damage
+            calc.append(f"  multistrike: +{multistrike_damage} → total={total_damage}")
 
         is_executed = False
         if "Executioner" in monster.modifiers and random.random() < 0.01:
             total_damage = max(total_damage, int(player.current_hp * 0.90))
             is_executed = True
+            calc.append(f"  executioner: forced={total_damage} (90% of player_hp={player.current_hp})")
 
         # --- Dodge & Block ---
         is_dodged = False
@@ -128,6 +173,11 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 block_chance *= 2.0
             if random.random() <= block_chance:
                 is_blocked = True
+
+        calc.append(
+            f"  dodge/block: evasion={player.get_total_evasion()}% block={player.get_total_block()}% "
+            f"→ {'DODGED' if is_dodged else ('BLOCKED' if is_blocked else 'none')}"
+        )
 
         # --- Resolve mitigation states ---
         if is_dodged:
@@ -360,7 +410,13 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             log.append(f"{monster.name} misses!")
 
     player.current_hp = max(0, player.current_hp)
+    hp_damage = max(0, prev_hp - player.current_hp)
+    calc.append(
+        f"  final: ward_remaining={player.combat_ward} hp_damage={hp_damage} "
+        f"player_hp={player.current_hp}/{player.total_max_hp}"
+    )
     return MonsterTurnResult(
         log="\n".join(log),
-        hp_damage=max(0, prev_hp - player.current_hp),
+        hp_damage=hp_damage,
+        calc_detail="\n".join(calc),
     )

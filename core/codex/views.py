@@ -19,6 +19,7 @@ from core.codex.mechanics import (
 )
 from core.combat import engine
 from core.combat import ui as combat_ui
+from core.combat.combat_log import CombatLogger
 from core.combat.experience import ExperienceManager
 from core.combat.gen_mob import generate_ascent_monster
 from core.combat.rewards import calculate_rewards
@@ -162,6 +163,9 @@ class CodexRunView(ui.View):
         # XP/gold accumulation across the run
         self.cumulative_xp = 0
         self.cumulative_gold = 0
+
+        self.combat_logger = CombatLogger(player, initial_monster)
+        self.combat_logger.log_combat_start(player, initial_monster)
 
     @property
     def current_chapter(self) -> CodexChapter:
@@ -467,11 +471,16 @@ class CodexRunView(ui.View):
         self.player.is_invulnerable_this_combat = False
         self.player.celestial_vow_used = False
 
+        self.combat_logger.log_combat_end(self.player, self.monster, "victory")
+
         self.monster = await _generate_codex_wave_monster(
             self.player, chapter, self.wave_num
         )
         engine.apply_stat_effects(self.player, self.monster)
         self.logs = engine.apply_combat_start_passives(self.player, self.monster)
+
+        self.combat_logger = CombatLogger(self.player, self.monster)
+        self.combat_logger.log_combat_start(self.player, self.monster)
 
         embed = self._combat_embed()
         msg_obj = message or (
@@ -650,6 +659,7 @@ class CodexRunView(ui.View):
         self, interaction: Interaction = None, message: discord.Message = None
     ):
         """Run ends on defeat. No fragment rewards. XP penalty applied."""
+        self.combat_logger.log_combat_end(self.player, self.monster, "defeat")
         base_loss = int(self.player.exp * 0.05)
         xp_loss = await ExperienceManager.remove_experience(
             self.bot, self.user_id, self.player, base_loss
@@ -713,9 +723,11 @@ class CodexRunView(ui.View):
 
     async def _execute_turn(self, message: discord.Message):
         p_log = engine.process_player_turn(self.player, self.monster)
+        self.combat_logger.log_player_turn(p_log, self.monster)
         self.logs = {self.player.name: p_log}
         if self.monster.hp > 0:
             m_log = engine.process_monster_turn(self.player, self.monster)
+            self.combat_logger.log_monster_turn(m_log, self.player)
             self.logs[self.monster.name] = m_log
         await self._check_state(message=message)
 
@@ -746,6 +758,7 @@ class CodexRunView(ui.View):
         self.logs = {"Heal": heal_log}
         if self.monster.hp > 0:
             m_log = engine.process_monster_turn(self.player, self.monster)
+            self.combat_logger.log_monster_turn(m_log, self.player)
             self.logs[self.monster.name] = m_log
         await self._check_state(message=message)
 
@@ -764,9 +777,11 @@ class CodexRunView(ui.View):
                 ):
                     break
                 p_log = engine.process_player_turn(self.player, self.monster)
+                self.combat_logger.log_player_turn(p_log, self.monster)
                 m_log = ""
                 if self.monster.hp > 0:
                     m_log = engine.process_monster_turn(self.player, self.monster)
+                    self.combat_logger.log_monster_turn(m_log, self.player)
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
             if self.monster.hp > 0 and self.player.current_hp > (

@@ -1,5 +1,5 @@
 BASE_LEVEL = 100
-LEVEL_PER_FLOOR = 5
+LEVEL_PER_FLOOR = 2
 NORMAL_MOD_EVERY = 5
 BOSS_MOD_EVERY = 10
 STARTING_OFFSET = 5
@@ -7,9 +7,9 @@ STARTING_OFFSET = 5
 # Pinnacle floor → stat bonuses granted as a one-time unlock.
 # Keys: atk_pct, def_pct, crit, hit, pdr, fdr, hp
 PINNACLE_REWARDS: dict[int, dict] = {
-    25:  {"atk_pct": 5,  "def_pct": 5},
-    50:  {"crit": 1, "hit": 1},
-    75:  {"atk_pct": 5,  "def_pct": 5},
+    25: {"atk_pct": 5, "def_pct": 5},
+    50: {"crit": 1, "hit": 1},
+    75: {"atk_pct": 5, "def_pct": 5},
     100: {"hp": 50},
     125: {"crit": 1, "hit": 1},
     150: {"pdr": 1, "fdr": 10},
@@ -45,7 +45,15 @@ class AscentMechanics:
     @staticmethod
     def get_cumulative_pinnacle_bonuses(unlocked_floors: set) -> dict:
         """Sums all active pinnacle bonuses into one dict."""
-        totals = {"atk_pct": 0, "def_pct": 0, "crit": 0, "hit": 0, "pdr": 0, "fdr": 0, "hp": 0}
+        totals = {
+            "atk_pct": 0,
+            "def_pct": 0,
+            "crit": 0,
+            "hit": 0,
+            "pdr": 0,
+            "fdr": 0,
+            "hp": 0,
+        }
         for floor in unlocked_floors:
             if floor in PINNACLE_REWARDS:
                 for k, v in PINNACLE_REWARDS[floor].items():

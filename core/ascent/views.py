@@ -7,6 +7,7 @@ from discord import ButtonStyle, Interaction, ui
 from core.ascent.mechanics import AscentMechanics, PINNACLE_REWARDS
 from core.combat import engine
 from core.combat import ui as combat_ui
+from core.combat.combat_log import CombatLogger
 from core.combat.drops import DropManager
 from core.combat.gen_mob import generate_ascent_monster
 from core.combat.loot import (
@@ -114,6 +115,9 @@ class AscentView(ui.View):
         self.milestone_log: list[str] = []
         self.pinnacle_log: list[str] = []
 
+        self.combat_logger = CombatLogger(player, initial_monster)
+        self.combat_logger.log_combat_start(player, initial_monster)
+
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
 
@@ -142,16 +146,21 @@ class AscentView(ui.View):
     @ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️")
     async def attack(self, interaction: Interaction, button: ui.Button):
         p_log = engine.process_player_turn(self.player, self.monster)
+        self.combat_logger.log_player_turn(p_log, self.monster)
         self.logs = {self.player.name: p_log}
         if self.monster.hp > 0:
-            self.logs[self.monster.name] = engine.process_monster_turn(self.player, self.monster)
+            m_log = engine.process_monster_turn(self.player, self.monster)
+            self.combat_logger.log_monster_turn(m_log, self.player)
+            self.logs[self.monster.name] = m_log
         await self._check_state(interaction)
 
     @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
     async def heal(self, interaction: Interaction, button: ui.Button):
         self.logs = {"Heal": engine.process_heal(self.player, self.monster)}
         if self.monster.hp > 0:
-            self.logs[self.monster.name] = engine.process_monster_turn(self.player, self.monster)
+            m_log = engine.process_monster_turn(self.player, self.monster)
+            self.combat_logger.log_monster_turn(m_log, self.player)
+            self.logs[self.monster.name] = m_log
         await self._check_state(interaction)
 
     @ui.button(label="Auto Floor", style=ButtonStyle.primary, emoji="⏩")
@@ -164,7 +173,10 @@ class AscentView(ui.View):
                 if self.player.current_hp <= (self.player.total_max_hp * 0.2) or self.monster.hp <= 0:
                     break
                 p_log = engine.process_player_turn(self.player, self.monster)
+                self.combat_logger.log_player_turn(p_log, self.monster)
                 m_log = engine.process_monster_turn(self.player, self.monster) if self.monster.hp > 0 else ""
+                if m_log:
+                    self.combat_logger.log_monster_turn(m_log, self.player)
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
             if self.monster.hp > 0 and self.player.current_hp > (self.player.total_max_hp * 0.2):
@@ -194,6 +206,7 @@ class AscentView(ui.View):
             await self._refresh(interaction, message)
 
     async def _handle_floor_clear(self, interaction: Interaction, message: discord.Message):
+        self.combat_logger.log_combat_end(self.player, self.monster, "victory")
         floor = self.current_floor
 
         # Update best floor
@@ -267,6 +280,9 @@ class AscentView(ui.View):
         engine.apply_stat_effects(self.player, self.monster)
         self.logs = engine.apply_combat_start_passives(self.player, self.monster)
 
+        self.combat_logger = CombatLogger(self.player, self.monster)
+        self.combat_logger.log_combat_start(self.player, self.monster)
+
         msg_obj = message if message else (await interaction.original_response())
         embed = combat_ui.create_combat_embed(
             self.player, self.monster, self.logs,
@@ -275,6 +291,7 @@ class AscentView(ui.View):
         await msg_obj.edit(embed=embed, view=self)
 
     async def _handle_defeat(self, interaction, message):
+        self.combat_logger.log_combat_end(self.player, self.monster, "defeat")
         self.player.current_hp = 1
         embed = combat_ui.create_defeat_embed(self.player, self.monster, 0)
         embed.title = f"Defeated on Floor {self.current_floor}"

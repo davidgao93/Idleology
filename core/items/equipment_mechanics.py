@@ -255,19 +255,19 @@ class EquipmentMechanics:
                 qty = 10
                 tier_idx = 0
             elif 121 <= ref_lvl <= 140:
-                qty = 20
+                qty = 10
                 tier_idx = 1
             elif 141 <= ref_lvl <= 160:
-                qty = 30
+                qty = 10
                 tier_idx = 2
             elif 161 <= ref_lvl <= 180:
-                qty = 40
+                qty = 10
                 tier_idx = 3
             elif 181 <= ref_lvl <= 200:
-                qty = 50
+                qty = 10
                 tier_idx = 4
             else:  # 201+
-                qty = 50 + (ref_lvl - 200)
+                qty = 10 + (ref_lvl - 200)
                 tier_idx = 4  # Cap at Idea/Titanium tier
 
             res_defs = [

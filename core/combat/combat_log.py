@@ -46,7 +46,7 @@ class CombatLogger:
             safe_player = "".join(c if c.isalnum() else "_" for c in player.name)
             safe_monster = "".join(c if c.isalnum() else "_" for c in monster.name)
             path = _LOG_DIR / f"{ts}_{safe_player}_vs_{safe_monster}.txt"
-            self._file = open(path, "w", encoding="utf-8")
+            self._file = open(path, "w", encoding="utf-8", buffering=1)
         except Exception as e:
             logger.warning(f"CombatLogger: failed to open log file: {e}")
 
@@ -66,28 +66,58 @@ class CombatLogger:
         if not self._file:
             return
 
-        from core.combat.calcs import calculate_hit_chance, calculate_monster_hit_chance
+        from core.combat.calcs import (
+            calculate_crit_chance,
+            calculate_hit_chance,
+            calculate_monster_hit_chance,
+            _HIT_BASE,
+            _HIT_SENSITIVITY,
+            _MON_HIT_BASE,
+            _MON_HIT_SENSITIVITY,
+        )
+
+        p_atk = player.get_total_attack()
+        p_def = player.get_total_defence()
+        m_atk = monster.attack
+        m_def = monster.defence
 
         p_hit = calculate_hit_chance(player, monster)
         m_hit = calculate_monster_hit_chance(player, monster)
+        eff_crit = calculate_crit_chance(player)
+
+        # Hit formula breakdown
+        p_pct_diff = (p_atk - m_def) / m_def if m_def > 0 else float("inf")
+        p_hit_base = _HIT_BASE + p_pct_diff * _HIT_SENSITIVITY if m_def > 0 else 1.0
+        m_pct_diff = (m_atk - p_def) / m_atk if m_atk > 0 else 0.0
+        m_hit_base = _MON_HIT_BASE + m_pct_diff * _MON_HIT_SENSITIVITY if m_atk > 0 else 0.0
+
+        asc_hit = player.get_ascension_bonuses().get("hit", 0) if player.ascension_unlocks else 0
 
         self._w(f"{'=' * 60}")
         self._w(f"COMBAT: {player.name}  vs  {monster.name} (Lv.{monster.level})")
         self._w(f"{'=' * 60}")
         self._w(
             f"[START] Player : HP {player.current_hp}/{player.total_max_hp} | "
-            f"Atk {player.get_total_attack()} | Def {player.get_total_defence()} | "
+            f"Atk {p_atk} | Def {p_def} | "
             f"PDR {player.get_total_pdr()}% | FDR {player.get_total_fdr()} | "
             f"Crit {player.get_current_crit_chance()}% | Ward {player.combat_ward}"
         )
         self._w(
             f"[START] Monster: HP {monster.hp}/{monster.max_hp} | "
-            f"Atk {monster.attack} | Def {monster.defence} | "
+            f"Atk {m_atk} | Def {m_def} | "
             f"Mods: {', '.join(monster.modifiers) or 'None'}"
         )
         self._w(
-            f"[START] Player hit chance: {p_hit * 100:.1f}% | "
-            f"Monster hit chance: {m_hit * 100:.1f}%"
+            f"[CALC]  Player hit:   base={_HIT_BASE*100:.0f}% + ({p_atk}-{m_def})/{m_def if m_def else 1} × {_HIT_SENSITIVITY*100:.0f}% "
+            f"= {p_hit_base*100:.1f}%{f' +asc={asc_hit}%' if asc_hit else ''} → capped={p_hit*100:.1f}%"
+        )
+        self._w(
+            f"[CALC]  Monster hit:  base={_MON_HIT_BASE*100:.0f}% + ({m_atk}-{p_def})/{m_atk if m_atk else 1} × {_MON_HIT_SENSITIVITY*100:.0f}% "
+            f"= {m_hit_base*100:.1f}% → capped={m_hit*100:.1f}%"
+        )
+        self._w(
+            f"[CALC]  Eff crit:     {eff_crit:.1f}%  "
+            f"(base={player.get_current_crit_chance()}%)"
         )
         self._w("")
 
@@ -107,6 +137,10 @@ class CombatLogger:
         for line in result.log.splitlines():
             if line.strip():
                 self._w(f"  {line}")
+        if result.calc_detail:
+            self._w("  --- calc ---")
+            for line in result.calc_detail.splitlines():
+                self._w(line)
         self._w("")
 
     def log_monster_turn(self, result, player: Player) -> None:
@@ -123,6 +157,10 @@ class CombatLogger:
         for line in result.log.splitlines():
             if line.strip():
                 self._w(f"  {line}")
+        if result.calc_detail:
+            self._w("  --- calc ---")
+            for line in result.calc_detail.splitlines():
+                self._w(line)
         self._w("")
 
     def log_combat_end(self, player: Player, monster: Monster, outcome: str) -> None:

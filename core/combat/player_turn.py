@@ -142,30 +142,40 @@ def process_heal(player: Player, monster=None) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _pt_attack_multiplier(player: Player, monster: Monster, log: list[str]) -> float:
+def _pt_attack_multiplier(player: Player, monster: Monster, log: list[str], calc: list[str]) -> float:
     """Phase 1 — compute the pre-hit attack multiplier from emblems and passive sources."""
     mult = 1.0
+    calc_sources: list[str] = []
 
     if not monster.is_boss:
         tiers = player.get_emblem_bonus("combat_dmg")
         if tiers > 0:
-            mult *= 1 + tiers * 0.02
+            factor = 1 + tiers * 0.02
+            mult *= factor
+            calc_sources.append(f"combat_dmg_emblem×{factor:.3f}")
     if monster.is_boss:
         tiers = player.get_emblem_bonus("boss_dmg")
         if tiers > 0:
-            mult *= 1 + tiers * 0.05
+            factor = 1 + tiers * 0.05
+            mult *= factor
+            calc_sources.append(f"boss_dmg_emblem×{factor:.3f}")
     if player.active_task_species == monster.species:
         tiers = player.get_emblem_bonus("slayer_dmg")
         if tiers > 0:
-            mult *= 1 + tiers * 0.05
+            factor = 1 + tiers * 0.05
+            mult *= factor
+            calc_sources.append(f"slayer_emblem×{factor:.3f}")
 
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
     if glove_passive == "instability" and glove_lvl > 0:
         if random.random() < 0.5:
             mult *= 0.5
+            calc_sources.append("instability×0.500")
         else:
-            mult *= 1.50 + (glove_lvl * 0.10)
+            factor = 1.50 + (glove_lvl * 0.10)
+            mult *= factor
+            calc_sources.append(f"instability×{factor:.3f}")
         log.append(
             f"**Instability ({glove_lvl})** gives you {int(mult * 100)}% damage."
         )
@@ -175,16 +185,20 @@ def _pt_attack_multiplier(player: Player, monster: Monster, log: list[str]) -> f
     if acc_passive == "Obliterate" and random.random() <= (acc_lvl * 0.02):
         log.append(f"**Obliterate ({acc_lvl})** activates, doubling 💥 damage dealt!")
         mult *= 2.0
+        calc_sources.append("obliterate×2.000")
 
     if player.get_armor_passive() == "Mystical Might" and random.random() < 0.2:
         mult *= 10.0
+        calc_sources.append("mystical_might×10.000")
         log.append(
             "The **Mystical Might** armor imbues with power, massively increasing damage!"
         )
 
     # --- Alchemy: Warrior's Draft (one-shot, reset after this attack) ---
     if player.alchemy_atk_boost_pct > 0:
-        mult *= 1 + player.alchemy_atk_boost_pct
+        factor = 1 + player.alchemy_atk_boost_pct
+        mult *= factor
+        calc_sources.append(f"warriors_draft×{factor:.3f}")
         log.append(
             f"💪 **Warrior's Draft** boosts damage! (+{int(player.alchemy_atk_boost_pct * 100)}% ATK)"
         )
@@ -195,22 +209,28 @@ def _pt_attack_multiplier(player: Player, monster: Monster, log: list[str]) -> f
     if helmet_passive == "frenzy" and helmet_lvl > 0:
         missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
         bonus = missing_pct * (0.005 * helmet_lvl)
-        mult *= 1 + bonus
+        factor = 1 + bonus
+        mult *= factor
+        calc_sources.append(f"frenzy×{factor:.3f}({missing_pct:.1f}%missing)")
         log.append(
             f"**Frenzy ({helmet_lvl})** rage increases damage by {int(bonus * 100)}%!"
         )
 
+    src_str = " × ".join(calc_sources) if calc_sources else "none"
+    calc.append(f"  mult: {src_str} → {mult:.4f}x  (base_atk={player.get_total_attack()})")
     return mult
 
 
 def _pt_resolve_hit(
-    player: Player, monster: Monster, attack_multiplier: float, log: list[str]
+    player: Player, monster: Monster, attack_multiplier: float, log: list[str], calc: list[str]
 ) -> tuple[bool, float]:
     """Phase 2 — hit chance roll. Returns (is_hit, attack_multiplier)."""
     hit_chance = calculate_hit_chance(player, monster)
+    dodgy_note = ""
     if "Dodgy" in monster.modifiers:
         hit_chance = max(0.05, hit_chance - 0.10)
         log.append("The monster's **Dodgy** nature makes it harder to hit!")
+        dodgy_note = " -10%(Dodgy)"
 
     acc_bonus = player.get_emblem_bonus("accuracy") * 2
 
@@ -223,52 +243,76 @@ def _pt_resolve_hit(
     acc_passive = player.get_accessory_passive()
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
     attack_roll = random.randint(0, 100)
+    lucky_note = ""
 
     if acc_passive == "Lucky Strikes" and random.random() <= (acc_lvl * 0.10):
         attack_roll = max(attack_roll, random.randint(0, 100))
         log.append(
             f"**Lucky Strikes ({acc_lvl})** activates! Hit chance is now 🍀 lucky!"
         )
+        lucky_note = "(lucky)"
 
+    suffocator_note = ""
     if "Suffocator" in monster.modifiers and random.random() < 0.2:
         log.append(
             f"The {monster.name}'s **Suffocator** aura stifles your attack! Hit chance is now 💀 unlucky!"
         )
         attack_roll = min(attack_roll, random.randint(0, 100))
+        suffocator_note = "(unlucky)"
 
+    shields_note = ""
     if "Shields-up" in monster.modifiers and random.random() < 0.1:
         attack_multiplier = 0
         log.append(f"{monster.name} projects a magical barrier, nullifying the hit!")
+        shields_note = " [shields-up nullified]"
 
     miss_threshold = 100 - int(hit_chance * 100)
     is_hit = (attack_multiplier > 0) and ((attack_roll + acc_bonus) >= miss_threshold)
 
     # --- Alchemy: Bottled Courage (guaranteed hit override) ---
+    bottled_note = ""
     if not is_hit and player.alchemy_guaranteed_hit and attack_multiplier > 0:
         is_hit = True
         player.alchemy_guaranteed_hit = False
         log.append("⚔️ **Bottled Courage** forces the hit!")
+        bottled_note = " [bottled_courage]"
 
+    outcome = "HIT" if is_hit else "MISS"
+    calc.append(
+        f"  hit: chance={hit_chance*100:.1f}%{dodgy_note} → threshold={miss_threshold} | "
+        f"roll={attack_roll}{lucky_note}{suffocator_note}+acc={acc_bonus}={attack_roll+acc_bonus}"
+        f"{shields_note}{bottled_note} → {outcome}"
+    )
     return is_hit, attack_multiplier
 
 
 def _pt_resolve_crit(
-    player: Player, monster: Monster, is_hit: bool, log: list[str]
+    player: Player, monster: Monster, is_hit: bool, log: list[str], calc: list[str]
 ) -> bool:
     """Phase 3 — crit check. Rolls 0-100; result must exceed (100 - crit_chance)."""
     if not is_hit:
+        calc.append("  crit: skipped (miss)")
         return False
 
     from core.combat.calcs import calculate_crit_chance
     crit_chance = calculate_crit_chance(player)
 
     if crit_chance >= 100:
+        calc.append(f"  crit: chance={crit_chance:.1f}% → guaranteed CRIT")
         return True
-    return random.randint(0, 100) > (100 - crit_chance)
+
+    crit_roll = random.randint(0, 100)
+    crit_threshold = 100 - crit_chance
+    is_crit = crit_roll > crit_threshold
+    calc.append(
+        f"  crit: chance={crit_chance:.1f}% → threshold={crit_threshold:.1f} | "
+        f"roll={crit_roll} → {'CRIT' if is_crit else 'NORMAL HIT'}"
+    )
+    return is_crit
 
 
 def _pt_crit_damage(
-    player: Player, monster: Monster, attack_multiplier: float, log: list[str]
+    player: Player, monster: Monster, attack_multiplier: float, log: list[str], calc: list[str]
 ) -> int:
     """Phase 4a — crit damage. Returns pre-reduction damage."""
     max_atk = player.get_total_attack()
@@ -282,37 +326,48 @@ def _pt_crit_damage(
 
     crit_min = max(1, int(max_atk * crit_floor) + 1)
     crit_max = max(crit_min, max_atk)
-    base_dmg = int(random.randint(crit_min, crit_max) * 2.0)
+    crit_rolled = random.randint(crit_min, crit_max)
+    base_dmg = int(crit_rolled * 2.0)
+    calc_dmg_notes: list[str] = [
+        f"range=[{crit_min}–{crit_max}] rolled={crit_rolled} ×2.0={base_dmg}"
+    ]
 
     crit_dmg_tiers = player.get_emblem_bonus("crit_dmg")
     if crit_dmg_tiers > 0:
-        base_dmg = int(base_dmg * (1 + crit_dmg_tiers * 0.05))
+        factor = 1 + crit_dmg_tiers * 0.05
+        base_dmg = int(base_dmg * factor)
+        calc_dmg_notes.append(f"crit_dmg_emblem×{factor:.3f}={base_dmg}")
 
     helmet_passive = player.get_helmet_passive()
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     if helmet_passive == "insight" and helmet_lvl > 0:
         extra = helmet_lvl * 0.1
         base_dmg = int(base_dmg * (1 + extra))
+        calc_dmg_notes.append(f"insight×{1+extra:.3f}={base_dmg}")
         log.append(
             f"**Insight ({helmet_lvl})** exposes a weak point! (Crit Dmg +{int(extra * 100)}%)"
         )
 
     if "Smothering" in monster.modifiers:
         base_dmg = int(base_dmg * 0.80)
+        calc_dmg_notes.append(f"smothering×0.800={base_dmg}")
         log.append("The monster's **Smothering** aura dampens your critical hit!")
 
     if player.cursed_precision_active:
         alt = int(random.randint(crit_min, crit_max) * 2.0)
         if alt < base_dmg:
             base_dmg = alt
+            calc_dmg_notes.append(f"cursed_precision(alt={alt})={base_dmg}")
         log.append("**Cursed Precision** — the weaker roll applies!")
 
     damage = int(base_dmg * attack_multiplier)
+    calc_dmg_notes.append(f"×mult={attack_multiplier:.4f}={damage}")
 
     infernal = player.get_weapon_infernal()
     if infernal == "last_rites" and monster.hp > 0:
         bonus = int(monster.hp * 0.10)
         damage += bonus
+        calc_dmg_notes.append(f"+last_rites={bonus}")
         log.append(f"**Last Rites** seals {monster.name}'s fate! (+{bonus})")
 
     if infernal == "voracious":
@@ -337,6 +392,7 @@ def _pt_crit_damage(
         and random.random() < 0.05
     ):
         damage = monster.hp
+        calc_dmg_notes.append(f"fracture(instant_kill)={damage}")
         log.append("💀 **Fracture** tears open a void rift — **instant kill!**")
 
     # Lucifer glove: bonus flat damage equal to 15% of current ward
@@ -344,6 +400,7 @@ def _pt_crit_damage(
         ward_bonus = int(player.combat_ward * 0.15)
         if ward_bonus > 0:
             damage += ward_bonus
+            calc_dmg_notes.append(f"+lucifer_ward={ward_bonus}")
             log.append(f"🔥 **Soul Burn** — ward fuels the crit! (+{ward_bonus})")
 
     # Gemini glove: second strike at 40-60% of crit damage
@@ -352,7 +409,10 @@ def _pt_crit_damage(
         second_hit = int(damage * second_pct)
         if second_hit > 0:
             damage += second_hit
+            calc_dmg_notes.append(f"+gemini_twin={second_hit}({second_pct:.0%})")
             log.append(f"⚖️ **Twin Strike** — a second blow lands! (+{second_hit})")
+
+    calc.append("  crit_dmg: " + " → ".join(calc_dmg_notes) + f" = {damage}")
 
     idx, _ = get_weapon_tier(player, "crit")
     if idx >= 0:
@@ -362,7 +422,7 @@ def _pt_crit_damage(
 
 
 def _pt_hit_damage(
-    player: Player, monster: Monster, attack_multiplier: float, log: list[str]
+    player: Player, monster: Monster, attack_multiplier: float, log: list[str], calc: list[str]
 ) -> int:
     """Phase 4b — normal hit damage. Returns pre-reduction damage."""
     base_max = player.get_total_attack()
@@ -370,21 +430,27 @@ def _pt_hit_damage(
 
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
+    adroit_note = ""
     if glove_passive == "adroit" and glove_lvl > 0:
         base_min = max(base_min, int(base_max * (glove_lvl * 0.02)))
+        adroit_note = f" adroit_min={base_min}"
         log.append(f"**Adroit ({glove_lvl})** sharpens your technique!")
 
+    burn_note = ""
     idx, name = get_weapon_tier(player, "burn")
     if idx >= 0:
         bonus = int(player.get_total_attack() * ((idx + 1) * 0.08))
         base_max += bonus
+        burn_note = f" burn+{bonus}"
         log.append(
             f"The **{name}** weapon 🔥 burns bright!\nAttack damage potential boosted by **{bonus}**."
         )
 
+    spark_note = ""
     idx, name = get_weapon_tier(player, "spark")
     if idx >= 0:
         base_min = max(base_min, int(base_max * ((idx + 1) * 0.08)))
+        spark_note = f" spark_min={base_min}"
         log.append(
             f"The **{name}** weapon surges with ⚡ lightning, ensuring solid impact!"
         )
@@ -405,12 +471,21 @@ def _pt_hit_damage(
             f"**Voracious** charges! ({player.voracious_stacks} stack{'s' if player.voracious_stacks != 1 else ''})"
         )
 
+    lucifer_note = ""
     # Lucifer glove: bonus flat damage equal to 15% of current ward
     if player.get_glove_corrupted_essence() == "lucifer" and player.combat_ward > 0:
         ward_bonus = int(player.combat_ward * 0.15)
         if ward_bonus > 0:
             damage += ward_bonus
+            lucifer_note = f" +lucifer_ward={ward_bonus}"
             log.append(f"🔥 **Soul Burn** — ward fuels the strike! (+{ward_bonus})")
+
+    echo_note = f" +echo={echo_damage}" if echo_damage else ""
+    calc.append(
+        f"  hit_dmg: range=[{base_min}–{base_max}]{adroit_note}{burn_note}{spark_note} "
+        f"rolled={rolled} ×mult={attack_multiplier:.4f}={int(rolled*attack_multiplier)}"
+        f"{echo_note}{lucifer_note} = {damage}"
+    )
 
     log.append(f"Hit! Damage: 💥 **{damage - echo_damage}**")
     if echo_damage:
@@ -419,7 +494,7 @@ def _pt_hit_damage(
 
 
 def _pt_miss_damage(
-    player: Player, monster: Monster, attack_multiplier: float, log: list[str]
+    player: Player, monster: Monster, attack_multiplier: float, log: list[str], calc: list[str]
 ) -> int:
     """Phase 4c — miss, any on-miss damage sources. Returns total miss damage."""
     damage = 0
@@ -464,11 +539,13 @@ def _pt_miss_damage(
         log.append("Miss! But " + ", ".join(miss_parts) + " damage.")
     else:
         log.append("Miss!")
+    calc.append(f"  miss_dmg: {damage} (sources: {', '.join(miss_parts) if miss_parts else 'none'})")
     return damage
 
 
-def _pt_apply_reductions(monster: Monster, damage: int, log: list[str]) -> int:
+def _pt_apply_reductions(monster: Monster, damage: int, log: list[str], calc: list[str]) -> int:
     """Phase 5 — apply monster damage-reduction modifiers."""
+    pre = damage
     if "Radiant Protection" in monster.modifiers and damage > 0:
         reduction = int(damage * 0.60)
         damage = max(0, damage - reduction)
@@ -481,6 +558,8 @@ def _pt_apply_reductions(monster: Monster, damage: int, log: list[str]) -> int:
             f"{monster.name}'s **Titanium** plating reduces damage by {reduction}."
         )
 
+    if damage != pre:
+        calc.append(f"  mon_reductions: {pre} → {damage} (saved {pre - damage})")
     return damage
 
 
@@ -591,6 +670,7 @@ def _pt_check_cull(player: Player, monster: Monster, log: list[str]) -> None:
 def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     """Executes the player's turn, applying damage to the monster and returning the combat log."""
     log: list[str] = []
+    calc: list[str] = []
 
     # --- Alchemy: Lingering Remedy (tick at start of player's turn) ---
     if player.alchemy_linger_turns > 0:
@@ -603,32 +683,35 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         )
         player.alchemy_linger_turns -= 1
 
-    attack_multiplier = _pt_attack_multiplier(player, monster, log)
-    is_hit, attack_multiplier = _pt_resolve_hit(player, monster, attack_multiplier, log)
-    is_crit = _pt_resolve_crit(player, monster, is_hit, log)
+    attack_multiplier = _pt_attack_multiplier(player, monster, log, calc)
+    is_hit, attack_multiplier = _pt_resolve_hit(player, monster, attack_multiplier, log, calc)
+    is_crit = _pt_resolve_crit(player, monster, is_hit, log, calc)
 
     # NEET glove: all normal hits are treated as misses; crits are unaffected
     if is_hit and not is_crit and player.get_glove_corrupted_essence() == "neet":
         is_hit = False
+        calc.append("  neet: hit converted to miss")
         log.append("🌑 **Void Form** — the strike phases through as nothingness!")
 
     if is_crit:
-        raw_damage = _pt_crit_damage(player, monster, attack_multiplier, log)
+        raw_damage = _pt_crit_damage(player, monster, attack_multiplier, log, calc)
     elif is_hit:
-        raw_damage = _pt_hit_damage(player, monster, attack_multiplier, log)
+        raw_damage = _pt_hit_damage(player, monster, attack_multiplier, log, calc)
     else:
-        raw_damage = _pt_miss_damage(player, monster, attack_multiplier, log)
+        raw_damage = _pt_miss_damage(player, monster, attack_multiplier, log, calc)
 
-    actual_damage = _pt_apply_reductions(monster, raw_damage, log)
+    actual_damage = _pt_apply_reductions(monster, raw_damage, log, calc)
     _pt_generate_ward(player, raw_damage, is_crit, log)
     final_hit = _pt_apply_to_monster(player, monster, actual_damage, log)
     _pt_post_hit_effects(player, monster, final_hit, is_crit, log)
     _pt_track_pending(player, final_hit, log)
     _pt_check_cull(player, monster, log)
+    calc.append(f"  final_dealt: {final_hit}  monster_hp_remaining: {monster.hp}/{monster.max_hp}")
 
     return PlayerTurnResult(
         log="\n".join(log),
         damage=final_hit,
         is_hit=is_hit,
         is_crit=is_crit,
+        calc_detail="\n".join(calc),
     )

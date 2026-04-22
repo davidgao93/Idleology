@@ -149,6 +149,7 @@ class CombatView(ui.View):
             # Save state (HP/XP changes if any occurred prior)
             await self.bot.database.users.update_from_player_object(self.player)
 
+        self.combat_logger.log_combat_end(self.player, self.monster, "timeout")
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 

@@ -12,7 +12,9 @@
       "Bash(python -c ' *)",
       "Bash(python -m pytest tests/test_combat_logic.py -q)",
       "Bash(venv/Scripts/python -m pytest tests/test_combat_logic.py -q)",
-      "Bash(venv/Scripts/python -c ' *)"
+      "Bash(venv/Scripts/python -c ' *)",
+      "Bash(python -c \"from core.combat.engine import process_player_turn, process_monster_turn, CombatLogger; print\\('imports OK'\\)\")",
+      "Bash(python -m pytest tests/ -x -q)"
     ]
   }
 }

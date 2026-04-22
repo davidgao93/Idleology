@@ -9,6 +9,7 @@ class PlayerTurnResult:
     damage: int      # actual damage dealt to monster this turn (0 on full miss/block)
     is_hit: bool     # True for both normal hits and crits
     is_crit: bool    # True only for crits (subset of is_hit)
+    calc_detail: str = ""   # numerical breakdown for combat log file only
 
     def __str__(self) -> str:
         return self.log
@@ -18,6 +19,7 @@ class PlayerTurnResult:
 class MonsterTurnResult:
     log: str
     hp_damage: int   # net HP lost by the player this turn
+    calc_detail: str = ""   # numerical breakdown for combat log file only
 
     def __str__(self) -> str:
         return self.log

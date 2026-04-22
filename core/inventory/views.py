@@ -795,7 +795,7 @@ class GearView(View):
         if isinstance(item, Armor) and getattr(
             item, "celestial_passive", "none"
         ) not in ("none", ""):
-            passives.append(f"🌌{item.celestial_passive.title()}")
+            passives.append(f"🌌{item.celestial_passive.replace('_', ' ').title()}")
         if isinstance(item, Accessory) and getattr(
             item, "void_passive", "none"
         ) not in ("none", ""):
