@@ -134,6 +134,13 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["antique_tome"] = True
         if random.random() < 0.05:
             drops["pinnacle_key"] = True
+        _elemental_boss_chance = 0.05 + player.get_special_drop_bonus()
+        if random.random() < _elemental_boss_chance:
+            drops["blessed_bismuth"] = True
+        if random.random() < _elemental_boss_chance:
+            drops["sparkling_sprig"] = True
+        if random.random() < _elemental_boss_chance:
+            drops["capricious_carp"] = True
         return drops
 
     if "Lucifer" in monster.name:
@@ -147,6 +154,13 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["antique_tome"] = True
         if random.random() < 0.05:
             drops["pinnacle_key"] = True
+        _elemental_boss_chance = 0.05 + player.get_special_drop_bonus()
+        if random.random() < _elemental_boss_chance:
+            drops["blessed_bismuth"] = True
+        if random.random() < _elemental_boss_chance:
+            drops["sparkling_sprig"] = True
+        if random.random() < _elemental_boss_chance:
+            drops["capricious_carp"] = True
         return drops
 
     if "NEET" in monster.name:
@@ -160,6 +174,13 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["antique_tome"] = True
         if random.random() < 0.05:
             drops["pinnacle_key"] = True
+        _elemental_boss_chance = 0.05 + player.get_special_drop_bonus()
+        if random.random() < _elemental_boss_chance:
+            drops["blessed_bismuth"] = True
+        if random.random() < _elemental_boss_chance:
+            drops["sparkling_sprig"] = True
+        if random.random() < _elemental_boss_chance:
+            drops["capricious_carp"] = True
         return drops
 
     if "Gemini" in monster.name:
@@ -171,6 +192,13 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["antique_tome"] = True
         if random.random() < 0.05:
             drops["pinnacle_key"] = True
+        _elemental_boss_chance = 0.05 + player.get_special_drop_bonus()
+        if random.random() < _elemental_boss_chance:
+            drops["blessed_bismuth"] = True
+        if random.random() < _elemental_boss_chance:
+            drops["sparkling_sprig"] = True
+        if random.random() < _elemental_boss_chance:
+            drops["capricious_carp"] = True
         return drops
 
     # --- STANDARD MOBS ---
@@ -223,6 +251,14 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["antique_tome"] = True
         if random.random() < key_drop_chance:
             drops["pinnacle_key"] = True
+
+        elemental_key_chance = (0.05 if monster.is_boss else 0.01) + player.get_special_drop_bonus()
+        if random.random() < elemental_key_chance:
+            drops["blessed_bismuth"] = True
+        if random.random() < elemental_key_chance:
+            drops["sparkling_sprig"] = True
+        if random.random() < elemental_key_chance:
+            drops["capricious_carp"] = True
 
     return drops
 

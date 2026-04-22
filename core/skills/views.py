@@ -2,6 +2,8 @@ import discord
 from discord import Interaction, ButtonStyle
 from discord.ui import View, Button
 from core.skills.mechanics import SkillMechanics
+from core.items.factory import load_player
+from core.combat.views_elemental import ElementalEncounterView
 
 class GatherView(View):
     def __init__(self, bot, user_id: str, server_id: str, initial_skill: str = "mining"):
@@ -14,6 +16,7 @@ class GatherView(View):
         # Data Cache
         self.user_data = None
         self.skill_data = None
+        self.uber_data = None
         
         # We fetch data immediately during init logic via async method called from Cog, 
         # or we accept it passed in. For a Tab view, it's safer to fetch inside the update.
@@ -32,6 +35,9 @@ class GatherView(View):
         self.user_data = await self.bot.database.users.get(self.user_id, self.server_id)
         self.skill_data = await self.bot.database.skills.get_data(
             self.user_id, self.server_id, self.current_skill
+        )
+        self.uber_data = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
         )
         self.setup_ui()
 
@@ -74,6 +80,20 @@ class GatherView(View):
         close_btn = Button(label="Close", style=ButtonStyle.danger, row=1)
         close_btn.callback = self.close_callback
         self.add_item(close_btn)
+
+        # --- ROW 2: ELEMENTAL RESONANCE ---
+        if self.uber_data and all(
+            self.uber_data.get(k, 0) >= 1
+            for k in ("blessed_bismuth", "sparkling_sprig", "capricious_carp")
+        ):
+            resonance_btn = Button(
+                label="Elemental Resonance",
+                emoji="🌀",
+                style=ButtonStyle.blurple,
+                row=2,
+            )
+            resonance_btn.callback = self.resonance_callback
+            self.add_item(resonance_btn)
 
     async def switch_tab(self, interaction: Interaction, skill: str):
         if skill == self.current_skill:
@@ -165,6 +185,19 @@ class GatherView(View):
         
         await interaction.followup.send(f"🎉 **Upgraded to {next_tier.title()}!**", ephemeral=True)
         await interaction.edit_original_response(embed=self.get_embed(), view=self)
+
+    async def resonance_callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        await self.bot.database.uber.consume_elemental_keys(self.user_id, self.server_id)
+        self.bot.state_manager.set_active(self.user_id, "elemental_boss")
+        self.stop()
+
+        user_row = await self.bot.database.users.get(self.user_id, self.server_id)
+        player = await load_player(self.user_id, user_row, self.bot.database)
+
+        elemental_view = ElementalEncounterView(self.bot, player, self.user_id, self.server_id)
+        await interaction.edit_original_response(embed=elemental_view.build_embed(), view=elemental_view)
+        elemental_view.message = await interaction.original_response()
 
     async def close_callback(self, interaction: Interaction):
         await interaction.response.defer()

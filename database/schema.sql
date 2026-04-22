@@ -1,46 +1,6 @@
--- Essence system migrations (run once on existing DBs)
--- ALTER TABLE gloves ADD COLUMN essence_1 TEXT DEFAULT 'none';
--- ALTER TABLE gloves ADD COLUMN essence_1_val REAL DEFAULT 0;
--- ALTER TABLE gloves ADD COLUMN essence_2 TEXT DEFAULT 'none';
--- ALTER TABLE gloves ADD COLUMN essence_2_val REAL DEFAULT 0;
--- ALTER TABLE gloves ADD COLUMN essence_3 TEXT DEFAULT 'none';
--- ALTER TABLE gloves ADD COLUMN essence_3_val REAL DEFAULT 0;
--- ALTER TABLE gloves ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
--- ALTER TABLE boots ADD COLUMN essence_1 TEXT DEFAULT 'none';
--- ALTER TABLE boots ADD COLUMN essence_1_val REAL DEFAULT 0;
--- ALTER TABLE boots ADD COLUMN essence_2 TEXT DEFAULT 'none';
--- ALTER TABLE boots ADD COLUMN essence_2_val REAL DEFAULT 0;
--- ALTER TABLE boots ADD COLUMN essence_3 TEXT DEFAULT 'none';
--- ALTER TABLE boots ADD COLUMN essence_3_val REAL DEFAULT 0;
--- ALTER TABLE boots ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
--- ALTER TABLE helmets ADD COLUMN essence_1 TEXT DEFAULT 'none';
--- ALTER TABLE helmets ADD COLUMN essence_1_val REAL DEFAULT 0;
--- ALTER TABLE helmets ADD COLUMN essence_2 TEXT DEFAULT 'none';
--- ALTER TABLE helmets ADD COLUMN essence_2_val REAL DEFAULT 0;
--- ALTER TABLE helmets ADD COLUMN essence_3 TEXT DEFAULT 'none';
--- ALTER TABLE helmets ADD COLUMN essence_3_val REAL DEFAULT 0;
--- ALTER TABLE helmets ADD COLUMN corrupted_essence TEXT DEFAULT 'none';
-
--- ALTER TABLE `companions` ADD COLUMN `balanced_passive` TEXT DEFAULT 'none';
--- ALTER TABLE `companions` ADD COLUMN `balanced_passive_tier` INTEGER DEFAULT 0;
--- ALTER TABLE `uber_progress` ADD COLUMN `gemini_sigils` INTEGER DEFAULT 0;
--- ALTER TABLE `uber_progress` ADD COLUMN `gemini_engrams` INTEGER DEFAULT 0;
--- ALTER TABLE `uber_progress` ADD COLUMN `gemini_blueprint_unlocked` INTEGER DEFAULT 0;
--- ALTER TABLE `users` ADD COLUMN `spirit_stones` INTEGER DEFAULT 0;
--- ALTER TABLE `users` ADD COLUMN `codex_fragments` INTEGER DEFAULT 0;
--- ALTER TABLE `users` ADD COLUMN `codex_pages` INTEGER DEFAULT 0;
--- ALTER TABLE `users` ADD COLUMN `codex_rerolls` INTEGER DEFAULT 0;
--- ALTER TABLE users ADD COLUMN highest_ascension_stage INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE items ADD COLUMN forge_tier INTEGER DEFAULT 0;
--- ALTER TABLE alchemy_data ADD COLUMN free_roll_used INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN doors_enabled INTEGER NOT NULL DEFAULT 1;
--- ALTER TABLE users ADD COLUMN exp_protection INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE alchemy_data ADD COLUMN cosmic_dust INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN antique_tome INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN pinnacle_key INTEGER NOT NULL DEFAULT 0;
--- ALTER TABLE users ADD COLUMN highest_ascension_floor INTEGER NOT NULL DEFAULT 0;
-
-
+-- ALTER TABLE uber_progress ADD COLUMN blessed_bismuth INTEGER DEFAULT 0;
+-- ALTER TABLE uber_progress ADD COLUMN sparkling_sprig INTEGER DEFAULT 0;
+-- ALTER TABLE uber_progress ADD COLUMN capricious_carp INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -379,6 +339,9 @@ CREATE TABLE IF NOT EXISTS uber_progress (
     gemini_sigils INTEGER DEFAULT 0,
     gemini_engrams INTEGER DEFAULT 0,
     gemini_blueprint_unlocked INTEGER DEFAULT 0,
+    blessed_bismuth INTEGER DEFAULT 0,
+    sparkling_sprig INTEGER DEFAULT 0,
+    capricious_carp INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );
 

@@ -134,6 +134,7 @@ class ProfileBuilder:
         r_partner = await bot.database.users.get_currency(user_id, "partnership_runes")
         antique_tomes = await bot.database.users.get_currency(user_id, "antique_tome")
         pinnacle_keys = await bot.database.users.get_currency(user_id, "pinnacle_key")
+        uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
 
         embed = discord.Embed(
             title="Inventory Summary",
@@ -174,6 +175,16 @@ class ProfileBuilder:
             value=(
                 f"🗝️ Void Keys: {user[30]}\n🎁 Curios: {user[22]}\n"
                 f"📖 Antique Tomes: {antique_tomes}\n🗝️ Pinnacle Keys: {pinnacle_keys}"
+            ),
+            inline=True,
+        )
+
+        embed.add_field(
+            name="🌀 **Elemental Keys**",
+            value=(
+                f"⚗️ Blessed Bismuth: {uber_data['blessed_bismuth']}\n"
+                f"🌿 Sparkling Sprig: {uber_data['sparkling_sprig']}\n"
+                f"🐟 Capricious Carp: {uber_data['capricious_carp']}"
             ),
             inline=True,
         )

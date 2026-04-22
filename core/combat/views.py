@@ -605,6 +605,21 @@ class CombatView(ui.View):
                             self.user_id, "pinnacle_key", 1
                         )
                         reward_data["special"].append("🗝️ Pinnacle Key")
+                    elif key == "blessed_bismuth":
+                        await self.bot.database.uber.increment_blessed_bismuth(
+                            self.user_id, self.server_id, 1
+                        )
+                        reward_data["special"].append("⚗️ Blessed Bismuth")
+                    elif key == "sparkling_sprig":
+                        await self.bot.database.uber.increment_sparkling_sprig(
+                            self.user_id, self.server_id, 1
+                        )
+                        reward_data["special"].append("🌿 Sparkling Sprig")
+                    elif key == "capricious_carp":
+                        await self.bot.database.uber.increment_capricious_carp(
+                            self.user_id, self.server_id, 1
+                        )
+                        reward_data["special"].append("🐟 Capricious Carp")
 
             # Process Drops
             server_id = str(interaction.guild.id)
