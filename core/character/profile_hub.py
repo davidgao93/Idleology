@@ -5,6 +5,318 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.items.factory import load_player
 
+# ── Passive description tables ───────────────────────────────────────────────
+
+_WEAPON_PASSIVE_DESC: dict[str, str] = {
+    # Burning family (Atk +%)
+    "burning": "Atk +8%", "flaming": "Atk +16%", "scorching": "Atk +24%",
+    "incinerating": "Atk +32%", "carbonising": "Atk +40%",
+    # Poisonous family (Miss Dmg)
+    "poisonous": "Miss deals up to 8% Atk", "noxious": "Miss deals up to 16% Atk",
+    "venomous": "Miss deals up to 24% Atk", "toxic": "Miss deals up to 32% Atk",
+    "lethal": "Miss deals up to 40% Atk",
+    # Polished family (Def Shred)
+    "polished": "Enemy Def -8%", "honed": "Enemy Def -16%", "gleaming": "Enemy Def -24%",
+    "tempered": "Enemy Def -32%", "flaring": "Enemy Def -40%",
+    # Sparking family (Min Dmg)
+    "sparking": "Min Dmg floor 8% of max", "shocking": "Min Dmg floor 16% of max",
+    "discharging": "Min Dmg floor 24% of max", "electrocuting": "Min Dmg floor 32% of max",
+    "vapourising": "Min Dmg floor 40% of max",
+    # Sturdy family (Def Boost)
+    "sturdy": "Def +8%", "reinforced": "Def +16%", "thickened": "Def +24%",
+    "impregnable": "Def +32%", "impenetrable": "Def +40%",
+    # Piercing family (Crit Rate)
+    "piercing": "Crit Rolls +5 (easier crits)", "keen": "Crit Rolls +10",
+    "incisive": "Crit Rolls +15", "puncturing": "Crit Rolls +20",
+    "penetrating": "Crit Rolls +25",
+    # Strengthened family (Cull)
+    "strengthened": "Instantly kill if enemy HP < 8%",
+    "forceful": "Instantly kill if enemy HP < 16%",
+    "overwhelming": "Instantly kill if enemy HP < 24%",
+    "devastating": "Instantly kill if enemy HP < 32%",
+    "catastrophic": "Instantly kill if enemy HP < 40%",
+    # Accurate family (Hit Bonus)
+    "accurate": "Flat Accuracy +4", "precise": "Flat Accuracy +8",
+    "sharpshooter": "Flat Accuracy +12", "deadeye": "Flat Accuracy +16",
+    "bullseye": "Flat Accuracy +20",
+    # Echo family (Double Hit)
+    "echo": "Extra hit 10% Dmg", "echoo": "Extra hit 20% Dmg",
+    "echooo": "Extra hit 30% Dmg", "echoooo": "Extra hit 40% Dmg",
+    "echoes": "Extra hit 50% Dmg",
+}
+
+_INFERNAL_PASSIVE_DESC: dict[str, str] = {
+    "soulreap": "Restore HP to full after every successful encounter",
+    "inverted edge": "At combat start, swap weapon Attack and Defence",
+    "gilded hunger": "Gain Attack equal to 10% of weapon rarity",
+    "cursed precision": "+20% Crit Chance; your critical damage is unlucky",
+    "diabolic pact": "At combat start, lose 90% max HP and double Attack",
+    "perdition": "Missed attacks deal 75% weapon Attack",
+    "voracious": "Each non-crit adds a stack; each stack reduces crit threshold by 5",
+    "last rites": "Critical hits deal an additional 10% of enemy current HP",
+}
+
+_ARMOR_PASSIVE_DESC: dict[str, str] = {
+    "invulnerable": "20% chance to take 0 damage for the whole fight",
+    "mystical might": "20% chance to deal 10× damage at combat start",
+    "omnipotent": "50% chance to double Atk, Def, and gain Max HP as Ward at combat start",
+    "treasure hunter": "+5% chance to encounter Treasure Mobs",
+    "unlimited wealth": "20% chance to multiply Rarity ×5 at combat start",
+    "everlasting blessing": "10% chance on victory to trigger Ideology Propagation",
+}
+
+_CELESTIAL_PASSIVE_DESC: dict[str, str] = {
+    "celestial ghostreaver": "Generate 50–200 Ward every turn",
+    "celestial glancing blows": "Doubles Block Chance; blocked hits deal 50% damage",
+    "celestial wind dancer": "Triples Evasion Chance; disables Helmet entirely",
+    "celestial sanctity": "Enemies roll final damage twice, apply the lower result",
+    "celestial vow": "Once per combat, survive a fatal blow at 1 HP, gain 50% Max HP as Ward",
+    "celestial fortress": "+1% PDR per 5% missing HP",
+}
+
+_VOID_PASSIVE_DESC: dict[str, str] = {
+    "entropy": "At combat start, 20% of weapon ATK added to DEF and vice versa",
+    "void echo": "At combat start, 15% of weapon Attack copied to accessory",
+    "unravelling": "At combat start, reduce monster Defence by 20%",
+    "void gaze": "On crit, reduce monster Attack by 3% per stack (up to 30 stacks)",
+    "fracture": "On crit, 5% chance to instantly kill",
+    "nullfield": "15% chance to completely absorb incoming damage",
+    "eternal hunger": "At 10 hit stacks, deal 10% of monster max HP and restore full HP",
+    "oblivion": "Missed attacks still deal 50% of total attack damage",
+}
+
+_ACCESSORY_PASSIVE_FUNCS: dict = {
+    "obliterate": lambda l: f"{l * 2}% chance to deal Double Damage",
+    "absorb": lambda l: f"{l * 10}% chance to steal 10% of Monster ATK & DEF",
+    "prosper": lambda l: f"{l * 10}% chance to Double Gold",
+    "infinite wisdom": lambda l: f"{l * 5}% chance to Double XP",
+    "lucky strikes": lambda l: f"{l * 10}% chance for Lucky Hits",
+}
+
+_GLOVE_PASSIVE_FUNCS: dict = {
+    "ward-touched": lambda l: f"Gain {l}% of Hit Dmg as Ward",
+    "ward-fused": lambda l: f"Gain {l * 2}% of Crit Dmg as Ward",
+    "instability": lambda l: f"Hits are 50% OR {150 + l * 10}% damage",
+    "deftness": lambda l: f"Crit Floor raised by {l * 5}%",
+    "adroit": lambda l: f"Normal Hit Floor raised by {l * 2}%",
+    "equilibrium": lambda l: f"Gain {l * 5}% of Dmg as Bonus XP",
+    "plundering": lambda l: f"Gain {l * 10}% of Dmg as Bonus Gold",
+}
+
+_BOOT_PASSIVE_FUNCS: dict = {
+    "speedster": lambda l: f"Cooldown reduced by {l}m",
+    "skiller": lambda l: f"{l * 5}% chance for extra skill materials",
+    "treasure-tracker": lambda l: f"Treasure Mob chance +{l * 0.5:.1f}%",
+    "hearty": lambda l: f"Max HP +{l * 5}%",
+    "cleric": lambda l: f"Potions heal {l * 10}% extra",
+    "thrill-seeker": lambda l: f"Special Drop Chance +{l}%",
+}
+
+_HELMET_PASSIVE_FUNCS: dict = {
+    "juggernaut": lambda l: f"Gain {l * 4}% of Base Def as Atk",
+    "insight": lambda l: f"Crit Dmg Multiplier +{l * 0.1:.1f}× (total: {2.0 + l * 0.1:.1f}×)",
+    "volatile": lambda l: f"Deal {l * 100}% of Max HP as Dmg on ward break",
+    "divine": lambda l: f"Converts {l * 100}% of Potion Overheal to Ward",
+    "frenzy": lambda l: f"{l * 0.5:.1f}% increased damage per 1% missing HP",
+    "leeching": lambda l: f"Heal {l * 2}% of base damage dealt",
+    "thorns": lambda l: f"Reflect {l * 100}% of blocked damage",
+    "ghosted": lambda l: f"Gain {l * 10} Ward on Dodge",
+}
+
+_ESSENCE_TYPE_DESC: dict = {
+    "power": lambda v: f"+{int(v)} flat Atk",
+    "protection": lambda v: f"+{int(v)} PDR & FDR",
+    "insight": lambda v: f"+{int(v)} Crit Chance",
+    "evasion": lambda v: f"+{int(v)}% Evasion",
+    "unyielding": lambda v: f"+{int(v)}% Block",
+}
+
+_CORRUPTED_DESC: dict[tuple, str] = {
+    ("aphrodite", "glove"): "Ward-affecting hits count as ward-breaking",
+    ("aphrodite", "boot"): "Equipment drop chance is lucky",
+    ("aphrodite", "helmet"): "Ward cannot be forcibly disabled",
+    ("lucifer", "glove"): "Attacks deal flat dmg equal to 15% of current ward pool",
+    ("lucifer", "boot"): "Gold drops +10% per monster modifier (max +50%)",
+    ("lucifer", "helmet"): "On ward break, gain 15% PDR for remainder of combat",
+    ("gemini", "glove"): "Crits strike twice; 2nd hit deals 40–60% of the first",
+    ("gemini", "boot"): "Pet drop chance doubled",
+    ("gemini", "helmet"): "Damage splits between ward and HP; damage taken halved",
+    ("voidling", "glove"): "Normal hits become misses; only crits deal direct damage",
+    ("voidling", "boot"): "Skilling resources gained in combat are duplicated",
+    ("voidling", "helmet"): "Ward gained is doubled",
+}
+
+_SLAYER_EMBLEM_NAMES: dict[str, str] = {
+    "slayer_dmg": "Slayer Target Damage",
+    "boss_dmg": "Boss Damage",
+    "combat_dmg": "Normal Monster Damage",
+    "slayer_def": "Slayer Target Defence",
+    "crit_dmg": "Crit Damage",
+    "accuracy": "Accuracy",
+    "gold_find": "Gold Find",
+    "xp_find": "XP Find",
+    "task_progress": "Double Task Progress",
+    "slayer_drops": "Slayer Drop Rate",
+}
+
+_SLAYER_EMBLEM_FUNCS: dict = {
+    "slayer_dmg": lambda t: f"+{t * 5}% damage vs assigned slayer species",
+    "boss_dmg": lambda t: f"+{t * 5}% damage vs bosses",
+    "combat_dmg": lambda t: f"+{t * 2}% damage vs normal monsters",
+    "slayer_def": lambda t: f"+{t * 2}% defence vs assigned slayer species",
+    "crit_dmg": lambda t: f"+{t * 5}% critical hit damage",
+    "accuracy": lambda t: f"+{t * 2} flat accuracy",
+    "gold_find": lambda t: f"+{t * 3}% gold from combat",
+    "xp_find": lambda t: f"+{t * 3}% XP from combat",
+    "task_progress": lambda t: f"{t * 5}% chance for a kill to count twice",
+    "slayer_drops": lambda t: f"{t * 5}% chance for extra slayer drops",
+}
+
+_CODEX_TOME_INFO: dict = {
+    "vitality": ("🌿 Vitality", lambda v: f"+{v}% Max HP"),
+    "wrath": ("🔥 Wrath", lambda v: f"+{v}% of base DEF as bonus ATK"),
+    "bastion": ("🛡️ Bastion", lambda v: f"+{v}% of base ATK as bonus DEF"),
+    "tenacity": ("⚡ Tenacity", lambda v: f"{v}% chance per hit to halve damage"),
+    "bloodthirst": ("🩸 Bloodthirst", lambda v: f"Heal {v}% of critical hit damage"),
+    "providence": ("✨ Providence", lambda v: f"+{v}% more to total rarity"),
+    "precision": ("🎯 Precision", lambda v: f"+{v} flat crit chance"),
+    "insight": ("🎯 Insight", lambda v: f"+{v} flat crit chance"),
+    "affluence": ("💰 Affluence", lambda v: f"+{v}% XP and Gold from combat"),
+    "bulwark": ("🪨 Bulwark", lambda v: f"+{v}% Percent Damage Reduction"),
+    "resilience": ("🔒 Resilience", lambda v: f"+{v} Flat Damage Reduction"),
+}
+
+
+# ── Passive formatting helpers ────────────────────────────────────────────────
+
+def _desc_fixed(table: dict, name: str) -> str:
+    return table.get(name.lower(), name.title())
+
+
+def _desc_scaled(table: dict, name: str, level: int) -> str:
+    fn = table.get(name.lower())
+    return fn(level) if fn else name.title()
+
+
+def _format_essence_slot(etype: str, val: float) -> str:
+    key = etype.lower()
+    for k, fn in _ESSENCE_TYPE_DESC.items():
+        if k in key:
+            return f"{k.title()} Essence — {fn(val)}"
+    return f"{etype.title()} Essence — {val}"
+
+
+def _format_corrupted(etype: str, slot: str) -> str:
+    key = (etype.lower(), slot.lower())
+    desc = _CORRUPTED_DESC.get(key, etype.title())
+    display = etype.replace("_", " ").title()
+    return f"Corrupted ({display}) — {desc}"
+
+
+def _build_gear_passive_text(p) -> str:
+    lines: list[str] = []
+
+    if p.equipped_weapon:
+        w = p.equipped_weapon
+        wlines: list[str] = []
+        if w.passive != "none":
+            wlines.append(f"• Forge: {w.passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}")
+        if w.p_passive != "none":
+            wlines.append(f"• Pinnacle: {w.p_passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}")
+        if w.u_passive != "none":
+            wlines.append(f"• Utmost: {w.u_passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}")
+        if w.infernal_passive != "none":
+            wlines.append(f"• Infernal: {w.infernal_passive.title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}")
+        if wlines:
+            lines.append("**⚔️ Weapon**")
+            lines.extend(wlines)
+
+    if p.equipped_armor:
+        a = p.equipped_armor
+        alines: list[str] = []
+        if a.passive != "none":
+            alines.append(f"• {a.passive.title()} — {_desc_fixed(_ARMOR_PASSIVE_DESC, a.passive)}")
+        if a.celestial_passive != "none":
+            alines.append(f"• {a.celestial_passive.title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}")
+        if alines:
+            lines.append("**🛡️ Armor**")
+            lines.extend(alines)
+
+    if p.equipped_accessory:
+        acc = p.equipped_accessory
+        acclines: list[str] = []
+        if acc.passive != "none":
+            desc = _desc_scaled(_ACCESSORY_PASSIVE_FUNCS, acc.passive, acc.passive_lvl)
+            acclines.append(f"• {acc.passive.title()} L{acc.passive_lvl} — {desc}")
+        if acc.void_passive != "none":
+            acclines.append(f"• {acc.void_passive.title()} — {_desc_fixed(_VOID_PASSIVE_DESC, acc.void_passive)}")
+        if acclines:
+            lines.append("**📿 Accessory**")
+            lines.extend(acclines)
+
+    for item, label, slot_name, pfuncs in (
+        (p.equipped_glove, "**🧤 Glove**", "glove", _GLOVE_PASSIVE_FUNCS),
+        (p.equipped_boot, "**👢 Boot**", "boot", _BOOT_PASSIVE_FUNCS),
+        (p.equipped_helmet, "**🪖 Helmet**", "helmet", _HELMET_PASSIVE_FUNCS),
+    ):
+        if not item:
+            continue
+        ilines: list[str] = []
+        if item.passive != "none":
+            desc = _desc_scaled(pfuncs, item.passive, item.passive_lvl)
+            ilines.append(f"• {item.passive.title()} L{item.passive_lvl} — {desc}")
+        for etype, val in (
+            (item.essence_1, item.essence_1_val),
+            (item.essence_2, item.essence_2_val),
+            (item.essence_3, item.essence_3_val),
+        ):
+            if etype != "none":
+                ilines.append(f"• {_format_essence_slot(etype, val)}")
+        if item.corrupted_essence != "none":
+            ilines.append(f"• {_format_corrupted(item.corrupted_essence, slot_name)}")
+        if ilines:
+            lines.append(label)
+            lines.extend(ilines)
+
+    return "\n".join(lines)
+
+
+def _build_slayer_codex_text(p) -> str:
+    lines: list[str] = []
+
+    emblem_lines: list[str] = []
+    for slot_key in ("slot_1", "slot_2", "slot_3", "slot_4", "slot_5"):
+        slot = p.slayer_emblem.get(slot_key)
+        if not slot:
+            continue
+        etype = slot.get("type")
+        tier = slot.get("tier", 0)
+        if etype and etype != "none" and tier and tier > 0:
+            name = _SLAYER_EMBLEM_NAMES.get(etype, etype.replace("_", " ").title())
+            fn = _SLAYER_EMBLEM_FUNCS.get(etype)
+            desc = fn(tier) if fn else f"T{tier}"
+            emblem_lines.append(f"• {name} T{tier} — {desc}")
+    if emblem_lines:
+        lines.append("**🗡️ Slayer Emblems**")
+        lines.extend(emblem_lines)
+
+    tome_lines: list[str] = []
+    for tome in p.codex_tomes:
+        if tome.tier <= 0:
+            continue
+        info = _CODEX_TOME_INFO.get(tome.passive_type)
+        val = int(round(tome.value))
+        if info:
+            display_name, desc_fn = info
+            tome_lines.append(f"• {display_name} T{tome.tier} ({val}) — {desc_fn(val)}")
+        else:
+            tome_lines.append(f"• {tome.passive_type.title()} T{tome.tier} ({val})")
+    if tome_lines:
+        lines.append("**📖 Codex Tomes**")
+        lines.extend(tome_lines)
+
+    return "\n".join(lines)
+
 
 class ProfileBuilder:
     """Static builder class that generates the embeds for the Profile Hub."""
@@ -31,91 +343,160 @@ class ProfileBuilder:
 
     @staticmethod
     async def build_stats(bot, user_id: str, server_id: str) -> discord.Embed:
+        from core.items.essence_mechanics import compute_essence_stat_bonus
+
         data = await bot.database.users.get(user_id, server_id)
         p = await load_player(user_id, data, bot.database)
 
         embed = discord.Embed(title="Combat Statistics", color=0x00FF00)
         embed.set_thumbnail(url=data[7])
 
-        atk_bonus = p.get_total_attack() - p.base_attack
-        def_bonus = p.get_total_defence() - p.base_defence
+        # ── Attack ───────────────────────────────────────────────────────────
+        gear_atk = 0
+        if p.equipped_weapon:
+            gear_atk += p.equipped_weapon.attack
+        if p.equipped_accessory:
+            gear_atk += p.equipped_accessory.attack
+        if p.equipped_glove:
+            gear_atk += p.equipped_glove.attack
+        if p.equipped_boot:
+            gear_atk += p.equipped_boot.attack
+        for _item in (p.equipped_glove, p.equipped_boot):
+            if _item:
+                gear_atk += compute_essence_stat_bonus(_item).get("attack", 0)
+        total_atk = p.get_total_attack()
+        atk_bonuses = total_atk - p.base_attack - gear_atk
+        atk_val = f"**Total: {total_atk:,}**\n↳ Base: {p.base_attack:,}\n↳ Equipment: {gear_atk:,}"
+        if atk_bonuses:
+            atk_val += f"\n↳ Bonuses: {atk_bonuses:+,}"
+        embed.add_field(name="⚔️ Attack", value=atk_val, inline=True)
 
-        embed.add_field(
-            name="⚔️ Attack",
-            value=(
-                f"{p.base_attack} (+{atk_bonus})"
-                if atk_bonus > 0
-                else str(p.base_attack)
-            ),
-            inline=True,
-        )
-        embed.add_field(
-            name="🛡️ Defence",
-            value=(
-                f"{p.base_defence} (+{def_bonus})"
-                if def_bonus > 0
-                else str(p.base_defence)
-            ),
-            inline=True,
-        )
-        embed.add_field(name="❤️ HP", value=f"{p.current_hp}/{p.total_max_hp}", inline=True)
+        # ── Defence ──────────────────────────────────────────────────────────
+        gear_def = 0
+        if p.equipped_weapon:
+            gear_def += p.equipped_weapon.defence
+        if p.equipped_accessory:
+            gear_def += p.equipped_accessory.defence
+        if p.equipped_glove:
+            gear_def += p.equipped_glove.defence
+        if p.equipped_boot:
+            gear_def += p.equipped_boot.defence
+        if p.equipped_helmet:
+            gear_def += p.equipped_helmet.defence
+        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
+            if _item:
+                gear_def += compute_essence_stat_bonus(_item).get("defence", 0)
+        total_def = p.get_total_defence()
+        def_bonuses = total_def - p.base_defence - gear_def
+        def_val = f"**Total: {total_def:,}**\n↳ Base: {p.base_defence:,}\n↳ Equipment: {gear_def:,}"
+        if def_bonuses:
+            def_val += f"\n↳ Bonuses: {def_bonuses:+,}"
+        embed.add_field(name="🛡️ Defence", value=def_val, inline=True)
 
+        # ── HP ───────────────────────────────────────────────────────────────
+        total_hp = p.total_max_hp
+        hp_bonuses = total_hp - p.max_hp
+        hp_val = f"**{p.current_hp:,} / {total_hp:,}**\n↳ Base: {p.max_hp:,}"
+        if hp_bonuses:
+            hp_val += f"\n↳ Bonuses: {hp_bonuses:+,}"
+        embed.add_field(name="❤️ HP", value=hp_val, inline=True)
+
+        # ── Ward ─────────────────────────────────────────────────────────────
         ward = p.get_total_ward_percentage()
         if ward > 0:
-            embed.add_field(name="🔮 Ward", value=f"{ward}%", inline=True)
+            ward_hp = p.get_combat_ward_value()
+            embed.add_field(name="🔮 Ward", value=f"**{ward}%** (= {ward_hp:,} HP)", inline=True)
 
-        crit_chance = p.get_current_crit_chance()
-        if crit_chance > 0:
-            embed.add_field(name="🎯 Crit Chance", value=f"{crit_chance}%", inline=True)
+        # ── Crit Chance ──────────────────────────────────────────────────────
+        crit_acc = p.equipped_accessory.crit if p.equipped_accessory else 0
+        # Weapon crit (no weapon.crit field yet; piercing passive shown in Gear Passives)
+        crit_weapon = 0
+        total_crit = p.get_current_crit_chance()
+        crit_other = total_crit - crit_acc - crit_weapon
+        crit_val = f"**Total: {total_crit}**\n↳ Weapon: {crit_weapon}\n↳ Accessory: {crit_acc}"
+        if crit_other:
+            crit_val += f"\n↳ Bonuses: {crit_other:+}"
+        embed.add_field(name="🎯 Crit Chance", value=crit_val, inline=True)
 
-        pdr = p.get_total_pdr()
-        if pdr > 0:
-            embed.add_field(name="🛡️ PDR", value=f"{pdr}%", inline=True)
+        # ── Crit Multiplier ──────────────────────────────────────────────────
+        crit_multi = 2.0
+        if p.equipped_helmet and p.equipped_helmet.passive.lower() == "insight":
+            crit_multi += p.equipped_helmet.passive_lvl * 0.1
+        embed.add_field(name="✨ Crit Multiplier", value=f"**{crit_multi:.1f}×**", inline=True)
 
-        fdr = p.get_total_fdr()
-        if fdr > 0:
-            embed.add_field(name="🛡️ FDR", value=f"{fdr}", inline=True)
+        # ── PDR ──────────────────────────────────────────────────────────────
+        pdr_equip = 0
+        if p.equipped_armor:
+            pdr_equip += p.equipped_armor.pdr
+        if p.equipped_glove:
+            pdr_equip += p.equipped_glove.pdr
+        if p.equipped_boot:
+            pdr_equip += p.equipped_boot.pdr
+        if p.equipped_helmet:
+            pdr_equip += p.equipped_helmet.pdr
+        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
+            if _item:
+                pdr_equip += compute_essence_stat_bonus(_item).get("pdr", 0)
+        pdr_other = p._get_companion_bonus("pdr") + int(p.get_tome_bonus("bulwark"))
+        if p.ascension_unlocks:
+            pdr_other += p.get_ascension_bonuses()["pdr"]
+        raw_pdr = pdr_equip + pdr_other
+        capped_pdr = min(80, raw_pdr)
+        pdr_str = f"**{capped_pdr}%**" + (f" ({raw_pdr}% uncapped)" if raw_pdr > 80 else "")
+        embed.add_field(
+            name="🛡️ PDR",
+            value=f"{pdr_str}\n↳ Equipment: {pdr_equip}%\n↳ Other: {pdr_other}%",
+            inline=True,
+        )
 
-        rarity = p.get_total_rarity()
-        if rarity > 0:
-            embed.add_field(name="✨ Rarity", value=f"{rarity}%", inline=True)
-
-        passives = []
-        if p.equipped_weapon:
-            p_list = [
-                passive.title()
-                for passive in [
-                    p.equipped_weapon.passive,
-                    p.equipped_weapon.p_passive,
-                    p.equipped_weapon.u_passive,
-                ]
-                if passive != "none"
-            ]
-            if p_list:
-                passives.append(f"**Weapon:** {', '.join(p_list)}")
-        if p.equipped_armor and p.equipped_armor.passive != "none":
-            passives.append(f"**Armor:** {p.equipped_armor.passive.title()}")
-        if p.equipped_accessory and p.equipped_accessory.passive != "none":
-            passives.append(
-                f"**Accessory:** {p.equipped_accessory.passive.title()} ({p.equipped_accessory.passive_lvl})"
-            )
-        if p.equipped_glove and p.equipped_glove.passive != "none":
-            passives.append(
-                f"**Glove:** {p.equipped_glove.passive.title()} ({p.equipped_glove.passive_lvl})"
-            )
-        if p.equipped_boot and p.equipped_boot.passive != "none":
-            passives.append(
-                f"**Boot:** {p.equipped_boot.passive.title()} ({p.equipped_boot.passive_lvl})"
-            )
-        if p.equipped_helmet and p.equipped_helmet.passive != "none":
-            passives.append(
-                f"**Helmet:** {p.equipped_helmet.passive.title()} ({p.equipped_helmet.passive_lvl})"
-            )
-
-        if passives:
+        # ── FDR ──────────────────────────────────────────────────────────────
+        fdr_equip = 0
+        if p.equipped_armor:
+            fdr_equip += p.equipped_armor.fdr
+        if p.equipped_glove:
+            fdr_equip += p.equipped_glove.fdr
+        if p.equipped_boot:
+            fdr_equip += p.equipped_boot.fdr
+        if p.equipped_helmet:
+            fdr_equip += p.equipped_helmet.fdr
+        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
+            if _item:
+                fdr_equip += compute_essence_stat_bonus(_item).get("fdr", 0)
+        fdr_other = p._get_companion_bonus("fdr") + int(p.get_tome_bonus("resilience"))
+        if p.ascension_unlocks:
+            fdr_other += p.get_ascension_bonuses()["fdr"]
+        total_fdr = fdr_equip + fdr_other
+        if total_fdr > 0:
             embed.add_field(
-                name="__Active Passives__", value="\n".join(passives), inline=False
+                name="🔒 FDR",
+                value=f"**{total_fdr}**\n↳ Equipment: {fdr_equip}\n↳ Other: {fdr_other}",
+                inline=True,
             )
+
+        # ── Rarity ───────────────────────────────────────────────────────────
+        gear_rarity = p.rarity
+        total_rarity = p.get_total_rarity()
+        rarity_bonuses = total_rarity - gear_rarity
+        if total_rarity > 0:
+            rar_val = f"**{total_rarity}%**\n↳ Equipment: {gear_rarity}%"
+            if rarity_bonuses:
+                rar_val += f"\n↳ Bonuses: {rarity_bonuses:+}%"
+            embed.add_field(name="✨ Rarity", value=rar_val, inline=True)
+
+        # ── Gear Passives ─────────────────────────────────────────────────────
+        gear_text = _build_gear_passive_text(p)
+        if gear_text:
+            if len(gear_text) > 1020:
+                gear_text = gear_text[:1020] + "…"
+            embed.add_field(name="⚡ Gear Passives", value=gear_text, inline=False)
+
+        # ── Slayer & Codex ────────────────────────────────────────────────────
+        other_text = _build_slayer_codex_text(p)
+        if other_text:
+            if len(other_text) > 1020:
+                other_text = other_text[:1020] + "…"
+            embed.add_field(name="🗡️ Slayer & Codex", value=other_text, inline=False)
+
         return embed
 
     @staticmethod

@@ -2,12 +2,12 @@
 -- ALTER TABLE uber_progress ADD COLUMN sparkling_sprig INTEGER DEFAULT 0;
 -- ALTER TABLE uber_progress ADD COLUMN capricious_carp INTEGER DEFAULT 0;
 
-ALTER TABLE users ADD COLUMN prestige_border TEXT NOT NULL DEFAULT 'none';
-ALTER TABLE users ADD COLUMN prestige_title TEXT NOT NULL DEFAULT 'none';
-ALTER TABLE users ADD COLUMN prestige_display_name TEXT DEFAULT NULL;
-ALTER TABLE users ADD COLUMN prestige_flair TEXT NOT NULL DEFAULT 'none';
-ALTER TABLE users ADD COLUMN prestige_death_message TEXT DEFAULT NULL;
-ALTER TABLE users ADD COLUMN prestige_monument TEXT DEFAULT NULL;
+-- ALTER TABLE users ADD COLUMN prestige_border TEXT NOT NULL DEFAULT 'none';
+-- ALTER TABLE users ADD COLUMN prestige_title TEXT NOT NULL DEFAULT 'none';
+-- ALTER TABLE users ADD COLUMN prestige_display_name TEXT DEFAULT NULL;
+-- ALTER TABLE users ADD COLUMN prestige_flair TEXT NOT NULL DEFAULT 'none';
+-- ALTER TABLE users ADD COLUMN prestige_death_message TEXT DEFAULT NULL;
+-- ALTER TABLE users ADD COLUMN prestige_monument TEXT DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,

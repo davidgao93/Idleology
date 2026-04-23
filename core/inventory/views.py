@@ -791,7 +791,7 @@ class GearView(View):
             if getattr(item, "u_passive", "none") not in ("none", ""):
                 passives.append(item.u_passive.title())
             if getattr(item, "infernal_passive", "none") not in ("none", ""):
-                passives.append(f"🔥{item.infernal_passive.title()}")
+                passives.append(f"🔥{item.infernal_passive.replace('_', ' ').title()}")
         if isinstance(item, Armor) and getattr(
             item, "celestial_passive", "none"
         ) not in ("none", ""):
@@ -799,7 +799,7 @@ class GearView(View):
         if isinstance(item, Accessory) and getattr(
             item, "void_passive", "none"
         ) not in ("none", ""):
-            passives.append(f"🌀{item.void_passive.title()}")
+            passives.append(f"🌀{item.void_passive.replace('_', ' ').title()}")
 
         stat_str = " ".join(parts)
         passive_str = " · ".join(passives)

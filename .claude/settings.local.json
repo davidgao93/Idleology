@@ -17,7 +17,10 @@
       "Bash(python -m pytest tests/ -x -q)",
       "Bash(find /c/Users/yugao/Idleology/core -name \"gen_mob.py\" -exec head -100 {} \\\\;)",
       "Bash(grep -E \"\\\\.py$\")",
-      "Bash(python -c \"import ast, sys; ast.parse\\(open\\('cogs/prestige.py'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")"
+      "Bash(python -c \"import ast, sys; ast.parse\\(open\\('cogs/prestige.py'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
+      "Bash(python -c \"import core.character.profile_hub\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('core/character/profile_hub.py'\\).read\\(\\)\\); print\\('syntax ok'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('core/character/profile_hub.py', encoding='utf-8'\\).read\\(\\)\\); print\\('syntax ok'\\)\")"
     ]
   }
 }
