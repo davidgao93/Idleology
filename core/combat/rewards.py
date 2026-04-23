@@ -64,10 +64,10 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         (monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale**1.3))
     )
 
-    # Rarity Bonus
+    # Rarity Bonus — diminishing returns via sqrt to prevent runaway scaling at 2000%+
     rarity = player.get_total_rarity()
     if rarity > 0:
-        gold_award = int(gold_award * (1.5 + rarity / 100))
+        gold_award = int(gold_award * (1 + (rarity ** 0.5) / 20))
 
     gold_award += 20  # Base flat amount
 
@@ -103,11 +103,11 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     results["gold"] = gold_award
 
     # Codex Tome: Affluence (+% XP and Gold from all combat)
-    affluence_pct = player.get_tome_bonus('affluence')
+    affluence_pct = player.get_tome_bonus("affluence")
     if affluence_pct > 0:
         mult = 1 + (affluence_pct / 100)
-        results['xp'] = int(results['xp'] * mult)
-        results['gold'] = int(results['gold'] * mult)
+        results["xp"] = int(results["xp"] * mult)
+        results["gold"] = int(results["gold"] * mult)
 
     return results
 
@@ -128,13 +128,13 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         if random.random() < 0.33:
             drops["imbue_rune"] = True
         drops["curio"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["spirit_stone"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["antique_tome"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["pinnacle_key"] = True
-        _elemental_boss_chance = 0.05 + player.get_special_drop_bonus()
+        _elemental_boss_chance = 0.05 + (player.get_special_drop_bonus() / 100)
         if random.random() < _elemental_boss_chance:
             drops["blessed_bismuth"] = True
         if random.random() < _elemental_boss_chance:
@@ -148,13 +148,13 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["refinement_rune"] = True
         if random.random() < 0.33:
             drops["potential_rune"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["spirit_stone"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["antique_tome"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["pinnacle_key"] = True
-        _elemental_boss_chance = 0.05 + player.get_special_drop_bonus()
+        _elemental_boss_chance = 0.05 + (player.get_special_drop_bonus() / 100)
         if random.random() < _elemental_boss_chance:
             drops["blessed_bismuth"] = True
         if random.random() < _elemental_boss_chance:
@@ -168,13 +168,13 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["refinement_rune"] = True
         if random.random() < 0.66:
             drops["potential_rune"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["spirit_stone"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["antique_tome"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["pinnacle_key"] = True
-        _elemental_boss_chance = 0.05 + player.get_special_drop_bonus()
+        _elemental_boss_chance = 0.05 + (player.get_special_drop_bonus() / 100)
         if random.random() < _elemental_boss_chance:
             drops["blessed_bismuth"] = True
         if random.random() < _elemental_boss_chance:
@@ -186,13 +186,13 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     if "Gemini" in monster.name:
         if random.random() < 0.5:
             drops["partnership_rune"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["spirit_stone"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["antique_tome"] = True
-        if random.random() < 0.05:
+        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
             drops["pinnacle_key"] = True
-        _elemental_boss_chance = 0.05 + player.get_special_drop_bonus()
+        _elemental_boss_chance = 0.05 + (player.get_special_drop_bonus() / 100)
         if random.random() < _elemental_boss_chance:
             drops["blessed_bismuth"] = True
         if random.random() < _elemental_boss_chance:
@@ -203,7 +203,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
 
     # --- STANDARD MOBS ---
     # 1% Spirit Stone drop from any normal combat encounter
-    if random.random() < 0.01:
+    if random.random() < 0.01 + (player.get_special_drop_bonus() / 100):
         drops["spirit_stone"] = True
 
     rare_monsters = [
@@ -220,15 +220,13 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         special_drop_chance = 0.05
         drops["curio"] = True
 
-    # Boot Passive: Thrill Seeker
-    if player.equipped_boot and player.equipped_boot.passive == "thrill-seeker":
-        special_drop_chance += player.equipped_boot.passive_lvl * 0.01
+    special_drop_chance += player.get_special_drop_bonus() / 100
 
-    if random.random() < 0.05:  # 5% from Fire mobs
+    if random.random() < 0.02 + special_drop_chance:
         drops["magma_core"] = True
-    if random.random() < 0.05:
+    if random.random() < 0.02 + special_drop_chance:
         drops["life_root"] = True
-    if random.random() < 0.05:
+    if random.random() < 0.02 + special_drop_chance:
         drops["spirit_shard"] = True
 
     # Level 20+ Drops
@@ -247,12 +245,12 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["balance_fragment"] = True
 
         key_drop_chance = 0.05 if monster.is_boss else 0.01
-        if random.random() < key_drop_chance:
+        if random.random() < key_drop_chance + special_drop_chance:
             drops["antique_tome"] = True
-        if random.random() < key_drop_chance:
+        if random.random() < key_drop_chance + special_drop_chance:
             drops["pinnacle_key"] = True
 
-        elemental_key_chance = (0.05 if monster.is_boss else 0.01) + player.get_special_drop_bonus()
+        elemental_key_chance = (0.05 if monster.is_boss else 0.01) + special_drop_chance
         if random.random() < elemental_key_chance:
             drops["blessed_bismuth"] = True
         if random.random() < elemental_key_chance:

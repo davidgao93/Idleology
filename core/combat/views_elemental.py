@@ -41,7 +41,7 @@ class ElementalEncounterView(discord.ui.View):
         self.last_log = ""
         self._running = False
 
-        engine.apply_combat_start_passives(self.player)
+        engine.apply_combat_start_passives(self.player, self.monster)
         engine.apply_stat_effects(self.player, self.monster)
 
     async def interaction_check(self, interaction: Interaction) -> bool:

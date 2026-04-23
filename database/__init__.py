@@ -14,6 +14,7 @@ from .repositories.duels import DuelStatsRepository
 from .repositories.alchemy import AlchemyRepository
 from .repositories.essences import EssencesRepository
 from .repositories.ascension import AscensionRepository
+from .repositories.prestige import PrestigeRepository
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -35,3 +36,4 @@ class DatabaseManager:
         self.alchemy = AlchemyRepository(connection)
         self.essences = EssencesRepository(connection)
         self.ascension = AscensionRepository(connection)
+        self.prestige = PrestigeRepository(connection)

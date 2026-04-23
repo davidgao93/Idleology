@@ -507,7 +507,7 @@ class General(commands.Cog, name="general"):
                 ("woodcutting", "Check logs and upgrade axe"),
                 ("chop", "Woodcutting mini-game"),
                 ("slayer", "Manage your slayer task and emblem"),
-                ("alchemy", "Manage your slayer task and emblem"),
+                ("alchemy", "Manage your alchemy skill"),
             ],
             "🏙️ Social & Economy": [
                 ("shop", "Buy potions and curios"),

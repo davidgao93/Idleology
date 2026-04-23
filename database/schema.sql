@@ -2,6 +2,13 @@
 -- ALTER TABLE uber_progress ADD COLUMN sparkling_sprig INTEGER DEFAULT 0;
 -- ALTER TABLE uber_progress ADD COLUMN capricious_carp INTEGER DEFAULT 0;
 
+ALTER TABLE users ADD COLUMN prestige_border TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE users ADD COLUMN prestige_title TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE users ADD COLUMN prestige_display_name TEXT DEFAULT NULL;
+ALTER TABLE users ADD COLUMN prestige_flair TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE users ADD COLUMN prestige_death_message TEXT DEFAULT NULL;
+ALTER TABLE users ADD COLUMN prestige_monument TEXT DEFAULT NULL;
+
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
   `user_id` TEXT NOT NULL UNIQUE,
@@ -54,7 +61,21 @@ CREATE TABLE IF NOT EXISTS `users` (
   `exp_protection` INTEGER NOT NULL DEFAULT 0,
   `antique_tome` INTEGER NOT NULL DEFAULT 0,
   `pinnacle_key` INTEGER NOT NULL DEFAULT 0,
-  `highest_ascension_floor` INTEGER NOT NULL DEFAULT 0
+  `highest_ascension_floor` INTEGER NOT NULL DEFAULT 0,
+  `prestige_border` TEXT NOT NULL DEFAULT 'none',
+  `prestige_title` TEXT NOT NULL DEFAULT 'none',
+  `prestige_display_name` TEXT DEFAULT NULL,
+  `prestige_flair` TEXT NOT NULL DEFAULT 'none',
+  `prestige_death_message` TEXT DEFAULT NULL,
+  `prestige_monument` TEXT DEFAULT NULL
+);
+
+
+CREATE TABLE IF NOT EXISTS `prestige_owned` (
+  `user_id` TEXT NOT NULL,
+  `item_type` TEXT NOT NULL,
+  `item_key` TEXT NOT NULL,
+  PRIMARY KEY (`user_id`, `item_type`, `item_key`)
 );
 
 

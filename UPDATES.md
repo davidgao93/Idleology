@@ -1,3 +1,36 @@
+## ⚗️ v0.85  — Elemental of Elements
+
+**New Boss Encounter: Elemental of Elements**
+An ancient convergence of elemental forces has awakened. Prove your strength — and reap the harvest.
+
+**🔑 Elemental Keys**
+Three new rare drops have been added to the loot table:
+- ⚗️ **Blessed Bismuth** — drops from normal monsters (1%) and phase bosses (5%)
+- 🌿 **Sparkling Sprig** — drops from normal monsters (1%) and phase bosses (5%)
+- 🐟 **Capricious Carp** — drops from normal monsters (1%) and phase bosses (5%)
+
+Drop rates are boosted by your Special Drop Bonus (Rarity, Accessories, etc.)
+
+**🌀 Elemental Resonance**
+Hold 1 of each key and open `/gather` — the keys will resonate, unlocking the **Elemental Resonance** button. Consuming all three grants access to the encounter.
+
+**⚔️ The Encounter**
+- 20 turns of auto-battle. You deal damage. The boss does not hit back.
+- Your goal: deal as much damage as possible.
+- Rewards scale linearly — every **1,000 damage** dealt earns **10× one skilling iteration** worth of materials across all three skills (Mining, Woodcutting, Fishing), based on your current tool tiers.
+- Higher tools = better base yield = better rewards.
+
+**📦 Profile**
+Elemental Key counts are now visible under `/profile` → Inventory.
+
+**Other Adjustments**
+Redesigned hit chance formula — now scales smoothly based on the attack/defence ratio between you and your opponent
+Crits now only trigger on successful hits
+Damage formula reworked to use a ratio-based approach; high enough defence can now fully negate incoming damage
+Monster modifiers converted from flat bonuses to percentage-based multipliers
+Vampiric now heals 5% of the monster's max HP per hit
+Venomous now deals 2% of your max HP on every miss
+
 v0.84 Patch Notes
 Antique Tomes & Pinnacle Keys
 Two new key items now drop from combat. Regular monsters have a 1% chance to drop either, bosses have a 5% chance. Both items appear in your profile inventory under Misc.
