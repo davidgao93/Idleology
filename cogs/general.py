@@ -279,9 +279,9 @@ class General(commands.Cog, name="general"):
             embed.title = "🛡️ Armor Passives"
             armor_text = (
                 "**Standard Passives:**\n"
-                "**Invulnerable**: 20% chance to take 0 damage for the whole fight.\n"
-                "**Mystical Might**: 20% chance to deal 10x damage (Combat Start).\n"
-                "**Omnipotent**: 50% chance to Double Atk, Def, and gain Max HP as Ward (Combat Start).\n"
+                "**Invulnerable**: On Combat Start, 20% chance to take 0 damage for the whole fight or boss phase.\n"
+                "**Mystical Might**: Attacks have 20% chance to deal 10x damage.\n"
+                "**Omnipotent**: On Combat Start, 50% chance to Double Atk, Def, and gain Max HP as Ward.\n"
                 "**Treasure Hunter**: +5% chance to encounter Treasure Mobs.\n"
                 "**Unlimited Wealth**: 20% chance to multiply Player Rarity by 5x (2x vs Bosses).\n"
                 "**Everlasting Blessing**: 10% chance on victory to trigger Ideology Propagation.\n\n"

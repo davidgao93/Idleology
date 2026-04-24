@@ -9,25 +9,40 @@ from core.items.factory import load_player
 
 _WEAPON_PASSIVE_DESC: dict[str, str] = {
     # Burning family (Atk +%)
-    "burning": "Atk +8%", "flaming": "Atk +16%", "scorching": "Atk +24%",
-    "incinerating": "Atk +32%", "carbonising": "Atk +40%",
+    "burning": "Atk +8%",
+    "flaming": "Atk +16%",
+    "scorching": "Atk +24%",
+    "incinerating": "Atk +32%",
+    "carbonising": "Atk +40%",
     # Poisonous family (Miss Dmg)
-    "poisonous": "Miss deals up to 8% Atk", "noxious": "Miss deals up to 16% Atk",
-    "venomous": "Miss deals up to 24% Atk", "toxic": "Miss deals up to 32% Atk",
+    "poisonous": "Miss deals up to 8% Atk",
+    "noxious": "Miss deals up to 16% Atk",
+    "venomous": "Miss deals up to 24% Atk",
+    "toxic": "Miss deals up to 32% Atk",
     "lethal": "Miss deals up to 40% Atk",
     # Polished family (Def Shred)
-    "polished": "Enemy Def -8%", "honed": "Enemy Def -16%", "gleaming": "Enemy Def -24%",
-    "tempered": "Enemy Def -32%", "flaring": "Enemy Def -40%",
+    "polished": "Enemy Def -8%",
+    "honed": "Enemy Def -16%",
+    "gleaming": "Enemy Def -24%",
+    "tempered": "Enemy Def -32%",
+    "flaring": "Enemy Def -40%",
     # Sparking family (Min Dmg)
-    "sparking": "Min Dmg floor 8% of max", "shocking": "Min Dmg floor 16% of max",
-    "discharging": "Min Dmg floor 24% of max", "electrocuting": "Min Dmg floor 32% of max",
+    "sparking": "Min Dmg floor 8% of max",
+    "shocking": "Min Dmg floor 16% of max",
+    "discharging": "Min Dmg floor 24% of max",
+    "electrocuting": "Min Dmg floor 32% of max",
     "vapourising": "Min Dmg floor 40% of max",
     # Sturdy family (Def Boost)
-    "sturdy": "Def +8%", "reinforced": "Def +16%", "thickened": "Def +24%",
-    "impregnable": "Def +32%", "impenetrable": "Def +40%",
+    "sturdy": "Def +8%",
+    "reinforced": "Def +16%",
+    "thickened": "Def +24%",
+    "impregnable": "Def +32%",
+    "impenetrable": "Def +40%",
     # Piercing family (Crit Rate)
-    "piercing": "Crit Rolls +5 (easier crits)", "keen": "Crit Rolls +10",
-    "incisive": "Crit Rolls +15", "puncturing": "Crit Rolls +20",
+    "piercing": "Crit Rolls +5 (easier crits)",
+    "keen": "Crit Rolls +10",
+    "incisive": "Crit Rolls +15",
+    "puncturing": "Crit Rolls +20",
     "penetrating": "Crit Rolls +25",
     # Strengthened family (Cull)
     "strengthened": "Instantly kill if enemy HP < 8%",
@@ -36,12 +51,16 @@ _WEAPON_PASSIVE_DESC: dict[str, str] = {
     "devastating": "Instantly kill if enemy HP < 32%",
     "catastrophic": "Instantly kill if enemy HP < 40%",
     # Accurate family (Hit Bonus)
-    "accurate": "Flat Accuracy +4", "precise": "Flat Accuracy +8",
-    "sharpshooter": "Flat Accuracy +12", "deadeye": "Flat Accuracy +16",
+    "accurate": "Flat Accuracy +4",
+    "precise": "Flat Accuracy +8",
+    "sharpshooter": "Flat Accuracy +12",
+    "deadeye": "Flat Accuracy +16",
     "bullseye": "Flat Accuracy +20",
     # Echo family (Double Hit)
-    "echo": "Extra hit 10% Dmg", "echoo": "Extra hit 20% Dmg",
-    "echooo": "Extra hit 30% Dmg", "echoooo": "Extra hit 40% Dmg",
+    "echo": "Extra hit 10% Dmg",
+    "echoo": "Extra hit 20% Dmg",
+    "echooo": "Extra hit 30% Dmg",
+    "echoooo": "Extra hit 40% Dmg",
     "echoes": "Extra hit 50% Dmg",
 }
 
@@ -57,9 +76,9 @@ _INFERNAL_PASSIVE_DESC: dict[str, str] = {
 }
 
 _ARMOR_PASSIVE_DESC: dict[str, str] = {
-    "invulnerable": "20% chance to take 0 damage for the whole fight",
-    "mystical might": "20% chance to deal 10× damage at combat start",
-    "omnipotent": "50% chance to double Atk, Def, and gain Max HP as Ward at combat start",
+    "invulnerable": "On Combat Start, 20% chance to take 0 damage for the whole fight or boss phase",
+    "mystical might": "Attacks have 20% chance to deal 10x damage",
+    "omnipotent": "On Combat Start, 50% chance to Double Atk, Def, and gain Max HP as Ward",
     "treasure hunter": "+5% chance to encounter Treasure Mobs",
     "unlimited wealth": "20% chance to multiply Rarity ×5 at combat start",
     "everlasting blessing": "10% chance on victory to trigger Ideology Propagation",
@@ -124,11 +143,16 @@ _HELMET_PASSIVE_FUNCS: dict = {
 }
 
 _ESSENCE_TYPE_DESC: dict = {
-    "power": lambda v: f"+{int(v)} flat Atk",
-    "protection": lambda v: f"+{int(v)} PDR & FDR",
-    "insight": lambda v: f"+{int(v)} Crit Chance",
-    "evasion": lambda v: f"+{int(v)}% Evasion",
-    "unyielding": lambda v: f"+{int(v)}% Block",
+    "power":      None,           # computed dynamically from item stats
+    "protection": None,           # computed dynamically from item stats
+    "insight":    lambda v: f"+{int(v)} Crit Chance",
+    "evasion":    lambda v: f"+{int(v)}% Evasion",
+    "warding":    lambda v: f"+{int(v)}% Block",
+}
+
+# Weapon passives that contribute a flat crit-roll bonus (piercing family)
+_WEAPON_CRIT_BONUS: dict[str, int] = {
+    "piercing": 5, "keen": 10, "incisive": 15, "puncturing": 20, "penetrating": 25,
 }
 
 _CORRUPTED_DESC: dict[tuple, str] = {
@@ -141,9 +165,9 @@ _CORRUPTED_DESC: dict[tuple, str] = {
     ("gemini", "glove"): "Crits strike twice; 2nd hit deals 40–60% of the first",
     ("gemini", "boot"): "Pet drop chance doubled",
     ("gemini", "helmet"): "Damage splits between ward and HP; damage taken halved",
-    ("voidling", "glove"): "Normal hits become misses; only crits deal direct damage",
-    ("voidling", "boot"): "Skilling resources gained in combat are duplicated",
-    ("voidling", "helmet"): "Ward gained is doubled",
+    ("neet", "glove"): "Normal hits become misses; only crits deal direct damage",
+    ("neet", "boot"): "Skilling resources gained in combat are duplicated",
+    ("neet", "helmet"): "Ward gained is doubled",
 }
 
 _SLAYER_EMBLEM_NAMES: dict[str, str] = {
@@ -189,26 +213,59 @@ _CODEX_TOME_INFO: dict = {
 
 # ── Passive formatting helpers ────────────────────────────────────────────────
 
+
+def _normalize(name: str) -> str:
+    return name.lower().replace("_", " ")
+
+
 def _desc_fixed(table: dict, name: str) -> str:
-    return table.get(name.lower(), name.title())
+    key = _normalize(name)
+    return table.get(key, name.replace("_", " ").title())
 
 
 def _desc_scaled(table: dict, name: str, level: int) -> str:
-    fn = table.get(name.lower())
-    return fn(level) if fn else name.title()
+    fn = table.get(_normalize(name))
+    return fn(level) if fn else name.replace("_", " ").title()
 
 
-def _format_essence_slot(etype: str, val: float) -> str:
+def _format_essence_slot(etype: str, raw_val: float, item) -> str:
+    """Format an essence slot description, computing actual flat values from item stats."""
     key = etype.lower()
-    for k, fn in _ESSENCE_TYPE_DESC.items():
-        if k in key:
-            return f"{k.title()} Essence — {fn(val)}"
-    return f"{etype.title()} Essence — {val}"
+    if key == "power":
+        is_helmet = type(item).__name__ == "Helmet"
+        if is_helmet:
+            flat_def = int(item.defence * raw_val / 100)
+            flat_ward = int(item.ward * raw_val / 100)
+            parts = []
+            if flat_def:
+                parts.append(f"+{flat_def} Def")
+            if flat_ward:
+                parts.append(f"+{flat_ward}% Ward")
+            return f"Power Essence ({int(raw_val)}%) — {' | '.join(parts) or 'no base stats'}"
+        else:
+            flat_atk = int(item.attack * raw_val / 100)
+            return f"Power Essence ({int(raw_val)}%) — +{flat_atk} flat Atk"
+    elif key == "protection":
+        flat_pdr = int(item.pdr * raw_val / 100)
+        flat_fdr = int(item.fdr * raw_val / 100)
+        parts = []
+        if flat_pdr:
+            parts.append(f"+{flat_pdr}% PDR")
+        if flat_fdr:
+            parts.append(f"+{flat_fdr} FDR")
+        return f"Protection Essence ({int(raw_val)}%) — {' | '.join(parts) or 'no base PDR/FDR to amplify'}"
+    elif key == "insight":
+        return f"Insight Essence — +{int(raw_val)} Crit Chance"
+    elif key == "evasion":
+        return f"Evasion Essence — +{int(raw_val)}% Evasion"
+    elif key == "warding":
+        return f"Warding Essence — +{int(raw_val)}% Block"
+    return f"{etype.replace('_', ' ').title()} Essence — {raw_val}"
 
 
 def _format_corrupted(etype: str, slot: str) -> str:
-    key = (etype.lower(), slot.lower())
-    desc = _CORRUPTED_DESC.get(key, etype.title())
+    key = (_normalize(etype), slot.lower())
+    desc = _CORRUPTED_DESC.get(key, etype.replace("_", " ").title())
     display = etype.replace("_", " ").title()
     return f"Corrupted ({display}) — {desc}"
 
@@ -220,13 +277,21 @@ def _build_gear_passive_text(p) -> str:
         w = p.equipped_weapon
         wlines: list[str] = []
         if w.passive != "none":
-            wlines.append(f"• Forge: {w.passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}")
+            wlines.append(
+                f"• Forge: {w.passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}"
+            )
         if w.p_passive != "none":
-            wlines.append(f"• Pinnacle: {w.p_passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}")
+            wlines.append(
+                f"• Pinnacle: {w.p_passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}"
+            )
         if w.u_passive != "none":
-            wlines.append(f"• Utmost: {w.u_passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}")
+            wlines.append(
+                f"• Utmost: {w.u_passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}"
+            )
         if w.infernal_passive != "none":
-            wlines.append(f"• Infernal: {w.infernal_passive.title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}")
+            wlines.append(
+                f"• Infernal: {w.infernal_passive.title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}"
+            )
         if wlines:
             lines.append("**⚔️ Weapon**")
             lines.extend(wlines)
@@ -235,9 +300,13 @@ def _build_gear_passive_text(p) -> str:
         a = p.equipped_armor
         alines: list[str] = []
         if a.passive != "none":
-            alines.append(f"• {a.passive.title()} — {_desc_fixed(_ARMOR_PASSIVE_DESC, a.passive)}")
+            alines.append(
+                f"• {a.passive.title()} — {_desc_fixed(_ARMOR_PASSIVE_DESC, a.passive)}"
+            )
         if a.celestial_passive != "none":
-            alines.append(f"• {a.celestial_passive.title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}")
+            alines.append(
+                f"• {a.celestial_passive.title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}"
+            )
         if alines:
             lines.append("**🛡️ Armor**")
             lines.extend(alines)
@@ -249,7 +318,9 @@ def _build_gear_passive_text(p) -> str:
             desc = _desc_scaled(_ACCESSORY_PASSIVE_FUNCS, acc.passive, acc.passive_lvl)
             acclines.append(f"• {acc.passive.title()} L{acc.passive_lvl} — {desc}")
         if acc.void_passive != "none":
-            acclines.append(f"• {acc.void_passive.title()} — {_desc_fixed(_VOID_PASSIVE_DESC, acc.void_passive)}")
+            acclines.append(
+                f"• {acc.void_passive.title()} — {_desc_fixed(_VOID_PASSIVE_DESC, acc.void_passive)}"
+            )
         if acclines:
             lines.append("**📿 Accessory**")
             lines.extend(acclines)
@@ -271,7 +342,7 @@ def _build_gear_passive_text(p) -> str:
             (item.essence_3, item.essence_3_val),
         ):
             if etype != "none":
-                ilines.append(f"• {_format_essence_slot(etype, val)}")
+                ilines.append(f"• {_format_essence_slot(etype, val, item)}")
         if item.corrupted_essence != "none":
             ilines.append(f"• {_format_corrupted(item.corrupted_essence, slot_name)}")
         if ilines:
@@ -285,7 +356,7 @@ def _build_slayer_codex_text(p) -> str:
     lines: list[str] = []
 
     emblem_lines: list[str] = []
-    for slot_key in ("slot_1", "slot_2", "slot_3", "slot_4", "slot_5"):
+    for slot_key in (1, 2, 3, 4, 5):
         slot = p.slayer_emblem.get(slot_key)
         if not slot:
             continue
@@ -396,33 +467,63 @@ class ProfileBuilder:
         # ── HP ───────────────────────────────────────────────────────────────
         total_hp = p.total_max_hp
         hp_bonuses = total_hp - p.max_hp
-        hp_val = f"**{p.current_hp:,} / {total_hp:,}**\n↳ Base: {p.max_hp:,}"
+        hp_val = f"**{p.current_hp:,} / {total_hp:,}**\n↳ Base: {p.max_hp:,}\n↳ Equipment: 0"
         if hp_bonuses:
             hp_val += f"\n↳ Bonuses: {hp_bonuses:+,}"
         embed.add_field(name="❤️ HP", value=hp_val, inline=True)
 
         # ── Ward ─────────────────────────────────────────────────────────────
-        ward = p.get_total_ward_percentage()
-        if ward > 0:
+        ward_equip = 0
+        if p.equipped_accessory:
+            ward_equip += p.equipped_accessory.ward
+        if p.equipped_armor:
+            ward_equip += p.equipped_armor.ward
+        if p.equipped_glove:
+            ward_equip += p.equipped_glove.ward
+        if p.equipped_boot:
+            ward_equip += p.equipped_boot.ward
+        if p.equipped_helmet:
+            ward_equip += p.equipped_helmet.ward
+        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
+            if _item:
+                ward_equip += compute_essence_stat_bonus(_item).get("ward", 0)
+        ward_other = p._get_companion_bonus("ward")
+        total_ward = ward_equip + ward_other
+        if total_ward > 0:
             ward_hp = p.get_combat_ward_value()
-            embed.add_field(name="🔮 Ward", value=f"**{ward}%** (= {ward_hp:,} HP)", inline=True)
+            embed.add_field(
+                name="🔮 Ward",
+                value=f"**{total_ward}%** (= {ward_hp:,} HP)\n↳ Equipment: {ward_equip}%\n↳ Other: {ward_other}%",
+                inline=True,
+            )
 
         # ── Crit Chance ──────────────────────────────────────────────────────
-        crit_acc = p.equipped_accessory.crit if p.equipped_accessory else 0
-        # Weapon crit (no weapon.crit field yet; piercing passive shown in Gear Passives)
-        crit_weapon = 0
-        total_crit = p.get_current_crit_chance()
-        crit_other = total_crit - crit_acc - crit_weapon
-        crit_val = f"**Total: {total_crit}**\n↳ Weapon: {crit_weapon}\n↳ Accessory: {crit_acc}"
-        if crit_other:
-            crit_val += f"\n↳ Bonuses: {crit_other:+}"
+        crit_weapon = _WEAPON_CRIT_BONUS.get(
+            p.equipped_weapon.passive.lower() if p.equipped_weapon else "", 0
+        )
+        crit_equip = p.equipped_accessory.crit if p.equipped_accessory else 0
+        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
+            if _item:
+                crit_equip += compute_essence_stat_bonus(_item).get("crit", 0)
+        # Weapon crit (piercing family) is a roll modifier not included in get_current_crit_chance;
+        # we display it as crit chance so the total is the sum of all sources.
+        stat_crit = p.get_current_crit_chance()
+        crit_bonuses = stat_crit - crit_equip
+        total_crit_display = stat_crit + crit_weapon
+        crit_val = f"**Total: {total_crit_display}**\n↳ Weapon: {crit_weapon}\n↳ Equipment: {crit_equip}"
+        if crit_bonuses:
+            crit_val += f"\n↳ Bonuses: {crit_bonuses:+}"
         embed.add_field(name="🎯 Crit Chance", value=crit_val, inline=True)
 
         # ── Crit Multiplier ──────────────────────────────────────────────────
-        crit_multi = 2.0
-        if p.equipped_helmet and p.equipped_helmet.passive.lower() == "insight":
-            crit_multi += p.equipped_helmet.passive_lvl * 0.1
-        embed.add_field(name="✨ Crit Multiplier", value=f"**{crit_multi:.1f}×**", inline=True)
+        crit_multi_equip = 0.0
+        if p.equipped_helmet and _normalize(p.equipped_helmet.passive) == "insight":
+            crit_multi_equip = p.equipped_helmet.passive_lvl * 0.1
+        crit_multi_total = 2.0 + crit_multi_equip
+        cm_val = f"**{crit_multi_total:.1f}×**\n↳ Base: 2.0×"
+        if crit_multi_equip:
+            cm_val += f"\n↳ Equipment: +{crit_multi_equip:.1f}×"
+        embed.add_field(name="✨ Crit Multiplier", value=cm_val, inline=True)
 
         # ── PDR ──────────────────────────────────────────────────────────────
         pdr_equip = 0
@@ -442,7 +543,9 @@ class ProfileBuilder:
             pdr_other += p.get_ascension_bonuses()["pdr"]
         raw_pdr = pdr_equip + pdr_other
         capped_pdr = min(80, raw_pdr)
-        pdr_str = f"**{capped_pdr}%**" + (f" ({raw_pdr}% uncapped)" if raw_pdr > 80 else "")
+        pdr_str = f"**{capped_pdr}%**" + (
+            f" ({raw_pdr}% uncapped)" if raw_pdr > 80 else ""
+        )
         embed.add_field(
             name="🛡️ PDR",
             value=f"{pdr_str}\n↳ Equipment: {pdr_equip}%\n↳ Other: {pdr_other}%",
@@ -483,12 +586,106 @@ class ProfileBuilder:
                 rar_val += f"\n↳ Bonuses: {rarity_bonuses:+}%"
             embed.add_field(name="✨ Rarity", value=rar_val, inline=True)
 
-        # ── Gear Passives ─────────────────────────────────────────────────────
-        gear_text = _build_gear_passive_text(p)
-        if gear_text:
-            if len(gear_text) > 1020:
-                gear_text = gear_text[:1020] + "…"
-            embed.add_field(name="⚡ Gear Passives", value=gear_text, inline=False)
+        return embed
+
+    @staticmethod
+    async def build_passives(bot, user_id: str, server_id: str) -> discord.Embed:
+        data = await bot.database.users.get(user_id, server_id)
+        p = await load_player(user_id, data, bot.database)
+
+        embed = discord.Embed(title="Active Passives & Equipment", color=0x7B68EE)
+        embed.set_thumbnail(url=data[7])
+
+        def _add_gear_field(icon: str, slot: str, item, stat_line: str, passive_lines: list[str]):
+            if not item:
+                return
+            body = f"**{item.name}** Lv.{item.level}\n{stat_line}"
+            if passive_lines:
+                body += "\n" + "\n".join(passive_lines)
+            if len(body) > 1020:
+                body = body[:1020] + "…"
+            embed.add_field(name=f"{icon} {slot}", value=body, inline=False)
+
+        # ── Weapon ───────────────────────────────────────────────────────────
+        if p.equipped_weapon:
+            w = p.equipped_weapon
+            stat_line = f"ATK: {w.attack} | DEF: {w.defence} | RAR: {w.rarity}%"
+            lines: list[str] = []
+            if w.passive != "none":
+                lines.append(f"• Forge: {w.passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}")
+            if w.p_passive != "none":
+                lines.append(f"• Pinnacle: {w.p_passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}")
+            if w.u_passive != "none":
+                lines.append(f"• Utmost: {w.u_passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}")
+            if w.infernal_passive != "none":
+                lines.append(f"• Infernal: {w.infernal_passive.replace('_',' ').title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}")
+            _add_gear_field("⚔️", "Weapon", w, stat_line, lines)
+
+        # ── Armor ─────────────────────────────────────────────────────────────
+        if p.equipped_armor:
+            a = p.equipped_armor
+            parts = []
+            if a.block:  parts.append(f"BLOCK: {a.block}%")
+            if a.evasion: parts.append(f"EVA: {a.evasion}%")
+            if a.ward:   parts.append(f"WARD: {a.ward}%")
+            if a.pdr:    parts.append(f"PDR: {a.pdr}%")
+            if a.fdr:    parts.append(f"FDR: {a.fdr}")
+            stat_line = " | ".join(parts) or "No defensive stats"
+            lines = []
+            if a.passive != "none":
+                lines.append(f"• {a.passive.replace('_',' ').title()} — {_desc_fixed(_ARMOR_PASSIVE_DESC, a.passive)}")
+            if a.celestial_passive != "none":
+                lines.append(f"• {a.celestial_passive.replace('_',' ').title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}")
+            _add_gear_field("🛡️", "Armor", a, stat_line, lines)
+
+        # ── Accessory ─────────────────────────────────────────────────────────
+        if p.equipped_accessory:
+            acc = p.equipped_accessory
+            parts = []
+            if acc.attack:  parts.append(f"ATK: {acc.attack}")
+            if acc.defence: parts.append(f"DEF: {acc.defence}")
+            if acc.rarity:  parts.append(f"RAR: {acc.rarity}%")
+            if acc.ward:    parts.append(f"WARD: {acc.ward}%")
+            if acc.crit:    parts.append(f"CRIT: {acc.crit}")
+            stat_line = " | ".join(parts) or "No stats"
+            lines = []
+            if acc.passive != "none":
+                desc = _desc_scaled(_ACCESSORY_PASSIVE_FUNCS, acc.passive, acc.passive_lvl)
+                lines.append(f"• {acc.passive.replace('_',' ').title()} L{acc.passive_lvl} — {desc}")
+            if acc.void_passive != "none":
+                lines.append(f"• {acc.void_passive.replace('_',' ').title()} — {_desc_fixed(_VOID_PASSIVE_DESC, acc.void_passive)}")
+            _add_gear_field("📿", "Accessory", acc, stat_line, lines)
+
+        # ── Glove / Boot / Helmet ─────────────────────────────────────────────
+        for icon, slot_label, slot_name, item, pfuncs in (
+            ("🧤", "Glove",  "glove",  p.equipped_glove,  _GLOVE_PASSIVE_FUNCS),
+            ("👢", "Boot",   "boot",   p.equipped_boot,   _BOOT_PASSIVE_FUNCS),
+            ("🪖", "Helmet", "helmet", p.equipped_helmet, _HELMET_PASSIVE_FUNCS),
+        ):
+            if not item:
+                continue
+            parts = []
+            if hasattr(item, "attack") and item.attack:
+                parts.append(f"ATK: {item.attack}")
+            if item.defence: parts.append(f"DEF: {item.defence}")
+            if item.ward:    parts.append(f"WARD: {item.ward}%")
+            if item.pdr:     parts.append(f"PDR: {item.pdr}%")
+            if item.fdr:     parts.append(f"FDR: {item.fdr}")
+            stat_line = " | ".join(parts) or "No stats"
+            lines = []
+            if item.passive != "none":
+                desc = _desc_scaled(pfuncs, item.passive, item.passive_lvl)
+                lines.append(f"• {item.passive.replace('_',' ').title()} L{item.passive_lvl} — {desc}")
+            for etype, val in (
+                (item.essence_1, item.essence_1_val),
+                (item.essence_2, item.essence_2_val),
+                (item.essence_3, item.essence_3_val),
+            ):
+                if etype != "none":
+                    lines.append(f"• {_format_essence_slot(etype, val, item)}")
+            if item.corrupted_essence != "none":
+                lines.append(f"• {_format_corrupted(item.corrupted_essence, slot_name)}")
+            _add_gear_field(icon, slot_label, item, stat_line, lines)
 
         # ── Slayer & Codex ────────────────────────────────────────────────────
         other_text = _build_slayer_codex_text(p)
@@ -496,6 +693,10 @@ class ProfileBuilder:
             if len(other_text) > 1020:
                 other_text = other_text[:1020] + "…"
             embed.add_field(name="🗡️ Slayer & Codex", value=other_text, inline=False)
+
+        if not any([p.equipped_weapon, p.equipped_armor, p.equipped_accessory,
+                    p.equipped_glove, p.equipped_boot, p.equipped_helmet]) and not other_text:
+            embed.description = "No gear equipped and no active passives."
 
         return embed
 
@@ -923,6 +1124,7 @@ class ProfileHubView(ui.View):
         tabs = [
             ("card", "Card", "👤"),
             ("stats", "Stats", "📊"),
+            ("passives", "Passives", "⚡"),
             ("inventory", "Inventory", "🎒"),
             ("cooldowns", "Cooldowns", "⏰"),
             ("resources", "Resources", "📦"),
@@ -957,6 +1159,10 @@ class ProfileHubView(ui.View):
             )
         elif tab_id == "stats":
             embed = await ProfileBuilder.build_stats(
+                self.bot, self.user_id, self.server_id
+            )
+        elif tab_id == "passives":
+            embed = await ProfileBuilder.build_passives(
                 self.bot, self.user_id, self.server_id
             )
         elif tab_id == "inventory":

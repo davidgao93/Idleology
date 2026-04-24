@@ -230,8 +230,12 @@ class CodexRunView(ui.View):
         self.player.reset_combat_bonus()
         self.player.bonus_crit = self.chapter_wave_baseline["bonus_crit"]
         self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
-        self.player.atk_multiplier = self.chapter_wave_baseline.get("atk_multiplier", 1.0)
-        self.player.def_multiplier = self.chapter_wave_baseline.get("def_multiplier", 1.0)
+        self.player.atk_multiplier = self.chapter_wave_baseline.get(
+            "atk_multiplier", 1.0
+        )
+        self.player.def_multiplier = self.chapter_wave_baseline.get(
+            "def_multiplier", 1.0
+        )
 
     def _projected_ward(self) -> int:
         """Ward the player will have at the start of the next wave.
@@ -246,17 +250,35 @@ class CodexRunView(ui.View):
         parts = []
 
         # Per-wave boon bonuses
-        atk_boost  = sum(b.value for b in self.active_boons if b.type == "atk_boost")
-        def_boost  = sum(b.value for b in self.active_boons if b.type == "def_boost")
-        crit_boost = sum(int(b.value) for b in self.active_boons if b.type == "crit_boost")
-        fdr_boost  = sum(int(b.value) for b in self.active_boons if b.type == "fdr_boost")
+        atk_boost = sum(b.value for b in self.active_boons if b.type == "atk_boost")
+        def_boost = sum(b.value for b in self.active_boons if b.type == "def_boost")
+        crit_boost = sum(
+            int(b.value) for b in self.active_boons if b.type == "crit_boost"
+        )
+        fdr_boost = sum(
+            int(b.value) for b in self.active_boons if b.type == "fdr_boost"
+        )
         ward_boost = sum(b.value for b in self.active_boons if b.type == "ward_boost")
-        rarity_boost = sum(b.value for b in self.active_boons if b.type == "rarity_boost")
+        rarity_boost = sum(
+            b.value for b in self.active_boons if b.type == "rarity_boost"
+        )
 
         # Per-wave downside penalties attached to rarity_boost boons
-        atk_pen_pct  = sum(b.downside_value for b in self.active_boons if b.downside_type == "atk_penalty")
-        def_pen_pct  = sum(b.downside_value for b in self.active_boons if b.downside_type == "def_penalty")
-        crit_pen_pw  = sum(int(b.downside_value) for b in self.active_boons if b.downside_type == "crit_penalty")
+        atk_pen_pct = sum(
+            b.downside_value
+            for b in self.active_boons
+            if b.downside_type == "atk_penalty"
+        )
+        def_pen_pct = sum(
+            b.downside_value
+            for b in self.active_boons
+            if b.downside_type == "def_penalty"
+        )
+        crit_pen_pw = sum(
+            int(b.downside_value)
+            for b in self.active_boons
+            if b.downside_type == "crit_penalty"
+        )
 
         # Net ATK %
         if atk_boost or atk_pen_pct:
@@ -294,7 +316,9 @@ class CodexRunView(ui.View):
 
         # Permanent max HP change (max_hp_boost and fragment_boost hp_penalty)
         if p.run_max_hp_bonus:
-            parts.append(f"Max HP {'+' if p.run_max_hp_bonus >= 0 else ''}{p.run_max_hp_bonus:,}")
+            parts.append(
+                f"Max HP {'+' if p.run_max_hp_bonus >= 0 else ''}{p.run_max_hp_bonus:,}"
+            )
 
         # One-shot flags still pending
         if self.run_state.get("guaranteed_page_next"):
@@ -768,7 +792,8 @@ class CodexRunView(ui.View):
         message = interaction.message
 
         while (
-            self.player.current_hp > (self.player.total_max_hp * 0.2) and self.monster.hp > 0
+            self.player.current_hp > (self.player.total_max_hp * 0.2)
+            and self.monster.hp > 0
         ):
             for _ in range(10):
                 if (
@@ -925,7 +950,7 @@ class CodexTomsView(ui.View):
                 # Reroll type (costs 1 codex page)
                 can_reroll_type = self.pages > 0
                 reroll_type_btn = ui.Button(
-                    label=f"Reroll Type (1📄 + 10m💰)",
+                    label="Reroll Type (1📄 + 10m💰)",
                     style=ButtonStyle.danger,
                     disabled=not can_reroll_type,
                     row=2,
@@ -1076,9 +1101,7 @@ class CodexTomsView(ui.View):
     async def _on_reroll_type(self, interaction: Interaction):
         await interaction.response.defer()
         if self.pages <= 0:
-            await interaction.followup.send(
-                "No Codex Pages available.", ephemeral=True
-            )
+            await interaction.followup.send("No Codex Pages available.", ephemeral=True)
             return
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < 10_000_000:
@@ -1103,7 +1126,9 @@ class CodexTomsView(ui.View):
 
     async def _on_exit(self, interaction: Interaction):
         self.stop()
-        antique_tomes = await self.bot.database.users.get_currency(self.user_id, "antique_tome")
+        antique_tomes = await self.bot.database.users.get_currency(
+            self.user_id, "antique_tome"
+        )
         menu = CodexMenuView(
             self.bot,
             self.user_id,
@@ -1181,35 +1206,10 @@ class CodexMenuView(ui.View):
 
     @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="📖", row=0)
     async def begin_run(self, interaction: Interaction, button: ui.Button):
-        # Cooldown check (10 min, reduced by speedster boot)
-        from datetime import datetime, timedelta
-
-        CODEX_COOLDOWN = timedelta(minutes=10)
-        temp_reduction = 0
-        boot = await self.bot.database.equipment.get_equipped(self.user_id, "boot")
-        if boot and boot[9] == "speedster":
-            temp_reduction = boot[12] * 60
-        cooldown_duration = max(
-            timedelta(seconds=10), CODEX_COOLDOWN - timedelta(seconds=temp_reduction)
-        )
-        existing_user = await self.bot.database.users.get(
-            self.user_id, str(interaction.guild_id)
-        )
-        last_combat = existing_user[24] if existing_user else None
-        if last_combat:
-            try:
-                dt = datetime.fromisoformat(last_combat)
-                if datetime.now() - dt < cooldown_duration:
-                    rem = cooldown_duration - (datetime.now() - dt)
-                    return await interaction.response.send_message(
-                        f"Codex cooldown: **{rem.seconds // 60}m {rem.seconds % 60}s** remaining.",
-                        ephemeral=True,
-                    )
-            except Exception:
-                pass
-
         # Antique Tome check — re-verify and deduct at run start
-        current_tomes = await self.bot.database.users.get_currency(self.user_id, "antique_tome")
+        current_tomes = await self.bot.database.users.get_currency(
+            self.user_id, "antique_tome"
+        )
         if current_tomes < 1:
             return await interaction.response.send_message(
                 "You need an **Antique Tome** to begin a Codex run.", ephemeral=True
