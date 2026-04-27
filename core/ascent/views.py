@@ -84,6 +84,194 @@ async def _grant_milestone_rewards(bot, user_id: str, server_id: str, player: Pl
 
 
 # ---------------------------------------------------------------------------
+# AscentLobbyView
+# ---------------------------------------------------------------------------
+
+
+class AscentLobbyView(ui.View):
+    def __init__(self, bot, user_id: str, server_id: str, player: Player, best_floor: int, pinnacle_keys: int):
+        super().__init__(timeout=60)
+        self.bot = bot
+        self.user_id = user_id
+        self.server_id = server_id
+        self.player = player
+        self.best_floor = best_floor
+        self.pinnacle_keys = pinnacle_keys
+
+    def build_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="🏔️ The Ascent",
+            description=(
+                "Climb an endless tower of escalating floors, each guarded by a fearsome boss.\n"
+                "Reach new pinnacle floors to earn permanent stat bonuses."
+            ),
+            color=discord.Color.from_rgb(180, 120, 60),
+        )
+
+        # Floor info
+        starting_floor = AscentMechanics.calculate_starting_floor(self.best_floor)
+        embed.add_field(
+            name="Best Floor",
+            value=str(self.best_floor) if self.best_floor > 0 else "None",
+            inline=True,
+        )
+        embed.add_field(name="Starting Floor", value=str(starting_floor), inline=True)
+        embed.add_field(name="Pinnacle Keys", value=f"🗝️ {self.pinnacle_keys}", inline=True)
+
+        # Cumulative bonuses
+        bonuses = AscentMechanics.get_cumulative_pinnacle_bonuses(self.player.ascension_unlocks)
+        bonus_parts = []
+        if bonuses["atk_pct"]:
+            bonus_parts.append(f"+{bonuses['atk_pct']}% ATK")
+        if bonuses["def_pct"]:
+            bonus_parts.append(f"+{bonuses['def_pct']}% DEF")
+        if bonuses["crit"]:
+            bonus_parts.append(f"+{bonuses['crit']} Crit")
+        if bonuses["hit"]:
+            bonus_parts.append(f"+{bonuses['hit']} Hit")
+        if bonuses["pdr"]:
+            bonus_parts.append(f"+{bonuses['pdr']} PDR")
+        if bonuses["fdr"]:
+            bonus_parts.append(f"+{bonuses['fdr']} FDR")
+        if bonuses["hp"]:
+            bonus_parts.append(f"+{bonuses['hp']} Max HP")
+
+        embed.add_field(
+            name="Active Pinnacle Bonuses",
+            value=", ".join(bonus_parts) if bonus_parts else "None yet",
+            inline=False,
+        )
+
+        # Next pinnacle floor
+        unlocked = self.player.ascension_unlocks
+        next_pinnacle = next((f for f in sorted(PINNACLE_REWARDS) if f not in unlocked), None)
+        if next_pinnacle:
+            embed.add_field(
+                name="Next Pinnacle",
+                value=f"Floor {next_pinnacle} — {AscentMechanics.pinnacle_label(next_pinnacle)}",
+                inline=False,
+            )
+        else:
+            embed.add_field(name="Next Pinnacle", value="All pinnacles unlocked!", inline=False)
+
+        embed.set_footer(text="A Pinnacle Key is consumed when you begin a run.")
+        return embed
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="🏔️", row=0)
+    async def begin_run(self, interaction: Interaction, button: ui.Button):
+        current_keys = await self.bot.database.users.get_currency(self.user_id, "pinnacle_key")
+        if current_keys < 1:
+            return await interaction.response.send_message(
+                "You need a **Pinnacle Key** to begin the Ascent.", ephemeral=True
+            )
+
+        await interaction.response.defer()
+
+        await self.bot.database.users.modify_currency(self.user_id, "pinnacle_key", -1)
+        self.bot.state_manager.set_active(self.user_id, "ascent")
+        await self.bot.database.users.update_timer(self.user_id, "last_combat")
+
+        starting_floor = AscentMechanics.calculate_starting_floor(self.best_floor)
+        m_level = AscentMechanics.calculate_floor_monster_level(starting_floor)
+        n_mods, b_mods = AscentMechanics.get_floor_modifier_counts(starting_floor)
+
+        monster = Monster(name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0, modifiers=[], image="", flavor="", is_boss=True)
+        monster = await generate_ascent_monster(self.player, monster, m_level, n_mods, b_mods)
+
+        self.player.combat_ward = self.player.get_combat_ward_value()
+        engine.apply_stat_effects(self.player, monster)
+        start_logs = engine.apply_combat_start_passives(self.player, monster)
+
+        embed = combat_ui.create_combat_embed(
+            self.player, monster, start_logs,
+            title_override=f"Ascent Floor {starting_floor} | {self.player.name}",
+        )
+        view = AscentView(
+            self.bot, self.user_id, self.server_id, self.player, monster,
+            start_logs, starting_floor=starting_floor, best_floor=self.best_floor,
+        )
+        self.stop()
+        msg = await interaction.edit_original_response(embed=embed, view=view)
+        view.message = msg
+
+    @ui.button(label="Pinnacles", style=ButtonStyle.primary, emoji="✨", row=0)
+    async def view_pinnacles(self, interaction: Interaction, button: ui.Button):
+        unlocked = self.player.ascension_unlocks
+        lines = []
+        for floor, _ in sorted(PINNACLE_REWARDS.items()):
+            status = "✅" if floor in unlocked else "⬜"
+            lines.append(f"{status} **Floor {floor}** — {AscentMechanics.pinnacle_label(floor)}")
+
+        pages = []
+        chunk_size = 8
+        for i in range(0, len(lines), chunk_size):
+            pages.append("\n".join(lines[i:i + chunk_size]))
+
+        view = AscentPinnacleListView(self, pages)
+        embed = view.build_embed()
+        await interaction.response.edit_message(embed=embed, view=view)
+
+    @ui.button(label="Close", style=ButtonStyle.secondary, row=0)
+    async def close_btn(self, interaction: Interaction, button: ui.Button):
+        self.stop()
+        await interaction.response.defer()
+        await interaction.delete_original_response()
+
+    async def on_timeout(self):
+        pass
+
+
+class AscentPinnacleListView(ui.View):
+    def __init__(self, lobby_view: "AscentLobbyView", pages: list[str]):
+        super().__init__(timeout=60)
+        self.lobby_view = lobby_view
+        self.pages = pages
+        self.page = 0
+        self._update_buttons()
+
+    def _update_buttons(self):
+        self.prev_btn.disabled = self.page == 0
+        self.next_btn.disabled = self.page >= len(self.pages) - 1
+
+    def build_embed(self) -> discord.Embed:
+        unlocked_count = len(self.lobby_view.player.ascension_unlocks)
+        total = len(PINNACLE_REWARDS)
+        embed = discord.Embed(
+            title="✨ Pinnacle Floors",
+            description=self.pages[self.page] if self.pages else "No pinnacle floors defined.",
+            color=discord.Color.from_rgb(180, 120, 60),
+        )
+        embed.set_footer(text=f"Unlocked: {unlocked_count}/{total} | Page {self.page + 1}/{len(self.pages)}")
+        return embed
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.lobby_view.user_id
+
+    @ui.button(label="◀", style=ButtonStyle.secondary, row=0)
+    async def prev_btn(self, interaction: Interaction, button: ui.Button):
+        self.page -= 1
+        self._update_buttons()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    @ui.button(label="▶", style=ButtonStyle.secondary, row=0)
+    async def next_btn(self, interaction: Interaction, button: ui.Button):
+        self.page += 1
+        self._update_buttons()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    @ui.button(label="Back", style=ButtonStyle.primary, row=0)
+    async def back_btn(self, interaction: Interaction, button: ui.Button):
+        self.stop()
+        await interaction.response.edit_message(embed=self.lobby_view.build_embed(), view=self.lobby_view)
+
+    async def on_timeout(self):
+        pass
+
+
+# ---------------------------------------------------------------------------
 # AscentView
 # ---------------------------------------------------------------------------
 
