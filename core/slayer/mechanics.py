@@ -66,8 +66,8 @@ class SlayerMechanics:
     @staticmethod
     def calculate_task_rewards(amount: int) -> Tuple[int, int]:
         """Returns (XP, Points). Linear scaling."""
-        # Completion burst: 300 XP per monster in the task, +1 Point per monster.
-        return (amount * 300), amount
+        # Completion burst: 800 XP per monster in the task, +1 Point per monster.
+        return (amount * 800), amount
 
     @staticmethod
     def roll_drops(monster_level: int) -> Tuple[int, int]:

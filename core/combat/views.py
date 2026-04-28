@@ -654,7 +654,7 @@ class CombatView(ui.View):
             # 1. BOSS PET CHECK (3% Chance, Tier 3 Fixed)
             # Gemini boot: pet drop chance doubled (3% -> 6% boss, 5% -> 10% regular)
             _gemini_boot = self.player.get_boot_corrupted_essence() == "gemini"
-            boss_pet_chance    = 0.06 if _gemini_boot else 0.03
+            boss_pet_chance = 0.06 if _gemini_boot else 0.03
             regular_pet_chance = 0.10 if _gemini_boot else 0.05
 
             boss_img = self._get_boss_pet_image(self.monster.name)
@@ -740,7 +740,7 @@ class CombatView(ui.View):
                 if s_profile["active_task_species"] == self.monster.species:
                     # 1. Base Slayer XP + Drops
                     await self.bot.database.slayer.add_rewards(
-                        self.user_id, server_id, xp=200, points=0
+                        self.user_id, server_id, xp=500, points=0
                     )
 
                     ess, heart = core.slayer.mechanics.SlayerMechanics.roll_drops(
@@ -764,7 +764,7 @@ class CombatView(ui.View):
                         )
 
                     # Log additions
-                    reward_data["msgs"].append("🩸 **Slayer:** +200 Slayer XP")
+                    reward_data["msgs"].append("🩸 **Slayer:** +500 Slayer XP")
                     if ess > 0:
                         reward_data["msgs"].append("🩸 Found a **Violent Essence**!")
                     if heart > 0:
