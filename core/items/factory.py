@@ -1,4 +1,4 @@
-from core.models import Player, Weapon, Accessory, Armor, Glove, Boot, Helmet, Companion
+from core.models import Player, Weapon, Accessory, Armor, Glove, Boot, Helmet, Companion, MonsterPart
 
 def create_weapon(data: tuple) -> Weapon:
     """
@@ -207,6 +207,18 @@ def create_companion(data: tuple) -> Companion:
         balanced_passive_tier=data[12] if len(data) > 12 and data[12] is not None else 0,
     )
 
+def create_monster_part(row) -> MonsterPart:
+    """Maps a monster_parts DB row to a MonsterPart object."""
+    return MonsterPart(
+        id=row[0],
+        user_id=row[1],
+        slot_type=row[2],
+        monster_name=row[3],
+        ilvl=row[4],
+        hp_value=row[5],
+    )
+
+
 async def load_player(user_id: str, user_data: tuple, database) -> Player:
     """
     Creates a Player object from the user tuple and asynchronously fetches 
@@ -304,7 +316,13 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         player.potion_passives = await database.alchemy.get_potion_passives(user_id)
     except Exception:
         player.potion_passives = []
-        
+
+    # --- Fetch Equipped Monster Body Parts ---
+    try:
+        player.equipped_parts = await database.monster_parts.get_equipped_parts(user_id)
+    except Exception:
+        player.equipped_parts = {}
+
     # 3. Pre-compute flat stat cache (base + gear + essences + barracks).
     # Must be done after all gear is attached and before any combat begins.
     player.compute_flat_stats()

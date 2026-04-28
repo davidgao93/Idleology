@@ -163,6 +163,18 @@ def create_victory_embed(
 
         loot_lines.append(f"{emoji} {item_desc}")
 
+    # 5. Monster Body Part Drop
+    if rewards.get("body_part"):
+        _PART_LABELS = {
+            "head": "Head", "torso": "Torso",
+            "right_arm": "Right Arm", "left_arm": "Left Arm",
+            "right_leg": "Right Leg", "left_leg": "Left Leg",
+            "cheeks": "Cheeks", "organs": "Organs",
+        }
+        slot, mname, hp = rewards["body_part"]
+        label = _PART_LABELS.get(slot, slot)
+        loot_lines.append(f"🫀 {mname}'s **{label}** (+{hp} Max HP)")
+
     # Add single Loot field
     if loot_lines:
         embed.add_field(name="✨__Loot__✨", value="\n".join(loot_lines), inline=False)

@@ -30,6 +30,34 @@ _REGULAR_ESSENCE_POOL = [e for e, w in _REGULAR_ESSENCE_TABLE for _ in range(w)]
 _CORRUPTED_ESSENCE_POOL = ["aphrodite", "lucifer", "gemini", "neet"]
 _CORRUPTED_CHANCE = 0.03  # 3% of all essence drops are corrupted
 
+# ---------------------------------------------------------------------------
+# Monster Body Part Drop Tables
+# ---------------------------------------------------------------------------
+
+_BODY_PART_BASE_CHANCE = 0.02  # 2% base; special rarity adds on top
+
+_PART_SLOT_WEIGHTS = [
+    ("head", 0.400),
+    ("torso", 0.400),
+    ("right_arm", 0.045),
+    ("left_arm", 0.045),
+    ("right_leg", 0.045),
+    ("left_leg", 0.045),
+    ("cheeks", 0.010),
+    ("organs", 0.010),
+]
+_PART_SLOTS, _PART_WEIGHTS = zip(*_PART_SLOT_WEIGHTS)
+
+
+def roll_monster_part(monster_name: str, ilvl: int) -> tuple:
+    """
+    Randomly selects a slot and rolls HP using a triangular distribution peaked at ilvl.
+    Returns (slot_type, hp_value).
+    """
+    slot = random.choices(_PART_SLOTS, weights=_PART_WEIGHTS, k=1)[0]
+    hp = max(1, int(random.triangular(ilvl * 0.5, ilvl * 1.5, ilvl)))
+    return slot, hp
+
 
 def roll_essence_drop() -> str:
     """
@@ -97,6 +125,16 @@ class DropManager:
             essence_type = roll_essence_drop()
             await bot.database.essences.add(user_id, essence_type)
             reward_data["essences"].append(essence_type)
+
+        # 1c. Monster Body Part Drop (normal, non-essence monsters only)
+        if monster is not None and not getattr(monster, "is_essence", False):
+            part_chance = _BODY_PART_BASE_CHANCE + (player.get_special_drop_bonus() / 100)
+            if random.random() < part_chance:
+                slot, hp = roll_monster_part(monster.name, monster_level)
+                await bot.database.monster_parts.add_part(
+                    user_id, slot, monster.name, monster_level, hp
+                )
+                reward_data["body_part"] = (slot, monster.name, hp)
 
         # 2. Gear Drops
         # Aphrodite boot: lucky gear drops — roll twice, take the lower (more likely to beat threshold)

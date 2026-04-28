@@ -71,6 +71,23 @@ CREATE TABLE IF NOT EXISTS `users` (
 );
 
 
+CREATE TABLE IF NOT EXISTS `monster_parts` (
+  `id`           INTEGER PRIMARY KEY AUTOINCREMENT,
+  `user_id`      TEXT NOT NULL,
+  `slot_type`    TEXT NOT NULL,
+  `monster_name` TEXT NOT NULL,
+  `ilvl`         INTEGER NOT NULL,
+  `hp_value`     INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS `monster_parts_equipped` (
+  `user_id`      TEXT NOT NULL,
+  `slot_type`    TEXT NOT NULL,
+  `hp_value`     INTEGER NOT NULL,
+  `monster_name` TEXT NOT NULL,
+  PRIMARY KEY (`user_id`, `slot_type`)
+);
+
 CREATE TABLE IF NOT EXISTS `prestige_owned` (
   `user_id` TEXT NOT NULL,
   `item_type` TEXT NOT NULL,

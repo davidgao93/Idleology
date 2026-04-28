@@ -237,6 +237,29 @@ class CodexTome:
     value: float  # Actual rolled stat contribution (not a fixed tier value)
 
 
+_PART_SLOT_LABELS = {
+    "head": "Head", "torso": "Torso",
+    "right_arm": "Right Arm", "left_arm": "Left Arm",
+    "right_leg": "Right Leg", "left_leg": "Left Leg",
+    "cheeks": "Cheeks", "organs": "Organs",
+}
+
+
+@dataclass
+class MonsterPart:
+    id: int
+    user_id: str
+    slot_type: str
+    monster_name: str
+    ilvl: int
+    hp_value: int
+
+    @property
+    def display_name(self) -> str:
+        label = _PART_SLOT_LABELS.get(self.slot_type, self.slot_type.replace("_", " ").title())
+        return f"{self.monster_name}'s **{label}**"
+
+
 @dataclass
 class Player:
     id: str
@@ -369,6 +392,10 @@ class Player:
     run_max_hp_bonus: int = 0  # max_hp_boost boon (+) and fragment_boost hp_penalty (−)
     bonus_rarity: int = 0  # per-wave rarity boon accumulator; reset at chapter boundary
 
+    # Monster body parts equipped (loaded at session start)
+    # {slot_type: {"hp": int, "monster_name": str}}
+    equipped_parts: dict = field(default_factory=dict)
+
     @property
     def rarity(self) -> int:
         """Gear rarity from weapon and accessory. Use get_total_rarity() for the full total."""
@@ -381,10 +408,11 @@ class Player:
 
     @property
     def total_max_hp(self) -> int:
-        """Effective max HP including run bonuses, chapter penalties, and vitality tome."""
+        """Effective max HP including run bonuses, chapter penalties, vitality tome, and body parts."""
         vitality_pct = self.get_tome_bonus("vitality")
         asc_hp = self.get_ascension_bonuses()["hp"] if self.ascension_unlocks else 0
-        base = self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp + asc_hp
+        parts_hp = sum(v["hp"] for v in self.equipped_parts.values()) if self.equipped_parts else 0
+        base = self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp + asc_hp + parts_hp
         if vitality_pct > 0:
             base = int(base * (1 + vitality_pct / 100))
         return max(1, base)
