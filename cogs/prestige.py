@@ -364,12 +364,16 @@ class PrestigeHubView(ui.View):
     def _rebuild(self) -> None:
         self.clear_items()
 
-        # Row 0: navigation tabs
+        # Row 0: navigation tabs + close
         for tab_id, label in [("overview", "Overview"), ("shop", "Shop"), ("hall", "Hall of Fame")]:
             style = ButtonStyle.primary if self.active_tab == tab_id else ButtonStyle.secondary
             btn = ui.Button(label=label, style=style, custom_id=f"tab_{tab_id}", row=0)
             btn.callback = self._handle_tab
             self.add_item(btn)
+
+        close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=0)
+        close_btn.callback = self._handle_close
+        self.add_item(close_btn)
 
         # Row 1: action buttons
         for label, emoji, cb in [
@@ -444,6 +448,11 @@ class PrestigeHubView(ui.View):
         await interaction.edit_original_response(embed=embed, view=self)
 
     # --- Action buttons ---
+
+    async def _handle_close(self, interaction: discord.Interaction) -> None:
+        self.stop()
+        await interaction.response.defer()
+        await interaction.delete_original_response()
 
     async def _handle_avatar(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(
