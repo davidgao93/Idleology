@@ -5,34 +5,50 @@ from core.items.factory import create_monster_part
 from core.models import MonsterPart, Player
 
 _SLOT_ORDER = [
-    "head", "torso",
-    "right_arm", "left_arm",
-    "right_leg", "left_leg",
-    "cheeks", "organs",
+    "head",
+    "torso",
+    "right_arm",
+    "left_arm",
+    "right_leg",
+    "left_leg",
+    "cheeks",
+    "organs",
 ]
 
 _SLOT_LABELS = {
-    "head": "Head", "torso": "Torso",
-    "right_arm": "Right Arm", "left_arm": "Left Arm",
-    "right_leg": "Right Leg", "left_leg": "Left Leg",
-    "cheeks": "Cheeks", "organs": "Organs",
+    "head": "Head",
+    "torso": "Torso",
+    "right_arm": "Right Arm",
+    "left_arm": "Left Arm",
+    "right_leg": "Right Leg",
+    "left_leg": "Left Leg",
+    "cheeks": "Cheeks",
+    "organs": "Organs",
 }
 
 _SLOT_EMOJI = {
-    "head": "💀", "torso": "🫁",
-    "right_arm": "💪", "left_arm": "🤜",
-    "right_leg": "🦵", "left_leg": "🦿",
-    "cheeks": "🍑", "organs": "🫀",
+    "head": "💀",
+    "torso": "🫁",
+    "right_arm": "💪",
+    "left_arm": "🤜",
+    "right_leg": "🦵",
+    "left_leg": "🦿",
+    "cheeks": "🍑",
+    "organs": "🫀",
 }
 
 
 def _build_main_embed(player: Player, inventory: list) -> discord.Embed:
-    parts_hp = sum(v["hp"] for v in player.equipped_parts.values()) if player.equipped_parts else 0
+    parts_hp = (
+        sum(v["hp"] for v in player.equipped_parts.values())
+        if player.equipped_parts
+        else 0
+    )
     embed = discord.Embed(
         title=f"🫀 {player.name}'s Monster Parts",
         description=(
-            f"Equip monster body parts to gain permanent Max HP.\n"
-            f"**Total Body Part HP:** +{parts_hp:,}\n"
+            f"Consume monster body parts to empower your spirit.\n"
+            f"**Max HP Gained:** +{parts_hp:,}\n"
             f"**Inventory:** {len(inventory)}/20 parts"
         ),
         color=0xB22222,
@@ -88,12 +104,18 @@ class BulkDiscardModal(ui.Modal, title="Bulk Discard Parts"):
 
         await interaction.response.defer()
         # Refresh inventory and rebuild
-        self.parent.inventory = await self.parent.bot.database.monster_parts.get_inventory(
-            self.parent.user_id
+        self.parent.inventory = (
+            await self.parent.bot.database.monster_parts.get_inventory(
+                self.parent.user_id
+            )
         )
-        self.parent.inventory_parts = [create_monster_part(r) for r in self.parent.inventory]
+        self.parent.inventory_parts = [
+            create_monster_part(r) for r in self.parent.inventory
+        ]
         embed = _build_main_embed(self.parent.player, self.parent.inventory)
-        embed.set_footer(text=f"Discarded {count} part{'s' if count != 1 else ''} below ilvl {threshold}.")
+        embed.set_footer(
+            text=f"Discarded {count} part{'s' if count != 1 else ''} below ilvl {threshold}."
+        )
         await interaction.edit_original_response(embed=embed, view=self.parent)
 
 
@@ -142,8 +164,12 @@ class EquipConfirmView(ui.View):
             "hp": self.part.hp_value,
             "monster_name": self.part.monster_name,
         }
-        self.parent.inventory = [r for r in self.parent.inventory if r[0] != self.part.id]
-        self.parent.inventory_parts = [create_monster_part(r) for r in self.parent.inventory]
+        self.parent.inventory = [
+            r for r in self.parent.inventory if r[0] != self.part.id
+        ]
+        self.parent.inventory_parts = [
+            create_monster_part(r) for r in self.parent.inventory
+        ]
         self.parent._rebuild_select()
 
 
@@ -185,7 +211,9 @@ class PartDetailView(ui.View):
                 color=0xFF6600,
             )
             confirm_view = EquipConfirmView(self.parent, self.part)
-            await interaction.response.edit_message(embed=confirm_embed, view=confirm_view)
+            await interaction.response.edit_message(
+                embed=confirm_embed, view=confirm_view
+            )
             self.stop()
         else:
             # Slot empty — equip immediately
@@ -198,8 +226,12 @@ class PartDetailView(ui.View):
                 "hp": self.part.hp_value,
                 "monster_name": self.part.monster_name,
             }
-            self.parent.inventory = [r for r in self.parent.inventory if r[0] != self.part.id]
-            self.parent.inventory_parts = [create_monster_part(r) for r in self.parent.inventory]
+            self.parent.inventory = [
+                r for r in self.parent.inventory if r[0] != self.part.id
+            ]
+            self.parent.inventory_parts = [
+                create_monster_part(r) for r in self.parent.inventory
+            ]
             self.parent._rebuild_select()
             embed = _build_main_embed(self.parent.player, self.parent.inventory)
             embed.set_footer(text=f"Equipped {self.part.display_name}.")
@@ -210,8 +242,12 @@ class PartDetailView(ui.View):
     async def discard(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         await self.parent.bot.database.monster_parts.delete_part(self.part.id)
-        self.parent.inventory = [r for r in self.parent.inventory if r[0] != self.part.id]
-        self.parent.inventory_parts = [create_monster_part(r) for r in self.parent.inventory]
+        self.parent.inventory = [
+            r for r in self.parent.inventory if r[0] != self.part.id
+        ]
+        self.parent.inventory_parts = [
+            create_monster_part(r) for r in self.parent.inventory
+        ]
         self.parent._rebuild_select()
         embed = _build_main_embed(self.parent.player, self.parent.inventory)
         embed.set_footer(text=f"Discarded {self.part.display_name}.")
@@ -248,7 +284,9 @@ class PartSelect(ui.Select):
         part_id = int(self.values[0])
         part = self.parts_by_id.get(part_id)
         if not part:
-            return await interaction.response.send_message("Part not found.", ephemeral=True)
+            return await interaction.response.send_message(
+                "Part not found.", ephemeral=True
+            )
 
         label = _SLOT_LABELS.get(part.slot_type, part.slot_type)
         embed = discord.Embed(

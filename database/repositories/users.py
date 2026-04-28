@@ -122,6 +122,13 @@ class UserRepository:
         await self.connection.execute(
             "UPDATE users SET current_hp = ? WHERE user_id = ?", (hp, user_id)
         )
+
+    async def update_appearance(self, user_id: str, url: str) -> None:
+        """Update the player's avatar URL across all servers."""
+        await self.connection.execute(
+            "UPDATE users SET appearance = ? WHERE user_id = ?", (url, user_id)
+        )
+        await self.connection.commit()
         await self.connection.commit()
 
     async def modify_stat(self, user_id: str, stat: str, amount: int) -> None:

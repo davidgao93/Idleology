@@ -55,18 +55,16 @@ class Character(commands.Cog, name="character"):
     @tasks.loop(minutes=15)
     async def check_hp(self):
         """Check and increment current_hp for all users every 15m."""
-        # Fetch all users from the database
         users = await self.bot.database.users.get_all()
         self.bot.logger.info(f'Healing all users')
         for user in users:
-            user_id = user[1] 
+            user_id = user[1]
             current_hp = user[11]
-            max_hp = user[12]
+            player = await load_player(user_id, user, self.bot.database)
+            max_hp = player.total_max_hp
             scaling = int(max_hp / 30)
             if current_hp < max_hp:
-                new_hp = current_hp + 1 + scaling
-                if (new_hp > max_hp):
-                    new_hp = max_hp
+                new_hp = min(current_hp + 1 + scaling, max_hp)
                 await self.bot.database.users.update_hp(user_id, new_hp)
 
 

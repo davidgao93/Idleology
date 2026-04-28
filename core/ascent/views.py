@@ -419,6 +419,10 @@ class AscentView(ui.View):
             self.pinnacle_log.append(f"**Floor {floor}:** {label}")
             pinnacle_gained = label
 
+        # Soulreap: restore HP to full after every floor clear
+        if self.player.get_weapon_infernal() == "soulreap":
+            self.player.current_hp = self.player.total_max_hp
+
         # Skiller boot passive
         skiller_msg = await DropManager.proc_skiller(
             self.bot, self.user_id, self.server_id, self.player
