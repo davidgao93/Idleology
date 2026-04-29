@@ -128,7 +128,7 @@ Combat Passive Skills (10 levels, increased with skill shards)
 
 The Dispatch system:
 Dispatch is the idle task performed by the partner. 
-Similar to companion adventures, a maximum of 48 hours can be stored before collection.
+Similar to companion adventures, a maximum of 48 hours can be stored before collection. Each tick takes 1 hour as opposed to companions 1.
 
 Only 1 partner can be dispatched at a time. This partner however can be different that the one active in combat.
 

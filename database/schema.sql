@@ -433,3 +433,56 @@ CREATE TABLE IF NOT EXISTS player_essences (
     quantity INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, essence_type)
 );
+
+CREATE TABLE IF NOT EXISTS user_partners (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id               TEXT NOT NULL,
+    partner_id            INTEGER NOT NULL,
+    level                 INTEGER NOT NULL DEFAULT 1,
+    exp                   INTEGER NOT NULL DEFAULT 0,
+
+    combat_slot_1         TEXT DEFAULT NULL,
+    combat_slot_1_lvl     INTEGER NOT NULL DEFAULT 1,
+    combat_slot_2         TEXT DEFAULT NULL,
+    combat_slot_2_lvl     INTEGER NOT NULL DEFAULT 1,
+    combat_slot_3         TEXT DEFAULT NULL,
+    combat_slot_3_lvl     INTEGER NOT NULL DEFAULT 1,
+    sig_combat_lvl        INTEGER NOT NULL DEFAULT 1,
+
+    dispatch_slot_1       TEXT DEFAULT NULL,
+    dispatch_slot_1_lvl   INTEGER NOT NULL DEFAULT 1,
+    dispatch_slot_2       TEXT DEFAULT NULL,
+    dispatch_slot_2_lvl   INTEGER NOT NULL DEFAULT 1,
+    dispatch_slot_3       TEXT DEFAULT NULL,
+    dispatch_slot_3_lvl   INTEGER NOT NULL DEFAULT 1,
+    sig_dispatch_lvl      INTEGER NOT NULL DEFAULT 1,
+
+    dispatch_task         TEXT DEFAULT NULL,
+    dispatch_start_time   TEXT DEFAULT NULL,
+    dispatch_task_2       TEXT DEFAULT NULL,
+    dispatch_start_time_2 TEXT DEFAULT NULL,
+
+    is_active_combat      INTEGER NOT NULL DEFAULT 0,
+    is_dispatched         INTEGER NOT NULL DEFAULT 0,
+
+    affinity_encounters   INTEGER NOT NULL DEFAULT 0,
+    affinity_story_seen   INTEGER NOT NULL DEFAULT 0,
+    portrait_variant      INTEGER NOT NULL DEFAULT 0,
+
+    UNIQUE(user_id, partner_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_partner_items (
+    user_id               TEXT PRIMARY KEY,
+    guild_tickets         INTEGER NOT NULL DEFAULT 0,
+    pity_counter          INTEGER NOT NULL DEFAULT 0,
+    combat_skill_shards   INTEGER NOT NULL DEFAULT 0,
+    dispatch_skill_shards INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS user_partner_shards (
+    user_id     TEXT NOT NULL,
+    partner_id  INTEGER NOT NULL,
+    shard_count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, partner_id)
+);

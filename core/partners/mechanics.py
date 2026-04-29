@@ -1,0 +1,353 @@
+from __future__ import annotations
+
+import json
+import math
+import os
+import random
+from typing import List, Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.models import Partner
+
+# ---------------------------------------------------------------------------
+# Load exp table once at import time
+# ---------------------------------------------------------------------------
+
+_EXP_TABLE: dict = {}
+
+
+def _load_exp() -> None:
+    path = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "exp.json")
+    with open(path, encoding="utf-8") as f:
+        _EXP_TABLE.update(json.load(f)["levels"])
+
+
+_load_exp()
+
+# ---------------------------------------------------------------------------
+# Skill key lists
+# ---------------------------------------------------------------------------
+
+COMMON_COMBAT_SKILLS: List[str] = [
+    "co_joint_attack",
+    "co_heal",
+    "co_damage_reduction",
+    "co_stat_transfer",
+    "co_monster_debuff",
+    "co_xp_boost",
+    "co_gold_boost",
+    "co_special_rarity",
+    "co_atk_from_def",
+    "co_def_from_atk",
+    "co_curse_damage",
+    "co_curse_taken",
+]
+
+RARE_COMBAT_SKILLS: List[str] = [
+    "co_crit_rate",
+    "co_crit_damage",
+    "co_execute",
+    "co_ward_regen",
+    "co_ward_leech",
+]
+
+COMMON_DISPATCH_SKILLS: List[str] = [
+    "di_exp_boost",
+    "di_gold_boost",
+    "di_extra_reward",
+    "di_skilling_boost",
+]
+
+RARE_DISPATCH_SKILLS: List[str] = [
+    "di_settlement_mat",
+    "di_boss_reward",
+    "di_contract_find",
+    "di_pinnacle_find",
+]
+
+# Upgrade shard costs indexed by (current_level - 1)
+COMBAT_UPGRADE_COSTS: List[int] = [3, 7, 10, 12, 15, 18, 20, 25, 30]   # lvl 1→2 … 9→10
+DISPATCH_UPGRADE_COSTS: List[int] = [5, 10, 15, 30]                      # lvl 1→2 … 4→5
+
+REROLL_COMBAT_COST = 10
+REROLL_DISPATCH_COST = 5
+
+MAX_COMBAT_SKILL_LEVEL = 10
+MAX_DISPATCH_SKILL_LEVEL = 5
+
+# Affinity (encounter_threshold, story_index)
+AFFINITY_THRESHOLDS: List[Tuple[int, int]] = [(25, 1), (50, 2), (75, 3), (100, 4)]
+
+# Skol sig: corrupted essence buff counts per tier
+_SKOL_SIG_BUFFS = {1: 1, 2: 1, 3: 2, 4: 2, 5: 3}
+
+# Eve sig: potion cost per tier
+_EVE_SIG_POTIONS = {1: 5, 2: 4, 3: 3, 4: 2, 5: 1}
+
+# Kay sig dispatch: extra hours per tier
+_KAY_DISPATCH_BONUS_HOURS = {1: 12, 2: 24, 3: 36, 4: 48, 5: 60}
+
+# Flora sig dispatch: double chance per tier
+_FLORA_DOUBLE_CHANCE = {1: 0.02, 2: 0.04, 3: 0.06, 4: 0.08, 5: 0.10}
+
+# Sigmund sig dispatch: effectiveness per tier
+_SIGMUND_EFFECTIVENESS = {1: 0.60, 2: 0.70, 3: 0.80, 4: 0.90, 5: 1.00}
+
+
+# ===========================================================================
+# Gacha
+# ===========================================================================
+
+_BASE_RATE_6 = 0.01
+_BASE_RATE_5 = 0.11
+_SOFT_PITY_START = 60
+_SOFT_PITY_INCREMENT = 0.001  # +0.1% per pull above threshold
+_HARD_PITY = 100
+
+
+def _rate_6(pity: int) -> float:
+    if pity < _SOFT_PITY_START:
+        return _BASE_RATE_6
+    bonus = (pity - _SOFT_PITY_START) * _SOFT_PITY_INCREMENT
+    return min(1.0, _BASE_RATE_6 + bonus)
+
+
+def roll_single(pity: int) -> Tuple[int, int]:
+    """Roll one pull. Returns (rarity, new_pity_counter)."""
+    new_pity = pity + 1
+    if new_pity >= _HARD_PITY:
+        return 6, 0
+    r6 = _rate_6(new_pity)
+    roll = random.random()
+    if roll < r6:
+        return 6, 0
+    if roll < r6 + _BASE_RATE_5:
+        return 5, new_pity
+    return 4, new_pity
+
+
+def roll_ten(pity: int) -> Tuple[List[int], int]:
+    """
+    10-pull. Guarantees at least one 5★+.
+    If none of the first 9 rolls yield 5★+, the 10th is forced to 5★
+    (pity for 6★ is still checked independently on the forced roll).
+    Returns (rarity_list, final_pity_counter).
+    """
+    results: List[int] = []
+    current_pity = pity
+    has_five_plus = False
+
+    for i in range(10):
+        rarity, current_pity = roll_single(current_pity)
+        results.append(rarity)
+        if rarity >= 5:
+            has_five_plus = True
+
+    if not has_five_plus:
+        # Force the 10th pull to at least 5★; pity still checked for 6★
+        forced = 6 if random.random() < _rate_6(current_pity) else 5
+        if forced == 6:
+            current_pity = 0
+        results[-1] = forced
+
+    return results, current_pity
+
+
+# ===========================================================================
+# Skill generation
+# ===========================================================================
+
+def _roll_one_skill(skill_type: str, rarity: int) -> str:
+    """Roll a single skill key. Rare skills available to 5★ and 6★ only."""
+    if skill_type == "combat":
+        if rarity >= 5 and random.random() < 0.20:
+            return random.choice(RARE_COMBAT_SKILLS)
+        return random.choice(COMMON_COMBAT_SKILLS)
+    else:  # dispatch
+        if rarity >= 5 and random.random() < 0.20:
+            return random.choice(RARE_DISPATCH_SKILLS)
+        return random.choice(COMMON_DISPATCH_SKILLS)
+
+
+def generate_skill_slots(rarity: int, skill_type: str) -> List[Optional[str]]:
+    """
+    Returns a list of exactly 3 skill keys. Slots beyond the rarity's slot count
+    are None. (4★=1 active, 5★=2, 6★=3.)
+    """
+    num_slots = rarity - 3
+    slots: List[Optional[str]] = [_roll_one_skill(skill_type, rarity) for _ in range(num_slots)]
+    while len(slots) < 3:
+        slots.append(None)
+    return slots
+
+
+def reroll_skill(skill_type: str, rarity: int) -> str:
+    """Return a new random skill key (level resets to 1 after reroll)."""
+    return _roll_one_skill(skill_type, rarity)
+
+
+# ===========================================================================
+# Upgrade costs
+# ===========================================================================
+
+def get_combat_upgrade_cost(current_level: int) -> Optional[int]:
+    """Shard cost to level a combat skill from current_level to current_level+1."""
+    if current_level >= MAX_COMBAT_SKILL_LEVEL:
+        return None
+    return COMBAT_UPGRADE_COSTS[current_level - 1]
+
+
+def get_dispatch_upgrade_cost(current_level: int) -> Optional[int]:
+    if current_level >= MAX_DISPATCH_SKILL_LEVEL:
+        return None
+    return DISPATCH_UPGRADE_COSTS[current_level - 1]
+
+
+# ===========================================================================
+# Effect text
+# ===========================================================================
+
+def get_skill_effect_text(key: str, level: int) -> str:
+    """Human-readable passive description at a given level (1–10 for combat, 1–5 for dispatch)."""
+    L = level
+    _texts = {
+        # --- Common combat ---
+        "co_joint_attack":      f"{L * 10}% chance to attack alongside you (1 – partner ATK×2 damage)",
+        "co_heal":              f"Heal {L}% max HP every 3 turns",
+        "co_damage_reduction":  f"{L * 5}% chance to halve incoming damage",
+        "co_stat_transfer":     f"Add {L * 10}% of partner ATK/DEF/HP to your base stats (combat start)",
+        "co_monster_debuff":    f"Reduce monster ATK and DEF by {L * 2}% (combat start)",
+        "co_xp_boost":          f"+{L * 5}% XP from combat",
+        "co_gold_boost":        f"+{L * 5}% gold from combat",
+        "co_special_rarity":    f"+{L * 0.1:.1f}% special drop rate",
+        "co_atk_from_def":      f"Your base ATK gains {L * 25}% of partner DEF",
+        "co_def_from_atk":      f"Your base DEF gains {L * 20}% of partner ATK",
+        "co_curse_damage":      f"Curse: monster deals {L * 2}% less damage",
+        "co_curse_taken":       f"Curse: monster takes {L * 2}% more damage",
+        # --- Rare combat ---
+        "co_crit_rate":         f"+{L}% critical strike chance",
+        "co_crit_damage":       f"+{L * 10}% critical strike damage",
+        "co_execute":           f"Auto-execute monster at {L}% HP",
+        "co_ward_regen":        f"+{L * 10} ward per turn",
+        "co_ward_leech":        f"{L * 0.1:.1f}% of damage dealt restored as ward",
+        # --- Common dispatch ---
+        "di_exp_boost":         f"+{L * 10}% EXP during combat dispatch",
+        "di_gold_boost":        f"+{L * 10}% gold during combat dispatch",
+        "di_extra_reward":      f"+{L}% bonus reward chance from combat dispatch ({5 + L}% total)",
+        "di_skilling_boost":    f"+{L * 10}% materials from gathering dispatch",
+        # --- Rare dispatch ---
+        "di_settlement_mat":    f"+{L}% chance to find a settlement material (total {5 + L}%)",
+        "di_boss_reward":       f"+{L}% chance for an extra boss dispatch reward (total {5 + L}%)",
+        "di_contract_find":     f"+{L}% chance to find a Guild Contract (total {5 + L}%)",
+        "di_pinnacle_find":     f"+{L}% chance to find a pinnacle item (total {5 + L}%)",
+    }
+    return _texts.get(key, f"{key} Lv.{L}")
+
+
+def get_sig_combat_effect_text(partner_id: int, tier: int) -> str:
+    if tier < 1 or tier > 5:
+        return "???"
+    T = tier
+    if partner_id == 1:  # Skol
+        n = _SKOL_SIG_BUFFS[T]
+        return f"Gain {n} random corrupted essence buff(s) at combat start"
+    if partner_id == 2:  # Eve
+        p = _EVE_SIG_POTIONS[T]
+        return f"Survive a fatal hit by consuming {p} potion(s)"
+    if partner_id == 3:  # Kay
+        return f"{T * 5}% chance to obtain an extra curio after combat"
+    if partner_id == 4:  # Sigmund
+        return f"{T * 2}% chance to double your damage on a hit"
+    if partner_id == 5:  # Velour
+        return f"{T * 2}% chance to double all special combat rewards"
+    if partner_id == 6:  # Flora
+        return f"Convert {T * 10}% of monster gold drops into skilling materials"
+    if partner_id == 7:  # Yvenn
+        return f"Normal monsters count as task monsters; +{T} bonus slayer progress per kill"
+    return "???"
+
+
+def get_sig_dispatch_effect_text(partner_id: int, tier: int) -> str:
+    if tier < 1 or tier > 5:
+        return "???"
+    T = tier
+    if partner_id == 1:  # Skol
+        return f"{T}% chance to find an essence during normal dispatch"
+    if partner_id == 2:  # Eve
+        return f"{T}% chance to find a spirit stone during normal dispatch"
+    if partner_id == 3:  # Kay
+        bonus = _KAY_DISPATCH_BONUS_HOURS[T]
+        return f"Accumulate up to {48 + bonus}h of rewards (vs. 48h default)"
+    if partner_id == 4:  # Sigmund
+        pct = int(_SIGMUND_EFFECTIVENESS[T] * 100)
+        return f"Assignable to two tasks simultaneously at {pct}% effectiveness"
+    if partner_id == 5:  # Velour
+        return f"{T}% chance to find an elemental key during normal dispatch"
+    if partner_id == 6:  # Flora
+        pct = int(_FLORA_DOUBLE_CHANCE[T] * 100)
+        return f"{pct}% chance to double skilling dispatch materials"
+    if partner_id == 7:  # Yvenn
+        return f"{T}% chance to find a slayer drop during normal dispatch"
+    return "???"
+
+
+# ===========================================================================
+# XP & leveling
+# ===========================================================================
+
+MAX_LEVEL = 100
+
+
+def xp_threshold(level: int) -> int:
+    """XP needed to advance from `level` to `level + 1`."""
+    if level >= MAX_LEVEL:
+        return 0
+    return math.floor(int(_EXP_TABLE.get(str(level), 999_999)) * 0.1)
+
+
+def grant_xp(
+    current_level: int, current_exp: int, xp_gained: int
+) -> Tuple[int, int, List[str]]:
+    """
+    Apply xp_gained to a partner.
+    Returns (new_level, new_exp, level_up_messages).
+    XP and level-ups are suppressed at MAX_LEVEL.
+    """
+    if current_level >= MAX_LEVEL:
+        return current_level, 0, []
+
+    msgs: List[str] = []
+    level = current_level
+    exp = current_exp + xp_gained
+
+    while level < MAX_LEVEL:
+        threshold = xp_threshold(level)
+        if threshold <= 0 or exp < threshold:
+            break
+        exp -= threshold
+        level += 1
+        msgs.append(f"Partner reached level **{level}**!")
+
+    if level >= MAX_LEVEL:
+        exp = 0
+
+    return level, exp, msgs
+
+
+# ===========================================================================
+# Affinity helpers
+# ===========================================================================
+
+def next_available_story(affinity_encounters: int, affinity_story_seen: int) -> Optional[int]:
+    """
+    Returns the index of the next story the player can read, or None.
+    Stories must be read in order.
+    """
+    for threshold, story_idx in AFFINITY_THRESHOLDS:
+        if affinity_encounters >= threshold and affinity_story_seen < story_idx:
+            return story_idx
+    return None
+
+
+def portrait_unlocked(affinity_encounters: int, affinity_story_seen: int) -> bool:
+    return affinity_encounters >= 100 and affinity_story_seen >= 4
