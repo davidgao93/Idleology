@@ -354,6 +354,13 @@ def _pt_crit_damage(
         base_dmg = int(base_dmg * factor)
         calc_dmg_notes.append(f"crit_dmg_emblem×{factor:.3f}={base_dmg}")
 
+    if player.active_partner:
+        for key, lvl in player.active_partner.combat_skills:
+            if key == "co_crit_damage":
+                factor = 1 + lvl * 0.10
+                base_dmg = int(base_dmg * factor)
+                calc_dmg_notes.append(f"partner_crit_dmg×{factor:.3f}={base_dmg}")
+
     helmet_passive = player.get_helmet_passive()
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     if helmet_passive == "insight" and helmet_lvl > 0:
@@ -682,6 +689,86 @@ def _pt_track_pending(player: Player, damage: int, log: list[str]) -> None:
         player.plundering_bonus_gold_pending += int(damage * (glove_lvl * 0.10))
 
 
+def _pt_partner_effects(
+    player: Player, monster: Monster, is_hit: bool, is_crit: bool,
+) -> tuple[str, str]:
+    """
+    Partner per-turn effects. Returns (partner_log, partner_name).
+    Modifies monster.hp and player state directly.
+    """
+    partner = player.active_partner
+    if not partner:
+        return "", ""
+
+    parts = []
+
+    for key, lvl in partner.combat_skills:
+        if not key:
+            continue
+        if key == "co_joint_attack" and monster.hp > 0:
+            if random.random() < lvl * 0.10:
+                dmg = random.randint(1, max(1, partner.total_attack * 2))
+                dmg = min(dmg, monster.hp)
+                monster.hp = max(0, monster.hp - dmg)
+                parts.append(
+                    f"⚔️ **Joint Attack Lv.{lvl}** — {partner.name} strikes for **{dmg}** damage!"
+                )
+        elif key == "co_heal" and monster.combat_round % 3 == 0 and monster.combat_round > 0:
+            heal = int(player.total_max_hp * lvl * 0.01)
+            if heal > 0:
+                player.current_hp = min(player.total_max_hp, player.current_hp + heal)
+                parts.append(
+                    f"💚 **Heal Lv.{lvl}** — {partner.name} restores **{heal}** HP!"
+                )
+        elif key == "co_ward_regen":
+            ward_gain = lvl * 10
+            added = _add_ward(player, ward_gain, [])
+            if added > 0:
+                parts.append(
+                    f"🔮 **Ward Regen Lv.{lvl}** — {partner.name} restores **{added}** Ward!"
+                )
+        elif key == "co_ward_leech" and (is_hit or is_crit):
+            # Use combat_round as proxy for "was there a hit this turn" — guard against 0 damage
+            pass  # leech is applied after damage is resolved; see below
+        elif key == "co_execute" and monster.hp > 0:
+            threshold_pct = lvl / 100
+            if monster.hp <= int(monster.max_hp * threshold_pct):
+                dmg = monster.hp
+                monster.hp = 0
+                parts.append(
+                    f"💀 **Execute Lv.{lvl}** — {partner.name} executes the "
+                    f"{monster.name}! (**{dmg}** damage)"
+                )
+
+    # co_ward_leech needs the damage dealt on this turn — passed via combat_round guard
+    # We re-scan to apply it with a sentinel approach
+    for key, lvl in partner.combat_skills:
+        if key == "co_ward_leech" and (is_hit or is_crit):
+            # Only fires if a hit landed; uses partner ATK as a reasonable leech source
+            leech_base = max(1, int(partner.total_attack * lvl * 0.001))
+            added = _add_ward(player, leech_base, [])
+            if added > 0:
+                parts.append(
+                    f"🔮 **Ward Leech Lv.{lvl}** — {partner.name} siphons **{added}** Ward!"
+                )
+
+    sig_key = partner.sig_combat_key
+    sig_lvl = partner.sig_combat_lvl
+    if sig_key == "sig_co_sigmund" and sig_lvl >= 1 and (is_hit or is_crit) and monster.hp > 0:
+        if random.random() < sig_lvl * 0.02:
+            dmg = random.randint(1, max(1, partner.total_attack * 2))
+            dmg = min(dmg, monster.hp)
+            monster.hp = max(0, monster.hp - dmg)
+            parts.append(
+                f"⚔️ **Sigmund's Sig Lv.{sig_lvl}** — double strike! "
+                f"Hounds tear for **{dmg}** additional damage!"
+            )
+
+    partner_log = "\n".join(parts)
+    partner_name = f"🤝 {partner.name}" if parts else ""
+    return partner_log, partner_name
+
+
 def _pt_check_cull(player: Player, monster: Monster, log: list[str]) -> None:
     """Phase 10 — culling strike: if monster HP is below threshold, reduce to 1."""
     if monster.hp <= 0:
@@ -738,6 +825,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     _pt_post_hit_effects(player, monster, final_hit, is_crit, log)
     _pt_track_pending(player, final_hit, log)
     _pt_check_cull(player, monster, log)
+
+    partner_log, partner_name = _pt_partner_effects(player, monster, is_hit, is_crit)
+
     calc.append(f"  final_dealt: {final_hit}  monster_hp_remaining: {monster.hp}/{monster.max_hp}")
 
     return PlayerTurnResult(
@@ -746,4 +836,6 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         is_hit=is_hit,
         is_crit=is_crit,
         calc_detail="\n".join(calc),
+        partner_log=partner_log,
+        partner_name=partner_name,
     )

@@ -10,6 +10,8 @@ class PlayerTurnResult:
     is_hit: bool     # True for both normal hits and crits
     is_crit: bool    # True only for crits (subset of is_hit)
     calc_detail: str = ""   # numerical breakdown for combat log file only
+    partner_log: str = ""   # partner per-turn effects (joint attack, heal, etc.)
+    partner_name: str = ""  # embed field name for the partner log
 
     def __str__(self) -> str:
         return self.log

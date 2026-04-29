@@ -110,6 +110,23 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         results["xp"] = int(results["xp"] * mult)
         results["gold"] = int(results["gold"] * mult)
 
+    # Partner combat skill bonuses (applied after affluence)
+    if player.active_partner:
+        partner = player.active_partner
+        for key, lvl in partner.combat_skills:
+            if key == "co_xp_boost":
+                results["xp"] = int(results["xp"] * (1 + lvl * 0.05))
+            elif key == "co_gold_boost":
+                results["gold"] = int(results["gold"] * (1 + lvl * 0.05))
+
+        sig_key = partner.sig_combat_key
+        sig_lvl = partner.sig_combat_lvl
+        if sig_key == "sig_co_flora" and sig_lvl >= 1:
+            flora_pct = sig_lvl * 0.10
+            converted = int(results["gold"] * flora_pct)
+            results["gold"] = max(0, results["gold"] - converted)
+            results["flora_skilling_gold"] = converted
+
     return results
 
 
@@ -202,6 +219,24 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["capricious_carp"] = True
         return drops
 
+    # --- PARTNER DROPS ---
+    if player.active_partner:
+        partner = player.active_partner
+        # Guild ticket: rare drop from any fight
+        if random.random() < 0.0001 + player.get_special_drop_bonus() / 100:
+            drops["guild_ticket"] = True
+
+        sig_key = partner.sig_combat_key
+        sig_lvl = partner.sig_combat_lvl
+        if sig_key == "sig_co_kay" and sig_lvl >= 1:
+            if random.random() < sig_lvl * 0.05:
+                drops["curio"] = True
+        if sig_key == "sig_co_velour" and sig_lvl >= 1:
+            if random.random() < sig_lvl * 0.02:
+                drops["velour_doubled"] = True
+        if sig_key == "sig_co_yvenn" and sig_lvl >= 1:
+            drops["yvenn_slayer_bonus"] = sig_lvl
+
     # --- STANDARD MOBS ---
     # 1% Spirit Stone drop from any normal combat encounter
     if random.random() < 0.01 + (player.get_special_drop_bonus() / 100):
@@ -260,6 +295,28 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["capricious_carp"] = True
 
     return drops
+
+
+def apply_partner_end_rewards(
+    player: Player, xp_gained: int
+) -> list[str]:
+    """
+    Grants XP to the active combat partner and increments affinity.
+    Modifies partner in-place; caller must persist changes to DB.
+    Returns level-up message strings (if any).
+    """
+    partner = player.active_partner
+    if not partner:
+        return []
+
+    from core.partners.mechanics import grant_xp as _partner_grant_xp
+
+    partner_xp = max(1, xp_gained // 10)
+    new_level, new_exp, level_msgs = _partner_grant_xp(partner.level, partner.exp, partner_xp)
+    partner.level = new_level
+    partner.exp = new_exp
+    partner.affinity_encounters = min(100, partner.affinity_encounters + 1)
+    return level_msgs
 
 
 def calculate_item_drop_chance(player: Player) -> int:

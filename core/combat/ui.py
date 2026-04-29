@@ -73,7 +73,19 @@ def create_combat_embed(
 
     for name, message in logs.items():
         if message:
-            embed.add_field(name=name, value=message, inline=False)
+            embed.add_field(name=name, value=str(message), inline=False)
+            # Partner per-turn effects are stored on PlayerTurnResult
+            if (
+                hasattr(message, "partner_log")
+                and message.partner_log
+                and hasattr(message, "partner_name")
+                and message.partner_name
+            ):
+                embed.add_field(
+                    name=message.partner_name,
+                    value=message.partner_log,
+                    inline=False,
+                )
 
     return embed
 

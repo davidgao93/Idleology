@@ -396,6 +396,11 @@ class Player:
     # {slot_type: {"hp": int, "monster_name": str}}
     equipped_parts: dict = field(default_factory=dict)
 
+    # Active combat partner (loaded at session start, not reset per combat)
+    active_partner: Optional["Partner"] = None
+    # Per-combat special-rarity bonus from co_special_rarity (reset by reset_combat_bonus)
+    partner_special_rarity: float = 0.0
+
     @property
     def rarity(self) -> int:
         """Gear rarity from weapon and accessory. Use get_total_rarity() for the full total."""
@@ -507,6 +512,7 @@ class Player:
         self.atk_multiplier = 1.0
         self.def_multiplier = 1.0
         self.crit_multiplier = 1.0
+        self.partner_special_rarity = 0.0
 
     # -----------------------------------------------------------------------
     # Ascension pinnacle bonus helper
@@ -754,6 +760,9 @@ class Player:
 
         # Companions
         bonus += self._get_companion_bonus("s_rarity")
+
+        # Partner co_special_rarity (set at combat start by passives.py)
+        bonus += int(self.partner_special_rarity)
 
         # [SAFETY CAP] Hard cap special rarity bonus at 20%
         return min(20, bonus)

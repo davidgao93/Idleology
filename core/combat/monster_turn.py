@@ -304,6 +304,24 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             if reduction > 0:
                 log.append(f"🩹 **Dulled Pain** reduces damage by **{reduction}**!")
 
+        # Partner: co_damage_reduction (L×5% chance to halve incoming damage)
+        if (
+            player.active_partner
+            and total_damage > 0
+            and not is_dodged
+            and not is_blocked
+        ):
+            for key, lvl in player.active_partner.combat_skills:
+                if key == "co_damage_reduction":
+                    if random.random() < lvl * 0.05:
+                        halved = total_damage // 2
+                        total_damage = max(1, total_damage - halved)
+                        log.append(
+                            f"🛡️ **{player.active_partner.name}** intercepts part of the blow!"
+                            f" (−{halved} damage)"
+                        )
+                    break
+
         if total_damage > 0 and not is_dodged:
             damage_dealt = 0
 
@@ -498,6 +516,24 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             )
         else:
             log.append(f"{monster.name} misses!")
+
+    # Partner: sig_co_eve — survive a fatal hit by consuming potions
+    if (
+        player.current_hp <= 0
+        and player.active_partner
+        and player.active_partner.sig_combat_key == "sig_co_eve"
+        and player.active_partner.sig_combat_lvl >= 1
+    ):
+        from core.partners.mechanics import _EVE_SIG_POTIONS
+        potions_needed = _EVE_SIG_POTIONS.get(player.active_partner.sig_combat_lvl, 5)
+        if player.potions >= potions_needed:
+            player.potions -= potions_needed
+            player.current_hp = 1
+            log.append(
+                f"💊 **{player.active_partner.name}'s Sig Lv.{player.active_partner.sig_combat_lvl}**"
+                f" — Intercepted a fatal blow! Consumed {potions_needed} potion(s). "
+                f"You survive with 1 HP!"
+            )
 
     player.current_hp = max(0, player.current_hp)
     hp_damage = max(0, prev_hp - player.current_hp)

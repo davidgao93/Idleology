@@ -147,6 +147,98 @@ _VOID_START_HANDLERS: dict[str, callable] = {
 }
 
 
+def _apply_partner_combat_start(
+    player: Player, monster: Monster, logs: Dict[str, str]
+) -> None:
+    """Applies active combat partner's combat-start skill effects."""
+    partner = player.active_partner
+    if not partner:
+        return
+
+    parts = []
+
+    for key, lvl in partner.combat_skills:
+        if not key:
+            continue
+        if key == "co_stat_transfer":
+            atk_bonus = int(partner.total_attack * lvl * 0.10)
+            def_bonus = int(partner.total_defence * lvl * 0.10)
+            hp_bonus = int(partner.total_hp * lvl * 0.10)
+            player.bonus_atk += atk_bonus
+            player.bonus_def += def_bonus
+            player.bonus_max_hp += hp_bonus
+            parts.append(
+                f"**Stat Transfer Lv.{lvl}** — ⚔️ +{atk_bonus} ATK, "
+                f"🛡️ +{def_bonus} DEF, ❤️ +{hp_bonus} Max HP"
+            )
+        elif key == "co_atk_from_def":
+            bonus = int(partner.total_defence * lvl * 0.25)
+            player.bonus_atk += bonus
+            parts.append(f"**Def→Atk Lv.{lvl}** — ⚔️ +{bonus} ATK (from {partner.name}'s DEF)")
+        elif key == "co_def_from_atk":
+            bonus = int(partner.total_attack * lvl * 0.20)
+            player.bonus_def += bonus
+            parts.append(f"**Atk→Def Lv.{lvl}** — 🛡️ +{bonus} DEF (from {partner.name}'s ATK)")
+        elif key == "co_monster_debuff":
+            atk_red = max(1, int(monster.attack * lvl * 0.02))
+            def_red = max(1, int(monster.defence * lvl * 0.02))
+            monster.attack = max(0, monster.attack - atk_red)
+            monster.defence = max(0, monster.defence - def_red)
+            parts.append(
+                f"**Monster Debuff Lv.{lvl}** — {monster.name} loses "
+                f"**{atk_red}** ATK and **{def_red}** DEF"
+            )
+        elif key == "co_curse_damage":
+            bonus = int(player.flat_atk * lvl * 0.02)
+            player.bonus_atk += bonus
+            parts.append(f"**Curse: Damage Lv.{lvl}** — ⚔️ +{bonus} ATK")
+        elif key == "co_curse_taken":
+            bonus = int(player.flat_atk * lvl * 0.02)
+            player.bonus_atk += bonus
+            parts.append(f"**Curse: Vulnerability Lv.{lvl}** — ⚔️ +{bonus} ATK")
+        elif key == "co_special_rarity":
+            player.partner_special_rarity = lvl * 0.1
+            parts.append(f"**Special Find Lv.{lvl}** — +{lvl * 0.1:.1f}% special drop rate")
+
+    sig_key = partner.sig_combat_key
+    sig_lvl = partner.sig_combat_lvl
+    if sig_key and sig_lvl >= 1:
+        if sig_key == "sig_co_skol":
+            from core.partners.mechanics import _SKOL_SIG_BUFFS
+            n = _SKOL_SIG_BUFFS.get(sig_lvl, 1)
+            buff_indices = random.sample(range(4), min(n, 4))
+            buff_msgs = []
+            for i in buff_indices:
+                if i == 0:
+                    bonus = int(player.flat_atk * 0.15)
+                    player.bonus_atk += bonus
+                    buff_msgs.append(f"⚔️ +{bonus} ATK")
+                elif i == 1:
+                    ward = int(player.total_max_hp * 0.15)
+                    player.combat_ward += ward
+                    buff_msgs.append(f"🔮 +{ward} Ward")
+                elif i == 2:
+                    bonus = int(player.flat_def * 0.15)
+                    player.bonus_def += bonus
+                    buff_msgs.append(f"🛡️ +{bonus} DEF")
+                elif i == 3:
+                    player.lucifer_pdr_burst += 10
+                    buff_msgs.append("🛡️ +10% PDR burst")
+            parts.append(
+                f"💀 **Skol's Sig Lv.{sig_lvl}** — "
+                f"{n} essence buff(s): {', '.join(buff_msgs)}"
+            )
+        elif sig_key == "sig_co_yvenn":
+            player.active_task_species = monster.species
+            parts.append(
+                f"🗡️ **Yvenn's Sig Lv.{sig_lvl}** — "
+                f"All monsters treated as slayer targets!"
+            )
+
+    if parts:
+        logs[f"🤝 {partner.name}"] = "\n".join(parts)
+
+
 def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, str]:
     """Applies player passives that trigger at the start of combat. Returns UI log strings."""
     player.is_invulnerable_this_combat = False
@@ -189,5 +281,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
 
     if weapon_parts:
         logs["Weapon Passive"] = "\n".join(weapon_parts)
+
+    _apply_partner_combat_start(player, monster, logs)
 
     return logs
