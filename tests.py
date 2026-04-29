@@ -526,7 +526,8 @@ class TestWeaponsAdvanced(unittest.IsolatedAsyncioTestCase):
         player.equipped_weapon = p_wep
 
         # Setup Boss (High stats)
-        monster = Monster(name="Boss", level=100, hp=10000, max_hp=10000, xp=0, attack=200, defence=200, modifiers=["Ascended"], image="", flavor="", is_boss=True)
+        from core.combat.modifier_data import make_modifier
+        monster = Monster(name="Boss", level=100, hp=10000, max_hp=10000, xp=0, attack=200, defence=200, modifiers=[make_modifier("Empowered", 100)], image="", flavor="", is_boss=True)
 
         # Run Start-of-Combat Logic
         log = engine.apply_combat_start_passives(player, monster)

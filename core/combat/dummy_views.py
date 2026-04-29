@@ -2,20 +2,24 @@ import discord
 from discord import ui, ButtonStyle, Interaction, SelectOption
 from core.combat.dummy_engine import DummyEngine
 from core.models import Monster
-from core.combat.gen_mob import get_monster_mods, get_boss_mods, get_modifier_description, calculate_monster_stats
+from core.combat.gen_mob import get_modifier_description, calculate_monster_stats
+from core.combat.modifier_data import (
+    COMMON_MOD_NAMES, RARE_TIERED_MOD_NAMES, RARE_FLAT_MOD_NAMES,
+    BOSS_MOD_NAMES, make_modifier,
+)
 
 # ---------------------------------------------------------------------------
 # Modifier catalogue
 # ---------------------------------------------------------------------------
 
-# Normal modifiers (from mods.txt, minus HP-only ones) + ascension extras
-_NORMAL_MODS = [
-    m for m in get_monster_mods()
-    if m.strip() not in ("Glutton", "Built-different")
-] + ["Penetrator", "Clobberer", "Smothering", "Dodgy", "Prescient"]
+# Normal / rare modifiers available in the dummy configurator
+_NORMAL_MODS = sorted(COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES + RARE_FLAT_MOD_NAMES)
 
-# Boss / special / uber modifiers
-_SPECIAL_MODS = list(get_boss_mods()) + ["Radiant Protection", "Void Aura", "Twin Strike"]
+# Boss / uber modifiers
+_SPECIAL_MODS = list(BOSS_MOD_NAMES) + [
+    "Radiant Protection", "Infernal Protection", "Balanced Protection", "Void Protection",
+    "Hell's Fury", "Void Aura", "Balanced Strikes",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -280,17 +284,16 @@ class DummyConfigView(ui.View):
             level=lvl,
             hp=9_999_999, max_hp=9_999_999, xp=0,
             attack=0, defence=0,
-            modifiers=list(self.active_mods),
             image="", flavor="",
             species="_dojo_dummy_",        # Unique species — Slayer won't match by default
         )
         calculate_monster_stats(monster)
+        monster.modifiers = [make_modifier(name, lvl) for name in self.active_mods]
 
-        # Apply stat-modifying mods on top of the level-scaled base stats
-        if "Steel-born" in self.active_mods:  monster.defence = int(monster.defence * 1.1)
-        if "Mighty"     in self.active_mods:  monster.attack  = int(monster.attack  * 1.1)
-        if "Ascended"   in self.active_mods:  monster.attack  += 10; monster.defence += 10
-        if "Absolute"   in self.active_mods:  monster.attack  += 25; monster.defence += 25
+        # Apply spawn-time stat mutations (Empowered/Fortified/Titanic/Ascended/Veiled)
+        from core.combat.gen_mob import _apply_spawn_modifiers
+        _apply_spawn_modifiers(monster)
+        monster.max_hp = 9_999_999  # restore after any Titanic mutation
 
         monster.is_boss = self.is_boss_mode
 

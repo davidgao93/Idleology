@@ -144,7 +144,7 @@ class EquipConfirmView(ui.View):
         await interaction.response.defer()
         await self._do_equip()
         embed = _build_main_embed(self.parent.player, self.parent.inventory)
-        embed.set_footer(text=f"Equipped {self.part.display_name}.")
+        embed.set_footer(text=f"You consumed {self.part.display_name}.")
         await interaction.edit_original_response(embed=embed, view=self.parent)
         self.stop()
 
@@ -201,7 +201,7 @@ class PartDetailView(ui.View):
             current = self.parent.player.equipped_parts[slot]
             label = _SLOT_LABELS[slot]
             confirm_embed = discord.Embed(
-                title="Replace Equipped Part?",
+                title="Consume new monster part?",
                 description=(
                     f"**{slot.replace('_', ' ').title()} slot** is currently occupied:\n\n"
                     f"**Current:** {current['monster_name']}'s **{label}** — +{current['hp']} Max HP\n"
@@ -234,7 +234,7 @@ class PartDetailView(ui.View):
             ]
             self.parent._rebuild_select()
             embed = _build_main_embed(self.parent.player, self.parent.inventory)
-            embed.set_footer(text=f"Equipped {self.part.display_name}.")
+            embed.set_footer(text=f"You consume {self.part.display_name}.")
             await interaction.edit_original_response(embed=embed, view=self.parent)
             self.stop()
 

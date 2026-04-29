@@ -11,51 +11,92 @@ def _roll_monster_damage(
 ) -> tuple[int, int, int]:
     """Rolls a single monster damage hit including modifiers, PDR, FDR, and minions.
     Returns (total_damage, base_damage, minion_damage)."""
-    import random as _random
     m_atk = monster.attack
-    p_def = player.get_total_defence()
-    raw_ratio = max(0.0, 1.0 - p_def / m_atk) if m_atk > 0 else 0.0
+    p_def = max(player.get_total_defence(), 1)
+    base_raw = 5 + monster.level * 1.5
+    surplus = max(-0.95, (m_atk - p_def) / p_def)
     dmg = calculate_damage_taken(player, monster)
 
     calc_notes: list[str] = [
-        f"m_atk={m_atk} p_def={p_def} ratio={raw_ratio:.3f} → raw≈{int(m_atk*raw_ratio)} rolled={dmg}"
+        f"m_atk={m_atk} p_def={p_def} base={base_raw:.0f} surplus={surplus:+.3f} → raw≈{int(base_raw*(1+surplus))} rolled={dmg}"
     ]
 
-    if "Celestial Watcher" in monster.modifiers:
-        dmg = int(dmg * 1.2)
-        calc_notes.append(f"celestial_watcher×1.200={dmg}")
-    if "Hellborn" in monster.modifiers:
-        dmg = int(dmg * 1.12)
-        calc_notes.append(f"hellborn×1.120={dmg}")
-    if "Hell's Fury" in monster.modifiers:
-        dmg = int(dmg * 1.25)
-        calc_notes.append(f"hells_fury×1.250={dmg}")
-    if "Mirror Image" in monster.modifiers and _random.random() < 0.2:
-        dmg *= 2
-        calc_notes.append(f"mirror_image×2={dmg}")
-    if "Unlimited Blade Works" in monster.modifiers:
-        dmg *= 2
-        calc_notes.append(f"unlimited_blade_works×2={dmg}")
+    # Enraged: continuous attack scaling based on HP lost (applied as damage multiplier)
+    if monster.has_modifier("Enraged"):
+        enrage_pct = monster.get_modifier_value("Enraged")
+        hp_lost = 1.0 - (monster.hp / monster.max_hp) if monster.max_hp > 0 else 0.0
+        stacks = min(3, int(hp_lost / 0.25))
+        if stacks > 0:
+            enrage_mult = 1 + enrage_pct * stacks
+            dmg = int(dmg * enrage_mult)
+            calc_notes.append(f"enraged×{enrage_mult:.2f}(stacks={stacks})={dmg}")
 
-    pdr = max(0, effective_pdr - (20 if "Penetrator" in monster.modifiers else 0))
+    # Savage: flat damage multiplier
+    if monster.has_modifier("Savage"):
+        dmg = int(dmg * (1 + monster.get_modifier_value("Savage")))
+        calc_notes.append(f"savage×{1+monster.get_modifier_value('Savage'):.2f}={dmg}")
+
+    # Overwhelming: always double damage (boss mod)
+    if monster.has_modifier("Overwhelming"):
+        dmg *= 2
+        calc_notes.append(f"overwhelming×2={dmg}")
+
+    # Hell's Fury: triple damage (uber Lucifer only)
+    if monster.has_modifier("Hell's Fury"):
+        fury_mult = monster.get_modifier_value("Hell's Fury")
+        dmg = int(dmg * fury_mult)
+        calc_notes.append(f"hells_fury×{fury_mult:.1f}={dmg}")
+
+    # Spectral: 20% chance to double raw damage before reductions
+    if monster.has_modifier("Spectral") and random.random() < monster.get_modifier_value("Spectral"):
+        dmg *= 2
+        calc_notes.append(f"spectral×2={dmg}")
+
+    # Monster crit (base 10% + Lethal)
+    base_crit_chance = 0.10
+    if monster.has_modifier("Lethal"):
+        base_crit_chance += monster.get_modifier_value("Lethal")
+    is_monster_crit = random.random() < base_crit_chance
+    if is_monster_crit:
+        crit_mult = 2.0
+        if monster.has_modifier("Devastating"):
+            crit_mult += monster.get_modifier_value("Devastating")
+        dmg = int(dmg * crit_mult)
+        calc_notes.append(f"monster_crit×{crit_mult:.1f}={dmg}")
+
+    # PDR: Crushing ignores X% of player's PDR
+    pdr = effective_pdr
+    if monster.has_modifier("Crushing"):
+        pdr = max(0, int(pdr * (1 - monster.get_modifier_value("Crushing"))))
+        calc_notes.append(f"crushing pdr→{pdr}%")
     pre_pdr = dmg
     dmg = max(0, int(dmg * (1 - pdr / 100)))
-    calc_notes.append(f"PDR={pdr}%({'-20pen' if 'Penetrator' in monster.modifiers else ''}) {pre_pdr}→{dmg}")
+    calc_notes.append(f"PDR={pdr}% {pre_pdr}→{dmg}")
 
-    fdr = int(effective_fdr * (0.65 if "Clobberer" in monster.modifiers else 1.0))
+    # FDR: Searing ignores X% of player's FDR
+    fdr = effective_fdr
+    if monster.has_modifier("Searing"):
+        fdr = max(0, int(fdr * (1 - monster.get_modifier_value("Searing"))))
+        calc_notes.append(f"searing fdr→{fdr}")
     pre_fdr = dmg
     dmg = max(0, dmg - fdr)
     if fdr > 0:
-        calc_notes.append(f"FDR={fdr}({'×0.65clobberer' if 'Clobberer' in monster.modifiers else ''}) {pre_fdr}→{dmg}")
+        calc_notes.append(f"FDR={fdr} {pre_fdr}→{dmg}")
 
+    # Commanding: minions echo X% of pre-FDR damage, then FDR applies to echo
     minions = 0
-    if "Summoner" in monster.modifiers:
-        minions += int(dmg * (1 / 3))
-    if "Infernal Legion" in monster.modifiers:
-        minions += dmg
-    minions = max(0, minions - fdr)
+    if monster.has_modifier("Commanding"):
+        echo_pct = monster.get_modifier_value("Commanding")
+        raw_echo = int(pre_fdr * echo_pct)
+        minions = max(0, raw_echo - fdr)
+    minions = max(0, minions)
     if minions > 0:
-        calc_notes.append(f"minions={minions}")
+        calc_notes.append(f"commanding_echo={minions}")
+
+    # Inevitable: 50% damage (boss mod — always hits but halved)
+    if monster.has_modifier("Inevitable"):
+        dmg = max(1, int(dmg * monster.get_modifier_value("Inevitable")))
+        calc_notes.append(f"inevitable×{monster.get_modifier_value('Inevitable'):.2f}={dmg}")
 
     if calc is not None:
         calc.append("  dmg_roll: " + " → ".join(calc_notes) + f" | base={dmg} minions={minions} total={dmg+minions}")
@@ -81,28 +122,14 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     previous_ward = player.combat_ward
 
-    # --- Hit chance ---
-    hit_chance_base = calculate_monster_hit_chance(player, monster)
-    hit_chance = hit_chance_base
-    hit_mods: list[str] = [f"base={hit_chance_base*100:.1f}%"]
-    if "Prescient" in monster.modifiers:
-        hit_chance = min(0.95, hit_chance + 0.10)
-        hit_mods.append(f"+10%(prescient)={hit_chance*100:.1f}%")
-    if "All-seeing" in monster.modifiers:
-        hit_chance = min(0.95, hit_chance * 1.10)
-        hit_mods.append(f"×1.10(all-seeing)={hit_chance*100:.1f}%")
-    if "Celestial Watcher" in monster.modifiers:
-        hit_chance = 1.0
-        hit_mods.append("100%(celestial_watcher)")
-
-    monster_roll = random.random()
-    lucifer_note = ""
-    if "Lucifer-touched" in monster.modifiers and random.random() < 0.5:
-        monster_roll = min(monster_roll, random.random())
-        lucifer_note = "(lucifer-unlucky)"
+    # --- Mending: passive HP regen at start of each monster turn ---
+    if monster.has_modifier("Mending"):
+        regen = int(monster.max_hp * monster.get_modifier_value("Mending"))
+        monster.hp = min(monster.max_hp, monster.hp + regen)
+        log.append(f"{monster.name}'s **Mending** restores **{regen}** HP!")
 
     # --- Void Aura drain (regardless of hit) ---
-    if "Void Aura" in monster.modifiers:
+    if monster.has_modifier("Void Aura"):
         drain_atk = max(1, int(player.flat_atk * 0.05))
         drain_def = max(0, int(player.flat_def * 0.05))
         player.bonus_atk -= drain_atk
@@ -111,9 +138,33 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!"
         )
 
+    # --- Hit chance ---
+    hit_chance_base = calculate_monster_hit_chance(player, monster)
+    hit_chance = hit_chance_base
+    hit_mods: list[str] = [f"base={hit_chance_base*100:.1f}%"]
+
+    # Keen: flat bonus treated as +X% hit chance (capped at 0.95 unless Inevitable)
+    keen_bonus = int(monster.get_modifier_value("Keen")) if monster.has_modifier("Keen") else 0
+    if keen_bonus > 0:
+        hit_chance = min(0.95, hit_chance + keen_bonus / 100)
+        hit_mods.append(f"+{keen_bonus}%(keen)={hit_chance*100:.1f}%")
+
+    # Unerring: hit rolls take the higher of two
+    if monster.has_modifier("Unerring"):
+        hit_mods.append("unerring(2-roll-high)")
+
+    # Inevitable: always hit
+    if monster.has_modifier("Inevitable"):
+        hit_chance = 1.0
+        hit_mods.append("100%(inevitable)")
+
+    monster_roll = random.random()
+    if monster.has_modifier("Unerring"):
+        monster_roll = max(monster_roll, random.random())
+
     is_monster_hit = monster_roll <= hit_chance
     calc.append(
-        f"  hit: {' → '.join(hit_mods)} | roll={monster_roll:.4f}{lucifer_note} "
+        f"  hit: {' → '.join(hit_mods)} | roll={monster_roll:.4f} "
         f"→ {'HIT' if is_monster_hit else 'MISS'}"
     )
 
@@ -141,17 +192,18 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 total_damage, dmg_base, minion_dmg = alt_total, alt_base, alt_minion
                 calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
 
-        # --- Multistrike & Executioner ---
+        # --- Multistrike ---
         multistrike_damage = 0
-        if "Multistrike" in monster.modifiers and random.random() <= hit_chance:
+        if monster.has_modifier("Multistrike") and random.random() <= hit_chance:
             multistrike_damage = max(
                 0, int(calculate_damage_taken(player, monster) * 0.5) - effective_fdr
             )
             total_damage += multistrike_damage
             calc.append(f"  multistrike: +{multistrike_damage} → total={total_damage}")
 
+        # --- Executioner ---
         is_executed = False
-        if "Executioner" in monster.modifiers and random.random() < 0.01:
+        if monster.has_modifier("Executioner") and random.random() < 0.01:
             total_damage = max(total_damage, int(player.current_hp * 0.90))
             is_executed = True
             calc.append(f"  executioner: forced={total_damage} (90% of player_hp={player.current_hp})")
@@ -160,22 +212,30 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         is_dodged = False
         is_blocked = False
 
-        if "Unavoidable" not in monster.modifiers:
+        if monster.has_modifier("Unavoidable"):
+            dodge_chance = player.get_total_evasion() / 100 * 0.20
+        else:
             dodge_chance = player.get_total_evasion() / 100
-            if celestial == "celestial_wind_dancer":
-                dodge_chance *= 3.0
-            if random.random() <= dodge_chance:
-                is_dodged = True
+        if celestial == "celestial_wind_dancer":
+            dodge_chance *= 3.0
+        if random.random() <= dodge_chance:
+            is_dodged = True
 
-        if not is_dodged and "Unblockable" not in monster.modifiers:
-            block_chance = player.get_total_block() / 100
+        if not is_dodged:
+            if monster.has_modifier("Unblockable"):
+                block_chance = player.get_total_block() / 100 * 0.20
+            else:
+                block_chance = player.get_total_block() / 100
             if celestial == "celestial_glancing_blows":
                 block_chance *= 2.0
             if random.random() <= block_chance:
                 is_blocked = True
 
         calc.append(
-            f"  dodge/block: evasion={player.get_total_evasion()}% block={player.get_total_block()}% "
+            f"  dodge/block: evasion={player.get_total_evasion()}%"
+            f"{'(×0.2unavoidable)' if monster.has_modifier('Unavoidable') else ''} "
+            f"block={player.get_total_block()}%"
+            f"{'(×0.2unblockable)' if monster.has_modifier('Unblockable') else ''} "
             f"→ {'DODGED' if is_dodged else ('BLOCKED' if is_blocked else 'none')}"
         )
 
@@ -210,6 +270,18 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 log.append(
                     f"**Thorns ({helmet_lvl})** reflects **{reflect}** damage back!"
                 )
+
+        # --- Sundering: 25% of damage bypasses player ward directly to HP ---
+        if monster.has_modifier("Sundering") and player.combat_ward > 0 and total_damage > 0 and not is_dodged and not is_blocked:
+            bypass = int(total_damage * monster.get_modifier_value("Sundering"))
+            ward_portion = total_damage - bypass
+            ward_absorbed = min(ward_portion, player.combat_ward)
+            player.combat_ward -= ward_absorbed
+            player.current_hp = max(0, player.current_hp - bypass)
+            total_damage = ward_portion - ward_absorbed  # remaining after ward
+            if bypass > 0:
+                log.append(f"⚡ **Sundering** — {bypass} damage pierces your ward directly!")
+            calc.append(f"  sundering: bypass={bypass} ward_absorbed={ward_absorbed} remaining={total_damage}")
 
         # --- Apply damage to ward / HP ---
         if player.alchemy_def_boost_turns > 0 and total_damage > 0:
@@ -364,12 +436,23 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                             f"\n💥 **Volatile** (Aphrodite) — ward struck, dealing **{boom}** damage to {monster.name}!"
                         )
 
-            if "Vampiric" in monster.modifiers and damage_dealt > 0:
-                heal = int(monster.max_hp * 0.05)
+            # Vampiric: heals X% of max HP per successful hit
+            if monster.has_modifier("Vampiric") and damage_dealt > 0:
+                heal = int(monster.max_hp * monster.get_modifier_value("Vampiric"))
                 monster.hp = min(monster.max_hp, monster.hp + heal)
                 log.append(
                     f"The monster's **Vampiric** essence siphons life, healing it for **{heal}** HP!"
                 )
+
+            # Thorned: player takes X% of monster max HP on each hit
+            if not is_dodged and monster.has_modifier("Thorned") and damage_dealt > 0:
+                thorned_pct = monster.get_modifier_value("Thorned")
+                base_thorned = int(monster.max_hp * thorned_pct)
+                t_pdr = player.get_total_pdr()
+                t_fdr = player.get_total_fdr()
+                thorned_dmg = max(1, int(base_thorned * (1 - t_pdr / 100)) - t_fdr)
+                player.current_hp = max(0, player.current_hp - thorned_dmg)
+                log.append(f"🩸 **Thorned** — you take **{thorned_dmg}** damage for striking!")
 
             if is_executed:
                 log.append(
@@ -384,14 +467,16 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     f"{monster.name} strikes again for {multistrike_damage} damage!"
                 )
 
-            if "Twin Strike" in monster.modifiers and monster.combat_round % 2 == 0:
+            # Balanced Strikes: every even round, second hit at 50% damage bypassing ward
+            if monster.has_modifier("Balanced Strikes") and monster.combat_round % 2 == 0:
+                balanced_pct = monster.get_modifier_value("Balanced Strikes")
                 twin_raw, _, _ = _roll_monster_damage(
                     player, monster, effective_pdr, effective_fdr
                 )
-                twin_dmg = max(1, int(twin_raw * 0.5))
+                twin_dmg = max(1, int(twin_raw * balanced_pct))
                 player.current_hp = max(0, player.current_hp - twin_dmg)
                 log.append(
-                    f"⚡ **Twin Strike!** The bound sovereigns strike as one for **{twin_dmg}** damage!"
+                    f"⚡ **Balanced Strikes!** The bound sovereigns strike as one for **{twin_dmg}** damage! *(Bypasses ward)*"
                 )
 
         if not log:
@@ -400,9 +485,14 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             )
 
     else:  # Miss
-        if "Venomous" in monster.modifiers:
-            venom_dmg = max(1, int(player.total_max_hp * 0.02))
-            player.current_hp = max(1, player.current_hp - venom_dmg)
+        # Venomous: player takes X% of monster max HP on each miss
+        if monster.has_modifier("Venomous"):
+            venom_pct = monster.get_modifier_value("Venomous")
+            base_venom = int(monster.max_hp * venom_pct)
+            t_pdr = player.get_total_pdr()
+            t_fdr = player.get_total_fdr()
+            venom_dmg = max(1, int(base_venom * (1 - t_pdr / 100)) - t_fdr)
+            player.current_hp = max(0, player.current_hp - venom_dmg)
             log.append(
                 f"{monster.name} misses, but their **Venomous** aura deals **{venom_dmg}** 🐍 damage!"
             )

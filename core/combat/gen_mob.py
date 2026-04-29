@@ -2,16 +2,15 @@ import csv
 import os
 import random
 
-from core.models import Monster
-from core.util import load_list
-
-
-def get_monster_mods():
-    return load_list("assets/mobs/mods.txt")
-
-
-def get_boss_mods():
-    return load_list("assets/mobs/bossmods.txt")
+from core.combat.modifier_data import (
+    BOSS_MOD_NAMES,
+    COMMON_MOD_NAMES,
+    MODIFIER_DEFINITIONS,
+    RARE_FLAT_MOD_NAMES,
+    RARE_TIERED_MOD_NAMES,
+    make_modifier,
+)
+from core.models import Monster, MonsterModifier
 
 
 async def generate_encounter(player, monster, is_treasure, task_species=None):
@@ -37,7 +36,6 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
 
     monster.level = player.level + player.ascension + difficulty_multiplier
 
-    # print('Calculating monster stats')
     monster = calculate_monster_stats(monster)
 
     if is_treasure:
@@ -56,7 +54,7 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
 
     monster.max_hp = monster.hp
     monster.xp = monster.max_hp
-    # Apply monster modifiers
+
     monster.modifiers = []
     if not is_treasure:
         modifier_checks = []
@@ -71,37 +69,10 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
         if monster.level >= 100:
             modifier_checks.append(50 + int(player.get_total_rarity() / 10))
 
-        available_modifiers = get_monster_mods()
-
-        for chance in modifier_checks:
-            if random.randint(1, 100) <= chance and available_modifiers:
-                modifier = random.choice(available_modifiers)
-                monster.modifiers.append(modifier)
-                available_modifiers.remove(modifier)  # Ensure no duplicate modifiers
-
-        if "Built-different" in monster.modifiers:
-            monster.level += 2
-            monster = calculate_monster_stats(monster)
-
-        if "Ascended" in monster.modifiers:
-            monster.attack += 10
-            monster.defence += 10
-            print("Ascended modifier applied: m.atk/m.def +10")
-
-        # Apply Steel-born modifier
-        if "Steel-born" in monster.modifiers:
-            monster.defence = int(monster.defence * 1.1)
-            print(
-                f"Steel-born modifier applied: Monster defence increased to {monster.defence}"
-            )
-
-        if "Mighty" in monster.modifiers:
-            monster.attack = int(monster.attack * 1.1)
-
-        if "Glutton" in monster.modifiers:
-            monster.hp *= 2
-            print(f"Glutton modifier applied: Monster HP doubled to {monster.hp}")
-
+        num_mods = sum(1 for chance in modifier_checks if random.randint(1, 100) <= chance)
+        if num_mods > 0:
+            _assign_modifiers(monster, num_mods, is_boss=False)
+            _apply_spawn_modifiers(monster)
         _roll_essence_spawn(monster)
 
     print(monster)
@@ -127,55 +98,10 @@ async def generate_boss(player, monster, phase, phase_index):
     monster.max_hp = monster.hp
     monster.xp = monster.hp
 
-    available_modifiers = get_monster_mods()
-    available_modifiers.remove("Glutton")
-    available_modifiers.remove("Built-different")
     monster.modifiers = []
-    if "Lucifer" in phase["name"]:
-        boss_modifiers = get_boss_mods()
-        boss_mod = random.choice(boss_modifiers)
-        if boss_mod == "Celestial Watcher":
-            available_modifiers.remove("All-seeing")
-            available_modifiers.remove("Venomous")
-        elif boss_mod == "Unlimited Blade Works":
-            available_modifiers.remove("Mirror Image")
-        elif boss_mod == "Hell's Fury":
-            available_modifiers.remove("Strengthened")
-        elif boss_mod == "Absolute":
-            available_modifiers.remove("Ascended")
-        elif boss_mod == "Infernal Legion":
-            available_modifiers.remove("Summoner")
-        monster.modifiers.append(boss_mod)
-        print(monster)
-
-    if "NEET" in phase["name"]:
-        boss_modifiers = get_boss_mods()
-        for _ in range(phase["modifiers_count"]):
-            if available_modifiers:
-                boss_mod = random.choice(boss_modifiers)
-                monster.modifiers.append(boss_mod)
-                boss_modifiers.remove(boss_mod)
-
-    for _ in range(phase["modifiers_count"]):
-        if available_modifiers:
-            modifier = random.choice(available_modifiers)
-            monster.modifiers.append(modifier)
-            available_modifiers.remove(modifier)
+    _assign_modifiers(monster, phase["modifiers_count"], is_boss=True)
+    _apply_spawn_modifiers(monster)
     print(monster)
-
-    if "Absolute" in monster.modifiers:
-        monster.attack += 25
-        monster.defence += 25
-
-    if "Ascended" in monster.modifiers:
-        monster.attack += 10
-        monster.defence += 10
-
-    if "Steel-born" in monster.modifiers:
-        monster.defence = int(monster.defence * 1.1)
-
-    if "Mighty" in monster.modifiers:
-        monster.attack = int(monster.attack * 1.1)
     return monster
 
 
@@ -184,10 +110,8 @@ async def generate_ascent_monster(
 ):
     """Generates a monster for the ascent mode."""
     monster = monster_instance
-    monster.level = ascent_stage_level  # This is the base level for the stage
+    monster.level = ascent_stage_level
 
-    # Calculate initial stats based on the stage level
-    # We use a temporary monster object for stat calculation to avoid altering monster.level if "Built-different" applies
     temp_monster_for_stats = Monster(
         name="",
         level=monster.level,
@@ -196,18 +120,13 @@ async def generate_ascent_monster(
         xp=0,
         attack=0,
         defence=0,
-        modifiers=[],
-        image="",
-        flavor="",
     )
     temp_monster_for_stats = calculate_monster_stats(temp_monster_for_stats)
     monster.attack = temp_monster_for_stats.attack
     monster.defence = temp_monster_for_stats.defence
 
-    # Fetch image, name, and flavor text using the stage level
     monster = await fetch_monster_image(random.randint(30, 120), monster)
 
-    # HP Calculation based on stage level
     monster.hp = random.randint(0, 9) + int(
         10 * (monster.level ** random.uniform(1.3, 1.4))
     )
@@ -215,78 +134,100 @@ async def generate_ascent_monster(
     monster.max_hp = monster.hp
     monster.xp = int(
         monster.max_hp * (1 + ascent_stage_level / 50)
-    )  # XP scales with stage level
+    )
 
     monster.modifiers = []
-
-    # Apply Normal Modifiers
-    all_normal_mods = get_monster_mods()
-    available_normal_mods = [m for m in all_normal_mods]  # Create a mutable copy
-    random.shuffle(available_normal_mods)
-
-    count_normal_applied = 0
-    while count_normal_applied < num_normal_mods and available_normal_mods:
-        modifier = available_normal_mods.pop(0)
-        monster.modifiers.append(modifier)
-        count_normal_applied += 1
-
-    # Apply Boss Modifiers
-    all_boss_mods = get_boss_mods()
-    # Ensure boss mods are not already present if they can also be normal mods
-    available_boss_mods = [m for m in all_boss_mods if m not in monster.modifiers]
-    random.shuffle(available_boss_mods)
-
-    count_boss_applied = 0
-    while count_boss_applied < num_boss_mods and available_boss_mods:
-        modifier = available_boss_mods.pop(0)
-        monster.modifiers.append(
-            modifier
-        )  # Assumes boss mods are distinct enough or effects are additive
-        count_boss_applied += 1
-
-    # Apply effects of chosen modifiers
-    # Handle "Built-different" first as it affects stat calculation level
-    effective_stat_level = monster.level  # Start with the base stage level
-    if "Built-different" in monster.modifiers:
-        effective_stat_level += 2
-        # Recalculate attack/defense based on this effective level
-        temp_monster_for_stats.level = effective_stat_level
-        temp_monster_for_stats = calculate_monster_stats(temp_monster_for_stats)
-        monster.attack = temp_monster_for_stats.attack
-        monster.defence = temp_monster_for_stats.defence
-        print(
-            f"Built-different modifier applied: m.atk/m.def recalculated for effective level {effective_stat_level}"
-        )
-
-    # Apply other stat-modifying effects on top of (potentially) recalculated stats
-    if "Ascended" in monster.modifiers:
-        monster.attack += 10
-        monster.defence += 10
-        print("Ascended modifier applied: m.atk/m.def +10")
-
-    if "Absolute" in monster.modifiers:  # Typically a boss mod
-        monster.attack += 25
-        monster.defence += 25
-        print("Absolute modifier applied: m.atk/m.def +25")
-
-    if "Steel-born" in monster.modifiers:
-        monster.defence = int(monster.defence * 1.1)
-        print(
-            f"Steel-born modifier applied: Monster defence increased to {monster.defence}"
-        )
-
-    if "Mighty" in monster.modifiers:
-        monster.attack = int(monster.attack * 1.1)
-        print(f"Mighty modifier applied: Monster attack increased to {monster.attack}")
-
-    # Glutton applies to HP calculated from STAGE level, after other HP calculations
-    if "Glutton" in monster.modifiers:
-        monster.hp = int(monster.hp * 2)
-        monster.max_hp = monster.hp  # Ensure max_hp matches
-        print(f"Glutton modifier applied: Monster HP doubled to {monster.hp}")
-
-    monster.is_boss = True  # Ascent monsters are considered bosses
+    total_mods = num_normal_mods + num_boss_mods
+    _assign_ascent_modifiers(monster, total_mods, floor=ascent_stage_level)
+    _apply_spawn_modifiers(monster)
+    monster.is_boss = True
     return monster
+
+
+def _pick_modifier_type(is_boss: bool) -> str:
+    """Returns 'common', 'rare_tiered', 'rare_flat', or 'boss'."""
+    if is_boss:
+        weights = [55, 20, 10, 15]  # common, rare_tiered, rare_flat, boss
+    else:
+        weights = [75, 15, 10, 0]   # regular monsters never get boss mods
+    return random.choices(["common", "rare_tiered", "rare_flat", "boss"], weights=weights, k=1)[0]
+
+
+def _assign_modifiers(monster, num_mods: int, is_boss: bool) -> None:
+    """Fills monster.modifiers with num_mods unique MonsterModifier instances."""
+    used_names: set = set()
+    attempts = 0
+    while len(monster.modifiers) < num_mods and attempts < num_mods * 10:
+        attempts += 1
+        pool_type = _pick_modifier_type(is_boss)
+        if pool_type == "common":
+            candidates = [n for n in COMMON_MOD_NAMES if n not in used_names]
+        elif pool_type == "rare_tiered":
+            candidates = [n for n in RARE_TIERED_MOD_NAMES if n not in used_names]
+        elif pool_type == "rare_flat":
+            candidates = [n for n in RARE_FLAT_MOD_NAMES if n not in used_names]
+        else:
+            candidates = [n for n in BOSS_MOD_NAMES if n not in used_names]
+        if not candidates:
+            continue
+        name = random.choice(candidates)
+        used_names.add(name)
+        monster.modifiers.append(make_modifier(name, monster.level))
+
+
+def _assign_ascent_modifiers(monster, num_mods: int, floor: int) -> None:
+    """Ascent variant: guarantees at least floor//10 boss mods."""
+    min_boss = min(floor // 10, len(BOSS_MOD_NAMES))
+    boss_assigned = 0
+    used_names: set = set()
+
+    boss_candidates = list(BOSS_MOD_NAMES)
+    random.shuffle(boss_candidates)
+    for name in boss_candidates:
+        if boss_assigned >= min_boss:
+            break
+        if name not in used_names:
+            monster.modifiers.append(make_modifier(name, monster.level))
+            used_names.add(name)
+            boss_assigned += 1
+
+    remaining = num_mods - boss_assigned
+    attempts = 0
+    while remaining > 0 and attempts < remaining * 10:
+        attempts += 1
+        pool_type = random.choices(
+            ["common", "rare_tiered", "rare_flat"],
+            weights=[65, 20, 15],
+            k=1
+        )[0]
+        candidates = {
+            "common": COMMON_MOD_NAMES,
+            "rare_tiered": RARE_TIERED_MOD_NAMES,
+            "rare_flat": RARE_FLAT_MOD_NAMES,
+        }[pool_type]
+        candidates = [n for n in candidates if n not in used_names]
+        if candidates:
+            name = random.choice(candidates)
+            used_names.add(name)
+            monster.modifiers.append(make_modifier(name, monster.level))
+            remaining -= 1
+
+
+def _apply_spawn_modifiers(monster) -> None:
+    """Apply modifiers that mutate monster stats at spawn time."""
+    if monster.has_modifier("Ascended"):
+        level_added = int(monster.get_modifier_value("Ascended"))
+        monster.level += level_added
+        monster = calculate_monster_stats(monster)
+    if monster.has_modifier("Empowered"):
+        monster.attack = int(monster.attack * (1 + monster.get_modifier_value("Empowered")))
+    if monster.has_modifier("Fortified"):
+        monster.defence = int(monster.defence * (1 + monster.get_modifier_value("Fortified")))
+    if monster.has_modifier("Titanic"):
+        monster.hp = int(monster.hp * monster.get_modifier_value("Titanic"))
+        monster.max_hp = monster.hp
+    if monster.has_modifier("Veiled"):
+        monster.ward = int(monster.max_hp * monster.get_modifier_value("Veiled"))
 
 
 def level_exponent(level: int) -> float:
@@ -393,7 +334,7 @@ async def fetch_monster_image(level, monster_data, task_species=None):
         if task_species and random.random() < 0.50:
             task_specific_mobs = [
                 m for m in selected_monsters if m[4] == task_species
-            ]  # m[4] is species
+            ]
             if task_specific_mobs:
                 selected_monsters = task_specific_mobs
 
@@ -410,9 +351,7 @@ _ESSENCE_SPAWN_CHANCE_MAX = 0.35  # 4+ modifiers
 
 
 def _roll_essence_spawn(monster) -> None:
-    """
-    Mutates monster in-place if it becomes essence-infused (Calcified).
-    Only applicable to non-treasure, non-boss monsters.
+    """Mutates monster in-place if it becomes essence-infused (Calcified).
     Chance scales with modifier count.
     """
     num_mods = len(monster.modifiers)
@@ -424,47 +363,56 @@ def _roll_essence_spawn(monster) -> None:
         monster.name = f"Calcified {monster.name}"
 
 
-def get_modifier_description(modifier):
-    """Helper method to get modifier descriptions."""
+def get_modifier_description(mod: MonsterModifier) -> str:
+    """Returns a human-readable description of a MonsterModifier."""
     descriptions = {
-        "Steel-born": "10% boost to defence",
-        "All-seeing": "10% boost to accuracy",
-        "Mirror Image": "20% to deal double damage",
-        "Glutton": "2x HP",
-        "Enfeeble": "Decrease player's attack by 10%",
-        "Venomous": "Aura deals 2% of your max HP on every miss",
-        "Strengthened": "Deals 50% more base damage",
-        "Hellborn": "12% bonus damage on all hits",
-        "Lucifer-touched": "50% lucky attacks",
-        "Titanium": "Reduce incoming damage by 10%",
-        "Ascended": "+10 Attack, +10 Defence",
-        "Summoner": "Has minions that deal 33% damage",
-        "Shield-breaker": "Disables ward at start of combat",
-        "Impenetrable": "+5 to crit threshold",
-        "Unblockable": "Cannot be blocked",
-        "Unavoidable": "Cannot be evaded",
-        "Built-different": "+2 to level",
-        "Multistrike": "Landing a hit rolls another (50% damage)",
-        "Mighty": "10% boost to attack",
-        "Shields-up": "Block 10% of all attacks",
-        "Executioner": "1% chance to deal 90% of remaining HP",
-        "Time Lord": "80% chance to not die",
-        "Suffocator": "20% for player hits to be unlucky",
-        "Penetrator": "Ignores 20% of Percentage Damage Reduction",
-        "Clobberer": "Bypasses 35% of your Flat Damage Reduction",
-        "Smothering": "Critical hit damage is reduced by 20%",
-        "Dodgy": "Evasion increased by 10%",
-        "Prescient": "10% more likely to hit",
-        "Vampiric": "Heals for 5% of max HP per hit",
-        "Celestial Watcher": "Never miss (boss)",  # Start boss list here
-        "Unlimited Blade Works": "Double damage (boss)",
-        "Hell's Fury": "25% bonus damage on each hit (boss)",
-        "Absolute": "+25 Attack, +25 defence (boss)",
-        "Infernal Legion": "Has minions that echo hits (boss)",
-        "Radiant Protection": "Globally reduces all incoming damage by 60% (Uber)",  # Start uber list here
-        "Void Aura": "Siphons 5% ATK and DEF from player each round (Uber)",
+        "Empowered":    lambda v: f"+{int(v*100)}% attack",
+        "Fortified":    lambda v: f"+{int(v*100)}% defence",
+        "Titanic":      lambda v: f"{int(v*100)}% HP",
+        "Savage":       lambda v: f"+{int(v*100)}% damage",
+        "Lethal":       lambda v: f"+{int(v*100)}% crit chance",
+        "Devastating":  lambda v: f"Crits deal {round(2.0+v, 1)}× damage",
+        "Keen":         lambda v: f"+{int(v)} to hit rolls",
+        "Blinding":     lambda v: f"−{int(v)} to your hit rolls",
+        "Jinxed":       lambda v: f"{int(v*100)}% chance your hit rolls are unlucky",
+        "Crushing":     lambda v: f"Ignores {int(v*100)}% of your PDR",
+        "Searing":      lambda v: f"Ignores {int(v*100)}% of your FDR",
+        "Stalwart":     lambda v: f"Nullifies {int(v*100)}% of incoming damage",
+        "Ironclad":     lambda v: f"{int(v*100)}% less damage taken",
+        "Vampiric":     lambda v: f"Heals {int(v*100)}% max HP per hit",
+        "Mending":      lambda v: f"Heals {int(v*100)}% max HP per round",
+        "Thorned":      lambda v: f"You take {int(v*100)}% of max HP on each hit",
+        "Venomous":     lambda v: f"You take {int(v*100)}% of max HP on each miss",
+        "Enraged":      lambda v: f"+{int(v*100)}% ATK per 25% HP lost",
+        "Parching":     lambda v: f"Your potions heal {int(v*100)}% less",
+        "Veiled":       lambda v: f"Starts with {int(v*100)}% max HP as ward",
+        "Ascended":     lambda v: f"Level +{int(v)}",
+        "Commanding":   lambda v: f"Minions echo {int(v*100)}% of each hit",
+        "Dampening":    lambda v: f"Your crit chance −{int(v)}",
+        "Nullifying":   lambda v: f"Your crits deal {int(v*100)}% less damage",
+        "Unblockable":  lambda v: "Block chance 80% less effective",
+        "Unavoidable":  lambda v: "Evasion chance 80% less effective",
+        "Dispelling":   lambda v: "Reduces your ward by 80% at combat start",
+        "Multistrike":  lambda v: "50% chance to strike twice",
+        "Spectral":     lambda v: "20% chance to deal double damage",
+        "Executioner":  lambda v: "1% chance to deal 90% of your HP as damage",
+        "Time Lord":    lambda v: "80% chance to survive a killing blow",
+        "Overwhelming": lambda v: "Double damage; −25 to accuracy",
+        "Inevitable":   lambda v: "Always hits; 50% damage",
+        "Sundering":    lambda v: "25% of damage bypasses your ward",
+        "Unerring":     lambda v: "Hit rolls always take the highest of two",
+        "Radiant Protection":  lambda v: "60% damage reduction",
+        "Infernal Protection": lambda v: "60% damage reduction",
+        "Balanced Protection": lambda v: "60% damage reduction",
+        "Void Protection":     lambda v: "60% damage reduction",
+        "Hell's Fury":         lambda v: "Deals triple damage",
+        "Void Aura":           lambda v: "Drains 5% ATK and DEF per round",
+        "Balanced Strikes":    lambda v: "Every 2 rounds: 50% hit, bypasses ward",
     }
-    return descriptions.get(modifier, "")
+    fn = descriptions.get(mod.name)
+    if fn:
+        return fn(mod.value)
+    return ""
 
 
 async def generate_uber_lucifer(player, monster):
@@ -474,7 +422,6 @@ async def generate_uber_lucifer(player, monster):
 
     monster = calculate_monster_stats(monster)
 
-    # Slightly less raw HP than Aphrodite — Lucifer is meant to kill you, not outlast you
     base_hp = random.randint(0, 9) + int(
         10 * (monster.level ** random.uniform(1.30, 1.40))
     )
@@ -488,25 +435,20 @@ async def generate_uber_lucifer(player, monster):
     monster.species = "Demon"
     monster.is_boss = True
 
-    # Identity: triple attack, minimal defence
     monster.attack = int(monster.attack * 1.3)
     monster.defence = int(monster.defence * 0.3)
 
-    # Core modifiers — Hell's Fury stacks attack per hit; Absolute gives flat boost
-    monster.modifiers = ["Hell's Fury", "Absolute"]
-    if "Absolute" in monster.modifiers:
-        monster.attack += 25
-        monster.defence += 25
+    monster.modifiers = [
+        make_modifier("Infernal Protection", monster.level),
+        make_modifier("Hell's Fury", monster.level),
+    ]
 
-    # Extra per-level scaling weighted heavily toward attack
     monster.attack += int(monster.level * 1.0)
     monster.defence += int(monster.level * 0.2)
 
-    # One random boss modifier for variety (exclude modifiers that conflict with identity)
-    available_boss_mods = get_boss_mods()
-    exclude = ["Absolute", "Hell's Fury", "Infernal Legion"]
-    valid_mods = [m for m in available_boss_mods if m not in exclude]
-    monster.modifiers.append(random.choice(valid_mods))
+    boss_pool = [n for n in BOSS_MOD_NAMES]
+    random.shuffle(boss_pool)
+    monster.modifiers.append(make_modifier(boss_pool[0], monster.level))
 
     return monster
 
@@ -518,7 +460,6 @@ def generate_uber_neet(player, monster):
 
     monster = calculate_monster_stats(monster)
 
-    # Highest HP of all three — built to outlast the player via Void Drain
     base_hp = random.randint(0, 9) + int(
         10 * (monster.level ** random.uniform(1.35, 1.45))
     )
@@ -532,27 +473,17 @@ def generate_uber_neet(player, monster):
     monster.species = "Void"
     monster.is_boss = True
 
-    # Core modifiers — Void Aura siphons per round; Absolute gives flat boost
-    monster.modifiers = ["Void Aura", "Absolute"]
-    if "Absolute" in monster.modifiers:
-        monster.attack += 25
-        monster.defence += 25
+    monster.modifiers = [
+        make_modifier("Void Protection", monster.level),
+        make_modifier("Void Aura", monster.level),
+    ]
 
-    # Per-level scaling weighted toward attack (fights get harder with levels)
     monster.attack += int(monster.level * 0.8)
     monster.defence += int(monster.level * 0.5)
 
-    # One random boss modifier for variety
-    available_boss_mods = get_boss_mods()
-    exclude = [
-        "Absolute",
-        "Void Aura",
-        "Hell's Fury",
-        "Infernal Legion",
-        "Radiant Protection",
-    ]
-    valid_mods = [m for m in available_boss_mods if m not in exclude]
-    monster.modifiers.append(random.choice(valid_mods))
+    boss_pool = [n for n in BOSS_MOD_NAMES]
+    random.shuffle(boss_pool)
+    monster.modifiers.append(make_modifier(boss_pool[0], monster.level))
 
     return monster
 
@@ -564,7 +495,6 @@ def generate_uber_gemini(player, monster):
 
     monster = calculate_monster_stats(monster)
 
-    # Balanced HP — sustained fight designed to outlast reckless players
     base_hp = random.randint(0, 9) + int(
         10 * (monster.level ** random.uniform(1.35, 1.45))
     )
@@ -578,69 +508,48 @@ def generate_uber_gemini(player, monster):
     monster.species = "Celestial"
     monster.is_boss = True
 
-    # Identity: perfectly balanced — equal scaling on both stats
-    # (stats kept at base multiplier, Absolute provides the bump)
-    monster.modifiers = ["Twin Strike", "Absolute"]
-    if "Absolute" in monster.modifiers:
-        monster.attack += 25
-        monster.defence += 25
+    monster.modifiers = [
+        make_modifier("Balanced Protection", monster.level),
+        make_modifier("Balanced Strikes", monster.level),
+    ]
 
-    # Even per-level scaling on both stats — the twins reflect each other
     monster.attack += int(monster.level * 0.65)
     monster.defence += int(monster.level * 0.65)
 
-    # One random boss modifier for variety
-    available_boss_mods = get_boss_mods()
-    exclude = ["Absolute", "Twin Strike", "Void Aura", "Hell's Fury", "Infernal Legion"]
-    valid_mods = [m for m in available_boss_mods if m not in exclude]
-    monster.modifiers.append(random.choice(valid_mods))
+    boss_pool = [n for n in BOSS_MOD_NAMES]
+    random.shuffle(boss_pool)
+    monster.modifiers.append(make_modifier(boss_pool[0], monster.level))
 
     return monster
 
 
 async def generate_uber_aphrodite(player, monster):
     """Generate the single-phase Uber Aphrodite boss fight."""
-    # Base level is ~20 levels above the player's effective level
     ref_level = player.level + player.ascension + 20
     monster.level = ref_level
 
-    # Calculate base stats
     monster = calculate_monster_stats(monster)
 
-    # Single long fight: Massive HP Multiplier
     base_hp = random.randint(0, 9) + int(
         10 * (monster.level ** random.uniform(1.45, 1.55))
     )
     monster.hp = int(base_hp * 4.0)
     monster.max_hp = monster.hp
-    monster.xp = monster.hp * 2  # Generous XP for the difficulty
+    monster.xp = monster.hp * 2
 
     monster.name = "Aphrodite, Celestial Apex"
-    monster.image = "https://i.imgur.com/QYLnAAi.png"  # Uber form
+    monster.image = "https://i.imgur.com/QYLnAAi.png"
     monster.flavor = "radiates an overwhelming aura"
     monster.species = "Celestial"
     monster.is_boss = True
 
-    # Assign Modifiers
-    monster.modifiers = ["Radiant Protection", "Absolute"]
+    monster.modifiers = [make_modifier("Radiant Protection", monster.level)]
 
-    # Add 1 to 2 random boss modifiers to keep it dynamic
-    available_boss_mods = get_boss_mods()
-    random.shuffle(available_boss_mods)
+    boss_pool = list(BOSS_MOD_NAMES)
+    random.shuffle(boss_pool)
+    for name in boss_pool[:random.randint(1, 2)]:
+        monster.modifiers.append(make_modifier(name, monster.level))
 
-    # Exclude mods that might break the encounter scaling
-    exclude = ["Unlimited Blade Works", "Glutton", "Built-different", "Absolute"]
-    valid_mods = [m for m in available_boss_mods if m not in exclude][
-        : random.randint(1, 2)
-    ]
-    monster.modifiers.extend(valid_mods)
-
-    # Flat stat augmentations to ensure she hits extremely hard
-    if "Absolute" in monster.modifiers:
-        monster.attack += 25
-        monster.defence += 25
-
-    # Additional baseline Uber buffs
     monster.attack += int(monster.level * 0.5)
     monster.defence += int(monster.level * 0.5)
 

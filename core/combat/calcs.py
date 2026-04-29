@@ -95,14 +95,14 @@ def calculate_monster_hit_chance(player, monster) -> float:
 
 
 def calculate_damage_taken(player, monster) -> int:
-    """Raw monster damage before PDR/FDR. Reaches 0 when defence ≥ attack."""
-    m_atk = monster.attack
-    if m_atk <= 0:
-        return 0
-    raw = m_atk * max(0.0, 1.0 - player.get_total_defence() / m_atk)
-    if "Strengthened" in monster.modifiers:
-        raw *= 1.5
-    return max(0, int(raw * random.uniform(*_DMG_VARIANCE)))
+    """Raw monster damage before PDR/FDR.
+    Guaranteed base from monster level, amplified/dampened by stat surplus."""
+    p_def = max(player.get_total_defence(), 1)
+    base_raw = 5 + monster.level * 1.5
+    surplus = (monster.attack - p_def) / p_def
+    surplus = max(-0.95, surplus)
+    raw = base_raw * (1.0 + surplus)
+    return max(1, int(raw * random.uniform(*_DMG_VARIANCE)))
 
 
 def calculate_crit_chance(player) -> float:

@@ -10,26 +10,13 @@ from core.models import Monster, Player
 # Applied once at combat start via apply_stat_effects().
 # ---------------------------------------------------------------------------
 
-_MONSTER_STAT_EFFECTS: dict[str, callable] = {
-    "Shield-breaker": lambda p, m: setattr(p, "combat_ward", 0),
-    "Impenetrable": lambda p, m: setattr(p, "bonus_crit", p.bonus_crit - 5),
-    "Enfeeble": lambda p, m: setattr(
-        p, "bonus_atk", p.bonus_atk - int(p.flat_atk * 0.10)
-    ),
-}
-
 
 def apply_stat_effects(player: Player, monster: Monster) -> None:
-    """Applies monster modifiers that alter player stats at the start of combat."""
-    for modifier in monster.modifiers:
-        if modifier in _MONSTER_STAT_EFFECTS:
-            # Aphrodite helmet: ward cannot be forcibly disabled by monster modifiers
-            if (
-                modifier == "Shield-breaker"
-                and player.get_helmet_corrupted_essence() == "aphrodite"
-            ):
-                continue
-            _MONSTER_STAT_EFFECTS[modifier](player, monster)
+    """Applies monster modifiers that alter player/monster state at combat start."""
+    # Dispelling: reduce player ward by 80% (aphrodite helmet is immune)
+    if monster.has_modifier("Dispelling"):
+        if player.get_helmet_corrupted_essence() != "aphrodite":
+            player.combat_ward = int(player.combat_ward * 0.20)
 
 
 # ---------------------------------------------------------------------------

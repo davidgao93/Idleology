@@ -30,7 +30,7 @@ def create_combat_embed(
     mod_text = ""
     if monster.modifiers:
         mod_text = "\n__Modifiers:__ " + ", ".join(
-            f"**{m}**" for m in monster.modifiers
+            f"**{m}**" for m in monster.display_modifiers
         )
 
     description = (

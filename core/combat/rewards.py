@@ -93,11 +93,12 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
 
     # Lucifer boot: gold increases 10% per modifier on the monster (cap 50%)
     if player.get_boot_corrupted_essence() == "lucifer" and monster.modifiers:
-        lucifer_bonus_pct = min(0.50, len(monster.modifiers) * 0.10)
+        num_mods = len(monster.modifiers)
+        lucifer_bonus_pct = min(0.50, num_mods * 0.10)
         bonus_gold = int(gold_award * lucifer_bonus_pct)
         gold_award += bonus_gold
         results["msgs"].append(
-            f"🔥 **Infernal Plunder** — {len(monster.modifiers)} modifiers grant +{int(lucifer_bonus_pct * 100)}% gold! (+{bonus_gold:,})"
+            f"🔥 **Infernal Plunder** — {num_mods} modifiers grant +{int(lucifer_bonus_pct * 100)}% gold! (+{bonus_gold:,})"
         )
 
     results["gold"] = gold_award
@@ -215,7 +216,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         "Capybara Sauna",
     ]
 
-    special_drop_chance = len(monster.modifiers) / 100.0
+    special_drop_chance = min(0.05, sum(m.difficulty for m in monster.modifiers))
     if monster.name in rare_monsters:
         special_drop_chance = 0.05
         drops["curio"] = True

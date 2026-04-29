@@ -105,7 +105,7 @@ class CombatLogger:
         self._w(
             f"[START] Monster: HP {monster.hp}/{monster.max_hp} | "
             f"Atk {m_atk} | Def {m_def} | "
-            f"Mods: {', '.join(monster.modifiers) or 'None'}"
+            f"Mods: {', '.join(monster.display_modifiers) or 'None'}"
         )
         self._w(
             f"[CALC]  Player hit:   base={_HIT_BASE*100:.0f}% + ({p_atk}-{m_def})/{m_def if m_def else 1} × {_HIT_SENSITIVITY*100:.0f}% "
@@ -201,8 +201,8 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     if player.get_helmet_passive() == "insight":
         lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
         crit_mult += lvl * 0.1
-    if "Smothering" in monster.modifiers:
-        crit_mult *= 0.8
+    if monster.has_modifier("Nullifying"):
+        crit_mult *= (1 - monster.get_modifier_value("Nullifying"))
     p_max_dmg = int(p_atk * crit_mult)
     if player.get_glove_passive() == "instability":
         lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
@@ -212,27 +212,22 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     m_def = monster.defence
 
     raw_base = m_atk * max(0.0, 1.0 - p_def / m_atk) if m_atk > 0 else 0.0
-    if "Strengthened" in monster.modifiers:
-        raw_base *= 1.5
-    if "Celestial Watcher" in monster.modifiers:
-        raw_base *= 1.2
-    if "Hellborn" in monster.modifiers:
-        raw_base *= 1.12
-    if "Hell's Fury" in monster.modifiers:
-        raw_base *= 1.25
+    if monster.has_modifier("Savage"):
+        raw_base *= (1 + monster.get_modifier_value("Savage"))
+    if monster.has_modifier("Hell's Fury"):
+        raw_base *= monster.get_modifier_value("Hell's Fury")
+    if monster.has_modifier("Overwhelming"):
+        raw_base *= 2
 
     pdr = player.get_total_pdr()
-    if "Penetrator" in monster.modifiers:
-        pdr = max(0, pdr - 20)
+    if monster.has_modifier("Crushing"):
+        pdr = max(0, int(pdr * (1 - monster.get_modifier_value("Crushing"))))
     fdr = player.get_total_fdr()
-    if "Clobberer" in monster.modifiers:
-        fdr = int(fdr * 0.65)
+    if monster.has_modifier("Searing"):
+        fdr = max(0, int(fdr * (1 - monster.get_modifier_value("Searing"))))
 
     m_max_dmg = max(0, int(raw_base * 1.15 * (1 - pdr / 100)) - fdr)
-    if (
-        "Mirror Image" in monster.modifiers
-        or "Unlimited Blade Works" in monster.modifiers
-    ):
+    if monster.has_modifier("Spectral"):
         m_max_dmg *= 2
 
     log.info(f"--- COMBAT DEBUG: {player.name} VS {monster.name} ---")
@@ -240,8 +235,9 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
         f"PLAYER : HP {player.current_hp}/{player.max_hp} | Atk {p_atk} | Def {p_def} | "
         f"Ward {player.combat_ward} | Crit {p_crit}% | PDR {player.get_total_pdr()}% | FDR {player.get_total_fdr()}"
     )
+    mod_display = ", ".join(monster.display_modifiers) if monster.modifiers else "None"
     log.info(
-        f"MONSTER: HP {monster.hp}/{monster.max_hp} | Atk {m_atk} | Def {m_def} | Mods: {monster.modifiers}"
+        f"MONSTER: HP {monster.hp}/{monster.max_hp} | Atk {m_atk} | Def {m_def} | Mods: {mod_display}"
     )
     log.info(f"THEORETICAL MAX HIT -> Player: ~{p_max_dmg} | Monster: ~{m_max_dmg}")
     log.info("--------------------------------------------------")

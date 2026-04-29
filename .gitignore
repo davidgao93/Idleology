@@ -3,6 +3,7 @@ assets/images
 config.json
 prompt.txt
 logs
+_upload_ready
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

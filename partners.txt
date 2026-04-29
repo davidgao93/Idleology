@@ -1,0 +1,225 @@
+Partner Design Doc
+
+Core Entity Design
+
+Rarity Tiers: 4★ (Common), 5★ (Epic), 6★ (Mythic).
+
+Initial roster (Star rating - Name and title - Message on pull):
+6★
+Skol – The Shattered King
+Once a king, now a ruin in armor. Skol rises from his broken throne to answer your call.
+
+Eve – The Forbidden Apothecary
+The air thickens with bitter herbs and sweeter lies. Eve smiles, vial in hand, ready to ‘help.'
+
+Kay – The Isolationist
+Kay steps from the edge of the guild corner, bringing silence, suspicion, and power hard-earned in solitude.
+
+Sigmund – Houndmaster of the Crimson Hunt
+The baying of unseen hounds precedes him. Sigmund arrives, and the hunt does not end—it begins.
+
+Velour – The Druid of Verdant Tempests
+The wind shifts, the earth stirs. Velour answers with storm, root, and fang at your command.
+
+Flora – Scion of the World Tree's Heart
+Roots whisper your name. Flora blooms into your service, carrying the heartbeat of the World Tree.
+
+Yvenn – Penultimate Slayer Master
+Blades, scars, and a knowing grin. Yvenn joins you, promising that perfection is only one kill away.
+
+5★
+Rowan – The Stormblade
+Steel crackles with caged lightning. Rowan nods once, ready to carve a path through the storm.
+
+Mira – Embercaller
+Ash dances in her wake. Mira joins you, fingers smoldering with barely-contained fire.
+
+Garrick – Iron Vanguard
+Garrick plants his shield like a wall. Behind him, even fear hesitates to pass.
+
+Seren – Moonlit Warden
+In the hush of twilight, Seren steps forward. The moon's pale light gathers at her command.
+
+Darius – Bloodsworn Knight
+Darius seals the pact with a gauntleted fist. Steel, honor, and blood are now yours to spend.
+
+4★
+Hale – Shield Guard
+Hale tightens his grip on the shield. 'I'll stand where others fall,' he says, taking his place.
+
+Brigit – Battle Cleric
+Brigit joins the front lines, holy symbol in one hand, mace in the other. Prayers and bruises guaranteed.
+
+Orin – Scout
+Orin appears from the shadows with a quick salute. 'Already mapped the exits,' he reports.
+
+Lena – Arcanist
+Pages flutter, runes glow. Lena adjusts her glasses and murmurs, 'Let's test a few theories.'
+
+Rolf – Axe Warrior
+Rolf hefts his axe and grins. 'Point me at something that needs splitting.'
+
+Mirae – Bow Ranger
+A single arrow lands at your feet—perfectly centered. Mirae steps from the treeline, bow already drawn.
+
+The Gacha System
+Currency: guild_recruitment_ticket (Standard pull) - these are earned daily via /checkin and from normal monster encounters.
+
+Drop Rates: 4★ (88%), 5★ (11%), 6★ (1%).
+
+The Pity System:
+    Soft Pity: Rates for 6★ slowly increase after 60 pulls, adding 0.1% per additional pull after 60.
+    Hard Pity: Guaranteed 6★ at 100 pulls. This resets the pity system.
+	10 Pull System: Guarantees a 5★ during the course of the 10 pulls.
+
+Sourcing Tickets:
+    Update check_special_drops() in core_combat_rewards.py to add guild_recruitment_ticket = True based on monster rarity/bosses.
+	Base rate of 0.01%, increased by special_drop rarity.
+    Add 1 ticket to the daily check-in logic.
+
+Duplicate Handling: 
+    Duplicate pulls for all characters will always result in either a main skill shard or a dispatch skill shard. These allow the user to reroll that passive to something else, or enhance its effectiveness. These are global, so can be used by any character.
+
+	Duplicate 6* will be additionally grant a shard of that character (Sigmund Shard, Eve Shard, etc) that can be used to increase the potency of their signature passive or signature dispatch skill.
+	
+Partners during Combat
+Partners are initialized with load_partner, similar to load_player. It builds a Partner model that is then loaded into the engine the same way a Player or Monster is loaded and processed.
+
+Only 1 partner can be active at a time.
+
+Partners can have one or many combat passive skills that enhance the player during combat. 
+
+Players can manage the combat skills their partner has. They can choose to reroll or upgrade them with skill shards. 
+
+Combat Passive Skills (10 levels, increased with skill shards)
+(1 skill slot for 4*, 2 slots for 5*, 3 slots for 6*):
+    Common (80% weight, all can roll): 
+    "10/20/30/40/50/60/70/80/90/100% chance to attack alongside the player." - Uses partner's total atk stat to deal flat damage, so for example, a capped 6* would deal roughly 300 flat damage every turn (picks a random number between 1 and 600, displays in its own field).
+    "Heals the player for 1/2/3/4/5/6/7/8/9/10% max HP every 3 turns."
+    "5/10/15/20/25/30/35/40/45/50% chance to reduce 50% of incoming damage."
+    "Increases player's base stats by 10/20/30/40/50/60/70/80/90/100% of their partner's stats."
+    "Decreases monster's stats by 2/4/6/8/10/12/14/16/18/20% at the start of combat."
+    "Increases player's experience gain by 5/10/15/20/25/30/35/40/45/50%."
+    "Increases player's gold gain by 5/10/15/20/25/30/35/40/45/50%."
+    "Increases a player's special rarity by 0.1/0.2/0.3/0.4/0.5/0.6/0.7/0.8/0.9/1%"
+    "Increases player's base attack by 25/50/75/100/125/150/175/200/225/250% of partner's defence."
+    "Increases player's base defence by 20/40/60/80/100/120/140/160/180/200% of partner's attack."
+    "Curses the monster, reducing its damage by 2/4/6/8/10/12/14/16/18/20%."
+    "Curses the monster, increasing its damage taken by 2/4/6/8/10/12/14/16/18/20%."
+	
+	For stat increases, this occurs at the start of the chain, the base stats are what's being affected by the partner's stats. At the highest end, a level 10 combat passive for a 6* would grant roughly 600 atk / 600 def / 600 hp as a base, which can then be multiplied by other sources such as codex mods.
+
+    Rare passives (only 5* and 6* can roll, 20% weight):
+    "Increase player's critical strike chance by 1/2/3/4/5/6/7/8/9/10%"
+	"Increase player's critical strike damage 10/20/30/40/50/60/70/80/90/100%"
+    "Once the monster reaches 1/2/3/4/5/6/7/8/9/10% HP, automatically executes them."
+    "Generates 10/20/30/40/50/60/70/80/90/100 ward per turn for the player."
+    "0.1/0.2/0.3/0.4/0.5/0.6/0.7/0.8/0.9/1% of damage dealt by the player is gained as ward."
+
+    Signature passive (6* only, occupies it's own special slot)):
+    Velour: "2/4/6/8/10% chance to double special rewards gained" 
+    Sigmund: "2/4/6/8/10% chance to double player damage (attack multiplier)" 
+    Kay: "5/10/15/20/25% chance to obtain an additional curio after every combat encounter" 
+    Eve: "Uses 5/4/3/2/1 potions if a player was about to die, preventing death as long as they have the potions available." 
+    Skol: "The player gains 1/1/2/2/3 random corrupted essence modifiers at the start of combat as buffs that they don't already have."  
+	Flora: "Converts 10/20/30/40/50% of the monster's gold drops into an appropriate amount of skilling materials. (10000 converted = 1 skilling proc)" 
+	Yvenn: "All normal monster encounters are slayer monsters if on a slayer task. Grants 1/2/3/4/5 additional progress to the task." 
+
+
+The Dispatch system:
+Dispatch is the idle task performed by the partner. 
+Similar to companion adventures, a maximum of 48 hours can be stored before collection.
+
+Only 1 partner can be dispatched at a time. This partner however can be different that the one active in combat.
+
+Dispatch activities: 
+	Normal combat - basic loot same as companion loot table, gold
+	Normal gathering - gathers basic resources, this is based off the player's tool
+	Normal boss farming - fights bosses, needs 4 procs instead of 1 per reward. Awards special loot such as uber boss sigils.
+
+Dispatch Skill
+(1 skill slot for 4*, 2 slots for 5*, 3 slots for 6*)
+	Common (80% weight, all can roll): 
+    "+10/20/30/40/50/60/70/80/90/100% EXP gain during idle combat"
+    "+10/20/30/40/50/60/70/80/90/100% gold gain during idle combat"
+    "10/20/30/40/50/60/70/80/90/100% increased chance to roll an additional reward from normal monster farming" 
+    "+10/20/30/40/50/60/70/80/90/100% skilling materials from gathering"
+
+    Rare Dispatch skills (20% weight, only 5*, 6* roll):
+	"10/20/30/40/50/60/70/80/90/100% increased chance to find a rare settlement upgrade material from normal monster farming"
+    "10/20/30/40/50/60/70/80/90/100% increased chance to roll an additional reward from boss farming"
+    "10/20/30/40/50/60/70/80/90/100% increased chance to find a guild recruitment contract when normal monster farming"
+    "10/20/30/40/50/60/70/80/90/100% increased chance to find pinnacle content items (codex tomes, pinnacle keys) when normal monster farming"
+
+    Signature Dispatch skill (6* only, occupies it's own special slot): 
+    Sigmund: "This partner can be assigned to two dispatch tasks simultaneously at 60/70/80/90/100% effectiveness."
+    Kay: "This partner's dispatch task can be collected an additional 12/24/36/48/60 hours past the cap." 
+    Skol: "This partner has a 1/2/3/4/5% chance to obtain essences during normal monster farming."
+    Eve: "This partner has a 1/2/3/4/5% chance to obtain spirit stones during normal monster farming."
+    Velour: "This partner has a 1/2/3/4/5% chance to obtain elemental keys during normal monster farming."
+	Yvenn: "This partner has a 1/2/3/4/5% chance to obtain slayer drops during normal monster farming."
+	Flora: "Materials gathered from skilling dispatch have 2/4/6/8/10% chance to be doubled."
+	
+	For dispatch skills that say increased chance, the base chance is 5%, at max rank (100% increased), this becomes 10%.
+
+	
+Integration with Combat:
+Partner skills need to be added throughout the combat engine and damage calculations. 
+On combat start passives for partners need to be loaded an applied, same way engine.apply_combat_start_passives handles it currently.
+Partners need to display as an additional field in the combat embed when they take an action. For example, Partner Name: Heals [Player name] for 500 HP!
+
+Affinity System:
+6* has an additional affinity system that's mostly flavor. It's a few short stories that ends with a special edition of their portrait as a reward for taking them into many combats. The partner must be set as the active combat partner. We can have 4 short scenarios at 25/50/75/100 combat encounters. At 100 their new portrait is unlocked and users can pick between one or the other. We can have placeholders for now to implement later in the future.
+
+Partner model:
+
+Base Stats: Attack, Defence, Max HP. 
+
+Experience: Partners gain exp when they are set as active combat and gain exp when the player gains exp, but only a fraction. Their exp curve is simpler, but should start fast and end up being quite steep towards the tail end.
+
+Level: Maximum level of 100, this is their combat prowess, and will increase their base stats, linearly. Each level up will incease their attack, defence, or max hp. Better star ratings will have better growth rates, so 4 per level for 4*, 5 per level for 5*, and 6 per level for 6*, resulting in 600 base stats at max rank.
+
+Partner command:
+/partner is a slash command that opens the partner menu. Upon opening the partner interface, the user should see the following:
+
+Basic details about their active combat partner (if any)
+Basic details about their partner dispatch task (if any)
+Partner image URL as main embed image
+Their flair in the footer
+
+They can then manage all partner in this interface:
+Buttons:
+- Partner Dispatch
+	Shows any partners currently on dispatch, the type of task, and the progress accumulated thus far, the partner's dispatch skill and tier, the dispatch skill's effect, and number of dispatch skill shards available
+	Choose Partner Button
+	-> Pick active dispatch partner via dropdown
+	Collect Rewards
+	Upgrade Dispatch Skill
+	Reroll Dispatch Skill
+	
+- Partner Combat
+	Shows the active partner in combat, their stats, level and experience, image url
+	Choose Partner Button
+	-> Pick active combat partner via dropdown
+	
+- Partner Affinity
+	Shows list of 6* partners and their affinity level.
+	Shows list of partners that have reached a new tier of affinity.
+	Drop down list allows the user to view the story.
+	Buttons progress the story, ending in an image and a status message that implies the bond feels stronger.
+	Only the most recent affinity threshold story is shown, if a user skips beyond that affinity level that story is permanently lost and is intended.
+	We can have placeholders for now.
+	
+- Switch portrait (if affinity level is maxed), toggles between standard image_url and affinity_url
+	
+	
+There needs to be a new csv asset for us to store information about all the gacha characters.
+
+New example database tables needed:
+
+user_partners
+	all information pertaining to partners that a user has collected
+	
+user_partner_items
+	all information pertaining to the gacha mechanic and gacha character resources:
+	user_id,guild_tickets, pity_counter,combat_skill_shards, dispatch_skill_shards

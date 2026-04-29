@@ -829,6 +829,21 @@ class Player:
 
 
 @dataclass
+class MonsterModifier:
+    name: str
+    tier: int          # 1–5 for tiered mods; 0 for flat (no numeral shown)
+    value: float       # resolved numeric value for this tier
+    difficulty: float  # contribution to special_drop_chance
+
+    @property
+    def display_name(self) -> str:
+        if self.tier == 0:
+            return self.name
+        numerals = ["I", "II", "III", "IV", "V"]
+        return f"{self.name} {numerals[self.tier - 1]}"
+
+
+@dataclass
 class Monster:
     name: str
     level: int
@@ -837,13 +852,33 @@ class Monster:
     xp: int
     attack: int
     defence: int
-    modifiers: List[str]
-    image: str
-    flavor: str
+    modifiers: List[MonsterModifier] = field(default_factory=list)
+    image: str = ""
+    flavor: str = ""
     species: str = "Unknown"
     is_boss: bool = False
     combat_round: int = 0
     is_essence: bool = False
+    ward: int = 0
+
+    def has_modifier(self, name: str) -> bool:
+        return any(m.name == name for m in self.modifiers)
+
+    def get_modifier_value(self, name: str) -> float:
+        for m in self.modifiers:
+            if m.name == name:
+                return m.value
+        return 0.0
+
+    @property
+    def display_modifiers(self) -> list:
+        result = []
+        for m in self.modifiers:
+            if m.name == "Ascended":
+                result.append(f"Ascended +{int(m.value)}")
+            else:
+                result.append(m.display_name)
+        return result
 
 
 @dataclass

@@ -106,12 +106,14 @@ class DummyEngine:
     # ---------------------------------------------------------------------- #
 
     @staticmethod
-    def _make_uber_proxy(ref_lvl: int, modifiers: list[str]) -> Monster:
+    def _make_uber_proxy(ref_lvl: int, modifier_names: list) -> Monster:
         """Build a proxy Monster using the same stat pipeline as the real generators."""
         from core.combat.gen_mob import calculate_monster_stats
+        from core.combat.modifier_data import make_modifier
         proxy = Monster(
             name="Proxy", level=ref_lvl, hp=999_999, max_hp=999_999, xp=0,
-            attack=0, defence=0, modifiers=modifiers,
+            attack=0, defence=0,
+            modifiers=[make_modifier(n, ref_lvl) for n in modifier_names],
             image="", flavor="",
         )
         return calculate_monster_stats(proxy)
@@ -122,9 +124,7 @@ class DummyEngine:
         ref_lvl = player.level + player.ascension + 20
 
         if target == "aphrodite_uber":
-            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Radiant Protection", "Absolute"])
-            proxy.attack  += 25
-            proxy.defence += 25
+            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Radiant Protection"])
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
@@ -137,11 +137,9 @@ class DummyEngine:
             return "You are **filled with determination**. Press onwards."
 
         if target == "lucifer_uber":
-            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Hell's Fury", "Absolute"])
+            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Infernal Protection", "Hell's Fury"])
             proxy.attack  = int(proxy.attack  * 1.3)
             proxy.defence = int(proxy.defence * 0.3)
-            proxy.attack  += 25
-            proxy.defence += 25
             proxy.attack  += int(ref_lvl * 1.0)
             proxy.defence += int(ref_lvl * 0.2)
             proxy.is_boss = True
@@ -156,9 +154,7 @@ class DummyEngine:
             return "You are **filled with determination**. Press onwards."
 
         if target == "neet_uber":
-            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Void Aura", "Absolute"])
-            proxy.attack  += 25
-            proxy.defence += 25
+            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Void Protection", "Void Aura"])
             proxy.attack  += int(ref_lvl * 0.8)
             proxy.defence += int(ref_lvl * 0.5)
             proxy.is_boss = True
@@ -175,9 +171,7 @@ class DummyEngine:
             return "You are **filled with determination**. The void beckons."
 
         if target == "gemini_uber":
-            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Twin Strike", "Absolute"])
-            proxy.attack  += 25
-            proxy.defence += 25
+            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Balanced Protection", "Balanced Strikes"])
             proxy.attack  += int(ref_lvl * 0.65)
             proxy.defence += int(ref_lvl * 0.65)
             proxy.is_boss = True

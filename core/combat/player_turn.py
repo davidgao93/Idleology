@@ -20,6 +20,11 @@ def process_heal(player: Player, monster=None) -> str:
         return f"{player.name} is already full HP!"
 
     heal_pct = 0.30
+
+    # Parching: reduce base healing effectiveness
+    if monster is not None and monster.has_modifier("Parching"):
+        heal_pct *= (1 - monster.get_modifier_value("Parching"))
+
     if player.equipped_boot and player.equipped_boot.passive == "cleric":
         heal_pct += player.equipped_boot.passive_lvl * 0.10
 
@@ -226,11 +231,6 @@ def _pt_resolve_hit(
 ) -> tuple[bool, float]:
     """Phase 2 — hit chance roll. Returns (is_hit, attack_multiplier)."""
     hit_chance = calculate_hit_chance(player, monster)
-    dodgy_note = ""
-    if "Dodgy" in monster.modifiers:
-        hit_chance = max(0.05, hit_chance - 0.10)
-        log.append("The monster's **Dodgy** nature makes it harder to hit!")
-        dodgy_note = " -10%(Dodgy)"
 
     acc_bonus = player.get_emblem_bonus("accuracy") * 2
 
@@ -239,6 +239,14 @@ def _pt_resolve_hit(
         wep_acc = (idx + 1) * 4
         acc_bonus += wep_acc
         log.append(f"The **{name}** weapon boosts 🎯 accuracy roll by **{wep_acc}**!")
+
+    # Blinding: flat penalty to player acc_bonus (hits harder to land)
+    blinding_note = ""
+    if monster.has_modifier("Blinding"):
+        penalty = int(monster.get_modifier_value("Blinding"))
+        acc_bonus -= penalty
+        log.append(f"The monster's **Blinding** aura makes it harder to hit! (−{penalty})")
+        blinding_note = f" -Blinding{penalty}"
 
     acc_passive = player.get_accessory_passive()
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
@@ -252,19 +260,12 @@ def _pt_resolve_hit(
         )
         lucky_note = "(lucky)"
 
-    suffocator_note = ""
-    if "Suffocator" in monster.modifiers and random.random() < 0.2:
-        log.append(
-            f"The {monster.name}'s **Suffocator** aura stifles your attack! Hit chance is now 💀 unlucky!"
-        )
+    # Jinxed: X% of the time player roll is unlucky (worst of two)
+    jinxed_note = ""
+    if monster.has_modifier("Jinxed") and random.random() < monster.get_modifier_value("Jinxed"):
         attack_roll = min(attack_roll, random.randint(0, 100))
-        suffocator_note = "(unlucky)"
-
-    shields_note = ""
-    if "Shields-up" in monster.modifiers and random.random() < 0.1:
-        attack_multiplier = 0
-        log.append(f"{monster.name} projects a magical barrier, nullifying the hit!")
-        shields_note = " [shields-up nullified]"
+        log.append(f"The **Jinxed** curse stifles your attack! Hit chance is now 💀 unlucky!")
+        jinxed_note = "(jinxed-unlucky)"
 
     miss_threshold = 100 - int(hit_chance * 100)
     is_hit = (attack_multiplier > 0) and ((attack_roll + acc_bonus) >= miss_threshold)
@@ -279,9 +280,9 @@ def _pt_resolve_hit(
 
     outcome = "HIT" if is_hit else "MISS"
     calc.append(
-        f"  hit: chance={hit_chance*100:.1f}%{dodgy_note} → threshold={miss_threshold} | "
-        f"roll={attack_roll}{lucky_note}{suffocator_note}+acc={acc_bonus}={attack_roll+acc_bonus}"
-        f"{shields_note}{bottled_note} → {outcome}"
+        f"  hit: chance={hit_chance*100:.1f}%{blinding_note} → threshold={miss_threshold} | "
+        f"roll={attack_roll}{lucky_note}{jinxed_note}+acc={acc_bonus}={attack_roll+acc_bonus}"
+        f"{bottled_note} → {outcome}"
     )
     return is_hit, attack_multiplier
 
@@ -296,6 +297,10 @@ def _pt_resolve_crit(
 
     from core.combat.calcs import calculate_crit_chance
     crit_chance = calculate_crit_chance(player)
+
+    # Dampening: reduce effective crit chance
+    if monster.has_modifier("Dampening"):
+        crit_chance = max(0, crit_chance - monster.get_modifier_value("Dampening"))
 
     if crit_chance >= 100:
         calc.append(f"  crit: chance={crit_chance:.1f}% → guaranteed CRIT")
@@ -327,10 +332,21 @@ def _pt_crit_damage(
     crit_min = max(1, int(max_atk * crit_floor) + 1)
     crit_max = max(crit_min, max_atk)
     crit_rolled = random.randint(crit_min, crit_max)
-    base_dmg = int(crit_rolled * 2.0)
+
+    # Nullifying: reduce crit damage multiplier (applied before other bonuses)
+    crit_mult = 2.0
+    nullifying_note = ""
+    if monster.has_modifier("Nullifying"):
+        null_val = monster.get_modifier_value("Nullifying")
+        crit_mult = 2.0 * (1 - null_val)
+        nullifying_note = f" nullifying×{crit_mult:.2f}"
+
+    base_dmg = int(crit_rolled * crit_mult)
     calc_dmg_notes: list[str] = [
-        f"range=[{crit_min}–{crit_max}] rolled={crit_rolled} ×2.0={base_dmg}"
+        f"range=[{crit_min}–{crit_max}] rolled={crit_rolled} ×{crit_mult:.2f}={base_dmg}{nullifying_note}"
     ]
+    if nullifying_note:
+        log.append(f"The **Nullifying** aura dampens your critical hit! (×{crit_mult:.2f})")
 
     crit_dmg_tiers = player.get_emblem_bonus("crit_dmg")
     if crit_dmg_tiers > 0:
@@ -347,11 +363,6 @@ def _pt_crit_damage(
         log.append(
             f"**Insight ({helmet_lvl})** exposes a weak point! (Crit Dmg +{int(extra * 100)}%)"
         )
-
-    if "Smothering" in monster.modifiers:
-        base_dmg = int(base_dmg * 0.80)
-        calc_dmg_notes.append(f"smothering×0.800={base_dmg}")
-        log.append("The monster's **Smothering** aura dampens your critical hit!")
 
     if player.cursed_precision_active:
         alt = int(random.randint(crit_min, crit_max) * 2.0)
@@ -546,17 +557,26 @@ def _pt_miss_damage(
 def _pt_apply_reductions(monster: Monster, damage: int, log: list[str], calc: list[str]) -> int:
     """Phase 5 — apply monster damage-reduction modifiers."""
     pre = damage
-    if "Radiant Protection" in monster.modifiers and damage > 0:
-        reduction = int(damage * 0.60)
-        damage = max(0, damage - reduction)
-        log.append(f"✨ **Radiant Protection** mitigates {reduction} damage!")
 
-    if "Titanium" in monster.modifiers and damage > 0:
-        reduction = int(damage * 0.10)
+    # Protection mods (uber bosses — 60% DR); only one fires per boss
+    for prot_name in ("Radiant Protection", "Infernal Protection", "Balanced Protection", "Void Protection"):
+        if monster.has_modifier(prot_name) and damage > 0:
+            reduction = int(damage * 0.60)
+            damage = max(0, damage - reduction)
+            log.append(f"✨ **{prot_name}** mitigates {reduction} damage!")
+            break
+
+    # Ironclad: X% less incoming damage
+    if monster.has_modifier("Ironclad") and damage > 0:
+        reduction = int(damage * monster.get_modifier_value("Ironclad"))
         damage = max(0, damage - reduction)
-        log.append(
-            f"{monster.name}'s **Titanium** plating reduces damage by {reduction}."
-        )
+        log.append(f"{monster.name}'s **Ironclad** plating reduces damage by {reduction}.")
+
+    # Stalwart: X% chance to nullify incoming damage entirely
+    if monster.has_modifier("Stalwart") and damage > 0:
+        if random.random() < monster.get_modifier_value("Stalwart"):
+            log.append(f"{monster.name}'s **Stalwart** shield nullifies the attack!")
+            damage = 0
 
     if damage != pre:
         calc.append(f"  mon_reductions: {pre} → {damage} (saved {pre - damage})")
@@ -591,10 +611,22 @@ def _pt_generate_ward(
 def _pt_apply_to_monster(
     player: Player, monster: Monster, damage: int, log: list[str]
 ) -> int:
-    """Phase 7 — apply damage to monster HP, respecting Time Lord. Returns damage actually dealt."""
+    """Phase 7 — apply damage to monster ward then HP, respecting Time Lord.
+    Returns damage actually dealt."""
+    # Monster ward (from Veiled modifier, set at spawn)
+    if monster.ward > 0 and damage > 0:
+        if damage <= monster.ward:
+            monster.ward -= damage
+            log.append(f"Your attack is absorbed by the monster's 🔮 ward! ({damage} absorbed)")
+            damage = 0
+        else:
+            log.append(f"You shatter the monster's 🔮 ward! ({monster.ward} absorbed)")
+            damage -= monster.ward
+            monster.ward = 0
+
     if damage >= monster.hp:
         if (
-            "Time Lord" in monster.modifiers
+            monster.has_modifier("Time Lord")
             and random.random() < 0.80
             and monster.hp > 1
         ):

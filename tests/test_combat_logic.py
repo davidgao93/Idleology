@@ -151,9 +151,10 @@ def test_simulation_balance_check(base_player, base_monster):
 
 def test_boss_simulation(base_player):
     """Checks if a boss 5 levels higher is basically impossible."""
+    from core.combat.modifier_data import make_modifier
     boss = Monster(
         name="Boss", level=15, hp=300, max_hp=300, xp=500,
-        attack=35, defence=30, modifiers=["Titanium", "Strengthened"], image="", flavor=""
+        attack=35, defence=30, modifiers=[make_modifier("Empowered", 15), make_modifier("Ironclad", 15)], image="", flavor=""
     )
     
     print(f"\n--- SIMULATION: {base_player.name} vs BOSS ---")

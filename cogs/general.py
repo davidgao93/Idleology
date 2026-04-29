@@ -5,7 +5,10 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.character.profile_hub import ProfileBuilder, ProfileHubView
-from core.combat.gen_mob import get_modifier_description
+from core.combat.modifier_data import (
+    COMMON_MOD_NAMES, RARE_TIERED_MOD_NAMES, RARE_FLAT_MOD_NAMES,
+    BOSS_MOD_NAMES, MODIFIER_DEFINITIONS, make_modifier,
+)
 
 
 class General(commands.Cog, name="general"):
@@ -161,52 +164,78 @@ class General(commands.Cog, name="general"):
 
         if category == "monster":
             embed.title = "👹 Monster Modifier Details"
-            # Sourced from general.py init list
-            mods = [
-                "Steel-born",
-                "All-seeing",
-                "Mirror Image",
-                "Glutton",
-                "Enfeeble",
-                "Venomous",
-                "Strengthened",
-                "Hellborn",
-                "Lucifer-touched",
-                "Titanium",
-                "Ascended",
-                "Summoner",
-                "Shield-breaker",
-                "Impenetrable",
-                "Unblockable",
-                "Unavoidable",
-                "Built-different",
-                "Multistrike",
-                "Mighty",
-                "Shields-up",
-                "Executioner",
-                "Time Lord",
-                "Suffocator",
-                "Celestial Watcher",
-                "Unlimited Blade Works",
-                "Hell's Fury",
-                "Absolute",
-                "Infernal Legion",
-                "Penetrator",
-                "Clobberer",
-                "Smothering",
-                "Dodgy",
-                "Prescient",
-                "Vampiric",
-            ]
-            mod_text = ""
-            for mod_name in sorted(mods):
-                desc = get_modifier_description(mod_name)
-                mod_text += f"**{mod_name}**: {desc}\n"
+            embed.description = (
+                "Modifiers now have **tiers (I–V)** shown after their name. "
+                "Higher monster levels unlock higher tiers. "
+                "Flat modifiers have no tier numeral. "
+                "Boss modifiers only appear on bosses and ascent monsters.\n​"
+            )
 
-            if len(mod_text) > 4000:  # Safety split
-                embed.description = mod_text[:4000] + "..."
-            else:
-                embed.description = mod_text
+            from core.combat.gen_mob import get_modifier_description
+
+            def _tier_range(name: str) -> str:
+                """Return a T1→T5 value string for display."""
+                t1 = make_modifier(name, 1)   # force T1 by using level 1
+                t5 = make_modifier(name, 200)  # force T5 by using level 200
+                d1 = get_modifier_description(t1)
+                d5 = get_modifier_description(t5)
+                if d1 == d5:
+                    return d1
+                return f"{d1} → {d5}"
+
+            def _flat_desc(name: str) -> str:
+                return get_modifier_description(make_modifier(name, 50))
+
+            # Common pool — split into two fields to stay under 1024 chars
+            common_sorted = sorted(COMMON_MOD_NAMES)
+            mid = len(common_sorted) // 2
+            common_a = [f"**{n}**: {_tier_range(n)}" for n in common_sorted[:mid]]
+            common_b = [f"**{n}**: {_tier_range(n)}" for n in common_sorted[mid:]]
+            # Ascended special appended to second half
+            asc_t1 = make_modifier("Ascended", 10)
+            asc_t5 = make_modifier("Ascended", 200)
+            common_b.append(
+                f"**Ascended**: {get_modifier_description(asc_t1)} → {get_modifier_description(asc_t5)} *(scales with level)*"
+            )
+            embed.add_field(
+                name="🔵 Common *(I–V)* — A to K",
+                value="\n".join(common_a),
+                inline=False,
+            )
+            embed.add_field(
+                name="🔵 Common *(I–V)* — L to Z",
+                value="\n".join(common_b),
+                inline=False,
+            )
+
+            # Rare tiered pool
+            rare_tiered_lines = []
+            for name in sorted(RARE_TIERED_MOD_NAMES):
+                rare_tiered_lines.append(f"**{name}**: {_tier_range(name)}")
+            # Rare flat pool
+            rare_flat_lines = []
+            for name in sorted(RARE_FLAT_MOD_NAMES):
+                rare_flat_lines.append(f"**{name}**: {_flat_desc(name)}")
+            embed.add_field(
+                name="🟣 Rare Tiered *(I–V)*",
+                value="\n".join(rare_tiered_lines),
+                inline=False,
+            )
+            embed.add_field(
+                name="🟣 Rare Flat",
+                value="\n".join(rare_flat_lines),
+                inline=False,
+            )
+
+            # Boss pool
+            boss_lines = []
+            for name in sorted(BOSS_MOD_NAMES):
+                boss_lines.append(f"**{name}**: {_flat_desc(name)}")
+            embed.add_field(
+                name="🔴 Boss Only",
+                value="\n".join(boss_lines),
+                inline=False,
+            )
             content_added = True
 
         elif category == "weapon":
@@ -352,20 +381,23 @@ class General(commands.Cog, name="general"):
         elif category == "uber":
             embed.title = "⚔️ Uber Boss Modifier Details"
             uber_text = (
+                "Each Uber boss carries **fixed signature modifiers** plus one random boss modifier.\n\n"
                 "**Aphrodite, Celestial Apex**\n"
-                "**Radiant Protection**: Globally reduces all incoming damage by 60%.\n\n"
+                "**Radiant Protection**: Reduces all incoming damage by 60%.\n\n"
                 "**Lucifer, Infernal Sovereign**\n"
-                "**Hell's Fury**: +5 flat attack for every successful hit.\n\n"
-                "**NEET, Void Sovereign**\n"
-                "**Void Aura**: Siphons 5% of player ATK and DEF each round, regardless of hit.\n\n"
+                "**Infernal Protection**: Reduces all incoming damage by 60%.\n"
+                "**Hell's Fury**: Deals triple damage on every hit.\n\n"
+                "**NEET, the Void Sovereign**\n"
+                "**Void Protection**: Reduces all incoming damage by 60%.\n"
+                "**Void Aura**: Siphons 5% of your ATK and DEF each round, regardless of hit.\n\n"
                 "**Castor & Pollux, Bound Sovereigns**\n"
-                "**Twin Strike**: Every even round, a second coordinated blow lands at 50% damage.\n\n"
-                "**Shared (All Uber Bosses)**\n"
-                "**Absolute**: +25 Attack, +25 Defence.\n\n"
+                "**Balanced Protection**: Reduces all incoming damage by 60%.\n"
+                "**Balanced Strikes**: Every even round, a second coordinated blow lands at 50% damage — bypasses ward and cannot be blocked or evaded.\n\n"
                 "**Random Boss Modifier (one per encounter)**\n"
-                "**Celestial Watcher**: 100% hit chance; deals 20% increased damage.\n"
-                "**Unlimited Blade Works**: Doubles all damage dealt.\n"
-                "**Infernal Legion**: Minions echo every hit for full additional damage.\n"
+                "**Overwhelming**: Always deals double damage; −25 to hit rolls.\n"
+                "**Inevitable**: Always hits; deals 50% damage.\n"
+                "**Sundering**: 25% of each hit bypasses your ward directly to HP.\n"
+                "**Unerring**: Hit rolls always take the highest of two dice.\n"
             )
             embed.description = uber_text
             content_added = True
