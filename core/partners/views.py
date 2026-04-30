@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from datetime import datetime, timezone
 from typing import List, Optional
-
+import asyncio
 import discord
 from discord import ButtonStyle, Interaction, ui
 
@@ -833,13 +833,14 @@ class PullView(ui.View):
             name="Pity",
             value=f"**{items.get('pity_counter', 0)}/100**",
         )
+        embed.set_thumbnail(url="https://i.imgur.com/Vmjfyj5.jpeg")
         return embed
 
-    @ui.button(label="Pull ×1 (10 tickets)", style=ButtonStyle.primary)
+    @ui.button(label="Pull ×1 (1 ticket)", style=ButtonStyle.primary)
     async def pull_one(self, interaction: Interaction, button: ui.Button):
         await self._do_pull(interaction, count=1)
 
-    @ui.button(label="Pull ×10 (100 tickets)", style=ButtonStyle.success)
+    @ui.button(label="Pull ×10 (10 tickets)", style=ButtonStyle.success)
     async def pull_ten(self, interaction: Interaction, button: ui.Button):
         await self._do_pull(interaction, count=10)
 
@@ -852,7 +853,7 @@ class PullView(ui.View):
         self.stop()
 
     async def _do_pull(self, interaction: Interaction, count: int):
-        ticket_cost = count * 10
+        ticket_cost = count
         ok = await self.bot.database.partners.spend_tickets(self.user_id, ticket_cost)
         if not ok:
             await interaction.response.send_message(
@@ -874,6 +875,33 @@ class PullView(ui.View):
 
         await self.bot.database.partners.update_pity(self.user_id, new_pity)
 
+        # === NEW: Determine highest rarity for banner ===
+        max_rarity = max(rarities)
+        banner_urls = {
+            4: "https://i.imgur.com/NpUHE2b.jpeg",
+            5: "https://i.imgur.com/OUrwCWk.jpeg",
+            6: "https://i.imgur.com/Kfmq9Pg.jpeg",
+        }
+        # Step 1: Show banner (full image)
+        banner_embed = discord.Embed(
+            title="🎫 Recruiting...",
+            description="The clerks hands you a scroll, you unfurl it...",
+            colour=_rarity_colour(max_rarity),
+        )
+        banner_embed.set_image(url=banner_urls.get(max_rarity))
+        await interaction.edit_original_response(embed=banner_embed, view=None)
+
+        # Wait 3 seconds for dramatic effect
+        await asyncio.sleep(3)
+
+        # === Proceed with normal pull logic ===
+        all_partners_by_rarity = {
+            4: [pid for pid, d in PARTNER_DATA.items() if d["rarity"] == 4],
+            5: [pid for pid, d in PARTNER_DATA.items() if d["rarity"] == 5],
+            6: [pid for pid, d in PARTNER_DATA.items() if d["rarity"] == 6],
+        }
+
+        result_lines = []
         # For each result, assign a partner of that rarity
         all_partners_by_rarity = {
             4: [pid for pid, d in PARTNER_DATA.items() if d["rarity"] == 4],
@@ -910,6 +938,7 @@ class PullView(ui.View):
                     f"{emoji} **NEW** — {_stars(rarity)} **{static['name']}**!"
                 )
                 new_partners += 1
+
             else:
                 # Duplicate — grant shards
                 if rarity == 6:
@@ -952,6 +981,8 @@ class PullView(ui.View):
             description="\n".join(result_lines) or "No results.",
             colour=0xFFD700,
         )
+        image_url = static['image_url']
+        embed.set_image(url=image_url)
         embed.set_footer(
             text=(
                 f"Pity: {new_pity}/100  |  "
@@ -1130,9 +1161,9 @@ class PartnerMainView(ui.View):
         embed = discord.Embed(
             title="🤝 Partners",
             description=(
-                "Partners are powerful companions that join you in combat and "
+                "Partners are powerful adventurers that join you in combat and "
                 "can be dispatched on missions while you're away.\n\n"
-                "Use daily **/checkin** to earn 🎫 Guild Tickets for pulls."
+                "Use daily **/checkin** and combat to earn 🎫 Guild Tickets for pulls."
             ),
             colour=0xBEBEFE,
         )
@@ -1150,6 +1181,7 @@ class PartnerMainView(ui.View):
             value="88% ★★★★ | 11% ★★★★★ | 1% ★★★★★★\n10 tickets per pull",
             inline=True,
         )
+        embed.set_thumbnail(url="https://i.imgur.com/agWsjri.jpeg")
         return embed
 
     @ui.button(label="Roster", style=ButtonStyle.primary, emoji="📋")

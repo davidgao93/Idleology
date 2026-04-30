@@ -24,11 +24,11 @@ class Partners(commands.Cog, name="partners"):
         items = await self.bot.database.partners.get_items(user_id)
 
         embed = discord.Embed(
-            title="Partner Guild 🤝",
-            description="Welcome to the Partner Guild! Recruit partners and send them on dispatches.",
+            title="The Guild",
+            description="Welcome to the Guild! Recruit, manage, and dispatch your partners.",
             color=0xFFD700,
         )
-        embed.set_thumbnail(url="https://i.imgur.com/D8HlsQX.jpeg")
+        embed.set_thumbnail(url="https://i.imgur.com/agWsjri.jpeg")
         embed.add_field(
             name="Guild Tickets 🎫",
             value=f"**{items.get('guild_tickets', 0):,}**",
