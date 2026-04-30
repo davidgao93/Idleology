@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import asyncio
 import random
 from datetime import datetime, timezone
-from typing import List, Optional
-import asyncio
+from typing import List
+
 import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.models import Partner
 from core.partners.data import PARTNER_DATA
+from core.partners.dispatch import calculate_rewards, calculate_sigmund_rewards
 from core.partners.mechanics import (
     MAX_COMBAT_SKILL_LEVEL,
     MAX_DISPATCH_SKILL_LEVEL,
@@ -26,8 +28,6 @@ from core.partners.mechanics import (
     roll_single,
     roll_ten,
 )
-from core.partners.dispatch import calculate_rewards, calculate_sigmund_rewards
-
 
 # ---------------------------------------------------------------------------
 # Colour helpers
@@ -45,8 +45,18 @@ def _rarity_colour(rarity: int) -> int:
 # ---------------------------------------------------------------------------
 
 _MINING_ITEMS = frozenset({"iron", "coal", "gold", "platinum", "idea"})
-_WOODCUTTING_ITEMS = frozenset({"oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs"})
-_FISHING_ITEMS = frozenset({"desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones"})
+_WOODCUTTING_ITEMS = frozenset(
+    {"oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs"}
+)
+_FISHING_ITEMS = frozenset(
+    {
+        "desiccated_bones",
+        "regular_bones",
+        "sturdy_bones",
+        "reinforced_bones",
+        "titanium_bones",
+    }
+)
 _GATHERING_ITEMS = _MINING_ITEMS | _WOODCUTTING_ITEMS | _FISHING_ITEMS
 
 _RUNE_CURRENCY_MAP = {
@@ -54,41 +64,131 @@ _RUNE_CURRENCY_MAP = {
     "potential_rune": "potential_runes",
     "shatter_rune": "shatter_runes",
 }
-_BOSS_KEY_TYPES = ["draconic_key", "angelic_key", "soul_core", "void_frag", "balance_fragment"]
+_BOSS_KEY_TYPES = [
+    "draconic_key",
+    "angelic_key",
+    "soul_core",
+    "void_frag",
+    "balance_fragment",
+]
 
 # ---------------------------------------------------------------------------
 # Affinity story text (placeholders — content to be filled in later)
 # ---------------------------------------------------------------------------
 
 _AFFINITY_STORIES: dict = {
-    (1, 1): "**Skol | First Encounter**\n*He doesn't speak much. You fight side by side, and when the last enemy falls, he simply nods. The gesture feels heavy with something you can't name.*",
-    (1, 2): "**Skol | Returning**\n*You find him studying the ruins of his old throne room. He picks up a shard of the crown. \"Some things should stay broken,\" he says, and drops it.*",
-    (1, 3): "**Skol | The Weight**\n*Late after a hard battle, he admits: 'I was a cruel king. I thought strength was everything.' He pauses. 'You've shown me it isn't.'*",
-    (1, 4): "**Skol | New Allegiance**\n*He kneels — not in submission, but in choice. 'You've earned what no subject ever could. My loyalty, freely given.' The broken king is whole.*",
-    (2, 1): "**Eve | First Encounter**\n*She hands you a vial with a smile that doesn't quite reach her eyes. 'Don't worry — I only poison people who deserve it.' You're not entirely reassured.*",
-    (2, 2): "**Eve | The Recipe**\n*You catch her adjusting a formula. When she notices you watching, she hides it. 'Curious? Good. Curiosity keeps you alive.' She still won't show you the vial.*",
-    (2, 3): "**Eve | What She Keeps**\n*After a near-death battle, she stays up all night refining an antidote you didn't ask for. She leaves it on your pack without a word.*",
-    (2, 4): "**Eve | The Truth**\n*'I've helped a lot of people,' she says quietly. 'And hurt just as many.' She looks at you. 'You make me want the ledger to balance. Someday.'*",
-    (3, 1): "**Kay | First Encounter**\n*She acknowledges your presence with exactly one glance, then goes back to sharpening her blade. You get the sense that was a warm greeting.*",
-    (3, 2): "**Kay | Distance**\n*She fights brilliantly but always alone. Afterward, you sit nearby in silence for an hour. She doesn't leave. That's something.*",
-    (3, 3): "**Kay | Walls**\n*'I stopped trusting people after—' She catches herself. 'It doesn't matter.' It clearly does. You don't push. She doesn't forget that you didn't.*",
-    (3, 4): "**Kay | Steady Ground**\n*She stands closer now. Not touching, not speaking — but present. For Kay, that's everything. You suspect this is what her loyalty looks like.*",
-    (4, 1): "**Sigmund | First Encounter**\n*The hounds arrive first. Then him — unhurried, eyes sharp. 'They like you,' he says. One of them is already chewing your boot.*",
-    (4, 2): "**Sigmund | The Pack**\n*He explains the hounds' names like they're family. They are, you realize. 'We don't abandon our own,' he says simply. You wonder if that includes you.*",
-    (4, 3): "**Sigmund | The Hunt**\n*He leads you on a chase through fog and bracken. You catch nothing — but afterward he says, 'Good instincts. The hounds respect that.' High praise.*",
-    (4, 4): "**Sigmund | Quarry**\n*He carves something into the hilt of your weapon. You ask what it means. 'You're part of the hunt now,' he says. The hounds howl in agreement.*",
-    (5, 1): "**Velour | First Encounter**\n*The storm arrives before she does. When she steps through it, utterly dry, she smiles. 'Weather respects intent,' she explains. You don't entirely follow, but you're impressed.*",
-    (5, 2): "**Velour | The Roots**\n*She teaches you to read the forest — not the trees, but what moves beneath them. 'Everything is connected,' she says. 'Even the silence has something to say.'*",
-    (5, 3): "**Velour | The Tempest**\n*In a brutal fight, she calls the storm down on your enemies and shelters you within it. Afterward, you're both soaked. She laughs. You laugh too.*",
-    (5, 4): "**Velour | Season's End**\n*She presses a seed into your hand. 'Plant it somewhere you call home.' You realize you haven't thought of anywhere as home in a long time. Maybe now.*",
-    (6, 1): "**Flora | First Encounter**\n*The roots part for her, and she walks through like a guest in her own home. She looks at you with ancient, patient eyes. 'The World Tree sent me,' she says simply.*",
-    (6, 2): "**Flora | What Grows**\n*She kneels beside a dying plant and hums. It doesn't survive — but she stays with it until it doesn't. 'Everything that ends feeds what comes next,' she says.*",
-    (6, 3): "**Flora | The Heartwood**\n*She shares a memory from the World Tree — centuries old. 'I carry all of it,' she admits. 'Sometimes it's very heavy.' You sit with her in that weight.*",
-    (6, 4): "**Flora | New Growth**\n*Where you've traveled together, flowers bloom out of season. She points this out quietly. 'The Tree likes you.' You think that might be the highest compliment.*",
-    (7, 1): "**Yvenn | First Encounter**\n*She's already assessed your stance, your weapon grip, and three of your bad habits. 'Fixable,' she declares. You're not sure whether to be relieved or offended.*",
-    (7, 2): "**Yvenn | The Standard**\n*'Perfect isn't the goal,' she says mid-drill. 'One kill better than yesterday — that's the goal.' She makes it sound simple. It isn't. She makes you try anyway.*",
-    (7, 3): "**Yvenn | The Scar**\n*She shows you a scar she doesn't usually show anyone. 'That's the last mistake I made twice,' she says. 'What's yours?' You tell her. She nods. No judgment.*",
-    (7, 4): "**Yvenn | Penultimate**\n*'They call me penultimate,' she says, cleaning her blade. 'Because perfection has no master.' She glances over. 'But you — you might just surprise me yet.'*",
+    (
+        1,
+        1,
+    ): "**Skol | First Encounter**\n*He doesn't speak much. You fight side by side, and when the last enemy falls, he simply nods. The gesture feels heavy with something you can't name.*",
+    (
+        1,
+        2,
+    ): '**Skol | Returning**\n*You find him studying the ruins of his old throne room. He picks up a shard of the crown. "Some things should stay broken," he says, and drops it.*',
+    (
+        1,
+        3,
+    ): "**Skol | The Weight**\n*Late after a hard battle, he admits: 'I was a cruel king. I thought strength was everything.' He pauses. 'You've shown me it isn't.'*",
+    (
+        1,
+        4,
+    ): "**Skol | New Allegiance**\n*He kneels — not in submission, but in choice. 'You've earned what no subject ever could. My loyalty, freely given.' The broken king is whole.*",
+    (
+        2,
+        1,
+    ): "**Eve | First Encounter**\n*She hands you a vial with a smile that doesn't quite reach her eyes. 'Don't worry — I only poison people who deserve it.' You're not entirely reassured.*",
+    (
+        2,
+        2,
+    ): "**Eve | The Recipe**\n*You catch her adjusting a formula. When she notices you watching, she hides it. 'Curious? Good. Curiosity keeps you alive.' She still won't show you the vial.*",
+    (
+        2,
+        3,
+    ): "**Eve | What She Keeps**\n*After a near-death battle, she stays up all night refining an antidote you didn't ask for. She leaves it on your pack without a word.*",
+    (
+        2,
+        4,
+    ): "**Eve | The Truth**\n*'I've helped a lot of people,' she says quietly. 'And hurt just as many.' She looks at you. 'You make me want the ledger to balance. Someday.'*",
+    (
+        3,
+        1,
+    ): "**Kay | First Encounter**\n*She acknowledges your presence with exactly one glance, then goes back to sharpening her blade. You get the sense that was a warm greeting.*",
+    (
+        3,
+        2,
+    ): "**Kay | Distance**\n*She fights brilliantly but always alone. Afterward, you sit nearby in silence for an hour. She doesn't leave. That's something.*",
+    (
+        3,
+        3,
+    ): "**Kay | Walls**\n*'I stopped trusting people after—' She catches herself. 'It doesn't matter.' It clearly does. You don't push. She doesn't forget that you didn't.*",
+    (
+        3,
+        4,
+    ): "**Kay | Steady Ground**\n*She stands closer now. Not touching, not speaking — but present. For Kay, that's everything. You suspect this is what her loyalty looks like.*",
+    (
+        4,
+        1,
+    ): "**Sigmund | First Encounter**\n*The hounds arrive first. Then him — unhurried, eyes sharp. 'They like you,' he says. One of them is already chewing your boot.*",
+    (
+        4,
+        2,
+    ): "**Sigmund | The Pack**\n*He explains the hounds' names like they're family. They are, you realize. 'We don't abandon our own,' he says simply. You wonder if that includes you.*",
+    (
+        4,
+        3,
+    ): "**Sigmund | The Hunt**\n*He leads you on a chase through fog and bracken. You catch nothing — but afterward he says, 'Good instincts. The hounds respect that.' High praise.*",
+    (
+        4,
+        4,
+    ): "**Sigmund | Quarry**\n*He carves something into the hilt of your weapon. You ask what it means. 'You're part of the hunt now,' he says. The hounds howl in agreement.*",
+    (
+        5,
+        1,
+    ): "**Velour | First Encounter**\n*The storm arrives before she does. When she steps through it, utterly dry, she smiles. 'Weather respects intent,' she explains. You don't entirely follow, but you're impressed.*",
+    (
+        5,
+        2,
+    ): "**Velour | The Roots**\n*She teaches you to read the forest — not the trees, but what moves beneath them. 'Everything is connected,' she says. 'Even the silence has something to say.'*",
+    (
+        5,
+        3,
+    ): "**Velour | The Tempest**\n*In a brutal fight, she calls the storm down on your enemies and shelters you within it. Afterward, you're both soaked. She laughs. You laugh too.*",
+    (
+        5,
+        4,
+    ): "**Velour | Season's End**\n*She presses a seed into your hand. 'Plant it somewhere you call home.' You realize you haven't thought of anywhere as home in a long time. Maybe now.*",
+    (
+        6,
+        1,
+    ): "**Flora | First Encounter**\n*The roots part for her, and she walks through like a guest in her own home. She looks at you with ancient, patient eyes. 'The World Tree sent me,' she says simply.*",
+    (
+        6,
+        2,
+    ): "**Flora | What Grows**\n*She kneels beside a dying plant and hums. It doesn't survive — but she stays with it until it doesn't. 'Everything that ends feeds what comes next,' she says.*",
+    (
+        6,
+        3,
+    ): "**Flora | The Heartwood**\n*She shares a memory from the World Tree — centuries old. 'I carry all of it,' she admits. 'Sometimes it's very heavy.' You sit with her in that weight.*",
+    (
+        6,
+        4,
+    ): "**Flora | New Growth**\n*Where you've traveled together, flowers bloom out of season. She points this out quietly. 'The Tree likes you.' You think that might be the highest compliment.*",
+    (
+        7,
+        1,
+    ): "**Yvenn | First Encounter**\n*She's already assessed your stance, your weapon grip, and three of your bad habits. 'Fixable,' she declares. You're not sure whether to be relieved or offended.*",
+    (
+        7,
+        2,
+    ): "**Yvenn | The Standard**\n*'Perfect isn't the goal,' she says mid-drill. 'One kill better than yesterday — that's the goal.' She makes it sound simple. It isn't. She makes you try anyway.*",
+    (
+        7,
+        3,
+    ): "**Yvenn | The Scar**\n*She shows you a scar she doesn't usually show anyone. 'That's the last mistake I made twice,' she says. 'What's yours?' You tell her. She nods. No judgment.*",
+    (
+        7,
+        4,
+    ): "**Yvenn | Penultimate**\n*'They call me penultimate,' she says, cleaning her blade. 'Because perfection has no master.' She glances over. 'But you — you might just surprise me yet.'*",
 }
 
 
@@ -99,6 +199,7 @@ def _stars(rarity: int) -> str:
 # ---------------------------------------------------------------------------
 # Partner embed builders
 # ---------------------------------------------------------------------------
+
 
 def _build_partner_embed(partner: Partner, items: dict) -> discord.Embed:
     """Detail embed for a single partner."""
@@ -126,7 +227,9 @@ def _build_partner_embed(partner: Partner, items: dict) -> discord.Embed:
     co_lines = []
     for i, (key, lvl) in enumerate(partner.combat_skills, 1):
         if key:
-            co_lines.append(f"`S{i}` **{key}** Lv.{lvl} — {get_skill_effect_text(key, lvl)}")
+            co_lines.append(
+                f"`S{i}` **{key}** Lv.{lvl} — {get_skill_effect_text(key, lvl)}"
+            )
         else:
             co_lines.append(f"`S{i}` *Empty*")
     if partner.rarity >= 6 and partner.sig_combat_key:
@@ -134,13 +237,17 @@ def _build_partner_embed(partner: Partner, items: dict) -> discord.Embed:
             f"`SIG` **Sig** Lv.{partner.sig_combat_lvl} — "
             f"{get_sig_combat_effect_text(partner.partner_id, partner.sig_combat_lvl)}"
         )
-    embed.add_field(name="⚔️ Combat Skills", value="\n".join(co_lines) or "None", inline=False)
+    embed.add_field(
+        name="⚔️ Combat Skills", value="\n".join(co_lines) or "None", inline=False
+    )
 
     # Dispatch skills
     di_lines = []
     for i, (key, lvl) in enumerate(partner.dispatch_skills, 1):
         if key:
-            di_lines.append(f"`S{i}` **{key}** Lv.{lvl} — {get_skill_effect_text(key, lvl)}")
+            di_lines.append(
+                f"`S{i}` **{key}** Lv.{lvl} — {get_skill_effect_text(key, lvl)}"
+            )
         else:
             di_lines.append(f"`S{i}` *Empty*")
     if partner.rarity >= 6 and partner.sig_dispatch_key:
@@ -148,7 +255,9 @@ def _build_partner_embed(partner: Partner, items: dict) -> discord.Embed:
             f"`SIG` **Sig** Lv.{partner.sig_dispatch_lvl} — "
             f"{get_sig_dispatch_effect_text(partner.partner_id, partner.sig_dispatch_lvl)}"
         )
-    embed.add_field(name="📋 Dispatch Skills", value="\n".join(di_lines) or "None", inline=False)
+    embed.add_field(
+        name="📋 Dispatch Skills", value="\n".join(di_lines) or "None", inline=False
+    )
 
     # Affinity (6★ only)
     if partner.rarity >= 6:
@@ -218,6 +327,7 @@ def _build_roster_embed(
 # PartnerDetailView
 # ---------------------------------------------------------------------------
 
+
 class PartnerDetailView(ui.View):
     def __init__(self, bot, user_id: str, partner: Partner, items: dict, roster_view):
         super().__init__(timeout=120)
@@ -254,19 +364,29 @@ class PartnerDetailView(ui.View):
             collect_btn.callback = self._collect_dispatch
             self.add_item(collect_btn)
         elif not p.is_active_combat:
-            dispatch_btn = ui.Button(label="Send on Dispatch", style=ButtonStyle.secondary)
+            dispatch_btn = ui.Button(
+                label="Send on Dispatch", style=ButtonStyle.secondary
+            )
             dispatch_btn.callback = self._dispatch_menu
             self.add_item(dispatch_btn)
 
         # Manage Skills
-        skills_btn = ui.Button(label="Manage Skills", style=ButtonStyle.secondary, emoji="⚙️")
+        skills_btn = ui.Button(
+            label="Manage Skills", style=ButtonStyle.secondary, emoji="⚙️"
+        )
         skills_btn.callback = self._open_skills
         self.add_item(skills_btn)
 
         # Switch Portrait (6★ with maxed affinity)
-        if p.rarity >= 6 and portrait_unlocked(p.affinity_encounters, p.affinity_story_seen):
-            portrait_label = "🖼️ Alt Portrait" if p.portrait_variant == 0 else "🖼️ Default Portrait"
-            portrait_btn = ui.Button(label=portrait_label, style=ButtonStyle.secondary, row=1)
+        if p.rarity >= 6 and portrait_unlocked(
+            p.affinity_encounters, p.affinity_story_seen
+        ):
+            portrait_label = (
+                "🖼️ Alt Portrait" if p.portrait_variant == 0 else "🖼️ Default Portrait"
+            )
+            portrait_btn = ui.Button(
+                label=portrait_label, style=ButtonStyle.secondary, row=1
+            )
             portrait_btn.callback = self._toggle_portrait
             self.add_item(portrait_btn)
 
@@ -284,7 +404,9 @@ class PartnerDetailView(ui.View):
         self._update_buttons()
         embed = _build_partner_embed(self.partner, self.items)
         embed.colour = discord.Colour.green()
-        embed.description = (embed.description or "") + "\n\n✅ Set as active combat partner!"
+        embed.description = (
+            embed.description or ""
+        ) + "\n\n✅ Set as active combat partner!"
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _collect_dispatch(self, interaction: Interaction):
@@ -322,7 +444,9 @@ class PartnerDetailView(ui.View):
                 if item_key in _MINING_ITEMS:
                     mining_batch[item_key] = mining_batch.get(item_key, 0) + qty
                 elif item_key in _WOODCUTTING_ITEMS:
-                    woodcutting_batch[item_key] = woodcutting_batch.get(item_key, 0) + qty
+                    woodcutting_batch[item_key] = (
+                        woodcutting_batch.get(item_key, 0) + qty
+                    )
                 elif item_key in _FISHING_ITEMS:
                     fishing_batch[item_key] = fishing_batch.get(item_key, 0) + qty
                 elif item_key in ("timber", "stone"):
@@ -346,7 +470,9 @@ class PartnerDetailView(ui.View):
                 elif item_key == "guild_ticket":
                     await self.bot.database.partners.add_tickets(self.user_id, qty)
                 elif item_key in ("antique_tome", "pinnacle_key"):
-                    await self.bot.database.users.modify_currency(self.user_id, item_key, qty)
+                    await self.bot.database.users.modify_currency(
+                        self.user_id, item_key, qty
+                    )
                 elif item_key == "blessed_bismuth":
                     await self.bot.database.uber.increment_blessed_bismuth(
                         self.user_id, server_id, qty
@@ -364,7 +490,11 @@ class PartnerDetailView(ui.View):
                         self.user_id, "spirit_stones", qty
                     )
                 elif item_key == "essence":
-                    from database.repositories.essences import COMMON_ESSENCE_TYPES, RARE_ESSENCE_TYPES
+                    from database.repositories.essences import (
+                        COMMON_ESSENCE_TYPES,
+                        RARE_ESSENCE_TYPES,
+                    )
+
                     pool = list(COMMON_ESSENCE_TYPES) + list(RARE_ESSENCE_TYPES)
                     for _ in range(qty):
                         await self.bot.database.essences.add(
@@ -420,7 +550,11 @@ class PartnerDetailView(ui.View):
             lines.append(f"📦 {qty}× **{item_key.replace('_', ' ').title()}**")
 
         embed = _build_partner_embed(p, self.items)
-        embed.add_field(name="📋 Dispatch Rewards", value="\n".join(lines) or "Nothing yet!", inline=False)
+        embed.add_field(
+            name="📋 Dispatch Rewards",
+            value="\n".join(lines) or "Nothing yet!",
+            inline=False,
+        )
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _dispatch_menu(self, interaction: Interaction):
@@ -435,9 +569,7 @@ class PartnerDetailView(ui.View):
         await interaction.response.edit_message(embed=embed, view=view)
 
     async def _open_skills(self, interaction: Interaction):
-        view = PartnerSkillsView(
-            self.bot, self.user_id, self.partner, self.items, self
-        )
+        view = PartnerSkillsView(self.bot, self.user_id, self.partner, self.items, self)
         embed = view.build_embed()
         await interaction.response.edit_message(embed=embed, view=view)
 
@@ -501,9 +633,12 @@ class DispatchTaskSelectView(ui.View):
             self.detail_view._update_buttons()
             embed = _build_partner_embed(self.partner, self.items)
             embed.colour = discord.Colour.blue()
-            embed.description = (embed.description or "") + f"\n\n📋 Dispatched on **{task}**!"
+            embed.description = (
+                embed.description or ""
+            ) + f"\n\n📋 Dispatched on **{task}**!"
             await interaction.edit_original_response(embed=embed, view=self.detail_view)
             self.stop()
+
         return callback
 
     async def _cancel(self, interaction: Interaction):
@@ -553,13 +688,23 @@ class PartnerSkillsView(ui.View):
             title=f"⚙️ Skills — {p.name}",
             colour=_rarity_colour(p.rarity),
         )
-        shards_key = "combat_skill_shards" if self.mode == "combat" else "dispatch_skill_shards"
+        shards_key = (
+            "combat_skill_shards" if self.mode == "combat" else "dispatch_skill_shards"
+        )
         shards = self.items.get(shards_key, 0)
-        reroll_cost = REROLL_COMBAT_COST if self.mode == "combat" else REROLL_DISPATCH_COST
+        reroll_cost = (
+            REROLL_COMBAT_COST if self.mode == "combat" else REROLL_DISPATCH_COST
+        )
 
-        lines = [f"**{shards}** {self.mode} shards  |  Reroll costs **{reroll_cost}** shards"]
+        lines = [
+            f"**{shards}** {self.mode} shards  |  Reroll costs **{reroll_cost}** shards"
+        ]
         slots = p.combat_skills if self.mode == "combat" else p.dispatch_skills
-        max_lvl = MAX_COMBAT_SKILL_LEVEL if self.mode == "combat" else MAX_DISPATCH_SKILL_LEVEL
+        max_lvl = (
+            MAX_COMBAT_SKILL_LEVEL
+            if self.mode == "combat"
+            else MAX_DISPATCH_SKILL_LEVEL
+        )
 
         for i, (key, lvl) in enumerate(slots, 1):
             if key:
@@ -587,7 +732,11 @@ class PartnerSkillsView(ui.View):
             else self.partner.dispatch_skills
         )
         col_pairs = _SKILL_SLOT_COLS[self.mode]
-        max_lvl = MAX_COMBAT_SKILL_LEVEL if self.mode == "combat" else MAX_DISPATCH_SKILL_LEVEL
+        max_lvl = (
+            MAX_COMBAT_SKILL_LEVEL
+            if self.mode == "combat"
+            else MAX_DISPATCH_SKILL_LEVEL
+        )
 
         for i, (key, lvl) in enumerate(slots):
             key_col, lvl_col = col_pairs[i]
@@ -608,7 +757,9 @@ class PartnerSkillsView(ui.View):
             self.add_item(reroll_btn)
 
         # Toggle combat / dispatch
-        toggle_label = "Switch to Dispatch" if self.mode == "combat" else "Switch to Combat"
+        toggle_label = (
+            "Switch to Dispatch" if self.mode == "combat" else "Switch to Combat"
+        )
         toggle_btn = ui.Button(label=toggle_label, style=ButtonStyle.secondary, row=2)
         toggle_btn.callback = self._toggle_mode
         self.add_item(toggle_btn)
@@ -617,15 +768,21 @@ class PartnerSkillsView(ui.View):
         back_btn.callback = self._back
         self.add_item(back_btn)
 
-    def _make_upgrade(self, slot_idx: int, key_col: str, lvl_col: str, key: str, lvl: int):
+    def _make_upgrade(
+        self, slot_idx: int, key_col: str, lvl_col: str, key: str, lvl: int
+    ):
         async def callback(interaction: Interaction):
             await interaction.response.defer()
             if self.mode == "combat":
                 cost = get_combat_upgrade_cost(lvl)
-                ok = await self.bot.database.partners.spend_combat_shards(self.user_id, cost)
+                ok = await self.bot.database.partners.spend_combat_shards(
+                    self.user_id, cost
+                )
             else:
                 cost = get_dispatch_upgrade_cost(lvl)
-                ok = await self.bot.database.partners.spend_dispatch_shards(self.user_id, cost)
+                ok = await self.bot.database.partners.spend_dispatch_shards(
+                    self.user_id, cost
+                )
             if not ok:
                 await interaction.followup.send("Not enough shards!", ephemeral=True)
                 return
@@ -638,7 +795,10 @@ class PartnerSkillsView(ui.View):
             # Refresh items
             self.items = await self.bot.database.partners.get_items(self.user_id)
             self._refresh_buttons()
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
+
         return callback
 
     def _make_reroll(self, slot_idx: int, key_col: str, lvl_col: str):
@@ -657,14 +817,21 @@ class PartnerSkillsView(ui.View):
                 return
             new_key = reroll_skill(self.mode, self.partner.rarity)
             await self.bot.database.partners.update_skill_slot(
-                self.user_id, self.partner.partner_id,
-                key_col, new_key, lvl_col, 1,
+                self.user_id,
+                self.partner.partner_id,
+                key_col,
+                new_key,
+                lvl_col,
+                1,
             )
             setattr(self.partner, key_col, new_key)
             setattr(self.partner, lvl_col, 1)
             self.items = await self.bot.database.partners.get_items(self.user_id)
             self._refresh_buttons()
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
+
         return callback
 
     async def _toggle_mode(self, interaction: Interaction):
@@ -711,7 +878,7 @@ class PartnerRosterView(ui.View):
     @property
     def _page_partners(self) -> List[Partner]:
         start = self.page * _PAGE_SIZE
-        return self.partners[start: start + _PAGE_SIZE]
+        return self.partners[start : start + _PAGE_SIZE]
 
     def _refresh(self):
         self.clear_items()
@@ -722,13 +889,17 @@ class PartnerRosterView(ui.View):
             self.add_item(btn)
 
         # Pagination
-        prev_btn = ui.Button(label="◀", style=ButtonStyle.secondary, disabled=self.page == 0, row=2)
+        prev_btn = ui.Button(
+            label="◀", style=ButtonStyle.secondary, disabled=self.page == 0, row=2
+        )
         prev_btn.callback = self._prev
         self.add_item(prev_btn)
 
         next_btn = ui.Button(
-            label="▶", style=ButtonStyle.secondary,
-            disabled=self.page >= self.total_pages - 1, row=2
+            label="▶",
+            style=ButtonStyle.secondary,
+            disabled=self.page >= self.total_pages - 1,
+            row=2,
         )
         next_btn.callback = self._next
         self.add_item(next_btn)
@@ -745,13 +916,16 @@ class PartnerRosterView(ui.View):
             await interaction.response.edit_message(
                 embed=_build_partner_embed(partner, self.items), view=detail
             )
+
         return callback
 
     async def _prev(self, interaction: Interaction):
         self.page -= 1
         self._refresh()
         await interaction.response.edit_message(
-            embed=_build_roster_embed(self.partners, self.page, self.total_pages, self.items),
+            embed=_build_roster_embed(
+                self.partners, self.page, self.total_pages, self.items
+            ),
             view=self,
         )
 
@@ -759,7 +933,9 @@ class PartnerRosterView(ui.View):
         self.page += 1
         self._refresh()
         await interaction.response.edit_message(
-            embed=_build_roster_embed(self.partners, self.page, self.total_pages, self.items),
+            embed=_build_roster_embed(
+                self.partners, self.page, self.total_pages, self.items
+            ),
             view=self,
         )
 
@@ -773,6 +949,7 @@ class PartnerRosterView(ui.View):
 # PullResultView  (shown after a pull)
 # ---------------------------------------------------------------------------
 
+
 class PullResultView(ui.View):
     def __init__(self, bot, user_id: str, pull_view):
         super().__init__(timeout=60)
@@ -783,9 +960,9 @@ class PullResultView(ui.View):
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
 
-    @ui.button(label="Pull Again (10 tickets)", style=ButtonStyle.primary)
+    @ui.button(label="Pull Again (1 ticket)", style=ButtonStyle.primary)
     async def pull_again(self, interaction: Interaction, button: ui.Button):
-        await self.pull_view._do_pull(interaction, count=10)
+        await self.pull_view._do_pull(interaction, count=1)
         self.stop()
 
     @ui.button(label="Back", style=ButtonStyle.secondary)
@@ -944,12 +1121,16 @@ class PullView(ui.View):
                 if rarity == 6:
                     cur_sig = await _get_sig_lvl(self.bot, self.user_id, partner_id)
                     if cur_sig >= MAX_SIG_TIER:
-                        await self.bot.database.partners.add_tickets(self.user_id, MAX_TICKET_GRANT)
+                        await self.bot.database.partners.add_tickets(
+                            self.user_id, MAX_TICKET_GRANT
+                        )
                         result_lines.append(
                             f"{emoji} {_stars(rarity)} **{static['name']}** (Sig MAX) → +{MAX_TICKET_GRANT} 🎫"
                         )
                     else:
-                        char_shards_gained[partner_id] = char_shards_gained.get(partner_id, 0) + 1
+                        char_shards_gained[partner_id] = (
+                            char_shards_gained.get(partner_id, 0) + 1
+                        )
                         result_lines.append(
                             f"{emoji} {_stars(rarity)} **{static['name']}** → +1 char shard"
                         )
@@ -968,9 +1149,13 @@ class PullView(ui.View):
 
         # Persist shard grants
         if shards_combat > 0:
-            await self.bot.database.partners.add_combat_shards(self.user_id, shards_combat)
+            await self.bot.database.partners.add_combat_shards(
+                self.user_id, shards_combat
+            )
         if shards_dispatch > 0:
-            await self.bot.database.partners.add_dispatch_shards(self.user_id, shards_dispatch)
+            await self.bot.database.partners.add_dispatch_shards(
+                self.user_id, shards_dispatch
+            )
         for pid, amt in char_shards_gained.items():
             await self.bot.database.partners.add_shard(self.user_id, pid, amt)
 
@@ -981,7 +1166,7 @@ class PullView(ui.View):
             description="\n".join(result_lines) or "No results.",
             colour=0xFFD700,
         )
-        image_url = static['image_url']
+        image_url = static["image_url"]
         embed.set_image(url=image_url)
         embed.set_footer(
             text=(
@@ -1008,8 +1193,11 @@ async def _get_sig_lvl(bot, user_id: str, partner_id: int) -> int:
 # AffinityView / AffinityStoryView
 # ---------------------------------------------------------------------------
 
+
 class AffinityStoryView(ui.View):
-    def __init__(self, bot, user_id: str, partner: Partner, story_idx: int, affinity_view):
+    def __init__(
+        self, bot, user_id: str, partner: Partner, story_idx: int, affinity_view
+    ):
         super().__init__(timeout=120)
         self.bot = bot
         self.user_id = user_id
@@ -1085,9 +1273,15 @@ class AffinityView(ui.View):
         if self.partners:
             options = []
             for p in self.partners:
-                story_idx = next_available_story(p.affinity_encounters, p.affinity_story_seen)
+                story_idx = next_available_story(
+                    p.affinity_encounters, p.affinity_story_seen
+                )
                 indicator = " ✨" if story_idx else ""
-                portrait_tag = " 🖼️" if portrait_unlocked(p.affinity_encounters, p.affinity_story_seen) else ""
+                portrait_tag = (
+                    " 🖼️"
+                    if portrait_unlocked(p.affinity_encounters, p.affinity_story_seen)
+                    else ""
+                )
                 options.append(
                     discord.SelectOption(
                         label=f"{p.name}{indicator}",
@@ -1095,7 +1289,9 @@ class AffinityView(ui.View):
                         description=f"{p.affinity_encounters} encounters | {p.affinity_story_seen}/4 stories{portrait_tag}",
                     )
                 )
-            select = ui.Select(placeholder="Select a partner to view their story…", options=options)
+            select = ui.Select(
+                placeholder="Select a partner to view their story…", options=options
+            )
             select.callback = self._on_select
             self.add_item(select)
         back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
@@ -1106,14 +1302,22 @@ class AffinityView(ui.View):
         embed = discord.Embed(title="💞 Partner Affinity", colour=0xFF6B6B)
         lines = []
         for p in self.partners:
-            story_idx = next_available_story(p.affinity_encounters, p.affinity_story_seen)
-            portrait_tag = " 🖼️" if portrait_unlocked(p.affinity_encounters, p.affinity_story_seen) else ""
+            story_idx = next_available_story(
+                p.affinity_encounters, p.affinity_story_seen
+            )
+            portrait_tag = (
+                " 🖼️"
+                if portrait_unlocked(p.affinity_encounters, p.affinity_story_seen)
+                else ""
+            )
             new_tag = " ✨ **New story!**" if story_idx else ""
             lines.append(
                 f"{_stars(6)} **{p.name}** — {p.affinity_encounters} encounters "
                 f"({p.affinity_story_seen}/4 stories){portrait_tag}{new_tag}"
             )
-        embed.description = "\n".join(lines) if lines else "You have no 6★ partners yet."
+        embed.description = (
+            "\n".join(lines) if lines else "You have no 6★ partners yet."
+        )
         embed.set_footer(text="✨ = new story available  |  🖼️ = alt portrait unlocked")
         return embed
 
@@ -1123,7 +1327,9 @@ class AffinityView(ui.View):
         partner = next((p for p in self.partners if p.partner_id == partner_id), None)
         if not partner:
             return
-        story_idx = next_available_story(partner.affinity_encounters, partner.affinity_story_seen)
+        story_idx = next_available_story(
+            partner.affinity_encounters, partner.affinity_story_seen
+        )
         if not story_idx:
             await interaction.followup.send(
                 f"No new stories available for **{partner.name}** yet. "
@@ -1144,6 +1350,7 @@ class AffinityView(ui.View):
 # ---------------------------------------------------------------------------
 # PartnerMainView  (entry point)
 # ---------------------------------------------------------------------------
+
 
 class PartnerMainView(ui.View):
     def __init__(self, bot, user_id: str):
@@ -1178,7 +1385,7 @@ class PartnerMainView(ui.View):
         )
         embed.add_field(
             name="🎰 Pull Rates",
-            value="88% ★★★★ | 11% ★★★★★ | 1% ★★★★★★\n10 tickets per pull",
+            value="88% ★★★★\n11% ★★★★★\n1% ★★★★★★\n1 ticket per pull",
             inline=True,
         )
         embed.set_thumbnail(url="https://i.imgur.com/agWsjri.jpeg")
