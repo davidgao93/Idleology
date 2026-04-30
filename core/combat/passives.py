@@ -189,9 +189,9 @@ def _apply_partner_combat_start(
                 f"**{atk_red}** ATK and **{def_red}** DEF"
             )
         elif key == "co_curse_damage":
-            bonus = int(player.flat_atk * lvl * 0.02)
-            player.bonus_atk += bonus
-            parts.append(f"**Curse: Damage Lv.{lvl}** — ⚔️ +{bonus} ATK")
+            reduction = max(1, int(monster.attack * lvl * 0.02))
+            monster.attack = max(0, monster.attack - reduction)
+            parts.append(f"**Curse: Damage Lv.{lvl}** — {monster.name} loses **{reduction}** ATK 🩸")
         elif key == "co_curse_taken":
             bonus = int(player.flat_atk * lvl * 0.02)
             player.bonus_atk += bonus

@@ -691,10 +691,13 @@ def _pt_track_pending(player: Player, damage: int, log: list[str]) -> None:
 
 def _pt_partner_effects(
     player: Player, monster: Monster, is_hit: bool, is_crit: bool,
+    damage_dealt: int = 0, sigmund_proc: bool = False,
 ) -> tuple[str, str]:
     """
     Partner per-turn effects. Returns (partner_log, partner_name).
     Modifies monster.hp and player state directly.
+    damage_dealt: actual damage dealt to the monster this turn (for co_ward_leech).
+    sigmund_proc: whether sig_co_sigmund already fired this turn (for display only).
     """
     partner = player.active_partner
     if not partner:
@@ -727,9 +730,13 @@ def _pt_partner_effects(
                 parts.append(
                     f"🔮 **Ward Regen Lv.{lvl}** — {partner.name} restores **{added}** Ward!"
                 )
-        elif key == "co_ward_leech" and (is_hit or is_crit):
-            # Use combat_round as proxy for "was there a hit this turn" — guard against 0 damage
-            pass  # leech is applied after damage is resolved; see below
+        elif key == "co_ward_leech" and (is_hit or is_crit) and damage_dealt > 0:
+            leech_base = max(1, int(damage_dealt * lvl * 0.001))
+            added = _add_ward(player, leech_base, [])
+            if added > 0:
+                parts.append(
+                    f"🔮 **Ward Leech Lv.{lvl}** — {partner.name} siphons **{added}** Ward!"
+                )
         elif key == "co_execute" and monster.hp > 0:
             threshold_pct = lvl / 100
             if monster.hp <= int(monster.max_hp * threshold_pct):
@@ -740,29 +747,11 @@ def _pt_partner_effects(
                     f"{monster.name}! (**{dmg}** damage)"
                 )
 
-    # co_ward_leech needs the damage dealt on this turn — passed via combat_round guard
-    # We re-scan to apply it with a sentinel approach
-    for key, lvl in partner.combat_skills:
-        if key == "co_ward_leech" and (is_hit or is_crit):
-            # Only fires if a hit landed; uses partner ATK as a reasonable leech source
-            leech_base = max(1, int(partner.total_attack * lvl * 0.001))
-            added = _add_ward(player, leech_base, [])
-            if added > 0:
-                parts.append(
-                    f"🔮 **Ward Leech Lv.{lvl}** — {partner.name} siphons **{added}** Ward!"
-                )
-
-    sig_key = partner.sig_combat_key
-    sig_lvl = partner.sig_combat_lvl
-    if sig_key == "sig_co_sigmund" and sig_lvl >= 1 and (is_hit or is_crit) and monster.hp > 0:
-        if random.random() < sig_lvl * 0.02:
-            dmg = random.randint(1, max(1, partner.total_attack * 2))
-            dmg = min(dmg, monster.hp)
-            monster.hp = max(0, monster.hp - dmg)
-            parts.append(
-                f"⚔️ **Sigmund's Sig Lv.{sig_lvl}** — double strike! "
-                f"Hounds tear for **{dmg}** additional damage!"
-            )
+    if sigmund_proc:
+        sig_lvl = partner.sig_combat_lvl
+        parts.append(
+            f"🐕 **Sigmund's Pack Lv.{sig_lvl}** — the hounds drive your strike to double power!"
+        )
 
     partner_log = "\n".join(parts)
     partner_name = f"🤝 {partner.name}" if parts else ""
@@ -804,6 +793,20 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
 
     attack_multiplier = _pt_attack_multiplier(player, monster, log, calc)
     is_hit, attack_multiplier = _pt_resolve_hit(player, monster, attack_multiplier, log, calc)
+
+    # sig_co_sigmund: chance to double the attack multiplier before damage is rolled
+    _sigmund_proc = False
+    if is_hit:
+        _partner = player.active_partner
+        if (
+            _partner
+            and _partner.sig_combat_key == "sig_co_sigmund"
+            and _partner.sig_combat_lvl >= 1
+            and random.random() < _partner.sig_combat_lvl * 0.02
+        ):
+            attack_multiplier *= 2
+            _sigmund_proc = True
+
     is_crit = _pt_resolve_crit(player, monster, is_hit, log, calc)
 
     # NEET glove: all normal hits are treated as misses; crits are unaffected
@@ -826,7 +829,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     _pt_track_pending(player, final_hit, log)
     _pt_check_cull(player, monster, log)
 
-    partner_log, partner_name = _pt_partner_effects(player, monster, is_hit, is_crit)
+    partner_log, partner_name = _pt_partner_effects(
+        player, monster, is_hit, is_crit, final_hit, _sigmund_proc
+    )
 
     calc.append(f"  final_dealt: {final_hit}  monster_hp_remaining: {monster.hp}/{monster.max_hp}")
 

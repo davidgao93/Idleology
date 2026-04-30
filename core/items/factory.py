@@ -323,6 +323,18 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     except Exception:
         player.equipped_parts = {}
 
+    # --- Fetch Active Combat Partner ---
+    try:
+        partner_row = await database.partners.get_active_combat(user_id)
+        if partner_row:
+            from core.partners.data import PARTNER_DATA
+            from core.models import Partner
+            static = PARTNER_DATA.get(partner_row[2])
+            if static:
+                player.active_partner = Partner.from_row(partner_row, static)
+    except Exception:
+        player.active_partner = None
+
     # 3. Pre-compute flat stat cache (base + gear + essences + barracks).
     # Must be done after all gear is attached and before any combat begins.
     player.compute_flat_stats()

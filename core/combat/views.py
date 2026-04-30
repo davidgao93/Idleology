@@ -620,6 +620,16 @@ class CombatView(ui.View):
                             self.user_id, self.server_id, 1
                         )
                         reward_data["special"].append("🐟 Capricious Carp")
+                    elif key == "guild_ticket":
+                        await self.bot.database.partners.add_tickets(self.user_id, 1)
+                        reward_data["special"].append("🎫 Guild Ticket")
+                    elif key == "velour_doubled":
+                        # Double all currently-queued special drops
+                        reward_data["special"] = reward_data["special"] * 2
+                    elif key == "yvenn_slayer_bonus" and isinstance(val, int):
+                        # Bonus slayer progress (already handled in slayer block below,
+                        # but store count for messaging)
+                        reward_data["yvenn_slayer_bonus"] = val
 
             # Process Drops
             server_id = str(interaction.guild.id)
@@ -779,6 +789,10 @@ class CombatView(ui.View):
                             "⚡ **Taskmaster** granted double task progress!"
                         )
 
+                    # Yvenn sig: +T bonus progress per kill
+                    if reward_data.get("yvenn_slayer_bonus"):
+                        prog_gain += reward_data["yvenn_slayer_bonus"]
+
                     # 2. Progress Tracker
                     new_prog = s_profile["active_task_progress"] + prog_gain
 
@@ -828,6 +842,20 @@ class CombatView(ui.View):
                         reward_data["msgs"].append(
                             f"🎉 **Slayer Level Up!** You are now Level {new_s_lvl}."
                         )
+            # --- PARTNER END REWARDS ---
+            if self.player.active_partner:
+                from core.combat.rewards import apply_partner_end_rewards
+                partner = self.player.active_partner
+                lvl_msgs = apply_partner_end_rewards(self.player, reward_data["xp"])
+                await self.bot.database.partners.update_exp(
+                    self.user_id, partner.partner_id, partner.exp, partner.level
+                )
+                await self.bot.database.partners.increment_affinity(
+                    self.user_id, partner.partner_id
+                )
+                for msg in lvl_msgs:
+                    reward_data["msgs"].append(f"🤝 **{partner.name}** {msg}")
+
             # --------------------------
             embed = combat_ui.create_victory_embed(
                 self.player, self.monster, reward_data

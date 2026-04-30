@@ -269,7 +269,8 @@ def _roll_boss(rolls: float, mods: Dict[str, Any]) -> Dict[str, Any]:
         items[sigil] = items.get(sigil, 0) + 1
 
         if mods["boss_extra_chance"] > 0 and random.random() < mods["boss_extra_chance"]:
-            items[random.choice(_BOSS_SIGILS)] = items.get(sigil, 0) + 1
+            extra_sigil = random.choice(_BOSS_SIGILS)
+            items[extra_sigil] = items.get(extra_sigil, 0) + 1
 
     return {"gold": 0, "exp": 0, "items": items}
 

@@ -513,6 +513,7 @@ class General(commands.Cog, name="general"):
             ],
             "🐾 Companions": [
                 ("companions", "Manage your companion roster"),
+                ("partner", "Recruit and manage partners"),
             ],
             "⚔️ Combat": [
                 ("combat", "Fight monsters for XP and loot"),

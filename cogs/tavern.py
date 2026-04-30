@@ -182,6 +182,7 @@ class Tavern(commands.Cog, name="tavern"):
         # Reward
         await self.bot.database.users.update_timer(user_id, 'last_checkin_time')
         await self.bot.database.users.modify_currency(user_id, 'curios', 1)
+        await self.bot.database.partners.add_tickets(user_id, 1)
         # Reset daily shop stock counter (stored in 'curios_purchased_today')
         # We set it to 0 by negating current value
         current_purchased = user[23]
@@ -189,7 +190,7 @@ class Tavern(commands.Cog, name="tavern"):
             await self.bot.database.users.modify_currency(user_id, 'curios_purchased_today', -current_purchased)
 
         await interaction.response.send_message(
-            "✅ Check-in complete! You received a **Curious Curio**.\nTavern Shop stock has been refreshed.",
+            "✅ Check-in complete! You received a **Curious Curio** and a **Guild Ticket**.\nTavern Shop stock has been refreshed.",
             ephemeral=True
         )
 
