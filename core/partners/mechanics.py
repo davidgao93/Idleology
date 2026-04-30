@@ -158,35 +158,62 @@ def roll_ten(pity: int) -> Tuple[List[int], int]:
 # ===========================================================================
 
 
-def _roll_one_skill(skill_type: str, rarity: int) -> str:
-    """Roll a single skill key. Rare skills available to 5★ and 6★ only."""
+def _roll_skill_excluding(skill_type: str, rarity: int, excluded: List[str]) -> str:
+    """Roll a single skill key while avoiding already-used skills on this partner."""
     if skill_type == "combat":
-        if rarity >= 5 and random.random() < 0.20:
-            return random.choice(RARE_COMBAT_SKILLS)
-        return random.choice(COMMON_COMBAT_SKILLS)
+        common_pool = COMMON_COMBAT_SKILLS
+        rare_pool = RARE_COMBAT_SKILLS
     else:  # dispatch
-        if rarity >= 5 and random.random() < 0.20:
-            return random.choice(RARE_DISPATCH_SKILLS)
-        return random.choice(COMMON_DISPATCH_SKILLS)
+        common_pool = COMMON_DISPATCH_SKILLS
+        rare_pool = RARE_DISPATCH_SKILLS
+
+    # Filter out any skills already present on this partner
+    available_common = [s for s in common_pool if s not in excluded]
+    available_rare = [s for s in rare_pool if s not in excluded] if rarity >= 5 else []
+
+    # Rare skills still have 20% chance (only if any are still available)
+    if available_rare and random.random() < 0.20:
+        return random.choice(available_rare)
+
+    # Fall back to common skills
+    if available_common:
+        return random.choice(available_common)
+
+    # Extremely rare fallback (should almost never happen)
+    return random.choice(common_pool)
 
 
 def generate_skill_slots(rarity: int, skill_type: str) -> List[Optional[str]]:
     """
-    Returns a list of exactly 3 skill keys. Slots beyond the rarity's slot count
-    are None. (4★=1 active, 5★=2, 6★=3.)
+    Returns a list of exactly 3 skill keys (with None padding for unused slots).
+    4★ = 1 skill, 5★ = 2 skills, 6★ = 3 skills.
+    Guarantees no duplicate skills within the same type.
     """
-    num_slots = rarity - 3
-    slots: List[Optional[str]] = [
-        _roll_one_skill(skill_type, rarity) for _ in range(num_slots)
-    ]
+    num_slots = rarity - 3  # 1 for 4★, 2 for 5★, 3 for 6★
+    slots: List[Optional[str]] = []
+    used: set[str] = set()
+
+    for _ in range(num_slots):
+        skill = _roll_skill_excluding(skill_type, rarity, list(used))
+        slots.append(skill)
+        used.add(skill)
+
+    # Pad to exactly 3 slots (the rest stay None)
     while len(slots) < 3:
         slots.append(None)
+
     return slots
 
 
-def reroll_skill(skill_type: str, rarity: int) -> str:
-    """Return a new random skill key (level resets to 1 after reroll)."""
-    return _roll_one_skill(skill_type, rarity)
+def reroll_skill(
+    skill_type: str, rarity: int, current_slots: List[Optional[str]]
+) -> str:
+    """
+    Reroll a single skill slot while avoiding any skills already present
+    in the other slots of the same type on this partner.
+    """
+    used = {s for s in current_slots if s is not None}
+    return _roll_skill_excluding(skill_type, rarity, list(used))
 
 
 # ===========================================================================

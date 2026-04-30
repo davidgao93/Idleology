@@ -218,7 +218,7 @@ async def _apply_dispatch_rewards(
 
 class PartnerDetailView(ui.View):
     def __init__(self, bot, user_id: str, partner: Partner, items: dict, roster_view):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.partner = partner
@@ -393,7 +393,7 @@ class DispatchReplaceConfirmView(ui.View):
         items: dict,
         detail_view,
     ):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.new_partner = new_partner
@@ -470,7 +470,7 @@ class DispatchReplaceConfirmView(ui.View):
 
 class DispatchTaskSelectView(ui.View):
     def __init__(self, bot, user_id: str, partner: Partner, items: dict, detail_view):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.partner = partner
@@ -538,7 +538,7 @@ _SKILL_SLOT_COLS = {
 
 class PartnerSkillsView(ui.View):
     def __init__(self, bot, user_id: str, partner: Partner, items: dict, detail_view):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.partner = partner
@@ -683,7 +683,12 @@ class PartnerSkillsView(ui.View):
             if not ok:
                 await interaction.followup.send("Not enough shards!", ephemeral=True)
                 return
-            new_key = reroll_skill(self.mode, self.partner.rarity)
+            slots = (
+                self.partner.combat_skills
+                if self.mode == "combat"
+                else self.partner.dispatch_skills
+            )
+            new_key = reroll_skill(self.mode, self.partner.rarity, slots)
             await self.bot.database.partners.update_skill_slot(
                 self.user_id,
                 self.partner.partner_id,
@@ -728,7 +733,7 @@ class PartnerRosterView(ui.View):
         items: dict,
         main_view,
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.partners = partners
@@ -814,7 +819,7 @@ class DispatchView(ui.View):
         items: dict,
         main_view,
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.partners = partners
@@ -1125,7 +1130,7 @@ class DispatchTaskConfirmView(ui.View):
         dispatch_view: DispatchView,
         partners: List[Partner],
     ):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.partner = partner
@@ -1197,7 +1202,7 @@ class PullResultView(ui.View):
         new_partners: List[dict],
         highest_dup: Optional[dict] = None,
     ):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.pull_view = pull_view
@@ -1315,7 +1320,7 @@ _RARITY_EMOJIS = {4: "💙", 5: "💛", 6: "❤️"}
 
 class PullView(ui.View):
     def __init__(self, bot, user_id: str, main_view):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.main_view = main_view
@@ -1509,8 +1514,8 @@ class PullView(ui.View):
                 # 1x NEW → quote
                 partner = new_partners[0]
                 quote_embed = discord.Embed(
-                    title="A partner has agreed to your terms!",
-                    description=partner.static.get("pull_message", ""),
+                    title="A partner has answered your call!",
+                    description=f"{partner.pull_message}",
                     colour=_rarity_colour(partner.rarity),
                 )
                 if partner.display_image:
@@ -1520,7 +1525,7 @@ class PullView(ui.View):
                 # 1x DUPLICATE
                 dup_embed = discord.Embed(
                     title=f"Duplicate — {_stars(highest_dup_rarity)} {highest_dup_static['name']}",
-                    description="You already own this partner.",
+                    description="This partner has already joined you.",
                     colour=_rarity_colour(highest_dup_rarity),
                 )
                 dup_embed.set_image(url=highest_dup_static["image_url"])
@@ -1533,7 +1538,7 @@ class PullView(ui.View):
         else:
             # 10x → plethora recap
             plethora_embed = discord.Embed(
-                title="A plethora of partners have agreed to your terms!",
+                title="A plethora of partners have answered your call!",
                 description="\n".join(result_lines) or "No results.",
                 colour=0xFFD700,
             )
@@ -1546,7 +1551,7 @@ class PullView(ui.View):
 
         # === STAGE 3: Final view ===
         if new_partners:
-            # There are new partners → show detailed view
+            # At least one new partner → show full detail / browser
             if count == 1:
                 final_view = SinglePullDetailView(
                     self.bot, self.user_id, new_partners[0], self
@@ -1560,12 +1565,16 @@ class PullView(ui.View):
                 embed=final_view.build_embed(), view=final_view
             )
         else:
-            # NO new partners
+            # NO new partners (1x duplicate OR 10x all duplicates)
             if count == 1:
-                # 1x duplicate - keep the simple duplicate embed (no buttons needed, user can just use main Pull again)
-                pass
+                # 1x duplicate → keep the nice duplicate embed + add pull buttons
+                recap_view = PullRecapView(self.bot, self.user_id, self)
+                recap_view.message = self.message
+                await interaction.edit_original_response(
+                    embed=dup_embed, view=recap_view
+                )
             else:
-                # 10x with no new partners → attach recap view with immediate pull buttons
+                # 10x all duplicates → keep plethora recap + pull buttons
                 recap_view = PullRecapView(self.bot, self.user_id, self)
                 recap_view.message = self.message
                 await interaction.edit_original_response(
@@ -1774,7 +1783,7 @@ class AffinityStoryView(ui.View):
     def __init__(
         self, bot, user_id: str, partner: Partner, story_idx: int, affinity_view
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.partner = partner
@@ -1848,7 +1857,7 @@ class AffinityStoryView(ui.View):
 
 class AffinityView(ui.View):
     def __init__(self, bot, user_id: str, partners_6star: list, items: dict, main_view):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.partners = partners_6star
@@ -1949,7 +1958,7 @@ class AffinityView(ui.View):
 
 class PartnerMainView(ui.View):
     def __init__(self, bot, user_id: str):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.message = None

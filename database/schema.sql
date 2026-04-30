@@ -9,6 +9,9 @@
 -- ALTER TABLE users ADD COLUMN prestige_death_message TEXT DEFAULT NULL;
 -- ALTER TABLE users ADD COLUMN prestige_monument TEXT DEFAULT NULL;
 
+DROP TABLE IF EXISTS user_partner_shards;
+DROP TABLE IF EXISTS user_partners;
+
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
   `user_id` TEXT NOT NULL UNIQUE,
