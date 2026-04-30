@@ -12,7 +12,10 @@ core/          → Game logic, mechanics, UI views
   models.py    → Dataclass wrappers for DB rows
   [module]/
     mechanics.py / logic.py  → Pure math and business logic
-    views.py                 → discord.ui.View classes
+    views.py                 → Primary discord.ui.View classes
+    views_<feature>.py       → Feature-split view files (preferred for large modules)
+    ui.py                    → Embed/component builders (stateless helpers)
+    data.py                  → Asset loading and lookup tables
   items/
     factory.py               → DB tuple → dataclass constructors
     equipment_mechanics.py   → Upgrade logic (forge, refine, temper, imbue, potential)
@@ -24,6 +27,19 @@ database/
   repositories/ → All SQL lives here
 assets/        → CSV/JSON/TXT game data (monsters, items, exp tables)
 ```
+
+### View File Splitting Strategy
+
+As modules grow, split views by feature rather than letting a single `views.py` balloon. The combat module is the established pattern:
+
+| File | What goes there |
+|---|---|
+| `views.py` | Core/standard flows for the module |
+| `views_<variant>.py` | Distinct sub-features or encounter types (e.g. `views_uber.py`, `views_elemental.py`) |
+| `warning_views.py` | Confirmation dialogs and modal warnings |
+| `ui.py` | Stateless embed/component builders called by views |
+
+**Rule:** When a `views.py` exceeds ~600–800 lines, extract the next distinct sub-feature into its own `views_<name>.py`. Do not split prematurely — wait until a natural feature boundary exists.
 
 ---
 
@@ -55,6 +71,7 @@ async def combat(self, interaction: discord.Interaction):
 - **`core/models.py`**: Dataclasses only. No DB calls. Computed properties (`@property`) are fine.
 - **`core/[module]/mechanics.py`**: Static methods, pure functions, no I/O.
 - **`core/[module]/views.py`**: `discord.ui.View` subclasses. Views own their state and call mechanics/DB as needed.
+- **`core/[module]/views_<feature>.py`**: Split view files for large modules. Same rules as `views.py`.
 - **`core/items/factory.py`**: `create_weapon(row)`, `create_armor(row)`, etc. map DB tuples to models.
 
 ### Database (`database/`)
@@ -62,7 +79,7 @@ async def combat(self, interaction: discord.Interaction):
 - All SQL lives in `database/repositories/`. Never write raw SQL outside this directory.
 - Access via `bot.database.<repo>`: `bot.database.users`, `bot.database.equipment`, etc.
 - Call `await repo.commit()` (inherited from `BaseRepository`) after writes.
-- Available repositories: `users`, `equipment`, `skills`, `social`, `settings`, `companions`, `delve`, `settlement`, `slayer`, `uber`, `essences`, `alchemy`, `ascension`, `codex`, `duels`, `trade`.
+- Available repositories: `users`, `equipment`, `skills`, `social`, `settings`, `companions`, `delve`, `settlement`, `slayer`, `uber`, `essences`, `alchemy`, `ascension`, `codex`, `duels`, `trade`, `partners`, `monster_parts`, `prestige`.
 
 ---
 
@@ -107,6 +124,13 @@ Central character dataclass. Built from a DB row plus optional equipped gear.
 - `apothecary_workers`, `barracks_workers` (settlement)
 - `active_task_species`, `slayer_emblem: dict`
 
+**Partners:**
+- `active_partners: List[Partner]` — partners with active combat skills contribute to combat
+
+**Monster parts (Consume system):**
+- `equipped_parts: dict` — maps slot → hp_value for all equipped monster body parts
+- Contributes to `total_max_hp` via `get_parts_hp_bonus()`
+
 **Alchemy passives:**
 - `potion_passives`, `alchemy_atk_boost_pct`, `alchemy_def_boost_pct`
 - `alchemy_dmg_reduction_pct`, `alchemy_overcap_hp`, `alchemy_linger_hp`, `alchemy_guaranteed_hit`
@@ -129,14 +153,15 @@ Central character dataclass. Built from a DB row plus optional equipped gear.
 - `lucifer_pdr_burst` and other essence-specific transients
 
 **Key methods:**
-- `get_total_attack()`, `get_total_defence()` — includes all gear/companion/tome bonuses
+- `get_total_attack()`, `get_total_defence()` — includes all gear/companion/tome/partner bonuses
 - `get_total_pdr()`, `get_total_fdr()` — physical/flat damage reduction (hard cap 80%)
 - `get_total_ward_percentage()`, `get_combat_ward_value()`
 - `get_current_crit_target()` — lower is better
 - `get_total_rarity()`, `get_special_drop_bonus()` (hard cap 20%)
 - `get_ascension_bonuses()`, `get_tome_bonus(stat)`
 - `get_weapon_passive()`, `get_armor_passive()`, etc.
-- `total_max_hp` property (includes all bonuses)
+- `get_parts_hp_bonus()` — sum of all equipped monster part hp_values
+- `total_max_hp` property (includes all bonuses including parts)
 
 ### Equipment Models
 
@@ -158,12 +183,37 @@ All built via `core/items/factory.py`.
 - Properties: `passive_value`, `description`, `balanced_passive_value`, `balanced_description`
 - `is_active` — whether this companion is in the active slot
 
+### `Partner`
+Named NPC allies recruited via gacha and deployed on combat/dispatch tasks.
+- `id`, `partner_id`, `level`, `exp`, `portrait`
+- `combat_skills: List[int]` — skill levels for 3 combat slots + 1 signature
+- `dispatch_skills: List[int]` — skill levels for 3 dispatch slots + 1 signature
+- `dispatch_task`, `dispatch_start_time`, `dispatch_duration` — active dispatch state
+- `affinity` — encounter count; unlocks story tiers at 25/50/75/100
+- Combat skills: joint attack, heal, damage reduction, stat transfer, monster debuff, XP/gold boost, rarity bonus, crit scaling, curse damage, etc.
+- Dispatch skills: XP boost, gold boost, extra reward, skilling boost, settlement mats, boss keys, contracts, pinnacle finds
+- Signature abilities are partner-specific (6-star unlocks): Skol, Eve, Kay, Sigmund, Velour, Flora, Yvenn
+- Data loaded from `assets/partners.csv`; stories from `assets/partners/affinity_stories.json`
+
+### `MonsterModifier`
+Structured modifier applied to a monster instance.
+- `name: str`, `tier: int` (0 for flat/boss modifiers), `value: float`, `difficulty: float`
+- Defined via `ModifierDef` in `core/combat/modifier_data.py`
+
+**Modifier pools:**
+- **Common** (tiered 1–5, level-gated): Empowered, Fortified, Titanic, Savage, Lethal, Devastating, Keen, Blinding, Crushing, Searing, Stalwart, Vampiric, Mending, Thorned, Venomous, Parching, Veiled, Enraged, Jinxed, Ironclad, and more
+- **Rare tiered**: Commanding, Dampening, Nullifying
+- **Rare flat**: Unblockable, Unavoidable, Dispelling, Multistrike, Spectral, Executioner, Time Lord
+- **Boss**: Overwhelming, Inevitable, Sundering, Unerring
+- **Uber** (hardcoded per encounter): Element protections, Hell's Fury, Void Aura, Balanced Strikes
+- **Ascended**: Special modifier; value = `min(20, max(1, monster.level // 10))`
+
 ### `CodexTome`
 - `slot`, `passive_type`, `tier`, `value: float`
 - Tomes grant multiplier bonuses (Vitality, Wrath, Bastion, Bulwark, Resilience, Precision, Providence)
 
 ### `Monster`
-`name, level, hp, max_hp, xp, attack, defence, modifiers, image, flavor, species, is_boss, combat_round, is_essence`
+`name, level, hp, max_hp, xp, attack, defence, modifiers: List[MonsterModifier], image, flavor, species, is_boss, combat_round, is_essence`
 
 ### `DungeonState`
 Tracks multi-room dungeon crawls: `current_floor`, `max_regular_floors`, player HP/ward snapshot, `potions_remaining`, `dungeon_coins`, `loot_gathered`, `player_buffs`, `player_curses`, `current_room_options`, `last_action_message`
@@ -182,6 +232,7 @@ Tracks multi-room dungeon crawls: `current_floor`, `max_regular_floors`, player 
 | `calcs.py` | Hit chance, damage range, crit, passive detection |
 | `player_turn.py` | Player action handling, ability and passive triggers |
 | `monster_turn.py` | Enemy AI, attack patterns, modifier effects |
+| `modifier_data.py` | `ModifierDef` table — all modifier definitions, tiers, level gates, difficulty values |
 | `combat_log.py` | Round-by-round log construction |
 | `encounters.py` | Encounter setup, monster selection |
 | `gen_mob.py` | Procedural monster generation (species, modifiers, scaling) |
@@ -190,7 +241,7 @@ Tracks multi-room dungeon crawls: `current_floor`, `max_regular_floors`, player 
 | `rewards.py` | XP, gold, loot distribution |
 | `experience.py` | Experience scaling |
 | `helpers.py` | Utility functions |
-| `views.py` | Main combat UI (64KB — all standard combat flows) |
+| `views.py` | Main combat UI — standard combat flows |
 | `ui.py` | UI component builders |
 | `views_uber.py` | Uber boss-specific UI |
 | `views_elemental.py` | Elemental combat variant UI |
@@ -205,6 +256,8 @@ Key functions in `calcs.py`:
 - `calculate_hit_chance(player, monster)`
 - `calculate_damage_taken(player, monster)`
 - `get_player_passive_indices(player)` — returns which passives are active
+
+**Adding a new modifier:** Add a `ModifierDef` entry to `core/combat/modifier_data.py`, then handle the effect in `monster_turn.py` (or `player_turn.py` if it affects the player's turn). Do not hardcode values anywhere else.
 
 ---
 
@@ -260,9 +313,51 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 - Progress tracked in `database/repositories/uber.py`.
 - Drops unique materials: `blessed_bismuth`, `sparkling_sprig`, `capricious_carp`.
 
+### Prestige Hall (`cogs/prestige.py`, `database/repositories/prestige.py`)
+- Cosmetic customization and server monument system. No separate `core/` module — all logic lives in the cog.
+- **Cosmetics** (purchased once with gold, free to swap after):
+  - Titles (6 options, 1B gold each): The Gilded, Iron Warden, The Blessed, Void-Touched, Shadowborn, Ascendant
+  - Flairs (3 options, 1B gold each): Casual, Heroic, Ominous
+  - Custom Avatar: 100M gold per upload (URL, must be square ≤600×600px)
+  - Rename: 750M gold per rename
+  - Death Message: 300M gold to unlock, free to update after
+  - Monument Quote: 2B gold to unlock, free to update after
+- **Hall of Fame**: Displays monument quotes from the top 10 players on the server (ordered by level). Visible to anyone via `/prestige`.
+- **DB tables:** `prestige_owned` (user_id, item_type, item_key); cosmetic fields stored directly on the `users` row (`prestige_border`, `prestige_title`, `prestige_display_name`, `prestige_flair`, `prestige_death_message`, `prestige_monument`).
+- **Key classes:** `PrestigeHubView` (tab-based hub: Overview / Shop / Hall of Fame), `PrestigeBuilder` (static embed builders), modals: `AvatarModal`, `RenameModal`, `DeathMessageModal`, `MonumentModal`.
+
 ---
 
 ## Other Systems
+
+### Consume (`core/consume/`, `cogs/consume.py`)
+- Players loot **monster body parts** from combat and equip them to gain permanent Max HP bonuses.
+- 8 body slots: head, torso, right_arm, left_arm, right_leg, left_leg, cheeks, organs.
+- Inventory cap: 20 parts. Parts are destroyed on equip (slot conflict triggers confirmation).
+- Bulk discard: remove all parts below a specified ilvl.
+- **DB tables:** `monster_parts` (inventory: id, user_id, slot_type, monster_name, ilvl, hp_value), `monster_parts_equipped` (active slots: user_id, slot_type, hp_value, monster_name).
+- **Key classes:** `ConsumeView`, `PartDetailView`, `EquipConfirmView`, `BulkDiscardModal`.
+- Repository: `database/repositories/monster_parts.py`.
+
+### Partners (`core/partners/`, `cogs/partners.py`)
+- Gacha-recruited NPC allies. Deployed passively in combat or sent on timed dispatch tasks.
+- **Module files:**
+
+| File | Purpose |
+|---|---|
+| `views.py` | Main hub: roster, detail pages, recruitment (roll), skill management |
+| `dispatch.py` | Reward calculation for combat/gathering dispatch tasks |
+| `mechanics.py` | Level/skill progression, cost tables, skill definitions |
+| `ui.py` | Embed builders |
+| `data.py` | Load partner metadata from `assets/partners.csv` |
+| `resources.py` | Rarity colors, skill name/star display helpers |
+
+- **Skills:** 3 combat slots + 1 combat signature; 3 dispatch slots + 1 dispatch signature. Combat max level 10, dispatch max level 5.
+- **Dispatch tasks:** Combat (gold + rune rewards, boss keys), Gathering (mining/fishing/woodcutting loot), Boss tasks. Accumulate up to 48 hours (Kay signature extends by 12–60h).
+- **Affinity:** Encounter count unlocks story tiers at 25/50/75/100 thresholds (`assets/partners/affinity_stories.json`).
+- **Gacha:** Single and ten-pull with pity counter. Currency: guild tickets.
+- **DB tables:** `user_partners`, `user_partner_items` (tickets, pity, skill shards), `user_partner_shards` (signature upgrade currency per partner).
+- Repository: `database/repositories/partners.py`.
 
 ### Alchemy (`core/alchemy/`, `cogs/alchemy.py`)
 - Potion transmutation with passive effects on potions.
@@ -309,6 +404,9 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 | `alchemy` | `get_level`, `update_level`, `get_potion_passives`, `update_potion_passive` |
 | `ascension` | `get_unlocked_floors`, `unlock_floor`, `get_all_unlocks` |
 | `codex` | `get_chapter_progress`, `update_progress`, `record_run` |
+| `partners` | `get_all`, `get_by_id`, `add_partner`, `update_skills`, `update_dispatch`, `update_affinity` |
+| `monster_parts` | `get_inventory`, `add_part`, `remove_part`, `get_equipped`, `equip_part`, `bulk_discard` |
+| `prestige` | `get_owned`, `add_owned`, `get_all_monuments` |
 | `social` | Ideology and follower data |
 | `settings` | User personal preferences |
 | `duels` | Win/loss records |
@@ -320,7 +418,7 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 1. **SQL changes** → `database/schema.sql` + new methods in the appropriate `database/repositories/*.py`
 2. **Model changes** → `core/models.py` dataclass
 3. **Logic** → `core/<module>/mechanics.py` (pure functions, no I/O)
-4. **UI** → `core/<module>/views.py` (`discord.ui.View` subclass)
+4. **UI** → `core/<module>/views.py` (`discord.ui.View` subclass); split into `views_<feature>.py` if the module already has a large `views.py`
 5. **Command** → `cogs/<module>.py` (thin handler only)
 6. **State guard** → `set_active` / `clear_active` if the feature is interactive
 
@@ -381,6 +479,7 @@ names = load_list("assets/items/swords.txt")
 - Do not skip `await interaction.response.defer()` before slow operations.
 - Do not add speculative abstractions — build only what the task requires.
 - Do not add error handling for impossible states; validate only at Discord interaction boundaries.
+- Do not hardcode modifier values outside `core/combat/modifier_data.py`.
 
 ---
 
