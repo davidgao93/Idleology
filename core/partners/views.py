@@ -962,14 +962,18 @@ class PullResultView(ui.View):
 
     @ui.button(label="Pull Again (1 ticket)", style=ButtonStyle.primary)
     async def pull_again(self, interaction: Interaction, button: ui.Button):
+        # Recreate a fresh PullView after pull instead of reusing old one
         await self.pull_view._do_pull(interaction, count=1)
+        # Optionally stop the old result view
         self.stop()
 
     @ui.button(label="Back", style=ButtonStyle.secondary)
     async def back(self, interaction: Interaction, button: ui.Button):
         items = await self.bot.database.partners.get_items(self.user_id)
+        pull_view = PullView(self.bot, self.user_id, self.pull_view.main_view)  # pass main_view
         await interaction.response.edit_message(
-            embed=self.pull_view.build_embed(items), view=self.pull_view
+            embed=pull_view.build_embed(items), 
+            view=pull_view
         )
         self.stop()
 
