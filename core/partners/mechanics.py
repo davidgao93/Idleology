@@ -4,10 +4,10 @@ import json
 import math
 import os
 import random
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
-    from core.models import Partner
+    pass
 
 # ---------------------------------------------------------------------------
 # Load exp table once at import time
@@ -66,8 +66,8 @@ RARE_DISPATCH_SKILLS: List[str] = [
 ]
 
 # Upgrade shard costs indexed by (current_level - 1)
-COMBAT_UPGRADE_COSTS: List[int] = [3, 7, 10, 12, 15, 18, 20, 25, 30]   # lvl 1→2 … 9→10
-DISPATCH_UPGRADE_COSTS: List[int] = [5, 10, 15, 30]                      # lvl 1→2 … 4→5
+COMBAT_UPGRADE_COSTS: List[int] = [3, 7, 10, 12, 15, 18, 20, 25, 30]  # lvl 1→2 … 9→10
+DISPATCH_UPGRADE_COSTS: List[int] = [5, 10, 15, 30]  # lvl 1→2 … 4→5
 
 REROLL_COMBAT_COST = 10
 REROLL_DISPATCH_COST = 5
@@ -157,6 +157,7 @@ def roll_ten(pity: int) -> Tuple[List[int], int]:
 # Skill generation
 # ===========================================================================
 
+
 def _roll_one_skill(skill_type: str, rarity: int) -> str:
     """Roll a single skill key. Rare skills available to 5★ and 6★ only."""
     if skill_type == "combat":
@@ -175,7 +176,9 @@ def generate_skill_slots(rarity: int, skill_type: str) -> List[Optional[str]]:
     are None. (4★=1 active, 5★=2, 6★=3.)
     """
     num_slots = rarity - 3
-    slots: List[Optional[str]] = [_roll_one_skill(skill_type, rarity) for _ in range(num_slots)]
+    slots: List[Optional[str]] = [
+        _roll_one_skill(skill_type, rarity) for _ in range(num_slots)
+    ]
     while len(slots) < 3:
         slots.append(None)
     return slots
@@ -189,6 +192,7 @@ def reroll_skill(skill_type: str, rarity: int) -> str:
 # ===========================================================================
 # Upgrade costs
 # ===========================================================================
+
 
 def get_combat_upgrade_cost(current_level: int) -> Optional[int]:
     """Shard cost to level a combat skill from current_level to current_level+1."""
@@ -207,39 +211,40 @@ def get_dispatch_upgrade_cost(current_level: int) -> Optional[int]:
 # Effect text
 # ===========================================================================
 
+
 def get_skill_effect_text(key: str, level: int) -> str:
     """Human-readable passive description at a given level (1–10 for combat, 1–5 for dispatch)."""
     L = level
     _texts = {
         # --- Common combat ---
-        "co_joint_attack":      f"{L * 10}% chance to attack alongside you (1 – partner ATK×2 damage)",
-        "co_heal":              f"Heal {L}% max HP every 3 turns",
-        "co_damage_reduction":  f"{L * 5}% chance to halve incoming damage",
-        "co_stat_transfer":     f"Add {L * 10}% of partner ATK/DEF/HP to your base stats (combat start)",
-        "co_monster_debuff":    f"Reduce monster ATK and DEF by {L * 2}% (combat start)",
-        "co_xp_boost":          f"+{L * 5}% XP from combat",
-        "co_gold_boost":        f"+{L * 5}% gold from combat",
-        "co_special_rarity":    f"+{L * 0.1:.1f}% special drop rate",
-        "co_atk_from_def":      f"Your base ATK gains {L * 25}% of partner DEF",
-        "co_def_from_atk":      f"Your base DEF gains {L * 20}% of partner ATK",
-        "co_curse_damage":      f"Curse: monster deals {L * 2}% less damage",
-        "co_curse_taken":       f"Curse: monster takes {L * 2}% more damage",
+        "co_joint_attack": f"{L * 10}% chance to attack alongside you",
+        "co_heal": f"Heals you for {L}% max HP every 3 turns",
+        "co_damage_reduction": f"{L * 5}% chance to halve damage taken",
+        "co_stat_transfer": f"On combat start, add {L * 10}% of partner's stats to your base stats",
+        "co_monster_debuff": f"On combat start, reduce monster ATK and DEF by {L * 2}%",
+        "co_xp_boost": f"+{L * 5}% XP from combat",
+        "co_gold_boost": f"+{L * 5}% gold from combat",
+        "co_special_rarity": f"+{L * 0.1:.1f}% special rarity",
+        "co_atk_from_def": f"Your base ATK gains {L * 25}% of partner DEF",
+        "co_def_from_atk": f"Your base DEF gains {L * 20}% of partner ATK",
+        "co_curse_damage": f"Curses the monster, it deals {L * 2}% less damage",
+        "co_curse_taken": f"Curses the monster, it takes {L * 2}% more damage",
         # --- Rare combat ---
-        "co_crit_rate":         f"+{L}% critical strike chance",
-        "co_crit_damage":       f"+{L * 10}% critical strike damage",
-        "co_execute":           f"Auto-execute monster at {L}% HP",
-        "co_ward_regen":        f"+{L * 10} ward per turn",
-        "co_ward_leech":        f"{L * 0.1:.1f}% of damage dealt restored as ward",
+        "co_crit_rate": f"+{L}% critical strike chance",
+        "co_crit_damage": f"+{L * 10}% critical strike multiplier",
+        "co_execute": f"Culls the monster at {L}% HP",
+        "co_ward_regen": f"Generate {L * 10} ward per turn to the player",
+        "co_ward_leech": f"{L * 0.1:.1f}% of damage dealt by the player is restored as ward",
         # --- Common dispatch ---
-        "di_exp_boost":         f"+{L * 10}% EXP during combat dispatch",
-        "di_gold_boost":        f"+{L * 10}% gold during combat dispatch",
-        "di_extra_reward":      f"+{L}% bonus reward chance from combat dispatch ({5 + L}% total)",
-        "di_skilling_boost":    f"+{L * 10}% materials from gathering dispatch",
+        "di_exp_boost": f"+{L * 10}% EXP during combat dispatch",
+        "di_gold_boost": f"+{L * 10}% gold during combat dispatch",
+        "di_extra_reward": f"+{L}% bonus rewards from combat dispatch ({5 + L}% total)",
+        "di_skilling_boost": f"+{L * 10}% materials from gathering dispatch",
         # --- Rare dispatch ---
-        "di_settlement_mat":    f"+{L}% chance to find a settlement material (total {5 + L}%)",
-        "di_boss_reward":       f"+{L}% chance for an extra boss dispatch reward (total {5 + L}%)",
-        "di_contract_find":     f"+{L}% chance to find a Guild Contract (total {5 + L}%)",
-        "di_pinnacle_find":     f"+{L}% chance to find a pinnacle item (total {5 + L}%)",
+        "di_settlement_mat": f"In combat dispatch, +{L}% chance to find a settlement material)",
+        "di_boss_reward": f"In Boss dispatch, +{L}% chance for an extra reward)",
+        "di_contract_find": f"In combat dispatch, +{L}% chance to find a Guild Ticket)",
+        "di_pinnacle_find": f"In combat dispatch, +{L}% chance to find a pinnacle item)",
     }
     return _texts.get(key, f"{key} Lv.{L}")
 
@@ -259,11 +264,13 @@ def get_sig_combat_effect_text(partner_id: int, tier: int) -> str:
     if partner_id == 4:  # Sigmund
         return f"{T * 2}% chance to double your damage on a hit"
     if partner_id == 5:  # Velour
-        return f"{T * 2}% chance to double all special combat rewards"
+        return f"{T * 2}% chance to double all special rarity drops"
     if partner_id == 6:  # Flora
         return f"Convert {T * 10}% of monster gold drops into skilling materials"
     if partner_id == 7:  # Yvenn
-        return f"Normal monsters count as task monsters; +{T} bonus slayer progress per kill"
+        return (
+            f"All monsters count as task monsters; +{T} bonus slayer progress per kill"
+        )
     return "???"
 
 
@@ -272,22 +279,24 @@ def get_sig_dispatch_effect_text(partner_id: int, tier: int) -> str:
         return "???"
     T = tier
     if partner_id == 1:  # Skol
-        return f"{T}% chance to find an essence during normal dispatch"
+        return f"In combat dispatch, +{T}% chance to find an essence"
     if partner_id == 2:  # Eve
-        return f"{T}% chance to find a spirit stone during normal dispatch"
+        return f"In combat dispatch, +{T}% chance to find a spirit stone"
     if partner_id == 3:  # Kay
         bonus = _KAY_DISPATCH_BONUS_HOURS[T]
-        return f"Accumulate up to {48 + bonus}h of rewards (vs. 48h default)"
+        return f"Accumulate up to {48 + bonus}h of rewards"
     if partner_id == 4:  # Sigmund
         pct = int(_SIGMUND_EFFECTIVENESS[T] * 100)
-        return f"Assignable to two tasks simultaneously at {pct}% effectiveness"
+        return (
+            f"Assignable to two dispatch tasks simultaneously at {pct}% effectiveness"
+        )
     if partner_id == 5:  # Velour
-        return f"{T}% chance to find an elemental key during normal dispatch"
+        return f"In combat dispatch, +{T}% chance to find an elemental key"
     if partner_id == 6:  # Flora
         pct = int(_FLORA_DOUBLE_CHANCE[T] * 100)
-        return f"{pct}% chance to double skilling dispatch materials"
+        return f"{pct}% chance to double gathering dispatch materials earned"
     if partner_id == 7:  # Yvenn
-        return f"{T}% chance to find a slayer drop during normal dispatch"
+        return f"In combat dispatch, +{T}% chance to find a slayer drop"
     return "???"
 
 
@@ -338,7 +347,10 @@ def grant_xp(
 # Affinity helpers
 # ===========================================================================
 
-def next_available_story(affinity_encounters: int, affinity_story_seen: int) -> Optional[int]:
+
+def next_available_story(
+    affinity_encounters: int, affinity_story_seen: int
+) -> Optional[int]:
     """
     Returns the index of the next story the player can read, or None.
     Stories must be read in order.

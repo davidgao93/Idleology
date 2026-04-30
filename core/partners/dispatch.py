@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from datetime import datetime, timezone
 from math import floor
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
     from core.models import Partner
@@ -18,7 +18,13 @@ from core.partners.mechanics import (
 # Loot tables
 # ---------------------------------------------------------------------------
 
-_COMBAT_LOOT_TYPES = ["gold", "boss_key", "refinement_rune", "potential_rune", "shatter_rune"]
+_COMBAT_LOOT_TYPES = [
+    "gold",
+    "boss_key",
+    "refinement_rune",
+    "potential_rune",
+    "shatter_rune",
+]
 _COMBAT_LOOT_WEIGHTS = [75, 10, 5, 5, 5]
 
 _BOSS_SIGILS = ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]
@@ -27,7 +33,7 @@ _BOSS_SIGILS = ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]
 _COMBAT_GOLD_MIN = 500
 _COMBAT_GOLD_MAX = 2_000
 
-# XP range per combat dispatch reward roll (granted to the player)
+# XP range per combat dispatch reward roll (granted to the partner)
 _COMBAT_EXP_MIN = 500
 _COMBAT_EXP_MAX = 1_500
 
@@ -36,39 +42,39 @@ _COMBAT_EXP_MAX = 1_500
 # ---------------------------------------------------------------------------
 
 _MINING_TIERS: Dict[str, dict] = {
-    "iron":     {"materials": ["iron"],              "qty": (2, 5)},
-    "steel":    {"materials": ["iron", "coal"],      "qty": (3, 6)},
-    "gold":     {"materials": ["gold"],              "qty": (2, 5)},
-    "platinum": {"materials": ["platinum"],          "qty": (2, 4)},
-    "idea":     {"materials": ["idea"],              "qty": (1, 3)},
+    "iron": {"materials": ["iron"], "qty": (2, 5)},
+    "steel": {"materials": ["iron", "coal"], "qty": (3, 6)},
+    "gold": {"materials": ["gold"], "qty": (2, 5)},
+    "platinum": {"materials": ["platinum"], "qty": (2, 4)},
+    "idea": {"materials": ["idea"], "qty": (1, 3)},
 }
 
 _FISHING_TIERS: Dict[str, dict] = {
-    "desiccated": {"materials": ["desiccated_bones"],  "qty": (2, 5)},
-    "regular":    {"materials": ["regular_bones"],     "qty": (3, 6)},
-    "sturdy":     {"materials": ["sturdy_bones"],      "qty": (2, 5)},
-    "reinforced": {"materials": ["reinforced_bones"],  "qty": (2, 4)},
-    "titanium":   {"materials": ["titanium_bones"],    "qty": (1, 3)},
+    "desiccated": {"materials": ["desiccated_bones"], "qty": (2, 5)},
+    "regular": {"materials": ["regular_bones"], "qty": (3, 6)},
+    "sturdy": {"materials": ["sturdy_bones"], "qty": (2, 5)},
+    "reinforced": {"materials": ["reinforced_bones"], "qty": (2, 4)},
+    "titanium": {"materials": ["titanium_bones"], "qty": (1, 3)},
 }
 
 _WOODCUTTING_TIERS: Dict[str, dict] = {
-    "flimsy":    {"materials": ["oak_logs"],                   "qty": (2, 5)},
-    "oak":       {"materials": ["oak_logs", "willow_logs"],    "qty": (3, 6)},
-    "willow":    {"materials": ["willow_logs"],                "qty": (2, 5)},
-    "mahogany":  {"materials": ["mahogany_logs"],              "qty": (2, 4)},
-    "magic":     {"materials": ["magic_logs"],                 "qty": (2, 4)},
-    "idea":      {"materials": ["idea_logs"],                  "qty": (1, 3)},
+    "flimsy": {"materials": ["oak_logs"], "qty": (2, 5)},
+    "oak": {"materials": ["oak_logs", "willow_logs"], "qty": (3, 6)},
+    "willow": {"materials": ["willow_logs"], "qty": (2, 5)},
+    "mahogany": {"materials": ["mahogany_logs"], "qty": (2, 4)},
+    "magic": {"materials": ["magic_logs"], "qty": (2, 4)},
+    "idea": {"materials": ["idea_logs"], "qty": (1, 3)},
 }
 
 _GATHERING_SKILL_MAP = {
-    "mining":      _MINING_TIERS,
-    "fishing":     _FISHING_TIERS,
+    "mining": _MINING_TIERS,
+    "fishing": _FISHING_TIERS,
     "woodcutting": _WOODCUTTING_TIERS,
 }
 
 _TOOL_COLUMN = {
-    "mining":      "pickaxe_tier",
-    "fishing":     "fishing_rod",
+    "mining": "pickaxe_tier",
+    "fishing": "fishing_rod",
     "woodcutting": "axe_type",
 }
 
@@ -76,6 +82,7 @@ _TOOL_COLUMN = {
 # ===========================================================================
 # Core helpers
 # ===========================================================================
+
 
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -89,7 +96,9 @@ def get_cap_hours(partner: Partner) -> float:
     return cap
 
 
-def elapsed_hours(start_time_str: Optional[str], now: Optional[datetime] = None) -> float:
+def elapsed_hours(
+    start_time_str: Optional[str], now: Optional[datetime] = None
+) -> float:
     """Hours elapsed since start_time_str (ISO format). Returns 0 for missing input."""
     if not start_time_str:
         return 0.0
@@ -102,7 +111,9 @@ def elapsed_hours(start_time_str: Optional[str], now: Optional[datetime] = None)
     return max(0.0, (now - start).total_seconds() / 3600.0)
 
 
-def reward_rolls(partner: Partner, start_time_str: str, now: Optional[datetime] = None) -> float:
+def reward_rolls(
+    partner: Partner, start_time_str: str, now: Optional[datetime] = None
+) -> float:
     """
     Number of reward rolls accumulated.
     Each hour = 1 tick = 0.25 rolls. Capped by get_cap_hours().
@@ -115,6 +126,7 @@ def reward_rolls(partner: Partner, start_time_str: str, now: Optional[datetime] 
 # ===========================================================================
 # Dispatch skill modifier extraction
 # ===========================================================================
+
 
 def _extract_skill_modifiers(partner: Partner) -> Dict[str, Any]:
     """
@@ -140,7 +152,7 @@ def _extract_skill_modifiers(partner: Partner) -> Dict[str, Any]:
         "flora_double_chance": 0.0,
     }
 
-    for (key, lvl) in partner.dispatch_skills:
+    for key, lvl in partner.dispatch_skills:
         if not key:
             continue
         if key == "di_exp_boost":
@@ -181,6 +193,7 @@ def _extract_skill_modifiers(partner: Partner) -> Dict[str, Any]:
 # Per-task reward rollers
 # ===========================================================================
 
+
 def _roll_combat(rolls: float, mods: Dict[str, Any]) -> Dict[str, Any]:
     """Rolls combat dispatch rewards for `rolls` reward rolls."""
     gold = 0
@@ -188,7 +201,9 @@ def _roll_combat(rolls: float, mods: Dict[str, Any]) -> Dict[str, Any]:
     items: Dict[str, int] = {}
 
     for _ in range(int(rolls)):
-        gold += int(random.randint(_COMBAT_GOLD_MIN, _COMBAT_GOLD_MAX) * mods["gold_mult"])
+        gold += int(
+            random.randint(_COMBAT_GOLD_MIN, _COMBAT_GOLD_MAX) * mods["gold_mult"]
+        )
         exp += int(random.randint(_COMBAT_EXP_MIN, _COMBAT_EXP_MAX) * mods["exp_mult"])
 
         loot = random.choices(_COMBAT_LOOT_TYPES, weights=_COMBAT_LOOT_WEIGHTS, k=1)[0]
@@ -197,13 +212,21 @@ def _roll_combat(rolls: float, mods: Dict[str, Any]) -> Dict[str, Any]:
 
         # di_extra_reward bonus item
         if random.random() < mods["extra_reward_chance"]:
-            extra = random.choices(_COMBAT_LOOT_TYPES, weights=_COMBAT_LOOT_WEIGHTS, k=1)[0]
+            extra = random.choices(
+                _COMBAT_LOOT_TYPES, weights=_COMBAT_LOOT_WEIGHTS, k=1
+            )[0]
             if extra == "gold":
-                gold += int(random.randint(_COMBAT_GOLD_MIN, _COMBAT_GOLD_MAX) * mods["gold_mult"])
+                gold += int(
+                    random.randint(_COMBAT_GOLD_MIN, _COMBAT_GOLD_MAX)
+                    * mods["gold_mult"]
+                )
             else:
                 items[extra] = items.get(extra, 0) + 1
 
-        if mods["settlement_mat_chance"] > 0 and random.random() < mods["settlement_mat_chance"]:
+        if (
+            mods["settlement_mat_chance"] > 0
+            and random.random() < mods["settlement_mat_chance"]
+        ):
             mat = random.choice(["timber", "stone"])
             items[mat] = items.get(mat, 0) + 1
 
@@ -217,14 +240,23 @@ def _roll_combat(rolls: float, mods: Dict[str, Any]) -> Dict[str, Any]:
         if mods["essence_chance"] > 0 and random.random() < mods["essence_chance"]:
             items["essence"] = items.get("essence", 0) + 1
 
-        if mods["spirit_stone_chance"] > 0 and random.random() < mods["spirit_stone_chance"]:
+        if (
+            mods["spirit_stone_chance"] > 0
+            and random.random() < mods["spirit_stone_chance"]
+        ):
             items["spirit_stone"] = items.get("spirit_stone", 0) + 1
 
-        if mods["elemental_key_chance"] > 0 and random.random() < mods["elemental_key_chance"]:
+        if (
+            mods["elemental_key_chance"] > 0
+            and random.random() < mods["elemental_key_chance"]
+        ):
             ekey = random.choice(_BOSS_SIGILS)
             items[ekey] = items.get(ekey, 0) + 1
 
-        if mods["slayer_drop_chance"] > 0 and random.random() < mods["slayer_drop_chance"]:
+        if (
+            mods["slayer_drop_chance"] > 0
+            and random.random() < mods["slayer_drop_chance"]
+        ):
             items["slayer_drop"] = items.get("slayer_drop", 0) + 1
 
     return {"gold": gold, "exp": exp, "items": items}
@@ -248,7 +280,10 @@ def _roll_gathering(
         qty_min, qty_max = tier_data["qty"]
         qty = int(random.randint(qty_min, qty_max) * mods["skilling_mult"])
 
-        if mods["flora_double_chance"] > 0 and random.random() < mods["flora_double_chance"]:
+        if (
+            mods["flora_double_chance"] > 0
+            and random.random() < mods["flora_double_chance"]
+        ):
             qty *= 2
 
         items[material] = items.get(material, 0) + qty
@@ -268,7 +303,10 @@ def _roll_boss(rolls: float, mods: Dict[str, Any]) -> Dict[str, Any]:
         sigil = random.choice(_BOSS_SIGILS)
         items[sigil] = items.get(sigil, 0) + 1
 
-        if mods["boss_extra_chance"] > 0 and random.random() < mods["boss_extra_chance"]:
+        if (
+            mods["boss_extra_chance"] > 0
+            and random.random() < mods["boss_extra_chance"]
+        ):
             extra_sigil = random.choice(_BOSS_SIGILS)
             items[extra_sigil] = items.get(extra_sigil, 0) + 1
 
@@ -278,6 +316,7 @@ def _roll_boss(rolls: float, mods: Dict[str, Any]) -> Dict[str, Any]:
 # ===========================================================================
 # Public API
 # ===========================================================================
+
 
 def calculate_rewards(
     partner: Partner,
@@ -340,7 +379,9 @@ def calculate_sigmund_rewards(
     sig_lvl = partner.sig_dispatch_lvl
     effectiveness = _SIGMUND_EFFECTIVENESS.get(sig_lvl, 0.60)
 
-    r1 = calculate_rewards(partner, partner.dispatch_start_time or "", None, skill_tiers, now)
+    r1 = calculate_rewards(
+        partner, partner.dispatch_start_time or "", None, skill_tiers, now
+    )
     r2 = calculate_rewards(
         partner,
         partner.dispatch_start_time_2 or "",

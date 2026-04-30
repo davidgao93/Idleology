@@ -1,5 +1,5 @@
 import discord
-from discord import app_commands, Interaction
+from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.partners.views import PartnerMainView
@@ -28,7 +28,7 @@ class Partners(commands.Cog, name="partners"):
             description="Welcome to the Guild! Recruit, manage, and dispatch your partners.",
             color=0xFFD700,
         )
-        embed.set_thumbnail(url="https://i.imgur.com/agWsjri.jpeg")
+        embed.set_image(url="https://i.imgur.com/agWsjri.jpeg")
         embed.add_field(
             name="Guild Tickets 🎫",
             value=f"**{items.get('guild_tickets', 0):,}**",

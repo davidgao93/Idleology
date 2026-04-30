@@ -1,8 +1,10 @@
 import csv
+import json
 import os
-from typing import Dict
+from typing import Any, Dict
 
 PARTNER_DATA: Dict[int, dict] = {}
+AFFINITY_STORIES: Dict[tuple[int, int], dict[str, Any]] = {}
 
 
 def _load() -> None:
@@ -23,4 +25,32 @@ def _load() -> None:
             }
 
 
+def _load_affinity_stories() -> None:
+    path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "assets",
+        "partners",
+        "affinity_stories.json",
+    )
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw_data = json.load(f)
+
+        AFFINITY_STORIES.clear()
+        for pid_str, stories in raw_data.items():
+            pid = int(pid_str)
+            for idx_str, story_data in stories.items():
+                idx = int(idx_str)
+                AFFINITY_STORIES[(pid, idx)] = {
+                    "title": story_data["title"],
+                    "text": story_data["text"],
+                    "image_url": story_data.get("image_url"),  # can be None
+                }
+    except Exception as e:
+        print(f"Error loading affinity stories: {e}")
+
+
 _load()
+_load_affinity_stories()

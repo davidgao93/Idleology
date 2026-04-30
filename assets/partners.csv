@@ -1,19 +1,19 @@
 partner_id,name,title,rarity,pull_message,base_attack,base_defence,base_hp,image_url,affinity_image_url
-1,Skol,The Shattered King,6,"Once a king, now a ruin in armor. Skol rises from his broken throne to answer your call.",20,8,10,https://i.imgur.com/jiiPWVX.jpeg,https://i.imgur.com/1bB27wh.jpeg
-2,Eve,The Forbidden Apothecary,6,"The air thickens with bitter herbs and sweeter lies. Eve smiles, vial in hand, ready to __help__.",6,10,20,https://i.imgur.com/PrWFOKT.jpeg,https://i.imgur.com/8KeGF8N.jpeg
-3,Kay,The Isolationist,6,"Kay steps from the edge of the guild corner, bringing silence, suspicion, and power hard-earned in solitude.",8,22,8,https://i.imgur.com/HqY3tio.jpeg,https://i.imgur.com/sOLBjvz.jpeg
-4,Sigmund,Houndmaster of the Crimson Hunt,6,"The baying of unseen hounds precedes him. Sigmund arrives, and the hunt does not end… it begins.",22,8,8,https://i.imgur.com/yJhtMpl.jpeg,https://i.imgur.com/VCaSBqg.jpeg
-5,Velour,The Druid of Verdant Tempests,6,"The wind shifts, the earth stirs. Velour answers with storm, root, and fang at your command.",8,10,20,https://i.imgur.com/M8kb2Uq.jpeg,https://i.imgur.com/VpBVLTz.jpeg
-6,Flora,Scion of the World Tree's Heart,6,"Roots whisper your name. Flora blooms into your service, carrying the heartbeat of the World Tree.",6,14,18,https://i.imgur.com/ROoj6de.jpeg,https://i.imgur.com/fPq9Prb.jpeg
-7,Yvenn,Penultimate Slayer Master,6,"Blades, scars, and a knowing grin. Yvenn joins you, promising that perfection is only one kill away.",18,12,8,https://i.imgur.com/po1tjqf.jpeg,https://i.imgur.com/laClh6m.jpeg
-8,Rowan,The Stormblade,5,"Steel crackles with caged lightning. Rowan nods once, ready to carve a path through the storm.",15,8,8,https://i.imgur.com/PvnWoCp.jpeg,
-9,Mira,Embercaller,5,"Ash dances in her wake. Mira joins you, fingers smoldering with barely-contained fire.",14,6,10,https://i.imgur.com/rlK5GaS.jpeg,
-10,Garrick,Iron Vanguard,5,"Garrick plants his shield like a wall. Behind him, even fear hesitates to pass.",8,16,12,https://i.imgur.com/uZCFFPT.jpeg,
-11,Seren,Moonlit Warden,5,"In the hush of twilight, Seren steps forward. The moon's pale light gathers at her command.",10,12,10,https://i.imgur.com/dFFzsJ4.jpeg,
-12,Darius,Bloodsworn Knight,5,"Darius seals the pact with a gauntleted fist. Steel, honor, and blood are now yours to spend.",14,10,8,https://i.imgur.com/5oQkLY8.jpeg,
-13,Hale,Shield Guard,4,"Hale tightens his grip on the shield. 'I'll stand where others fall,' he says, taking his place.",5,14,8,https://i.imgur.com/hwG9kbI.jpeg,
-14,Brigit,Battle Cleric,4,"Brigit joins the front lines, holy symbol in one hand, mace in the other. Prayers and bruises guaranteed.",6,8,16,https://i.imgur.com/glpfoVl.jpeg,
-15,Orin,Scout,4,"Orin appears from the shadows with a quick salute. 'Already mapped the exits,' he reports.",12,5,8,https://i.imgur.com/2nvfdYS.jpeg,
-16,Lena,Arcanist,4,"Pages flutter, runes glow. Lena adjusts her glasses and murmurs, 'Let's test a few theories.'",10,8,10,https://i.imgur.com/4Ug40qb.jpeg,
-17,Rolf,Axe Warrior,4,Rolf hefts his axe and grins. 'Point me at something that needs splitting.',13,7,8,https://i.imgur.com/3mx9piG.jpeg,
-18,Mirae,Bow Ranger,4,"A single arrow lands at your feet, perfectly centered. Mirae steps from the treeline, bow already drawn.",12,6,9,https://i.imgur.com/tdxBQT2.jpeg,
+1,Skol,The Shattered King,6,My kingdom lies in ruins.. I pray you prove stronger than my old throne.,20,8,10,https://i.imgur.com/jiiPWVX.jpeg,https://i.imgur.com/1bB27wh.jpeg
+2,Eve,The Forbidden Apothecary,6,The air around us is sweet and venomous. Careful.. my gifts always have teeth.,6,10,20,https://i.imgur.com/PrWFOKT.jpeg,https://i.imgur.com/8KeGF8N.jpeg
+3,Kay,The Isolationist,6,I've watched from the edges too long. You'd better be worth stepping into the light for.,8,22,8,https://i.imgur.com/HqY3tio.jpeg,https://i.imgur.com/sOLBjvz.jpeg
+4,Sigmund,Houndmaster of the Crimson Hunt,6,Hear the hounds? They've caught your scent. The hunt begins.. with you of course.,22,8,8,https://i.imgur.com/yJhtMpl.jpeg,https://i.imgur.com/VCaSBqg.jpeg
+5,Velour,The Druid of Verdant Tempests,6,"The wild wind answers your call. Stand ready.. I bring storm, root, and fang.",8,10,20,https://i.imgur.com/M8kb2Uq.jpeg,https://i.imgur.com/VpBVLTz.jpeg
+6,Flora,Scion of the World Tree's Heart,6,"The World Tree stirs at your name. I bloom for you, carrying its living heart.",6,14,18,https://i.imgur.com/ROoj6de.jpeg,https://i.imgur.com/fPq9Prb.jpeg
+7,Yvenn,Penultimate Slayer Master,6,My blades still thirst. Tell me.. will you be the one who finally satisfies them?,18,12,8,https://i.imgur.com/po1tjqf.jpeg,https://i.imgur.com/laClh6m.jpeg
+8,Rowan,The Stormblade,5,"Walk beside me, I'll carve your path through the storm.",15,8,8,https://i.imgur.com/PvnWoCp.jpeg,
+9,Mira,Embercaller,5,Ash and embers are all that I know. Try not to burn.,14,6,10,https://i.imgur.com/rlK5GaS.jpeg,
+10,Garrick,Iron Vanguard,5,"As long as I stand, nothing will reach you.",8,16,12,https://i.imgur.com/uZCFFPT.jpeg,
+11,Seren,Moonlit Warden,5,The moon watches us both. Join me in its glow.,10,12,10,https://i.imgur.com/dFFzsJ4.jpeg,
+12,Darius,Bloodsworn Knight,5,I seal this pact in blood. My sword is now yours to spend.,14,10,8,https://i.imgur.com/5oQkLY8.jpeg,
+13,Hale,Shield Guard,4,I'll take the first blow for you. I always do.,5,14,8,https://i.imgur.com/hwG9kbI.jpeg,
+14,Brigit,Battle Cleric,4,"Fight beside me, I'll bring both prayer and pain.",6,8,16,https://i.imgur.com/glpfoVl.jpeg,
+15,Orin,Scout,4,I've already mapped the exits. Try not to need them too soon.,12,5,8,https://i.imgur.com/2nvfdYS.jpeg,
+16,Lena,Arcanist,4,New spells beg to be tested on living targets. Shall we begin with you?,10,8,10,https://i.imgur.com/4Ug40qb.jpeg,
+17,Rolf,Axe Warrior,4,Point me at whatever needs splitting. I live for that sound.,13,7,8,https://i.imgur.com/3mx9piG.jpeg,
+18,Mirae,Bow Ranger,4,My arrow always find their mark.. a warning and a promise.,12,6,9,https://i.imgur.com/tdxBQT2.jpeg,

@@ -853,8 +853,10 @@ class CombatView(ui.View):
                 await self.bot.database.partners.increment_affinity(
                     self.user_id, partner.partner_id
                 )
-                for msg in lvl_msgs:
-                    reward_data["msgs"].append(f"🤝 **{partner.name}** {msg}")
+                if lvl_msgs:
+                    reward_data["msgs"].append(
+                        f"🤝 **{partner.name}** reached level **{partner.level}**!"
+                    )
 
             # --------------------------
             embed = combat_ui.create_victory_embed(
