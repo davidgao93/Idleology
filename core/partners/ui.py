@@ -8,7 +8,7 @@ from core.partners.mechanics import (
     get_sig_dispatch_effect_text,
     get_skill_effect_text,
 )
-from core.partners.resources import _rarity_colour, _skill_display_name, _stars
+from core.partners.resources import _rarity_colour, _sig_display_name, _skill_display_name, _stars
 
 
 def _build_partner_embed(partner: Partner, items: dict) -> discord.Embed:
@@ -44,7 +44,7 @@ def _build_partner_embed(partner: Partner, items: dict) -> discord.Embed:
             co_lines.append(f"`S{i}` *Empty*")
     if partner.rarity >= 6 and partner.sig_combat_key:
         co_lines.append(
-            f"`SIG` **Sig** Lv.{partner.sig_combat_lvl} — "
+            f"`SIG` **{_sig_display_name(partner.sig_combat_key)}** Lv.{partner.sig_combat_lvl} — "
             f"{get_sig_combat_effect_text(partner.partner_id, partner.sig_combat_lvl)}"
         )
     embed.add_field(
@@ -62,7 +62,7 @@ def _build_partner_embed(partner: Partner, items: dict) -> discord.Embed:
             di_lines.append(f"`S{i}` *Empty*")
     if partner.rarity >= 6 and partner.sig_dispatch_key:
         di_lines.append(
-            f"`SIG` **Sig** Lv.{partner.sig_dispatch_lvl} — "
+            f"`SIG` **{_sig_display_name(partner.sig_dispatch_key)}** Lv.{partner.sig_dispatch_lvl} — "
             f"{get_sig_dispatch_effect_text(partner.partner_id, partner.sig_dispatch_lvl)}"
         )
     embed.add_field(

@@ -27,7 +27,7 @@ from core.partners.mechanics import (
     roll_single,
     roll_ten,
 )
-from core.partners.resources import _rarity_colour, _skill_display_name, _stars
+from core.partners.resources import _rarity_colour, _sig_display_name, _skill_display_name, _stars
 from core.partners.ui import _build_partner_embed, _build_roster_embed
 
 
@@ -250,11 +250,10 @@ class PartnerDetailView(ui.View):
         self.clear_items()
         p = self.partner
 
-        # Set Active Combat
+        # Set / Remove Active Combat
         if p.is_active_combat:
-            btn = ui.Button(
-                label="✅ Active Partner", style=ButtonStyle.success, disabled=True
-            )
+            btn = ui.Button(label="✅ Active (Click to Remove)", style=ButtonStyle.success)
+            btn.callback = self._deactivate
         else:
             btn = ui.Button(label="Set Active Combat", style=ButtonStyle.primary)
             btn.callback = self._set_active
@@ -297,6 +296,17 @@ class PartnerDetailView(ui.View):
         embed.description = (
             embed.description or ""
         ) + "\n\n✅ Set as active combat partner!"
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    async def _deactivate(self, interaction: Interaction):
+        await interaction.response.defer()
+        await self.bot.database.partners.clear_active_combat(self.user_id)
+        self.partner.is_active_combat = False
+        self._update_buttons()
+        embed = _build_partner_embed(self.partner, self.items)
+        embed.description = (
+            embed.description or ""
+        ) + "\n\n❌ Removed as active combat partner."
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _collect_dispatch(self, interaction: Interaction):
@@ -666,7 +676,8 @@ class PartnerSkillsView(ui.View):
                 if self.mode == "combat"
                 else self.partner.dispatch_skills
             )
-            new_key = reroll_skill(self.mode, self.partner.rarity, slots)
+            slot_keys = [key for key, _ in slots]
+            new_key = reroll_skill(self.mode, self.partner.rarity, slot_keys)
             await self.bot.database.partners.update_skill_slot(
                 self.user_id,
                 self.partner.partner_id,
@@ -860,7 +871,10 @@ class DispatchView(ui.View):
         await _delete_on_timeout(self)
 
     def _get_active_dispatch(self) -> Optional[Partner]:
-        return next((p for p in self.partners if p.is_dispatched), None)
+        return next(
+            (p for p in self.partners if p.is_dispatched and p.dispatch_task != "boss_party"),
+            None,
+        )
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="📋 Dispatch", colour=0x8BC34A)
@@ -905,7 +919,7 @@ class DispatchView(ui.View):
                     lines.append(f"`S{i}` *Empty*")
             if p.rarity >= 6 and p.sig_dispatch_key:
                 lines.append(
-                    f"`SIG` **Sig** Lv.{p.sig_dispatch_lvl} — "
+                    f"`SIG` **{_sig_display_name(p.sig_dispatch_key)}** Lv.{p.sig_dispatch_lvl} — "
                     f"{get_sig_dispatch_effect_text(p.partner_id, p.sig_dispatch_lvl)}"
                 )
             embed.add_field(
@@ -1624,8 +1638,9 @@ class PullView(ui.View):
             await self.bot.database.partners.add_dispatch_shards(
                 self.user_id, shards_dispatch
             )
-        for pid, amt in char_shards_gained.items():
-            await self.bot.database.partners.add_shard(self.user_id, pid, amt)
+        total_char_shards = sum(char_shards_gained.values())
+        if total_char_shards > 0:
+            await self.bot.database.partners.add_shard(self.user_id, 0, total_char_shards)
 
         items_after = await self.bot.database.partners.get_items(self.user_id)
 
@@ -2108,9 +2123,14 @@ class PartnerMainView(ui.View):
 
         active_combat = None
         active_dispatch = None
+        boss_party: list = []
         if partners:
             active_combat = next((p for p in partners if p.is_active_combat), None)
-            active_dispatch = next((p for p in partners if p.is_dispatched), None)
+            active_dispatch = next(
+                (p for p in partners if p.is_dispatched and p.dispatch_task != "boss_party"),
+                None,
+            )
+            boss_party = [p for p in partners if p.is_dispatched and p.dispatch_task == "boss_party"]
 
         if active_combat:
             skill_names = [
@@ -2169,6 +2189,24 @@ class PartnerMainView(ui.View):
             embed.add_field(
                 name="📋 Active Dispatch",
                 value="*None — use Dispatch to send a partner on a mission*",
+                inline=False,
+            )
+
+        if boss_party:
+            from core.partners.dispatch import elapsed_hours
+
+            bp_first = boss_party[0]
+            elapsed = (
+                elapsed_hours(bp_first.dispatch_start_time)
+                if bp_first.dispatch_start_time
+                else 0.0
+            )
+            names = " | ".join(
+                f"{_stars(p.rarity)} {p.name}" for p in boss_party
+            )
+            embed.add_field(
+                name="🔱 Boss Raid",
+                value=f"{names}\n⏱️ {elapsed:.1f}h accumulated",
                 inline=False,
             )
 

@@ -40,11 +40,13 @@ class PartnerRepository(BaseRepository):
             (user_id,),
         )
         row = await cursor.fetchone()
+        char_shards = await self.get_shard_count(user_id, 0)  # shared pool (partner_id=0)
         return {
             "guild_tickets": row[0],
             "pity_counter": row[1],
             "combat_skill_shards": row[2],
             "dispatch_skill_shards": row[3],
+            "char_shards": char_shards,
         }
 
     async def add_tickets(self, user_id: str, amount: int) -> None:

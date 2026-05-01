@@ -466,10 +466,11 @@ class ProfileBuilder:
 
         # ── HP ───────────────────────────────────────────────────────────────
         total_hp = p.total_max_hp
-        hp_bonuses = total_hp - p.max_hp
-        hp_val = f"**{p.current_hp:,} / {total_hp:,}**\n↳ Base: {p.max_hp:,}\n↳ Equipment: 0"
-        if hp_bonuses:
-            hp_val += f"\n↳ Bonuses: {hp_bonuses:+,}"
+        parts_hp = sum(v["hp"] for v in p.equipped_parts.values()) if p.equipped_parts else 0
+        other_hp_bonuses = total_hp - p.max_hp - parts_hp
+        hp_val = f"**{p.current_hp:,} / {total_hp:,}**\n↳ Base: {p.max_hp:,}\n↳ Parts: {parts_hp:,}"
+        if other_hp_bonuses:
+            hp_val += f"\n↳ Bonuses: {other_hp_bonuses:+,}"
         embed.add_field(name="❤️ HP", value=hp_val, inline=True)
 
         # ── Ward ─────────────────────────────────────────────────────────────
@@ -498,9 +499,15 @@ class ProfileBuilder:
             )
 
         # ── Crit Chance ──────────────────────────────────────────────────────
-        crit_weapon = _WEAPON_CRIT_BONUS.get(
-            p.equipped_weapon.passive.lower() if p.equipped_weapon else "", 0
-        )
+        crit_weapon = 0
+        if p.equipped_weapon:
+            for _passive in (
+                p.equipped_weapon.passive,
+                p.equipped_weapon.p_passive,
+                p.equipped_weapon.u_passive,
+            ):
+                if _passive:
+                    crit_weapon += _WEAPON_CRIT_BONUS.get(_passive.lower(), 0)
         crit_equip = p.equipped_accessory.crit if p.equipped_accessory else 0
         for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
             if _item:
@@ -585,6 +592,18 @@ class ProfileBuilder:
             if rarity_bonuses:
                 rar_val += f"\n↳ Bonuses: {rarity_bonuses:+}%"
             embed.add_field(name="✨ Rarity", value=rar_val, inline=True)
+
+        # ── Special Rarity ────────────────────────────────────────────────────
+        sr_boot = 0
+        if p.equipped_boot and p.equipped_boot.passive == "thrill-seeker":
+            sr_boot = p.equipped_boot.passive_lvl
+        sr_companion = p._get_companion_bonus("s_rarity")
+        sr_total = min(20, sr_boot + sr_companion)
+        sr_val = f"**{sr_total}%** (cap: 20%)"
+        sr_val += f"\n↳ Boot (Thrill-Seeker): {sr_boot}%"
+        sr_val += f"\n↳ Companions: {sr_companion}%"
+        sr_val += "\n↳ Partner (co_special_rarity): combat only"
+        embed.add_field(name="⭐ Special Rarity", value=sr_val, inline=True)
 
         return embed
 
