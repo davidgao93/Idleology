@@ -271,7 +271,7 @@ class Player:
     max_hp: int
     base_attack: int
     base_defence: int
-    potions: int  # Moved UP: Mandatory field from DB
+    potions: int
 
     # Fields with Defaults come LAST
 

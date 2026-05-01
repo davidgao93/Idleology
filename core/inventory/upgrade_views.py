@@ -34,7 +34,7 @@ class BaseUpgradeView(View):
     async def go_back(self, interaction: Interaction):
         # 1. Import inside method to avoid circular import at top of file
         from core.inventory.views import ItemDetailView
-        from core.ui.inventory import InventoryUI
+        from core.inventory.inventory import InventoryUI
 
         # 2. Get the Grandparent (Inventory List) to pass down
         inventory_view = self.parent_view.parent

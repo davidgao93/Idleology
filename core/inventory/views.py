@@ -29,7 +29,7 @@ from core.items.factory import (
 
 # Core Imports
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
-from core.ui.inventory import InventoryUI
+from core.inventory.inventory import InventoryUI
 
 SLOT_CONFIG = {
     "weapon": {"emoji": "⚔️", "label": "Weapon", "factory": create_weapon},

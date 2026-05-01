@@ -602,7 +602,7 @@ class ProfileBuilder:
         sr_val = f"**{sr_total}%** (cap: 20%)"
         sr_val += f"\n↳ Boot (Thrill-Seeker): {sr_boot}%"
         sr_val += f"\n↳ Companions: {sr_companion}%"
-        sr_val += "\n↳ Partner (co_special_rarity): combat only"
+        sr_val += f"\n↳ Partner: "
         embed.add_field(name="⭐ Special Rarity", value=sr_val, inline=True)
 
         return embed

@@ -547,7 +547,7 @@ class EssenceView(View):
         )
 
     async def _go_back(self, interaction: Interaction):
-        from core.ui.inventory import InventoryUI
+        from core.inventory.inventory import InventoryUI
 
         embed = InventoryUI.get_item_details_embed(
             self.parent.item, self.parent.is_equipped
