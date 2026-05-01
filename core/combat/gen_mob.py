@@ -99,7 +99,7 @@ async def generate_boss(player, monster, phase, phase_index):
     monster.xp = random.randint(1,9) + monster.level * 100
 
     monster.modifiers = []
-    _assign_modifiers(monster, phase["modifiers_count"], is_boss=True)
+    _assign_modifiers(monster, phase["modifiers_count"], is_boss=True, force_max_tier=True)
     _apply_spawn_modifiers(monster)
     print(monster)
     return monster
@@ -153,7 +153,7 @@ def _pick_modifier_type(is_boss: bool) -> str:
     return random.choices(["common", "rare_tiered", "rare_flat", "boss"], weights=weights, k=1)[0]
 
 
-def _assign_modifiers(monster, num_mods: int, is_boss: bool) -> None:
+def _assign_modifiers(monster, num_mods: int, is_boss: bool, force_max_tier: bool = False) -> None:
     """Fills monster.modifiers with num_mods unique MonsterModifier instances."""
     used_names: set = set()
     attempts = 0
@@ -172,7 +172,7 @@ def _assign_modifiers(monster, num_mods: int, is_boss: bool) -> None:
             continue
         name = random.choice(candidates)
         used_names.add(name)
-        monster.modifiers.append(make_modifier(name, monster.level))
+        monster.modifiers.append(make_modifier(name, monster.level, force_max_tier=force_max_tier))
 
 
 def _assign_ascent_modifiers(monster, num_mods: int, floor: int) -> None:

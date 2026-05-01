@@ -180,7 +180,7 @@ def roll_tier(monster_level: int, mod_def: ModifierDef) -> int:
     return chosen_idx + 1  # 1-based tier
 
 
-def make_modifier(name: str, monster_level: int) -> "MonsterModifier":
+def make_modifier(name: str, monster_level: int, force_max_tier: bool = False) -> "MonsterModifier":
     """Construct a MonsterModifier from a name and monster level."""
     from core.models import MonsterModifier
     # Ascended: special rule — value is level_added, display is "Ascended +N"
@@ -192,6 +192,10 @@ def make_modifier(name: str, monster_level: int) -> "MonsterModifier":
         tier = 0
         value = defn.tiers[0]
         difficulty = defn.difficulties[0]
+    elif force_max_tier:
+        tier = len(defn.tiers)
+        value = defn.tiers[-1]
+        difficulty = defn.difficulties[-1]
     else:
         tier = roll_tier(monster_level, defn)
         value = defn.tiers[tier - 1]
