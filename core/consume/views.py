@@ -69,6 +69,7 @@ def _build_main_embed(player: Player, inventory: list) -> discord.Embed:
                 value="*Empty*",
                 inline=True,
             )
+    embed.set_thumbnail(url="https://i.imgur.com/6auOJcS.jpeg")
     return embed
 
 
@@ -139,12 +140,12 @@ class EquipConfirmView(ui.View):
         except Exception:
             pass
 
-    @ui.button(label="Confirm Replace", style=ButtonStyle.danger)
+    @ui.button(label="Confirm Consume", style=ButtonStyle.danger)
     async def confirm(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         await self._do_equip()
         embed = _build_main_embed(self.parent.player, self.parent.inventory)
-        embed.set_footer(text=f"You consumed {self.part.display_name}.")
+        embed.set_footer(text=f"Forbidden power courses through you...")
         await interaction.edit_original_response(embed=embed, view=self.parent)
         self.stop()
 
@@ -193,7 +194,7 @@ class PartDetailView(ui.View):
         except Exception:
             pass
 
-    @ui.button(label="Equip", style=ButtonStyle.success, emoji="✅")
+    @ui.button(label="Consume", style=ButtonStyle.success, emoji="✅")
     async def equip(self, interaction: Interaction, button: ui.Button):
         slot = self.part.slot_type
         if slot in self.parent.player.equipped_parts:
@@ -206,7 +207,7 @@ class PartDetailView(ui.View):
                     f"**{slot.replace('_', ' ').title()} slot** is currently occupied:\n\n"
                     f"**Current:** {current['monster_name']}'s **{label}** — +{current['hp']} Max HP\n"
                     f"**New:** {self.part.display_name} — +{self.part.hp_value} Max HP\n\n"
-                    f"The current part will be **permanently destroyed**."
+                    f"The current part will be **discarded**."
                 ),
                 color=0xFF6600,
             )
@@ -234,7 +235,7 @@ class PartDetailView(ui.View):
             ]
             self.parent._rebuild_select()
             embed = _build_main_embed(self.parent.player, self.parent.inventory)
-            embed.set_footer(text=f"You consume {self.part.display_name}.")
+            embed.set_footer(text=f"Forbidden power courses through you..")
             await interaction.edit_original_response(embed=embed, view=self.parent)
             self.stop()
 
@@ -250,7 +251,7 @@ class PartDetailView(ui.View):
         ]
         self.parent._rebuild_select()
         embed = _build_main_embed(self.parent.player, self.parent.inventory)
-        embed.set_footer(text=f"Discarded {self.part.display_name}.")
+        embed.set_footer(text=f"Part discarded.")
         await interaction.edit_original_response(embed=embed, view=self.parent)
         self.stop()
 

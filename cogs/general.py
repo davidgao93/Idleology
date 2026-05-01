@@ -247,8 +247,8 @@ class General(commands.Cog, name="general"):
                 "**Gilded Hunger**: Gain Attack equal to 10% of weapon rarity.\n"
                 "**Cursed Precision**: +20% Crit Chance. Your critical damage is unlucky.\n"
                 "**Diabolic Pact**: At combat start, lose 90% maximum HP and double your Attack.\n"
-                "**Perdition**: Missed attacks deal 75% weapon Attack.\n"
-                "**Voracious**: Each non-crit hit adds a stack; each stack reduces crit threshold by 5. Stacks reset on crit.\n"
+                "**Perdition**: On miss, deal 75% of your weapon Attack.\n"
+                "**Voracious**: On hit, gain a voracity stack. Each stack increases crit chance by 5 and resets voracity on crit.\n"
                 "**Last Rites**: Critical hits deal an additional 10% of the enemy's current HP."
             )
             embed.description = self._generate_weapon_details() + infernal_text
@@ -258,21 +258,21 @@ class General(commands.Cog, name="general"):
             embed.title = "📿 Accessory Passive Scaling (Max Lvl 10)"
             passives = {
                 "Obliterate": lambda l: f"**{l * 2}%** chance to deal Double Damage",
-                "Absorb": lambda l: f"**{l * 10}%** chance to steal 10% of Monster's ATK and DEF",
-                "Prosper": lambda l: f"**{l * 10}%** chance to Double Gold",
-                "Infinite Wisdom": lambda l: f"**{l * 5}%** chance to Double XP",
+                "Absorb": lambda l: f"**{l * 10}%** chance to gain 10% of Monster's ATK and DEF",
+                "Prosper": lambda l: f"**{l * 10}%** chance to Double Gold gained",
+                "Infinite Wisdom": lambda l: f"**{l * 5}%** chance to Double XP gained",
                 "Lucky Strikes": lambda l: f"**{l * 10}%** chance for Lucky Hits",
             }
             void_text = (
                 "\n**⬛ Void Passives (Engram):**\n"
                 "**Entropy**: At combat start, 20% of weapon ATK is added to DEF and vice versa.\n"
-                "**Void Echo**: At combat start, 15% of weapon Attack is copied to your accessory.\n"
+                "**Void Echo**: At combat start, 15% of weapon ATK is added to your accessory.\n"
                 "**Unravelling**: At combat start, reduce monster Defence by 20%.\n"
-                "**Void Gaze**: On crit, reduce monster Attack by 3% per stack (up to 30 stacks).\n"
-                "**Fracture**: On crit, 5% chance to instantly kill (disabled vs Uber bosses).\n"
+                "**Void Gaze**: On crit, reduce monster ATK by 3% per stack (up to 30 stacks).\n"
+                "**Fracture**: On crit, 5% chance to instantly kill (does not work in Uber).\n"
                 "**Nullfield**: 15% chance to completely absorb incoming damage.\n"
-                "**Eternal Hunger**: Each hit adds a stack; at 10 stacks deal 10% of monster max HP and restore full HP.\n"
-                "**Oblivion**: Missed attacks still deal 50% of your total attack damage."
+                "**Eternal Hunger**: On hit, gain a hunger stack. At 10 stacks, deal 10% of monster max HP and heal to max HP.\n"
+                "**Oblivion**: On miss, deal 50% of your total ATK as damage."
             )
             embed.description = self._generate_scaling_details(passives, 10) + void_text
             content_added = True
@@ -280,13 +280,13 @@ class General(commands.Cog, name="general"):
         elif category == "glove":
             embed.title = "🧤 Glove Passive Scaling (Max Lvl 5)"
             passives = {
-                "Ward-Touched": lambda l: f"Gain **{l}%** of Hit Dmg as Ward",
-                "Ward-Fused": lambda l: f"Gain **{l*2}%** of Crit Dmg as Ward",
+                "Ward-Touched": lambda l: f"Gain {l*25} Ward on Hits",
+                "Ward-Fused": lambda l: f"Gain {l*50} Ward on Crits",
                 "Instability": lambda l: f"Hits are 50% dmg OR **{150 + (l*10)}%** dmg",
                 "Deftness": lambda l: f"Crit Floor raised by **{l*5}%**",
                 "Adroit": lambda l: f"Normal Hit Floor raised by **{l*2}%**",
-                "Equilibrium": lambda l: f"Gain **{l*5}%** of Dmg as Bonus XP",
-                "Plundering": lambda l: f"Gain **{l*10}%** of Dmg as Bonus Gold",
+                "Equilibrium": lambda l: f"Gain **{l*5}%** of Dmg Dealt as XP",
+                "Plundering": lambda l: f"Gain **{l*10}%** of Dmg Dealt as Gold",
             }
             embed.description = self._generate_scaling_details(passives, 5)
             content_added = True
@@ -389,7 +389,7 @@ class General(commands.Cog, name="general"):
                 "**Hell's Fury**: Deals triple damage on every hit.\n\n"
                 "**NEET, the Void Sovereign**\n"
                 "**Void Protection**: Reduces all incoming damage by 60%.\n"
-                "**Void Aura**: Siphons 5% of your ATK and DEF each round, regardless of hit.\n\n"
+                "**Void Aura**: Siphons 1.5% of your ATK and DEF each round, regardless of hit.\n\n"
                 "**Castor & Pollux, Bound Sovereigns**\n"
                 "**Balanced Protection**: Reduces all incoming damage by 60%.\n"
                 "**Balanced Strikes**: Every even round, a second coordinated blow lands at 50% damage — bypasses ward and cannot be blocked or evaded.\n\n"

@@ -603,13 +603,13 @@ def _pt_generate_ward(
         and glove_lvl > 0
         and raw_damage > 0
     ):
-        ward = int(raw_damage * (glove_lvl * 0.01))
+        ward = int(glove_lvl * 25)
         if ward > 0:
             added = _add_ward(player, ward, log)
             log.append(f"**Ward-Touched ({glove_lvl})** generates 🔮 **{added}** ward!")
 
     if is_crit and glove_passive == "ward-fused" and glove_lvl > 0 and raw_damage > 0:
-        ward = int(raw_damage * (glove_lvl * 0.02))
+        ward = int(glove_lvl * 50)
         if ward > 0:
             added = _add_ward(player, ward, log)
             log.append(f"**Ward-Fused ({glove_lvl})** generates 🔮 **{added}** ward!")

@@ -130,8 +130,8 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
 
     # --- Void Aura drain (regardless of hit) ---
     if monster.has_modifier("Void Aura"):
-        drain_atk = max(1, int(player.flat_atk * 0.05))
-        drain_def = max(0, int(player.flat_def * 0.05))
+        drain_atk = max(1, int(player.flat_atk * 0.015))
+        drain_def = max(0, int(player.flat_def * 0.015))
         player.bonus_atk -= drain_atk
         player.bonus_def -= drain_def
         log.append(

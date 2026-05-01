@@ -113,8 +113,8 @@ _ACCESSORY_PASSIVE_FUNCS: dict = {
 }
 
 _GLOVE_PASSIVE_FUNCS: dict = {
-    "ward-touched": lambda l: f"Gain {l}% of Hit Dmg as Ward",
-    "ward-fused": lambda l: f"Gain {l * 2}% of Crit Dmg as Ward",
+    "ward-touched": lambda l: f"Gain {l*25} Ward on Hits",
+    "ward-fused": lambda l: f"Gain {l*50} Ward on Crits",
     "instability": lambda l: f"Hits are 50% OR {150 + l * 10}% damage",
     "deftness": lambda l: f"Crit Floor raised by {l * 5}%",
     "adroit": lambda l: f"Normal Hit Floor raised by {l * 2}%",
