@@ -977,6 +977,75 @@ class ProfileBuilder:
                     name="🐾 Companions", value="Ready to deploy.", inline=False
                 )
 
+        # 4. Partner Dispatch & Boss Raid
+        from core.models import Partner
+        from core.partners.data import PARTNER_DATA
+        from core.partners.dispatch import (
+            BOSS_PARTY_DURATION_HOURS,
+            elapsed_hours,
+            get_cap_hours,
+        )
+        from core.partners.resources import _stars
+
+        rows = await bot.database.partners.get_owned(user_id)
+        partners = [
+            Partner.from_row(row, PARTNER_DATA[row[2]])
+            for row in rows
+            if row[2] in PARTNER_DATA
+        ]
+
+        active_dispatch = next(
+            (p for p in partners if p.is_dispatched and p.dispatch_task != "boss_party"),
+            None,
+        )
+        boss_party = [p for p in partners if p.is_dispatched and p.dispatch_task == "boss_party"]
+
+        if active_dispatch:
+            elapsed = elapsed_hours(active_dispatch.dispatch_start_time)
+            cap = get_cap_hours(active_dispatch)
+            elapsed_clamped = min(elapsed, cap)
+            progress_pct = int(elapsed_clamped / cap * 100)
+            task_label = active_dispatch.dispatch_task or "Unknown"
+            if elapsed >= cap:
+                dispatch_status = "✅ Ready to collect!"
+            else:
+                remaining_secs = (cap - elapsed) * 3600
+                h = int(remaining_secs // 3600)
+                m = int((remaining_secs % 3600) // 60)
+                dispatch_status = f"**{h}h {m}m** remaining ({progress_pct}%)"
+            embed.add_field(
+                name="📋 Partner Dispatch",
+                value=(
+                    f"{_stars(active_dispatch.rarity)} **{active_dispatch.name}** — {task_label.title()}\n"
+                    f"{dispatch_status}"
+                ),
+                inline=False,
+            )
+        else:
+            embed.add_field(
+                name="📋 Partner Dispatch",
+                value="No partner currently dispatched.",
+                inline=False,
+            )
+
+        if boss_party:
+            bp_first = boss_party[0]
+            elapsed = elapsed_hours(bp_first.dispatch_start_time)
+            progress_pct = min(100, int(elapsed / BOSS_PARTY_DURATION_HOURS * 100))
+            names = " | ".join(f"{_stars(p.rarity)} {p.name}" for p in boss_party)
+            if progress_pct >= 100:
+                raid_status = "✅ Raid Complete! Collect your rewards."
+            else:
+                remaining_secs = (BOSS_PARTY_DURATION_HOURS - elapsed) * 3600
+                h = int(remaining_secs // 3600)
+                m = int((remaining_secs % 3600) // 60)
+                raid_status = f"**{h}h {m}m** remaining ({progress_pct}%)"
+            embed.add_field(
+                name="🔱 Boss Raid",
+                value=f"{names}\n{raid_status}",
+                inline=False,
+            )
+
         return embed
 
     @staticmethod

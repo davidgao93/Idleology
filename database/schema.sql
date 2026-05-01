@@ -91,6 +91,19 @@ CREATE TABLE IF NOT EXISTS `monster_parts_equipped` (
   PRIMARY KEY (`user_id`, `slot_type`)
 );
 
+CREATE TABLE IF NOT EXISTS `maw_participants` (
+  `user_id`            TEXT    NOT NULL,
+  `cycle_id`           INTEGER NOT NULL,
+  `signup_timestamp`   INTEGER NOT NULL,
+  `last_damage_check`  INTEGER NOT NULL,
+  `damage_dealt`       INTEGER NOT NULL DEFAULT 0,
+  `boost_used_at`      INTEGER DEFAULT NULL,
+  `rewards_collected`  INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (`user_id`, `cycle_id`)
+);
+
+-- ALTER TABLE users ADD COLUMN curio_puzzle_boxes INTEGER NOT NULL DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS `prestige_owned` (
   `user_id` TEXT NOT NULL,
   `item_type` TEXT NOT NULL,
