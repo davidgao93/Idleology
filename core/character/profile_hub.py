@@ -389,6 +389,67 @@ def _build_slayer_codex_text(p) -> str:
     return "\n".join(lines)
 
 
+def _compute_combat_bonuses(p) -> dict:
+    """Compute deterministic (non-random) combat-start stat bonuses for display."""
+    from core.combat.calcs import get_weapon_tier
+
+    cb: dict = {"atk": 0, "def": 0, "hp": 0, "crit": 0, "special_rarity": 0.0}
+
+    # Partner combat skills (deterministic only)
+    if p.active_partners:
+        partner = p.active_partners[0]
+        for key, lvl in partner.combat_skills:
+            if not key:
+                continue
+            if key == "co_stat_transfer":
+                cb["atk"] += int(partner.total_attack * lvl * 0.10)
+                cb["def"] += int(partner.total_defence * lvl * 0.10)
+                cb["hp"] += int(partner.total_hp * lvl * 0.10)
+            elif key == "co_atk_from_def":
+                cb["atk"] += int(partner.total_defence * lvl * 0.25)
+            elif key == "co_def_from_atk":
+                cb["def"] += int(partner.total_attack * lvl * 0.20)
+            elif key == "co_special_rarity":
+                cb["special_rarity"] += lvl * 0.1
+
+    # Juggernaut (helmet passive — deterministic: always triggers at combat start)
+    if p.equipped_helmet and _normalize(p.equipped_helmet.passive) == "juggernaut":
+        cb["atk"] += int(p.get_total_defence() * p.equipped_helmet.passive_lvl * 0.04)
+
+    # Sturdy family (weapon passive — boosts defence by a fixed %)
+    idx, _ = get_weapon_tier(p, "sturdy")
+    if idx >= 0:
+        cb["def"] += int(p.get_total_defence() * (idx + 1) * 0.08)
+
+    # Infernal passives (deterministic ones only)
+    if p.equipped_weapon and p.equipped_weapon.infernal_passive not in ("none", ""):
+        inf = _normalize(p.equipped_weapon.infernal_passive)
+        if inf == "inverted edge":
+            delta = p.equipped_weapon.defence - p.equipped_weapon.attack
+            cb["atk"] += delta
+            cb["def"] -= delta
+        elif inf == "gilded hunger":
+            cb["atk"] += int(p.equipped_weapon.rarity * 0.1)
+        elif inf == "cursed precision":
+            cb["crit"] += 20
+        elif inf == "diabolic pact":
+            cb["hp"] -= int(p.max_hp * 0.90)
+            cb["atk"] += p.get_total_attack()
+
+    # Void passives (deterministic ones only)
+    if p.equipped_accessory and p.equipped_accessory.void_passive not in ("none", ""):
+        void_p = _normalize(p.equipped_accessory.void_passive)
+        if void_p == "entropy" and p.equipped_weapon:
+            atk_t = int(p.equipped_weapon.attack * 0.20)
+            def_t = int(p.equipped_weapon.defence * 0.20)
+            cb["atk"] += def_t - atk_t
+            cb["def"] += atk_t - def_t
+        elif void_p == "void echo" and p.equipped_weapon:
+            cb["atk"] += int(p.equipped_weapon.attack * 0.15)
+
+    return cb
+
+
 class ProfileBuilder:
     """Static builder class that generates the embeds for the Profile Hub."""
 
@@ -422,6 +483,8 @@ class ProfileBuilder:
         embed = discord.Embed(title="Combat Statistics", color=0x00FF00)
         embed.set_thumbnail(url=data[7])
 
+        cb = _compute_combat_bonuses(p)
+
         # ── Attack ───────────────────────────────────────────────────────────
         gear_atk = 0
         if p.equipped_weapon:
@@ -440,6 +503,8 @@ class ProfileBuilder:
         atk_val = f"**Total: {total_atk:,}**\n↳ Base: {p.base_attack:,}\n↳ Equipment: {gear_atk:,}"
         if atk_bonuses:
             atk_val += f"\n↳ Bonuses: {atk_bonuses:+,}"
+        if cb["atk"]:
+            atk_val += f"\n↳ Combat start: {cb['atk']:+,}"
         embed.add_field(name="⚔️ Attack", value=atk_val, inline=True)
 
         # ── Defence ──────────────────────────────────────────────────────────
@@ -462,6 +527,8 @@ class ProfileBuilder:
         def_val = f"**Total: {total_def:,}**\n↳ Base: {p.base_defence:,}\n↳ Equipment: {gear_def:,}"
         if def_bonuses:
             def_val += f"\n↳ Bonuses: {def_bonuses:+,}"
+        if cb["def"]:
+            def_val += f"\n↳ Combat start: {cb['def']:+,}"
         embed.add_field(name="🛡️ Defence", value=def_val, inline=True)
 
         # ── HP ───────────────────────────────────────────────────────────────
@@ -471,6 +538,8 @@ class ProfileBuilder:
         hp_val = f"**{p.current_hp:,} / {total_hp:,}**\n↳ Base: {p.max_hp:,}\n↳ Parts: {parts_hp:,}"
         if other_hp_bonuses:
             hp_val += f"\n↳ Bonuses: {other_hp_bonuses:+,}"
+        if cb["hp"]:
+            hp_val += f"\n↳ Combat start: {cb['hp']:+,}"
         embed.add_field(name="❤️ HP", value=hp_val, inline=True)
 
         # ── Ward ─────────────────────────────────────────────────────────────
@@ -520,6 +589,8 @@ class ProfileBuilder:
         crit_val = f"**Total: {total_crit_display}**\n↳ Weapon: {crit_weapon}\n↳ Equipment: {crit_equip}"
         if crit_bonuses:
             crit_val += f"\n↳ Bonuses: {crit_bonuses:+}"
+        if cb["crit"]:
+            crit_val += f"\n↳ Combat start: {cb['crit']:+}"
         embed.add_field(name="🎯 Crit Chance", value=crit_val, inline=True)
 
         # ── Crit Multiplier ──────────────────────────────────────────────────
@@ -598,11 +669,15 @@ class ProfileBuilder:
         if p.equipped_boot and p.equipped_boot.passive == "thrill-seeker":
             sr_boot = p.equipped_boot.passive_lvl
         sr_companion = p._get_companion_bonus("s_rarity")
+        sr_partner_combat = cb["special_rarity"]
         sr_total = min(20, sr_boot + sr_companion)
         sr_val = f"**{sr_total}%** (cap: 20%)"
         sr_val += f"\n↳ Boot (Thrill-Seeker): {sr_boot}%"
         sr_val += f"\n↳ Companions: {sr_companion}%"
-        sr_val += f"\n↳ Partner: "
+        if sr_partner_combat:
+            sr_val += f"\n↳ Partner (combat start): +{sr_partner_combat:.1f}%"
+        else:
+            sr_val += f"\n↳ Partner: none"
         embed.add_field(name="⭐ Special Rarity", value=sr_val, inline=True)
 
         return embed

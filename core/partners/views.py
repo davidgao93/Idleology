@@ -2193,7 +2193,7 @@ class PartnerMainView(ui.View):
             )
 
         if boss_party:
-            from core.partners.dispatch import elapsed_hours
+            from core.partners.dispatch import BOSS_PARTY_DURATION_HOURS, elapsed_hours
 
             bp_first = boss_party[0]
             elapsed = (
@@ -2201,12 +2201,17 @@ class PartnerMainView(ui.View):
                 if bp_first.dispatch_start_time
                 else 0.0
             )
+            progress_pct = min(100, int(elapsed / BOSS_PARTY_DURATION_HOURS * 100))
             names = " | ".join(
                 f"{_stars(p.rarity)} {p.name}" for p in boss_party
             )
+            if progress_pct >= 100:
+                progress_str = "✅ Raid Complete! Collect your rewards."
+            else:
+                progress_str = f"⏱️ {progress_pct}% complete"
             embed.add_field(
                 name="🔱 Boss Raid",
-                value=f"{names}\n⏱️ {elapsed:.1f}h accumulated",
+                value=f"{names}\n{progress_str}",
                 inline=False,
             )
 

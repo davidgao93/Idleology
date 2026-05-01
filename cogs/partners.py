@@ -21,31 +21,9 @@ class Partners(commands.Cog, name="partners"):
             return
 
         await self.bot.database.partners.ensure_items_row(user_id)
-        items = await self.bot.database.partners.get_items(user_id)
-
-        embed = discord.Embed(
-            title="The Guild",
-            description="Welcome to the Guild! Recruit, manage, and dispatch your partners.",
-            color=0xFFD700,
-        )
-        embed.set_image(url="https://i.imgur.com/agWsjri.jpeg")
-        embed.add_field(
-            name="Guild Tickets 🎫",
-            value=f"**{items.get('guild_tickets', 0):,}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="Combat Shards ⚔️",
-            value=f"**{items.get('combat_skill_shards', 0):,}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="Dispatch Shards 🗺️",
-            value=f"**{items.get('dispatch_skill_shards', 0):,}**",
-            inline=True,
-        )
 
         view = PartnerMainView(self.bot, user_id)
+        embed, _items, _partners = await view._fetch_fresh_data()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
