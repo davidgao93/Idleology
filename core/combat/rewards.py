@@ -18,12 +18,6 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     if xp_find_tiers > 0:
         base_xp = int(base_xp * (1 + (xp_find_tiers * 0.03)))
 
-    # Scale XP for low levels (from original combat.py)
-    if monster.level <= 20:
-        base_xp = int(base_xp * 2)
-    else:
-        base_xp = int(base_xp * 1.3)
-
     # Accessory Passive: Infinite Wisdom
     acc_passive = player.get_accessory_passive()
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0

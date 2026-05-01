@@ -268,9 +268,9 @@ class CombatView(ui.View):
         if "NEET" in boss_name:
             return "https://i.imgur.com/V5Hd9d9.png"
         if "Aphrodite" in boss_name:
-            return "https://i.imgur.com/LjE5VZF.png"
+            return "https://i.imgur.com/26dzbFN.jpeg"
         if "Gemini" in boss_name:
-            return "https://i.imgur.com/PqViP3D.png"
+            return "https://i.imgur.com/YL7WPXS.jpeg"
         if "Lucifer" in boss_name:
             return "https://i.imgur.com/tIcLLI1.png"
         return None
@@ -847,7 +847,7 @@ class CombatView(ui.View):
                 )
                 await message.edit(embed=embed, view=None)
             elif "Lucifer" in self.monster.name:
-                embed.set_image(url="https://i.imgur.com/x9suAGK.png")
+                embed.set_thumbnail(url="https://i.imgur.com/oFWJLo7.jpeg")
                 embed.add_field(
                     name="❤️‍🔥 A Soul Core manifests...",
                     value=(
@@ -922,8 +922,8 @@ class CombatView(ui.View):
         await self._uber_finalize_rewards(reward_data)
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "🌌 DEICIDE: Apex Shattered!"
-        embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
+        embed.title = "🌌 Apex Shattered!"
+        embed.set_image(url="https://i.imgur.com/ffu5KX0.jpeg")
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
@@ -964,7 +964,7 @@ class CombatView(ui.View):
         await self._uber_finalize_rewards(reward_data)
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "🔥 DEICIDE: Sovereign Shattered!"
+        embed.title = "🔥 Sovereign Shattered!"
         embed.set_image(url="https://i.imgur.com/ngTUw77.png")
 
         contract_view = InfernalContractView(self.bot, self.user_id, self.player, self.server_id, message)
@@ -1016,7 +1016,7 @@ class CombatView(ui.View):
         await self._uber_finalize_rewards(reward_data)
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "⬛ DEICIDE: Void Sovereign Collapsed!"
+        embed.title = "⬛ Void Sovereign Collapsed!"
         embed.set_image(url="https://i.imgur.com/7UmY4Mo.jpeg")
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
@@ -1058,8 +1058,8 @@ class CombatView(ui.View):
         await self._uber_finalize_rewards(reward_data)
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "♊ DEICIDE: The Bound Sovereigns Shattered!"
-        embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
+        embed.title = "♊ Bound Sovereigns Defeated!"
+        embed.set_image(url="https://i.imgur.com/JCl4YPE.jpeg")
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()

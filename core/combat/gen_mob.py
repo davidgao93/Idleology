@@ -503,7 +503,7 @@ def generate_uber_gemini(player, monster):
     monster.xp = 150000
 
     monster.name = "Castor & Pollux, Bound Sovereigns"
-    monster.image = "https://i.imgur.com/UbsZLd9.jpeg"
+    monster.image = "https://i.imgur.com/tCvDbCn.jpeg"
     monster.flavor = "move in perfect synchrony"
     monster.species = "Celestial"
     monster.is_boss = True
@@ -538,7 +538,7 @@ async def generate_uber_aphrodite(player, monster):
     monster.xp = 150000
 
     monster.name = "Aphrodite, Celestial Apex"
-    monster.image = "https://i.imgur.com/QYLnAAi.png"
+    monster.image = "https://i.imgur.com/je9CVKH.jpeg"
     monster.flavor = "radiates an overwhelming aura"
     monster.species = "Celestial"
     monster.is_boss = True
