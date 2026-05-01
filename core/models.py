@@ -1016,6 +1016,7 @@ class Partner:
     base_hp: int
     image_url: str
     affinity_image_url: str
+    partner_class: str = ""
 
     # --- Computed stats ---
 
@@ -1114,4 +1115,5 @@ class Partner:
             base_hp=static["base_hp"],
             image_url=static["image_url"],
             affinity_image_url=static["affinity_image_url"],
+            partner_class=static.get("partner_class", ""),
         )

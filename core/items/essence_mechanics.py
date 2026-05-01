@@ -157,25 +157,20 @@ def compute_essence_stat_bonus(item) -> dict:
       evasion  — flat evasion (same unit as armor.evasion)
       block    — flat block (same unit as armor.block)
     """
-    from core.models import Helmet  # local to avoid circular import
-
     bonus = {
         "attack": 0, "defence": 0, "ward": 0,
         "pdr": 0, "fdr": 0, "crit": 0, "evasion": 0, "block": 0,
     }
 
-    is_helmet = isinstance(item, Helmet)
-
     for _, essence_type, value in get_essence_slots(item):
 
         if essence_type == "power":
-            if is_helmet:
+            if hasattr(item, "attack"):
+                bonus["attack"]  += int(item.attack  * value / 100)
+            else:
                 # Helmet has no attack — bonus applies to DEF and WARD %
                 bonus["defence"] += int(item.defence * value / 100)
                 bonus["ward"]    += int(item.ward    * value / 100)
-            else:
-                # Gloves / Boots — bonus applies to ATK
-                bonus["attack"]  += int(item.attack  * value / 100)
 
         elif essence_type == "protection":
             # Amplifies existing PDR and FDR on the item

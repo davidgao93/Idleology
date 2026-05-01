@@ -93,6 +93,57 @@ _FLORA_DOUBLE_CHANCE = {1: 0.02, 2: 0.04, 3: 0.06, 4: 0.08, 5: 0.10}
 # Sigmund sig dispatch: effectiveness per tier
 _SIGMUND_EFFECTIVENESS = {1: 0.60, 2: 0.70, 3: 0.80, 4: 0.90, 5: 1.00}
 
+# ---------------------------------------------------------------------------
+# Partner class system
+# ---------------------------------------------------------------------------
+
+# Main classes (available at 4★)
+ATTACKER_MAIN = frozenset({"Assault", "Caster", "Ranger"})
+TANK_MAIN     = frozenset({"Frontline", "Warden", "Aegis"})
+HEALER_MAIN   = frozenset({"Herbalist", "Druid", "Cleric"})
+
+# Hybrid classes (available at 5★/6★) — fill two roles each
+HYBRID_CLASSES = frozenset({"Vanguard", "Paladin", "Battlemage"})
+
+# Full slot eligibility sets (main + compatible hybrids)
+ATTACKER_CLASSES = ATTACKER_MAIN | {"Vanguard", "Battlemage"}
+TANK_CLASSES     = TANK_MAIN     | {"Vanguard", "Paladin"}
+HEALER_CLASSES   = HEALER_MAIN   | {"Paladin", "Battlemage"}
+
+_SLOT_SETS = {
+    "attacker": ATTACKER_CLASSES,
+    "tank":     TANK_CLASSES,
+    "healer":   HEALER_CLASSES,
+}
+
+# Human-readable slot labels
+SLOT_LABELS = {
+    "attacker": "⚔️ Attacker",
+    "tank":     "🛡️ Tank",
+    "healer":   "💚 Healer",
+}
+
+# Human-readable class labels with role hints
+CLASS_ROLE_HINT = {
+    "Assault":    "Attacker",
+    "Caster":     "Attacker",
+    "Ranger":     "Attacker",
+    "Frontline":  "Tank",
+    "Warden":     "Tank",
+    "Aegis":      "Tank",
+    "Herbalist":  "Healer",
+    "Druid":      "Healer",
+    "Cleric":     "Healer",
+    "Vanguard":   "Attacker / Tank",
+    "Paladin":    "Healer / Tank",
+    "Battlemage": "Attacker / Healer",
+}
+
+
+def can_fill_slot(partner_class: str, slot: str) -> bool:
+    """Returns True if the given partner class is eligible for the given slot."""
+    return partner_class in _SLOT_SETS.get(slot, frozenset())
+
 
 # ===========================================================================
 # Gacha

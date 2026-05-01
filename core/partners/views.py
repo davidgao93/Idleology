@@ -75,7 +75,7 @@ _BOSS_KEY_TYPES = [
 # Task labels
 # ---------------------------------------------------------------------------
 
-_TASK_LABELS = {"combat": "⚔️ Combat", "gathering": "⛏️ Gathering", "boss": "👑 Boss"}
+_TASK_LABELS = {"combat": "⚔️ Combat", "gathering": "⛏️ Gathering"}
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +105,14 @@ async def _apply_dispatch_rewards(
     if gold > 0:
         await bot.database.users.modify_gold(user_id, gold)
     if exp > 0:
-        await bot.database.users.add_exp(user_id, exp)
+        from core.partners.mechanics import grant_xp as _grant_xp
+
+        new_level, new_exp, _ = _grant_xp(partner.level, partner.exp, exp)
+        partner.level = new_level
+        partner.exp = new_exp
+        await bot.database.partners.update_exp(
+            user_id, partner.partner_id, new_exp, new_level
+        )
 
     if items_got:
         mining_batch: dict = {}
@@ -119,13 +126,18 @@ async def _apply_dispatch_rewards(
                 woodcutting_batch[item_key] = woodcutting_batch.get(item_key, 0) + qty
             elif item_key in _FISHING_ITEMS:
                 fishing_batch[item_key] = fishing_batch.get(item_key, 0) + qty
-            elif item_key in ("timber", "stone"):
-                try:
-                    await bot.database.settlement.commit_production(
-                        user_id, server_id, {item_key: qty}
-                    )
-                except Exception:
-                    pass
+            elif item_key in ("magma_core", "life_root", "spirit_shard"):
+                await bot.database.users.modify_currency(user_id, item_key, qty)
+            elif item_key == "celestial_sigils":
+                await bot.database.uber.increment_sigils(user_id, server_id, qty)
+            elif item_key == "infernal_sigils":
+                await bot.database.uber.increment_infernal_sigils(
+                    user_id, server_id, qty
+                )
+            elif item_key == "void_shards":
+                await bot.database.uber.increment_void_shards(user_id, server_id, qty)
+            elif item_key == "gemini_sigils":
+                await bot.database.uber.increment_gemini_sigils(user_id, server_id, qty)
             elif item_key == "boss_key":
                 for _ in range(qty):
                     for key_type in _BOSS_KEY_TYPES:
@@ -205,7 +217,7 @@ async def _apply_dispatch_rewards(
     if gold:
         lines.append(f"💰 **{gold:,}** gold")
     if exp:
-        lines.append(f"📚 **{exp:,}** XP")
+        lines.append(f"📚 **{exp:,}** Partner EXP")
     for item_key, qty in items_got.items():
         lines.append(f"📦 {qty}× **{item_key.replace('_', ' ').title()}**")
     return lines
@@ -247,18 +259,6 @@ class PartnerDetailView(ui.View):
             btn = ui.Button(label="Set Active Combat", style=ButtonStyle.primary)
             btn.callback = self._set_active
         self.add_item(btn)
-
-        # Dispatch
-        if p.is_dispatched:
-            collect_btn = ui.Button(label="Collect Dispatch", style=ButtonStyle.success)
-            collect_btn.callback = self._collect_dispatch
-            self.add_item(collect_btn)
-        elif not p.is_active_combat:
-            dispatch_btn = ui.Button(
-                label="Send on Dispatch", style=ButtonStyle.secondary
-            )
-            dispatch_btn.callback = self._dispatch_menu
-            self.add_item(dispatch_btn)
 
         # Manage Skills
         skills_btn = ui.Button(
@@ -312,31 +312,6 @@ class PartnerDetailView(ui.View):
             inline=False,
         )
         await interaction.edit_original_response(embed=embed, view=self)
-
-    async def _dispatch_menu(self, interaction: Interaction):
-        active_row = await self.bot.database.partners.get_active_dispatch(self.user_id)
-        if (
-            active_row
-            and active_row[2] != self.partner.partner_id
-            and active_row[2] in PARTNER_DATA
-        ):
-            active_partner = Partner.from_row(active_row, PARTNER_DATA[active_row[2]])
-            view = DispatchReplaceConfirmView(
-                self.bot, self.user_id, self.partner, active_partner, self.items, self
-            )
-            view.message = self.message
-            await interaction.response.edit_message(embed=view.build_embed(), view=view)
-        else:
-            view = DispatchTaskSelectView(
-                self.bot, self.user_id, self.partner, self.items, self
-            )
-            view.message = self.message
-            embed = discord.Embed(
-                title=f"Dispatch — {self.partner.name}",
-                description="Choose a task to dispatch this partner on.",
-                colour=_rarity_colour(self.partner.rarity),
-            )
-            await interaction.response.edit_message(embed=embed, view=view)
 
     async def _open_skills(self, interaction: Interaction):
         view = PartnerSkillsView(self.bot, self.user_id, self.partner, self.items, self)
@@ -453,6 +428,7 @@ class DispatchReplaceConfirmView(ui.View):
             description="Choose a task to dispatch this partner on.",
             colour=_rarity_colour(self.new_partner.rarity),
         )
+        embed.set_image(url=f"{self.new_partner.image_url}")
         await interaction.edit_original_response(embed=embed, view=view)
         self.stop()
 
@@ -560,6 +536,10 @@ class PartnerSkillsView(ui.View):
             title=f"⚙️ Skills — {p.name}",
             colour=_rarity_colour(p.rarity),
         )
+        if self.mode == "combat":
+            embed.set_thumbnail(url="https://i.imgur.com/hRAMSPh.jpeg")
+        else:
+            embed.set_thumbnail(url="https://i.imgur.com/2fMB2JI.jpeg")
         shards_key = (
             "combat_skill_shards" if self.mode == "combat" else "dispatch_skill_shards"
         )
@@ -627,9 +607,7 @@ class PartnerSkillsView(ui.View):
             reroll_btn.callback = self._make_reroll(i, key_col, lvl_col)
             self.add_item(reroll_btn)
 
-        toggle_label = (
-            "Switch to Dispatch" if self.mode == "combat" else "Switch to Combat"
-        )
+        toggle_label = "Dispatch Skills" if self.mode == "combat" else "Combat Skills"
         toggle_btn = ui.Button(label=toggle_label, style=ButtonStyle.secondary, row=2)
         toggle_btn.callback = self._toggle_mode
         self.add_item(toggle_btn)
@@ -748,6 +726,9 @@ class PartnerRosterView(ui.View):
     async def on_timeout(self):
         await _delete_on_timeout(self)
 
+    def build_embed(self) -> discord.Embed:
+        return _build_roster_embed(self.partners, self.items)
+
     def _refresh(self):
         self.clear_items()
 
@@ -798,6 +779,49 @@ class PartnerRosterView(ui.View):
             embed=_build_partner_embed(partner, self.items), view=detail
         )
 
+    async def _open_boss_raid(self, interaction: Interaction):
+        await interaction.response.defer()
+        from core.partners.views_boss_party import (
+            BossPartyFormView,
+            BossPartyProgressView,
+            _build_form_embed,
+            _build_progress_embed,
+        )
+
+        server_id = str(interaction.guild.id)
+
+        party_row = await self.bot.database.boss_party.get_active(
+            self.user_id, server_id
+        )
+        if party_row:
+            partner_ids = {
+                party_row["attacker_id"],
+                party_row["tank_id"],
+                party_row["healer_id"],
+            }
+            partners_by_id = {
+                p.partner_id: p for p in self.partners if p.partner_id in partner_ids
+            }
+            progress_view = BossPartyProgressView(
+                self.bot,
+                self.user_id,
+                server_id,
+                party_row,
+                partners_by_id,
+                back_view=self,
+            )
+            progress_view.message = self.message
+            embed, _ = _build_progress_embed(party_row, partners_by_id)
+            await interaction.edit_original_response(embed=embed, view=progress_view)
+            return
+
+        form_view = BossPartyFormView(
+            self.bot, self.user_id, server_id, self.partners, back_view=self
+        )
+        form_view.message = self.message
+        embed = _build_form_embed(form_view.slots, self.partners)
+        await interaction.edit_original_response(embed=embed, view=form_view)
+
     async def _back(self, interaction: Interaction):
         await interaction.response.defer()
         embed, items, partners = await self.main_view._fetch_fresh_data()
@@ -840,7 +864,7 @@ class DispatchView(ui.View):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="📋 Dispatch", colour=0x8BC34A)
-
+        embed.set_thumbnail(url="https://i.imgur.com/AlEM3ov.jpeg")
         active = self._get_active_dispatch()
         if active:
             from core.partners.dispatch import elapsed_hours, get_cap_hours
@@ -892,6 +916,7 @@ class DispatchView(ui.View):
                 ),
                 inline=False,
             )
+            embed.set_thumbnail(url=f"{p.image_url}")
 
         embed.set_footer(
             text=(
@@ -903,7 +928,6 @@ class DispatchView(ui.View):
 
     def _refresh(self):
         self.clear_items()
-
         eligible = [p for p in self.partners if not p.is_active_combat]
         if eligible:
             options = []
@@ -930,20 +954,23 @@ class DispatchView(ui.View):
                 )
                 select.callback = self._on_select
                 self.add_item(select)
-
         sp = self.selected_partner
         active = self._get_active_dispatch()
-
-        if sp is not None and sp.is_dispatched:
+        if sp and active and sp.partner_id != active.partner_id:
+            # NEW: Replace option when another dispatch is active and a different partner is selected
+            replace_btn = ui.Button(
+                label="Replace Dispatch", style=ButtonStyle.success, row=1
+            )
+            replace_btn.callback = self._replace
+            self.add_item(replace_btn)
+        elif sp is not None and sp.is_dispatched:
             # Selected partner is currently out — offer Reassign and Unassign
             reassign_btn = ui.Button(label="Reassign", style=ButtonStyle.success, row=1)
             reassign_btn.callback = self._reassign
             self.add_item(reassign_btn)
-
             unassign_btn = ui.Button(label="Unassign", style=ButtonStyle.danger, row=1)
             unassign_btn.callback = self._unassign
             self.add_item(unassign_btn)
-
             collect_btn = ui.Button(label="Collect", style=ButtonStyle.primary, row=1)
             collect_btn.callback = self._collect
             self.add_item(collect_btn)
@@ -958,15 +985,107 @@ class DispatchView(ui.View):
                 sp is None or sp.is_active_combat or another_dispatched
             )
             self.add_item(confirm_btn)
-
             collect_btn = ui.Button(label="Collect", style=ButtonStyle.primary, row=1)
             collect_btn.callback = self._collect
             collect_btn.disabled = True
             self.add_item(collect_btn)
-
-        back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        boss_raid_btn = ui.Button(
+            label="Boss Raid", style=ButtonStyle.danger, emoji="🔱", row=2
+        )
+        boss_raid_btn.callback = self._boss_raid
+        self.add_item(boss_raid_btn)
+        back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
         back_btn.callback = self._back
         self.add_item(back_btn)
+
+    async def _replace(self, interaction: Interaction):
+        """Collect rewards from the current active dispatch, then switch to task selection
+        for the newly selected partner (exactly as requested)."""
+        await interaction.response.defer()
+        active = self._get_active_dispatch()
+        if active:
+            server_id = str(interaction.guild.id)
+            await _apply_dispatch_rewards(self.bot, self.user_id, server_id, active)
+        # Refresh data
+        rows = await self.bot.database.partners.get_owned(self.user_id)
+        self.partners = [
+            Partner.from_row(row, PARTNER_DATA[row[2]])
+            for row in rows
+            if row[2] in PARTNER_DATA
+        ]
+        self.items = await self.bot.database.partners.get_items(self.user_id)
+        sp_id = self.selected_partner.partner_id if self.selected_partner else None
+        self.selected_partner = next(
+            (p for p in self.partners if p.partner_id == sp_id), None
+        )
+        if self.selected_partner:
+            task_view = DispatchTaskConfirmView(
+                self.bot,
+                self.user_id,
+                self.selected_partner,
+                self.items,
+                self,
+                self.partners,
+            )
+            task_view.message = self.message
+            embed = discord.Embed(
+                title=f"📋 Dispatch — {self.selected_partner.name}",
+                description="Previous dispatch rewards collected.\nChoose a task for the new partner:",
+                colour=_rarity_colour(self.selected_partner.rarity),
+            )
+            embed.set_image(url=f"{self.selected_partner.image_url}")
+            await interaction.edit_original_response(embed=embed, view=task_view)
+        else:
+            # Fallback (should not happen)
+            self._refresh()
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
+
+    async def _boss_raid(self, interaction: Interaction):
+        """Boss Raid entry point – moved from PartnerMainView to DispatchView."""
+        await interaction.response.defer()
+        from core.partners.views_boss_party import (
+            BossPartyFormView,
+            BossPartyProgressView,
+            _build_form_embed,
+            _build_progress_embed,
+        )
+
+        server_id = str(interaction.guild.id)
+
+        party_row = await self.bot.database.boss_party.get_active(
+            self.user_id, server_id
+        )
+        if party_row:
+            partner_ids = {
+                party_row["attacker_id"],
+                party_row["tank_id"],
+                party_row["healer_id"],
+            }
+            partners_by_id = {
+                p.partner_id: p for p in self.partners if p.partner_id in partner_ids
+            }
+            progress_view = BossPartyProgressView(
+                self.bot,
+                self.user_id,
+                server_id,
+                party_row,
+                partners_by_id,
+                back_view=self,  # returns to DispatchView (logical new context)
+            )
+            progress_view.message = self.message
+            embed, _ = _build_progress_embed(party_row, partners_by_id)
+            await interaction.edit_original_response(embed=embed, view=progress_view)
+            return
+
+        form_view = BossPartyFormView(
+            self.bot, self.user_id, server_id, self.partners, back_view=self
+        )
+        form_view.message = self.message
+        embed = _build_form_embed(form_view.slots, self.partners)
+        embed.set_thumbnail(url="https://i.imgur.com/Q4SzClS.jpeg")
+        await interaction.edit_original_response(embed=embed, view=form_view)
 
     async def _on_select(self, interaction: Interaction):
         await interaction.response.defer()
@@ -1002,6 +1121,7 @@ class DispatchView(ui.View):
             description="Choose a task:",
             colour=_rarity_colour(sp.rarity),
         )
+        embed.set_image(url=f"{self.selected_partner.image_url}")
         await interaction.response.edit_message(embed=embed, view=view)
 
     async def _collect(self, interaction: Interaction):
@@ -1106,6 +1226,7 @@ class DispatchView(ui.View):
             ),
             colour=_rarity_colour(sp.rarity),
         )
+        embed.set_thumbnail(url="https://i.imgur.com/AlEM3ov.jpeg")
         await interaction.edit_original_response(embed=embed, view=task_view)
 
     async def _back(self, interaction: Interaction):
@@ -1904,6 +2025,7 @@ class AffinityView(ui.View):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="💞 Partner Affinity", colour=0xFF6B6B)
+        embed.set_thumbnail(url="https://i.imgur.com/Qz6oh3J.jpeg")
         lines = []
         for p in self.partners:
             story_idx = next_available_story(

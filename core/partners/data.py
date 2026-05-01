@@ -22,6 +22,7 @@ def _load() -> None:
                 "base_hp": int(row["base_hp"]),
                 "image_url": row["image_url"],
                 "affinity_image_url": row["affinity_image_url"],
+                "partner_class": row.get("partner_class", ""),
             }
 
 

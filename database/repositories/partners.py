@@ -284,6 +284,43 @@ class PartnerRepository(BaseRepository):
         )
         await self.connection.commit()
 
+    async def set_boss_party_dispatch(
+        self,
+        user_id: str,
+        attacker_id: int,
+        tank_id: int,
+        healer_id: int,
+        start_time: str,
+    ) -> None:
+        """Marks three partners as dispatched on a boss party without clearing others."""
+        for pid in (attacker_id, tank_id, healer_id):
+            await self.connection.execute(
+                """UPDATE user_partners
+                   SET is_dispatched = 1, dispatch_task = 'boss_party',
+                       dispatch_start_time = ?
+                   WHERE user_id = ? AND partner_id = ?""",
+                (start_time, user_id, pid),
+            )
+        await self.connection.commit()
+
+    async def clear_boss_party_dispatch(
+        self,
+        user_id: str,
+        attacker_id: int,
+        tank_id: int,
+        healer_id: int,
+    ) -> None:
+        """Clears dispatch state for all three boss party members."""
+        for pid in (attacker_id, tank_id, healer_id):
+            await self.connection.execute(
+                """UPDATE user_partners
+                   SET is_dispatched = 0, dispatch_task = NULL,
+                       dispatch_start_time = NULL
+                   WHERE user_id = ? AND partner_id = ?""",
+                (user_id, pid),
+            )
+        await self.connection.commit()
+
     # ------------------------------------------------------------------
     # Skill upgrades / rerolls
     # ------------------------------------------------------------------

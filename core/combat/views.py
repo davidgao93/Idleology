@@ -13,86 +13,9 @@ from core.combat.combat_log import CombatLogger
 from core.combat.drops import DropManager
 from core.combat.experience import ExperienceManager
 from core.combat.gen_mob import generate_boss
+from core.combat.views_lucifer import InfernalContractView, LuciferChoiceView
 from core.companions.mechanics import CompanionMechanics
 from core.models import Monster, Player
-
-
-class LuciferChoiceView(ui.View):
-    """Specific View for Lucifer's Soul Core selection."""
-
-    def __init__(self, bot, user_id, player):
-        super().__init__(timeout=60)
-        self.bot = bot
-        self.user_id = user_id
-        self.player = player
-        self.message = None  # Set by caller after send
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        if self.message:
-            try:
-                embed = self.message.embeds[0]
-                embed.add_field(
-                    name="Contract Expired",
-                    value="*You hesitated too long. The Soul Core crumbles to ash.*",
-                    inline=False,
-                )
-                await self.message.edit(embed=embed, view=None)
-            except Exception:
-                pass
-
-    async def _conclude(self, interaction, msg):
-        embed = interaction.message.embeds[0]
-        embed.add_field(name="Choice", value=msg, inline=False)
-        await interaction.response.edit_message(embed=embed, view=None)
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
-
-    @ui.button(label="Enraged", emoji="❤️‍🔥", style=ButtonStyle.danger)
-    async def enraged(self, interaction: Interaction, button: ui.Button):
-        adj = random.randint(-1, 2)
-        await self.bot.database.users.modify_stat(self.user_id, "attack", adj)
-        await self._conclude(interaction, f"Enraged! Attack changed by {adj:+}.")
-
-    @ui.button(label="Solidified", emoji="💙", style=ButtonStyle.primary)
-    async def solidified(self, interaction: Interaction, button: ui.Button):
-        adj = random.randint(-1, 2)
-        await self.bot.database.users.modify_stat(self.user_id, "defence", adj)
-        await self._conclude(interaction, f"Solidified! Defence changed by {adj:+}.")
-
-    @ui.button(label="Unstable", emoji="💔", style=ButtonStyle.secondary)
-    async def unstable(self, interaction: Interaction, button: ui.Button):
-        total = self.player.base_attack + self.player.base_defence
-        # Randomize towards equilibrium (49-51% split)
-        new_atk = int(total * random.uniform(0.49, 0.51))
-        new_def = total - new_atk
-
-        atk_diff = new_atk - self.player.base_attack
-        def_diff = new_def - self.player.base_defence
-
-        await self.bot.database.users.modify_stat(self.user_id, "attack", atk_diff)
-        await self.bot.database.users.modify_stat(self.user_id, "defence", def_diff)
-        await self._conclude(
-            interaction, f"Chaos ensues! (Atk: {new_atk}, Def: {new_def})"
-        )
-
-    @ui.button(label="Inverse", emoji="💞", style=ButtonStyle.secondary)
-    async def inverse(self, interaction: Interaction, button: ui.Button):
-        diff = self.player.base_defence - self.player.base_attack
-        await self.bot.database.users.modify_stat(self.user_id, "attack", diff)
-        await self.bot.database.users.modify_stat(self.user_id, "defence", -diff)
-        await self._conclude(
-            interaction,
-            f"Stats Swapped! (Atk: {self.player.base_defence}, Def: {self.player.base_attack})",
-        )
-
-    @ui.button(label="Original", emoji="🖤", style=ButtonStyle.success)
-    async def original(self, interaction: Interaction, button: ui.Button):
-        await self.bot.database.users.modify_currency(self.user_id, "soul_cores", 1)
-        await self._conclude(interaction, "You pocket a Soul Core.")
 
 
 class CombatView(ui.View):
@@ -351,6 +274,52 @@ class CombatView(ui.View):
         if "Lucifer" in boss_name:
             return "https://i.imgur.com/tIcLLI1.png"
         return None
+
+    # --- Uber encounter helpers ---
+
+    def _uber_dmg_frac(self) -> float:
+        return max(
+            0.0,
+            min(1.0, (self.monster.max_hp - max(0, self.monster.hp)) / self.monster.max_hp),
+        )
+
+    @staticmethod
+    def _calc_uber_curios(dmg_frac: float) -> int:
+        if dmg_frac >= 1.0:
+            return 5
+        if dmg_frac >= 0.75:
+            return 4
+        if dmg_frac >= 0.50:
+            return 3
+        if dmg_frac >= 0.25:
+            return 2
+        return 1
+
+    async def _uber_defeat(self, message) -> None:
+        base_loss = int(self.player.exp * 0.10)
+        xp_loss = await ExperienceManager.remove_experience(
+            self.bot, self.user_id, self.player, base_loss
+        )
+        self.player.current_hp = 1
+        embed = combat_ui.create_defeat_embed(
+            self.player, self.monster, xp_loss, killing_blow=self.killing_blow
+        )
+        await message.edit(embed=embed, view=None)
+        self.bot.state_manager.clear_active(self.user_id)
+        await self.bot.database.users.update_from_player_object(self.player)
+        self.stop()
+
+    async def _uber_finalize_rewards(self, reward_data: dict) -> None:
+        """Apply XP, gold, soulreap, and persist player. Mutates reward_data xp field."""
+        exp_changes = await ExperienceManager.add_experience(
+            self.bot, self.user_id, self.player, reward_data["xp"]
+        )
+        reward_data["xp"] = exp_changes["xp_added"]
+        reward_data["msgs"].extend(exp_changes["msgs"])
+        await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
+        if self.player.get_weapon_infernal() == "soulreap":
+            self.player.current_hp = self.player.total_max_hp
+        await self.bot.database.users.update_from_player_object(self.player)
 
     async def handle_end_state(self, message, interaction: Interaction):
         """Processes victory or defeat with Phase Logic."""
@@ -845,6 +814,7 @@ class CombatView(ui.View):
             # --- PARTNER END REWARDS ---
             if self.player.active_partner:
                 from core.combat.rewards import apply_partner_end_rewards
+
                 partner = self.player.active_partner
                 lvl_msgs = apply_partner_end_rewards(self.player, reward_data["xp"])
                 await self.bot.database.partners.update_exp(
@@ -917,565 +887,179 @@ class CombatView(ui.View):
             self.stop()
 
     async def _handle_uber_end_state(self, message, interaction: Interaction):
-        """Specialized logic for the Uber Aphrodite encounter."""
-        max_hp = self.monster.max_hp
-        rem_hp = max(0, self.monster.hp)
-
-        dmg_frac = max(0.0, min(1.0, (max_hp - rem_hp) / max_hp))
-
-        # 1. Curio Rewards (Scale with Damage)
-        curios = 1
-        if dmg_frac >= 1.0:
-            curios = 5
-        elif dmg_frac >= 0.75:
-            curios = 4
-        elif dmg_frac >= 0.50:
-            curios = 3
-        elif dmg_frac >= 0.25:
-            curios = 2
-
+        """Uber Aphrodite."""
+        curios = self._calc_uber_curios(self._uber_dmg_frac())
         await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
 
-        # 2. Defeat vs Victory
         if self.player.current_hp <= 0:
-            # Defeat
-            base_loss = int(self.player.exp * 0.10)
-            xp_loss = await ExperienceManager.remove_experience(
-                self.bot, self.user_id, self.player, base_loss
+            await self._uber_defeat(message)
+            return
+
+        reward_data = rewards.calculate_rewards(self.player, self.monster)
+        reward_data["xp"] *= 2
+        reward_data["gold"] *= 2
+        reward_data["curios"] = curios
+        reward_data["special"] = []
+
+        if random.random() < 0.10:
+            await self.bot.database.uber.increment_engrams(self.user_id, self.server_id, 1)
+            reward_data["special"].append("Celestial Engram")
+            reward_data["msgs"].append(
+                "🌌 **A Celestial Engram materializes from Aphrodite's shattered form...**"
             )
 
-            self.player.current_hp = 1
-            embed = combat_ui.create_defeat_embed(
-                self.player, self.monster, xp_loss, killing_blow=self.killing_blow
-            )
-            await message.edit(embed=embed, view=None)
-            self.bot.state_manager.clear_active(self.user_id)
-            await self.bot.database.users.update_from_player_object(self.player)
-            self.stop()
+        if random.random() < 0.10:
+            u_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+            if not u_prog["celestial_blueprint_unlocked"]:
+                await self.bot.database.uber.set_blueprint_unlocked(self.user_id, self.server_id, True)
+                reward_data["special"].append("Celestial Shrine Blueprint")
+                reward_data["msgs"].append("📜 **You found the Celestial Shrine Blueprint!**")
+            else:
+                await self.bot.database.users.modify_currency(self.user_id, "celestial_stone", 1)
+                reward_data["special"].append("Celestial Stone")
+                reward_data["msgs"].append("🪨 **You found a Celestial Stone!**")
 
-        else:
-            # Full Kill Victory
-            reward_data = rewards.calculate_rewards(self.player, self.monster)
+        await self._uber_finalize_rewards(reward_data)
 
-            # Double Base XP & Gold
-            reward_data["xp"] *= 2
-            reward_data["gold"] *= 2
-
-            # Setup Curios and Specials for the standard Loot UI parser
-            reward_data["curios"] = curios
-            reward_data["special"] = []
-
-            # 3. Celestial Engram Roll (10%)
-            if random.random() < 0.10:
-                await self.bot.database.uber.increment_engrams(
-                    self.user_id, self.server_id, 1
-                )
-                reward_data["special"].append("Celestial Engram")
-                reward_data["msgs"].append(
-                    "🌌 **A Celestial Engram materializes from Aphrodite's shattered form...**"
-                )
-
-            # 4. Blueprint / Stone Roll (10%)
-            if random.random() < 0.10:
-                u_prog = await self.bot.database.uber.get_uber_progress(
-                    self.user_id, self.server_id
-                )
-                if u_prog["celestial_blueprint_unlocked"] == 0:
-                    await self.bot.database.uber.set_blueprint_unlocked(
-                        self.user_id, self.server_id, True
-                    )
-                    reward_data["special"].append("Celestial Shrine Blueprint")
-                    reward_data["msgs"].append(
-                        "📜 **You found the Celestial Shrine Blueprint!**"
-                    )
-                else:
-                    await self.bot.database.users.modify_currency(
-                        self.user_id, "celestial_stone", 1
-                    )
-                    reward_data["special"].append("Celestial Stone")
-                    reward_data["msgs"].append("🪨 **You found a Celestial Stone!**")
-
-            # Handle XP / Level Up
-            exp_changes = await ExperienceManager.add_experience(
-                self.bot, self.user_id, self.player, reward_data["xp"]
-            )
-
-            # Update reward_data so the Embed correctly shows 0 XP gained if protected
-            reward_data["xp"] = exp_changes["xp_added"]
-            reward_data["msgs"].extend(exp_changes["msgs"])
-
-            # DB Commits
-            await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
-
-            # Generate Standard Victory UI (It will naturally parse the specials and curios now)
-            embed = combat_ui.create_victory_embed(
-                self.player, self.monster, reward_data
-            )
-            embed.title = "🌌 DEICIDE: Apex Shattered!"
-            embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
-            await message.edit(embed=embed, view=None)
-
-        # Soulreap: restore HP to full after a successful uber kill
-        if (
-            self.player.get_weapon_infernal() == "soulreap"
-            and self.player.current_hp > 0
-        ):
-            self.player.current_hp = self.player.total_max_hp
-
-        # Cleanup
+        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+        embed.title = "🌌 DEICIDE: Apex Shattered!"
+        embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
+        await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
-        await self.bot.database.users.update_from_player_object(self.player)
         self.stop()
 
     async def _handle_uber_lucifer_end_state(self, message, interaction: Interaction):
-        """Specialized logic for the Uber Lucifer encounter."""
-        max_hp = self.monster.max_hp
-        rem_hp = max(0, self.monster.hp)
-        dmg_frac = max(0.0, min(1.0, (max_hp - rem_hp) / max_hp))
-
-        # 1. Curio Rewards (scale with damage dealt)
-        curios = 1
-        if dmg_frac >= 1.0:
-            curios = 5
-        elif dmg_frac >= 0.75:
-            curios = 4
-        elif dmg_frac >= 0.50:
-            curios = 3
-        elif dmg_frac >= 0.25:
-            curios = 2
-
+        """Uber Lucifer."""
+        curios = self._calc_uber_curios(self._uber_dmg_frac())
         await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
 
-        # 2. Defeat vs Victory
         if self.player.current_hp <= 0:
-            base_loss = int(self.player.exp * 0.10)
-            xp_loss = await ExperienceManager.remove_experience(
-                self.bot, self.user_id, self.player, base_loss
-            )
-
-            self.player.current_hp = 1
-            embed = combat_ui.create_defeat_embed(
-                self.player, self.monster, xp_loss, killing_blow=self.killing_blow
-            )
-            await message.edit(embed=embed, view=None)
-            self.bot.state_manager.clear_active(self.user_id)
-            await self.bot.database.users.update_from_player_object(self.player)
-            self.stop()
-
-        else:
-            # Full Kill Victory
-            reward_data = rewards.calculate_rewards(self.player, self.monster)
-            reward_data["xp"] *= 2
-            reward_data["gold"] *= 2
-            reward_data["curios"] = curios
-            reward_data["special"] = []
-
-            # 3. Infernal Engram Roll (10%)
-            if random.random() < 0.10:
-                await self.bot.database.uber.increment_infernal_engrams(
-                    self.user_id, self.server_id, 1
-                )
-                reward_data["special"].append("Infernal Engram")
-                reward_data["msgs"].append(
-                    "🔥 **An Infernal Engram crystallises from Lucifer's shattered crown...**"
-                )
-
-            # 4. Infernal Forge Blueprint / Refinement Rune Roll (10%)
-            if random.random() < 0.10:
-                u_prog = await self.bot.database.uber.get_uber_progress(
-                    self.user_id, self.server_id
-                )
-                if u_prog["infernal_blueprint_unlocked"] == 0:
-                    await self.bot.database.uber.set_infernal_blueprint_unlocked(
-                        self.user_id, self.server_id, True
-                    )
-                    reward_data["special"].append("Infernal Forge Blueprint")
-                    reward_data["msgs"].append(
-                        "📜 **You found the Infernal Forge Blueprint!**"
-                    )
-                else:
-                    await self.bot.database.users.modify_currency(
-                        self.user_id, "infernal_cinder", 1
-                    )
-                    reward_data["special"].append("Infernal Cinder")
-                    reward_data["msgs"].append(
-                        "🔥 **The forge roars. You extract an Infernal Cinder.**"
-                    )
-
-            # Handle XP / Level Up
-            exp_changes = await ExperienceManager.add_experience(
-                self.bot, self.user_id, self.player, reward_data["xp"]
-            )
-
-            # Update reward_data so the Embed correctly shows 0 XP gained if protected
-            reward_data["xp"] = exp_changes["xp_added"]
-            reward_data["msgs"].extend(exp_changes["msgs"])
-
-            # DB Commits
-            await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
-
-            # Soulreap: restore HP to full after kill
-            if self.player.get_weapon_infernal() == "soulreap":
-                self.player.current_hp = self.player.total_max_hp
-
-            await self.bot.database.users.update_from_player_object(self.player)
-
-            embed = combat_ui.create_victory_embed(
-                self.player, self.monster, reward_data
-            )
-            embed.title = "🔥 DEICIDE: Sovereign Shattered!"
-            embed.set_image(url="https://i.imgur.com/ngTUw77.png")
-
-            # Present the Infernal Contract
-            contract_view = InfernalContractView(
-                self.bot, self.user_id, self.player, self.server_id, message
-            )
-            embed.add_field(
-                name="🩸 An Infernal Contract materialises...",
-                value=contract_view.contract_summary(),
-                inline=False,
-            )
-            await message.edit(embed=embed, view=contract_view)
-            self.stop()
-
-    async def _handle_uber_neet_end_state(self, message, interaction: Interaction):
-        """Specialized logic for the Uber NEET encounter."""
-        max_hp = self.monster.max_hp
-        rem_hp = max(0, self.monster.hp)
-        dmg_frac = max(0.0, min(1.0, (max_hp - rem_hp) / max_hp))
-
-        # 1. Curio Rewards (scale with damage dealt)
-        curios = 1
-        if dmg_frac >= 1.0:
-            curios = 5
-        elif dmg_frac >= 0.75:
-            curios = 4
-        elif dmg_frac >= 0.50:
-            curios = 3
-        elif dmg_frac >= 0.25:
-            curios = 2
-
-        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
-
-        # 2. Defeat vs Victory
-        if self.player.current_hp <= 0:
-            base_loss = int(self.player.exp * 0.10)
-            xp_loss = await ExperienceManager.remove_experience(
-                self.bot, self.user_id, self.player, base_loss
-            )
-
-            self.player.current_hp = 1
-            embed = combat_ui.create_defeat_embed(
-                self.player, self.monster, xp_loss, killing_blow=self.killing_blow
-            )
-            await message.edit(embed=embed, view=None)
-            self.bot.state_manager.clear_active(self.user_id)
-            await self.bot.database.users.update_from_player_object(self.player)
-            self.stop()
-
-        else:
-            # Full Kill Victory
-            reward_data = rewards.calculate_rewards(self.player, self.monster)
-            reward_data["xp"] *= 2
-            reward_data["gold"] *= 2
-            reward_data["curios"] = curios
-            reward_data["special"] = []
-
-            # 3. Void Engram Roll (10%)
-            if random.random() < 0.10:
-                await self.bot.database.uber.increment_void_engrams(
-                    self.user_id, self.server_id, 1
-                )
-                reward_data["special"].append("Void Engram")
-                reward_data["msgs"].append(
-                    "⬛ **A Void Engram crystallises from the collapsing rift...**"
-                )
-
-            # 4. Void Sanctum Blueprint / Void Crystal Roll (10%)
-            if random.random() < 0.10:
-                u_prog = await self.bot.database.uber.get_uber_progress(
-                    self.user_id, self.server_id
-                )
-                if u_prog["void_blueprint_unlocked"] == 0:
-                    await self.bot.database.uber.set_void_blueprint_unlocked(
-                        self.user_id, self.server_id, True
-                    )
-                    reward_data["special"].append("Void Sanctum Blueprint")
-                    reward_data["msgs"].append(
-                        "📜 **You found the Void Sanctum Blueprint!**"
-                    )
-                else:
-                    await self.bot.database.users.modify_currency(
-                        self.user_id, "void_crystal", 1
-                    )
-                    reward_data["special"].append("Void Crystal")
-                    reward_data["msgs"].append("🔮 **The void yields a Void Crystal.**")
-
-            # 5. Void Key (guaranteed on victory)
-            await self.bot.database.users.modify_currency(self.user_id, "void_keys", 1)
-            reward_data["special"].append("Void Key")
-            reward_data["msgs"].append(
-                "🗝️ **A Void Key manifests from the collapsing rift.**"
-            )
-
-            # Handle XP / Level Up
-            exp_changes = await ExperienceManager.add_experience(
-                self.bot, self.user_id, self.player, reward_data["xp"]
-            )
-
-            # Update reward_data so the Embed correctly shows 0 XP gained if protected
-            reward_data["xp"] = exp_changes["xp_added"]
-            reward_data["msgs"].extend(exp_changes["msgs"])
-
-            # DB Commits
-            await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
-
-            # Soulreap: restore HP to full after kill
-            if self.player.get_weapon_infernal() == "soulreap":
-                self.player.current_hp = self.player.total_max_hp
-
-            await self.bot.database.users.update_from_player_object(self.player)
-
-            embed = combat_ui.create_victory_embed(
-                self.player, self.monster, reward_data
-            )
-            embed.title = "⬛ DEICIDE: Void Sovereign Collapsed!"
-            embed.set_image(url="https://i.imgur.com/7UmY4Mo.jpeg")
-            await message.edit(embed=embed, view=None)
-            self.bot.state_manager.clear_active(self.user_id)
-            self.stop()
+            await self._uber_defeat(message)
             return
 
-        # Soulreap on uber defeat (if player survived via vow etc.)
-        if (
-            self.player.get_weapon_infernal() == "soulreap"
-            and self.player.current_hp > 0
-        ):
-            self.player.current_hp = self.player.total_max_hp
+        reward_data = rewards.calculate_rewards(self.player, self.monster)
+        reward_data["xp"] *= 2
+        reward_data["gold"] *= 2
+        reward_data["curios"] = curios
+        reward_data["special"] = []
 
+        if random.random() < 0.10:
+            await self.bot.database.uber.increment_infernal_engrams(self.user_id, self.server_id, 1)
+            reward_data["special"].append("Infernal Engram")
+            reward_data["msgs"].append(
+                "🔥 **An Infernal Engram crystallises from Lucifer's shattered crown...**"
+            )
+
+        if random.random() < 0.10:
+            u_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+            if not u_prog["infernal_blueprint_unlocked"]:
+                await self.bot.database.uber.set_infernal_blueprint_unlocked(self.user_id, self.server_id, True)
+                reward_data["special"].append("Infernal Forge Blueprint")
+                reward_data["msgs"].append("📜 **You found the Infernal Forge Blueprint!**")
+            else:
+                await self.bot.database.users.modify_currency(self.user_id, "infernal_cinder", 1)
+                reward_data["special"].append("Infernal Cinder")
+                reward_data["msgs"].append("🔥 **The forge roars. You extract an Infernal Cinder.**")
+
+        await self._uber_finalize_rewards(reward_data)
+
+        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+        embed.title = "🔥 DEICIDE: Sovereign Shattered!"
+        embed.set_image(url="https://i.imgur.com/ngTUw77.png")
+
+        contract_view = InfernalContractView(self.bot, self.user_id, self.player, self.server_id, message)
+        embed.add_field(
+            name="🩸 An Infernal Contract materialises...",
+            value=contract_view.contract_summary(),
+            inline=False,
+        )
+        await message.edit(embed=embed, view=contract_view)
+        self.stop()
+
+    async def _handle_uber_neet_end_state(self, message, interaction: Interaction):
+        """Uber NEET."""
+        curios = self._calc_uber_curios(self._uber_dmg_frac())
+        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
+
+        if self.player.current_hp <= 0:
+            await self._uber_defeat(message)
+            return
+
+        reward_data = rewards.calculate_rewards(self.player, self.monster)
+        reward_data["xp"] *= 2
+        reward_data["gold"] *= 2
+        reward_data["curios"] = curios
+        reward_data["special"] = []
+
+        if random.random() < 0.10:
+            await self.bot.database.uber.increment_void_engrams(self.user_id, self.server_id, 1)
+            reward_data["special"].append("Void Engram")
+            reward_data["msgs"].append(
+                "⬛ **A Void Engram crystallises from the collapsing rift...**"
+            )
+
+        if random.random() < 0.10:
+            u_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+            if not u_prog["void_blueprint_unlocked"]:
+                await self.bot.database.uber.set_void_blueprint_unlocked(self.user_id, self.server_id, True)
+                reward_data["special"].append("Void Sanctum Blueprint")
+                reward_data["msgs"].append("📜 **You found the Void Sanctum Blueprint!**")
+            else:
+                await self.bot.database.users.modify_currency(self.user_id, "void_crystal", 1)
+                reward_data["special"].append("Void Crystal")
+                reward_data["msgs"].append("🔮 **The void yields a Void Crystal.**")
+
+        await self.bot.database.users.modify_currency(self.user_id, "void_keys", 1)
+        reward_data["special"].append("Void Key")
+        reward_data["msgs"].append("🗝️ **A Void Key manifests from the collapsing rift.**")
+
+        await self._uber_finalize_rewards(reward_data)
+
+        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+        embed.title = "⬛ DEICIDE: Void Sovereign Collapsed!"
+        embed.set_image(url="https://i.imgur.com/7UmY4Mo.jpeg")
+        await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
-        await self.bot.database.users.update_from_player_object(self.player)
         self.stop()
 
     async def _handle_uber_gemini_end_state(self, message, interaction: Interaction):
-        """Specialized logic for the Uber Gemini Twins encounter."""
-        max_hp = self.monster.max_hp
-        rem_hp = max(0, self.monster.hp)
-        dmg_frac = max(0.0, min(1.0, (max_hp - rem_hp) / max_hp))
-
-        # 1. Curio Rewards (scale with damage dealt)
-        curios = 1
-        if dmg_frac >= 1.0:
-            curios = 5
-        elif dmg_frac >= 0.75:
-            curios = 4
-        elif dmg_frac >= 0.50:
-            curios = 3
-        elif dmg_frac >= 0.25:
-            curios = 2
-
+        """Uber Gemini Twins."""
+        curios = self._calc_uber_curios(self._uber_dmg_frac())
         await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
 
-        # 2. Defeat vs Victory
         if self.player.current_hp <= 0:
-            base_loss = int(self.player.exp * 0.10)
-            xp_loss = await ExperienceManager.remove_experience(
-                self.bot, self.user_id, self.player, base_loss
+            await self._uber_defeat(message)
+            return
+
+        reward_data = rewards.calculate_rewards(self.player, self.monster)
+        reward_data["xp"] *= 2
+        reward_data["gold"] *= 2
+        reward_data["curios"] = curios
+        reward_data["special"] = []
+
+        if random.random() < 0.10:
+            await self.bot.database.uber.increment_gemini_engrams(self.user_id, self.server_id, 1)
+            reward_data["special"].append("Gemini Engram")
+            reward_data["msgs"].append(
+                "♊ **A Gemini Engram crystallises from the twins' shattered bond...**"
             )
 
-            self.player.current_hp = 1
-            embed = combat_ui.create_defeat_embed(
-                self.player, self.monster, xp_loss, killing_blow=self.killing_blow
-            )
-            await message.edit(embed=embed, view=None)
-            self.bot.state_manager.clear_active(self.user_id)
-            await self.bot.database.users.update_from_player_object(self.player)
-            self.stop()
+        if random.random() < 0.10:
+            u_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+            if not u_prog["gemini_blueprint_unlocked"]:
+                await self.bot.database.uber.set_gemini_blueprint_unlocked(self.user_id, self.server_id, True)
+                reward_data["special"].append("Twin Shrine Blueprint")
+                reward_data["msgs"].append("📜 **You found the Twin Shrine Blueprint!**")
+            else:
+                await self.bot.database.users.modify_currency(self.user_id, "bound_crystal", 1)
+                reward_data["special"].append("Bound Crystal")
+                reward_data["msgs"].append("💎 **The twins' bond yields a Bound Crystal.**")
 
-        else:
-            # Full Kill Victory
-            reward_data = rewards.calculate_rewards(self.player, self.monster)
-            reward_data["xp"] *= 2
-            reward_data["gold"] *= 2
-            reward_data["curios"] = curios
-            reward_data["special"] = []
+        await self._uber_finalize_rewards(reward_data)
 
-            # 3. Gemini Engram Roll (10%)
-            if random.random() < 0.10:
-                await self.bot.database.uber.increment_gemini_engrams(
-                    self.user_id, self.server_id, 1
-                )
-                reward_data["special"].append("Gemini Engram")
-                reward_data["msgs"].append(
-                    "♊ **A Gemini Engram crystallises from the twins' shattered bond...**"
-                )
-
-            # 4. Twin Shrine Blueprint / Bound Crystal Roll (10%)
-            if random.random() < 0.10:
-                u_prog = await self.bot.database.uber.get_uber_progress(
-                    self.user_id, self.server_id
-                )
-                if u_prog["gemini_blueprint_unlocked"] == 0:
-                    await self.bot.database.uber.set_gemini_blueprint_unlocked(
-                        self.user_id, self.server_id, True
-                    )
-                    reward_data["special"].append("Twin Shrine Blueprint")
-                    reward_data["msgs"].append(
-                        "📜 **You found the Twin Shrine Blueprint!**"
-                    )
-                else:
-                    await self.bot.database.users.modify_currency(
-                        self.user_id, "bound_crystal", 1
-                    )
-                    reward_data["special"].append("Bound Crystal")
-                    reward_data["msgs"].append(
-                        "💎 **The twins' bond yields a Bound Crystal.**"
-                    )
-
-            # Handle XP / Level Up
-            exp_changes = await ExperienceManager.add_experience(
-                self.bot, self.user_id, self.player, reward_data["xp"]
-            )
-
-            # Update reward_data so the Embed correctly shows 0 XP gained if protected
-            reward_data["xp"] = exp_changes["xp_added"]
-            reward_data["msgs"].extend(exp_changes["msgs"])
-
-            # DB Commits
-            await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
-
-            # Soulreap: restore HP to full after kill
-            if self.player.get_weapon_infernal() == "soulreap":
-                self.player.current_hp = self.player.total_max_hp
-
-            await self.bot.database.users.update_from_player_object(self.player)
-
-            embed = combat_ui.create_victory_embed(
-                self.player, self.monster, reward_data
-            )
-            embed.title = "♊ DEICIDE: The Bound Sovereigns Shattered!"
-            embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
-            await message.edit(embed=embed, view=None)
-
+        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+        embed.title = "♊ DEICIDE: The Bound Sovereigns Shattered!"
+        embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
+        await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
-        await self.bot.database.users.update_from_player_object(self.player)
-        self.stop()
-
-
-class InfernalContractView(ui.View):
-    """Presents a randomly-generated stat contract after killing Uber Lucifer."""
-
-    STAT_LABELS = {"attack": "⚔️ ATK", "defence": "🛡️ DEF", "hp": "❤️ HP"}
-
-    def __init__(self, bot, user_id: str, player, server_id: str, message):
-        super().__init__(timeout=60)
-        self.bot = bot
-        self.user_id = user_id
-        self.player = player
-        self.server_id = server_id
-        self.message = message
-
-        self.contract = self._roll_contract()
-
-    def _roll_contract(self) -> dict:
-        roll = random.random()
-        if roll < 0.05:  # 5%  — all positive
-            signs = [1, 1, 1]
-        elif roll < 0.25:  # 20% — 2 positive 1 negative
-            signs = [1, 1, -1]
-        else:  # 75% — 1 positive 2 negative
-            signs = [1, -1, -1]
-
-        random.shuffle(signs)
-        stats = ["attack", "defence", "hp"]
-        random.shuffle(stats)
-
-        return {stat: signs[i] * random.randint(5, 20) for i, stat in enumerate(stats)}
-
-    def contract_summary(self) -> str:
-        parts = []
-        for stat, delta in self.contract.items():
-            sign = "+" if delta > 0 else ""
-            parts.append(f"{self.STAT_LABELS[stat]}: **{sign}{delta}**")
-        return (
-            "\n".join(parts)
-            + "\n\n*Lucifer offers a deal. Most deals are poor. This may be too.*"
-        )
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        try:
-            await self.message.edit(view=None)
-        except Exception:
-            pass
-
-    @ui.button(label="Accept Contract", style=discord.ButtonStyle.danger, emoji="🩸")
-    async def accept(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.defer()
-
-        atk_delta = self.contract.get("attack", 0)
-        def_delta = self.contract.get("defence", 0)
-        hp_delta = self.contract.get("hp", 0)
-
-        # Clamp to minimums first, then derive actual deltas applied
-        new_atk = max(1, self.player.base_attack + atk_delta)
-        new_def = max(1, self.player.base_defence + def_delta)
-        new_hp = max(10, self.player.max_hp + hp_delta)
-
-        actual_atk_delta = new_atk - self.player.base_attack
-        actual_def_delta = new_def - self.player.base_defence
-        actual_hp_delta = new_hp - self.player.max_hp
-
-        self.player.base_attack = new_atk
-        self.player.base_defence = new_def
-        self.player.max_hp = new_hp
-        self.player.current_hp = min(self.player.current_hp, self.player.total_max_hp)
-        self.player.compute_flat_stats()  # Refresh flat cache with new base values
-
-        # update_from_player_object does not write attack/defence/max_hp,
-        # so we must persist those via modify_stat directly.
-        if actual_atk_delta:
-            await self.bot.database.users.modify_stat(
-                self.user_id, "attack", actual_atk_delta
-            )
-        if actual_def_delta:
-            await self.bot.database.users.modify_stat(
-                self.user_id, "defence", actual_def_delta
-            )
-        if actual_hp_delta:
-            await self.bot.database.users.modify_stat(
-                self.user_id, "max_hp", actual_hp_delta
-            )
-        # Persist current_hp (may have been clamped above) and other player fields
-        await self.bot.database.users.update_from_player_object(self.player)
-
-        parts = []
-        for stat, delta in self.contract.items():
-            sign = "+" if delta > 0 else ""
-            parts.append(f"{self.STAT_LABELS[stat]}: **{sign}{delta}**")
-
-        embed = discord.Embed(
-            title="🩸 Contract Signed",
-            description="The ink dries in flame. Your soul bears the mark.\n\n"
-            + "\n".join(parts),
-            color=discord.Color.dark_red(),
-        )
-        embed.set_footer(text="There is no going back.")
-        self.bot.state_manager.clear_active(self.user_id)
-        await interaction.edit_original_response(embed=embed, view=None)
-        self.stop()
-
-    @ui.button(label="Reject Contract", style=discord.ButtonStyle.secondary, emoji="🖤")
-    async def reject(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.defer()
-        embed = discord.Embed(
-            title="🖤 Contract Rejected",
-            description="Lucifer watches you walk away. *He will remember.*",
-            color=discord.Color.dark_grey(),
-        )
-        self.bot.state_manager.clear_active(self.user_id)
-        await interaction.edit_original_response(embed=embed, view=None)
         self.stop()

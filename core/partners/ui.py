@@ -125,4 +125,5 @@ def _build_roster_embed(partners: List[Partner], items: dict) -> discord.Embed:
     embed.set_footer(
         text=f"🎫 {items.get('guild_tickets', 0)} tickets  |  Select a partner to manage"
     )
+    embed.set_thumbnail(url="https://i.imgur.com/agWsjri.jpeg")
     return embed

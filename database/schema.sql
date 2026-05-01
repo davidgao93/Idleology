@@ -9,8 +9,8 @@
 -- ALTER TABLE users ADD COLUMN prestige_death_message TEXT DEFAULT NULL;
 -- ALTER TABLE users ADD COLUMN prestige_monument TEXT DEFAULT NULL;
 
-DROP TABLE IF EXISTS user_partner_shards;
-DROP TABLE IF EXISTS user_partners;
+-- DROP TABLE IF EXISTS user_partner_shards;
+-- DROP TABLE IF EXISTS user_partners;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
@@ -488,4 +488,17 @@ CREATE TABLE IF NOT EXISTS user_partner_shards (
     partner_id  INTEGER NOT NULL,
     shard_count INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, partner_id)
+);
+
+CREATE TABLE IF NOT EXISTS boss_party_dispatch (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       TEXT NOT NULL,
+    server_id     TEXT NOT NULL,
+    attacker_id   INTEGER NOT NULL,
+    tank_id       INTEGER NOT NULL,
+    healer_id     INTEGER NOT NULL,
+    boss_name     TEXT NOT NULL,
+    boss_max_hp   INTEGER NOT NULL,
+    start_time    TEXT NOT NULL,
+    UNIQUE(user_id, server_id)
 );

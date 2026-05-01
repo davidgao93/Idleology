@@ -65,28 +65,28 @@
          "image_url":"https://i.imgur.com/placeholder_kay_4.jpg"
       }
    },
-   "4":{
-      "1":{
-         "title":"Sigmund | First Encounter",
-         "text":"**Sigmund | First Encounter**\n*The hounds arrive first. Then him — unhurried, eyes sharp. 'They like you,' he says. One of them is already chewing your boot.*",
-         "image_url":"https://i.imgur.com/placeholder_sigmund_1.jpg"
-      },
-      "2":{
-         "title":"Sigmund | The Pack",
-         "text":"**Sigmund | The Pack**\n*He explains the hounds' names like they're family. They are, you realize. 'We don't abandon our own,' he says simply. You wonder if that includes you.*",
-         "image_url":"https://i.imgur.com/placeholder_sigmund_2.jpg"
-      },
-      "3":{
-         "title":"Sigmund | The Hunt",
-         "text":"**Sigmund | The Hunt**\n*He leads you on a chase through fog and bracken. You catch nothing — but afterward he says, 'Good instincts. The hounds respect that.' High praise.*",
-         "image_url":"https://i.imgur.com/placeholder_sigmund_3.jpg"
-      },
-      "4":{
-         "title":"Sigmund | Quarry",
-         "text":"**Sigmund | Quarry**\n*He carves something into the hilt of your weapon. You ask what it means. 'You're part of the hunt now,' he says. The hounds howl in agreement.*",
-         "image_url":"https://i.imgur.com/placeholder_sigmund_4.jpg"
-      }
-   },
+   "4": {
+  "1": {
+    "title": "Sigmund | First Encounter",
+    "text": "**Sigmund | First Encounter**\n\nThe hounds arrive first — a low growl and the soft pad of paws through the underbrush. Three massive crimson-coated beasts circle you before Sigmund himself steps into the firelight, unhurried, eyes sharp as arrowheads.\n\n“They like you,” he says, voice rough like gravel under boots. One of the hounds is already cheerfully chewing the edge of your boot. Sigmund gives a low whistle; the beast drops the boot with a disappointed huff but stays pressed against your leg.\n\nYou laugh despite yourself. “Friendly pack you’ve got.”\n\nSigmund’s mouth twitches — not quite a smile. “They don’t usually take to strangers. Name’s Sigmund. These three are what’s left of the Crimson Hunt. Lost the rest years back… but the ones that remain don’t forget a scent.” He studies you for a long moment. “You smell like someone worth following. Careful — they get attached fast.”",
+    "image_url": "https://i.imgur.com/placeholder_sigmund_1.jpg"
+  },
+  "2": {
+    "title": "Sigmund | The Pack",
+    "text": "**Sigmund | The Pack**\n\nA few nights later you find Sigmund sitting on a log by the edge of camp, sharpening knives while the hounds sprawl at his feet. One lifts its head and thumps its tail when you approach — the same boot-chewer from before.\n\n“Figured you’d come back,” Sigmund says without looking up. “They’ve been asking about you. In their own way.”\n\nYou sit beside him. “What happened to the rest of the hunt?”\n\nHe’s quiet for a while, only the scrape of steel on whetstone filling the air. Then: “We hunted something we shouldn’t have. A beast that wore a man’s face and wore my brothers’ blood like trophies. I got these three out alive. Rest didn’t make it.” One hound rests its massive head on his knee; Sigmund scratches behind its ears almost tenderly. “Been just us ever since. Pack is family. Family doesn’t get left behind.”\n\nHe glances sideways at you. “You fought beside us yesterday. Didn’t flinch when the hounds charged past you. They remember that kind of thing.”",
+    "image_url": "https://i.imgur.com/placeholder_sigmund_2.jpg"
+  },
+  "3": {
+    "title": "Sigmund | The Hunt",
+    "text": "**Sigmund | The Hunt**\n\nThe next time you hunt together the bond feels different. After bringing down a particularly vicious monster, Sigmund wipes blood from his blade while the hounds tear into the carcass. He’s breathing hard, but there’s a rare grin on his face.\n\n“You kept up better than most,” he says, tossing you a waterskin. “Even kept one of the pups from getting his throat torn out. Didn’t have to do that.”\n\nYou shrug. “We’re in this together now, right?”\n\nSigmund lets out a low chuckle. “Didn’t think I’d ever say this again, but… yeah. Feels like the pack is whole when you’re with us.” He looks down at the hounds, who are now watching both of you with bright, intelligent eyes. “They trust you. I trust you. That doesn’t happen often.”\n\nHe bumps your shoulder with his — a rough, affectionate gesture. “Stick around a while longer, hunter. There’s still plenty of quarry left for us.”",
+    "image_url": "https://i.imgur.com/placeholder_sigmund_3.jpg"
+  },
+  "4": {
+    "title": "Sigmund | Crimson Night",
+    "text": "**Sigmund | Crimson Night**\n\nLate the following evening, Sigmund finds you instead of the other way around. He’s shed his usual scarred leather armor and heavy cloak, wearing only a simple dark tunic and trousers rolled to the knees. The hounds trail behind him like shadows.\n\n“Got something I want to show you,” he says, voice quieter than usual. “If you’re not too tired.”\n\nHe leads you a short distance from camp to a small clearing where the hounds have already made themselves at home, circling a low-burning fire. Sigmund sits on a fallen log and pats the spot beside him. When you settle in, one of the hounds immediately flops across both your laps, tail thumping happily.\n\nSigmund laughs — a warm, rumbling sound. “Looks like you’ve been officially claimed.” He reaches over the hound’s back and lets his calloused fingers brush yours, lingering. “Never thought I’d have room for anyone else in this pack… but you fit. Perfectly.”\n\nHis thumb traces slow circles on the back of your hand, eyes gleaming with playful heat in the firelight. “Stay with us tonight,” he murmurs, voice low and teasing. “The hounds already decided. And so have I.”",
+    "image_url": "https://i.imgur.com/placeholder_sigmund_4.jpg"
+  }
+},
    "5":{
       "1":{
          "title":"Velour | First Encounter",

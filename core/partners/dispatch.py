@@ -27,7 +27,8 @@ _COMBAT_LOOT_TYPES = [
 ]
 _COMBAT_LOOT_WEIGHTS = [75, 10, 5, 5, 5]
 
-_BOSS_SIGILS = ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]
+_BOSS_SIGILS = ["celestial_sigils", "infernal_sigils", "void_shards", "gemini_sigils"]
+_ELEMENTAL_KEY_DROPS = ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]
 
 # Gold range per combat dispatch reward roll
 _COMBAT_GOLD_MIN = 500
@@ -168,9 +169,9 @@ def _extract_skill_modifiers(partner: Partner) -> Dict[str, Any]:
         elif key == "di_boss_reward":
             mods["boss_extra_chance"] = min(0.10, 0.05 + 0.01 * lvl)
         elif key == "di_contract_find":
-            mods["contract_chance"] = min(0.10, 0.05 + 0.01 * lvl)
+            mods["contract_chance"] = min(0.06, 0.01 + 0.01 * lvl)
         elif key == "di_pinnacle_find":
-            mods["pinnacle_chance"] = min(0.10, 0.05 + 0.01 * lvl)
+            mods["pinnacle_chance"] = min(0.06, 0.01 + 0.01 * lvl)
 
     sig = partner.sig_dispatch_key
     slvl = partner.sig_dispatch_lvl
@@ -194,17 +195,25 @@ def _extract_skill_modifiers(partner: Partner) -> Dict[str, Any]:
 # ===========================================================================
 
 
-def _roll_combat(rolls: float, mods: Dict[str, Any]) -> Dict[str, Any]:
+def _level_mult(level: int) -> float:
+    """Linear scaling: 1.0× at Lv.1, 2.0× at Lv.100."""
+    return 1.0 + (max(1, min(level, 100)) - 1) / 99.0
+
+
+def _roll_combat(rolls: float, mods: Dict[str, Any], level: int = 1) -> Dict[str, Any]:
     """Rolls combat dispatch rewards for `rolls` reward rolls."""
     gold = 0
     exp = 0
     items: Dict[str, int] = {}
+    lv = _level_mult(level)
 
     for _ in range(int(rolls)):
         gold += int(
-            random.randint(_COMBAT_GOLD_MIN, _COMBAT_GOLD_MAX) * mods["gold_mult"]
+            random.randint(_COMBAT_GOLD_MIN, _COMBAT_GOLD_MAX) * mods["gold_mult"] * lv
         )
-        exp += int(random.randint(_COMBAT_EXP_MIN, _COMBAT_EXP_MAX) * mods["exp_mult"])
+        exp += int(
+            random.randint(_COMBAT_EXP_MIN, _COMBAT_EXP_MAX) * mods["exp_mult"] * lv
+        )
 
         loot = random.choices(_COMBAT_LOOT_TYPES, weights=_COMBAT_LOOT_WEIGHTS, k=1)[0]
         if loot != "gold":
@@ -227,7 +236,7 @@ def _roll_combat(rolls: float, mods: Dict[str, Any]) -> Dict[str, Any]:
             mods["settlement_mat_chance"] > 0
             and random.random() < mods["settlement_mat_chance"]
         ):
-            mat = random.choice(["timber", "stone"])
+            mat = random.choice(["magma_core", "life_root", "spirit_shard"])
             items[mat] = items.get(mat, 0) + 1
 
         if mods["contract_chance"] > 0 and random.random() < mods["contract_chance"]:
@@ -250,7 +259,7 @@ def _roll_combat(rolls: float, mods: Dict[str, Any]) -> Dict[str, Any]:
             mods["elemental_key_chance"] > 0
             and random.random() < mods["elemental_key_chance"]
         ):
-            ekey = random.choice(_BOSS_SIGILS)
+            ekey = random.choice(_ELEMENTAL_KEY_DROPS)
             items[ekey] = items.get(ekey, 0) + 1
 
         if (
@@ -350,7 +359,7 @@ def calculate_rewards(
     mods = _extract_skill_modifiers(partner)
 
     if task == "combat":
-        result = _roll_combat(rolls, mods)
+        result = _roll_combat(rolls, mods, level=partner.level)
     elif task == "gathering":
         result = _roll_gathering(rolls, skill_tiers, mods)
     elif task == "boss":
@@ -409,4 +418,65 @@ def calculate_sigmund_rewards(
         "items": merged,
         "rolls": r1["rolls"] + r2["rolls"] * effectiveness,
         "hours_used": max(r1["hours_used"], r2["hours_used"]),
+    }
+
+
+# ===========================================================================
+# Boss party dispatch
+# ===========================================================================
+
+_PARTY_BOSSES = [
+    {"name": "Aphrodite, the Celestial", "max_hp": 80_000},
+    {"name": "Lucifer, the Infernal King", "max_hp": 60_000},
+    {"name": "NEET, Void Manifest", "max_hp": 75_000},
+    {"name": "Gemini, Twin Souls", "max_hp": 55_000},
+]
+
+_PARTY_BOSS_GOLD_MIN = 30_000
+_PARTY_BOSS_GOLD_MAX = 80_000
+_PARTY_BOSS_SIGIL_MIN = 4
+_PARTY_BOSS_SIGIL_MAX = 8
+_PARTY_BOSS_TICKET_CHANCE = 0.05
+
+BOSS_PARTY_DURATION_HOURS = 12
+
+
+def pick_party_boss() -> dict:
+    """Returns a randomly chosen boss dict with name and max_hp."""
+    return random.choice(_PARTY_BOSSES).copy()
+
+
+def calculate_boss_party_rewards(
+    attacker: "Partner",
+    tank: "Partner",
+    healer: "Partner",
+) -> Dict[str, Any]:
+    """
+    Calculates rewards for a completed 12h boss party dispatch.
+    Scales with the average level of the three partners.
+
+    Returns dict with keys: gold, sigils (dict), partner_exp, guild_ticket.
+    """
+    avg_level = (attacker.level + tank.level + healer.level) / 3
+    lv = _level_mult(int(avg_level))
+
+    gold = int(random.randint(_PARTY_BOSS_GOLD_MIN, _PARTY_BOSS_GOLD_MAX) * lv)
+    sigil_type = random.choice(_BOSS_SIGILS)
+    sigil_count = random.randint(_PARTY_BOSS_SIGIL_MIN, _PARTY_BOSS_SIGIL_MAX)
+    guild_ticket = random.random() < _PARTY_BOSS_TICKET_CHANCE
+
+    # Partner EXP: each gets a flat roll scaled by their individual level
+    partner_exp_base = random.randint(3_000, 8_000)
+    partner_exps = {
+        "attacker": int(partner_exp_base * _level_mult(attacker.level)),
+        "tank": int(partner_exp_base * _level_mult(tank.level)),
+        "healer": int(partner_exp_base * _level_mult(healer.level)),
+    }
+
+    return {
+        "gold": gold,
+        "sigil_type": sigil_type,
+        "sigil_count": sigil_count,
+        "guild_ticket": guild_ticket,
+        "partner_exps": partner_exps,
     }

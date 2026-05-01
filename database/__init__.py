@@ -17,6 +17,7 @@ from .repositories.ascension import AscensionRepository
 from .repositories.prestige import PrestigeRepository
 from .repositories.monster_parts import MonsterPartsRepository
 from .repositories.partners import PartnerRepository
+from .repositories.boss_party import BossPartyRepository
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -41,3 +42,4 @@ class DatabaseManager:
         self.prestige = PrestigeRepository(connection)
         self.monster_parts = MonsterPartsRepository(connection)
         self.partners = PartnerRepository(connection)
+        self.boss_party = BossPartyRepository(connection)
