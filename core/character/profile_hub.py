@@ -648,9 +648,13 @@ class ProfileBuilder:
             fdr_other += p.get_ascension_bonuses()["fdr"]
         total_fdr = fdr_equip + fdr_other
         if total_fdr > 0:
+            fdr_val = f"**{total_fdr}%**\n"
+            fdr_val += f"\n↳ Equipment: {fdr_equip}"
+            if fdr_other > 0:
+                fdr_val += f"\n↳ Other: {fdr_other}"
             embed.add_field(
                 name="🔒 FDR",
-                value=f"**{total_fdr}**\n↳ Equipment: {fdr_equip}\n↳ Other: {fdr_other}",
+                value=f"{fdr_val:,}",
                 inline=True,
             )
 
@@ -672,12 +676,10 @@ class ProfileBuilder:
         sr_partner_combat = cb["special_rarity"]
         sr_total = min(20, sr_boot + sr_companion)
         sr_val = f"**{sr_total}%** (cap: 20%)"
-        sr_val += f"\n↳ Boot (Thrill-Seeker): {sr_boot}%"
+        sr_val += f"\n↳ Equipment: {sr_boot}%"
         sr_val += f"\n↳ Companions: {sr_companion}%"
         if sr_partner_combat:
-            sr_val += f"\n↳ Partner (combat start): +{sr_partner_combat:.1f}%"
-        else:
-            sr_val += f"\n↳ Partner: none"
+            sr_val += f"\n↳ Partner: +{sr_partner_combat:.1f}%"
         embed.add_field(name="⭐ Special Rarity", value=sr_val, inline=True)
 
         return embed
