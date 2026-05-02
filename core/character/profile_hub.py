@@ -156,18 +156,18 @@ _WEAPON_CRIT_BONUS: dict[str, int] = {
 }
 
 _CORRUPTED_DESC: dict[tuple, str] = {
-    ("aphrodite", "glove"): "Ward-affecting hits count as ward-breaking",
-    ("aphrodite", "boot"): "Equipment drop chance is lucky",
-    ("aphrodite", "helmet"): "Ward cannot be forcibly disabled",
-    ("lucifer", "glove"): "Attacks deal flat dmg equal to 15% of current ward pool",
-    ("lucifer", "boot"): "Gold drops +10% per monster modifier (max +50%)",
-    ("lucifer", "helmet"): "On ward break, gain 15% PDR for remainder of combat",
-    ("gemini", "glove"): "Crits strike twice; 2nd hit deals 40–60% of the first",
-    ("gemini", "boot"): "Pet drop chance doubled",
-    ("gemini", "helmet"): "Damage splits between ward and HP; damage taken halved",
-    ("neet", "glove"): "Normal hits become misses; only crits deal direct damage",
-    ("neet", "boot"): "Skilling resources gained in combat are duplicated",
-    ("neet", "helmet"): "Ward gained is doubled",
+    ("aphrodite", "glove"): "Your ward is considered broken when you are hit.",
+    ("aphrodite", "boot"): "Your gear drop rate is lucky.",
+    ("aphrodite", "helmet"): "Your ward can never be disabled.",
+    ("lucifer", "glove"): "15% of your current ward is added to your hit damage.",
+    ("lucifer", "boot"): "Gain up to 50% increased gold per monster modifier.",
+    ("lucifer", "helmet"): "When your ward is broken, gain 15% PDR for the remainder of that encounter.",
+    ("gemini", "glove"): "Critical hits strike twice, the second strike deals less damage.",
+    ("gemini", "boot"): "Your pet drop chance is doubled.",
+    ("gemini", "helmet"): "Your damage taken is halved, but is split evenly between HP and Ward.",
+    ("neet", "glove"): "Your accuracy is 0.",
+    ("neet", "boot"): "Whenever you gain resources during combat, gain double instead.",
+    ("neet", "helmet"): "Whenever you gain ward, double the ward gained.",
 }
 
 _SLAYER_EMBLEM_NAMES: dict[str, str] = {

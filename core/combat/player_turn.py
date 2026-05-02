@@ -809,11 +809,12 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
 
     is_crit = _pt_resolve_crit(player, monster, is_hit, log, calc)
 
-    # NEET glove: all normal hits are treated as misses; crits are unaffected
-    if is_hit and not is_crit and player.get_glove_corrupted_essence() == "neet":
+    # NEET glove: accuracy is always 0, every attack misses
+    if player.get_glove_corrupted_essence() == "neet":
         is_hit = False
-        calc.append("  neet: hit converted to miss")
-        log.append("🌑 **Void Form** — the strike phases through as nothingness!")
+        is_crit = False
+        calc.append("  neet: accuracy 0, always miss")
+        log.append("🌑 **Void Form** — accuracy reduced to zero, the strike phases through!")
 
     if is_crit:
         raw_damage = _pt_crit_damage(player, monster, attack_multiplier, log, calc)

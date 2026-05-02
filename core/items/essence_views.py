@@ -51,11 +51,39 @@ ESSENCE_BRIEF = {
     "cleansing": "Removes all 3 regular essence slots from the item",
     "chaos": "Rerolls values on all occupied regular essence slots",
     "annulment": "Removes one random regular essence slot",
-    "aphrodite": "Glove: ward-break on hit · Boot: lucky gear drops · Helmet: ward disable immunity",
-    "lucifer": "Glove: bonus dmg from ward · Boot: gold scales with modifiers · Helmet: PDR burst on ward break",
-    "gemini": "Glove: double strike on crit · Boot: PDR→rarity · Helmet: dmg splits ward and HP",
-    "neet": "Glove: def pierce = FDR · Boot: stacking kill rarity · Helmet: ward regen from missing HP",
 }
+
+_CORRUPTED_BRIEF: dict[str, dict[str, str]] = {
+    "aphrodite": {
+        "glove": "Your ward is considered broken when you are hit.",
+        "boot": "Your gear drop rate is lucky.",
+        "helmet": "Your ward can never be disabled.",
+    },
+    "lucifer": {
+        "glove": "15% of your current ward is added to your hit damage.",
+        "boot": "Gain up to 50% increased gold per monster modifier.",
+        "helmet": "When your ward is broken, gain 15% PDR for the remainder of that encounter.",
+    },
+    "gemini": {
+        "glove": "Critical hits strike twice, the second strike deals less damage.",
+        "boot": "Your pet drop chance is doubled.",
+        "helmet": "Your damage taken is halved, but is split evenly between HP and Ward.",
+    },
+    "neet": {
+        "glove": "Your accuracy is 0.",
+        "boot": "Whenever you gain resources during combat, gain double instead.",
+        "helmet": "Whenever you gain ward, double the ward gained.",
+    },
+}
+
+
+def _get_essence_brief(essence_type: str, item_type: str = "") -> str:
+    """Returns the display description for an essence, slot-aware for corrupted types.
+    item_type should be 'glove', 'boot', or 'helmet'.
+    """
+    if essence_type in _CORRUPTED_BRIEF:
+        return _CORRUPTED_BRIEF[essence_type].get(item_type.lower(), "")
+    return ESSENCE_BRIEF.get(essence_type, "")
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +168,7 @@ def _build_essence_embed(item, essence_inventory: dict) -> discord.Embed:
     corrupted = getattr(item, "corrupted_essence", "none") or "none"
     if corrupted != "none":
         c_name, c_emoji = ESSENCE_DISPLAY.get(corrupted, (corrupted.title(), "💠"))
-        c_brief = ESSENCE_BRIEF.get(corrupted, "")
+        c_brief = _get_essence_brief(corrupted, item_type_label)
         embed.add_field(
             name="Corrupted Slot",
             value=f"{c_emoji} {c_name}\n   ↳ {c_brief}",
@@ -311,7 +339,7 @@ class EssenceSelectView(View):
         options = []
         for etype, qty in applicable:
             e_name, emoji = ESSENCE_DISPLAY.get(etype, (etype.title(), "💠"))
-            brief = ESSENCE_BRIEF.get(etype, "")
+            brief = _get_essence_brief(etype, hub.item_type)
             label = f"{e_name} ×{qty}"
             options.append(
                 discord.SelectOption(
@@ -345,7 +373,7 @@ class EssenceSelectView(View):
             inline=False,
         )
         embed.add_field(
-            name="Effect", value=ESSENCE_BRIEF.get(chosen, ""), inline=False
+            name="Effect", value=_get_essence_brief(chosen, self.hub.item_type), inline=False
         )
 
         if not self.corrupted:
