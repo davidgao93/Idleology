@@ -103,15 +103,6 @@ class CurioView(ui.View):
             pass
 
     async def _process_open(self, interaction: Interaction, amount: int):
-        w = await self.bot.database.equipment.get_count(self.user_id, 'weapon')
-        ac = await self.bot.database.equipment.get_count(self.user_id, 'accessory')
-        ar = await self.bot.database.equipment.get_count(self.user_id, 'armor')
-        g = await self.bot.database.equipment.get_count(self.user_id, 'glove')
-        b = await self.bot.database.equipment.get_count(self.user_id, 'boot')
-        h = await self.bot.database.equipment.get_count(self.user_id, 'helmet')
-        if max(w, ac, ar, g, b, h) > 60:
-            return await interaction.response.send_message("Inventory full! Clear some space.", ephemeral=True)
-
         await interaction.response.defer()
         result = await CurioManager.process_open(self.bot, self.user_id, self.server_id, amount)
         self.curio_count -= amount
@@ -154,16 +145,6 @@ class CurioView(ui.View):
         await self._process_open_after_modal(interaction, modal.chosen_amount)
 
     async def _process_open_after_modal(self, interaction: Interaction, amount: int):
-        w = await self.bot.database.equipment.get_count(self.user_id, 'weapon')
-        ac = await self.bot.database.equipment.get_count(self.user_id, 'accessory')
-        ar = await self.bot.database.equipment.get_count(self.user_id, 'armor')
-        g = await self.bot.database.equipment.get_count(self.user_id, 'glove')
-        b = await self.bot.database.equipment.get_count(self.user_id, 'boot')
-        h = await self.bot.database.equipment.get_count(self.user_id, 'helmet')
-        if max(w, ac, ar, g, b, h) > 60:
-            await interaction.followup.send("Inventory full! Clear some space.", ephemeral=True)
-            return
-
         result = await CurioManager.process_open(self.bot, self.user_id, self.server_id, amount)
         self.curio_count -= amount
 

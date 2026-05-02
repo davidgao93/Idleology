@@ -1,154 +1,134 @@
 import random
 import csv
 from collections import defaultdict
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 
-from core.models import Player
-from core.combat.loot import (
-    generate_weapon, generate_armor, generate_accessory, 
-    generate_glove, generate_boot, generate_helmet
-)
-from core.skills.mechanics import SkillMechanics
+from core.combat.drops import roll_essence_drop
+
 
 class CurioManager:
     @staticmethod
     def get_drop_table() -> Dict[str, float]:
-        """Returns map of Reward Name -> Probability (0.0 - 1.0)."""
+        """Returns map of Reward Name -> Weight (relative probability)."""
         return {
-            "Level 100 Weapon": 0.002,
-            "Level 100 Accessory": 0.002,
-            "Level 100 Armor": 0.002,
-            "Level 100 Gloves": 0.002,
-            "Level 100 Boots": 0.002,
-            "Level 100 Helmet": 0.002,
-            "Rune of Imbuing": 0.003,
-            "Rune of Refinement": 0.02,
-            "Rune of Potential": 0.02,
-            "Rune of Shattering": 0.02,
-            "100k Gold": 0.10,
-            "50k Gold": 0.10,
-            "10k Gold": 0.10,
-            "5k Gold": 0.20,
-            "1k Gold": 0.05,
-            "Ore": 0.125,
-            "Wood": 0.125,
-            "Fish": 0.125,
+            # Fluff (~80%)
+            "Boss Key":      22,
+            "50k Gold":      20,
+            "100k Gold":     18,
+            "250k Gold":     12,
+            "500k Gold":      8,
+            # Uncommon runes — 1x per drop (~14%)
+            "Rune of Refinement":  4,
+            "Rune of Potential":   4,
+            "Rune of Shattering":  4,
+            "Rune of Imbuing":     2,
+            # Rare — 1x per drop (~5%)
+            "Essence":        2,
+            "Guild Ticket":   2,
+            "Settler Material": 1,
+            # Very rare — 1x per drop (~1.5%)
+            "Pinnacle Key":   0.5,
+            "Antique Tome":   0.5,
+            "Elemental Key":  0.5,
         }
 
     @staticmethod
     async def process_open(bot, user_id: str, server_id: str, amount: int) -> Dict[str, Any]:
-        """
-        Opens 'amount' curios and processes all rewards.
-        Returns a summary dict for the UI.
-        """
         table = CurioManager.get_drop_table()
-        
-        # 1. Expand Table for Weighted Choice
-        population = []
-        weights = []
-        for key, val in table.items():
-            population.append(key)
-            weights.append(val)
+        population = list(table.keys())
+        weights = list(table.values())
 
-        # 2. Roll Rewards
-        # random.choices is faster for bulk operations
         results = random.choices(population, weights=weights, k=amount)
-        
-        # 3. Aggregate Results to minimize DB calls
         summary = defaultdict(int)
         for r in results:
             summary[r] += 1
 
-        loot_logs = []
-        
-        # 4. Process Aggregated Rewards
-        for reward, count in summary.items():
-            
-            # --- GEAR ---
-            if "Level 100" in reward:
-                item_type = reward.split(" ")[2].lower() # Weapon, Accessory, etc.
-                if item_type.endswith('s'): item_type = item_type[:-1] 
-                
-                for _ in range(count):
-                    item = None
-                    if item_type == "weapon":
-                        item = await generate_weapon(user_id, 100, drop_rune=False)
-                        await bot.database.equipment.create_weapon(item)
-                    elif item_type == "accessory":
-                        item = await generate_accessory(user_id, 100, drop_rune=False)
-                        await bot.database.equipment.create_accessory(item)
-                    elif item_type == "armor":
-                        item = await generate_armor(user_id, 100, drop_rune=False)
-                        await bot.database.equipment.create_armor(item)
-                    elif item_type == "glove":
-                        item = await generate_glove(user_id, 100)
-                        await bot.database.equipment.create_glove(item)
-                    elif item_type == "boot":
-                        item = await generate_boot(user_id, 100)
-                        await bot.database.equipment.create_boot(item)
-                    elif item_type == "helmet":
-                        item = await generate_helmet(user_id, 100)
-                        await bot.database.equipment.create_helmet(item)
-                    
-                    if item:
-                        loot_logs.append(item.description)
+        # --- Gold ---
+        gold_total = 0
+        for label, mult in (("50k Gold", 50_000), ("100k Gold", 100_000),
+                             ("250k Gold", 250_000), ("500k Gold", 500_000)):
+            if label in summary:
+                gold_total += mult * summary[label]
+        if gold_total:
+            await bot.database.users.modify_gold(user_id, gold_total)
 
-            # --- RUNES ---
-            elif "Rune" in reward:
-                col_map = {
-                    "Rune of Refinement": "refinement_runes",
-                    "Rune of Potential": "potential_runes",
-                    "Rune of Imbuing": "imbue_runes",
-                    "Rune of Shattering": "shatter_runes"
-                }
-                await bot.database.users.modify_currency(user_id, col_map[reward], count)
+        # --- Boss Key (1x random per drop) ---
+        if "Boss Key" in summary:
+            key_options = ["soul_cores", "dragon_key", "angel_key", "void_frags", "balance_fragment"]
+            key_counts = defaultdict(int)
+            for _ in range(summary["Boss Key"]):
+                key_counts[random.choice(key_options)] += 1
+            for col, cnt in key_counts.items():
+                await bot.database.users.modify_currency(user_id, col, cnt)
 
-            # --- GOLD ---
-            elif "Gold" in reward:
-                # Extract number from string "100k Gold"
-                val_str = reward.split(" ")[0].lower().replace("k", "000")
-                gold_amt = int(val_str) * count
-                await bot.database.users.modify_gold(user_id, gold_amt)
-
-            # --- MATERIALS ---
-            elif reward in ["Ore", "Wood", "Fish"]:
-                skill_map = {
-                    "Ore": ("mining", "pickaxe_tier"),
-                    "Wood": ("woodcutting", "axe_type"), # Assuming DB column name
-                    "Fish": ("fishing", "fishing_rod")
-                }
-                
-                skill_name, tool_col = skill_map[reward]
-                skill_data = await bot.database.skills.get_data(user_id, server_id, skill_name)
-                tool_tier = skill_data[2] if skill_data else 'starter' # Fallback
-                
-                # Calculate Yield
-                total_resources = defaultdict(int)
-                for _ in range(count * 5):
-                    yields = SkillMechanics.calculate_yield(skill_name, tool_tier)
-                    for res, amt in yields.items():
-                        total_resources[res] += amt
-                
-                await bot.database.skills.update_batch(user_id, server_id, skill_name, dict(total_resources))
-
-        # Deduct Curios
-        await bot.database.users.modify_currency(user_id, 'curios', -amount)
-        
-        return {
-            "summary": dict(summary),
-            "loot_logs": loot_logs
+        # --- Runes (1x per drop, aggregated) ---
+        rune_map = {
+            "Rune of Refinement": "refinement_runes",
+            "Rune of Potential":  "potential_runes",
+            "Rune of Shattering": "shatter_runes",
+            "Rune of Imbuing":    "imbue_runes",
         }
+        for label, col in rune_map.items():
+            if label in summary:
+                await bot.database.users.modify_currency(user_id, col, summary[label])
+
+        # --- Essence (1x random per drop) ---
+        if "Essence" in summary:
+            essence_counts = defaultdict(int)
+            for _ in range(summary["Essence"]):
+                essence_counts[roll_essence_drop()] += 1
+            for etype, cnt in essence_counts.items():
+                for _ in range(cnt):
+                    await bot.database.essences.add(user_id, etype)
+
+        # --- Guild Ticket (1x per drop) ---
+        if "Guild Ticket" in summary:
+            await bot.database.partners.add_tickets(user_id, summary["Guild Ticket"])
+
+        # --- Settler Material (1x random sub-type per drop) ---
+        if "Settler Material" in summary:
+            mat_keys = ["magma_core", "life_root", "spirit_shard"]
+            mat_counts = defaultdict(int)
+            for _ in range(summary["Settler Material"]):
+                mat_counts[random.choice(mat_keys)] += 1
+            for col, cnt in mat_counts.items():
+                await bot.database.users.modify_currency(user_id, col, cnt)
+
+        # --- Pinnacle Key (1x per drop) ---
+        if "Pinnacle Key" in summary:
+            await bot.database.users.modify_currency(user_id, "pinnacle_key", summary["Pinnacle Key"])
+
+        # --- Antique Tome (1x per drop) ---
+        if "Antique Tome" in summary:
+            await bot.database.users.modify_currency(user_id, "antique_tome", summary["Antique Tome"])
+
+        # --- Elemental Key (1x random sub-type per drop) ---
+        if "Elemental Key" in summary:
+            key_counts = defaultdict(int)
+            key_options = ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]
+            for _ in range(summary["Elemental Key"]):
+                key_counts[random.choice(key_options)] += 1
+            for col, cnt in key_counts.items():
+                if col == "blessed_bismuth":
+                    await bot.database.uber.increment_blessed_bismuth(user_id, server_id, cnt)
+                elif col == "sparkling_sprig":
+                    await bot.database.uber.increment_sparkling_sprig(user_id, server_id, cnt)
+                elif col == "capricious_carp":
+                    await bot.database.uber.increment_capricious_carp(user_id, server_id, cnt)
+
+        await bot.database.users.modify_currency(user_id, "curios", -amount)
+
+        return {"summary": dict(summary), "loot_logs": []}
 
     @staticmethod
     def get_image_url(reward_name: str) -> str:
-        """Attempts to load image URL from CSV. Gold rewards strip ' Gold' suffix before lookup."""
         key = reward_name.replace(" Gold", "").replace(" ", "_")
         try:
-            with open('assets/curios.csv', mode='r') as file:
+            with open("assets/curios.csv", mode="r") as file:
                 reader = csv.DictReader(file)
                 for row in reader:
-                    if row['Item'] == key:
-                        return row['URL']
+                    if row["Item"] == key:
+                        return row["URL"]
         except Exception:
             pass
         return None

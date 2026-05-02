@@ -22,10 +22,10 @@ from core.settlement.mechanics import SettlementMechanics
 class BulkTradeModal(ui.Modal):
     TRADES = {
         "equip": {
-            "label": "Equipment Caches (1000 Iron/Oak/Essence each)",
+            "label": "Equipment Caches (2.5M Gold each)",
             "key": "equip",
         },
-        "rune": {"label": "Rune Caches (10 Shatter Runes each)", "key": "rune"},
+        "rune": {"label": "Rune Caches (1 each: Refine/Potential/Shatter)", "key": "rune"},
         "key": {"label": "Boss Key Caches (1 Void Key each)", "key": "key"},
     }
 
@@ -178,12 +178,12 @@ class BlackMarketView(ui.View):
 
         embed.add_field(
             name="🎒 Equipment Cache",
-            value="**Cost:** 1000 Iron Bars, 1000 Oak Planks, 1000 Desiccated Essence\n**Contents:** 3-5 Random Equipment",
+            value="**Cost:** 2,500,000 Gold\n**Contents:** 1 Random Equipment (ilvl capped at 100)",
             inline=False,
         )
         embed.add_field(
             name="💎 Rune Cache",
-            value="**Cost:** 10 Rune of Shattering\n**Contents:** 1-5 Random Runes (No Shatter)",
+            value="**Cost:** 1 Refinement Rune, 1 Potential Rune, 1 Shatter Rune\n**Contents:** 1-5 Random Runes",
             inline=False,
         )
         embed.add_field(
@@ -266,124 +266,79 @@ class BlackMarketView(ui.View):
 
     async def buy_equip_cache(self, interaction: Interaction):
         uid, sid = self.user_id, self.parent.server_id
-        cost = 1000
+        cost = 2_500_000
         data = await self.bot.database.users.get(uid, sid)
         if not await self.bot.check_user_registered(interaction, data):
             return
 
-        # Use Core Model logic to calculate totals (including gear)
+        gold = await self.bot.database.users.get_gold(uid)
+        if gold < cost:
+            return await interaction.response.send_message(
+                f"Not enough Gold! Need {cost:,}g.", ephemeral=True
+            )
+
         player = await load_player(uid, data, self.bot.database)
         await interaction.response.defer()
 
-        try:
-            async with self.bot.database.connection.execute(
-                "UPDATE mining SET iron_bar = iron_bar - ? WHERE user_id=? AND server_id=? AND iron_bar >= ?",
-                (cost, uid, sid, cost),
-            ) as c:
-                if c.rowcount == 0:
-                    raise ValueError("Not enough Iron Bars.")
+        await self.bot.database.users.modify_gold(uid, -cost)
 
-            async with self.bot.database.connection.execute(
-                "UPDATE woodcutting SET oak_plank = oak_plank - ? WHERE user_id=? AND server_id=? AND oak_plank >= ?",
-                (cost, uid, sid, cost),
-            ) as c:
-                if c.rowcount == 0:
-                    raise ValueError("Not enough Oak Planks.")
+        ilvl = min(player.level, 100)
+        slot = random.choices(
+            population=["weapon", "armor", "accessory", "glove", "boot", "helmet"],
+            weights=[35, 10, 25, 10, 10, 10],
+            k=1,
+        )[0]
 
-            async with self.bot.database.connection.execute(
-                "UPDATE fishing SET desiccated_essence = desiccated_essence - ? WHERE user_id=? AND server_id=? AND desiccated_essence >= ?",
-                (cost, uid, sid, cost),
-            ) as c:
-                if c.rowcount == 0:
-                    raise ValueError("Not enough Desiccated Essence.")
+        item = None
+        if slot == "weapon":
+            item = await generate_weapon(uid, ilvl, False)
+            await self.bot.database.equipment.create_weapon(item)
+        elif slot == "armor":
+            item = await generate_armor(uid, ilvl, False)
+            await self.bot.database.equipment.create_armor(item)
+        elif slot == "accessory":
+            item = await generate_accessory(uid, ilvl, False)
+            await self.bot.database.equipment.create_accessory(item)
+        elif slot == "glove":
+            item = await generate_glove(uid, ilvl)
+            await self.bot.database.equipment.create_glove(item)
+        elif slot == "boot":
+            item = await generate_boot(uid, ilvl)
+            await self.bot.database.equipment.create_boot(item)
+        elif slot == "helmet":
+            item = await generate_helmet(uid, ilvl)
+            await self.bot.database.equipment.create_helmet(item)
 
-            await self.bot.database.connection.commit()
-
-            # Grant Rewards
-            base_qty = random.randint(3, 5)
-            final_qty = int(base_qty * self._get_multiplier())
-            log = []
-            for _ in range(final_qty):
-                # Random slot
-                # Weighted selection of slot
-                slot = random.choices(
-                    population=[
-                        "weapon",
-                        "armor",
-                        "accessory",
-                        "glove",
-                        "boot",
-                        "helmet",
-                    ],
-                    weights=[35, 10, 25, 10, 10, 10],
-                    k=1,
-                )[0]
-
-                item = None
-
-                # Generate item based on slot
-                if slot == "weapon":
-                    item = await generate_weapon(uid, player.level, False)
-                elif slot == "armor":
-                    item = await generate_armor(uid, player.level, False)
-                elif slot == "accessory":
-                    item = await generate_accessory(uid, player.level, False)
-                elif slot == "glove":
-                    item = await generate_glove(uid, player.level)
-                elif slot == "boot":
-                    item = await generate_boot(uid, player.level)
-                elif slot == "helmet":
-                    item = await generate_helmet(uid, player.level)
-
-                if item:
-                    # Save
-                    if slot == "weapon":
-                        await self.bot.database.equipment.create_weapon(item)
-                    elif slot == "armor":
-                        await self.bot.database.equipment.create_armor(item)
-                    elif slot == "accessory":
-                        await self.bot.database.equipment.create_accessory(item)
-                    elif slot == "glove":
-                        await self.bot.database.equipment.create_glove(item)
-                    elif slot == "boot":
-                        await self.bot.database.equipment.create_boot(item)
-                    elif slot == "helmet":
-                        await self.bot.database.equipment.create_helmet(item)
-
-                    log.append(item.name)
-
-            await interaction.followup.send(
-                f"📦 **Cache Opened:**\n{', '.join(log)}", ephemeral=True
-            )
-
-        except ValueError as e:
-            await interaction.followup.send(f"Transaction failed: {e}", ephemeral=True)
-        except Exception:
-            await interaction.followup.send("An error occurred.", ephemeral=True)
-
-    async def buy_rune_cache(self, interaction: Interaction):
-        cost = 10
-        owned = await self.bot.database.users.get_currency(
-            self.user_id, "shatter_runes"
+        name = item.name if item else "Nothing"
+        await interaction.followup.send(
+            f"📦 **Cache Opened:**\n{name}", ephemeral=True
         )
 
-        if owned < cost:
+    async def buy_rune_cache(self, interaction: Interaction):
+        uid = self.user_id
+        owned_ref = await self.bot.database.users.get_currency(uid, "refinement_runes")
+        owned_pot = await self.bot.database.users.get_currency(uid, "potential_runes")
+        owned_sha = await self.bot.database.users.get_currency(uid, "shatter_runes")
+
+        if owned_ref < 1 or owned_pot < 1 or owned_sha < 1:
             return await interaction.response.send_message(
-                "Not enough Shatter Runes!", ephemeral=True
+                "Need 1 Refinement Rune, 1 Potential Rune, and 1 Shatter Rune!", ephemeral=True
             )
 
         await interaction.response.defer()
-        await self.bot.database.users.modify_currency(
-            self.user_id, "shatter_runes", -cost
-        )
+        await self.bot.database.users.modify_currency(uid, "refinement_runes", -1)
+        await self.bot.database.users.modify_currency(uid, "potential_runes", -1)
+        await self.bot.database.users.modify_currency(uid, "shatter_runes", -1)
 
         base_qty = random.randint(1, 5)
         final_qty = int(base_qty * self._get_multiplier())
         rewards = []
+        rune_pool = ["refinement_runes", "potential_runes", "shatter_runes"]
         for _ in range(final_qty):
-            rtype = random.choice(["refinement_runes", "potential_runes"])
-            await self.bot.database.users.modify_currency(self.user_id, rtype, 1)
-            rewards.append(rtype.replace("_", " ").title().replace("Runes", "Rune"))
+            rtype = random.choice(rune_pool)
+            await self.bot.database.users.modify_currency(uid, rtype, 1)
+            label = rtype.replace("_runes", "").replace("_", " ").title() + " Rune"
+            rewards.append(label)
 
         await interaction.followup.send(
             f"💎 **Rune Cache Opened:**\n{', '.join(rewards)}", ephemeral=True
@@ -421,13 +376,13 @@ class BlackMarketView(ui.View):
                 options = [
                     SelectOption(
                         label="Equipment Cache",
-                        description="1000 Iron/Oak/Essence each",
+                        description="2.5M Gold each",
                         emoji="🎒",
                         value="equip",
                     ),
                     SelectOption(
                         label="Rune Cache",
-                        description="10 Shatter Runes each",
+                        description="1 each: Refine/Potential/Shatter Rune",
                         emoji="💎",
                         value="rune",
                     ),
@@ -457,123 +412,87 @@ class BlackMarketView(ui.View):
 
     async def _bulk_equip_cache(self, interaction: Interaction, requested: int):
         uid, sid = self.user_id, self.parent.server_id
-        cost = 1000
+        cost_per = 2_500_000
 
-        # Compute how many trades we can actually do
-        async with self.bot.database.connection.execute(
-            "SELECT iron_bar FROM mining WHERE user_id=? AND server_id=?", (uid, sid)
-        ) as c:
-            row = await c.fetchone()
-            iron = row[0] if row else 0
-        async with self.bot.database.connection.execute(
-            "SELECT oak_plank FROM woodcutting WHERE user_id=? AND server_id=?",
-            (uid, sid),
-        ) as c:
-            row = await c.fetchone()
-            oak = row[0] if row else 0
-        async with self.bot.database.connection.execute(
-            "SELECT desiccated_essence FROM fishing WHERE user_id=? AND server_id=?",
-            (uid, sid),
-        ) as c:
-            row = await c.fetchone()
-            essence = row[0] if row else 0
-
-        possible = min(requested, iron // cost, oak // cost, essence // cost)
+        gold = await self.bot.database.users.get_gold(uid)
+        possible = min(requested, gold // cost_per)
         if possible <= 0:
             return await interaction.followup.send(
-                "Not enough materials for even one Equipment Cache.", ephemeral=True
+                f"Not enough Gold for even one Equipment Cache (need {cost_per:,}g each).", ephemeral=True
             )
 
-        actual_iron = possible * cost
-        actual_oak = possible * cost
-        actual_essence = possible * cost
-
-        await self.bot.database.connection.execute(
-            "UPDATE mining SET iron_bar = iron_bar - ? WHERE user_id=? AND server_id=?",
-            (actual_iron, uid, sid),
-        )
-        await self.bot.database.connection.execute(
-            "UPDATE woodcutting SET oak_plank = oak_plank - ? WHERE user_id=? AND server_id=?",
-            (actual_oak, uid, sid),
-        )
-        await self.bot.database.connection.execute(
-            "UPDATE fishing SET desiccated_essence = desiccated_essence - ? WHERE user_id=? AND server_id=?",
-            (actual_essence, uid, sid),
-        )
-        await self.bot.database.connection.commit()
+        total_cost = possible * cost_per
+        await self.bot.database.users.modify_gold(uid, -total_cost)
 
         data = await self.bot.database.users.get(uid, sid)
         player = await load_player(uid, data, self.bot.database)
+        ilvl = min(player.level, 100)
+
         log = []
         for _ in range(possible):
-            base_qty = random.randint(3, 5)
-            final_qty = int(base_qty * self._get_multiplier())
-            for _ in range(final_qty):
-                slot = random.choices(
-                    ["weapon", "armor", "accessory", "glove", "boot", "helmet"],
-                    weights=[35, 10, 25, 10, 10, 10],
-                    k=1,
-                )[0]
-                item = None
-                if slot == "weapon":
-                    item = await generate_weapon(uid, player.level, False)
-                elif slot == "armor":
-                    item = await generate_armor(uid, player.level, False)
-                elif slot == "accessory":
-                    item = await generate_accessory(uid, player.level, False)
-                elif slot == "glove":
-                    item = await generate_glove(uid, player.level)
-                elif slot == "boot":
-                    item = await generate_boot(uid, player.level)
-                elif slot == "helmet":
-                    item = await generate_helmet(uid, player.level)
-                if item:
-                    if slot == "weapon":
-                        await self.bot.database.equipment.create_weapon(item)
-                    elif slot == "armor":
-                        await self.bot.database.equipment.create_armor(item)
-                    elif slot == "accessory":
-                        await self.bot.database.equipment.create_accessory(item)
-                    elif slot == "glove":
-                        await self.bot.database.equipment.create_glove(item)
-                    elif slot == "boot":
-                        await self.bot.database.equipment.create_boot(item)
-                    elif slot == "helmet":
-                        await self.bot.database.equipment.create_helmet(item)
-                    log.append(item.name)
+            slot = random.choices(
+                ["weapon", "armor", "accessory", "glove", "boot", "helmet"],
+                weights=[35, 10, 25, 10, 10, 10],
+                k=1,
+            )[0]
+            item = None
+            if slot == "weapon":
+                item = await generate_weapon(uid, ilvl, False)
+                await self.bot.database.equipment.create_weapon(item)
+            elif slot == "armor":
+                item = await generate_armor(uid, ilvl, False)
+                await self.bot.database.equipment.create_armor(item)
+            elif slot == "accessory":
+                item = await generate_accessory(uid, ilvl, False)
+                await self.bot.database.equipment.create_accessory(item)
+            elif slot == "glove":
+                item = await generate_glove(uid, ilvl)
+                await self.bot.database.equipment.create_glove(item)
+            elif slot == "boot":
+                item = await generate_boot(uid, ilvl)
+                await self.bot.database.equipment.create_boot(item)
+            elif slot == "helmet":
+                item = await generate_helmet(uid, ilvl)
+                await self.bot.database.equipment.create_helmet(item)
+            if item:
+                log.append(item.name)
 
         unused = requested - possible
         msg = (
             f"📦 **Bulk Equipment Cache** ({possible}x opened)\n"
-            f"**Consumed:** {actual_iron:,} Iron Bars, {actual_oak:,} Oak Planks, {actual_essence:,} Desiccated Essence\n"
+            f"**Consumed:** {total_cost:,} Gold\n"
             f"**Received:** {', '.join(log) or 'Nothing'}"
         )
         if unused > 0:
-            msg += f"\n*({unused} trades skipped — insufficient materials)*"
+            msg += f"\n*({unused} trades skipped — insufficient gold)*"
         await interaction.followup.send(msg, ephemeral=True)
 
     async def _bulk_rune_cache(self, interaction: Interaction, requested: int):
         uid = self.user_id
-        cost_per = 10
-        owned = await self.bot.database.users.get_currency(uid, "shatter_runes")
-        possible = min(requested, owned // cost_per)
+        owned_ref = await self.bot.database.users.get_currency(uid, "refinement_runes")
+        owned_pot = await self.bot.database.users.get_currency(uid, "potential_runes")
+        owned_sha = await self.bot.database.users.get_currency(uid, "shatter_runes")
+        possible = min(requested, owned_ref, owned_pot, owned_sha)
 
         if possible <= 0:
             return await interaction.followup.send(
-                "Not enough Shatter Runes (need 10 per cache).", ephemeral=True
+                "Need 1 of each rune (Refinement, Potential, Shatter) per cache.", ephemeral=True
             )
 
-        total_cost = possible * cost_per
-        await self.bot.database.users.modify_currency(uid, "shatter_runes", -total_cost)
+        await self.bot.database.users.modify_currency(uid, "refinement_runes", -possible)
+        await self.bot.database.users.modify_currency(uid, "potential_runes", -possible)
+        await self.bot.database.users.modify_currency(uid, "shatter_runes", -possible)
 
+        rune_pool = ["refinement_runes", "potential_runes", "shatter_runes"]
         rewards = []
         for _ in range(possible):
             base_qty = random.randint(1, 5)
             final_qty = int(base_qty * self._get_multiplier())
             for _ in range(final_qty):
-                rtype = random.choice(["refinement_runes", "potential_runes"])
+                rtype = random.choice(rune_pool)
                 await self.bot.database.users.modify_currency(uid, rtype, 1)
-                rewards.append(rtype.replace("_", " ").title().replace("Runes", "Rune"))
+                label = rtype.replace("_runes", "").replace("_", " ").title() + " Rune"
+                rewards.append(label)
 
         from collections import Counter
 
@@ -583,11 +502,11 @@ class BlackMarketView(ui.View):
         unused = requested - possible
         msg = (
             f"💎 **Bulk Rune Cache** ({possible}x opened)\n"
-            f"**Consumed:** {total_cost:,} Shatter Runes\n"
+            f"**Consumed:** {possible}x each Refinement/Potential/Shatter Rune\n"
             f"**Received:** {tally_str or 'Nothing'}"
         )
         if unused > 0:
-            msg += f"\n*({unused} trades skipped — only had {owned} Shatter Runes)*"
+            msg += f"\n*({unused} trades skipped — insufficient runes)*"
         await interaction.followup.send(msg, ephemeral=True)
 
     async def _bulk_key_cache(self, interaction: Interaction, requested: int):
