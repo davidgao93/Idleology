@@ -1,3 +1,42 @@
+## 🤝 v0.90 - The Partners Guild
+New Mechanic - Partners
+Partners are companions that you can recruit using the /partners command.
+Gacha style pull system, 4*, 5*, and 6* partners are available.
+Earn tickets from a variety of systems.
+Partners have various combat and dispatch abilities, upgrade your partners for max potential!
+
+New Mechanic - Monster Parts
+Monsters will now rarely drop a monster part that you can consume
+Consuming a monster part will grant you max hp
+You can consume a variety of parts
+
+New Mechanic - Infinite Maw
+The infinite maw is a world boss that all adventurers can help bring down
+Each phase lasts from Sunday to Friday, you can join the fray at any time
+At the end of Friday you can collect any rewards obtained, this is based on personal contribution
+Achieving 80% individual contribution rewards you with a curio puzzle box, which can be opened with /curios
+
+Misc additions
+Added a prestige shop with various vanity items for gold
+Added a stats page and passives page to the profile hub
+
+Changes
+Ward Touched and Ward Fused are now flat ward gain on hit and ward gain on crit
+Monster modifiers have been completely reworked, you can see the new ones in mod_details
+Regular bosses now always have monster modifiers that are max tier
+Uber bosses have been uber-ified, they deal more damage and have more hp, their exp has been reduced
+Monster exp has been reduced slightly at the top end
+Monster gold has been reduced significantly at the top end
+Separated treasure monster and special rarity stats
+  Treasure monster is the chance any combat encounter is a max base special rarity encounter (5%), + 1 guaranteed curio drop
+  Special rarity is a stat (capped at 20%), that increases all special item drops (endgame content and special resources)
+  Rarity affects exclusively gold gain and equipment drops
+Checkin now rewards a curio and a guild ticket
+The tavern shop only sells potions, curios have been removed
+Curio loot pool has been revamped
+Black market mechanics have been revamped
+
+
 ## ⚗️ v0.85  — Elemental of Elements
 
 **New Boss Encounter: Elemental of Elements**
