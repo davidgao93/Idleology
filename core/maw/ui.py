@@ -72,9 +72,11 @@ def build_maw_embed(
         pct = reward_potential_pct(dmg)
         reward_lines = [f"**{pct:.1f}%** reward potential reached ({dmg:,} / {DAMAGE_CAP:,} damage)"]
         if puzzle_box:
-            reward_lines.append("Reward: **Curio Puzzle Box** + **Curios x{curios}**".format(curios=curios))
-        else:
+            reward_lines.append(f"Reward: **Curio Puzzle Box** + **Curios x{curios}**")
+        elif curios > 0:
             reward_lines.append(f"Reward: **Curios x{curios}**")
+        else:
+            reward_lines.append("*No reward earned — 10% threshold not reached.*")
         embed.add_field(
             name="⚠️ Uncollected Rewards",
             value="\n".join(reward_lines),
@@ -93,7 +95,7 @@ def build_maw_embed(
             progress_bar,
         ]
         if puzzle_box:
-            contribution_lines.append("On track for: **Curio Puzzle Box** + **Curios x{c}**".format(c=curios))
+            contribution_lines.append(f"On track for: **Curio Puzzle Box** + **Curios x{curios}**")
         elif curios > 0:
             contribution_lines.append(f"On track for: **Curios x{curios}**")
         else:

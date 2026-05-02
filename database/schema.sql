@@ -12,7 +12,7 @@
 -- DROP TABLE IF EXISTS user_partner_shards;
 -- DROP TABLE IF EXISTS user_partners;
 
-ALTER TABLE users ADD COLUMN curio_puzzle_boxes INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN curio_puzzle_boxes INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
