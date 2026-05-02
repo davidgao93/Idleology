@@ -506,7 +506,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         # Venomous: player takes X% of monster max HP on each miss
         if monster.has_modifier("Venomous"):
             venom_pct = monster.get_modifier_value("Venomous")
-            base_venom = int(monster.max_hp * venom_pct)
+            base_venom = int(player.max_hp * venom_pct)
             t_pdr = player.get_total_pdr()
             t_fdr = player.get_total_fdr()
             venom_dmg = max(1, int(base_venom * (1 - t_pdr / 100)) - t_fdr)
