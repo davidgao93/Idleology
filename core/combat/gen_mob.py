@@ -92,7 +92,7 @@ async def generate_boss(player, monster, phase, phase_index):
     monster = await fetch_monster_image(phase["level"], monster)
 
     monster.hp = random.randint(0, 9) + int(
-        10 * (monster.level ** random.uniform(1.25, 1.35))
+        10 * (monster.level ** random.uniform(1.8, 1.9))
     )
     monster.hp = int(monster.hp * phase["hp_multiplier"])
     monster.max_hp = monster.hp
@@ -128,7 +128,7 @@ async def generate_ascent_monster(
     monster = await fetch_monster_image(random.randint(30, 120), monster)
 
     monster.hp = random.randint(0, 9) + int(
-        10 * (monster.level ** random.uniform(1.3, 1.4))
+        10 * (monster.level ** random.uniform(1.8, 1.9))
     )
 
     monster.max_hp = monster.hp
@@ -427,7 +427,7 @@ async def generate_uber_lucifer(player, monster):
     )
     monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
-    monster.xp = 150000
+    monster.xp = 75000
 
     monster.name = "Lucifer, Infernal Sovereign"
     monster.image = "https://i.imgur.com/e1VWY6l.png"
@@ -465,7 +465,7 @@ def generate_uber_neet(player, monster):
     )
     monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
-    monster.xp = 150000
+    monster.xp = 75000
 
     monster.name = "NEET, the Void Sovereign"
     monster.image = "https://i.imgur.com/ltLBLBR.png"
@@ -500,7 +500,7 @@ def generate_uber_gemini(player, monster):
     )
     monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
-    monster.xp = 150000
+    monster.xp = 75000
 
     monster.name = "Castor & Pollux, Bound Sovereigns"
     monster.image = "https://i.imgur.com/tCvDbCn.jpeg"
@@ -535,7 +535,7 @@ async def generate_uber_aphrodite(player, monster):
     )
     monster.hp = int(base_hp * 4.0)
     monster.max_hp = monster.hp
-    monster.xp = 150000
+    monster.xp = 75000
 
     monster.name = "Aphrodite, Celestial Apex"
     monster.image = "https://i.imgur.com/je9CVKH.jpeg"
