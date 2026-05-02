@@ -71,7 +71,7 @@ MODIFIER_DEFINITIONS: dict = {
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100]),
     "Mending": ModifierDef("Mending", "common",
-        tiers=[0.01, 0.02, 0.03, 0.04, 0.05],  # fraction of monster max_hp per round
+        tiers=[0.01, 0.02, 0.03, 0.04, 0.05],  # fraction of monster max_hp per every other turn
         difficulties=[0.002, 0.004, 0.006, 0.007, 0.009],
         level_gates=[1, 25, 50, 75, 100]),
     "Thorned": ModifierDef("Thorned", "common",

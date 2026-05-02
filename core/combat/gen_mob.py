@@ -380,7 +380,7 @@ def get_modifier_description(mod: MonsterModifier) -> str:
         "Stalwart":     lambda v: f"Nullifies {int(v*100)}% of incoming damage",
         "Ironclad":     lambda v: f"{int(v*100)}% less damage taken",
         "Vampiric":     lambda v: f"Heals {int(v*100)}% max HP per hit",
-        "Mending":      lambda v: f"Heals {int(v*100)}% max HP per round",
+        "Mending":      lambda v: f"Heals {int(v*100)}% max HP every other turn",
         "Thorned":      lambda v: f"You take {int(v*100)}% of max HP on each hit",
         "Venomous":     lambda v: f"You take {int(v*100)}% of max HP on each miss",
         "Enraged":      lambda v: f"+{int(v*100)}% ATK per 25% HP lost",

@@ -107,7 +107,7 @@ class AscentLobbyView(ui.View):
             ),
             color=discord.Color.from_rgb(180, 120, 60),
         )
-
+        embed.set_thumbnail(url="https://i.imgur.com/eObsHv9.jpeg")
         # Floor info
         starting_floor = AscentMechanics.calculate_starting_floor(self.best_floor)
         embed.add_field(
