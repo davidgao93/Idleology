@@ -172,7 +172,6 @@ class AscentLobbyView(ui.View):
 
         await self.bot.database.users.modify_currency(self.user_id, "pinnacle_key", -1)
         self.bot.state_manager.set_active(self.user_id, "ascent")
-        await self.bot.database.users.update_timer(self.user_id, "last_combat")
 
         starting_floor = AscentMechanics.calculate_starting_floor(self.best_floor)
         m_level = AscentMechanics.calculate_floor_monster_level(starting_floor)

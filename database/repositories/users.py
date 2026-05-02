@@ -245,6 +245,22 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def get_timer(self, user_id: str, timer_column: str):
+        """Fetches a specific timestamp column for a user."""
+        valid_timers = [
+            "last_rest_time",
+            "last_checkin_time",
+            "last_propagate_time",
+            "last_combat",
+        ]
+        if timer_column not in valid_timers:
+            raise ValueError(f"Invalid timer column: {timer_column}")
+        cursor = await self.connection.execute(
+            f"SELECT {timer_column} FROM users WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else None
+
     async def initialize_companion_timer(self, user_id: str) -> None:
         """
         Sets the companion collection timer to NOW, but ONLY if it hasn't been set yet.

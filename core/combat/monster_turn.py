@@ -122,8 +122,8 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     previous_ward = player.combat_ward
 
-    # --- Mending: passive HP regen at start of each monster turn ---
-    if monster.has_modifier("Mending"):
+    # --- Mending: passive HP regen every other monster turn ---
+    if monster.has_modifier("Mending") and monster.combat_round % 2 == 0:
         regen = int(monster.max_hp * monster.get_modifier_value("Mending"))
         monster.hp = min(monster.max_hp, monster.hp + regen)
         log.append(f"{monster.name}'s **Mending** restores **{regen}** HP!")

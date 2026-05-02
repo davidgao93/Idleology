@@ -1219,7 +1219,6 @@ class CodexMenuView(ui.View):
 
         await self.bot.database.users.modify_currency(self.user_id, "antique_tome", -1)
         self.bot.state_manager.set_active(self.user_id, "codex")
-        await self.bot.database.users.update_timer(self.user_id, "last_combat")
 
         # Clear active task species — prevents slayer task completion and species-gated
         # emblem bonuses (slayer_dmg / slayer_def), which are tied to assigned tasks.

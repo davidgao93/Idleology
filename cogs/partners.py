@@ -19,6 +19,7 @@ class Partners(commands.Cog, name="partners"):
             return
         if not await self.bot.check_is_active(interaction, user_id):
             return
+        self.bot.state_manager.set_active(user_id, "partners")
 
         await self.bot.database.partners.ensure_items_row(user_id)
 

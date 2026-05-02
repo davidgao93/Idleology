@@ -1,3 +1,6 @@
+-- ALTER TABLE users ADD COLUMN last_ascent TIMESTAMP DEFAULT NULL;
+-- ALTER TABLE users ADD COLUMN last_codex TIMESTAMP DEFAULT NULL;
+
 -- ALTER TABLE uber_progress ADD COLUMN blessed_bismuth INTEGER DEFAULT 0;
 -- ALTER TABLE uber_progress ADD COLUMN sparkling_sprig INTEGER DEFAULT 0;
 -- ALTER TABLE uber_progress ADD COLUMN capricious_carp INTEGER DEFAULT 0;

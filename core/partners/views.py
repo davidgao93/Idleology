@@ -872,7 +872,7 @@ class DispatchView(ui.View):
 
     def _get_active_dispatch(self) -> Optional[Partner]:
         return next(
-            (p for p in self.partners if p.is_dispatched and p.dispatch_task != "boss_party"),
+            (p for p in self.partners if p.is_dispatched and p.dispatch_task and p.dispatch_task != "boss_party"),
             None,
         )
 
@@ -949,16 +949,25 @@ class DispatchView(ui.View):
                 for p in eligible:
                     if p.rarity != rarity:
                         continue
-                    status = " 📋" if p.is_dispatched else ""
+                    if p.is_dispatched and p.dispatch_task == "boss_party":
+                        status = " 🔱"
+                    elif p.is_dispatched:
+                        status = " 📋"
+                    else:
+                        status = ""
+                    if p.is_dispatched and p.dispatch_task == "boss_party":
+                        desc = "🔱 Boss Raid"
+                    elif p.is_dispatched:
+                        desc = f"On: {_TASK_LABELS.get(p.dispatch_task or '', p.dispatch_task or '?')}"
+                    else:
+                        desc = "Idle"
                     options.append(
                         discord.SelectOption(
                             label=f"{_stars(p.rarity)} {p.name} Lv.{p.level}{status}"[
                                 :100
                             ],
                             value=str(p.partner_id),
-                            description=(
-                                f"On: {p.dispatch_task}" if p.is_dispatched else "Idle"
-                            )[:100],
+                            description=desc[:100],
                         )
                     )
             if options:
@@ -1710,12 +1719,10 @@ class PullView(ui.View):
                     embed=dup_embed, view=recap_view
                 )
             else:
-                # 10x all duplicates → keep plethora recap + pull buttons
+                # 10x all duplicates → attach pull buttons (embed already shown in stage 2)
                 recap_view = PullRecapView(self.bot, self.user_id, self)
                 recap_view.message = self.message
-                await interaction.edit_original_response(
-                    embed=plethora_embed, view=recap_view
-                )
+                await interaction.edit_original_response(view=recap_view)
 
 
 async def _get_sig_lvl(bot, user_id: str, partner_id: int) -> int:
@@ -2136,7 +2143,7 @@ class PartnerMainView(ui.View):
         if partners:
             active_combat = next((p for p in partners if p.is_active_combat), None)
             active_dispatch = next(
-                (p for p in partners if p.is_dispatched and p.dispatch_task != "boss_party"),
+                (p for p in partners if p.is_dispatched and p.dispatch_task and p.dispatch_task != "boss_party"),
                 None,
             )
             boss_party = [p for p in partners if p.is_dispatched and p.dispatch_task == "boss_party"]

@@ -12,8 +12,8 @@ class CompanionMechanics:
     RARE_PASSIVE_TYPES = ['s_rarity'] # Special Rarity is rarer
     
     MAX_LEVEL = 100
-    COLLECTION_INTERVAL_SECONDS = 1800 # 30 Minutes
-    MAX_COLLECTION_CYCLES = 48 # 24 Hours max accumulation
+    COLLECTION_INTERVAL_SECONDS = 3600 # 1 Hour
+    MAX_COLLECTION_CYCLES = 60 # 60 Hours max accumulation
 
     # --- XP & LEVELING ---
 

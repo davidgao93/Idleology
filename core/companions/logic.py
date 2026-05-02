@@ -35,7 +35,7 @@ class CompanionLogic:
         results = CompanionMechanics.calculate_collection_rewards(active_comps, last_collect)
         
         if not results['can_collect']:
-            return "Your companions are still gathering supplies. Check back later (30m interval)."
+            return "Your companions are still gathering supplies. Check back later (1h interval)."
 
         # 3. Process Loot
         # results['items'] is a list of ("Type", Amount)

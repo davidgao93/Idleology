@@ -74,7 +74,7 @@ def process_heal(player: Player, monster=None) -> str:
 
     player.potions -= 1
 
-    msg = f"{player.name} uses a potion and heals for **{heal_amount - overheal}** HP!"
+    msg = f"{player.name} uses a potion and heals for **{max(0, heal_amount - overheal)}** HP!"
     if player.apothecary_workers > 0:
         msg += f" (Apothecary: +{int(player.apothecary_workers * 0.2)})"
 

@@ -438,7 +438,7 @@ _PARTY_BOSS_SIGIL_MIN = 1
 _PARTY_BOSS_SIGIL_MAX = 3
 _PARTY_BOSS_TICKET_CHANCE = 0.05
 
-BOSS_PARTY_DURATION_HOURS = 12
+BOSS_PARTY_DURATION_HOURS = 22
 
 
 def pick_party_boss() -> dict:
@@ -446,13 +446,22 @@ def pick_party_boss() -> dict:
     return random.choice(_PARTY_BOSSES).copy()
 
 
+_BOSS_NAME_TO_SIGIL: Dict[str, str] = {
+    "Aphrodite, the Celestial": "celestial_sigils",
+    "Lucifer, the Infernal": "infernal_sigils",
+    "NEET, Void Manifest": "void_shards",
+    "Gemini, Twin Souls": "gemini_sigils",
+}
+
+
 def calculate_boss_party_rewards(
     attacker: "Partner",
     tank: "Partner",
     healer: "Partner",
+    boss_name: str = "",
 ) -> Dict[str, Any]:
     """
-    Calculates rewards for a completed 12h boss party dispatch.
+    Calculates rewards for a completed boss party dispatch.
     Scales with the average level of the three partners.
 
     Returns dict with keys: gold, sigils (dict), partner_exp, guild_ticket.
@@ -461,7 +470,7 @@ def calculate_boss_party_rewards(
     lv = _level_mult(int(avg_level))
 
     gold = int(random.randint(_PARTY_BOSS_GOLD_MIN, _PARTY_BOSS_GOLD_MAX) * lv)
-    sigil_type = random.choice(_BOSS_SIGILS)
+    sigil_type = _BOSS_NAME_TO_SIGIL.get(boss_name, random.choice(_BOSS_SIGILS))
     sigil_count = random.randint(_PARTY_BOSS_SIGIL_MIN, _PARTY_BOSS_SIGIL_MAX)
     guild_ticket = random.random() < _PARTY_BOSS_TICKET_CHANCE
 

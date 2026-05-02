@@ -10,7 +10,7 @@ Flow:
 Party requires one partner in each role: Attacker / Tank / Healer.
 4★ partners may only hold their single main class slot.
 5★/6★ hybrids (Vanguard/Paladin/Battlemage) fill two roles.
-Duration: 12 hours. All three partners receive EXP on collect.
+Duration: 22 hours. All three partners receive EXP on collect.
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ def _build_form_embed(
         description=(
             "Assemble a party of three to challenge a powerful boss.\n"
             "Each role must be filled by a compatible partner.\n"
-            "The raid lasts **12 hours**. All party members earn EXP on completion."
+            "The raid lasts **22 hours**. All party members earn EXP on completion."
         ),
         colour=0xB22222,
     )
@@ -532,7 +532,7 @@ class BossPartyProgressView(ui.View):
             )
             return
 
-        rewards = calculate_boss_party_rewards(attacker, tank, healer)
+        rewards = calculate_boss_party_rewards(attacker, tank, healer, boss_name=row["boss_name"])
 
         # Apply rewards
         await self.bot.database.users.modify_gold(self.user_id, rewards["gold"])
@@ -604,8 +604,11 @@ class BossPartyProgressView(ui.View):
             colour=0x2ECC71,
         )
         embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
-        self.stop()
-        await interaction.edit_original_response(embed=embed, view=None)
+        self.clear_items()
+        back_btn = ui.Button(label="Back to Partners", style=ButtonStyle.secondary)
+        back_btn.callback = self._back
+        self.add_item(back_btn)
+        await interaction.edit_original_response(embed=embed, view=self)
 
     async def _back(self, interaction: Interaction):
         await interaction.response.defer()
