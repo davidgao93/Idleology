@@ -22,12 +22,12 @@ class Tavern(commands.Cog, name="tavern"):
 
         self.bot.state_manager.set_active(user_id, "shop")
 
-        # Initial Embed Setup
         gold = user_data[6]
+        potions = user_data[16]
         level = user_data[4]
-        
+
         potion_cost = TavernMechanics.calculate_potion_cost(level)
-        curio_cost, curio_stock = TavernMechanics.get_curio_stock_info(user_data[23])
+        topup_qty = max(0, 20 - potions)
 
         embed = discord.Embed(
             title="Tavern Shop 🏪",
@@ -36,18 +36,16 @@ class Tavern(commands.Cog, name="tavern"):
         )
         embed.set_thumbnail(url="https://i.imgur.com/81jN8tA.jpeg")
         embed.add_field(name="Your Gold 💰", value=f"{gold:,}", inline=False)
-        embed.add_field(name="Potion 🧪 x1 / x5 / x10", 
-                        value=f"Cost: {potion_cost} / {potion_cost * 5} / {potion_cost * 10} gold", 
-                        inline=False)
-
-        if curio_stock > 0:
-            embed.add_field(name="Curious Curio 🎁",
-                            value=f"Cost: **{curio_cost:,}** gold\nStock: **{curio_stock}**", inline=False)
-        else:
-            embed.add_field(name="Curious Curio 🎁",
-                            value="No stock left. Refreshed on next /checkin!", inline=False)
-        
-        embed.add_field(name="The tavernkeeper", value=f"Hello traveler, the pickings are slim I'm afraid...", inline=False)
+        embed.add_field(
+            name="Potion 🧪",
+            value=(
+                f"x1: **{potion_cost:,}** gold\n"
+                f"x5: **{potion_cost * 5:,}** gold\n"
+                f"Top Up ({topup_qty}): **{potion_cost * topup_qty:,}** gold"
+            ),
+            inline=False,
+        )
+        embed.add_field(name="The tavernkeeper", value="Hello traveler, the pickings are slim I'm afraid...", inline=False)
 
         view = ShopView(self.bot, user_id, user_data)
         await interaction.response.send_message(embed=embed, view=view)
@@ -183,14 +181,9 @@ class Tavern(commands.Cog, name="tavern"):
         await self.bot.database.users.update_timer(user_id, 'last_checkin_time')
         await self.bot.database.users.modify_currency(user_id, 'curios', 1)
         await self.bot.database.partners.add_tickets(user_id, 1)
-        # Reset daily shop stock counter (stored in 'curios_purchased_today')
-        # We set it to 0 by negating current value
-        current_purchased = user[23]
-        if current_purchased > 0:
-            await self.bot.database.users.modify_currency(user_id, 'curios_purchased_today', -current_purchased)
 
         await interaction.response.send_message(
-            "✅ Check-in complete! You received a **Curious Curio** and a **Guild Ticket**.\nTavern Shop stock has been refreshed.",
+            "✅ Check-in complete! You received a **Curious Curio** and a **Guild Ticket**.",
             ephemeral=True
         )
 

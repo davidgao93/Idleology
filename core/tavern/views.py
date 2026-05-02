@@ -9,16 +9,11 @@ class ShopView(ui.View):
         super().__init__(timeout=180)
         self.bot = bot
         self.user_id = user_id
-        
-        # Unpack needed data to minimize DB calls on every interaction
         self.gold = user_data[6]
         self.potions = user_data[16]
-        self.curios_bought = user_data[23]
         self.level = user_data[4]
-        
         self.potion_cost = TavernMechanics.calculate_potion_cost(self.level)
-        self.curio_cost, self.curio_stock = TavernMechanics.get_curio_stock_info(self.curios_bought)
-        
+        self.message = None
         self.update_buttons()
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -26,68 +21,53 @@ class ShopView(ui.View):
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
-        
-        # Disable buttons
         for child in self.children:
             child.disabled = True
-            
         try:
             embed = self.message.embeds[0]
-            # Update the tavernkeeper field to indicate closing
-            found = False
             for i, field in enumerate(embed.fields):
                 if "tavernkeeper" in field.name.lower():
                     embed.set_field_at(i, name="The tavernkeeper", value="*Zzz...* (The shop has closed)", inline=False)
-                    found = True
                     break
-            
-            if not found:
-                embed.set_footer(text="Shop session timed out.")
-
             await self.message.edit(embed=embed, view=self)
-        except:
+        except Exception:
             pass
 
+    def _topup_qty(self) -> int:
+        return max(0, 20 - self.potions)
+
     def update_buttons(self):
-        # Update button states based on funds/stock
-        # Potion Buttons (Indices 0, 1, 2)
+        topup_qty = self._topup_qty()
+        topup_cost = self.potion_cost * topup_qty
         self.children[0].disabled = self.gold < self.potion_cost or self.potions >= 20
-        self.children[1].disabled = self.gold < (self.potion_cost * 5) or self.potions >= 16
-        self.children[2].disabled = self.gold < (self.potion_cost * 10) or self.potions >= 11
-        
-        # Curio Button (Index 3)
-        self.children[3].disabled = self.gold < self.curio_cost or self.curio_stock <= 0
-        self.children[3].label = f"Curio ({self.curio_stock})"
+        self.children[1].disabled = self.gold < self.potion_cost * 5 or self.potions > 15
+        self.children[2].disabled = topup_qty == 0 or self.gold < topup_cost
+        self.children[2].label = f"🧪 Top Up ({topup_qty})"
 
     async def refresh_ui(self, interaction: Interaction, msg: str):
-        # Re-build Embed
         embed = interaction.message.embeds[0]
-        
-        # Update Gold Field
         embed.set_field_at(0, name="Your Gold 💰", value=f"{self.gold:,}", inline=False)
-        
-        # Update Tavernkeeper Field
-        embed.set_field_at(3, name="The tavernkeeper", value=msg, inline=False)
-        
-        # Update Curio Field if stock changed
-        if self.curio_stock < 5:
-             embed.set_field_at(2, name="Curious Curio 🎁",
-                            value=f"Cost: **{self.curio_cost:,}** gold\nStock: **{self.curio_stock}**", inline=False)
-
+        topup_qty = self._topup_qty()
+        embed.set_field_at(
+            1,
+            name="Potion 🧪",
+            value=(
+                f"x1: **{self.potion_cost:,}** gold\n"
+                f"x5: **{self.potion_cost * 5:,}** gold\n"
+                f"Top Up ({topup_qty}): **{self.potion_cost * topup_qty:,}** gold"
+            ),
+            inline=False,
+        )
+        embed.set_field_at(2, name="The tavernkeeper", value=msg, inline=False)
         self.update_buttons()
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def process_potion_buy(self, interaction: Interaction, qty: int):
         cost = self.potion_cost * qty
-        
-        # DB Updates
         await self.bot.database.users.modify_gold(self.user_id, -cost)
         await self.bot.database.users.modify_stat(self.user_id, 'potions', qty)
-        
-        # Local State Update
         self.gold -= cost
         self.potions += qty
-        
         msg = f"Here are your **{qty}** potions. Stay safe out there."
         await self.refresh_ui(interaction, msg)
 
@@ -99,23 +79,12 @@ class ShopView(ui.View):
     async def buy_five(self, interaction: Interaction, button: ui.Button):
         await self.process_potion_buy(interaction, 5)
 
-    @ui.button(label="🧪 x10", style=ButtonStyle.primary)
-    async def buy_ten(self, interaction: Interaction, button: ui.Button):
-        await self.process_potion_buy(interaction, 10)
-
-    @ui.button(label="🎁 Curio", style=ButtonStyle.success)
-    async def buy_curio(self, interaction: Interaction, button: ui.Button):
-        cost = self.curio_cost
-        
-        await self.bot.database.users.modify_gold(self.user_id, -cost)
-        await self.bot.database.users.modify_currency(self.user_id, 'curios', 1)
-        await self.bot.database.users.modify_currency(self.user_id, 'curios_purchased_today', 1)
-        
-        self.gold -= cost
-        self.curio_stock -= 1
-        
-        msg = "Feeling lucky? Very well..."
-        await self.refresh_ui(interaction, msg)
+    @ui.button(label="🧪 Top Up", style=ButtonStyle.primary)
+    async def top_up(self, interaction: Interaction, button: ui.Button):
+        qty = self._topup_qty()
+        if qty == 0:
+            return await interaction.response.send_message("Your potions are already full.", ephemeral=True)
+        await self.process_potion_buy(interaction, qty)
 
     @ui.button(label="Leave", style=ButtonStyle.danger)
     async def leave(self, interaction: Interaction, button: ui.Button):

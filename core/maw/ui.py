@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import discord
 
 from core.maw.mechanics import (
@@ -13,6 +11,9 @@ from core.maw.mechanics import (
     is_cycle_active,
     reward_potential_pct,
 )
+
+_MAW_MAIN_IMAGE = "https://i.imgur.com/Vx1mUTC.jpeg"
+_MAW_VICTORY_IMAGE = "https://i.imgur.com/MvQIBaP.jpeg"
 
 
 def _fmt_time(seconds: int) -> str:
@@ -30,6 +31,7 @@ def build_maw_embed(
     fake_global_damage: int,
     record: dict | None,
     pending_record: dict | None,
+    pending_cycle_id: int | None = None,
 ) -> discord.Embed:
     embed = discord.Embed(
         title="🌑 The Maw of Infinity",
@@ -38,6 +40,7 @@ def build_maw_embed(
 
     cycle_end = get_cycle_end_ts(cycle_id)
     next_cycle = get_next_cycle_id(cycle_id)
+    in_collection = pending_cycle_id is not None and is_collection_window(pending_cycle_id, now_ts)
 
     if is_cycle_active(cycle_id, now_ts):
         time_remaining = cycle_end - now_ts
@@ -48,8 +51,8 @@ def build_maw_embed(
             f"**Participants this cycle:** {participant_count:,}\n"
             f"**Total damage dealt:** {fake_global_damage:,}"
         )
-    elif is_collection_window(cycle_id, now_ts):
-        time_until_next = next_cycle - now_ts
+    elif in_collection:
+        time_until_next = cycle_id - now_ts
         embed.description = (
             "The Maw retreats into the void... for now.\n\n"
             f"**Next cycle in:** {_fmt_time(time_until_next)}\n"
@@ -110,6 +113,12 @@ def build_maw_embed(
         )
 
     embed.set_footer(text="Damage cap: 500,000 · Boost cooldown: 20h · Cycle resets every Sunday 12:00 UTC")
+
+    if pending_record and not pending_record["rewards_collected"]:
+        embed.set_image(url=_MAW_VICTORY_IMAGE)
+    else:
+        embed.set_thumbnail(url=_MAW_MAIN_IMAGE)
+
     return embed
 
 

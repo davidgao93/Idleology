@@ -24,10 +24,3 @@ class TavernMechanics:
             return (int(player_level / 10) * 100) + 400
         return 400
 
-    @staticmethod
-    def get_curio_stock_info(purchased_today: int) -> tuple[int, int]:
-        """Returns (cost, remaining_stock)."""
-        limit = 5
-        cost = 8000
-        remaining = max(0, limit - purchased_today)
-        return cost, remaining

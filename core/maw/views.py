@@ -71,6 +71,7 @@ class MawView(ui.View):
             fake_global_damage=mechanics.calculate_fake_global(self.participant_count, self.cycle_id, self.now_ts),
             record=self.record,
             pending_record=self.pending_record,
+            pending_cycle_id=self.prev_cycle_id,
         )
 
     async def fight(self, interaction: Interaction):

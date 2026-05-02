@@ -396,8 +396,8 @@ def _compute_combat_bonuses(p) -> dict:
     cb: dict = {"atk": 0, "def": 0, "hp": 0, "crit": 0, "special_rarity": 0.0}
 
     # Partner combat skills (deterministic only)
-    if p.active_partners:
-        partner = p.active_partners[0]
+    if p.active_partner:
+        partner = p.active_partner
         for key, lvl in partner.combat_skills:
             if not key:
                 continue

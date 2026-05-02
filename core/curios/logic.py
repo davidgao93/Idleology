@@ -141,12 +141,14 @@ class CurioManager:
 
     @staticmethod
     def get_image_url(reward_name: str) -> str:
-        """Attempts to load image URL from CSV."""
+        """Attempts to load image URL from CSV. Gold rewards strip ' Gold' suffix before lookup."""
+        key = reward_name.replace(" Gold", "").replace(" ", "_")
         try:
             with open('assets/curios.csv', mode='r') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
-                    if row['Item'] == reward_name.replace(" ", "_"):
+                    if row['Item'] == key:
                         return row['URL']
-        except: pass
+        except Exception:
+            pass
         return None
