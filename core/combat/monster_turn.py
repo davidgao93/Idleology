@@ -462,10 +462,10 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     f"The monster's **Vampiric** essence siphons life, healing it for **{heal}** HP!"
                 )
 
-            # Thorned: player takes X% of monster max HP on each hit
+            # Thorned: player takes X% of player max HP on each hit
             if not is_dodged and monster.has_modifier("Thorned") and damage_dealt > 0:
                 thorned_pct = monster.get_modifier_value("Thorned")
-                base_thorned = int(monster.max_hp * thorned_pct)
+                base_thorned = int(player.total_max_hp * thorned_pct)
                 t_pdr = player.get_total_pdr()
                 t_fdr = player.get_total_fdr()
                 thorned_dmg = max(1, int(base_thorned * (1 - t_pdr / 100)) - t_fdr)
@@ -506,7 +506,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         # Venomous: player takes X% of monster max HP on each miss
         if monster.has_modifier("Venomous"):
             venom_pct = monster.get_modifier_value("Venomous")
-            base_venom = int(player.max_hp * venom_pct)
+            base_venom = int(player.total_max_hp * venom_pct)
             t_pdr = player.get_total_pdr()
             t_fdr = player.get_total_fdr()
             venom_dmg = max(1, int(base_venom * (1 - t_pdr / 100)) - t_fdr)

@@ -421,10 +421,7 @@ class CodexRunView(ui.View):
         is_perfect = self.chapters_cleared == 5 and self.waves_cleared_this_run == 35
         embed = discord.Embed(
             title="📕 Codex Run Complete",
-            description=(
-                f"**{self.player.name}** cleared **{self.chapters_cleared}/5** chapters."
-                + (" ✨ **Perfect Run!**" if is_perfect else "")
-            ),
+            description=(f"**✨ Codex Cleared!"),
             color=discord.Color.gold() if is_perfect else discord.Color.blurple(),
         )
         embed.add_field(
@@ -774,19 +771,19 @@ class CodexRunView(ui.View):
         await interaction.response.defer()
         await self._execute_turn(message=interaction.message)
 
-    @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹", row=0)
-    async def _heal_btn(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.defer()
-        message = interaction.message
-        heal_log = engine.process_heal(self.player, self.monster)
-        self.logs = {"Heal": heal_log}
-        if self.monster.hp > 0:
-            m_log = engine.process_monster_turn(self.player, self.monster)
-            self.combat_logger.log_monster_turn(m_log, self.player)
-            self.logs[self.monster.name] = m_log
-        await self._check_state(message=message)
+    # @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹", row=0)
+    # async def _heal_btn(self, interaction: Interaction, button: ui.Button):
+    #     await interaction.response.defer()
+    #     message = interaction.message
+    #     heal_log = engine.process_heal(self.player, self.monster)
+    #     self.logs = {"Heal": heal_log}
+    #     if self.monster.hp > 0:
+    #         m_log = engine.process_monster_turn(self.player, self.monster)
+    #         self.combat_logger.log_monster_turn(m_log, self.player)
+    #         self.logs[self.monster.name] = m_log
+    #     await self._check_state(message=message)
 
-    @ui.button(label="Auto Wave", style=ButtonStyle.primary, emoji="⏩", row=0)
+    @ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩", row=0)
     async def _auto_btn(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         message = interaction.message

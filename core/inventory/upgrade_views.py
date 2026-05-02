@@ -1787,7 +1787,7 @@ class ReinforceView(BaseUpgradeView):
         embed = discord.Embed(
             title=f"Reinforce {self.item.name}", description=desc, color=color
         )
-        embed.set_thumbnail(url="https://i.imgur.com/xhkOm99.jpeg")
+        embed.set_thumbnail(url="https://i.imgur.com/iy8EUW5.jpeg")
 
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
@@ -1853,7 +1853,7 @@ class ReinforceView(BaseUpgradeView):
 
             new_val = getattr(self.item, stat_col)
             embed = discord.Embed(title="Reinforce Complete! ✨", color=discord.Color.green())
-            embed.set_thumbnail(url="https://i.imgur.com/xhkOm99.jpeg")
+            embed.set_thumbnail(url="https://i.imgur.com/iy8EUW5.jpeg")
             embed.description = (
                 f"**Gain:** +{gain} {stat_label}\n"
                 f"**Reinforcement:** +{self.item.reinforcement_lvl}\n\n"

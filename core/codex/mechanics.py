@@ -40,7 +40,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Steel-born warriors march in endless formation.",
         signature_key="weakened",
         signature_label="Weakened",
-        signature_description="-30% base ATK",
+        signature_description="-30% ATK",
         level_offset=5,
         difficulty=1,
     ),
@@ -70,7 +70,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Titanic creatures bloated on ruin and excess.",
         signature_key="depleted",
         signature_label="Depleted",
-        signature_description="-40% base DEF",
+        signature_description="-40% DEF",
         level_offset=7,
         difficulty=2,
     ),
@@ -80,7 +80,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Celestial arbiters pass judgment without mercy.",
         signature_key="humbled",
         signature_label="Humbled",
-        signature_description="-20% base ATK and -20% base DEF",
+        signature_description="-20% ATK and -20% DEF",
         level_offset=9,
         difficulty=2,
     ),
@@ -90,7 +90,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Reality tears apart. Shield-breakers pour through the cracks.",
         signature_key="unravelled",
         signature_label="Unravelled",
-        signature_description="Ward disabled at start and -20% base DEF",
+        signature_description="Ward disabled at start and -20% DEF",
         level_offset=9,
         difficulty=3,
     ),
@@ -110,7 +110,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="A battlefield scorched clean of all hope.",
         signature_key="scorched",
         signature_label="Scorched",
-        signature_description="-30% base DEF and -20% base ATK",
+        signature_description="-30% DEF and -20% ATK",
         level_offset=11,
         difficulty=3,
     ),
@@ -130,7 +130,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Ascended legions spill across the horizon in an endless wave.",
         signature_key="frenzied",
         signature_label="Frenzied",
-        signature_description="-30% base DEF and -30% crit chance",
+        signature_description="-30% DEF and -30% crit chance",
         level_offset=13,
         difficulty=4,
     ),
@@ -140,7 +140,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Something from the abyss gazes back. It is not impressed.",
         signature_key="abyss_taint",
         signature_label="Abyss-Tainted",
-        signature_description="-40% base ATK and -40% base DEF",
+        signature_description="-40% ATK and -40% DEF",
         level_offset=15,
         difficulty=4,
     ),
@@ -150,7 +150,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Laws of reality buckle under impossible weight.",
         signature_key="broken",
         signature_label="Broken",
-        signature_description="Ward disabled at start and -30% base DEF",
+        signature_description="Ward disabled at start and -30% DEF",
         level_offset=15,
         difficulty=4,
     ),
@@ -160,7 +160,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Numbers made flesh. Perfection made enemy.",
         signature_key="absolute_zero",
         signature_label="Absolute Zero",
-        signature_description="-50% base ATK and -40% crit chance",
+        signature_description="-50% ATK and -40% crit chance",
         level_offset=17,
         difficulty=5,
     ),
@@ -170,7 +170,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="Every threat converges into one merciless point.",
         signature_key="convergence",
         signature_label="Convergence",
-        signature_description="-30% base ATK, -30% base DEF, ward disabled at start",
+        signature_description="-30% ATK, -30% DEF, ward disabled at start",
         level_offset=20,
         difficulty=5,
     ),
@@ -180,7 +180,7 @@ CHAPTER_POOL: list[CodexChapter] = [
         flavor="The archive catalogues your failures. You are just another entry.",
         signature_key="erased",
         signature_label="Erased",
-        signature_description="-50% base ATK and -50% base DEF",
+        signature_description="-50% ATK and -50% DEF",
         level_offset=22,
         difficulty=5,
     ),
@@ -567,10 +567,10 @@ def apply_respite_boon(
 # Wave Scaling
 # ---------------------------------------------------------------------------
 
-# Per-wave level step from chapter base (index 0 = wave 1, index 6 = wave 7 boss)
-_WAVE_LEVEL_STEPS = [0, 1, 2, 3, 4, 5, 8]
+# Per-wave level step from chapter (index 0 = wave 1, index 6 = wave 7 boss)
+_WAVE_LEVEL_STEPS = [5, 5, 8, 8, 10, 10, 20]
 
-# Base normal modifier count per wave
+# normal modifier count per wave
 _WAVE_NORMAL_MODS = [3, 4, 4, 5, 5, 6, 6]
 
 
@@ -595,9 +595,9 @@ def get_wave_modifier_counts(wave_num: int, chapter_difficulty: int) -> tuple[in
     Wave 7 always has at least 1 boss mod; difficulty 4–5 chapters give it 2.
     """
     normal = _WAVE_NORMAL_MODS[wave_num - 1] + (chapter_difficulty - 1)
-    boss = 0
+    boss = 1 if chapter_difficulty >= 4 else 1
     if wave_num == 7:
-        boss = 2 if chapter_difficulty >= 4 else 1
+        boss = 3 if chapter_difficulty >= 4 else 1
     return normal, boss
 
 
@@ -607,7 +607,7 @@ def calculate_run_fragments(
     fragment_multiplier: float,
 ) -> int:
     """
-    Base fragment reward scales with how many chapters were cleared.
+    fragment reward scales with how many chapters were cleared.
     Perfect run (all 5 cleared with no deaths mid-run) gives a 50% bonus.
     fragment_multiplier comes from accumulated fragment_boost boons.
     """
