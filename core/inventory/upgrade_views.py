@@ -1419,6 +1419,13 @@ class TemperView(BaseUpgradeView):
                 f"🛡️ **Success!**\nIncreased **{stat.upper()}** by **{amount}**."
             )
         else:
+            self.item.temper_remaining -= 1
+            await self.bot.database.equipment.update_counter(
+                self.item.item_id,
+                "armor",
+                "temper_remaining",
+                self.item.temper_remaining,
+            )
             res_embed.color = discord.Color.dark_grey()
             res_embed.description = (
                 "🔨 **Failed.**\nThe metal cooled too quickly. Materials consumed."

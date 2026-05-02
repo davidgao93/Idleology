@@ -261,7 +261,9 @@ class InventoryUI:
 
         passives = []
         if getattr(item, "passive", "none") not in ("none", ""):
-            passives.append(item.passive.title())
+            lvl = getattr(item, "passive_lvl", 0)
+            lvl_str = f" Lv.{lvl}" if lvl > 0 else ""
+            passives.append(f"{item.passive.title()}{lvl_str}")
         if isinstance(item, Weapon):
             if getattr(item, "p_passive", "none") not in ("none", ""):
                 passives.append(item.p_passive.title())
