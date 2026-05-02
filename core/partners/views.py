@@ -2120,7 +2120,16 @@ class PartnerMainView(ui.View):
 
     def build_embed(self, items: dict, partners: List[Partner] = None) -> discord.Embed:
         embed = discord.Embed(title="🤝 Partners", colour=0xBEBEFE)
-
+        embed.add_field(
+                    name="Welcome Traveler!",
+                    value=(
+                        f"Recruit new Partners with 🎫 Guild Tickets!\n"
+                        f"They can join you for ⚔️ Combat...\n"
+                        f"Or 📋 Dispatch them for passive rewards, the choice is yours.\n"
+                        f"Best of luck, adventurer!"
+                    ),
+                    inline=True,
+                )
         active_combat = None
         active_dispatch = None
         boss_party: list = []
