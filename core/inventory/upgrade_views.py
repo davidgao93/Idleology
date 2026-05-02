@@ -1392,7 +1392,6 @@ class TemperView(BaseUpgradeView):
 
         await self.bot.database.users.modify_gold(uid, -self.costs["gold"])
 
-        # ... (Roll logic and Result Embed identical to before) ...
         success, stat, amount = EquipmentMechanics.roll_temper_outcome(
             self.item, bonus_chance=bonus
         )
@@ -1801,7 +1800,7 @@ class InfernalEngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.dark_red(),
         )
-        self.embed.set_thumbnail(url="https://i.imgur.com/x9suAGK.png")
+        self.embed.set_thumbnail(url="https://i.imgur.com/rNtYFGa.jpeg")
 
         self.clear_items()
         btn_consume = Button(
@@ -1856,7 +1855,7 @@ class InfernalEngramView(BaseUpgradeView):
             description=f"The Engram shatters in hellfire, branding your weapon.\n\n**New Passive:** {display_new}",
             color=discord.Color.red(),
         )
-        res_embed.set_thumbnail(url="https://i.imgur.com/x9suAGK.png")
+        res_embed.set_thumbnail(url="https://i.imgur.com/rNtYFGa.jpeg")
 
         self.clear_items()
         if uber_prog["infernal_engrams"] - 1 > 0:
@@ -1908,7 +1907,7 @@ class BalancedEngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.blurple(),
         )
-        self.embed.set_thumbnail(url=self.comp.image_url)
+        self.embed.set_thumbnail(url="https://i.imgur.com/Wrr7yLr.jpeg")
 
         self.clear_items()
         btn_consume = Button(
@@ -1974,7 +1973,7 @@ class BalancedEngramView(BaseUpgradeView):
             ),
             color=discord.Color.blurple(),
         )
-        res_embed.set_thumbnail(url=self.comp.image_url)
+        res_embed.set_thumbnail(url="https://i.imgur.com/Wrr7yLr.jpeg")
 
         self.clear_items()
         remaining = uber_prog.get("gemini_engrams", 0) - 1
@@ -2020,7 +2019,7 @@ class VoidEngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.dark_theme(),
         )
-
+        self.embed.set_thumbnail(url="https://i.imgur.com/z4Z4puO.jpeg")
         self.clear_items()
         btn_consume = Button(
             label="Consume Engram",
@@ -2071,7 +2070,7 @@ class VoidEngramView(BaseUpgradeView):
             description=f"The Engram dissolves into the void, reshaping your accessory.\n\n**New Passive:** {display_new}",
             color=discord.Color.dark_theme(),
         )
-
+        res_embed.set_thumbnail(url="https://i.imgur.com/z4Z4puO.jpeg")
         self.clear_items()
         if uber_prog["void_engrams"] - 1 > 0:
             btn_again = Button(label="Roll Again", style=ButtonStyle.primary)
@@ -2109,7 +2108,7 @@ class EngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.purple(),
         )
-        self.embed.set_thumbnail(url="https://i.imgur.com/LjE5VZF.png")
+        self.embed.set_thumbnail(url="https://i.imgur.com/MGtoLnw.jpeg")
 
         self.clear_items()
         btn_consume = Button(
@@ -2161,7 +2160,7 @@ class EngramView(BaseUpgradeView):
             title="🌌 Engram Resonated!", color=discord.Color.gold()
         )
         res_embed.description = f"The Engram shatters, weaving divine energy into your armor.\n\n**New Passive:** {display_new}"
-        res_embed.set_thumbnail(url="https://i.imgur.com/LjE5VZF.png")
+        res_embed.set_thumbnail(url="https://i.imgur.com/MGtoLnw.jpeg")
 
         self.clear_items()
         if uber_prog["celestial_engrams"] - 1 > 0:
