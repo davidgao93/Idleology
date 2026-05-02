@@ -1713,26 +1713,33 @@ class ReinforceView(BaseUpgradeView):
         self.cost_data = {}
 
     def _reinforce_info(self):
-        """Returns (db_item_type, stat_column, stat_label, current_value)."""
+        """Returns (db_item_type, stat_column, stat_label, current_value, is_pct)."""
         if isinstance(self.item, Armor):
             label = "ATK" if self.item.main_stat_type == "atk" else "DEF"
-            return "armor", "main_stat", label, self.item.main_stat
+            return "armor", "main_stat", label, self.item.main_stat, False
         if isinstance(self.item, Glove):
             if self.item.attack > 0:
-                return "glove", "attack", "ATK", self.item.attack
-            return "glove", "defence", "DEF", self.item.defence
+                return "glove", "attack", "ATK", self.item.attack, False
+            if self.item.defence > 0:
+                return "glove", "defence", "DEF", self.item.defence, False
+            return "glove", "ward", "Ward", self.item.ward, True
         if isinstance(self.item, Boot):
             if self.item.attack > 0:
-                return "boot", "attack", "ATK", self.item.attack
-            return "boot", "defence", "DEF", self.item.defence
+                return "boot", "attack", "ATK", self.item.attack, False
+            if self.item.defence > 0:
+                return "boot", "defence", "DEF", self.item.defence, False
+            return "boot", "ward", "Ward", self.item.ward, True
         # Helmet
-        return "helmet", "defence", "DEF", self.item.defence
+        if self.item.defence > 0:
+            return "helmet", "defence", "DEF", self.item.defence, False
+        return "helmet", "ward", "Ward", self.item.ward, True
 
     async def render(self, interaction: Interaction):
         self.cost_data = EquipmentMechanics.calculate_reinforce_cost(self.item)
         cost_gold = self.cost_data["gold"]
         materials = self.cost_data.get("materials", [])
-        itype, stat_col, stat_label, stat_val = self._reinforce_info()
+        itype, stat_col, stat_label, stat_val, is_pct = self._reinforce_info()
+        val_str = f"{stat_val:,}%" if is_pct else f"{stat_val:,}"
 
         uid, sid = self.user_id, str(interaction.guild.id)
         user_gold = await self.bot.database.users.get_gold(uid)
@@ -1760,7 +1767,7 @@ class ReinforceView(BaseUpgradeView):
         has_slots = self.item.reinforces_remaining > 0
 
         desc = (
-            f"**Main Stat:** {stat_label} {stat_val:,}\n"
+            f"**Main Stat:** {stat_label} {val_str}\n"
             f"**Reinforces Remaining:** {self.item.reinforces_remaining}\n"
             f"**Reinforcement Level:** +{self.item.reinforcement_lvl}\n"
             f"**Gold Cost:** {cost_gold:,} ({user_gold:,})"
@@ -1795,7 +1802,7 @@ class ReinforceView(BaseUpgradeView):
             await interaction.response.edit_message(embed=embed, view=self)
 
     async def confirm_reinforce(self, interaction: Interaction):
-        itype, stat_col, stat_label, _ = self._reinforce_info()
+        itype, stat_col, stat_label, _, is_pct = self._reinforce_info()
 
         # Use Shatter Rune to add a slot
         if self.item.reinforces_remaining <= 0:
@@ -1835,7 +1842,7 @@ class ReinforceView(BaseUpgradeView):
 
             await self.bot.database.users.modify_gold(self.user_id, -cost_gold)
 
-            gain = EquipmentMechanics.roll_reinforce_outcome(self.item)
+            gain = EquipmentMechanics.roll_reinforce_outcome(self.item, stat_col)
             setattr(self.item, stat_col, getattr(self.item, stat_col) + gain)
             await self.bot.database.equipment.increase_stat(
                 self.item.item_id, itype, stat_col, gain
@@ -1852,12 +1859,13 @@ class ReinforceView(BaseUpgradeView):
             await self.bot.database.connection.commit()
 
             new_val = getattr(self.item, stat_col)
+            suffix = "%" if is_pct else ""
             embed = discord.Embed(title="Reinforce Complete! ✨", color=discord.Color.green())
             embed.set_thumbnail(url="https://i.imgur.com/iy8EUW5.jpeg")
             embed.description = (
-                f"**Gain:** +{gain} {stat_label}\n"
+                f"**Gain:** +{gain}{suffix} {stat_label}\n"
                 f"**Reinforcement:** +{self.item.reinforcement_lvl}\n\n"
-                f"**{stat_label}:** {new_val:,}"
+                f"**{stat_label}:** {new_val:,}{suffix}"
             )
 
             self.clear_items()

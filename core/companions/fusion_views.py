@@ -186,12 +186,6 @@ class FusionWizardView(ui.View):
             from core.items.factory import create_companion
             rows = await self.bot.database.companions.get_all(self.user_id)
             self.parent_list_view.companions = [create_companion(row) for row in rows]
-            self.parent_list_view.total_pages = max(
-                1,
-                (len(self.parent_list_view.companions) + self.parent_list_view.items_per_page - 1)
-                // self.parent_list_view.items_per_page,
-            )
-            self.parent_list_view.current_page = 0
             self.parent_list_view.update_buttons()
             result_embed.set_footer(text="Returning to companions list…")
             await interaction.edit_original_response(embed=result_embed, view=None)

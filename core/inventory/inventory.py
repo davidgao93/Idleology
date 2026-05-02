@@ -120,10 +120,13 @@ def _armor_fields(embed, item, passive_desc: dict, celestial_desc: dict):
 def _helmet_fields(embed, item, passive_funcs: dict):
     rlvl = getattr(item, "reinforcement_lvl", 0)
     rlvl_str = f" **(+{rlvl})**" if rlvl > 0 else ""
+    primary = _primary_stat_col_gear(item)
     if getattr(item, "defence", 0):
-        embed.add_field(name=f"🛡️ Defence{rlvl_str}", value=f"{item.defence:,}", inline=True)
+        label = f"🛡️ Defence{rlvl_str if primary == 'defence' else ''}"
+        embed.add_field(name=label, value=f"{item.defence:,}", inline=True)
     if getattr(item, "ward", 0):
-        embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
+        label = f"🔮 Ward{rlvl_str if primary == 'ward' else ''}"
+        embed.add_field(name=label, value=f"{item.ward:,}%", inline=True)
     if getattr(item, "pdr", 0):
         embed.add_field(name="🛡️ PDR", value=f"{item.pdr:,}%", inline=True)
     if getattr(item, "fdr", 0):
@@ -149,16 +152,33 @@ def _helmet_fields(embed, item, passive_funcs: dict):
     _essence_fields(embed, item)
 
 
+def _primary_stat_col_gear(item) -> str:
+    """Returns the column name that reinforcement bumps for Glove/Boot/Helmet."""
+    if isinstance(item, (Glove, Boot)):
+        if getattr(item, "attack", 0) > 0:
+            return "attack"
+        if getattr(item, "defence", 0) > 0:
+            return "defence"
+        return "ward"
+    # Helmet
+    if getattr(item, "defence", 0) > 0:
+        return "defence"
+    return "ward"
+
+
 def _glove_boot_fields(embed, item, passive_funcs: dict):
     rlvl = getattr(item, "reinforcement_lvl", 0)
     rlvl_str = f" **(+{rlvl})**" if rlvl > 0 else ""
+    primary = _primary_stat_col_gear(item)
     if getattr(item, "attack", 0):
-        embed.add_field(name=f"⚔️ Attack{rlvl_str}", value=f"{item.attack:,}", inline=True)
+        label = f"⚔️ Attack{rlvl_str if primary == 'attack' else ''}"
+        embed.add_field(name=label, value=f"{item.attack:,}", inline=True)
     if getattr(item, "defence", 0):
-        atk_label = rlvl_str if not getattr(item, "attack", 0) else ""
-        embed.add_field(name=f"🛡️ Defence{atk_label}", value=f"{item.defence:,}", inline=True)
+        label = f"🛡️ Defence{rlvl_str if primary == 'defence' else ''}"
+        embed.add_field(name=label, value=f"{item.defence:,}", inline=True)
     if getattr(item, "ward", 0):
-        embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
+        label = f"🔮 Ward{rlvl_str if primary == 'ward' else ''}"
+        embed.add_field(name=label, value=f"{item.ward:,}%", inline=True)
     if getattr(item, "pdr", 0):
         embed.add_field(name="🛡️ PDR", value=f"{item.pdr:,}%", inline=True)
     if getattr(item, "fdr", 0):

@@ -17,14 +17,14 @@
 
 -- ALTER TABLE users ADD COLUMN curio_puzzle_boxes INTEGER NOT NULL DEFAULT 0;
 
-ALTER TABLE gloves ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
-ALTER TABLE gloves ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
+-- ALTER TABLE gloves ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
+-- ALTER TABLE gloves ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
 
-ALTER TABLE boots ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
-ALTER TABLE boots ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
+-- ALTER TABLE boots ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
+-- ALTER TABLE boots ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
 
-ALTER TABLE helmets ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
-ALTER TABLE helmets ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
+-- ALTER TABLE helmets ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
+-- ALTER TABLE helmets ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,

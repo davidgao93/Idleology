@@ -598,13 +598,13 @@ class EquipmentMechanics:
 
         return {"gold": gold_cost, "materials": materials}
 
-    _REINFORCE_CAP = 12
+    _REINFORCE_CAPS = {"attack": 12, "defence": 12, "main_stat": 12, "ward": 3}
 
     @staticmethod
-    def roll_reinforce_outcome(armor: "_Reinforceable") -> int:
-        """Returns the main_stat gain for a single reinforce. Always at least 1."""
-        cap = EquipmentMechanics._REINFORCE_CAP
-        expected = cap * (armor.level / (armor.level + 100))
+    def roll_reinforce_outcome(item: "_Reinforceable", stat_col: str = "main_stat") -> int:
+        """Returns the stat gain for a single reinforce. Always at least 1."""
+        cap = EquipmentMechanics._REINFORCE_CAPS.get(stat_col, 12)
+        expected = cap * (item.level / (item.level + 100))
         return max(1, int(random.uniform(expected * 0.8, expected * 1.2)))
 
     @staticmethod

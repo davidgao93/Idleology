@@ -68,12 +68,6 @@ class CompanionListView(ui.View):
         self.bot = bot
         self.user_id = user_id
         self.companions = companions
-        
-        # Pagination
-        self.current_page = 0
-        self.items_per_page = 5
-        self.total_pages = (len(companions) + self.items_per_page - 1) // self.items_per_page
-        
         self.update_buttons()
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -92,31 +86,26 @@ class CompanionListView(ui.View):
 
     def update_buttons(self):
         self.clear_items()
-        
-        # 1. Companion Select Buttons
-        start = self.current_page * self.items_per_page
-        end = start + self.items_per_page
-        batch = self.companions[start:end]
-        
-        for i, comp in enumerate(batch):
-            status = "🟢" if comp.is_active else "⚪"
-            lbl = f"{status} {comp.name} (Lv.{comp.level})"
-            btn = ui.Button(label=lbl, style=ButtonStyle.secondary, row=0)
-            btn.callback = lambda i, c=comp: self.select_companion(i, c)
-            self.add_item(btn)
 
-        # 2. Navigation
-        if self.total_pages > 1:
-            prev_btn = ui.Button(label="Prev", disabled=(self.current_page == 0), row=1)
-            prev_btn.callback = self.prev_page
-            self.add_item(prev_btn)
-            
-            next_btn = ui.Button(label="Next", disabled=(self.current_page == self.total_pages - 1), row=1)
-            next_btn.callback = self.next_page
-            self.add_item(next_btn)
+        # Dropdown to select any companion (row 0)
+        if self.companions:
+            options = []
+            for comp in self.companions:
+                status = "🟢" if comp.is_active else "⚪"
+                label = f"{status} {comp.name} (Lv.{comp.level})"
+                balanced_str = f" | {comp.balanced_description}" if comp.balanced_passive != "none" else ""
+                desc = f"T{comp.passive_tier} {comp.description}{balanced_str}"
+                options.append(SelectOption(
+                    label=label[:100],
+                    description=desc[:100],
+                    value=str(comp.id),
+                ))
+            select = ui.Select(placeholder="Select a companion to view details...", options=options, row=0)
+            select.callback = self._on_select
+            self.add_item(select)
 
-        # 3. Actions
-        collect_btn = ui.Button(label="Collect Loot", style=ButtonStyle.success, emoji="💰", row=1)
+        # Action buttons (row 1)
+        collect_btn = ui.Button(label="Collect", style=ButtonStyle.success, emoji="💰", row=1)
         collect_btn.callback = self.collect_loot
         self.add_item(collect_btn)
 
@@ -130,39 +119,42 @@ class CompanionListView(ui.View):
 
     def get_embed(self):
         embed = discord.Embed(title="🐾 Companions", color=discord.Color.blue())
-        embed.set_footer(text=f"Page {self.current_page + 1}/{max(1, self.total_pages)} | Cap: {len(self.companions)}/20")
-        
+        embed.set_footer(text=f"Roster: {len(self.companions)}/20")
+
         if not self.companions:
             embed.description = "You have no companions. Fight monsters to capture one!"
             return embed
 
-        active_count = sum(1 for c in self.companions if c.is_active)
-        desc = f"**Active:** {active_count}/3\n\n"
-        
-        start = self.current_page * self.items_per_page
-        end = start + self.items_per_page
-        
-        for comp in self.companions[start:end]:
-            status = "**[Active]**" if comp.is_active else ""
-            desc += f"{status} **{comp.name}** ({comp.species})\n"
-            balanced_str = f" | T{comp.balanced_passive_tier} {comp.balanced_description}" if comp.balanced_passive != "none" else ""
-            desc += f"Lv.{comp.level} | T{comp.passive_tier} {comp.description}{balanced_str}\n\n"
-            
+        active = [c for c in self.companions if c.is_active]
+        inactive = [c for c in self.companions if not c.is_active]
+
+        active_count = len(active)
+        desc = f"**Active Companions** ({active_count}/3)\n"
+
+        if active:
+            desc += "\n"
+            for comp in active:
+                balanced_str = f"\n> ♊ T{comp.balanced_passive_tier} {comp.balanced_description}" if comp.balanced_passive != "none" else ""
+                desc += (
+                    f"🟢 **{comp.name}** — {comp.species} | Lv.{comp.level}\n"
+                    f"> T{comp.passive_tier} {comp.description}{balanced_str}\n\n"
+                )
+        else:
+            desc += "\n*No active companions.*\n\n"
+
+        if inactive:
+            desc += f"**Inactive** ({len(inactive)})\n"
+            desc += ", ".join(f"{c.name} (Lv.{c.level})" for c in inactive)
+
         embed.description = desc
         return embed
 
     # --- Callbacks ---
-    async def prev_page(self, interaction: Interaction):
-        self.current_page = max(0, self.current_page - 1)
-        self.update_buttons()
-        await interaction.response.edit_message(embed=self.get_embed(), view=self)
-
-    async def next_page(self, interaction: Interaction):
-        self.current_page = min(self.total_pages - 1, self.current_page + 1)
-        self.update_buttons()
-        await interaction.response.edit_message(embed=self.get_embed(), view=self)
-
-    async def select_companion(self, interaction: Interaction, comp: Companion):
+    async def _on_select(self, interaction: Interaction):
+        comp_id = int(interaction.data["values"][0])
+        comp = next((c for c in self.companions if c.id == comp_id), None)
+        if comp is None:
+            return await interaction.response.send_message("Companion not found.", ephemeral=True)
         view = CompanionDetailView(self.bot, self.user_id, comp, self)
         await interaction.response.edit_message(embed=view.get_embed(), view=view)
 
