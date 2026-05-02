@@ -49,7 +49,7 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
         monster.hp = max(10, random.randint(1, 4) + int(7 * monster.level))
     else:
         monster.hp = random.randint(0, 9) + int(
-            10 * (monster.level ** random.uniform(1.8, 1.9))
+            10 * (monster.level ** random.uniform(1.6, 1.7))
         )
 
     monster.max_hp = monster.hp
@@ -92,7 +92,7 @@ async def generate_boss(player, monster, phase, phase_index):
     monster = await fetch_monster_image(phase["level"], monster)
 
     monster.hp = random.randint(0, 9) + int(
-        10 * (monster.level ** random.uniform(1.8, 1.9))
+        10 * (monster.level ** random.uniform(1.6, 1.7))
     )
     monster.hp = int(monster.hp * phase["hp_multiplier"])
     monster.max_hp = monster.hp
@@ -128,7 +128,7 @@ async def generate_ascent_monster(
     monster = await fetch_monster_image(random.randint(30, 120), monster)
 
     monster.hp = random.randint(0, 9) + int(
-        10 * (monster.level ** random.uniform(1.8, 1.9))
+        10 * (monster.level ** random.uniform(1.6, 1.7))
     )
 
     monster.max_hp = monster.hp
@@ -406,8 +406,8 @@ def get_modifier_description(mod: MonsterModifier) -> str:
         "Balanced Protection": lambda v: "60% damage reduction",
         "Void Protection":     lambda v: "60% damage reduction",
         "Hell's Fury":         lambda v: "Deals triple damage",
-        "Void Aura":           lambda v: "Drains 1.5% ATK and DEF per round",
-        "Balanced Strikes":    lambda v: "Every 2 rounds: 50% hit, bypasses ward",
+        "Void Aura":           lambda v: "Drains 0.5% ATK and DEF per round",
+        "Balanced Strikes":    lambda v: "Every other turn: 50% hit, bypasses ward",
     }
     fn = descriptions.get(mod.name)
     if fn:
@@ -423,14 +423,14 @@ async def generate_uber_lucifer(player, monster):
     monster = calculate_monster_stats(monster)
 
     base_hp = random.randint(0, 9) + int(
-        10 * (monster.level ** 1.9)
+        10 * (monster.level ** 1.7)
     )
     monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
     monster.xp = 75000
 
     monster.name = "Lucifer, Infernal Sovereign"
-    monster.image = "https://i.imgur.com/e1VWY6l.png"
+    monster.image = "https://i.imgur.com/FsK30xp.jpeg"
     monster.flavor = "exudes an overwhelming killing intent"
     monster.species = "Demon"
     monster.is_boss = True
@@ -461,14 +461,14 @@ def generate_uber_neet(player, monster):
     monster = calculate_monster_stats(monster)
 
     base_hp = random.randint(0, 9) + int(
-        10 * (monster.level ** 1.9)
+        10 * (monster.level ** 1.4)
     )
     monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
     monster.xp = 75000
 
     monster.name = "NEET, the Void Sovereign"
-    monster.image = "https://i.imgur.com/ltLBLBR.png"
+    monster.image = "https://i.imgur.com/o8e56uN.jpeg"
     monster.flavor = "radiates an entropic void"
     monster.species = "Void"
     monster.is_boss = True
@@ -496,7 +496,7 @@ def generate_uber_gemini(player, monster):
     monster = calculate_monster_stats(monster)
 
     base_hp = random.randint(0, 9) + int(
-        10 * (monster.level ** 1.9)
+        10 * (monster.level ** 1.7)
     )
     monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
@@ -531,7 +531,7 @@ async def generate_uber_aphrodite(player, monster):
     monster = calculate_monster_stats(monster)
 
     base_hp = random.randint(0, 9) + int(
-        10 * (monster.level ** 1.9)
+        10 * (monster.level ** 1.7)
     )
     monster.hp = int(base_hp * 4.0)
     monster.max_hp = monster.hp

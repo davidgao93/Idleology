@@ -11,7 +11,7 @@ class EncounterManager:
         """
         roll = random.random()
 
-        # 1. Aphrodite (Ascension)
+        # 1. Aphrodite (Celestial)
         if (
             player_level >= 20
             and currencies["dragon_key"] > 0
@@ -26,7 +26,7 @@ class EncounterManager:
         ):
             return True, "lucifer", {"soul_cores": 5}
 
-        # 3. Gemini
+        # 3. Gemini (Balance)
         elif (
             player_level >= 30
             and currencies["balance_fragment"] >= 2
@@ -46,31 +46,31 @@ class EncounterManager:
     def get_door_details(boss_type: str) -> Dict[str, str]:
         if boss_type == "aphrodite":
             return {
-                "title": "Door of Ascension",
-                "desc": "Your **Angelic** and **Draconic** keys tremble.\nChallenge the heavens?",
+                "title": "A Celestial Gate",
+                "desc": "Your **Angelic** and **Draconic** keys tremble.\nUnlock the gate?",
                 "img": "https://i.imgur.com/PXOhTbX.png",
                 "cost_str": "-1 Dragon Key, -1 Angelic Key",
             }
         elif boss_type == "lucifer":
             return {
-                "title": "Door of the Infernal",
-                "desc": "Your soul cores tremble. Consume **5** to challenge the depths?",
+                "title": "An Infernal Gate",
+                "desc": "Your soul cores tremble. Unlock the gate?",
                 "img": "https://i.imgur.com/bWMAksf.png",
                 "cost_str": "-5 Soul Cores",
             }
         elif boss_type == "NEET":
             return {
-                "title": "Sad Anime Kid",
-                "desc": "A sad kid in the rain. Your **void fragments** resonate.\nTake **3** out and investigate?",
-                "img": "https://i.imgur.com/6f9OJ4s.jpeg",
+                "title": "Sad Kid Behind a Gate",
+                "desc": "Your **void fragments** suddenly start to resonate.\nUnlock the gate?",
+                "img": "https://i.imgur.com/0DU2Vfo.jpeg",
                 "cost_str": "-3 Void Fragments",
             }
         elif boss_type == "gemini":
             return {
-                "title": "The Twin Gates",
-                "desc": "Your **Fragments of Balance** hums in resonance.\nWill you attempt to merge them?",
+                "title": "A Twinned Gate",
+                "desc": "Your **Fragments of Balance** hums in resonance.\nUnlock the gate?",
                 "img": "https://i.imgur.com/em9ZGer.png",
-                "cost_str": "-2 Fragment of Balance",
+                "cost_str": "-2 Fragments of Balance",
             }
         return {}
 
@@ -82,19 +82,19 @@ class EncounterManager:
                     "name": "Aphrodite, Heaven's Envoy",
                     "level": 886,
                     "modifiers_count": 3,
-                    "hp_multiplier": 1.5,
+                    "hp_multiplier": 1.2,
                 },
                 {
                     "name": "Aphrodite, the Eternal",
                     "level": 887,
-                    "modifiers_count": 6,
-                    "hp_multiplier": 2,
+                    "modifiers_count": 5,
+                    "hp_multiplier": 1.3,
                 },
                 {
                     "name": "Aphrodite, Harbinger of Destruction",
                     "level": 888,
-                    "modifiers_count": 9,
-                    "hp_multiplier": 2.5,
+                    "modifiers_count": 8,
+                    "hp_multiplier": 1.5,
                 },
             ]
         elif boss_type == "lucifer":
@@ -102,26 +102,26 @@ class EncounterManager:
                 {
                     "name": "Lucifer, Fallen",
                     "level": 663,
-                    "modifiers_count": 2,
-                    "hp_multiplier": 1.25,
+                    "modifiers_count": 3,
+                    "hp_multiplier": 1.1,
                 },
                 {
                     "name": "Lucifer, Maddened",
                     "level": 664,
-                    "modifiers_count": 3,
-                    "hp_multiplier": 1.5,
+                    "modifiers_count": 4,
+                    "hp_multiplier": 1.2,
                 },
                 {
                     "name": "Lucifer, Enraged",
                     "level": 665,
-                    "modifiers_count": 4,
-                    "hp_multiplier": 1.75,
+                    "modifiers_count": 5,
+                    "hp_multiplier": 1.3,
                 },
                 {
                     "name": "Lucifer, Unbound",
                     "level": 666,
-                    "modifiers_count": 5,
-                    "hp_multiplier": 2,
+                    "modifiers_count": 8,
+                    "hp_multiplier": 1.5,
                 },
             ]
         elif boss_type == "NEET":
@@ -129,25 +129,25 @@ class EncounterManager:
                 {
                     "name": "NEET, Sadge",
                     "level": 444,
-                    "modifiers_count": 1,
-                    "hp_multiplier": 1.25,
+                    "modifiers_count": 2,
+                    "hp_multiplier": 1.15,
                 },
                 {
                     "name": "NEET, Madge",
                     "level": 445,
-                    "modifiers_count": 2,
-                    "hp_multiplier": 1.5,
+                    "modifiers_count": 4,
+                    "hp_multiplier": 1.25,
                 },
                 {
                     "name": "NEET, REEEEEE",
                     "level": 446,
-                    "modifiers_count": 3,
-                    "hp_multiplier": 1.75,
+                    "modifiers_count": 6,
+                    "hp_multiplier": 1.5,
                 },
                 {
                     "name": "NEET, Deadge",
                     "level": 447,
-                    "modifiers_count": 5,
+                    "modifiers_count": 8,
                     "hp_multiplier": 0.2,
                 },
             ]
@@ -156,20 +156,20 @@ class EncounterManager:
                 {
                     "name": "Castor the Mortal",
                     "level": 555,
-                    "modifiers_count": 3,
+                    "modifiers_count": 5,
                     "hp_multiplier": 1.2,
-                },  # High Phys Def
+                },  
                 {
                     "name": "Pollux the Divine",
                     "level": 556,
-                    "modifiers_count": 3,
+                    "modifiers_count": 5,
                     "hp_multiplier": 1.2,
-                },  # High Magic/Dodge
+                }, 
                 {
                     "name": "The Gemini Twins",
                     "level": 557,
-                    "modifiers_count": 5,
-                    "hp_multiplier": 2.0,
-                },  # Enraged
+                    "modifiers_count": 8,
+                    "hp_multiplier": 1.5,
+                },  
             ]
         return []

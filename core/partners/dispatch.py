@@ -427,15 +427,15 @@ def calculate_sigmund_rewards(
 
 _PARTY_BOSSES = [
     {"name": "Aphrodite, the Celestial", "max_hp": 80_000},
-    {"name": "Lucifer, the Infernal King", "max_hp": 60_000},
+    {"name": "Lucifer, the Infernal", "max_hp": 60_000},
     {"name": "NEET, Void Manifest", "max_hp": 75_000},
     {"name": "Gemini, Twin Souls", "max_hp": 55_000},
 ]
 
 _PARTY_BOSS_GOLD_MIN = 30_000
 _PARTY_BOSS_GOLD_MAX = 80_000
-_PARTY_BOSS_SIGIL_MIN = 4
-_PARTY_BOSS_SIGIL_MAX = 8
+_PARTY_BOSS_SIGIL_MIN = 1
+_PARTY_BOSS_SIGIL_MAX = 3
 _PARTY_BOSS_TICKET_CHANCE = 0.05
 
 BOSS_PARTY_DURATION_HOURS = 12

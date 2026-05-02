@@ -834,11 +834,11 @@ class CombatView(ui.View):
             )
 
             # Final Boss Scenes
-            if "Aphrodite" in self.monster.name:
-                embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
+            if "Aphrodite" in self.monster.name or "Gemini" in self.monster.name:
+                embed.set_thumbnail(url="https://i.imgur.com/wKyTFzh.jpg")
                 await message.edit(embed=embed, view=None)
             elif "NEET" in self.monster.name:
-                embed.set_image(url="https://i.imgur.com/7UmY4Mo.jpeg")
+                embed.set_thumbnail(url="https://i.imgur.com/7UmY4Mo.jpeg")
                 embed.add_field(
                     name="Loot", value="Found a **Void Key**.", inline=False
                 )
@@ -964,7 +964,7 @@ class CombatView(ui.View):
         await self._uber_finalize_rewards(reward_data)
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "🔥 Sovereign Shattered!"
+        embed.title = "🔥 Infernal Sovereign Defeated!"
         embed.set_image(url="https://i.imgur.com/ngTUw77.png")
 
         contract_view = InfernalContractView(self.bot, self.user_id, self.player, self.server_id, message)
@@ -1011,13 +1011,12 @@ class CombatView(ui.View):
 
         await self.bot.database.users.modify_currency(self.user_id, "void_keys", 1)
         reward_data["special"].append("Void Key")
-        reward_data["msgs"].append("🗝️ **A Void Key manifests from the collapsing rift.**")
 
         await self._uber_finalize_rewards(reward_data)
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "⬛ Void Sovereign Collapsed!"
-        embed.set_image(url="https://i.imgur.com/7UmY4Mo.jpeg")
+        embed.title = "⬛ Void Sovereign Defeated!"
+        embed.set_thumbnail(url="https://i.imgur.com/7UmY4Mo.jpeg")
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()

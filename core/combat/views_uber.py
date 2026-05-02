@@ -80,7 +80,7 @@ class UberHubView(ui.View):
             color=discord.Color.dark_gold(),
         )
         embed.add_field(
-            name="🌌 Aphrodite, Celestial Apex",
+            name="🌌 Aphrodite, Celestial Sovereign",
             value=(
                 f"Aphrodite's fury has been unleashed.\n"
                 f"**Keys:** {self.uber_data['celestial_sigils']} Celestial Sigils *(costs 3)*"
@@ -248,15 +248,15 @@ class UberAphroditeLobbyView(ui.View):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="🌌 The Celestial Apex", color=discord.Color.gold())
-        embed.set_thumbnail(url="https://i.imgur.com/LjE5VZF.png")
+        embed.set_thumbnail(url="https://i.imgur.com/26dzbFN.jpeg")
 
         desc = (
-            "A chibi Aphrodite appears and says: ME HUNGRY, FEED ME SIGILS!\n\n"
+            "A chibi angel appears and says: ME HUNGRY, FEED ME SIGILS!\n\n"
             f"**Entry Cost:** 3 Celestial Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
-            "🛡️ **Radiant Protection** — globally reduces all incoming damage by 60%. "
-            "Raw burst damage is your only path to victory."
+            "🛡️ **Radiant Protection** — globally reduces all incoming damage by 60%.\n"
+            "🛡️ **Alabaster Skin** — HP is doubled. "
         )
         embed.description = desc
 
@@ -403,15 +403,14 @@ class UberLuciferLobbyView(ui.View):
         )
 
         desc = (
-            "A chibi Lucifer appears and says:\n"
+            "A chibi Lucifer appears and squeaks:\n"
             '*"You dare enter my domain? I will grind your bones to ash."*\n'
-            '*"Give me your sigils and I may let you live..."*\n\n'
+            '*"Hand me your sigils and I may let you live..."*\n\n'
             f"**Entry Cost:** 3 Infernal Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
-            "🔥 **Hell's Fury** — each successful hit permanently stacks +5 damage for that fight. "
-            "The longer it lasts, the deadlier Lucifer becomes. Kill fast.\n"
-            "⚔️ **Absolute** — +25 ATK and +25 DEF at fight start."
+            "🔥 **Infernal Protection** — globally reduces all incoming damage by 60%.\n"
+            "🔥 **Infernal Strength** — ATK is doubled. "
         )
         embed.description = desc
 
@@ -565,7 +564,8 @@ class UberNEETLobbyView(ui.View):
             f"**Entry Cost:** 3 Void Sigils\n"
             f"**Owned:** {self.shards}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
-            "⚠️ **Void Drain** siphons 5% of your ATK and DEF each round. Fight fast."
+            "⬛ **Void Protection** — globally reduces all incoming damage by 60%.\n"
+            "⬛ **Void Drain** siphons 0.5% of your ATK and DEF each round."
         )
         embed.description = desc
 
@@ -719,7 +719,8 @@ class UberGeminiLobbyView(ui.View):
             f"**Entry Cost:** 3 Gemini Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
-            "⚡ **Twin Strike** — every second round, the twins attack simultaneously."
+            "⚡ **Balanced Protection** — globally reduces all incoming damage by 60%.\n"
+            "⚡ **Twin Strike** — every other turn, deal a ward-piercing blow."
         )
         embed.description = desc
 

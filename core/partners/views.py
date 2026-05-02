@@ -213,7 +213,7 @@ async def _apply_dispatch_rewards(
             user_id, partner.partner_id, now_str
         )
 
-    lines = [f"⏱️ **{rolls:.1f}** reward rolls collected"]
+    lines = []
     if gold:
         lines.append(f"💰 **{gold:,}** gold")
     if exp:
