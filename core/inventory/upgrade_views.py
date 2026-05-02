@@ -1702,76 +1702,174 @@ class VoidforgeView(BaseUpgradeView):
         await interaction.edit_original_response(embed=embed, view=self)
 
 
-class ShatterView(BaseUpgradeView):
-    def __init__(self, bot, user_id, item: Weapon, parent_view):
+class ReinforceView(BaseUpgradeView):
+    """
+    Reinforcement view for Armor, Glove, Boot, and Helmet.
+    Uses Shatter Runes to add reinforcement slots; each slot bumps the item's main stat.
+    """
+
+    def __init__(self, bot, user_id, item, parent_view):
         super().__init__(bot, user_id, item, parent_view)
+        self.cost_data = {}
+
+    def _reinforce_info(self):
+        """Returns (db_item_type, stat_column, stat_label, current_value)."""
+        if isinstance(self.item, Armor):
+            label = "ATK" if self.item.main_stat_type == "atk" else "DEF"
+            return "armor", "main_stat", label, self.item.main_stat
+        if isinstance(self.item, Glove):
+            if self.item.attack > 0:
+                return "glove", "attack", "ATK", self.item.attack
+            return "glove", "defence", "DEF", self.item.defence
+        if isinstance(self.item, Boot):
+            if self.item.attack > 0:
+                return "boot", "attack", "ATK", self.item.attack
+            return "boot", "defence", "DEF", self.item.defence
+        # Helmet
+        return "helmet", "defence", "DEF", self.item.defence
 
     async def render(self, interaction: Interaction):
-        # Calculate Runes Back
-        runes_back = max(0, int(self.item.refinement_lvl - 6 * 0.8))
-        if self.item.attack > 0 and self.item.defence > 0 and self.item.rarity > 0:
-            runes_back += 1
+        self.cost_data = EquipmentMechanics.calculate_reinforce_cost(self.item)
+        cost_gold = self.cost_data["gold"]
+        materials = self.cost_data.get("materials", [])
+        itype, stat_col, stat_label, stat_val = self._reinforce_info()
 
-        self.runes_back = runes_back
+        uid, sid = self.user_id, str(interaction.guild.id)
+        user_gold = await self.bot.database.users.get_gold(uid)
+        shatter_runes = await self.bot.database.users.get_currency(uid, "shatter_runes")
 
-        embed = discord.Embed(
-            title="Shatter Weapon",
-            description=f"Destroy **{self.item.name}**?\n\n**Returns:** {runes_back} Refinement Runes\n**Cost:** 1 Shatter Rune\n\n⚠️ **This cannot be undone.**",
-            color=discord.Color.dark_red(),
+        has_funds = user_gold >= cost_gold
+        has_mats = True
+
+        mat_status = ""
+        if materials:
+            mat_status = "\n**Required Materials:**"
+            for mat in materials:
+                table, col, qty, name = mat["table"], mat["column"], mat["qty"], mat["name"]
+                async with self.bot.database.connection.execute(
+                    f"SELECT {col} FROM {table} WHERE user_id=? AND server_id=?",
+                    (uid, sid),
+                ) as c:
+                    row = await c.fetchone()
+                    owned = row[0] if row else 0
+                status_icon = "✅" if owned >= qty else "❌"
+                if owned < qty:
+                    has_mats = False
+                mat_status += f"\n{status_icon} {name}: {owned:,}/{qty:,}"
+
+        has_slots = self.item.reinforces_remaining > 0
+
+        desc = (
+            f"**Main Stat:** {stat_label} {stat_val:,}\n"
+            f"**Reinforces Remaining:** {self.item.reinforces_remaining}\n"
+            f"**Reinforcement Level:** +{self.item.reinforcement_lvl}\n"
+            f"**Gold Cost:** {cost_gold:,} ({user_gold:,})"
         )
-        embed.set_thumbnail(url="https://i.imgur.com/KSTfiW3.png")
-        # --- DYNAMIC BUTTON BUILD ---
+        if mat_status:
+            desc += f"\n{mat_status}"
+
         self.clear_items()
 
-        confirm_btn = Button(label="CONFIRM SHATTER", style=ButtonStyle.danger)
-        confirm_btn.callback = self.confirm
-        self.add_item(confirm_btn)
+        action_btn = Button(label="Reinforce", style=ButtonStyle.success)
+        if not has_slots:
+            desc += f"\n\n**0 Reinforces left!** Use a Shatter Rune to add a slot? (Owned: {shatter_runes})"
+            action_btn.label = "Use Shatter Rune"
+            action_btn.style = ButtonStyle.primary
+            action_btn.disabled = shatter_runes == 0
+        else:
+            action_btn.disabled = not (has_funds and has_mats)
 
+        action_btn.callback = self.confirm_reinforce
+        self.add_item(action_btn)
         self.add_back_button()
+
+        color = discord.Color.blue() if (has_funds and has_mats) else discord.Color.red()
+        embed = discord.Embed(
+            title=f"Reinforce {self.item.name}", description=desc, color=color
+        )
+        embed.set_thumbnail(url="https://i.imgur.com/xhkOm99.jpeg")
 
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
         else:
             await interaction.response.edit_message(embed=embed, view=self)
 
-    async def confirm(self, interaction: Interaction):
-        # Execute
-        await self.bot.database.equipment.discard(self.item.item_id, "weapon")
-        await self.bot.database.users.modify_currency(
-            self.user_id, "refinement_runes", self.runes_back
-        )
-        await self.bot.database.users.modify_currency(self.user_id, "shatter_runes", -1)
+    async def confirm_reinforce(self, interaction: Interaction):
+        itype, stat_col, stat_label, _ = self._reinforce_info()
 
-        # Update Parent List (since item is gone)
-        self.parent_view.parent.items = [
-            i for i in self.parent_view.parent.items if i.item_id != self.item.item_id
-        ]
-        self.parent_view.parent.update_buttons()  # Refresh page buttons
+        # Use Shatter Rune to add a slot
+        if self.item.reinforces_remaining <= 0:
+            shatter_runes = await self.bot.database.users.get_currency(
+                self.user_id, "shatter_runes"
+            )
+            if shatter_runes <= 0:
+                return await interaction.response.send_message(
+                    "You don't have any Shatter Runes!", ephemeral=True
+                )
+            await self.bot.database.users.modify_currency(self.user_id, "shatter_runes", -1)
+            await self.bot.database.equipment.update_counter(
+                self.item.item_id, itype, "reinforces_remaining", 1
+            )
+            self.item.reinforces_remaining += 1
+            await self.render(interaction)
+            return
 
-        embed = discord.Embed(title="Shattered", color=discord.Color.red())
-        embed.description = (
-            f"Item destroyed.\nYou gained **{self.runes_back}** Refinement Runes."
-        )
+        # Perform reinforcement
+        cost_gold = self.cost_data["gold"]
+        materials = self.cost_data.get("materials", [])
+        uid, sid = self.user_id, str(interaction.guild.id)
 
-        # --- RESULT UI BUILD ---
-        self.clear_items()
+        await interaction.response.defer()
 
-        # Since item is gone, "Back" implies "Back to Inventory List"
-        return_btn = Button(label="Return to Inventory", style=ButtonStyle.secondary)
-        return_btn.callback = self.return_to_list
-        self.add_item(return_btn)
+        try:
+            for mat in materials:
+                async with self.bot.database.connection.execute(
+                    f"UPDATE {mat['table']} SET {mat['column']} = {mat['column']} - ? "
+                    f"WHERE user_id=? AND server_id=? AND {mat['column']} >= ?",
+                    (mat["qty"], uid, sid, mat["qty"]),
+                ) as c:
+                    if c.rowcount == 0:
+                        return await interaction.followup.send(
+                            f"Insufficient {mat['name']}!", ephemeral=True
+                        )
 
-        await interaction.response.edit_message(embed=embed, view=self)
+            await self.bot.database.users.modify_gold(self.user_id, -cost_gold)
 
-    async def return_to_list(self, interaction: Interaction):
-        # Go back to the Inventory List (grandparent view)
-        embed = await self.parent_view.parent.get_current_embed(
-            interaction.user.display_name
-        )
-        await interaction.response.edit_message(
-            embed=embed, view=self.parent_view.parent
-        )
-        self.stop()
+            gain = EquipmentMechanics.roll_reinforce_outcome(self.item)
+            setattr(self.item, stat_col, getattr(self.item, stat_col) + gain)
+            await self.bot.database.equipment.increase_stat(
+                self.item.item_id, itype, stat_col, gain
+            )
+
+            self.item.reinforces_remaining -= 1
+            self.item.reinforcement_lvl += 1
+            await self.bot.database.equipment.update_counter(
+                self.item.item_id, itype, "reinforces_remaining", self.item.reinforces_remaining
+            )
+            await self.bot.database.equipment.increase_stat(
+                self.item.item_id, itype, "reinforcement_lvl", 1
+            )
+            await self.bot.database.connection.commit()
+
+            new_val = getattr(self.item, stat_col)
+            embed = discord.Embed(title="Reinforce Complete! ✨", color=discord.Color.green())
+            embed.set_thumbnail(url="https://i.imgur.com/xhkOm99.jpeg")
+            embed.description = (
+                f"**Gain:** +{gain} {stat_label}\n"
+                f"**Reinforcement:** +{self.item.reinforcement_lvl}\n\n"
+                f"**{stat_label}:** {new_val:,}"
+            )
+
+            self.clear_items()
+            cont_btn = Button(label="Continue", style=ButtonStyle.primary)
+            cont_btn.callback = self.render
+            self.add_item(cont_btn)
+            self.add_back_button()
+
+            await interaction.edit_original_response(embed=embed, view=self)
+
+        except Exception as e:
+            await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
 
 
 class InfernalEngramView(BaseUpgradeView):

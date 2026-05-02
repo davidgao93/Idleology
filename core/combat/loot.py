@@ -7,7 +7,7 @@ from core.util import load_list
 # get_scaled_stat approaches these asymptotically — they are never literally hit.
 _WEAPON_CAPS = {"attack": 80, "defence": 80, "rarity": 200}
 _ACC_CAPS = {"attack": 80, "defence": 80, "rarity": 200, "ward": 60, "crit": 20}
-_ARMOR_CAPS = {"block": 50, "evasion": 50, "ward": 100, "pdr": 40, "fdr": 80}
+_ARMOR_CAPS = {"block": 50, "evasion": 50, "ward": 100, "pdr": 40, "fdr": 80, "main_stat": 60}
 _GLOVE_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
 _BOOT_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
 _HELM_CAPS = {"defence": 40, "ward": 80, "pdr": 15, "fdr": 50}
@@ -136,10 +136,6 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
     suffix = random.choice(load_list("assets/items/armor_suff.txt"))
     armor_name = f"{prefix} {armor_type} {suffix}"
 
-    block_modifier = 0
-    evasion_modifier = 0
-    ward_modifier = 0
-
     armor = Armor(
         user=user_id,
         name=armor_name,
@@ -154,33 +150,41 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
     )
 
     if drop_rune:
-        randroll = random.randint(0, 100)
+        rune_roll = random.randint(0, 100)
     else:
-        randroll = random.randint(0, 90)
-    print(f"Armor attribute roll: {randroll}")
-    if randroll <= 30:  # 30% chance for block roll
-        armor.block = int(get_scaled_stat(level, _ARMOR_CAPS["block"]))
-        armor.description += f"+{armor.block} Block\n"
-    elif randroll > 30 and randroll <= 60:  # 30% chance for evasion roll
-        armor.evasion = int(get_scaled_stat(level, _ARMOR_CAPS["evasion"]))
-        armor.description += f"+{armor.evasion} Evasion\n"
-    elif randroll > 60 and randroll <= 90:  # 30% chance for ward roll
-        armor.ward = int(get_scaled_stat(level, _ARMOR_CAPS["ward"]))
-        armor.description += f"+{armor.ward}% Ward\n"
-    else:
+        rune_roll = random.randint(0, 90)
+
+    if rune_roll > 90:
         armor.name = "Rune of Imbuing"
         armor.description = (
             f"{armor.name}\nPotentially imbues a powerful passive onto your armor."
         )
+        return armor
 
-    # Roll for PDR or FDR
-    if armor.name != "Rune of Imbuing":
-        if random.random() < 0.5:
-            armor.pdr = int(get_scaled_stat(level, _ARMOR_CAPS["pdr"]))
-            armor.description += f"+{armor.pdr}% Percent Damage Reduction"
-        else:
-            armor.fdr = int(get_scaled_stat(level, _ARMOR_CAPS["fdr"]))
-            armor.description += f"+{armor.fdr} Flat Damage Reduction"
+    # Main stat: ATK or DEF
+    if random.random() < 0.5:
+        armor.main_stat_type = "atk"
+    else:
+        armor.main_stat_type = "def"
+    armor.main_stat = int(get_scaled_stat(level, _ARMOR_CAPS["main_stat"]))
+    stat_label = "ATK" if armor.main_stat_type == "atk" else "DEF"
+    armor.description += f"+{armor.main_stat} {stat_label}\n"
+
+    # Secondary stat: Block or Evasion (immutable, determined on roll)
+    if random.random() < 0.5:
+        armor.block = int(get_scaled_stat(level, _ARMOR_CAPS["block"]))
+        armor.description += f"+{armor.block}% Block\n"
+    else:
+        armor.evasion = int(get_scaled_stat(level, _ARMOR_CAPS["evasion"]))
+        armor.description += f"+{armor.evasion}% Evasion\n"
+
+    # Tertiary stat: PDR or FDR (Temper can increase)
+    if random.random() < 0.5:
+        armor.pdr = int(get_scaled_stat(level, _ARMOR_CAPS["pdr"]))
+        armor.description += f"+{armor.pdr}% Percent Damage Reduction"
+    else:
+        armor.fdr = int(get_scaled_stat(level, _ARMOR_CAPS["fdr"]))
+        armor.description += f"+{armor.fdr} Flat Damage Reduction"
 
     return armor
 

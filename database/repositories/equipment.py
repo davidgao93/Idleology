@@ -110,9 +110,11 @@ class EquipmentRepository:
     async def create_armor(self, a: Armor) -> None:
         potential = 3 if a.level <= 40 else (4 if a.level <= 80 else 5)
         await self.connection.execute(
-            """INSERT INTO armor (user_id, item_name, item_level, block, evasion, ward, 
-            pdr, fdr, temper_remaining) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (a.user, a.name, a.level, a.block, a.evasion, a.ward, a.pdr, a.fdr, potential)
+            """INSERT INTO armor (user_id, item_name, item_level, block, evasion, ward,
+            pdr, fdr, temper_remaining, main_stat_type, main_stat)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (a.user, a.name, a.level, a.block, a.evasion, a.ward, a.pdr, a.fdr,
+             potential, a.main_stat_type, a.main_stat)
         )
         await self.connection.commit()
 
@@ -169,7 +171,8 @@ class EquipmentRepository:
         # Basic validation to prevent arbitrary SQL injection if column comes from untrusted source
         allowed = ["forges_remaining", "refines_remaining", "refinement_lvl", "potential_remaining",
                    "passive_lvl", "temper_remaining", "imbue_remaining", "forge_tier",
-                   "essence_1_val", "essence_2_val", "essence_3_val"]
+                   "essence_1_val", "essence_2_val", "essence_3_val",
+                   "reinforces_remaining", "reinforcement_lvl"]
         if column not in allowed:
             raise ValueError(f"Invalid column for update_counter: {column}")
             

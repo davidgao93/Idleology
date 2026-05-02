@@ -13,7 +13,7 @@ from core.inventory.upgrade_views import (
     InfernalEngramView,
     PotentialView,
     RefineView,
-    ShatterView,
+    ReinforceView,
     TemperView,
     VoidEngramView,
     VoidforgeView,
@@ -34,7 +34,7 @@ from core.inventory.inventory import InventoryUI
 SLOT_CONFIG = {
     "weapon": {"emoji": "⚔️", "label": "Weapon", "factory": create_weapon},
     "armor": {"emoji": "🛡️", "label": "Armor", "factory": create_armor},
-    "helmet": {"emoji": "🪖", "label": "Helmet", "factory": create_helmet},
+    "helmet": {"emoji": "🎩", "label": "Helmet", "factory": create_helmet},
     "glove": {"emoji": "🧤", "label": "Glove", "factory": create_glove},
     "boot": {"emoji": "👢", "label": "Boot", "factory": create_boot},
     "accessory": {"emoji": "📿", "label": "Accessory", "factory": create_accessory},
@@ -168,7 +168,7 @@ class InventoryListView(View):
     """
 
     def __init__(self, bot, user_id: str, items: List[Any], title_emoji: str):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.items = items
@@ -361,7 +361,7 @@ class ItemDetailView(View):
     """
 
     def __init__(self, bot, user_id: str, item: Any, parent_view: InventoryListView):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.item = item
@@ -376,6 +376,7 @@ class ItemDetailView(View):
             self.void_keys = await self.bot.database.users.get_currency(
                 self.user_id, "void_keys"
             )
+        if isinstance(self.item, (Armor, Glove, Boot, Helmet)):
             self.shatter_runes = await self.bot.database.users.get_currency(
                 self.user_id, "shatter_runes"
             )
@@ -406,14 +407,13 @@ class ItemDetailView(View):
             self.add_upgrade_button(
                 "Infernal Engram", ButtonStyle.danger, "infernal_engram"
             )
-            if self.shatter_runes > 0:
-                self.add_upgrade_button("Shatter", ButtonStyle.danger, "shatter")
 
         elif isinstance(self.item, Armor):
             if self.item.temper_remaining > 0:
                 self.add_upgrade_button("Temper", ButtonStyle.success, "temper")
             if self.item.imbue_remaining > 0 and self.item.passive == "none":
                 self.add_upgrade_button("Imbue", ButtonStyle.primary, "imbue")
+            self.add_upgrade_button("Reinforce", ButtonStyle.primary, "reinforce")
             self.add_upgrade_button("Engram", ButtonStyle.danger, "engram")
 
         elif isinstance(self.item, (Accessory, Glove, Boot, Helmet)):
@@ -433,6 +433,7 @@ class ItemDetailView(View):
                     "Void Engram", ButtonStyle.secondary, "void_engram"
                 )
             if isinstance(self.item, (Glove, Boot, Helmet)):
+                self.add_upgrade_button("Reinforce", ButtonStyle.primary, "reinforce")
                 essence_btn = Button(
                     label="Essences", style=ButtonStyle.primary, emoji="💎"
                 )
@@ -465,7 +466,7 @@ class ItemDetailView(View):
             "imbue": ImbueView,
             "potential": PotentialView,
             "voidforge": VoidforgeView,
-            "shatter": ShatterView,
+            "reinforce": ReinforceView,
             "engram": EngramView,
             "infernal_engram": InfernalEngramView,
             "void_engram": VoidEngramView,
@@ -523,7 +524,6 @@ class ItemDetailView(View):
 
         await self.fetch_data()  # Re-check keys/status for button display
         embed = InventoryUI.get_item_details_embed(self.item, self.is_equipped)
-        embed.set_thumbnail(url="https://i.imgur.com/Kr0xq5N.png")
         await interaction.response.edit_message(embed=embed, view=self)
 
     # --- DISCARD LOGIC ---
@@ -531,10 +531,15 @@ class ItemDetailView(View):
     def _is_valuable(self) -> bool:
         """Checks if item has any stats that make it worth confirming before delete."""
         if isinstance(self.item, Weapon):
-            # Has passive OR refined
             return (
                 self.item.passive != "none" and self.item.passive != ""
             ) or self.item.refinement_lvl > 0
+
+        if isinstance(self.item, Armor):
+            return (
+                (self.item.passive != "none" and self.item.passive != "")
+                or self.item.reinforcement_lvl > 0
+            )
 
         # General check for other items
         if (
@@ -608,6 +613,18 @@ class ItemDetailView(View):
         # Discard DB
         await self.bot.database.equipment.discard(self.item.item_id, itype)
 
+        # Weapon refinement rune refund
+        rune_msg = ""
+        if isinstance(self.item, Weapon) and self.item.refinement_lvl > 0:
+            runes_back = max(0, int(self.item.refinement_lvl - 6 * 0.8))
+            if self.item.attack > 0 and self.item.defence > 0 and self.item.rarity > 0:
+                runes_back += 1
+            if runes_back > 0:
+                await self.bot.database.users.modify_currency(
+                    self.user_id, "refinement_runes", runes_back
+                )
+                rune_msg = f"\n🔮 Recovered **{runes_back}** Refinement Rune(s)."
+
         # Update List State
         self.parent.items = [
             i for i in self.parent.items if i.item_id != self.item.item_id
@@ -623,7 +640,7 @@ class ItemDetailView(View):
 
         # Brief Popup (Replaces the annoying ephemeral followup)
         temp_embed = discord.Embed(title="Item Discarded", color=discord.Color.red())
-        temp_embed.description = f"🗑️ **{self.item.name}** was dismantled.{xp_msg}"
+        temp_embed.description = f"🗑️ **{self.item.name}** was dismantled.{xp_msg}{rune_msg}"
 
         await interaction.edit_original_response(
             content=None, embed=temp_embed, view=None
@@ -679,7 +696,7 @@ class GearView(View):
     def __init__(
         self, bot, user_id: str, all_items: dict, initial_slot: str = "weapon"
     ):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.all_items = all_items  # dict[slot -> List[item model]]

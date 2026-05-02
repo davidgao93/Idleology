@@ -59,6 +59,10 @@ class Armor:
     temper_remaining: int = 0
     imbue_remaining: int = 0
     celestial_passive: str = "none"
+    main_stat_type: str = "def"
+    main_stat: int = 0
+    reinforces_remaining: int = 0
+    reinforcement_lvl: int = 0
 
 
 @dataclass
@@ -84,6 +88,8 @@ class Glove:
     essence_3: str = "none"
     essence_3_val: float = 0.0
     corrupted_essence: str = "none"
+    reinforces_remaining: int = 0
+    reinforcement_lvl: int = 0
 
 
 @dataclass
@@ -109,6 +115,8 @@ class Boot:
     essence_3: str = "none"
     essence_3_val: float = 0.0
     corrupted_essence: str = "none"
+    reinforces_remaining: int = 0
+    reinforcement_lvl: int = 0
 
 
 @dataclass
@@ -133,6 +141,8 @@ class Helmet:
     essence_3: str = "none"
     essence_3_val: float = 0.0
     corrupted_essence: str = "none"
+    reinforces_remaining: int = 0
+    reinforcement_lvl: int = 0
 
 
 @dataclass

@@ -7,7 +7,7 @@ from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 _SLOT_EMOJIS = {
     "weapon": "⚔️",
     "armor": "🛡️",
-    "helmet": "🪖",
+    "helmet": "🎩",
     "glove": "🧤",
     "boot": "👢",
     "accessory": "📿",
@@ -22,7 +22,220 @@ _SLOT_LABELS = {
 }
 _SLOT_ORDER = ["weapon", "armor", "helmet", "glove", "boot", "accessory"]
 
+_ITEM_IMAGES = {
+    "weapon":    "https://i.imgur.com/OeyEXrs.jpeg",
+    "armor":     "https://i.imgur.com/xhkOm99.jpeg",
+    "helmet":    "https://i.imgur.com/NqYy6KH.jpeg",
+    "glove":     "https://i.imgur.com/hPdjWQ8.jpeg",
+    "boot":      "https://i.imgur.com/CVslwcK.jpeg",
+    "accessory": "https://i.imgur.com/k4ZDJ2s.jpeg",
+}
+
 Equipment = Union[Weapon, Armor, Accessory, Glove, Boot]
+
+
+# ---------------------------------------------------------------------------
+# Per-type detail field builders (called by get_item_details_embed)
+# ---------------------------------------------------------------------------
+
+def _pdesc(table: dict, name: str) -> str:
+    """Look up a passive description, normalizing underscores to spaces."""
+    return table.get(name.lower().replace("_", " "), "")
+
+
+def _add_passive_field(embed, name_label: str, passive_name: str, desc: str):
+    title = passive_name.replace('_', ' ').title()
+    value = desc if desc else "​"
+    embed.add_field(name=f"{name_label} — {title}", value=value, inline=False)
+
+
+def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
+    if getattr(item, "attack", 0):
+        embed.add_field(name="⚔️ Attack", value=f"{item.attack:,}", inline=True)
+    if getattr(item, "defence", 0):
+        embed.add_field(name="🛡️ Defence", value=f"{item.defence:,}", inline=True)
+    if getattr(item, "rarity", 0):
+        embed.add_field(name="✨ Rarity", value=f"{item.rarity:,}%", inline=True)
+    embed.add_field(name="🔧 Refinement", value=f"+{item.refinement_lvl}", inline=True)
+
+    if item.passive not in ("none", ""):
+        _add_passive_field(embed, "Passive", item.passive,
+                           _pdesc(passive_desc, item.passive))
+    if item.p_passive not in ("none", ""):
+        _add_passive_field(embed, "Pinnacle", item.p_passive,
+                           _pdesc(passive_desc, item.p_passive))
+    if item.u_passive not in ("none", ""):
+        _add_passive_field(embed, "Utmost", item.u_passive,
+                           _pdesc(passive_desc, item.u_passive))
+    inf = getattr(item, "infernal_passive", "none") or "none"
+    if inf not in ("none", ""):
+        _add_passive_field(embed, "🔥 Infernal", inf,
+                           _pdesc(infernal_desc, inf))
+
+
+def _armor_fields(embed, item, passive_desc: dict, celestial_desc: dict):
+    # Main stat (ATK or DEF)
+    main_stat_type = getattr(item, "main_stat_type", "def")
+    main_stat = getattr(item, "main_stat", 0)
+    reinforcement_lvl = getattr(item, "reinforcement_lvl", 0)
+    if main_stat > 0:
+        stat_label = "⚔️ ATK" if main_stat_type == "atk" else "🛡️ DEF"
+        reinforce_str = f"  (+{reinforcement_lvl})" if reinforcement_lvl > 0 else ""
+        embed.add_field(name=f"{stat_label}{reinforce_str}", value=f"{main_stat:,}", inline=True)
+
+    # Secondary stat
+    if getattr(item, "block", 0):
+        embed.add_field(name="🛑 Block", value=f"{item.block:,}%", inline=True)
+    if getattr(item, "evasion", 0):
+        embed.add_field(name="💨 Evasion", value=f"{item.evasion:,}%", inline=True)
+    if getattr(item, "ward", 0):
+        embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
+
+    # Tertiary stat
+    if getattr(item, "pdr", 0):
+        embed.add_field(name="🛡️ PDR", value=f"{item.pdr:,}%", inline=True)
+    if getattr(item, "fdr", 0):
+        embed.add_field(name="💫 FDR", value=f"{item.fdr:,}", inline=True)
+
+    reinforces_remaining = getattr(item, "reinforces_remaining", 0)
+    embed.add_field(
+        name="Upgrades",
+        value=(
+            f"Tempers Remaining: **{item.temper_remaining}**  ·  "
+            f"Imbue Attempts: **{item.imbue_remaining}**  ·  "
+            f"Reinforces Remaining: **{reinforces_remaining}**"
+        ),
+        inline=False,
+    )
+
+    if item.passive not in ("none", ""):
+        _add_passive_field(embed, "Passive", item.passive,
+                           _pdesc(passive_desc, item.passive))
+    cel = getattr(item, "celestial_passive", "none") or "none"
+    if cel not in ("none", ""):
+        _add_passive_field(embed, "🌌 Celestial", cel,
+                           _pdesc(celestial_desc, cel))
+
+
+def _helmet_fields(embed, item, passive_funcs: dict):
+    rlvl = getattr(item, "reinforcement_lvl", 0)
+    rlvl_str = f" **(+{rlvl})**" if rlvl > 0 else ""
+    if getattr(item, "defence", 0):
+        embed.add_field(name=f"🛡️ Defence{rlvl_str}", value=f"{item.defence:,}", inline=True)
+    if getattr(item, "ward", 0):
+        embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
+    if getattr(item, "pdr", 0):
+        embed.add_field(name="🛡️ PDR", value=f"{item.pdr:,}%", inline=True)
+    if getattr(item, "fdr", 0):
+        embed.add_field(name="💫 FDR", value=f"{item.fdr:,}", inline=True)
+    reinforces_remaining = getattr(item, "reinforces_remaining", 0)
+    embed.add_field(
+        name="Upgrades",
+        value=f"Enchants Remaining: **{item.potential_remaining}**  ·  Reinforces Remaining: **{reinforces_remaining}**",
+        inline=True,
+    )
+
+    if item.passive not in ("none", ""):
+        lvl = getattr(item, "passive_lvl", 0)
+        fn = passive_funcs.get(item.passive.lower())
+        desc = fn(lvl) if fn and lvl > 0 else ""
+        lvl_str = f" (Lv.{lvl})" if lvl > 0 else ""
+        embed.add_field(
+            name=f"Passive — {item.passive.replace('_', ' ').title()}{lvl_str}",
+            value=desc if desc else "​",
+            inline=False,
+        )
+
+    _essence_fields(embed, item)
+
+
+def _glove_boot_fields(embed, item, passive_funcs: dict):
+    rlvl = getattr(item, "reinforcement_lvl", 0)
+    rlvl_str = f" **(+{rlvl})**" if rlvl > 0 else ""
+    if getattr(item, "attack", 0):
+        embed.add_field(name=f"⚔️ Attack{rlvl_str}", value=f"{item.attack:,}", inline=True)
+    if getattr(item, "defence", 0):
+        atk_label = rlvl_str if not getattr(item, "attack", 0) else ""
+        embed.add_field(name=f"🛡️ Defence{atk_label}", value=f"{item.defence:,}", inline=True)
+    if getattr(item, "ward", 0):
+        embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
+    if getattr(item, "pdr", 0):
+        embed.add_field(name="🛡️ PDR", value=f"{item.pdr:,}%", inline=True)
+    if getattr(item, "fdr", 0):
+        embed.add_field(name="💫 FDR", value=f"{item.fdr:,}", inline=True)
+    reinforces_remaining = getattr(item, "reinforces_remaining", 0)
+    embed.add_field(
+        name="Upgrades",
+        value=f"Enchants Remaining: **{item.potential_remaining}**  ·  Reinforces Remaining: **{reinforces_remaining}**",
+        inline=True,
+    )
+
+    if item.passive not in ("none", ""):
+        lvl = getattr(item, "passive_lvl", 0)
+        fn = passive_funcs.get(item.passive.lower())
+        desc = fn(lvl) if fn and lvl > 0 else ""
+        lvl_str = f" (Lv.{lvl})" if lvl > 0 else ""
+        embed.add_field(
+            name=f"Passive — {item.passive.replace('_', ' ').title()}{lvl_str}",
+            value=desc if desc else "​",
+            inline=False,
+        )
+
+    _essence_fields(embed, item)
+
+
+def _accessory_fields(embed, item, passive_funcs: dict, void_desc: dict):
+    if getattr(item, "attack", 0):
+        embed.add_field(name="⚔️ Attack", value=f"{item.attack:,}", inline=True)
+    if getattr(item, "defence", 0):
+        embed.add_field(name="🛡️ Defence", value=f"{item.defence:,}", inline=True)
+    if getattr(item, "rarity", 0):
+        embed.add_field(name="✨ Rarity", value=f"{item.rarity:,}%", inline=True)
+    if getattr(item, "ward", 0):
+        embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
+    if getattr(item, "crit", 0):
+        embed.add_field(name="🎯 Crit", value=f"{item.crit:,}", inline=True)
+    embed.add_field(name="Enchants Remaining", value=str(item.potential_remaining), inline=True)
+
+    if item.passive not in ("none", ""):
+        lvl = getattr(item, "passive_lvl", 0)
+        fn = passive_funcs.get(item.passive.lower())
+        desc = fn(lvl) if fn and lvl > 0 else ""
+        lvl_str = f" (Lv.{lvl})" if lvl > 0 else ""
+        embed.add_field(
+            name=f"Passive — {item.passive.replace('_', ' ').title()}{lvl_str}",
+            value=desc if desc else "​",
+            inline=False,
+        )
+    void_p = getattr(item, "void_passive", "none") or "none"
+    if void_p not in ("none", ""):
+        _add_passive_field(embed, "🌀 Void", void_p,
+                           _pdesc(void_desc, void_p))
+
+
+def _essence_fields(embed, item):
+    from core.items.essence_views import ESSENCE_DISPLAY, _format_slot_value, _get_essence_brief
+
+    lines = []
+    for i in (1, 2, 3):
+        t = getattr(item, f"essence_{i}", "none") or "none"
+        v = getattr(item, f"essence_{i}_val", 0.0) or 0.0
+        if t != "none":
+            e_name, emoji = ESSENCE_DISPLAY.get(t, (t.title(), "✦"))
+            stat_str = _format_slot_value(t, v, item)
+            lines.append(f"**Slot {i}:** {emoji} {e_name}\n   ↳ {stat_str}")
+        else:
+            lines.append(f"**Slot {i}:** *— Empty —*")
+
+    corrupted = getattr(item, "corrupted_essence", "none") or "none"
+    if corrupted != "none":
+        c_name, c_emoji = ESSENCE_DISPLAY.get(corrupted, (corrupted.title(), "💠"))
+        slot_key = "glove" if isinstance(item, Glove) else "boot" if isinstance(item, Boot) else "helmet"
+        lines.append(f"**Corrupted:** {c_emoji} {c_name}\n   ↳ {_get_essence_brief(corrupted, slot_key)}")
+    else:
+        lines.append("**Corrupted:** *— Empty —*")
+
+    embed.add_field(name="💎 Essences", value="\n".join(lines), inline=False)
 
 
 class InventoryUI:
@@ -61,6 +274,10 @@ class InventoryUI:
             enhancement_str = ""
             if isinstance(item, Weapon) and item.refinement_lvl > 0:
                 enhancement_str = f" **(+{item.refinement_lvl})**"
+            elif isinstance(item, Armor) and getattr(item, "reinforcement_lvl", 0) > 0:
+                enhancement_str = f" **(+{item.reinforcement_lvl})**"
+            elif isinstance(item, (Glove, Boot, Helmet)) and getattr(item, "reinforcement_lvl", 0) > 0:
+                enhancement_str = f" **(+{item.reinforcement_lvl})**"
             elif hasattr(item, "passive_lvl") and item.passive_lvl > 0:
                 enhancement_str = f" **(+{item.passive_lvl} "
                 if hasattr(item, "passive") and item.passive != "none":
@@ -127,110 +344,42 @@ class InventoryUI:
 
     @staticmethod
     def get_item_details_embed(item: Equipment, is_equipped: bool) -> discord.Embed:
-        """
-        Generates the detailed view for a single item.
-        """
-        embed = discord.Embed(
-            title=f"**{item.name}** (i{item.level})",
-            description="**[Equipped]**" if is_equipped else "Unequipped",
-            color=0x00FFFF,  # Cyan
+        from core.character.profile_hub import (
+            _WEAPON_PASSIVE_DESC,
+            _INFERNAL_PASSIVE_DESC,
+            _ARMOR_PASSIVE_DESC,
+            _CELESTIAL_PASSIVE_DESC,
+            _VOID_PASSIVE_DESC,
+            _ACCESSORY_PASSIVE_FUNCS,
+            _GLOVE_PASSIVE_FUNCS,
+            _BOOT_PASSIVE_FUNCS,
+            _HELMET_PASSIVE_FUNCS,
         )
 
-        # Generic Stats
-        stats = {
-            "Attack": getattr(item, "attack", 0),
-            "Defence": getattr(item, "defence", 0),
-            "Rarity": getattr(item, "rarity", 0),
-            "Ward": getattr(item, "ward", 0),
-            "Crit": getattr(item, "crit", 0),
-            "Block": getattr(item, "block", 0),
-            "Evasion": getattr(item, "evasion", 0),
-            "PDR": getattr(item, "pdr", 0),
-            "FDR": getattr(item, "fdr", 0),
-        }
+        embed = discord.Embed(
+            title=f"**{item.name}** (i{item.level:,})",
+            description="**[Equipped]**" if is_equipped else "Unequipped",
+            color=0x00FFFF,
+        )
 
-        # Add stat fields if > 0
-        for label, value in stats.items():
-            if value > 0:
-                val_str = (
-                    f"{value}%"
-                    if label in ["Rarity", "Ward", "Crit", "PDR"]
-                    else str(value)
-                )
-                embed.add_field(name=label, value=val_str, inline=True)
-
-        # Passives
-        main_passive = getattr(item, "passive", "none")
-        if main_passive != "none":
-            lvl = getattr(item, "passive_lvl", 0)
-            lvl_str = f" (Lvl {lvl})" if lvl > 0 else ""  # Only display level if > 0
-            embed.add_field(
-                name="Passive", value=f"{main_passive.title()}{lvl_str}", inline=False
-            )
-            # Note: Detailed effect description would require importing the 'general' logic helper or similar
-
-        if isinstance(item, Armor):
-            if getattr(item, "celestial_passive", "none") != "none":
-                embed.add_field(
-                    name="Celestial Passive",
-                    value=f"🌌 {item.celestial_passive.replace('_', ' ').title()}",
-                    inline=False,
-                )
-
-        if isinstance(item, Accessory):
-            if getattr(item, "void_passive", "none") not in ("none", ""):
-                embed.add_field(
-                    name="Void Passive",
-                    value=f"🌀 {item.void_passive.replace('_', ' ').title()}",
-                    inline=False,
-                )
-
-        # Essence slots (Glove / Boot / Helmet)
-        if isinstance(item, (Glove, Boot, Helmet)):
-            from core.items.essence_views import ESSENCE_DISPLAY, _format_slot_value
-
-            lines = []
-            for i in (1, 2, 3):
-                t = getattr(item, f"essence_{i}", "none") or "none"
-                v = getattr(item, f"essence_{i}_val", 0.0) or 0.0
-                if t != "none":
-                    e_name, emoji = ESSENCE_DISPLAY.get(t, (t.title(), "✦"))
-                    stat_str = _format_slot_value(t, v, item)
-                    lines.append(f"**Slot {i}:** {emoji} {e_name}\n   ↳ {stat_str}")
-                else:
-                    lines.append(f"**Slot {i}:** *— Empty —*")
-            corrupted = getattr(item, "corrupted_essence", "none") or "none"
-            if corrupted != "none":
-                c_name, c_emoji = ESSENCE_DISPLAY.get(
-                    corrupted, (corrupted.title(), "💠")
-                )
-                from core.items.essence_views import ESSENCE_BRIEF
-
-                c_brief = ESSENCE_BRIEF.get(corrupted, "")
-                lines.append(f"**Corrupted:** {c_emoji} {c_name}\n   ↳ {c_brief}")
-            else:
-                lines.append("**Corrupted:** *— Empty —*")
-            embed.add_field(name="💎 Essences", value="\n".join(lines), inline=False)
-
-        # Weapon Specifics
         if isinstance(item, Weapon):
-            if item.p_passive != "none":
-                embed.add_field(
-                    name="Pinnacle Passive", value=item.p_passive.title(), inline=False
-                )
-            if item.u_passive != "none":
-                embed.add_field(
-                    name="Utmost Passive", value=item.u_passive.title(), inline=False
-                )
-            if getattr(item, "infernal_passive", "none") not in ("none", ""):
-                embed.add_field(
-                    name="Infernal Passive",
-                    value=f"🔥 {item.infernal_passive.title()}",
-                    inline=False,
-                )
-            embed.add_field(
-                name="Refinement", value=f"+{item.refinement_lvl}", inline=True
-            )
+            embed.set_thumbnail(url=_ITEM_IMAGES["weapon"])
+            _weapon_fields(embed, item, _WEAPON_PASSIVE_DESC, _INFERNAL_PASSIVE_DESC)
+        elif isinstance(item, Armor):
+            embed.set_thumbnail(url=_ITEM_IMAGES["armor"])
+            _armor_fields(embed, item, _ARMOR_PASSIVE_DESC, _CELESTIAL_PASSIVE_DESC)
+        elif isinstance(item, Helmet):
+            embed.set_thumbnail(url=_ITEM_IMAGES["helmet"])
+            _helmet_fields(embed, item, _HELMET_PASSIVE_FUNCS)
+        elif isinstance(item, Glove):
+            embed.set_thumbnail(url=_ITEM_IMAGES["glove"])
+            _glove_boot_fields(embed, item, _GLOVE_PASSIVE_FUNCS)
+        elif isinstance(item, Boot):
+            embed.set_thumbnail(url=_ITEM_IMAGES["boot"])
+            _glove_boot_fields(embed, item, _BOOT_PASSIVE_FUNCS)
+        elif isinstance(item, Accessory):
+            embed.set_thumbnail(url=_ITEM_IMAGES["accessory"])
+            _accessory_fields(embed, item, _ACCESSORY_PASSIVE_FUNCS, _VOID_PASSIVE_DESC)
 
         return embed
 
@@ -307,6 +456,7 @@ class InventoryUI:
             title=f"{slot_emoji} {player_name}'s {slot_label}s",
             color=0x2B2D31,
         )
+        embed.set_thumbnail(url=_ITEM_IMAGES.get(active_slot, ""))
 
         # --- Equipped item panel ---
         equipped_id = equipped_ids.get(active_slot)

@@ -30,7 +30,8 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\('core/partners/views_boss_party.py'\\).read\\(\\)\\); print\\('views_boss_party.py OK'\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\('core/partners/views.py'\\).read\\(\\)\\); print\\('views.py OK'\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\('core/partners/views_boss_party.py', encoding='utf-8'\\).read\\(\\)\\); print\\('views_boss_party.py OK'\\)\")",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('core/partners/views.py', encoding='utf-8'\\).read\\(\\)\\); print\\('views.py OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('core/partners/views.py', encoding='utf-8'\\).read\\(\\)\\); print\\('views.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('core/inventory/inventory.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")"
     ]
   }
 }

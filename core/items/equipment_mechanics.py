@@ -1,7 +1,9 @@
 import random
-from typing import Any, Dict, Literal, Optional, Tuple
+from typing import Any, Dict, Literal, Optional, Tuple, Union
 
-from core.models import Armor, Weapon
+from core.models import Armor, Boot, Glove, Helmet, Weapon
+
+_Reinforceable = Union[Armor, Glove, Boot, Helmet]
 
 
 class EquipmentMechanics:
@@ -510,6 +512,100 @@ class EquipmentMechanics:
             amount = max(1, int(random.uniform(expected * 0.8, expected * 1.2)))
 
         return True, stat, amount
+
+    # --- ARMOR REINFORCEMENT LOGIC ---
+    @staticmethod
+    def calculate_reinforce_cost(armor: "_Reinforceable") -> Dict[str, Any]:
+        """
+        Calculates Gold and Material costs for reinforcing armor.
+        Costs are 1/5 of weapon refinement costs. Materials kick in at reinforcement_lvl 100+
+        with qty=2 instead of the weapon's qty=10.
+        """
+        rem = armor.reinforces_remaining
+        lvl = armor.level
+        ref_lvl = armor.reinforcement_lvl
+
+        # 1. Gold cost (refine costs ÷ 5)
+        gold_cost = 200
+        if lvl <= 40:
+            costs = {3: 100, 2: 200, 1: 1000}
+            gold_cost = costs.get(rem, 200)
+        elif lvl <= 80:
+            costs = {4: 1000, 3: 3000, 2: 5000, 1: 10000}
+            gold_cost = costs.get(rem, 10000)
+        else:
+            costs = {5: 2000, 4: 6000, 3: 10000, 2: 20000, 1: 40000}
+            gold_cost = costs.get(rem, 40000)
+
+        # 1b. High-reinforcement gold scaling (overrides base cost at ref_lvl 100+)
+        if ref_lvl >= 100:
+            gold_cost = (ref_lvl // 100 + 2) * 20_000
+
+        # 2. Material costs (ref_lvl 100+, qty=2)
+        materials = []
+
+        if ref_lvl >= 100:
+            qty = 0
+            tier_idx = 0
+
+            if 100 <= ref_lvl <= 120:
+                qty = 2
+                tier_idx = 0
+            elif 121 <= ref_lvl <= 140:
+                qty = 2
+                tier_idx = 1
+            elif 141 <= ref_lvl <= 160:
+                qty = 2
+                tier_idx = 2
+            elif 161 <= ref_lvl <= 180:
+                qty = 2
+                tier_idx = 3
+            elif 181 <= ref_lvl <= 200:
+                qty = 2
+                tier_idx = 4
+            else:  # 201+
+                qty = 2 + (ref_lvl - 200)
+                tier_idx = 4
+
+            res_defs = [
+                ("iron_bar", "oak_plank", "desiccated_essence", "Iron/Oak/Desiccated"),
+                ("steel_bar", "willow_plank", "regular_essence", "Steel/Willow/Regular"),
+                ("gold_bar", "mahogany_plank", "sturdy_essence", "Gold/Mahogany/Sturdy"),
+                ("platinum_bar", "magic_plank", "reinforced_essence", "Platinum/Magic/Reinforced"),
+                ("idea_bar", "idea_plank", "titanium_essence", "Idea/Titanium"),
+            ]
+
+            def_t = res_defs[tier_idx]
+
+            materials.append({
+                "table": "mining",
+                "column": def_t[0],
+                "qty": qty,
+                "name": def_t[0].replace("_", " ").title(),
+            })
+            materials.append({
+                "table": "woodcutting",
+                "column": def_t[1],
+                "qty": qty,
+                "name": def_t[1].replace("_", " ").title(),
+            })
+            materials.append({
+                "table": "fishing",
+                "column": def_t[2],
+                "qty": qty,
+                "name": def_t[2].replace("_", " ").title(),
+            })
+
+        return {"gold": gold_cost, "materials": materials}
+
+    _REINFORCE_CAP = 12
+
+    @staticmethod
+    def roll_reinforce_outcome(armor: "_Reinforceable") -> int:
+        """Returns the main_stat gain for a single reinforce. Always at least 1."""
+        cap = EquipmentMechanics._REINFORCE_CAP
+        expected = cap * (armor.level / (armor.level + 100))
+        return max(1, int(random.uniform(expected * 0.8, expected * 1.2)))
 
     @staticmethod
     def roll_celestial_passive(current_passive: str) -> str:

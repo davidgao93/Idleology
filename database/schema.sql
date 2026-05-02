@@ -17,6 +17,15 @@
 
 -- ALTER TABLE users ADD COLUMN curio_puzzle_boxes INTEGER NOT NULL DEFAULT 0;
 
+ALTER TABLE gloves ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
+ALTER TABLE gloves ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
+
+ALTER TABLE boots ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
+ALTER TABLE boots ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
+
+ALTER TABLE helmets ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
+ALTER TABLE helmets ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
   `user_id` TEXT NOT NULL UNIQUE,
@@ -180,7 +189,11 @@ CREATE TABLE IF NOT EXISTS `armor` (
   `imbue_remaining` INTEGER DEFAULT 1,
   `pdr` INTEGER DEFAULT 0,
   `fdr` INTEGER DEFAULT 0,
-  `celestial_armor_passive` TEXT NOT NULL DEFAULT 'none'
+  `celestial_armor_passive` TEXT NOT NULL DEFAULT 'none',
+  `main_stat_type` TEXT NOT NULL DEFAULT 'def',
+  `main_stat` INTEGER DEFAULT 0,
+  `reinforces_remaining` INTEGER DEFAULT 0,
+  `reinforcement_lvl` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `gloves` (
@@ -203,7 +216,9 @@ CREATE TABLE IF NOT EXISTS `gloves` (
   `essence_2_val` REAL DEFAULT 0,
   `essence_3` TEXT DEFAULT 'none',
   `essence_3_val` REAL DEFAULT 0,
-  `corrupted_essence` TEXT DEFAULT 'none'
+  `corrupted_essence` TEXT DEFAULT 'none',
+  `reinforces_remaining` INTEGER DEFAULT 0,
+  `reinforcement_lvl` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `boots` (
@@ -226,7 +241,9 @@ CREATE TABLE IF NOT EXISTS `boots` (
   `essence_2_val` REAL DEFAULT 0,
   `essence_3` TEXT DEFAULT 'none',
   `essence_3_val` REAL DEFAULT 0,
-  `corrupted_essence` TEXT DEFAULT 'none'
+  `corrupted_essence` TEXT DEFAULT 'none',
+  `reinforces_remaining` INTEGER DEFAULT 0,
+  `reinforcement_lvl` INTEGER DEFAULT 0
 );
 
 
@@ -297,7 +314,9 @@ CREATE TABLE IF NOT EXISTS helmets (
     essence_2_val REAL DEFAULT 0,
     essence_3 TEXT DEFAULT 'none',
     essence_3_val REAL DEFAULT 0,
-    corrupted_essence TEXT DEFAULT 'none'
+    corrupted_essence TEXT DEFAULT 'none',
+    reinforces_remaining INTEGER DEFAULT 0,
+    reinforcement_lvl INTEGER DEFAULT 0
 );
 
 
