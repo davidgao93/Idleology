@@ -81,6 +81,8 @@ class CombatView(ui.View):
         is_over = self.player.current_hp <= 0 or self.monster.hp <= 0
         for child in self.children:
             child.disabled = is_over
+        if not is_over:
+            self.heal_btn.disabled = self.player.potions <= 0
 
     def _do_monster_turn(self) -> str:
         hp_before = self.player.current_hp

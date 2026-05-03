@@ -5,7 +5,6 @@ import random
 from core.combat.modifier_data import (
     BOSS_MOD_NAMES,
     COMMON_MOD_NAMES,
-    MODIFIER_DEFINITIONS,
     RARE_FLAT_MOD_NAMES,
     RARE_TIERED_MOD_NAMES,
     make_modifier,
@@ -53,7 +52,7 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
         )
 
     monster.max_hp = monster.hp
-    monster.xp = random.randint(1,9) + monster.level * 100
+    monster.xp = random.randint(1, 9) + monster.level * 100
 
     monster.modifiers = []
     if not is_treasure:
@@ -69,7 +68,9 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
         if monster.level >= 100:
             modifier_checks.append(50 + int(player.get_total_rarity() / 10))
 
-        num_mods = sum(1 for chance in modifier_checks if random.randint(1, 100) <= chance)
+        num_mods = sum(
+            1 for chance in modifier_checks if random.randint(1, 100) <= chance
+        )
         if num_mods > 0:
             _assign_modifiers(monster, num_mods, is_boss=False)
             _apply_spawn_modifiers(monster)
@@ -96,10 +97,12 @@ async def generate_boss(player, monster, phase, phase_index):
     )
     monster.hp = int(monster.hp * phase["hp_multiplier"])
     monster.max_hp = monster.hp
-    monster.xp = random.randint(1,9) + monster.level * 100
+    monster.xp = random.randint(1, 9) + monster.level * 100
 
     monster.modifiers = []
-    _assign_modifiers(monster, phase["modifiers_count"], is_boss=True, force_max_tier=True)
+    _assign_modifiers(
+        monster, phase["modifiers_count"], is_boss=True, force_max_tier=True
+    )
     _apply_spawn_modifiers(monster)
     print(monster)
     return monster
@@ -132,9 +135,7 @@ async def generate_ascent_monster(
     )
 
     monster.max_hp = monster.hp
-    monster.xp = int(
-        monster.max_hp * (1 + ascent_stage_level / 50)
-    )
+    monster.xp = int(monster.max_hp * (1 + ascent_stage_level / 50))
 
     monster.modifiers = []
     total_mods = num_normal_mods + num_boss_mods
@@ -149,11 +150,15 @@ def _pick_modifier_type(is_boss: bool) -> str:
     if is_boss:
         weights = [55, 20, 10, 15]  # common, rare_tiered, rare_flat, boss
     else:
-        weights = [75, 15, 10, 0]   # regular monsters never get boss mods
-    return random.choices(["common", "rare_tiered", "rare_flat", "boss"], weights=weights, k=1)[0]
+        weights = [75, 15, 10, 0]  # regular monsters never get boss mods
+    return random.choices(
+        ["common", "rare_tiered", "rare_flat", "boss"], weights=weights, k=1
+    )[0]
 
 
-def _assign_modifiers(monster, num_mods: int, is_boss: bool, force_max_tier: bool = False) -> None:
+def _assign_modifiers(
+    monster, num_mods: int, is_boss: bool, force_max_tier: bool = False
+) -> None:
     """Fills monster.modifiers with num_mods unique MonsterModifier instances."""
     used_names: set = set()
     attempts = 0
@@ -172,7 +177,9 @@ def _assign_modifiers(monster, num_mods: int, is_boss: bool, force_max_tier: boo
             continue
         name = random.choice(candidates)
         used_names.add(name)
-        monster.modifiers.append(make_modifier(name, monster.level, force_max_tier=force_max_tier))
+        monster.modifiers.append(
+            make_modifier(name, monster.level, force_max_tier=force_max_tier)
+        )
 
 
 def _assign_ascent_modifiers(monster, num_mods: int, floor: int) -> None:
@@ -196,9 +203,7 @@ def _assign_ascent_modifiers(monster, num_mods: int, floor: int) -> None:
     while remaining > 0 and attempts < remaining * 10:
         attempts += 1
         pool_type = random.choices(
-            ["common", "rare_tiered", "rare_flat"],
-            weights=[65, 20, 15],
-            k=1
+            ["common", "rare_tiered", "rare_flat"], weights=[65, 20, 15], k=1
         )[0]
         candidates = {
             "common": COMMON_MOD_NAMES,
@@ -220,9 +225,13 @@ def _apply_spawn_modifiers(monster) -> None:
         monster.level += level_added
         monster = calculate_monster_stats(monster)
     if monster.has_modifier("Empowered"):
-        monster.attack = int(monster.attack * (1 + monster.get_modifier_value("Empowered")))
+        monster.attack = int(
+            monster.attack * (1 + monster.get_modifier_value("Empowered"))
+        )
     if monster.has_modifier("Fortified"):
-        monster.defence = int(monster.defence * (1 + monster.get_modifier_value("Fortified")))
+        monster.defence = int(
+            monster.defence * (1 + monster.get_modifier_value("Fortified"))
+        )
     if monster.has_modifier("Titanic"):
         monster.hp = int(monster.hp * monster.get_modifier_value("Titanic"))
         monster.max_hp = monster.hp
@@ -349,9 +358,7 @@ async def fetch_monster_image(level, monster_data, task_species=None):
             return monster_data
 
         if task_species and random.random() < 0.50:
-            task_specific_mobs = [
-                m for m in selected_monsters if m[4] == task_species
-            ]
+            task_specific_mobs = [m for m in selected_monsters if m[4] == task_species]
             if task_specific_mobs:
                 selected_monsters = task_specific_mobs
 
@@ -383,48 +390,48 @@ def _roll_essence_spawn(monster) -> None:
 def get_modifier_description(mod: MonsterModifier) -> str:
     """Returns a human-readable description of a MonsterModifier."""
     descriptions = {
-        "Empowered":    lambda v: f"+{int(v*100)}% attack",
-        "Fortified":    lambda v: f"+{int(v*100)}% defence",
-        "Titanic":      lambda v: f"{int(v*100)}% HP",
-        "Savage":       lambda v: f"+{int(v*100)}% damage",
-        "Lethal":       lambda v: f"+{int(v*100)}% crit chance",
-        "Devastating":  lambda v: f"Crits deal {round(2.0+v, 1)}× damage",
-        "Keen":         lambda v: f"+{int(v)} to hit rolls",
-        "Blinding":     lambda v: f"−{int(v)} to your hit rolls",
-        "Jinxed":       lambda v: f"{int(v*100)}% chance your hit rolls are unlucky",
-        "Crushing":     lambda v: f"Ignores {int(v*100)}% of your PDR",
-        "Searing":      lambda v: f"Ignores {int(v*100)}% of your FDR",
-        "Stalwart":     lambda v: f"Nullifies {int(v*100)}% of incoming damage",
-        "Ironclad":     lambda v: f"{int(v*100)}% less damage taken",
-        "Vampiric":     lambda v: f"Heals {int(v*100)}% max HP per hit",
-        "Mending":      lambda v: f"Heals {int(v*100)}% max HP every other turn",
-        "Thorned":      lambda v: f"You take {int(v*100)}% of max HP on each hit",
-        "Venomous":     lambda v: f"You take {int(v*100)}% of max HP on each miss",
-        "Enraged":      lambda v: f"+{int(v*100)}% ATK per 25% HP lost",
-        "Parching":     lambda v: f"Your potions heal {int(v*100)}% less",
-        "Veiled":       lambda v: f"Starts with {int(v*100)}% max HP as ward",
-        "Ascended":     lambda v: f"Level +{int(v)}",
-        "Commanding":   lambda v: f"Minions echo {int(v*100)}% of each hit",
-        "Dampening":    lambda v: f"Your crit chance −{int(v)}",
-        "Nullifying":   lambda v: f"Your crits deal {int(v*100)}% less damage",
-        "Unblockable":  lambda v: "Block chance 80% less effective",
-        "Unavoidable":  lambda v: "Evasion chance 80% less effective",
-        "Dispelling":   lambda v: "Reduces your ward by 80% at combat start",
-        "Multistrike":  lambda v: "50% chance to strike twice",
-        "Spectral":     lambda v: "20% chance to deal double damage",
-        "Executioner":  lambda v: "1% chance to deal 90% of your HP as damage",
-        "Time Lord":    lambda v: "80% chance to survive a killing blow",
+        "Empowered": lambda v: f"+{int(v*100)}% attack",
+        "Fortified": lambda v: f"+{int(v*100)}% defence",
+        "Titanic": lambda v: f"{int(v*100)}% HP",
+        "Savage": lambda v: f"+{int(v*100)}% damage",
+        "Lethal": lambda v: f"+{int(v*100)}% crit chance",
+        "Devastating": lambda v: f"Crits deal {round(2.0+v, 1)}× damage",
+        "Keen": lambda v: f"+{int(v)} to hit rolls",
+        "Blinding": lambda v: f"−{int(v)} to your hit rolls",
+        "Jinxed": lambda v: f"{int(v*100)}% chance your hit rolls are unlucky",
+        "Crushing": lambda v: f"Ignores {int(v*100)}% of your PDR",
+        "Searing": lambda v: f"Ignores {int(v*100)}% of your FDR",
+        "Stalwart": lambda v: f"Nullifies {int(v*100)}% of incoming damage",
+        "Ironclad": lambda v: f"{int(v*100)}% less damage taken",
+        "Vampiric": lambda v: f"Heals {int(v*100)}% max HP per hit",
+        "Mending": lambda v: f"Heals {v*100:.2f}% max HP every other turn",
+        "Thorned": lambda v: f"You take {int(v*100)}% of max HP on each hit",
+        "Venomous": lambda v: f"You take {int(v*100)}% of max HP on each miss",
+        "Enraged": lambda v: f"+{int(v*100)}% ATK per 25% HP lost",
+        "Parching": lambda v: f"Your potions heal {int(v*100)}% less",
+        "Veiled": lambda v: f"Starts with {int(v*100)}% max HP as ward",
+        "Ascended": lambda v: f"Level +{int(v)}",
+        "Commanding": lambda v: f"Minions echo {int(v*100)}% of each hit",
+        "Dampening": lambda v: f"Your crit chance −{int(v)}",
+        "Nullifying": lambda v: f"Your crits deal {int(v*100)}% less damage",
+        "Unblockable": lambda v: "Block chance 80% less effective",
+        "Unavoidable": lambda v: "Evasion chance 80% less effective",
+        "Dispelling": lambda v: "Reduces your ward by 80% at combat start",
+        "Multistrike": lambda v: "50% chance to strike twice",
+        "Spectral": lambda v: "20% chance to deal double damage",
+        "Executioner": lambda v: "1% chance to deal 90% of your HP as damage",
+        "Time Lord": lambda v: "80% chance to survive a killing blow",
         "Overwhelming": lambda v: "Double damage; −25 to accuracy",
-        "Inevitable":   lambda v: "Always hits; 50% damage",
-        "Sundering":    lambda v: "25% of damage bypasses your ward",
-        "Unerring":     lambda v: "Hit rolls always take the highest of two",
-        "Radiant Protection":  lambda v: "60% damage reduction",
+        "Inevitable": lambda v: "Always hits; 50% damage",
+        "Sundering": lambda v: "25% of damage bypasses your ward",
+        "Unerring": lambda v: "Hit rolls always take the highest of two",
+        "Radiant Protection": lambda v: "60% damage reduction",
         "Infernal Protection": lambda v: "60% damage reduction",
         "Balanced Protection": lambda v: "60% damage reduction",
-        "Void Protection":     lambda v: "60% damage reduction",
-        "Hell's Fury":         lambda v: "Deals triple damage",
-        "Void Aura":           lambda v: "Drains 0.5% ATK and DEF per round",
-        "Balanced Strikes":    lambda v: "Every other turn: 50% hit, bypasses ward",
+        "Void Protection": lambda v: "60% damage reduction",
+        "Hell's Fury": lambda v: "Deals triple damage",
+        "Void Aura": lambda v: "Drains 0.5% ATK and DEF per round",
+        "Balanced Strikes": lambda v: "Every other turn: 50% hit, bypasses ward",
     }
     fn = descriptions.get(mod.name)
     if fn:
@@ -439,9 +446,7 @@ async def generate_uber_lucifer(player, monster):
 
     monster = calculate_monster_stats(monster)
 
-    base_hp = random.randint(0, 9) + int(
-        10 * (monster.level ** 1.7)
-    )
+    base_hp = random.randint(0, 9) + int(10 * (monster.level**1.7))
     monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
     monster.xp = 75000
@@ -477,9 +482,7 @@ def generate_uber_neet(player, monster):
 
     monster = calculate_monster_stats(monster)
 
-    base_hp = random.randint(0, 9) + int(
-        10 * (monster.level ** 1.4)
-    )
+    base_hp = random.randint(0, 9) + int(10 * (monster.level**1.4))
     monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
     monster.xp = 75000
@@ -512,9 +515,7 @@ def generate_uber_gemini(player, monster):
 
     monster = calculate_monster_stats(monster)
 
-    base_hp = random.randint(0, 9) + int(
-        10 * (monster.level ** 1.7)
-    )
+    base_hp = random.randint(0, 9) + int(10 * (monster.level**1.7))
     monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
     monster.xp = 75000
@@ -547,9 +548,7 @@ async def generate_uber_aphrodite(player, monster):
 
     monster = calculate_monster_stats(monster)
 
-    base_hp = random.randint(0, 9) + int(
-        10 * (monster.level ** 1.7)
-    )
+    base_hp = random.randint(0, 9) + int(10 * (monster.level**1.7))
     monster.hp = int(base_hp * 4.0)
     monster.max_hp = monster.hp
     monster.xp = 75000
@@ -564,7 +563,7 @@ async def generate_uber_aphrodite(player, monster):
 
     boss_pool = list(BOSS_MOD_NAMES)
     random.shuffle(boss_pool)
-    for name in boss_pool[:random.randint(1, 2)]:
+    for name in boss_pool[: random.randint(1, 2)]:
         monster.modifiers.append(make_modifier(name, monster.level))
 
     monster.attack += int(monster.level * 0.5)
