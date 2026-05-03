@@ -1,7 +1,7 @@
 BASE_LEVEL = 100
-LEVEL_PER_FLOOR = 2
-NORMAL_MOD_EVERY = 5
-BOSS_MOD_EVERY = 10
+LEVEL_PER_FLOOR = 1
+NORMAL_MOD_EVERY = 20
+BOSS_MOD_EVERY = 50
 STARTING_OFFSET = 5
 
 # Pinnacle floor → stat bonuses granted as a one-time unlock.
