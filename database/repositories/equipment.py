@@ -111,10 +111,10 @@ class EquipmentRepository:
         potential = 3 if a.level <= 40 else (4 if a.level <= 80 else 5)
         await self.connection.execute(
             """INSERT INTO armor (user_id, item_name, item_level, block, evasion, ward,
-            pdr, fdr, temper_remaining, main_stat_type, main_stat)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            pdr, fdr, temper_remaining, main_stat_type, main_stat, reinforces_remaining)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (a.user, a.name, a.level, a.block, a.evasion, a.ward, a.pdr, a.fdr,
-             potential, a.main_stat_type, a.main_stat)
+             potential, a.main_stat_type, a.main_stat, potential)
         )
         await self.connection.commit()
 
@@ -128,30 +128,32 @@ class EquipmentRepository:
         await self.connection.commit()
 
     async def create_glove(self, g: Glove) -> None:
+        potential = 3 if g.level <= 40 else (4 if g.level <= 80 else 5)
         await self.connection.execute(
-            """INSERT INTO gloves (user_id, item_name, item_level, attack, defence, ward, 
-            pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 5, 0)""",
-            (g.user, g.name, g.level, g.attack, g.defence, g.ward, g.pdr, g.fdr, g.passive)
+            """INSERT INTO gloves (user_id, item_name, item_level, attack, defence, ward,
+            pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl, reinforces_remaining)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 5, 0, ?)""",
+            (g.user, g.name, g.level, g.attack, g.defence, g.ward, g.pdr, g.fdr, g.passive, potential)
         )
         await self.connection.commit()
 
     async def create_boot(self, b: Boot) -> None:
+        potential = 3 if b.level <= 40 else (4 if b.level <= 80 else 5)
         await self.connection.execute(
-            """INSERT INTO boots (user_id, item_name, item_level, attack, defence, ward, 
-            pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 6, 0)""",
-            (b.user, b.name, b.level, b.attack, b.defence, b.ward, b.pdr, b.fdr, b.passive)
+            """INSERT INTO boots (user_id, item_name, item_level, attack, defence, ward,
+            pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl, reinforces_remaining)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 6, 0, ?)""",
+            (b.user, b.name, b.level, b.attack, b.defence, b.ward, b.pdr, b.fdr, b.passive, potential)
         )
         await self.connection.commit()
 
     async def create_helmet(self, h: Helmet) -> None:
-        # Updated insert to include pdr and fdr
+        potential = 3 if h.level <= 40 else (4 if h.level <= 80 else 5)
         await self.connection.execute(
-            """INSERT INTO helmets (user_id, item_name, item_level, defence, ward, 
-            pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 5, 0)""",
-            (h.user, h.name, h.level, h.defence, h.ward, h.pdr, h.fdr, h.passive)
+            """INSERT INTO helmets (user_id, item_name, item_level, defence, ward,
+            pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl, reinforces_remaining)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 5, 0, ?)""",
+            (h.user, h.name, h.level, h.defence, h.ward, h.pdr, h.fdr, h.passive, potential)
         )
         await self.connection.commit()
 
