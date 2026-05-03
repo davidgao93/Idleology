@@ -71,7 +71,7 @@ _INFERNAL_PASSIVE_DESC: dict[str, str] = {
     "cursed precision": "+20% Crit Chance; your critical damage is unlucky",
     "diabolic pact": "At combat start, lose 90% max HP and double Attack",
     "perdition": "Missed attacks deal 75% weapon Attack",
-    "voracious": "Each non-crit adds a stack; each stack reduces crit threshold by 5",
+    "voracious": "Gain a voracious stack on hit; Each stack gives +5% crit chance. Stacks reset on crit.",
     "last rites": "Critical hits deal an additional 10% of enemy current HP",
 }
 

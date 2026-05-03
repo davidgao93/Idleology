@@ -159,7 +159,7 @@ class DropManager:
                     await bot.database.users.modify_currency(
                         user_id, "refinement_runes", 1
                     )
-                    item_desc = f"**{item.name}**: {item.description}"
+                    item_desc = f"**{item.name}**"
                 else:
                     await bot.database.equipment.create_weapon(item)
                     item_desc = item.description
@@ -170,7 +170,7 @@ class DropManager:
                     await bot.database.users.modify_currency(
                         user_id, "potential_runes", 1
                     )
-                    item_desc = f"**{item.name}**: {item.description}"
+                    item_desc = f"**{item.name}**"
                 else:
                     await bot.database.equipment.create_accessory(item)
                     item_desc = item.description
@@ -179,7 +179,7 @@ class DropManager:
                 item = await generate_armor(user_id, monster_level, drop_rune=True)
                 if item.name == "Rune of Imbuing":
                     await bot.database.users.modify_currency(user_id, "imbue_runes", 1)
-                    item_desc = f"**{item.name}**: {item.description}"
+                    item_desc = f"**{item.name}**"
                 else:
                     await bot.database.equipment.create_armor(item)
                     item_desc = item.description
