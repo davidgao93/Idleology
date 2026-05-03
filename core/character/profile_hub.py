@@ -563,7 +563,7 @@ class ProfileBuilder:
             ward_hp = p.get_combat_ward_value()
             embed.add_field(
                 name="🔮 Ward",
-                value=f"**{total_ward}%** (= {ward_hp:,} HP)\n↳ Equipment: {ward_equip}%\n↳ Other: {ward_other}%",
+                value=f"**{total_ward}%** (= {ward_hp:,} Ward)\n↳ Equipment: {ward_equip}%\n↳ Other: {ward_other}%",
                 inline=True,
             )
 
@@ -648,7 +648,7 @@ class ProfileBuilder:
             fdr_other += p.get_ascension_bonuses()["fdr"]
         total_fdr = fdr_equip + fdr_other
         if total_fdr > 0:
-            fdr_val = f"**{total_fdr:,}**\n"
+            fdr_val = f"**{total_fdr:,}**"
             fdr_val += f"\n↳ Equipment: {fdr_equip}"
             if fdr_other > 0:
                 fdr_val += f"\n↳ Other: {fdr_other}"
