@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import ButtonStyle, Interaction, ui
@@ -143,16 +143,20 @@ _HELMET_PASSIVE_FUNCS: dict = {
 }
 
 _ESSENCE_TYPE_DESC: dict = {
-    "power":      None,           # computed dynamically from item stats
-    "protection": None,           # computed dynamically from item stats
-    "insight":    lambda v: f"+{int(v)} Crit Chance",
-    "evasion":    lambda v: f"+{int(v)}% Evasion",
-    "warding":    lambda v: f"+{int(v)}% Block",
+    "power": None,  # computed dynamically from item stats
+    "protection": None,  # computed dynamically from item stats
+    "insight": lambda v: f"+{int(v)} Crit Chance",
+    "evasion": lambda v: f"+{int(v)}% Evasion",
+    "warding": lambda v: f"+{int(v)}% Block",
 }
 
 # Weapon passives that contribute a flat crit-roll bonus (piercing family)
 _WEAPON_CRIT_BONUS: dict[str, int] = {
-    "piercing": 5, "keen": 10, "incisive": 15, "puncturing": 20, "penetrating": 25,
+    "piercing": 5,
+    "keen": 10,
+    "incisive": 15,
+    "puncturing": 20,
+    "penetrating": 25,
 }
 
 _CORRUPTED_DESC: dict[tuple, str] = {
@@ -161,10 +165,19 @@ _CORRUPTED_DESC: dict[tuple, str] = {
     ("aphrodite", "helmet"): "Your ward can never be disabled.",
     ("lucifer", "glove"): "15% of your current ward is added to your hit damage.",
     ("lucifer", "boot"): "Gain up to 50% increased gold per monster modifier.",
-    ("lucifer", "helmet"): "When your ward is broken, gain 15% PDR for the remainder of that encounter.",
-    ("gemini", "glove"): "Critical hits strike twice, the second strike deals less damage.",
+    (
+        "lucifer",
+        "helmet",
+    ): "When your ward is broken, gain 15% PDR for the remainder of that encounter.",
+    (
+        "gemini",
+        "glove",
+    ): "Critical hits strike twice, the second strike deals less damage.",
     ("gemini", "boot"): "Your pet drop chance is doubled.",
-    ("gemini", "helmet"): "Your damage taken is halved, but is split evenly between HP and Ward.",
+    (
+        "gemini",
+        "helmet",
+    ): "Your damage taken is halved, but is split evenly between HP and Ward.",
     ("neet", "glove"): "Your accuracy is 0.",
     ("neet", "boot"): "Whenever you gain resources during combat, gain double instead.",
     ("neet", "helmet"): "Whenever you gain ward, double the ward gained.",
@@ -533,7 +546,9 @@ class ProfileBuilder:
 
         # ── HP ───────────────────────────────────────────────────────────────
         total_hp = p.total_max_hp
-        parts_hp = sum(v["hp"] for v in p.equipped_parts.values()) if p.equipped_parts else 0
+        parts_hp = (
+            sum(v["hp"] for v in p.equipped_parts.values()) if p.equipped_parts else 0
+        )
         other_hp_bonuses = total_hp - p.max_hp - parts_hp
         hp_val = f"**{p.current_hp:,} / {total_hp:,}**\n↳ Base: {p.max_hp:,}\n↳ Parts: {parts_hp:,}"
         if other_hp_bonuses:
@@ -692,7 +707,9 @@ class ProfileBuilder:
         embed = discord.Embed(title="Active Passives & Equipment", color=0x7B68EE)
         embed.set_thumbnail(url=data[7])
 
-        def _add_gear_field(icon: str, slot: str, item, stat_line: str, passive_lines: list[str]):
+        def _add_gear_field(
+            icon: str, slot: str, item, stat_line: str, passive_lines: list[str]
+        ):
             if not item:
                 return
             body = f"**{item.name}** Lv.{item.level}\n{stat_line}"
@@ -708,54 +725,82 @@ class ProfileBuilder:
             stat_line = f"ATK: {w.attack} | DEF: {w.defence} | RAR: {w.rarity}%"
             lines: list[str] = []
             if w.passive != "none":
-                lines.append(f"• Forge: {w.passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}")
+                lines.append(
+                    f"• Forge: {w.passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}"
+                )
             if w.p_passive != "none":
-                lines.append(f"• Pinnacle: {w.p_passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}")
+                lines.append(
+                    f"• Pinnacle: {w.p_passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}"
+                )
             if w.u_passive != "none":
-                lines.append(f"• Utmost: {w.u_passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}")
+                lines.append(
+                    f"• Utmost: {w.u_passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}"
+                )
             if w.infernal_passive != "none":
-                lines.append(f"• Infernal: {w.infernal_passive.replace('_',' ').title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}")
+                lines.append(
+                    f"• Infernal: {w.infernal_passive.replace('_',' ').title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}"
+                )
             _add_gear_field("⚔️", "Weapon", w, stat_line, lines)
 
         # ── Armor ─────────────────────────────────────────────────────────────
         if p.equipped_armor:
             a = p.equipped_armor
             parts = []
-            if a.block:  parts.append(f"BLOCK: {a.block}%")
-            if a.evasion: parts.append(f"EVA: {a.evasion}%")
-            if a.ward:   parts.append(f"WARD: {a.ward}%")
-            if a.pdr:    parts.append(f"PDR: {a.pdr}%")
-            if a.fdr:    parts.append(f"FDR: {a.fdr}")
+            if a.block:
+                parts.append(f"BLOCK: {a.block}%")
+            if a.evasion:
+                parts.append(f"EVA: {a.evasion}%")
+            if a.ward:
+                parts.append(f"WARD: {a.ward}%")
+            if a.pdr:
+                parts.append(f"PDR: {a.pdr}%")
+            if a.fdr:
+                parts.append(f"FDR: {a.fdr}")
             stat_line = " | ".join(parts) or "No defensive stats"
             lines = []
             if a.passive != "none":
-                lines.append(f"• {a.passive.replace('_',' ').title()} — {_desc_fixed(_ARMOR_PASSIVE_DESC, a.passive)}")
+                lines.append(
+                    f"• {a.passive.replace('_',' ').title()} — {_desc_fixed(_ARMOR_PASSIVE_DESC, a.passive)}"
+                )
             if a.celestial_passive != "none":
-                lines.append(f"• {a.celestial_passive.replace('_',' ').title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}")
+                lines.append(
+                    f"• {a.celestial_passive.replace('_',' ').title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}"
+                )
             _add_gear_field("🛡️", "Armor", a, stat_line, lines)
 
         # ── Accessory ─────────────────────────────────────────────────────────
         if p.equipped_accessory:
             acc = p.equipped_accessory
             parts = []
-            if acc.attack:  parts.append(f"ATK: {acc.attack}")
-            if acc.defence: parts.append(f"DEF: {acc.defence}")
-            if acc.rarity:  parts.append(f"RAR: {acc.rarity}%")
-            if acc.ward:    parts.append(f"WARD: {acc.ward}%")
-            if acc.crit:    parts.append(f"CRIT: {acc.crit}")
+            if acc.attack:
+                parts.append(f"ATK: {acc.attack}")
+            if acc.defence:
+                parts.append(f"DEF: {acc.defence}")
+            if acc.rarity:
+                parts.append(f"RAR: {acc.rarity}%")
+            if acc.ward:
+                parts.append(f"WARD: {acc.ward}%")
+            if acc.crit:
+                parts.append(f"CRIT: {acc.crit}")
             stat_line = " | ".join(parts) or "No stats"
             lines = []
             if acc.passive != "none":
-                desc = _desc_scaled(_ACCESSORY_PASSIVE_FUNCS, acc.passive, acc.passive_lvl)
-                lines.append(f"• {acc.passive.replace('_',' ').title()} L{acc.passive_lvl} — {desc}")
+                desc = _desc_scaled(
+                    _ACCESSORY_PASSIVE_FUNCS, acc.passive, acc.passive_lvl
+                )
+                lines.append(
+                    f"• {acc.passive.replace('_',' ').title()} L{acc.passive_lvl} — {desc}"
+                )
             if acc.void_passive != "none":
-                lines.append(f"• {acc.void_passive.replace('_',' ').title()} — {_desc_fixed(_VOID_PASSIVE_DESC, acc.void_passive)}")
+                lines.append(
+                    f"• {acc.void_passive.replace('_',' ').title()} — {_desc_fixed(_VOID_PASSIVE_DESC, acc.void_passive)}"
+                )
             _add_gear_field("📿", "Accessory", acc, stat_line, lines)
 
         # ── Glove / Boot / Helmet ─────────────────────────────────────────────
         for icon, slot_label, slot_name, item, pfuncs in (
-            ("🧤", "Glove",  "glove",  p.equipped_glove,  _GLOVE_PASSIVE_FUNCS),
-            ("👢", "Boot",   "boot",   p.equipped_boot,   _BOOT_PASSIVE_FUNCS),
+            ("🧤", "Glove", "glove", p.equipped_glove, _GLOVE_PASSIVE_FUNCS),
+            ("👢", "Boot", "boot", p.equipped_boot, _BOOT_PASSIVE_FUNCS),
             ("🪖", "Helmet", "helmet", p.equipped_helmet, _HELMET_PASSIVE_FUNCS),
         ):
             if not item:
@@ -763,15 +808,21 @@ class ProfileBuilder:
             parts = []
             if hasattr(item, "attack") and item.attack:
                 parts.append(f"ATK: {item.attack}")
-            if item.defence: parts.append(f"DEF: {item.defence}")
-            if item.ward:    parts.append(f"WARD: {item.ward}%")
-            if item.pdr:     parts.append(f"PDR: {item.pdr}%")
-            if item.fdr:     parts.append(f"FDR: {item.fdr}")
+            if item.defence:
+                parts.append(f"DEF: {item.defence}")
+            if item.ward:
+                parts.append(f"WARD: {item.ward}%")
+            if item.pdr:
+                parts.append(f"PDR: {item.pdr}%")
+            if item.fdr:
+                parts.append(f"FDR: {item.fdr}")
             stat_line = " | ".join(parts) or "No stats"
             lines = []
             if item.passive != "none":
                 desc = _desc_scaled(pfuncs, item.passive, item.passive_lvl)
-                lines.append(f"• {item.passive.replace('_',' ').title()} L{item.passive_lvl} — {desc}")
+                lines.append(
+                    f"• {item.passive.replace('_',' ').title()} L{item.passive_lvl} — {desc}"
+                )
             for etype, val in (
                 (item.essence_1, item.essence_1_val),
                 (item.essence_2, item.essence_2_val),
@@ -780,7 +831,9 @@ class ProfileBuilder:
                 if etype != "none":
                     lines.append(f"• {_format_essence_slot(etype, val, item)}")
             if item.corrupted_essence != "none":
-                lines.append(f"• {_format_corrupted(item.corrupted_essence, slot_name)}")
+                lines.append(
+                    f"• {_format_corrupted(item.corrupted_essence, slot_name)}"
+                )
             _add_gear_field(icon, slot_label, item, stat_line, lines)
 
         # ── Slayer & Codex ────────────────────────────────────────────────────
@@ -790,8 +843,19 @@ class ProfileBuilder:
                 other_text = other_text[:1020] + "…"
             embed.add_field(name="🗡️ Slayer & Codex", value=other_text, inline=False)
 
-        if not any([p.equipped_weapon, p.equipped_armor, p.equipped_accessory,
-                    p.equipped_glove, p.equipped_boot, p.equipped_helmet]) and not other_text:
+        if (
+            not any(
+                [
+                    p.equipped_weapon,
+                    p.equipped_armor,
+                    p.equipped_accessory,
+                    p.equipped_glove,
+                    p.equipped_boot,
+                    p.equipped_helmet,
+                ]
+            )
+            and not other_text
+        ):
             embed.description = "No gear equipped and no active passives."
 
         return embed
@@ -954,7 +1018,7 @@ class ProfileBuilder:
                     c_last = datetime.fromisoformat(c_time_str)
                     c_diff = (datetime.now() - c_last).total_seconds()
 
-                    cycles = int(c_diff // 1800)  # 30 mins per cycle
+                    cycles = int(c_diff // 3600)  # 60 mins per cycle
 
                     if cycles >= 48:
                         embed.add_field(
@@ -963,7 +1027,7 @@ class ProfileBuilder:
                             inline=False,
                         )
                     else:
-                        next_cycle_rem = 1800 - (c_diff % 1800)
+                        next_cycle_rem = 3600 - (c_diff % 3600)
                         next_cycle_str = f"({int(next_cycle_rem // 60)}m {int(next_cycle_rem % 60)}s until next)"
                         embed.add_field(
                             name="🐾 Companions",
@@ -997,10 +1061,16 @@ class ProfileBuilder:
         ]
 
         active_dispatch = next(
-            (p for p in partners if p.is_dispatched and p.dispatch_task != "boss_party"),
+            (
+                p
+                for p in partners
+                if p.is_dispatched and p.dispatch_task != "boss_party"
+            ),
             None,
         )
-        boss_party = [p for p in partners if p.is_dispatched and p.dispatch_task == "boss_party"]
+        boss_party = [
+            p for p in partners if p.is_dispatched and p.dispatch_task == "boss_party"
+        ]
 
         if active_dispatch:
             elapsed = elapsed_hours(active_dispatch.dispatch_start_time)
@@ -1047,6 +1117,78 @@ class ProfileBuilder:
                 value=f"{names}\n{raid_status}",
                 inline=False,
             )
+
+        # 5. Infinite Maw
+        from core.maw.mechanics import (
+            boost_available,
+            boost_remaining_seconds,
+            get_current_cycle_id,
+            get_cycle_end_ts,
+            get_next_cycle_id,
+            is_collection_window,
+            is_cycle_active,
+            reward_potential_pct,
+        )
+
+        now_utc = datetime.now(timezone.utc)
+        now_ts = int(now_utc.timestamp())
+        maw_cycle_id = get_current_cycle_id(now_utc)
+
+        if is_cycle_active(maw_cycle_id, now_ts):
+            cycle_end = get_cycle_end_ts(maw_cycle_id)
+            ends_in = cycle_end - now_ts
+            h, m = ends_in // 3600, (ends_in % 3600) // 60
+            window_line = f"🟢 **Sign-up window OPEN** (ends in {h}h {m}m)"
+
+            maw_record = await bot.database.maw.get_record(user_id, maw_cycle_id)
+            if maw_record:
+                dmg = maw_record["damage_dealt"]
+                pct = reward_potential_pct(dmg)
+                boost_used_at = maw_record["boost_used_at"]
+                if boost_available(boost_used_at, now_ts):
+                    boost_str = "✅ Ready"
+                else:
+                    secs = boost_remaining_seconds(boost_used_at, now_ts)
+                    bh, bm = secs // 3600, (secs % 3600) // 60
+                    boost_str = f"**{bh}h {bm}m**"
+                maw_value = (
+                    f"{window_line}\n"
+                    f"Contribution: **{dmg:,}** dmg ({pct:.1f}%)\n"
+                    f"Boost: {boost_str}"
+                )
+            else:
+                maw_value = f"{window_line}\nNot signed up this cycle."
+
+        elif is_collection_window(maw_cycle_id, now_ts):
+            next_ts = get_next_cycle_id(maw_cycle_id)
+            next_in = next_ts - now_ts
+            h, m = next_in // 3600, (next_in % 3600) // 60
+            window_line = f"📦 **Collection window open** (next cycle in {h}h {m}m)"
+
+            maw_record = await bot.database.maw.get_record(user_id, maw_cycle_id)
+            if maw_record:
+                dmg = maw_record["damage_dealt"]
+                pct = reward_potential_pct(dmg)
+                collected_str = (
+                    "✅ Collected"
+                    if maw_record["rewards_collected"]
+                    else "⏳ Not yet collected"
+                )
+                maw_value = (
+                    f"{window_line}\n"
+                    f"Contribution: **{dmg:,}** dmg ({pct:.1f}%)\n"
+                    f"Rewards: {collected_str}"
+                )
+            else:
+                maw_value = f"{window_line}\nDidn't participate this cycle."
+
+        else:
+            next_ts = get_next_cycle_id(maw_cycle_id)
+            next_in = next_ts - now_ts
+            h, m = next_in // 3600, (next_in % 3600) // 60
+            maw_value = f"⏳ **Next cycle starts in {h}h {m}m**"
+
+        embed.add_field(name="🌀 Infinite Maw", value=maw_value, inline=False)
 
         return embed
 
