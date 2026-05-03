@@ -5,6 +5,18 @@ from discord import ButtonStyle, Interaction, SelectOption
 from discord.ui import Button, Select, View
 
 from core.companions.mechanics import CompanionMechanics
+from core.images import (
+    UPGRADE_CELESTIAL_ENGRAM,
+    UPGRADE_ENCHANT,
+    UPGRADE_FORGE,
+    UPGRADE_GEMINI_ENGRAM,
+    UPGRADE_INFERNAL_ENGRAM,
+    UPGRADE_REFINE,
+    UPGRADE_REINFORCE,
+    UPGRADE_TEMPER,
+    UPGRADE_VOID_ENGRAM,
+    UPGRADE_VOIDFORGE,
+)
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.items.factory import create_weapon
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
@@ -163,7 +175,7 @@ class ForgeView(BaseUpgradeView):
             description=desc,
             color=discord.Color.green() if has_res else discord.Color.red(),
         )
-        self.embed.set_thumbnail(url="https://i.imgur.com/jzEMUxe.jpeg")
+        self.embed.set_thumbnail(url=UPGRADE_FORGE)
 
         # --- DYNAMIC BUTTON BUILD ---
         self.clear_items()
@@ -431,7 +443,7 @@ class ForgeView(BaseUpgradeView):
             ),
             color=discord.Color.gold() if successes > 0 else discord.Color.dark_grey(),
         )
-        result_embed.set_thumbnail(url="https://i.imgur.com/jzEMUxe.jpeg")
+        result_embed.set_thumbnail(url=UPGRADE_FORGE)
 
         self.clear_items()
         self.add_back_button()
@@ -532,7 +544,7 @@ class RefineView(BaseUpgradeView):
         self.embed = discord.Embed(
             title=f"Refine {self.item.name}", description=desc, color=color
         )
-        self.embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
+        self.embed.set_thumbnail(url=UPGRADE_REFINE)
 
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=self.embed, view=self)
@@ -625,7 +637,7 @@ class RefineView(BaseUpgradeView):
             embed = discord.Embed(
                 title="Refine Complete! ✨", color=discord.Color.green()
             )
-            embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
+            embed.set_thumbnail(url=UPGRADE_REFINE)
             embed.description = (
                 f"**Gains:** {res_str}\n"
                 f"**Refinement:** +{self.item.refinement_lvl}\n\n"
@@ -751,7 +763,7 @@ class RefineView(BaseUpgradeView):
         embed = discord.Embed(
             title="Refinemaxx Complete! ⚡", color=discord.Color.gold()
         )
-        embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
+        embed.set_thumbnail(url=UPGRADE_REFINE)
         embed.description = (
             f"**Refines Performed:** {refines_done}\n"
             f"**Stopped Because:** {stop_reason}\n\n"
@@ -879,7 +891,7 @@ class RefineView(BaseUpgradeView):
         embed = discord.Embed(
             title="⚠️ Refinemaxx ✨ Confirmation", color=discord.Color.orange()
         )
-        embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
+        embed.set_thumbnail(url=UPGRADE_REFINE)
         embed.description = (
             f"This will perform **{total_cycles:,}** refine(s) using up to **{runes_used}** Rune(s).\n\n"
             f"**Estimated Resources Consumed:**\n"
@@ -986,7 +998,7 @@ class RefineView(BaseUpgradeView):
         embed = discord.Embed(
             title="Refinemaxx ✨ Complete!", color=discord.Color.gold()
         )
-        embed.set_thumbnail(url="https://i.imgur.com/NNB21Ix.jpeg")
+        embed.set_thumbnail(url=UPGRADE_REFINE)
         embed.description = (
             f"**Refines Performed:** {refines_done:,}\n"
             f"**Runes Consumed:** {runes_used}\n"
@@ -1044,7 +1056,7 @@ class PotentialView(BaseUpgradeView):
             description=desc,
             color=discord.Color.purple(),
         )
-        embed.set_thumbnail(url="https://i.imgur.com/hqVvn68.jpeg")
+        embed.set_thumbnail(url=UPGRADE_ENCHANT)
 
         # --- BUTTONS ---
         self.clear_items()
@@ -1121,7 +1133,7 @@ class PotentialView(BaseUpgradeView):
         )
 
         result_embed = discord.Embed(title="Enchantment Result")
-        result_embed.set_thumbnail(url="https://i.imgur.com/hqVvn68.jpeg")
+        result_embed.set_thumbnail(url=UPGRADE_ENCHANT)
 
         if success:
             if self.item.passive == "none":
@@ -1302,7 +1314,7 @@ class TemperView(BaseUpgradeView):
             description=desc,
             color=discord.Color.blue() if has_res else discord.Color.red(),
         )
-        embed.set_thumbnail(url="https://i.imgur.com/tpEyVBm.png")
+        embed.set_thumbnail(url=UPGRADE_TEMPER)
 
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
@@ -1397,7 +1409,7 @@ class TemperView(BaseUpgradeView):
         )
 
         res_embed = discord.Embed(title="Temper Result")
-        res_embed.set_thumbnail(url="https://i.imgur.com/tpEyVBm.png")
+        res_embed.set_thumbnail(url=UPGRADE_TEMPER)
         if success:
             self.item.temper_remaining -= 1
             await self.bot.database.equipment.update_counter(
@@ -1456,7 +1468,7 @@ class ImbueView(BaseUpgradeView):
             description=f"Cost: 1 Rune of Imbuing (Owned: {runes})\nSuccess Rate: **50%**\n\nGrants a powerful passive ability.",
             color=discord.Color.purple(),
         )
-        embed.set_thumbnail(url="https://i.imgur.com/tpEyVBm.png")
+        embed.set_thumbnail(url=UPGRADE_TEMPER)
         self.clear_items()
         confirm_btn = Button(
             label="Imbue", style=ButtonStyle.primary, disabled=(runes == 0)
@@ -1479,7 +1491,7 @@ class ImbueView(BaseUpgradeView):
         )
 
         embed = discord.Embed(title="Imbue Result")
-        embed.set_thumbnail(url="https://i.imgur.com/tpEyVBm.png")
+        embed.set_thumbnail(url=UPGRADE_TEMPER)
         if random.random() <= 0.5:
             new_p = random.choice(
                 [
@@ -1569,7 +1581,7 @@ class VoidforgeView(BaseUpgradeView):
             ),
             color=discord.Color.dark_purple(),
         )
-        embed.set_thumbnail(url="https://i.imgur.com/rZnRu0R.jpeg")
+        embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
 
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
@@ -1609,7 +1621,7 @@ class VoidforgeView(BaseUpgradeView):
             ),
             color=discord.Color.red(),
         )
-        embed.set_thumbnail(url="https://i.imgur.com/rZnRu0R.jpeg")
+        embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
 
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -1693,7 +1705,7 @@ class VoidforgeView(BaseUpgradeView):
         embed = discord.Embed(
             title="Voidforge Result", description=res_txt, color=color
         )
-        embed.set_thumbnail(url="https://i.imgur.com/rZnRu0R.jpeg")
+        embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
 
         # --- RESULT UI BUILD ---
         self.clear_items()
@@ -1794,7 +1806,7 @@ class ReinforceView(BaseUpgradeView):
         embed = discord.Embed(
             title=f"Reinforce {self.item.name}", description=desc, color=color
         )
-        embed.set_thumbnail(url="https://i.imgur.com/iy8EUW5.jpeg")
+        embed.set_thumbnail(url=UPGRADE_REINFORCE)
 
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
@@ -1861,7 +1873,7 @@ class ReinforceView(BaseUpgradeView):
             new_val = getattr(self.item, stat_col)
             suffix = "%" if is_pct else ""
             embed = discord.Embed(title="Reinforce Complete! ✨", color=discord.Color.green())
-            embed.set_thumbnail(url="https://i.imgur.com/iy8EUW5.jpeg")
+            embed.set_thumbnail(url=UPGRADE_REINFORCE)
             embed.description = (
                 f"**Gain:** +{gain}{suffix} {stat_label}\n"
                 f"**Reinforcement:** +{self.item.reinforcement_lvl}\n\n"
@@ -1913,7 +1925,7 @@ class InfernalEngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.dark_red(),
         )
-        self.embed.set_thumbnail(url="https://i.imgur.com/rNtYFGa.jpeg")
+        self.embed.set_thumbnail(url=UPGRADE_INFERNAL_ENGRAM)
 
         self.clear_items()
         btn_consume = Button(
@@ -1968,7 +1980,7 @@ class InfernalEngramView(BaseUpgradeView):
             description=f"The Engram shatters in hellfire, branding your weapon.\n\n**New Passive:** {display_new}",
             color=discord.Color.red(),
         )
-        res_embed.set_thumbnail(url="https://i.imgur.com/rNtYFGa.jpeg")
+        res_embed.set_thumbnail(url=UPGRADE_INFERNAL_ENGRAM)
 
         self.clear_items()
         if uber_prog["infernal_engrams"] - 1 > 0:
@@ -2020,7 +2032,7 @@ class BalancedEngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.blurple(),
         )
-        self.embed.set_thumbnail(url="https://i.imgur.com/Wrr7yLr.jpeg")
+        self.embed.set_thumbnail(url=UPGRADE_GEMINI_ENGRAM)
 
         self.clear_items()
         btn_consume = Button(
@@ -2086,7 +2098,7 @@ class BalancedEngramView(BaseUpgradeView):
             ),
             color=discord.Color.blurple(),
         )
-        res_embed.set_thumbnail(url="https://i.imgur.com/Wrr7yLr.jpeg")
+        res_embed.set_thumbnail(url=UPGRADE_GEMINI_ENGRAM)
 
         self.clear_items()
         remaining = uber_prog.get("gemini_engrams", 0) - 1
@@ -2132,7 +2144,7 @@ class VoidEngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.dark_theme(),
         )
-        self.embed.set_thumbnail(url="https://i.imgur.com/z4Z4puO.jpeg")
+        self.embed.set_thumbnail(url=UPGRADE_VOID_ENGRAM)
         self.clear_items()
         btn_consume = Button(
             label="Consume Engram",
@@ -2183,7 +2195,7 @@ class VoidEngramView(BaseUpgradeView):
             description=f"The Engram dissolves into the void, reshaping your accessory.\n\n**New Passive:** {display_new}",
             color=discord.Color.dark_theme(),
         )
-        res_embed.set_thumbnail(url="https://i.imgur.com/z4Z4puO.jpeg")
+        res_embed.set_thumbnail(url=UPGRADE_VOID_ENGRAM)
         self.clear_items()
         if uber_prog["void_engrams"] - 1 > 0:
             btn_again = Button(label="Roll Again", style=ButtonStyle.primary)
@@ -2221,7 +2233,7 @@ class EngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.purple(),
         )
-        self.embed.set_thumbnail(url="https://i.imgur.com/MGtoLnw.jpeg")
+        self.embed.set_thumbnail(url=UPGRADE_CELESTIAL_ENGRAM)
 
         self.clear_items()
         btn_consume = Button(
@@ -2273,7 +2285,7 @@ class EngramView(BaseUpgradeView):
             title="🌌 Engram Resonated!", color=discord.Color.gold()
         )
         res_embed.description = f"The Engram shatters, weaving divine energy into your armor.\n\n**New Passive:** {display_new}"
-        res_embed.set_thumbnail(url="https://i.imgur.com/MGtoLnw.jpeg")
+        res_embed.set_thumbnail(url=UPGRADE_CELESTIAL_ENGRAM)
 
         self.clear_items()
         if uber_prog["celestial_engrams"] - 1 > 0:

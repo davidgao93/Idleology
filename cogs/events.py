@@ -1,27 +1,30 @@
-import discord
 import random
+
+import discord
 from discord.ext import commands, tasks
 from discord import app_commands, Interaction
+
 from core.events.views import RandomEventView
+from core.images import EVENT_ASTEROID, EVENT_DRYAD, EVENT_LEPRECHAUN, EVENT_TIDE
 
 class Events(commands.Cog, name="events"):
     def __init__(self, bot):
         self.bot = bot
         self.event_definitions = {
             "leprechaun": {
-                "image": "https://i.imgur.com/fZTCt8S.png",
+                "image": EVENT_LEPRECHAUN,
                 "desc": "A leprechaun appears! Click the button to reach into his... uh..."
             },
             "meteorite": {
-                "image": "https://i.imgur.com/QeBaabP.png",
+                "image": EVENT_ASTEROID,
                 "desc": "A meteorite crashes nearby! Miners required!"
             },
             "dryad": {
-                "image": "https://i.imgur.com/8CQGsmf.png",
+                "image": EVENT_DRYAD,
                 "desc": "A giant dryad appears! Foresters required!"
             },
             "high_tide": {
-                "image": "https://i.imgur.com/cgl89Ei.png",
+                "image": EVENT_TIDE,
                 "desc": "The High Tide rises! Trawlers required!"
             }
         }

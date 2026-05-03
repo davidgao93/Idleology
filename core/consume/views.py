@@ -1,6 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.images import CONSUME_HUB
 from core.items.factory import create_monster_part
 from core.models import MonsterPart, Player
 
@@ -69,7 +70,7 @@ def _build_main_embed(player: Player, inventory: list) -> discord.Embed:
                 value="*Empty*",
                 inline=True,
             )
-    embed.set_thumbnail(url="https://i.imgur.com/6auOJcS.jpeg")
+    embed.set_thumbnail(url=CONSUME_HUB)
     return embed
 
 

@@ -31,7 +31,10 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\('core/partners/views.py'\\).read\\(\\)\\); print\\('views.py OK'\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\('core/partners/views_boss_party.py', encoding='utf-8'\\).read\\(\\)\\); print\\('views_boss_party.py OK'\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\('core/partners/views.py', encoding='utf-8'\\).read\\(\\)\\); print\\('views.py OK'\\)\")",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('core/inventory/inventory.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('core/inventory/inventory.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")",
+      "Bash(C:/Users/yugao/AppData/Local/Programs/Python/Python311/python.exe tools/apply_discord_urls.py)",
+      "Bash(C:/Users/yugao/AppData/Local/Programs/Python/Python311/python.exe -c ' *)",
+      "Bash(C:/Users/yugao/AppData/Local/Programs/Python/Python311/python.exe tools/seed_discord_images.py)"
     ]
   }
 }

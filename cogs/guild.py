@@ -1,11 +1,13 @@
+import json
+
 import discord
 from discord.ext import commands
-from discord import app_commands, Interaction
-from core.items.factory import load_player
-from core.character.views import RegistrationView, UnregisterView
-import json
-from discord.ext.tasks import asyncio
 from discord import app_commands, Interaction, Message
+from discord.ext.tasks import asyncio
+
+from core.character.views import RegistrationView, UnregisterView
+from core.images import DEFAULT_SILHOUETTE
+from core.items.factory import load_player
 
 class Guild(commands.Cog, name="adventurer's guild"):
     def __init__(self, bot):
@@ -33,7 +35,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
             description=f"Welcome, **{name}**!\nPlease select your appearance.",
             color=0x00FF00
         )
-        embed.set_image(url="https://i.imgur.com/6pRwl0k.jpeg") # Default silhouette
+        embed.set_image(url=DEFAULT_SILHOUETTE)
         
         view = RegistrationView(self.bot, user_id, name)
         await interaction.response.send_message(embed=embed, view=view)

@@ -9,6 +9,7 @@ from core.combat.modifier_data import (
     RARE_TIERED_MOD_NAMES,
     make_modifier,
 )
+from core.images import COMBAT_DUMMY, MONSTER_APHRODITE, MONSTER_GEMINI, MONSTER_LUCIFER, MONSTER_NEET
 from core.models import Monster, MonsterModifier
 
 
@@ -322,7 +323,7 @@ async def fetch_monster_image(level, monster_data, task_species=None):
     except Exception as e:
         print(f"Error reading monsters.csv: {e}")
         monster_data.name = "Commoner"
-        monster_data.image = "https://i.imgur.com/v1BrB1M.png"
+        monster_data.image = COMBAT_DUMMY
         monster_data.flavor = "stares pleadingly at"
         monster_data.species = "Humanoid"
         return monster_data
@@ -352,7 +353,7 @@ async def fetch_monster_image(level, monster_data, task_species=None):
 
         if not selected_monsters:
             monster_data.name = "Commoner"
-            monster_data.image = "https://i.imgur.com/v1BrB1M.png"
+            monster_data.image = COMBAT_DUMMY
             monster_data.flavor = "says how did you find me???"
             monster_data.species = "Humanoid"
             return monster_data
@@ -452,7 +453,7 @@ async def generate_uber_lucifer(player, monster):
     monster.xp = 75000
 
     monster.name = "Lucifer, Infernal Sovereign"
-    monster.image = "https://i.imgur.com/FsK30xp.jpeg"
+    monster.image = MONSTER_LUCIFER
     monster.flavor = "exudes an overwhelming killing intent"
     monster.species = "Demon"
     monster.is_boss = True
@@ -488,7 +489,7 @@ def generate_uber_neet(player, monster):
     monster.xp = 75000
 
     monster.name = "NEET, the Void Sovereign"
-    monster.image = "https://i.imgur.com/o8e56uN.jpeg"
+    monster.image = MONSTER_NEET
     monster.flavor = "radiates an entropic void"
     monster.species = "Void"
     monster.is_boss = True
@@ -521,7 +522,7 @@ def generate_uber_gemini(player, monster):
     monster.xp = 75000
 
     monster.name = "Castor & Pollux, Bound Sovereigns"
-    monster.image = "https://i.imgur.com/tCvDbCn.jpeg"
+    monster.image = MONSTER_GEMINI
     monster.flavor = "move in perfect synchrony"
     monster.species = "Celestial"
     monster.is_boss = True
@@ -554,7 +555,7 @@ async def generate_uber_aphrodite(player, monster):
     monster.xp = 75000
 
     monster.name = "Aphrodite, Celestial Apex"
-    monster.image = "https://i.imgur.com/je9CVKH.jpeg"
+    monster.image = MONSTER_APHRODITE
     monster.flavor = "radiates an overwhelming aura"
     monster.species = "Celestial"
     monster.is_boss = True

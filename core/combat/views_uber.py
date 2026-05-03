@@ -10,6 +10,7 @@ from core.combat.gen_mob import (
     generate_uber_neet,
 )
 from core.combat.views import CombatView  # Reuse the battle engine
+from core.images import BOSS_APHRODITE, BOSS_GEMINI, BOSS_LUCIFER, BOSS_NEET
 from core.models import Monster, Player
 
 
@@ -248,7 +249,7 @@ class UberAphroditeLobbyView(ui.View):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="🌌 The Celestial Apex", color=discord.Color.gold())
-        embed.set_thumbnail(url="https://i.imgur.com/26dzbFN.jpeg")
+        embed.set_thumbnail(url=BOSS_APHRODITE)
 
         desc = (
             "A chibi angel appears and says: ME HUNGRY, FEED ME SIGILS!\n\n"
@@ -425,7 +426,7 @@ class UberLuciferLobbyView(ui.View):
             inline=True,
         )
         embed.add_field(name="Infernal Forge Blueprint", value=bp_status, inline=True)
-        embed.set_thumbnail(url="https://i.imgur.com/tIcLLI1.png")
+        embed.set_thumbnail(url=BOSS_LUCIFER)
         return embed
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -578,7 +579,7 @@ class UberNEETLobbyView(ui.View):
             inline=True,
         )
         embed.add_field(name="Void Sanctum Blueprint", value=bp_status, inline=True)
-        embed.set_thumbnail(url="https://i.imgur.com/V5Hd9d9.png")
+        embed.set_thumbnail(url=BOSS_NEET)
         return embed
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -710,7 +711,7 @@ class UberGeminiLobbyView(ui.View):
         embed = discord.Embed(
             title="♊ The Bound Sovereigns", color=discord.Color.blurple()
         )
-        embed.set_thumbnail(url="https://i.imgur.com/PqViP3D.png")
+        embed.set_thumbnail(url=BOSS_GEMINI)
 
         desc = (
             "You approach two chubby kids. A voice — no, two voices, perfectly in time:\n"

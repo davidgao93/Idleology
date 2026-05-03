@@ -1,6 +1,7 @@
 import discord
 from discord import ui, ButtonStyle, Interaction, SelectOption
 from core.combat.dummy_engine import DummyEngine
+from core.images import COMBAT_DUMMY
 from core.models import Monster
 from core.combat.gen_mob import get_modifier_description, calculate_monster_stats
 from core.combat.modifier_data import (
@@ -98,7 +99,7 @@ class DummyConfigView(ui.View):
             title="🥋 Combat Dojo",
             color=discord.Color.green() if results else discord.Color.light_grey(),
         )
-        embed.set_thumbnail(url="https://i.imgur.com/v1BrB1M.png")
+        embed.set_thumbnail(url=COMBAT_DUMMY)
 
         # Settings summary
         mods_text = ", ".join(self.active_mods) if self.active_mods else "None"

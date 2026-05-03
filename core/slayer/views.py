@@ -1,6 +1,9 @@
+import random
+
 import discord
 from discord import ui, ButtonStyle, Interaction, SelectOption
-import random
+
+from core.images import SLAYER_EMBLEM, SLAYER_MASTER
 from core.slayer.mechanics import SlayerMechanics
 
 
@@ -30,7 +33,7 @@ class SlayerDashboardView(ui.View):
         current_xp_prog, next_xp_req = SlayerMechanics.get_xp_progress(self.profile['xp'])
 
         embed = discord.Embed(title="💀 Slayer Master", color=discord.Color.dark_red())
-        embed.set_thumbnail(url="https://i.imgur.com/oMkaM34.jpeg") # slayer master image
+        embed.set_thumbnail(url=SLAYER_MASTER)
         
         embed.add_field(name="Profile", value=f"**Level:** {lvl}\n**XP:** {current_xp_prog:,}/{next_xp_req:,}\n**Points:** {pts}", inline=True)
         embed.add_field(name="Materials", value=f"🩸 **Violent Essence:** {self.profile['violent_essence']}\n❤️ **Imbued Hearts:** {self.profile['imbued_heart']}", inline=True)
@@ -118,7 +121,7 @@ class EmblemView(ui.View):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="💀 Slayer Emblem", description="Enhance your combat prowess.", color=discord.Color.dark_purple())
-        embed.set_thumbnail(url="https://i.imgur.com/sEbbos9.png")
+        embed.set_thumbnail(url=SLAYER_EMBLEM)
         # Display Slots
         unlock_reqs = {1: 1, 2: 20, 3: 40, 4: 60, 5: 80}
         

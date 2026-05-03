@@ -2,8 +2,10 @@
 
 from discord.ext import commands
 from discord import app_commands, Interaction
-from core.items.factory import create_companion
+
 from core.companions.views import CompanionListView
+from core.images import COMPANIONS_HUB
+from core.items.factory import create_companion
 
 class Companions(commands.Cog):
     def __init__(self, bot):
@@ -27,7 +29,7 @@ class Companions(commands.Cog):
         self.bot.state_manager.set_active(user_id, "companions")
         view = CompanionListView(self.bot, user_id, companions)
         embed = view.get_embed()
-        embed.set_thumbnail(url="https://i.imgur.com/oQBm9HF.png")
+        embed.set_thumbnail(url=COMPANIONS_HUB)
 
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()

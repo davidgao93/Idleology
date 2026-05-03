@@ -3,6 +3,7 @@ from discord import ui, ButtonStyle, Interaction
 
 from core.alchemy.mechanics import AlchemyMechanics
 from core.alchemy.synthesis_views import _build_synthesis_hub
+from core.images import ALCHEMY_HUB
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -51,7 +52,7 @@ class AlchemyHubView(ui.View):
         level_cost = AlchemyMechanics.get_level_up_cost(self.alchemy_level)
 
         embed = discord.Embed(title="⚗️ Alchemy", color=discord.Color.purple())
-        embed.set_thumbnail(url="https://i.imgur.com/tPQiPaM.png")
+        embed.set_thumbnail(url=ALCHEMY_HUB)
         info = [
             f"**Level:** {self.alchemy_level} / {AlchemyMechanics.MAX_LEVEL}",
             f"**Spirit Stones:** 🔮 {self.spirit_stones}",

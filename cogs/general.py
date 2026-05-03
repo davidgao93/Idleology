@@ -9,6 +9,7 @@ from core.combat.modifier_data import (
     COMMON_MOD_NAMES, RARE_TIERED_MOD_NAMES, RARE_FLAT_MOD_NAMES,
     BOSS_MOD_NAMES, MODIFIER_DEFINITIONS, make_modifier,
 )
+from core.images import TAVERN_KEEPER
 
 
 class General(commands.Cog, name="general"):
@@ -569,8 +570,8 @@ class General(commands.Cog, name="general"):
             color=0xBEBEFE,
         )
         embed.set_thumbnail(
-            url="https://i.imgur.com/81jN8tA.jpeg"
-        )  # Tavern Keeper or Logo
+            url=TAVERN_KEEPER
+        )
 
         for category, cmds in categories.items():
             command_list = []

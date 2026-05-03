@@ -27,6 +27,18 @@ from core.partners.mechanics import (
     roll_single,
     roll_ten,
 )
+from core.images import (
+    GACHA_BANNER_4STAR,
+    GACHA_BANNER_5STAR,
+    GACHA_BANNER_6STAR,
+    PARTNERS_BOSS_PARTY,
+    PARTNERS_DISPATCH,
+    PARTNERS_FEMALE,
+    PARTNERS_HUB,
+    PARTNERS_INTRO,
+    PARTNERS_MALE,
+    PARTNERS_SKILLS,
+)
 from core.partners.resources import _rarity_colour, _sig_display_name, _skill_display_name, _stars
 from core.partners.ui import _build_partner_embed, _build_roster_embed
 
@@ -547,9 +559,9 @@ class PartnerSkillsView(ui.View):
             colour=_rarity_colour(p.rarity),
         )
         if self.mode == "combat":
-            embed.set_thumbnail(url="https://i.imgur.com/hRAMSPh.jpeg")
+            embed.set_thumbnail(url=PARTNERS_MALE)
         else:
-            embed.set_thumbnail(url="https://i.imgur.com/2fMB2JI.jpeg")
+            embed.set_thumbnail(url=PARTNERS_FEMALE)
         shards_key = (
             "combat_skill_shards" if self.mode == "combat" else "dispatch_skill_shards"
         )
@@ -878,7 +890,7 @@ class DispatchView(ui.View):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="📋 Dispatch", colour=0x8BC34A)
-        embed.set_thumbnail(url="https://i.imgur.com/AlEM3ov.jpeg")
+        embed.set_thumbnail(url=PARTNERS_HUB)
         active = self._get_active_dispatch()
         if active:
             from core.partners.dispatch import elapsed_hours, get_cap_hours
@@ -1107,7 +1119,7 @@ class DispatchView(ui.View):
         )
         form_view.message = self.message
         embed = _build_form_embed(form_view.slots, self.partners)
-        embed.set_thumbnail(url="https://i.imgur.com/Q4SzClS.jpeg")
+        embed.set_thumbnail(url=PARTNERS_BOSS_PARTY)
         await interaction.edit_original_response(embed=embed, view=form_view)
 
     async def _on_select(self, interaction: Interaction):
@@ -1249,7 +1261,7 @@ class DispatchView(ui.View):
             ),
             colour=_rarity_colour(sp.rarity),
         )
-        embed.set_thumbnail(url="https://i.imgur.com/AlEM3ov.jpeg")
+        embed.set_thumbnail(url=PARTNERS_HUB)
         await interaction.edit_original_response(embed=embed, view=task_view)
 
     async def _back(self, interaction: Interaction):
@@ -1494,7 +1506,7 @@ class PullView(ui.View):
             name="Pity",
             value=f"**{items.get('pity_counter', 0)}/100**",
         )
-        embed.set_image(url="https://i.imgur.com/Vmjfyj5.jpeg")
+        embed.set_image(url=PARTNERS_INTRO)
         return embed
 
     @ui.button(label="Pull ×1 (1 ticket)", style=ButtonStyle.primary)
@@ -1536,9 +1548,9 @@ class PullView(ui.View):
 
         max_rarity = max(rarities)
         banner_urls = {
-            4: "https://i.imgur.com/NpUHE2b.jpeg",
-            5: "https://i.imgur.com/OUrwCWk.jpeg",
-            6: "https://i.imgur.com/Kfmq9Pg.jpeg",
+            4: GACHA_BANNER_4STAR,
+            5: GACHA_BANNER_5STAR,
+            6: GACHA_BANNER_6STAR,
         }
         banner_embed = discord.Embed(
             title="🎫 Recruiting...",
@@ -2047,7 +2059,7 @@ class AffinityView(ui.View):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="💞 Partner Affinity", colour=0xFF6B6B)
-        embed.set_thumbnail(url="https://i.imgur.com/Qz6oh3J.jpeg")
+        embed.set_thumbnail(url=PARTNERS_SKILLS)
         lines = []
         for p in self.partners:
             story_idx = next_available_story(
@@ -2240,7 +2252,7 @@ class PartnerMainView(ui.View):
             ),
             inline=True,
         )
-        embed.set_thumbnail(url="https://i.imgur.com/agWsjri.jpeg")
+        embed.set_thumbnail(url=PARTNERS_DISPATCH)
         return embed
 
     @ui.button(label="Roster", style=ButtonStyle.primary, emoji="📋")

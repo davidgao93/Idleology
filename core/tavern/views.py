@@ -1,5 +1,7 @@
 import discord
 from discord import ui, ButtonStyle, Interaction
+
+from core.images import TAVERN_CASINO
 from core.tavern.mechanics import TavernMechanics
 # Import minigames directly to handle transitions without Cog
 from core.minigames.views import BlackjackView, RouletteView, CrashView, HorseRaceView
@@ -164,7 +166,7 @@ class CasinoMenuView(ui.View):
         if not await self._check_funds(interaction): return
         
         embed = discord.Embed(title="🎡 Roulette Table", description=f"Betting **{self.bet_amount:,} gold**.\nChoose your wager:", color=discord.Color.red())
-        embed.set_thumbnail(url="https://i.imgur.com/D8HlsQX.jpeg")
+        embed.set_thumbnail(url=TAVERN_CASINO)
         
         view = RouletteView(self.bot, self.user_id, self.bet_amount, interaction)
         await interaction.response.edit_message(embed=embed, view=view)

@@ -2,6 +2,7 @@ from typing import Any, Dict
 
 import discord
 
+from core.images import COMBAT_REDEMPTION, COMBAT_VICTORY
 from core.models import Monster, Player
 
 
@@ -101,7 +102,7 @@ def create_victory_embed(
         description=f"{player.name} has slain the {monster.name} with {player.current_hp} ❤️ remaining!",
         color=0x00FF00,
     )
-    embed.set_thumbnail(url="https://i.imgur.com/jr5PUj5.png")
+    embed.set_thumbnail(url=COMBAT_VICTORY)
     # Passive Proc Messages (Prosper, Infinite Wisdom, etc)
     if rewards.get("msgs"):
         for msg in rewards["msgs"]:
@@ -231,5 +232,5 @@ def create_defeat_embed(
         value=f"({player.name} revives with 1 HP.)",
         inline=False,
     )
-    embed.set_thumbnail(url="https://i.imgur.com/kqGzbvb.png")
+    embed.set_thumbnail(url=COMBAT_REDEMPTION)
     return embed

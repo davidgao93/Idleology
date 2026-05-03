@@ -1,8 +1,10 @@
 import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
-from core.minigames.mechanics import DelveMechanics, DelveState
+
+from core.images import DELVE_HUB
 from core.minigames.delve_views import DelveView, DelveUpgradeView, DelveEntryView
+from core.minigames.mechanics import DelveMechanics, DelveState
 
 class Delve(commands.Cog):
     def __init__(self, bot):
@@ -60,7 +62,7 @@ class Delve(commands.Cog):
             "Once your fuel reaches 0, it's over, you lose it all.\n"
             "Extract before the mines consume you."
         )
-        embed.set_thumbnail(url="https://i.imgur.com/qRyUGXU.png") 
+        embed.set_thumbnail(url=DELVE_HUB)
         view = DelveEntryView(self.bot, user_id, server_id, entry_cost, start_game)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
@@ -76,7 +78,7 @@ class Delve(commands.Cog):
         delve_stats = await self.bot.database.delve.get_profile(user_id, server_id)
         
         embed = discord.Embed(title="🛠️ Delve Workshop", color=discord.Color.dark_orange())
-        embed.set_thumbnail(url="https://i.imgur.com/qRyUGXU.png") 
+        embed.set_thumbnail(url=DELVE_HUB)
         embed.description = f"💎 **Obsidian Shards:** {delve_stats['shards']}"
         embed.add_field(name="Upgrades", value="Use Shards to improve your specialized equipment.", inline=False)
         

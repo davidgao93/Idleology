@@ -1,5 +1,6 @@
 import discord
 
+from core.images import MAW_MAIN, MAW_VICTORY
 from core.maw.mechanics import (
     DAMAGE_CAP,
     boost_available,
@@ -12,8 +13,8 @@ from core.maw.mechanics import (
     reward_potential_pct,
 )
 
-_MAW_MAIN_IMAGE = "https://i.imgur.com/Vx1mUTC.jpeg"
-_MAW_VICTORY_IMAGE = "https://i.imgur.com/MvQIBaP.jpeg"
+_MAW_MAIN_IMAGE = MAW_MAIN
+_MAW_VICTORY_IMAGE = MAW_VICTORY
 
 
 def _fmt_time(seconds: int) -> str:

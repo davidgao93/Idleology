@@ -15,6 +15,18 @@ from core.combat.experience import ExperienceManager
 from core.combat.gen_mob import generate_boss
 from core.combat.views_lucifer import InfernalContractView, LuciferChoiceView
 from core.companions.mechanics import CompanionMechanics
+from core.images import (
+    BOSS_APHRODITE,
+    BOSS_GEMINI_PET,
+    BOSS_LUCIFER,
+    BOSS_NEET,
+    VICTORY_APHRODITE_GEMINI,
+    VICTORY_CELESTIAL,
+    VICTORY_GEMINI,
+    VICTORY_INFERNAL,
+    VICTORY_LUCIFER,
+    VICTORY_NEET,
+)
 from core.models import Monster, Player
 
 
@@ -80,8 +92,8 @@ class CombatView(ui.View):
         # Toggle buttons based on current state (Enabled if both alive, Disabled if one dead)
         is_over = self.player.current_hp <= 0 or self.monster.hp <= 0
         for child in self.children:
-            child.disabled = is_over
-        if not is_over:
+            child.disabled = is_over or self._auto_running
+        if not is_over and not self._auto_running:
             self.heal_btn.disabled = self.player.potions <= 0
 
     def _do_monster_turn(self) -> str:
@@ -139,6 +151,9 @@ class CombatView(ui.View):
         self._auto_running = True
         message = interaction.message
 
+        self.update_buttons()
+        await message.edit(view=self)
+
         while True:
             # Inner loop: fight the current phase to completion
             while self.player.current_hp > hp_threshold and self.monster.hp > 0:
@@ -165,6 +180,7 @@ class CombatView(ui.View):
                 and self.monster.hp > 0
             ):
                 self.logs["Auto-Battle"] = "🛑 Paused: Low HP Protection triggered!"
+                self.update_buttons()
                 embed = combat_ui.create_combat_embed(
                     self.player, self.monster, self.logs
                 )
@@ -268,13 +284,13 @@ class CombatView(ui.View):
 
     def _get_boss_pet_image(self, boss_name: str) -> str:
         if "NEET" in boss_name:
-            return "https://i.imgur.com/V5Hd9d9.png"
+            return BOSS_NEET
         if "Aphrodite" in boss_name:
-            return "https://i.imgur.com/26dzbFN.jpeg"
+            return BOSS_APHRODITE
         if "Gemini" in boss_name:
-            return "https://i.imgur.com/YL7WPXS.jpeg"
+            return BOSS_GEMINI_PET
         if "Lucifer" in boss_name:
-            return "https://i.imgur.com/tIcLLI1.png"
+            return BOSS_LUCIFER
         return None
 
     # --- Uber encounter helpers ---
@@ -837,10 +853,10 @@ class CombatView(ui.View):
 
             # Final Boss Scenes
             if "Aphrodite" in self.monster.name or "Gemini" in self.monster.name:
-                embed.set_thumbnail(url="https://i.imgur.com/wKyTFzh.jpg")
+                embed.set_thumbnail(url=VICTORY_APHRODITE_GEMINI)
                 await message.edit(embed=embed, view=None)
             elif "NEET" in self.monster.name:
-                embed.set_thumbnail(url="https://i.imgur.com/7UmY4Mo.jpeg")
+                embed.set_thumbnail(url=VICTORY_NEET)
                 embed.add_field(
                     name="Loot", value="Found a **Void Key**.", inline=False
                 )
@@ -849,7 +865,7 @@ class CombatView(ui.View):
                 )
                 await message.edit(embed=embed, view=None)
             elif "Lucifer" in self.monster.name:
-                embed.set_thumbnail(url="https://i.imgur.com/oFWJLo7.jpeg")
+                embed.set_thumbnail(url=VICTORY_LUCIFER)
                 embed.add_field(
                     name="❤️‍🔥 A Soul Core manifests...",
                     value=(
@@ -925,7 +941,7 @@ class CombatView(ui.View):
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
         embed.title = "🌌 Apex Shattered!"
-        embed.set_image(url="https://i.imgur.com/ffu5KX0.jpeg")
+        embed.set_image(url=VICTORY_CELESTIAL)
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
@@ -967,7 +983,7 @@ class CombatView(ui.View):
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
         embed.title = "🔥 Infernal Sovereign Defeated!"
-        embed.set_image(url="https://i.imgur.com/ngTUw77.png")
+        embed.set_image(url=VICTORY_INFERNAL)
 
         contract_view = InfernalContractView(self.bot, self.user_id, self.player, self.server_id, message)
         embed.add_field(
@@ -1018,7 +1034,7 @@ class CombatView(ui.View):
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
         embed.title = "⬛ Void Sovereign Defeated!"
-        embed.set_thumbnail(url="https://i.imgur.com/7UmY4Mo.jpeg")
+        embed.set_thumbnail(url=VICTORY_NEET)
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
@@ -1060,7 +1076,7 @@ class CombatView(ui.View):
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
         embed.title = "♊ Bound Sovereigns Defeated!"
-        embed.set_image(url="https://i.imgur.com/JCl4YPE.jpeg")
+        embed.set_image(url=VICTORY_GEMINI)
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()

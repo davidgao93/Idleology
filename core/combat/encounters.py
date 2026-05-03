@@ -1,6 +1,8 @@
 import random
 from typing import Any, Dict, List, Tuple
 
+from core.images import ENCOUNTER_ANGELIC_DRAGON, ENCOUNTER_BALANCE, ENCOUNTER_SOUL_CORE, ENCOUNTER_VOID_FRAGMENT
+
 
 class EncounterManager:
     @staticmethod
@@ -48,28 +50,28 @@ class EncounterManager:
             return {
                 "title": "A Celestial Gate",
                 "desc": "Your **Angelic** and **Draconic** keys tremble.\nUnlock the gate?",
-                "img": "https://i.imgur.com/PXOhTbX.png",
+                "img": ENCOUNTER_ANGELIC_DRAGON,
                 "cost_str": "-1 Dragon Key, -1 Angelic Key",
             }
         elif boss_type == "lucifer":
             return {
                 "title": "An Infernal Gate",
                 "desc": "Your soul cores tremble. Unlock the gate?",
-                "img": "https://i.imgur.com/bWMAksf.png",
+                "img": ENCOUNTER_SOUL_CORE,
                 "cost_str": "-5 Soul Cores",
             }
         elif boss_type == "NEET":
             return {
                 "title": "Sad Kid Behind a Gate",
                 "desc": "Your **void fragments** suddenly start to resonate.\nUnlock the gate?",
-                "img": "https://i.imgur.com/0DU2Vfo.jpeg",
+                "img": ENCOUNTER_VOID_FRAGMENT,
                 "cost_str": "-3 Void Fragments",
             }
         elif boss_type == "gemini":
             return {
                 "title": "A Twinned Gate",
                 "desc": "Your **Fragments of Balance** hums in resonance.\nUnlock the gate?",
-                "img": "https://i.imgur.com/em9ZGer.png",
+                "img": ENCOUNTER_BALANCE,
                 "cost_str": "-2 Fragments of Balance",
             }
         return {}

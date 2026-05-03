@@ -14,6 +14,7 @@ from core.combat.loot import (
     generate_weapon,
 )
 from core.companions.mechanics import CompanionMechanics
+from core.images import SETTLEMENT_BUILDINGS, SETTLEMENT_HUB
 from core.items.factory import load_player
 from core.models import Building, Settlement
 from core.settlement.mechanics import SettlementMechanics
@@ -201,7 +202,7 @@ class BlackMarketView(ui.View):
                 cost_str += f" | ✨ {costs['special_name']} x{costs['special_qty']}"
             embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
 
-        embed.set_thumbnail(url="https://i.imgur.com/ZMle2mm.png")
+        embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
         return embed
 
     async def upgrade_facility(self, interaction: Interaction):
@@ -618,7 +619,7 @@ class TownHallView(ui.View):
             embed.add_field(
                 name="Status", value="🌟 Maximum Authority Reached", inline=False
             )
-        embed.set_thumbnail(url="https://i.imgur.com/xNY7tPj.png")
+        embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["town_hall"])
         return embed
 
     def setup_ui(self):
@@ -809,7 +810,7 @@ class SettlementDashboardView(ui.View):
             f"🪵 **Timber:** {self.settlement.timber:,}\n"
             f"🪨 **Stone:** {self.settlement.stone:,}"
         )
-        embed.set_thumbnail(url="https://i.imgur.com/xNY7tPj.png")
+        embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["town_hall"])
 
         if self.settlement.buildings:
             lines = []
@@ -1126,7 +1127,7 @@ class BuildConstructionView(ui.View):
             description="Select a blueprint to begin construction.\n\n__**Available Blueprints**__",
             color=discord.Color.blue(),
         )
-        embed.set_thumbnail(url="https://i.imgur.com/cZcEKhS.png")
+        embed.set_thumbnail(url=SETTLEMENT_HUB)
         existing_types = {b.building_type for b in self.parent.settlement.buildings}
 
         UBER_LOCKS = {
@@ -1353,24 +1354,7 @@ class BuildingDetailView(ui.View):
         "bound_crystal": "Bound Crystal",
     }
 
-    THUMBNAILS = {
-        "town_hall": "https://i.imgur.com/xNY7tPj.png",
-        "logging_camp": "https://i.imgur.com/CWhzIHy.png",
-        "quarry": "https://i.imgur.com/ChAHxnq.png",
-        "foundry": "https://i.imgur.com/WFr1Z31.png",
-        "sawmill": "https://i.imgur.com/Cj8D00u.png",
-        "reliquary": "https://i.imgur.com/W9iiQtD.png",
-        "market": "https://i.imgur.com/FavvGUA.png",
-        "barracks": "https://i.imgur.com/RvhhUCJ.png",
-        "temple": "https://i.imgur.com/4bmHF4u.png",
-        "apothecary": "https://i.imgur.com/vfJuogU.png",
-        "black_market": "https://i.imgur.com/ZMle2mm.png",
-        "companion_ranch": "https://i.imgur.com/7gPxP4N.png",
-        "celestial_shrine": "https://i.imgur.com/4bmHF4u.png",
-        "infernal_forge": "https://i.imgur.com/x9suAGK.png",
-        "void_sanctum": "https://i.imgur.com/4bmHF4u.png",
-        "twin_shrine": "https://i.imgur.com/4bmHF4u.png",
-    }
+    THUMBNAILS = SETTLEMENT_BUILDINGS
 
     BUILDING_INFO = {
         "logging_camp": "Generates Timber. Required for upgrades.",

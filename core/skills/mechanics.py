@@ -1,6 +1,9 @@
 import random
 from typing import Dict, Tuple, Optional, List
 
+from core.images import TOOL_AXE, TOOL_PICKAXE, TOOL_ROD
+
+
 class SkillMechanics:
 
     # --- Minigame Config ---
@@ -76,7 +79,7 @@ class SkillMechanics:
         "display_name": "Mining",
         "emoji": "⛏️",
         "tool_name": "Pickaxe",
-        "image": "https://i.imgur.com/4OS6Blx.jpeg",
+        "image": TOOL_PICKAXE,
         "resources": [
             ("iron", "Iron Ore"),
             ("coal", "Coal"),
@@ -89,7 +92,7 @@ class SkillMechanics:
         "display_name": "Woodcutting",
         "emoji": "🪓",
         "tool_name": "Axe",
-        "image": "https://i.imgur.com/X0JdvX8.jpeg",
+        "image": TOOL_AXE,
         "resources": [
             ("oak_logs", "Oak Logs"),
             ("willow_logs", "Willow Logs"),
@@ -102,7 +105,7 @@ class SkillMechanics:
         "display_name": "Fishing",
         "emoji": "🎣",
         "tool_name": "Rod",
-        "image": "https://i.imgur.com/JpgyGlD.jpeg",
+        "image": TOOL_ROD,
         "resources": [
             ("desiccated_bones", "Desiccated Bones"),
             ("regular_bones", "Regular Bones"),

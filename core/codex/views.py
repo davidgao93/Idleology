@@ -23,6 +23,7 @@ from core.combat.combat_log import CombatLogger
 from core.combat.experience import ExperienceManager
 from core.combat.gen_mob import generate_ascent_monster
 from core.combat.rewards import calculate_rewards
+from core.images import CODEX_BOON, CODEX_CHAPTERS, CODEX_HUB, CODEX_TOME
 from core.models import Monster, Player
 from database.repositories.codex import TOME_UPGRADE_COSTS, get_reroll_cost
 
@@ -368,7 +369,7 @@ class CodexRunView(ui.View):
             ),
             color=discord.Color.teal(),
         )
-        embed.set_thumbnail(url="https://i.imgur.com/hiLIsNI.png")
+        embed.set_thumbnail(url=CODEX_BOON)
         for i, boon in enumerate(boons, 1):
             field_name = f"Option {i}: {boon.label}"
             if boon.downside_label:
@@ -450,7 +451,7 @@ class CodexRunView(ui.View):
             for i, ch in enumerate(self.chapters)
         )
         embed.add_field(name="Chapters", value=chapters_text, inline=False)
-        embed.set_thumbnail(url="https://i.imgur.com/CYoQQLk.png")
+        embed.set_thumbnail(url=CODEX_CHAPTERS)
         return embed
 
     # ------------------------------------------------------------------
@@ -1001,7 +1002,7 @@ class CodexTomsView(ui.View):
                 embed.set_footer(
                     text=f"Selected: Slot {self.selected_slot + 1} — {name} (Tier {tome.tier}/5, Value {tome.value:.2f})"
                 )
-        embed.set_thumbnail(url="https://i.imgur.com/qvqtxUC.png")
+        embed.set_thumbnail(url=CODEX_TOME)
         return embed
 
     async def _refresh(self, interaction: Interaction):
@@ -1194,7 +1195,7 @@ class CodexMenuView(ui.View):
         embed.add_field(
             name="Tome Slots Unlocked", value=f"{len(tomes)}/5", inline=True
         )
-        embed.set_thumbnail(url="https://i.imgur.com/OylfbeA.png")
+        embed.set_thumbnail(url=CODEX_HUB)
         embed.set_footer(text="Level 100+ required to begin a run.")
         return embed
 

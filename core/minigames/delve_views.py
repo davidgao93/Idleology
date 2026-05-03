@@ -1,5 +1,7 @@
 import discord
 from discord import ui, ButtonStyle, Interaction
+
+from core.images import DELVE_MAIN, DELVE_MINING, DELVE_REWARDS
 from core.minigames.mechanics import DelveMechanics, DelveState
 from core.skills.mechanics import SkillMechanics
 
@@ -98,7 +100,7 @@ class DelveView(ui.View):
         xp_display = f"**Lv. {current_lvl}** ({current_total_xp}/{next_lvl_threshold} XP)"
 
         embed = discord.Embed(title=f"⛏️ Deep Delve (Depth: {self.state.depth})", color=discord.Color.dark_grey())
-        embed.set_thumbnail(url="https://i.imgur.com/C7W0IkJ.png")
+        embed.set_thumbnail(url=DELVE_MAIN)
         
         status = (f"**Structure:** `{stab_bar}` {self.state.stability}%\n"
                   f"**Fuel:** {fuel_bar} ({self.state.current_fuel}/{self.state.max_fuel})\n"
@@ -230,7 +232,7 @@ class DelveView(ui.View):
             title = "💥 MINE COLLAPSED" if reason == "collapse" else "⚡ OUT OF FUEL"
             desc  = "You died in the depths." if reason == "collapse" else "Life support failed."
             embed = discord.Embed(title=title, description=desc, color=discord.Color.red())
-            embed.set_thumbnail(url="https://i.imgur.com/HbDOrUp.png")
+            embed.set_thumbnail(url=DELVE_REWARDS)
             lost = f"🎁 {self.state.curios_found} Curios\n💎 {self.state.shards_found} Shards"
             if self.state.ore_found:
                 name_map = {col: label for col, label in SkillMechanics.get_skill_info("mining")["resources"]}
@@ -259,7 +261,7 @@ class DelveView(ui.View):
                 reward_msg = f"\n📈 **Delve Level Up!** ({old_lvl} -> {new_lvl})\n💎 **Discovery Bonus:** +{total_reward_shards} Shards"
 
             embed = discord.Embed(title="✅ EXTRACTION SUCCESSFUL", color=discord.Color.green())
-            embed.set_thumbnail(url="https://i.imgur.com/mX0u3uc.png")
+            embed.set_thumbnail(url=DELVE_MINING)
             embed.description = f"Reached Depth **{self.state.depth}**."
             loot_value = f"🎁 **{self.state.curios_found}** Curios\n💎 **{self.state.shards_found}** Obsidian Shards"
             embed.add_field(name="Loot Secured", value=loot_value, inline=False)

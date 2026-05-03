@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
+
+from core.images import DUELS_HUB
 from core.pvp.views import ChallengeView
 
 class Duels(commands.Cog, name="duels"):
@@ -47,7 +49,7 @@ class Duels(commands.Cog, name="duels"):
             description=f"{interaction.user.mention} challenges {opponent.mention} to a duel for **{amount:,} gold**!",
             color=discord.Color.gold()
         )
-        embed.set_thumbnail(url="https://i.imgur.com/z20wfJO.jpeg")
+        embed.set_thumbnail(url=DUELS_HUB)
         
         view = ChallengeView(self.bot, challenger_id, target_id, amount)
         await interaction.response.send_message(content=opponent.mention, embed=embed, view=view)

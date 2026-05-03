@@ -2,6 +2,7 @@ from typing import List
 
 import discord
 
+from core.images import PARTNERS_DISPATCH
 from core.models import Partner
 from core.partners.mechanics import (
     get_sig_combat_effect_text,
@@ -125,5 +126,5 @@ def _build_roster_embed(partners: List[Partner], items: dict) -> discord.Embed:
     embed.set_footer(
         text=f"🎫 {items.get('guild_tickets', 0)} tickets  |  Select a partner to manage"
     )
-    embed.set_thumbnail(url="https://i.imgur.com/agWsjri.jpeg")
+    embed.set_thumbnail(url=PARTNERS_DISPATCH)
     return embed

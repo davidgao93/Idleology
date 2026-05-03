@@ -1,8 +1,11 @@
+import asyncio
+
 import discord
 from discord import Interaction, ButtonStyle, TextStyle
 from discord.ui import View, Button, Modal, TextInput
+
+from core.images import TAVERN_CASINO
 from .logic import BlackjackLogic, RouletteLogic, CrashLogic, HorseRaceLogic
-import asyncio 
 
 
 async def check_funds(bot, user_id, amount, interaction):
@@ -136,7 +139,7 @@ class RouletteView(View):
         self.add_item(self.bet_number)
         
         embed = discord.Embed(title="🎡 Roulette Table", description=f"Betting **{self.bet_amount:,} gold**.\nChoose your wager:", color=discord.Color.red())
-        embed.set_thumbnail(url="https://i.imgur.com/D8HlsQX.jpeg")
+        embed.set_thumbnail(url=TAVERN_CASINO)
         
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -212,7 +215,7 @@ class BlackjackView(View):
     async def update_table(self, interaction: Interaction = None):
         p_score = self.deck.calculate_score(self.player_hand)
         embed = discord.Embed(title="🃏 Blackjack Table", color=discord.Color.gold())
-        embed.set_thumbnail(url="https://i.imgur.com/D8HlsQX.jpeg")
+        embed.set_thumbnail(url=TAVERN_CASINO)
 
         if self.game_over:
             d_score = self.deck.calculate_score(self.dealer_hand)

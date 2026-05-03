@@ -1,8 +1,11 @@
+import csv
+import re
+
 import discord
 from discord import ui, Interaction, ButtonStyle, SelectOption
 from discord.ui import View, Button, Select, Modal, TextInput
-import csv
-import re
+
+from core.images import DEFAULT_SILHOUETTE
 
 class RegistrationView(View):
     """
@@ -57,7 +60,7 @@ class RegistrationView(View):
         
         if not urls:
             # Fallback if no images found
-            self.appearance_url = "https://i.imgur.com/6pRwl0k.jpeg"
+            self.appearance_url = DEFAULT_SILHOUETTE
             # Skip straight to modal button if no images
             confirm_btn = Button(label="Confirm Setup", style=ButtonStyle.success)
             confirm_btn.callback = self.on_confirm_appearance

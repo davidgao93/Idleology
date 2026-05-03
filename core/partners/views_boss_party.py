@@ -35,6 +35,7 @@ from core.partners.mechanics import (
     get_skill_effect_text,
     grant_xp,
 )
+from core.images import PARTNERS_BOSS_PARTY, VICTORY_APHRODITE_GEMINI
 from core.partners.resources import _skill_display_name, _stars
 
 _SLOT_KEYS = ("attacker", "tank", "healer")
@@ -74,7 +75,7 @@ def _build_form_embed(
         ),
         colour=0xB22222,
     )
-    embed.set_thumbnail(url="https://i.imgur.com/Q4SzClS.jpeg")
+    embed.set_thumbnail(url=PARTNERS_BOSS_PARTY)
     for slot_key in _SLOT_KEYS:
         label = SLOT_LABELS[slot_key]
         partner = slots.get(slot_key)
@@ -111,7 +112,7 @@ def _build_progress_embed(
         title=f"⚔️ Raid in Progress — {party_row['boss_name']}",
         colour=0xB22222 if not ready else 0x2ECC71,
     )
-    embed.set_thumbnail(url="https://i.imgur.com/Q4SzClS.jpeg")
+    embed.set_thumbnail(url=PARTNERS_BOSS_PARTY)
     embed.add_field(
         name="Boss HP",
         value=f"`{bar}` {remaining_hp:,} / {party_row['boss_max_hp']:,}",
@@ -603,7 +604,7 @@ class BossPartyProgressView(ui.View):
             description="\n".join(lines),
             colour=0x2ECC71,
         )
-        embed.set_image(url="https://i.imgur.com/wKyTFzh.jpg")
+        embed.set_image(url=VICTORY_APHRODITE_GEMINI)
         self.clear_items()
         back_btn = ui.Button(label="Back to Partners", style=ButtonStyle.secondary)
         back_btn.callback = self._back

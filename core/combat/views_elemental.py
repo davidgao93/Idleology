@@ -5,6 +5,7 @@ import discord
 from discord import ButtonStyle, Interaction
 
 from core.combat import engine
+from core.images import COMBAT_ELEMENTAL
 from core.models import Monster, Player
 from core.skills.mechanics import SkillMechanics
 
@@ -66,7 +67,7 @@ class ElementalEncounterView(discord.ui.View):
             description=desc,
             color=0x9B59B6,
         )
-        embed.set_image(url="https://i.imgur.com/VaiiiND.png")
+        embed.set_image(url=COMBAT_ELEMENTAL)
         return embed
 
     @discord.ui.button(label="Auto-Battle", style=ButtonStyle.success, emoji="⚔️")

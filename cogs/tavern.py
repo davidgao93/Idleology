@@ -3,9 +3,10 @@ from discord import app_commands, Interaction
 from discord.ext import commands
 from datetime import datetime, timedelta
 
-from core.tavern.views import ShopView, RestView, CasinoMenuView
-from core.tavern.mechanics import TavernMechanics
+from core.images import TAVERN_CASINO, TAVERN_GAMES, TAVERN_KEEPER, TAVERN_ROULETTE
 from core.items.factory import load_player
+from core.tavern.mechanics import TavernMechanics
+from core.tavern.views import ShopView, RestView, CasinoMenuView
 
 class Tavern(commands.Cog, name="tavern"):
     def __init__(self, bot) -> None:
@@ -34,7 +35,7 @@ class Tavern(commands.Cog, name="tavern"):
             description="Welcome to the shop! Here are the items you can buy:",
             color=0xFFCC00,
         )
-        embed.set_thumbnail(url="https://i.imgur.com/81jN8tA.jpeg")
+        embed.set_thumbnail(url=TAVERN_KEEPER)
         embed.add_field(name="Your Gold 💰", value=f"{gold:,}", inline=False)
         embed.add_field(
             name="Potion 🧪",
@@ -96,7 +97,7 @@ class Tavern(commands.Cog, name="tavern"):
                 description=f"You have rested and regained your health! Current HP: **{max_hp}**.",
                 color=0xFFCC00
             )
-            embed.set_thumbnail(url="https://i.imgur.com/ZARftKJ.jpeg")
+            embed.set_thumbnail(url=TAVERN_GAMES)
             await interaction.response.send_message(embed=embed)
         else:
             # Paid Rest Prompt
@@ -108,7 +109,7 @@ class Tavern(commands.Cog, name="tavern"):
                 description=f"You need to wait {remaining_str} before resting for free again.",
                 color=0xFFCC00
             )
-            embed.set_image(url="https://i.imgur.com/Nv1JbrO.jpeg")
+            embed.set_image(url=TAVERN_ROULETTE)
             
             if gold >= cost:
                 self.bot.state_manager.set_active(user_id, "rest")
@@ -143,7 +144,7 @@ class Tavern(commands.Cog, name="tavern"):
             description=f"Table Stake: **{amount:,} gold**.\nSelect a game:",
             color=0xFFD700
         )
-        embed.set_thumbnail(url="https://i.imgur.com/D8HlsQX.jpeg")
+        embed.set_thumbnail(url=TAVERN_CASINO)
         embed.add_field(name="🃏 Blackjack", value="Beat the dealer to 21. (2x Payout)", inline=True)
         embed.add_field(name="🎡 Roulette", value="Red/Black/Numbers. (2x-35x Payout)", inline=True)
         embed.add_field(name="🚀 Crash", value="Cash out before the crash! (1.0x - ???x)", inline=True)

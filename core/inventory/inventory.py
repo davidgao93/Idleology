@@ -2,6 +2,7 @@ from typing import List, Union
 
 import discord
 
+from core.images import INVENTORY_HUB, SLOT_ACCESSORY, SLOT_ARMOR, SLOT_BOOT, SLOT_GLOVE, SLOT_HELMET, SLOT_WEAPON
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 
 _SLOT_EMOJIS = {
@@ -23,12 +24,12 @@ _SLOT_LABELS = {
 _SLOT_ORDER = ["weapon", "armor", "helmet", "glove", "boot", "accessory"]
 
 _ITEM_IMAGES = {
-    "weapon":    "https://i.imgur.com/OeyEXrs.jpeg",
-    "armor":     "https://i.imgur.com/xhkOm99.jpeg",
-    "helmet":    "https://i.imgur.com/NqYy6KH.jpeg",
-    "glove":     "https://i.imgur.com/hPdjWQ8.jpeg",
-    "boot":      "https://i.imgur.com/CVslwcK.jpeg",
-    "accessory": "https://i.imgur.com/k4ZDJ2s.jpeg",
+    "weapon":    SLOT_WEAPON,
+    "armor":     SLOT_ARMOR,
+    "helmet":    SLOT_HELMET,
+    "glove":     SLOT_GLOVE,
+    "boot":      SLOT_BOOT,
+    "accessory": SLOT_ACCESSORY,
 }
 
 Equipment = Union[Weapon, Armor, Accessory, Glove, Boot]
@@ -276,7 +277,7 @@ class InventoryUI:
             description=f"{player_name}'s Inventory (Page {page + 1}/{total_pages})",
             color=0x00FF00,
         )
-        embed.set_thumbnail(url="https://i.imgur.com/Kr0xq5N.png")
+        embed.set_thumbnail(url=INVENTORY_HUB)
 
         if not items:
             embed.description = "This pouch is empty."

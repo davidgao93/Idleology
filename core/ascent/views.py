@@ -4,7 +4,7 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.ascent.mechanics import AscentMechanics, PINNACLE_REWARDS
+from core.ascent.mechanics import PINNACLE_REWARDS, AscentMechanics
 from core.combat import engine
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
@@ -18,8 +18,8 @@ from core.combat.loot import (
     generate_helmet,
     generate_weapon,
 )
+from core.images import ASCENT_HUB
 from core.models import Monster, Player
-
 
 # ---------------------------------------------------------------------------
 # Milestone reward helpers (every 5 floors)
@@ -31,7 +31,9 @@ _RUNE_POOL = ["refinement_runes", "potential_runes"]
 _KEY_POOL = ["dragon_key", "angel_key", "soul_cores", "balance_fragment"]
 
 
-async def _grant_milestone_rewards(bot, user_id: str, server_id: str, player: Player, floor: int) -> list[str]:
+async def _grant_milestone_rewards(
+    bot, user_id: str, server_id: str, player: Player, floor: int
+) -> list[str]:
     """Grants curio + rune cache + equip cache + boss key cache. Returns display strings."""
     log = []
 
@@ -89,7 +91,15 @@ async def _grant_milestone_rewards(bot, user_id: str, server_id: str, player: Pl
 
 
 class AscentLobbyView(ui.View):
-    def __init__(self, bot, user_id: str, server_id: str, player: Player, best_floor: int, pinnacle_keys: int):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        player: Player,
+        best_floor: int,
+        pinnacle_keys: int,
+    ):
         super().__init__(timeout=60)
         self.bot = bot
         self.user_id = user_id
@@ -107,7 +117,7 @@ class AscentLobbyView(ui.View):
             ),
             color=discord.Color.from_rgb(180, 120, 60),
         )
-        embed.set_thumbnail(url="https://i.imgur.com/eObsHv9.jpeg")
+        embed.set_thumbnail(url=ASCENT_HUB)
         # Floor info
         starting_floor = AscentMechanics.calculate_starting_floor(self.best_floor)
         embed.add_field(
@@ -116,10 +126,14 @@ class AscentLobbyView(ui.View):
             inline=True,
         )
         embed.add_field(name="Starting Floor", value=str(starting_floor), inline=True)
-        embed.add_field(name="Pinnacle Keys", value=f"🗝️ {self.pinnacle_keys}", inline=True)
+        embed.add_field(
+            name="Pinnacle Keys", value=f"🗝️ {self.pinnacle_keys}", inline=True
+        )
 
         # Cumulative bonuses
-        bonuses = AscentMechanics.get_cumulative_pinnacle_bonuses(self.player.ascension_unlocks)
+        bonuses = AscentMechanics.get_cumulative_pinnacle_bonuses(
+            self.player.ascension_unlocks
+        )
         bonus_parts = []
         if bonuses["atk_pct"]:
             bonus_parts.append(f"+{bonuses['atk_pct']}% ATK")
@@ -144,7 +158,9 @@ class AscentLobbyView(ui.View):
 
         # Next pinnacle floor
         unlocked = self.player.ascension_unlocks
-        next_pinnacle = next((f for f in sorted(PINNACLE_REWARDS) if f not in unlocked), None)
+        next_pinnacle = next(
+            (f for f in sorted(PINNACLE_REWARDS) if f not in unlocked), None
+        )
         if next_pinnacle:
             embed.add_field(
                 name="Next Pinnacle",
@@ -152,7 +168,9 @@ class AscentLobbyView(ui.View):
                 inline=False,
             )
         else:
-            embed.add_field(name="Next Pinnacle", value="All pinnacles unlocked!", inline=False)
+            embed.add_field(
+                name="Next Pinnacle", value="All pinnacles unlocked!", inline=False
+            )
 
         embed.set_footer(text="A Pinnacle Key is consumed when you begin a run.")
         return embed
@@ -162,7 +180,9 @@ class AscentLobbyView(ui.View):
 
     @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="🏔️", row=0)
     async def begin_run(self, interaction: Interaction, button: ui.Button):
-        current_keys = await self.bot.database.users.get_currency(self.user_id, "pinnacle_key")
+        current_keys = await self.bot.database.users.get_currency(
+            self.user_id, "pinnacle_key"
+        )
         if current_keys < 1:
             return await interaction.response.send_message(
                 "You need a **Pinnacle Key** to begin the Ascent.", ephemeral=True
@@ -177,20 +197,42 @@ class AscentLobbyView(ui.View):
         m_level = AscentMechanics.calculate_floor_monster_level(starting_floor)
         n_mods, b_mods = AscentMechanics.get_floor_modifier_counts(starting_floor)
 
-        monster = Monster(name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0, modifiers=[], image="", flavor="", is_boss=True)
-        monster = await generate_ascent_monster(self.player, monster, m_level, n_mods, b_mods)
+        monster = Monster(
+            name="",
+            level=0,
+            hp=0,
+            max_hp=0,
+            xp=0,
+            attack=0,
+            defence=0,
+            modifiers=[],
+            image="",
+            flavor="",
+            is_boss=True,
+        )
+        monster = await generate_ascent_monster(
+            self.player, monster, m_level, n_mods, b_mods
+        )
 
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
 
         embed = combat_ui.create_combat_embed(
-            self.player, monster, start_logs,
+            self.player,
+            monster,
+            start_logs,
             title_override=f"Ascent Floor {starting_floor} | {self.player.name}",
         )
         view = AscentView(
-            self.bot, self.user_id, self.server_id, self.player, monster,
-            start_logs, starting_floor=starting_floor, best_floor=self.best_floor,
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            monster,
+            start_logs,
+            starting_floor=starting_floor,
+            best_floor=self.best_floor,
         )
         self.stop()
         msg = await interaction.edit_original_response(embed=embed, view=view)
@@ -202,12 +244,14 @@ class AscentLobbyView(ui.View):
         lines = []
         for floor, _ in sorted(PINNACLE_REWARDS.items()):
             status = "✅" if floor in unlocked else "⬜"
-            lines.append(f"{status} **Floor {floor}** — {AscentMechanics.pinnacle_label(floor)}")
+            lines.append(
+                f"{status} **Floor {floor}** — {AscentMechanics.pinnacle_label(floor)}"
+            )
 
         pages = []
         chunk_size = 8
         for i in range(0, len(lines), chunk_size):
-            pages.append("\n".join(lines[i:i + chunk_size]))
+            pages.append("\n".join(lines[i : i + chunk_size]))
 
         view = AscentPinnacleListView(self, pages)
         embed = view.build_embed()
@@ -240,10 +284,14 @@ class AscentPinnacleListView(ui.View):
         total = len(PINNACLE_REWARDS)
         embed = discord.Embed(
             title="✨ Pinnacle Floors",
-            description=self.pages[self.page] if self.pages else "No pinnacle floors defined.",
+            description=(
+                self.pages[self.page] if self.pages else "No pinnacle floors defined."
+            ),
             color=discord.Color.from_rgb(180, 120, 60),
         )
-        embed.set_footer(text=f"Unlocked: {unlocked_count}/{total} | Page {self.page + 1}/{len(self.pages)}")
+        embed.set_footer(
+            text=f"Unlocked: {unlocked_count}/{total} | Page {self.page + 1}/{len(self.pages)}"
+        )
         return embed
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -264,7 +312,9 @@ class AscentPinnacleListView(ui.View):
     @ui.button(label="Back", style=ButtonStyle.primary, row=0)
     async def back_btn(self, interaction: Interaction, button: ui.Button):
         self.stop()
-        await interaction.response.edit_message(embed=self.lobby_view.build_embed(), view=self.lobby_view)
+        await interaction.response.edit_message(
+            embed=self.lobby_view.build_embed(), view=self.lobby_view
+        )
 
     async def on_timeout(self):
         pass
@@ -310,14 +360,18 @@ class AscentView(ui.View):
 
     async def on_timeout(self):
         if self.player.current_hp > 0:
-            await self._end_run(self.message if hasattr(self, "message") else None, retreated=True)
+            await self._end_run(
+                self.message if hasattr(self, "message") else None, retreated=True
+            )
         else:
             self.bot.state_manager.clear_active(self.user_id)
 
     def _floor_title(self) -> str:
         return f"Ascent Floor {self.current_floor} | {self.player.name}"
 
-    async def _refresh(self, interaction: Interaction = None, message: discord.Message = None):
+    async def _refresh(
+        self, interaction: Interaction = None, message: discord.Message = None
+    ):
         embed = combat_ui.create_combat_embed(
             self.player, self.monster, self.logs, title_override=self._floor_title()
         )
@@ -355,24 +409,39 @@ class AscentView(ui.View):
         await interaction.response.defer()
         message = interaction.message
 
-        while self.player.current_hp > (self.player.total_max_hp * 0.2) and self.monster.hp > 0:
+        while (
+            self.player.current_hp > (self.player.total_max_hp * 0.2)
+            and self.monster.hp > 0
+        ):
             for _ in range(10):
-                if self.player.current_hp <= (self.player.total_max_hp * 0.2) or self.monster.hp <= 0:
+                if (
+                    self.player.current_hp <= (self.player.total_max_hp * 0.2)
+                    or self.monster.hp <= 0
+                ):
                     break
                 p_log = engine.process_player_turn(self.player, self.monster)
                 self.combat_logger.log_player_turn(p_log, self.monster)
-                m_log = engine.process_monster_turn(self.player, self.monster) if self.monster.hp > 0 else ""
+                m_log = (
+                    engine.process_monster_turn(self.player, self.monster)
+                    if self.monster.hp > 0
+                    else ""
+                )
                 if m_log:
                     self.combat_logger.log_monster_turn(m_log, self.player)
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
-            if self.monster.hp > 0 and self.player.current_hp > (self.player.total_max_hp * 0.2):
+            if self.monster.hp > 0 and self.player.current_hp > (
+                self.player.total_max_hp * 0.2
+            ):
                 await self._refresh(message=message)
                 await asyncio.sleep(1.0)
             else:
                 break
 
-        if 0 < self.player.current_hp <= (self.player.total_max_hp * 0.2) and self.monster.hp > 0:
+        if (
+            0 < self.player.current_hp <= (self.player.total_max_hp * 0.2)
+            and self.monster.hp > 0
+        ):
             self.logs["Auto-Battle"] = "Paused: Low HP protection!"
             await self._refresh(message=message)
         else:
@@ -384,7 +453,9 @@ class AscentView(ui.View):
 
     # --- Logic ---
 
-    async def _check_state(self, interaction: Interaction = None, message: discord.Message = None):
+    async def _check_state(
+        self, interaction: Interaction = None, message: discord.Message = None
+    ):
         if self.player.current_hp <= 0:
             await self._handle_defeat(interaction, message)
         elif self.monster.hp <= 0:
@@ -392,7 +463,9 @@ class AscentView(ui.View):
         else:
             await self._refresh(interaction, message)
 
-    async def _handle_floor_clear(self, interaction: Interaction, message: discord.Message):
+    async def _handle_floor_clear(
+        self, interaction: Interaction, message: discord.Message
+    ):
         self.combat_logger.log_combat_end(self.player, self.monster, "victory")
         floor = self.current_floor
 
@@ -406,7 +479,7 @@ class AscentView(ui.View):
             rewards = await _grant_milestone_rewards(
                 self.bot, self.user_id, self.server_id, self.player, floor
             )
-            self.milestone_log.append(f"**Floor {floor}:** " + " | ".join(rewards))
+            self.milestone_log.append(f"**Floor {floor}:\n** " + "\n".join(rewards))
 
         # Pinnacle unlock
         pinnacle_gained = None
@@ -434,13 +507,15 @@ class AscentView(ui.View):
         )
         lines = []
         if floor % 5 == 0 and self.milestone_log:
-            lines.append(f"📦 Milestone rewards granted!")
+            lines.append("📦 Milestone rewards granted!")
         if pinnacle_gained:
             lines.append(f"✨ **Pinnacle Unlock:** {pinnacle_gained}")
         if skiller_msg:
             lines.append(skiller_msg)
         embed.description = "\n".join(lines) if lines else "Onwards..."
-        embed.set_footer(text=f"HP: {self.player.current_hp}/{self.player.total_max_hp} | Next floor in 3s...")
+        embed.set_footer(
+            text=f"HP: {self.player.current_hp}/{self.player.total_max_hp} | Next floor in 3s..."
+        )
 
         target = (
             interaction.edit_original_response
@@ -462,10 +537,21 @@ class AscentView(ui.View):
         n_mods, b_mods = AscentMechanics.get_floor_modifier_counts(self.current_floor)
 
         next_monster = Monster(
-            name="", level=0, hp=0, max_hp=0, xp=0,
-            attack=0, defence=0, modifiers=[], image="", flavor="", is_boss=True,
+            name="",
+            level=0,
+            hp=0,
+            max_hp=0,
+            xp=0,
+            attack=0,
+            defence=0,
+            modifiers=[],
+            image="",
+            flavor="",
+            is_boss=True,
         )
-        next_monster = await generate_ascent_monster(self.player, next_monster, m_level, n_mods, b_mods)
+        next_monster = await generate_ascent_monster(
+            self.player, next_monster, m_level, n_mods, b_mods
+        )
         self.monster = next_monster
 
         engine.apply_stat_effects(self.player, self.monster)
@@ -476,7 +562,9 @@ class AscentView(ui.View):
 
         msg_obj = message if message else (await interaction.original_response())
         embed = combat_ui.create_combat_embed(
-            self.player, self.monster, self.logs,
+            self.player,
+            self.monster,
+            self.logs,
             title_override=self._floor_title(),
         )
         await msg_obj.edit(embed=embed, view=self)
@@ -486,7 +574,9 @@ class AscentView(ui.View):
         self.player.current_hp = 1
         embed = combat_ui.create_defeat_embed(self.player, self.monster, 0)
         embed.title = f"Defeated on Floor {self.current_floor}"
-        embed.description = (embed.description or "") + f"\nBest floor this session: **{self.best_floor}**"
+        embed.description = (
+            embed.description or ""
+        ) + f"\nBest floor this session: **{self.best_floor}**"
 
         target = (
             interaction.response.edit_message
@@ -502,10 +592,14 @@ class AscentView(ui.View):
     async def _end_run(self, interaction_or_msg, retreated: bool = True):
         embed = discord.Embed(
             title="Ascent Complete" if not retreated else "Ascent Ended",
-            color=discord.Color.blurple() if not retreated else discord.Color.light_grey(),
+            color=(
+                discord.Color.blurple() if not retreated else discord.Color.light_grey()
+            ),
         )
         embed.add_field(name="Best Floor", value=str(self.best_floor), inline=True)
-        embed.add_field(name="Floors Cleared", value=str(self.current_floor - 1), inline=True)
+        embed.add_field(
+            name="Floors Cleared", value=str(self.current_floor - 1), inline=True
+        )
 
         if self.milestone_log:
             embed.add_field(

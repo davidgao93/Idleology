@@ -3,9 +3,10 @@ from discord import ui, ButtonStyle, Interaction
 
 from core.curios.logic import CurioManager
 from core.curios.puzzle_box_views import PuzzleBoxView
+from core.images import CURIO_BULK, CURIO_UNOPENED
 
-_UNOPENED_IMAGE = "https://i.imgur.com/19zlqxh.jpeg"
-_BULK_IMAGE = "https://i.imgur.com/MHLkkuD.jpeg"
+_UNOPENED_IMAGE = CURIO_UNOPENED
+_BULK_IMAGE = CURIO_BULK
 
 
 class CustomAmountModal(ui.Modal, title="Open Custom Amount"):
