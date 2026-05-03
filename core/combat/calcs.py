@@ -55,8 +55,8 @@ def get_player_passive_indices(player, target_passives: list[str]) -> list[int]:
 # Core Combat Calculations
 # ---------------------------------------------------------------------------
 
-_HIT_BASE        = 0.70   # hit chance at equal stats
-_HIT_SENSITIVITY = 0.30   # hit chance shift per 100% stat difference
+_HIT_BASE        = 0.60   # hit chance at equal stats
+_HIT_SENSITIVITY = 0.35   # hit chance shift per 100% stat difference
 _HIT_MIN         = 0.20
 _HIT_MAX         = 0.95
 

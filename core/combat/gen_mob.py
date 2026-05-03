@@ -32,7 +32,7 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
     elif player.level <= 90:
         difficulty_multiplier = random.randint(3, 8)
     else:
-        difficulty_multiplier = random.randint(10, 30)
+        difficulty_multiplier = random.randint(10, 15)
 
     monster.level = player.level + player.ascension + difficulty_multiplier
 
@@ -237,34 +237,51 @@ def level_exponent(level: int) -> float:
     if level <= 20:
         return random.uniform(1.1, 1.2)
     elif level <= 40:
-        return random.uniform(1.25, 1.26)
+        return random.uniform(1.2, 1.25)
     elif level <= 50:
-        return random.uniform(1.26, 1.27)
+        return random.uniform(1.25, 1.3)
     elif level <= 60:
-        return random.uniform(1.27, 1.28)
+        return random.uniform(1.3, 1.35)
     elif level <= 70:
-        return random.uniform(1.28, 1.29)
+        return random.uniform(1.35, 1.4)
     elif level <= 80:
-        return random.uniform(1.29, 1.30)
+        return random.uniform(1.4, 1.45)
     elif level <= 100:
-        return random.uniform(1.30, 1.31)
-    elif level <= 110:
-        return random.uniform(1.33, 1.35)
-    elif level <= 120:
-        return random.uniform(1.4, 1.42)
-    elif level <= 130:
-        return random.uniform(1.42, 1.45)
-    else:
         return random.uniform(1.45, 1.5)
+    elif level <= 110:
+        return random.uniform(1.5, 1.51)
+    elif level <= 120:
+        return random.uniform(1.51, 1.52)
+    elif level <= 130:
+        return random.uniform(1.52, 1.53)
+    elif level <= 140:
+        return random.uniform(1.53, 1.54)
+    elif level <= 150:
+        return random.uniform(1.54, 1.55)
+    elif level <= 160:
+        return random.uniform(1.55, 1.56)
+    elif level <= 170:
+        return random.uniform(1.56, 1.57)
+    elif level <= 180:
+        return random.uniform(1.57, 1.58)
+    elif level <= 190:
+        return random.uniform(1.58, 1.59)
+    elif level <= 200:
+        return random.uniform(1.59, 1.60)
+    elif level <= 210:
+        return random.uniform(1.60, 1.61)
+    else:
+        return random.uniform(1.61, 1.62)
 
 
 def calculate_monster_stats(monster):
     if monster.level < 5:
         base_attack = base_defence = monster.level
     else:
-        exp = level_exponent(monster.level)
-        base_attack = monster.level**exp
-        base_defence = monster.level**exp
+        exp_a = level_exponent(monster.level)
+        exp_b = level_exponent(monster.level)
+        base_attack = monster.level**exp_a
+        base_defence = monster.level**exp_b
 
     monster.attack = int(base_attack)
     monster.defence = int(base_defence)
