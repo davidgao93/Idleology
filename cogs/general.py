@@ -6,8 +6,11 @@ from discord.ext import commands
 
 from core.character.profile_hub import ProfileBuilder, ProfileHubView
 from core.combat.modifier_data import (
-    COMMON_MOD_NAMES, RARE_TIERED_MOD_NAMES, RARE_FLAT_MOD_NAMES,
-    BOSS_MOD_NAMES, MODIFIER_DEFINITIONS, make_modifier,
+    BOSS_MOD_NAMES,
+    COMMON_MOD_NAMES,
+    RARE_FLAT_MOD_NAMES,
+    RARE_TIERED_MOD_NAMES,
+    make_modifier,
 )
 from core.images import TAVERN_KEEPER
 
@@ -176,7 +179,7 @@ class General(commands.Cog, name="general"):
 
             def _tier_range(name: str) -> str:
                 """Return a T1→T5 value string for display."""
-                t1 = make_modifier(name, 1)   # force T1 by using level 1
+                t1 = make_modifier(name, 1)  # force T1 by using level 1
                 t5 = make_modifier(name, 200)  # force T5 by using level 200
                 d1 = get_modifier_description(t1)
                 d5 = get_modifier_description(t5)
@@ -329,14 +332,14 @@ class General(commands.Cog, name="general"):
         elif category == "helmet":
             embed.title = "🪖 Helmet Passive Scaling (Max Lvl 5)"
             passives = {
-                "Juggernaut": lambda l: f"Gain **{l * 4}%** of Base Def as Atk",
-                "Insight": lambda l: f"Crit Dmg Multiplier +**{l * 0.1:.1f}x** (Base 2.0x)",
+                "Juggernaut": lambda l: f"Gain **{l * 4}%** of Def as Atk",
+                "Insight": lambda l: f"Crit Dmg Multiplier +**{l * 0.1:.1f}x**",
                 "Volatile": lambda l: f"Deal **{l * 100}%** of Max HP as Dmg on ward break",
                 "Divine": lambda l: f"Converts **{(l * 100)}%** of Potion Overheal to Ward",
                 "Frenzy": lambda l: f"**{l * 0.5}%** Inc Dmg per 1% Missing HP",
                 "Leeching": lambda l: f"Heal for **{l * 2}%** of base damage dealt",
                 "Thorns": lambda l: f"Reflect **{l * 100}%** of blocked damage",
-                "Ghosted": lambda l: f"Gain **{l * 10}** Ward on Dodge",
+                "Ghosted": lambda l: f"Gain **{l * 10}** Ward on Evade",
             }
             embed.description = self._generate_scaling_details(passives, 5)
             content_added = True
@@ -352,7 +355,7 @@ class General(commands.Cog, name="general"):
                 "RARITY (+% Rarity)": lambda t: f"+**{t * 3}%** Rarity",
                 "S_RARITY (+% Special Drop Rate)": lambda t: f"+**{t}%** Special Drop Rate",
                 "FDR (Flat Dmg Reduction)": lambda t: f"+**{1 + t}** Flat Damage Reduction",
-                "PDR (% Dmg Reduction)": lambda t: f"+**{2 + t}%** Percent Damage Reduction",
+                "PDR (% Dmg Reduction)": lambda t: f"+**{2 + t}%** Percent Damage Reduction (bypasses cap)",
             }
             comp_text = self._generate_scaling_details(comp_passives, 5)
             comp_text += (
@@ -415,9 +418,9 @@ class General(commands.Cog, name="general"):
                 "**Reroll Tokens:** Granted when a Page drops with all 5 slots already unlocked.\n\n"
                 "**🌿 Vitality** — +% Max HP *(T1: 3–7% | T5: 18–40%)*\n"
                 "Directly increases your max HP pool. Applies in all game modes.\n\n"
-                "**🔥 Wrath** — +% of base DEF as bonus ATK *(T1: 3–8% | T5: 18–42%)*\n"
+                "**🔥 Wrath** — +% of DEF as bonus ATK *(T1: 3–8% | T5: 18–42%)*\n"
                 "Rewards tanky builds with extra offensive power. Stacks with all other ATK sources.\n\n"
-                "**🛡️ Bastion** — +% of base ATK as bonus DEF *(T1: 3–8% | T5: 18–42%)*\n"
+                "**🛡️ Bastion** — +% of ATK as bonus DEF *(T1: 3–8% | T5: 18–42%)*\n"
                 "Rewards aggressive builds with extra defensive depth. Stacks with all other DEF sources.\n\n"
                 "**⚡ Tenacity** — Chance per incoming hit to halve the damage *(T1: 2–5% | T5: 12–25%)*\n"
                 "Probabilistic mitigation. Does not trigger on dodged attacks. Applies before ward.\n\n"
@@ -518,20 +521,20 @@ class General(commands.Cog, name="general"):
             ],
             "⚔️ Combat": [
                 ("combat", "Fight monsters for XP and loot"),
-                ("ascent", "Eternal struggle mode (Lvl 100+)"),
-                ("codex", "Wave-based survival mode (Lvl 100+)"),
+                ("ascent", "Tower of Ascension (Lvl 100+)"),
+                ("codex", "Tome of Power (Lvl 100+)"),
                 ("duel", "PvP against another player"),
                 ("uber", "Challenge the pinnacle of power"),
+                ("maw", "Challenge the Maw of Infinity"),
             ],
             "🎒 Equipment": [
-                ("weapons", "Manage weapons (Forge/Refine)"),
-                ("armor", "Manage armor (Temper/Imbue)"),
-                ("accessory", "Manage accessories (Potential)"),
+                ("weapons", "Manage weapons"),
+                ("armor", "Manage armor"),
+                ("accessory", "Manage accessories"),
                 ("gloves", "Manage gloves"),
                 ("boots", "Manage boots"),
                 ("helmet", "Manage helmets"),
                 ("gear", "Manage gear"),
-                ("mod_details", "View gear passive info"),
             ],
             "🌲 Skills": [
                 ("mining", "Check ores and upgrade pickaxe"),
@@ -544,7 +547,7 @@ class General(commands.Cog, name="general"):
                 ("alchemy", "Manage your alchemy skill"),
             ],
             "🏙️ Social & Economy": [
-                ("shop", "Buy potions and curios"),
+                ("shop", "Buy potions"),
                 ("settlement", "Manage your settlement"),
                 ("resources", "Check your settlement resources"),
                 ("checkin", "Daily reward"),
@@ -552,15 +555,14 @@ class General(commands.Cog, name="general"):
                 ("ideology", "View server ideologies"),
                 ("propagate", "Spread your ideology"),
                 ("leaderboard", "View top players"),
-                ("curios", "Open a curio box"),
-                ("bulk_curios", "Open multiple curios"),
+                ("curios", "Open a curio or puzzle box"),
             ],
             "📦 Trading": [
                 ("trade", "Send Items/Gold to another player"),
             ],
             "🎉 Fun": [
                 ("poe", "Path of Exile Trivia Game"),
-                ("gamble", "Play casino games"),
+                ("gamble", "Play casino games and win gold"),
             ],
         }
 
@@ -569,9 +571,7 @@ class General(commands.Cog, name="general"):
             description="Welcome to **Idleology**! 💡\nUse `/register` to start your journey.",
             color=0xBEBEFE,
         )
-        embed.set_thumbnail(
-            url=TAVERN_KEEPER
-        )
+        embed.set_thumbnail(url=TAVERN_KEEPER)
 
         for category, cmds in categories.items():
             command_list = []

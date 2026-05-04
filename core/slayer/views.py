@@ -1,7 +1,7 @@
 import random
 
 import discord
-from discord import ui, ButtonStyle, Interaction, SelectOption
+from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.images import SLAYER_EMBLEM, SLAYER_MASTER
 from core.slayer.mechanics import SlayerMechanics
@@ -9,7 +9,7 @@ from core.slayer.mechanics import SlayerMechanics
 
 class SlayerDashboardView(ui.View):
     def __init__(self, bot, user_id, server_id, profile, player_level):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -105,7 +105,7 @@ class SlayerDashboardView(ui.View):
 
 class EmblemView(ui.View):
     def __init__(self, bot, user_id, server_id, profile, emblem, parent_view):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -182,7 +182,7 @@ class EmblemView(ui.View):
 
 class SlotManageView(ui.View):
     def __init__(self, bot, user_id, server_id, profile, slot_num, slot_data, parent_view):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id

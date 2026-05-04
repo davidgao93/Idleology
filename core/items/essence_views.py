@@ -332,7 +332,7 @@ class EssenceSelectView(View):
     """Select menu to choose which essence to apply (regular or corrupted)."""
 
     def __init__(self, hub: "EssenceView", applicable: list, corrupted: bool):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.hub = hub
         self.corrupted = corrupted
 
@@ -424,7 +424,7 @@ class EssenceView(View):
         parent_view,
         essence_inventory: dict,
     ):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.item = item
