@@ -41,6 +41,22 @@ PASSIVE_SCALE: dict[str, float] = {
 }
 
 
+_PASSIVE_ROMAN = ("I", "II", "III", "IV", "V")
+
+
+def fmt_weapon_passive(passive_str: str) -> str:
+    """Formats 'burning_3' → 'Burning III' for display in combat logs."""
+    if not passive_str or passive_str == "none":
+        return passive_str
+    if "_" in passive_str:
+        family, _, tier_str = passive_str.rpartition("_")
+        try:
+            return f"{family.title()} {_PASSIVE_ROMAN[int(tier_str) - 1]}"
+        except (ValueError, IndexError):
+            pass
+    return passive_str.title()
+
+
 def get_weapon_tier(player, key: str) -> tuple[int, str]:
     """
     Returns (tier_index 0–4, passive_string) for the highest active tier of the
@@ -97,13 +113,15 @@ _DMG_VARIANCE = (0.85, 1.15)
 
 
 def calculate_hit_chance(player, monster) -> float:
-    """Player hit chance based on attack-vs-defence ratio. Equal stats → 60%."""
+    """Player hit chance based on attack-vs-defence ratio.
+    Base is sourced from the weapon's drop template (default 60% if no weapon)."""
+    hit_base = player.equipped_weapon.hit_chance if player.equipped_weapon else _HIT_BASE
     m_def = monster.defence
     if m_def <= 0:
         base = _HIT_MAX
     else:
         pct_diff = (player.get_total_attack() - m_def) / m_def
-        base = min(max(_HIT_BASE + pct_diff * _HIT_SENSITIVITY, _HIT_MIN), _HIT_MAX)
+        base = min(max(hit_base + pct_diff * _HIT_SENSITIVITY, _HIT_MIN), _HIT_MAX)
 
     if player.ascension_unlocks:
         hit_bonus = player.get_ascension_bonuses()["hit"]

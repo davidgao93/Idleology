@@ -30,6 +30,8 @@ from core.items.factory import (
 # Core Imports
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 from core.inventory.inventory import InventoryUI
+from core.combat.calcs import fmt_weapon_passive
+from core.util import stars
 
 SLOT_CONFIG = {
     "weapon": {"emoji": "⚔️", "label": "Weapon", "factory": create_weapon},
@@ -798,17 +800,24 @@ class GearView(View):
             parts.append(f"FDR:{item.fdr}")
         if isinstance(item, Weapon) and item.refinement_lvl > 0:
             parts.append(f"+{item.refinement_lvl}")
+        if isinstance(item, Weapon):
+            base_rar = getattr(item, "base_rarity", 0)
+            if base_rar > 0:
+                parts.append(stars(base_rar))
 
         passives = []
         if getattr(item, "passive", "none") not in ("none", ""):
-            lvl = getattr(item, "passive_lvl", 0)
-            lvl_str = f" Lv.{lvl}" if lvl > 0 else ""
-            passives.append(f"{item.passive.title()}{lvl_str}")
+            if isinstance(item, Weapon):
+                passives.append(fmt_weapon_passive(item.passive))
+            else:
+                lvl = getattr(item, "passive_lvl", 0)
+                lvl_str = f" Lv.{lvl}" if lvl > 0 else ""
+                passives.append(f"{item.passive.title()}{lvl_str}")
         if isinstance(item, Weapon):
             if getattr(item, "p_passive", "none") not in ("none", ""):
-                passives.append(item.p_passive.title())
+                passives.append(fmt_weapon_passive(item.p_passive))
             if getattr(item, "u_passive", "none") not in ("none", ""):
-                passives.append(item.u_passive.title())
+                passives.append(fmt_weapon_passive(item.u_passive))
             if getattr(item, "infernal_passive", "none") not in ("none", ""):
                 passives.append(f"🔥{item.infernal_passive.replace('_', ' ').title()}")
         if isinstance(item, Armor) and getattr(

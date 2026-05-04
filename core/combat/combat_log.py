@@ -197,7 +197,7 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     p_def = player.get_total_defence()
     p_crit = player.get_current_crit_chance()
 
-    crit_mult = 2.0
+    crit_mult = player.get_weapon_crit_multi()
     if player.get_helmet_passive() == "insight":
         lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
         crit_mult += lvl * 0.1

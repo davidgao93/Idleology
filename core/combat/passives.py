@@ -1,7 +1,7 @@
 import random
 from typing import Dict
 
-from core.combat.calcs import get_weapon_tier
+from core.combat.calcs import fmt_weapon_passive, get_weapon_tier
 from core.combat.helpers import _add_ward
 from core.models import Monster, Player
 
@@ -261,13 +261,13 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
 
     weapon_parts = []
 
-    idx, name = get_weapon_tier(player, "polished")
+    idx, name = get_weapon_tier(player, "debilitate")
     if idx >= 0:
         pct = (idx + 1) * 0.08
         flat = int(monster.defence * pct)
         monster.defence = max(0, monster.defence - flat)
         weapon_parts.append(
-            f"💫 **{name}**: strips {monster.name}'s 🛡️ DEF by **{flat}** ({int(pct * 100)}%)"
+            f"💫 **{fmt_weapon_passive(name)}**: strips {monster.name}'s 🛡️ DEF by **{flat}** ({int(pct * 100)}%)"
         )
 
     idx, name = get_weapon_tier(player, "sturdy")
@@ -276,7 +276,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         flat = int(player.get_total_defence() * pct)
         player.bonus_def += flat
         weapon_parts.append(
-            f"🛡️ **{name}**: defence boosted by **{flat}** ({int(pct * 100)}%)"
+            f"🛡️ **{fmt_weapon_passive(name)}**: defence boosted by **{flat}** ({int(pct * 100)}%)"
         )
 
     if weapon_parts:

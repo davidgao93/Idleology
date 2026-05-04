@@ -1,6 +1,6 @@
 import random
 
-from core.combat.calcs import calculate_hit_chance, get_weapon_tier
+from core.combat.calcs import calculate_hit_chance, fmt_weapon_passive, get_weapon_tier
 from core.combat.helpers import PlayerTurnResult, _add_ward
 from core.models import Monster, Player
 
@@ -234,11 +234,11 @@ def _pt_resolve_hit(
 
     acc_bonus = player.get_emblem_bonus("accuracy") * 2
 
-    idx, name = get_weapon_tier(player, "accuracy")
+    idx, name = get_weapon_tier(player, "deadeye")
     if idx >= 0:
         wep_acc = (idx + 1) * 4
         acc_bonus += wep_acc
-        log.append(f"The **{name}** weapon boosts 🎯 accuracy roll by **{wep_acc}**!")
+        log.append(f"**{fmt_weapon_passive(name)}** boosts 🎯 accuracy roll by **{wep_acc}**!")
 
     # Blinding: flat penalty to player acc_bonus (hits harder to land)
     blinding_note = ""
@@ -334,11 +334,11 @@ def _pt_crit_damage(
     crit_rolled = random.randint(crit_min, crit_max)
 
     # Nullifying: reduce crit damage multiplier (applied before other bonuses)
-    crit_mult = 2.0
+    crit_mult = player.get_weapon_crit_multi()
     nullifying_note = ""
     if monster.has_modifier("Nullifying"):
         null_val = monster.get_modifier_value("Nullifying")
-        crit_mult = 2.0 * (1 - null_val)
+        crit_mult = player.get_weapon_crit_multi() * (1 - null_val)
         nullifying_note = f" nullifying×{crit_mult:.2f}"
 
     base_dmg = int(crit_rolled * crit_mult)
@@ -372,7 +372,7 @@ def _pt_crit_damage(
         )
 
     if player.cursed_precision_active:
-        alt = int(random.randint(crit_min, crit_max) * 2.0)
+        alt = int(random.randint(crit_min, crit_max) * player.get_weapon_crit_multi())
         if alt < base_dmg:
             base_dmg = alt
             calc_dmg_notes.append(f"cursed_precision(alt={alt})={base_dmg}")
@@ -432,7 +432,7 @@ def _pt_crit_damage(
 
     calc.append("  crit_dmg: " + " → ".join(calc_dmg_notes) + f" = {damage}")
 
-    idx, _ = get_weapon_tier(player, "crit")
+    idx, _ = get_weapon_tier(player, "piercing")
     if idx >= 0:
         log.append("The weapon glimmers with power!")
     log.append(f"Critical Hit! Damage: 🗡️ **{damage}**")
@@ -455,22 +455,22 @@ def _pt_hit_damage(
         log.append(f"**Adroit ({glove_lvl})** sharpens your technique!")
 
     burn_note = ""
-    idx, name = get_weapon_tier(player, "burn")
+    idx, name = get_weapon_tier(player, "burning")
     if idx >= 0:
         bonus = int(player.get_total_attack() * ((idx + 1) * 0.08))
         base_max += bonus
         burn_note = f" burn+{bonus}"
         log.append(
-            f"The **{name}** weapon 🔥 burns bright!\nAttack damage potential boosted by **{bonus}**."
+            f"**{fmt_weapon_passive(name)}** 🔥 burns bright!\nAttack damage potential boosted by **{bonus}**."
         )
 
     spark_note = ""
-    idx, name = get_weapon_tier(player, "spark")
+    idx, name = get_weapon_tier(player, "shocking")
     if idx >= 0:
         base_min = max(base_min, int(base_max * ((idx + 1) * 0.08)))
         spark_note = f" spark_min={base_min}"
         log.append(
-            f"The **{name}** weapon surges with ⚡ lightning, ensuring solid impact!"
+            f"**{fmt_weapon_passive(name)}** surges with ⚡ lightning, ensuring solid impact!"
         )
 
     rolled = random.randint(min(base_min, base_max), base_max)
@@ -593,7 +593,7 @@ def _pt_apply_reductions(monster: Monster, damage: int, log: list[str], calc: li
 def _pt_generate_ward(
     player: Player, raw_damage: int, is_crit: bool, log: list[str]
 ) -> None:
-    """Phase 6 — glove ward generation on hit (uses pre-reduction damage)."""
+    """Phase 6 — ward generation on hit (uses pre-reduction damage)."""
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
 
@@ -613,6 +613,17 @@ def _pt_generate_ward(
         if ward > 0:
             added = _add_ward(player, ward, log)
             log.append(f"**Ward-Fused ({glove_lvl})** generates 🔮 **{added}** ward!")
+
+    # Arcane weapon passive: gain flat ward on any hit (crit or normal)
+    if raw_damage > 0:
+        idx, name = get_weapon_tier(player, "arcane")
+        if idx >= 0:
+            arcane_ward = (idx + 1) * 25
+            added = _add_ward(player, arcane_ward, log)
+            if added > 0:
+                log.append(
+                    f"🔮 **{fmt_weapon_passive(name)}** — the weapon pulses, generating **{added}** Ward!"
+                )
 
 
 def _pt_apply_to_monster(

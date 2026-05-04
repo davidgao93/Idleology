@@ -17,6 +17,7 @@ from core.images import (
     UPGRADE_VOID_ENGRAM,
     UPGRADE_VOIDFORGE,
 )
+from core.combat.calcs import fmt_weapon_passive
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.items.factory import create_weapon
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
@@ -293,7 +294,7 @@ class ForgeView(BaseUpgradeView):
             )
 
             result_embed.description = (
-                f"🔥 **Success!**\nNew Passive: **{new_passive.title()}**"
+                f"🔥 **Success!**\nNew Passive: **{fmt_weapon_passive(new_passive)}**"
             )
             result_embed.color = discord.Color.gold()
         else:
@@ -438,7 +439,7 @@ class ForgeView(BaseUpgradeView):
             title="⚒️ Forgemaxx Complete",
             description=(
                 f"**Attempts:** {forges_done}  |  **Successes:** {successes}\n"
-                f"**Final Passive:** {final_passive.title() if final_passive != 'none' else 'None'}\n"
+                f"**Final Passive:** {fmt_weapon_passive(final_passive) if final_passive != 'none' else 'None'}\n"
                 f"**Forges Remaining:** {self.item.forges_remaining}"
             ),
             color=discord.Color.gold() if successes > 0 else discord.Color.dark_grey(),
@@ -1556,7 +1557,7 @@ class VoidforgeView(BaseUpgradeView):
         options = []
         for w in self.candidates[:25]:  # Discord Select limit
             lbl = f"Lv{w.level} {w.name} (+{w.refinement_lvl})"
-            desc = f"Passive: {w.passive.title()}"
+            desc = f"Passive: {fmt_weapon_passive(w.passive)}"
             options.append(
                 SelectOption(label=lbl, description=desc, value=str(w.item_id))
             )
@@ -1615,7 +1616,7 @@ class VoidforgeView(BaseUpgradeView):
             description=(
                 f"You are about to sacrifice:\n"
                 f"🗡️ **{self.selected_target.name}** (Lv{self.selected_target.level})\n"
-                f"✨ **Passive:** {self.selected_target.passive.title()}\n\n"
+                f"✨ **Passive:** {fmt_weapon_passive(self.selected_target.passive)}\n\n"
                 f"**Cost:** 1 Void Key & {self.gold_cost:,} Gold\n\n"
                 "**This item will be PERMANENTLY DESTROYED regardless of success or failure.**"
             ),
@@ -1688,7 +1689,7 @@ class VoidforgeView(BaseUpgradeView):
             else:
                 self.item.u_passive = target.passive
 
-            res_txt = f"🌌 **Success!**\n{target.passive.title()} added as {slot.replace('_', ' ').title()}."
+            res_txt = f"🌌 **Success!**\n{fmt_weapon_passive(target.passive)} added as {slot.replace('_', ' ').title()}."
             color = discord.Color.purple()
 
         elif roll < 0.50:
@@ -1697,7 +1698,7 @@ class VoidforgeView(BaseUpgradeView):
                 self.item.item_id, "weapon", target.passive
             )
             self.item.passive = target.passive
-            res_txt = f"🔄 **Chaos!**\nMain passive overwritten with {target.passive.title()}."
+            res_txt = f"🔄 **Chaos!**\nMain passive overwritten with {fmt_weapon_passive(target.passive)}."
             color = discord.Color.orange()
         else:
             res_txt = "❌ **Failure.**\nThe essence dissipated into the void."

@@ -31,40 +31,40 @@ _BOSS_SIGILS = ["celestial_sigils", "infernal_sigils", "void_shards", "gemini_si
 _ELEMENTAL_KEY_DROPS = ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]
 
 # Gold range per combat dispatch reward roll
-_COMBAT_GOLD_MIN = 500
-_COMBAT_GOLD_MAX = 2_000
+_COMBAT_GOLD_MIN = 10_000
+_COMBAT_GOLD_MAX = 50_000
 
 # XP range per combat dispatch reward roll (granted to the partner)
 _COMBAT_EXP_MIN = 500
-_COMBAT_EXP_MAX = 1_500
+_COMBAT_EXP_MAX = 10_000
 
 # ---------------------------------------------------------------------------
 # Gathering material tables  (tool_name → materials list + quantity range)
 # ---------------------------------------------------------------------------
 
 _MINING_TIERS: Dict[str, dict] = {
-    "iron": {"materials": ["iron"], "qty": (2, 5)},
-    "steel": {"materials": ["iron", "coal"], "qty": (3, 6)},
-    "gold": {"materials": ["gold"], "qty": (2, 5)},
-    "platinum": {"materials": ["platinum"], "qty": (2, 4)},
-    "idea": {"materials": ["idea"], "qty": (1, 3)},
+    "iron": {"materials": ["iron"], "qty": (200, 500)},
+    "steel": {"materials": ["iron", "coal"], "qty": (300, 600)},
+    "gold": {"materials": ["gold"], "qty": (200, 500)},
+    "platinum": {"materials": ["platinum"], "qty": (200, 400)},
+    "idea": {"materials": ["idea"], "qty": (100, 300)},
 }
 
 _FISHING_TIERS: Dict[str, dict] = {
-    "desiccated": {"materials": ["desiccated_bones"], "qty": (2, 5)},
-    "regular": {"materials": ["regular_bones"], "qty": (3, 6)},
-    "sturdy": {"materials": ["sturdy_bones"], "qty": (2, 5)},
-    "reinforced": {"materials": ["reinforced_bones"], "qty": (2, 4)},
-    "titanium": {"materials": ["titanium_bones"], "qty": (1, 3)},
+    "desiccated": {"materials": ["desiccated_bones"], "qty": (200, 500)},
+    "regular": {"materials": ["regular_bones"], "qty": (300, 600)},
+    "sturdy": {"materials": ["sturdy_bones"], "qty": (200, 500)},
+    "reinforced": {"materials": ["reinforced_bones"], "qty": (200, 400)},
+    "titanium": {"materials": ["titanium_bones"], "qty": (100, 300)},
 }
 
 _WOODCUTTING_TIERS: Dict[str, dict] = {
-    "flimsy": {"materials": ["oak_logs"], "qty": (2, 5)},
-    "oak": {"materials": ["oak_logs", "willow_logs"], "qty": (3, 6)},
-    "willow": {"materials": ["willow_logs"], "qty": (2, 5)},
-    "mahogany": {"materials": ["mahogany_logs"], "qty": (2, 4)},
-    "magic": {"materials": ["magic_logs"], "qty": (2, 4)},
-    "idea": {"materials": ["idea_logs"], "qty": (1, 3)},
+    "flimsy": {"materials": ["oak_logs"], "qty": (200, 500)},
+    "oak": {"materials": ["oak_logs", "willow_logs"], "qty": (300, 600)},
+    "willow": {"materials": ["willow_logs"], "qty": (200, 500)},
+    "mahogany": {"materials": ["mahogany_logs"], "qty": (200, 400)},
+    "magic": {"materials": ["magic_logs"], "qty": (200, 400)},
+    "idea": {"materials": ["idea_logs"], "qty": (100, 300)},
 }
 
 _GATHERING_SKILL_MAP = {
@@ -117,11 +117,11 @@ def reward_rolls(
 ) -> float:
     """
     Number of reward rolls accumulated.
-    Each hour = 1 tick = 0.25 rolls. Capped by get_cap_hours().
+    Each hour = 1 tick = 1 rolls. Capped by get_cap_hours().
     """
     cap = get_cap_hours(partner)
     hours = elapsed_hours(start_time_str, now)
-    return min(hours, cap) * 0.25
+    return min(hours, cap)
 
 
 # ===========================================================================
@@ -432,11 +432,11 @@ _PARTY_BOSSES = [
     {"name": "Gemini, Twin Souls", "max_hp": 55_000},
 ]
 
-_PARTY_BOSS_GOLD_MIN = 30_000
-_PARTY_BOSS_GOLD_MAX = 80_000
+_PARTY_BOSS_GOLD_MIN = 500_000
+_PARTY_BOSS_GOLD_MAX = 2_000_000
 _PARTY_BOSS_SIGIL_MIN = 1
 _PARTY_BOSS_SIGIL_MAX = 3
-_PARTY_BOSS_TICKET_CHANCE = 0.05
+_PARTY_BOSS_TICKET_CHANCE = 0.5
 
 BOSS_PARTY_DURATION_HOURS = 22
 

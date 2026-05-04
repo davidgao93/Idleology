@@ -1,15 +1,14 @@
 """
 scripts/migrate_weapons.py
 ==========================
-One-time migration for the weapon base template rework.
+One-time data migration for the weapon base template rework.
 
-Run AFTER adding the new columns to the DB:
-    ALTER TABLE items ADD COLUMN hit_chance   REAL    NOT NULL DEFAULT 0.60;
-    ALTER TABLE items ADD COLUMN crit_chance  REAL    NOT NULL DEFAULT 0.00;
-    ALTER TABLE items ADD COLUMN crit_multi   REAL    NOT NULL DEFAULT 2.00;
-    ALTER TABLE items ADD COLUMN base_rarity  INTEGER NOT NULL DEFAULT 3;
+The four new columns (hit_chance, crit_chance, crit_multi, base_rarity) are
+already part of the schema definition in database/schema.sql. This script
+only needs to run against an existing live database to backfill existing rows
+and convert old passive name strings.
 
-Then run:
+Usage:
     python scripts/migrate_weapons.py [path/to/database.db]
 
 Default DB path: database/idleology.db
