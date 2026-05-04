@@ -3,8 +3,7 @@ import io
 import urllib.request
 
 import discord
-from discord import ButtonStyle, app_commands
-from discord import ui
+from discord import ButtonStyle, app_commands, ui
 from discord.ext import commands
 
 # ---------------------------------------------------------------------------
@@ -14,23 +13,23 @@ from discord.ext import commands
 AVATAR_COST = 100_000_000
 
 TITLES: dict[str, dict] = {
-    "the_gilded":  {"label": "The Gilded",   "price": 1_000_000_000},
-    "iron_warden": {"label": "Iron Warden",  "price": 1_000_000_000},
-    "the_blessed": {"label": "The Blessed",  "price": 1_000_000_000},
+    "the_gilded": {"label": "The Gilded", "price": 1_000_000_000},
+    "iron_warden": {"label": "Iron Warden", "price": 1_000_000_000},
+    "the_blessed": {"label": "The Blessed", "price": 1_000_000_000},
     "void_touched": {"label": "Void-Touched", "price": 1_000_000_000},
-    "shadowborn":  {"label": "Shadowborn",   "price": 1_000_000_000},
-    "ascendant":   {"label": "Ascendant",    "price": 1_000_000_000},
+    "shadowborn": {"label": "Shadowborn", "price": 1_000_000_000},
+    "ascendant": {"label": "Ascendant", "price": 1_000_000_000},
 }
 
 FLAIRS: dict[str, dict] = {
-    "casual":  {"label": "Casual",  "price": 1_000_000_000},
-    "heroic":  {"label": "Heroic",  "price": 1_000_000_000},
+    "casual": {"label": "Casual", "price": 1_000_000_000},
+    "heroic": {"label": "Heroic", "price": 1_000_000_000},
     "ominous": {"label": "Ominous", "price": 1_000_000_000},
 }
 
-RENAME_COST    = 750_000_000
+RENAME_COST = 750_000_000
 DEATH_MSG_COST = 300_000_000
-MONUMENT_COST  = 2_000_000_000
+MONUMENT_COST = 2_000_000_000
 
 DEFAULT_COLOR = 0xBEBEFE
 
@@ -57,7 +56,10 @@ async def _validate_avatar_url(url: str) -> tuple[bool, str]:
             with urllib.request.urlopen(req, timeout=8) as resp:
                 ct = resp.headers.get("Content-Type", "")
                 if not ct.startswith("image/"):
-                    return False, "URL must point to a direct image file (jpg, png, gif, webp)."
+                    return (
+                        False,
+                        "URL must point to a direct image file (jpg, png, gif, webp).",
+                    )
                 data = resp.read(4 * 1024 * 1024)  # 4 MB cap
         except Exception as exc:
             return False, f"Could not fetch the URL: {exc}"
@@ -129,7 +131,14 @@ class RenameModal(discord.ui.Modal, title="Rename Character"):
         max_length=32,
     )
 
-    def __init__(self, bot, user_id: str, server_id: str, current_gold: int, hub_view: "PrestigeHubView"):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        current_gold: int,
+        hub_view: "PrestigeHubView",
+    ):
         super().__init__()
         self.bot = bot
         self.user_id = user_id
@@ -145,7 +154,9 @@ class RenameModal(discord.ui.Modal, title="Rename Character"):
                 ephemeral=True,
             )
         await self.bot.database.users.modify_gold(self.user_id, -RENAME_COST)
-        await self.bot.database.prestige.set_field(self.user_id, "prestige_display_name", name)
+        await self.bot.database.prestige.set_field(
+            self.user_id, "prestige_display_name", name
+        )
 
         await interaction.response.send_message(
             f"Your name has been changed to **{name}**. (-{RENAME_COST:,}g)",
@@ -162,7 +173,14 @@ class DeathMessageModal(discord.ui.Modal, title="Set Death Message"):
         max_length=120,
     )
 
-    def __init__(self, bot, user_id: str, current_gold: int, already_unlocked: bool, hub_view: "PrestigeHubView"):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        current_gold: int,
+        already_unlocked: bool,
+        hub_view: "PrestigeHubView",
+    ):
         super().__init__()
         self.bot = bot
         self.user_id = user_id
@@ -179,7 +197,9 @@ class DeathMessageModal(discord.ui.Modal, title="Set Death Message"):
             )
         if not self.already_unlocked:
             await self.bot.database.users.modify_gold(self.user_id, -cost)
-            await self.bot.database.prestige.add_owned(self.user_id, "death_message", "unlocked")
+            await self.bot.database.prestige.add_owned(
+                self.user_id, "death_message", "unlocked"
+            )
         await self.bot.database.prestige.set_field(
             self.user_id, "prestige_death_message", self.message.value.strip()
         )
@@ -199,7 +219,14 @@ class MonumentModal(discord.ui.Modal, title="Set Monument Quote"):
         max_length=150,
     )
 
-    def __init__(self, bot, user_id: str, current_gold: int, already_owned: bool, hub_view: "PrestigeHubView"):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        current_gold: int,
+        already_owned: bool,
+        hub_view: "PrestigeHubView",
+    ):
         super().__init__()
         self.bot = bot
         self.user_id = user_id
@@ -216,7 +243,9 @@ class MonumentModal(discord.ui.Modal, title="Set Monument Quote"):
             )
         if not self.already_owned:
             await self.bot.database.users.modify_gold(self.user_id, -cost)
-            await self.bot.database.prestige.add_owned(self.user_id, "monument", "unlocked")
+            await self.bot.database.prestige.add_owned(
+                self.user_id, "monument", "unlocked"
+            )
         await self.bot.database.prestige.set_field(
             self.user_id, "prestige_monument", self.quote.value.strip()
         )
@@ -247,7 +276,11 @@ class PrestigeBuilder:
 
         display_name = active.get("display_name") or user[3]
         title_label = _title_label(active.get("title", ""))
-        name_str = f"{title_label} **{display_name}**" if title_label else f"**{display_name}**"
+        name_str = (
+            f"{title_label} **{display_name}**"
+            if title_label
+            else f"**{display_name}**"
+        )
         embed.description = name_str
         embed.set_thumbnail(url=user[7])
 
@@ -302,7 +335,9 @@ class PrestigeBuilder:
             ),
             inline=False,
         )
-        embed.set_footer(text="Titles and flairs are purchased once and freely swappable.")
+        embed.set_footer(
+            text="Titles and flairs are purchased once and freely swappable."
+        )
         return embed
 
     @staticmethod
@@ -314,7 +349,11 @@ class PrestigeBuilder:
         else:
             lines = []
             for name, quote, title_key, level in rows:
-                title_str = f"{_title_label(title_key)} " if title_key and title_key in TITLES else ""
+                title_str = (
+                    f"{_title_label(title_key)} "
+                    if title_key and title_key in TITLES
+                    else ""
+                )
                 lines.append(f'**{title_str}{name}** (Lv.{level})\n*"{quote}"*')
             embed.description = "\n\n".join(lines)
         return embed
@@ -327,7 +366,7 @@ class PrestigeBuilder:
 
 class PrestigeHubView(ui.View):
     def __init__(self, bot, user_id: str, server_id: str):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -344,14 +383,20 @@ class PrestigeHubView(ui.View):
         """Re-fetch live state from DB and rebuild buttons."""
         self.gold = await self.bot.database.users.get_gold(self.user_id)
         self.active = await self.bot.database.prestige.get_active(self.user_id)
-        self.owned_titles = await self.bot.database.prestige.get_owned(self.user_id, "title")
-        self.owned_flairs = await self.bot.database.prestige.get_owned(self.user_id, "flair")
+        self.owned_titles = await self.bot.database.prestige.get_owned(
+            self.user_id, "title"
+        )
+        self.owned_flairs = await self.bot.database.prestige.get_owned(
+            self.user_id, "flair"
+        )
         self._rebuild()
 
     async def refresh_and_sync(self) -> discord.Embed:
         """Refresh state, rebuild, and push overview to the hub message. Returns the new embed."""
         await self.refresh()
-        embed = await PrestigeBuilder.build_overview(self.bot, self.user_id, self.server_id)
+        embed = await PrestigeBuilder.build_overview(
+            self.bot, self.user_id, self.server_id
+        )
         self.active_tab = "overview"
         self._rebuild()
         if self.message:
@@ -365,8 +410,16 @@ class PrestigeHubView(ui.View):
         self.clear_items()
 
         # Row 0: navigation tabs + close
-        for tab_id, label in [("overview", "Overview"), ("shop", "Shop"), ("hall", "Hall of Fame")]:
-            style = ButtonStyle.primary if self.active_tab == tab_id else ButtonStyle.secondary
+        for tab_id, label in [
+            ("overview", "Overview"),
+            ("shop", "Shop"),
+            ("hall", "Hall of Fame"),
+        ]:
+            style = (
+                ButtonStyle.primary
+                if self.active_tab == tab_id
+                else ButtonStyle.secondary
+            )
             btn = ui.Button(label=label, style=style, custom_id=f"tab_{tab_id}", row=0)
             btn.callback = self._handle_tab
             self.add_item(btn)
@@ -382,7 +435,9 @@ class PrestigeHubView(ui.View):
             ("Death Msg", "💀", self._handle_death_msg),
             ("Monument", "🗿", self._handle_monument),
         ]:
-            btn = ui.Button(label=label, emoji=emoji, style=ButtonStyle.secondary, row=1)
+            btn = ui.Button(
+                label=label, emoji=emoji, style=ButtonStyle.secondary, row=1
+            )
             btn.callback = cb
             self.add_item(btn)
 
@@ -392,12 +447,18 @@ class PrestigeHubView(ui.View):
             discord.SelectOption(
                 label=v["label"],
                 value=k,
-                description=("Owned — free to equip" if k in self.owned_titles else f"{v['price']:,}g"),
+                description=(
+                    "Owned — free to equip"
+                    if k in self.owned_titles
+                    else f"{v['price']:,}g"
+                ),
                 default=(k == active_title),
             )
             for k, v in TITLES.items()
         ]
-        title_sel = ui.Select(placeholder="Equip a Title…", options=title_options, row=2)
+        title_sel = ui.Select(
+            placeholder="Equip a Title…", options=title_options, row=2
+        )
         title_sel.callback = self._handle_title_select
         self.add_item(title_sel)
 
@@ -407,12 +468,18 @@ class PrestigeHubView(ui.View):
             discord.SelectOption(
                 label=v["label"],
                 value=k,
-                description=("Owned — free to equip" if k in self.owned_flairs else f"{v['price']:,}g"),
+                description=(
+                    "Owned — free to equip"
+                    if k in self.owned_flairs
+                    else f"{v['price']:,}g"
+                ),
                 default=(k == active_flair),
             )
             for k, v in FLAIRS.items()
         ]
-        flair_sel = ui.Select(placeholder="Equip a Flair…", options=flair_options, row=3)
+        flair_sel = ui.Select(
+            placeholder="Equip a Flair…", options=flair_options, row=3
+        )
         flair_sel.callback = self._handle_flair_select
         self.add_item(flair_sel)
 
@@ -439,7 +506,9 @@ class PrestigeHubView(ui.View):
         await interaction.response.defer()
 
         if tab_id == "overview":
-            embed = await PrestigeBuilder.build_overview(self.bot, self.user_id, self.server_id)
+            embed = await PrestigeBuilder.build_overview(
+                self.bot, self.user_id, self.server_id
+            )
         elif tab_id == "shop":
             embed = PrestigeBuilder.build_shop()
         else:
@@ -455,9 +524,7 @@ class PrestigeHubView(ui.View):
         await interaction.delete_original_response()
 
     async def _handle_avatar(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_modal(
-            AvatarModal(self.bot, self.user_id, self)
-        )
+        await interaction.response.send_modal(AvatarModal(self.bot, self.user_id, self))
 
     async def _handle_rename(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(

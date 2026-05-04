@@ -125,7 +125,7 @@ class EquipConfirmView(ui.View):
     """Shown when a slot is already occupied — asks the player to confirm replacement."""
 
     def __init__(self, parent: "ConsumeView", part: MonsterPart):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.parent = parent
         self.part = part
 
@@ -146,7 +146,7 @@ class EquipConfirmView(ui.View):
         await interaction.response.defer()
         await self._do_equip()
         embed = _build_main_embed(self.parent.player, self.parent.inventory)
-        embed.set_footer(text=f"Forbidden power courses through you...")
+        embed.set_footer(text="Forbidden power courses through you...")
         await interaction.edit_original_response(embed=embed, view=self.parent)
         self.stop()
 
@@ -179,7 +179,7 @@ class PartDetailView(ui.View):
     """Shown after selecting a specific part — offers Equip or Discard."""
 
     def __init__(self, parent: "ConsumeView", part: MonsterPart):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.parent = parent
         self.part = part
 
@@ -236,7 +236,7 @@ class PartDetailView(ui.View):
             ]
             self.parent._rebuild_select()
             embed = _build_main_embed(self.parent.player, self.parent.inventory)
-            embed.set_footer(text=f"Forbidden power courses through you..")
+            embed.set_footer(text="Forbidden power courses through you..")
             await interaction.edit_original_response(embed=embed, view=self.parent)
             self.stop()
 
@@ -252,7 +252,7 @@ class PartDetailView(ui.View):
         ]
         self.parent._rebuild_select()
         embed = _build_main_embed(self.parent.player, self.parent.inventory)
-        embed.set_footer(text=f"Part discarded.")
+        embed.set_footer(text="Part discarded.")
         await interaction.edit_original_response(embed=embed, view=self.parent)
         self.stop()
 
@@ -306,7 +306,7 @@ class PartSelect(ui.Select):
 
 class ConsumeView(ui.View):
     def __init__(self, player: Player, inventory: list, bot):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.player = player
         self.bot = bot
         self.user_id = str(player.id)

@@ -19,7 +19,7 @@ class MawView(ui.View):
         prev_cycle_id: int,
         participant_count: int,
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.cycle_id = cycle_id
@@ -34,21 +34,29 @@ class MawView(ui.View):
     def _build_buttons(self):
         self.clear_items()
 
-        has_pending = self.pending_record and not self.pending_record["rewards_collected"]
+        has_pending = (
+            self.pending_record and not self.pending_record["rewards_collected"]
+        )
         is_signed_up = self.record is not None
         cycle_active = mechanics.is_cycle_active(self.cycle_id, self.now_ts)
 
         if has_pending:
-            btn_collect = ui.Button(label="Collect Rewards", style=ButtonStyle.success, emoji="🎁", row=0)
+            btn_collect = ui.Button(
+                label="Collect Rewards", style=ButtonStyle.success, emoji="🎁", row=0
+            )
             btn_collect.callback = self.collect_rewards
             self.add_item(btn_collect)
         elif cycle_active and not is_signed_up:
-            btn_fight = ui.Button(label="Fight the Maw", style=ButtonStyle.success, emoji="⚔️", row=0)
+            btn_fight = ui.Button(
+                label="Fight the Maw", style=ButtonStyle.success, emoji="⚔️", row=0
+            )
             btn_fight.callback = self.fight
             self.add_item(btn_fight)
 
         if is_signed_up and cycle_active:
-            boost_ready = mechanics.boost_available(self.record.get("boost_used_at"), self.now_ts)
+            boost_ready = mechanics.boost_available(
+                self.record.get("boost_used_at"), self.now_ts
+            )
             btn_boost = ui.Button(
                 label="Boost",
                 style=ButtonStyle.blurple,
@@ -68,7 +76,9 @@ class MawView(ui.View):
             cycle_id=self.cycle_id,
             now_ts=self.now_ts,
             participant_count=self.participant_count,
-            fake_global_damage=mechanics.calculate_fake_global(self.participant_count, self.cycle_id, self.now_ts),
+            fake_global_damage=mechanics.calculate_fake_global(
+                self.participant_count, self.cycle_id, self.now_ts
+            ),
             record=self.record,
             pending_record=self.pending_record,
             pending_cycle_id=self.prev_cycle_id,
@@ -76,7 +86,9 @@ class MawView(ui.View):
 
     async def fight(self, interaction: Interaction):
         if str(interaction.user.id) != self.user_id:
-            return await interaction.response.send_message("This isn't your session.", ephemeral=True)
+            return await interaction.response.send_message(
+                "This isn't your session.", ephemeral=True
+            )
 
         now_ts = int(time.time())
         await self.bot.database.maw.sign_up(self.user_id, self.cycle_id, now_ts)
@@ -94,17 +106,23 @@ class MawView(ui.View):
 
     async def boost(self, interaction: Interaction):
         if str(interaction.user.id) != self.user_id:
-            return await interaction.response.send_message("This isn't your session.", ephemeral=True)
+            return await interaction.response.send_message(
+                "This isn't your session.", ephemeral=True
+            )
 
         now_ts = int(time.time())
         if not mechanics.boost_available(self.record.get("boost_used_at"), now_ts):
-            return await interaction.response.send_message("Boost is still on cooldown.", ephemeral=True)
+            return await interaction.response.send_message(
+                "Boost is still on cooldown.", ephemeral=True
+            )
 
         new_damage = min(
             self.record["damage_dealt"] + mechanics.BOOST_DAMAGE,
             mechanics.DAMAGE_CAP,
         )
-        await self.bot.database.maw.set_boost_used(self.user_id, self.cycle_id, new_damage, now_ts)
+        await self.bot.database.maw.set_boost_used(
+            self.user_id, self.cycle_id, new_damage, now_ts
+        )
         self.record["damage_dealt"] = new_damage
         self.record["boost_used_at"] = now_ts
         self.now_ts = now_ts
@@ -113,15 +131,21 @@ class MawView(ui.View):
 
     async def collect_rewards(self, interaction: Interaction):
         if str(interaction.user.id) != self.user_id:
-            return await interaction.response.send_message("This isn't your session.", ephemeral=True)
+            return await interaction.response.send_message(
+                "This isn't your session.", ephemeral=True
+            )
 
         dmg = self.pending_record["damage_dealt"]
         curios, puzzle_box = mechanics.calculate_rewards(dmg)
 
-        await self.bot.database.maw.mark_rewards_collected(self.user_id, self.prev_cycle_id)
+        await self.bot.database.maw.mark_rewards_collected(
+            self.user_id, self.prev_cycle_id
+        )
 
         if curios > 0:
-            await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
+            await self.bot.database.users.modify_currency(
+                self.user_id, "curios", curios
+            )
 
         # TODO: award puzzle box item when curio_puzzle_boxes column is added
         # if puzzle_box:

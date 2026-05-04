@@ -21,6 +21,7 @@ from typing import Dict, List, Optional
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.images import PARTNERS_BOSS_PARTY, VICTORY_APHRODITE_GEMINI
 from core.models import Partner
 from core.partners.dispatch import (
     BOSS_PARTY_DURATION_HOURS,
@@ -35,7 +36,6 @@ from core.partners.mechanics import (
     get_skill_effect_text,
     grant_xp,
 )
-from core.images import PARTNERS_BOSS_PARTY, VICTORY_APHRODITE_GEMINI
 from core.partners.resources import _skill_display_name, _stars
 
 _SLOT_KEYS = ("attacker", "tank", "healer")
@@ -196,7 +196,7 @@ class SlotPickerView(ui.View):
         eligible: List[Partner],
         form_view: "BossPartyFormView",
     ):
-        super().__init__(timeout=300)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.slot_key = slot_key
@@ -324,7 +324,7 @@ class BossPartyFormView(ui.View):
     def __init__(
         self, bot, user_id: str, server_id: str, all_partners: List[Partner], back_view
     ):
-        super().__init__(timeout=300)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -533,7 +533,9 @@ class BossPartyProgressView(ui.View):
             )
             return
 
-        rewards = calculate_boss_party_rewards(attacker, tank, healer, boss_name=row["boss_name"])
+        rewards = calculate_boss_party_rewards(
+            attacker, tank, healer, boss_name=row["boss_name"]
+        )
 
         # Apply rewards
         await self.bot.database.users.modify_gold(self.user_id, rewards["gold"])

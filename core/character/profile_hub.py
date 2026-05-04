@@ -1407,7 +1407,7 @@ class ProfileBuilder:
 
 class ProfileHubView(ui.View):
     def __init__(self, bot, user_id: str, server_id: str, active_tab: str):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id

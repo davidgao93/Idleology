@@ -29,7 +29,7 @@ class ElementalEncounterView(discord.ui.View):
     MAX_TURNS = 20
 
     def __init__(self, bot, player: Player, user_id: str, server_id: str):
-        super().__init__(timeout=300)
+        super().__init__(timeout=600)
         self.bot = bot
         self.player = player
         self.user_id = user_id

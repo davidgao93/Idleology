@@ -41,7 +41,7 @@ class CombatView(ui.View):
         initial_logs: dict,
         combat_phases=None,
     ):
-        super().__init__(timeout=300)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -298,7 +298,10 @@ class CombatView(ui.View):
     def _uber_dmg_frac(self) -> float:
         return max(
             0.0,
-            min(1.0, (self.monster.max_hp - max(0, self.monster.hp)) / self.monster.max_hp),
+            min(
+                1.0,
+                (self.monster.max_hp - max(0, self.monster.hp)) / self.monster.max_hp,
+            ),
         )
 
     @staticmethod
@@ -735,10 +738,13 @@ class CombatView(ui.View):
                 )
 
                 if s_profile["active_task_species"] == self.monster.species:
+                    slayer_lines = []
+
                     # 1. Base Slayer XP + Drops
                     await self.bot.database.slayer.add_rewards(
                         self.user_id, server_id, xp=500, points=0
                     )
+                    slayer_lines.append("+500 Slayer XP")
 
                     ess, heart = core.slayer.mechanics.SlayerMechanics.roll_drops(
                         self.monster.level
@@ -755,26 +761,19 @@ class CombatView(ui.View):
                         await self.bot.database.slayer.modify_materials(
                             self.user_id, server_id, "violent_essence", ess
                         )
+                        slayer_lines.append("Found a **Violent Essence**!")
                     if heart > 0:
                         await self.bot.database.slayer.modify_materials(
                             self.user_id, server_id, "imbued_heart", heart
                         )
-
-                    # Log additions
-                    reward_data["msgs"].append("🩸 **Slayer:** +500 Slayer XP")
-                    if ess > 0:
-                        reward_data["msgs"].append("🩸 Found a **Violent Essence**!")
-                    if heart > 0:
-                        reward_data["msgs"].append("❤️ Found an **Imbued Heart**!")
+                        slayer_lines.append("Found an **Imbued Heart**!")
 
                     # Taskmaster passive (e.g. 5% chance per tier for double progress)
                     prog_gain = 1
                     task_tiers = self.player.get_emblem_bonus("task_progress")
                     if task_tiers > 0 and random.random() < (task_tiers * 0.05):
                         prog_gain = 2
-                        reward_data["msgs"].append(
-                            "⚡ **Taskmaster** granted double task progress!"
-                        )
+                        slayer_lines.append("⚡ **Taskmaster** granted double task progress!")
 
                     # Yvenn sig: +T bonus progress per kill
                     if reward_data.get("yvenn_slayer_bonus"):
@@ -796,15 +795,15 @@ class CombatView(ui.View):
                         await self.bot.database.slayer.clear_task(
                             self.user_id, server_id
                         )
-                        reward_data["msgs"].append(
+                        slayer_lines.append(
                             f"🏆 **Task Complete!** +{burst_xp} Slayer XP | +{burst_pts} Slayer Pts"
                         )
                     else:
                         await self.bot.database.slayer.update_task_progress(
                             self.user_id, server_id, 1
                         )
-                        reward_data["msgs"].append(
-                            f"📋 Progress: {new_prog}/{s_profile['active_task_amount']} {self.monster.species}"
+                        slayer_lines.append(
+                            f"Progress: {new_prog}/{s_profile['active_task_amount']} {self.monster.species}"
                         )
 
                     # 3. Level Up Check
@@ -826,9 +825,13 @@ class CombatView(ui.View):
                         await self.bot.database.slayer.update_level(
                             self.user_id, server_id, new_s_lvl
                         )
-                        reward_data["msgs"].append(
+                        slayer_lines.append(
                             f"🎉 **Slayer Level Up!** You are now Level {new_s_lvl}."
                         )
+
+                    reward_data["msgs"].append(
+                        "🩸 **Slayer Task**\n" + "\n".join(slayer_lines)
+                    )
             # --- PARTNER END REWARDS ---
             if self.player.active_partner:
                 from core.combat.rewards import apply_partner_end_rewards
@@ -920,20 +923,30 @@ class CombatView(ui.View):
         reward_data["special"] = []
 
         if random.random() < 0.10:
-            await self.bot.database.uber.increment_engrams(self.user_id, self.server_id, 1)
+            await self.bot.database.uber.increment_engrams(
+                self.user_id, self.server_id, 1
+            )
             reward_data["special"].append("Celestial Engram")
             reward_data["msgs"].append(
                 "🌌 **A Celestial Engram materializes from Aphrodite's shattered form...**"
             )
 
         if random.random() < 0.10:
-            u_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+            u_prog = await self.bot.database.uber.get_uber_progress(
+                self.user_id, self.server_id
+            )
             if not u_prog["celestial_blueprint_unlocked"]:
-                await self.bot.database.uber.set_blueprint_unlocked(self.user_id, self.server_id, True)
+                await self.bot.database.uber.set_blueprint_unlocked(
+                    self.user_id, self.server_id, True
+                )
                 reward_data["special"].append("Celestial Shrine Blueprint")
-                reward_data["msgs"].append("📜 **You found the Celestial Shrine Blueprint!**")
+                reward_data["msgs"].append(
+                    "📜 **You found the Celestial Shrine Blueprint!**"
+                )
             else:
-                await self.bot.database.users.modify_currency(self.user_id, "celestial_stone", 1)
+                await self.bot.database.users.modify_currency(
+                    self.user_id, "celestial_stone", 1
+                )
                 reward_data["special"].append("Celestial Stone")
                 reward_data["msgs"].append("🪨 **You found a Celestial Stone!**")
 
@@ -962,22 +975,34 @@ class CombatView(ui.View):
         reward_data["special"] = []
 
         if random.random() < 0.10:
-            await self.bot.database.uber.increment_infernal_engrams(self.user_id, self.server_id, 1)
+            await self.bot.database.uber.increment_infernal_engrams(
+                self.user_id, self.server_id, 1
+            )
             reward_data["special"].append("Infernal Engram")
             reward_data["msgs"].append(
                 "🔥 **An Infernal Engram crystallises from Lucifer's shattered crown...**"
             )
 
         if random.random() < 0.10:
-            u_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+            u_prog = await self.bot.database.uber.get_uber_progress(
+                self.user_id, self.server_id
+            )
             if not u_prog["infernal_blueprint_unlocked"]:
-                await self.bot.database.uber.set_infernal_blueprint_unlocked(self.user_id, self.server_id, True)
+                await self.bot.database.uber.set_infernal_blueprint_unlocked(
+                    self.user_id, self.server_id, True
+                )
                 reward_data["special"].append("Infernal Forge Blueprint")
-                reward_data["msgs"].append("📜 **You found the Infernal Forge Blueprint!**")
+                reward_data["msgs"].append(
+                    "📜 **You found the Infernal Forge Blueprint!**"
+                )
             else:
-                await self.bot.database.users.modify_currency(self.user_id, "infernal_cinder", 1)
+                await self.bot.database.users.modify_currency(
+                    self.user_id, "infernal_cinder", 1
+                )
                 reward_data["special"].append("Infernal Cinder")
-                reward_data["msgs"].append("🔥 **The forge roars. You extract an Infernal Cinder.**")
+                reward_data["msgs"].append(
+                    "🔥 **The forge roars. You extract an Infernal Cinder.**"
+                )
 
         await self._uber_finalize_rewards(reward_data)
 
@@ -985,7 +1010,9 @@ class CombatView(ui.View):
         embed.title = "🔥 Infernal Sovereign Defeated!"
         embed.set_image(url=VICTORY_INFERNAL)
 
-        contract_view = InfernalContractView(self.bot, self.user_id, self.player, self.server_id, message)
+        contract_view = InfernalContractView(
+            self.bot, self.user_id, self.player, self.server_id, message
+        )
         embed.add_field(
             name="🩸 An Infernal Contract materialises...",
             value=contract_view.contract_summary(),
@@ -1010,20 +1037,30 @@ class CombatView(ui.View):
         reward_data["special"] = []
 
         if random.random() < 0.10:
-            await self.bot.database.uber.increment_void_engrams(self.user_id, self.server_id, 1)
+            await self.bot.database.uber.increment_void_engrams(
+                self.user_id, self.server_id, 1
+            )
             reward_data["special"].append("Void Engram")
             reward_data["msgs"].append(
                 "⬛ **A Void Engram crystallises from the collapsing rift...**"
             )
 
         if random.random() < 0.10:
-            u_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+            u_prog = await self.bot.database.uber.get_uber_progress(
+                self.user_id, self.server_id
+            )
             if not u_prog["void_blueprint_unlocked"]:
-                await self.bot.database.uber.set_void_blueprint_unlocked(self.user_id, self.server_id, True)
+                await self.bot.database.uber.set_void_blueprint_unlocked(
+                    self.user_id, self.server_id, True
+                )
                 reward_data["special"].append("Void Sanctum Blueprint")
-                reward_data["msgs"].append("📜 **You found the Void Sanctum Blueprint!**")
+                reward_data["msgs"].append(
+                    "📜 **You found the Void Sanctum Blueprint!**"
+                )
             else:
-                await self.bot.database.users.modify_currency(self.user_id, "void_crystal", 1)
+                await self.bot.database.users.modify_currency(
+                    self.user_id, "void_crystal", 1
+                )
                 reward_data["special"].append("Void Crystal")
                 reward_data["msgs"].append("🔮 **The void yields a Void Crystal.**")
 
@@ -1055,22 +1092,34 @@ class CombatView(ui.View):
         reward_data["special"] = []
 
         if random.random() < 0.10:
-            await self.bot.database.uber.increment_gemini_engrams(self.user_id, self.server_id, 1)
+            await self.bot.database.uber.increment_gemini_engrams(
+                self.user_id, self.server_id, 1
+            )
             reward_data["special"].append("Gemini Engram")
             reward_data["msgs"].append(
                 "♊ **A Gemini Engram crystallises from the twins' shattered bond...**"
             )
 
         if random.random() < 0.10:
-            u_prog = await self.bot.database.uber.get_uber_progress(self.user_id, self.server_id)
+            u_prog = await self.bot.database.uber.get_uber_progress(
+                self.user_id, self.server_id
+            )
             if not u_prog["gemini_blueprint_unlocked"]:
-                await self.bot.database.uber.set_gemini_blueprint_unlocked(self.user_id, self.server_id, True)
+                await self.bot.database.uber.set_gemini_blueprint_unlocked(
+                    self.user_id, self.server_id, True
+                )
                 reward_data["special"].append("Twin Shrine Blueprint")
-                reward_data["msgs"].append("📜 **You found the Twin Shrine Blueprint!**")
+                reward_data["msgs"].append(
+                    "📜 **You found the Twin Shrine Blueprint!**"
+                )
             else:
-                await self.bot.database.users.modify_currency(self.user_id, "bound_crystal", 1)
+                await self.bot.database.users.modify_currency(
+                    self.user_id, "bound_crystal", 1
+                )
                 reward_data["special"].append("Bound Crystal")
-                reward_data["msgs"].append("💎 **The twins' bond yields a Bound Crystal.**")
+                reward_data["msgs"].append(
+                    "💎 **The twins' bond yields a Bound Crystal.**"
+                )
 
         await self._uber_finalize_rewards(reward_data)
 

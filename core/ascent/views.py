@@ -100,7 +100,7 @@ class AscentLobbyView(ui.View):
         best_floor: int,
         pinnacle_keys: int,
     ):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -269,7 +269,7 @@ class AscentLobbyView(ui.View):
 
 class AscentPinnacleListView(ui.View):
     def __init__(self, lobby_view: "AscentLobbyView", pages: list[str]):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.lobby_view = lobby_view
         self.pages = pages
         self.page = 0
@@ -337,7 +337,7 @@ class AscentView(ui.View):
         starting_floor: int,
         best_floor: int,
     ):
-        super().__init__(timeout=300)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id

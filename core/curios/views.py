@@ -1,5 +1,5 @@
 import discord
-from discord import ui, ButtonStyle, Interaction
+from discord import ButtonStyle, Interaction, ui
 
 from core.curios.logic import CurioManager
 from core.curios.puzzle_box_views import PuzzleBoxView
@@ -26,18 +26,29 @@ class CustomAmountModal(ui.Modal, title="Open Custom Amount"):
         try:
             value = int(self.amount_input.value)
         except ValueError:
-            await interaction.response.send_message("Please enter a valid number.", ephemeral=True)
+            await interaction.response.send_message(
+                "Please enter a valid number.", ephemeral=True
+            )
             return
         if not (1 <= value <= self.max_amount):
-            await interaction.response.send_message(f"Must be between 1 and {self.max_amount}.", ephemeral=True)
+            await interaction.response.send_message(
+                f"Must be between 1 and {self.max_amount}.", ephemeral=True
+            )
             return
         self.chosen_amount = value
         await interaction.response.defer()
 
 
 class CurioView(ui.View):
-    def __init__(self, bot, user_id: str, server_id: str, curio_count: int, puzzle_box_count: int = 0):
-        super().__init__(timeout=120)
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        curio_count: int,
+        puzzle_box_count: int = 0,
+    ):
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -49,19 +60,43 @@ class CurioView(ui.View):
     def _build_buttons(self):
         self.clear_items()
 
-        btn_1 = ui.Button(label="Open 1", style=ButtonStyle.primary, emoji="🎁", row=0, disabled=self.curio_count < 1)
+        btn_1 = ui.Button(
+            label="Open 1",
+            style=ButtonStyle.primary,
+            emoji="🎁",
+            row=0,
+            disabled=self.curio_count < 1,
+        )
         btn_1.callback = lambda i: self._process_open(i, 1)
         self.add_item(btn_1)
 
-        btn_5 = ui.Button(label="Open 5", style=ButtonStyle.primary, emoji="🎁", row=0, disabled=self.curio_count < 5)
+        btn_5 = ui.Button(
+            label="Open 5",
+            style=ButtonStyle.primary,
+            emoji="🎁",
+            row=0,
+            disabled=self.curio_count < 5,
+        )
         btn_5.callback = lambda i: self._process_open(i, 5)
         self.add_item(btn_5)
 
-        btn_10 = ui.Button(label="Open 10", style=ButtonStyle.primary, emoji="🎁", row=0, disabled=self.curio_count < 10)
+        btn_10 = ui.Button(
+            label="Open 10",
+            style=ButtonStyle.primary,
+            emoji="🎁",
+            row=0,
+            disabled=self.curio_count < 10,
+        )
         btn_10.callback = lambda i: self._process_open(i, 10)
         self.add_item(btn_10)
 
-        btn_custom = ui.Button(label="Custom", style=ButtonStyle.secondary, emoji="✏️", row=0, disabled=self.curio_count < 1)
+        btn_custom = ui.Button(
+            label="Custom",
+            style=ButtonStyle.secondary,
+            emoji="✏️",
+            row=0,
+            disabled=self.curio_count < 1,
+        )
         btn_custom.callback = self._open_custom_modal
         self.add_item(btn_custom)
 
@@ -105,20 +140,27 @@ class CurioView(ui.View):
 
     async def _process_open(self, interaction: Interaction, amount: int):
         await interaction.response.defer()
-        result = await CurioManager.process_open(self.bot, self.user_id, self.server_id, amount)
+        result = await CurioManager.process_open(
+            self.bot, self.user_id, self.server_id, amount
+        )
         self.curio_count -= amount
 
-        embed = discord.Embed(title=f"Opened {amount} Curio{'s' if amount != 1 else ''}", color=discord.Color.green())
-        embed.description = "\n".join(f"**{k}** x{v}" for k, v in result['summary'].items())
+        embed = discord.Embed(
+            title=f"Opened {amount} Curio{'s' if amount != 1 else ''}",
+            color=discord.Color.green(),
+        )
+        embed.description = "\n".join(
+            f"**{k}** x{v}" for k, v in result["summary"].items()
+        )
 
-        if result['loot_logs']:
-            preview = "\n".join(result['loot_logs'][:5])
-            if len(result['loot_logs']) > 5:
+        if result["loot_logs"]:
+            preview = "\n".join(result["loot_logs"][:5])
+            if len(result["loot_logs"]) > 5:
                 preview += f"\n…and {len(result['loot_logs']) - 5} more."
             embed.add_field(name="Gear Details", value=preview, inline=False)
 
         if amount == 1:
-            item_name = list(result['summary'].keys())[0]
+            item_name = list(result["summary"].keys())[0]
             url = CurioManager.get_image_url(item_name)
             if url:
                 embed.set_image(url=url)
@@ -129,7 +171,9 @@ class CurioView(ui.View):
 
         self._build_buttons()
         if self.curio_count == 0:
-            embed.add_field(name="Empty!", value="You have no curios left.", inline=False)
+            embed.add_field(
+                name="Empty!", value="You have no curios left.", inline=False
+            )
             await interaction.edit_original_response(embed=embed, view=None)
             self.bot.state_manager.clear_active(self.user_id)
             self.stop()
@@ -146,20 +190,27 @@ class CurioView(ui.View):
         await self._process_open_after_modal(interaction, modal.chosen_amount)
 
     async def _process_open_after_modal(self, interaction: Interaction, amount: int):
-        result = await CurioManager.process_open(self.bot, self.user_id, self.server_id, amount)
+        result = await CurioManager.process_open(
+            self.bot, self.user_id, self.server_id, amount
+        )
         self.curio_count -= amount
 
-        embed = discord.Embed(title=f"Opened {amount} Curio{'s' if amount != 1 else ''}", color=discord.Color.green())
-        embed.description = "\n".join(f"**{k}** x{v}" for k, v in result['summary'].items())
+        embed = discord.Embed(
+            title=f"Opened {amount} Curio{'s' if amount != 1 else ''}",
+            color=discord.Color.green(),
+        )
+        embed.description = "\n".join(
+            f"**{k}** x{v}" for k, v in result["summary"].items()
+        )
 
-        if result['loot_logs']:
-            preview = "\n".join(result['loot_logs'][:5])
-            if len(result['loot_logs']) > 5:
+        if result["loot_logs"]:
+            preview = "\n".join(result["loot_logs"][:5])
+            if len(result["loot_logs"]) > 5:
                 preview += f"\n…and {len(result['loot_logs']) - 5} more."
             embed.add_field(name="Gear Details", value=preview, inline=False)
 
         if amount == 1:
-            item_name = list(result['summary'].keys())[0]
+            item_name = list(result["summary"].keys())[0]
             url = CurioManager.get_image_url(item_name)
             if url:
                 embed.set_image(url=url)
@@ -170,7 +221,9 @@ class CurioView(ui.View):
 
         self._build_buttons()
         if self.curio_count == 0:
-            embed.add_field(name="Empty!", value="You have no curios left.", inline=False)
+            embed.add_field(
+                name="Empty!", value="You have no curios left.", inline=False
+            )
             await interaction.edit_original_response(embed=embed, view=None)
             self.bot.state_manager.clear_active(self.user_id)
             self.stop()
@@ -179,7 +232,9 @@ class CurioView(ui.View):
 
     async def _open_puzzle_box(self, interaction: Interaction):
         if self.puzzle_box_count < 1:
-            return await interaction.response.send_message("You don't have any Curio Puzzle Boxes.", ephemeral=True)
+            return await interaction.response.send_message(
+                "You don't have any Curio Puzzle Boxes.", ephemeral=True
+            )
 
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()

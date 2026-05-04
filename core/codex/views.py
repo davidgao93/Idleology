@@ -133,7 +133,7 @@ class CodexRunView(ui.View):
         start_logs: dict,
         chapter_wave_baseline: dict = None,
     ):
-        super().__init__(timeout=300)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.player = player
@@ -422,7 +422,7 @@ class CodexRunView(ui.View):
         is_perfect = self.chapters_cleared == 5 and self.waves_cleared_this_run == 35
         embed = discord.Embed(
             title="📕 Codex Run Complete",
-            description=(f"**✨ Codex Cleared!"),
+            description=("**✨ Codex Cleared!"),
             color=discord.Color.gold() if is_perfect else discord.Color.blurple(),
         )
         embed.add_field(
@@ -872,7 +872,7 @@ class CodexTomsView(ui.View):
         rerolls: int,
         chapter_history: dict,
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.player = player
@@ -1160,7 +1160,7 @@ class CodexMenuView(ui.View):
         chapter_history: dict,
         antique_tomes: int = 0,
     ):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.player = player

@@ -26,7 +26,10 @@ class BulkTradeModal(ui.Modal):
             "label": "Equipment Caches (2.5M Gold each)",
             "key": "equip",
         },
-        "rune": {"label": "Rune Caches (1 each: Refine/Potential/Shatter)", "key": "rune"},
+        "rune": {
+            "label": "Rune Caches (1 each: Refine/Potential/Shatter)",
+            "key": "rune",
+        },
         "key": {"label": "Boss Key Caches (1 Void Key each)", "key": "key"},
     }
 
@@ -72,7 +75,7 @@ class BulkTradeModal(ui.Modal):
 
 class BlackMarketView(ui.View):
     def __init__(self, bot, user_id, parent_view, building: Building):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.parent = parent_view
@@ -311,9 +314,7 @@ class BlackMarketView(ui.View):
             await self.bot.database.equipment.create_helmet(item)
 
         name = item.name if item else "Nothing"
-        await interaction.followup.send(
-            f"📦 **Cache Opened:**\n{name}", ephemeral=True
-        )
+        await interaction.followup.send(f"📦 **Cache Opened:**\n{name}", ephemeral=True)
 
     async def buy_rune_cache(self, interaction: Interaction):
         uid = self.user_id
@@ -323,7 +324,8 @@ class BlackMarketView(ui.View):
 
         if owned_ref < 1 or owned_pot < 1 or owned_sha < 1:
             return await interaction.response.send_message(
-                "Need 1 Refinement Rune, 1 Potential Rune, and 1 Shatter Rune!", ephemeral=True
+                "Need 1 Refinement Rune, 1 Potential Rune, and 1 Shatter Rune!",
+                ephemeral=True,
             )
 
         await interaction.response.defer()
@@ -405,7 +407,7 @@ class BlackMarketView(ui.View):
                 modal = BulkTradeModal(self, self_inner.values[0])
                 await inner_interaction.response.send_modal(modal)
 
-        select_view = ui.View(timeout=60)
+        select_view = ui.View(timeout=600)
         select_view.add_item(TradeSelect())
         await interaction.response.send_message(
             "Select which trade to bulk execute:", view=select_view, ephemeral=True
@@ -419,7 +421,8 @@ class BlackMarketView(ui.View):
         possible = min(requested, gold // cost_per)
         if possible <= 0:
             return await interaction.followup.send(
-                f"Not enough Gold for even one Equipment Cache (need {cost_per:,}g each).", ephemeral=True
+                f"Not enough Gold for even one Equipment Cache (need {cost_per:,}g each).",
+                ephemeral=True,
             )
 
         total_cost = possible * cost_per
@@ -477,10 +480,13 @@ class BlackMarketView(ui.View):
 
         if possible <= 0:
             return await interaction.followup.send(
-                "Need 1 of each rune (Refinement, Potential, Shatter) per cache.", ephemeral=True
+                "Need 1 of each rune (Refinement, Potential, Shatter) per cache.",
+                ephemeral=True,
             )
 
-        await self.bot.database.users.modify_currency(uid, "refinement_runes", -possible)
+        await self.bot.database.users.modify_currency(
+            uid, "refinement_runes", -possible
+        )
         await self.bot.database.users.modify_currency(uid, "potential_runes", -possible)
         await self.bot.database.users.modify_currency(uid, "shatter_runes", -possible)
 
@@ -557,7 +563,7 @@ class BlackMarketView(ui.View):
 
 class TownHallView(ui.View):
     def __init__(self, bot, user_id, settlement, parent_view):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.settlement = settlement
@@ -721,7 +727,7 @@ class SettlementDashboardView(ui.View):
     def __init__(
         self, bot, user_id, server_id, settlement: Settlement, follower_count: int
     ):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -1094,7 +1100,7 @@ class BuildConstructionView(ui.View):
     }
 
     def __init__(self, bot, user_id, slot_index, parent_view, uber_prog):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.slot_index = slot_index
@@ -1304,7 +1310,7 @@ class BuildConstructionView(ui.View):
 
 class BuildingDetailView(ui.View):
     def __init__(self, bot, user_id, building: Building, parent_view):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.building = building

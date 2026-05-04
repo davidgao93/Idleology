@@ -209,7 +209,7 @@ class ConfirmApplyView(View):
     """Yes/No confirmation before applying a regular or corrupted essence."""
 
     def __init__(self, hub: "EssenceView", essence_type: str, corrupted: bool):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.hub = hub
         self.essence_type = essence_type
         self.corrupted = corrupted
@@ -271,7 +271,7 @@ class ConfirmUtilityView(View):
     """Yes/No confirmation before consuming a utility essence (cleanse / chaos / annul)."""
 
     def __init__(self, hub: "EssenceView", utility_type: str):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.hub = hub
         self.utility_type = utility_type
 
@@ -373,7 +373,9 @@ class EssenceSelectView(View):
             inline=False,
         )
         embed.add_field(
-            name="Effect", value=_get_essence_brief(chosen, self.hub.item_type), inline=False
+            name="Effect",
+            value=_get_essence_brief(chosen, self.hub.item_type),
+            inline=False,
         )
 
         if not self.corrupted:

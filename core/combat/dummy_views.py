@@ -1,13 +1,17 @@
 import discord
-from discord import ui, ButtonStyle, Interaction, SelectOption
+from discord import ButtonStyle, Interaction, SelectOption, ui
+
 from core.combat.dummy_engine import DummyEngine
+from core.combat.gen_mob import calculate_monster_stats, get_modifier_description
+from core.combat.modifier_data import (
+    BOSS_MOD_NAMES,
+    COMMON_MOD_NAMES,
+    RARE_FLAT_MOD_NAMES,
+    RARE_TIERED_MOD_NAMES,
+    make_modifier,
+)
 from core.images import COMBAT_DUMMY
 from core.models import Monster
-from core.combat.gen_mob import get_modifier_description, calculate_monster_stats
-from core.combat.modifier_data import (
-    COMMON_MOD_NAMES, RARE_TIERED_MOD_NAMES, RARE_FLAT_MOD_NAMES,
-    BOSS_MOD_NAMES, make_modifier,
-)
 
 # ---------------------------------------------------------------------------
 # Modifier catalogue
@@ -18,14 +22,20 @@ _NORMAL_MODS = sorted(COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES + RARE_FLAT_MOD_N
 
 # Boss / uber modifiers
 _SPECIAL_MODS = list(BOSS_MOD_NAMES) + [
-    "Radiant Protection", "Infernal Protection", "Balanced Protection", "Void Protection",
-    "Hell's Fury", "Void Aura", "Balanced Strikes",
+    "Radiant Protection",
+    "Infernal Protection",
+    "Balanced Protection",
+    "Void Protection",
+    "Hell's Fury",
+    "Void Aura",
+    "Balanced Strikes",
 ]
 
 
 # ---------------------------------------------------------------------------
 # Level modal
 # ---------------------------------------------------------------------------
+
 
 class SetLevelModal(discord.ui.Modal, title="Set Dummy Level"):
     level_input = discord.ui.TextInput(
@@ -59,18 +69,19 @@ class SetLevelModal(discord.ui.Modal, title="Set Dummy Level"):
 # Main view
 # ---------------------------------------------------------------------------
 
+
 class DummyConfigView(ui.View):
     def __init__(self, bot, user_id: str, player):
-        super().__init__(timeout=300)
-        self.bot      = bot
-        self.user_id  = user_id
-        self.player   = player
+        super().__init__(timeout=600)
+        self.bot = bot
+        self.user_id = user_id
+        self.player = player
 
         # Configuration state
         self.dummy_level = player.level
         self.active_mods: list[str] = []
-        self.is_boss_mode   = False   # Applies boss_dmg emblem instead of combat_dmg
-        self.slayer_active  = False   # Simulates slayer task matching this dummy
+        self.is_boss_mode = False  # Applies boss_dmg emblem instead of combat_dmg
+        self.slayer_active = False  # Simulates slayer task matching this dummy
 
         self.update_components()
 
@@ -110,7 +121,7 @@ class DummyConfigView(ui.View):
 
         if results:
             total_turns = results.turns
-            hit_pct  = int(results.hits  / total_turns * 100)
+            hit_pct = int(results.hits / total_turns * 100)
             crit_pct = int(results.crits / total_turns * 100)
 
             # Damage taken assessment
@@ -127,7 +138,11 @@ class DummyConfigView(ui.View):
                 f"**Max Single Hit:** {results.max_damage_taken:,} ({lethal_icon})\n"
                 f"**Your HP:** {self.player.total_max_hp:,}"
             )
-            embed.add_field(name=f"⚔️ Outgoing DPS ({total_turns} turns)", value=outgoing, inline=True)
+            embed.add_field(
+                name=f"⚔️ Outgoing DPS ({total_turns} turns)",
+                value=outgoing,
+                inline=True,
+            )
             embed.add_field(name="💔 Incoming Damage", value=incoming, inline=True)
         else:
             embed.add_field(
@@ -193,11 +208,15 @@ class DummyConfigView(ui.View):
         btn_level.callback = self.open_level_modal
         self.add_item(btn_level)
 
-        btn_all_normal = ui.Button(label="➕ All Normal", style=ButtonStyle.secondary, row=2)
+        btn_all_normal = ui.Button(
+            label="➕ All Normal", style=ButtonStyle.secondary, row=2
+        )
         btn_all_normal.callback = self.add_all_normal
         self.add_item(btn_all_normal)
 
-        btn_all_special = ui.Button(label="➕ All Special", style=ButtonStyle.secondary, row=2)
+        btn_all_special = ui.Button(
+            label="➕ All Special", style=ButtonStyle.secondary, row=2
+        )
         btn_all_special.callback = self.add_all_special
         self.add_item(btn_all_special)
 
@@ -206,10 +225,12 @@ class DummyConfigView(ui.View):
         self.add_item(btn_clear)
 
         # --- Row 3: Mode toggles + run + exit ---
-        boss_style  = ButtonStyle.success if self.is_boss_mode  else ButtonStyle.secondary
-        slay_style  = ButtonStyle.success if self.slayer_active else ButtonStyle.secondary
-        boss_label  = "🗡️ Boss Mode: ON"  if self.is_boss_mode  else "🗡️ Boss Mode: OFF"
-        slay_label  = "🎯 Slayer: ON"     if self.slayer_active else "🎯 Slayer: OFF"
+        boss_style = ButtonStyle.success if self.is_boss_mode else ButtonStyle.secondary
+        slay_style = (
+            ButtonStyle.success if self.slayer_active else ButtonStyle.secondary
+        )
+        boss_label = "🗡️ Boss Mode: ON" if self.is_boss_mode else "🗡️ Boss Mode: OFF"
+        slay_label = "🎯 Slayer: ON" if self.slayer_active else "🎯 Slayer: OFF"
 
         btn_boss = ui.Button(label=boss_label, style=boss_style, row=3)
         btn_boss.callback = self.toggle_boss
@@ -219,7 +240,9 @@ class DummyConfigView(ui.View):
         btn_slay.callback = self.toggle_slayer
         self.add_item(btn_slay)
 
-        btn_run = ui.Button(label="▶ Run Simulation", style=ButtonStyle.success, emoji="⚔️", row=3)
+        btn_run = ui.Button(
+            label="▶ Run Simulation", style=ButtonStyle.success, emoji="⚔️", row=3
+        )
         btn_run.callback = self.run_sim
         self.add_item(btn_run)
 
@@ -237,7 +260,7 @@ class DummyConfigView(ui.View):
     async def mod_callback(self, interaction: Interaction):
         mod = interaction.data["values"][0]
         if mod in self.active_mods:
-            self.active_mods.remove(mod)   # Toggle off if already active
+            self.active_mods.remove(mod)  # Toggle off if already active
         else:
             self.active_mods.append(mod)
         self.update_components()
@@ -283,16 +306,21 @@ class DummyConfigView(ui.View):
         monster = Monster(
             name="Combat Dummy",
             level=lvl,
-            hp=9_999_999, max_hp=9_999_999, xp=0,
-            attack=0, defence=0,
-            image="", flavor="",
-            species="_dojo_dummy_",        # Unique species — Slayer won't match by default
+            hp=9_999_999,
+            max_hp=9_999_999,
+            xp=0,
+            attack=0,
+            defence=0,
+            image="",
+            flavor="",
+            species="_dojo_dummy_",  # Unique species — Slayer won't match by default
         )
         calculate_monster_stats(monster)
         monster.modifiers = [make_modifier(name, lvl) for name in self.active_mods]
 
         # Apply spawn-time stat mutations (Empowered/Fortified/Titanic/Ascended/Veiled)
         from core.combat.gen_mob import _apply_spawn_modifiers
+
         _apply_spawn_modifiers(monster)
         monster.max_hp = 9_999_999  # restore after any Titanic mutation
 

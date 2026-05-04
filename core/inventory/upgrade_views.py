@@ -26,7 +26,7 @@ class BaseUpgradeView(View):
     """Base class for all upgrade interaction views."""
 
     def __init__(self, bot, user_id: str, item, parent_view):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.item = item
@@ -45,8 +45,8 @@ class BaseUpgradeView(View):
 
     async def go_back(self, interaction: Interaction):
         # 1. Import inside method to avoid circular import at top of file
-        from core.inventory.views import ItemDetailView
         from core.inventory.inventory import InventoryUI
+        from core.inventory.views import ItemDetailView
 
         # 2. Get the Grandparent (Inventory List) to pass down
         inventory_view = self.parent_view.parent
@@ -1764,7 +1764,12 @@ class ReinforceView(BaseUpgradeView):
         if materials:
             mat_status = "\n**Required Materials:**"
             for mat in materials:
-                table, col, qty, name = mat["table"], mat["column"], mat["qty"], mat["name"]
+                table, col, qty, name = (
+                    mat["table"],
+                    mat["column"],
+                    mat["qty"],
+                    mat["name"],
+                )
                 async with self.bot.database.connection.execute(
                     f"SELECT {col} FROM {table} WHERE user_id=? AND server_id=?",
                     (uid, sid),
@@ -1802,7 +1807,9 @@ class ReinforceView(BaseUpgradeView):
         self.add_item(action_btn)
         self.add_back_button()
 
-        color = discord.Color.blue() if (has_funds and has_mats) else discord.Color.red()
+        color = (
+            discord.Color.blue() if (has_funds and has_mats) else discord.Color.red()
+        )
         embed = discord.Embed(
             title=f"Reinforce {self.item.name}", description=desc, color=color
         )
@@ -1825,7 +1832,9 @@ class ReinforceView(BaseUpgradeView):
                 return await interaction.response.send_message(
                     "You don't have any Shatter Runes!", ephemeral=True
                 )
-            await self.bot.database.users.modify_currency(self.user_id, "shatter_runes", -1)
+            await self.bot.database.users.modify_currency(
+                self.user_id, "shatter_runes", -1
+            )
             await self.bot.database.equipment.update_counter(
                 self.item.item_id, itype, "reinforces_remaining", 1
             )
@@ -1863,7 +1872,10 @@ class ReinforceView(BaseUpgradeView):
             self.item.reinforces_remaining -= 1
             self.item.reinforcement_lvl += 1
             await self.bot.database.equipment.update_counter(
-                self.item.item_id, itype, "reinforces_remaining", self.item.reinforces_remaining
+                self.item.item_id,
+                itype,
+                "reinforces_remaining",
+                self.item.reinforces_remaining,
             )
             await self.bot.database.equipment.increase_stat(
                 self.item.item_id, itype, "reinforcement_lvl", 1
@@ -1872,7 +1884,9 @@ class ReinforceView(BaseUpgradeView):
 
             new_val = getattr(self.item, stat_col)
             suffix = "%" if is_pct else ""
-            embed = discord.Embed(title="Reinforce Complete! ✨", color=discord.Color.green())
+            embed = discord.Embed(
+                title="Reinforce Complete! ✨", color=discord.Color.green()
+            )
             embed.set_thumbnail(url=UPGRADE_REINFORCE)
             embed.description = (
                 f"**Gain:** +{gain}{suffix} {stat_label}\n"

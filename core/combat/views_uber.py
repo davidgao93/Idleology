@@ -18,7 +18,7 @@ class UberHubView(ui.View):
     def __init__(
         self, bot, user_id: str, server_id: str, player: Player, uber_data: dict
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -215,7 +215,7 @@ class UberAphroditeLobbyView(ui.View):
         uber_data: dict,
         readiness_text: str,
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -366,7 +366,7 @@ class UberLuciferLobbyView(ui.View):
         uber_data: dict,
         readiness_text: str,
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -522,7 +522,7 @@ class UberNEETLobbyView(ui.View):
         uber_data: dict,
         readiness_text: str,
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -675,7 +675,7 @@ class UberGeminiLobbyView(ui.View):
         uber_data: dict,
         readiness_text: str,
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id

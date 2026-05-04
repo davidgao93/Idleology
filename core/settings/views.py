@@ -1,10 +1,10 @@
 import discord
-from discord import ui, ButtonStyle, Interaction
+from discord import ButtonStyle, Interaction, ui
 
 
 class SettingsView(ui.View):
     def __init__(self, bot, user_id: str, doors_status: bool, exp_protection: bool):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.doors_status = doors_status
@@ -23,7 +23,9 @@ class SettingsView(ui.View):
         doors_btn.callback = self.toggle_doors
         self.add_item(doors_btn)
 
-        exp_lbl = "Disable EXP Protection" if self.exp_protection else "Enable EXP Protection"
+        exp_lbl = (
+            "Disable EXP Protection" if self.exp_protection else "Enable EXP Protection"
+        )
         exp_style = ButtonStyle.danger if self.exp_protection else ButtonStyle.success
         exp_btn = ui.Button(label=exp_lbl, style=exp_style, emoji="🛡️", row=1)
         exp_btn.callback = self.toggle_exp_protection
@@ -43,7 +45,9 @@ class SettingsView(ui.View):
             "Useful for staying at your current level."
         ).format(doors=doors_str, exp=exp_str)
 
-        embed = discord.Embed(title="Settings", description=desc, color=discord.Color.blue())
+        embed = discord.Embed(
+            title="Settings", description=desc, color=discord.Color.blue()
+        )
         return embed
 
     async def toggle_doors(self, interaction: Interaction):
@@ -54,6 +58,8 @@ class SettingsView(ui.View):
 
     async def toggle_exp_protection(self, interaction: Interaction):
         self.exp_protection = not self.exp_protection
-        await self.bot.database.users.toggle_exp_protection(self.user_id, self.exp_protection)
+        await self.bot.database.users.toggle_exp_protection(
+            self.user_id, self.exp_protection
+        )
         self.rebuild_buttons()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)

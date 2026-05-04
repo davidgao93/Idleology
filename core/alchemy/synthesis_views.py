@@ -77,7 +77,7 @@ class AlchemySynthesisHubView(ui.View):
         queue_row,  # (item_type, quantity, start_time) or None
         player_gold: int,
     ):
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -404,7 +404,7 @@ class _DisenchantKeySelect(ui.Select):
 
 class _DisenchantSelectView(ui.View):
     def __init__(self, bot, user_id: str, server_id: str, alchemy_level: int) -> None:
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -612,7 +612,7 @@ class _SynthesizeSelectView(ui.View):
         cosmic_dust: int,
         player_gold: int,
     ) -> None:
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id

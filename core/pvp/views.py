@@ -1,16 +1,19 @@
-import discord
 import random
-import asyncio
-from discord import Interaction, ButtonStyle
-from discord.ui import View, Button
+
+import discord
+from discord import ButtonStyle, Interaction
+from discord.ui import Button, View
+
 from core.pvp.engine import PvPEngine
 
 MAX_HEALS = 8
 
+
 class ChallengeView(View):
     """View for accepting/declining a duel request."""
+
     def __init__(self, bot, challenger_id, target_id, amount):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.bot = bot
         self.challenger_id = str(challenger_id)
         self.target_id = str(target_id)
@@ -21,15 +24,20 @@ class ChallengeView(View):
         if str(interaction.user.id) == self.target_id:
             return True
         if str(interaction.user.id) == self.challenger_id:
-            await interaction.response.send_message("You cannot accept your own challenge. Cancel it if you changed your mind.", ephemeral=True)
+            await interaction.response.send_message(
+                "You cannot accept your own challenge. Cancel it if you changed your mind.",
+                ephemeral=True,
+            )
             return False
         return False
 
     async def on_timeout(self):
         if not self.accepted:
             self.bot.state_manager.clear_active(self.challenger_id)
-            try: await self.message.edit(content="Challenge timed out.", view=None)
-            except: pass
+            try:
+                await self.message.edit(content="Challenge timed out.", view=None)
+            except:
+                pass
 
     @discord.ui.button(label="Accept", style=ButtonStyle.success)
     async def accept(self, interaction: Interaction, button: Button):
@@ -46,14 +54,17 @@ class ChallengeView(View):
     @discord.ui.button(label="Decline", style=ButtonStyle.danger)
     async def decline(self, interaction: Interaction, button: Button):
         self.bot.state_manager.clear_active(self.challenger_id)
-        await interaction.response.edit_message(content="Challenge declined.", embed=None, view=None)
+        await interaction.response.edit_message(
+            content="Challenge declined.", embed=None, view=None
+        )
         self.stop()
 
 
 class DuelView(View):
     """View handling the actual turn-based combat."""
+
     def __init__(self, bot, p1_id, p2_id, amount):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.p1_id = p1_id
         self.p2_id = p2_id
@@ -88,7 +99,11 @@ class DuelView(View):
         """Update the Heal button disabled state for the current turn player."""
         heals_left = MAX_HEALS - self.heals_used[self.current_turn]
         for item in self.children:
-            if isinstance(item, Button) and item.label and item.label.startswith("Heal"):
+            if (
+                isinstance(item, Button)
+                and item.label
+                and item.label.startswith("Heal")
+            ):
                 item.label = f"Heal ({heals_left} left)"
                 item.disabled = heals_left <= 0
 
@@ -99,7 +114,9 @@ class DuelView(View):
         p1_fmt = f"**{p1_name}**" if self.current_turn == self.p1_id else p1_name
         p2_fmt = f"**{p2_name}**" if self.current_turn == self.p2_id else p2_name
 
-        embed = discord.Embed(title=f"⚔️ Duel for {self.amount:,} Gold", color=discord.Color.gold())
+        embed = discord.Embed(
+            title=f"⚔️ Duel for {self.amount:,} Gold", color=discord.Color.gold()
+        )
         embed.add_field(name=p1_fmt, value=f"❤️ {self.hp[self.p1_id]} HP", inline=True)
         embed.add_field(name=p2_fmt, value=f"❤️ {self.hp[self.p2_id]} HP", inline=True)
         embed.add_field(name="Log", value=self.logs, inline=False)
@@ -113,7 +130,9 @@ class DuelView(View):
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         if str(interaction.user.id) != self.current_turn:
-            await interaction.response.send_message("It is not your turn!", ephemeral=True)
+            await interaction.response.send_message(
+                "It is not your turn!", ephemeral=True
+            )
             return False
         return True
 
@@ -143,7 +162,9 @@ class DuelView(View):
         else:
             self.current_turn = defender
             self._refresh_buttons()
-            await interaction.response.edit_message(embed=self._build_embed(), view=self)
+            await interaction.response.edit_message(
+                embed=self._build_embed(), view=self
+            )
 
     async def end_match(self, interaction: Interaction, winner: str, loser: str):
         await self.bot.database.users.modify_gold(winner, self.amount)
@@ -177,7 +198,7 @@ class DuelView(View):
             embed = discord.Embed(
                 title="⏰ Timed Out",
                 description=f"**{self.names[loser]}** took too long and forfeited.\n{self.names[winner]} wins the pot.",
-                color=discord.Color.red()
+                color=discord.Color.red(),
             )
             await self.message.edit(embed=embed, view=None)
         except:
@@ -187,6 +208,8 @@ class DuelView(View):
     async def btn_attack(self, interaction: Interaction, button: Button):
         await self.process_turn(interaction, "attack")
 
-    @discord.ui.button(label=f"Heal ({MAX_HEALS} left)", style=ButtonStyle.success, emoji="💖")
+    @discord.ui.button(
+        label=f"Heal ({MAX_HEALS} left)", style=ButtonStyle.success, emoji="💖"
+    )
     async def btn_heal(self, interaction: Interaction, button: Button):
         await self.process_turn(interaction, "heal")

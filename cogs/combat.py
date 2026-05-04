@@ -21,7 +21,7 @@ from core.models import Monster
 
 class DoorPromptView(View):
     def __init__(self, bot, user_id, cost_dict, boss_type):
-        super().__init__(timeout=30)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.cost_dict = cost_dict

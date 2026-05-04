@@ -1,10 +1,12 @@
 import discord
-from discord import ui, ButtonStyle, Interaction, SelectOption
+from discord import ButtonStyle, Interaction, SelectOption, ui
+
 from core.companions.mechanics import CompanionMechanics
+
 
 class FusionWizardView(ui.View):
     def __init__(self, bot, user_id: str, companions: list, parent_list_view=None):
-        super().__init__(timeout=180)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.all_companions = companions
@@ -26,62 +28,73 @@ class FusionWizardView(ui.View):
         try:
             if self.parent_list_view:
                 self.parent_list_view.update_buttons()
-                await self.message.edit(embed=self.parent_list_view.get_embed(), view=self.parent_list_view)
+                await self.message.edit(
+                    embed=self.parent_list_view.get_embed(), view=self.parent_list_view
+                )
             else:
-                await self.message.edit(content="Fusion session timed out.", view=None, embed=None)
+                await self.message.edit(
+                    content="Fusion session timed out.", view=None, embed=None
+                )
         except:
             pass
 
     # --- STEP 1: Select First ---
     def setup_step_one(self):
         self.clear_items()
-        
+
         options = []
         # Discord select limit is 25. If user has > 25 (cap is 20), we are safe.
         for comp in self.all_companions:
-            options.append(SelectOption(
-                label=f"Lv.{comp.level} {comp.name}",
-                description=f"T{comp.passive_tier} {comp.passive_type.upper()} | {comp.species}",
-                value=str(comp.id)
-            ))
+            options.append(
+                SelectOption(
+                    label=f"Lv.{comp.level} {comp.name}",
+                    description=f"T{comp.passive_tier} {comp.passive_type.upper()} | {comp.species}",
+                    value=str(comp.id),
+                )
+            )
 
         select = ui.Select(placeholder="Select Primary Companion...", options=options)
         select.callback = self.step_one_callback
         self.add_item(select)
-        
+
         btn_cancel = ui.Button(label="Cancel", style=ButtonStyle.danger, row=1)
         btn_cancel.callback = self.cancel_callback
         self.add_item(btn_cancel)
 
     async def step_one_callback(self, interaction: Interaction):
-        comp_id = int(interaction.data['values'][0])
+        comp_id = int(interaction.data["values"][0])
         self.parent_a = next(c for c in self.all_companions if c.id == comp_id)
-        
+
         self.setup_step_two()
-        
+
         embed = discord.Embed(title="🧬 Companion Fusion", color=discord.Color.purple())
-        embed.description = f"**Selected:** {self.parent_a.name}\nSelect the second companion to fuse."
+        embed.description = (
+            f"**Selected:** {self.parent_a.name}\nSelect the second companion to fuse."
+        )
         await interaction.response.edit_message(embed=embed, view=self)
 
     # --- STEP 2: Select Second ---
     def setup_step_two(self):
         self.clear_items()
-        
+
         options = []
         for comp in self.all_companions:
             # Cannot fuse with self
-            if comp.id == self.parent_a.id: continue
-            
-            options.append(SelectOption(
-                label=f"Lv.{comp.level} {comp.name}",
-                description=f"T{comp.passive_tier} {comp.passive_type.upper()} | {comp.species}",
-                value=str(comp.id)
-            ))
+            if comp.id == self.parent_a.id:
+                continue
+
+            options.append(
+                SelectOption(
+                    label=f"Lv.{comp.level} {comp.name}",
+                    description=f"T{comp.passive_tier} {comp.passive_type.upper()} | {comp.species}",
+                    value=str(comp.id),
+                )
+            )
 
         select = ui.Select(placeholder="Select Partner Companion...", options=options)
         select.callback = self.step_two_callback
         self.add_item(select)
-        
+
         btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
         btn_back.callback = self.back_to_one
         self.add_item(btn_back)
@@ -89,22 +102,36 @@ class FusionWizardView(ui.View):
     async def back_to_one(self, interaction: Interaction):
         self.parent_a = None
         self.setup_step_one()
-        embed = discord.Embed(title="🧬 Companion Fusion", description="Select your first companion.", color=discord.Color.blue())
+        embed = discord.Embed(
+            title="🧬 Companion Fusion",
+            description="Select your first companion.",
+            color=discord.Color.blue(),
+        )
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def step_two_callback(self, interaction: Interaction):
-        comp_id = int(interaction.data['values'][0])
+        comp_id = int(interaction.data["values"][0])
         self.parent_b = next(c for c in self.all_companions if c.id == comp_id)
-        
+
         self.setup_confirmation()
-        
+
         # Calculate Preview
-        xp_a = CompanionMechanics.calculate_cumulative_xp(self.parent_a.level, self.parent_a.exp)
-        xp_b = CompanionMechanics.calculate_cumulative_xp(self.parent_b.level, self.parent_b.exp)
+        xp_a = CompanionMechanics.calculate_cumulative_xp(
+            self.parent_a.level, self.parent_a.exp
+        )
+        xp_b = CompanionMechanics.calculate_cumulative_xp(
+            self.parent_b.level, self.parent_b.exp
+        )
         new_lvl, _ = CompanionMechanics.calculate_level_from_xp(xp_a + xp_b)
-        
-        a_has_balanced = self.parent_a.balanced_passive != "none" and self.parent_a.balanced_passive_tier > 0
-        b_has_balanced = self.parent_b.balanced_passive != "none" and self.parent_b.balanced_passive_tier > 0
+
+        a_has_balanced = (
+            self.parent_a.balanced_passive != "none"
+            and self.parent_a.balanced_passive_tier > 0
+        )
+        b_has_balanced = (
+            self.parent_b.balanced_passive != "none"
+            and self.parent_b.balanced_passive_tier > 0
+        )
 
         if a_has_balanced and b_has_balanced:
             balanced_line = "• Balanced Passive: Random (50/50 between parents)"
@@ -127,17 +154,19 @@ class FusionWizardView(ui.View):
             f"**Cost:** {self.FUSION_COST:,} Gold"
         )
         embed.set_footer(text="This action is irreversible. Parents will be consumed.")
-        
+
         await interaction.response.edit_message(embed=embed, view=self)
 
     # --- STEP 3: Confirm ---
     def setup_confirmation(self):
         self.clear_items()
-        
-        btn_confirm = ui.Button(label="FUSE (50k Gold)", style=ButtonStyle.success, emoji="🧬")
+
+        btn_confirm = ui.Button(
+            label="FUSE (50k Gold)", style=ButtonStyle.success, emoji="🧬"
+        )
         btn_confirm.callback = self.confirm_fusion
         self.add_item(btn_confirm)
-        
+
         btn_cancel = ui.Button(label="Cancel", style=ButtonStyle.danger)
         btn_cancel.callback = self.cancel_callback
         self.add_item(btn_cancel)
@@ -146,35 +175,43 @@ class FusionWizardView(ui.View):
         # 1. Final Gold Check
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < self.FUSION_COST:
-            return await interaction.response.send_message("Insufficient gold!", ephemeral=True)
+            return await interaction.response.send_message(
+                "Insufficient gold!", ephemeral=True
+            )
 
         await interaction.response.defer()
 
         # 2. Logic
         # Stats
         new_attrs = CompanionMechanics.fuse_attributes(self.parent_a, self.parent_b)
-        
+
         # XP
-        xp_a = CompanionMechanics.calculate_cumulative_xp(self.parent_a.level, self.parent_a.exp)
-        xp_b = CompanionMechanics.calculate_cumulative_xp(self.parent_b.level, self.parent_b.exp)
+        xp_a = CompanionMechanics.calculate_cumulative_xp(
+            self.parent_a.level, self.parent_a.exp
+        )
+        xp_b = CompanionMechanics.calculate_cumulative_xp(
+            self.parent_b.level, self.parent_b.exp
+        )
         total_xp = xp_a + xp_b
         lvl, rem_xp = CompanionMechanics.calculate_level_from_xp(total_xp)
-        
-        new_attrs['level'] = lvl
-        new_attrs['exp'] = rem_xp
+
+        new_attrs["level"] = lvl
+        new_attrs["exp"] = rem_xp
 
         # 3. DB Transaction
         await self.bot.database.companions.fuse_companions(
-            self.user_id, 
-            self.parent_a.id, 
-            self.parent_b.id, 
-            new_attrs, 
-            self.FUSION_COST
+            self.user_id,
+            self.parent_a.id,
+            self.parent_b.id,
+            new_attrs,
+            self.FUSION_COST,
         )
 
         # 4. Result
-        result_embed = discord.Embed(title="🧬 Fusion Complete!", color=discord.Color.green())
-        result_embed.set_thumbnail(url=new_attrs['image_url'])
+        result_embed = discord.Embed(
+            title="🧬 Fusion Complete!", color=discord.Color.green()
+        )
+        result_embed.set_thumbnail(url=new_attrs["image_url"])
         result_embed.description = (
             f"A new companion is born: **{new_attrs['name']}**!\n"
             f"**Level:** {lvl}\n"
@@ -184,12 +221,14 @@ class FusionWizardView(ui.View):
         if self.parent_list_view:
             # Refresh companion list and return to it
             from core.items.factory import create_companion
+
             rows = await self.bot.database.companions.get_all(self.user_id)
             self.parent_list_view.companions = [create_companion(row) for row in rows]
             self.parent_list_view.update_buttons()
             result_embed.set_footer(text="Returning to companions list…")
             await interaction.edit_original_response(embed=result_embed, view=None)
             import asyncio
+
             await asyncio.sleep(2.0)
             await interaction.edit_original_response(
                 embed=self.parent_list_view.get_embed(), view=self.parent_list_view
@@ -204,9 +243,13 @@ class FusionWizardView(ui.View):
         if self.parent_list_view:
             self.parent_list_view.update_buttons()
             await interaction.response.edit_message(
-                content=None, embed=self.parent_list_view.get_embed(), view=self.parent_list_view
+                content=None,
+                embed=self.parent_list_view.get_embed(),
+                view=self.parent_list_view,
             )
         else:
-            await interaction.response.edit_message(content="Fusion cancelled.", embed=None, view=None)
+            await interaction.response.edit_message(
+                content="Fusion cancelled.", embed=None, view=None
+            )
             self.bot.state_manager.clear_active(self.user_id)
         self.stop()

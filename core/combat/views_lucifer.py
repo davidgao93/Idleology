@@ -89,7 +89,7 @@ class InfernalContractView(ui.View):
     STAT_LABELS = {"attack": "⚔️ ATK", "defence": "🛡️ DEF", "hp": "❤️ HP"}
 
     def __init__(self, bot, user_id: str, player, server_id: str, message):
-        super().__init__(timeout=60)
+        super().__init__(timeout=600)
         self.bot = bot
         self.user_id = user_id
         self.player = player
