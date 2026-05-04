@@ -2,8 +2,10 @@ from typing import List, Union
 
 import discord
 
+from core.combat.calcs import fmt_weapon_passive
 from core.images import INVENTORY_HUB, SLOT_ACCESSORY, SLOT_ARMOR, SLOT_BOOT, SLOT_GLOVE, SLOT_HELMET, SLOT_WEAPON
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
+from core.util import stars
 
 _SLOT_EMOJIS = {
     "weapon": "⚔️",
@@ -40,14 +42,19 @@ Equipment = Union[Weapon, Armor, Accessory, Glove, Boot]
 # ---------------------------------------------------------------------------
 
 def _pdesc(table: dict, name: str) -> str:
-    """Look up a passive description, normalizing underscores to spaces."""
+    """Look up a passive description, normalizing underscores to spaces (armor/accessory)."""
     return table.get(name.lower().replace("_", " "), "")
 
 
-def _add_passive_field(embed, name_label: str, passive_name: str, desc: str):
-    title = passive_name.replace('_', ' ').title()
+def _pdesc_weapon(table: dict, name: str) -> str:
+    """Look up a weapon passive description by its family_tier key (e.g. 'burning_3')."""
+    return table.get(name.lower(), "")
+
+
+def _add_passive_field(embed, name_label: str, display_name: str, desc: str):
+    """Add a passive embed field. display_name must already be formatted for display."""
     value = desc if desc else "​"
-    embed.add_field(name=f"{name_label} — {title}", value=value, inline=False)
+    embed.add_field(name=f"{name_label} — {display_name}", value=value, inline=False)
 
 
 def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
@@ -59,18 +66,30 @@ def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
         embed.add_field(name="✨ Rarity", value=f"{item.rarity:,}%", inline=True)
     embed.add_field(name="🔧 Refinement", value=f"+{item.refinement_lvl}", inline=True)
 
+    # Weapon template stats
+    base_rar = getattr(item, "base_rarity", 0)
+    if base_rar > 0:
+        embed.add_field(name="⭐ Quality", value=stars(base_rar), inline=True)
+    hit_pct = int(getattr(item, "hit_chance", 0.60) * 100)
+    embed.add_field(name="🎯 Hit Chance", value=f"{hit_pct}%", inline=True)
+    crit_pct = int(getattr(item, "crit_chance", 0.00) * 100)
+    if crit_pct > 0:
+        embed.add_field(name="⚡ Crit Chance", value=f"+{crit_pct}%", inline=True)
+    crit_multi = getattr(item, "crit_multi", 2.00)
+    embed.add_field(name="💥 Crit Multi", value=f"{crit_multi:.2f}x", inline=True)
+
     if item.passive not in ("none", ""):
-        _add_passive_field(embed, "Passive", item.passive,
-                           _pdesc(passive_desc, item.passive))
+        _add_passive_field(embed, "Passive", fmt_weapon_passive(item.passive),
+                           _pdesc_weapon(passive_desc, item.passive))
     if item.p_passive not in ("none", ""):
-        _add_passive_field(embed, "Pinnacle", item.p_passive,
-                           _pdesc(passive_desc, item.p_passive))
+        _add_passive_field(embed, "Pinnacle", fmt_weapon_passive(item.p_passive),
+                           _pdesc_weapon(passive_desc, item.p_passive))
     if item.u_passive not in ("none", ""):
-        _add_passive_field(embed, "Utmost", item.u_passive,
-                           _pdesc(passive_desc, item.u_passive))
+        _add_passive_field(embed, "Utmost", fmt_weapon_passive(item.u_passive),
+                           _pdesc_weapon(passive_desc, item.u_passive))
     inf = getattr(item, "infernal_passive", "none") or "none"
     if inf not in ("none", ""):
-        _add_passive_field(embed, "🔥 Infernal", inf,
+        _add_passive_field(embed, "🔥 Infernal", inf.replace('_', ' ').title(),
                            _pdesc(infernal_desc, inf))
 
 
@@ -110,11 +129,11 @@ def _armor_fields(embed, item, passive_desc: dict, celestial_desc: dict):
     )
 
     if item.passive not in ("none", ""):
-        _add_passive_field(embed, "Passive", item.passive,
+        _add_passive_field(embed, "Passive", item.passive.replace('_', ' ').title(),
                            _pdesc(passive_desc, item.passive))
     cel = getattr(item, "celestial_passive", "none") or "none"
     if cel not in ("none", ""):
-        _add_passive_field(embed, "🌌 Celestial", cel,
+        _add_passive_field(embed, "🌌 Celestial", cel.replace('_', ' ').title(),
                            _pdesc(celestial_desc, cel))
 
 
@@ -335,13 +354,13 @@ class InventoryUI:
             passives = []
             if isinstance(item, Weapon):
                 if item.passive != "none":
-                    passives.append(item.passive.title())
+                    passives.append(fmt_weapon_passive(item.passive))
                 if item.p_passive != "none":
-                    passives.append(item.p_passive.title())
+                    passives.append(fmt_weapon_passive(item.p_passive))
                 if item.u_passive != "none":
-                    passives.append(item.u_passive.title())
+                    passives.append(fmt_weapon_passive(item.u_passive))
                 if getattr(item, "infernal_passive", "none") not in ("none", ""):
-                    passives.append(f"🔥{item.infernal_passive.title()}")
+                    passives.append(f"🔥{item.infernal_passive.replace('_', ' ').title()}")
             if isinstance(item, Armor):
                 if item.passive != "none" and item.passive != "":
                     passives.append(f"✨{item.passive.title()}")
@@ -431,14 +450,17 @@ class InventoryUI:
 
         passives = []
         if getattr(item, "passive", "none") not in ("none", ""):
-            lvl = getattr(item, "passive_lvl", 0)
-            lvl_str = f" Lv.{lvl}" if lvl > 0 else ""
-            passives.append(f"{item.passive.title()}{lvl_str}")
+            if isinstance(item, Weapon):
+                passives.append(fmt_weapon_passive(item.passive))
+            else:
+                lvl = getattr(item, "passive_lvl", 0)
+                lvl_str = f" Lv.{lvl}" if lvl > 0 else ""
+                passives.append(f"{item.passive.title()}{lvl_str}")
         if isinstance(item, Weapon):
             if getattr(item, "p_passive", "none") not in ("none", ""):
-                passives.append(item.p_passive.title())
+                passives.append(fmt_weapon_passive(item.p_passive))
             if getattr(item, "u_passive", "none") not in ("none", ""):
-                passives.append(item.u_passive.title())
+                passives.append(fmt_weapon_passive(item.u_passive))
             if getattr(item, "infernal_passive", "none") not in ("none", ""):
                 passives.append(item.infernal_passive.replace('_', ' ').title())
         if isinstance(item, Armor) and getattr(

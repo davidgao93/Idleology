@@ -800,10 +800,6 @@ class GearView(View):
             parts.append(f"FDR:{item.fdr}")
         if isinstance(item, Weapon) and item.refinement_lvl > 0:
             parts.append(f"+{item.refinement_lvl}")
-        if isinstance(item, Weapon):
-            base_rar = getattr(item, "base_rarity", 0)
-            if base_rar > 0:
-                parts.append(stars(base_rar))
 
         passives = []
         if getattr(item, "passive", "none") not in ("none", ""):
@@ -831,11 +827,17 @@ class GearView(View):
 
         stat_str = " ".join(parts)
         passive_str = " · ".join(passives)
-        desc = (
+        body = (
             f"{stat_str} | {passive_str}"
             if stat_str and passive_str
             else stat_str or passive_str or "No stats"
         )
+        if isinstance(item, Weapon):
+            base_rar = getattr(item, "base_rarity", 0)
+            prefix = f"[{stars(base_rar)}] " if base_rar > 0 else ""
+            desc = prefix + body
+        else:
+            desc = body
 
         if len(desc) > 100:
             desc = desc[:97] + "..."

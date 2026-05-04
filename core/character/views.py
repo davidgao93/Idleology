@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import re
 
@@ -193,7 +194,7 @@ class PassiveAllocateView(View):
         self.atk = user_data[9]
         self.defn = user_data[10]
         self.hp = user_data[12]
-
+        self._lock = asyncio.Lock()
         self.update_buttons()
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -217,38 +218,70 @@ class PassiveAllocateView(View):
         self.hp_btn.label = f"Max HP ({self.hp})"
 
     async def process_allocation(self, interaction: Interaction, stat: str):
+        """Process stat allocation with full protection against rapid clicks."""
         if self.points <= 0:
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "No points remaining!", ephemeral=True
+                )
             return
 
-        await self.bot.database.users.modify_stat(self.user_id, stat, 1)
+        # If another allocation is already running, tell the user (prevents spam)
+        if self._lock.locked():
+            await interaction.response.send_message(
+                "Processing previous allocation...", ephemeral=True
+            )
+            return
 
-        # Update local state
-        if stat == "attack":
-            self.atk += 1
-        elif stat == "defence":
-            self.defn += 1
-        elif stat == "max_hp":
-            self.hp += 1
+        async with self._lock:  # Only one allocation can run at a time
+            # Immediately disable buttons + show "processing" state
+            self.atk_btn.disabled = True
+            self.def_btn.disabled = True
+            self.hp_btn.disabled = True
 
-        self.points -= 1
-        await self.bot.database.users.set_passive_points(
-            self.user_id, str(interaction.guild.id), self.points
-        )
+            embed = interaction.message.embeds[0]
+            embed.description = "⏳ Allocating stat point..."
 
-        self.update_buttons()
-
-        embed = interaction.message.embeds[0]
-        embed.description = (
-            f"**Points Remaining:** {self.points}\n\nSelect a stat to upgrade."
-        )
-
-        if self.points == 0:
-            embed.description = "✅ All points allocated."
-            self.stop()
-            self.bot.state_manager.clear_active(self.user_id)
-            await interaction.response.edit_message(embed=embed, view=None)
-        else:
+            # CRITICAL: Respond to the interaction immediately
             await interaction.response.edit_message(embed=embed, view=self)
+
+            try:
+                # === Now safe to do the actual work ===
+                await self.bot.database.users.modify_stat(self.user_id, stat, 1)
+
+                # Update local cache
+                if stat == "attack":
+                    self.atk += 1
+                elif stat == "defence":
+                    self.defn += 1
+                elif stat == "max_hp":
+                    self.hp += 1
+
+                self.points -= 1
+
+                await self.bot.database.users.set_passive_points(
+                    self.user_id, str(interaction.guild.id), self.points
+                )
+
+                self.update_buttons()
+
+                # Final UI update
+                embed = interaction.message.embeds[0]
+                if self.points == 0:
+                    embed.description = "✅ All points allocated."
+                    self.stop()
+                    self.bot.state_manager.clear_active(self.user_id)
+                    await interaction.message.edit(embed=embed, view=None)
+                else:
+                    embed.description = f"**Points Remaining:** {self.points}\n\nSelect a stat to upgrade."
+                    await interaction.message.edit(embed=embed, view=self)
+
+            except Exception:
+                # Restore buttons on any error
+                self.update_buttons()
+                embed.description = "❌ An error occurred. Please try again."
+                await interaction.message.edit(embed=embed, view=self)
+                raise  # or log the error
 
     @discord.ui.button(emoji="⚔️", style=ButtonStyle.danger)
     async def atk_btn(self, interaction: Interaction, button: Button):
