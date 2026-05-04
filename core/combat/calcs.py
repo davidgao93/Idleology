@@ -115,6 +115,8 @@ _DMG_VARIANCE = (0.85, 1.15)
 def calculate_hit_chance(player, monster) -> float:
     """Player hit chance based on attack-vs-defence ratio.
     Base is sourced from the weapon's drop template (default 60% if no weapon)."""
+    from core.items.essence_mechanics import compute_essence_stat_bonus
+
     hit_base = player.equipped_weapon.hit_chance if player.equipped_weapon else _HIT_BASE
     m_def = monster.defence
     if m_def <= 0:
@@ -127,6 +129,13 @@ def calculate_hit_chance(player, monster) -> float:
         hit_bonus = player.get_ascension_bonuses()["hit"]
         if hit_bonus:
             base = min(_HIT_MAX, base + hit_bonus * 0.01)
+
+    # Precision essence: flat % hit chance bonus
+    for item in (player.equipped_glove, player.equipped_boot, player.equipped_helmet):
+        if item:
+            hit_pct = compute_essence_stat_bonus(item).get("hit_pct", 0)
+            if hit_pct:
+                base = min(_HIT_MAX, base + hit_pct * 0.01)
 
     return base
 

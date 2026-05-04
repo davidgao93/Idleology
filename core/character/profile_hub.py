@@ -131,7 +131,10 @@ _ESSENCE_TYPE_DESC: dict = {
     "protection": None,  # computed dynamically from item stats
     "insight": lambda v: f"+{int(v)} Crit Chance",
     "evasion": lambda v: f"+{int(v)}% Evasion",
-    "warding": lambda v: f"+{int(v)}% Block",
+    "blocking": lambda v: f"+{int(v)}% Block",
+    "deftness": lambda v: f"+{v:.2f}× Crit Multiplier",
+    "precision": lambda v: f"+{int(v)}% Hit Chance",
+    "gluttony": lambda v: f"+{int(v)}% Max HP",
 }
 
 # Roman numeral display for passive tiers
@@ -272,8 +275,14 @@ def _format_essence_slot(etype: str, raw_val: float, item) -> str:
         return f"Insight Essence — +{int(raw_val)} Crit Chance"
     elif key == "evasion":
         return f"Evasion Essence — +{int(raw_val)}% Evasion"
-    elif key == "warding":
-        return f"Warding Essence — +{int(raw_val)}% Block"
+    elif key == "blocking":
+        return f"Blocking Essence — +{int(raw_val)}% Block"
+    elif key == "deftness":
+        return f"Deftness Essence — +{raw_val:.2f}× Crit Multiplier"
+    elif key == "precision":
+        return f"Precision Essence — +{int(raw_val)}% Hit Chance"
+    elif key == "gluttony":
+        return f"Gluttony Essence — +{int(raw_val)}% Max HP"
     return f"{etype.replace('_', ' ').title()} Essence — {raw_val}"
 
 

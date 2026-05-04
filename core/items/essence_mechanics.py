@@ -8,27 +8,31 @@ Terminology:
 """
 
 import random
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Value ranges for regular essences — (min, max) stored as float
 # ---------------------------------------------------------------------------
 ESSENCE_VALUE_RANGES: dict[str, tuple[float, float]] = {
-    "power":      (20.0, 100.0),  # % of item's main attribute
-    "protection": (20.0, 80.0),   # % of item's existing PDR / FDR
-    "insight":    (1.0,  10.0),   # flat crit-target reduction
-    "evasion":    (1.0,  8.0),    # flat evasion added
-    "warding":    (1.0,  8.0),    # flat block added
+    "power": (20.0, 100.0),  # % of item's main attribute
+    "protection": (20.0, 80.0),  # % of item's existing PDR / FDR
+    "insight": (1.0, 8.0),  # flat crit chance added
+    "evasion": (1.0, 8.0),  # flat evasion added
+    "blocking": (1.0, 8.0),  # flat block added
+    "deftness": (0.1, 0.5),  # additive crit multiplier bonus
+    "precision": (1.0, 8.0),  # flat hit chance % added
+    "gluttony": (1.0, 8.0),  # % max HP bonus
 }
 
-REGULAR_ESSENCE_TYPES  = set(ESSENCE_VALUE_RANGES.keys())
-UTILITY_ESSENCE_TYPES  = {"cleansing", "chaos", "annulment"}
+REGULAR_ESSENCE_TYPES = set(ESSENCE_VALUE_RANGES.keys())
+UTILITY_ESSENCE_TYPES = {"cleansing", "chaos", "annulment"}
 CORRUPTED_ESSENCE_TYPES = {"aphrodite", "lucifer", "gemini", "neet"}
 
 
 # ---------------------------------------------------------------------------
 # Slot helpers
 # ---------------------------------------------------------------------------
+
 
 def get_essence_slots(item) -> List[Tuple[int, str, float]]:
     """
@@ -57,6 +61,7 @@ def next_open_slot(item) -> Optional[int]:
 # Validation
 # ---------------------------------------------------------------------------
 
+
 def can_apply_essence(item, essence_type: str) -> Tuple[bool, str]:
     """
     Determines whether an essence can be applied to the item.
@@ -84,7 +89,7 @@ def can_apply_essence(item, essence_type: str) -> Tuple[bool, str]:
 
     existing_types = {t for _, t, _ in slots}
     if essence_type in existing_types:
-        return False, f"This item already has an essence of that type applied."
+        return False, "This item already has an essence of that type applied."
 
     return True, ""
 
@@ -120,15 +125,21 @@ def can_apply_utility(item, utility_type: str) -> Tuple[bool, str]:
 # Value rolling
 # ---------------------------------------------------------------------------
 
+
 def roll_essence_value(essence_type: str) -> float:
-    """Rolls a random value in the defined range for the given essence type."""
+    """Rolls a value in the defined range, weighted toward the lower end.
+    Squaring a uniform sample gives ~5% probability in the top 10% of the range."""
     r = ESSENCE_VALUE_RANGES.get(essence_type)
     if not r:
         return 0.0
-    # For integer-feeling stats (insight, evasion, warding) return a whole number
-    if essence_type in ("insight", "evasion", "warding"):
-        return float(random.randint(int(r[0]), int(r[1])))
-    return round(random.uniform(r[0], r[1]), 1)
+    lo, hi = r
+    t = random.random() ** 2
+    raw = lo + t * (hi - lo)
+    if essence_type in ("insight", "evasion", "blocking", "precision", "gluttony"):
+        return float(round(raw))
+    if essence_type == "deftness":
+        return round(raw, 2)
+    return round(raw, 1)
 
 
 def reroll_all_values(slots: List[Tuple[int, str, float]]) -> List[float]:
@@ -143,34 +154,47 @@ def reroll_all_values(slots: List[Tuple[int, str, float]]) -> List[float]:
 # Stat bonus computation  (no I/O — reads item fields directly)
 # ---------------------------------------------------------------------------
 
+
 def compute_essence_stat_bonus(item) -> dict:
     """
     Returns a dict of flat stat bonuses contributed by all regular essence slots.
 
     Keys:
-      attack   — flat attack bonus
-      defence  — flat defence bonus
-      ward     — additional ward percentage points (same unit as item.ward)
-      pdr      — additional physical damage reduction %
-      fdr      — additional flat damage reduction
-      crit     — flat crit-target reduction (positive = crit threshold lowers)
-      evasion  — flat evasion (same unit as armor.evasion)
-      block    — flat block (same unit as armor.block)
+      attack     — flat attack bonus
+      defence    — flat defence bonus
+      ward       — additional ward percentage points (same unit as item.ward)
+      pdr        — additional physical damage reduction %
+      fdr        — additional flat damage reduction
+      crit       — flat crit chance bonus
+      evasion    — flat evasion (same unit as armor.evasion)
+      block      — flat block (same unit as armor.block)
+      crit_multi — additive crit multiplier bonus (Deftness)
+      hit_pct    — flat hit chance bonus in % points (Precision)
+      max_hp_pct — % bonus to max HP (Gluttony)
     """
     bonus = {
-        "attack": 0, "defence": 0, "ward": 0,
-        "pdr": 0, "fdr": 0, "crit": 0, "evasion": 0, "block": 0,
+        "attack": 0,
+        "defence": 0,
+        "ward": 0,
+        "pdr": 0,
+        "fdr": 0,
+        "crit": 0,
+        "evasion": 0,
+        "block": 0,
+        "crit_multi": 0.0,
+        "hit_pct": 0,
+        "max_hp_pct": 0,
     }
 
     for _, essence_type, value in get_essence_slots(item):
 
         if essence_type == "power":
             if hasattr(item, "attack"):
-                bonus["attack"]  += int(item.attack  * value / 100)
+                bonus["attack"] += int(item.attack * value / 100)
             else:
                 # Helmet has no attack — bonus applies to DEF and WARD %
                 bonus["defence"] += int(item.defence * value / 100)
-                bonus["ward"]    += int(item.ward    * value / 100)
+                bonus["ward"] += int(item.ward * value / 100)
 
         elif essence_type == "protection":
             # Amplifies existing PDR and FDR on the item
@@ -178,13 +202,21 @@ def compute_essence_stat_bonus(item) -> dict:
             bonus["fdr"] += int(item.fdr * value / 100)
 
         elif essence_type == "insight":
-            # Flat crit target reduction
             bonus["crit"] += int(value)
 
         elif essence_type == "evasion":
             bonus["evasion"] += int(value)
 
-        elif essence_type == "warding":
+        elif essence_type == "blocking":
             bonus["block"] += int(value)
+
+        elif essence_type == "deftness":
+            bonus["crit_multi"] += value
+
+        elif essence_type == "precision":
+            bonus["hit_pct"] += int(value)
+
+        elif essence_type == "gluttony":
+            bonus["max_hp_pct"] += int(value)
 
     return bonus

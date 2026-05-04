@@ -427,13 +427,22 @@ class Player:
 
     @property
     def total_max_hp(self) -> int:
-        """Effective max HP including run bonuses, chapter penalties, vitality tome, and body parts."""
+        """Effective max HP including run bonuses, chapter penalties, vitality tome, body parts, and Gluttony essences."""
+        from core.items.essence_mechanics import compute_essence_stat_bonus
+
         vitality_pct = self.get_tome_bonus("vitality")
         asc_hp = self.get_ascension_bonuses()["hp"] if self.ascension_unlocks else 0
         parts_hp = sum(v["hp"] for v in self.equipped_parts.values()) if self.equipped_parts else 0
         base = self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp + asc_hp + parts_hp
         if vitality_pct > 0:
             base = int(base * (1 + vitality_pct / 100))
+        gluttony_pct = sum(
+            compute_essence_stat_bonus(item).get("max_hp_pct", 0)
+            for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
+            if item
+        )
+        if gluttony_pct > 0:
+            base = int(base * (1 + gluttony_pct / 100))
         return max(1, base)
 
     def _get_companion_bonus(self, p_type: str) -> int:
@@ -797,8 +806,14 @@ class Player:
         return self.equipped_weapon.u_passive if self.equipped_weapon else "none"
 
     def get_weapon_crit_multi(self) -> float:
-        """Returns the crit damage multiplier from the equipped weapon's base template."""
-        return self.equipped_weapon.crit_multi if self.equipped_weapon else 2.0
+        """Returns the crit damage multiplier, including Deftness essence bonuses."""
+        from core.items.essence_mechanics import compute_essence_stat_bonus
+
+        base = self.equipped_weapon.crit_multi if self.equipped_weapon else 2.0
+        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
+            if item:
+                base += compute_essence_stat_bonus(item).get("crit_multi", 0.0)
+        return base
 
     def get_armor_passive(self) -> str:
         return self.equipped_armor.passive if self.equipped_armor else "none"

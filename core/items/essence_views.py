@@ -32,7 +32,10 @@ ESSENCE_DISPLAY = {
     "protection": ("✦ Essence of Protection", "🛡️"),
     "insight": ("✦ Essence of Insight", "👁️"),
     "evasion": ("✦ Essence of Evasion", "💨"),
-    "warding": ("✦ Essence of Unyielding", "🧱"),
+    "blocking": ("✦ Essence of Blocking", "🧱"),
+    "deftness": ("✦ Essence of Deftness", "⚡"),
+    "precision": ("✦ Essence of Precision", "🎯"),
+    "gluttony": ("✦ Essence of Gluttony", "🩸"),
     "cleansing": ("✦ Essence of Cleansing", "🌊"),
     "chaos": ("✦ Essence of Chaos", "🌀"),
     "annulment": ("✦ Essence of Annulment", "✂️"),
@@ -47,7 +50,10 @@ ESSENCE_BRIEF = {
     "protection": "Amplifies existing PDR and FDR on the item",
     "insight": "Grants crit chance",
     "evasion": "Grants evasion chance",
-    "warding": "Grants block chance",
+    "blocking": "Grants block chance",
+    "deftness": "Increases crit damage multiplier",
+    "precision": "Grants bonus hit chance",
+    "gluttony": "Increases max HP by a percentage",
     "cleansing": "Removes all 3 regular essence slots from the item",
     "chaos": "Rerolls values on all occupied regular essence slots",
     "annulment": "Removes one random regular essence slot",
@@ -127,8 +133,17 @@ def _format_slot_value(essence_type: str, value: float, item) -> str:
     elif essence_type == "evasion":
         return f"+{int(value)}% Evasion"
 
-    elif essence_type == "warding":
+    elif essence_type == "blocking":
         return f"+{int(value)}% Block Chance"
+
+    elif essence_type == "deftness":
+        return f"+{value:.2f}× Crit Multiplier"
+
+    elif essence_type == "precision":
+        return f"+{int(value)}% Hit Chance"
+
+    elif essence_type == "gluttony":
+        return f"+{int(value)}% Max HP"
 
     return str(value)
 
@@ -181,7 +196,7 @@ def _build_essence_embed(item, essence_inventory: dict) -> discord.Embed:
     owned_lines = []
     for cat_name, types in [
         ("Common", ["power", "protection"]),
-        ("Rare", ["insight", "evasion", "warding"]),
+        ("Rare", ["insight", "evasion", "blocking", "deftness", "precision", "gluttony"]),
         ("Utility", ["cleansing", "chaos", "annulment"]),
         ("Corrupted", ["aphrodite", "lucifer", "gemini", "neet"]),
     ]:

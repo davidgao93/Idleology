@@ -10,7 +10,10 @@ ESSENCE_TYPES = {
     # Rare
     "insight",
     "evasion",
-    "warding",
+    "blocking",
+    "deftness",
+    "precision",
+    "gluttony",
     # Utility
     "cleansing",
     "chaos",
@@ -24,7 +27,7 @@ ESSENCE_TYPES = {
 
 CORRUPTED_ESSENCE_TYPES = {"aphrodite", "lucifer", "gemini", "neet"}
 UTILITY_ESSENCE_TYPES = {"cleansing", "chaos", "annulment"}
-RARE_ESSENCE_TYPES = {"insight", "evasion", "warding"}
+RARE_ESSENCE_TYPES = {"insight", "evasion", "blocking", "deftness", "precision", "gluttony"}
 COMMON_ESSENCE_TYPES = {"power", "protection"}
 
 
