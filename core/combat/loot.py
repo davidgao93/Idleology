@@ -3,6 +3,35 @@ import random
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 from core.util import load_list
 
+# ---------------------------------------------------------------------------
+# Weapon Base Templates
+# Each entry: (hit_chance, crit_chance, crit_multi, base_rarity)
+# base_rarity: 3 = Premium ★★★, 2 = Good ★★, 1 = Mediocre ★
+# ---------------------------------------------------------------------------
+_WEAPON_BASE_TEMPLATES = [
+    # Premium (total weight 0.10)
+    (0.60, 0.05, 2.0, 3),  # Balanced
+    (0.65, 0.00, 2.0, 3),  # High Accuracy
+    (0.55, 0.10, 2.0, 3),  # High Crit
+    (0.55, 0.04, 2.5, 3),  # High Multi
+    # Good (total weight 0.50)
+    (0.58, 0.02, 2.0, 2),  # Balanced
+    (0.60, 0.00, 2.0, 2),  # High Accuracy
+    (0.52, 0.08, 2.0, 2),  # High Crit
+    (0.52, 0.03, 2.5, 2),  # High Multi
+    # Mediocre (total weight 0.40)
+    (0.54, 0.01, 2.0, 1),  # Balanced
+    (0.55, 0.00, 2.0, 1),  # High Accuracy
+    (0.50, 0.05, 2.0, 1),  # High Crit
+    (0.50, 0.01, 2.5, 1),  # High Multi
+]
+
+_TEMPLATE_WEIGHTS = [
+    0.025, 0.025, 0.025, 0.025,  # Premium  (4 × 0.025 = 0.10)
+    0.125, 0.125, 0.125, 0.125,  # Good     (4 × 0.125 = 0.50)
+    0.10,  0.10,  0.10,  0.10,   # Mediocre (4 × 0.10  = 0.40)
+]
+
 # Soft caps for each stat per equipment type.
 # get_scaled_stat approaches these asymptotically — they are never literally hit.
 _WEAPON_CAPS = {"attack": 80, "defence": 80, "rarity": 200}
@@ -62,6 +91,13 @@ async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
         weapon.rarity = int(get_scaled_stat(level, _WEAPON_CAPS["rarity"]))
 
     if weapon.attack > 0 or weapon.defence > 0 or weapon.rarity > 0:
+        # Select a base template (determines hit/crit/multi and display rarity)
+        hit, crit, multi, base_rar = random.choices(_WEAPON_BASE_TEMPLATES, _TEMPLATE_WEIGHTS)[0]
+        weapon.hit_chance = hit
+        weapon.crit_chance = crit
+        weapon.crit_multi = multi
+        weapon.base_rarity = base_rar
+
         weapon.passive = "none"
         weapon.description = (
             (f"**{weapon.name}**\n(Level {weapon.level})\n")

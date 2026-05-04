@@ -158,64 +158,34 @@ class EquipmentMechanics:
         if random.random() > success_rate:
             return False, weapon.passive  # Fail, keep existing
 
-        # Success - Pick Passive
-        passives = [
-            "burning",
-            "poisonous",
-            "polished",
-            "sparking",
-            "sturdy",
-            "piercing",
-            "strengthened",
-            "accurate",
-            "echo",
+        # Success — all passives start at Tier I on first forge.
+        # Stored as 'family_1' through 'family_5'; upgrade increments the suffix.
+        _FORGE_POOL = [
+            "burning_1",
+            "poison_1",
+            "debilitate_1",
+            "shocking_1",
+            "sturdy_1",
+            "piercing_1",
+            "cull_1",
+            "deadeye_1",
+            "echo_1",
+            "arcane_1",
         ]
 
-        # Upgrade logic map
-        upgrade_map = {
-            "burning": "flaming",
-            "flaming": "scorching",
-            "scorching": "incinerating",
-            "incinerating": "carbonising",
-            "poisonous": "noxious",
-            "noxious": "venomous",
-            "venomous": "toxic",
-            "toxic": "lethal",
-            "polished": "honed",
-            "honed": "gleaming",
-            "gleaming": "tempered",
-            "tempered": "flaring",
-            "sparking": "shocking",
-            "shocking": "discharging",
-            "discharging": "electrocuting",
-            "electrocuting": "vapourising",
-            "sturdy": "reinforced",
-            "reinforced": "thickened",
-            "thickened": "impregnable",
-            "impregnable": "impenetrable",
-            "piercing": "keen",
-            "keen": "incisive",
-            "incisive": "puncturing",
-            "puncturing": "penetrating",
-            "strengthened": "forceful",
-            "forceful": "overwhelming",
-            "overwhelming": "devastating",
-            "devastating": "catastrophic",
-            "accurate": "precise",
-            "precise": "sharpshooter",
-            "sharpshooter": "deadeye",
-            "deadeye": "bullseye",
-            "echo": "echoo",
-            "echoo": "echooo",
-            "echooo": "echoooo",
-            "echoooo": "echoes",
-        }
-
         if weapon.passive == "none":
-            return True, random.choice(passives)
+            return True, random.choice(_FORGE_POOL)
         else:
-            # Upgrade existing or keep maxed
-            return True, upgrade_map.get(weapon.passive, weapon.passive)
+            # Upgrade: parse current tier and increment, capped at 5
+            try:
+                family, tier_str = weapon.passive.rsplit("_", 1)
+                tier = int(tier_str)
+                if tier >= 5:
+                    return True, weapon.passive  # Already max tier
+                return True, f"{family}_{tier + 1}"
+            except ValueError:
+                # Malformed passive — replace with a fresh Tier I roll
+                return True, random.choice(_FORGE_POOL)
 
     # --- WEAPON REFINING LOGIC ---
     @staticmethod

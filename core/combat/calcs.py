@@ -1,49 +1,68 @@
 import random
 
 # ---------------------------------------------------------------------------
-# Tiered Weapon Passive Table
+# Weapon Passive Family Registry
 #
-# Maps a family name to ([tier_1_name, ..., tier_5_name], per-tier scale).
-# The scale meaning is family-specific (see engine.py for usage).
-# Checked slots: weapon main (passive), pinnacle, utmost.
+# Passives are stored as 'family_tier' strings, e.g. 'burning_3' (1-indexed).
+# Per-tier scale values (used by engine and player_turn):
+#   burning, poison, debilitate, shocking, sturdy, cull  → 0.08 per tier
+#   deadeye  → 4 flat hit chance per tier
+#   piercing → 5 crit chance per tier
+#   echo     → 0.10 per tier
+#   arcane   → 25 ward on hit per tier
+# Checked slots: weapon main passive, pinnacle, utmost.
 # ---------------------------------------------------------------------------
 
-TIERED_WEAPON_PASSIVES: dict[str, tuple[list[str], float]] = {
-    "accuracy": (["accurate", "precise", "sharpshooter", "deadeye", "bullseye"], 4.0),
-    "crit": (["piercing", "keen", "incisive", "puncturing", "penetrating"], 5.0),
-    "burn": (["burning", "flaming", "scorching", "incinerating", "carbonising"], 0.08),
-    "spark": (
-        ["sparking", "shocking", "discharging", "electrocuting", "vapourising"],
-        0.08,
-    ),
-    "echo": (["echo", "echoo", "echooo", "echoooo", "echoes"], 0.10),
-    "poison": (["poisonous", "noxious", "venomous", "toxic", "lethal"], 0.08),
-    "cull": (
-        ["strengthened", "forceful", "overwhelming", "devastating", "catastrophic"],
-        0.08,
-    ),
-    "polished": (["polished", "honed", "gleaming", "tempered", "flaring"], 0.08),
-    "sturdy": (
-        ["sturdy", "reinforced", "thickened", "impregnable", "impenetrable"],
-        0.08,
-    ),
+WEAPON_PASSIVE_FAMILIES: frozenset[str] = frozenset({
+    "burning",    # Atk boost
+    "poison",     # Miss damage
+    "debilitate", # Def shred (formerly polished)
+    "shocking",   # Min damage floor
+    "sturdy",     # Def boost
+    "piercing",   # Crit chance
+    "cull",       # Culling threshold
+    "deadeye",    # Hit chance
+    "echo",       # Extra hit damage
+    "arcane",     # Ward on hit
+})
+
+# Per-tier scale constants — import these in engine/player_turn instead of hardcoding.
+PASSIVE_SCALE: dict[str, float] = {
+    "burning": 0.08,
+    "poison": 0.08,
+    "debilitate": 0.08,
+    "shocking": 0.08,
+    "sturdy": 0.08,
+    "cull": 0.08,
+    "deadeye": 4.0,
+    "piercing": 5.0,
+    "echo": 0.10,
+    "arcane": 25.0,
 }
 
 
 def get_weapon_tier(player, key: str) -> tuple[int, str]:
     """
-    Returns (tier_index 0–4, passive_name) for the highest active tier of the
+    Returns (tier_index 0–4, passive_string) for the highest active tier of the
     named weapon passive family, or (-1, '') if the player has none.
     Checks weapon main, pinnacle, and utmost slots.
+    Passives are stored as 'family_tier' strings (e.g. 'burning_3').
     """
-    names, _ = TIERED_WEAPON_PASSIVES[key]
-    active = [
+    prefix = f"{key}_"
+    best: tuple[int, str] = (-1, "")
+    for passive_str in (
         player.get_weapon_passive(),
         player.get_weapon_pinnacle(),
         player.get_weapon_utmost(),
-    ]
-    hits = [(names.index(p), p) for p in active if p in names]
-    return max(hits, key=lambda x: x[0]) if hits else (-1, "")
+    ):
+        if passive_str and passive_str.startswith(prefix):
+            try:
+                tier_idx = int(passive_str[len(prefix):]) - 1  # 1-indexed → 0-indexed
+                if tier_idx > best[0]:
+                    best = (tier_idx, passive_str)
+            except ValueError:
+                continue
+    return best
 
 
 def get_player_passive_indices(player, target_passives: list[str]) -> list[int]:
@@ -118,7 +137,7 @@ def calculate_damage_taken(player, monster) -> int:
 
 def calculate_crit_chance(player) -> float:
     """Returns the effective crit chance (0–100) accounting for weapon tier and infernal."""
-    idx, _ = get_weapon_tier(player, "crit")
+    idx, _ = get_weapon_tier(player, "piercing")
     chance = player.get_current_crit_chance() + ((idx + 1) * 5 if idx >= 0 else 0)
     if player.get_weapon_infernal() == "voracious" and player.voracious_stacks > 0:
         chance += player.voracious_stacks * 5

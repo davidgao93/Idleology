@@ -3,13 +3,15 @@ from core.models import Player, Weapon, Accessory, Armor, Glove, Boot, Helmet, C
 def create_weapon(data: tuple) -> Weapon:
     """
     Maps a database tuple from table `items` to a Weapon object.
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5), 
-            rarity(6), passive(7), is_equipped(8), forges_remaining(9), 
-            refines_remaining(10), refinement_lvl(11), pinnacle_passive(12), utmost_passive(13)
+    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5),
+            rarity(6), passive(7), is_equipped(8), forges_remaining(9),
+            refines_remaining(10), refinement_lvl(11), pinnacle_passive(12), utmost_passive(13),
+            infernal_passive(14), forge_tier(15), hit_chance(16), crit_chance(17),
+            crit_multi(18), base_rarity(19)
     """
-    if not data: 
+    if not data:
         return None
-    
+
     return Weapon(
         item_id=data[0],
         user=data[1],
@@ -27,7 +29,11 @@ def create_weapon(data: tuple) -> Weapon:
         u_passive=data[13] if len(data) > 13 else "none",
         infernal_passive=data[14] if len(data) > 14 else "none",
         forge_tier=data[15] if len(data) > 15 else 0,
-        description="" # Description is typically generated dynamically in views
+        hit_chance=data[16] if len(data) > 16 else 0.60,
+        crit_chance=data[17] if len(data) > 17 else 0.00,
+        crit_multi=data[18] if len(data) > 18 else 2.00,
+        base_rarity=data[19] if len(data) > 19 else 3,
+        description=""  # Description is typically generated dynamically in views
     )
 
 def create_accessory(data: tuple) -> Accessory:

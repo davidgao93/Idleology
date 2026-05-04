@@ -21,6 +21,10 @@ class Weapon:
     refinement_lvl: int = 0
     infernal_passive: str = "none"
     forge_tier: int = 0
+    hit_chance: float = 0.60
+    crit_chance: float = 0.00
+    crit_multi: float = 2.00
+    base_rarity: int = 3
 
 
 @dataclass
@@ -695,6 +699,9 @@ class Player:
 
         # Flat sources: gear + companions + essences + tomes
         chance = 0
+        # Weapon base crit (from drop template, stored as e.g. 0.05 → 5)
+        if self.equipped_weapon:
+            chance += int(self.equipped_weapon.crit_chance * 100)
         if self.equipped_accessory:
             chance += self.equipped_accessory.crit
 
@@ -788,6 +795,10 @@ class Player:
 
     def get_weapon_utmost(self) -> str:
         return self.equipped_weapon.u_passive if self.equipped_weapon else "none"
+
+    def get_weapon_crit_multi(self) -> float:
+        """Returns the crit damage multiplier from the equipped weapon's base template."""
+        return self.equipped_weapon.crit_multi if self.equipped_weapon else 2.0
 
     def get_armor_passive(self) -> str:
         return self.equipped_armor.passive if self.equipped_armor else "none"

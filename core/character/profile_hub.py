@@ -8,60 +8,44 @@ from core.items.factory import load_player
 # ── Passive description tables ───────────────────────────────────────────────
 
 _WEAPON_PASSIVE_DESC: dict[str, str] = {
-    # Burning family (Atk +%)
-    "burning": "Atk +8%",
-    "flaming": "Atk +16%",
-    "scorching": "Atk +24%",
-    "incinerating": "Atk +32%",
-    "carbonising": "Atk +40%",
-    # Poisonous family (Miss Dmg)
-    "poisonous": "Miss deals up to 8% Atk",
-    "noxious": "Miss deals up to 16% Atk",
-    "venomous": "Miss deals up to 24% Atk",
-    "toxic": "Miss deals up to 32% Atk",
-    "lethal": "Miss deals up to 40% Atk",
-    # Polished family (Def Shred)
-    "polished": "Enemy Def -8%",
-    "honed": "Enemy Def -16%",
-    "gleaming": "Enemy Def -24%",
-    "tempered": "Enemy Def -32%",
-    "flaring": "Enemy Def -40%",
-    # Sparking family (Min Dmg)
-    "sparking": "Min Dmg floor 8% of max",
-    "shocking": "Min Dmg floor 16% of max",
-    "discharging": "Min Dmg floor 24% of max",
-    "electrocuting": "Min Dmg floor 32% of max",
-    "vapourising": "Min Dmg floor 40% of max",
-    # Sturdy family (Def Boost)
-    "sturdy": "Def +8%",
-    "reinforced": "Def +16%",
-    "thickened": "Def +24%",
-    "impregnable": "Def +32%",
-    "impenetrable": "Def +40%",
-    # Piercing family (Crit Rate)
-    "piercing": "Crit Rolls +5 (easier crits)",
-    "keen": "Crit Rolls +10",
-    "incisive": "Crit Rolls +15",
-    "puncturing": "Crit Rolls +20",
-    "penetrating": "Crit Rolls +25",
-    # Strengthened family (Cull)
-    "strengthened": "Instantly kill if enemy HP < 8%",
-    "forceful": "Instantly kill if enemy HP < 16%",
-    "overwhelming": "Instantly kill if enemy HP < 24%",
-    "devastating": "Instantly kill if enemy HP < 32%",
-    "catastrophic": "Instantly kill if enemy HP < 40%",
-    # Accurate family (Hit Bonus)
-    "accurate": "Flat Accuracy +4",
-    "precise": "Flat Accuracy +8",
-    "sharpshooter": "Flat Accuracy +12",
-    "deadeye": "Flat Accuracy +16",
-    "bullseye": "Flat Accuracy +20",
-    # Echo family (Double Hit)
-    "echo": "Extra hit 10% Dmg",
-    "echoo": "Extra hit 20% Dmg",
-    "echooo": "Extra hit 30% Dmg",
-    "echoooo": "Extra hit 40% Dmg",
-    "echoes": "Extra hit 50% Dmg",
+    # Burning family — Atk boost (×8% per tier)
+    "burning_1": "Atk +8%",    "burning_2": "Atk +16%",   "burning_3": "Atk +24%",
+    "burning_4": "Atk +32%",   "burning_5": "Atk +40%",
+    # Poison family — Miss damage (×8% per tier)
+    "poison_1": "Miss deals up to 8% Atk",  "poison_2": "Miss deals up to 16% Atk",
+    "poison_3": "Miss deals up to 24% Atk", "poison_4": "Miss deals up to 32% Atk",
+    "poison_5": "Miss deals up to 40% Atk",
+    # Debilitate family — Def shred (×8% per tier, formerly Polished)
+    "debilitate_1": "Enemy Def -8%",  "debilitate_2": "Enemy Def -16%",
+    "debilitate_3": "Enemy Def -24%", "debilitate_4": "Enemy Def -32%",
+    "debilitate_5": "Enemy Def -40%",
+    # Shocking family — Min damage floor (×8% per tier)
+    "shocking_1": "Min Dmg floor 8% of max",  "shocking_2": "Min Dmg floor 16% of max",
+    "shocking_3": "Min Dmg floor 24% of max", "shocking_4": "Min Dmg floor 32% of max",
+    "shocking_5": "Min Dmg floor 40% of max",
+    # Sturdy family — Def boost (×8% per tier)
+    "sturdy_1": "Def +8%",  "sturdy_2": "Def +16%", "sturdy_3": "Def +24%",
+    "sturdy_4": "Def +32%", "sturdy_5": "Def +40%",
+    # Piercing family — Crit chance (+5 per tier)
+    "piercing_1": "Crit Chance +5%",  "piercing_2": "Crit Chance +10%",
+    "piercing_3": "Crit Chance +15%", "piercing_4": "Crit Chance +20%",
+    "piercing_5": "Crit Chance +25%",
+    # Cull family — Culling threshold (×8% per tier)
+    "cull_1": "Instantly kill if enemy HP < 8%",  "cull_2": "Instantly kill if enemy HP < 16%",
+    "cull_3": "Instantly kill if enemy HP < 24%", "cull_4": "Instantly kill if enemy HP < 32%",
+    "cull_5": "Instantly kill if enemy HP < 40%",
+    # Deadeye family — Hit chance (+4 flat per tier)
+    "deadeye_1": "Flat Hit Chance +4",  "deadeye_2": "Flat Hit Chance +8",
+    "deadeye_3": "Flat Hit Chance +12", "deadeye_4": "Flat Hit Chance +16",
+    "deadeye_5": "Flat Hit Chance +20",
+    # Echo family — Extra hit damage (×10% per tier)
+    "echo_1": "Extra hit 10% Dmg", "echo_2": "Extra hit 20% Dmg",
+    "echo_3": "Extra hit 30% Dmg", "echo_4": "Extra hit 40% Dmg",
+    "echo_5": "Extra hit 50% Dmg",
+    # Arcane family — Ward on hit (+25 per tier)
+    "arcane_1": "Gain 25 Ward on hit",  "arcane_2": "Gain 50 Ward on hit",
+    "arcane_3": "Gain 75 Ward on hit",  "arcane_4": "Gain 100 Ward on hit",
+    "arcane_5": "Gain 125 Ward on hit",
 }
 
 _INFERNAL_PASSIVE_DESC: dict[str, str] = {
@@ -150,14 +134,31 @@ _ESSENCE_TYPE_DESC: dict = {
     "warding": lambda v: f"+{int(v)}% Block",
 }
 
-# Weapon passives that contribute a flat crit-roll bonus (piercing family)
-_WEAPON_CRIT_BONUS: dict[str, int] = {
-    "piercing": 5,
-    "keen": 10,
-    "incisive": 15,
-    "puncturing": 20,
-    "penetrating": 25,
-}
+# Roman numeral display for passive tiers
+_ROMAN = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}
+
+
+def _format_weapon_passive(key: str) -> str:
+    """Formats 'burning_3' → 'Burning III'. Falls back gracefully for unknown formats."""
+    if not key or key == "none":
+        return key
+    if "_" in key:
+        family, _, tier_str = key.rpartition("_")
+        try:
+            return f"{family.title()} {_ROMAN.get(int(tier_str), tier_str)}"
+        except ValueError:
+            pass
+    return key.title()
+
+
+def _get_piercing_crit_bonus(passive: str) -> int:
+    """Returns the flat crit-chance bonus from a piercing_N passive (+5 per tier)."""
+    if passive and passive.startswith("piercing_"):
+        try:
+            return int(passive.split("_")[1]) * 5
+        except (ValueError, IndexError):
+            pass
+    return 0
 
 _CORRUPTED_DESC: dict[tuple, str] = {
     ("aphrodite", "glove"): "Your ward is considered broken when you are hit.",
@@ -291,15 +292,15 @@ def _build_gear_passive_text(p) -> str:
         wlines: list[str] = []
         if w.passive != "none":
             wlines.append(
-                f"• Forge: {w.passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}"
+                f"• Forge: {_format_weapon_passive(w.passive)} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}"
             )
         if w.p_passive != "none":
             wlines.append(
-                f"• Pinnacle: {w.p_passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}"
+                f"• Pinnacle: {_format_weapon_passive(w.p_passive)} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}"
             )
         if w.u_passive != "none":
             wlines.append(
-                f"• Utmost: {w.u_passive.title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}"
+                f"• Utmost: {_format_weapon_passive(w.u_passive)} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}"
             )
         if w.infernal_passive != "none":
             wlines.append(
@@ -583,7 +584,11 @@ class ProfileBuilder:
             )
 
         # ── Crit Chance ──────────────────────────────────────────────────────
-        crit_weapon = 0
+        # Weapon crit = base template crit + piercing passive bonus.
+        # Template crit is already included in get_current_crit_chance();
+        # piercing bonus is additive on top.
+        crit_weapon_template = int(p.equipped_weapon.crit_chance * 100) if p.equipped_weapon else 0
+        crit_weapon_piercing = 0
         if p.equipped_weapon:
             for _passive in (
                 p.equipped_weapon.passive,
@@ -591,16 +596,16 @@ class ProfileBuilder:
                 p.equipped_weapon.u_passive,
             ):
                 if _passive:
-                    crit_weapon += _WEAPON_CRIT_BONUS.get(_passive.lower(), 0)
+                    crit_weapon_piercing += _get_piercing_crit_bonus(_passive.lower())
+        crit_weapon = crit_weapon_template + crit_weapon_piercing
         crit_equip = p.equipped_accessory.crit if p.equipped_accessory else 0
         for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
             if _item:
                 crit_equip += compute_essence_stat_bonus(_item).get("crit", 0)
-        # Weapon crit (piercing family) is a roll modifier not included in get_current_crit_chance;
-        # we display it as crit chance so the total is the sum of all sources.
+        # stat_crit includes template crit; piercing bonus is tracked separately
         stat_crit = p.get_current_crit_chance()
-        crit_bonuses = stat_crit - crit_equip
-        total_crit_display = stat_crit + crit_weapon
+        crit_bonuses = stat_crit - crit_equip - crit_weapon_template
+        total_crit_display = stat_crit + crit_weapon_piercing
         crit_val = f"**Total: {total_crit_display}**\n↳ Weapon: {crit_weapon}\n↳ Equipment: {crit_equip}"
         if crit_bonuses:
             crit_val += f"\n↳ Bonuses: {crit_bonuses:+}"
@@ -726,15 +731,15 @@ class ProfileBuilder:
             lines: list[str] = []
             if w.passive != "none":
                 lines.append(
-                    f"• Forge: {w.passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}"
+                    f"• Forge: {_format_weapon_passive(w.passive)} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}"
                 )
             if w.p_passive != "none":
                 lines.append(
-                    f"• Pinnacle: {w.p_passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}"
+                    f"• Pinnacle: {_format_weapon_passive(w.p_passive)} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}"
                 )
             if w.u_passive != "none":
                 lines.append(
-                    f"• Utmost: {w.u_passive.replace('_',' ').title()} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}"
+                    f"• Utmost: {_format_weapon_passive(w.u_passive)} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}"
                 )
             if w.infernal_passive != "none":
                 lines.append(

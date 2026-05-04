@@ -101,9 +101,12 @@ class EquipmentRepository:
     async def create_weapon(self, w: Weapon) -> None:
         potential = 3 if w.level <= 40 else (4 if w.level <= 80 else 5)
         await self.connection.execute(
-            """INSERT INTO items (user_id, item_name, item_level, attack, defence, rarity, 
-            is_equipped, forges_remaining, refines_remaining) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)""",
-            (w.user, w.name, w.level, w.attack, w.defence, w.rarity, potential, potential)
+            """INSERT INTO items (user_id, item_name, item_level, attack, defence, rarity,
+            is_equipped, forges_remaining, refines_remaining,
+            hit_chance, crit_chance, crit_multi, base_rarity)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)""",
+            (w.user, w.name, w.level, w.attack, w.defence, w.rarity, potential, potential,
+             w.hit_chance, w.crit_chance, w.crit_multi, w.base_rarity)
         )
         await self.connection.commit()
 

@@ -1,3 +1,9 @@
+-- Weapon base template columns (run scripts/migrate_weapons.py after adding these)
+-- ALTER TABLE items ADD COLUMN hit_chance REAL NOT NULL DEFAULT 0.60;
+-- ALTER TABLE items ADD COLUMN crit_chance REAL NOT NULL DEFAULT 0.00;
+-- ALTER TABLE items ADD COLUMN crit_multi REAL NOT NULL DEFAULT 2.00;
+-- ALTER TABLE items ADD COLUMN base_rarity INTEGER NOT NULL DEFAULT 3;
+
 -- ALTER TABLE users ADD COLUMN last_ascent TIMESTAMP DEFAULT NULL;
 -- ALTER TABLE users ADD COLUMN last_codex TIMESTAMP DEFAULT NULL;
 
@@ -140,22 +146,26 @@ CREATE TABLE IF NOT EXISTS `ideologies` (
 );
 
 CREATE TABLE IF NOT EXISTS `items` (
-  `item_id` INTEGER PRIMARY KEY,
-  `user_id` TEXT NOT NULL,
-  `item_name` TEXT NOT NULL,
-  `item_level` INTEGER NOT NULL,
-  `attack` INTEGER DEFAULT 0,
-  `defence` INTEGER DEFAULT 0,
-  `rarity` INTEGER DEFAULT 0,
-  `passive` TEXT NOT NULL DEFAULT 'none',
-  `is_equipped` BOOLEAN DEFAULT FALSE,
-  `forges_remaining` INTEGER DEFAULT 0,
-  `refines_remaining` INTEGER DEFAULT 0,
-  `refinement_lvl` INTEGER DEFAULT 0,
-  `pinnacle_passive` TEXT NOT NULL DEFAULT 'none',
-  `utmost_passive` TEXT NOT NULL DEFAULT 'none',
-  `infernal_passive` TEXT NOT NULL DEFAULT 'none',
-  `forge_tier` INTEGER DEFAULT 0
+    `item_id` INTEGER PRIMARY KEY,
+    `user_id` TEXT NOT NULL,
+    `item_name` TEXT NOT NULL,
+    `item_level` INTEGER NOT NULL,
+    `attack` INTEGER DEFAULT 0,
+    `defence` INTEGER DEFAULT 0,
+    `rarity` INTEGER DEFAULT 0,
+    `passive` TEXT NOT NULL DEFAULT 'none',
+    `is_equipped` BOOLEAN DEFAULT FALSE,
+    `forges_remaining` INTEGER DEFAULT 0,
+    `refines_remaining` INTEGER DEFAULT 0,
+    `refinement_lvl` INTEGER DEFAULT 0,
+    `pinnacle_passive` TEXT NOT NULL DEFAULT 'none',
+    `utmost_passive` TEXT NOT NULL DEFAULT 'none',
+    `infernal_passive` TEXT NOT NULL DEFAULT 'none',
+    `forge_tier` INTEGER DEFAULT 0,
+    `hit_chance` REAL NOT NULL DEFAULT 0.60,
+    `crit_chance` REAL NOT NULL DEFAULT 0.00,
+    `crit_multi` REAL NOT NULL DEFAULT 2.00,
+    `base_rarity` INTEGER NOT NULL DEFAULT 3
 );
 
 CREATE TABLE IF NOT EXISTS `accessories` (
