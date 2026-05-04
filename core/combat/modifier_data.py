@@ -2,6 +2,8 @@ import random as _random
 from dataclasses import dataclass
 from typing import List
 
+from core.models import MonsterModifier
+
 
 @dataclass
 class ModifierDef:
@@ -307,7 +309,6 @@ def make_modifier(
     name: str, monster_level: int, force_max_tier: bool = False
 ) -> "MonsterModifier":
     """Construct a MonsterModifier from a name and monster level."""
-    from core.models import MonsterModifier
 
     # Ascended: special rule — value is level_added, display is "Ascended +N"
     if name == "Ascended":

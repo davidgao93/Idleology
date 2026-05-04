@@ -113,11 +113,11 @@ class SlayerMechanics:
         """1 slot every 20 levels. Max 5 at Lvl 80+"""
         if slayer_level >= 80:
             return 5
-        if slayer_level >= 60:
+        if slayer_level >= 50:
             return 4
-        if slayer_level >= 40:
-            return 3
         if slayer_level >= 20:
+            return 3
+        if slayer_level >= 10:
             return 2
         return 1
 
