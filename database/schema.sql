@@ -1,37 +1,3 @@
--- Weapon base template columns (run scripts/migrate_weapons.py after adding these)
--- ALTER TABLE items ADD COLUMN hit_chance REAL NOT NULL DEFAULT 0.60;
--- ALTER TABLE items ADD COLUMN crit_chance REAL NOT NULL DEFAULT 0.00;
--- ALTER TABLE items ADD COLUMN crit_multi REAL NOT NULL DEFAULT 2.00;
--- ALTER TABLE items ADD COLUMN base_rarity INTEGER NOT NULL DEFAULT 3;
-
--- ALTER TABLE users ADD COLUMN last_ascent TIMESTAMP DEFAULT NULL;
--- ALTER TABLE users ADD COLUMN last_codex TIMESTAMP DEFAULT NULL;
-
--- ALTER TABLE uber_progress ADD COLUMN blessed_bismuth INTEGER DEFAULT 0;
--- ALTER TABLE uber_progress ADD COLUMN sparkling_sprig INTEGER DEFAULT 0;
--- ALTER TABLE uber_progress ADD COLUMN capricious_carp INTEGER DEFAULT 0;
-
--- ALTER TABLE users ADD COLUMN prestige_border TEXT NOT NULL DEFAULT 'none';
--- ALTER TABLE users ADD COLUMN prestige_title TEXT NOT NULL DEFAULT 'none';
--- ALTER TABLE users ADD COLUMN prestige_display_name TEXT DEFAULT NULL;
--- ALTER TABLE users ADD COLUMN prestige_flair TEXT NOT NULL DEFAULT 'none';
--- ALTER TABLE users ADD COLUMN prestige_death_message TEXT DEFAULT NULL;
--- ALTER TABLE users ADD COLUMN prestige_monument TEXT DEFAULT NULL;
-
--- DROP TABLE IF EXISTS user_partner_shards;
--- DROP TABLE IF EXISTS user_partners;
-
--- ALTER TABLE users ADD COLUMN curio_puzzle_boxes INTEGER NOT NULL DEFAULT 0;
-
--- ALTER TABLE gloves ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
--- ALTER TABLE gloves ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
-
--- ALTER TABLE boots ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
--- ALTER TABLE boots ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
-
--- ALTER TABLE helmets ADD COLUMN reinforces_remaining INTEGER DEFAULT 0;
--- ALTER TABLE helmets ADD COLUMN reinforcement_lvl INTEGER DEFAULT 0;
-
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
   `user_id` TEXT NOT NULL UNIQUE,
@@ -90,7 +56,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `prestige_display_name` TEXT DEFAULT NULL,
   `prestige_flair` TEXT NOT NULL DEFAULT 'none',
   `prestige_death_message` TEXT DEFAULT NULL,
-  `prestige_monument` TEXT DEFAULT NULL
+  `prestige_monument` TEXT DEFAULT NULL,
+  `curio_puzzle_boxes` INTEGER NOT NULL DEFAULT 0
 );
 
 

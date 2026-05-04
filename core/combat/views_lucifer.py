@@ -24,7 +24,7 @@ class LuciferChoiceView(ui.View):
             try:
                 embed = self.message.embeds[0]
                 embed.add_field(
-                    name="Contract Expired",
+                    name="Core Expired",
                     value="*You hesitated too long. The Soul Core crumbles to ash.*",
                     inline=False,
                 )
@@ -43,13 +43,41 @@ class LuciferChoiceView(ui.View):
     async def enraged(self, interaction: Interaction, button: ui.Button):
         adj = random.randint(-1, 2)
         await self.bot.database.users.modify_stat(self.user_id, "attack", adj)
-        await self._conclude(interaction, f"Enraged! Attack changed by {adj:+}.")
+
+        if adj == -1:
+            flavor = "The core backfires violently."
+        elif adj == 0:
+            flavor = "The soul core fades and its power fails to bind."
+        elif adj == 1:
+            flavor = "A fierce anger surges through you."
+        else:  # +2
+            flavor = "Unbridled wrath consumes you!"
+
+        msg = f"{flavor}"
+        if adj != 0:
+            msg += f" (Attack changed by {adj:+})"
+
+        await self._conclude(interaction, msg)
 
     @ui.button(label="Solidified", emoji="💙", style=ButtonStyle.primary)
     async def solidified(self, interaction: Interaction, button: ui.Button):
         adj = random.randint(-1, 2)
         await self.bot.database.users.modify_stat(self.user_id, "defence", adj)
-        await self._conclude(interaction, f"Solidified! Defence changed by {adj:+}.")
+
+        if adj == -1:
+            flavor = "The core falters, making you more vulnerable."
+        elif adj == 0:
+            flavor = "The soul core fades and its power fails to bind."
+        elif adj == 1:
+            flavor = "Your body hardens with newfound resilience."
+        else:  # +2
+            flavor = "The core forms an impenetrable shield!"
+
+        msg = f"{flavor}"
+        if adj != 0:
+            msg += f" (Defence changed by {adj:+})"
+
+        await self._conclude(interaction, msg)
 
     @ui.button(label="Unstable", emoji="💔", style=ButtonStyle.secondary)
     async def unstable(self, interaction: Interaction, button: ui.Button):
@@ -57,10 +85,8 @@ class LuciferChoiceView(ui.View):
         # Randomize towards equilibrium (49-51% split)
         new_atk = int(total * random.uniform(0.49, 0.51))
         new_def = total - new_atk
-
         atk_diff = new_atk - self.player.base_attack
         def_diff = new_def - self.player.base_defence
-
         await self.bot.database.users.modify_stat(self.user_id, "attack", atk_diff)
         await self.bot.database.users.modify_stat(self.user_id, "defence", def_diff)
         await self._conclude(

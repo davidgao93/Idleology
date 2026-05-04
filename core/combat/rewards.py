@@ -61,7 +61,7 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     # Rarity Bonus — diminishing returns via sqrt to prevent runaway scaling at 2000%+
     rarity = player.get_total_rarity()
     if rarity > 0:
-        gold_award = int(gold_award * (1 + (rarity ** 0.5) / 20))
+        gold_award = int(gold_award * (1 + (rarity**0.5) / 20))
 
     gold_award += 20  # Base flat amount
 
@@ -131,93 +131,56 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     """
     drops = {}
 
-    # --- BOSS DROPS (Aphrodite, Lucifer, NEET, Gemini) ---
-    if "Aphrodite" in monster.name:
-        if random.random() < 0.33:
-            drops["refinement_rune"] = True
-        if random.random() < 0.33:
-            drops["potential_rune"] = True
-        if random.random() < 0.33:
-            drops["imbue_rune"] = True
-        drops["curio"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["spirit_stone"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["antique_tome"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["pinnacle_key"] = True
-        _elemental_boss_chance = 0.05 + (player.get_special_drop_bonus() / 100)
-        if random.random() < _elemental_boss_chance:
-            drops["blessed_bismuth"] = True
-        if random.random() < _elemental_boss_chance:
-            drops["sparkling_sprig"] = True
-        if random.random() < _elemental_boss_chance:
-            drops["capricious_carp"] = True
-        return drops
+    if monster.is_boss:
+        special_bonus = player.get_special_drop_bonus() / 100
+        rare_chance = 0.05 + special_bonus
 
-    if "Lucifer" in monster.name:
-        if random.random() < 0.66:
-            drops["refinement_rune"] = True
-        if random.random() < 0.33:
-            drops["potential_rune"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["spirit_stone"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["antique_tome"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["pinnacle_key"] = True
-        _elemental_boss_chance = 0.05 + (player.get_special_drop_bonus() / 100)
-        if random.random() < _elemental_boss_chance:
-            drops["blessed_bismuth"] = True
-        if random.random() < _elemental_boss_chance:
-            drops["sparkling_sprig"] = True
-        if random.random() < _elemental_boss_chance:
-            drops["capricious_carp"] = True
-        return drops
+        # Boss-specific drop configurations
+        boss_configs = {
+            "Aphrodite": {
+                "refinement_rune": 0.33,
+                "potential_rune": 0.33,
+                "imbue_rune": 0.33,
+                "curio": 1.0,  # guaranteed
+            },
+            "Lucifer": {
+                "refinement_rune": 0.66,
+                "potential_rune": 0.33,
+            },
+            "NEET": {
+                "refinement_rune": 0.33,
+                "potential_rune": 0.66,
+            },
+            "Gemini": {
+                "partnership_rune": 0.5,
+            },
+        }
 
-    if "NEET" in monster.name:
-        if random.random() < 0.33:
-            drops["refinement_rune"] = True
-        if random.random() < 0.66:
-            drops["potential_rune"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["spirit_stone"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["antique_tome"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["pinnacle_key"] = True
-        _elemental_boss_chance = 0.05 + (player.get_special_drop_bonus() / 100)
-        if random.random() < _elemental_boss_chance:
-            drops["blessed_bismuth"] = True
-        if random.random() < _elemental_boss_chance:
-            drops["sparkling_sprig"] = True
-        if random.random() < _elemental_boss_chance:
-            drops["capricious_carp"] = True
-        return drops
+        # Apply boss-specific drops (only the first match wins)
+        for boss_name, config in boss_configs.items():
+            if boss_name in monster.name:
+                for item, chance in config.items():
+                    if random.random() < chance:
+                        drops[item] = True
+                break
 
-    if "Gemini" in monster.name:
-        if random.random() < 0.5:
-            drops["partnership_rune"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["spirit_stone"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["antique_tome"] = True
-        if random.random() < 0.05 + (player.get_special_drop_bonus() / 100):
-            drops["pinnacle_key"] = True
-        _elemental_boss_chance = 0.05 + (player.get_special_drop_bonus() / 100)
-        if random.random() < _elemental_boss_chance:
-            drops["blessed_bismuth"] = True
-        if random.random() < _elemental_boss_chance:
-            drops["sparkling_sprig"] = True
-        if random.random() < _elemental_boss_chance:
-            drops["capricious_carp"] = True
+        # Common rare drops (identical for all these bosses)
+        for item in ["spirit_stone", "antique_tome", "pinnacle_key"]:
+            if random.random() < rare_chance:
+                drops[item] = True
+
+        # Common elemental boss drops
+        for item in ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]:
+            if random.random() < rare_chance:
+                drops[item] = True
+
         return drops
 
     # --- PARTNER DROPS ---
     if player.active_partner:
         partner = player.active_partner
         # Guild ticket: rare drop from any fight
-        if random.random() < 0.0001 + player.get_special_drop_bonus() / 100:
+        if random.random() < 0.01 + player.get_special_drop_bonus() / 100:
             drops["guild_ticket"] = True
 
         sig_key = partner.sig_combat_key
@@ -252,35 +215,35 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
 
     special_drop_chance += player.get_special_drop_bonus() / 100
 
-    if random.random() < 0.02 + special_drop_chance:
+    if random.random() < 0.01 + special_drop_chance:
         drops["magma_core"] = True
-    if random.random() < 0.02 + special_drop_chance:
+    if random.random() < 0.01 + special_drop_chance:
         drops["life_root"] = True
-    if random.random() < 0.02 + special_drop_chance:
+    if random.random() < 0.01 + special_drop_chance:
         drops["spirit_shard"] = True
 
     # Level 20+ Drops
     if player.level > 20:
-        if random.random() < (0.03 + special_drop_chance):
+        if random.random() < (0.02 + special_drop_chance):
             drops["draconic_key"] = True
-        if random.random() < (0.03 + special_drop_chance):
+        if random.random() < (0.02 + special_drop_chance):
             drops["angelic_key"] = True
-        if random.random() < (0.08 + special_drop_chance):
-            drops["soul_core"] = True
         if random.random() < (0.05 + special_drop_chance):
+            drops["soul_core"] = True
+        if random.random() < (0.03 + special_drop_chance):
             drops["void_frag"] = True
         if random.random() < (0.01 + special_drop_chance):
             drops["shatter_rune"] = True
-        if random.random() < (0.05 + special_drop_chance):
+        if random.random() < (0.04 + special_drop_chance):
             drops["balance_fragment"] = True
 
-        key_drop_chance = 0.05 if monster.is_boss else 0.01
+        key_drop_chance = 0.02 if monster.is_boss else 0.01
         if random.random() < key_drop_chance + special_drop_chance:
             drops["antique_tome"] = True
         if random.random() < key_drop_chance + special_drop_chance:
             drops["pinnacle_key"] = True
 
-        elemental_key_chance = (0.05 if monster.is_boss else 0.01) + special_drop_chance
+        elemental_key_chance = (0.02 if monster.is_boss else 0.01) + special_drop_chance
         if random.random() < elemental_key_chance:
             drops["blessed_bismuth"] = True
         if random.random() < elemental_key_chance:
@@ -291,9 +254,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     return drops
 
 
-def apply_partner_end_rewards(
-    player: Player, xp_gained: int
-) -> list[str]:
+def apply_partner_end_rewards(player: Player, xp_gained: int) -> list[str]:
     """
     Grants XP to the active combat partner and increments affinity.
     Modifies partner in-place; caller must persist changes to DB.
@@ -306,7 +267,9 @@ def apply_partner_end_rewards(
     from core.partners.mechanics import grant_xp as _partner_grant_xp
 
     partner_xp = max(1, xp_gained // 10)
-    new_level, new_exp, level_msgs = _partner_grant_xp(partner.level, partner.exp, partner_xp)
+    new_level, new_exp, level_msgs = _partner_grant_xp(
+        partner.level, partner.exp, partner_xp
+    )
     partner.level = new_level
     partner.exp = new_exp
     partner.affinity_encounters = min(100, partner.affinity_encounters + 1)
@@ -323,7 +286,7 @@ def calculate_item_drop_chance(player: Player) -> int:
     base_chance = 10.0
     max_bonus_chance = 20.0  # The most you can possibly add to the base
 
-    scaling_constant = 100.0
+    scaling_constant = 1000.0
 
     rarity = max(0, player.get_total_rarity())
 
