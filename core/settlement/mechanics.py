@@ -68,8 +68,8 @@ class SettlementMechanics:
         "companion_ranch": {
             "type": "generator",
             "output": "companion_cookie",
-            "base_rate": 1,
-        },  # 1 XP per worker/hr
+            "base_rate": 0.01,
+        },  # 0.01 XP per worker/hr
         "celestial_shrine": {"type": "passive", "effect": "sigil_bonus"},
         "infernal_forge": {"type": "passive", "effect": "infernal_sigil_bonus"},
         "void_sanctum": {"type": "passive", "effect": "void_shard_bonus"},

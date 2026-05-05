@@ -112,7 +112,9 @@ class CorruptedEncounterGateView(ui.View):
     regular encounter).  No currency cost — the gate is purely informational.
     """
 
-    _MOD_COUNT = len(COMMON_MOD_NAMES) + len(RARE_TIERED_MOD_NAMES) + len(RARE_FLAT_MOD_NAMES)
+    _MOD_COUNT = (
+        len(COMMON_MOD_NAMES) + len(RARE_TIERED_MOD_NAMES) + len(RARE_FLAT_MOD_NAMES)
+    )
 
     def __init__(self, bot, user_id: str):
         super().__init__(timeout=60)
@@ -136,16 +138,6 @@ class CorruptedEncounterGateView(ui.View):
                 "*Only those who've proven themselves may stand a chance.*"
             ),
             color=0x6A0DAD,
-        )
-        embed.add_field(
-            name="⚠️ Active Modifiers",
-            value=f"All **{self._MOD_COUNT}** common and rare modifiers at **Rank V**",
-            inline=False,
-        )
-        embed.add_field(
-            name="🏆 Rewards on Victory",
-            value="✦ **Sigil of Corruption** *(guaranteed)*\n✦ **Uncut Paradise Jewel** *(25% chance)*",
-            inline=False,
         )
         embed.set_image(url=_CORRUPTED_GATE_IMAGE)
         embed.set_footer(text="Flee to face a regular encounter instead.")

@@ -250,7 +250,7 @@ class SettlementDashboardView(SettlementBaseView):
         cookie_xp = 0
         if "companion_cookie" in total_changes:
             cookies = total_changes.pop("companion_cookie")
-            cookie_xp = cookies
+            cookie_xp = int(cookies)
 
             if "companion_cookie" in display_changes:
                 display_changes["Companion XP"] = display_changes.pop(

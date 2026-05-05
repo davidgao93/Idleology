@@ -311,7 +311,7 @@ class DelveView(ui.View):
                 title=title, description=desc, color=discord.Color.red()
             )
             embed.set_thumbnail(url=DELVE_REWARDS)
-            lost = f"🎁 {self.state.curios_found} Curios\n💎 {self.state.shards_found} Shards"
+            lost = f"💎 {self.state.shards_found} Shards"
             if self.state.ore_found:
                 name_map = {
                     col: label
@@ -362,7 +362,7 @@ class DelveView(ui.View):
             )
             embed.set_thumbnail(url=DELVE_MINING)
             embed.description = f"Reached Depth **{self.state.depth}**."
-            loot_value = f"🎁 **{self.state.curios_found}** Curios\n💎 **{self.state.shards_found}** Obsidian Shards"
+            loot_value = f"💎 **{self.state.shards_found}** Obsidian Shards"
             embed.add_field(name="Loot Secured", value=loot_value, inline=False)
             if self.state.ore_found:
                 name_map = {

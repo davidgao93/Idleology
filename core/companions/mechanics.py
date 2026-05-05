@@ -171,7 +171,7 @@ class CompanionMechanics:
             "Rune of Potential",
             "Rune of Shattering",
         ]
-        loot_weights = [75, 10, 5, 5, 5]
+        loot_weights = [90, 2, 2, 3, 3]
 
         for comp in companions:
             # Chance to find *anything* this cycle: 0.5% per level
@@ -195,7 +195,7 @@ class CompanionMechanics:
                 for res in results:
                     if res == "Gold":
                         # Gold Amount: Level * 1000 (e.g. Lvl 50 = 50000g, Lvl 100 = 100000g)
-                        amount = comp.level * 1000
+                        amount = comp.level * 500
                         loot_bag.append(("Gold", amount))
                     else:
                         loot_bag.append((res, 1))

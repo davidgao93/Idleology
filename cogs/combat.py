@@ -12,7 +12,11 @@ from discord.ui import Button, View
 from core.combat import engine, ui
 from core.combat.dummy_views import DummyConfigView
 from core.combat.encounters import EncounterManager
-from core.combat.gen_mob import generate_boss, generate_corrupted_encounter, generate_encounter
+from core.combat.gen_mob import (
+    generate_boss,
+    generate_corrupted_encounter,
+    generate_encounter,
+)
 from core.combat.views import CombatView
 from core.combat.warning_views import CorruptedEncounterGateView, LowHealthWarningView
 from core.items.factory import load_player
@@ -130,55 +134,75 @@ class Combat(commands.Cog, name="combat"):
         player,
     ):
         """The actual combat generation and UI loading logic. Called directly or via the Warning View."""
-        # 3. Check Door Encounter
-        doors_enabled = await self.bot.database.users.get_doors_enabled(user_id)
-        triggered = False
         is_boss = False
+        is_corrupted = False
         combat_phases = []
-        cost_dict = {}
-        boss_type = ""
 
-        if doors_enabled:
-            currencies = {
-                "dragon_key": existing_user[25],
-                "angel_key": existing_user[26],
-                "soul_cores": existing_user[28],
-                "void_frags": existing_user[29],
-                "balance_fragment": await self.bot.database.users.get_currency(
-                    user_id, "balance_fragment"
-                ),
-            }
-
-            triggered, boss_type, cost_dict = EncounterManager.check_boss_door(
-                player.level, currencies
-            )
-
-        if triggered:
-            details = EncounterManager.get_door_details(boss_type)
-            embed = discord.Embed(
-                title=details["title"], description=details["desc"], color=0x00FF00
-            )
-            if details["img"]:
-                embed.set_image(url=details["img"])
-            embed.set_footer(text=f"Cost: {details['cost_str']}")
-
-            view = DoorPromptView(self.bot, user_id, cost_dict, boss_type)
-            await interaction.edit_original_response(
-                content=None, embed=embed, view=view
-            )
-            await view.wait()
-
-            if view.accepted:
-                is_boss = True
-                combat_phases = EncounterManager.get_boss_phases(boss_type)
-                await self.bot.database.users.update_timer(user_id, "last_combat")
-            else:
+        # 3a. Corrupted encounter roll — resolves first (level 100+)
+        if player.level >= 100:
+            corrupted_chance = 0.01 + player.get_emblem_bonus("corrupted_find") * 0.002
+            if random.random() < corrupted_chance:
+                gate_view = CorruptedEncounterGateView(self.bot, user_id)
                 await interaction.edit_original_response(
-                    content="*You turn away from the ominous presence...*",
-                    embed=None,
-                    view=None,
+                    content=None,
+                    embed=gate_view.build_embed(),
+                    view=gate_view,
                 )
-                await asyncio.sleep(1.0)
+                await gate_view.wait()
+                is_corrupted = gate_view.accepted
+                if not is_corrupted:
+                    # Player fled — clear gate message, fall through to boss door check
+                    await interaction.edit_original_response(
+                        content="*The corrupted presence fades... for now.*",
+                        embed=None,
+                        view=None,
+                    )
+                    await asyncio.sleep(1.0)
+
+        # 3b. Boss door check — skipped entirely if a corrupted encounter was accepted
+        triggered = False
+        if not is_corrupted:
+            doors_enabled = await self.bot.database.users.get_doors_enabled(user_id)
+            if doors_enabled:
+                currencies = {
+                    "dragon_key": existing_user[25],
+                    "angel_key": existing_user[26],
+                    "soul_cores": existing_user[28],
+                    "void_frags": existing_user[29],
+                    "balance_fragment": await self.bot.database.users.get_currency(
+                        user_id, "balance_fragment"
+                    ),
+                }
+                triggered, boss_type, cost_dict = EncounterManager.check_boss_door(
+                    player.level, currencies
+                )
+
+            if triggered:
+                details = EncounterManager.get_door_details(boss_type)
+                embed = discord.Embed(
+                    title=details["title"], description=details["desc"], color=0x00FF00
+                )
+                if details["img"]:
+                    embed.set_image(url=details["img"])
+                embed.set_footer(text=f"Cost: {details['cost_str']}")
+
+                view = DoorPromptView(self.bot, user_id, cost_dict, boss_type)
+                await interaction.edit_original_response(
+                    content=None, embed=embed, view=view
+                )
+                await view.wait()
+
+                if view.accepted:
+                    is_boss = True
+                    combat_phases = EncounterManager.get_boss_phases(boss_type)
+                    await self.bot.database.users.update_timer(user_id, "last_combat")
+                else:
+                    await interaction.edit_original_response(
+                        content="*You turn away from the ominous presence...*",
+                        embed=None,
+                        view=None,
+                    )
+                    await asyncio.sleep(1.0)
 
         if not is_boss:
             await self.bot.database.users.update_timer(user_id, "last_combat")
@@ -203,43 +227,20 @@ class Combat(commands.Cog, name="combat"):
         if is_boss:
             monster = await generate_boss(player, monster, combat_phases[0], 0)
             monster.is_boss = True
+        elif is_corrupted:
+            monster = generate_corrupted_encounter(player, monster)
+            combat_phases = [None]
         else:
-            # --- Corrupted encounter roll (level 100+, only when no boss door triggered) ---
-            is_corrupted = False
-            if player.level >= 100 and not triggered:
-                corrupted_chance = 0.01 + player.get_emblem_bonus("corrupted_find") * 0.002
-                if random.random() < corrupted_chance:
-                    gate_view = CorruptedEncounterGateView(self.bot, user_id)
-                    await interaction.edit_original_response(
-                        content=None,
-                        embed=gate_view.build_embed(),
-                        view=gate_view,
-                    )
-                    await gate_view.wait()
-                    is_corrupted = gate_view.accepted
-                    if not is_corrupted:
-                        # Player fled — clear gate message, proceed to normal combat
-                        await interaction.edit_original_response(
-                            content="*The corrupted presence fades... for now.*",
-                            embed=None,
-                            view=None,
-                        )
-                        await asyncio.sleep(1.0)
-
-            if is_corrupted:
-                monster = generate_corrupted_encounter(player, monster)
-                combat_phases = [None]
-            else:
-                treasure_chance = 1.0
-                if player.get_armor_passive() == "Treasure Hunter":
-                    treasure_chance += 5.0
-                if player.get_boot_passive() == "treasure-tracker":
-                    treasure_chance += player.equipped_boot.passive_lvl * 0.5
-                is_treasure = random.random() * 100 < treasure_chance
-                monster = await generate_encounter(
-                    player, monster, is_treasure=is_treasure, task_species=task_species
-                )
-                combat_phases = [None]  # Dummy for View logic
+            treasure_chance = 1.0
+            if player.get_armor_passive() == "Treasure Hunter":
+                treasure_chance += 5.0
+            if player.get_boot_passive() == "treasure-tracker":
+                treasure_chance += player.equipped_boot.passive_lvl * 0.5
+            is_treasure = random.random() * 100 < treasure_chance
+            monster = await generate_encounter(
+                player, monster, is_treasure=is_treasure, task_species=task_species
+            )
+            combat_phases = [None]
 
         # 5. Apply Start Effects
         engine.apply_stat_effects(player, monster)

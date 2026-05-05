@@ -1,6 +1,7 @@
 import random
 from dataclasses import dataclass, field
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
+
 
 @dataclass
 class DelveState:
@@ -15,12 +16,16 @@ class DelveState:
     hazards: List[str] = field(default_factory=list)
     revealed_indices: List[int] = field(default_factory=list)
 
+
 class DelveMechanics:
     HAZARDS = ["Safe", "Gravel", "Gas Pocket", "Magma Flow"]
-    
+
     TIER_MITIGATION = {
-        'iron': 0.0, 'steel': 0.10, 'gold': 0.20, 
-        'platinum': 0.30, 'ideal': 0.50
+        "iron": 0.0,
+        "steel": 0.10,
+        "gold": 0.20,
+        "platinum": 0.30,
+        "ideal": 0.50,
     }
 
     @staticmethod
@@ -33,8 +38,10 @@ class DelveMechanics:
 
     @staticmethod
     def get_survey_range(level: int) -> int:
-        if level >= 8: return 3
-        if level >= 4: return 2
+        if level >= 8:
+            return 3
+        if level >= 4:
+            return 2
         return 1
 
     @staticmethod
@@ -47,7 +54,8 @@ class DelveMechanics:
 
     @staticmethod
     def calculate_level_from_xp(total_xp: int) -> int:
-        if total_xp <= 0: return 1
+        if total_xp <= 0:
+            return 1
         return int((total_xp / 50) ** 0.5) + 1
 
     @staticmethod
@@ -68,8 +76,10 @@ class DelveMechanics:
         if roll > safe_threshold:
             sub_roll = random.random()
             magma_chance = min(0.6, depth * 0.02)
-            if sub_roll < magma_chance: return "Magma Flow"
-            if sub_roll < 0.6: return "Gas Pocket"
+            if sub_roll < magma_chance:
+                return "Magma Flow"
+            if sub_roll < 0.6:
+                return "Gas Pocket"
             return "Gravel"
 
         return "Safe"
@@ -101,22 +111,19 @@ class DelveMechanics:
     def check_rewards(depth: int) -> Tuple[int, int]:
         curios = 0
         shards = 0
-        
-        if depth > 0 and depth % 25 == 0: 
-            curios = 1
-            if depth >= 50: curios = 2 
-        
+
         if depth > 15:
             chance = min(0.30, (depth - 10) * 0.005)
             if random.random() < chance:
                 shards = random.randint(1, 2)
-            
+
         return curios, shards
-    
+
     @staticmethod
     def calculate_level_from_xp(total_xp: int) -> int:
         """Inverse: Level = sqrt(XP / 50) + 1"""
-        if total_xp <= 0: return 1
+        if total_xp <= 0:
+            return 1
         return int((total_xp / 50) ** 0.5) + 1
 
     @staticmethod
@@ -125,5 +132,6 @@ class DelveMechanics:
         Forward: XP = 50 * (Level - 1)^2
         Returns total accumulated XP required to reach target_level.
         """
-        if target_level <= 1: return 0
+        if target_level <= 1:
+            return 0
         return 50 * ((target_level - 1) ** 2)
