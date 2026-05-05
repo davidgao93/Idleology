@@ -1,7 +1,17 @@
+import random
+
 import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.combat import engine
+from core.combat.modifier_data import (
+    COMMON_MOD_NAMES,
+    RARE_FLAT_MOD_NAMES,
+    RARE_TIERED_MOD_NAMES,
+)
+from core.images import CORRUPTED_MONSTERS
+
+_CORRUPTED_GATE_IMAGE = random.choice(list(CORRUPTED_MONSTERS.values()))
 
 
 class LowHealthWarningView(ui.View):
@@ -92,4 +102,62 @@ class LowHealthWarningView(ui.View):
             view=None,
         )
         self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
+
+
+class CorruptedEncounterGateView(ui.View):
+    """Pre-encounter gate shown when a Corrupted monster spawns.
+
+    The player may choose to face it or flee (which falls back to a
+    regular encounter).  No currency cost — the gate is purely informational.
+    """
+
+    _MOD_COUNT = len(COMMON_MOD_NAMES) + len(RARE_TIERED_MOD_NAMES) + len(RARE_FLAT_MOD_NAMES)
+
+    def __init__(self, bot, user_id: str):
+        super().__init__(timeout=60)
+        self.bot = bot
+        self.user_id = user_id
+        self.accepted: bool = False
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        self.bot.state_manager.clear_active(self.user_id)
+
+    def build_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="☠️ A Corrupted Entity Approaches",
+            description=(
+                "An ancient evil has seeped into this realm, twisting a creature beyond recognition.\n\n"
+                "This is no ordinary encounter. The entity before you carries **every modifier** "
+                "at maximum potency — a trial meant to break the strong.\n\n"
+                "*Only those who've proven themselves may stand a chance.*"
+            ),
+            color=0x6A0DAD,
+        )
+        embed.add_field(
+            name="⚠️ Active Modifiers",
+            value=f"All **{self._MOD_COUNT}** common and rare modifiers at **Rank V**",
+            inline=False,
+        )
+        embed.add_field(
+            name="🏆 Rewards on Victory",
+            value="✦ **Sigil of Corruption** *(guaranteed)*\n✦ **Uncut Paradise Jewel** *(25% chance)*",
+            inline=False,
+        )
+        embed.set_image(url=_CORRUPTED_GATE_IMAGE)
+        embed.set_footer(text="Flee to face a regular encounter instead.")
+        return embed
+
+    @ui.button(label="Face the Corrupted", style=ButtonStyle.danger, emoji="☠️")
+    async def face(self, interaction: Interaction, button: ui.Button):
+        self.accepted = True
+        await interaction.response.defer()
+        self.stop()
+
+    @ui.button(label="Flee", style=ButtonStyle.secondary)
+    async def flee(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
         self.stop()

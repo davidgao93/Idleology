@@ -12,9 +12,9 @@ from discord.ui import Button, View
 from core.combat import engine, ui
 from core.combat.dummy_views import DummyConfigView
 from core.combat.encounters import EncounterManager
-from core.combat.gen_mob import generate_boss, generate_encounter
+from core.combat.gen_mob import generate_boss, generate_corrupted_encounter, generate_encounter
 from core.combat.views import CombatView
-from core.combat.warning_views import LowHealthWarningView
+from core.combat.warning_views import CorruptedEncounterGateView, LowHealthWarningView
 from core.items.factory import load_player
 from core.models import Monster
 
@@ -204,16 +204,42 @@ class Combat(commands.Cog, name="combat"):
             monster = await generate_boss(player, monster, combat_phases[0], 0)
             monster.is_boss = True
         else:
-            treasure_chance = 1.0
-            if player.get_armor_passive() == "Treasure Hunter":
-                treasure_chance += 5.0
-            if player.get_boot_passive() == "treasure-tracker":
-                treasure_chance += player.equipped_boot.passive_lvl * 0.5
-            is_treasure = random.random() * 100 < treasure_chance
-            monster = await generate_encounter(
-                player, monster, is_treasure=is_treasure, task_species=task_species
-            )  # <--- PASS IT HERE
-            combat_phases = [None]  # Dummy for View logic
+            # --- Corrupted encounter roll (level 100+, only when no boss door triggered) ---
+            is_corrupted = False
+            if player.level >= 100 and not triggered:
+                corrupted_chance = 0.01 + player.get_emblem_bonus("corrupted_find") * 0.002
+                if random.random() < corrupted_chance:
+                    gate_view = CorruptedEncounterGateView(self.bot, user_id)
+                    await interaction.edit_original_response(
+                        content=None,
+                        embed=gate_view.build_embed(),
+                        view=gate_view,
+                    )
+                    await gate_view.wait()
+                    is_corrupted = gate_view.accepted
+                    if not is_corrupted:
+                        # Player fled — clear gate message, proceed to normal combat
+                        await interaction.edit_original_response(
+                            content="*The corrupted presence fades... for now.*",
+                            embed=None,
+                            view=None,
+                        )
+                        await asyncio.sleep(1.0)
+
+            if is_corrupted:
+                monster = generate_corrupted_encounter(player, monster)
+                combat_phases = [None]
+            else:
+                treasure_chance = 1.0
+                if player.get_armor_passive() == "Treasure Hunter":
+                    treasure_chance += 5.0
+                if player.get_boot_passive() == "treasure-tracker":
+                    treasure_chance += player.equipped_boot.passive_lvl * 0.5
+                is_treasure = random.random() * 100 < treasure_chance
+                monster = await generate_encounter(
+                    player, monster, is_treasure=is_treasure, task_species=task_species
+                )
+                combat_phases = [None]  # Dummy for View logic
 
         # 5. Apply Start Effects
         engine.apply_stat_effects(player, monster)

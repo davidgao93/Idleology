@@ -138,6 +138,20 @@ SETTLEMENT_BUILDINGS = {
     "twin_shrine":      "https://cdn.discordapp.com/attachments/1334637411363323996/1500512960274239799/temple.png?ex=69f8b517&is=69f76397&hm=9c8dae72cc8639210f2ac2215dbdaa4a481b0b1f4127292ad50b698de3174994&",
 }
 
+# ── CORRUPTED MONSTERS ────────────────────────────────────────────────────────
+# Dict keyed by monster name stem (without "corrupted_" prefix).
+# Used in generate_corrupted_encounter() to set Monster.image.
+CORRUPTED_MONSTERS = {
+    "blessed_zealot":     "https://cdn.discordapp.com/attachments/1334637411363323996/1501262536048382202/corrupted_blessed_zealot.jpg?ex=69fb6f30&is=69fa1db0&hm=2c58f56956f6df7c1bc7e1a6a06c7bc78d6032a6afd1bc7cb9fb6dd358865c46&",
+    "blossom_samurai":    "https://cdn.discordapp.com/attachments/1334637411363323996/1501262536501100686/corrupted_blossom_samurai.jpg?ex=69fb6f30&is=69fa1db0&hm=0b6356dca3d8239404f5d891b2263270484189af1d0f457201236a0d383732f6&",
+    "chrono_prisoner":    "https://cdn.discordapp.com/attachments/1334637411363323996/1501262536912277554/corrupted_chrono_prisoner.jpg?ex=69fb6f30&is=69fa1db0&hm=a9aa776ae790b7d29e60a3f44c55c693c347da2ac99ac636f624ed03319535f5&",
+    "dragon_princess":    "https://cdn.discordapp.com/attachments/1334637411363323996/1501262537260269698/corrupted_dragon_princess.jpg?ex=69fb6f30&is=69fa1db0&hm=0894f62885d8727946dc78292b82acccd2d4eee1b6b46c6af96392dd5c0dd192&",
+    "ivory_succubus":     "https://cdn.discordapp.com/attachments/1334637411363323996/1501262537621246133/corrupted_ivory_succubus.jpg?ex=69fb6f31&is=69fa1db1&hm=8a0bc9f249f61ca0eb51ce28d838b483e0ef262ce032e53ab1010ef0dfebd9bd&",
+    "lotus_oni_princess": "https://cdn.discordapp.com/attachments/1334637411363323996/1501262537956528138/corrupted_lotus_oni_princess.jpg?ex=69fb6f31&is=69fa1db1&hm=79c3a0d919c3cc9c9ad63d3ce60f0de04eaabfc14fd7e0cd3dae0b0bbe5bddd0&",
+    "sword_angel":        "https://cdn.discordapp.com/attachments/1334637411363323996/1501262538329948231/corrupted_sword_angel.jpg?ex=69fb6f31&is=69fa1db1&hm=2a49b0daf7429d1fec4da8403849cfc83ace8222edfa6c74011fd9351fbb8ce6&",
+    "winged_swordsmaiden":"https://cdn.discordapp.com/attachments/1334637411363323996/1501262538703114481/corrupted_winged_swordsmaiden.jpg?ex=69fb6f31&is=69fa1db1&hm=4c99f4d1ba5bed1e5c7198751108954128102677adf1dd61aeb8aca32fd301bc&",
+}
+
 # ── SLAYER ────────────────────────────────────────────────────────────────────
 SLAYER_MASTER = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512944839196672/slayer_master.jpeg?ex=69f8b514&is=69f76394&hm=80574a877f344b671995071e57369d25bec6f534fcbf943a6a8be049e9f0f1c2&"
 SLAYER_EMBLEM = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512945111568566/slayer_emblem.png?ex=69f8b514&is=69f76394&hm=9e0e91ed0c4e0ba48c7283d29e5faf3dee64b01b3bc1b933a48527e8b9fd72bc&"

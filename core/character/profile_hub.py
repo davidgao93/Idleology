@@ -198,6 +198,7 @@ _SLAYER_EMBLEM_NAMES: dict[str, str] = {
     "xp_find": "XP Find",
     "task_progress": "Double Task Progress",
     "slayer_drops": "Slayer Drop Rate",
+    "corrupted_find": "Corrupted Attunement",
 }
 
 _SLAYER_EMBLEM_FUNCS: dict = {
@@ -211,6 +212,7 @@ _SLAYER_EMBLEM_FUNCS: dict = {
     "xp_find": lambda t: f"+{t * 3}% XP from combat",
     "task_progress": lambda t: f"{t * 5}% chance for a kill to count twice",
     "slayer_drops": lambda t: f"{t * 5}% chance for extra slayer drops",
+    "corrupted_find": lambda t: f"+{t * 0.2:.1f}% corrupted encounter chance",
 }
 
 _CODEX_TOME_INFO: dict = {

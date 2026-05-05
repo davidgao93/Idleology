@@ -11,6 +11,7 @@ from core.combat.modifier_data import (
 )
 from core.images import (
     COMBAT_DUMMY,
+    CORRUPTED_MONSTERS,
     MONSTER_APHRODITE,
     MONSTER_GEMINI,
     MONSTER_LUCIFER,
@@ -444,6 +445,63 @@ def get_modifier_description(mod: MonsterModifier) -> str:
     if fn:
         return fn(mod.value)
     return ""
+
+
+def apply_all_corrupted_modifiers(monster) -> None:
+    """Apply every common and rare modifier at max tier to a corrupted monster.
+
+    Called once during generation — after HP/stats are set and before
+    _apply_spawn_modifiers, which reads the modifier list to mutate stats.
+    """
+    all_names = COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES + RARE_FLAT_MOD_NAMES
+    for name in all_names:
+        monster.modifiers.append(make_modifier(name, monster.level, force_max_tier=True))
+
+
+# Corrupted monster display names derived from CORRUPTED_MONSTERS keys.
+_CORRUPTED_MONSTER_NAMES: list[tuple[str, str]] = [
+    (key, "Corrupted " + key.replace("_", " ").title())
+    for key in CORRUPTED_MONSTERS
+]
+
+
+def generate_corrupted_encounter(player, monster) -> "Monster":
+    """Generate a Corrupted monster encounter.
+
+    Corrupted monsters are post-level-100 elite variants carrying every common
+    and rare modifier at max tier. Stats are fixed at player ceiling (no random
+    difficulty roll) and HP/attack are heavily amplified.
+
+    Sets monster.is_corrupted = True so downstream loot logic can branch on it.
+    """
+    key, display_name = random.choice(_CORRUPTED_MONSTER_NAMES)
+
+    monster.level = player.level + player.ascension
+    monster = calculate_monster_stats(monster)
+
+    # HP: 4× a normal monster of equivalent level
+    base_hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.6, 1.7)))
+    monster.hp = int(base_hp * 4)
+    monster.max_hp = monster.hp
+
+    # Attack: 2× normal
+    monster.attack = int(monster.attack * 2)
+
+    monster.xp = random.randint(1, 9) + monster.level * 100
+
+    monster.name = display_name
+    monster.image = CORRUPTED_MONSTERS[key]
+    monster.flavor = "radiates a suffocating aura of corruption"
+    monster.species = "Corrupted"
+    monster.is_boss = False
+    monster.is_corrupted = True
+
+    monster.modifiers = []
+    apply_all_corrupted_modifiers(monster)
+    _apply_spawn_modifiers(monster)
+
+    print(monster)
+    return monster
 
 
 async def generate_uber_lucifer(player, monster):

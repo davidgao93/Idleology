@@ -395,6 +395,8 @@ CREATE TABLE IF NOT EXISTS uber_progress (
     blessed_bismuth INTEGER DEFAULT 0,
     sparkling_sprig INTEGER DEFAULT 0,
     capricious_carp INTEGER DEFAULT 0,
+    corruption_sigils INTEGER DEFAULT 0,
+    paradise_jewels INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );
 

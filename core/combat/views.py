@@ -499,6 +499,20 @@ class CombatView(ui.View):
                 )
                 reward_data["special"].extend(["Gemini Sigil"] * sigils_dropped)
 
+            # --- Corrupted monster loot ---
+            if getattr(self.monster, "is_corrupted", False):
+                # Guaranteed: Sigil of Corruption
+                await self.bot.database.uber.increment_corruption_sigils(
+                    self.user_id, self.server_id, 1
+                )
+                reward_data["special"].append("☠️ Sigil of Corruption")
+                # 25% chance: Uncut Paradise Jewel
+                if random.random() < 0.25:
+                    await self.bot.database.uber.increment_paradise_jewels(
+                        self.user_id, self.server_id, 1
+                    )
+                    reward_data["special"].append("💎 Uncut Paradise Jewel")
+
             # Grant Currencies based on flags
             for key, val in special_flags.items():
                 if val:

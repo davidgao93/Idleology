@@ -34,7 +34,15 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\('core/inventory/inventory.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")",
       "Bash(C:/Users/yugao/AppData/Local/Programs/Python/Python311/python.exe tools/apply_discord_urls.py)",
       "Bash(C:/Users/yugao/AppData/Local/Programs/Python/Python311/python.exe -c ' *)",
-      "Bash(C:/Users/yugao/AppData/Local/Programs/Python/Python311/python.exe tools/seed_discord_images.py)"
+      "Bash(C:/Users/yugao/AppData/Local/Programs/Python/Python311/python.exe tools/seed_discord_images.py)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(python -m pip show discord.py)",
+      "Bash(python -m pip show discord)",
+      "Bash(where python *)",
+      "Bash(C:\\\\Users\\\\yugao\\\\AppData\\\\Local\\\\Python\\\\bin\\\\python.exe -m pip show discord.py)",
+      "Bash(C:\\\\Users\\\\yugao\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe -m pip show discord.py)",
+      "PowerShell(Get-Command python, python3, py -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\yugao\\\\Idleology\\\\assets\\\\images\\\\corrupted_monsters\" | Select-Object Name, @{N=\"Size_KB\";E={[math]::Round\\($_.Length/1KB, 1\\)}})"
     ]
   }
 }

@@ -904,6 +904,7 @@ class Monster:
     is_boss: bool = False
     combat_round: int = 0
     is_essence: bool = False
+    is_corrupted: bool = False
     ward: int = 0
 
     def has_modifier(self, name: str) -> bool:

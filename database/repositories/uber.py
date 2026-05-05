@@ -13,7 +13,8 @@ class UberRepository:
                       infernal_sigils, infernal_engrams, infernal_blueprint_unlocked,
                       void_shards, void_engrams, void_blueprint_unlocked,
                       gemini_sigils, gemini_engrams, gemini_blueprint_unlocked,
-                      blessed_bismuth, sparkling_sprig, capricious_carp
+                      blessed_bismuth, sparkling_sprig, capricious_carp,
+                      corruption_sigils, paradise_jewels
                FROM uber_progress WHERE user_id = ? AND server_id = ?""",
             (user_id, server_id),
         )
@@ -41,6 +42,8 @@ class UberRepository:
                 "blessed_bismuth": 0,
                 "sparkling_sprig": 0,
                 "capricious_carp": 0,
+                "corruption_sigils": 0,
+                "paradise_jewels": 0,
             }
 
         return {
@@ -59,6 +62,8 @@ class UberRepository:
             "blessed_bismuth": row[12] if row[12] is not None else 0,
             "sparkling_sprig": row[13] if row[13] is not None else 0,
             "capricious_carp": row[14] if row[14] is not None else 0,
+            "corruption_sigils": row[15] if row[15] is not None else 0,
+            "paradise_jewels": row[16] if row[16] is not None else 0,
         }
 
     # --- Celestial (Aphrodite) ---
@@ -201,5 +206,23 @@ class UberRepository:
                    capricious_carp = capricious_carp - 1
                WHERE user_id = ? AND server_id = ?""",
             (user_id, server_id),
+        )
+        await self.connection.commit()
+
+    # --- Corrupted Monsters ---
+
+    async def increment_corruption_sigils(self, user_id: str, server_id: str, amount: int) -> None:
+        """Modifies the corruption_sigils count (can be negative)."""
+        await self.connection.execute(
+            "UPDATE uber_progress SET corruption_sigils = corruption_sigils + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def increment_paradise_jewels(self, user_id: str, server_id: str, amount: int) -> None:
+        """Modifies the paradise_jewels count (can be negative)."""
+        await self.connection.execute(
+            "UPDATE uber_progress SET paradise_jewels = paradise_jewels + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id),
         )
         await self.connection.commit()

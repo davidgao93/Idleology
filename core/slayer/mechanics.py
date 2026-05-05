@@ -17,6 +17,7 @@ class SlayerMechanics:
         "accuracy",
         "task_progress",
         "slayer_drops",
+        "corrupted_find",
     ]
 
     @staticmethod
@@ -152,6 +153,7 @@ class SlayerMechanics:
             "accuracy": "Accuracy",
             "task_progress": "Double Task Progress",
             "slayer_drops": "Slayer Material Drop Rate",
+            "corrupted_find": "Corrupted Attunement",
         }
 
         name = base_names.get(p_type, p_type)
@@ -167,5 +169,7 @@ class SlayerMechanics:
             return f"{name} (+{tier * 2} flat roll)"
         elif p_type in ["task_progress", "slayer_drops"]:
             return f"{name} ({tier * 5}% chance)"
+        elif p_type == "corrupted_find":
+            return f"{name} (+{tier * 0.2:.1f}% corrupted spawn chance)"
 
         return f"{name} (Tier {tier})"
