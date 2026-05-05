@@ -8,6 +8,18 @@ from typing import List, Optional
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.images import (
+    GACHA_BANNER_4STAR,
+    GACHA_BANNER_5STAR,
+    GACHA_BANNER_6STAR,
+    PARTNERS_BOSS_PARTY,
+    PARTNERS_DISPATCH,
+    PARTNERS_FEMALE,
+    PARTNERS_HUB,
+    PARTNERS_INTRO,
+    PARTNERS_MALE,
+    PARTNERS_SKILLS,
+)
 from core.models import Partner
 from core.partners.data import AFFINITY_STORIES, PARTNER_DATA
 from core.partners.dispatch import calculate_rewards, calculate_sigmund_rewards
@@ -27,19 +39,12 @@ from core.partners.mechanics import (
     roll_single,
     roll_ten,
 )
-from core.images import (
-    GACHA_BANNER_4STAR,
-    GACHA_BANNER_5STAR,
-    GACHA_BANNER_6STAR,
-    PARTNERS_BOSS_PARTY,
-    PARTNERS_DISPATCH,
-    PARTNERS_FEMALE,
-    PARTNERS_HUB,
-    PARTNERS_INTRO,
-    PARTNERS_MALE,
-    PARTNERS_SKILLS,
+from core.partners.resources import (
+    _rarity_colour,
+    _sig_display_name,
+    _skill_display_name,
+    _stars,
 )
-from core.partners.resources import _rarity_colour, _sig_display_name, _skill_display_name, _stars
 from core.partners.ui import _build_partner_embed, _build_roster_embed
 
 
@@ -75,13 +80,14 @@ _RUNE_CURRENCY_MAP = {
     "potential_rune": "potential_runes",
     "shatter_rune": "shatter_runes",
 }
-_BOSS_KEY_TYPES = [
-    "draconic_key",
-    "angelic_key",
-    "soul_core",
-    "void_frag",
-    "balance_fragment",
-]
+_BOSS_KEY_TYPES = {
+    "draconic_key": "dragon_key",
+    "angelic_key": "angel_key",
+    "soul_core": "soul_cores",
+    "void_frag": "void_frags",
+    "balance_fragment": "balance_fragment",
+}
+
 
 # ---------------------------------------------------------------------------
 # Task labels
@@ -155,7 +161,7 @@ async def _apply_dispatch_rewards(
                     for key_type in _BOSS_KEY_TYPES:
                         if random.random() < 0.20:
                             await bot.database.users.modify_currency(
-                                user_id, key_type, 1
+                                user_id, _BOSS_KEY_TYPES[key_type], 1
                             )
             elif item_key in _RUNE_CURRENCY_MAP:
                 await bot.database.users.modify_currency(
@@ -264,7 +270,9 @@ class PartnerDetailView(ui.View):
 
         # Set / Remove Active Combat
         if p.is_active_combat:
-            btn = ui.Button(label="✅ Active (Click to Remove)", style=ButtonStyle.success)
+            btn = ui.Button(
+                label="✅ Active (Click to Remove)", style=ButtonStyle.success
+            )
             btn.callback = self._deactivate
         else:
             btn = ui.Button(label="Set Active Combat", style=ButtonStyle.primary)
@@ -884,7 +892,13 @@ class DispatchView(ui.View):
 
     def _get_active_dispatch(self) -> Optional[Partner]:
         return next(
-            (p for p in self.partners if p.is_dispatched and p.dispatch_task and p.dispatch_task != "boss_party"),
+            (
+                p
+                for p in self.partners
+                if p.is_dispatched
+                and p.dispatch_task
+                and p.dispatch_task != "boss_party"
+            ),
             None,
         )
 
@@ -1661,7 +1675,9 @@ class PullView(ui.View):
             )
         total_char_shards = sum(char_shards_gained.values())
         if total_char_shards > 0:
-            await self.bot.database.partners.add_shard(self.user_id, 0, total_char_shards)
+            await self.bot.database.partners.add_shard(
+                self.user_id, 0, total_char_shards
+            )
 
         items_after = await self.bot.database.partners.get_items(self.user_id)
 
@@ -2140,25 +2156,35 @@ class PartnerMainView(ui.View):
     def build_embed(self, items: dict, partners: List[Partner] = None) -> discord.Embed:
         embed = discord.Embed(title="🤝 Partners", colour=0xBEBEFE)
         embed.add_field(
-                    name="Welcome Traveler!",
-                    value=(
-                        f"Recruit new Partners with 🎫 Guild Tickets!\n"
-                        f"They can join you for ⚔️ Combat...\n"
-                        f"Or 📋 Dispatch them for passive rewards, the choice is yours.\n"
-                        f"Best of luck, adventurer!"
-                    ),
-                    inline=True,
-                )
+            name="Welcome Traveler!",
+            value=(
+                "Recruit new Partners with 🎫 Guild Tickets!\n"
+                "They can join you for ⚔️ Combat...\n"
+                "Or 📋 Dispatch them for passive rewards, the choice is yours.\n"
+                "Best of luck, adventurer!"
+            ),
+            inline=True,
+        )
         active_combat = None
         active_dispatch = None
         boss_party: list = []
         if partners:
             active_combat = next((p for p in partners if p.is_active_combat), None)
             active_dispatch = next(
-                (p for p in partners if p.is_dispatched and p.dispatch_task and p.dispatch_task != "boss_party"),
+                (
+                    p
+                    for p in partners
+                    if p.is_dispatched
+                    and p.dispatch_task
+                    and p.dispatch_task != "boss_party"
+                ),
                 None,
             )
-            boss_party = [p for p in partners if p.is_dispatched and p.dispatch_task == "boss_party"]
+            boss_party = [
+                p
+                for p in partners
+                if p.is_dispatched and p.dispatch_task == "boss_party"
+            ]
 
         if active_combat:
             skill_names = [
@@ -2230,9 +2256,7 @@ class PartnerMainView(ui.View):
                 else 0.0
             )
             progress_pct = min(100, int(elapsed / BOSS_PARTY_DURATION_HOURS * 100))
-            names = " | ".join(
-                f"{_stars(p.rarity)} {p.name}" for p in boss_party
-            )
+            names = " | ".join(f"{_stars(p.rarity)} {p.name}" for p in boss_party)
             if progress_pct >= 100:
                 progress_str = "✅ Raid Complete! Collect your rewards."
             else:

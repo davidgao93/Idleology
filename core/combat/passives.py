@@ -225,13 +225,13 @@ def _apply_partner_combat_start(
                     player.lucifer_pdr_burst += 10
                     buff_msgs.append("🛡️ +10% PDR burst")
             parts.append(
-                f"💀 **Skol's Sig Lv.{sig_lvl}** — "
+                f"💀 **Essence Communion Lv.{sig_lvl}** — "
                 f"{n} essence buff(s): {', '.join(buff_msgs)}"
             )
         elif sig_key == "sig_co_yvenn":
             player.active_task_species = monster.species
             parts.append(
-                f"🗡️ **Yvenn's Sig Lv.{sig_lvl}** — "
+                f"🗡️ **Apex Hunter Lv.{sig_lvl}** — "
                 f"All monsters treated as slayer targets!"
             )
 

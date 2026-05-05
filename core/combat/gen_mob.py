@@ -9,7 +9,13 @@ from core.combat.modifier_data import (
     RARE_TIERED_MOD_NAMES,
     make_modifier,
 )
-from core.images import COMBAT_DUMMY, MONSTER_APHRODITE, MONSTER_GEMINI, MONSTER_LUCIFER, MONSTER_NEET
+from core.images import (
+    COMBAT_DUMMY,
+    MONSTER_APHRODITE,
+    MONSTER_GEMINI,
+    MONSTER_LUCIFER,
+    MONSTER_NEET,
+)
 from core.models import Monster, MonsterModifier
 
 
@@ -140,7 +146,7 @@ async def generate_ascent_monster(
 
     monster.modifiers = []
     total_mods = num_normal_mods + num_boss_mods
-    _assign_ascent_modifiers(monster, total_mods, floor=ascent_stage_level)
+    _assign_ascent_modifiers(monster, total_mods, num_boss_mods=num_boss_mods)
     _apply_spawn_modifiers(monster)
     monster.is_boss = True
     return monster
@@ -183,9 +189,9 @@ def _assign_modifiers(
         )
 
 
-def _assign_ascent_modifiers(monster, num_mods: int, floor: int) -> None:
-    """Ascent variant: guarantees at least floor//10 boss mods."""
-    min_boss = min(floor // 10, len(BOSS_MOD_NAMES))
+def _assign_ascent_modifiers(monster, num_mods: int, num_boss_mods: int = 0) -> None:
+    """Ascent variant: guarantees the specified number of boss mods."""
+    min_boss = min(num_boss_mods, len(BOSS_MOD_NAMES))
     boss_assigned = 0
     used_names: set = set()
 

@@ -322,7 +322,13 @@ class SlotPickerView(ui.View):
 
 class BossPartyFormView(ui.View):
     def __init__(
-        self, bot, user_id: str, server_id: str, all_partners: List[Partner], back_view
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        all_partners: List[Partner],
+        back_view,
+        initial_slots: Optional[Dict[str, Optional[Partner]]] = None,
     ):
         super().__init__(timeout=600)
         self.bot = bot
@@ -331,7 +337,7 @@ class BossPartyFormView(ui.View):
         self.all_partners = all_partners
         self.back_view = back_view
         self.message: Optional[discord.Message] = None
-        self.slots: Dict[str, Optional[Partner]] = {
+        self.slots: Dict[str, Optional[Partner]] = initial_slots or {
             "attacker": None,
             "tank": None,
             "healer": None,
@@ -583,6 +589,17 @@ class BossPartyProgressView(ui.View):
         )
         await self.bot.database.boss_party.delete(self.user_id, self.server_id)
 
+        # Unassign partners in-memory so they're immediately available again
+        for p in (attacker, tank, healer):
+            p.is_dispatched = False
+
+        # Remember last party for Raid Again
+        self._last_slots = {
+            "attacker": attacker,
+            "tank": tank,
+            "healer": healer,
+        }
+
         # Build result embed
         sigil_label = sigil_type.replace("_", " ").title()
         lines = [
@@ -608,10 +625,31 @@ class BossPartyProgressView(ui.View):
         )
         embed.set_image(url=VICTORY_APHRODITE_GEMINI)
         self.clear_items()
+        raid_again_btn = ui.Button(
+            label="Raid Again", style=ButtonStyle.danger, emoji="⚔️"
+        )
+        raid_again_btn.callback = self._raid_again
+        self.add_item(raid_again_btn)
         back_btn = ui.Button(label="Back to Partners", style=ButtonStyle.secondary)
         back_btn.callback = self._back
         self.add_item(back_btn)
         await interaction.edit_original_response(embed=embed, view=self)
+
+    async def _raid_again(self, interaction: Interaction):
+        await interaction.response.defer()
+        all_partners = getattr(self.back_view, "partners", [])
+        form_view = BossPartyFormView(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            all_partners,
+            back_view=self.back_view,
+            initial_slots=dict(self._last_slots),
+        )
+        form_view.message = self.message
+        embed = _build_form_embed(form_view.slots, all_partners)
+        await interaction.edit_original_response(embed=embed, view=form_view)
+        self.stop()
 
     async def _back(self, interaction: Interaction):
         await interaction.response.defer()

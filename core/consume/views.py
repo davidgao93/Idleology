@@ -61,7 +61,7 @@ def _build_main_embed(player: Player, inventory: list) -> discord.Embed:
             data = player.equipped_parts[slot]
             embed.add_field(
                 name=f"{emoji} {label}",
-                value=f"{data['monster_name']}'s **{label}**\n+{data['hp']} Max HP",
+                value=f"{data['monster_name']}'s {label}\n+{data['hp']} Max HP",
                 inline=True,
             )
         else:

@@ -307,14 +307,12 @@ class CombatView(ui.View):
     @staticmethod
     def _calc_uber_curios(dmg_frac: float) -> int:
         if dmg_frac >= 1.0:
-            return 5
-        if dmg_frac >= 0.75:
-            return 4
-        if dmg_frac >= 0.50:
             return 3
-        if dmg_frac >= 0.25:
+        if dmg_frac >= 0.66:
             return 2
-        return 1
+        if dmg_frac >= 0.33:
+            return 1
+        return 0
 
     async def _uber_defeat(self, message) -> None:
         base_loss = int(self.player.exp * 0.10)
@@ -642,6 +640,8 @@ class CombatView(ui.View):
             reward_data["xp"] = exp_changes["xp_added"]
             reward_data["msgs"].extend(exp_changes["msgs"])
 
+            self.combat_logger.log_rewards(self.player, reward_data)
+
             # DB Commits
             await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
 
@@ -773,7 +773,9 @@ class CombatView(ui.View):
                     task_tiers = self.player.get_emblem_bonus("task_progress")
                     if task_tiers > 0 and random.random() < (task_tiers * 0.05):
                         prog_gain = 2
-                        slayer_lines.append("⚡ **Taskmaster** granted double task progress!")
+                        slayer_lines.append(
+                            "⚡ **Taskmaster** granted double task progress!"
+                        )
 
                     # Yvenn sig: +T bonus progress per kill
                     if reward_data.get("yvenn_slayer_bonus"):

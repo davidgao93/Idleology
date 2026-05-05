@@ -34,53 +34,55 @@ _KEY_POOL = ["dragon_key", "angel_key", "soul_cores", "balance_fragment"]
 async def _grant_milestone_rewards(
     bot, user_id: str, server_id: str, player: Player, floor: int
 ) -> list[str]:
-    """Grants curio + rune cache + equip cache + boss key cache. Returns display strings."""
+    """Grants 1 curio + randomly one of: rune cache, equip cache, or boss key cache."""
     log = []
 
     # Curio
     await bot.database.users.modify_currency(user_id, "curios", 1)
     log.append("🎁 Curio")
 
-    # Rune cache (base Black Market values, no settlement multiplier)
-    rune_qty = random.randint(1, 5)
-    rune_names = []
-    for _ in range(rune_qty):
-        rtype = random.choice(_RUNE_POOL)
-        await bot.database.users.modify_currency(user_id, rtype, 1)
-        rune_names.append("Refinement" if rtype == "refinement_runes" else "Potential")
-    log.append(f"💎 Runes ×{rune_qty} ({', '.join(rune_names)})")
+    cache_choice = random.choice(["runes", "equipment", "keys"])
 
-    # Equipment cache (1 item, weighted slot)
-    slot = random.choices(_EQUIP_SLOTS, weights=_EQUIP_WEIGHTS, k=1)[0]
-    generators = {
-        "weapon": lambda: generate_weapon(user_id, player.level, False),
-        "armor": lambda: generate_armor(user_id, player.level, False),
-        "accessory": lambda: generate_accessory(user_id, player.level, False),
-        "glove": lambda: generate_glove(user_id, player.level),
-        "boot": lambda: generate_boot(user_id, player.level),
-        "helmet": lambda: generate_helmet(user_id, player.level),
-    }
-    item = await generators[slot]()
-    if item:
-        creators = {
-            "weapon": bot.database.equipment.create_weapon,
-            "armor": bot.database.equipment.create_armor,
-            "accessory": bot.database.equipment.create_accessory,
-            "glove": bot.database.equipment.create_glove,
-            "boot": bot.database.equipment.create_boot,
-            "helmet": bot.database.equipment.create_helmet,
+    if cache_choice == "runes":
+        rune_qty = random.randint(1, 5)
+        rune_names = []
+        for _ in range(rune_qty):
+            rtype = random.choice(_RUNE_POOL)
+            await bot.database.users.modify_currency(user_id, rtype, 1)
+            rune_names.append("Refinement" if rtype == "refinement_runes" else "Potential")
+        log.append(f"💎 Runes ×{rune_qty} ({', '.join(rune_names)})")
+
+    elif cache_choice == "equipment":
+        slot = random.choices(_EQUIP_SLOTS, weights=_EQUIP_WEIGHTS, k=1)[0]
+        generators = {
+            "weapon": lambda: generate_weapon(user_id, player.level, False),
+            "armor": lambda: generate_armor(user_id, player.level, False),
+            "accessory": lambda: generate_accessory(user_id, player.level, False),
+            "glove": lambda: generate_glove(user_id, player.level),
+            "boot": lambda: generate_boot(user_id, player.level),
+            "helmet": lambda: generate_helmet(user_id, player.level),
         }
-        await creators[slot](item)
-        log.append(f"⚔️ {item.name}")
+        item = await generators[slot]()
+        if item:
+            creators = {
+                "weapon": bot.database.equipment.create_weapon,
+                "armor": bot.database.equipment.create_armor,
+                "accessory": bot.database.equipment.create_accessory,
+                "glove": bot.database.equipment.create_glove,
+                "boot": bot.database.equipment.create_boot,
+                "helmet": bot.database.equipment.create_helmet,
+            }
+            await creators[slot](item)
+            log.append(f"⚔️ {item.name}")
 
-    # Boss key cache
-    key_qty = random.randint(1, 5)
-    key_names = []
-    for _ in range(key_qty):
-        ktype = random.choice(_KEY_POOL)
-        await bot.database.users.modify_currency(user_id, ktype, 1)
-        key_names.append(ktype.replace("_", " ").title())
-    log.append(f"🗝️ Keys ×{key_qty} ({', '.join(key_names)})")
+    else:
+        key_qty = random.randint(1, 5)
+        key_names = []
+        for _ in range(key_qty):
+            ktype = random.choice(_KEY_POOL)
+            await bot.database.users.modify_currency(user_id, ktype, 1)
+            key_names.append(ktype.replace("_", " ").title())
+        log.append(f"🗝️ Keys ×{key_qty} ({', '.join(key_names)})")
 
     return log
 

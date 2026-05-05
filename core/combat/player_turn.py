@@ -761,7 +761,7 @@ def _pt_partner_effects(
     if sigmund_proc:
         sig_lvl = partner.sig_combat_lvl
         parts.append(
-            f"🐕 **Sigmund's Pack Lv.{sig_lvl}** — the hounds drive your strike to double power!"
+            f"🐕 **Decisive Strike Lv.{sig_lvl}** — the hounds drive your strike to double power!"
         )
 
     partner_log = "\n".join(parts)

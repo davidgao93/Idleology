@@ -36,7 +36,7 @@ _COMBAT_GOLD_MAX = 50_000
 
 # XP range per combat dispatch reward roll (granted to the partner)
 _COMBAT_EXP_MIN = 500
-_COMBAT_EXP_MAX = 10_000
+_COMBAT_EXP_MAX = 2000
 
 # ---------------------------------------------------------------------------
 # Gathering material tables  (tool_name → materials list + quantity range)

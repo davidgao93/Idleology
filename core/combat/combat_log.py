@@ -163,6 +163,73 @@ class CombatLogger:
                 self._w(line)
         self._w("")
 
+    def log_rewards(self, player: Player, reward_data: dict) -> None:
+        if not self._file:
+            return
+
+        rarity = player.get_total_rarity()
+        special_bonus = player.get_special_drop_bonus()
+        rolls = reward_data.get("rolls", {})
+
+        self._w(f"{'=' * 60}")
+        self._w("REWARDS")
+        self._w(f"{'=' * 60}")
+        self._w(
+            f"[XP/GOLD]   XP: {reward_data.get('xp', 0):,} | Gold: {reward_data.get('gold', 0):,}"
+        )
+        self._w(
+            f"[PLAYER]    Rarity: {rarity}% | Special Drop Bonus: {special_bonus}%"
+        )
+
+        # Gear drop roll
+        gear_roll = rolls.get("gear_roll")
+        if gear_roll is not None:
+            gear_threshold = rolls.get("gear_threshold", "?")
+            hit_str = "HIT" if rolls.get("gear_hit") else "MISS"
+            self._w(
+                f"[GEAR ROLL] {gear_roll}/100 vs threshold {gear_threshold}% → {hit_str}"
+            )
+            if rolls.get("gear_hit"):
+                item_roll = rolls.get("item_roll", "?")
+                item_slot = rolls.get("item_slot") or "inventory full / rune"
+                self._w(f"[GEAR SLOT] Item roll: {item_roll}/100 → {item_slot}")
+
+        # Body part drop roll (non-essence monsters only)
+        part_chance_pct = rolls.get("part_chance_pct")
+        if part_chance_pct is not None:
+            part_roll_pct = rolls.get("part_roll_pct", 0.0)
+            hit_str = "HIT" if rolls.get("part_hit") else "MISS"
+            self._w(
+                f"[PART ROLL] {part_roll_pct:.2f}% vs chance {part_chance_pct:.3f}% → {hit_str}"
+            )
+            if rolls.get("part_hit") and "body_part" in reward_data:
+                slot, name, hp = reward_data["body_part"]
+                self._w(f"[PART]      {name} ({slot}) +{hp} HP")
+
+        # Essence drop (essence monsters only)
+        essences = reward_data.get("essences", [])
+        if essences:
+            self._w(f"[ESSENCE]   {', '.join(essences)}")
+
+        # Gear items
+        items = reward_data.get("items", [])
+        for item in items:
+            first_line = item.split("\n")[0].replace("**", "")
+            self._w(f"[ITEM]      {first_line}")
+
+        # Special drops (keys, runes, materials, sigils)
+        special = reward_data.get("special", [])
+        if special:
+            self._w(f"[SPECIAL]   {', '.join(special)}")
+
+        # Passive proc messages (XP doublers, gold doublers, equilibrium, etc.)
+        for msg in reward_data.get("msgs", []):
+            clean = msg.replace("**", "").replace("\n", " ").strip()
+            if clean:
+                self._w(f"[MSG]       {clean}")
+
+        self._w("")
+
     def log_combat_end(self, player: Player, monster: Monster, outcome: str) -> None:
         if not self._file:
             return

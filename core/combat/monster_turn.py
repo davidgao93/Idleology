@@ -6,7 +6,10 @@ from core.models import Monster, Player
 
 
 def _roll_monster_damage(
-    player: Player, monster: Monster, effective_pdr: int, effective_fdr: int,
+    player: Player,
+    monster: Monster,
+    effective_pdr: int,
+    effective_fdr: int,
     calc: list[str] | None = None,
 ) -> tuple[int, int, int]:
     """Rolls a single monster damage hit including modifiers, PDR, FDR, and minions.
@@ -48,7 +51,9 @@ def _roll_monster_damage(
         calc_notes.append(f"hells_fury×{fury_mult:.1f}={dmg}")
 
     # Spectral: 20% chance to double raw damage before reductions
-    if monster.has_modifier("Spectral") and random.random() < monster.get_modifier_value("Spectral"):
+    if monster.has_modifier(
+        "Spectral"
+    ) and random.random() < monster.get_modifier_value("Spectral"):
         dmg *= 2
         calc_notes.append(f"spectral×2={dmg}")
 
@@ -83,12 +88,12 @@ def _roll_monster_damage(
     if fdr > 0:
         calc_notes.append(f"FDR={fdr} {pre_fdr}→{dmg}")
 
-    # Commanding: minions echo X% of pre-FDR damage, then FDR applies to echo
+    # Commanding: minions echo X% of pre-FDR damage, then PDR and FDR applies to echo
     minions = 0
     if monster.has_modifier("Commanding"):
         echo_pct = monster.get_modifier_value("Commanding")
         raw_echo = int(pre_fdr * echo_pct)
-        minions = max(0, raw_echo - fdr)
+        minions = max(0, int((raw_echo - fdr) * (1 - pdr / 100)))
     minions = max(0, minions)
     if minions > 0:
         calc_notes.append(f"commanding_echo={minions}")
@@ -96,10 +101,16 @@ def _roll_monster_damage(
     # Inevitable: 50% damage (boss mod — always hits but halved)
     if monster.has_modifier("Inevitable"):
         dmg = max(1, int(dmg * monster.get_modifier_value("Inevitable")))
-        calc_notes.append(f"inevitable×{monster.get_modifier_value('Inevitable'):.2f}={dmg}")
+        calc_notes.append(
+            f"inevitable×{monster.get_modifier_value('Inevitable'):.2f}={dmg}"
+        )
 
     if calc is not None:
-        calc.append("  dmg_roll: " + " → ".join(calc_notes) + f" | base={dmg} minions={minions} total={dmg+minions}")
+        calc.append(
+            "  dmg_roll: "
+            + " → ".join(calc_notes)
+            + f" | base={dmg} minions={minions} total={dmg+minions}"
+        )
 
     return dmg + minions, dmg, minions
 
@@ -144,7 +155,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     hit_mods: list[str] = [f"base={hit_chance_base*100:.1f}%"]
 
     # Keen: flat bonus treated as +X% hit chance (capped at 0.95 unless Inevitable)
-    keen_bonus = int(monster.get_modifier_value("Keen")) if monster.has_modifier("Keen") else 0
+    keen_bonus = (
+        int(monster.get_modifier_value("Keen")) if monster.has_modifier("Keen") else 0
+    )
     if keen_bonus > 0:
         hit_chance = min(0.95, hit_chance + keen_bonus / 100)
         hit_mods.append(f"+{keen_bonus}%(keen)={hit_chance*100:.1f}%")
@@ -176,7 +189,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
             bonus_pdr = int(missing_pct / 5.0)
             effective_pdr += bonus_pdr
-            pdr_notes.append(f"+{bonus_pdr}%(fortress,{missing_pct:.1f}%missing)={effective_pdr}%")
+            pdr_notes.append(
+                f"+{bonus_pdr}%(fortress,{missing_pct:.1f}%missing)={effective_pdr}%"
+            )
         effective_fdr = player.get_total_fdr()
         calc.append(f"  PDR: {' → '.join(pdr_notes)} | FDR: {effective_fdr}")
 
@@ -192,11 +207,19 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 total_damage, dmg_base, minion_dmg = alt_total, alt_base, alt_minion
                 calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
 
-        # --- Multistrike ---
+        # --- Multistrike , a double hit, decreased by PDR and FDR ---
         multistrike_damage = 0
         if monster.has_modifier("Multistrike") and random.random() <= hit_chance:
             multistrike_damage = max(
-                0, int(calculate_damage_taken(player, monster) * 0.5) - effective_fdr
+                0,
+                (
+                    int(
+                        calculate_damage_taken(player, monster)
+                        * 0.5
+                        * (1 - effective_pdr / 100)
+                    )
+                )
+                - effective_fdr,
             )
             total_damage += multistrike_damage
             calc.append(f"  multistrike: +{multistrike_damage} → total={total_damage}")
@@ -206,7 +229,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         if monster.has_modifier("Executioner") and random.random() < 0.01:
             total_damage = max(total_damage, int(player.current_hp * 0.90))
             is_executed = True
-            calc.append(f"  executioner: forced={total_damage} (90% of player_hp={player.current_hp})")
+            calc.append(
+                f"  executioner: forced={total_damage} (90% of player_hp={player.current_hp})"
+            )
 
         # --- Dodge & Block ---
         is_dodged = False
@@ -272,7 +297,13 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 )
 
         # --- Sundering: 25% of damage bypasses player ward directly to HP ---
-        if monster.has_modifier("Sundering") and player.combat_ward > 0 and total_damage > 0 and not is_dodged and not is_blocked:
+        if (
+            monster.has_modifier("Sundering")
+            and player.combat_ward > 0
+            and total_damage > 0
+            and not is_dodged
+            and not is_blocked
+        ):
             bypass = int(total_damage * monster.get_modifier_value("Sundering"))
             ward_portion = total_damage - bypass
             ward_absorbed = min(ward_portion, player.combat_ward)
@@ -280,8 +311,12 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             player.current_hp = max(0, player.current_hp - bypass)
             total_damage = ward_portion - ward_absorbed  # remaining after ward
             if bypass > 0:
-                log.append(f"⚡ **Sundering** — {bypass} damage pierces your ward directly!")
-            calc.append(f"  sundering: bypass={bypass} ward_absorbed={ward_absorbed} remaining={total_damage}")
+                log.append(
+                    f"⚡ **Sundering** — {bypass} damage pierces your ward directly!"
+                )
+            calc.append(
+                f"  sundering: bypass={bypass} ward_absorbed={ward_absorbed} remaining={total_damage}"
+            )
 
         # --- Apply damage to ward / HP ---
         if player.alchemy_def_boost_turns > 0 and total_damage > 0:
@@ -470,7 +505,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 t_fdr = player.get_total_fdr()
                 thorned_dmg = max(1, int(base_thorned * (1 - t_pdr / 100)) - t_fdr)
                 player.current_hp = max(0, player.current_hp - thorned_dmg)
-                log.append(f"🩸 **Thorned** — you take **{thorned_dmg}** damage for striking!")
+                log.append(
+                    f"🩸 **Thorned** — you take **{thorned_dmg}** damage for striking!"
+                )
 
             if is_executed:
                 log.append(
@@ -486,7 +523,10 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 )
 
             # Balanced Strikes: every even round, second hit at 50% damage bypassing ward
-            if monster.has_modifier("Balanced Strikes") and monster.combat_round % 2 == 0:
+            if (
+                monster.has_modifier("Balanced Strikes")
+                and monster.combat_round % 2 == 0
+            ):
                 balanced_pct = monster.get_modifier_value("Balanced Strikes")
                 twin_raw, _, _ = _roll_monster_damage(
                     player, monster, effective_pdr, effective_fdr
@@ -525,14 +565,15 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         and player.active_partner.sig_combat_lvl >= 1
     ):
         from core.partners.mechanics import _EVE_SIG_POTIONS
+
         potions_needed = _EVE_SIG_POTIONS.get(player.active_partner.sig_combat_lvl, 5)
         if player.potions >= potions_needed:
             player.potions -= potions_needed
-            player.current_hp = 1
+            player.current_hp = player.total_max_hp
             log.append(
-                f"💊 **{player.active_partner.name}'s Sig Lv.{player.active_partner.sig_combat_lvl}**"
+                f"💊 **Final Stand Lv.{player.active_partner.sig_combat_lvl}**"
                 f" — Intercepted a fatal blow! Consumed {potions_needed} potion(s). "
-                f"You survive with 1 HP!"
+                f"You recover to full HP before taking the blow!"
             )
 
     player.current_hp = max(0, player.current_hp)

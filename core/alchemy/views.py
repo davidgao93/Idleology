@@ -1,3 +1,6 @@
+import asyncio
+import random
+
 import discord
 from discord import ButtonStyle, Interaction, ui
 
@@ -563,10 +566,19 @@ class _ClearConfirmView(ui.View):
                 self._parent.user_id
             )
         )
+
         embed = self._parent.build_embed()
+
+        # Add result as a field (exactly like the Synthesis Complete field)
+        embed.add_field(
+            name="🗑️ Destruction Complete",
+            value=f"**Slot {self._slot}** passive has been discarded.",
+            inline=False,
+        )
+
         self.stop()
         await interaction.response.edit_message(
-            content=f"🗑️ Slot **{self._slot}** cleared.", embed=embed, view=self._parent
+            content=None, embed=embed, view=self._parent  # clean — no top-level content
         )
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="⬅️")
@@ -622,6 +634,31 @@ class AlchemyPotionLabView(ui.View):
         )
         back_btn.callback = self._on_back
         self.add_item(back_btn)
+
+    def _set_buttons_disabled(self, disabled: bool):
+        """Temporarily disable or re-enable all interactive components."""
+        for child in self.children:
+            if hasattr(child, "disabled"):
+                child.disabled = disabled
+
+    def _get_random_flavor(self) -> str:
+        """Random flavor text for the brewing animation."""
+        flavors = [
+            "Brewing potion...",
+            "Tinkering with ratios...",
+            "Infusing mystical essence...",
+            "Distilling alchemical power...",
+            "Channeling arcane energies...",
+            "Mixing volatile reagents...",
+            "Heating the cauldron...",
+            "Alchemizing the arcane...",
+        ]
+        return random.choice(flavors)
+
+    def _slot_is_empty(self, slot: int) -> bool:
+        """Return True if the given slot has no passive assigned."""
+        passive_by_slot = {p["slot"]: p for p in self.passives}
+        return slot not in passive_by_slot
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
@@ -681,7 +718,7 @@ class AlchemyPotionLabView(ui.View):
             )
             return
 
-        # Free roll: one-time global grant, tracked in DB regardless of which slot
+        # === COST & FREE ROLL LOGIC (runs immediately, before animation) ===
         if not self.free_roll_used:
             is_free = True
         else:
@@ -705,6 +742,29 @@ class AlchemyPotionLabView(ui.View):
             await self.bot.database.alchemy.set_free_roll_used(self.user_id)
             self.free_roll_used = True
 
+        # === BREWING ANIMATION PHASE ===
+        self._set_buttons_disabled(True)
+
+        flavor = self._get_random_flavor()
+
+        # Build embed and add temporary flavor field
+        brew_embed = self.build_embed()
+        brew_embed.add_field(
+            name="⚗️ Alchemy in Progress",
+            value=f"**{flavor}** ✨",
+            inline=False,
+        )
+
+        await interaction.response.edit_message(
+            content=None,  # clean — no content line
+            embed=brew_embed,
+            view=self,
+        )
+
+        # 3-second delay (buttons are disabled)
+        await asyncio.sleep(3.0)
+
+        # === PERFORM THE ACTUAL SYNTHESIS ===
         passive_type, passive_value = AlchemyMechanics.roll_passive(self.alchemy_level)
         await self.bot.database.alchemy.set_passive(
             self.user_id, slot, passive_type, passive_value
@@ -718,10 +778,22 @@ class AlchemyPotionLabView(ui.View):
         emoji = info.get("emoji", "⚗️")
         desc = AlchemyMechanics.format_passive(passive_type, passive_value)
 
-        embed = self.build_embed()
-        await interaction.response.edit_message(
-            content=f"🌟 **Your potion has gained {emoji} **{name}** — *{desc}*!",
-            embed=embed,
+        # Final clean embed
+        final_embed = self.build_embed()
+
+        # Add the success message as a field (exactly where the flavor text was)
+        final_embed.add_field(
+            name="🌟 Synthesis Complete",
+            value=f"**Your potion has gained {emoji} **{name}** — *{desc}*!**",
+            inline=False,
+        )
+
+        # Re-enable everything
+        self._set_buttons_disabled(False)
+
+        await interaction.edit_original_response(
+            content=None,  # success is now inside the embed field
+            embed=final_embed,
             view=self,
         )
 
