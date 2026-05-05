@@ -1,3 +1,4 @@
+import math
 import random
 
 from core.combat.calcs import calculate_damage_taken, calculate_monster_hit_chance
@@ -135,7 +136,8 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
 
     # --- Mending: passive HP regen every other monster turn ---
     if monster.has_modifier("Mending") and monster.combat_round % 2 == 0:
-        regen = int(monster.max_hp * monster.get_modifier_value("Mending"))
+        # sqrt scaling: same heal at 10k HP, tapers naturally above that
+        regen = int(math.sqrt(monster.max_hp * 10_000) * monster.get_modifier_value("Mending"))
         monster.hp = min(monster.max_hp, monster.hp + regen)
         log.append(f"{monster.name}'s **Mending** restores **{regen}** HP!")
 
@@ -148,6 +150,18 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         log.append(
             f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!"
         )
+
+    # --- Origin of Corruption: every 3 turns drain 10% ward → 10× HP heal ---
+    if monster.has_modifier("Origin of Corruption") and monster.combat_round % 3 == 0:
+        ward_drain = int(player.combat_ward * 0.10)
+        if ward_drain > 0:
+            player.combat_ward = max(0, player.combat_ward - ward_drain)
+            hp_healed = ward_drain * 10
+            monster.hp = min(monster.max_hp, monster.hp + hp_healed)
+            log.append(
+                f"💀 **Origin of Corruption awakens!** A wave of primordial rot drains **{ward_drain}** ward, "
+                f"healing Evelynn for **{hp_healed}** HP!"
+            )
 
     # --- Hit chance ---
     hit_chance_base = calculate_monster_hit_chance(player, monster)
@@ -491,7 +505,8 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
 
             # Vampiric: heals X% of max HP per successful hit
             if monster.has_modifier("Vampiric") and damage_dealt > 0:
-                heal = int(monster.max_hp * monster.get_modifier_value("Vampiric"))
+                # sqrt scaling: same heal at 10k HP, tapers naturally above that
+                heal = int(math.sqrt(monster.max_hp * 10_000) * monster.get_modifier_value("Vampiric"))
                 monster.hp = min(monster.max_hp, monster.hp + heal)
                 log.append(
                     f"The monster's **Vampiric** essence siphons life, healing it for **{heal}** HP!"

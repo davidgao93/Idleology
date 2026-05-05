@@ -1,7 +1,12 @@
 import random
 from typing import Any, Dict, List, Tuple
 
-from core.images import ENCOUNTER_ANGELIC_DRAGON, ENCOUNTER_BALANCE, ENCOUNTER_SOUL_CORE, ENCOUNTER_VOID_FRAGMENT
+from core.images import (
+    ENCOUNTER_ANGELIC_DRAGON,
+    ENCOUNTER_BALANCE,
+    ENCOUNTER_SOUL_CORE,
+    ENCOUNTER_VOID_FRAGMENT,
+)
 
 
 class EncounterManager:
@@ -18,13 +23,13 @@ class EncounterManager:
             player_level >= 20
             and currencies["dragon_key"] > 0
             and currencies["angel_key"] > 0
-            and roll < 0.10
+            and roll < 0.20
         ):
             return True, "aphrodite", {"dragon_key": 1, "angel_key": 1}
 
         # 2. Lucifer (Infernal)
         elif (
-            player_level >= 20 and currencies["soul_cores"] >= 5 and 0.10 <= roll < 0.20
+            player_level >= 20 and currencies["soul_cores"] >= 5 and 0.20 <= roll < 0.40
         ):
             return True, "lucifer", {"soul_cores": 5}
 
@@ -32,13 +37,13 @@ class EncounterManager:
         elif (
             player_level >= 30
             and currencies["balance_fragment"] >= 2
-            and 0.20 <= roll < 0.30
+            and 0.40 <= roll < 0.60
         ):
             return True, "gemini", {"balance_fragment": 2}
 
         # 4. NEET (Void)
         elif (
-            player_level >= 40 and currencies["void_frags"] >= 3 and 0.30 <= roll < 0.40
+            player_level >= 40 and currencies["void_frags"] >= 3 and 0.60 <= roll < 0.80
         ):
             return True, "NEET", {"void_frags": 3}
 
@@ -160,18 +165,18 @@ class EncounterManager:
                     "level": 555,
                     "modifiers_count": 5,
                     "hp_multiplier": 1.2,
-                },  
+                },
                 {
                     "name": "Pollux the Divine",
                     "level": 556,
                     "modifiers_count": 5,
                     "hp_multiplier": 1.2,
-                }, 
+                },
                 {
                     "name": "The Gemini Twins",
                     "level": 557,
                     "modifiers_count": 8,
                     "hp_multiplier": 1.5,
-                },  
+                },
             ]
         return []

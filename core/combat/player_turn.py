@@ -23,7 +23,7 @@ def process_heal(player: Player, monster=None) -> str:
 
     # Parching: reduce base healing effectiveness
     if monster is not None and monster.has_modifier("Parching"):
-        heal_pct *= (1 - monster.get_modifier_value("Parching"))
+        heal_pct *= 1 - monster.get_modifier_value("Parching")
 
     if player.equipped_boot and player.equipped_boot.passive == "cleric":
         heal_pct += player.equipped_boot.passive_lvl * 0.10
@@ -147,7 +147,9 @@ def process_heal(player: Player, monster=None) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _pt_attack_multiplier(player: Player, monster: Monster, log: list[str], calc: list[str]) -> float:
+def _pt_attack_multiplier(
+    player: Player, monster: Monster, log: list[str], calc: list[str]
+) -> float:
     """Phase 1 — compute the pre-hit attack multiplier from emblems and passive sources."""
     mult = 1.0
     calc_sources: list[str] = []
@@ -222,12 +224,18 @@ def _pt_attack_multiplier(player: Player, monster: Monster, log: list[str], calc
         )
 
     src_str = " × ".join(calc_sources) if calc_sources else "none"
-    calc.append(f"  mult: {src_str} → {mult:.4f}x  (base_atk={player.get_total_attack()})")
+    calc.append(
+        f"  mult: {src_str} → {mult:.4f}x  (base_atk={player.get_total_attack()})"
+    )
     return mult
 
 
 def _pt_resolve_hit(
-    player: Player, monster: Monster, attack_multiplier: float, log: list[str], calc: list[str]
+    player: Player,
+    monster: Monster,
+    attack_multiplier: float,
+    log: list[str],
+    calc: list[str],
 ) -> tuple[bool, float]:
     """Phase 2 — hit chance roll. Returns (is_hit, attack_multiplier)."""
     hit_chance = calculate_hit_chance(player, monster)
@@ -238,14 +246,16 @@ def _pt_resolve_hit(
     if idx >= 0:
         wep_acc = (idx + 1) * 4
         acc_bonus += wep_acc
-        log.append(f"**{fmt_weapon_passive(name)}** boosts 🎯 accuracy roll by **{wep_acc}**!")
+        log.append(
+            f"**{fmt_weapon_passive(name)}** boosts 🎯 accuracy by **{wep_acc}**!"
+        )
 
     # Blinding: flat penalty to player acc_bonus (hits harder to land)
     blinding_note = ""
     if monster.has_modifier("Blinding"):
         penalty = int(monster.get_modifier_value("Blinding"))
         acc_bonus -= penalty
-        log.append(f"The monster's **Blinding** aura makes it harder to hit! (−{penalty})")
+        # log.append("You are blinded!")
         blinding_note = f" -Blinding{penalty}"
 
     acc_passive = player.get_accessory_passive()
@@ -262,9 +272,13 @@ def _pt_resolve_hit(
 
     # Jinxed: X% of the time player roll is unlucky (worst of two)
     jinxed_note = ""
-    if monster.has_modifier("Jinxed") and random.random() < monster.get_modifier_value("Jinxed"):
+    if monster.has_modifier("Jinxed") and random.random() < monster.get_modifier_value(
+        "Jinxed"
+    ):
         attack_roll = min(attack_roll, random.randint(0, 100))
-        log.append(f"The **Jinxed** curse stifles your attack! Hit chance is now 💀 unlucky!")
+        log.append(
+            "The **Jinxed** curse stifles your attack! Hit chance is now 💀 unlucky!"
+        )
         jinxed_note = "(jinxed-unlucky)"
 
     miss_threshold = 100 - int(hit_chance * 100)
@@ -296,6 +310,7 @@ def _pt_resolve_crit(
         return False
 
     from core.combat.calcs import calculate_crit_chance
+
     crit_chance = calculate_crit_chance(player)
 
     # Dampening: reduce effective crit chance
@@ -317,7 +332,11 @@ def _pt_resolve_crit(
 
 
 def _pt_crit_damage(
-    player: Player, monster: Monster, attack_multiplier: float, log: list[str], calc: list[str]
+    player: Player,
+    monster: Monster,
+    attack_multiplier: float,
+    log: list[str],
+    calc: list[str],
 ) -> int:
     """Phase 4a — crit damage. Returns pre-reduction damage."""
     max_atk = player.get_total_attack()
@@ -346,7 +365,9 @@ def _pt_crit_damage(
         f"range=[{crit_min}–{crit_max}] rolled={crit_rolled} ×{crit_mult:.2f}={base_dmg}{nullifying_note}"
     ]
     if nullifying_note:
-        log.append(f"The **Nullifying** aura dampens your critical hit! (×{crit_mult:.2f})")
+        log.append(
+            f"The **Nullifying** aura dampens your critical hit! (×{crit_mult:.2f})"
+        )
 
     crit_dmg_tiers = player.get_emblem_bonus("crit_dmg")
     if crit_dmg_tiers > 0:
@@ -440,7 +461,11 @@ def _pt_crit_damage(
 
 
 def _pt_hit_damage(
-    player: Player, monster: Monster, attack_multiplier: float, log: list[str], calc: list[str]
+    player: Player,
+    monster: Monster,
+    attack_multiplier: float,
+    log: list[str],
+    calc: list[str],
 ) -> int:
     """Phase 4b — normal hit damage. Returns pre-reduction damage."""
     base_max = player.get_total_attack()
@@ -512,7 +537,11 @@ def _pt_hit_damage(
 
 
 def _pt_miss_damage(
-    player: Player, monster: Monster, attack_multiplier: float, log: list[str], calc: list[str]
+    player: Player,
+    monster: Monster,
+    attack_multiplier: float,
+    log: list[str],
+    calc: list[str],
 ) -> int:
     """Phase 4c — miss, any on-miss damage sources. Returns total miss damage."""
     damage = 0
@@ -557,16 +586,26 @@ def _pt_miss_damage(
         log.append("Miss! But " + ", ".join(miss_parts) + " damage.")
     else:
         log.append("Miss!")
-    calc.append(f"  miss_dmg: {damage} (sources: {', '.join(miss_parts) if miss_parts else 'none'})")
+    calc.append(
+        f"  miss_dmg: {damage} (sources: {', '.join(miss_parts) if miss_parts else 'none'})"
+    )
     return damage
 
 
-def _pt_apply_reductions(monster: Monster, damage: int, log: list[str], calc: list[str]) -> int:
+def _pt_apply_reductions(
+    monster: Monster, damage: int, log: list[str], calc: list[str]
+) -> int:
     """Phase 5 — apply monster damage-reduction modifiers."""
     pre = damage
 
     # Protection mods (uber bosses — 60% DR); only one fires per boss
-    for prot_name in ("Radiant Protection", "Infernal Protection", "Balanced Protection", "Void Protection"):
+    for prot_name in (
+        "Radiant Protection",
+        "Infernal Protection",
+        "Balanced Protection",
+        "Void Protection",
+        "Corrupted Protection",
+    ):
         if monster.has_modifier(prot_name) and damage > 0:
             reduction = int(damage * 0.60)
             damage = max(0, damage - reduction)
@@ -577,7 +616,9 @@ def _pt_apply_reductions(monster: Monster, damage: int, log: list[str], calc: li
     if monster.has_modifier("Ironclad") and damage > 0:
         reduction = int(damage * monster.get_modifier_value("Ironclad"))
         damage = max(0, damage - reduction)
-        log.append(f"{monster.name}'s **Ironclad** plating reduces damage by {reduction}.")
+        log.append(
+            f"{monster.name}'s **Ironclad** plating reduces damage by {reduction}."
+        )
 
     # Stalwart: X% chance to nullify incoming damage entirely
     if monster.has_modifier("Stalwart") and damage > 0:
@@ -635,7 +676,9 @@ def _pt_apply_to_monster(
     if monster.ward > 0 and damage > 0:
         if damage <= monster.ward:
             monster.ward -= damage
-            log.append(f"Your attack is absorbed by the monster's 🔮 ward! ({damage} absorbed)")
+            log.append(
+                f"Your attack is absorbed by the monster's 🔮 ward! ({damage} absorbed)"
+            )
             damage = 0
         else:
             log.append(f"You shatter the monster's 🔮 ward! ({monster.ward} absorbed)")
@@ -701,8 +744,12 @@ def _pt_track_pending(player: Player, damage: int, log: list[str]) -> None:
 
 
 def _pt_partner_effects(
-    player: Player, monster: Monster, is_hit: bool, is_crit: bool,
-    damage_dealt: int = 0, sigmund_proc: bool = False,
+    player: Player,
+    monster: Monster,
+    is_hit: bool,
+    is_crit: bool,
+    damage_dealt: int = 0,
+    sigmund_proc: bool = False,
 ) -> tuple[str, str]:
     """
     Partner per-turn effects. Returns (partner_log, partner_name).
@@ -727,7 +774,11 @@ def _pt_partner_effects(
                 parts.append(
                     f"⚔️ **Joint Attack Lv.{lvl}** — {partner.name} strikes for **{dmg}** damage!"
                 )
-        elif key == "co_heal" and monster.combat_round % 3 == 0 and monster.combat_round > 0:
+        elif (
+            key == "co_heal"
+            and monster.combat_round % 3 == 0
+            and monster.combat_round > 0
+        ):
             heal = int(player.total_max_hp * lvl * 0.01)
             if heal > 0:
                 player.current_hp = min(player.total_max_hp, player.current_hp + heal)
@@ -803,7 +854,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         player.alchemy_linger_turns -= 1
 
     attack_multiplier = _pt_attack_multiplier(player, monster, log, calc)
-    is_hit, attack_multiplier = _pt_resolve_hit(player, monster, attack_multiplier, log, calc)
+    is_hit, attack_multiplier = _pt_resolve_hit(
+        player, monster, attack_multiplier, log, calc
+    )
 
     # sig_co_sigmund: chance to double the attack multiplier before damage is rolled
     _sigmund_proc = False
@@ -825,7 +878,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         is_hit = False
         is_crit = False
         calc.append("  neet: accuracy 0, always miss")
-        log.append("🌑 **Void Form** — accuracy reduced to zero, the strike phases through!")
+        log.append(
+            "🌑 **Void Form** — accuracy reduced to zero, the strike phases through!"
+        )
 
     if is_crit:
         raw_damage = _pt_crit_damage(player, monster, attack_multiplier, log, calc)
@@ -845,7 +900,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         player, monster, is_hit, is_crit, final_hit, _sigmund_proc
     )
 
-    calc.append(f"  final_dealt: {final_hit}  monster_hp_remaining: {monster.hp}/{monster.max_hp}")
+    calc.append(
+        f"  final_dealt: {final_hit}  monster_hp_remaining: {monster.hp}/{monster.max_hp}"
+    )
 
     return PlayerTurnResult(
         log="\n".join(log),

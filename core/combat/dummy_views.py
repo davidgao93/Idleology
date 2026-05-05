@@ -26,9 +26,11 @@ _SPECIAL_MODS = list(BOSS_MOD_NAMES) + [
     "Infernal Protection",
     "Balanced Protection",
     "Void Protection",
+    "Corrupted Protection",
     "Hell's Fury",
     "Void Aura",
     "Balanced Strikes",
+    "Origin of Corruption",
 ]
 
 

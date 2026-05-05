@@ -1,5 +1,3 @@
-import random
-
 import discord
 from discord import ButtonStyle, Interaction, ui
 
@@ -9,9 +7,7 @@ from core.combat.modifier_data import (
     RARE_FLAT_MOD_NAMES,
     RARE_TIERED_MOD_NAMES,
 )
-from core.images import CORRUPTED_MONSTERS
-
-_CORRUPTED_GATE_IMAGE = random.choice(list(CORRUPTED_MONSTERS.values()))
+from core.images import CORRUPTION_GATE
 
 
 class LowHealthWarningView(ui.View):
@@ -139,7 +135,7 @@ class CorruptedEncounterGateView(ui.View):
             ),
             color=0x6A0DAD,
         )
-        embed.set_image(url=_CORRUPTED_GATE_IMAGE)
+        embed.set_image(url=CORRUPTION_GATE)
         embed.set_footer(text="Flee to face a regular encounter instead.")
         return embed
 

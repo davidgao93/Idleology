@@ -272,6 +272,12 @@ MODIFIER_DEFINITIONS: dict = {
     "Balanced Strikes": ModifierDef(
         "Balanced Strikes", "uber", tiers=[0.50], difficulties=[0.0], level_gates=[]
     ),
+    "Corrupted Protection": ModifierDef(
+        "Corrupted Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[]
+    ),
+    "Origin of Corruption": ModifierDef(
+        "Origin of Corruption", "uber", tiers=[0.0], difficulties=[0.0], level_gates=[]
+    ),
 }
 
 COMMON_MOD_NAMES = [k for k, v in MODIFIER_DEFINITIONS.items() if v.pool == "common"]

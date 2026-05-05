@@ -43,7 +43,7 @@ def create_combat_embed(
     # UBER OVERRIDES
     is_essence = getattr(monster, "is_essence", False)
     if is_uber:
-        title = "🌌 UBER ENCOUNTER: Celestial Apex"
+        title = "UBER ENCOUNTER"
         color = 0xFFD700  # Gold
     elif is_essence:
         title = (
@@ -182,10 +182,14 @@ def create_victory_embed(
     # 5. Monster Body Part Drop
     if rewards.get("body_part"):
         _PART_LABELS = {
-            "head": "Head", "torso": "Torso",
-            "right_arm": "Right Arm", "left_arm": "Left Arm",
-            "right_leg": "Right Leg", "left_leg": "Left Leg",
-            "cheeks": "Cheeks", "organs": "Organs",
+            "head": "Head",
+            "torso": "Torso",
+            "right_arm": "Right Arm",
+            "left_arm": "Left Arm",
+            "right_leg": "Right Leg",
+            "left_leg": "Left Leg",
+            "cheeks": "Cheeks",
+            "organs": "Organs",
         }
         slot, mname, hp = rewards["body_part"]
         label = _PART_LABELS.get(slot, slot)

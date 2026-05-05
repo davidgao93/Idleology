@@ -899,6 +899,7 @@ class Monster:
     defence: int
     modifiers: List[MonsterModifier] = field(default_factory=list)
     image: str = ""
+    image2: str = ""
     flavor: str = ""
     species: str = "Unknown"
     is_boss: bool = False

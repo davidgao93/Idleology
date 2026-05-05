@@ -1,3 +1,5 @@
+import asyncio
+
 import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button, View
@@ -22,9 +24,8 @@ class GatherView(View):
         self.skill_data = None
         self.uber_data = None
 
-        # We fetch data immediately during init logic via async method called from Cog,
-        # or we accept it passed in. For a Tab view, it's safer to fetch inside the update.
-        # But to be clean, we will implement a `refresh_state` method.
+        # Prevent overlapping updates
+        self._lock = asyncio.Lock()
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
@@ -32,7 +33,7 @@ class GatherView(View):
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
         try:
-            await self.message.edit(view=None)
+            await self.message.edit(view=None)  # self.message will be set by cog
         except:
             pass
 
@@ -58,9 +59,13 @@ class GatherView(View):
             style = ButtonStyle.primary if is_active else ButtonStyle.secondary
 
             btn = Button(
-                label=info["display_name"], emoji=info["emoji"], style=style, row=0
+                label=info["display_name"],
+                emoji=info["emoji"],
+                style=style,
+                row=0,
             )
-            btn.callback = lambda i, skill=s: self.switch_tab(i, skill)
+            # Proper async callback (no lambda issues)
+            btn.callback = self._make_tab_callback(s)
             self.add_item(btn)
 
         # --- ROW 1: ACTIONS ---
@@ -111,14 +116,32 @@ class GatherView(View):
             resonance_btn.callback = self.resonance_callback
             self.add_item(resonance_btn)
 
+    def _make_tab_callback(self, skill: str):
+        """Creates a proper async callback for tabs (avoids lambda pitfalls)."""
+
+        async def callback(interaction: Interaction):
+            await self.switch_tab(interaction, skill)
+
+        return callback
+
     async def switch_tab(self, interaction: Interaction, skill: str):
         if skill == self.current_skill:
             return await interaction.response.defer()
 
-        self.current_skill = skill
-        await interaction.response.defer()  # Defer to allow DB fetch
-        await self.refresh_state()
-        await interaction.edit_original_response(embed=self.get_embed(), view=self)
+        # Create a completely fresh view instead of mutating this one
+        new_view = GatherView(
+            self.bot, self.user_id, self.server_id, initial_skill=skill
+        )
+
+        await interaction.response.defer()
+        await new_view.refresh_state()
+
+        await interaction.edit_original_response(
+            embed=new_view.get_embed(), view=new_view
+        )
+
+        # Clean up old view
+        self.stop()
 
     def get_embed(self) -> discord.Embed:
         info = SkillMechanics.get_skill_info(self.current_skill)

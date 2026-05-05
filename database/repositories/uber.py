@@ -14,7 +14,8 @@ class UberRepository:
                       void_shards, void_engrams, void_blueprint_unlocked,
                       gemini_sigils, gemini_engrams, gemini_blueprint_unlocked,
                       blessed_bismuth, sparkling_sprig, capricious_carp,
-                      corruption_sigils, paradise_jewels
+                      corruption_sigils, paradise_jewels,
+                      corruption_engrams, corruption_blueprint_unlocked
                FROM uber_progress WHERE user_id = ? AND server_id = ?""",
             (user_id, server_id),
         )
@@ -44,6 +45,8 @@ class UberRepository:
                 "capricious_carp": 0,
                 "corruption_sigils": 0,
                 "paradise_jewels": 0,
+                "corruption_engrams": 0,
+                "corruption_blueprint_unlocked": 0,
             }
 
         return {
@@ -64,6 +67,8 @@ class UberRepository:
             "capricious_carp": row[14] if row[14] is not None else 0,
             "corruption_sigils": row[15] if row[15] is not None else 0,
             "paradise_jewels": row[16] if row[16] is not None else 0,
+            "corruption_engrams": row[17] if row[17] is not None else 0,
+            "corruption_blueprint_unlocked": row[18] if row[18] is not None else 0,
         }
 
     # --- Celestial (Aphrodite) ---
@@ -224,5 +229,22 @@ class UberRepository:
         await self.connection.execute(
             "UPDATE uber_progress SET paradise_jewels = paradise_jewels + ? WHERE user_id = ? AND server_id = ?",
             (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def increment_corruption_engrams(self, user_id: str, server_id: str, amount: int) -> None:
+        """Modifies the corruption_engrams count (can be negative)."""
+        await self.connection.execute(
+            "UPDATE uber_progress SET corruption_engrams = corruption_engrams + ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def set_corruption_blueprint_unlocked(self, user_id: str, server_id: str, unlocked: bool) -> None:
+        """Sets the corruption blueprint unlocked flag."""
+        val = 1 if unlocked else 0
+        await self.connection.execute(
+            "UPDATE uber_progress SET corruption_blueprint_unlocked = ? WHERE user_id = ? AND server_id = ?",
+            (val, user_id, server_id),
         )
         await self.connection.commit()

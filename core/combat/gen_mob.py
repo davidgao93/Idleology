@@ -13,6 +13,8 @@ from core.images import (
     COMBAT_DUMMY,
     CORRUPTED_MONSTERS,
     MONSTER_APHRODITE,
+    MONSTER_EVELYNN,
+    MONSTER_EVELYNN_PRECURSOR,
     MONSTER_GEMINI,
     MONSTER_LUCIFER,
     MONSTER_NEET,
@@ -437,9 +439,11 @@ def get_modifier_description(mod: MonsterModifier) -> str:
         "Infernal Protection": lambda v: "60% damage reduction",
         "Balanced Protection": lambda v: "60% damage reduction",
         "Void Protection": lambda v: "60% damage reduction",
+        "Corrupted Protection": lambda v: "60% damage reduction",
         "Hell's Fury": lambda v: "Deals triple damage",
         "Void Aura": lambda v: "Drains 0.5% ATK and DEF per round",
         "Balanced Strikes": lambda v: "Every other turn: 50% hit, bypasses ward",
+        "Origin of Corruption": lambda v: "Every 3 turns: drains 10% of your ward, healing Evelynn for 10×",
     }
     fn = descriptions.get(mod.name)
     if fn:
@@ -455,13 +459,14 @@ def apply_all_corrupted_modifiers(monster) -> None:
     """
     all_names = COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES + RARE_FLAT_MOD_NAMES
     for name in all_names:
-        monster.modifiers.append(make_modifier(name, monster.level, force_max_tier=True))
+        monster.modifiers.append(
+            make_modifier(name, monster.level, force_max_tier=True)
+        )
 
 
 # Corrupted monster display names derived from CORRUPTED_MONSTERS keys.
 _CORRUPTED_MONSTER_NAMES: list[tuple[str, str]] = [
-    (key, "Corrupted " + key.replace("_", " ").title())
-    for key in CORRUPTED_MONSTERS
+    (key, "Corrupted " + key.replace("_", " ").title()) for key in CORRUPTED_MONSTERS
 ]
 
 
@@ -479,13 +484,15 @@ def generate_corrupted_encounter(player, monster) -> "Monster":
     monster.level = player.level + player.ascension
     monster = calculate_monster_stats(monster)
 
-    # HP: 4× a normal monster of equivalent level
-    base_hp = random.randint(0, 9) + int(10 * (monster.level ** random.uniform(1.6, 1.7)))
-    monster.hp = int(base_hp * 4)
+    # HP: 2× a normal monster of equivalent level
+    base_hp = random.randint(0, 9) + int(
+        10 * (monster.level ** random.uniform(1.6, 1.7))
+    )
+    monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
 
-    # Attack: 2× normal
-    monster.attack = int(monster.attack * 2)
+    # Attack: 1.2× normal
+    monster.attack = int(monster.attack * 1.2)
 
     monster.xp = random.randint(1, 9) + monster.level * 100
 
@@ -603,6 +610,41 @@ def generate_uber_gemini(player, monster):
     random.shuffle(boss_pool)
     monster.modifiers.append(make_modifier(boss_pool[0], monster.level))
 
+    return monster
+
+
+def generate_uber_evelynn(player, monster):
+    """Generate the single-phase Evelynn Uber boss fight. All corrupted modifiers + signature ward drain."""
+    ref_level = player.level + player.ascension + 20
+    monster.level = ref_level
+
+    monster = calculate_monster_stats(monster)
+
+    base_hp = random.randint(0, 9) + int(10 * (monster.level ** 1.65))
+    monster.hp = int(base_hp * 2)
+    monster.max_hp = monster.hp
+    monster.xp = 75000
+
+    monster.name = "Evelynn, the Origin of Corruption"
+    monster.image = MONSTER_EVELYNN_PRECURSOR
+    monster.image2 = MONSTER_EVELYNN
+    monster.flavor = "casts a writhing black mass"
+    monster.species = "Corrupted"
+    monster.is_boss = True
+    monster.is_corrupted = True
+
+    monster.modifiers = []
+    apply_all_corrupted_modifiers(monster)
+
+    monster.modifiers.extend([
+        make_modifier("Corrupted Protection", monster.level),
+        make_modifier("Origin of Corruption", monster.level),
+    ])
+
+    monster.attack = int(monster.attack * 1.4)
+    monster.defence = int(monster.defence * 0.85)
+
+    print(monster)
     return monster
 
 

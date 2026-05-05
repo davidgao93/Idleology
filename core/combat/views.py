@@ -20,8 +20,10 @@ from core.images import (
     BOSS_GEMINI_PET,
     BOSS_LUCIFER,
     BOSS_NEET,
+    MONSTER_EVELYNN_PRECURSOR,
     VICTORY_APHRODITE_GEMINI,
     VICTORY_CELESTIAL,
+    VICTORY_EVELYNN,
     VICTORY_GEMINI,
     VICTORY_INFERNAL,
     VICTORY_LUCIFER,
@@ -103,7 +105,14 @@ class CombatView(ui.View):
         self.combat_logger.log_monster_turn(log, self.player)
         return log
 
+    def _apply_phase_image_transition(self):
+        """Permanently swap monster to image2 once HP drops to or below 50% (one-way)."""
+        if self.monster.image2 and self.monster.hp * 2 <= self.monster.max_hp:
+            self.monster.image = self.monster.image2
+            self.monster.image2 = ""
+
     async def refresh_embed(self, interaction: Interaction):
+        self._apply_phase_image_transition()
         embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
 
         # Check if we have already deferred or responded (e.g. via Fast Auto)
@@ -165,6 +174,7 @@ class CombatView(ui.View):
 
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
 
+                self._apply_phase_image_transition()
                 embed = combat_ui.create_combat_embed(
                     self.player, self.monster, self.logs
                 )
@@ -291,6 +301,8 @@ class CombatView(ui.View):
             return BOSS_GEMINI_PET
         if "Lucifer" in boss_name:
             return BOSS_LUCIFER
+        if "Evelynn" in boss_name:
+            return MONSTER_EVELYNN_PRECURSOR
         return None
 
     # --- Uber encounter helpers ---
@@ -314,14 +326,15 @@ class CombatView(ui.View):
             return 1
         return 0
 
-    async def _uber_defeat(self, message) -> None:
+    async def _uber_defeat(self, message, dmg_frac: float = 0.0, curios_gained: int = 0) -> None:
         base_loss = int(self.player.exp * 0.10)
         xp_loss = await ExperienceManager.remove_experience(
             self.bot, self.user_id, self.player, base_loss
         )
         self.player.current_hp = 1
         embed = combat_ui.create_defeat_embed(
-            self.player, self.monster, xp_loss, killing_blow=self.killing_blow
+            self.player, self.monster, xp_loss,
+            curios_gained=curios_gained, dmg_frac=dmg_frac, killing_blow=self.killing_blow,
         )
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
@@ -350,6 +363,8 @@ class CombatView(ui.View):
                 await self._handle_uber_neet_end_state(message, interaction)
             elif "Castor" in self.monster.name:
                 await self._handle_uber_gemini_end_state(message, interaction)
+            elif "Evelynn" in self.monster.name:
+                await self._handle_uber_evelynn_end_state(message, interaction)
             else:
                 await self._handle_uber_end_state(message, interaction)
             return
@@ -925,11 +940,12 @@ class CombatView(ui.View):
 
     async def _handle_uber_end_state(self, message, interaction: Interaction):
         """Uber Aphrodite."""
-        curios = self._calc_uber_curios(self._uber_dmg_frac())
+        dmg_frac = self._uber_dmg_frac()
+        curios = self._calc_uber_curios(dmg_frac)
         await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
 
         if self.player.current_hp <= 0:
-            await self._uber_defeat(message)
+            await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
             return
 
         reward_data = rewards.calculate_rewards(self.player, self.monster)
@@ -977,11 +993,12 @@ class CombatView(ui.View):
 
     async def _handle_uber_lucifer_end_state(self, message, interaction: Interaction):
         """Uber Lucifer."""
-        curios = self._calc_uber_curios(self._uber_dmg_frac())
+        dmg_frac = self._uber_dmg_frac()
+        curios = self._calc_uber_curios(dmg_frac)
         await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
 
         if self.player.current_hp <= 0:
-            await self._uber_defeat(message)
+            await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
             return
 
         reward_data = rewards.calculate_rewards(self.player, self.monster)
@@ -1039,11 +1056,12 @@ class CombatView(ui.View):
 
     async def _handle_uber_neet_end_state(self, message, interaction: Interaction):
         """Uber NEET."""
-        curios = self._calc_uber_curios(self._uber_dmg_frac())
+        dmg_frac = self._uber_dmg_frac()
+        curios = self._calc_uber_curios(dmg_frac)
         await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
 
         if self.player.current_hp <= 0:
-            await self._uber_defeat(message)
+            await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
             return
 
         reward_data = rewards.calculate_rewards(self.player, self.monster)
@@ -1094,11 +1112,12 @@ class CombatView(ui.View):
 
     async def _handle_uber_gemini_end_state(self, message, interaction: Interaction):
         """Uber Gemini Twins."""
-        curios = self._calc_uber_curios(self._uber_dmg_frac())
+        dmg_frac = self._uber_dmg_frac()
+        curios = self._calc_uber_curios(dmg_frac)
         await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
 
         if self.player.current_hp <= 0:
-            await self._uber_defeat(message)
+            await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
             return
 
         reward_data = rewards.calculate_rewards(self.player, self.monster)
@@ -1142,6 +1161,72 @@ class CombatView(ui.View):
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
         embed.title = "♊ Bound Sovereigns Defeated!"
         embed.set_image(url=VICTORY_GEMINI)
+        await message.edit(embed=embed, view=None)
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
+
+    async def _handle_uber_evelynn_end_state(self, message, interaction: Interaction):
+        """Uber Evelynn — the Origin of Corruption."""
+        dmg_frac = self._uber_dmg_frac()
+        curios = self._calc_uber_curios(dmg_frac)
+        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
+
+        if self.player.current_hp <= 0:
+            await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
+            return
+
+        reward_data = rewards.calculate_rewards(self.player, self.monster)
+        reward_data["xp"] *= 2
+        reward_data["gold"] *= 2
+        reward_data["curios"] = curios
+        reward_data["special"] = []
+
+        # Guaranteed: 1 Curio Puzzle Box
+        await self.bot.database.users.modify_currency(
+            self.user_id, "curio_puzzle_boxes", 1
+        )
+        reward_data["special"].append("Curio Puzzle Box")
+        reward_data["msgs"].append(
+            "📦 **A Curio Puzzle Box materialises from Evelynn's shattered form...**"
+        )
+
+        # 10% chance: Corruption Engram
+        if random.random() < 0.10:
+            await self.bot.database.uber.increment_corruption_engrams(
+                self.user_id, self.server_id, 1
+            )
+            reward_data["special"].append("Corruption Engram")
+            reward_data["msgs"].append(
+                "☠️ **A Corruption Engram crystallises from the primordial rot...**"
+            )
+
+        # 10% chance: Shrine of Corruption Blueprint (or Corrupted Crystal if already unlocked)
+        if random.random() < 0.10:
+            u_prog = await self.bot.database.uber.get_uber_progress(
+                self.user_id, self.server_id
+            )
+            if not u_prog.get("corruption_blueprint_unlocked", 0):
+                await self.bot.database.uber.set_corruption_blueprint_unlocked(
+                    self.user_id, self.server_id, True
+                )
+                reward_data["special"].append("Shrine of Corruption Blueprint")
+                reward_data["msgs"].append(
+                    "📜 **You found the Shrine of Corruption Blueprint!**"
+                )
+            else:
+                await self.bot.database.users.modify_currency(
+                    self.user_id, "corrupted_crystal", 1
+                )
+                reward_data["special"].append("Corrupted Crystal")
+                reward_data["msgs"].append(
+                    "☠️ **The corruption yields a Corrupted Crystal.**"
+                )
+
+        await self._uber_finalize_rewards(reward_data)
+
+        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+        embed.title = "☠️ Origin of Corruption Shattered!"
+        embed.set_image(url=VICTORY_EVELYNN)
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()

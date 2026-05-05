@@ -187,4 +187,21 @@ class DummyEngine:
                 return "You feel this would be a **tough battle**. The twins' rhythm is relentless."
             return "You are **filled with determination**. The constellation awaits."
 
+        if target == "evelynn_uber":
+            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Corrupted Protection"])
+            proxy.attack  = int(proxy.attack  * 1.4)
+            proxy.defence = int(proxy.defence * 0.85)
+            proxy.is_boss = True
+
+            res = DummyEngine.run_simulation(player, proxy, turns=50)
+            avg_taken   = res.avg_damage_taken
+            time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
+            if res.average_damage < (player.total_max_hp * 0.05):
+                return "You feel as if you are **not ready**. The corruption would consume you before you leave a mark."
+            elif time_to_die < 5:
+                return "You feel as if you are **not ready**. Her strikes alone would end you."
+            elif res.average_damage < (player.total_max_hp * 0.10) and time_to_die < 12:
+                return "You feel this would be a **tough battle**. The primordial rot is relentless."
+            return "You are **filled with determination**. The source of all corruption awaits."
+
         return "Unknown target."
