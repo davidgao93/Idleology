@@ -6,9 +6,8 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.alchemy.mechanics import AlchemyMechanics
 from core.alchemy.synthesis_views import _build_synthesis_hub
+from core.base_view import BaseView
 from core.images import ALCHEMY_HUB
-
-from .base_views import BaseAlchemyView
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -32,7 +31,7 @@ async def _hub_from_db(bot, user_id: str, server_id: str) -> "AlchemyHubView":
 # ---------------------------------------------------------------------------
 
 
-class AlchemyHubView(BaseAlchemyView):
+class AlchemyHubView(BaseView):
     def __init__(
         self,
         bot,
@@ -43,7 +42,7 @@ class AlchemyHubView(BaseAlchemyView):
         player_gold: int,
         spirit_stones: int,
     ):
-        super().__init__(bot, user_id, server_id)  # ← BaseAlchemyView
+        super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
         self.passives = passives
         self.player_gold = player_gold
@@ -187,7 +186,7 @@ class AlchemyHubView(BaseAlchemyView):
 # ---------------------------------------------------------------------------
 
 
-class _LevelUpConfirmView(BaseAlchemyView):
+class _LevelUpConfirmView(BaseView):
     def __init__(
         self, bot, user_id: str, server_id: str, current_level: int, cost: int
     ):
@@ -366,7 +365,7 @@ class _TransmuteSelect(ui.Select):
         await interaction.response.defer()
 
 
-class AlchemyTransmuteView(BaseAlchemyView):
+class AlchemyTransmuteView(BaseView):
     def __init__(
         self,
         bot,
@@ -504,7 +503,7 @@ class _SlotSelect(ui.Select):
         await interaction.response.defer()
 
 
-class _ClearConfirmView(BaseAlchemyView):
+class _ClearConfirmView(BaseView):
     def __init__(self, parent: "AlchemyPotionLabView", slot: int):
         super().__init__(parent.bot, parent.user_id, parent.server_id)
         self._parent = parent
@@ -544,7 +543,7 @@ class _ClearConfirmView(BaseAlchemyView):
         )
 
 
-class AlchemyPotionLabView(BaseAlchemyView):
+class AlchemyPotionLabView(BaseView):
     def __init__(
         self,
         bot,

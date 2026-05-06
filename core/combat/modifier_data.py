@@ -111,11 +111,11 @@ MODIFIER_DEFINITIONS: dict = {
         "Vampiric",
         "common",
         tiers=[
-            0.01,
+            0.004,
+            0.008,
+            0.012,
+            0.016,
             0.02,
-            0.03,
-            0.04,
-            0.05,
         ],  # fraction of monster max_hp healed per hit
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100],

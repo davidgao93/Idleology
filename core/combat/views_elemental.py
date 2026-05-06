@@ -4,6 +4,7 @@ import copy
 import discord
 from discord import ButtonStyle, Interaction
 
+from core.base_view import BaseView
 from core.combat import engine
 from core.images import COMBAT_ELEMENTAL
 from core.models import Monster, Player
@@ -25,11 +26,11 @@ _ELEMENTAL_MONSTER = Monster(
 )
 
 
-class ElementalEncounterView(discord.ui.View):
+class ElementalEncounterView(BaseView):
     MAX_TURNS = 20
 
     def __init__(self, bot, player: Player, user_id: str, server_id: str):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.player = player
         self.user_id = user_id
@@ -44,9 +45,6 @@ class ElementalEncounterView(discord.ui.View):
 
         engine.apply_combat_start_passives(self.player, self.monster)
         engine.apply_stat_effects(self.player, self.monster)
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     def build_embed(self) -> discord.Embed:
         hp_pct = max(0.0, self.monster.hp / self.monster.max_hp)
@@ -153,11 +151,3 @@ class ElementalEncounterView(discord.ui.View):
             )
 
         return embed
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        try:
-            if self.message:
-                await self.message.edit(view=None)
-        except Exception:
-            pass

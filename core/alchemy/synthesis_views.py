@@ -19,8 +19,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.alchemy.mechanics import AlchemyMechanics
-
-from .base_views import BaseAlchemyView
+from core.base_view import BaseView
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -63,7 +62,7 @@ async def _build_synthesis_hub(
 # ---------------------------------------------------------------------------
 
 
-class AlchemySynthesisHubView(BaseAlchemyView):
+class AlchemySynthesisHubView(BaseView):
     def __init__(
         self,
         bot,
@@ -381,7 +380,7 @@ class _DisenchantKeySelect(ui.Select):
         await interaction.response.defer()
 
 
-class _DisenchantSelectView(BaseAlchemyView):
+class _DisenchantSelectView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str, alchemy_level: int) -> None:
         super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
@@ -567,7 +566,7 @@ class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
         self._parent.stop()
 
 
-class _SynthesizeSelectView(BaseAlchemyView):
+class _SynthesizeSelectView(BaseView):
     def __init__(
         self,
         bot,

@@ -1,6 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.combat import engine
 from core.combat.modifier_data import (
     COMMON_MOD_NAMES,
@@ -10,11 +11,11 @@ from core.combat.modifier_data import (
 from core.images import CORRUPTION_GATE
 
 
-class LowHealthWarningView(ui.View):
+class LowHealthWarningView(BaseView):
     def __init__(
         self, bot, user_id, server_id, existing_user, player, continue_callback
     ):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -25,16 +26,6 @@ class LowHealthWarningView(ui.View):
         )
 
         self.update_buttons()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        try:
-            await self.message.delete()
-        except:
-            pass
 
     def update_buttons(self):
         self.clear_items()
@@ -101,7 +92,7 @@ class LowHealthWarningView(ui.View):
         self.stop()
 
 
-class CorruptedEncounterGateView(ui.View):
+class CorruptedEncounterGateView(BaseView):
     """Pre-encounter gate shown when a Corrupted monster spawns.
 
     The player may choose to face it or flee (which falls back to a
@@ -113,16 +104,10 @@ class CorruptedEncounterGateView(ui.View):
     )
 
     def __init__(self, bot, user_id: str):
-        super().__init__(timeout=60)
+        super().__init__(bot, user_id)
         self.bot = bot
         self.user_id = user_id
         self.accepted: bool = False
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(

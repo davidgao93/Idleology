@@ -1,6 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.combat import engine
 from core.combat import ui as combat_ui
 from core.combat.gen_mob import (
@@ -21,11 +22,11 @@ from core.images import (
 from core.models import Monster, Player
 
 
-class UberHubView(ui.View):
+class UberHubView(BaseView):
     def __init__(
         self, bot, user_id: str, server_id: str, player: Player, uber_data: dict
     ):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -138,15 +139,6 @@ class UberHubView(ui.View):
         )
         return embed
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        try:
-            await self.message.edit(view=None)
-        except Exception:
-            pass
-
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
         await interaction.delete_original_response()
@@ -249,7 +241,7 @@ class UberHubView(ui.View):
         self.stop()
 
 
-class UberAphroditeLobbyView(ui.View):
+class UberAphroditeLobbyView(BaseView):
     def __init__(
         self,
         bot,
@@ -259,7 +251,7 @@ class UberAphroditeLobbyView(ui.View):
         uber_data: dict,
         readiness_text: str,
     ):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -318,15 +310,6 @@ class UberAphroditeLobbyView(ui.View):
         embed.add_field(name="Settlement Blueprint", value=bp_status, inline=True)
 
         return embed
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        try:
-            await self.message.edit(view=None)
-        except Exception:
-            pass
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
@@ -400,7 +383,7 @@ class UberAphroditeLobbyView(ui.View):
         self.stop()
 
 
-class UberLuciferLobbyView(ui.View):
+class UberLuciferLobbyView(BaseView):
     def __init__(
         self,
         bot,
@@ -410,7 +393,7 @@ class UberLuciferLobbyView(ui.View):
         uber_data: dict,
         readiness_text: str,
     ):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -472,15 +455,6 @@ class UberLuciferLobbyView(ui.View):
         embed.add_field(name="Infernal Forge Blueprint", value=bp_status, inline=True)
         embed.set_thumbnail(url=BOSS_LUCIFER)
         return embed
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        try:
-            await self.message.edit(view=None)
-        except Exception:
-            pass
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
@@ -556,7 +530,7 @@ class UberLuciferLobbyView(ui.View):
         self.stop()
 
 
-class UberEvelynnLobbyView(ui.View):
+class UberEvelynnLobbyView(BaseView):
     def __init__(
         self,
         bot,
@@ -566,7 +540,7 @@ class UberEvelynnLobbyView(ui.View):
         uber_data: dict,
         readiness_text: str,
     ):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -631,15 +605,6 @@ class UberEvelynnLobbyView(ui.View):
         )
 
         return embed
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        try:
-            await self.message.edit(view=None)
-        except Exception:
-            pass
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
@@ -715,7 +680,7 @@ class UberEvelynnLobbyView(ui.View):
         self.stop()
 
 
-class UberNEETLobbyView(ui.View):
+class UberNEETLobbyView(BaseView):
     def __init__(
         self,
         bot,
@@ -725,7 +690,7 @@ class UberNEETLobbyView(ui.View):
         uber_data: dict,
         readiness_text: str,
     ):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -784,15 +749,6 @@ class UberNEETLobbyView(ui.View):
         embed.add_field(name="Void Sanctum Blueprint", value=bp_status, inline=True)
         embed.set_thumbnail(url=BOSS_NEET)
         return embed
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        try:
-            await self.message.edit(view=None)
-        except Exception:
-            pass
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
@@ -868,7 +824,7 @@ class UberNEETLobbyView(ui.View):
         self.stop()
 
 
-class UberGeminiLobbyView(ui.View):
+class UberGeminiLobbyView(BaseView):
     def __init__(
         self,
         bot,
@@ -878,7 +834,7 @@ class UberGeminiLobbyView(ui.View):
         uber_data: dict,
         readiness_text: str,
     ):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -941,15 +897,6 @@ class UberGeminiLobbyView(ui.View):
         embed.add_field(name="Twin Shrine Blueprint", value=bp_status, inline=True)
 
         return embed
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        try:
-            await self.message.edit(view=None)
-        except Exception:
-            pass
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()

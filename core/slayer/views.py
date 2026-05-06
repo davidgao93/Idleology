@@ -3,30 +3,12 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.base_view import BaseView
 from core.images import SLAYER_EMBLEM, SLAYER_MASTER
 from core.slayer.mechanics import SlayerMechanics
 
 
-class BaseSlayerView(ui.View):
-    def __init__(self, bot, user_id, server_id, timeout=600):
-        super().__init__(timeout=timeout)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        try:
-            await self.message.edit(view=None)  # disable buttons
-        except:
-            pass
-        self.stop()
-
-
-class SlayerDashboardView(BaseSlayerView):
+class SlayerDashboardView(BaseView):
     def __init__(self, bot, user_id, server_id, profile, player_level):
         super().__init__(bot, user_id, server_id)  # timeout=600 by default
         self.profile = profile
@@ -150,7 +132,7 @@ class SlayerDashboardView(BaseSlayerView):
         self.stop()
 
 
-class EmblemView(BaseSlayerView):
+class EmblemView(BaseView):
     def __init__(self, bot, user_id, server_id, profile, emblem, parent_view):
         super().__init__(bot, user_id, server_id)
         self.profile = profile
@@ -250,7 +232,7 @@ class EmblemView(BaseSlayerView):
         self.stop()
 
 
-class SlotManageView(BaseSlayerView):
+class SlotManageView(BaseView):
     def __init__(
         self, bot, user_id, server_id, profile, slot_num, slot_data, parent_view
     ):

@@ -4,8 +4,10 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 
-class LuciferChoiceView(ui.View):
+
+class LuciferChoiceView(BaseView):
     """Soul Core selection after defeating Lucifer."""
 
     def __init__(self, bot, user_id, player):
@@ -15,11 +17,7 @@ class LuciferChoiceView(ui.View):
         self.player = player
         self.message = None  # Set by caller after send
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
     async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
         if self.message:
             try:
                 embed = self.message.embeds[0]
@@ -31,6 +29,7 @@ class LuciferChoiceView(ui.View):
                 await self.message.edit(embed=embed, view=None)
             except Exception:
                 pass
+        await super().on_timeout()
 
     async def _conclude(self, interaction, msg):
         embed = interaction.message.embeds[0]
@@ -109,7 +108,7 @@ class LuciferChoiceView(ui.View):
         await self._conclude(interaction, "You pocket a Soul Core.")
 
 
-class InfernalContractView(ui.View):
+class InfernalContractView(BaseView):
     """Randomly-generated stat contract presented after killing Uber Lucifer."""
 
     STAT_LABELS = {"attack": "⚔️ ATK", "defence": "🛡️ DEF", "hp": "❤️ HP"}
@@ -148,16 +147,6 @@ class InfernalContractView(ui.View):
             "\n".join(parts)
             + "\n\n*Lucifer offers a deal. Most deals are poor. This may be too.*"
         )
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        try:
-            await self.message.edit(view=None)
-        except Exception:
-            pass
 
     @ui.button(label="Accept Contract", style=discord.ButtonStyle.danger, emoji="🩸")
     async def accept(self, interaction: Interaction, button: ui.Button):

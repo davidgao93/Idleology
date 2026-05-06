@@ -7,6 +7,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 import core.slayer.mechanics
+from core.base_view import BaseView
 from core.combat import engine, rewards
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
@@ -33,7 +34,7 @@ from core.images import (
 from core.models import Monster, Player
 
 
-class CombatView(ui.View):
+class CombatView(BaseView):
     def __init__(
         self,
         bot,
@@ -44,7 +45,7 @@ class CombatView(ui.View):
         initial_logs: dict,
         combat_phases=None,
     ):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -63,9 +64,6 @@ class CombatView(ui.View):
         self.combat_logger.log_combat_start(player, monster)
 
         self.update_buttons()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         # Only trigger flee logic if the fight is still active
@@ -89,8 +87,7 @@ class CombatView(ui.View):
             await _je.save_jewel_state(self.bot, self.user_id, self.player)
 
         self.combat_logger.log_combat_end(self.player, self.monster, "timeout")
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
+        await super().on_timeout()
 
     def update_buttons(self):
         # Toggle buttons based on current state (Enabled if both alive, Disabled if one dead)

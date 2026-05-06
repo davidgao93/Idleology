@@ -19,7 +19,7 @@ from core.images import (
     MONSTER_LUCIFER,
     MONSTER_NEET,
 )
-from core.models import Monster, MonsterModifier
+from core.models import Monster
 
 
 async def generate_encounter(player, monster, is_treasure, task_species=None):
@@ -397,8 +397,13 @@ def _roll_essence_spawn(monster) -> None:
         monster.name = f"Calcified {monster.name}"
 
 
-def get_modifier_description(mod: MonsterModifier) -> str:
-    """Returns a human-readable description of a MonsterModifier."""
+def get_modifier_description(mod) -> str:
+    """Returns a human-readable description of a modifier.
+
+    Accepts either:
+      - MonsterModifier object (has .name and .value)
+      - str (just the modifier name — used by Dojo, etc.)
+    """
     descriptions = {
         "Empowered": lambda v: f"+{int(v*100)}% attack",
         "Fortified": lambda v: f"+{int(v*100)}% defence",
@@ -445,9 +450,19 @@ def get_modifier_description(mod: MonsterModifier) -> str:
         "Balanced Strikes": lambda v: "Every other turn: 50% hit, bypasses ward",
         "Origin of Corruption": lambda v: "Every 3 turns: drains 10% of your ward, healing Evelynn for 10×",
     }
-    fn = descriptions.get(mod.name)
+
+    # Handle both string and MonsterModifier object
+    if isinstance(mod, str):
+        mod_name = mod.strip()
+        mod_value = 1.0  # default value for static modifiers
+    else:
+        # Original MonsterModifier object path
+        mod_name = mod.name.strip()
+        mod_value = mod.value
+
+    fn = descriptions.get(mod_name)
     if fn:
-        return fn(mod.value)
+        return fn(mod_value)
     return ""
 
 
@@ -488,11 +503,10 @@ def generate_corrupted_encounter(player, monster) -> "Monster":
     base_hp = random.randint(0, 9) + int(
         10 * (monster.level ** random.uniform(1.6, 1.7))
     )
-    monster.hp = int(base_hp * 2)
+    monster.hp = int(base_hp * 0.7)
     monster.max_hp = monster.hp
 
-    # Attack: 1.2× normal
-    monster.attack = int(monster.attack * 1.2)
+    monster.attack = int(monster.attack)
 
     monster.xp = random.randint(1, 9) + monster.level * 100
 

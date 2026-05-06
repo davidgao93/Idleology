@@ -29,13 +29,13 @@ class EncounterManager:
 
         # 2. Lucifer (Infernal)
         elif (
-            player_level >= 20 and currencies["soul_cores"] >= 5 and 0.20 <= roll < 0.40
+            player_level >= 30 and currencies["soul_cores"] >= 5 and 0.20 <= roll < 0.40
         ):
             return True, "lucifer", {"soul_cores": 5}
 
         # 3. Gemini (Balance)
         elif (
-            player_level >= 30
+            player_level >= 40
             and currencies["balance_fragment"] >= 2
             and 0.40 <= roll < 0.60
         ):
@@ -43,7 +43,7 @@ class EncounterManager:
 
         # 4. NEET (Void)
         elif (
-            player_level >= 40 and currencies["void_frags"] >= 3 and 0.60 <= roll < 0.80
+            player_level >= 50 and currencies["void_frags"] >= 3 and 0.60 <= roll < 0.80
         ):
             return True, "NEET", {"void_frags": 3}
 

@@ -1,6 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.base_view import BaseView
 from core.combat.dummy_engine import DummyEngine
 from core.combat.gen_mob import calculate_monster_stats, get_modifier_description
 from core.combat.modifier_data import (
@@ -12,8 +13,6 @@ from core.combat.modifier_data import (
 )
 from core.images import COMBAT_DUMMY
 from core.models import Monster
-
-from .views_base import BaseCombatView
 
 # ---------------------------------------------------------------------------
 # Modifier catalogue
@@ -74,13 +73,9 @@ class SetLevelModal(discord.ui.Modal, title="Set Dummy Level"):
 # ---------------------------------------------------------------------------
 
 
-class DummyConfigView(BaseCombatView):
+class DummyConfigView(BaseView):
     def __init__(self, bot, user_id: str, player):
-        super().__init__(
-            bot, user_id, player.server_id if hasattr(player, "server_id") else ""
-        )
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id)
         self.player = player
 
         # Configuration state
@@ -90,20 +85,6 @@ class DummyConfigView(BaseCombatView):
         self.slayer_active = False  # Simulates slayer task matching this dummy
 
         self.update_components()
-
-    # ---------------------------------------------------------------------- #
-    # discord.py checks                                                        #
-    # ---------------------------------------------------------------------- #
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        try:
-            await self.message.edit(view=None)
-        except Exception:
-            pass
 
     # ---------------------------------------------------------------------- #
     # Embed                                                                    #
