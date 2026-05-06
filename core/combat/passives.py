@@ -174,11 +174,15 @@ def _apply_partner_combat_start(
         elif key == "co_atk_from_def":
             bonus = int(partner.total_defence * lvl * 0.25)
             player.bonus_atk += bonus
-            parts.append(f"**Def→Atk Lv.{lvl}** — ⚔️ +{bonus} ATK (from {partner.name}'s DEF)")
+            parts.append(
+                f"**Def→Atk Lv.{lvl}** — ⚔️ +{bonus} ATK (from {partner.name}'s DEF)"
+            )
         elif key == "co_def_from_atk":
             bonus = int(partner.total_attack * lvl * 0.20)
             player.bonus_def += bonus
-            parts.append(f"**Atk→Def Lv.{lvl}** — 🛡️ +{bonus} DEF (from {partner.name}'s ATK)")
+            parts.append(
+                f"**Atk→Def Lv.{lvl}** — 🛡️ +{bonus} DEF (from {partner.name}'s ATK)"
+            )
         elif key == "co_monster_debuff":
             atk_red = max(1, int(monster.attack * lvl * 0.02))
             def_red = max(1, int(monster.defence * lvl * 0.02))
@@ -191,20 +195,25 @@ def _apply_partner_combat_start(
         elif key == "co_curse_damage":
             reduction = max(1, int(monster.attack * lvl * 0.02))
             monster.attack = max(0, monster.attack - reduction)
-            parts.append(f"**Curse: Damage Lv.{lvl}** — {monster.name} loses **{reduction}** ATK 🩸")
+            parts.append(
+                f"**Curse: Damage Lv.{lvl}** — {monster.name} loses **{reduction}** ATK 🩸"
+            )
         elif key == "co_curse_taken":
             bonus = int(player.flat_atk * lvl * 0.02)
             player.bonus_atk += bonus
             parts.append(f"**Curse: Vulnerability Lv.{lvl}** — ⚔️ +{bonus} ATK")
         elif key == "co_special_rarity":
             player.partner_special_rarity = lvl * 0.1
-            parts.append(f"**Special Find Lv.{lvl}** — +{lvl * 0.1:.1f}% special drop rate")
+            parts.append(
+                f"**Special Find Lv.{lvl}** — +{lvl * 0.1:.1f}% special drop rate"
+            )
 
     sig_key = partner.sig_combat_key
     sig_lvl = partner.sig_combat_lvl
     if sig_key and sig_lvl >= 1:
         if sig_key == "sig_co_skol":
             from core.partners.mechanics import _SKOL_SIG_BUFFS
+
             n = _SKOL_SIG_BUFFS.get(sig_lvl, 1)
             buff_indices = random.sample(range(4), min(n, 4))
             buff_msgs = []

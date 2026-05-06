@@ -1,9 +1,9 @@
 import math
 import random
 
+from core.combat import jewel_engine as _je
 from core.combat.calcs import calculate_damage_taken, calculate_monster_hit_chance
 from core.combat.helpers import MonsterTurnResult, _add_ward
-from core.combat import jewel_engine as _je
 from core.models import Monster, Player
 
 
@@ -138,7 +138,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     # --- Mending: passive HP regen every other monster turn ---
     if monster.has_modifier("Mending") and monster.combat_round % 2 == 0:
         # sqrt scaling: same heal at 10k HP, tapers naturally above that
-        regen = int(math.sqrt(monster.max_hp * 10_000) * monster.get_modifier_value("Mending"))
+        regen = int(
+            math.sqrt(monster.max_hp * 10_000) * monster.get_modifier_value("Mending")
+        )
         monster.hp = min(monster.max_hp, monster.hp + regen)
         log.append(f"{monster.name}'s **Mending** restores **{regen}** HP!")
 
@@ -507,7 +509,10 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             # Vampiric: heals X% of max HP per successful hit
             if monster.has_modifier("Vampiric") and damage_dealt > 0:
                 # sqrt scaling: same heal at 10k HP, tapers naturally above that
-                heal = int(math.sqrt(monster.max_hp * 10_000) * monster.get_modifier_value("Vampiric"))
+                heal = int(
+                    math.sqrt(monster.max_hp * 10_000)
+                    * monster.get_modifier_value("Vampiric")
+                )
                 monster.hp = min(monster.max_hp, monster.hp + heal)
                 log.append(
                     f"The monster's **Vampiric** essence siphons life, healing it for **{heal}** HP!"
@@ -598,7 +603,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     # --- Paradise Jewel: Bastion — charge on HP damage taken ---
     if hp_damage > 0:
         _bastion_log: list[str] = []
-        _je.process_jewel_trigger(player, monster, "hp_damage_taken", hp_damage, _bastion_log)
+        _je.process_jewel_trigger(
+            player, monster, "hp_damage_taken", hp_damage, _bastion_log
+        )
         if _bastion_log:
             log.extend(_bastion_log)
 

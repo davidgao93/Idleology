@@ -1,6 +1,7 @@
 import copy
 from dataclasses import dataclass
-from core.models import Player, Monster
+
+from core.models import Monster, Player
 
 
 @dataclass
@@ -23,7 +24,9 @@ class SimulationResult:
 
 class DummyEngine:
     @staticmethod
-    def run_simulation(player: Player, monster: Monster, turns: int = 100) -> SimulationResult:
+    def run_simulation(
+        player: Player, monster: Monster, turns: int = 100
+    ) -> SimulationResult:
         """
         Runs a fixed-length combat simulation using the real engine.
         Works on deep copies of player and monster so the originals are never mutated.
@@ -32,7 +35,7 @@ class DummyEngine:
         """
         from core.combat import engine
 
-        sim_player  = copy.deepcopy(player)
+        sim_player = copy.deepcopy(player)
         sim_monster = copy.deepcopy(monster)
 
         # Initialise ward and apply the same one-time combat-start effects the real fight uses
@@ -43,14 +46,14 @@ class DummyEngine:
         # Keep a reference HP so the monster never actually "dies" mid-simulation
         monster_ref_hp = sim_monster.hp
 
-        total_damage       = 0
-        hits               = 0
-        misses             = 0
-        crits              = 0
-        max_hit            = 0
-        min_hit            = float('inf')
+        total_damage = 0
+        hits = 0
+        misses = 0
+        crits = 0
+        max_hit = 0
+        min_hit = float("inf")
         total_damage_taken = 0
-        max_damage_taken   = 0
+        max_damage_taken = 0
 
         for _ in range(turns):
             # Reset monster HP each turn so the player always fights a full-health enemy,
@@ -69,8 +72,10 @@ class DummyEngine:
 
             if p.damage > 0:
                 total_damage += p.damage
-                if p.damage > max_hit: max_hit = p.damage
-                if p.damage < min_hit: min_hit = p.damage
+                if p.damage > max_hit:
+                    max_hit = p.damage
+                if p.damage < min_hit:
+                    min_hit = p.damage
 
             # Keep player HP above zero so HP-scaling passives (e.g. Frenzy) behave sensibly
             if sim_player.current_hp <= 0:
@@ -83,7 +88,7 @@ class DummyEngine:
             if m.hp_damage > max_damage_taken:
                 max_damage_taken = m.hp_damage
 
-        if min_hit == float('inf'):
+        if min_hit == float("inf"):
             min_hit = 0
 
         return SimulationResult(
@@ -110,11 +115,18 @@ class DummyEngine:
         """Build a proxy Monster using the same stat pipeline as the real generators."""
         from core.combat.gen_mob import calculate_monster_stats
         from core.combat.modifier_data import make_modifier
+
         proxy = Monster(
-            name="Proxy", level=ref_lvl, hp=999_999, max_hp=999_999, xp=0,
-            attack=0, defence=0,
+            name="Proxy",
+            level=ref_lvl,
+            hp=999_999,
+            max_hp=999_999,
+            xp=0,
+            attack=0,
+            defence=0,
             modifiers=[make_modifier(n, ref_lvl) for n in modifier_names],
-            image="", flavor="",
+            image="",
+            flavor="",
         )
         return calculate_monster_stats(proxy)
 
@@ -128,39 +140,49 @@ class DummyEngine:
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
-            avg_taken   = res.avg_damage_taken
+            avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
             if time_to_die < 5:
-                return "You feel as if you are **not ready**. The aura alone crushes you."
+                return (
+                    "You feel as if you are **not ready**. The aura alone crushes you."
+                )
             elif res.average_damage < (player.total_max_hp * 0.1) and time_to_die < 15:
-                return "You feel this would be a **tough battle**. Survival is uncertain."
+                return (
+                    "You feel this would be a **tough battle**. Survival is uncertain."
+                )
             return "You are **filled with determination**. Press onwards."
 
         if target == "lucifer_uber":
-            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Infernal Protection", "Hell's Fury"])
-            proxy.attack  = int(proxy.attack  * 1.3)
+            proxy = DummyEngine._make_uber_proxy(
+                ref_lvl, ["Infernal Protection", "Hell's Fury"]
+            )
+            proxy.attack = int(proxy.attack * 1.3)
             proxy.defence = int(proxy.defence * 0.3)
-            proxy.attack  += int(ref_lvl * 1.0)
+            proxy.attack += int(ref_lvl * 1.0)
             proxy.defence += int(ref_lvl * 0.2)
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
-            avg_taken   = res.avg_damage_taken
+            avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
             if time_to_die < 3:
                 return "You feel as if you are **not ready**. His strikes alone would end you."
             elif res.average_damage < (player.total_max_hp * 0.1) and time_to_die < 10:
-                return "You feel this would be a **tough battle**. Survival is uncertain."
+                return (
+                    "You feel this would be a **tough battle**. Survival is uncertain."
+                )
             return "You are **filled with determination**. Press onwards."
 
         if target == "neet_uber":
-            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Void Protection", "Void Aura"])
-            proxy.attack  += int(ref_lvl * 0.8)
+            proxy = DummyEngine._make_uber_proxy(
+                ref_lvl, ["Void Protection", "Void Aura"]
+            )
+            proxy.attack += int(ref_lvl * 0.8)
             proxy.defence += int(ref_lvl * 0.5)
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
-            avg_taken   = res.avg_damage_taken
+            avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
             if res.average_damage < (player.total_max_hp * 0.05):
                 return "You feel as if you are **not ready**. The void would consume you before you land a dent."
@@ -171,13 +193,15 @@ class DummyEngine:
             return "You are **filled with determination**. The void beckons."
 
         if target == "gemini_uber":
-            proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Balanced Protection", "Balanced Strikes"])
-            proxy.attack  += int(ref_lvl * 0.65)
+            proxy = DummyEngine._make_uber_proxy(
+                ref_lvl, ["Balanced Protection", "Balanced Strikes"]
+            )
+            proxy.attack += int(ref_lvl * 0.65)
             proxy.defence += int(ref_lvl * 0.65)
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
-            avg_taken   = res.avg_damage_taken
+            avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
             if res.average_damage < (player.total_max_hp * 0.05):
                 return "You feel as if you are **not ready**. The twins would outlast you entirely."
@@ -189,12 +213,12 @@ class DummyEngine:
 
         if target == "evelynn_uber":
             proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Corrupted Protection"])
-            proxy.attack  = int(proxy.attack  * 1.4)
+            proxy.attack = int(proxy.attack * 1.4)
             proxy.defence = int(proxy.defence * 0.85)
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
-            avg_taken   = res.avg_damage_taken
+            avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
             if res.average_damage < (player.total_max_hp * 0.05):
                 return "You feel as if you are **not ready**. The corruption would consume you before you leave a mark."

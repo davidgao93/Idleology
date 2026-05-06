@@ -67,13 +67,13 @@ class CombatLogger:
             return
 
         from core.combat.calcs import (
-            calculate_crit_chance,
-            calculate_hit_chance,
-            calculate_monster_hit_chance,
             _HIT_BASE,
             _HIT_SENSITIVITY,
             _MON_HIT_BASE,
             _MON_HIT_SENSITIVITY,
+            calculate_crit_chance,
+            calculate_hit_chance,
+            calculate_monster_hit_chance,
         )
 
         p_atk = player.get_total_attack()
@@ -89,9 +89,15 @@ class CombatLogger:
         p_pct_diff = (p_atk - m_def) / m_def if m_def > 0 else float("inf")
         p_hit_base = _HIT_BASE + p_pct_diff * _HIT_SENSITIVITY if m_def > 0 else 1.0
         m_pct_diff = (m_atk - p_def) / m_atk if m_atk > 0 else 0.0
-        m_hit_base = _MON_HIT_BASE + m_pct_diff * _MON_HIT_SENSITIVITY if m_atk > 0 else 0.0
+        m_hit_base = (
+            _MON_HIT_BASE + m_pct_diff * _MON_HIT_SENSITIVITY if m_atk > 0 else 0.0
+        )
 
-        asc_hit = player.get_ascension_bonuses().get("hit", 0) if player.ascension_unlocks else 0
+        asc_hit = (
+            player.get_ascension_bonuses().get("hit", 0)
+            if player.ascension_unlocks
+            else 0
+        )
 
         self._w(f"{'=' * 60}")
         self._w(f"COMBAT: {player.name}  vs  {monster.name} (Lv.{monster.level})")
@@ -177,9 +183,7 @@ class CombatLogger:
         self._w(
             f"[XP/GOLD]   XP: {reward_data.get('xp', 0):,} | Gold: {reward_data.get('gold', 0):,}"
         )
-        self._w(
-            f"[PLAYER]    Rarity: {rarity}% | Special Drop Bonus: {special_bonus}%"
-        )
+        self._w(f"[PLAYER]    Rarity: {rarity}% | Special Drop Bonus: {special_bonus}%")
 
         # Gear drop roll
         gear_roll = rolls.get("gear_roll")
@@ -269,7 +273,7 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
         lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
         crit_mult += lvl * 0.1
     if monster.has_modifier("Nullifying"):
-        crit_mult *= (1 - monster.get_modifier_value("Nullifying"))
+        crit_mult *= 1 - monster.get_modifier_value("Nullifying")
     p_max_dmg = int(p_atk * crit_mult)
     if player.get_glove_passive() == "instability":
         lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
@@ -280,7 +284,7 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
 
     raw_base = m_atk * max(0.0, 1.0 - p_def / m_atk) if m_atk > 0 else 0.0
     if monster.has_modifier("Savage"):
-        raw_base *= (1 + monster.get_modifier_value("Savage"))
+        raw_base *= 1 + monster.get_modifier_value("Savage")
     if monster.has_modifier("Hell's Fury"):
         raw_base *= monster.get_modifier_value("Hell's Fury")
     if monster.has_modifier("Overwhelming"):

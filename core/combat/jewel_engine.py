@@ -41,7 +41,9 @@ def _jop(player: "Player") -> dict | None:
 # ---------------------------------------------------------------------------
 
 
-def _unleash_surge(player: "Player", monster: "Monster", data: dict, log: list[str]) -> int:
+def _unleash_surge(
+    player: "Player", monster: "Monster", data: dict, log: list[str]
+) -> int:
     """Returns extra damage dealt to monster."""
     eff_lvl = M.get_effective_level("surge", data, M.mastery_bonus(data))
     pct = M.roll_scale_pct("surge", eff_lvl)
@@ -72,7 +74,9 @@ def _unleash_cataclysm(player: "Player", data: dict, log: list[str]) -> None:
     )
 
 
-def _unleash_acrimony(player: "Player", monster: "Monster", data: dict, log: list[str]) -> int:
+def _unleash_acrimony(
+    player: "Player", monster: "Monster", data: dict, log: list[str]
+) -> int:
     """Venom burst + DoT. Returns immediate damage dealt."""
     eff_lvl = M.get_effective_level("acrimony", data, M.mastery_bonus(data))
     pct = M.roll_scale_pct("acrimony", eff_lvl)
@@ -130,7 +134,9 @@ def _unleash_bastion(
     reflect = max(1, int(hit_dmg * pct / 100 * total_mult))
     reflect = min(reflect, max(1, monster.hp))
     monster.hp = max(0, monster.hp - reflect)
-    log.append(f"🔱 **Bastion** reflects 🗡️ **{reflect}** damage back at {monster.name}!")
+    log.append(
+        f"🔱 **Bastion** reflects 🗡️ **{reflect}** damage back at {monster.name}!"
+    )
     return reflect
 
 
@@ -268,7 +274,9 @@ def _do_charge_and_maybe_unleash(
 
     # Mirage: chance to double proc
     if M.should_double_proc(data):
-        defn_name = SKILL_JEWELS[skill_key].name if skill_key in SKILL_JEWELS else skill_key
+        defn_name = (
+            SKILL_JEWELS[skill_key].name if skill_key in SKILL_JEWELS else skill_key
+        )
         log.append(f"✨ **Mirage** — {defn_name} triggers twice!")
         _do_unleash()
 
@@ -295,7 +303,9 @@ def process_jewel_trigger(
     expected_trigger = SKILL_TRIGGERS.get(skill_key)
     if expected_trigger != trigger_type:
         return
-    _do_charge_and_maybe_unleash(player, monster, data, skill_key, 1, log, trigger_value)
+    _do_charge_and_maybe_unleash(
+        player, monster, data, skill_key, 1, log, trigger_value
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -303,9 +313,7 @@ def process_jewel_trigger(
 # ---------------------------------------------------------------------------
 
 
-def tick_acrimony_dot(
-    player: "Player", monster: "Monster", log: list[str]
-) -> None:
+def tick_acrimony_dot(player: "Player", monster: "Monster", log: list[str]) -> None:
     """Tick Acrimony DoT. Call at the start of process_player_turn."""
     if player.jewel_acrimony_dot <= 0:
         return
@@ -313,7 +321,9 @@ def tick_acrimony_dot(
     if dot_dmg > 0 and monster.hp > 0:
         actual = min(dot_dmg, monster.hp)
         monster.hp = max(0, monster.hp - actual)
-        log.append(f"🐍 **Acrimony** venom pulses for **{actual}** DoT damage! ({player.jewel_acrimony_dot - 1} turns left)")
+        log.append(
+            f"🐍 **Acrimony** venom pulses for **{actual}** DoT damage! ({player.jewel_acrimony_dot - 1} turns left)"
+        )
     player.jewel_acrimony_dot -= 1
     if player.jewel_acrimony_dot <= 0:
         player.jewel_acrimony_dot_dmg = 0
@@ -324,9 +334,7 @@ def tick_acrimony_dot(
 # ---------------------------------------------------------------------------
 
 
-def tick_onslaught_charge(
-    player: "Player", monster: "Monster", log: list[str]
-) -> None:
+def tick_onslaught_charge(player: "Player", monster: "Monster", log: list[str]) -> None:
     """Add an Onslaught charge if HP < 50%. Call at the start of process_player_turn."""
     data = _jop(player)
     if not data:

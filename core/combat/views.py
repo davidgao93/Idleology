@@ -329,15 +329,21 @@ class CombatView(ui.View):
             return 1
         return 0
 
-    async def _uber_defeat(self, message, dmg_frac: float = 0.0, curios_gained: int = 0) -> None:
+    async def _uber_defeat(
+        self, message, dmg_frac: float = 0.0, curios_gained: int = 0
+    ) -> None:
         base_loss = int(self.player.exp * 0.10)
         xp_loss = await ExperienceManager.remove_experience(
             self.bot, self.user_id, self.player, base_loss
         )
         self.player.current_hp = 1
         embed = combat_ui.create_defeat_embed(
-            self.player, self.monster, xp_loss,
-            curios_gained=curios_gained, dmg_frac=dmg_frac, killing_blow=self.killing_blow,
+            self.player,
+            self.monster,
+            xp_loss,
+            curios_gained=curios_gained,
+            dmg_frac=dmg_frac,
+            killing_blow=self.killing_blow,
         )
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)

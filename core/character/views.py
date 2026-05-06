@@ -24,9 +24,6 @@ class RegistrationView(View):
         self.gender = None
         self.appearance_url = None
 
-        # NOTE: We do NOT manually add buttons here because we use decorators below.
-        # This fixes the duplicate button issue.
-
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
 

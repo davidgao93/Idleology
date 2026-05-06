@@ -92,11 +92,15 @@ class DropManager:
             return None
         tool_tier = skill_row[2]
         resources = SkillMechanics.calculate_yield(skill_type, tool_tier)
-        await bot.database.skills.update_batch(user_id, server_id, skill_type, resources)
+        await bot.database.skills.update_batch(
+            user_id, server_id, skill_type, resources
+        )
         # NEET boot: Void Echo doubles skilling resource yield on proc
         neet_suffix = ""
         if player.get_boot_corrupted_essence() == "neet":
-            await bot.database.skills.update_batch(user_id, server_id, skill_type, resources)
+            await bot.database.skills.update_batch(
+                user_id, server_id, skill_type, resources
+            )
             neet_suffix = " (**Void Echo** doubled the yield!)"
         msg_map = {"mining": "ores", "woodcutting": "logs", "fishing": "fish"}
         return f"👢 **Skiller** found extra {msg_map[skill_type]}!{neet_suffix}"
@@ -131,7 +135,9 @@ class DropManager:
 
         # 1c. Monster Body Part Drop (normal, non-essence monsters only)
         if monster is not None and not getattr(monster, "is_essence", False):
-            part_chance = _BODY_PART_BASE_CHANCE + (player.get_special_drop_bonus() / 100)
+            part_chance = _BODY_PART_BASE_CHANCE + (
+                player.get_special_drop_bonus() / 100
+            )
             _part_roll = random.random()
             reward_data.setdefault("rolls", {})
             reward_data["rolls"]["part_chance_pct"] = round(part_chance * 100, 3)

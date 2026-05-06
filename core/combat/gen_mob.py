@@ -620,7 +620,7 @@ def generate_uber_evelynn(player, monster):
 
     monster = calculate_monster_stats(monster)
 
-    base_hp = random.randint(0, 9) + int(10 * (monster.level ** 1.65))
+    base_hp = random.randint(0, 9) + int(10 * (monster.level**1.65))
     monster.hp = int(base_hp * 2)
     monster.max_hp = monster.hp
     monster.xp = 75000
@@ -636,10 +636,12 @@ def generate_uber_evelynn(player, monster):
     monster.modifiers = []
     apply_all_corrupted_modifiers(monster)
 
-    monster.modifiers.extend([
-        make_modifier("Corrupted Protection", monster.level),
-        make_modifier("Origin of Corruption", monster.level),
-    ])
+    monster.modifiers.extend(
+        [
+            make_modifier("Corrupted Protection", monster.level),
+            make_modifier("Origin of Corruption", monster.level),
+        ]
+    )
 
     monster.attack = int(monster.attack * 1.4)
     monster.defence = int(monster.defence * 0.85)

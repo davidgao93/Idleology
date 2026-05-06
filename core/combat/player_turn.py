@@ -1,8 +1,8 @@
 import random
 
+from core.combat import jewel_engine as _je
 from core.combat.calcs import calculate_hit_chance, fmt_weapon_passive, get_weapon_tier
 from core.combat.helpers import PlayerTurnResult, _add_ward
-from core.combat import jewel_engine as _je
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -950,7 +950,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     if wf_bonus > 0 and is_hit and monster.hp > 0:
         actual_wf = min(wf_bonus, monster.hp)
         monster.hp = max(0, monster.hp - actual_wf)
-        log.append(f"🛡️ **Wardforge** — ward energy surges for **{actual_wf}** bonus damage!")
+        log.append(
+            f"🛡️ **Wardforge** — ward energy surges for **{actual_wf}** bonus damage!"
+        )
 
     # --- Paradise Jewel: Charge triggers (hit / crit / miss) ---
     _jewel_log: list[str] = []

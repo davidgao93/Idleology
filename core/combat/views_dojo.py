@@ -13,6 +13,8 @@ from core.combat.modifier_data import (
 from core.images import COMBAT_DUMMY
 from core.models import Monster
 
+from .views_base import BaseCombatView
+
 # ---------------------------------------------------------------------------
 # Modifier catalogue
 # ---------------------------------------------------------------------------
@@ -72,9 +74,11 @@ class SetLevelModal(discord.ui.Modal, title="Set Dummy Level"):
 # ---------------------------------------------------------------------------
 
 
-class DummyConfigView(ui.View):
+class DummyConfigView(BaseCombatView):
     def __init__(self, bot, user_id: str, player):
-        super().__init__(timeout=600)
+        super().__init__(
+            bot, user_id, player.server_id if hasattr(player, "server_id") else ""
+        )
         self.bot = bot
         self.user_id = user_id
         self.player = player

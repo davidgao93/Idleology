@@ -13,18 +13,20 @@ import random
 # Checked slots: weapon main passive, pinnacle, utmost.
 # ---------------------------------------------------------------------------
 
-WEAPON_PASSIVE_FAMILIES: frozenset[str] = frozenset({
-    "burning",    # Atk boost
-    "poison",     # Miss damage
-    "debilitate", # Def shred (formerly polished)
-    "shocking",   # Min damage floor
-    "sturdy",     # Def boost
-    "piercing",   # Crit chance
-    "cull",       # Culling threshold
-    "deadeye",    # Hit chance
-    "echo",       # Extra hit damage
-    "arcane",     # Ward on hit
-})
+WEAPON_PASSIVE_FAMILIES: frozenset[str] = frozenset(
+    {
+        "burning",  # Atk boost
+        "poison",  # Miss damage
+        "debilitate",  # Def shred (formerly polished)
+        "shocking",  # Min damage floor
+        "sturdy",  # Def boost
+        "piercing",  # Crit chance
+        "cull",  # Culling threshold
+        "deadeye",  # Hit chance
+        "echo",  # Extra hit damage
+        "arcane",  # Ward on hit
+    }
+)
 
 # Per-tier scale constants — import these in engine/player_turn instead of hardcoding.
 PASSIVE_SCALE: dict[str, float] = {
@@ -73,7 +75,7 @@ def get_weapon_tier(player, key: str) -> tuple[int, str]:
     ):
         if passive_str and passive_str.startswith(prefix):
             try:
-                tier_idx = int(passive_str[len(prefix):]) - 1  # 1-indexed → 0-indexed
+                tier_idx = int(passive_str[len(prefix) :]) - 1  # 1-indexed → 0-indexed
                 if tier_idx > best[0]:
                     best = (tier_idx, passive_str)
             except ValueError:
@@ -117,7 +119,9 @@ def calculate_hit_chance(player, monster) -> float:
     Base is sourced from the weapon's drop template (default 60% if no weapon)."""
     from core.items.essence_mechanics import compute_essence_stat_bonus
 
-    hit_base = player.equipped_weapon.hit_chance if player.equipped_weapon else _HIT_BASE
+    hit_base = (
+        player.equipped_weapon.hit_chance if player.equipped_weapon else _HIT_BASE
+    )
     m_def = monster.defence
     if m_def <= 0:
         base = _HIT_MAX

@@ -27,16 +27,32 @@ _WEAPON_BASE_TEMPLATES = [
 ]
 
 _TEMPLATE_WEIGHTS = [
-    0.025, 0.025, 0.025, 0.025,  # Premium  (4 × 0.025 = 0.10)
-    0.125, 0.125, 0.125, 0.125,  # Good     (4 × 0.125 = 0.50)
-    0.10,  0.10,  0.10,  0.10,   # Mediocre (4 × 0.10  = 0.40)
+    0.025,
+    0.025,
+    0.025,
+    0.025,  # Premium  (4 × 0.025 = 0.10)
+    0.125,
+    0.125,
+    0.125,
+    0.125,  # Good     (4 × 0.125 = 0.50)
+    0.10,
+    0.10,
+    0.10,
+    0.10,  # Mediocre (4 × 0.10  = 0.40)
 ]
 
 # Soft caps for each stat per equipment type.
 # get_scaled_stat approaches these asymptotically — they are never literally hit.
 _WEAPON_CAPS = {"attack": 80, "defence": 80, "rarity": 200}
 _ACC_CAPS = {"attack": 80, "defence": 80, "rarity": 200, "ward": 60, "crit": 20}
-_ARMOR_CAPS = {"block": 50, "evasion": 50, "ward": 100, "pdr": 40, "fdr": 80, "main_stat": 60}
+_ARMOR_CAPS = {
+    "block": 50,
+    "evasion": 50,
+    "ward": 100,
+    "pdr": 40,
+    "fdr": 80,
+    "main_stat": 60,
+}
 _GLOVE_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
 _BOOT_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
 _HELM_CAPS = {"defence": 40, "ward": 80, "pdr": 15, "fdr": 50}
@@ -92,7 +108,9 @@ async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
 
     if weapon.attack > 0 or weapon.defence > 0 or weapon.rarity > 0:
         # Select a base template (determines hit/crit/multi and display rarity)
-        hit, crit, multi, base_rar = random.choices(_WEAPON_BASE_TEMPLATES, _TEMPLATE_WEIGHTS)[0]
+        hit, crit, multi, base_rar = random.choices(
+            _WEAPON_BASE_TEMPLATES, _TEMPLATE_WEIGHTS
+        )[0]
         weapon.hit_chance = hit
         weapon.crit_chance = crit
         weapon.crit_multi = multi

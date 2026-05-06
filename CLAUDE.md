@@ -83,123 +83,114 @@ async def combat(self, interaction: discord.Interaction):
 
 ---
 
-## State Management and View Management
+### View Lifecycle & Best Practices
 
-`bot.state_manager` prevents race conditions (e.g., starting combat while a trade is open).
+**Rule**: Every view in a module **must** inherit from that module’s **module-specific base view**.  
+This guarantees consistent `interaction_check`, proper `state_manager` cleanup on timeout, and prevents users from getting stuck when sub-views time out.
 
-```python
-# Start an operation
-self.bot.state_manager.set_active(user_id, "combat")
+#### 1. Base View File Strategy
 
-# Guard against double-entry
-if self.bot.state_manager.is_active(user_id):
-    return await interaction.response.send_message("Already in an activity.")
+- **Complex modules** (multiple view files like `views.py` + `synthesis_views.py`):  
+  Create a dedicated file: `core/{module}/base_views.py`
 
-# Cleanup — ALWAYS do this in on_timeout and stop/exit buttons
-self.bot.state_manager.clear_active(user_id)
+- **Simple modules** (only one `views.py` file):  
+  You *may* put the base class directly in `views.py`.
+
+**Recommended structure for complex modules:**
+```
+core/alchemy/
+├── __init__.py
+├── base_views.py          ← BaseAlchemyView lives here
+├── views.py
+├── synthesis_views.py
+├── mechanics.py
+└── ...
 ```
 
-**Rule:** Every `View` that calls `set_active` must call `clear_active` in:
-- `async def on_timeout(self)`
-- Any "exit", "cancel", or final-state button callback
-- Avoid using clear_items() and re-adding buttons on a live message.
-- When switching tabs, create a brand-new View with fresh component IDs so Discord never gets desynced.
-Add Proper async callbacks.
+#### 2. Base View Template (`base_views.py`)
 
-View Lifecycle & Best Practices
-Rule: Every view in a module (Slayer, Economy, Shop, etc.) must inherit from a module-specific base view.
-This guarantees:
+```python
+"""
+core/{module}/base_views.py
+Shared base class for all views in this module.
+Prevents circular imports and centralizes common view logic.
+"""
 
-Consistent interaction_check
-Proper cleanup of the active state on timeout (prevents users getting stuck)
-DRY code and future-proof navigation
-Example: slayer/views.py
-```Python
-class BaseSlayerView(ui.View):
-    def __init__(self, bot, user_id: int | str, server_id: int, timeout: int = 600):
+import discord
+from discord import Interaction, ui
+
+
+class BaseAlchemyView(ui.View):        # ← Rename per module: BaseSlayerView, BaseShopView, etc.
+    """Base class for ALL views in the {Module} module.
+    Guarantees consistent interaction checks + proper state_manager cleanup.
+    """
+    def __init__(self, bot, user_id: str, server_id: str, timeout: int = 600):
         super().__init__(timeout=timeout)
         self.bot = bot
-        self.user_id = str(user_id)      # store as string for safe comparison
-        self.server_id = server_id
+        self.user_id = str(user_id)
+        self.server_id = str(server_id)
+        self.message: discord.Message | None = None   # Used by on_timeout
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
 
-    async def on_timeout(self):
-        """Always clean up the state manager when any view in the module times out."""
+    async def on_timeout(self) -> None:
+        """Always clean up the active state when any view in this module times out."""
         self.bot.state_manager.clear_active(self.user_id)
-        try:
-            await self.message.edit(view=None)  # disable all buttons
-        except (discord.NotFound, discord.HTTPException, AttributeError):
-            pass
-        self.stop()
-```
-Example of a view using the base:
-```
-class MySlayerView(BaseSlayerView):
-    def __init__(self, bot, user_id, server_id, profile, parent_view=None):
-        super().__init__(bot, user_id, server_id)
-        self.profile = profile
-        self.parent = parent_view          # ← important for "Back" navigation
-        self.setup_ui()                    # recommended pattern
-
-    def setup_ui(self):
-        """Rebuild all buttons/selects. Call this after any data change."""
-        self.clear_items()
-        # Add buttons, selects, etc. here...
-        pass
-
-    async def some_action(self, interaction: Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        # ... do DB work, update self.profile, etc. ...
-        self.setup_ui()                    # refresh UI state
-        await interaction.edit_original_response(embed=..., view=self)
-
-    async def go_back(self, interaction: Interaction):
-        """Standard pattern for returning to parent view."""
-        if self.parent:
-            # Refresh parent data in case it changed
-            self.parent.profile = await self.bot.database.slayer.get_profile(
-                self.user_id, self.server_id
-            )
-            self.parent.setup_ui()         # or setup_buttons()
-            await interaction.response.edit_message(
-                embed=self.parent.build_embed(),
-                view=self.parent
-            )
-        else:
-            await interaction.response.edit_message(view=None)
-        self.stop()
-
-    async def close_view(self, interaction: Interaction):
-        """Explicit close (optional - timeout also handles this)."""
-        self.bot.state_manager.clear_active(self.user_id)
-        await interaction.response.edit_message(view=None)
+        if self.message:
+            try:
+                await self.message.edit(view=None)
+            except (discord.NotFound, discord.HTTPException, AttributeError, Exception):
+                pass
         self.stop()
 ```
 
-Key Guidelines (follow every time)
+#### 3. How to Use the Base View
 
-Always inherit from the module’s BaseXXXView.
-Use the setup_ui() / setup_buttons() pattern — call it after every change that affects buttons or displayed state.
-For any action involving database calls:
-Python
-```
-await interaction.response.defer()
-# ... work ...
-await interaction.edit_original_response(embed=..., view=self)
-```
-Nested views (Emblem → Slot, etc.):
-Pass parent_view=self when creating the child view.
-Child views must implement a proper go_back() method.
+**In every view file** (`views.py`, `synthesis_views.py`, etc.):
 
-Initial dashboard open (outside the view class):
-Python
+```python
+from .base_views import BaseAlchemyView   # ← Use correct base class name
 ```
-if not await self.bot.check_is_active(interaction, user_id):
-    return
-self.bot.state_manager.set_active(user_id, "slayer")   # or module-specific key
+
+**Example of a view class:**
+
+```python
+class AlchemyHubView(BaseAlchemyView):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        alchemy_level: int,
+        # ... other parameters
+    ):
+        super().__init__(bot, user_id, server_id)   # ← Always call this
+        self.alchemy_level = alchemy_level
+        # ... rest of your __init__ logic
 ```
+
+**Do NOT** re-implement `interaction_check` or `on_timeout` in any child view.
+
+#### 4. Key Guidelines (Follow Every Time)
+
+1. **All views** (main hub, sub-views, confirmation views, modals, etc.) must inherit from the module’s base view.
+2. Always call `super().__init__(bot, user_id, server_id)` first in `__init__`.
+3. After any `edit_original_response(...)`, set the message reference:
+   ```python
+   msg = await interaction.edit_original_response(embed=..., view=view)
+   view.message = msg
+   ```
+4. Use the `setup_ui()` / `setup_buttons()` pattern (clear_items + rebuild) whenever view state changes.
+5. For nested navigation:
+   - Pass `parent_view=self` when creating child views.
+   - Implement clean `go_back()` / `_on_back()` methods that refresh the parent.
+6. When the main dashboard is first opened (in your cog/command):
+   ```python
+   if not await self.bot.check_is_active(interaction, user_id):
+       return
+   self.bot.state_manager.set_active(user_id, "alchemy")   # module key
+   ```
 ---
 
 ## Key Models (`core/models.py`)
@@ -555,7 +546,7 @@ names = load_list("assets/items/swords.txt")
 
 ## Project Info
 
-- **Version**: v0.73
+- **Version**: 0.90
 - **Runtime**: Python 3.11.5, discord.py, aiosqlite
 - **DB**: SQLite (`database/schema.sql`)
 - **Assets**: `assets/` — CSV/JSON/TXT lookup tables (monsters, exp, item names, system config)

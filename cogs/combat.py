@@ -10,7 +10,6 @@ from discord.ext import commands
 from discord.ui import Button, View
 
 from core.combat import engine, ui
-from core.combat.dummy_views import DummyConfigView
 from core.combat.encounters import EncounterManager
 from core.combat.gen_mob import (
     generate_boss,
@@ -18,6 +17,7 @@ from core.combat.gen_mob import (
     generate_encounter,
 )
 from core.combat.views import CombatView
+from core.combat.views_dojo import DummyConfigView
 from core.combat.warning_views import CorruptedEncounterGateView, LowHealthWarningView
 from core.items.factory import load_player
 from core.models import Monster
