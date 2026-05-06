@@ -506,6 +506,18 @@ CREATE TABLE IF NOT EXISTS user_partner_shards (
     PRIMARY KEY (user_id, partner_id)
 );
 
+CREATE TABLE IF NOT EXISTS paradise_jewel_data (
+    user_id                  TEXT PRIMARY KEY,
+    unlocked_skills          TEXT NOT NULL DEFAULT '[]',
+    equipped_skill           TEXT DEFAULT NULL,
+    skill_levels             TEXT NOT NULL DEFAULT '{}',
+    skill_charges            TEXT NOT NULL DEFAULT '{}',
+    passive_slots            TEXT NOT NULL DEFAULT '[]',
+    passive_jewels_invested  INTEGER NOT NULL DEFAULT 0,
+    total_jewels_obtained    INTEGER NOT NULL DEFAULT 0,
+    total_jewels_consumed    INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS boss_party_dispatch (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id       TEXT NOT NULL,

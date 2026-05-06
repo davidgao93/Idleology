@@ -8,6 +8,7 @@ from discord import ButtonStyle, Interaction, ui
 
 import core.slayer.mechanics
 from core.combat import engine, rewards
+from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
 from core.combat.drops import DropManager
@@ -85,6 +86,7 @@ class CombatView(ui.View):
 
             # Save state (HP/XP changes if any occurred prior)
             await self.bot.database.users.update_from_player_object(self.player)
+            await _je.save_jewel_state(self.bot, self.user_id, self.player)
 
         self.combat_logger.log_combat_end(self.player, self.monster, "timeout")
         self.bot.state_manager.clear_active(self.user_id)
@@ -224,6 +226,7 @@ class CombatView(ui.View):
 
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)
+        await _je.save_jewel_state(self.bot, self.user_id, self.player)
         self.stop()
 
     @ui.button(label="10 Turns", style=ButtonStyle.secondary, emoji="⚡", row=1)
@@ -339,6 +342,7 @@ class CombatView(ui.View):
         await message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)
+        await _je.save_jewel_state(self.bot, self.user_id, self.player)
         self.stop()
 
     async def _uber_finalize_rewards(self, reward_data: dict) -> None:
@@ -352,6 +356,7 @@ class CombatView(ui.View):
         if self.player.get_weapon_infernal() == "soulreap":
             self.player.current_hp = self.player.total_max_hp
         await self.bot.database.users.update_from_player_object(self.player)
+        await _je.save_jewel_state(self.bot, self.user_id, self.player)
 
     async def handle_end_state(self, message, interaction: Interaction):
         """Processes victory or defeat with Phase Logic."""
@@ -384,6 +389,7 @@ class CombatView(ui.View):
             await message.edit(embed=embed, view=None)
             self.bot.state_manager.clear_active(self.user_id)
             await self.bot.database.users.update_from_player_object(self.player)
+            await _je.save_jewel_state(self.bot, self.user_id, self.player)
             self.stop()
 
         elif self.monster.hp <= 0:
@@ -936,6 +942,7 @@ class CombatView(ui.View):
 
             self.bot.state_manager.clear_active(self.user_id)
             await self.bot.database.users.update_from_player_object(self.player)
+            await _je.save_jewel_state(self.bot, self.user_id, self.player)
             self.stop()
 
     async def _handle_uber_end_state(self, message, interaction: Interaction):
