@@ -1,16 +1,18 @@
-import discord
+from discord import Interaction, app_commands
 from discord.ext import commands
-from discord import app_commands, Interaction
 
-from core.items.factory import load_player
 from core.codex.views import CodexMenuView
+from core.items.factory import load_player
 
 
 class Codex(commands.Cog, name="codex"):
     def __init__(self, bot) -> None:
         self.bot = bot
 
-    @app_commands.command(name="codex", description="Enter the Codex — an onslaught of curated chapters (Lvl 100+).")
+    @app_commands.command(
+        name="codex",
+        description="Enter the Codex — an onslaught of curated chapters (Lvl 100+).",
+    )
     async def codex(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild_id)
@@ -34,10 +36,14 @@ class Codex(commands.Cog, name="codex"):
         player = await load_player(user_id, existing_user, self.bot.database)
 
         # 5. Load Codex currencies (fetched by column name to avoid index fragility)
-        fragments    = await self.bot.database.users.get_currency(user_id, 'codex_fragments')
-        pages        = await self.bot.database.users.get_currency(user_id, 'codex_pages')
-        rerolls      = await self.bot.database.users.get_currency(user_id, 'codex_rerolls')
-        antique_tomes = await self.bot.database.users.get_currency(user_id, 'antique_tome')
+        fragments = await self.bot.database.users.get_currency(
+            user_id, "codex_fragments"
+        )
+        pages = await self.bot.database.users.get_currency(user_id, "codex_pages")
+        rerolls = await self.bot.database.users.get_currency(user_id, "codex_rerolls")
+        antique_tomes = await self.bot.database.users.get_currency(
+            user_id, "antique_tome"
+        )
 
         # 6. Load chapter history for display
         try:
@@ -47,8 +53,13 @@ class Codex(commands.Cog, name="codex"):
 
         # 7. Show menu
         view = CodexMenuView(
-            self.bot, user_id, player,
-            fragments, pages, rerolls, chapter_history,
+            self.bot,
+            user_id,
+            player,
+            fragments,
+            pages,
+            rerolls,
+            chapter_history,
             antique_tomes=antique_tomes,
         )
         await interaction.response.send_message(embed=view.build_embed(), view=view)

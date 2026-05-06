@@ -1,10 +1,11 @@
 import discord
+from discord import Interaction, app_commands
 from discord.ext import commands, tasks
-from discord import app_commands, Interaction, Message
-from core.items.factory import load_player
-from core.character.views import PassiveAllocateView
-from core.character.profile_hub import ProfileBuilder, ProfileHubView
+
 from core.character.leaderboard_views import LeaderboardHubView
+from core.character.profile_hub import ProfileBuilder, ProfileHubView
+from core.character.views import PassiveAllocateView
+from core.items.factory import load_player
 
 """
 Index	Attribute Description
@@ -26,37 +27,66 @@ Index	Attribute Description
 15	Ascension Level
 16	Potion Count
 17	Last Checkin Time
-18  Created at
-19  Refinement runes
-20  Passive Points
-21  Potential runes
-22  Curios
-23  Curious purchased
-24  Last Combat
-25  Dragon Key
-26  Angel Key
-27  Imbue runes
-28  Soul Cores
-29  Void Fragments
-30  Void Keys
-31  Shatter Runes
+18	Created at
+19	Refinement runes
+20	Passive Points
+21	Potential runes
+22	Curios
+23	Curios purchased
+24	Last Combat
+25	Dragon Key
+26	Angel Key
+27	Imbue runes
+28	Soul Cores
+29	Void Fragments
+30	Void Keys
+31	Shatter Runes
+32	Partnership Runes
+33	Last Companion Collect Time
+34	Balance Fragment
+35	Magma Core
+36	Life Root
+37	Spirit Shard
+38	Doors Enabled
+39	Celestial Stone
+40	Void Crystal
+41	Infernal Cinder
+42	Bound Crystal
+43	Codex Fragments
+44	Codex Pages
+45	Codex Rerolls
+46	Highest Ascension Stage
+47	Spirit Stones
+48	EXP Protection
+49	Antique Tome
+50	Pinnacle Key
+51	Highest Ascension Floor
+52	Prestige Border
+53	Prestige Title
+54	Prestige Display Name
+55	Prestige Flair
+56	Prestige Death Message
+57	Prestige Monument
+58	Curio Puzzle Boxes
 """
+
+
 class Character(commands.Cog, name="character"):
     def __init__(self, bot) -> None:
         self.bot = bot
         self.active_users = {}  # Dictionary to track active users
-        
+
     @commands.Cog.listener()
     async def on_ready(self):
         if not self.check_hp.is_running():
-            self.bot.logger.info('Starting player health regen task')
+            self.bot.logger.info("Starting player health regen task")
             self.check_hp.start()
 
     @tasks.loop(minutes=15)
     async def check_hp(self):
         """Check and increment current_hp for all users every 15m."""
         users = await self.bot.database.users.get_all()
-        self.bot.logger.info(f'Healing all users')
+        self.bot.logger.info("Healing all users")
         for user in users:
             user_id = user[1]
             current_hp = user[11]
@@ -67,13 +97,13 @@ class Character(commands.Cog, name="character"):
                 new_hp = min(current_hp + 1 + scaling, max_hp)
                 await self.bot.database.users.update_hp(user_id, new_hp)
 
-
     @app_commands.command(name="card", description="View your adventurer license.")
     async def card(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
         data = await self.bot.database.users.get(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, data): return
+        if not await self.bot.check_user_registered(interaction, data):
+            return
 
         view = ProfileHubView(self.bot, user_id, server_id, "card")
         embed = await ProfileBuilder.build_card(self.bot, user_id, server_id)
@@ -85,17 +115,19 @@ class Character(commands.Cog, name="character"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
         data = await self.bot.database.users.get(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, data): return
+        if not await self.bot.check_user_registered(interaction, data):
+            return
 
         view = ProfileHubView(self.bot, user_id, server_id, "stats")
         embed = await ProfileBuilder.build_stats(self.bot, user_id, server_id)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
-    '''
+
+    """
     
     MISCELLANEOUS COMMANDS
     
-    '''
+    """
 
     @app_commands.command(name="leaderboard", description="View the server hiscores.")
     async def leaderboard(self, interaction: Interaction) -> None:
@@ -103,28 +135,31 @@ class Character(commands.Cog, name="character"):
         embed = await view.build_embed()
         await interaction.response.send_message(embed=embed, view=view)
 
-
     @app_commands.command(name="passives", description="Spend passive points.")
     async def passives(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
         data = await self.bot.database.users.get(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, data): return
-        if not await self.bot.check_is_active(interaction, user_id): return
+        if not await self.bot.check_user_registered(interaction, data):
+            return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
 
         points = data[20]
         if points <= 0:
-            return await interaction.response.send_message("You have no passive points to spend!", ephemeral=True)
+            return await interaction.response.send_message(
+                "You have no passive points to spend!", ephemeral=True
+            )
 
         self.bot.state_manager.set_active(user_id, "passives")
-        
+
         embed = discord.Embed(
             title="Allocate Passive Points",
             description=f"**Points Remaining:** {points}\n\nSelect a stat to upgrade.",
-            color=0x00FF00
+            color=0x00FF00,
         )
-        
+
         view = PassiveAllocateView(self.bot, user_id, data)
         view.message = await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()

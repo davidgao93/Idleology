@@ -46,7 +46,7 @@ ESSENCE_DISPLAY = {
 }
 
 ESSENCE_BRIEF = {
-    "power": "Boosts item's main stat (ATK on gloves/boots, DEF+WARD on helmets)",
+    "power": "Boosts item's main stat (ATK, DEF, or WARD on gloves/boots · DEF+WARD on helmets)",
     "protection": "Amplifies existing PDR and FDR on the item",
     "insight": "Grants crit chance",
     "evasion": "Grants evasion chance",
@@ -103,9 +103,10 @@ def _format_slot_value(essence_type: str, value: float, item) -> str:
 
     if essence_type == "power":
         if is_helmet:
-            def_bonus = int(item.defence * value / 100)
-            ward_bonus = int(item.ward * value / 100)
+            # Helmet: boost all non-zero stats (DEF and/or WARD)
             stat_parts = []
+            def_bonus = int((item.defence or 0) * value / 100)
+            ward_bonus = int((item.ward or 0) * value / 100)
             if def_bonus > 0:
                 stat_parts.append(f"+{def_bonus} DEF")
             if ward_bonus > 0:
@@ -113,8 +114,17 @@ def _format_slot_value(essence_type: str, value: float, item) -> str:
             stats = ", ".join(stat_parts) if stat_parts else "+0"
             return f"{stats}  ({value:.0f}% of base)"
         else:
-            atk_bonus = int(item.attack * value / 100)
-            return f"+{atk_bonus} ATK  ({value:.0f}% of base)"
+            # Glove / Boot: buff whichever single main stat is non-zero
+            atk = item.attack or 0
+            def_ = item.defence or 0
+            ward = item.ward or 0
+            if atk > 0:
+                return f"+{int(atk * value / 100)} ATK  ({value:.0f}% of base)"
+            elif def_ > 0:
+                return f"+{int(def_ * value / 100)} DEF  ({value:.0f}% of base)"
+            elif ward > 0:
+                return f"+{int(ward * value / 100)}% WARD  ({value:.0f}% of base)"
+            return f"+0  ({value:.0f}% of base)"
 
     elif essence_type == "protection":
         pdr_bonus = int(item.pdr * value / 100)

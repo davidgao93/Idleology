@@ -1,6 +1,5 @@
-import discord
+from discord import Interaction, app_commands
 from discord.ext import commands
-from discord import app_commands, Interaction
 
 from core.alchemy.views import AlchemyHubView
 
@@ -9,9 +8,12 @@ class Alchemy(commands.Cog, name="alchemy"):
     def __init__(self, bot) -> None:
         self.bot = bot
 
-    @app_commands.command(name="alchemy", description="Open the Alchemy menu to transmute resources and manage potion passives.")
+    @app_commands.command(
+        name="alchemy",
+        description="Open the Alchemy menu to transmute resources and manage potion passives.",
+    )
     async def alchemy(self, interaction: Interaction):
-        user_id   = str(interaction.user.id)
+        user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
         # 1. Basic guards
@@ -32,13 +34,16 @@ class Alchemy(commands.Cog, name="alchemy"):
 
         # 3. Fetch alchemy state
         alchemy_level = await self.bot.database.alchemy.get_level(user_id)
-        passives      = await self.bot.database.alchemy.get_potion_passives(user_id)
-        gold          = existing_user[6]
-        spirit_stones = await self.bot.database.users.get_currency(user_id, "spirit_stones")
+        passives = await self.bot.database.alchemy.get_potion_passives(user_id)
+        gold = existing_user[6]
+        spirit_stones = await self.bot.database.users.get_currency(
+            user_id, "spirit_stones"
+        )
 
         # 4. Open hub
-        view  = AlchemyHubView(self.bot, user_id, server_id,
-                               alchemy_level, passives, gold, spirit_stones)
+        view = AlchemyHubView(
+            self.bot, user_id, server_id, alchemy_level, passives, gold, spirit_stones
+        )
         embed = view.build_embed()
         if welcome_msg:
             embed.title = "⚗️ Alchemy — First Visit!"

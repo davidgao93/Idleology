@@ -1,20 +1,19 @@
 import json
 
 import discord
+from discord import Interaction, app_commands
 from discord.ext import commands
-from discord import app_commands, Interaction, Message
-from discord.ext.tasks import asyncio
 
 from core.character.views import RegistrationView, UnregisterView
 from core.images import DEFAULT_SILHOUETTE
-from core.items.factory import load_player
+
 
 class Guild(commands.Cog, name="adventurer's guild"):
     def __init__(self, bot):
         self.bot = bot
 
     def load_exp_table(self):
-        with open('assets/exp.json') as file:
+        with open("assets/exp.json") as file:
             return json.load(file)
 
     @app_commands.command(name="register", description="Start your journey.")
@@ -22,21 +21,24 @@ class Guild(commands.Cog, name="adventurer's guild"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        if not await self.bot.check_is_active(interaction, user_id): return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
 
         existing = await self.bot.database.users.get(user_id, server_id)
         if existing:
-            return await interaction.response.send_message("You are already registered! Use `/card`.", ephemeral=True)
+            return await interaction.response.send_message(
+                "You are already registered! Use `/card`.", ephemeral=True
+            )
 
         self.bot.state_manager.set_active(user_id, "register")
-        
+
         embed = discord.Embed(
             title="Character Creation",
             description=f"Welcome, **{name}**!\nPlease select your appearance.",
-            color=0x00FF00
+            color=0x00FF00,
         )
         embed.set_image(url=DEFAULT_SILHOUETTE)
-        
+
         view = RegistrationView(self.bot, user_id, name)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
@@ -52,19 +54,25 @@ class Guild(commands.Cog, name="adventurer's guild"):
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
-        if not await self.bot.check_is_active(interaction, user_id): return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
 
         # 2. State Lock
         self.bot.state_manager.set_active(user_id, "unregister")
         embed = discord.Embed(
             title="Confirm Unregistration",
-            description=("Are you sure you want to unregister as an adventurer? \n"
-                         "**This action is permanent and deletes all progress.**"),
-            color=0xFFCC00
-        )        # 3. View Instantiation
-        view = UnregisterView(self.bot, user_id, existing_user[8]) # existing_user[8] is ideology
+            description=(
+                "Are you sure you want to unregister as an adventurer? \n"
+                "**This action is permanent and deletes all progress.**"
+            ),
+            color=0xFFCC00,
+        )  # 3. View Instantiation
+        view = UnregisterView(
+            self.bot, user_id, existing_user[8]
+        )  # existing_user[8] is ideology
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
+
 
 async def setup(bot):
     await bot.add_cog(Guild(bot))

@@ -1,7 +1,7 @@
 import time
 from datetime import datetime, timezone
 
-from discord import app_commands, Interaction
+from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.maw import mechanics
@@ -12,7 +12,10 @@ class Maw(commands.Cog, name="maw"):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="maw", description="Face the Maw of Infinity — an endless weekly world boss.")
+    @app_commands.command(
+        name="maw",
+        description="Face the Maw of Infinity — an endless weekly world boss.",
+    )
     async def maw(self, interaction: Interaction):
         await interaction.response.defer()
 
@@ -26,11 +29,15 @@ class Maw(commands.Cog, name="maw"):
         # Otherwise look one week back.
         if mechanics.is_collection_window(cycle_id, now_ts):
             pending_cycle_id = cycle_id
-            cycle_id = mechanics.get_next_cycle_id(cycle_id)  # next cycle hasn't started yet
+            cycle_id = mechanics.get_next_cycle_id(
+                cycle_id
+            )  # next cycle hasn't started yet
         else:
             pending_cycle_id = mechanics.get_previous_cycle_id(cycle_id)
 
-        pending_record = await self.bot.database.maw.get_record(user_id, pending_cycle_id)
+        pending_record = await self.bot.database.maw.get_record(
+            user_id, pending_cycle_id
+        )
         if pending_record and pending_record["rewards_collected"]:
             pending_record = None
 
@@ -39,8 +46,14 @@ class Maw(commands.Cog, name="maw"):
         if record and mechanics.is_cycle_active(cycle_id, now_ts):
             record, now_ts = await self._tick_damage(user_id, cycle_id, record, now_ts)
 
-        display_cycle_id = pending_cycle_id if mechanics.is_collection_window(pending_cycle_id, now_ts) else cycle_id
-        participant_count = await self.bot.database.maw.count_participants(display_cycle_id)
+        display_cycle_id = (
+            pending_cycle_id
+            if mechanics.is_collection_window(pending_cycle_id, now_ts)
+            else cycle_id
+        )
+        participant_count = await self.bot.database.maw.count_participants(
+            display_cycle_id
+        )
 
         view = MawView(
             bot=self.bot,
@@ -56,7 +69,9 @@ class Maw(commands.Cog, name="maw"):
         await interaction.followup.send(embed=embed, view=view)
         view.message = await interaction.original_response()
 
-    async def _tick_damage(self, user_id: str, cycle_id: int, record: dict, now_ts: int) -> tuple[dict, int]:
+    async def _tick_damage(
+        self, user_id: str, cycle_id: int, record: dict, now_ts: int
+    ) -> tuple[dict, int]:
         hours_elapsed = (now_ts - record["last_damage_check"]) // 3600
         if hours_elapsed <= 0:
             return record, now_ts
@@ -67,7 +82,9 @@ class Maw(commands.Cog, name="maw"):
         record["damage_dealt"] = current + added
         record["last_damage_check"] = now_ts
 
-        await self.bot.database.maw.update_damage(user_id, cycle_id, record["damage_dealt"], now_ts)
+        await self.bot.database.maw.update_damage(
+            user_id, cycle_id, record["damage_dealt"], now_ts
+        )
         return record, now_ts
 
 

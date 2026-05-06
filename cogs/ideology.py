@@ -1,9 +1,10 @@
-from discord.ext import commands
-from discord.ext.commands import Context
-import discord
 import random
 from datetime import datetime, timedelta
-from discord import app_commands, Interaction, Message
+
+import discord
+from discord import Interaction, app_commands
+from discord.ext import commands
+
 
 class Ideology(commands.Cog, name="ideology"):
     def __init__(self, bot) -> None:
@@ -21,7 +22,9 @@ class Ideology(commands.Cog, name="ideology"):
         ideologies = await self.bot.database.social.get_all_by_server(server_id)
 
         if not ideologies:
-            await interaction.response.send_message("No ideologies found for this server.")
+            await interaction.response.send_message(
+                "No ideologies found for this server."
+            )
             return
 
         # Create a list of tuples to store (ideology, followers_count)
@@ -29,7 +32,9 @@ class Ideology(commands.Cog, name="ideology"):
 
         # Fetch the follower count for each ideology
         for ideology in ideologies:
-            followers_count = await self.bot.database.social.get_follower_count(ideology)
+            followers_count = await self.bot.database.social.get_follower_count(
+                ideology
+            )
             ideology_counts.append((ideology, followers_count))
 
         # Sort the list by follower counts in descending order
@@ -50,7 +55,7 @@ class Ideology(commands.Cog, name="ideology"):
 
     @app_commands.command(
         name="propagate",
-        description="Spread your ideology to gain more followers and collect their offerings."
+        description="Spread your ideology to gain more followers and collect their offerings.",
     )
     async def propagate(self, interaction: Interaction) -> None:
         user_id = str(interaction.user.id)
@@ -61,8 +66,10 @@ class Ideology(commands.Cog, name="ideology"):
             return
 
         user_ideology = existing_user[8]
-        followers_count = await self.bot.database.social.get_follower_count(user_ideology)
-        last_propagate_time = existing_user[14] 
+        followers_count = await self.bot.database.social.get_follower_count(
+            user_ideology
+        )
+        last_propagate_time = existing_user[14]
         cooldown_duration = timedelta(hours=18)
 
         try:
@@ -87,17 +94,21 @@ class Ideology(commands.Cog, name="ideology"):
         base_followers = 10
         growth_factor = 1.5
         scaling_factor = 100
-        if (followers_count > 1000):
+        if followers_count > 1000:
             follower_increase = 100
         else:
-            follower_increase = base_followers * (growth_factor ** (followers_count // scaling_factor))
+            follower_increase = base_followers * (
+                growth_factor ** (followers_count // scaling_factor)
+            )
         # Add random variation (±10%)
         variation = random.uniform(0.9, 1.1)
         follower_increase = int(follower_increase * variation)
 
-        t_tier, t_workers = await self.bot.database.settlement.get_building_details(user_id, server_id, "temple")
+        t_tier, t_workers = await self.bot.database.settlement.get_building_details(
+            user_id, server_id, "temple"
+        )
         bonus_msg = ""
-        
+
         if t_workers > 0:
             # 1 Worker = 0.05% boost (0.0005). 100 Workers = 5%, 500 workers = 25%
             multiplier = 1 + (t_workers * 0.0005)
@@ -110,14 +121,17 @@ class Ideology(commands.Cog, name="ideology"):
 
         # Update database
         self.bot.logger.info(f"Propogate {user_ideology}")
-        await self.bot.database.social.update_followers(user_ideology, new_followers_count)
-        await self.bot.database.users.update_timer(user_id, 'last_propagate_time')
+        await self.bot.database.social.update_followers(
+            user_ideology, new_followers_count
+        )
+        await self.bot.database.users.update_timer(user_id, "last_propagate_time")
 
         # Send response
         await interaction.response.send_message(
             f"You advocate for **{user_ideology}** and it spreads!\n"
             f"New followers gained: **{follower_increase}**{bonus_msg} (Total: **{new_followers_count}**).\n"
         )
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Ideology(bot))

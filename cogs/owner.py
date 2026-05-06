@@ -1,9 +1,11 @@
+import importlib
+import sys
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
-import sys
-import importlib
+
 
 class Owner(commands.Cog, name="owner"):
     def __init__(self, bot) -> None:
@@ -162,10 +164,8 @@ class Owner(commands.Cog, name="owner"):
         )
         await context.send(embed=embed, ephemeral=True)
 
-
     @commands.hybrid_command(
-        name="clearall",
-        description="Clear all active operations for users."
+        name="clearall", description="Clear all active operations for users."
     )
     @commands.is_owner()
     async def clear_active_operations(self, context: Context) -> None:
@@ -173,11 +173,9 @@ class Owner(commands.Cog, name="owner"):
         self.bot.state_manager.clear_all()
         await context.send("All active operations have been cleared.", ephemeral=True)
 
-
-
     @commands.hybrid_command(
         name="reload_system",
-        description="Deep reloads Core logic, Database modules, and Cogs."
+        description="Deep reloads Core logic, Database modules, and Cogs.",
     )
     @commands.is_owner()
     async def reload_system(self, context: Context) -> None:
@@ -185,7 +183,7 @@ class Owner(commands.Cog, name="owner"):
         Deep reloads the bot's logic layers.
         """
         await context.defer()
-        
+
         try:
             # 1. Save the existing DB connection
             # We don't want to close/re-open the SQL connection, just update the wrapper logic
@@ -210,8 +208,9 @@ class Owner(commands.Cog, name="owner"):
             # 4. Re-Initialize Database Manager
             # We need to re-import the class to get the new methods
             import database
+
             importlib.reload(database)
-            
+
             # Re-instantiate the manager with the EXISTING connection
             # This updates the .users, .equipment, etc. repositories with new code
             self.bot.database = database.DatabaseManager(connection=db_connection)
@@ -227,33 +226,30 @@ class Owner(commands.Cog, name="owner"):
 
             # 6. Clear all active operations
             self.bot.state_manager.clear_all()
-            
+
             embed = discord.Embed(
                 title="System Reloaded ♻️",
                 description=f"**Core**: Refreshed\n**Database**: Refreshed\n**Cogs**: {len(current_extensions)} reloaded.",
-                color=0x00FF00
+                color=0x00FF00,
             )
             await context.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error(f"Critical failure during system reload: {e}")
             embed = discord.Embed(
-                title="Reload Failed 💥",
-                description=f"```{e}```",
-                color=0xE02B2B
+                title="Reload Failed 💥", description=f"```{e}```", color=0xE02B2B
             )
             await context.send(embed=embed)
 
-
     @commands.hybrid_command(
-        name="debug",
-        description="Check all active operations for users."
+        name="debug", description="Check all active operations for users."
     )
     @commands.is_owner()
     async def debug_active_operations(self, context: Context) -> None:
         """Debug method."""
         is_active = self.bot.state_manager.active_operations
         await context.send(f"{is_active}", ephemeral=True)
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Owner(bot))

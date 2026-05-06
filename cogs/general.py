@@ -599,7 +599,7 @@ class General(commands.Cog, name="general"):
                 "**1. Register:** `/register <name>`\n"
                 "**2. Fight:** `/combat` (Every 10m)\n"
                 "**3. Gear Up:** Check `/weapons`, `/armor`, etc.\n"
-                "**4. Skills:** `/mining`, `/woodcutting`, `/fishing`\n"
+                "**4. Skills:** `/gather`, `/alchemy`, `/slayer`\n"
                 "**5. Help menu:** `/help` for a full list of commands."
             ),
             inline=False,

@@ -189,12 +189,25 @@ def compute_essence_stat_bonus(item) -> dict:
     for _, essence_type, value in get_essence_slots(item):
 
         if essence_type == "power":
-            if hasattr(item, "attack"):
-                bonus["attack"] += int(item.attack * value / 100)
+            if getattr(item, "attack", None) is not None:
+                # Glove / Boot — exactly one of ATK/DEF/WARD is non-zero (the main stat)
+                atk = item.attack or 0
+                def_ = item.defence or 0
+                ward = item.ward or 0
+                if atk > 0:
+                    bonus["attack"] += int(atk * value / 100)
+                elif def_ > 0:
+                    bonus["defence"] += int(def_ * value / 100)
+                elif ward > 0:
+                    bonus["ward"] += int(ward * value / 100)
             else:
-                # Helmet has no attack — bonus applies to DEF and WARD %
-                bonus["defence"] += int(item.defence * value / 100)
-                bonus["ward"] += int(item.ward * value / 100)
+                # Helmet — no attack field; boost all non-zero stats (DEF and/or WARD)
+                def_ = getattr(item, "defence", 0) or 0
+                ward = getattr(item, "ward", 0) or 0
+                if def_ > 0:
+                    bonus["defence"] += int(def_ * value / 100)
+                if ward > 0:
+                    bonus["ward"] += int(ward * value / 100)
 
         elif essence_type == "protection":
             # Amplifies existing PDR and FDR on the item

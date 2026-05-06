@@ -1,7 +1,6 @@
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from core.ascent.mechanics import AscentMechanics
 from core.ascent.views import AscentLobbyView
 from core.items.factory import load_player
 
@@ -28,12 +27,16 @@ class Ascent(commands.Cog, name="ascent"):
             )
             return
 
-        pinnacle_keys = await self.bot.database.users.get_currency(user_id, "pinnacle_key")
+        pinnacle_keys = await self.bot.database.users.get_currency(
+            user_id, "pinnacle_key"
+        )
 
         player = await load_player(user_id, existing_user, self.bot.database)
         best_floor = await self.bot.database.ascension.get_highest_floor(user_id)
 
-        view = AscentLobbyView(self.bot, user_id, server_id, player, best_floor, pinnacle_keys)
+        view = AscentLobbyView(
+            self.bot, user_id, server_id, player, best_floor, pinnacle_keys
+        )
         embed = view.build_embed()
         await interaction.response.send_message(embed=embed, view=view)
 
