@@ -83,7 +83,7 @@ async def combat(self, interaction: discord.Interaction):
 
 ---
 
-## State Management
+## State Management and View Management
 
 `bot.state_manager` prevents race conditions (e.g., starting combat while a trade is open).
 
@@ -102,9 +102,104 @@ self.bot.state_manager.clear_active(user_id)
 **Rule:** Every `View` that calls `set_active` must call `clear_active` in:
 - `async def on_timeout(self)`
 - Any "exit", "cancel", or final-state button callback
+- Avoid using clear_items() and re-adding buttons on a live message.
+- When switching tabs, create a brand-new View with fresh component IDs so Discord never gets desynced.
+Add Proper async callbacks.
 
-States auto-expire after 10 minutes, but explicit cleanup is required.
+View Lifecycle & Best Practices
+Rule: Every view in a module (Slayer, Economy, Shop, etc.) must inherit from a module-specific base view.
+This guarantees:
 
+Consistent interaction_check
+Proper cleanup of the active state on timeout (prevents users getting stuck)
+DRY code and future-proof navigation
+Example: slayer/views.py
+```Python
+class BaseSlayerView(ui.View):
+    def __init__(self, bot, user_id: int | str, server_id: int, timeout: int = 600):
+        super().__init__(timeout=timeout)
+        self.bot = bot
+        self.user_id = str(user_id)      # store as string for safe comparison
+        self.server_id = server_id
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return str(interaction.user.id) == self.user_id
+
+    async def on_timeout(self):
+        """Always clean up the state manager when any view in the module times out."""
+        self.bot.state_manager.clear_active(self.user_id)
+        try:
+            await self.message.edit(view=None)  # disable all buttons
+        except (discord.NotFound, discord.HTTPException, AttributeError):
+            pass
+        self.stop()
+```
+Example of a view using the base:
+```
+class MySlayerView(BaseSlayerView):
+    def __init__(self, bot, user_id, server_id, profile, parent_view=None):
+        super().__init__(bot, user_id, server_id)
+        self.profile = profile
+        self.parent = parent_view          # ← important for "Back" navigation
+        self.setup_ui()                    # recommended pattern
+
+    def setup_ui(self):
+        """Rebuild all buttons/selects. Call this after any data change."""
+        self.clear_items()
+        # Add buttons, selects, etc. here...
+        pass
+
+    async def some_action(self, interaction: Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        # ... do DB work, update self.profile, etc. ...
+        self.setup_ui()                    # refresh UI state
+        await interaction.edit_original_response(embed=..., view=self)
+
+    async def go_back(self, interaction: Interaction):
+        """Standard pattern for returning to parent view."""
+        if self.parent:
+            # Refresh parent data in case it changed
+            self.parent.profile = await self.bot.database.slayer.get_profile(
+                self.user_id, self.server_id
+            )
+            self.parent.setup_ui()         # or setup_buttons()
+            await interaction.response.edit_message(
+                embed=self.parent.build_embed(),
+                view=self.parent
+            )
+        else:
+            await interaction.response.edit_message(view=None)
+        self.stop()
+
+    async def close_view(self, interaction: Interaction):
+        """Explicit close (optional - timeout also handles this)."""
+        self.bot.state_manager.clear_active(self.user_id)
+        await interaction.response.edit_message(view=None)
+        self.stop()
+```
+
+Key Guidelines (follow every time)
+
+Always inherit from the module’s BaseXXXView.
+Use the setup_ui() / setup_buttons() pattern — call it after every change that affects buttons or displayed state.
+For any action involving database calls:
+Python
+```
+await interaction.response.defer()
+# ... work ...
+await interaction.edit_original_response(embed=..., view=self)
+```
+Nested views (Emblem → Slot, etc.):
+Pass parent_view=self when creating the child view.
+Child views must implement a proper go_back() method.
+
+Initial dashboard open (outside the view class):
+Python
+```
+if not await self.bot.check_is_active(interaction, user_id):
+    return
+self.bot.state_manager.set_active(user_id, "slayer")   # or module-specific key
+```
 ---
 
 ## Key Models (`core/models.py`)
@@ -434,31 +529,6 @@ weapon_row = await self.bot.database.equipment.get_equipped(user_id, "weapon")
 player = Player(...)  # build from row
 if weapon_row:
     player.equipped_weapon = create_weapon(weapon_row)
-```
-
-### View Lifecycle
-
-```python
-class MyView(discord.ui.View):
-    def __init__(self, player: Player, bot):
-        super().__init__(timeout=120)
-        self.player = player
-        self.bot = bot
-
-    @discord.ui.button(label="Action")
-    async def action(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        # ... do work ...
-        await interaction.edit_original_response(embed=..., view=self)
-
-    @discord.ui.button(label="Exit")
-    async def exit(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.bot.state_manager.clear_active(str(interaction.user.id))
-        self.stop()
-        await interaction.response.edit_message(view=None)
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(str(self.player.id))
 ```
 
 ### Loading Asset Files

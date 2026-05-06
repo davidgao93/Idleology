@@ -8,6 +8,8 @@ from core.alchemy.mechanics import AlchemyMechanics
 from core.alchemy.synthesis_views import _build_synthesis_hub
 from core.images import ALCHEMY_HUB
 
+from .base_views import BaseAlchemyView
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -30,7 +32,7 @@ async def _hub_from_db(bot, user_id: str, server_id: str) -> "AlchemyHubView":
 # ---------------------------------------------------------------------------
 
 
-class AlchemyHubView(ui.View):
+class AlchemyHubView(BaseAlchemyView):
     def __init__(
         self,
         bot,
@@ -41,26 +43,11 @@ class AlchemyHubView(ui.View):
         player_gold: int,
         spirit_stones: int,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)  # ← BaseAlchemyView
         self.alchemy_level = alchemy_level
-        self.passives = passives  # [{slot, passive_type, passive_value}, ...]
+        self.passives = passives
         self.player_gold = player_gold
         self.spirit_stones = spirit_stones
-        self.message = None
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     def build_embed(self) -> discord.Embed:
         slot_count = AlchemyMechanics.get_slot_count(self.alchemy_level)
@@ -200,27 +187,13 @@ class AlchemyHubView(ui.View):
 # ---------------------------------------------------------------------------
 
 
-class _LevelUpConfirmView(ui.View):
+class _LevelUpConfirmView(BaseAlchemyView):
     def __init__(
         self, bot, user_id: str, server_id: str, current_level: int, cost: int
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.current_level = current_level
         self.cost = cost
-        self.message = None
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     @ui.button(label="Confirm", style=ButtonStyle.green, emoji="✅")
     async def confirm(self, interaction: Interaction, button: ui.Button):
@@ -393,7 +366,7 @@ class _TransmuteSelect(ui.Select):
         await interaction.response.defer()
 
 
-class AlchemyTransmuteView(ui.View):
+class AlchemyTransmuteView(BaseAlchemyView):
     def __init__(
         self,
         bot,
@@ -403,26 +376,12 @@ class AlchemyTransmuteView(ui.View):
         player_gold: int,
         spirit_stones: int,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
         self.player_gold = player_gold
         self.spirit_stones = spirit_stones
-        self.message = None
         self._select: _TransmuteSelect | None = None
         self._options_data: list = []
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     async def build_embed(self) -> discord.Embed:
         up_ratio = AlchemyMechanics.get_upgrade_ratio(self.alchemy_level)
@@ -545,16 +504,11 @@ class _SlotSelect(ui.Select):
         await interaction.response.defer()
 
 
-class _ClearConfirmView(ui.View):
-    """Inline confirmation before clearing a passive slot."""
-
+class _ClearConfirmView(BaseAlchemyView):
     def __init__(self, parent: "AlchemyPotionLabView", slot: int):
-        super().__init__(timeout=600)
+        super().__init__(parent.bot, parent.user_id, parent.server_id)
         self._parent = parent
         self._slot = slot
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self._parent.user_id
 
     @ui.button(label="Yes, clear it", style=ButtonStyle.danger, emoji="🗑️")
     async def confirm(self, interaction: Interaction, button: ui.Button):
@@ -590,7 +544,7 @@ class _ClearConfirmView(ui.View):
         )
 
 
-class AlchemyPotionLabView(ui.View):
+class AlchemyPotionLabView(BaseAlchemyView):
     def __init__(
         self,
         bot,
@@ -601,10 +555,7 @@ class AlchemyPotionLabView(ui.View):
         spirit_stones: int,
         free_roll_used: bool = False,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
         self.passives = passives
         self.spirit_stones = spirit_stones
@@ -659,16 +610,6 @@ class AlchemyPotionLabView(ui.View):
         """Return True if the given slot has no passive assigned."""
         passive_by_slot = {p["slot"]: p for p in self.passives}
         return slot not in passive_by_slot
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     def build_embed(self) -> discord.Embed:
         slot_count = AlchemyMechanics.get_slot_count(self.alchemy_level)

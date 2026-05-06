@@ -8,16 +8,13 @@ from __future__ import annotations
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.paradise import mechanics as M
 from core.paradise.data import (
-    SKILL_JEWELS,
-    PASSIVES,
-    PASSIVE_SLOT_THRESHOLDS,
     DUST_REROLL_TYPE,
     DUST_REROLL_VALUE,
-    DUST_FROM_JEWEL_BASE,
+    PASSIVE_SLOT_THRESHOLDS,
+    SKILL_JEWELS,
 )
-from core.paradise import mechanics as M
-
 
 # ---------------------------------------------------------------------------
 # Re-fetch helper
@@ -53,7 +50,7 @@ def _build_hub_embed(
     embed.description = (
         f"**Uncut Jewels:** 💎 {jewel_count}\n"
         f"**Cosmic Dust:** ✨ {dust:,}\n"
-        f"**Jewels Obtained:** {obtained}  •  **Consumed:** {consumed}"
+        f"**Jewels Obtained:** {obtained}  •  **Cut:** {consumed}"
     )
 
     # Equipped skill card
@@ -101,7 +98,7 @@ def _build_hub_embed(
             name="⚔️ Equipped Skill",
             value=(
                 "*No skills unlocked yet.*\n"
-                "Consume a Jewel of Paradise to unlock your first skill."
+                "Cut a Jewel of Paradise to unlock your first skill."
             ),
             inline=False,
         )
@@ -153,12 +150,12 @@ def _build_hub_embed(
         thres = PASSIVE_SLOT_THRESHOLDS[slot_count]
         embed.set_footer(
             text=f"Passive Slot {slot_count + 1}: {invested}/{thres} jewels invested  •  "
-                 f"Reroll Type: {DUST_REROLL_TYPE:,} dust  •  Reroll Value: {DUST_REROLL_VALUE:,} dust"
+            f"Reroll Type: {DUST_REROLL_TYPE:,} dust  •  Reroll Value: {DUST_REROLL_VALUE:,} dust"
         )
     else:
         embed.set_footer(
             text=f"All 5 passive slots unlocked  •  "
-                 f"Reroll Type: {DUST_REROLL_TYPE:,} dust  •  Reroll Value: {DUST_REROLL_VALUE:,} dust"
+            f"Reroll Type: {DUST_REROLL_TYPE:,} dust  •  Reroll Value: {DUST_REROLL_VALUE:,} dust"
         )
 
     return embed
@@ -198,7 +195,9 @@ class ParadiseHubView(ui.View):
 
         # Row 0: Swap Skill (only if skills unlocked)
         if len(unlocked) > 1:
-            swap = ui.Button(label="Swap Skill", style=ButtonStyle.secondary, emoji="🔄", row=0)
+            swap = ui.Button(
+                label="Swap Skill", style=ButtonStyle.secondary, emoji="🔄", row=0
+            )
             swap.callback = self._swap_skill_callback
             self.add_item(swap)
 
@@ -226,7 +225,9 @@ class ParadiseHubView(ui.View):
 
         # Row 1: Reroll (only if passive slots exist)
         if slot_count > 0:
-            reroll = ui.Button(label="Reroll Passive", style=ButtonStyle.blurple, emoji="🎲", row=1)
+            reroll = ui.Button(
+                label="Reroll Passive", style=ButtonStyle.blurple, emoji="🎲", row=1
+            )
             reroll.callback = self._reroll_callback
             self.add_item(reroll)
 
@@ -261,7 +262,9 @@ class ParadiseHubView(ui.View):
         if not unlocked:
             await interaction.followup.send("No skills unlocked.", ephemeral=True)
             return
-        view = _SkillSwapView(self.bot, self.user_id, self.server_id, self.data, self.message)
+        view = _SkillSwapView(
+            self.bot, self.user_id, self.server_id, self.data, self.message
+        )
         embed = discord.Embed(
             title="🔄 Swap Skill",
             description="Select the skill jewel to equip.",
@@ -276,7 +279,9 @@ class ParadiseHubView(ui.View):
 
     async def _consume_jewel_callback(self, interaction: Interaction) -> None:
         await interaction.response.defer()
-        view = _ConsumeJewelView(self.bot, self.user_id, self.server_id, self.data, self.message)
+        view = _ConsumeJewelView(
+            self.bot, self.user_id, self.server_id, self.data, self.message
+        )
         embed = view.build_embed()
         await interaction.edit_original_response(embed=embed, view=view)
         self.stop()
@@ -289,7 +294,9 @@ class ParadiseHubView(ui.View):
         await interaction.response.defer()
         alchemy_level = await self.bot.database.alchemy.get_level(self.user_id)
         dust_gain = M.dust_from_jewel(alchemy_level)
-        await self.bot.database.uber.increment_paradise_jewels(self.user_id, self.server_id, -1)
+        await self.bot.database.uber.increment_paradise_jewels(
+            self.user_id, self.server_id, -1
+        )
         await self.bot.database.alchemy.modify_cosmic_dust(self.user_id, dust_gain)
         # Update data tracking
         self.data["total_jewels_obtained"] = self.data.get("total_jewels_obtained", 0)
@@ -306,7 +313,9 @@ class ParadiseHubView(ui.View):
 
     async def _reroll_callback(self, interaction: Interaction) -> None:
         await interaction.response.defer()
-        view = _RerollSelectView(self.bot, self.user_id, self.server_id, self.data, self.dust, self.message)
+        view = _RerollSelectView(
+            self.bot, self.user_id, self.server_id, self.data, self.dust, self.message
+        )
         embed = view.build_embed()
         await interaction.edit_original_response(embed=embed, view=view)
         self.stop()
@@ -404,9 +413,7 @@ class _ConsumeJewelView(ui.View):
     def _build_buttons(self) -> None:
         self.clear_items()
         unlocked = self.data.get("unlocked_skills", [])
-        remaining_skills = [
-            sk for sk in SKILL_JEWELS if sk not in unlocked
-        ]
+        remaining_skills = [sk for sk in SKILL_JEWELS if sk not in unlocked]
         slot_count = M.get_passive_slot_count(self.data)
 
         if remaining_skills:
@@ -448,7 +455,9 @@ class _ConsumeJewelView(ui.View):
             )
             if len(remaining_skills) > 5:
                 skill_list += f" and {len(remaining_skills)-5} more"
-            lines.append(f"📖 **Unlock Skill** — Add a new skill jewel to your roster.\n   *Available: {skill_list}*")
+            lines.append(
+                f"📖 **Unlock Skill** — Add a new skill jewel to your roster.\n   *Available: {skill_list}*"
+            )
         if slot_count < 5:
             invested = self.data.get("passive_jewels_invested", 0)
             thres = PASSIVE_SLOT_THRESHOLDS[slot_count]
@@ -474,9 +483,13 @@ class _ConsumeJewelView(ui.View):
         unlocked = self.data.get("unlocked_skills", [])
         remaining = [sk for sk in SKILL_JEWELS if sk not in unlocked]
         if not remaining:
-            await interaction.followup.send("All skills already unlocked.", ephemeral=True)
+            await interaction.followup.send(
+                "All skills already unlocked.", ephemeral=True
+            )
             return
-        view = _SkillPickView(self.bot, self.user_id, self.server_id, self.data, remaining, self.message)
+        view = _SkillPickView(
+            self.bot, self.user_id, self.server_id, self.data, remaining, self.message
+        )
         embed = discord.Embed(
             title="📖 Unlock a Skill",
             description="Select a skill jewel to permanently unlock.",
@@ -488,7 +501,9 @@ class _ConsumeJewelView(ui.View):
     async def _invest_passive_callback(self, interaction: Interaction) -> None:
         await interaction.response.defer()
         slot_unlocked, msg = M.consume_jewel_invest_passive(self.data)
-        await self.bot.database.uber.increment_paradise_jewels(self.user_id, self.server_id, -1)
+        await self.bot.database.uber.increment_paradise_jewels(
+            self.user_id, self.server_id, -1
+        )
         await self.bot.database.paradise.save(self.user_id, self.data)
         await interaction.followup.send(f"🔮 {msg}", ephemeral=True)
         await self._back_to_hub(interaction)
@@ -559,7 +574,9 @@ class _SkillPickView(ui.View):
             await interaction.followup.send(f"❌ {err}", ephemeral=True)
             await self._back_to_hub(interaction)
             return
-        await self.bot.database.uber.increment_paradise_jewels(self.user_id, self.server_id, -1)
+        await self.bot.database.uber.increment_paradise_jewels(
+            self.user_id, self.server_id, -1
+        )
         await self.bot.database.paradise.save(self.user_id, self.data)
         defn = SKILL_JEWELS[skill_key]
         await interaction.followup.send(
@@ -646,7 +663,13 @@ class _RerollSelectView(ui.View):
         await interaction.response.defer()
         slot_idx = int(interaction.data["values"][0])
         view = _RerollActionView(
-            self.bot, self.user_id, self.server_id, self.data, slot_idx, self.dust, self.message
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.data,
+            slot_idx,
+            self.dust,
+            self.message,
         )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
         self.stop()

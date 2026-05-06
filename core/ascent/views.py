@@ -49,7 +49,9 @@ async def _grant_milestone_rewards(
         for _ in range(rune_qty):
             rtype = random.choice(_RUNE_POOL)
             await bot.database.users.modify_currency(user_id, rtype, 1)
-            rune_names.append("Refinement" if rtype == "refinement_runes" else "Potential")
+            rune_names.append(
+                "Refinement" if rtype == "refinement_runes" else "Potential"
+            )
         log.append(f"💎 Runes ×{rune_qty} ({', '.join(rune_names)})")
 
     elif cache_choice == "equipment":
@@ -266,7 +268,7 @@ class AscentLobbyView(ui.View):
         await interaction.delete_original_response()
 
     async def on_timeout(self):
-        pass
+        self.bot.state_manager.clear_active(self.user_id)
 
 
 class AscentPinnacleListView(ui.View):
@@ -319,7 +321,7 @@ class AscentPinnacleListView(ui.View):
         )
 
     async def on_timeout(self):
-        pass
+        self.bot.state_manager.clear_active(self.user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -406,7 +408,7 @@ class AscentView(ui.View):
             self.logs[self.monster.name] = m_log
         await self._check_state(interaction)
 
-    @ui.button(label="Auto Floor", style=ButtonStyle.primary, emoji="⏩")
+    @ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
     async def auto(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         message = interaction.message

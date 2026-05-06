@@ -3,16 +3,18 @@ import logging
 import os
 import platform
 import sys
-import aiosqlite
-import discord
 import time
 from typing import Dict, Tuple
+
+import aiosqlite
+import discord
+from discord import Interaction, app_commands
+from discord.app_commands import CommandTree
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
+
 from database import DatabaseManager
-from discord import app_commands, Interaction
-from discord.app_commands import CommandTree
 
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
     sys.exit("'config.json' not found! Please add it and try again.")
@@ -43,7 +45,9 @@ intents.guild_typing = True
 intents.guilds = True
 intents.integrations = True
 intents.invites = True
-intents.messages = True # `message_content` is required to get the content of the messages
+intents.messages = (
+    True  # `message_content` is required to get the content of the messages
+)
 intents.reactions = True
 intents.typing = True
 intents.voice_states = True
@@ -114,28 +118,38 @@ file_handler.setFormatter(file_handler_formatter)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
+
 class CustomCommandTree(CommandTree):
-    async def on_error(self, interaction: Interaction, error: app_commands.AppCommandError):
+    async def on_error(
+        self, interaction: Interaction, error: app_commands.AppCommandError
+    ):
         if isinstance(error, app_commands.CommandOnCooldown):
             # Log and handle silently without propagating
-            logger.info(f"Cooldown triggered for user {interaction.user.id} on command {interaction.command.name}, retry after {int(error.retry_after)} seconds")
+            logger.info(
+                f"Cooldown triggered for user {interaction.user.id} on command {interaction.command.name}, retry after {int(error.retry_after)} seconds"
+            )
             try:
                 if interaction.response.is_done():
                     await interaction.followup.send(
                         f"You are on cooldown. Try again in {int(error.retry_after)} seconds.",
-                        ephemeral=True
+                        ephemeral=True,
                     )
                 else:
                     await interaction.response.send_message(
                         f"You are on cooldown. Try again in {int(error.retry_after)} seconds.",
-                        ephemeral=True
+                        ephemeral=True,
                     )
             except Exception as e:
-                logger.error(f"Failed to send cooldown message: {type(e).__name__}: {e}")
+                logger.error(
+                    f"Failed to send cooldown message: {type(e).__name__}: {e}"
+                )
         else:
             # Log other errors and let the bot's on_app_command_error handle them
-            logger.error(f"Unhandled error in app command {interaction.command.name}: {type(error).__name__}: {error}")
+            logger.error(
+                f"Unhandled error in app command {interaction.command.name}: {type(error).__name__}: {error}"
+            )
             await super().on_error(interaction, error)
+
 
 class DiscordBot(commands.Bot):
     def __init__(self) -> None:
@@ -143,7 +157,7 @@ class DiscordBot(commands.Bot):
             command_prefix=commands.when_mentioned_or(config["prefix"]),
             intents=intents,
             help_command=None,
-            tree_cls=CustomCommandTree
+            tree_cls=CustomCommandTree,
         )
         """
         This creates custom bot variables so that we can access these variables in cogs more easily.
@@ -219,7 +233,6 @@ class DiscordBot(commands.Bot):
         )
         await self.load_cogs()
         self.status_task.start()
-
 
     async def on_message(self, message: discord.Message) -> None:
         """
@@ -305,43 +318,49 @@ class DiscordBot(commands.Bot):
         else:
             raise error
 
-    async def on_app_command_error(self, interaction: Interaction, error: app_commands.AppCommandError):
+    async def on_app_command_error(
+        self, interaction: Interaction, error: app_commands.AppCommandError
+    ):
         user_id = str(interaction.user.id)
 
         # Check for 503 Service Unavailable errors or other connection issues
         if isinstance(error, (discord.DiscordServerError, discord.HTTPException)):
-            if hasattr(error, 'status') and error.status == 503:
-                self.logger.warning(f"503 error for user {user_id}, clearing their active state")
+            if hasattr(error, "status") and error.status == 503:
+                self.logger.warning(
+                    f"503 error for user {user_id}, clearing their active state"
+                )
                 self.state_manager.clear_active(user_id)
-                
+
                 try:
                     if interaction.response.is_done():
                         await interaction.followup.send(
                             "Discord is experiencing issues. Your session has been reset. Please try again.",
-                            ephemeral=True
+                            ephemeral=True,
                         )
                     else:
                         await interaction.response.send_message(
                             "Discord is experiencing issues. Your session has been reset. Please try again.",
-                            ephemeral=True
+                            ephemeral=True,
                         )
                 except:
                     # If we can't even send this message, just log it
-                    self.logger.error(f"Failed to notify user {user_id} about 503 reset")
+                    self.logger.error(
+                        f"Failed to notify user {user_id} about 503 reset"
+                    )
                 return
-        
+
         if isinstance(error, app_commands.CommandOnCooldown):
             retry_after = int(error.retry_after)
             # Check if the interaction is already responded to
             if interaction.response.is_done():
                 await interaction.followup.send(
                     f"You are on cooldown. Try again in {retry_after} seconds.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
             else:
                 await interaction.response.send_message(
                     f"You are on cooldown. Try again in {retry_after} seconds.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
         else:
             # Log other errors for debugging but don't raise them to prevent duplicate logging
@@ -349,15 +368,17 @@ class DiscordBot(commands.Bot):
             if interaction.response.is_done():
                 await interaction.followup.send(
                     "An unexpected error occurred. Please try again later.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
             else:
                 await interaction.response.send_message(
                     "An unexpected error occurred. Please try again later.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
 
-    async def check_user_registered(self, interaction: Interaction, existing_user) -> bool:
+    async def check_user_registered(
+        self, interaction: Interaction, existing_user
+    ) -> bool:
         """
         Check if a user is registered in the database. If not, send a registration prompt.
         :param interaction: The Discord interaction object.
@@ -365,23 +386,23 @@ class DiscordBot(commands.Bot):
         """
         if not existing_user:
             await interaction.response.send_message(
-                "Please /register with the 🏦 Adventurer's Guild first.",
-                ephemeral=True
+                "Please /register with the 🏦 Adventurer's Guild first.", ephemeral=True
             )
             return False
         return True
-    
+
     async def check_is_active(self, interaction: Interaction, user_id: str) -> bool:
         """
         Check if a user has an active operation.
         """
         if self.state_manager.is_active(user_id):
+            operation = self.state_manager.active_operations[user_id][0]
             await interaction.response.send_message(
-                "Please finish all your other interactions first.",
-                ephemeral=True)
+                f"Please wrap up your {operation.title()} interaction first.",
+                ephemeral=True,
+            )
             return False
         return True
-    
 
     async def is_maintenance(self, interaction: Interaction, user_id: str) -> bool:
         """
@@ -390,7 +411,8 @@ class DiscordBot(commands.Bot):
         if user_id != str(866408616873820180):
             await interaction.response.send_message(
                 "This command is under maintenance, please try again later.",
-                ephemeral=True)
+                ephemeral=True,
+            )
             return False
         return True
 
@@ -398,20 +420,22 @@ class DiscordBot(commands.Bot):
 class StateManager:
     def __init__(self, logger, timeout_minutes=10):
         self.logger = logger
-        self.active_operations: Dict[str, Tuple[str, float]] = {}  # user_id: (operation, timestamp)
+        self.active_operations: Dict[str, Tuple[str, float]] = (
+            {}
+        )  # user_id: (operation, timestamp)
         self.timeout_seconds = timeout_minutes * 60
 
     def set_active(self, user_id: str, operation: str):
         """Set a user's operation state with timestamp."""
         timestamp = time.time()
-        self.logger.info(f'Set {user_id} as {operation}')
+        self.logger.info(f"Set {user_id} as {operation}")
         self.active_operations[user_id] = (operation, timestamp)
 
     def clear_active(self, user_id: str):
         """Clear a user's operation state."""
-        self.logger.info(f'Attempt to clear {user_id}')
+        self.logger.info(f"Attempt to clear {user_id}")
         if user_id in self.active_operations:
-            self.logger.info(f'{user_id} found in active list, cleared')
+            self.logger.info(f"{user_id} found in active list, cleared")
             del self.active_operations[user_id]
 
     def is_active(self, user_id: str):
@@ -420,37 +444,40 @@ class StateManager:
             operation, timestamp = self.active_operations[user_id]
             # Auto-clear if operation is too old
             if time.time() - timestamp > self.timeout_seconds:
-                self.logger.info(f'Auto-clearing expired operation for {user_id}: {operation}')
+                self.logger.info(
+                    f"Auto-clearing expired operation for {user_id}: {operation}"
+                )
                 del self.active_operations[user_id]
                 return False
             return True
         return False
-    
+
     def clear_all(self):
         """Clear all active operations."""
         count = len(self.active_operations)
         self.active_operations.clear()
-        self.logger.info(f'Cleared all {count} active operations')
+        self.logger.info(f"Cleared all {count} active operations")
 
     def clear_expired(self):
         """Clear all expired operations."""
         current_time = time.time()
         expired_users = [
-            user_id for user_id, (operation, timestamp) in self.active_operations.items()
+            user_id
+            for user_id, (operation, timestamp) in self.active_operations.items()
             if current_time - timestamp > self.timeout_seconds
         ]
-        
+
         for user_id in expired_users:
             operation = self.active_operations[user_id][0]
             del self.active_operations[user_id]
-            self.logger.info(f'Cleared expired operation for {user_id}: {operation}')
-        
+            self.logger.info(f"Cleared expired operation for {user_id}: {operation}")
+
         return len(expired_users)
-    
-    
+
     def get_active_count(self):
         """Get count of active operations."""
         return len(self.active_operations)
+
 
 load_dotenv()
 

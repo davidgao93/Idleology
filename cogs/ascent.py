@@ -27,6 +27,9 @@ class Ascent(commands.Cog, name="ascent"):
             )
             return
 
+        self.bot.state_manager.set_active(user_id, "ascent")
+
+        # 2. Get user info and start lobby
         pinnacle_keys = await self.bot.database.users.get_currency(
             user_id, "pinnacle_key"
         )

@@ -23,13 +23,15 @@ class Alchemy(commands.Cog, name="alchemy"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
+        self.bot.state_manager.set_active(user_id, "alchemy")
+
         # 2. Initialize alchemy row if this is a first visit
         is_new = await self.bot.database.alchemy.initialize_if_new(user_id)
         welcome_msg = None
         if is_new:
             welcome_msg = (
-                "✨ **Welcome to Alchemy!** You start at Level 1 with 1 passive slot.\n"
-                "Head to the **Potion Lab** to roll your first passive for free!"
+                "✨ **Welcome to Alchemist's Guild!** You start at Level 1 with 1 passive slot.\n"
+                "Head to the **Potion Lab** to roll your first passive!"
             )
 
         # 3. Fetch alchemy state
@@ -46,7 +48,7 @@ class Alchemy(commands.Cog, name="alchemy"):
         )
         embed = view.build_embed()
         if welcome_msg:
-            embed.title = "⚗️ Alchemy — First Visit!"
+            embed.title = "⚗️ The Alchemy Guild"
             embed.description = welcome_msg + "\n\n" + (embed.description or "")
 
         await interaction.response.send_message(embed=embed, view=view)

@@ -20,6 +20,8 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.alchemy.mechanics import AlchemyMechanics
 
+from .base_views import BaseAlchemyView
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -61,12 +63,7 @@ async def _build_synthesis_hub(
 # ---------------------------------------------------------------------------
 
 
-class AlchemySynthesisHubView(ui.View):
-    """
-    Main synthesis screen. Shows cosmic dust, active queue, and key reference table.
-    Buttons: Disenchant Keys | Collect Dust | Synthesize Key | Back
-    """
-
+class AlchemySynthesisHubView(BaseAlchemyView):
     def __init__(
         self,
         bot,
@@ -74,18 +71,14 @@ class AlchemySynthesisHubView(ui.View):
         server_id: str,
         alchemy_level: int,
         cosmic_dust: int,
-        queue_row,  # (item_type, quantity, start_time) or None
+        queue_row,
         player_gold: int,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)  # ← BaseAlchemyView
         self.alchemy_level = alchemy_level
         self.cosmic_dust = cosmic_dust
         self.queue_row = queue_row
         self.player_gold = player_gold
-        self.message = None
 
         # Determine whether a task is complete so we can style the Collect button.
         queue_ready = False
@@ -132,20 +125,6 @@ class AlchemySynthesisHubView(ui.View):
         )
         back_btn.callback = self._on_back
         self.add_item(back_btn)
-
-    # ------------------------------------------------------------------
-    # Checks / lifecycle
-    # ------------------------------------------------------------------
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self) -> None:
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     # ------------------------------------------------------------------
     # Embed
@@ -402,26 +381,12 @@ class _DisenchantKeySelect(ui.Select):
         await interaction.response.defer()
 
 
-class _DisenchantSelectView(ui.View):
+class _DisenchantSelectView(BaseAlchemyView):
     def __init__(self, bot, user_id: str, server_id: str, alchemy_level: int) -> None:
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
-        self.message = None
         self._options_data: list[dict] = []
         self._select: _DisenchantKeySelect | None = None
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self) -> None:
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     async def build_embed(self) -> discord.Embed:
         """Fetch live key counts, rebuild the select menu, and return the embed."""
@@ -602,7 +567,7 @@ class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
         self._parent.stop()
 
 
-class _SynthesizeSelectView(ui.View):
+class _SynthesizeSelectView(BaseAlchemyView):
     def __init__(
         self,
         bot,
@@ -612,14 +577,10 @@ class _SynthesizeSelectView(ui.View):
         cosmic_dust: int,
         player_gold: int,
     ) -> None:
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
         self.cosmic_dust = cosmic_dust
         self.player_gold = player_gold
-        self.message = None
 
         options_data = []
         for col, name in AlchemyMechanics.KEY_DISPLAY_NAMES.items():
@@ -649,16 +610,6 @@ class _SynthesizeSelectView(ui.View):
         )
         back_btn.callback = self._on_back
         self.add_item(back_btn)
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self) -> None:
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     def build_embed(self) -> discord.Embed:
         level = self.alchemy_level
