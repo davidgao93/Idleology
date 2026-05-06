@@ -415,6 +415,27 @@ class Player:
     # Per-combat special-rarity bonus from co_special_rarity (reset by reset_combat_bonus)
     partner_special_rarity: float = 0.0
 
+    # Paradise Jewel system — loaded at session start, persisted after combat
+    # Structure matches ParadiseRepository._row_to_dict output.
+    jewel_of_paradise: dict = field(default_factory=lambda: {
+        "unlocked_skills": [],
+        "equipped_skill": None,
+        "skill_levels": {},
+        "skill_charges": {},
+        "passive_slots": [],
+        "passive_jewels_invested": 0,
+        "total_jewels_obtained": 0,
+        "total_jewels_consumed": 0,
+    })
+    # Transient: set by combat engine when an unleash is held for next-attack application
+    jewel_cataclysm_primed: bool = False      # guaranteed crit with bonus multiplier pending
+    jewel_cataclysm_bonus_multi: float = 0.0  # bonus crit multiplier when primed
+    jewel_onslaught_primed: bool = False      # ATK multiplier boost pending
+    jewel_onslaught_bonus_pct: float = 0.0   # bonus ATK% when primed
+    jewel_wardforge_bonus_dmg: int = 0        # bonus damage queued from Wardforge unleash
+    jewel_acrimony_dot: int = 0               # remaining Acrimony DoT turns
+    jewel_acrimony_dot_dmg: int = 0           # damage per Acrimony DoT tick
+
     @property
     def rarity(self) -> int:
         """Gear rarity from weapon and accessory. Use get_total_rarity() for the full total."""

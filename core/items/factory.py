@@ -343,6 +343,12 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     except Exception:
         player.equipped_parts = {}
 
+    # --- Fetch Paradise Jewel Data ---
+    try:
+        player.jewel_of_paradise = await database.paradise.get(user_id)
+    except Exception:
+        pass  # keeps default empty structure
+
     # --- Fetch Active Combat Partner ---
     try:
         partner_row = await database.partners.get_active_combat(user_id)

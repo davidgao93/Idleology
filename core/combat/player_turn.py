@@ -2,6 +2,7 @@ import random
 
 from core.combat.calcs import calculate_hit_chance, fmt_weapon_passive, get_weapon_tier
 from core.combat.helpers import PlayerTurnResult, _add_ward
+from core.combat import jewel_engine as _je
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -139,6 +140,20 @@ def process_heal(player: Player, monster=None) -> str:
         )
 
     msg += f"\n**{player.potions}** potions left."
+
+    # --- Paradise Jewel: Draught (+1 charge per potion used) ---
+    _heal_jewel_log: list[str] = []
+    _je.process_jewel_trigger(player, monster, "potion", 0, _heal_jewel_log)
+    if _heal_jewel_log:
+        msg += "\n" + "\n".join(_heal_jewel_log)
+
+    # --- Paradise Jewel: Siphon (+1 charge for HP regen from potion) ---
+    if player.current_hp > 0:  # regen happened (we healed at least something)
+        _siphon_log: list[str] = []
+        _je.process_jewel_trigger(player, monster, "heal", 0, _siphon_log)
+        if _siphon_log:
+            msg += "\n" + "\n".join(_siphon_log)
+
     return msg
 
 
@@ -200,6 +215,14 @@ def _pt_attack_multiplier(
         log.append(
             "The **Mystical Might** armor imbues with power, massively increasing damage!"
         )
+
+    # --- Paradise Jewel: Onslaught primed ---
+    onslaught_bonus = _je.apply_onslaught_mult(player)
+    if onslaught_bonus > 0:
+        factor = 1 + onslaught_bonus / 100
+        mult *= factor
+        calc_sources.append(f"onslaught_jewel×{factor:.3f}")
+        log.append(f"🔥 **Onslaught** unleashes fury! (+{onslaught_bonus:.0f}% ATK)")
 
     # --- Alchemy: Warrior's Draft (one-shot, reset after this attack) ---
     if player.alchemy_atk_boost_pct > 0:
@@ -398,6 +421,13 @@ def _pt_crit_damage(
             base_dmg = alt
             calc_dmg_notes.append(f"cursed_precision(alt={alt})={base_dmg}")
         log.append("**Cursed Precision** — the weaker roll applies!")
+
+    # --- Paradise Jewel: Cataclysm primed bonus crit multiplier ---
+    cat_bonus = _je.apply_cataclysm_crit_bonus(player)
+    if cat_bonus > 0:
+        base_dmg = int(base_dmg * (1 + cat_bonus))
+        calc_dmg_notes.append(f"cataclysm_jewel×{1+cat_bonus:.3f}={base_dmg}")
+        log.append(f"💥 **Cataclysm** detonates! (×{1+cat_bonus:.2f} crit damage)")
 
     damage = int(base_dmg * attack_multiplier)
     calc_dmg_notes.append(f"×mult={attack_multiplier:.4f}={damage}")
@@ -648,12 +678,14 @@ def _pt_generate_ward(
         if ward > 0:
             added = _add_ward(player, ward, log)
             log.append(f"**Ward-Touched ({glove_lvl})** generates 🔮 **{added}** ward!")
+            _je.process_jewel_trigger(player, None, "ward", added, log)
 
     if is_crit and glove_passive == "ward-fused" and glove_lvl > 0 and raw_damage > 0:
         ward = int(glove_lvl * 50)
         if ward > 0:
             added = _add_ward(player, ward, log)
             log.append(f"**Ward-Fused ({glove_lvl})** generates 🔮 **{added}** ward!")
+            _je.process_jewel_trigger(player, None, "ward", added, log)
 
     # Arcane weapon passive: gain flat ward on any hit (crit or normal)
     if raw_damage > 0:
@@ -665,6 +697,9 @@ def _pt_generate_ward(
                 log.append(
                     f"🔮 **{fmt_weapon_passive(name)}** — the weapon pulses, generating **{added}** Ward!"
                 )
+                _je.process_jewel_trigger(player, None, "ward", added, log)
+
+    # Ward-Touched / Ward-Fused triggers also tick Wardforge (via ward generated above)
 
 
 def _pt_apply_to_monster(
@@ -715,6 +750,7 @@ def _pt_post_hit_effects(
         if heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
             log.append(f"**Leeching** drains life, healing you for **{heal}** HP.")
+            _je.process_jewel_trigger(player, monster, "heal", heal, log)
 
     if is_crit:
         bloodthirst_pct = player.get_tome_bonus("bloodthirst")
@@ -724,11 +760,13 @@ def _pt_post_hit_effects(
             log.append(
                 f"**Bloodthirst** siphons **{heal}** HP from the critical strike."
             )
+            _je.process_jewel_trigger(player, monster, "heal", heal, log)
 
     if player.get_celestial_armor_passive() == "celestial_ghostreaver":
         regen = random.randint(50, 200)
         added = _add_ward(player, regen, log)
         log.append(f"✨ **Celestial Ghostreaver** restores **{added}** 🔮 Ward!")
+        _je.process_jewel_trigger(player, monster, "ward", added, log)
 
 
 def _pt_track_pending(player: Player, damage: int, log: list[str]) -> None:
@@ -785,6 +823,7 @@ def _pt_partner_effects(
                 parts.append(
                     f"💚 **Heal Lv.{lvl}** — {partner.name} restores **{heal}** HP!"
                 )
+                _je.process_jewel_trigger(player, monster, "heal", heal, parts)
         elif key == "co_ward_regen":
             ward_gain = lvl * 10
             added = _add_ward(player, ward_gain, [])
@@ -792,6 +831,7 @@ def _pt_partner_effects(
                 parts.append(
                     f"🔮 **Ward Regen Lv.{lvl}** — {partner.name} restores **{added}** Ward!"
                 )
+                _je.process_jewel_trigger(player, monster, "ward", added, parts)
         elif key == "co_ward_leech" and (is_hit or is_crit) and damage_dealt > 0:
             leech_base = max(1, int(damage_dealt * lvl * 0.001))
             added = _add_ward(player, leech_base, [])
@@ -799,6 +839,7 @@ def _pt_partner_effects(
                 parts.append(
                     f"🔮 **Ward Leech Lv.{lvl}** — {partner.name} siphons **{added}** Ward!"
                 )
+                _je.process_jewel_trigger(player, monster, "ward", added, parts)
         elif key == "co_execute" and monster.hp > 0:
             threshold_pct = lvl / 100
             if monster.hp <= int(monster.max_hp * threshold_pct):
@@ -842,6 +883,10 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     log: list[str] = []
     calc: list[str] = []
 
+    # --- Paradise Jewel: Acrimony DoT + Onslaught low-HP charge (start of turn) ---
+    _je.tick_acrimony_dot(player, monster, log)
+    _je.tick_onslaught_charge(player, monster, log)
+
     # --- Alchemy: Lingering Remedy (tick at start of player's turn) ---
     if player.alchemy_linger_turns > 0:
         player.current_hp = min(
@@ -873,6 +918,10 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
 
     is_crit = _pt_resolve_crit(player, monster, is_hit, log, calc)
 
+    # --- Paradise Jewel: Cataclysm primed (force guaranteed crit) ---
+    if is_hit and getattr(player, "jewel_cataclysm_primed", False):
+        is_crit = True
+
     # NEET glove: accuracy is always 0, every attack misses
     if player.get_glove_corrupted_essence() == "neet":
         is_hit = False
@@ -895,6 +944,24 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     _pt_post_hit_effects(player, monster, final_hit, is_crit, log)
     _pt_track_pending(player, final_hit, log)
     _pt_check_cull(player, monster, log)
+
+    # --- Paradise Jewel: Wardforge bonus damage (from previous-turn unleash) ---
+    wf_bonus = _je.consume_wardforge_bonus(player)
+    if wf_bonus > 0 and is_hit and monster.hp > 0:
+        actual_wf = min(wf_bonus, monster.hp)
+        monster.hp = max(0, monster.hp - actual_wf)
+        log.append(f"🛡️ **Wardforge** — ward energy surges for **{actual_wf}** bonus damage!")
+
+    # --- Paradise Jewel: Charge triggers (hit / crit / miss) ---
+    _jewel_log: list[str] = []
+    if is_crit:
+        _je.process_jewel_trigger(player, monster, "crit", 0, _jewel_log)
+    if is_hit:
+        _je.process_jewel_trigger(player, monster, "hit", 0, _jewel_log)
+    else:
+        _je.process_jewel_trigger(player, monster, "miss", 0, _jewel_log)
+    if _jewel_log:
+        log.extend(_jewel_log)
 
     partner_log, partner_name = _pt_partner_effects(
         player, monster, is_hit, is_crit, final_hit, _sigmund_proc

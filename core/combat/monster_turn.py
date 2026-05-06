@@ -3,6 +3,7 @@ import random
 
 from core.combat.calcs import calculate_damage_taken, calculate_monster_hit_chance
 from core.combat.helpers import MonsterTurnResult, _add_ward
+from core.combat import jewel_engine as _je
 from core.models import Monster, Player
 
 
@@ -593,6 +594,14 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
 
     player.current_hp = max(0, player.current_hp)
     hp_damage = max(0, prev_hp - player.current_hp)
+
+    # --- Paradise Jewel: Bastion — charge on HP damage taken ---
+    if hp_damage > 0:
+        _bastion_log: list[str] = []
+        _je.process_jewel_trigger(player, monster, "hp_damage_taken", hp_damage, _bastion_log)
+        if _bastion_log:
+            log.extend(_bastion_log)
+
     calc.append(
         f"  final: ward_remaining={player.combat_ward} hp_damage={hp_damage} "
         f"player_hp={player.current_hp}/{player.total_max_hp}"
