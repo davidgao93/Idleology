@@ -1,10 +1,11 @@
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
 
 
-class FusionWizardView(ui.View):
+class FusionWizardView(BaseView):
     def __init__(self, bot, user_id: str, companions: list, parent_list_view=None):
         super().__init__(timeout=600)
         self.bot = bot
@@ -18,25 +19,6 @@ class FusionWizardView(ui.View):
         self.FUSION_COST = 50000
 
         self.setup_step_one()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        if self.parent_list_view is None:
-            self.bot.state_manager.clear_active(self.user_id)
-        try:
-            if self.parent_list_view:
-                self.parent_list_view.update_buttons()
-                await self.message.edit(
-                    embed=self.parent_list_view.get_embed(), view=self.parent_list_view
-                )
-            else:
-                await self.message.edit(
-                    content="Fusion session timed out.", view=None, embed=None
-                )
-        except:
-            pass
 
     # --- STEP 1: Select First ---
     def setup_step_one(self):

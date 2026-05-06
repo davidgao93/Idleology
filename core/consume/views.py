@@ -1,6 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.images import CONSUME_HUB
 from core.items.factory import create_monster_part
 from core.models import MonsterPart, Player
@@ -121,25 +122,13 @@ class BulkDiscardModal(ui.Modal, title="Bulk Discard Parts"):
         await interaction.edit_original_response(embed=embed, view=self.parent)
 
 
-class EquipConfirmView(ui.View):
+class EquipConfirmView(BaseView):
     """Shown when a slot is already occupied — asks the player to confirm replacement."""
 
     def __init__(self, parent: "ConsumeView", part: MonsterPart):
-        super().__init__(timeout=600)
+        super().__init__(bot=parent.bot, parent=parent)
         self.parent = parent
         self.part = part
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.parent.user_id
-
-    async def on_timeout(self):
-        try:
-            await self.parent.message.edit(
-                embed=_build_main_embed(self.parent.player, self.parent.inventory),
-                view=self.parent,
-            )
-        except Exception:
-            pass
 
     @ui.button(label="Confirm Consume", style=ButtonStyle.danger)
     async def confirm(self, interaction: Interaction, button: ui.Button):
@@ -175,25 +164,13 @@ class EquipConfirmView(ui.View):
         self.parent._rebuild_select()
 
 
-class PartDetailView(ui.View):
+class PartDetailView(BaseView):
     """Shown after selecting a specific part — offers Equip or Discard."""
 
     def __init__(self, parent: "ConsumeView", part: MonsterPart):
-        super().__init__(timeout=600)
+        super().__init__(bot=parent.bot, parent=parent)
         self.parent = parent
         self.part = part
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.parent.user_id
-
-    async def on_timeout(self):
-        try:
-            await self.parent.message.edit(
-                embed=_build_main_embed(self.parent.player, self.parent.inventory),
-                view=self.parent,
-            )
-        except Exception:
-            pass
 
     @ui.button(label="Consume", style=ButtonStyle.success, emoji="✅")
     async def equip(self, interaction: Interaction, button: ui.Button):
@@ -267,7 +244,7 @@ class PartSelect(ui.Select):
     def __init__(self, parts: list[MonsterPart]):
         options = [
             discord.SelectOption(
-                label=p.display_name[:100],
+                label=p.display_name.replace("**", "")[:100],
                 description=f"ilvl {p.ilvl} — +{p.hp_value} Max HP",
                 value=str(p.id),
                 emoji=_SLOT_EMOJI.get(p.slot_type, "🫀"),
@@ -304,12 +281,10 @@ class PartSelect(ui.Select):
         await interaction.response.edit_message(embed=embed, view=detail_view)
 
 
-class ConsumeView(ui.View):
+class ConsumeView(BaseView):
     def __init__(self, player: Player, inventory: list, bot):
-        super().__init__(timeout=600)
+        super().__init__(bot=bot, user_id=str(player.id))
         self.player = player
-        self.bot = bot
-        self.user_id = str(player.id)
         self.inventory = inventory  # raw DB rows
         self.inventory_parts = [create_monster_part(r) for r in inventory]
         self.message = None
@@ -325,17 +300,6 @@ class ConsumeView(ui.View):
 
     def build_embed(self) -> discord.Embed:
         return _build_main_embed(self.player, self.inventory)
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     @ui.button(label="Bulk Discard", style=ButtonStyle.danger, emoji="🗑️", row=1)
     async def bulk_discard(self, interaction: Interaction, button: ui.Button):

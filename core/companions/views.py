@@ -3,22 +3,20 @@
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.base_view import BaseView
 from core.companions.logic import CompanionLogic
 from core.companions.mechanics import CompanionMechanics
 from core.models import Companion
 
 
-class RerollConfirmView(ui.View):
+class RerollConfirmView(BaseView):
     def __init__(self, bot, user_id, companion, runes_owned, origin_view):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id)
         self.bot = bot
         self.user_id = user_id
         self.comp = companion
         self.runes_owned = runes_owned
         self.origin_view = origin_view  # The Detail View
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     @ui.button(label="Confirm Reroll", style=ButtonStyle.success, emoji="🎲")
     async def confirm(self, interaction: Interaction, button: ui.Button):
@@ -77,23 +75,13 @@ class RerollConfirmView(ui.View):
         self.stop()
 
 
-class CompanionListView(ui.View):
+class CompanionListView(BaseView):
     def __init__(self, bot, user_id: str, companions: list[Companion]):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id)
         self.bot = bot
         self.user_id = user_id
         self.companions = companions
         self.update_buttons()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        try:
-            await self.message.edit(view=None)
-        except:
-            pass
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
@@ -225,9 +213,9 @@ class CompanionListView(ui.View):
         await interaction.response.edit_message(embed=embed, view=view)
 
 
-class CompanionDetailView(ui.View):
+class CompanionDetailView(BaseView):
     def __init__(self, bot, user_id, companion, parent_view):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id)
         self.bot = bot
         self.user_id = user_id
         self.comp = companion
