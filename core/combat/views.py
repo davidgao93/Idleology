@@ -431,7 +431,8 @@ class CombatView(BaseView):
                 await message.edit(embed=trans_embed, view=None)
                 await asyncio.sleep(2)
 
-                self.update_buttons()
+                if not self._was_auto:
+                    self.update_buttons()
 
                 # Restart View with new Monster
                 embed = combat_ui.create_combat_embed(
@@ -921,16 +922,14 @@ class CombatView(BaseView):
                     ),
                     inline=False,
                 )
-                ping_content = (
-                    f"<@{self.user_id}> A Soul Core has manifested — make your choice!"
-                    if self._was_auto
-                    else None
+                ping_msg = await message.channel.send(
+                    f"<@{self.user_id}> A Soul Core has manifested — make your choice!\n\nBattle: {message.jump_url}"
                 )
+                await ping_msg.delete(delay=45)
                 contract_choice_view = LuciferChoiceView(
                     self.bot, self.user_id, self.player
                 )
                 await message.edit(
-                    content=ping_content,
                     embed=embed,
                     view=contract_choice_view,
                 )

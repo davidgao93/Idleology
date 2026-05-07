@@ -148,8 +148,8 @@ def _armor_fields(embed, item, passive_desc: dict, celestial_desc: dict):
     embed.add_field(
         name="Upgrades",
         value=(
-            f"Tempers Remaining: **{item.temper_remaining}**  ·  "
-            f"Imbue Attempts: **{item.imbue_remaining}**  ·  "
+            f"Tempers Remaining: **{item.temper_remaining}**\n"
+            f"Imbue Attempts: **{item.imbue_remaining}**\n"
             f"Reinforces Remaining: **{reinforces_remaining}**"
         ),
         inline=False,
@@ -189,8 +189,8 @@ def _helmet_fields(embed, item, passive_funcs: dict):
     reinforces_remaining = getattr(item, "reinforces_remaining", 0)
     embed.add_field(
         name="Upgrades",
-        value=f"Enchants Remaining: **{item.potential_remaining}**  ·  Reinforces Remaining: **{reinforces_remaining}**",
-        inline=True,
+        value=f"Enchants Remaining: **{item.potential_remaining}** \nReinforces Remaining: **{reinforces_remaining}**",
+        inline=False,
     )
 
     if item.passive not in ("none", ""):
@@ -241,8 +241,8 @@ def _glove_boot_fields(embed, item, passive_funcs: dict):
     reinforces_remaining = getattr(item, "reinforces_remaining", 0)
     embed.add_field(
         name="Upgrades",
-        value=f"Enchants Remaining: **{item.potential_remaining}**  ·  Reinforces Remaining: **{reinforces_remaining}**",
-        inline=True,
+        value=f"Enchants Remaining: **{item.potential_remaining}**\nReinforces Remaining: **{reinforces_remaining}**",
+        inline=False,
     )
 
     if item.passive not in ("none", ""):

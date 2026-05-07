@@ -1,14 +1,23 @@
 import random
 
+from core.images import (
+    ASCENT_HUB,
+    COMBAT_ELEMENTAL,
+    COMBAT_VICTORY,
+    COMPANIONS_HUB,
+    CODEX_HUB,
+    CORRUPTION_GATE,
+    ENCOUNTER_SOUL_CORE,
+    MAW_MAIN,
+    PARTNERS_HUB,
+    SETTLEMENT_HUB,
+    TAVERN_KEEPER,
+    UPGRADE_FORGE,
+)
+
 
 # ---------------------------------------------------------------------------
-# Milestone definitions
-# ---------------------------------------------------------------------------
-# Each entry:
-#   level          — the milestone level
-#   reward_desc    — short display string shown in the journey embed
-#   systems        — list of system names unlocked at this tier (display only)
-#   grant          — async (bot, user_id, server_id) -> list[str]  (returns log lines)
+# Per-milestone grant functions
 # ---------------------------------------------------------------------------
 
 async def _grant_level_1(bot, user_id: str, server_id: str) -> list:
@@ -103,71 +112,125 @@ async def _grant_level_100(bot, user_id: str, server_id: str) -> list:
     return ["👑 **+1 Pinnacle Key**"]
 
 
+# ---------------------------------------------------------------------------
+# Milestone table
+# ---------------------------------------------------------------------------
+# Fields:
+#   level        — the milestone level
+#   title        — short label shown in the select menu
+#   reward_desc  — one-line summary of the reward
+#   systems      — systems unlocked at this tier (display only)
+#   commands     — slash commands that become available (display only)
+#   image        — embed image URL from core.images
+#   grant        — async (bot, user_id, server_id) -> list[str]
+# ---------------------------------------------------------------------------
+
 MILESTONES = [
     {
         "level": 1,
+        "title": "The Beginning",
         "reward_desc": "20 Potions",
-        "systems": ["Combat", "Gathering Skills", "Tavern Gambling", "Equipment Management"],
+        "systems": [
+            "Combat",
+            "Gathering Skills",
+            "Tavern Gambling",
+            "Equipment Management",
+        ],
+        "commands": [
+            "/combat", "/gather", "/fish", "/chop",
+            "/gamble", "/gear", "/weapons", "/armor",
+        ],
+        "image": TAVERN_KEEPER,
         "grant": _grant_level_1,
     },
     {
         "level": 10,
+        "title": "New Connections",
         "reward_desc": "10 Guild Tickets",
         "systems": ["Partner Guild", "Trade System"],
+        "commands": ["/partner", "/trade"],
+        "image": PARTNERS_HUB,
         "grant": _grant_level_10,
     },
     {
         "level": 20,
+        "title": "The Infinite Maw",
         "reward_desc": "3 Curios + 50,000 Gold",
         "systems": ["Maw of Infinity", "Aphrodite Gate"],
+        "commands": ["/maw"],
+        "image": MAW_MAIN,
         "grant": _grant_level_20,
     },
     {
         "level": 30,
+        "title": "Essence Awakens",
         "reward_desc": "3 Essences of Power + 100,000 Gold",
-        "systems": ["Calcified Monsters (Essences)", "Lucifer Gate"],
+        "systems": ["Calcified Monsters (Essence Drops)", "Lucifer Gate"],
+        "commands": ["/consume", "/gear"],
+        "image": ENCOUNTER_SOUL_CORE,
         "grant": _grant_level_30,
     },
     {
         "level": 40,
+        "title": "Bonds & Balance",
         "reward_desc": "3 Random Boss Keys + 150,000 Gold",
         "systems": ["Companion System", "Gemini Gate"],
+        "commands": ["/companions"],
+        "image": COMPANIONS_HUB,
         "grant": _grant_level_40,
     },
     {
         "level": 50,
+        "title": "Foundations",
         "reward_desc": "1 Void Key + 200,000 Gold",
         "systems": ["Settlement System", "NEET Gate", "Voidforge"],
+        "commands": ["/settlement"],
+        "image": SETTLEMENT_HUB,
         "grant": _grant_level_50,
     },
     {
         "level": 60,
+        "title": "Elemental Forces",
         "reward_desc": "1 Capricious Carp + 1 Sparkling Sprig + 1 Blessed Bismuth",
         "systems": ["Elemental Encounters"],
+        "commands": ["/uber"],
+        "image": COMBAT_ELEMENTAL,
         "grant": _grant_level_60,
     },
     {
         "level": 70,
+        "title": "Veteran's Cache",
         "reward_desc": "500,000 Gold + 2–4 Random Runes",
         "systems": [],
+        "commands": [],
+        "image": UPGRADE_FORGE,
         "grant": _grant_level_70,
     },
     {
         "level": 80,
+        "title": "The Codex",
         "reward_desc": "1 Antique Tome",
         "systems": ["Codex"],
+        "commands": ["/codex"],
+        "image": CODEX_HUB,
         "grant": _grant_level_80,
     },
     {
         "level": 90,
+        "title": "Endgame",
         "reward_desc": "500,000 Gold",
         "systems": [],
+        "commands": [],
+        "image": COMBAT_VICTORY,
         "grant": _grant_level_90,
     },
     {
         "level": 100,
+        "title": "Pinnacle",
         "reward_desc": "1 Pinnacle Key",
         "systems": ["Corrupted Monsters", "Ascent Mode"],
+        "commands": ["/ascent"],
+        "image": CORRUPTION_GATE,
         "grant": _grant_level_100,
     },
 ]

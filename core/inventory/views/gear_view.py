@@ -15,7 +15,7 @@ from core.items.factory import (
     create_helmet,
     create_weapon,
 )
-from core.models import Accessory, Armor, Weapon
+from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 from core.util import stars
 
 from .detail_view import ItemDetailView
@@ -135,7 +135,13 @@ class GearView(BaseView):
         parts = []
         if getattr(item, "attack", 0) > 0:
             parts.append(f"ATK:{item.attack}")
-        if getattr(item, "defence", 0) > 0:
+        if isinstance(item, Armor):
+            main_stat_type = getattr(item, "main_stat_type", "def")
+            main_stat = getattr(item, "main_stat", 0)
+            if main_stat > 0:
+                label = "ATK" if main_stat_type == "atk" else "DEF"
+                parts.append(f"{label}:{main_stat}")
+        elif getattr(item, "defence", 0) > 0:
             parts.append(f"DEF:{item.defence}")
         if getattr(item, "rarity", 0) > 0:
             parts.append(f"Rar:{item.rarity}%")
@@ -151,8 +157,6 @@ class GearView(BaseView):
             parts.append(f"PDR:{item.pdr}%")
         if getattr(item, "fdr", 0) > 0:
             parts.append(f"FDR:{item.fdr}")
-        if isinstance(item, Weapon) and item.refinement_lvl > 0:
-            parts.append(f"+{item.refinement_lvl}")
 
         passives = []
         if getattr(item, "passive", "none") not in ("none", ""):
@@ -204,6 +208,10 @@ class GearView(BaseView):
             label = f"{'[E] ' if is_equipped else ''}Lv.{item.level} {item.name}"
             if isinstance(item, Weapon) and item.refinement_lvl > 0:
                 label += f" (+{item.refinement_lvl})"
+            elif isinstance(item, (Armor, Glove, Boot, Helmet)):
+                reinforce_lvl = getattr(item, "reinforcement_lvl", 0)
+                if reinforce_lvl > 0:
+                    label += f" (+{reinforce_lvl})"
             elif hasattr(item, "passive_lvl") and item.passive_lvl > 0:
                 label += f" (+{item.passive_lvl})"
             if len(label) > 100:
