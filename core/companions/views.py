@@ -359,7 +359,7 @@ class CompanionDetailView(BaseView):
 
     async def open_balanced_engram(self, interaction: Interaction):
         await interaction.response.defer()
-        from core.inventory.upgrade_views import BalancedEngramView
+        from core.inventory.upgrades.companion import BalancedEngramView
 
         view = BalancedEngramView(self.bot, self.user_id, self.comp, self)
         await view.render(interaction)

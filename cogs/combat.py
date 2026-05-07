@@ -140,7 +140,7 @@ class Combat(commands.Cog, name="combat"):
 
         # 3a. Corrupted encounter roll — resolves first (level 100+)
         if player.level >= 100:
-            corrupted_chance = 1.01 + player.get_emblem_bonus("corrupted_find") * 0.002
+            corrupted_chance = 0.01 + player.get_emblem_bonus("corrupted_find") * 0.002
             if random.random() < corrupted_chance:
                 gate_view = CorruptedEncounterGateView(self.bot, user_id)
                 await interaction.edit_original_response(

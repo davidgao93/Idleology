@@ -1,6 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.curios.logic import CurioManager
 from core.curios.puzzle_box_views import PuzzleBoxView
 from core.images import CURIO_BULK, CURIO_UNOPENED
@@ -39,7 +40,7 @@ class CustomAmountModal(ui.Modal, title="Open Custom Amount"):
         await interaction.response.defer()
 
 
-class CurioView(ui.View):
+class CurioView(BaseView):
     def __init__(
         self,
         bot,
@@ -48,7 +49,7 @@ class CurioView(ui.View):
         curio_count: int,
         puzzle_box_count: int = 0,
     ):
-        super().__init__(timeout=600)
+        super().__init__(bot=bot, user_id=user_id, server_id=server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -126,17 +127,14 @@ class CurioView(ui.View):
         embed.set_thumbnail(url=_UNOPENED_IMAGE)
         return embed
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
     async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
         try:
             for child in self.children:
                 child.disabled = True
             await self.message.edit(view=self)
         except Exception:
             pass
+        await super().on_timeout()
 
     async def _process_open(self, interaction: Interaction, amount: int):
         await interaction.response.defer()
@@ -175,6 +173,7 @@ class CurioView(ui.View):
                 name="Empty!", value="You have no curios left.", inline=False
             )
             await interaction.edit_original_response(embed=embed, view=None)
+            self.message = await interaction.original_response()
             self.bot.state_manager.clear_active(self.user_id)
             self.stop()
         else:

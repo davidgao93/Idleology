@@ -1,6 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.curios.puzzle_box_logic import (
     PUZZLE_BOX_IMAGE,
     REWARD_EMOJIS,
@@ -11,9 +12,9 @@ from core.curios.puzzle_box_logic import (
 )
 
 
-class PuzzleBoxView(ui.View):
+class PuzzleBoxView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str):
-        super().__init__(timeout=600)
+        super().__init__(bot=bot, user_id=user_id, server_id=server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -105,6 +106,7 @@ class PuzzleBoxView(ui.View):
         await interaction.edit_original_response(
             embed=self.build_claimed_embed(), view=self
         )
+        self.message = await interaction.original_response()
 
     async def _do_claim(self):
         self.claimed = True
@@ -159,3 +161,4 @@ class PuzzleBoxView(ui.View):
             await self.message.edit(embed=self.build_claimed_embed(), view=self)
         except (discord.NotFound, discord.HTTPException):
             pass
+        await super().on_timeout()

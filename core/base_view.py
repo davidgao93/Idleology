@@ -3,7 +3,7 @@ core/base_view.py
 Global base class for ALL Discord views in the entire bot.
 """
 
-from __future__ import annotations  # ← This MUST be at the absolute top
+from __future__ import annotations
 
 import discord
 from discord import Interaction, ui
@@ -44,7 +44,9 @@ class BaseView(ui.View):
 
     async def on_timeout(self) -> None:
         """Default safe cleanup."""
-        self.bot.state_manager.clear_active(self.user_id)
+        if self.user_id:
+            self.bot.state_manager.clear_active(self.user_id)
+
         if self.message:
             try:
                 await self.message.edit(view=None)

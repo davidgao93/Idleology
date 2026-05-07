@@ -7,7 +7,7 @@ from core.companions.mechanics import CompanionMechanics
 
 class FusionWizardView(BaseView):
     def __init__(self, bot, user_id: str, companions: list, parent_list_view=None):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id)
         self.bot = bot
         self.user_id = user_id
         self.all_companions = companions
