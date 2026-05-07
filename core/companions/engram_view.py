@@ -13,8 +13,15 @@ class BalancedEngramView(BaseView):
     """Allows consuming a Gemini Engram to awaken or reroll a companion's balanced (secondary) passive."""
 
     def __init__(self, bot, user_id, companion, parent_view):
-        super().__init__(bot, user_id, companion, parent_view)
+        super().__init__(bot, user_id=user_id, parent=parent_view)
         self.comp = companion
+        self.parent_view = parent_view
+
+    def add_back_button(self):
+        """Helper to re-add the back button after clearing items."""
+        btn_back = Button(label="Back", style=ButtonStyle.secondary, row=4)
+        btn_back.callback = self.go_back
+        self.add_item(btn_back)
 
     async def render(self, interaction: Interaction):
         server_id = str(interaction.guild.id)

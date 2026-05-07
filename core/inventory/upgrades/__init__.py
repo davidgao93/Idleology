@@ -3,24 +3,11 @@ Upgrade views for the inventory system.
 Re-exports all upgrade-related view classes for clean imports.
 """
 
-from core.inventory.upgrades import (
-    BalancedEngramView,
-    BaseUpgradeView,
-    EngramView,
-    ForgeView,
-    ImbueView,
-    InfernalEngramView,
-    PotentialView,
-    RefineView,
-    ReinforceView,
-    TemperView,
-    VoidEngramView,
-    VoidforgeView,
-)
+from .accessory import PotentialView, VoidEngramView
+from .armor import EngramView, ImbueView, ReinforceView, TemperView
+from .weapon import ForgeView, InfernalEngramView, RefineView, VoidforgeView
 
 __all__ = [
-    "BaseUpgradeView",
-    "BalancedEngramView",
     "EngramView",
     "ForgeView",
     "ImbueView",

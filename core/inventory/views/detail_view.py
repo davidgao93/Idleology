@@ -7,7 +7,8 @@ from discord.ui import Button
 
 from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
-from core.inventory import (
+from core.inventory.inventory import InventoryUI
+from core.inventory.upgrades import (
     EngramView,
     ForgeView,
     ImbueView,
@@ -19,10 +20,8 @@ from core.inventory import (
     VoidEngramView,
     VoidforgeView,
 )
-from core.inventory.inventory import InventoryUI
 
 # Core Imports
-from core.inventory.views.list_view import InventoryListView
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 
 
@@ -60,7 +59,7 @@ class ItemDetailView(BaseView):
     Handles actions for a specific item. Dynamically generates buttons based on Item Type.
     """
 
-    def __init__(self, bot, user_id: str, item: Any, parent_view: InventoryListView):
+    def __init__(self, bot, user_id: str, item: Any, parent_view: Any):
         super().__init__(bot=bot, user_id=user_id)
         self.bot = bot
         self.user_id = user_id
