@@ -3,11 +3,12 @@ import time
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.maw import mechanics
 from core.maw.ui import build_maw_embed
 
 
-class MawView(ui.View):
+class MawView(BaseView):
     def __init__(
         self,
         bot,
@@ -19,7 +20,7 @@ class MawView(ui.View):
         prev_cycle_id: int,
         participant_count: int,
     ):
-        super().__init__(timeout=600)
+        super().__init__(bot=bot, user_id=user_id)
         self.bot = bot
         self.user_id = user_id
         self.cycle_id = cycle_id
@@ -128,6 +129,7 @@ class MawView(ui.View):
         self.now_ts = now_ts
         self._build_buttons()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
+        self.message = await interaction.original_response()
 
     async def collect_rewards(self, interaction: Interaction):
         if str(interaction.user.id) != self.user_id:
@@ -147,9 +149,10 @@ class MawView(ui.View):
                 self.user_id, "curios", curios
             )
 
-        # TODO: award puzzle box item when curio_puzzle_boxes column is added
-        # if puzzle_box:
-        #     await self.bot.database.users.modify_currency(self.user_id, "curio_puzzle_boxes", 1)
+        if puzzle_box:
+            await self.bot.database.users.modify_currency(
+                self.user_id, "curio_puzzle_boxes", 1
+            )
 
         self.pending_record["rewards_collected"] = 1
 
@@ -161,15 +164,11 @@ class MawView(ui.View):
         self.now_ts = int(time.time())
         self._build_buttons()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
+        self.message = await interaction.original_response()
         await interaction.followup.send(reward_msg, ephemeral=True)
 
     async def close_view(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
+        self.bot.state_manager.clear_active(self.user_id)
         self.stop()
-        await interaction.response.edit_message(view=None)
-
-    async def on_timeout(self):
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except discord.NotFound:
-                pass

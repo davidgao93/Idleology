@@ -9,12 +9,21 @@ Text-based Discord RPG bot built with `discord.py` and `aiosqlite`. Python 3.11.
 ```
 cogs/          → Discord command handlers (entry points only)
 core/          → Game logic, mechanics, UI views
+  base_view.py → Global base class for ALL Discord views in the bot
   models.py    → Dataclass wrappers for DB rows
+  util.py
   [module]/
     mechanics.py / logic.py  → Pure math and business logic
-    views.py                 → Primary discord.ui.View classes
-    views_<feature>.py       → Feature-split view files (preferred for large modules)
-    ui.py                    → Embed/component builders (stateless helpers)
+    views.py                 → Primary discord.ui.View classes (simpler modules)
+    views/                   → View subdirectory (preferred for complex modules)
+      list_view.py           → Paginated list views
+      detail_view.py         → Item/entity detail + action views
+      gear_view.py           → Unified multi-slot views
+      modals.py              → Modal dialogs
+    upgrades/                → Upgrade-flow views (if module has upgrades)
+      base.py                → BaseUpgradeView parent
+      weapon.py / armor.py / accessory.py
+    ui.py / <module>.py      → Stateless embed/component builders
     data.py                  → Asset loading and lookup tables
   items/
     factory.py               → DB tuple → dataclass constructors
@@ -28,18 +37,67 @@ database/
 assets/        → CSV/JSON/TXT game data (monsters, items, exp tables)
 ```
 
-### View File Splitting Strategy
+---
 
-As modules grow, split views by feature rather than letting a single `views.py` balloon. The combat module is the established pattern:
+## `BaseView` — Mandatory Base for All Views
 
-| File | What goes there |
-|---|---|
-| `views.py` | Core/standard flows for the module |
-| `views_<variant>.py` | Distinct sub-features or encounter types (e.g. `views_uber.py`, `views_elemental.py`) |
-| `warning_views.py` | Confirmation dialogs and modal warnings |
-| `ui.py` | Stateless embed/component builders called by views |
+**`core/base_view.py`** is the global base class that every `discord.ui.View` in the bot must inherit from. It provides uniform timeout handling, interaction ownership checks, and state cleanup.
 
-**Rule:** When a `views.py` exceeds ~600–800 lines, extract the next distinct sub-feature into its own `views_<name>.py`. Do not split prematurely — wait until a natural feature boundary exists.
+```python
+class BaseView(ui.View):
+    def __init__(
+        self,
+        bot,
+        user_id: str | None = None,
+        server_id: str | None = None,
+        *,
+        parent: "BaseView | None" = None,
+        timeout: int = 600,
+    )
+```
+
+**Two initialization styles:**
+- **Normal:** `BaseView(bot, user_id, server_id=...)` — top-level views
+- **Child:** `BaseView(bot, parent=parent_view)` — inherits `user_id` / `server_id` from parent; use this for sub-views and upgrade views
+
+**What it provides:**
+- `self.bot`, `self.user_id`, `self.server_id`, `self.message` (set the message reference after sending)
+- `interaction_check()` — silently rejects interactions from other users
+- `on_timeout()` — calls `state_manager.clear_active(user_id)` and removes buttons from the message; always safe to call
+
+**Rule:** Every new view must extend `BaseView`. Never extend `discord.ui.View` directly.
+
+---
+
+## View File Splitting Strategy
+
+The gold standard for complex modules is **`core/inventory/`**. It demonstrates how to split a large module cleanly:
+
+```
+core/inventory/
+├── __init__.py          (re-exports everything for clean imports)
+├── inventory.py         (InventoryUI — static embed builders, no state)
+├── views/
+│   ├── __init__.py
+│   ├── list_view.py     (InventoryListView — paginated item list)
+│   ├── detail_view.py   (ItemDetailView + DiscardConfirmView)
+│   ├── gear_view.py     (GearView — unified 6-slot gear management)
+│   └── modals.py        (MassDiscardModal)
+└── upgrades/
+    ├── __init__.py
+    ├── base.py          (BaseUpgradeView — go_back() creates a fresh detail view)
+    ├── weapon.py        (ForgeView, RefineView, VoidforgeView, InfernalEngramView)
+    ├── armor.py         (TemperView, ReinforceView, EngramView, ImbueView)
+    └── accessory.py     (VoidEngramView)
+```
+
+**Splitting rules:**
+- Stateless embed/component builders live in `ui.py` or a dedicated `<module>.py` file — never inside view classes.
+- Each natural feature group gets its own file under `views/`.
+- Upgrade flows go under `upgrades/` with `BaseUpgradeView` as parent. `go_back()` on `BaseUpgradeView` creates a fresh `ItemDetailView` to reset the timeout.
+- `__init__.py` re-exports the public surface so callers import from the module, not from nested files.
+- Settlement (`core/settlement/views/`) follows the same pattern: `base.py`, `construction.py`, `detail.py`, `town_hall.py`, `black_market.py`, `dashboard.py`.
+- **When to split:** Once a module's view code would exceed ~600–800 lines in a single file, or when a second distinct sub-feature appears. Don't split prematurely.
 
 ---
 
@@ -70,8 +128,7 @@ async def combat(self, interaction: discord.Interaction):
 
 - **`core/models.py`**: Dataclasses only. No DB calls. Computed properties (`@property`) are fine.
 - **`core/[module]/mechanics.py`**: Static methods, pure functions, no I/O.
-- **`core/[module]/views.py`**: `discord.ui.View` subclasses. Views own their state and call mechanics/DB as needed.
-- **`core/[module]/views_<feature>.py`**: Split view files for large modules. Same rules as `views.py`.
+- **`core/[module]/views.py`** or **`core/[module]/views/`**: `discord.ui.View` subclasses, all extending `BaseView`. Views own their state and call mechanics/DB as needed.
 - **`core/items/factory.py`**: `create_weapon(row)`, `create_armor(row)`, etc. map DB tuples to models.
 
 ### Database (`database/`)
@@ -79,7 +136,7 @@ async def combat(self, interaction: discord.Interaction):
 - All SQL lives in `database/repositories/`. Never write raw SQL outside this directory.
 - Access via `bot.database.<repo>`: `bot.database.users`, `bot.database.equipment`, etc.
 - Call `await repo.commit()` (inherited from `BaseRepository`) after writes.
-- Available repositories: `users`, `equipment`, `skills`, `social`, `settings`, `companions`, `delve`, `settlement`, `slayer`, `uber`, `essences`, `alchemy`, `ascension`, `codex`, `duels`, `trade`, `partners`, `monster_parts`, `prestige`.
+- Available repositories: `users`, `equipment`, `skills`, `social`, `settings`, `companions`, `delve`, `settlement`, `slayer`, `uber`, `essences`, `alchemy`, `ascension`, `codex`, `duels`, `trade`, `partners`, `monster_parts`, `prestige`, `maw`, `boss_party`, `paradise`.
 
 ---
 
@@ -146,11 +203,19 @@ All built via `core/items/factory.py`.
 | Model | Notable Fields |
 |---|---|
 | `Weapon` | `level`, `attack`, `defence`, `rarity`, `passive`, `p_passive` (pinnacle), `u_passive` (utmost), `infernal_passive`, `forge_tier`, `refines_remaining` |
-| `Armor` | `level`, `block`, `evasion`, `ward`, `pdr`, `fdr`, `passive`, `temper_remaining`, `imbue_remaining`, `celestial_passive` |
+| `Armor` | `level`, `block`, `evasion`, `ward`, `pdr`, `fdr`, `passive`, `temper_remaining`, `imbue_remaining`, `celestial_passive`, `reinforcement_lvl`, `reinforces_remaining` |
 | `Accessory` | `level`, `attack`, `defence`, `rarity`, `ward`, `crit`, `passive`, `passive_lvl`, `void_passive` |
-| `Glove` | `level`, `attack`, `defence`, `ward`, `pdr`, `fdr`, `passive`, `passive_lvl`, `essence_1/2/3` + values, `corrupted_essence`, `potential_remaining` |
+| `Glove` | `level`, `attack`, `defence`, `ward`, `pdr`, `fdr`, `passive`, `passive_lvl`, `essence_1/2/3` + values, `corrupted_essence`, `potential_remaining`, `reinforcement_lvl` |
 | `Boot` | Same essence structure as Glove |
-| `Helmet` | `level`, `defence`, `ward`, `pdr`, `fdr`, `passive`, essence slots, `corrupted_essence`, `potential_remaining` |
+| `Helmet` | `level`, `defence`, `ward`, `pdr`, `fdr`, `passive`, essence slots, `corrupted_essence`, `potential_remaining`, `reinforcement_lvl` |
+
+### `DelveState`
+Tracks an active mining expedition run. Lives in `core/delve/mechanics.py`.
+- `depth`, `current_fuel`, `max_fuel`, `stability` (0–100)
+- `pickaxe_tier`: `iron | steel | gold | platinum | ideal`
+- `shards_found`, `curios_found`, `ore_found: Dict[str, int]`
+- `hazards: List[str]` — pre-generated layer hazards
+- `revealed_indices: List[int]` — sensor-revealed layers
 
 ### `Companion`
 - `level`, `exp`, `species`, `image_url`
@@ -166,9 +231,6 @@ Named NPC allies recruited via gacha and deployed on combat/dispatch tasks.
 - `dispatch_skills: List[int]` — skill levels for 3 dispatch slots + 1 signature
 - `dispatch_task`, `dispatch_start_time`, `dispatch_duration` — active dispatch state
 - `affinity` — encounter count; unlocks story tiers at 25/50/75/100
-- Combat skills: joint attack, heal, damage reduction, stat transfer, monster debuff, XP/gold boost, rarity bonus, crit scaling, curse damage, etc.
-- Dispatch skills: XP boost, gold boost, extra reward, skilling boost, settlement mats, boss keys, contracts, pinnacle finds
-- Signature abilities are partner-specific (6-star unlocks): Skol, Eve, Kay, Sigmund, Velour, Flora, Yvenn
 - Data loaded from `assets/partners.csv`; stories from `assets/partners/affinity_stories.json`
 
 ### `MonsterModifier`
@@ -264,6 +326,13 @@ await bot.database.equipment.transfer(item_id, new_user_id, item_type)
 ```
 `item_type` is a `Literal["weapon", "armor", "accessory", "glove", "boot", "helmet"]`.
 
+### Inventory UI (`core/inventory/`)
+The canonical inventory implementation. See the View File Splitting section above for the full layout. Import from the package root:
+```python
+from core.inventory import InventoryListView, GearView, ItemDetailView
+from core.inventory import ForgeView, TemperView, ...
+```
+
 ### Essences (`core/items/essence_mechanics.py`)
 Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted essence slot.
 - Regular essences boost stats; corrupted essences (Aphrodite, Lucifer, Gemini, Voidling) grant powerful unique effects.
@@ -298,9 +367,8 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
   - Rename: 750M gold per rename
   - Death Message: 300M gold to unlock, free to update after
   - Monument Quote: 2B gold to unlock, free to update after
-- **Hall of Fame**: Displays monument quotes from the top 10 players on the server (ordered by level). Visible to anyone via `/prestige`.
-- **DB tables:** `prestige_owned` (user_id, item_type, item_key); cosmetic fields stored directly on the `users` row (`prestige_border`, `prestige_title`, `prestige_display_name`, `prestige_flair`, `prestige_death_message`, `prestige_monument`).
-- **Key classes:** `PrestigeHubView` (tab-based hub: Overview / Shop / Hall of Fame), `PrestigeBuilder` (static embed builders), modals: `AvatarModal`, `RenameModal`, `DeathMessageModal`, `MonumentModal`.
+- **Hall of Fame**: Displays monument quotes from the top 10 players on the server (ordered by level).
+- **DB tables:** `prestige_owned`; cosmetic fields on the `users` row (`prestige_border`, `prestige_title`, `prestige_display_name`, `prestige_flair`, `prestige_death_message`, `prestige_monument`).
 
 ---
 
@@ -310,14 +378,42 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 - Players loot **monster body parts** from combat and equip them to gain permanent Max HP bonuses.
 - 8 body slots: head, torso, right_arm, left_arm, right_leg, left_leg, cheeks, organs.
 - Inventory cap: 20 parts. Parts are destroyed on equip (slot conflict triggers confirmation).
-- Bulk discard: remove all parts below a specified ilvl.
-- **DB tables:** `monster_parts` (inventory: id, user_id, slot_type, monster_name, ilvl, hp_value), `monster_parts_equipped` (active slots: user_id, slot_type, hp_value, monster_name).
-- **Key classes:** `ConsumeView`, `PartDetailView`, `EquipConfirmView`, `BulkDiscardModal`.
+- **DB tables:** `monster_parts`, `monster_parts_equipped`.
 - Repository: `database/repositories/monster_parts.py`.
+
+### Delve (`core/delve/`, `cogs/delve.py`)
+- Mining mini-game. Players pay a permit cost (gold), then drill through procedurally generated layers.
+- Each layer is one of: Safe, Gravel, Gas Pocket, Magma Flow, Ore Vein.
+- Hazards deal stability damage; pickaxe tier mitigates it. Ore Vein layers yield obsidian shards.
+- Three upgradeable stats tracked in `delve_progress`: `fuel_lvl`, `struct_lvl`, `sensor_lvl`.
+
+| File | Purpose |
+|---|---|
+| `core/delve/mechanics.py` | `DelveState` dataclass + `DelveMechanics` static methods |
+| `core/delve/delve_views.py` | `DelveEntryView`, `DelveView`, `DelveUpgradeView` |
+| `database/repositories/delve.py` | `get_profile`, `modify_shards`, `add_xp`, `upgrade_stat` |
+
+**`DelveMechanics` key methods:**
+- `generate_layer(depth)` — probabilistic hazard type; Ore Vein available from depth 5 at 7%
+- `calculate_damage(hazard, pickaxe_tier)` — base damage with tier mitigation + variance
+- `get_entry_cost(fuel_level)` — `1000 + fuel_level * 500`
+- `calculate_level_from_xp(xp)` — `sqrt(xp / 50) + 1`
+
+### Maw (`core/maw/`, `cogs/maw.py`)
+- Weekly world boss. One 7-day cycle starts every Sunday 12:00 UTC; active window is 5.5 days, then a collection window until the next cycle.
+- Players "fight" to accumulate personal damage (capped at 500k). Hourly ticks roll from `[100, 1_000, 10_000]`.
+- Boosts deal 10k flat damage with a 20-hour cooldown.
+- Rewards scale with damage % of cap: up to 10 curio milestones and a puzzle box at ≥80%.
+
+| File | Purpose |
+|---|---|
+| `core/maw/mechanics.py` | Cycle math, damage rolls, reward calculation |
+| `core/maw/ui.py` | `build_maw_embed` (stateless embed builder) |
+| `core/maw/views.py` | `MawView` |
+| `database/repositories/maw.py` | Cycle records, participant data |
 
 ### Partners (`core/partners/`, `cogs/partners.py`)
 - Gacha-recruited NPC allies. Deployed passively in combat or sent on timed dispatch tasks.
-- **Module files:**
 
 | File | Purpose |
 |---|---|
@@ -328,11 +424,10 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 | `data.py` | Load partner metadata from `assets/partners.csv` |
 | `resources.py` | Rarity colors, skill name/star display helpers |
 
-- **Skills:** 3 combat slots + 1 combat signature; 3 dispatch slots + 1 dispatch signature. Combat max level 10, dispatch max level 5.
-- **Dispatch tasks:** Combat (gold + rune rewards, boss keys), Gathering (mining/fishing/woodcutting loot), Boss tasks. Accumulate up to 48 hours (Kay signature extends by 12–60h).
-- **Affinity:** Encounter count unlocks story tiers at 25/50/75/100 thresholds (`assets/partners/affinity_stories.json`).
-- **Gacha:** Single and ten-pull with pity counter. Currency: guild tickets.
-- **DB tables:** `user_partners`, `user_partner_items` (tickets, pity, skill shards), `user_partner_shards` (signature upgrade currency per partner).
+- **Skills:** 3 combat slots + 1 combat signature; 3 dispatch slots + 1 dispatch signature.
+- **Dispatch tasks:** Combat (gold + rune rewards, boss keys), Gathering (mining/fishing/woodcutting loot), Boss tasks. Accumulate up to 48 hours.
+- **Affinity:** Encounter count unlocks story tiers at 25/50/75/100 thresholds.
+- **DB tables:** `user_partners`, `user_partner_items`, `user_partner_shards`.
 - Repository: `database/repositories/partners.py`.
 
 ### Alchemy (`core/alchemy/`, `cogs/alchemy.py`)
@@ -342,17 +437,13 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 
 ### Settlement (`core/settlement/`, `cogs/settlement.py`)
 - Ideology-linked settlements with buildings (Apothecary, Barracks, Temple, etc.).
-- Workers assigned to buildings grant passive bonuses (e.g., Apothecary workers boost potion effect).
+- Views split under `core/settlement/views/`: `base.py`, `construction.py`, `detail.py`, `town_hall.py`, `black_market.py`, `dashboard.py`.
 - Repository: `database/repositories/settlement.py`.
 
 ### Slayer (`core/slayer/`, `cogs/slayer.py`)
 - Task-based system; completing tasks earns points and emblems.
 - 5 emblem slots (`slot_1–5`), each with a `type` and `tier`.
 - Repository: `database/repositories/slayer.py`.
-
-### Delve (`core/minigames/`, `cogs/delve.py`)
-- Mining mini-game with fuel, structure, and sensor upgrade tiers.
-- Repository: `database/repositories/delve.py`.
 
 ### Skills (`core/skills/`, `cogs/skills.py`)
 - Gathering skills: Mining (`/gather`), Fishing (`/fish`), Woodcutting (`/chop`).
@@ -383,6 +474,10 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 | `partners` | `get_all`, `get_by_id`, `add_partner`, `update_skills`, `update_dispatch`, `update_affinity` |
 | `monster_parts` | `get_inventory`, `add_part`, `remove_part`, `get_equipped`, `equip_part`, `bulk_discard` |
 | `prestige` | `get_owned`, `add_owned`, `get_all_monuments` |
+| `delve` | `get_profile`, `modify_shards`, `add_xp`, `upgrade_stat` |
+| `maw` | Cycle records, participant damage, boost tracking |
+| `boss_party` | Party formation and boss-party state |
+| `paradise` | Paradise system data |
 | `social` | Ideology and follower data |
 | `settings` | User personal preferences |
 | `duels` | Win/loss records |
@@ -392,9 +487,9 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 ## Adding a New Feature — Checklist
 
 1. **SQL changes** → `database/schema.sql` + new methods in the appropriate `database/repositories/*.py`
-2. **Model changes** → `core/models.py` dataclass
+2. **Model changes** → `core/models.py` dataclass (or `core/<module>/mechanics.py` for run-scoped state like `DelveState`)
 3. **Logic** → `core/<module>/mechanics.py` (pure functions, no I/O)
-4. **UI** → `core/<module>/views.py` (`discord.ui.View` subclass); split into `views_<feature>.py` if the module already has a large `views.py`
+4. **UI** → Extend `BaseView`; put stateless embed builders in `ui.py` or `<module>.py`; split into `views/` subdirectory if the module is complex (follow `core/inventory/` pattern)
 5. **Command** → `cogs/<module>.py` (thin handler only)
 6. **State guard** → `set_active` / `clear_active` if the feature is interactive
 
@@ -412,6 +507,26 @@ if weapon_row:
     player.equipped_weapon = create_weapon(weapon_row)
 ```
 
+### Creating a View
+
+```python
+# Top-level view (owns the user_id)
+class MyView(BaseView):
+    def __init__(self, bot, user_id: str, server_id: str):
+        super().__init__(bot, user_id, server_id)
+
+# Child / sub-view (inherits from parent)
+class MySubView(BaseView):
+    def __init__(self, bot, parent: BaseView):
+        super().__init__(bot, parent=parent)
+```
+
+Always assign `view.message` after sending so `on_timeout` can remove the buttons:
+```python
+msg = await interaction.followup.send(embed=embed, view=view)
+view.message = msg
+```
+
 ### Loading Asset Files
 
 ```python
@@ -426,7 +541,8 @@ names = load_list("assets/items/swords.txt")
 - Do not put SQL strings in `cogs/` or `core/`.
 - Do not put game math in `cogs/`.
 - Do not use `wait_for()` for multi-step user flows — use Views.
-- Do not forget `clear_active` on timeout and exit paths.
+- Do not extend `discord.ui.View` directly — always use `BaseView`.
+- Do not forget `clear_active` on timeout and exit paths (BaseView's `on_timeout` handles the common case, but explicit exit buttons must call it too).
 - Do not skip `await interaction.response.defer()` before slow operations.
 - Do not add speculative abstractions — build only what the task requires.
 - Do not add error handling for impossible states; validate only at Discord interaction boundaries.

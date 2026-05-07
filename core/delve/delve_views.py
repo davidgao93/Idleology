@@ -1,8 +1,8 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.delve.mechanics import DelveMechanics, DelveState
 from core.images import DELVE_MAIN, DELVE_MINING, DELVE_REWARDS
-from core.minigames.mechanics import DelveMechanics, DelveState
 from core.skills.mechanics import SkillMechanics
 
 

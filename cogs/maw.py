@@ -17,9 +17,17 @@ class Maw(commands.Cog, name="maw"):
         description="Face the Maw of Infinity — an endless weekly world boss.",
     )
     async def maw(self, interaction: Interaction):
-        await interaction.response.defer()
 
         user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user):
+            return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+
+        self.bot.state_manager.set_active(user_id, "maw")
+        await interaction.response.defer()
         now_ts = int(time.time())
         now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
 

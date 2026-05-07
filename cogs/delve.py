@@ -2,9 +2,9 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from core.delve.delve_views import DelveEntryView, DelveUpgradeView, DelveView
+from core.delve.mechanics import DelveMechanics, DelveState
 from core.images import DELVE_HUB
-from core.minigames.delve_views import DelveEntryView, DelveUpgradeView, DelveView
-from core.minigames.mechanics import DelveMechanics, DelveState
 
 
 class Delve(commands.Cog):
