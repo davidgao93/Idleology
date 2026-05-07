@@ -10,6 +10,7 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button, Select, View
 
+from core.base_view import BaseView
 from core.items.essence_mechanics import (
     CORRUPTED_ESSENCE_TYPES,
     ESSENCE_VALUE_RANGES,
@@ -206,7 +207,10 @@ def _build_essence_embed(item, essence_inventory: dict) -> discord.Embed:
     owned_lines = []
     for cat_name, types in [
         ("Common", ["power", "protection"]),
-        ("Rare", ["insight", "evasion", "blocking", "deftness", "precision", "gluttony"]),
+        (
+            "Rare",
+            ["insight", "evasion", "blocking", "deftness", "precision", "gluttony"],
+        ),
         ("Utility", ["cleansing", "chaos", "annulment"]),
         ("Corrupted", ["aphrodite", "lucifer", "gemini", "neet"]),
     ]:
@@ -230,11 +234,11 @@ def _build_essence_embed(item, essence_inventory: dict) -> discord.Embed:
 # ---------------------------------------------------------------------------
 
 
-class ConfirmApplyView(View):
+class ConfirmApplyView(BaseView):
     """Yes/No confirmation before applying a regular or corrupted essence."""
 
     def __init__(self, hub: "EssenceView", essence_type: str, corrupted: bool):
-        super().__init__(timeout=600)
+        super().__init__(bot=hub.bot, parent=hub)
         self.hub = hub
         self.essence_type = essence_type
         self.corrupted = corrupted
@@ -254,6 +258,7 @@ class ConfirmApplyView(View):
             await interaction.edit_original_response(
                 embed=self.hub._get_embed(), view=self.hub
             )
+            self.message = await interaction.original_response()
             self.stop()
             return
 
@@ -281,10 +286,8 @@ class ConfirmApplyView(View):
         await interaction.response.edit_message(
             embed=self.hub._get_embed(), view=self.hub
         )
+        self.message = await interaction.original_response()
         self.stop()
-
-    async def on_timeout(self):
-        self.hub.bot.state_manager.clear_active(self.hub.user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -292,11 +295,11 @@ class ConfirmApplyView(View):
 # ---------------------------------------------------------------------------
 
 
-class ConfirmUtilityView(View):
+class ConfirmUtilityView(BaseView):
     """Yes/No confirmation before consuming a utility essence (cleanse / chaos / annul)."""
 
     def __init__(self, hub: "EssenceView", utility_type: str):
-        super().__init__(timeout=600)
+        super().__init__(bot=hub.bot, parent=hub)
         self.hub = hub
         self.utility_type = utility_type
 
@@ -315,6 +318,7 @@ class ConfirmUtilityView(View):
             await interaction.edit_original_response(
                 embed=self.hub._get_embed(), view=self.hub
             )
+            self.message = await interaction.original_response()
             self.stop()
             return
 
@@ -342,10 +346,8 @@ class ConfirmUtilityView(View):
         await interaction.response.edit_message(
             embed=self.hub._get_embed(), view=self.hub
         )
+        self.message = await interaction.original_response()
         self.stop()
-
-    async def on_timeout(self):
-        self.hub.bot.state_manager.clear_active(self.hub.user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -353,11 +355,11 @@ class ConfirmUtilityView(View):
 # ---------------------------------------------------------------------------
 
 
-class EssenceSelectView(View):
+class EssenceSelectView(BaseView):
     """Select menu to choose which essence to apply (regular or corrupted)."""
 
     def __init__(self, hub: "EssenceView", applicable: list, corrupted: bool):
-        super().__init__(timeout=600)
+        super().__init__(bot=hub.bot, parent=hub)
         self.hub = hub
         self.corrupted = corrupted
 
@@ -418,15 +420,14 @@ class EssenceSelectView(View):
         embed.set_footer(text=f"You own ×{qty}. This will consume 1.")
         confirm_view = ConfirmApplyView(self.hub, chosen, self.corrupted)
         await interaction.response.edit_message(embed=embed, view=confirm_view)
+        self.message = await interaction.original_response()
 
     async def _go_back(self, interaction: Interaction):
         self.hub._build_buttons()
         await interaction.response.edit_message(
             embed=self.hub._get_embed(), view=self.hub
         )
-
-    async def on_timeout(self):
-        self.hub.bot.state_manager.clear_active(self.hub.user_id)
+        self.message = await interaction.original_response()
 
 
 # ---------------------------------------------------------------------------
@@ -546,6 +547,7 @@ class EssenceView(View):
         await interaction.response.edit_message(
             embed=embed, view=EssenceSelectView(self, applicable, corrupted=False)
         )
+        self.message = await interaction.original_response()
 
     async def _open_apply_corrupted(self, interaction: Interaction):
         applicable = []
@@ -569,6 +571,7 @@ class EssenceView(View):
         await interaction.response.edit_message(
             embed=embed, view=EssenceSelectView(self, applicable, corrupted=True)
         )
+        self.message = await interaction.original_response()
 
     async def _confirm_utility(self, interaction: Interaction, utility_type: str):
         ok, reason = can_apply_utility(self.item, utility_type)
@@ -600,6 +603,7 @@ class EssenceView(View):
         await interaction.response.edit_message(
             embed=embed, view=ConfirmUtilityView(self, utility_type)
         )
+        self.message = await interaction.original_response()
 
     async def _go_back(self, interaction: Interaction):
         from core.inventory.inventory import InventoryUI
@@ -608,6 +612,7 @@ class EssenceView(View):
             self.parent.item, self.parent.is_equipped
         )
         await interaction.response.edit_message(embed=embed, view=self.parent)
+        self.message = await interaction.original_response()
 
     # ------------------------------------------------------------------
     # Refresh — re-fetch item and essence inventory after a change
@@ -650,6 +655,4 @@ class EssenceView(View):
         self.essence_inventory = await self.bot.database.essences.get_all(self.user_id)
         self._build_buttons()
         await interaction.edit_original_response(embed=self._get_embed(), view=self)
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
+        self.message = await interaction.original_response()

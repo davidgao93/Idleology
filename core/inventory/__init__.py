@@ -1,4 +1,5 @@
-from .base_view import BaseView
+from core.base_view import BaseView
+
 from .upgrades import (
     EngramView,
     # weapon

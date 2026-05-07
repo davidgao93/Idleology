@@ -6,6 +6,7 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 from core.base_view import BaseView
 from core.companions.logic import CompanionLogic
 from core.companions.mechanics import CompanionMechanics
+from core.inventory.upgrades import BalancedEngramView
 from core.models import Companion
 
 
@@ -359,7 +360,6 @@ class CompanionDetailView(BaseView):
 
     async def open_balanced_engram(self, interaction: Interaction):
         await interaction.response.defer()
-        from core.inventory.upgrades.companion import BalancedEngramView
 
         view = BalancedEngramView(self.bot, self.user_id, self.comp, self)
         await view.render(interaction)

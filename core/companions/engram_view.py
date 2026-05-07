@@ -2,14 +2,14 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
+from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
 from core.images import (
     UPGRADE_GEMINI_ENGRAM,
 )
-from core.inventory.upgrades.base import BaseUpgradeView
 
 
-class BalancedEngramView(BaseUpgradeView):
+class BalancedEngramView(BaseView):
     """Allows consuming a Gemini Engram to awaken or reroll a companion's balanced (secondary) passive."""
 
     def __init__(self, bot, user_id, companion, parent_view):
