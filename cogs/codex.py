@@ -11,7 +11,7 @@ class Codex(commands.Cog, name="codex"):
 
     @app_commands.command(
         name="codex",
-        description="Enter the Codex — an onslaught of curated chapters (Lvl 100+).",
+        description="Enter the Codex — an onslaught of curated chapters (Lvl 80+).",
     )
     async def codex(self, interaction: Interaction):
         user_id = str(interaction.user.id)
@@ -25,9 +25,9 @@ class Codex(commands.Cog, name="codex"):
             return
 
         # 2. Level gate
-        if existing_user[4] < 100:
+        if existing_user[4] < 80:
             await interaction.response.send_message(
-                "The Codex only reveals itself to those who have reached **Level 100**.",
+                "The Codex only reveals itself to those who have reached **Level 80**.",
                 ephemeral=True,
             )
             return

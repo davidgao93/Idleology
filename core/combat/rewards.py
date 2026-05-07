@@ -169,10 +169,11 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             if random.random() < rare_chance:
                 drops[item] = True
 
-        # Common elemental boss drops
-        for item in ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]:
-            if random.random() < rare_chance:
-                drops[item] = True
+        # Common elemental boss drops — only available once the player has reached Level 60
+        if player.level >= 60:
+            for item in ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]:
+                if random.random() < rare_chance:
+                    drops[item] = True
 
         return drops
 
@@ -222,27 +223,33 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     if random.random() < 0.01 + special_drop_chance:
         drops["spirit_shard"] = True
 
-    # Level 20+ Drops
-    if player.level > 20:
+    # Level-gated drops — each tier unlocks when the corresponding system opens
+    if player.level >= 20:
         if random.random() < (0.01 + special_drop_chance):
             drops["draconic_key"] = True
         if random.random() < (0.01 + special_drop_chance):
             drops["angelic_key"] = True
-        if random.random() < (0.03 + special_drop_chance):
-            drops["soul_core"] = True
-        if random.random() < (0.02 + special_drop_chance):
-            drops["void_frag"] = True
         if random.random() < (0.01 + special_drop_chance):
             drops["shatter_rune"] = True
-        if random.random() < (0.01 + special_drop_chance):
-            drops["balance_fragment"] = True
-
         key_drop_chance = 0.01
         if random.random() < key_drop_chance + special_drop_chance:
             drops["antique_tome"] = True
         if random.random() < key_drop_chance + special_drop_chance:
             drops["pinnacle_key"] = True
 
+    if player.level >= 30:
+        if random.random() < (0.03 + special_drop_chance):
+            drops["soul_core"] = True
+
+    if player.level >= 40:
+        if random.random() < (0.01 + special_drop_chance):
+            drops["balance_fragment"] = True
+
+    if player.level >= 50:
+        if random.random() < (0.02 + special_drop_chance):
+            drops["void_frag"] = True
+
+    if player.level >= 60:
         elemental_key_chance = 0.01 + special_drop_chance
         if random.random() < elemental_key_chance:
             drops["blessed_bismuth"] = True

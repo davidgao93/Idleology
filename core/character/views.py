@@ -132,9 +132,8 @@ class RegistrationView(View):
             self.user_id, sid, "woodcutting", "flimsy"
         )
 
-        # 3. Starter Pack
+        # 3. Starter Pack (potions are granted via /journey Level 1 claim)
         await self.bot.database.users.modify_gold(self.user_id, 200)
-        await self.bot.database.users.modify_stat(self.user_id, "potions", 10)
 
         # 4. Handle Ideology Logic
         ideologies = await self.bot.database.social.get_all_by_server(sid)
@@ -145,11 +144,18 @@ class RegistrationView(View):
         if ideology in ideologies:
             count = await self.bot.database.social.get_follower_count(ideology)
             await self.bot.database.social.update_followers(ideology, count + 1)
-            embed.description = f"Welcome, **{self.name}**!\nYou have adopted **{ideology}** (Followers: {count+1})."
+            ideology_line = f"You have adopted **{ideology}** (Followers: {count+1})."
         else:
             await self.bot.database.social.create_ideology(self.user_id, sid, ideology)
             await self.bot.database.social.update_followers(ideology, 1)
-            embed.description = f"Welcome, **{self.name}**!\nYou have founded a new ideology: **{ideology}**!"
+            ideology_line = f"You have founded a new ideology: **{ideology}**!"
+
+        embed.description = (
+            f"Welcome, **{self.name}**! {ideology_line}\n\n"
+            "**Your adventure begins now.**\n"
+            "Use `/journey` to claim your starter rewards and see what awaits you as you grow stronger. "
+            "Each milestone unlocks new systems and grants valuable items — start there first!"
+        )
 
         # Clear buttons
         await interaction.response.edit_message(embed=embed, view=None)

@@ -11,7 +11,7 @@ class LuciferChoiceView(BaseView):
     """Soul Core selection after defeating Lucifer."""
 
     def __init__(self, bot, user_id, player):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id)
         self.bot = bot
         self.user_id = user_id
         self.player = player
@@ -114,7 +114,7 @@ class InfernalContractView(BaseView):
     STAT_LABELS = {"attack": "⚔️ ATK", "defence": "🛡️ DEF", "hp": "❤️ HP"}
 
     def __init__(self, bot, user_id: str, player, server_id: str, message):
-        super().__init__(timeout=600)
+        super().__init__(bot, user_id)
         self.bot = bot
         self.user_id = user_id
         self.player = player

@@ -20,6 +20,7 @@ from .repositories.partners import PartnerRepository
 from .repositories.boss_party import BossPartyRepository
 from .repositories.maw import MawRepository
 from .repositories.paradise import ParadiseRepository
+from .repositories.journey import JourneyRepository
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:
@@ -47,3 +48,4 @@ class DatabaseManager:
         self.boss_party = BossPartyRepository(connection)
         self.maw = MawRepository(connection)
         self.paradise = ParadiseRepository(connection)
+        self.journey = JourneyRepository(connection)

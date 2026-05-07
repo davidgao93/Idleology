@@ -18,6 +18,14 @@ class Partners(commands.Cog, name="partners"):
             return
         if not await self.bot.check_is_active(interaction, user_id):
             return
+
+        if user_data[4] < 10:
+            await interaction.response.send_message(
+                "The Partner Guild only opens its doors to adventurers who have reached **Level 10**.",
+                ephemeral=True,
+            )
+            return
+
         self.bot.state_manager.set_active(user_id, "partners")
 
         await self.bot.database.partners.ensure_items_row(user_id)

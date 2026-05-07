@@ -22,6 +22,13 @@ class SettlementCog(commands.Cog, name="settlement"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
+        if existing_user[4] < 50:
+            await interaction.response.send_message(
+                "Settlements can only be founded by those who have proven themselves at **Level 50**.",
+                ephemeral=True,
+            )
+            return
+
         self.bot.state_manager.set_active(user_id, "settlement")
 
         # 2. Fetch Data

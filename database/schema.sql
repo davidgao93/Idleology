@@ -96,6 +96,13 @@ CREATE TABLE IF NOT EXISTS `prestige_owned` (
   PRIMARY KEY (`user_id`, `item_type`, `item_key`)
 );
 
+CREATE TABLE IF NOT EXISTS `journey_milestones` (
+  `user_id`         TEXT    NOT NULL,
+  `milestone_level` INTEGER NOT NULL,
+  `claimed_at`      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`, `milestone_level`)
+);
+
 
 CREATE TABLE IF NOT EXISTS `ascension_unlocks` (
   `user_id` TEXT NOT NULL,

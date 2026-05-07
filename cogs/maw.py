@@ -26,6 +26,13 @@ class Maw(commands.Cog, name="maw"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
+        if existing_user[4] < 20:
+            await interaction.response.send_message(
+                "The Maw of Infinity does not stir for those below **Level 20**.",
+                ephemeral=True,
+            )
+            return
+
         self.bot.state_manager.set_active(user_id, "maw")
         await interaction.response.defer()
         now_ts = int(time.time())

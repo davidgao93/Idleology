@@ -17,9 +17,20 @@ class Companions(commands.Cog):
     )
     async def companions(self, interaction: Interaction):
         user_id = str(interaction.user.id)
+        server_id = str(interaction.guild_id)
 
-        # 1. Check State
+        # 1. Standard validation
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user):
+            return
         if not await self.bot.check_is_active(interaction, user_id):
+            return
+
+        if existing_user[4] < 40:
+            await interaction.response.send_message(
+                "Companions reveal themselves only to adventurers who have reached **Level 40**.",
+                ephemeral=True,
+            )
             return
 
         # 2. Fetch Data
