@@ -13,6 +13,7 @@ from core.inventory.upgrades import (
     ForgeView,
     ImbueView,
     InfernalEngramView,
+    MirageView,
     PotentialView,
     RefineView,
     ReinforceView,
@@ -68,6 +69,8 @@ class ItemDetailView(BaseView):
 
         self.is_equipped = item.item_id == parent_view.equipped_id
         self.void_keys = 0
+        self.mirage_runes_imperfect = 0
+        self.mirage_runes_perfected = 0
 
     async def fetch_data(self):
         """Async setup to fetch currency/keys needed for button logic."""
@@ -79,6 +82,12 @@ class ItemDetailView(BaseView):
             self.shatter_runes = await self.bot.database.users.get_currency(
                 self.user_id, "shatter_runes"
             )
+        self.mirage_runes_imperfect = await self.bot.database.users.get_currency(
+            self.user_id, "mirage_runes_imperfect"
+        )
+        self.mirage_runes_perfected = await self.bot.database.users.get_currency(
+            self.user_id, "mirage_runes_perfected"
+        )
         self.setup_buttons()
 
     def setup_buttons(self):
@@ -139,7 +148,11 @@ class ItemDetailView(BaseView):
                 essence_btn.callback = self._open_essences
                 self.add_item(essence_btn)
 
-        # 3. Standard Actions
+        # 3. Mirage (all item types, requires at least one rune)
+        if self.mirage_runes_imperfect > 0 or self.mirage_runes_perfected > 0:
+            self.add_upgrade_button("🪞 Mirage", ButtonStyle.secondary, "mirage")
+
+        # 4. Standard Actions
         discard_btn = Button(label="Discard", style=ButtonStyle.danger)
         discard_btn.callback = self.discard_item
         self.add_item(discard_btn)
@@ -169,6 +182,7 @@ class ItemDetailView(BaseView):
             "engram": EngramView,
             "infernal_engram": InfernalEngramView,
             "void_engram": VoidEngramView,
+            "mirage": MirageView,
         }
 
         view_class = view_map.get(action_type)

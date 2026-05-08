@@ -469,15 +469,16 @@ def get_modifier_description(mod) -> str:
 
 
 def apply_all_corrupted_modifiers(monster) -> None:
-    """Apply every common and rare modifier at max tier to a corrupted monster.
+    """Apply every common and rare modifier at tier 2 to a corrupted monster.
 
     Called once during generation — after HP/stats are set and before
     _apply_spawn_modifiers, which reads the modifier list to mutate stats.
+    Rare-flat modifiers are untiered and use their fixed value as normal.
     """
     all_names = COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES + RARE_FLAT_MOD_NAMES
     for name in all_names:
         monster.modifiers.append(
-            make_modifier(name, monster.level, force_max_tier=True)
+            make_modifier(name, monster.level, force_tier=2)
         )
 
 

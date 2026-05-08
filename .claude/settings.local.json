@@ -44,7 +44,15 @@
       "PowerShell(Get-Command python, python3, py -ErrorAction SilentlyContinue)",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\yugao\\\\Idleology\\\\assets\\\\images\\\\corrupted_monsters\" | Select-Object Name, @{N=\"Size_KB\";E={[math]::Round\\($_.Length/1KB, 1\\)}})",
       "Bash(Get-ChildItem -Path C:\\\\Users\\\\yugao\\\\Idleology -Directory)",
-      "Bash(Select-Object -ExpandProperty Name)"
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(python -m py_compile core/inventory/upgrades/mirage.py)",
+      "Bash(python -m py_compile core/inventory/upgrades/__init__.py)",
+      "Bash(python -m py_compile database/repositories/equipment.py)",
+      "Bash(python -m py_compile core/inventory/views/detail_view.py)",
+      "Bash(python -m py_compile core/combat/views.py)",
+      "Bash(python -m py_compile C:/Users/yugao/Idleology/core/inventory/upgrades/mirage.py)",
+      "Bash(python -m py_compile C:/Users/yugao/Idleology/core/combat/modifier_data.py)",
+      "Bash(python -m py_compile C:/Users/yugao/Idleology/core/combat/gen_mob.py)"
     ]
   }
 }

@@ -57,7 +57,9 @@ CREATE TABLE IF NOT EXISTS `users` (
   `prestige_flair` TEXT NOT NULL DEFAULT 'none',
   `prestige_death_message` TEXT DEFAULT NULL,
   `prestige_monument` TEXT DEFAULT NULL,
-  `curio_puzzle_boxes` INTEGER NOT NULL DEFAULT 0
+  `curio_puzzle_boxes` INTEGER NOT NULL DEFAULT 0,
+  `mirage_runes_imperfect` INTEGER NOT NULL DEFAULT 0,
+  `mirage_runes_perfected` INTEGER NOT NULL DEFAULT 0
 );
 
 

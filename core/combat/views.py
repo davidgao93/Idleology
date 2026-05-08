@@ -537,6 +537,12 @@ class CombatView(BaseView):
                         self.user_id, self.server_id, 1
                     )
                     reward_data["special"].append("💎 Uncut Paradise Jewel")
+                # 0.01% (1 in 10,000) — Rune of Mirage (Imperfect), unaffected by rarity
+                if random.random() < 0.0001:
+                    await self.bot.database.users.modify_currency(
+                        self.user_id, "mirage_runes_imperfect", 1
+                    )
+                    reward_data["special"].append("🪞 Rune of Mirage (Imperfect)")
 
             # Grant Currencies based on flags
             for key, val in special_flags.items():
@@ -1230,6 +1236,26 @@ class CombatView(BaseView):
                 reward_data["msgs"].append(
                     "☠️ **The corruption yields a Corrupted Crystal.**"
                 )
+
+        # 1% — Rune of Mirage (Imperfect)
+        if random.random() < 0.01:
+            await self.bot.database.users.modify_currency(
+                self.user_id, "mirage_runes_imperfect", 1
+            )
+            reward_data["special"].append("Rune of Mirage (Imperfect)")
+            reward_data["msgs"].append(
+                "🪞 **A Rune of Mirage (Imperfect) fractures from the Origin's corruption...**"
+            )
+
+        # 0.1% — Rune of Mirage (Perfected)
+        if random.random() < 0.001:
+            await self.bot.database.users.modify_currency(
+                self.user_id, "mirage_runes_perfected", 1
+            )
+            reward_data["special"].append("Rune of Mirage (Perfected)")
+            reward_data["msgs"].append(
+                "🪞 **A Rune of Mirage (Perfected) crystallises from the primordial void...**"
+            )
 
         await self._uber_finalize_rewards(reward_data)
 

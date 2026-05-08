@@ -295,6 +295,26 @@ class EquipmentRepository:
         await self.connection.commit()
         return slot_index
 
+    async def apply_mirage(self, item_id: int, item_type: ItemType, fields: dict) -> None:
+        """Overwrite a specific set of stat columns on an item (Rune of Mirage)."""
+        table = self.tables[item_type]
+        allowed = {
+            "item_name", "item_level",
+            "attack", "defence", "rarity", "ward", "crit",
+            "block", "evasion", "pdr", "fdr",
+            "main_stat", "main_stat_type",
+            "reinforcement_lvl", "refinement_lvl",
+        }
+        safe = {k: v for k, v in fields.items() if k in allowed}
+        if not safe:
+            return
+        set_clause = ", ".join(f"{col} = ?" for col in safe)
+        values = list(safe.values()) + [item_id]
+        await self.connection.execute(
+            f"UPDATE {table} SET {set_clause} WHERE item_id = ?", values
+        )
+        await self.connection.commit()
+
     async def fetch_void_forge_candidates(self, user_id: str) -> List[Tuple]:
         """Specific query for Voidforge eligibility."""
         # Requirements: Unequipped, has an active passive. No refinement/forge limits.

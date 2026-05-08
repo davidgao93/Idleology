@@ -312,7 +312,10 @@ def roll_tier(monster_level: int, mod_def: ModifierDef) -> int:
 
 
 def make_modifier(
-    name: str, monster_level: int, force_max_tier: bool = False
+    name: str,
+    monster_level: int,
+    force_max_tier: bool = False,
+    force_tier: int | None = None,
 ) -> "MonsterModifier":
     """Construct a MonsterModifier from a name and monster level."""
 
@@ -327,6 +330,10 @@ def make_modifier(
         tier = 0
         value = defn.tiers[0]
         difficulty = defn.difficulties[0]
+    elif force_tier is not None:
+        tier = max(1, min(force_tier, len(defn.tiers)))
+        value = defn.tiers[tier - 1]
+        difficulty = defn.difficulties[tier - 1]
     elif force_max_tier:
         tier = len(defn.tiers)
         value = defn.tiers[-1]
