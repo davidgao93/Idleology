@@ -132,9 +132,9 @@ async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
 
 async def generate_accessory(user_id: str, level: int, drop_rune: bool) -> str:
     """Generate a unique accessory item."""
-    prefix = random.choice(load_list("assets/items/acc_pref.txt"))
+    prefix = random.choice(load_list("assets/items/pref.txt"))
     accessory_type = random.choice(load_list("assets/items/acc.txt"))
-    suffix = random.choice(load_list("assets/items/acc_suff.txt"))
+    suffix = random.choice(load_list("assets/items/suff.txt"))
     acc_name = f"{prefix} {accessory_type} {suffix}"
 
     attack_modifier = 0
@@ -183,11 +183,11 @@ async def generate_accessory(user_id: str, level: int, drop_rune: bool) -> str:
 
 async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
     """Generate a unique armor item."""
-    prefix = random.choice(load_list("assets/items/armor_pref.txt"))
+    prefix = random.choice(load_list("assets/items/pref.txt"))
     armor_type = random.choice(
         load_list("assets/items/armor.txt")
     )  # Load names from armor.txt
-    suffix = random.choice(load_list("assets/items/armor_suff.txt"))
+    suffix = random.choice(load_list("assets/items/suff.txt"))
     armor_name = f"{prefix} {armor_type} {suffix}"
 
     armor = Armor(
@@ -249,11 +249,11 @@ async def generate_glove(
     """Generate a unique glove item. Gloves roll one primary stat (Atk, Def, or Ward)
     and one secondary stat (PDR or FDR). They do not drop runes."""
     try:
-        prefix = random.choice(load_list("assets/items/armor_pref.txt"))
+        prefix = random.choice(load_list("assets/items/pref.txt"))
         glove_type_name = random.choice(
             load_list("assets/items/gloves.txt")
         )  # Renamed to avoid conflict
-        suffix = random.choice(load_list("assets/items/armor_suff.txt"))
+        suffix = random.choice(load_list("assets/items/suff.txt"))
         glove_name = f"{prefix} {glove_type_name} {suffix}"
     except FileNotFoundError:
         glove_name = f"Training Gloves of Level {level}"
@@ -294,9 +294,9 @@ async def generate_boot(user_id: str, level: int) -> Boot:
     and one secondary stat (PDR or FDR). They do not drop runes."""
     try:
         # Assuming asset files: assets/items/boot_pref.txt, assets/items/boots.txt, assets/items/boot_suff.txt
-        prefix = random.choice(load_list("assets/items/armor_pref.txt"))
+        prefix = random.choice(load_list("assets/items/pref.txt"))
         boot_type_name = random.choice(load_list("assets/items/boots.txt"))
-        suffix = random.choice(load_list("assets/items/armor_suff.txt"))
+        suffix = random.choice(load_list("assets/items/suff.txt"))
         boot_name = f"{prefix} {boot_type_name} {suffix}"
     except FileNotFoundError:
         boot_name = f"Sturdy Boots of Level {level}"  # Fallback name
@@ -334,11 +334,11 @@ async def generate_boot(user_id: str, level: int) -> Boot:
 
 async def generate_helmet(user_id: str, level: int) -> Helmet:
     try:
-        prefix = random.choice(load_list("assets/items/armor_pref.txt"))
+        prefix = random.choice(load_list("assets/items/pref.txt"))
         helm_type = random.choice(
             ["Helm", "Coif", "Sallet", "Bascinet", "Armet", "Visor"]
         )
-        suffix = random.choice(load_list("assets/items/armor_suff.txt"))
+        suffix = random.choice(load_list("assets/items/suff.txt"))
         name = f"{prefix} {helm_type} {suffix}"
     except:
         name = f"Sturdy Helm of Level {level}"
