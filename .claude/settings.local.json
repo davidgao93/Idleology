@@ -54,7 +54,10 @@
       "Bash(python -m py_compile C:/Users/yugao/Idleology/core/combat/modifier_data.py)",
       "Bash(python -m py_compile C:/Users/yugao/Idleology/core/combat/gen_mob.py)",
       "Bash(python -m pytest tests/ -q)",
-      "Bash(python tests/test_combat_logic.py)"
+      "Bash(python tests/test_combat_logic.py)",
+      "Bash(New-Item -ItemType Directory -Path \"core\\\\partners\\\\views\" -Force)",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"Directory created\")"
     ]
   }
 }
