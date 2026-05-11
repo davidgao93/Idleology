@@ -353,6 +353,24 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def get_rare_materials(self, user_id: str) -> tuple:
+        """Returns (magma_core, life_root, spirit_shard) for a user."""
+        async with self.connection.execute(
+            "SELECT magma_core, life_root, spirit_shard FROM users WHERE user_id=?",
+            (user_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row if row else (0, 0, 0)
+
+    async def get_uber_materials(self, user_id: str) -> tuple:
+        """Returns (celestial_stone, infernal_cinder, void_crystal, bound_crystal) for a user."""
+        async with self.connection.execute(
+            "SELECT celestial_stone, infernal_cinder, void_crystal, bound_crystal FROM users WHERE user_id=?",
+            (user_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row if row else (0, 0, 0, 0)
+
     async def get_wealth_leaderboard(self, limit: int = 10):
         rows = await self.connection.execute(
             "SELECT name, gold FROM users ORDER BY gold DESC LIMIT ?", (limit,)

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.items.factory import load_player
 
 # ── Passive description tables ───────────────────────────────────────────────
@@ -1059,13 +1060,7 @@ class ProfileBuilder:
                 inline=False,
             )
         else:
-            # Fetch the collection timer specifically
-            cursor = await bot.database.connection.execute(
-                "SELECT last_companion_collect_time FROM users WHERE user_id = ?",
-                (user_id,),
-            )
-            res = await cursor.fetchone()
-            c_time_str = res[0] if res else None
+            c_time_str = await bot.database.users.get_companion_collect_time(user_id)
 
             if c_time_str:
                 try:
@@ -1252,41 +1247,25 @@ class ProfileBuilder:
         uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
         blueprint_count = await bot.database.users.get_currency(user_id, "unidentified_blueprint")
 
-        async with bot.database.connection.execute(
-            "SELECT iron, coal, gold, platinum, idea FROM mining WHERE user_id=? AND server_id=?",
-            (user_id, server_id),
-        ) as c:
-            ores = await c.fetchone() or (0, 0, 0, 0, 0)
-        async with bot.database.connection.execute(
-            "SELECT oak_logs, willow_logs, mahogany_logs, magic_logs, idea_logs FROM woodcutting WHERE user_id=? AND server_id=?",
-            (user_id, server_id),
-        ) as c:
-            logs = await c.fetchone() or (0, 0, 0, 0, 0)
-        async with bot.database.connection.execute(
-            "SELECT desiccated_bones, regular_bones, sturdy_bones, reinforced_bones, titanium_bones FROM fishing WHERE user_id=? AND server_id=?",
-            (user_id, server_id),
-        ) as c:
-            bones = await c.fetchone() or (0, 0, 0, 0, 0)
-        async with bot.database.connection.execute(
-            "SELECT iron_bar, steel_bar, gold_bar, platinum_bar, idea_bar FROM mining WHERE user_id=? AND server_id=?",
-            (user_id, server_id),
-        ) as c:
-            ingots = await c.fetchone() or (0, 0, 0, 0, 0)
-        async with bot.database.connection.execute(
-            "SELECT oak_plank, willow_plank, mahogany_plank, magic_plank, idea_plank FROM woodcutting WHERE user_id=? AND server_id=?",
-            (user_id, server_id),
-        ) as c:
-            planks = await c.fetchone() or (0, 0, 0, 0, 0)
-        async with bot.database.connection.execute(
-            "SELECT desiccated_essence, regular_essence, sturdy_essence, reinforced_essence, titanium_essence FROM fishing WHERE user_id=? AND server_id=?",
-            (user_id, server_id),
-        ) as c:
-            essence = await c.fetchone() or (0, 0, 0, 0, 0)
-        async with bot.database.connection.execute(
-            "SELECT magma_core, life_root, spirit_shard FROM users WHERE user_id=?",
-            (user_id,),
-        ) as c:
-            rares = await c.fetchone() or (0, 0, 0)
+        ores = await bot.database.skills.get_multi_resource(
+            user_id, server_id, "mining", ["iron", "coal", "gold", "platinum", "idea"]
+        )
+        logs = await bot.database.skills.get_multi_resource(
+            user_id, server_id, "woodcutting", ["oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs"]
+        )
+        bones = await bot.database.skills.get_multi_resource(
+            user_id, server_id, "fishing", ["desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones"]
+        )
+        ingots = await bot.database.skills.get_multi_resource(
+            user_id, server_id, "mining", ["iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"]
+        )
+        planks = await bot.database.skills.get_multi_resource(
+            user_id, server_id, "woodcutting", ["oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank"]
+        )
+        essence = await bot.database.skills.get_multi_resource(
+            user_id, server_id, "fishing", ["desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence"]
+        )
+        rares = await bot.database.users.get_rare_materials(user_id)
 
         embed = discord.Embed(
             title="Storage Warehouse", color=discord.Color.dark_orange()
@@ -1316,11 +1295,7 @@ class ProfileBuilder:
     async def build_uber(bot, user_id: str, server_id: str) -> discord.Embed:
         uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
 
-        async with bot.database.connection.execute(
-            "SELECT celestial_stone, infernal_cinder, void_crystal, bound_crystal FROM users WHERE user_id=?",
-            (user_id,),
-        ) as c:
-            specials = await c.fetchone() or (0, 0, 0, 0)
+        specials = await bot.database.users.get_uber_materials(user_id)
 
         embed = discord.Embed(title="Uber Encounters", color=discord.Color.dark_gold())
 
@@ -1449,24 +1424,11 @@ class ProfileBuilder:
         return embed
 
 
-class ProfileHubView(ui.View):
+class ProfileHubView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str, active_tab: str):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.active_tab = active_tab
         self.update_buttons()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        try:
-            if self.message:
-                await self.message.delete()
-        except:
-            pass
 
     def update_buttons(self):
         self.clear_items()

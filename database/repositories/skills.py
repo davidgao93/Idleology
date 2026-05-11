@@ -48,6 +48,20 @@ class SkillRepository:
             row = await cursor.fetchone()
         return row[0] if row else 0
 
+    async def get_multi_resource(self, user_id: str, server_id: str, skill_type: str, columns: list) -> tuple:
+        """Fetch multiple resource columns from a skill table in one query."""
+        allowed = self.allowed_columns_extended.get(skill_type, [])
+        for col in columns:
+            if col not in allowed:
+                raise ValueError(f"Invalid column '{col}' for skill '{skill_type}'")
+        col_str = ", ".join(columns)
+        async with self.connection.execute(
+            f"SELECT {col_str} FROM {skill_type} WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row if row else tuple(0 for _ in columns)
+
     async def deduct_resource_atomic(self, user_id: str, server_id: str, skill_type: str, column: str, qty: int) -> bool:
         """Deduct qty from a skill resource only if sufficient balance exists. Returns True on success."""
         allowed = self.allowed_columns_extended.get(skill_type, [])
