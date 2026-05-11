@@ -202,10 +202,7 @@ class BlackMarketView(SettlementBaseView):
         if "special_key" in costs:
             col = costs["special_key"]
             req = costs["special_qty"]
-            async with self.bot.database.connection.execute(
-                f"SELECT {col} FROM users WHERE user_id = ?", (self.user_id,)
-            ) as c:
-                owned = (await c.fetchone())[0]
+            owned = await self.bot.database.users.get_currency(self.user_id, col)
             if owned < req:
                 return await interaction.response.send_message(
                     f"Need {req}x {costs['special_name']}!", ephemeral=True
@@ -226,10 +223,7 @@ class BlackMarketView(SettlementBaseView):
         await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
 
         # 3. Update DB
-        await self.bot.database.connection.execute(
-            "UPDATE buildings SET tier = tier + 1 WHERE id = ?", (self.building.id,)
-        )
-        await self.bot.database.connection.commit()
+        await self.bot.database.settlement.upgrade_building_tier(self.building.id)
 
         # 4. Update Local State
         self.building.tier += 1

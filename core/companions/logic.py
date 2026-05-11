@@ -19,11 +19,7 @@ class CompanionLogic:
         Handles the calculation and DB updates for passive companion loot.
         """
         # 1. Fetch Data
-        cursor = await bot.database.connection.execute(
-            "SELECT last_companion_collect_time FROM users WHERE user_id = ?", (user_id,)
-        )
-        res = await cursor.fetchone()
-        last_collect = res[0] if res else None
+        last_collect = await bot.database.users.get_companion_collect_time(user_id)
 
         active_rows = await bot.database.companions.get_active(user_id)
         if not active_rows:
@@ -109,13 +105,7 @@ class CompanionLogic:
                 generated_gear_count += 1
 
         # 4. Update Timer
-
-        new_time = datetime.now().isoformat()
-        await bot.database.connection.execute(
-            "UPDATE users SET last_companion_collect_time = ? WHERE user_id = ?", 
-            (new_time, user_id)
-        )
-        await bot.database.connection.commit()
+        await bot.database.users.update_companion_collect_time(user_id, datetime.now().isoformat())
 
         # 5. Format Output
         if not summary and generated_gear_count == 0:

@@ -226,10 +226,7 @@ class BuildingDetailView(SettlementBaseView):
         await interaction.response.defer()
 
         # 1. Remove from DB
-        await self.bot.database.connection.execute(
-            "DELETE FROM buildings WHERE id = ?", (self.building.id,)
-        )
-        await self.bot.database.connection.commit()
+        await self.bot.database.settlement.demolish_building(self.building.id)
 
         # 2. Update Local State
         self.parent.settlement.buildings = [
@@ -317,12 +314,7 @@ class BuildingDetailView(SettlementBaseView):
         if "special_key" in costs:
             col = costs["special_key"]
             req = costs["special_qty"]
-
-            async with self.bot.database.connection.execute(
-                f"SELECT {col} FROM users WHERE user_id = ?", (self.user_id,)
-            ) as cursor:
-                row = await cursor.fetchone()
-                owned = row[0] if row else 0
+            owned = await self.bot.database.users.get_currency(self.user_id, col)
 
             if owned < req:
                 return await interaction.response.send_message(
@@ -378,16 +370,10 @@ class BuildingDetailView(SettlementBaseView):
         await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
 
         if self.building.building_type == "town_hall":
-            await self.bot.database.connection.execute(
-                "UPDATE settlements SET building_slots = building_slots + 1 WHERE user_id = ? AND server_id = ?",
-                (self.user_id, self.parent.server_id),
-            )
+            await self.bot.database.settlement.expand_building_slots(self.user_id, self.parent.server_id)
             self.parent.settlement.building_slots += 1
 
-        await self.bot.database.connection.execute(
-            "UPDATE buildings SET tier = tier + 1 WHERE id = ?", (self.building.id,)
-        )
-        await self.bot.database.connection.commit()
+        await self.bot.database.settlement.upgrade_building_tier(self.building.id)
 
         self.building.tier += 1
         self.parent.settlement.timber -= costs["timber"]

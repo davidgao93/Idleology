@@ -48,15 +48,7 @@ class TradeManager:
             row = await bot.database.skills.get_data(user_id, server_id, table)
             if not row: return 0
             
-            # This relies on the column order in the DB repository whitelist
-            # A safer way is to perform a direct SELECT query for that specific column
-            # But since we are inside logic layer, let's use a repository helper if available
-            # or a raw specific query here to be precise.
-            
-            # Using raw query via connection for precision since repo methods are bulk getters
-            cursor = await bot.database.connection.execute(f"SELECT {col} FROM {table} WHERE user_id=? AND server_id=?", (user_id, server_id))
-            res = await cursor.fetchone()
-            return res[0] if res else 0
+            return await bot.database.skills.get_single_resource(user_id, server_id, table, col)
 
     @staticmethod
     async def transfer_gold(bot, sender_id: str, receiver_id: str, amount: int) -> bool:

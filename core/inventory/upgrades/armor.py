@@ -319,12 +319,7 @@ class ReinforceView(BaseUpgradeView):
                     mat["qty"],
                     mat["name"],
                 )
-                async with self.bot.database.connection.execute(
-                    f"SELECT {col} FROM {table} WHERE user_id=? AND server_id=?",
-                    (uid, sid),
-                ) as c:
-                    row = await c.fetchone()
-                    owned = row[0] if row else 0
+                owned = await self.bot.database.skills.get_single_resource(uid, sid, table, col)
                 status_icon = "✅" if owned >= qty else "❌"
                 if owned < qty:
                     has_mats = False
@@ -401,15 +396,11 @@ class ReinforceView(BaseUpgradeView):
 
         try:
             for mat in materials:
-                async with self.bot.database.connection.execute(
-                    f"UPDATE {mat['table']} SET {mat['column']} = {mat['column']} - ? "
-                    f"WHERE user_id=? AND server_id=? AND {mat['column']} >= ?",
-                    (mat["qty"], uid, sid, mat["qty"]),
-                ) as c:
-                    if c.rowcount == 0:
-                        return await interaction.followup.send(
-                            f"Insufficient {mat['name']}!", ephemeral=True
-                        )
+                success = await self.bot.database.skills.deduct_resource_atomic(uid, sid, mat["table"], mat["column"], mat["qty"])
+                if not success:
+                    return await interaction.followup.send(
+                        f"Insufficient {mat['name']}!", ephemeral=True
+                    )
 
             await self.bot.database.users.modify_gold(self.user_id, -cost_gold)
 

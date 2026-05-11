@@ -274,12 +274,7 @@ class RefineView(BaseUpgradeView):
                 qty = mat["qty"]
                 name = mat["name"]
 
-                async with self.bot.database.connection.execute(
-                    f"SELECT {col} FROM {table} WHERE user_id=? AND server_id=?",
-                    (uid, sid),
-                ) as c:
-                    row = await c.fetchone()
-                    owned = row[0] if row else 0
+                owned = await self.bot.database.skills.get_single_resource(uid, sid, table, col)
 
                 status_icon = "✅" if owned >= qty else "❌"
                 if owned < qty:
@@ -377,15 +372,11 @@ class RefineView(BaseUpgradeView):
                 col = mat["column"]
                 qty = mat["qty"]
 
-                # Update with check
-                async with self.bot.database.connection.execute(
-                    f"UPDATE {table} SET {col} = {col} - ? WHERE user_id=? AND server_id=? AND {col} >= ?",
-                    (qty, uid, sid, qty),
-                ) as c:
-                    if c.rowcount == 0:
-                        return await interaction.followup.send(
-                            f"Insufficient {mat['name']}!", ephemeral=True
-                        )
+                success = await self.bot.database.skills.deduct_resource_atomic(uid, sid, table, col, qty)
+                if not success:
+                    return await interaction.followup.send(
+                        f"Insufficient {mat['name']}!", ephemeral=True
+                    )
 
             # Deduct Gold
             await self.bot.database.users.modify_gold(self.user_id, -cost_gold)
@@ -489,12 +480,7 @@ class RefineView(BaseUpgradeView):
             # Check materials
             insufficient = None
             for mat in materials:
-                async with self.bot.database.connection.execute(
-                    f"SELECT {mat['column']} FROM {mat['table']} WHERE user_id=? AND server_id=?",
-                    (uid, sid),
-                ) as c:
-                    row = await c.fetchone()
-                    owned = row[0] if row else 0
+                owned = await self.bot.database.skills.get_single_resource(uid, sid, mat["table"], mat["column"])
                 if owned < mat["qty"]:
                     insufficient = mat["name"]
                     break
@@ -506,15 +492,11 @@ class RefineView(BaseUpgradeView):
             # Deduct materials
             failed = False
             for mat in materials:
-                async with self.bot.database.connection.execute(
-                    f"UPDATE {mat['table']} SET {mat['column']} = {mat['column']} - ? "
-                    f"WHERE user_id=? AND server_id=? AND {mat['column']} >= ?",
-                    (mat["qty"], uid, sid, mat["qty"]),
-                ) as c:
-                    if c.rowcount == 0:
-                        failed = True
-                        stop_reason = f"Ran out of {mat['name']}."
-                        break
+                success = await self.bot.database.skills.deduct_resource_atomic(uid, sid, mat["table"], mat["column"], mat["qty"])
+                if not success:
+                    failed = True
+                    stop_reason = f"Ran out of {mat['name']}."
+                    break
             if failed:
                 break
 
@@ -615,14 +597,8 @@ class RefineView(BaseUpgradeView):
         }
         sim_mats = {}
         for table, cols in all_mat_cols.items():
-            col_str = ", ".join(cols)
-            async with self.bot.database.connection.execute(
-                f"SELECT {col_str} FROM {table} WHERE user_id=? AND server_id=?",
-                (uid, sid),
-            ) as c:
-                row = await c.fetchone()
-                for i, col in enumerate(cols):
-                    sim_mats[col] = row[i] if row and row[i] else 0
+            for col in cols:
+                sim_mats[col] = await self.bot.database.skills.get_single_resource(uid, sid, table, col)
 
         # Simulate the full loop
         import copy
@@ -749,14 +725,10 @@ class RefineView(BaseUpgradeView):
 
             failed_mat = None
             for mat in materials:
-                async with self.bot.database.connection.execute(
-                    f"UPDATE {mat['table']} SET {mat['column']} = {mat['column']} - ? "
-                    f"WHERE user_id=? AND server_id=? AND {mat['column']} >= ?",
-                    (mat["qty"], uid, sid, mat["qty"]),
-                ) as c:
-                    if c.rowcount == 0:
-                        failed_mat = mat["name"]
-                        break
+                success = await self.bot.database.skills.deduct_resource_atomic(uid, sid, mat["table"], mat["column"], mat["qty"])
+                if not success:
+                    failed_mat = mat["name"]
+                    break
             if failed_mat:
                 stop_reason = f"Ran out of {failed_mat}."
                 break

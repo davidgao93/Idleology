@@ -188,3 +188,32 @@ class SettlementRepository:
             (user_id, server_id, building_type)
         )
         await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Building mutations
+    # ------------------------------------------------------------------
+
+    async def demolish_building(self, building_id: int) -> None:
+        await self.connection.execute("DELETE FROM buildings WHERE id = ?", (building_id,))
+        await self.connection.commit()
+
+    async def upgrade_building_tier(self, building_id: int) -> None:
+        await self.connection.execute(
+            "UPDATE buildings SET tier = tier + 1 WHERE id = ?", (building_id,)
+        )
+        await self.connection.commit()
+
+    async def expand_building_slots(self, user_id: str, server_id: str) -> None:
+        await self.connection.execute(
+            "UPDATE settlements SET building_slots = building_slots + 1 WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def upgrade_town_hall(self, user_id: str, server_id: str) -> None:
+        await self.connection.execute(
+            "UPDATE settlements SET town_hall_tier = town_hall_tier + 1, building_slots = building_slots + 1 "
+            "WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        await self.connection.commit()

@@ -7,16 +7,57 @@ class SkillRepository:
     def __init__(self, connection: aiosqlite.Connection):
         self.connection = connection
         
-        # Whitelist for dynamic SQL generation to prevent injection
+        # Whitelist for dynamic SQL generation to prevent injection (raw resources)
         self.allowed_columns = {
             "mining": ["iron", "coal", "gold", "platinum", "idea", "pickaxe_tier"],
             "woodcutting": ["oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs", "axe_type"],
             "fishing": ["desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones", "fishing_rod"]
         }
 
+        # Extended whitelist covering both raw and refined (used by upgrade views, trade)
+        self.allowed_columns_extended = {
+            "mining": [
+                "iron", "iron_bar", "coal", "steel_bar", "gold", "gold_bar",
+                "platinum", "platinum_bar", "idea", "idea_bar", "pickaxe_tier",
+            ],
+            "woodcutting": [
+                "oak_logs", "oak_plank", "willow_logs", "willow_plank",
+                "mahogany_logs", "mahogany_plank", "magic_logs", "magic_plank",
+                "idea_logs", "idea_plank", "axe_type",
+            ],
+            "fishing": [
+                "desiccated_bones", "desiccated_essence", "regular_bones", "regular_essence",
+                "sturdy_bones", "sturdy_essence", "reinforced_bones", "reinforced_essence",
+                "titanium_bones", "titanium_essence", "fishing_rod",
+            ],
+        }
+
     # ---------------------------------------------------------
     # Data Retrieval
     # ---------------------------------------------------------
+
+    async def get_single_resource(self, user_id: str, server_id: str, skill_type: str, column: str) -> int:
+        """Fetch a single resource amount from a skill table."""
+        allowed = self.allowed_columns_extended.get(skill_type, [])
+        if column not in allowed:
+            raise ValueError(f"Invalid column '{column}' for skill '{skill_type}'")
+        async with self.connection.execute(
+            f"SELECT {column} FROM {skill_type} WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row[0] if row else 0
+
+    async def deduct_resource_atomic(self, user_id: str, server_id: str, skill_type: str, column: str, qty: int) -> bool:
+        """Deduct qty from a skill resource only if sufficient balance exists. Returns True on success."""
+        allowed = self.allowed_columns_extended.get(skill_type, [])
+        if column not in allowed:
+            raise ValueError(f"Invalid column '{column}' for skill '{skill_type}'")
+        async with self.connection.execute(
+            f"UPDATE {skill_type} SET {column} = {column} - ? WHERE user_id=? AND server_id=? AND {column} >= ?",
+            (qty, user_id, server_id, qty),
+        ) as cursor:
+            return cursor.rowcount > 0
 
     async def get_data(self, user_id: str, server_id: str, skill_type: SkillType) -> Tuple:
         """Fetch the skill row for a user."""

@@ -261,6 +261,22 @@ class UserRepository:
         row = await cursor.fetchone()
         return row[0] if row else None
 
+    async def get_companion_collect_time(self, user_id: str) -> str | None:
+        """Returns the last companion collection timestamp for a user."""
+        async with self.connection.execute(
+            "SELECT last_companion_collect_time FROM users WHERE user_id = ?", (user_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row[0] if row else None
+
+    async def update_companion_collect_time(self, user_id: str, timestamp: str) -> None:
+        """Sets the companion collection timer to the given ISO timestamp."""
+        await self.connection.execute(
+            "UPDATE users SET last_companion_collect_time = ? WHERE user_id = ?",
+            (timestamp, user_id),
+        )
+        await self.connection.commit()
+
     async def initialize_companion_timer(self, user_id: str) -> None:
         """
         Sets the companion collection timer to NOW, but ONLY if it hasn't been set yet.

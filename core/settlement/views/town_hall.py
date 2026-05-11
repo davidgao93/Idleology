@@ -110,11 +110,7 @@ class TownHallView(SettlementBaseView):
         if "specials" in costs:
             # Validate ALL balances before deducting any to prevent partial consumption on failure
             for sp in costs["specials"]:
-                async with self.bot.database.connection.execute(
-                    f"SELECT {sp['key']} FROM users WHERE user_id = ?", (self.user_id,)
-                ) as c:
-                    owned = (await c.fetchone())[0]
-
+                owned = await self.bot.database.users.get_currency(self.user_id, sp["key"])
                 if owned < sp["qty"]:
                     return await interaction.response.send_message(
                         f"Need {sp['qty']}x {sp['name']}! (You have {owned})",
@@ -140,14 +136,7 @@ class TownHallView(SettlementBaseView):
         await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
 
         # 4. Update DB (Settlements Table)
-        await self.bot.database.connection.execute(
-            """UPDATE settlements 
-               SET town_hall_tier = town_hall_tier + 1, 
-                   building_slots = building_slots + 1 
-               WHERE user_id = ? AND server_id = ?""",
-            (self.user_id, self.parent.server_id),
-        )
-        await self.bot.database.connection.commit()
+        await self.bot.database.settlement.upgrade_town_hall(self.user_id, self.parent.server_id)
 
         # 5. Update Local State & Refresh
         self.settlement.town_hall_tier += 1
