@@ -28,44 +28,11 @@ class ForgeView(BaseUpgradeView):
                 "No forges remaining!", ephemeral=True
             )
 
-        # Fetch Resources
         uid, gid = self.user_id, str(interaction.guild.id)
-        # 1. Fetch Raw AND Refined
-        # We need to map raw resource names to their refined counterparts in the DB
-        # Iron -> iron_bar, Coal -> steel_bar, Gold -> gold_bar, etc.
-        raw_ore = costs["ore_type"]
-        refined_ore = f"{raw_ore if raw_ore != 'coal' else 'steel'}_bar"  # Coal -> Steel special case
-
-        raw_log = costs["log_type"]
-        refined_log = f"{raw_log}_plank"
-
-        raw_bone = costs["bone_type"]
-        refined_bone = f"{raw_bone}_essence"
-
-        # Fetch quantities via helper to handle DB tuple mapping
-        # (Assuming TradeManager logic or direct SQL here for precision)
-        # For simplicity in this example, we execute a direct select
-        async with self.bot.database.connection.execute(
-            f"SELECT {raw_ore}, {refined_ore} FROM mining WHERE user_id=? AND server_id=?",
-            (uid, gid),
-        ) as cursor:
-            mining_res = await cursor.fetchone() or (0, 0)
-
-        async with self.bot.database.connection.execute(
-            f"SELECT {raw_log}_logs, {refined_log} FROM woodcutting WHERE user_id=? AND server_id=?",
-            (uid, gid),
-        ) as cursor:
-            wood_res = await cursor.fetchone() or (0, 0)
-
-        async with self.bot.database.connection.execute(
-            f"SELECT {raw_bone}_bones, {refined_bone} FROM fishing WHERE user_id=? AND server_id=?",
-            (uid, gid),
-        ) as cursor:
-            fish_res = await cursor.fetchone() or (0, 0)
-
+        cols = self._resolve_material_columns(costs)
+        mining_res, wood_res, fish_res = await self._fetch_material_amounts(cols, uid, gid)
         gold = await self.bot.database.users.get_gold(uid)
 
-        # 2. Logic: Total Available = Raw + Refined
         total_ore = mining_res[0] + mining_res[1]
         total_log = wood_res[0] + wood_res[1]
         total_bone = fish_res[0] + fish_res[1]
@@ -77,27 +44,11 @@ class ForgeView(BaseUpgradeView):
             and gold >= costs["gold"]
         )
 
-        # 3. Store data for logic
         self.costs = costs
         self.inventory_snapshot = {
-            "ore": {
-                "raw_col": raw_ore,
-                "ref_col": refined_ore,
-                "raw_amt": mining_res[0],
-                "ref_amt": mining_res[1],
-            },
-            "log": {
-                "raw_col": f"{raw_log}_logs",
-                "ref_col": refined_log,
-                "raw_amt": wood_res[0],
-                "ref_amt": wood_res[1],
-            },
-            "bone": {
-                "raw_col": f"{raw_bone}_bones",
-                "ref_col": refined_bone,
-                "raw_amt": fish_res[0],
-                "ref_amt": fish_res[1],
-            },
+            "ore": {**cols["ore"], "raw_amt": mining_res[0], "ref_amt": mining_res[1]},
+            "log": {**cols["log"], "raw_amt": wood_res[0], "ref_amt": wood_res[1]},
+            "bone": {**cols["bone"], "raw_amt": fish_res[0], "ref_amt": fish_res[1]},
         }
 
         desc = (
@@ -144,69 +95,18 @@ class ForgeView(BaseUpgradeView):
     async def confirm_forge(self, interaction: Interaction):
         uid, gid = self.user_id, str(interaction.guild.id)
 
-        # Helper for atomic deduction
-        # Logic: Deduct from Raw first. If goes negative, add back to Raw (set to 0) and deduct remainder from Refined.
-        async def deduct_smart(table, raw_col, ref_col, raw_held, cost):
-            to_take_raw = min(raw_held, cost)
-            to_take_ref = cost - to_take_raw
-
-            if to_take_raw > 0:
-                await self.bot.database.connection.execute(
-                    f"UPDATE {table} SET {raw_col} = {raw_col} - ? WHERE user_id=? AND server_id=?",
-                    (to_take_raw, uid, gid),
-                )
-            if to_take_ref > 0:
-                await self.bot.database.connection.execute(
-                    f"UPDATE {table} SET {ref_col} = {ref_col} - ? WHERE user_id=? AND server_id=?",
-                    (to_take_ref, uid, gid),
-                )
-
-        # Re-fetch live inventory counts so that any settlement collection that ran
-        # between render and confirm doesn't cause raw columns to go negative.
         ore = self.inventory_snapshot["ore"]
         log = self.inventory_snapshot["log"]
         bone = self.inventory_snapshot["bone"]
 
-        async with self.bot.database.connection.execute(
-            f"SELECT {ore['raw_col']}, {ore['ref_col']} FROM mining WHERE user_id=? AND server_id=?",
-            (uid, gid),
-        ) as cur:
-            live_ore = await cur.fetchone() or (0, 0)
-
-        async with self.bot.database.connection.execute(
-            f"SELECT {log['raw_col']}, {log['ref_col']} FROM woodcutting WHERE user_id=? AND server_id=?",
-            (uid, gid),
-        ) as cur:
-            live_log = await cur.fetchone() or (0, 0)
-
-        async with self.bot.database.connection.execute(
-            f"SELECT {bone['raw_col']}, {bone['ref_col']} FROM fishing WHERE user_id=? AND server_id=?",
-            (uid, gid),
-        ) as cur:
-            live_bone = await cur.fetchone() or (0, 0)
-
-        # Execute Deductions
-        await deduct_smart(
-            "mining",
-            ore["raw_col"],
-            ore["ref_col"],
-            live_ore[0],
-            self.costs["ore_qty"],
+        # Re-fetch live counts to avoid negatives from concurrent settlement updates
+        live_ore, live_log, live_bone = await self._fetch_material_amounts(
+            self.inventory_snapshot, uid, gid
         )
-        await deduct_smart(
-            "woodcutting",
-            log["raw_col"],
-            log["ref_col"],
-            live_log[0],
-            self.costs["log_qty"],
-        )
-        await deduct_smart(
-            "fishing",
-            bone["raw_col"],
-            bone["ref_col"],
-            live_bone[0],
-            self.costs["bone_qty"],
-        )
+
+        await self._deduct_smart("mining", ore["raw_col"], ore["ref_col"], live_ore[0], self.costs["ore_qty"], uid, gid)
+        await self._deduct_smart("woodcutting", log["raw_col"], log["ref_col"], live_log[0], self.costs["log_qty"], uid, gid)
+        await self._deduct_smart("fishing", bone["raw_col"], bone["ref_col"], live_bone[0], self.costs["bone_qty"], uid, gid)
 
         await self.bot.database.users.modify_gold(uid, -self.costs["gold"])
         await self.bot.database.connection.commit()
@@ -279,28 +179,8 @@ class ForgeView(BaseUpgradeView):
                 break
 
             # Re-fetch inventory for current cost tier
-            raw_ore = costs["ore_type"]
-            refined_ore = f"{raw_ore if raw_ore != 'coal' else 'steel'}_bar"
-            raw_log = costs["log_type"]
-            refined_log = f"{raw_log}_plank"
-            raw_bone = costs["bone_type"]
-            refined_bone = f"{raw_bone}_essence"
-
-            async with self.bot.database.connection.execute(
-                f"SELECT {raw_ore}, {refined_ore} FROM mining WHERE user_id=? AND server_id=?",
-                (uid, gid),
-            ) as cursor:
-                mining_res = await cursor.fetchone() or (0, 0)
-            async with self.bot.database.connection.execute(
-                f"SELECT {raw_log}_logs, {refined_log} FROM woodcutting WHERE user_id=? AND server_id=?",
-                (uid, gid),
-            ) as cursor:
-                wood_res = await cursor.fetchone() or (0, 0)
-            async with self.bot.database.connection.execute(
-                f"SELECT {raw_bone}_bones, {refined_bone} FROM fishing WHERE user_id=? AND server_id=?",
-                (uid, gid),
-            ) as cursor:
-                fish_res = await cursor.fetchone() or (0, 0)
+            cols = self._resolve_material_columns(costs)
+            mining_res, wood_res, fish_res = await self._fetch_material_amounts(cols, uid, gid)
 
             gold = await self.bot.database.users.get_gold(uid)
             total_ore = mining_res[0] + mining_res[1]
@@ -315,38 +195,9 @@ class ForgeView(BaseUpgradeView):
             ):
                 break
 
-            # Deduct materials
-            async def deduct_smart(table, raw_col, ref_col, raw_held, cost):
-                to_take_raw = min(raw_held, cost)
-                to_take_ref = cost - to_take_raw
-                if to_take_raw > 0:
-                    await self.bot.database.connection.execute(
-                        f"UPDATE {table} SET {raw_col} = {raw_col} - ? WHERE user_id=? AND server_id=?",
-                        (to_take_raw, uid, gid),
-                    )
-                if to_take_ref > 0:
-                    await self.bot.database.connection.execute(
-                        f"UPDATE {table} SET {ref_col} = {ref_col} - ? WHERE user_id=? AND server_id=?",
-                        (to_take_ref, uid, gid),
-                    )
-
-            await deduct_smart(
-                "mining", raw_ore, refined_ore, mining_res[0], costs["ore_qty"]
-            )
-            await deduct_smart(
-                "woodcutting",
-                f"{raw_log}_logs",
-                refined_log,
-                wood_res[0],
-                costs["log_qty"],
-            )
-            await deduct_smart(
-                "fishing",
-                f"{raw_bone}_bones",
-                refined_bone,
-                fish_res[0],
-                costs["bone_qty"],
-            )
+            await self._deduct_smart("mining", cols["ore"]["raw_col"], cols["ore"]["ref_col"], mining_res[0], costs["ore_qty"], uid, gid)
+            await self._deduct_smart("woodcutting", cols["log"]["raw_col"], cols["log"]["ref_col"], wood_res[0], costs["log_qty"], uid, gid)
+            await self._deduct_smart("fishing", cols["bone"]["raw_col"], cols["bone"]["ref_col"], fish_res[0], costs["bone_qty"], uid, gid)
             await self.bot.database.users.modify_gold(uid, -costs["gold"])
             await self.bot.database.connection.commit()
 
