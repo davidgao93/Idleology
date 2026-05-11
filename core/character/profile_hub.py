@@ -934,7 +934,6 @@ class ProfileBuilder:
     @staticmethod
     async def build_crafting(bot, user_id: str, server_id: str) -> discord.Embed:
         user = await bot.database.users.get(user_id, server_id)
-        uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
 
         r_partner = await bot.database.users.get_currency(user_id, "partnership_runes")
         mirage_imp = await bot.database.users.get_currency(user_id, "mirage_runes_imperfect")
@@ -956,16 +955,9 @@ class ProfileBuilder:
             inline=True,
         )
 
-        blueprint_count = await bot.database.users.get_currency(user_id, "unidentified_blueprint")
         embed.add_field(
-            name="🌀 **Elemental & Void Keys**",
-            value=(
-                f"⚗️ Blessed Bismuth: {uber_data['blessed_bismuth']}\n"
-                f"🌿 Sparkling Sprig: {uber_data['sparkling_sprig']}\n"
-                f"🐟 Capricious Carp: {uber_data['capricious_carp']}\n"
-                f"🗝️ Void Keys: {user[30]}\n"
-                f"📋 Unidentified Blueprints: {blueprint_count}"
-            ),
+            name="🗝️ **Void Keys**",
+            value=f"🗝️ Void Keys: {user[30]}",
             inline=True,
         )
 
@@ -1257,6 +1249,8 @@ class ProfileBuilder:
     @staticmethod
     async def build_resources(bot, user_id: str, server_id: str) -> discord.Embed:
         settlement = await bot.database.settlement.get_settlement(user_id, server_id)
+        uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
+        blueprint_count = await bot.database.users.get_currency(user_id, "unidentified_blueprint")
 
         async with bot.database.connection.execute(
             "SELECT iron, coal, gold, platinum, idea FROM mining WHERE user_id=? AND server_id=?",
@@ -1297,46 +1291,25 @@ class ProfileBuilder:
         embed = discord.Embed(
             title="Storage Warehouse", color=discord.Color.dark_orange()
         )
-        embed.add_field(
-            name="🏭 Settlement",
-            value=f"🪵 Timber: {settlement.timber:,}\n🪨 Stone: {settlement.stone:,}",
-            inline=False,
+
+        gathering_value = (
+            f"**Ores:** Iron {ores[0]:,} · Coal {ores[1]:,} · Gold {ores[2]:,} · Plat {ores[3]:,} · Idea {ores[4]:,}\n"
+            f"**Logs:** Oak {logs[0]:,} · Willow {logs[1]:,} · Mahog {logs[2]:,} · Magic {logs[3]:,} · Idea {logs[4]:,}\n"
+            f"**Bones:** Desic {bones[0]:,} · Reg {bones[1]:,} · Sturdy {bones[2]:,} · Reinf {bones[3]:,} · Titan {bones[4]:,}\n"
+            f"**Elemental Keys:** 💎 Bismuth: {uber_data['blessed_bismuth']} · 🌿 Sprig: {uber_data['sparkling_sprig']} · 🐟 Carp: {uber_data['capricious_carp']}"
         )
-        embed.add_field(
-            name="⛏️ Ores",
-            value=f"Iron Ore: {ores[0]:,}\nCoal: {ores[1]:,}\nGold Ore: {ores[2]:,}\nPlatinum Ore: {ores[3]:,}\nIdea Ore: {ores[4]:,}",
-            inline=True,
+        embed.add_field(name="⛏️ Gathering", value=gathering_value, inline=False)
+
+        settlement_value = (
+            f"🪵 Timber: {settlement.timber:,} · 🪨 Stone: {settlement.stone:,}\n"
+            f"**Ingots:** Iron {ingots[0]:,} · Steel {ingots[1]:,} · Gold {ingots[2]:,} · Plat {ingots[3]:,} · Idea {ingots[4]:,}\n"
+            f"**Planks:** Oak {planks[0]:,} · Willow {planks[1]:,} · Mahog {planks[2]:,} · Magic {planks[3]:,} · Idea {planks[4]:,}\n"
+            f"**Essence:** Desic {essence[0]:,} · Reg {essence[1]:,} · Sturdy {essence[2]:,} · Reinf {essence[3]:,} · Titan {essence[4]:,}\n"
+            f"**Rare Materials:** 🔥 Magma Core: {rares[0]} · 🌿 Life Root: {rares[1]} · 👻 Spirit Shard: {rares[2]}\n"
+            f"📋 Unidentified Blueprints: {blueprint_count}"
         )
-        embed.add_field(
-            name="🪓 Logs",
-            value=f"Oak Logs: {logs[0]:,}\nWillow Logs: {logs[1]:,}\nMahogany Logs: {logs[2]:,}\nMagic Logs: {logs[3]:,}\nIdea Logs: {logs[4]:,}",
-            inline=True,
-        )
-        embed.add_field(
-            name="🎣 Bones",
-            value=f"Desiccated Bones: {bones[0]:,}\nRegular Bones: {bones[1]:,}\nSturdy Bones: {bones[2]:,}\nReinforced Bones: {bones[3]:,}\nTitanium Bones: {bones[4]:,}",
-            inline=True,
-        )
-        embed.add_field(
-            name="🧱 Ingots",
-            value=f"Iron: {ingots[0]:,}\nSteel: {ingots[1]:,}\nGold: {ingots[2]:,}\nPlat: {ingots[3]:,}\nIdea: {ingots[4]:,}",
-            inline=True,
-        )
-        embed.add_field(
-            name="🪵 Planks",
-            value=f"Oak: {planks[0]:,}\nWillow: {planks[1]:,}\nMahog: {planks[2]:,}\nMagic: {planks[3]:,}\nIdea: {planks[4]:,}",
-            inline=True,
-        )
-        embed.add_field(
-            name="⚗️ Essence",
-            value=f"Desic: {essence[0]:,}\nReg: {essence[1]:,}\nSturdy: {essence[2]:,}\nReinf: {essence[3]:,}\nTitan: {essence[4]:,}",
-            inline=True,
-        )
-        embed.add_field(
-            name="✨ Rare Materials",
-            value=f"🔥 Magma Core: {rares[0]}\n🌿 Life Root: {rares[1]}\n👻 Spirit Shard: {rares[2]}",
-            inline=False,
-        )
+        embed.add_field(name="🏭 Settlement", value=settlement_value, inline=False)
+
         return embed
 
     @staticmethod

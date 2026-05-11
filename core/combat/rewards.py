@@ -140,7 +140,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             "Aphrodite": {
                 "refinement_rune": 0.33,
                 "potential_rune": 0.33,
-                "imbue_rune": 0.33,
+                "imbue_rune": 0.30,
                 "curio": 1.0,  # guaranteed
             },
             "Lucifer": {

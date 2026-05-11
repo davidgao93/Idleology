@@ -39,7 +39,7 @@ class UberHubView(BaseView):
         self.clear_items()
 
         btn_aphro = ui.Button(
-            label="Challenge Aphrodite",
+            label="Aphrodite",
             style=ButtonStyle.blurple,
             emoji="🌌",
             row=0,
@@ -48,7 +48,7 @@ class UberHubView(BaseView):
         self.add_item(btn_aphro)
 
         btn_lucifer = ui.Button(
-            label="Challenge Lucifer",
+            label="Lucifer",
             style=ButtonStyle.danger,
             emoji="🔥",
             row=0,
@@ -57,33 +57,33 @@ class UberHubView(BaseView):
         self.add_item(btn_lucifer)
 
         btn_neet = ui.Button(
-            label="Challenge NEET",
+            label="NEET",
             style=ButtonStyle.secondary,
             emoji="⬛",
-            row=1,
+            row=0,
         )
         btn_neet.callback = self.open_neet
         self.add_item(btn_neet)
 
         btn_gemini = ui.Button(
-            label="Challenge Gemini",
+            label="Gemini",
             style=ButtonStyle.blurple,
             emoji="♊",
-            row=2,
+            row=0,
         )
         btn_gemini.callback = self.open_gemini
         self.add_item(btn_gemini)
 
         btn_evelynn = ui.Button(
-            label="Challenge Evelynn",
+            label="Evelynn",
             style=ButtonStyle.danger,
             emoji="☠️",
-            row=2,
+            row=1,
         )
         btn_evelynn.callback = self.open_evelynn
         self.add_item(btn_evelynn)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=3)
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=2)
         btn_close.callback = self.close_view
         self.add_item(btn_close)
 
@@ -101,7 +101,7 @@ class UberHubView(BaseView):
             name="🌌 Aphrodite, Celestial Sovereign",
             value=(
                 f"Aphrodite's fury has been unleashed.\n"
-                f"**Keys:** {self.uber_data['celestial_sigils']} Celestial Sigils *(costs 3)*"
+                f"**Keys:** {self.uber_data['celestial_sigils']} Celestial Sigils *(costs 5)*"
             ),
             inline=False,
         )
@@ -109,7 +109,7 @@ class UberHubView(BaseView):
             name="🔥 Lucifer, Infernal Sovereign",
             value=(
                 f"Lucifer's fury knows no bounds.\n"
-                f"**Keys:** {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*"
+                f"**Keys:** {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 5)*"
             ),
             inline=False,
         )
@@ -117,7 +117,7 @@ class UberHubView(BaseView):
             name="⬛ NEET, Void Sovereign",
             value=(
                 f"NEET's pain has no known depths.\n"
-                f"**Keys:** {self.uber_data['void_shards']} Void Sigils *(costs 3)*"
+                f"**Keys:** {self.uber_data['void_shards']} Void Sigils *(costs 5)*"
             ),
             inline=False,
         )
@@ -125,7 +125,7 @@ class UberHubView(BaseView):
             name="♊ Castor & Pollux, Bound Sovereigns",
             value=(
                 f"The Gemini's balance is absolute.\n"
-                f"**Keys:** {self.uber_data['gemini_sigils']} Gemini Sigils *(costs 3)*"
+                f"**Keys:** {self.uber_data['gemini_sigils']} Gemini Sigils *(costs 5)*"
             ),
             inline=False,
         )
@@ -267,8 +267,8 @@ class UberAphroditeLobbyView(BaseView):
 
         btn_start = ui.Button(
             label="Challenge Aphrodite",
-            style=ButtonStyle.danger if self.sigils >= 3 else ButtonStyle.secondary,
-            disabled=(self.sigils < 3),
+            style=ButtonStyle.danger if self.sigils >= 5 else ButtonStyle.secondary,
+            disabled=(self.sigils < 5),
             emoji="⚔️",
             row=0,
         )
@@ -289,7 +289,7 @@ class UberAphroditeLobbyView(BaseView):
 
         desc = (
             "A chibi angel appears and says: ME HUNGRY, FEED ME SIGILS!\n\n"
-            f"**Entry Cost:** 3 Celestial Sigils\n"
+            f"**Entry Cost:** 5 Celestial Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "🛡️ **Radiant Protection** — globally reduces all incoming damage by 60%.\n"
@@ -336,14 +336,14 @@ class UberAphroditeLobbyView(BaseView):
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
-        if current_data["celestial_sigils"] < 3:
+        if current_data["celestial_sigils"] < 5:
             return await interaction.response.send_message(
                 "You do not have enough Celestial Sigils.", ephemeral=True
             )
 
         await interaction.response.defer()
 
-        await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, -3)
+        await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, -5)
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
 
         monster = Monster(
@@ -409,8 +409,8 @@ class UberLuciferLobbyView(BaseView):
 
         btn_start = ui.Button(
             label="Challenge Lucifer",
-            style=ButtonStyle.danger if self.sigils >= 3 else ButtonStyle.secondary,
-            disabled=(self.sigils < 3),
+            style=ButtonStyle.danger if self.sigils >= 5 else ButtonStyle.secondary,
+            disabled=(self.sigils < 5),
             emoji="⚔️",
             row=0,
         )
@@ -434,7 +434,7 @@ class UberLuciferLobbyView(BaseView):
             "A chibi Lucifer appears and squeaks:\n"
             '*"You dare enter my domain? I will grind your bones to ash."*\n'
             '*"Hand me your sigils and I may let you live..."*\n\n'
-            f"**Entry Cost:** 3 Infernal Sigils\n"
+            f"**Entry Cost:** 5 Infernal Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "🔥 **Infernal Protection** — globally reduces all incoming damage by 60%.\n"
@@ -481,7 +481,7 @@ class UberLuciferLobbyView(BaseView):
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
-        if current_data["infernal_sigils"] < 3:
+        if current_data["infernal_sigils"] < 5:
             return await interaction.response.send_message(
                 "You do not have enough Infernal Sigils.", ephemeral=True
             )
@@ -489,7 +489,7 @@ class UberLuciferLobbyView(BaseView):
         await interaction.response.defer()
 
         await self.bot.database.uber.increment_infernal_sigils(
-            self.user_id, self.server_id, -3
+            self.user_id, self.server_id, -5
         )
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
 
@@ -706,8 +706,8 @@ class UberNEETLobbyView(BaseView):
 
         btn_start = ui.Button(
             label="Challenge NEET",
-            style=ButtonStyle.danger if self.shards >= 3 else ButtonStyle.secondary,
-            disabled=(self.shards < 3),
+            style=ButtonStyle.danger if self.shards >= 5 else ButtonStyle.secondary,
+            disabled=(self.shards < 5),
             emoji="⚔️",
             row=0,
         )
@@ -730,7 +730,7 @@ class UberNEETLobbyView(BaseView):
         desc = (
             "A Chibi voidling NEET appears:\n"
             '*"You have wandered too far into the void. Give me some shards and I may guide you back."*\n\n'
-            f"**Entry Cost:** 3 Void Sigils\n"
+            f"**Entry Cost:** 5 Void Sigils\n"
             f"**Owned:** {self.shards}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "⬛ **Void Protection** — globally reduces all incoming damage by 60%.\n"
@@ -775,7 +775,7 @@ class UberNEETLobbyView(BaseView):
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
-        if current_data["void_shards"] < 3:
+        if current_data["void_shards"] < 5:
             return await interaction.response.send_message(
                 "You do not have enough Void Sigils.", ephemeral=True
             )
@@ -783,7 +783,7 @@ class UberNEETLobbyView(BaseView):
         await interaction.response.defer()
 
         await self.bot.database.uber.increment_void_shards(
-            self.user_id, self.server_id, -3
+            self.user_id, self.server_id, -5
         )
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
 
@@ -850,8 +850,8 @@ class UberGeminiLobbyView(BaseView):
 
         btn_start = ui.Button(
             label="Challenge the Twins",
-            style=ButtonStyle.danger if self.sigils >= 3 else ButtonStyle.secondary,
-            disabled=(self.sigils < 3),
+            style=ButtonStyle.danger if self.sigils >= 5 else ButtonStyle.secondary,
+            disabled=(self.sigils < 5),
             emoji="⚔️",
             row=0,
         )
@@ -876,7 +876,7 @@ class UberGeminiLobbyView(BaseView):
             "You approach two chubby kids. A voice — no, two voices, perfectly in time:\n"
             '*"We are balance made flesh. For every blow you land, we answer in kind."*\n'
             '*"You think to yourself, I need to layoff the drugs..."*\n\n'
-            f"**Entry Cost:** 3 Gemini Sigils\n"
+            f"**Entry Cost:** 5 Gemini Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "⚡ **Balanced Protection** — globally reduces all incoming damage by 60%.\n"
@@ -923,7 +923,7 @@ class UberGeminiLobbyView(BaseView):
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
-        if current_data["gemini_sigils"] < 3:
+        if current_data["gemini_sigils"] < 5:
             return await interaction.response.send_message(
                 "You do not have enough Gemini Sigils.", ephemeral=True
             )
@@ -931,7 +931,7 @@ class UberGeminiLobbyView(BaseView):
         await interaction.response.defer()
 
         await self.bot.database.uber.increment_gemini_sigils(
-            self.user_id, self.server_id, -3
+            self.user_id, self.server_id, -5
         )
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
 

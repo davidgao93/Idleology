@@ -62,12 +62,18 @@ def _build_hub_embed(
         eff_level = M.get_effective_level(equipped, data, mastery)
         compression = M.get_compression_bonus(data)
         threshold = max(1, M.get_threshold(equipped, eff_level) - compression)
-        natural_level = data["skill_levels"].get(equipped, 0)
+        natural_level = data["skill_levels"].get(equipped, 1)
         charges = data["skill_charges"].get(equipped, 0)
 
         level_display = f"Lv {natural_level}"
         if mastery > 0:
             level_display += f" (+{mastery} Mastery → Lv {eff_level} effective)"
+
+        next_level_combats = M.combats_to_next_level(natural_level)
+        if next_level_combats is not None:
+            level_display += f"  *(~{next_level_combats:.0f} combats to next level)*"
+        else:
+            level_display += "  *(MAX)*"
 
         skill_lines = [
             f"{defn.emoji} **{defn.name}** — {level_display}",
@@ -110,7 +116,7 @@ def _build_hub_embed(
             defn = SKILL_JEWELS.get(sk)
             if not defn:
                 continue
-            lvl = data["skill_levels"].get(sk, 0)
+            lvl = data["skill_levels"].get(sk, 1)
             equipped_marker = " ◀" if sk == equipped else ""
             rows.append(f"{defn.emoji} **{defn.name}** Lv {lvl}{equipped_marker}")
         embed.add_field(
@@ -231,6 +237,13 @@ class ParadiseHubView(ui.View):
             reroll.callback = self._reroll_callback
             self.add_item(reroll)
 
+        # Row 1: Exit
+        exit_btn = ui.Button(
+            label="Exit", style=ButtonStyle.secondary, emoji="✖️", row=1
+        )
+        exit_btn.callback = self._exit_callback
+        self.add_item(exit_btn)
+
     def build_embed(self) -> discord.Embed:
         return _build_hub_embed(self.data, self.jewel_count, self.dust)
 
@@ -250,6 +263,16 @@ class ParadiseHubView(ui.View):
         view.message = self.message
         embed = view.build_embed()
         await interaction.edit_original_response(embed=embed, view=view)
+        self.stop()
+
+    # ------------------------------------------------------------------
+    # Exit
+    # ------------------------------------------------------------------
+
+    async def _exit_callback(self, interaction: Interaction) -> None:
+        await interaction.response.defer()
+        self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
         self.stop()
 
     # ------------------------------------------------------------------

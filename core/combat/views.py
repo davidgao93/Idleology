@@ -461,8 +461,10 @@ class CombatView(BaseView):
                         self.user_id, self.server_id, "infernal_forge"
                     )
                 )
-                # Always drops 1 sigil; Infernal Forge shrine gives a chance at a second
-                sigils_dropped = 1
+                # 50% base drop; Infernal Forge shrine gives a separate chance at a second
+                sigils_dropped = 0
+                if random.random() < 0.5:
+                    sigils_dropped += 1
                 if random.random() < (forge_workers * 0.0001):
                     sigils_dropped += 1
                 await self.bot.database.uber.increment_infernal_sigils(
@@ -478,8 +480,10 @@ class CombatView(BaseView):
                         self.user_id, self.server_id, "void_sanctum"
                     )
                 )
-                # Always drops 1 shard; Void Sanctum shrine gives a chance at a second
-                shards_dropped = 1
+                # 50% base drop; Void Sanctum shrine gives a separate chance at a second
+                shards_dropped = 0
+                if random.random() < 0.5:
+                    shards_dropped += 1
                 if random.random() < (sanctum_workers * 0.0001):
                     shards_dropped += 1
                 await self.bot.database.uber.increment_void_shards(
@@ -495,8 +499,10 @@ class CombatView(BaseView):
                         self.user_id, self.server_id, "celestial_shrine"
                     )
                 )
-                # Always drops 1 sigil; Celestial Shrine gives a chance at a second
-                sigils_dropped = 1
+                # 50% base drop; Celestial Shrine gives a separate chance at a second
+                sigils_dropped = 0
+                if random.random() < 0.5:
+                    sigils_dropped += 1
                 if random.random() < (shrine_workers * 0.0001):
                     sigils_dropped += 1
                 await self.bot.database.uber.increment_sigils(
@@ -512,12 +518,11 @@ class CombatView(BaseView):
                         self.user_id, self.server_id, "twin_shrine"
                     )
                 )
-                # 100% base drop, shrine workers give a fractional chance at a 2nd
-                total_chance = 1.0 + (shrine_workers * 0.0001)
-                guaranteed = int(total_chance)
-                fractional = total_chance - guaranteed
-                sigils_dropped = guaranteed
-                if random.random() < fractional:
+                # 50% base drop; Twin Shrine gives a separate chance at a second
+                sigils_dropped = 0
+                if random.random() < 0.5:
+                    sigils_dropped += 1
+                if random.random() < (shrine_workers * 0.0001):
                     sigils_dropped += 1
                 await self.bot.database.uber.increment_gemini_sigils(
                     self.user_id, self.server_id, sigils_dropped
@@ -912,12 +917,13 @@ class CombatView(BaseView):
                 await message.edit(embed=embed, view=None)
             elif "NEET" in self.monster.name:
                 embed.set_thumbnail(url=VICTORY_NEET)
-                embed.add_field(
-                    name="Loot", value="Found a **Void Key**.", inline=False
-                )
-                await self.bot.database.users.modify_currency(
-                    self.user_id, "void_keys", 1
-                )
+                if random.random() < 0.30:
+                    embed.add_field(
+                        name="Loot", value="Found a **Void Key**.", inline=False
+                    )
+                    await self.bot.database.users.modify_currency(
+                        self.user_id, "void_keys", 1
+                    )
                 await message.edit(embed=embed, view=None)
             elif "Lucifer" in self.monster.name:
                 embed.set_thumbnail(url=VICTORY_LUCIFER)
@@ -1117,9 +1123,6 @@ class CombatView(BaseView):
                 )
                 reward_data["special"].append("Void Crystal")
                 reward_data["msgs"].append("🔮 **The void yields a Void Crystal.**")
-
-        await self.bot.database.users.modify_currency(self.user_id, "void_keys", 1)
-        reward_data["special"].append("Void Key")
 
         await self._uber_finalize_rewards(reward_data)
 

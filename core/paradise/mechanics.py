@@ -200,8 +200,20 @@ def should_double_proc(data: dict) -> bool:
 # Skill leveling
 # ---------------------------------------------------------------------------
 
-# Progress needed per level (levels 1-20 natural cap, passives can exceed 20)
-_COMBATS_PER_LEVEL = 5  # 5 combat wins per level → 100 combats to reach level 20
+# Non-uniform progression: ~40 combats for levels 1→15, ~60 combats for levels 15→20 (100 total)
+def _combats_for_level(current_level: int) -> float:
+    """Expected combats to advance one level from current_level."""
+    if current_level < 15:
+        return 40 / 14  # ≈ 2.86 per level for levels 1–14
+    return 12.0  # 12 per level for levels 15–19
+
+
+def combats_to_next_level(current_level: int) -> float | None:
+    """Expected combats to advance one more level. Returns None if at cap."""
+    if current_level >= 20:
+        return None
+    return _combats_for_level(current_level)
+
 
 def add_skill_progress(data: dict, skill_key: str) -> bool:
     """
@@ -209,24 +221,24 @@ def add_skill_progress(data: dict, skill_key: str) -> bool:
     Returns True if the skill leveled up.
     """
     levels = data.setdefault("skill_levels", {})
-    current_level = levels.get(skill_key, 0)
+    current_level = levels.get(skill_key, 1)
     if current_level >= 20:
         return False  # natural cap
 
+    combats_needed = _combats_for_level(current_level)
     savant_pct = get_passive_value(data, "savant")
     effective_chance = 1.0 + savant_pct / 100
 
-    # Each combat: one progress roll per effective_chance (fractional = extra roll chance)
     full_rolls = int(effective_chance)
     extra_pct = effective_chance - full_rolls
 
     leveled = False
     for _ in range(full_rolls):
-        if random.random() < 1 / _COMBATS_PER_LEVEL:
+        if random.random() < 1 / combats_needed:
             levels[skill_key] = current_level + 1
             leveled = True
             break
-    if not leveled and extra_pct > 0 and random.random() < extra_pct / _COMBATS_PER_LEVEL:
+    if not leveled and extra_pct > 0 and random.random() < extra_pct / combats_needed:
         levels[skill_key] = current_level + 1
         leveled = True
 
@@ -293,9 +305,9 @@ def consume_jewel_unlock_skill(data: dict, skill_key: str) -> str | None:
     if data.get("equipped_skill") is None:
         data["equipped_skill"] = skill_key
         data.setdefault("skill_charges", {})[skill_key] = 0
-        data.setdefault("skill_levels", {})[skill_key] = 0
+        data.setdefault("skill_levels", {})[skill_key] = 1
     elif skill_key not in data.get("skill_levels", {}):
-        data.setdefault("skill_levels", {})[skill_key] = 0
+        data.setdefault("skill_levels", {})[skill_key] = 1
         data.setdefault("skill_charges", {})[skill_key] = 0
     return None
 
