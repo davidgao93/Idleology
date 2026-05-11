@@ -1,14 +1,15 @@
 """
 core/alchemy/synthesis_views.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Synthesis hub: disenchant boss keys into Cosmic Dust via a timed queue,
-and spend Cosmic Dust (+ gold) to synthesize new keys.
+Synthesis hub: disenchant boss keys, elemental materials, and essences into
+Cosmic Dust via up to 3 timed queues (unlocked by alchemy level), and spend
+Cosmic Dust (+ gold) to synthesize boss keys.
 
 Layout
 ------
-AlchemySynthesisHubView   — main screen; shows queue status, dust balance, key table
-  └─ _DisenchantSelectView  — key-type picker + quantity modal → queues a task
-  └─ _SynthesizeSelectView  — key-type picker + inline confirm → instant craft
+AlchemySynthesisHubView   — main screen; shows all queue slots, dust balance, key table
+  └─ _DisenchantSelectView  — category picker → item picker + quantity modal
+  └─ _SynthesizeSelectView  — key-type picker + quantity modal → instant craft
 """
 
 from __future__ import annotations
@@ -25,9 +26,19 @@ from core.base_view import BaseView
 # Helpers
 # ---------------------------------------------------------------------------
 
+# Item categories for the disenchant picker
+_CATEGORY_BOSS_KEYS  = "boss_keys"
+_CATEGORY_ELEMENTAL  = "elemental"
+_CATEGORY_ESSENCES   = "essences"
+
+_CATEGORY_LABELS = {
+    _CATEGORY_BOSS_KEYS: "Boss Keys",
+    _CATEGORY_ELEMENTAL: "Elemental Materials",
+    _CATEGORY_ESSENCES:  "Essences",
+}
+
 
 def _fmt_duration(td: timedelta) -> str:
-    """Convert a timedelta into a short human-readable string."""
     total = max(0, int(td.total_seconds()))
     h, rem = divmod(total, 3600)
     m, s = divmod(rem, 60)
@@ -41,10 +52,9 @@ def _fmt_duration(td: timedelta) -> str:
 async def _build_synthesis_hub(
     bot, user_id: str, server_id: str
 ) -> AlchemySynthesisHubView:
-    """Fetch fresh DB state and return a new AlchemySynthesisHubView."""
     alchemy_level = await bot.database.alchemy.get_level(user_id)
     cosmic_dust = await bot.database.alchemy.get_cosmic_dust(user_id)
-    queue_row = await bot.database.alchemy.get_synthesis_queue(user_id)
+    all_queues = await bot.database.alchemy.get_all_queues(user_id)
     player_gold = await bot.database.users.get_gold(user_id)
     return AlchemySynthesisHubView(
         bot,
@@ -52,7 +62,7 @@ async def _build_synthesis_hub(
         server_id,
         alchemy_level,
         cosmic_dust,
-        queue_row,
+        all_queues,
         player_gold,
     )
 
@@ -70,39 +80,45 @@ class AlchemySynthesisHubView(BaseView):
         server_id: str,
         alchemy_level: int,
         cosmic_dust: int,
-        queue_row,
+        all_queues: list,   # [(slot, item_type, quantity, start_time), ...]
         player_gold: int,
     ):
-        super().__init__(bot, user_id, server_id)  # ← BaseAlchemyView
+        super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
         self.cosmic_dust = cosmic_dust
-        self.queue_row = queue_row
+        self.all_queues = all_queues
         self.player_gold = player_gold
 
-        # Determine whether a task is complete so we can style the Collect button.
-        queue_ready = False
-        if queue_row:
-            _, qty, start_str = queue_row
-            mins = AlchemyMechanics.get_disenchant_minutes(alchemy_level)
-            end = datetime.fromisoformat(start_str) + timedelta(minutes=mins * qty)
-            queue_ready = datetime.now() >= end
+        slot_count = AlchemyMechanics.get_disenchant_queue_slots(alchemy_level)
+        active_slots = {q[0] for q in all_queues}
 
+        # Any ready queues to collect?
+        any_ready = False
+        mins = AlchemyMechanics.get_disenchant_minutes(alchemy_level)
+        for _, item_type, qty, start_str in all_queues:
+            end = datetime.fromisoformat(start_str) + timedelta(minutes=mins * qty)
+            if datetime.now() >= end:
+                any_ready = True
+                break
+
+        # Disenchant — disabled if all unlocked slots are busy
+        all_busy = len(active_slots) >= slot_count
         disenchant_btn = ui.Button(
-            label="Disenchant Keys",
+            label="Disenchant",
             style=ButtonStyle.blurple,
             emoji="🔨",
             row=0,
-            disabled=bool(queue_row),  # locked while a task is active
+            disabled=all_busy,
         )
         disenchant_btn.callback = self._on_disenchant
         self.add_item(disenchant_btn)
 
         collect_btn = ui.Button(
             label="Collect Dust",
-            style=ButtonStyle.green if queue_ready else ButtonStyle.secondary,
+            style=ButtonStyle.green if any_ready else ButtonStyle.secondary,
             emoji="✨",
             row=0,
-            disabled=not queue_ready,
+            disabled=not any_ready,
         )
         collect_btn.callback = self._on_collect
         self.add_item(collect_btn)
@@ -110,7 +126,7 @@ class AlchemySynthesisHubView(BaseView):
         synth_btn = ui.Button(
             label="Synthesize Item",
             style=ButtonStyle.primary,
-            emoji="✨",
+            emoji="🔑",
             row=0,
         )
         synth_btn.callback = self._on_synthesize
@@ -132,55 +148,55 @@ class AlchemySynthesisHubView(BaseView):
     def build_embed(self) -> discord.Embed:
         level = self.alchemy_level
         mins = AlchemyMechanics.get_disenchant_minutes(level)
-        discount = level  # 1 % per level
+        slot_count = AlchemyMechanics.get_disenchant_queue_slots(level)
+        discount = level
 
         embed = discord.Embed(title="⚗️ Synthesis", color=discord.Color.teal())
         embed.description = (
             f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}\n"
             f"**Gold:** 💰 {self.player_gold:,}\n"
-            f"**Alchemy Lv {level}** — {mins}min per item · {discount}% dust discount"
+            f"**Alchemy Lv {level}** — {mins}min per item · {discount}% dust discount · {slot_count} queue slot(s)"
         )
 
-        # --- Queue status ---
-        if self.queue_row:
-            item_type, qty, start_str = self.queue_row
-            total_mins = (
-                AlchemyMechanics.get_disenchant_minutes(self.alchemy_level) * qty
-            )
-            end = datetime.fromisoformat(start_str) + timedelta(minutes=total_mins)
-            now = datetime.now()
-            name = AlchemyMechanics.KEY_DISPLAY_NAMES[item_type]
-            emoji = AlchemyMechanics.KEY_EMOJIS[item_type]
-            total_dust = AlchemyMechanics.DUST_YIELD[item_type] * qty
-
-            if now >= end:
+        # --- Queue slots ---
+        queues_by_slot = {q[0]: q for q in self.all_queues}
+        for slot in range(1, slot_count + 1):
+            if slot not in queues_by_slot:
                 embed.add_field(
-                    name="🔨 Disenchant Queue — ✅ READY",
-                    value=(
-                        f"{emoji} **{qty}× {name}**\n"
-                        f"Yield: ✨ **{total_dust:,} Cosmic Dust** — click **Collect Dust** to claim!"
-                    ),
+                    name=f"🔨 Queue {slot} — Empty",
+                    value="*No active task. Click **Disenchant** to begin.*",
                     inline=False,
                 )
             else:
-                remaining = end - now
-                embed.add_field(
-                    name="🔨 Disenchant Queue — ⏳ In Progress",
-                    value=(
-                        f"{emoji} **{qty}× {name}**\n"
-                        f"Yield: ✨ {total_dust:,} Cosmic Dust\n"
-                        f"Ready in: **{_fmt_duration(remaining)}**"
-                    ),
-                    inline=False,
-                )
-        else:
-            embed.add_field(
-                name="🔨 Disenchant Queue",
-                value="*No active task. Disenchant items to begin.*",
-                inline=False,
-            )
+                _, item_type, qty, start_str = queues_by_slot[slot]
+                total_mins = mins * qty
+                end = datetime.fromisoformat(start_str) + timedelta(minutes=total_mins)
+                now = datetime.now()
+                name, emoji, yield_val = _get_item_display(item_type)
+                total_dust = yield_val * qty
 
-        # --- Key reference table ---
+                if now >= end:
+                    embed.add_field(
+                        name=f"🔨 Queue {slot} — ✅ READY",
+                        value=(
+                            f"{emoji} **{qty}× {name}**\n"
+                            f"Yield: ✨ **{total_dust:,} Cosmic Dust** — click **Collect Dust** to claim!"
+                        ),
+                        inline=False,
+                    )
+                else:
+                    remaining = end - now
+                    embed.add_field(
+                        name=f"🔨 Queue {slot} — ⏳ In Progress",
+                        value=(
+                            f"{emoji} **{qty}× {name}**\n"
+                            f"Yield: ✨ {total_dust:,} Cosmic Dust\n"
+                            f"Ready in: **{_fmt_duration(remaining)}**"
+                        ),
+                        inline=False,
+                    )
+
+        # --- Boss key reference table ---
         lines = []
         for col, name in AlchemyMechanics.KEY_DISPLAY_NAMES.items():
             emoji = AlchemyMechanics.KEY_EMOJIS[col]
@@ -189,7 +205,7 @@ class AlchemySynthesisHubView(BaseView):
             lines.append(
                 f"{emoji} **{name}** — disenchant: {yield_val} ✨  |  synthesize: {synth_cost} ✨ + 💰 100k"
             )
-        embed.add_field(name="📋 Dust Rates", value="\n".join(lines), inline=False)
+        embed.add_field(name="📋 Key Dust Rates", value="\n".join(lines), inline=False)
 
         return embed
 
@@ -199,11 +215,20 @@ class AlchemySynthesisHubView(BaseView):
 
     async def _on_disenchant(self, interaction: Interaction) -> None:
         await interaction.response.defer()
+        # Find the first free slot
+        slot_count = AlchemyMechanics.get_disenchant_queue_slots(self.alchemy_level)
+        active_slots = {q[0] for q in self.all_queues}
+        free_slot = next((s for s in range(1, slot_count + 1) if s not in active_slots), None)
+        if free_slot is None:
+            await interaction.followup.send("All queue slots are busy.", ephemeral=True)
+            return
+
         view = _DisenchantSelectView(
             self.bot,
             self.user_id,
             self.server_id,
             self.alchemy_level,
+            free_slot,
         )
         embed = await view.build_embed()
         msg = await interaction.edit_original_response(embed=embed, view=view)
@@ -213,38 +238,33 @@ class AlchemySynthesisHubView(BaseView):
     async def _on_collect(self, interaction: Interaction) -> None:
         await interaction.response.defer()
 
-        # Re-fetch queue in case of concurrent sessions.
-        queue_row = await self.bot.database.alchemy.get_synthesis_queue(self.user_id)
-        if not queue_row:
-            await interaction.followup.send(
-                "No active disenchant queue.", ephemeral=True
-            )
-            return
-
-        item_type, qty, start_str = queue_row
         mins = AlchemyMechanics.get_disenchant_minutes(self.alchemy_level)
-        end = datetime.fromisoformat(start_str) + timedelta(minutes=mins * qty)
-        if datetime.now() < end:
-            await interaction.followup.send(
-                f"Not ready yet — {_fmt_duration(end - datetime.now())} remaining.",
-                ephemeral=True,
-            )
+        collected_total = 0
+        collected_lines = []
+
+        all_queues = await self.bot.database.alchemy.get_all_queues(self.user_id)
+        for slot, item_type, qty, start_str in all_queues:
+            end = datetime.fromisoformat(start_str) + timedelta(minutes=mins * qty)
+            if datetime.now() < end:
+                continue
+            _, emoji, yield_val = _get_item_display(item_type)
+            name, _, _ = _get_item_display(item_type)
+            dust = yield_val * qty
+            collected_total += dust
+            collected_lines.append(f"{emoji} {qty}× {name} → ✨ {dust:,}")
+            await self.bot.database.alchemy.clear_synthesis_queue(self.user_id, slot)
+
+        if collected_total == 0:
+            await interaction.followup.send("Nothing is ready to collect yet.", ephemeral=True)
             return
 
-        total_dust = AlchemyMechanics.DUST_YIELD[item_type] * qty
-        await self.bot.database.alchemy.modify_cosmic_dust(self.user_id, total_dust)
-        await self.bot.database.alchemy.clear_synthesis_queue(self.user_id)
-
-        name = AlchemyMechanics.KEY_DISPLAY_NAMES[item_type]
-        emoji = AlchemyMechanics.KEY_EMOJIS[item_type]
+        await self.bot.database.alchemy.modify_cosmic_dust(self.user_id, collected_total)
 
         view = await _build_synthesis_hub(self.bot, self.user_id, self.server_id)
         embed = view.build_embed()
         embed.colour = discord.Color.gold()
-        embed.title = f"✨ Collected {total_dust:,} Cosmic Dust!"
-        embed.description = (
-            f"{emoji} **{qty}× {name}** successfully disenchanted.\n\n"
-        ) + (embed.description or "")
+        embed.title = f"✨ Collected {collected_total:,} Cosmic Dust!"
+        embed.description = "\n".join(collected_lines) + "\n\n" + (embed.description or "")
         msg = await interaction.edit_original_response(embed=embed, view=view)
         view.message = msg
         self.stop()
@@ -276,8 +296,99 @@ class AlchemySynthesisHubView(BaseView):
 
 
 # ---------------------------------------------------------------------------
-# Disenchant — key-type select + quantity modal
+# Item display helper — works for all 3 categories
 # ---------------------------------------------------------------------------
+
+def _get_item_display(item_type: str) -> tuple[str, str, int]:
+    """Returns (name, emoji, dust_yield) for any disenchantable item type."""
+    if item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
+        return (
+            AlchemyMechanics.KEY_DISPLAY_NAMES[item_type],
+            AlchemyMechanics.KEY_EMOJIS[item_type],
+            AlchemyMechanics.DUST_YIELD[item_type],
+        )
+    if item_type in AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES:
+        return (
+            AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES[item_type],
+            AlchemyMechanics.ELEMENTAL_EMOJIS[item_type],
+            AlchemyMechanics.ELEMENTAL_DUST_YIELD[item_type],
+        )
+    if item_type in AlchemyMechanics.ESSENCE_DISPLAY_NAMES:
+        return (
+            AlchemyMechanics.ESSENCE_DISPLAY_NAMES[item_type],
+            AlchemyMechanics.ESSENCE_EMOJIS[item_type],
+            AlchemyMechanics.ESSENCE_DUST_YIELD[item_type],
+        )
+    return (item_type, "❓", 0)
+
+
+async def _get_item_owned(bot, user_id: str, server_id: str, item_type: str) -> int:
+    """Returns how many of an item the player owns, across all 3 item categories."""
+    if item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
+        return await bot.database.users.get_currency(user_id, item_type)
+    if item_type in AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES:
+        return await bot.database.alchemy.get_uber_material(user_id, server_id, item_type)
+    if item_type in AlchemyMechanics.ESSENCE_DISPLAY_NAMES:
+        return await bot.database.alchemy.get_essence_quantity(user_id, item_type)
+    return 0
+
+
+async def _deduct_item(bot, user_id: str, server_id: str, item_type: str, qty: int) -> None:
+    """Deducts qty of item from the appropriate table."""
+    if item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
+        await bot.database.users.modify_currency(user_id, item_type, -qty)
+    elif item_type in AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES:
+        await bot.database.alchemy.deduct_uber_material(user_id, server_id, item_type, qty)
+    elif item_type in AlchemyMechanics.ESSENCE_DISPLAY_NAMES:
+        await bot.database.alchemy.deduct_essence(user_id, item_type, qty)
+
+
+# ---------------------------------------------------------------------------
+# Disenchant — category select → item select + quantity modal
+# ---------------------------------------------------------------------------
+
+
+class _DisenchantCategorySelect(ui.Select):
+    def __init__(self) -> None:
+        opts = [
+            discord.SelectOption(label="Boss Keys", value=_CATEGORY_BOSS_KEYS, emoji="🔑"),
+            discord.SelectOption(label="Elemental Materials", value=_CATEGORY_ELEMENTAL, emoji="💎"),
+            discord.SelectOption(label="Essences", value=_CATEGORY_ESSENCES, emoji="🔮"),
+        ]
+        super().__init__(placeholder="Select item category…", options=opts)
+        self.selected: str | None = None
+
+    async def callback(self, interaction: Interaction) -> None:
+        self.selected = self.values[0]
+        await interaction.response.defer()
+
+
+class _DisenchantItemSelect(ui.Select):
+    def __init__(self, options_data: list[dict]) -> None:
+        opts = [
+            discord.SelectOption(
+                label=d["name"][:100],
+                description=d["select_desc"][:100],
+                value=d["col"],
+                emoji=d["emoji"],
+            )
+            for d in options_data
+            if d["owned"] > 0
+        ]
+        if not opts:
+            opts = [discord.SelectOption(label="No valid items owned", value="_none")]
+        super().__init__(placeholder="Select an item to disenchant…", options=opts, row=1)
+        self._data_by_col = {d["col"]: d for d in options_data}
+        self.selected: str | None = None
+
+    async def callback(self, interaction: Interaction) -> None:
+        if self.values[0] == "_none":
+            await interaction.response.send_message(
+                "You have no valid items to disenchant.", ephemeral=True
+            )
+            return
+        self.selected = self.values[0]
+        await interaction.response.defer()
 
 
 class _DisenchantQuantityModal(ui.Modal, title="How many items to disenchant?"):
@@ -304,47 +415,49 @@ class _DisenchantQuantityModal(ui.Modal, title="How many items to disenchant?"):
 
         qty = int(raw)
         if qty > self._owned:
-            name = AlchemyMechanics.KEY_DISPLAY_NAMES[self._item_type]
+            name, _, _ = _get_item_display(self._item_type)
             await interaction.response.send_message(
                 f"You only have **{self._owned}** {name}.", ephemeral=True
             )
             return
 
-        # Guard: no active queue already (race-condition safety).
+        # Guard: slot not grabbed by a race condition
         existing = await self._parent.bot.database.alchemy.get_synthesis_queue(
-            self._parent.user_id
+            self._parent.user_id, self._parent.target_slot
         )
         if existing:
             await interaction.response.send_message(
-                "You already have an active disenchant queue. Collect it first.",
-                ephemeral=True,
+                "That queue slot is now busy. Try again.", ephemeral=True
             )
             return
 
         await interaction.response.defer()
 
-        # Deduct keys and queue the task.
-        await self._parent.bot.database.users.modify_currency(
-            self._parent.user_id, self._item_type, -qty
+        await _deduct_item(
+            self._parent.bot,
+            self._parent.user_id,
+            self._parent.server_id,
+            self._item_type,
+            qty,
         )
         await self._parent.bot.database.alchemy.start_disenchant(
-            self._parent.user_id, self._item_type, qty, datetime.now().isoformat()
+            self._parent.user_id, self._item_type, qty,
+            datetime.now().isoformat(), self._parent.target_slot
         )
 
         level = self._parent.alchemy_level
         total_mins = AlchemyMechanics.get_disenchant_minutes(level) * qty
-        total_dust = AlchemyMechanics.DUST_YIELD[self._item_type] * qty
-        name = AlchemyMechanics.KEY_DISPLAY_NAMES[self._item_type]
-        emoji = AlchemyMechanics.KEY_EMOJIS[self._item_type]
+        name, emoji, yield_val = _get_item_display(self._item_type)
+        total_dust = yield_val * qty
 
         view = await _build_synthesis_hub(
             self._parent.bot, self._parent.user_id, self._parent.server_id
         )
         embed = view.build_embed()
         embed.colour = discord.Color.blurple()
-        embed.title = f"🔨 Disenchant queued: {qty}× {name}"
+        embed.title = f"🔨 Queued: {qty}× {name} (Slot {self._parent.target_slot})"
         embed.description = (
-            f"{emoji} **{qty}× {name}** sent to the disenchant queue.\n"
+            f"{emoji} **{qty}× {name}** sent to queue slot {self._parent.target_slot}.\n"
             f"⏳ Ready in **{total_mins} minutes** · Yield: ✨ **{total_dust:,} Cosmic Dust**\n\n"
         ) + (embed.description or "")
         msg = await interaction.edit_original_response(embed=embed, view=view)
@@ -352,102 +465,117 @@ class _DisenchantQuantityModal(ui.Modal, title="How many items to disenchant?"):
         self._parent.stop()
 
 
-class _DisenchantKeySelect(ui.Select):
-    def __init__(self, options_data: list[dict]) -> None:
-        opts = [
-            discord.SelectOption(
-                label=d["name"][:100],
-                description=d["select_desc"][:100],
-                value=d["col"],
-                emoji=d["emoji"],
-            )
-            for d in options_data
-            if d["owned"] > 0
-        ]
-        if not opts:
-            opts = [discord.SelectOption(label="No valid items owned", value="_none")]
-        super().__init__(placeholder="Select an item to disenchant…", options=opts)
-        self._data_by_col = {d["col"]: d for d in options_data}
-        self.selected: str | None = None
-
-    async def callback(self, interaction: Interaction) -> None:
-        if self.values[0] == "_none":
-            await interaction.response.send_message(
-                "You have no valid items to disenchant.", ephemeral=True
-            )
-            return
-        self.selected = self.values[0]
-        await interaction.response.defer()
-
-
 class _DisenchantSelectView(BaseView):
-    def __init__(self, bot, user_id: str, server_id: str, alchemy_level: int) -> None:
+    def __init__(
+        self, bot, user_id: str, server_id: str, alchemy_level: int, target_slot: int
+    ) -> None:
         super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
+        self.target_slot = target_slot
         self._options_data: list[dict] = []
-        self._select: _DisenchantKeySelect | None = None
+        self._category_select = _DisenchantCategorySelect()
+        self._item_select: _DisenchantItemSelect | None = None
+        self.add_item(self._category_select)
 
-    async def build_embed(self) -> discord.Embed:
-        """Fetch live key counts, rebuild the select menu, and return the embed."""
-        mins = AlchemyMechanics.get_disenchant_minutes(self.alchemy_level)
-
-        self._options_data = []
-        for col, name in AlchemyMechanics.KEY_DISPLAY_NAMES.items():
-            owned = await self.bot.database.users.get_currency(self.user_id, col)
-            self._options_data.append(
-                {
-                    "col": col,
-                    "name": name,
-                    "emoji": AlchemyMechanics.KEY_EMOJIS[col],
-                    "owned": owned,
-                    "select_desc": f"Own: {owned}  ·  {AlchemyMechanics.DUST_YIELD[col]} ✨/item  ·  {mins}m/item",
-                }
-            )
-
-        self.clear_items()
-        self._select = _DisenchantKeySelect(self._options_data)
-        self.add_item(self._select)
-
-        confirm_btn = ui.Button(
-            label="Queue Disenchant", style=ButtonStyle.green, emoji="🔨", row=1
+        self._confirm_btn = ui.Button(
+            label="Queue Disenchant", style=ButtonStyle.green, emoji="🔨", row=2
         )
-        confirm_btn.callback = self._on_confirm
-        self.add_item(confirm_btn)
+        self._confirm_btn.callback = self._on_confirm
+        self.add_item(self._confirm_btn)
+
+        self._refresh_btn = ui.Button(
+            label="Load Items", style=ButtonStyle.blurple, emoji="🔄", row=2
+        )
+        self._refresh_btn.callback = self._on_load_items
+        self.add_item(self._refresh_btn)
 
         back_btn = ui.Button(
-            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1
+            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=2
         )
         back_btn.callback = self._on_back
         self.add_item(back_btn)
 
+    async def build_embed(self) -> discord.Embed:
+        mins = AlchemyMechanics.get_disenchant_minutes(self.alchemy_level)
         embed = discord.Embed(
-            title="🔨 Disenchant Items", color=discord.Color.blurple()
+            title=f"🔨 Disenchant Items — Queue Slot {self.target_slot}",
+            color=discord.Color.blurple(),
+        )
+        embed.description = (
+            f"Select a **category**, then **Load Items** to see what you own.\n"
+            f"Each item takes **{mins} minutes** at Alchemy Level {self.alchemy_level}.\n\n"
+            "**Dust Yields:**\n"
+            "🔑 Boss Keys: 35–80 ✨  |  💎 Elemental: 80 ✨ each\n"
+            "🔮 Common Essences: 30 ✨  |  Rare: 60  |  Utility: 90  |  Corrupted: 150"
+        )
+        return embed
+
+    async def _on_load_items(self, interaction: Interaction) -> None:
+        if not self._category_select.selected:
+            await interaction.response.send_message(
+                "Select a category first.", ephemeral=True
+            )
+            return
+
+        await interaction.response.defer()
+        category = self._category_select.selected
+        mins = AlchemyMechanics.get_disenchant_minutes(self.alchemy_level)
+
+        if category == _CATEGORY_BOSS_KEYS:
+            items_map = AlchemyMechanics.KEY_DISPLAY_NAMES
+            emojis_map = AlchemyMechanics.KEY_EMOJIS
+            yield_map = AlchemyMechanics.DUST_YIELD
+        elif category == _CATEGORY_ELEMENTAL:
+            items_map = AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES
+            emojis_map = AlchemyMechanics.ELEMENTAL_EMOJIS
+            yield_map = AlchemyMechanics.ELEMENTAL_DUST_YIELD
+        else:
+            items_map = AlchemyMechanics.ESSENCE_DISPLAY_NAMES
+            emojis_map = AlchemyMechanics.ESSENCE_EMOJIS
+            yield_map = AlchemyMechanics.ESSENCE_DUST_YIELD
+
+        self._options_data = []
+        for col, name in items_map.items():
+            owned = await _get_item_owned(self.bot, self.user_id, self.server_id, col)
+            self._options_data.append({
+                "col": col,
+                "name": name,
+                "emoji": emojis_map[col],
+                "owned": owned,
+                "yield": yield_map[col],
+                "select_desc": f"Own: {owned}  ·  {yield_map[col]} ✨/item  ·  {mins}m/item",
+            })
+
+        # Rebuild item select (remove old one if present)
+        if self._item_select is not None:
+            self.remove_item(self._item_select)
+        self._item_select = _DisenchantItemSelect(self._options_data)
+        self.add_item(self._item_select)
+
+        embed = discord.Embed(
+            title=f"🔨 Disenchant — {_CATEGORY_LABELS[category]} (Slot {self.target_slot})",
+            color=discord.Color.blurple(),
         )
         lines = []
         for d in self._options_data:
             owned_str = f"**{d['owned']}** owned" if d["owned"] > 0 else "*none owned*"
             lines.append(
-                f"{d['emoji']} **{d['name']}** — {owned_str}  ·  "
-                f"✨ {AlchemyMechanics.DUST_YIELD[d['col']]} dust/item  ·  ⏳ {mins}m/item"
+                f"{d['emoji']} **{d['name']}** — {owned_str}  ·  ✨ {d['yield']} dust/item  ·  ⏳ {mins}m/item"
             )
-        embed.description = (
-            f"Select an item type, enter a quantity, and queue them for disenchanting.\n"
-            f"Each item takes **{mins} minutes** at Alchemy Level {self.alchemy_level}.\n\n"
-            + "\n".join(lines)
-        )
-        return embed
+        embed.description = "\n".join(lines) or "*No items in this category.*"
+        await interaction.edit_original_response(embed=embed, view=self)
 
     async def _on_confirm(self, interaction: Interaction) -> None:
-        if not self._select or not self._select.selected:
+        if self._item_select is None or not self._item_select.selected:
             await interaction.response.send_message(
-                "Please select an item type first.", ephemeral=True
+                "Load items and select one first.", ephemeral=True
             )
             return
-        col = self._select.selected
+        col = self._item_select.selected
         data = next(d for d in self._options_data if d["col"] == col)
         if data["owned"] == 0:
             await interaction.response.send_message(
-                "You don't have any valid items.", ephemeral=True
+                "You don't own any of that item.", ephemeral=True
             )
             return
         await interaction.response.send_modal(
@@ -464,7 +592,7 @@ class _DisenchantSelectView(BaseView):
 
 
 # ---------------------------------------------------------------------------
-# Synthesize — key-type select + inline confirm
+# Synthesize — key-type select + quantity modal
 # ---------------------------------------------------------------------------
 
 
@@ -515,7 +643,6 @@ class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
         total_dust = self._dust_cost_each * qty
         total_gold = AlchemyMechanics.SYNTHESIS_GOLD_COST * qty
 
-        # Re-validate live balances before committing.
         cosmic_dust = await self._parent.bot.database.alchemy.get_cosmic_dust(
             self._parent.user_id
         )
@@ -612,13 +739,13 @@ class _SynthesizeSelectView(BaseView):
 
     def build_embed(self) -> discord.Embed:
         level = self.alchemy_level
-        discount = level  # 1 % per level
+        discount = level
 
         embed = discord.Embed(title="Synthesize Item", color=discord.Color.purple())
         embed.description = (
             f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}  |  **Gold:** 💰 {self.player_gold:,}\n"
             f"**Synthesis Discount:** {discount}% (Alchemy Level {level})\n\n"
-            "Select an item, then press **Synthesize** and enter a quantity."
+            "Select a key type, then press **Synthesize** and enter a quantity."
         )
 
         lines = []

@@ -24,22 +24,12 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _cs_invulnerable(player, monster):
-    if random.random() < 0.2:
-        player.is_invulnerable_this_combat = True
-        return (
-            f"**🛡️ Invulnerable** activates! {player.name} receives divine protection."
-        )
-
-
-def _cs_omnipotent(player, monster):
-    if random.random() < 0.5:
-        total_atk = player.get_total_attack()
-        total_def = player.get_total_defence()
-        player.bonus_atk += total_atk
-        player.bonus_def += total_def
-        ward_added = _add_ward(player, player.total_max_hp, [], "Omnipotent")
-        return f"**🛡️ Omnipotent** increases your ⚔️ +**{total_atk}** ATK, 🛡️ +**{total_def}** DEF, and 🔮 +**{ward_added}** Ward."
+def _cs_transcendence(player, monster):
+    total_atk = player.get_total_attack()
+    total_def = player.get_total_defence()
+    bonus = int((total_atk + total_def) * 0.20)
+    player.bonus_atk += bonus
+    return f"**✨ Transcendence** channels your power! ⚔️ +**{bonus}** ATK (20% of total ATK+DEF)"
 
 
 def _cs_absorb(player, monster):
@@ -125,8 +115,7 @@ def _cs_unravelling(player, monster):
 
 
 _ARMOR_START_HANDLERS: dict[str, callable] = {
-    "Invulnerable": _cs_invulnerable,
-    "Omnipotent": _cs_omnipotent,
+    "Transcendence": _cs_transcendence,
 }
 _ACCESSORY_START_HANDLERS: dict[str, callable] = {
     "Absorb": _cs_absorb,

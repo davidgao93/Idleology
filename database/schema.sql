@@ -1,3 +1,5 @@
+ALTER TABLE users ADD COLUMN unidentified_blueprint INTEGER NOT NULL DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,
   `user_id` TEXT NOT NULL UNIQUE,
@@ -59,7 +61,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `prestige_monument` TEXT DEFAULT NULL,
   `curio_puzzle_boxes` INTEGER NOT NULL DEFAULT 0,
   `mirage_runes_imperfect` INTEGER NOT NULL DEFAULT 0,
-  `mirage_runes_perfected` INTEGER NOT NULL DEFAULT 0
+  `mirage_runes_perfected` INTEGER NOT NULL DEFAULT 0,
+  `unidentified_blueprint` INTEGER NOT NULL DEFAULT 0
 );
 
 
@@ -361,6 +364,15 @@ CREATE TABLE IF NOT EXISTS buildings (
     UNIQUE(user_id, server_id, slot_index)
 );
 
+CREATE TABLE IF NOT EXISTS settlement_research (
+    user_id TEXT NOT NULL,
+    server_id TEXT NOT NULL,
+    building_type TEXT NOT NULL,
+    start_time TEXT NOT NULL DEFAULT '',
+    completed INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, server_id, building_type)
+);
+
 CREATE TABLE IF NOT EXISTS slayer_profiles (
     user_id TEXT,
     server_id TEXT,
@@ -431,7 +443,8 @@ CREATE TABLE IF NOT EXISTS codex_tomes (
 CREATE TABLE IF NOT EXISTS alchemy_data (
     user_id TEXT PRIMARY KEY,
     level INTEGER NOT NULL DEFAULT 1,
-    free_roll_used INTEGER NOT NULL DEFAULT 0
+    free_roll_used INTEGER NOT NULL DEFAULT 0,
+    cosmic_dust INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS potion_passives (
@@ -443,6 +456,20 @@ CREATE TABLE IF NOT EXISTS potion_passives (
 );
 
 CREATE TABLE IF NOT EXISTS synthesis_queue (
+    user_id    TEXT PRIMARY KEY,
+    item_type  TEXT NOT NULL,
+    quantity   INTEGER NOT NULL,
+    start_time TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS synthesis_queue_2 (
+    user_id    TEXT PRIMARY KEY,
+    item_type  TEXT NOT NULL,
+    quantity   INTEGER NOT NULL,
+    start_time TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS synthesis_queue_3 (
     user_id    TEXT PRIMARY KEY,
     item_type  TEXT NOT NULL,
     quantity   INTEGER NOT NULL,

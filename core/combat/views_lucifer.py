@@ -20,11 +20,10 @@ class LuciferChoiceView(BaseView):
     async def on_timeout(self):
         if self.message:
             try:
-                embed = self.message.embeds[0]
-                embed.add_field(
-                    name="Core Expired",
-                    value="*You hesitated too long. The Soul Core crumbles to ash.*",
-                    inline=False,
+                embed = discord.Embed(
+                    title="Core Expired",
+                    description="*You hesitated too long. The Soul Core crumbles to ash.*",
+                    color=discord.Color.dark_grey(),
                 )
                 await self.message.edit(embed=embed, view=None)
             except Exception:

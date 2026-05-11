@@ -232,8 +232,6 @@ class Combat(commands.Cog, name="combat"):
             combat_phases = [None]
         else:
             treasure_chance = 1.0
-            if player.get_armor_passive() == "Treasure Hunter":
-                treasure_chance += 5.0
             if player.get_boot_passive() == "treasure-tracker":
                 treasure_chance += player.equipped_boot.passive_lvl * 0.5
             is_treasure = random.random() * 100 < treasure_chance

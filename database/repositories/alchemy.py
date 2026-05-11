@@ -150,22 +150,40 @@ class AlchemyRepository:
         await self.connection.commit()
 
     # ------------------------------------------------------------------
-    # Synthesis Queue
+    # Synthesis Queue (multi-slot: 1, 2, 3)
     # ------------------------------------------------------------------
 
-    async def get_synthesis_queue(self, user_id: str):
+    def _queue_table(self, slot: int) -> str:
+        if slot == 2:
+            return "synthesis_queue_2"
+        if slot == 3:
+            return "synthesis_queue_3"
+        return "synthesis_queue"
+
+    async def get_synthesis_queue(self, user_id: str, slot: int = 1):
         """Returns (item_type, quantity, start_time) or None."""
+        table = self._queue_table(slot)
         async with self.connection.execute(
-            "SELECT item_type, quantity, start_time FROM synthesis_queue WHERE user_id = ?",
+            f"SELECT item_type, quantity, start_time FROM {table} WHERE user_id = ?",
             (user_id,)
         ) as cursor:
             return await cursor.fetchone()
 
+    async def get_all_queues(self, user_id: str) -> list:
+        """Returns list of (slot, item_type, quantity, start_time) for all active queues."""
+        result = []
+        for slot in (1, 2, 3):
+            row = await self.get_synthesis_queue(user_id, slot)
+            if row:
+                result.append((slot, row[0], row[1], row[2]))
+        return result
+
     async def start_disenchant(self, user_id: str, item_type: str,
-                                quantity: int, start_time: str) -> None:
-        """Insert or replace the active disenchant task for this user."""
+                                quantity: int, start_time: str, slot: int = 1) -> None:
+        """Insert or replace the active disenchant task for this user in the given slot."""
+        table = self._queue_table(slot)
         await self.connection.execute(
-            """INSERT INTO synthesis_queue (user_id, item_type, quantity, start_time)
+            f"""INSERT INTO {table} (user_id, item_type, quantity, start_time)
                VALUES (?, ?, ?, ?)
                ON CONFLICT(user_id) DO UPDATE SET
                    item_type  = excluded.item_type,
@@ -175,8 +193,49 @@ class AlchemyRepository:
         )
         await self.connection.commit()
 
-    async def clear_synthesis_queue(self, user_id: str) -> None:
+    async def clear_synthesis_queue(self, user_id: str, slot: int = 1) -> None:
+        table = self._queue_table(slot)
         await self.connection.execute(
-            "DELETE FROM synthesis_queue WHERE user_id = ?", (user_id,)
+            f"DELETE FROM {table} WHERE user_id = ?", (user_id,)
+        )
+        await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Uber material helpers (for disenchanting elemental keys)
+    # ------------------------------------------------------------------
+
+    async def get_uber_material(self, user_id: str, server_id: str, col: str) -> int:
+        """Reads a single uber material column from uber_progress."""
+        async with self.connection.execute(
+            f"SELECT {col} FROM uber_progress WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id)
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row[0] if row else 0
+
+    async def deduct_uber_material(self, user_id: str, server_id: str, col: str, amount: int) -> None:
+        """Deducts from an uber material column."""
+        await self.connection.execute(
+            f"UPDATE uber_progress SET {col} = {col} - ? WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id)
+        )
+        await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Essence helpers (for disenchanting essences)
+    # ------------------------------------------------------------------
+
+    async def get_essence_quantity(self, user_id: str, essence_type: str) -> int:
+        async with self.connection.execute(
+            "SELECT quantity FROM player_essences WHERE user_id = ? AND essence_type = ?",
+            (user_id, essence_type)
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row[0] if row else 0
+
+    async def deduct_essence(self, user_id: str, essence_type: str, amount: int) -> None:
+        await self.connection.execute(
+            "UPDATE player_essences SET quantity = quantity - ? WHERE user_id = ? AND essence_type = ?",
+            (amount, user_id, essence_type)
         )
         await self.connection.commit()

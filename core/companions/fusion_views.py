@@ -133,7 +133,8 @@ class FusionWizardView(BaseView):
             f"• Passive: Random (50/50)\n"
             f"• Tier: Random (50/50)\n"
             f"{balanced_line}\n\n"
-            f"**Cost:** {self.FUSION_COST:,} Gold"
+            f"**Cost:** {self.FUSION_COST:,} Gold\n\n"
+            f"⚠️ **Balance Engram passives are deleted upon merge.**"
         )
         embed.set_footer(text="This action is irreversible. Parents will be consumed.")
 

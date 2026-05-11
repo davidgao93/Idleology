@@ -12,6 +12,7 @@ from core.settlement.mechanics import SettlementMechanics
 from core.settlement.views.black_market import BlackMarketView
 from core.settlement.views.construction import BuildConstructionView
 from core.settlement.views.detail import BuildingDetailView
+from core.settlement.views.research import ResearchView
 from core.settlement.views.town_hall import TownHallView
 
 from .base import SettlementBaseView
@@ -153,13 +154,19 @@ class SettlementDashboardView(SettlementBaseView):
         collect_btn.callback = self.collect_resources
         self.add_item(collect_btn)
 
+        research_btn = ui.Button(
+            label="Research", style=ButtonStyle.blurple, row=1, emoji="🔬"
+        )
+        research_btn.callback = self.open_research
+        self.add_item(research_btn)
+
         guide_btn = ui.Button(
             label="Guide", style=ButtonStyle.secondary, row=1, emoji="📖"
         )
         guide_btn.callback = self.show_guide
         self.add_item(guide_btn)
 
-        close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=1)
+        close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=2)
         close_btn.callback = self.close_view
         self.add_item(close_btn)
 
@@ -177,12 +184,22 @@ class SettlementDashboardView(SettlementBaseView):
         view = TownHallView(self.bot, self.user_id, self.settlement, self)
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
+    async def open_research(self, interaction: Interaction) -> None:
+        await interaction.response.defer()
+        view = ResearchView(self.bot, self.user_id, self.server_id, self)
+        await view.load()
+        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        view.message = msg
+
     async def open_build_menu(self, interaction: Interaction, slot_index: int):
         uber_prog = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
+        researched = await self.bot.database.settlement.get_researched(
+            self.user_id, self.server_id
+        )
         view = BuildConstructionView(
-            self.bot, self.user_id, slot_index, self, uber_prog
+            self.bot, self.user_id, slot_index, self, uber_prog, researched
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 

@@ -47,14 +47,23 @@ def format_slot_display(rtype: str, qty: int) -> str:
     return f"x{qty}"
 
 
-def roll_slot() -> tuple[str, int]:
-    """Roll a random reward type and quantity."""
-    rtype = random.choice(REWARD_POOL)
+def roll_slot(exclude: set | None = None) -> tuple[str, int]:
+    """Roll a random reward type and quantity, excluding given types."""
+    pool = [r for r in REWARD_POOL if not exclude or r not in exclude]
+    if not pool:
+        pool = REWARD_POOL
+    rtype = random.choice(pool)
     return (rtype, _roll_quantity(rtype))
 
 
 def roll_all_slots() -> list[tuple[str, int]]:
-    return [roll_slot() for _ in range(3)]
+    slots = []
+    used: set[str] = set()
+    for _ in range(3):
+        rtype, qty = roll_slot(exclude=used)
+        used.add(rtype)
+        slots.append((rtype, qty))
+    return slots
 
 
 async def claim_rewards(bot, user_id: str, server_id: str, slots: list[tuple[str, int]]) -> list[str]:

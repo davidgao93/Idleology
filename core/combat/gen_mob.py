@@ -468,8 +468,8 @@ def get_modifier_description(mod) -> str:
     return ""
 
 
-def apply_all_corrupted_modifiers(monster) -> None:
-    """Apply every common and rare modifier at tier 2 to a corrupted monster.
+def apply_all_corrupted_modifiers(monster, force_tier: int = 2) -> None:
+    """Apply every common and rare modifier at the given tier to a corrupted monster.
 
     Called once during generation — after HP/stats are set and before
     _apply_spawn_modifiers, which reads the modifier list to mutate stats.
@@ -478,7 +478,7 @@ def apply_all_corrupted_modifiers(monster) -> None:
     all_names = COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES + RARE_FLAT_MOD_NAMES
     for name in all_names:
         monster.modifiers.append(
-            make_modifier(name, monster.level, force_tier=2)
+            make_modifier(name, monster.level, force_tier=force_tier)
         )
 
 
@@ -651,7 +651,7 @@ def generate_uber_evelynn(player, monster):
     monster.is_corrupted = True
 
     monster.modifiers = []
-    apply_all_corrupted_modifiers(monster)
+    apply_all_corrupted_modifiers(monster, force_tier=5)
 
     monster.modifiers.extend(
         [

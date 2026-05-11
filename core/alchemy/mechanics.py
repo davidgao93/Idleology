@@ -234,6 +234,88 @@ class AlchemyMechanics:
         "balance_fragment": 65,
     }
 
+    # ------------------------------------------------------------------
+    # Elemental Keys (uber drops) — disenchant only, stored in uber_progress
+    # ------------------------------------------------------------------
+
+    ELEMENTAL_DISPLAY_NAMES: dict[str, str] = {
+        "capricious_carp":  "Capricious Carp",
+        "blessed_bismuth":  "Blessed Bismuth",
+        "sparkling_sprig":  "Sparkling Sprig",
+    }
+
+    ELEMENTAL_EMOJIS: dict[str, str] = {
+        "capricious_carp":  "🐟",
+        "blessed_bismuth":  "💎",
+        "sparkling_sprig":  "🌿",
+    }
+
+    ELEMENTAL_DUST_YIELD: dict[str, int] = {
+        "capricious_carp":  80,
+        "blessed_bismuth":  80,
+        "sparkling_sprig":  80,
+    }
+
+    # ------------------------------------------------------------------
+    # Essences — disenchant only, stored in player_essences
+    # Dust scales inversely with drop weight (common = 30, corrupted = 150)
+    # ------------------------------------------------------------------
+
+    ESSENCE_DISPLAY_NAMES: dict[str, str] = {
+        "power":        "Power Essence",
+        "protection":   "Protection Essence",
+        "insight":      "Insight Essence",
+        "evasion":      "Evasion Essence",
+        "blocking":     "Blocking Essence",
+        "deftness":     "Deftness Essence",
+        "precision":    "Precision Essence",
+        "gluttony":     "Gluttony Essence",
+        "cleansing":    "Cleansing Essence",
+        "chaos":        "Chaos Essence",
+        "annulment":    "Annulment Essence",
+        "aphrodite":    "Aphrodite Essence",
+        "lucifer":      "Lucifer Essence",
+        "gemini":       "Gemini Essence",
+        "neet":         "Neet Essence",
+    }
+
+    ESSENCE_EMOJIS: dict[str, str] = {
+        "power":        "🔴",
+        "protection":   "🔵",
+        "insight":      "🟣",
+        "evasion":      "🟢",
+        "blocking":     "🟡",
+        "deftness":     "🟠",
+        "precision":    "⚪",
+        "gluttony":     "🩷",
+        "cleansing":    "💧",
+        "chaos":        "🌪️",
+        "annulment":    "❌",
+        "aphrodite":    "💗",
+        "lucifer":      "🔥",
+        "gemini":       "♊",
+        "neet":         "🌙",
+    }
+
+    # Common → 30, Rare → 60, Utility → 90, Corrupted → 150
+    ESSENCE_DUST_YIELD: dict[str, int] = {
+        "power":        30,
+        "protection":   30,
+        "insight":      60,
+        "evasion":      60,
+        "blocking":     60,
+        "deftness":     60,
+        "precision":    60,
+        "gluttony":     60,
+        "cleansing":    90,
+        "chaos":        90,
+        "annulment":    90,
+        "aphrodite":    150,
+        "lucifer":      150,
+        "gemini":       150,
+        "neet":         150,
+    }
+
     # Base Cosmic Dust cost to synthesize one key (before alchemy discount).
     # Each synthesis also costs SYNTHESIS_GOLD_COST gold.
     # All costs are well above the corresponding DUST_YIELD even at max discount,
@@ -247,6 +329,16 @@ class AlchemyMechanics:
     }
 
     SYNTHESIS_GOLD_COST: int = 100_000
+
+    @staticmethod
+    def get_disenchant_queue_slots(level: int) -> int:
+        """Number of concurrent disenchant queue slots available at *level*.
+        Level 1 = 1 slot, Level 2 = 2 slots, Level 3+ = 3 slots."""
+        if level >= 3:
+            return 3
+        if level >= 2:
+            return 2
+        return 1
 
     @staticmethod
     def get_disenchant_minutes(level: int) -> int:

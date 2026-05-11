@@ -60,12 +60,12 @@ _INFERNAL_PASSIVE_DESC: dict[str, str] = {
 }
 
 _ARMOR_PASSIVE_DESC: dict[str, str] = {
-    "invulnerable": "On Combat Start, 20% chance to take 0 damage for the whole fight or boss phase",
-    "mystical might": "Attacks have 20% chance to deal 10x damage",
-    "omnipotent": "On Combat Start, 50% chance to Double Atk, Def, and gain Max HP as Ward",
-    "treasure hunter": "+5% chance to encounter Treasure Mobs",
+    "impregnable": "Raises your PDR cap from 80% to 90% during combat",
+    "piety": "Attacks have a 10% chance to deal 7× damage",
+    "transcendence": "On Combat Start, gain 20% of your total ATK and DEF as bonus ATK",
+    "treasure hunter": "+3% Special Drop Chance",
     "unlimited wealth": "20% chance to multiply Rarity ×5 at combat start",
-    "everlasting blessing": "10% chance on victory to trigger Ideology Propagation",
+    "alchemist": "30% chance to not consume a potion when using one in combat",
 }
 
 _CELESTIAL_PASSIVE_DESC: dict[str, str] = {
@@ -703,11 +703,14 @@ class ProfileBuilder:
         sr_boot = 0
         if p.equipped_boot and p.equipped_boot.passive == "thrill-seeker":
             sr_boot = p.equipped_boot.passive_lvl
+        sr_armor = 3 if (p.equipped_armor and p.equipped_armor.passive == "treasure hunter") else 0
         sr_companion = p._get_companion_bonus("s_rarity")
         sr_partner_combat = cb["special_rarity"]
-        sr_total = min(20, sr_boot + sr_companion)
+        sr_total = min(20, sr_boot + sr_armor + sr_companion)
         sr_val = f"**{sr_total}%** (cap: 20%)"
-        sr_val += f"\n↳ Equipment: {sr_boot}%"
+        sr_val += f"\n↳ Boot: {sr_boot}%"
+        if sr_armor:
+            sr_val += f"\n↳ Armor: +{sr_armor}%"
         sr_val += f"\n↳ Companions: {sr_companion}%"
         if sr_partner_combat:
             sr_val += f"\n↳ Partner: +{sr_partner_combat:.1f}%"
@@ -889,10 +892,8 @@ class ProfileBuilder:
         pet_count = await bot.database.companions.get_count(user_id)
 
         k_balance = await bot.database.users.get_currency(user_id, "balance_fragment")
-        r_partner = await bot.database.users.get_currency(user_id, "partnership_runes")
         antique_tomes = await bot.database.users.get_currency(user_id, "antique_tome")
         pinnacle_keys = await bot.database.users.get_currency(user_id, "pinnacle_key")
-        uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
 
         embed = discord.Embed(
             title="Inventory Summary",
@@ -911,15 +912,6 @@ class ProfileBuilder:
         )
 
         embed.add_field(
-            name="💎 **Runes**",
-            value=(
-                f"🔨 Refinement: {user[19]}\n✨ Potential: {user[21]}\n🔮 Imbuing: {user[27]}\n"
-                f"💥 Shatter: {user[31]}\n🤝 Partnership: {r_partner}"
-            ),
-            inline=True,
-        )
-
-        embed.add_field(
             name="🔑 **Boss Items**",
             value=(
                 f"🐉 Draconic Keys: {user[25]}\n🪽 Angelic Keys: {user[26]}\n🟣 Void Frags: {user[29]}\n"
@@ -931,21 +923,75 @@ class ProfileBuilder:
         embed.add_field(
             name="📦 **Misc Items**",
             value=(
-                f"🗝️ Void Keys: {user[30]}\n🎁 Curios: {user[22]}\n"
+                f"🎁 Curios: {user[22]}\n"
                 f"📖 Antique Tomes: {antique_tomes}\n🗝️ Pinnacle Keys: {pinnacle_keys}"
             ),
             inline=True,
         )
 
+        return embed
+
+    @staticmethod
+    async def build_crafting(bot, user_id: str, server_id: str) -> discord.Embed:
+        user = await bot.database.users.get(user_id, server_id)
+        uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
+
+        r_partner = await bot.database.users.get_currency(user_id, "partnership_runes")
+        mirage_imp = await bot.database.users.get_currency(user_id, "mirage_runes_imperfect")
+        mirage_perf = await bot.database.users.get_currency(user_id, "mirage_runes_perfected")
+
+        # Essence inventory
+        essence_data = await bot.database.essences.get_all(user_id)
+
+        embed = discord.Embed(title="⚗️ Crafting Materials", color=0x9B59B6)
+        embed.set_thumbnail(url=user[7])
+
         embed.add_field(
-            name="🌀 **Elemental Keys**",
+            name="💎 **Runes**",
             value=(
-                f"⚗️ Blessed Bismuth: {uber_data['blessed_bismuth']}\n"
-                f"🌿 Sparkling Sprig: {uber_data['sparkling_sprig']}\n"
-                f"🐟 Capricious Carp: {uber_data['capricious_carp']}"
+                f"🔨 Refinement: {user[19]}\n✨ Potential: {user[21]}\n🔮 Imbuing: {user[27]}\n"
+                f"💥 Shatter: {user[31]}\n🤝 Partnership: {r_partner}\n"
+                f"🪞 Mirage (Imperfect): {mirage_imp}\n🪞 Mirage (Perfected): {mirage_perf}"
             ),
             inline=True,
         )
+
+        blueprint_count = await bot.database.users.get_currency(user_id, "unidentified_blueprint")
+        embed.add_field(
+            name="🌀 **Elemental & Void Keys**",
+            value=(
+                f"⚗️ Blessed Bismuth: {uber_data['blessed_bismuth']}\n"
+                f"🌿 Sparkling Sprig: {uber_data['sparkling_sprig']}\n"
+                f"🐟 Capricious Carp: {uber_data['capricious_carp']}\n"
+                f"🗝️ Void Keys: {user[30]}\n"
+                f"📋 Unidentified Blueprints: {blueprint_count}"
+            ),
+            inline=True,
+        )
+
+        # Essences
+        if essence_data:
+            items = {}
+            if hasattr(essence_data, "keys"):
+                items = {
+                    k: v
+                    for k, v in dict(essence_data).items()
+                    if k not in ("user_id", "server_id", "id")
+                }
+            if items:
+                lines = []
+                for e_type, count in items.items():
+                    safe_count = count if count is not None else 0
+                    name = str(e_type).replace("_", " ").title()
+                    lines.append(f"✦ **{name}**: {safe_count:,}")
+                chunk_size = 12
+                for i in range(0, len(lines), chunk_size):
+                    chunk = lines[i : i + chunk_size]
+                    embed.add_field(
+                        name="🧪 Stored Essences" if i == 0 else "​",
+                        value="\n".join(chunk),
+                        inline=True,
+                    )
 
         return embed
 
@@ -1365,6 +1411,15 @@ class ProfileBuilder:
             inline=True,
         )
 
+        embed.add_field(
+            name="**Evelynn**",
+            value=(
+                f"☠️ Corruption Sigils: {uber_data.get('corruption_sigils', 0)}\n"
+                f"*(costs 3 to challenge)*"
+            ),
+            inline=True,
+        )
+
         return embed
 
     @staticmethod
@@ -1435,9 +1490,8 @@ class ProfileHubView(ui.View):
 
     async def on_timeout(self):
         try:
-            for child in self.children:
-                child.disabled = True
-            await self.message.edit(view=self)
+            if self.message:
+                await self.message.delete()
         except:
             pass
 
@@ -1446,13 +1500,13 @@ class ProfileHubView(ui.View):
 
         tabs = [
             ("card", "Card", "👤"),
+            ("cooldowns", "Cooldowns", "⏰"),
             ("stats", "Stats", "📊"),
             ("passives", "Passives", "⚡"),
             ("inventory", "Inventory", "🎒"),
-            ("cooldowns", "Cooldowns", "⏰"),
+            ("crafting", "Crafting", "⚗️"),
             ("resources", "Resources", "📦"),
             ("uber", "Uber", "⚔️"),
-            ("essences", "Essences", "💎"),
         ]
 
         for tab_id, label, emoji in tabs:
@@ -1496,16 +1550,16 @@ class ProfileHubView(ui.View):
             embed = await ProfileBuilder.build_cooldowns(
                 self.bot, self.user_id, self.server_id
             )
+        elif tab_id == "crafting":
+            embed = await ProfileBuilder.build_crafting(
+                self.bot, self.user_id, self.server_id
+            )
         elif tab_id == "resources":
             embed = await ProfileBuilder.build_resources(
                 self.bot, self.user_id, self.server_id
             )
         elif tab_id == "uber":
             embed = await ProfileBuilder.build_uber(
-                self.bot, self.user_id, self.server_id
-            )
-        elif tab_id == "essences":
-            embed = await ProfileBuilder.build_essences(
                 self.bot, self.user_id, self.server_id
             )
 

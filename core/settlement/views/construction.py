@@ -4,16 +4,18 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.images import SETTLEMENT_HUB
 from core.settlement.constants import BUILD_MESSAGES, BUILDING_INFO, CONSTRUCTION_COSTS
+from core.settlement.views.research import RESEARCHABLE_BUILDINGS
 
 from .base import SettlementBaseView
 
 
 class BuildConstructionView(SettlementBaseView):
-    def __init__(self, bot, user_id, slot_index, parent_view, uber_prog):
+    def __init__(self, bot, user_id, slot_index, parent_view, uber_prog, researched: set | None = None):
         super().__init__(bot, user_id)
         self.slot_index = slot_index
         self.parent = parent_view
         self.uber_prog = uber_prog
+        self.researched: set = researched or set()
 
         self.setup_select()
 
@@ -49,6 +51,10 @@ class BuildConstructionView(SettlementBaseView):
                     and self.uber_prog.get("gemini_blueprint_unlocked", 0) == 0
                 )
             ):
+                continue
+
+            # Skip researchable buildings that haven't been researched yet
+            if b_type in RESEARCHABLE_BUILDINGS and b_type not in self.researched:
                 continue
 
             cost = CONSTRUCTION_COSTS[b_type]
@@ -111,6 +117,10 @@ class BuildConstructionView(SettlementBaseView):
                     and self.uber_prog.get("gemini_blueprint_unlocked", 0) == 0
                 )
             ):
+                continue
+
+            # Skip researchable buildings that haven't been researched yet
+            if key in RESEARCHABLE_BUILDINGS and key not in self.researched:
                 continue
 
             lbl = key.replace("_", " ").title()

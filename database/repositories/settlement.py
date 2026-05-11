@@ -147,3 +147,44 @@ class SettlementRepository:
         )
         row = await cursor.fetchone()
         return row[0] if row else 0
+
+    # ------------------------------------------------------------------
+    # Research
+    # ------------------------------------------------------------------
+
+    async def get_researched(self, user_id: str, server_id: str) -> set[str]:
+        """Returns the set of building types that have been fully researched."""
+        cursor = await self.connection.execute(
+            "SELECT building_type FROM settlement_research WHERE user_id = ? AND server_id = ? AND completed = 1",
+            (user_id, server_id)
+        )
+        rows = await cursor.fetchall()
+        return {r[0] for r in rows}
+
+    async def get_active_research(self, user_id: str, server_id: str):
+        """Returns (building_type, start_time) for in-progress research, or None."""
+        cursor = await self.connection.execute(
+            "SELECT building_type, start_time FROM settlement_research "
+            "WHERE user_id = ? AND server_id = ? AND completed = 0 AND start_time != ''",
+            (user_id, server_id)
+        )
+        return await cursor.fetchone()
+
+    async def start_research(self, user_id: str, server_id: str, building_type: str, start_time: str) -> None:
+        await self.connection.execute(
+            """INSERT INTO settlement_research (user_id, server_id, building_type, start_time, completed)
+               VALUES (?, ?, ?, ?, 0)
+               ON CONFLICT(user_id, server_id, building_type) DO UPDATE SET
+                   start_time = excluded.start_time,
+                   completed  = 0""",
+            (user_id, server_id, building_type, start_time)
+        )
+        await self.connection.commit()
+
+    async def complete_research(self, user_id: str, server_id: str, building_type: str) -> None:
+        await self.connection.execute(
+            "UPDATE settlement_research SET completed = 1, start_time = '' "
+            "WHERE user_id = ? AND server_id = ? AND building_type = ?",
+            (user_id, server_id, building_type)
+        )
+        await self.connection.commit()

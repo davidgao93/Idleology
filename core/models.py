@@ -664,8 +664,9 @@ class Player:
         if self.ascension_unlocks:
             total += self.get_ascension_bonuses()["pdr"]
 
-        # Hard cap at 80%
-        return min(80, total)
+        # Hard cap: 90% with Impregnable armor passive, otherwise 80%
+        cap = 90 if (self.equipped_armor and self.equipped_armor.passive == "impregnable") else 80
+        return min(cap, total)
 
     def get_total_fdr(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus
@@ -804,6 +805,10 @@ class Player:
         # Gear (Thrill Seeker Boot)
         if self.equipped_boot and self.equipped_boot.passive == "thrill-seeker":
             bonus += self.equipped_boot.passive_lvl  # 1-6%
+
+        # Armor (Treasure Hunter)
+        if self.equipped_armor and self.equipped_armor.passive == "treasure hunter":
+            bonus += 3
 
         # Companions
         bonus += self._get_companion_bonus("s_rarity")

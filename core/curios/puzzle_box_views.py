@@ -1,3 +1,5 @@
+import asyncio
+
 import discord
 from discord import ButtonStyle, Interaction, ui
 
@@ -5,6 +7,8 @@ from core.base_view import BaseView
 from core.curios.puzzle_box_logic import (
     PUZZLE_BOX_IMAGE,
     REWARD_EMOJIS,
+    REWARD_POOL,
+    _roll_quantity,
     claim_rewards,
     format_slot_display,
     roll_all_slots,
@@ -14,7 +18,7 @@ from core.curios.puzzle_box_logic import (
 
 class PuzzleBoxView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str):
-        super().__init__(bot=bot, user_id=user_id, server_id=server_id)
+        super().__init__(bot=bot, user_id=user_id, server_id=server_id, timeout=60)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -22,7 +26,9 @@ class PuzzleBoxView(BaseView):
         self.claimed = False
         self.message = None
         self._reward_lines: list[str] = []
+        self._remaining_seconds: int = 60
         self._build_buttons()
+        asyncio.create_task(self._countdown_loop())
 
     def _build_buttons(self):
         self.clear_items()
@@ -52,6 +58,17 @@ class PuzzleBoxView(BaseView):
         btn_claim.callback = self._claim
         self.add_item(btn_claim)
 
+    async def _countdown_loop(self):
+        for i in range(5):
+            await asyncio.sleep(10)
+            self._remaining_seconds = 60 - (i + 1) * 10
+            if self.claimed or not self.message:
+                return
+            try:
+                await self.message.edit(embed=self.build_embed())
+            except Exception:
+                return
+
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title="📦 Curio Puzzle Box",
@@ -72,7 +89,7 @@ class PuzzleBoxView(BaseView):
                 inline=True,
             )
 
-        embed.set_footer(text="60 second timeout · Auto-claims on expiry")
+        embed.set_footer(text=f"⏳ {self._remaining_seconds}s remaining · Auto-claims on expiry")
         return embed
 
     def build_claimed_embed(self) -> discord.Embed:
@@ -90,7 +107,8 @@ class PuzzleBoxView(BaseView):
                 "This isn't your session.", ephemeral=True
             )
 
-        self.slots[slot_index] = roll_slot()
+        used = {rtype for i, (rtype, _) in enumerate(self.slots) if i != slot_index}
+        self.slots[slot_index] = roll_slot(exclude=used)
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
     async def _claim(self, interaction: Interaction):

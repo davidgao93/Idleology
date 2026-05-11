@@ -52,7 +52,9 @@
       "Bash(python -m py_compile core/combat/views.py)",
       "Bash(python -m py_compile C:/Users/yugao/Idleology/core/inventory/upgrades/mirage.py)",
       "Bash(python -m py_compile C:/Users/yugao/Idleology/core/combat/modifier_data.py)",
-      "Bash(python -m py_compile C:/Users/yugao/Idleology/core/combat/gen_mob.py)"
+      "Bash(python -m py_compile C:/Users/yugao/Idleology/core/combat/gen_mob.py)",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(python tests/test_combat_logic.py)"
     ]
   }
 }

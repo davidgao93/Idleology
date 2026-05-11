@@ -73,9 +73,13 @@ def process_heal(player: Player, monster=None) -> str:
     else:
         player.current_hp = potential_hp
 
-    player.potions -= 1
+    if player.get_armor_passive() == "Alchemist" and random.random() < 0.30:
+        msg_prefix = f"⚗️ **Alchemist** preserved your potion!\n"
+    else:
+        player.potions -= 1
+        msg_prefix = ""
 
-    msg = f"{player.name} uses a potion and heals for **{max(0, heal_amount - overheal)}** HP!"
+    msg = msg_prefix + f"{player.name} uses a potion and heals for **{max(0, heal_amount - overheal)}** HP!"
     if player.apothecary_workers > 0:
         msg += f" (Apothecary: +{int(player.apothecary_workers * 0.2)})"
 
@@ -209,11 +213,11 @@ def _pt_attack_multiplier(
         mult *= 2.0
         calc_sources.append("obliterate×2.000")
 
-    if player.get_armor_passive() == "Mystical Might" and random.random() < 0.2:
-        mult *= 10.0
-        calc_sources.append("mystical_might×10.000")
+    if player.get_armor_passive() == "Piety" and random.random() < 0.10:
+        mult *= 7.0
+        calc_sources.append("piety×7.000")
         log.append(
-            "The **Mystical Might** armor imbues with power, massively increasing damage!"
+            "🙏 **Piety** blesses your strike! Damage increased 7×!"
         )
 
     # --- Paradise Jewel: Onslaught primed ---

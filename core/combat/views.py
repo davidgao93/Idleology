@@ -623,6 +623,11 @@ class CombatView(BaseView):
                             self.user_id, "spirit_shard", 1
                         )
                         reward_data["special"].append("Spirit Shard")
+                    elif key == "unidentified_blueprint":
+                        await self.bot.database.users.modify_currency(
+                            self.user_id, "unidentified_blueprint", 1
+                        )
+                        reward_data["special"].append("📋 Unidentified Blueprint")
                     elif key == "spirit_stone":
                         await self.bot.database.users.modify_currency(
                             self.user_id, "spirit_stones", 1

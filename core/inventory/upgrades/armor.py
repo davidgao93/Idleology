@@ -335,12 +335,12 @@ class ImbueView(BaseUpgradeView):
         if random.random() <= 0.5:
             new_p = random.choice(
                 [
-                    "Invulnerable",
-                    "Mystical Might",
-                    "Omnipotent",
+                    "Impregnable",
+                    "Piety",
+                    "Transcendence",
                     "Treasure Hunter",
                     "Unlimited Wealth",
-                    "Everlasting Blessing",
+                    "Alchemist",
                 ]
             )
             self.item.passive = new_p

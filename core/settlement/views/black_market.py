@@ -99,7 +99,14 @@ class BlackMarketView(SettlementBaseView):
         btn_key.callback = self.buy_key_cache
         self.add_item(btn_key)
 
-        # 2. Bulk trade-in
+        # 2. Blueprint trade
+        btn_bp = ui.Button(
+            label="Blueprint Trade", style=ButtonStyle.blurple, emoji="📋", row=1
+        )
+        btn_bp.callback = self.buy_blueprint_trade
+        self.add_item(btn_bp)
+
+        # 3. Bulk trade-in
         btn_bulk = ui.Button(
             label="Bulk Trade-In", style=ButtonStyle.secondary, emoji="📦", row=1
         )
@@ -146,6 +153,11 @@ class BlackMarketView(SettlementBaseView):
         embed.add_field(
             name="🗝️ Boss Key Cache",
             value="**Cost:** 1 Void Key\n**Contents:** 1-5 Random Boss Keys",
+            inline=False,
+        )
+        embed.add_field(
+            name="📋 Blueprint Trade",
+            value="**Cost:** 1 Unidentified Blueprint\n**Contents:** 1-3 Settlement Materials (Magma Core, Life Root, Spirit Shard)",
             inline=False,
         )
 
@@ -513,6 +525,35 @@ class BlackMarketView(SettlementBaseView):
         if unused > 0:
             msg += f"\n*({unused} trades skipped — only had {owned} Void Keys)*"
         await interaction.followup.send(msg, ephemeral=True)
+
+    async def buy_blueprint_trade(self, interaction: Interaction) -> None:
+        uid = self.user_id
+        owned = await self.bot.database.users.get_currency(uid, "unidentified_blueprint")
+        if owned < 1:
+            return await interaction.response.send_message(
+                "You need 1 **Unidentified Blueprint**!\n"
+                "Blueprints drop from normal combat (1% chance, affected by special rarity).",
+                ephemeral=True,
+            )
+
+        await interaction.response.defer()
+        await self.bot.database.users.modify_currency(uid, "unidentified_blueprint", -1)
+
+        mat_pool = ["magma_core", "life_root", "spirit_shard"]
+        qty = random.randint(1, 3)
+        rewards = []
+        for _ in range(qty):
+            mat = random.choice(mat_pool)
+            await self.bot.database.users.modify_currency(uid, mat, 1)
+            rewards.append(mat.replace("_", " ").title())
+
+        from collections import Counter
+        tally = Counter(rewards)
+        tally_str = ", ".join(f"{v}x {k}" for k, v in tally.items())
+        await interaction.followup.send(
+            f"📋 **Blueprint Trade:**\n**Consumed:** 1 Unidentified Blueprint\n**Received:** {tally_str}",
+            ephemeral=True,
+        )
 
     async def go_back(self, interaction: Interaction):
         await interaction.response.edit_message(
