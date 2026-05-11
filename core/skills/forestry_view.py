@@ -2,22 +2,19 @@ import asyncio
 import random
 import discord
 from discord import Interaction, ButtonStyle
-from discord.ui import View, Button
+from discord.ui import Button
+from core.base_view import BaseView
 from core.skills.mechanics import SkillMechanics
 
 # Probability that a gnarled knot blocks the next swing.
 KNOT_CHANCE = 0.25
 
 
-class ForestryView(View):
+class ForestryView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
 
         self.state = "idle"   # idle | chopping | cooldown | ready
-        self.message: discord.Message | None = None
         self.skill_data = None
         self.user_data = None
 
@@ -32,9 +29,6 @@ class ForestryView(View):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)

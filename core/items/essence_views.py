@@ -8,7 +8,7 @@ Flow:
 
 import discord
 from discord import ButtonStyle, Interaction
-from discord.ui import Button, Select, View
+from discord.ui import Button, Select
 
 from core.base_view import BaseView
 from core.items.essence_mechanics import (
@@ -435,7 +435,7 @@ class EssenceSelectView(BaseView):
 # ---------------------------------------------------------------------------
 
 
-class EssenceView(View):
+class EssenceView(BaseView):
     """
     Hub for managing essences on a single glove / boot / helmet.
     Opened from ItemDetailView via the "Essences" button.
@@ -450,9 +450,7 @@ class EssenceView(View):
         parent_view,
         essence_inventory: dict,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id)
         self.item = item
         self.item_type = item_type  # "glove" | "boot" | "helmet"
         self.parent = parent_view  # ItemDetailView

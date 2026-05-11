@@ -4,12 +4,13 @@ import re
 
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
-from discord.ui import Button, Modal, Select, TextInput, View
+from discord.ui import Button, Modal, Select, TextInput
 
+from core.base_view import BaseView
 from core.images import DEFAULT_SILHOUETTE
 
 
-class RegistrationView(View):
+class RegistrationView(BaseView):
     """
     Step 1: Gender Selection (Buttons)
     Step 2: Appearance Selection (Select Menu + Preview) -> Confirm Button
@@ -17,18 +18,10 @@ class RegistrationView(View):
     """
 
     def __init__(self, bot, user_id, name):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = str(user_id)
+        super().__init__(bot, user_id)
         self.name = name
         self.gender = None
         self.appearance_url = None
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
 
     def _load_appearances(self, gender_code: str):
         apps = []
@@ -186,11 +179,9 @@ class IdeologyModal(Modal, title="Choose Your Path"):
         await self.parent_view.complete_registration(interaction, val)
 
 
-class PassiveAllocateView(View):
+class PassiveAllocateView(BaseView):
     def __init__(self, bot, user_id, user_data):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id)
         self.points = user_data[20]  # passive_points index
 
         # Stats Cache
@@ -200,14 +191,11 @@ class PassiveAllocateView(View):
         self._lock = asyncio.Lock()
         self.update_buttons()
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
         try:
             await self.message.delete()
-        except:
+        except Exception:
             pass
 
     def update_buttons(self):
@@ -299,29 +287,20 @@ class PassiveAllocateView(View):
         await self.process_allocation(interaction, "max_hp")
 
 
-class UnregisterView(ui.View):
+class UnregisterView(BaseView):
     def __init__(self, bot, user_id: str, ideology: str):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id)
         self.ideology = ideology
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
-
-        # Create a "Cancelled" embed
         embed = discord.Embed(
             title="Unregistration Cancelled",
             description="The request timed out. Your character remains safe.",
             color=discord.Color.light_grey(),
         )
-
         try:
-            # Edit the original message to remove buttons and show cancellation
-            if hasattr(self, "message"):
+            if self.message:
                 await self.message.edit(embed=embed, view=None)
         except (discord.NotFound, discord.HTTPException):
             pass

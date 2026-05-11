@@ -2,21 +2,19 @@ import asyncio
 
 import discord
 from discord import ButtonStyle, Interaction
-from discord.ui import Button, View
+from discord.ui import Button
 
+from core.base_view import BaseView
 from core.combat.views_elemental import ElementalEncounterView
 from core.items.factory import load_player
 from core.skills.mechanics import SkillMechanics
 
 
-class GatherView(View):
+class GatherView(BaseView):
     def __init__(
         self, bot, user_id: str, server_id: str, initial_skill: str = "mining"
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.current_skill = initial_skill
 
         # Data Cache
@@ -27,14 +25,11 @@ class GatherView(View):
         # Prevent overlapping updates
         self._lock = asyncio.Lock()
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
         try:
-            await self.message.edit(view=None)  # self.message will be set by cog
-        except:
+            await self.message.edit(view=None)
+        except Exception:
             pass
 
     async def refresh_state(self):

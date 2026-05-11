@@ -634,7 +634,7 @@ class Prestige(commands.Cog, name="prestige"):
         user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, user):
             return
-
+        self.bot.state_manager.set_active(user_id, "prestige")
         view = PrestigeHubView(self.bot, user_id, server_id)
         await view.refresh()
         embed = await PrestigeBuilder.build_overview(self.bot, user_id, server_id)

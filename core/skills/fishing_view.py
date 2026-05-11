@@ -1,23 +1,20 @@
 import asyncio
 import discord
 from discord import Interaction, ButtonStyle
-from discord.ui import View, Button
+from discord.ui import Button
+from core.base_view import BaseView
 from core.skills.mechanics import SkillMechanics
 
 # Seconds the player has to click Reel before the fish escapes.
 BITE_WINDOW = 60
 
 
-class FishingView(View):
+class FishingView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str, user_mention: str):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.user_mention = user_mention
 
         self.state = "idle"   # idle | casting | bite | escaped | result
-        self.message: discord.Message | None = None
         self.skill_data = None
         self.user_data = None
 
@@ -30,9 +27,6 @@ class FishingView(View):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)

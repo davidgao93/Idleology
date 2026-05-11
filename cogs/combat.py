@@ -7,8 +7,9 @@ from datetime import datetime, timedelta
 import discord
 from discord import ButtonStyle, Interaction, app_commands
 from discord.ext import commands
-from discord.ui import Button, View
+from discord.ui import Button
 
+from core.base_view import BaseView
 from core.combat import engine, ui
 from core.combat.encounters import EncounterManager
 from core.combat.gen_mob import (
@@ -23,17 +24,12 @@ from core.items.factory import load_player
 from core.models import Monster
 
 
-class DoorPromptView(View):
+class DoorPromptView(BaseView):
     def __init__(self, bot, user_id, cost_dict, boss_type):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id)
         self.cost_dict = cost_dict
         self.boss_type = boss_type
         self.accepted = False
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     @discord.ui.button(label="Enter", style=ButtonStyle.danger)
     async def enter(self, interaction: Interaction, button: Button):

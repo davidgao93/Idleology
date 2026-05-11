@@ -17,7 +17,7 @@ class Uber(commands.Cog, name="uber"):
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
-
+        self.bot.state_manager.set_active(user_id, "uber")
         player = await load_player(user_id, existing_user, self.bot.database)
         uber_data = await self.bot.database.uber.get_uber_progress(user_id, server_id)
 

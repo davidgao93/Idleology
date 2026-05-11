@@ -2,8 +2,9 @@ import asyncio
 
 import discord
 from discord import ButtonStyle, Interaction
-from discord.ui import Button, Modal, TextInput, View
+from discord.ui import Button, Modal, TextInput
 
+from core.base_view import BaseView
 from core.images import TAVERN_CASINO
 
 from .logic import BlackjackLogic, CrashLogic, HorseRaceLogic, RouletteLogic
@@ -53,17 +54,12 @@ class RouletteNumberModal(Modal, title="Bet on a Number"):
             )
 
 
-class RouletteView(View):
+class RouletteView(BaseView):
     def __init__(self, bot, user_id, bet_amount, parent_interaction):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = str(user_id)
+        super().__init__(bot, user_id)
         self.bet_amount = bet_amount
         self.original_interaction = parent_interaction
         self.game_over = False
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         if not self.game_over:
@@ -216,20 +212,15 @@ class RouletteView(View):
 # ==============================================================================
 
 
-class BlackjackView(View):
+class BlackjackView(BaseView):
     def __init__(self, bot, user_id, bet_amount, parent_interaction):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = str(user_id)
+        super().__init__(bot, user_id)
         self.bet_amount = bet_amount
         self.original_interaction = parent_interaction
         self.player_hand = []
         self.dealer_hand = []
         self.deck = BlackjackLogic()
         self.game_over = False
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         if not self.game_over:
@@ -404,11 +395,9 @@ class BlackjackView(View):
 # ==============================================================================
 
 
-class CrashView(View):
+class CrashView(BaseView):
     def __init__(self, bot, user_id, bet_amount, parent_interaction):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = str(user_id)
+        super().__init__(bot, user_id)
         self.bet_amount = bet_amount
         self.original_interaction = parent_interaction
 
@@ -417,9 +406,6 @@ class CrashView(View):
         self.is_running = False
         self.cashed_out = False
         self.task = None
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         # If the view times out while running, we auto-lose the player (crashed while AFK)
@@ -588,17 +574,12 @@ class CrashView(View):
 # ==============================================================================
 
 
-class CasinoMenuView(View):
+class CasinoMenuView(BaseView):
     def __init__(self, bot, user_id, bet_amount, parent_cog):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = str(user_id)
+        super().__init__(bot, user_id)
         self.bet_amount = bet_amount
         self.parent_cog = parent_cog
         self.response = None
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
@@ -667,19 +648,14 @@ class CasinoMenuView(View):
 # ==============================================================================
 
 
-class HorseRaceView(View):
+class HorseRaceView(BaseView):
     def __init__(self, bot, user_id, bet_amount, parent_interaction):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = str(user_id)
+        super().__init__(bot, user_id)
         self.bet_amount = bet_amount
         self.original_interaction = parent_interaction
         self.race_logic = HorseRaceLogic()
         self.selected_horse_index = None
         self.task = None
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         if not self.selected_horse_index and not self.task:

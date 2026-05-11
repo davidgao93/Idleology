@@ -19,7 +19,7 @@ class Paradise(commands.Cog, name="paradise"):
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
-
+        self.bot.state_manager.set_active(user_id, "paradise")
         data = await self.bot.database.paradise.get(user_id)
         uber = await self.bot.database.uber.get_uber_progress(user_id, server_id)
         jewel_count = uber.get("paradise_jewels", 0)

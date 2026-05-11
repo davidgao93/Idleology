@@ -33,6 +33,7 @@ class Companions(commands.Cog):
             )
             return
 
+        self.bot.state_manager.set_active(user_id, "companions")
         # 2. Fetch Data
         rows = await self.bot.database.companions.get_all(user_id)
         if not rows:

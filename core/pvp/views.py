@@ -2,20 +2,20 @@ import random
 
 import discord
 from discord import ButtonStyle, Interaction
-from discord.ui import Button, View
+from discord.ui import Button
 
+from core.base_view import BaseView
 from core.pvp.engine import PvPEngine
 
 MAX_HEALS = 8
 
 
-class ChallengeView(View):
+class ChallengeView(BaseView):
     """View for accepting/declining a duel request."""
 
     def __init__(self, bot, challenger_id, target_id, amount):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.challenger_id = str(challenger_id)
+        super().__init__(bot, challenger_id)
+        self.challenger_id = self.user_id
         self.target_id = str(target_id)
         self.amount = amount
         self.accepted = False
@@ -60,14 +60,13 @@ class ChallengeView(View):
         self.stop()
 
 
-class DuelView(View):
+class DuelView(BaseView):
     """View handling the actual turn-based combat."""
 
     def __init__(self, bot, p1_id, p2_id, amount):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.p1_id = p1_id
-        self.p2_id = p2_id
+        super().__init__(bot, p1_id)
+        self.p1_id = self.user_id
+        self.p2_id = str(p2_id)
         self.amount = amount
 
         # Game State
