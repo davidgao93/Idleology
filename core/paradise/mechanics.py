@@ -465,17 +465,56 @@ def roll_scale_pct(skill_key: str, level: int) -> float:
     return random.uniform(low, high)
 
 
+def format_unleash_description(skill_key: str, level: int) -> str:
+    """Returns an unleash description with actual interpolated values at this level."""
+    if skill_key == "draught":
+        _, high = draught_potion_range(level)
+        return f"Generates **0–{high}** potions (overflow converts to ward)."
+
+    low = scale_damage_pct(skill_key, level, "low")
+    high = scale_damage_pct(skill_key, level, "high")
+
+    if skill_key == "surge":
+        return f"Lightning storm deals **{low:.0f}–{high:.0f}%** of total ATK as bonus damage."
+    if skill_key == "cataclysm":
+        return f"Next attack is a guaranteed crit with **+{low:.0f}%** bonus crit multiplier."
+    if skill_key == "acrimony":
+        return (
+            f"Venom burst deals **{low:.0f}–{high:.0f}%** total ATK"
+            f" + 25% of that as DoT for 4 turns."
+        )
+    if skill_key == "wardforge":
+        return (
+            f"Generate **{low:.0f}–{high:.0f}** bonus ward;"
+            f" next attack gains 30% of current ward as bonus damage."
+        )
+    if skill_key == "bastion":
+        return f"Reflect **{low:.0f}–{high:.0f}%** of the triggering hit back at the monster."
+    if skill_key == "siphon":
+        return f"Burst heal **{low:.0f}–{high:.0f}%** of max HP; 50% of heal becomes ward."
+    if skill_key == "onslaught":
+        return f"Next attack gains **+{low:.0f}–{high:.0f}%** ATK multiplier."
+
+    defn = SKILL_JEWELS.get(skill_key)
+    return defn.unleash_template_lv1 if defn else ""
+
+
 # ---------------------------------------------------------------------------
 # Draught: potion generation table
 # ---------------------------------------------------------------------------
 
 def draught_potion_range(level: int) -> tuple[int, int]:
     if level >= 30:
-        return 0, 3
-    elif level >= 20:
-        return 0, 2
+        high = 3
+    elif level <= 1:
+        high = 1
+    elif level <= 20:
+        t = (level - 1) / 19
+        high = max(1, round(_lerp(1, 2, t)))
     else:
-        return 0, 1
+        t = (level - 20) / 10
+        high = max(2, round(_lerp(2, 3, t)))
+    return 0, high
 
 
 # ---------------------------------------------------------------------------

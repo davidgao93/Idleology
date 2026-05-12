@@ -80,13 +80,7 @@ def _build_hub_embed(
             f"**Charges:** {charges} / {threshold}",
             f"*{defn.charge_trigger}*",
         ]
-        # Show level-appropriate unleash description
-        if eff_level >= 30:
-            skill_lines.append(f"**Unleash:** {defn.unleash_template_lv30}")
-        elif eff_level >= 20:
-            skill_lines.append(f"**Unleash:** {defn.unleash_template_lv20}")
-        else:
-            skill_lines.append(f"**Unleash:** {defn.unleash_template_lv1}")
+        skill_lines.append(f"**Unleash:** {M.format_unleash_description(equipped, eff_level)}")
 
         embed.add_field(
             name="⚔️ Equipped Skill",

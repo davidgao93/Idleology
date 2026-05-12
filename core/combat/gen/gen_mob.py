@@ -310,7 +310,7 @@ def calculate_monster_stats(monster):
 
 async def fetch_monster_image(level, monster_data, task_species=None):
     """Fetches a monster image from the monsters.csv file based on the encounter level."""
-    csv_file_path = os.path.join(os.path.dirname(__file__), "../../assets/monsters.csv")
+    csv_file_path = os.path.join(os.path.dirname(__file__), "../../../assets/monsters.csv")
     monsters = []
     try:
         with open(csv_file_path, newline="") as csvfile:

@@ -14,6 +14,81 @@ def get_hp_display(current: int, max_hp: int, ward: int) -> str:
     return display
 
 
+def build_status_text(player: Player) -> str:
+    lines: list[str] = []
+
+    # --- Paradise Jewel ---
+    jop = getattr(player, "jewel_of_paradise", None)
+    if jop and jop.get("equipped_skill"):
+        from core.paradise import mechanics as M
+        from core.paradise.data import SKILL_JEWELS
+
+        skill_key = jop["equipped_skill"]
+        defn = SKILL_JEWELS.get(skill_key)
+        charges = jop.get("skill_charges", {}).get(skill_key, 0)
+        mastery = M.mastery_bonus(jop)
+        eff_lvl = M.get_effective_level(skill_key, jop, mastery)
+        compression = M.get_compression_bonus(jop)
+        threshold = max(1, M.get_threshold(skill_key, eff_lvl) - compression)
+        emoji = defn.emoji if defn else "💎"
+        name = defn.name if defn else skill_key.title()
+        lines.append(f"{emoji} **{name}**  {charges} / {threshold}")
+
+        if skill_key == "cataclysm" and player.jewel_cataclysm_primed:
+            lines.append("💥 Cataclysm  **PRIMED**")
+        if skill_key == "onslaught" and player.jewel_onslaught_primed:
+            lines.append(f"🔥 Onslaught  **PRIMED** (+{player.jewel_onslaught_bonus_pct:.0f}%)")
+        if skill_key == "wardforge" and player.jewel_wardforge_bonus_dmg > 0:
+            lines.append(f"🛡️ Wardforge  +{player.jewel_wardforge_bonus_dmg:,} pending")
+        if skill_key == "acrimony" and player.jewel_acrimony_dot > 0:
+            lines.append(
+                f"🐍 Acrimony DoT  {player.jewel_acrimony_dot_dmg:,}/turn"
+                f"  · {player.jewel_acrimony_dot}t left"
+            )
+
+    # --- Potions (always shown) ---
+    lines.append(f"🧪 Potions  {player.potions}")
+
+    # --- Alchemy: next-attack buffs (consumed on use) ---
+    if player.alchemy_guaranteed_hit:
+        lines.append("⚔️ Bottled Courage  **ready**")
+    if player.alchemy_atk_boost_pct > 0:
+        lines.append(f"💪 Warrior's Draft  +{int(player.alchemy_atk_boost_pct * 100)}% ATK  **ready**")
+
+    # --- Alchemy: timed buffs ---
+    if player.alchemy_def_boost_turns > 0:
+        lines.append(
+            f"🛡️ Iron Skin  +{int(player.alchemy_def_boost_pct * 100)}%"
+            f"  · {player.alchemy_def_boost_turns}t"
+        )
+    if player.alchemy_dmg_reduction_turns > 0:
+        lines.append(
+            f"🩹 Dulled Pain  -{int(player.alchemy_dmg_reduction_pct * 100)}%"
+            f"  · {player.alchemy_dmg_reduction_turns}t"
+        )
+    if player.alchemy_linger_turns > 0:
+        lines.append(
+            f"🌿 Linger  {player.alchemy_linger_hp:,}/turn"
+            f"  · {player.alchemy_linger_turns}t"
+        )
+    if player.alchemy_overcap_hp > 0:
+        lines.append(f"💥 Temp HP  {player.alchemy_overcap_hp:,}")
+
+    # --- Weapon / accessory stacks ---
+    if player.voracious_stacks > 0:
+        lines.append(f"🔥 Voracious  ×{player.voracious_stacks}")
+    if player.gaze_stacks > 0:
+        lines.append(f"👁️ Void Gaze  {player.gaze_stacks}/30")
+    if player.hunger_stacks > 0:
+        lines.append(f"⬛ Hunger  {player.hunger_stacks}/10")
+
+    # --- Lucifer PDR burst (ward-shatter bonus) ---
+    if player.lucifer_pdr_burst > 0:
+        lines.append(f"🔥 PDR Burst  +{player.lucifer_pdr_burst}%")
+
+    return "\n".join(lines)
+
+
 def create_combat_embed(
     player: Player,
     monster: Monster,
@@ -71,6 +146,8 @@ def create_combat_embed(
         ),
         inline=True,
     )
+
+    embed.add_field(name="⚙️ Status", value=build_status_text(player), inline=False)
 
     for name, message in logs.items():
         if message:
