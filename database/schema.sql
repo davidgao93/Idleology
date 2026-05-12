@@ -1,4 +1,4 @@
-ALTER TABLE users ADD COLUMN unidentified_blueprint INTEGER NOT NULL DEFAULT 0;
+
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INTEGER PRIMARY KEY,

@@ -262,8 +262,6 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         base_attack=user_data[9],
         base_defence=user_data[10],
         potions=user_data[16],
-        # Defaults
-        combat_ward=0
     )
 
     server_id = user_data[2] # Assuming index 2 is server_id in users table

@@ -275,6 +275,60 @@ class MonsterPart:
 
 
 @dataclass
+class CombatState:
+    """Per-combat transient state. Reset to defaults between every fight via Player.reset_combat_state()."""
+    ward: int = 0
+    is_invulnerable: bool = False
+    cooldown_reduction_seconds: int = 0
+    celestial_vow_used: bool = False
+    voracious_stacks: int = 0
+    cursed_precision_active: bool = False
+    gaze_stacks: int = 0
+    hunger_stacks: int = 0
+    lucifer_pdr_burst: int = 0
+    equilibrium_bonus_xp_pending: int = 0
+    plundering_bonus_gold_pending: int = 0
+    # Alchemy potion transients
+    alchemy_atk_boost_pct: float = 0.0
+    alchemy_def_boost_pct: float = 0.0
+    alchemy_def_boost_turns: int = 0
+    alchemy_dmg_reduction_pct: float = 0.0
+    alchemy_dmg_reduction_turns: int = 0
+    alchemy_overcap_hp: int = 0
+    alchemy_linger_hp: int = 0
+    alchemy_linger_turns: int = 0
+    alchemy_guaranteed_hit: bool = False
+    # Per-combat bonus accumulators and multipliers
+    bonus_atk: int = 0
+    bonus_def: int = 0
+    bonus_crit: int = 0
+    bonus_max_hp: int = 0
+    atk_multiplier: float = 1.0
+    def_multiplier: float = 1.0
+    crit_multiplier: float = 1.0
+    partner_special_rarity: float = 0.0
+    # Paradise Jewel unleash transients
+    jewel_cataclysm_primed: bool = False
+    jewel_cataclysm_bonus_multi: float = 0.0
+    jewel_onslaught_primed: bool = False
+    jewel_onslaught_bonus_pct: float = 0.0
+    jewel_wardforge_bonus_dmg: int = 0
+    jewel_acrimony_dot: int = 0
+    jewel_acrimony_dot_dmg: int = 0
+
+
+@dataclass
+class CodexRunState:
+    """State that persists across waves within a single Codex run. Reset when the run ends."""
+    atk_penalty: int = 0
+    def_penalty: int = 0
+    crit_penalty: int = 0
+    max_hp_bonus: int = 0
+    bonus_rarity: int = 0
+    boon_fdr: int = 0
+
+
+@dataclass
 class Player:
     id: str
     name: str
@@ -316,107 +370,20 @@ class Player:
     # Alchemy — Potion Passives (loaded from DB, list of dicts)
     potion_passives: List[dict] = field(default_factory=list)
 
-    # Alchemy — Transient combat state (reset each combat)
-    alchemy_atk_boost_pct: float = (
-        0.0  # Warrior's Draft: % ATK boost on next attack (resets after use)
-    )
-    alchemy_def_boost_pct: float = (
-        0.0  # Iron Skin: % damage reduction for N monster turns
-    )
-    alchemy_def_boost_turns: int = 0  # Turns remaining for Iron Skin DEF boost
-    alchemy_dmg_reduction_pct: float = (
-        0.0  # Dulled Pain: % incoming dmg reduction (next attack only)
-    )
-    alchemy_dmg_reduction_turns: int = (
-        0  # Turns remaining for Dulled Pain (1 = next attack)
-    )
-    alchemy_overcap_hp: int = 0  # Overcap Brew: temporary HP above max (lost on hit)
-    alchemy_linger_hp: int = 0  # Lingering Remedy: heal per turn
-    alchemy_linger_turns: int = 0  # Turns remaining for lingering heal
-    alchemy_guaranteed_hit: bool = False  # Bottled Courage: next attack cannot miss
-
-    # Transient states (reset each combat)
-    combat_ward: int = 0
-    is_invulnerable_this_combat: bool = False
-    combat_cooldown_reduction_seconds: int = 0
-    celestial_vow_used: bool = False
-
-    # Infernal passive transients
-    voracious_stacks: int = 0
-    cursed_precision_active: bool = False
-
-    # Void passive transients
-    gaze_stacks: int = 0
-    hunger_stacks: int = 0
-
-    # Corrupted essence transients (reset each combat)
-    lucifer_pdr_burst: int = 0  # Lucifer helmet: flat PDR added after ward breaks
-
-    # Glove passives
-    equilibrium_bonus_xp_pending: int = 0
-    plundering_bonus_gold_pending: int = 0
-
-    # Codex run transients (reset per wave)
-    boon_fdr: int = 0
-
-    # -----------------------------------------------------------------------
-    # Flat stat cache  (immutable during combat)
-    # Computed once by compute_flat_stats() at load time and after any
-    # permanent stat change (level-up, gear swap mid-session).
-    # Stores: base + all gear + essences + barracks.
-    # -----------------------------------------------------------------------
+    # Flat stat cache (immutable during combat; computed by compute_flat_stats())
     flat_atk: int = 0
     flat_def: int = 0
 
-    # -----------------------------------------------------------------------
-    # Per-combat bonus accumulators  (reset each combat / wave)
-    # Zeroed by reset_combat_bonus().  All combat-start passives and chapter
-    # signature modifiers write here instead of mutating base stats.
-    # -----------------------------------------------------------------------
-    bonus_atk: int = 0
-    bonus_def: int = 0
-    bonus_crit: int = (
-        0  # Impenetrable, Cursed Precision, chapter signatures, crit boons
-    )
-    bonus_max_hp: int = 0  # Chapter signatures (Decaying, Cursed), Diabolic Pact
-
-    # -----------------------------------------------------------------------
-    # Unified stat multipliers  (reset each combat / wave)
-    # Applied as  (flat + bonus) × multiplier  at the end of get_total_*.
-    # Covers codex signatures/boons AND strong combat passives (diabolic_pact).
-    # Reset to 1.0 by reset_combat_bonus().
-    # -----------------------------------------------------------------------
-    atk_multiplier: float = 1.0
-    def_multiplier: float = 1.0
-    crit_multiplier: float = (
-        1.0  # Insight helmet passive, future multiplicative crit mods
-    )
-
-    # -----------------------------------------------------------------------
-    # Ascension pinnacle unlocks  (loaded once at session start, never mutated)
+    # Ascension pinnacle unlocks (loaded once at session start, never mutated)
     ascension_unlocks: set = field(default_factory=set)
 
-    # Codex run permanent modifiers  (NOT reset by reset_combat_bonus)
-    # Accumulated by fragment_boost downsides and max_hp_boost boon.
-    # Zero for a fresh run.
-    # -----------------------------------------------------------------------
-    run_atk_penalty: int = 0
-    run_def_penalty: int = 0
-    run_crit_penalty: int = 0  # fragment_boost crit downside
-    run_max_hp_bonus: int = 0  # max_hp_boost boon (+) and fragment_boost hp_penalty (−)
-    bonus_rarity: int = 0  # per-wave rarity boon accumulator; reset at chapter boundary
-
     # Monster body parts equipped (loaded at session start)
-    # {slot_type: {"hp": int, "monster_name": str}}
     equipped_parts: dict = field(default_factory=dict)
 
     # Active combat partner (loaded at session start, not reset per combat)
     active_partner: Optional["Partner"] = None
-    # Per-combat special-rarity bonus from co_special_rarity (reset by reset_combat_bonus)
-    partner_special_rarity: float = 0.0
 
     # Paradise Jewel system — loaded at session start, persisted after combat
-    # Structure matches ParadiseRepository._row_to_dict output.
     jewel_of_paradise: dict = field(default_factory=lambda: {
         "unlocked_skills": [],
         "equipped_skill": None,
@@ -427,14 +394,223 @@ class Player:
         "total_jewels_obtained": 0,
         "total_jewels_consumed": 0,
     })
-    # Transient: set by combat engine when an unleash is held for next-attack application
-    jewel_cataclysm_primed: bool = False      # guaranteed crit with bonus multiplier pending
-    jewel_cataclysm_bonus_multi: float = 0.0  # bonus crit multiplier when primed
-    jewel_onslaught_primed: bool = False      # ATK multiplier boost pending
-    jewel_onslaught_bonus_pct: float = 0.0   # bonus ATK% when primed
-    jewel_wardforge_bonus_dmg: int = 0        # bonus damage queued from Wardforge unleash
-    jewel_acrimony_dot: int = 0               # remaining Acrimony DoT turns
-    jewel_acrimony_dot_dmg: int = 0           # damage per Acrimony DoT tick
+
+    # Per-combat transient state — reset via reset_combat_state()
+    cs: CombatState = field(default_factory=CombatState)
+
+    # Per-codex-run state — persists across waves, reset when a run ends
+    run: CodexRunState = field(default_factory=CodexRunState)
+
+    # -----------------------------------------------------------------------
+    # Property forwarders — expose CombatState fields under their original names
+    # so all existing callsites continue to work unchanged.
+    # -----------------------------------------------------------------------
+
+    @property
+    def combat_ward(self) -> int: return self.cs.ward
+    @combat_ward.setter
+    def combat_ward(self, v: int) -> None: self.cs.ward = v
+
+    @property
+    def is_invulnerable_this_combat(self) -> bool: return self.cs.is_invulnerable
+    @is_invulnerable_this_combat.setter
+    def is_invulnerable_this_combat(self, v: bool) -> None: self.cs.is_invulnerable = v
+
+    @property
+    def combat_cooldown_reduction_seconds(self) -> int: return self.cs.cooldown_reduction_seconds
+    @combat_cooldown_reduction_seconds.setter
+    def combat_cooldown_reduction_seconds(self, v: int) -> None: self.cs.cooldown_reduction_seconds = v
+
+    @property
+    def celestial_vow_used(self) -> bool: return self.cs.celestial_vow_used
+    @celestial_vow_used.setter
+    def celestial_vow_used(self, v: bool) -> None: self.cs.celestial_vow_used = v
+
+    @property
+    def voracious_stacks(self) -> int: return self.cs.voracious_stacks
+    @voracious_stacks.setter
+    def voracious_stacks(self, v: int) -> None: self.cs.voracious_stacks = v
+
+    @property
+    def cursed_precision_active(self) -> bool: return self.cs.cursed_precision_active
+    @cursed_precision_active.setter
+    def cursed_precision_active(self, v: bool) -> None: self.cs.cursed_precision_active = v
+
+    @property
+    def gaze_stacks(self) -> int: return self.cs.gaze_stacks
+    @gaze_stacks.setter
+    def gaze_stacks(self, v: int) -> None: self.cs.gaze_stacks = v
+
+    @property
+    def hunger_stacks(self) -> int: return self.cs.hunger_stacks
+    @hunger_stacks.setter
+    def hunger_stacks(self, v: int) -> None: self.cs.hunger_stacks = v
+
+    @property
+    def lucifer_pdr_burst(self) -> int: return self.cs.lucifer_pdr_burst
+    @lucifer_pdr_burst.setter
+    def lucifer_pdr_burst(self, v: int) -> None: self.cs.lucifer_pdr_burst = v
+
+    @property
+    def equilibrium_bonus_xp_pending(self) -> int: return self.cs.equilibrium_bonus_xp_pending
+    @equilibrium_bonus_xp_pending.setter
+    def equilibrium_bonus_xp_pending(self, v: int) -> None: self.cs.equilibrium_bonus_xp_pending = v
+
+    @property
+    def plundering_bonus_gold_pending(self) -> int: return self.cs.plundering_bonus_gold_pending
+    @plundering_bonus_gold_pending.setter
+    def plundering_bonus_gold_pending(self, v: int) -> None: self.cs.plundering_bonus_gold_pending = v
+
+    @property
+    def alchemy_atk_boost_pct(self) -> float: return self.cs.alchemy_atk_boost_pct
+    @alchemy_atk_boost_pct.setter
+    def alchemy_atk_boost_pct(self, v: float) -> None: self.cs.alchemy_atk_boost_pct = v
+
+    @property
+    def alchemy_def_boost_pct(self) -> float: return self.cs.alchemy_def_boost_pct
+    @alchemy_def_boost_pct.setter
+    def alchemy_def_boost_pct(self, v: float) -> None: self.cs.alchemy_def_boost_pct = v
+
+    @property
+    def alchemy_def_boost_turns(self) -> int: return self.cs.alchemy_def_boost_turns
+    @alchemy_def_boost_turns.setter
+    def alchemy_def_boost_turns(self, v: int) -> None: self.cs.alchemy_def_boost_turns = v
+
+    @property
+    def alchemy_dmg_reduction_pct(self) -> float: return self.cs.alchemy_dmg_reduction_pct
+    @alchemy_dmg_reduction_pct.setter
+    def alchemy_dmg_reduction_pct(self, v: float) -> None: self.cs.alchemy_dmg_reduction_pct = v
+
+    @property
+    def alchemy_dmg_reduction_turns(self) -> int: return self.cs.alchemy_dmg_reduction_turns
+    @alchemy_dmg_reduction_turns.setter
+    def alchemy_dmg_reduction_turns(self, v: int) -> None: self.cs.alchemy_dmg_reduction_turns = v
+
+    @property
+    def alchemy_overcap_hp(self) -> int: return self.cs.alchemy_overcap_hp
+    @alchemy_overcap_hp.setter
+    def alchemy_overcap_hp(self, v: int) -> None: self.cs.alchemy_overcap_hp = v
+
+    @property
+    def alchemy_linger_hp(self) -> int: return self.cs.alchemy_linger_hp
+    @alchemy_linger_hp.setter
+    def alchemy_linger_hp(self, v: int) -> None: self.cs.alchemy_linger_hp = v
+
+    @property
+    def alchemy_linger_turns(self) -> int: return self.cs.alchemy_linger_turns
+    @alchemy_linger_turns.setter
+    def alchemy_linger_turns(self, v: int) -> None: self.cs.alchemy_linger_turns = v
+
+    @property
+    def alchemy_guaranteed_hit(self) -> bool: return self.cs.alchemy_guaranteed_hit
+    @alchemy_guaranteed_hit.setter
+    def alchemy_guaranteed_hit(self, v: bool) -> None: self.cs.alchemy_guaranteed_hit = v
+
+    @property
+    def bonus_atk(self) -> int: return self.cs.bonus_atk
+    @bonus_atk.setter
+    def bonus_atk(self, v: int) -> None: self.cs.bonus_atk = v
+
+    @property
+    def bonus_def(self) -> int: return self.cs.bonus_def
+    @bonus_def.setter
+    def bonus_def(self, v: int) -> None: self.cs.bonus_def = v
+
+    @property
+    def bonus_crit(self) -> int: return self.cs.bonus_crit
+    @bonus_crit.setter
+    def bonus_crit(self, v: int) -> None: self.cs.bonus_crit = v
+
+    @property
+    def bonus_max_hp(self) -> int: return self.cs.bonus_max_hp
+    @bonus_max_hp.setter
+    def bonus_max_hp(self, v: int) -> None: self.cs.bonus_max_hp = v
+
+    @property
+    def atk_multiplier(self) -> float: return self.cs.atk_multiplier
+    @atk_multiplier.setter
+    def atk_multiplier(self, v: float) -> None: self.cs.atk_multiplier = v
+
+    @property
+    def def_multiplier(self) -> float: return self.cs.def_multiplier
+    @def_multiplier.setter
+    def def_multiplier(self, v: float) -> None: self.cs.def_multiplier = v
+
+    @property
+    def crit_multiplier(self) -> float: return self.cs.crit_multiplier
+    @crit_multiplier.setter
+    def crit_multiplier(self, v: float) -> None: self.cs.crit_multiplier = v
+
+    @property
+    def partner_special_rarity(self) -> float: return self.cs.partner_special_rarity
+    @partner_special_rarity.setter
+    def partner_special_rarity(self, v: float) -> None: self.cs.partner_special_rarity = v
+
+    @property
+    def jewel_cataclysm_primed(self) -> bool: return self.cs.jewel_cataclysm_primed
+    @jewel_cataclysm_primed.setter
+    def jewel_cataclysm_primed(self, v: bool) -> None: self.cs.jewel_cataclysm_primed = v
+
+    @property
+    def jewel_cataclysm_bonus_multi(self) -> float: return self.cs.jewel_cataclysm_bonus_multi
+    @jewel_cataclysm_bonus_multi.setter
+    def jewel_cataclysm_bonus_multi(self, v: float) -> None: self.cs.jewel_cataclysm_bonus_multi = v
+
+    @property
+    def jewel_onslaught_primed(self) -> bool: return self.cs.jewel_onslaught_primed
+    @jewel_onslaught_primed.setter
+    def jewel_onslaught_primed(self, v: bool) -> None: self.cs.jewel_onslaught_primed = v
+
+    @property
+    def jewel_onslaught_bonus_pct(self) -> float: return self.cs.jewel_onslaught_bonus_pct
+    @jewel_onslaught_bonus_pct.setter
+    def jewel_onslaught_bonus_pct(self, v: float) -> None: self.cs.jewel_onslaught_bonus_pct = v
+
+    @property
+    def jewel_wardforge_bonus_dmg(self) -> int: return self.cs.jewel_wardforge_bonus_dmg
+    @jewel_wardforge_bonus_dmg.setter
+    def jewel_wardforge_bonus_dmg(self, v: int) -> None: self.cs.jewel_wardforge_bonus_dmg = v
+
+    @property
+    def jewel_acrimony_dot(self) -> int: return self.cs.jewel_acrimony_dot
+    @jewel_acrimony_dot.setter
+    def jewel_acrimony_dot(self, v: int) -> None: self.cs.jewel_acrimony_dot = v
+
+    @property
+    def jewel_acrimony_dot_dmg(self) -> int: return self.cs.jewel_acrimony_dot_dmg
+    @jewel_acrimony_dot_dmg.setter
+    def jewel_acrimony_dot_dmg(self, v: int) -> None: self.cs.jewel_acrimony_dot_dmg = v
+
+    # CodexRunState forwarders
+    @property
+    def run_atk_penalty(self) -> int: return self.run.atk_penalty
+    @run_atk_penalty.setter
+    def run_atk_penalty(self, v: int) -> None: self.run.atk_penalty = v
+
+    @property
+    def run_def_penalty(self) -> int: return self.run.def_penalty
+    @run_def_penalty.setter
+    def run_def_penalty(self, v: int) -> None: self.run.def_penalty = v
+
+    @property
+    def run_crit_penalty(self) -> int: return self.run.crit_penalty
+    @run_crit_penalty.setter
+    def run_crit_penalty(self, v: int) -> None: self.run.crit_penalty = v
+
+    @property
+    def run_max_hp_bonus(self) -> int: return self.run.max_hp_bonus
+    @run_max_hp_bonus.setter
+    def run_max_hp_bonus(self, v: int) -> None: self.run.max_hp_bonus = v
+
+    @property
+    def bonus_rarity(self) -> int: return self.run.bonus_rarity
+    @bonus_rarity.setter
+    def bonus_rarity(self, v: int) -> None: self.run.bonus_rarity = v
+
+    @property
+    def boon_fdr(self) -> int: return self.run.boon_fdr
+    @boon_fdr.setter
+    def boon_fdr(self, v: int) -> None: self.run.boon_fdr = v
 
     @property
     def rarity(self) -> int:
@@ -543,20 +719,23 @@ class Player:
         self.flat_def = self._get_flat_defence()
 
     def reset_combat_bonus(self) -> None:
+        """Zeros bonus accumulators and stat multipliers only. Use reset_combat_state() for a full reset."""
+        self.cs.bonus_atk = 0
+        self.cs.bonus_def = 0
+        self.cs.bonus_crit = 0
+        self.cs.bonus_max_hp = 0
+        self.cs.atk_multiplier = 1.0
+        self.cs.def_multiplier = 1.0
+        self.cs.crit_multiplier = 1.0
+        self.cs.partner_special_rarity = 0.0
+
+    def reset_combat_state(self) -> None:
         """
-        Zeros per-combat bonus stats and resets stat multipliers to 1.0.
-        Call at the start of every combat or wave to prevent passive effects
-        from compounding across fights.  Does NOT touch run_* fields
-        (those are permanent within a codex run).
+        Fully resets all per-combat transient state (CombatState).
+        Ward is zeroed here; callers must re-initialize it via get_combat_ward_value().
+        Does NOT touch self.run (CodexRunState) — that persists for the whole run.
         """
-        self.bonus_atk = 0
-        self.bonus_def = 0
-        self.bonus_crit = 0
-        self.bonus_max_hp = 0
-        self.atk_multiplier = 1.0
-        self.def_multiplier = 1.0
-        self.crit_multiplier = 1.0
-        self.partner_special_rarity = 0.0
+        self.cs = CombatState()
 
     # -----------------------------------------------------------------------
     # Ascension pinnacle bonus helper

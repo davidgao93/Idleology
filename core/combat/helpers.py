@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from core.models import Player
+# _add_ward moved to ward_system.py; re-exported here for backward compatibility.
+from core.combat.ward_system import add_ward as _add_ward
 
 
 @dataclass
@@ -25,20 +26,3 @@ class MonsterTurnResult:
 
     def __str__(self) -> str:
         return self.log
-
-
-def _add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
-    """
-    Adds ward to the player, doubling if the NEET helmet corrupted essence is active.
-    Returns the final amount added. Logs only if label is provided.
-    """
-    if amount <= 0:
-        return 0
-    if player.get_helmet_corrupted_essence() == "neet":
-        amount *= 2
-        if label:
-            log.append(
-                f"🌑 **Void Resonance** doubles ward gain! ({label}: +{amount} 🔮)"
-            )
-    player.combat_ward += amount
-    return amount

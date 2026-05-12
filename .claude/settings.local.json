@@ -57,7 +57,11 @@
       "Bash(python tests/test_combat_logic.py)",
       "Bash(New-Item -ItemType Directory -Path \"core\\\\partners\\\\views\" -Force)",
       "Bash(Out-Null)",
-      "Bash(Write-Host \"Directory created\")"
+      "Bash(Write-Host \"Directory created\")",
+      "Bash(python -c \"from core.items.factory import create_weapon, create_armor; print\\('factory OK'\\)\")",
+      "Bash(python -c \"from core.combat.calcs import get_weapon_tier; from core.combat.hit_calc import calculate_hit_chance; print\\('combat imports OK'\\)\")",
+      "Bash(python -c \"from core.models import Player, CombatState, CodexRunState; p = Player\\(id='1', name='T', level=1, ascension=0, exp=0, current_hp=10, max_hp=10, base_attack=5, base_defence=5, potions=0\\); p.bonus_atk = 100; p.atk_multiplier = 2.0; p.reset_combat_bonus\\(\\); print\\('bonus after reset_combat_bonus:', p.bonus_atk, p.atk_multiplier\\); print\\('run_max_hp_bonus unchanged:', p.run_max_hp_bonus\\)\")",
+      "Bash(python -m pytest tests/ -v)"
     ]
   }
 }

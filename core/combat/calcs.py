@@ -1,4 +1,26 @@
+"""
+calcs.py — Passive detection utilities and re-exports for backward compatibility.
+
+Pure calculation functions have been extracted to focused modules:
+  hit_calc.py   — hit/crit chance math, resolve_hit, resolve_crit, build_attack_multiplier
+  damage_calc.py — damage formulas (player phases, monster roll, HP/ward application)
+  ward_system.py — add_ward, generate_player_ward_on_hit
+
+The re-exports below keep all existing callers working unchanged.
+"""
+
 import random
+
+# ---------------------------------------------------------------------------
+# Re-exports from focused modules (keep all existing import paths working)
+# ---------------------------------------------------------------------------
+
+from core.combat.damage_calc import calculate_damage_taken
+from core.combat.hit_calc import (
+    calculate_crit_chance,
+    calculate_hit_chance,
+    calculate_monster_hit_chance,
+)
 
 # ---------------------------------------------------------------------------
 # Weapon Passive Family Registry
@@ -15,20 +37,19 @@ import random
 
 WEAPON_PASSIVE_FAMILIES: frozenset[str] = frozenset(
     {
-        "burning",  # Atk boost
-        "poison",  # Miss damage
-        "debilitate",  # Def shred (formerly polished)
-        "shocking",  # Min damage floor
-        "sturdy",  # Def boost
-        "piercing",  # Crit chance
-        "cull",  # Culling threshold
-        "deadeye",  # Hit chance
-        "echo",  # Extra hit damage
-        "arcane",  # Ward on hit
+        "burning",
+        "poison",
+        "debilitate",
+        "shocking",
+        "sturdy",
+        "piercing",
+        "cull",
+        "deadeye",
+        "echo",
+        "arcane",
     }
 )
 
-# Per-tier scale constants — import these in engine/player_turn instead of hardcoding.
 PASSIVE_SCALE: dict[str, float] = {
     "burning": 0.08,
     "poison": 0.08,
@@ -64,7 +85,6 @@ def get_weapon_tier(player, key: str) -> tuple[int, str]:
     Returns (tier_index 0–4, passive_string) for the highest active tier of the
     named weapon passive family, or (-1, '') if the player has none.
     Checks weapon main, pinnacle, and utmost slots.
-    Passives are stored as 'family_tier' strings (e.g. 'burning_3').
     """
     prefix = f"{key}_"
     best: tuple[int, str] = (-1, "")
@@ -75,7 +95,7 @@ def get_weapon_tier(player, key: str) -> tuple[int, str]:
     ):
         if passive_str and passive_str.startswith(prefix):
             try:
-                tier_idx = int(passive_str[len(prefix) :]) - 1  # 1-indexed → 0-indexed
+                tier_idx = int(passive_str[len(prefix):]) - 1
                 if tier_idx > best[0]:
                     best = (tier_idx, passive_str)
             except ValueError:
@@ -95,88 +115,6 @@ def get_player_passive_indices(player, target_passives: list[str]) -> list[int]:
         player.get_weapon_utmost(),
     ]
     return [target_passives.index(p) for p in active if p in target_passives]
-
-
-# ---------------------------------------------------------------------------
-# Core Combat Calculations
-# ---------------------------------------------------------------------------
-
-_HIT_BASE = 0.60  # hit chance at equal stats
-_HIT_SENSITIVITY = 0.35  # hit chance shift per 100% stat difference
-_HIT_MIN = 0.20
-_HIT_MAX = 0.95
-
-_MON_HIT_BASE = 0.50
-_MON_HIT_SENSITIVITY = 0.30
-_MON_HIT_MIN = 0.15
-_MON_HIT_MAX = 0.80
-
-_DMG_VARIANCE = (0.85, 1.15)
-
-
-def calculate_hit_chance(player, monster) -> float:
-    """Player hit chance based on attack-vs-defence ratio.
-    Base is sourced from the weapon's drop template (default 60% if no weapon)."""
-    from core.items.essence_mechanics import compute_essence_stat_bonus
-
-    hit_base = (
-        player.equipped_weapon.hit_chance if player.equipped_weapon else _HIT_BASE
-    )
-    m_def = monster.defence
-    if m_def <= 0:
-        base = _HIT_MAX
-    else:
-        pct_diff = (player.get_total_attack() - m_def) / m_def
-        base = min(max(hit_base + pct_diff * _HIT_SENSITIVITY, _HIT_MIN), _HIT_MAX)
-
-    if player.ascension_unlocks:
-        hit_bonus = player.get_ascension_bonuses()["hit"]
-        if hit_bonus:
-            base = min(_HIT_MAX, base + hit_bonus * 0.01)
-
-    # Precision essence: flat % hit chance bonus
-    for item in (player.equipped_glove, player.equipped_boot, player.equipped_helmet):
-        if item:
-            hit_pct = compute_essence_stat_bonus(item).get("hit_pct", 0)
-            if hit_pct:
-                base = min(_HIT_MAX, base + hit_pct * 0.01)
-
-    return base
-
-
-def calculate_monster_hit_chance(player, monster) -> float:
-    """Monster hit chance based on attack-vs-defence ratio. Equal stats → 50%."""
-    m_atk = monster.attack
-    if m_atk <= 0:
-        return _MON_HIT_MIN
-    pct_diff = (m_atk - player.get_total_defence()) / m_atk
-    return min(
-        max(_MON_HIT_BASE + pct_diff * _MON_HIT_SENSITIVITY, _MON_HIT_MIN), _MON_HIT_MAX
-    )
-
-
-def calculate_damage_taken(player, monster) -> int:
-    """Raw monster damage before PDR/FDR.
-    Guaranteed base from monster level, amplified/dampened by stat surplus."""
-    p_def = max(player.get_total_defence(), 1)
-    base_raw = 5 + monster.level * 1.5
-    surplus = (monster.attack - p_def) / p_def
-    surplus = max(-0.95, surplus)
-    raw = base_raw * (1.0 + surplus)
-    return max(1, int(raw * random.uniform(*_DMG_VARIANCE)))
-
-
-def calculate_crit_chance(player) -> float:
-    """Returns the effective crit chance (0–100) accounting for weapon tier and infernal."""
-    idx, _ = get_weapon_tier(player, "piercing")
-    chance = player.get_current_crit_chance() + ((idx + 1) * 5 if idx >= 0 else 0)
-    if player.get_weapon_infernal() == "voracious" and player.voracious_stacks > 0:
-        chance += player.voracious_stacks * 5
-    if player.active_partner:
-        for key, lvl in player.active_partner.combat_skills:
-            if key == "co_crit_rate":
-                chance += lvl
-    return chance
 
 
 # ---------------------------------------------------------------------------
