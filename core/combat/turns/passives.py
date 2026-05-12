@@ -1,7 +1,7 @@
 import random
 from typing import Dict
 
-from core.combat.calcs import fmt_weapon_passive, get_weapon_tier
+from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
 from core.combat.helpers import _add_ward
 from core.models import Monster, Player
 

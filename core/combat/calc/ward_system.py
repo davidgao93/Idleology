@@ -48,7 +48,7 @@ def generate_player_ward_on_hit(
     - Arcane weapon passive (any hit)
     """
     from core.combat import jewel_engine as _je
-    from core.combat.calcs import fmt_weapon_passive, get_weapon_tier
+    from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
 
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0

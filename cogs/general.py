@@ -5,7 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.character.profile_hub import ProfileBuilder, ProfileHubView
-from core.combat.modifier_data import (
+from core.combat.gen.modifier_data import (
     BOSS_MOD_NAMES,
     COMMON_MOD_NAMES,
     RARE_FLAT_MOD_NAMES,
@@ -175,7 +175,7 @@ class General(commands.Cog, name="general"):
                 "Boss modifiers only appear on bosses and ascent monsters.\n​"
             )
 
-            from core.combat.gen_mob import get_modifier_description
+            from core.combat.gen.gen_mob import get_modifier_description
 
             def _tier_range(name: str) -> str:
                 """Return a T1→T5 value string for display."""

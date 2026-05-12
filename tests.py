@@ -15,7 +15,7 @@ from core.models import Player, Weapon, Monster
 from core.items.factory import load_player, create_weapon
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.combat import engine, rewards
-from core.combat.gen_mob import generate_encounter
+from core.combat.gen.gen_mob import generate_encounter
 
 from core.models import Accessory, Glove, Boot
 from core.items.factory import create_accessory, create_glove, create_boot
@@ -526,7 +526,7 @@ class TestWeaponsAdvanced(unittest.IsolatedAsyncioTestCase):
         player.equipped_weapon = p_wep
 
         # Setup Boss (High stats)
-        from core.combat.modifier_data import make_modifier
+        from core.combat.gen.modifier_data import make_modifier
         monster = Monster(name="Boss", level=100, hp=10000, max_hp=10000, xp=0, attack=200, defence=200, modifiers=[make_modifier("Empowered", 100)], image="", flavor="", is_boss=True)
 
         # Run Start-of-Combat Logic
@@ -558,7 +558,7 @@ class TestWeaponsAdvanced(unittest.IsolatedAsyncioTestCase):
         # Let's inspect the log output from engine.process_player_turn
         # Force a Hit (Hit chance 100%)
         with patch('random.randint', return_value=50): # Force standard rolls
-             with patch('core.combat.calcs.calculate_hit_chance', return_value=1.0):
+             with patch('core.combat.calc.calcs.calculate_hit_chance', return_value=1.0):
                 log = engine.process_player_turn(player, monster)
         
         # 'Burning' logic adds text to the attack log

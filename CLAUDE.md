@@ -180,21 +180,30 @@ Central character dataclass. Built from a DB row plus optional equipped gear.
 - `atk_multiplier`, `def_multiplier`, `crit_multiplier`
 - `flat_atk`, `flat_def` (cached immutable during combat)
 
-**Transient combat state** (reset each combat):
-- `combat_ward`, `is_invulnerable_this_combat`, `celestial_vow_used`
-- `voracious_stacks`, `cursed_precision_active`, `gaze_stacks`, `hunger_stacks`
-- `lucifer_pdr_burst` and other essence-specific transients
+**Transient combat state** (grouped in `player.cs: CombatState` — reset via `player.reset_combat_state()`):
+- `player.cs.ward` (`player.combat_ward`), `player.cs.is_invulnerable` (`player.is_invulnerable_this_combat`)
+- `player.cs.bonus_atk/def/crit/bonus_max_hp` — per-combat flat bonuses
+- `player.cs.atk_multiplier`, `player.cs.def_multiplier`, `player.cs.crit_multiplier`
+- `player.cs.voracious_stacks`, `player.cs.cursed_precision_active`, `player.cs.gaze_stacks`, `player.cs.hunger_stacks`
+- `player.cs.lucifer_pdr_burst`, `player.cs.celestial_vow_used`, `player.cs.partner_special_rarity`
+- All `player.cs.alchemy_*` fields (potion transient effects), all `player.cs.jewel_*` fields (Jewel unleash transients)
+- All of the above are **also accessible via the old names** (`player.combat_ward`, `player.bonus_atk`, etc.) through `@property` forwarders — existing callsites need no changes.
+
+**Per-run codex state** (grouped in `player.run: CodexRunState` — persists across waves, reset when run ends):
+- `player.run.atk_penalty` (`player.run_atk_penalty`), `player.run.def_penalty`, `player.run.crit_penalty`
+- `player.run.max_hp_bonus` (`player.run_max_hp_bonus`), `player.run.bonus_rarity`, `player.run.boon_fdr`
 
 **Key methods:**
 - `get_total_attack()`, `get_total_defence()` — includes all gear/companion/tome/partner bonuses
 - `get_total_pdr()`, `get_total_fdr()` — physical/flat damage reduction (hard cap 80%)
 - `get_total_ward_percentage()`, `get_combat_ward_value()`
-- `get_current_crit_target()` — lower is better
+- `get_current_crit_chance()` — returns flat crit chance (higher is better)
 - `get_total_rarity()`, `get_special_drop_bonus()` (hard cap 20%)
 - `get_ascension_bonuses()`, `get_tome_bonus(stat)`
 - `get_weapon_passive()`, `get_armor_passive()`, etc.
-- `get_parts_hp_bonus()` — sum of all equipped monster part hp_values
 - `total_max_hp` property (includes all bonuses including parts)
+- `reset_combat_state()` — replaces `player.cs` with a fresh `CombatState()`, zeroing all transients
+- `reset_combat_bonus()` — lighter reset: zeros only bonus accumulators and multipliers
 
 ### Equipment Models
 
@@ -264,38 +273,60 @@ Tracks multi-room dungeon crawls: `current_floor`, `max_regular_floors`, player 
 
 ## Combat System (`core/combat/`)
 
-| File | Responsibility |
-|---|---|
-| `engine.py` | Main combat orchestrator, passive triggers, stat effects |
-| `calcs.py` | Hit chance, damage range, crit, passive detection |
-| `player_turn.py` | Player action handling, ability and passive triggers |
-| `monster_turn.py` | Enemy AI, attack patterns, modifier effects |
-| `modifier_data.py` | `ModifierDef` table — all modifier definitions, tiers, level gates, difficulty values |
-| `combat_log.py` | Round-by-round log construction |
-| `encounters.py` | Encounter setup, monster selection |
-| `gen_mob.py` | Procedural monster generation (species, modifiers, scaling) |
-| `passives.py` | Weapon/armor/accessory/glove/boot/helmet passive logic |
-| `loot.py` / `drops.py` | Drop tables and roll logic |
-| `rewards.py` | XP, gold, loot distribution |
-| `experience.py` | Experience scaling |
-| `helpers.py` | Utility functions |
-| `views.py` | Main combat UI — standard combat flows |
-| `ui.py` | UI component builders |
-| `views_uber.py` | Uber boss-specific UI |
-| `views_elemental.py` | Elemental combat variant UI |
-| `warning_views.py` | Warning/alert modals |
-| `dummy_engine.py` / `dummy_views.py` | Training dummy (stat testing, no rewards) |
+```
+core/combat/
+├── engine.py           — Main orchestrator: apply_stat_effects, apply_combat_start_passives
+├── helpers.py          — PlayerTurnResult / MonsterTurnResult dataclasses
+├── combat_log.py       — Per-fight file logger (enabled via config.json "combat_logging")
+├── dummy_engine.py     — Training dummy simulation (no rewards)
+│
+├── calc/               — Pure math, no side-effects; safe to unit-test in isolation
+│   ├── calcs.py        — Passive family registry, fmt_weapon_passive, get_weapon_tier; re-exports hit/damage
+│   ├── hit_calc.py     — calculate_hit_chance, calculate_monster_hit_chance, calculate_crit_chance, resolve_hit/crit, build_attack_multiplier
+│   ├── damage_calc.py  — roll_monster_damage, calc_crit/hit/miss_damage, apply_monster_damage_reduction, apply_damage_to_monster
+│   └── ward_system.py  — add_ward, generate_player_ward_on_hit
+│
+├── turns/              — Turn-by-turn processing; orchestrates calc/ modules
+│   ├── player_turn.py  — process_player_turn (main player action handler + post-hit effects)
+│   ├── monster_turn.py — process_monster_turn (enemy AI + modifier effects)
+│   ├── passives.py     — apply_stat_effects, apply_combat_start_passives (weapon/armor/accessory/glove passives)
+│   └── jewel_engine.py — Paradise Jewel active skill effects and unleash logic
+│
+├── gen/                — Encounter setup and procedural generation
+│   ├── gen_mob.py      — generate_encounter, generate_boss, generate_ascent_monster; modifier application
+│   ├── encounters.py   — EncounterManager: cooldowns, zone/tier selection
+│   └── modifier_data.py — ModifierDef table (all modifier definitions, tiers, level gates, difficulty values)
+│
+├── economy/            — Loot, XP, and reward distribution
+│   ├── experience.py   — ExperienceManager: XP thresholds and level-up logic
+│   ├── loot.py         — Item drop tables and slot selection
+│   ├── drops.py        — DropManager: roll logic, essence drops
+│   └── rewards.py      — calculate_rewards, apply_partner_end_rewards
+│
+└── views/  (flat — kept at top level to avoid circular imports)
+    ├── ui.py               — Stateless embed builders (build_combat_embed, stat blocks, etc.)
+    ├── views.py            — CombatView — standard combat flow
+    ├── views_uber.py       — UberHubView and uber boss encounters
+    ├── views_elemental.py  — ElementalEncounterView (skills-based elemental combat)
+    ├── views_dojo.py       — DummyConfigView (training dummy UI)
+    ├── views_lucifer.py    — InfernalContractView / LuciferChoiceView
+    └── warning_views.py    — CorruptedEncounterGateView, LowHealthWarningView
+```
 
-Key functions in `engine.py`:
-- `apply_stat_effects(player, monster)` — monster modifiers reduce player stats
-- `apply_combat_start_passives(player)` — weapon/armor/accessory passives on round 1
+**Import conventions:**
+- Always use `from core.combat.calc.calcs import get_weapon_tier` (not `core.combat.calcs`)
+- Always use `from core.combat.gen.modifier_data import make_modifier` (not `core.combat.modifier_data`)
+- `from core.combat import engine` and `from core.combat import ui` work (top-level files)
+- `from core.combat import jewel_engine` and `from core.combat import rewards` work via `__init__.py` backward-compat re-exports
 
-Key functions in `calcs.py`:
-- `calculate_hit_chance(player, monster)`
-- `calculate_damage_taken(player, monster)`
-- `get_player_passive_indices(player)` — returns which passives are active
+**Adding a new modifier:** Add a `ModifierDef` entry to `core/combat/gen/modifier_data.py`, then handle the effect in `turns/monster_turn.py` (or `turns/player_turn.py` if it affects the player's turn). Do not hardcode values anywhere else.
 
-**Adding a new modifier:** Add a `ModifierDef` entry to `core/combat/modifier_data.py`, then handle the effect in `monster_turn.py` (or `player_turn.py` if it affects the player's turn). Do not hardcode values anywhere else.
+**Key functions:**
+- `engine.apply_stat_effects(player, monster)` — monster modifiers reduce player stats
+- `engine.apply_combat_start_passives(player)` — weapon/armor/accessory passives on round 1
+- `calc/calcs.py: get_weapon_tier(player, key)`, `fmt_weapon_passive(passive_str)`
+- `calc/hit_calc.py: calculate_hit_chance(player, monster)`, `calculate_crit_chance(player)`
+- `calc/damage_calc.py: calculate_damage_taken(player, monster)`
 
 ---
 

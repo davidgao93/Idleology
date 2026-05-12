@@ -4,7 +4,7 @@ from discord import ButtonStyle, Interaction, ui
 from core.base_view import BaseView
 from core.combat import engine
 from core.combat import ui as combat_ui
-from core.combat.gen_mob import (
+from core.combat.gen.gen_mob import (
     generate_uber_aphrodite,
     generate_uber_evelynn,
     generate_uber_gemini,
@@ -359,7 +359,7 @@ class UberAphroditeLobbyView(BaseView):
             flavor="",
         )
         monster = await generate_uber_aphrodite(self.player, monster)
-        print(monster)
+
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
@@ -506,7 +506,7 @@ class UberLuciferLobbyView(BaseView):
             flavor="",
         )
         monster = await generate_uber_lucifer(self.player, monster)
-        print(monster)
+
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
@@ -656,7 +656,7 @@ class UberEvelynnLobbyView(BaseView):
             flavor="",
         )
         monster = generate_uber_evelynn(self.player, monster)
-        print(monster)
+
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
@@ -800,7 +800,7 @@ class UberNEETLobbyView(BaseView):
             flavor="",
         )
         monster = generate_uber_neet(self.player, monster)
-        print(monster)
+
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
@@ -917,8 +917,6 @@ class UberGeminiLobbyView(BaseView):
         self.stop()
 
     async def start_uber(self, interaction: Interaction):
-        if not await self.bot.check_is_active(interaction, self.user_id):
-            return
 
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
@@ -933,7 +931,6 @@ class UberGeminiLobbyView(BaseView):
         await self.bot.database.uber.increment_gemini_sigils(
             self.user_id, self.server_id, -5
         )
-        self.bot.state_manager.set_active(self.user_id, "uber_boss")
 
         monster = Monster(
             name="",
@@ -948,7 +945,7 @@ class UberGeminiLobbyView(BaseView):
             flavor="",
         )
         monster = generate_uber_gemini(self.player, monster)
-        print(monster)
+
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)

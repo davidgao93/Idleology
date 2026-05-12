@@ -4,7 +4,7 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
-from core.combat.loot import (
+from core.combat.economy.loot import (
     generate_accessory,
     generate_armor,
     generate_boot,

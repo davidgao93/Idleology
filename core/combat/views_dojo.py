@@ -3,8 +3,8 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.combat.dummy_engine import DummyEngine
-from core.combat.gen_mob import calculate_monster_stats, get_modifier_description
-from core.combat.modifier_data import (
+from core.combat.gen.gen_mob import calculate_monster_stats, get_modifier_description
+from core.combat.gen.modifier_data import (
     BOSS_MOD_NAMES,
     COMMON_MOD_NAMES,
     RARE_FLAT_MOD_NAMES,
@@ -306,7 +306,7 @@ class DummyConfigView(BaseView):
         monster.modifiers = [make_modifier(name, lvl) for name in self.active_mods]
 
         # Apply spawn-time stat mutations (Empowered/Fortified/Titanic/Ascended/Veiled)
-        from core.combat.gen_mob import _apply_spawn_modifiers
+        from core.combat.gen.gen_mob import _apply_spawn_modifiers
 
         _apply_spawn_modifiers(monster)
         monster.max_hp = 9_999_999  # restore after any Titanic mutation

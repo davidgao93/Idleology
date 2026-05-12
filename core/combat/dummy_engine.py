@@ -113,8 +113,8 @@ class DummyEngine:
     @staticmethod
     def _make_uber_proxy(ref_lvl: int, modifier_names: list) -> Monster:
         """Build a proxy Monster using the same stat pipeline as the real generators."""
-        from core.combat.gen_mob import calculate_monster_stats
-        from core.combat.modifier_data import make_modifier
+        from core.combat.gen.gen_mob import calculate_monster_stats
+        from core.combat.gen.modifier_data import make_modifier
 
         proxy = Monster(
             name="Proxy",

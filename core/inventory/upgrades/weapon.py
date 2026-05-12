@@ -4,7 +4,7 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption
 from discord.ui import Button, Select
 
-from core.combat.calcs import fmt_weapon_passive
+from core.combat.calc.calcs import fmt_weapon_passive
 from core.images import (
     UPGRADE_FORGE,
     UPGRADE_INFERNAL_ENGRAM,

@@ -12,9 +12,9 @@ from core.combat import engine, rewards
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
-from core.combat.drops import DropManager
-from core.combat.experience import ExperienceManager
-from core.combat.gen_mob import generate_boss
+from core.combat.economy.drops import DropManager
+from core.combat.economy.experience import ExperienceManager
+from core.combat.gen.gen_mob import generate_boss
 from core.combat.views_lucifer import InfernalContractView, LuciferChoiceView
 from core.companions.mechanics import CompanionMechanics
 from core.images import (
@@ -891,7 +891,7 @@ class CombatView(BaseView):
                     )
             # --- PARTNER END REWARDS ---
             if self.player.active_partner:
-                from core.combat.rewards import apply_partner_end_rewards
+                from core.combat.economy.rewards import apply_partner_end_rewards
 
                 partner = self.player.active_partner
                 lvl_msgs = apply_partner_end_rewards(self.player, reward_data["xp"])

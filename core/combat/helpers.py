@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 # _add_ward moved to ward_system.py; re-exported here for backward compatibility.
-from core.combat.ward_system import add_ward as _add_ward
+from core.combat.calc.ward_system import add_ward as _add_ward
 
 
 @dataclass

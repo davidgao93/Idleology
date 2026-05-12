@@ -2,7 +2,7 @@ import csv
 import os
 import random
 
-from core.combat.modifier_data import (
+from core.combat.gen.modifier_data import (
     BOSS_MOD_NAMES,
     COMMON_MOD_NAMES,
     RARE_FLAT_MOD_NAMES,
@@ -86,7 +86,6 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
             _apply_spawn_modifiers(monster)
         _roll_essence_spawn(monster, player.level)
 
-    print(monster)
     return monster
 
 
@@ -300,7 +299,9 @@ def calculate_monster_stats(monster):
         exp_a = level_exponent(monster.level)
         exp_b = level_exponent(monster.level)
         base_attack = monster.level**exp_a
-        base_defence = monster.level**exp_b
+        base_defence = (
+            monster.level**exp_b * 1.3
+        )  # player attack is typically 30% higher than player def
 
     monster.attack = int(base_attack)
     monster.defence = int(base_defence)

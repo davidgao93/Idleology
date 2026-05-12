@@ -2,7 +2,7 @@ from typing import List, Union
 
 import discord
 
-from core.combat.calcs import fmt_weapon_passive
+from core.combat.calc.calcs import fmt_weapon_passive
 from core.images import (
     INVENTORY_HUB,
     SLOT_ACCESSORY,

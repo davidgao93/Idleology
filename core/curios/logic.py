@@ -3,7 +3,7 @@ import csv
 from collections import defaultdict
 from typing import List, Dict, Any
 
-from core.combat.drops import roll_essence_drop
+from core.combat.economy.drops import roll_essence_drop
 
 
 class CurioManager:

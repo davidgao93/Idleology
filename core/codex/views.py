@@ -20,9 +20,9 @@ from core.codex.mechanics import (
 from core.combat import engine
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
-from core.combat.experience import ExperienceManager
-from core.combat.gen_mob import generate_ascent_monster
-from core.combat.rewards import calculate_rewards
+from core.combat.economy.experience import ExperienceManager
+from core.combat.gen.gen_mob import generate_ascent_monster
+from core.combat.economy.rewards import calculate_rewards
 from core.images import CODEX_BOON, CODEX_CHAPTERS, CODEX_HUB, CODEX_TOME
 from core.models import Monster, Player
 from database.repositories.codex import TOME_UPGRADE_COSTS, get_reroll_cost

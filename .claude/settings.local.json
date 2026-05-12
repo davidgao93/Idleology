@@ -61,7 +61,9 @@
       "Bash(python -c \"from core.items.factory import create_weapon, create_armor; print\\('factory OK'\\)\")",
       "Bash(python -c \"from core.combat.calcs import get_weapon_tier; from core.combat.hit_calc import calculate_hit_chance; print\\('combat imports OK'\\)\")",
       "Bash(python -c \"from core.models import Player, CombatState, CodexRunState; p = Player\\(id='1', name='T', level=1, ascension=0, exp=0, current_hp=10, max_hp=10, base_attack=5, base_defence=5, potions=0\\); p.bonus_atk = 100; p.atk_multiplier = 2.0; p.reset_combat_bonus\\(\\); print\\('bonus after reset_combat_bonus:', p.bonus_atk, p.atk_multiplier\\); print\\('run_max_hp_bonus unchanged:', p.run_max_hp_bonus\\)\")",
-      "Bash(python -m pytest tests/ -v)"
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(python -m py_compile core/combat/__init__.py core/combat/calc/calcs.py core/combat/calc/hit_calc.py core/combat/calc/damage_calc.py core/combat/calc/ward_system.py core/combat/turns/player_turn.py core/combat/turns/monster_turn.py core/combat/turns/passives.py core/combat/turns/jewel_engine.py core/combat/gen/gen_mob.py core/combat/gen/encounters.py core/combat/gen/modifier_data.py core/combat/economy/experience.py core/combat/economy/loot.py core/combat/economy/drops.py core/combat/economy/rewards.py core/combat/engine.py core/combat/helpers.py core/combat/combat_log.py core/combat/dummy_engine.py core/combat/views.py core/combat/views_uber.py core/combat/views_dojo.py core/combat/views_lucifer.py core/combat/views_elemental.py core/combat/warning_views.py core/combat/ui.py)",
+      "Bash(python -m py_compile cogs/combat.py cogs/uber.py cogs/general.py core/ascent/views.py core/codex/views.py core/character/profile_hub.py core/companions/logic.py core/settlement/views/black_market.py core/curios/logic.py core/curios/puzzle_box_logic.py core/inventory/inventory.py core/inventory/upgrades/weapon.py core/inventory/views/gear_view.py tests/test_combat_logic.py)"
     ]
   }
 }

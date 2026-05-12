@@ -19,6 +19,8 @@ class Journey(commands.Cog, name="journey"):
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
         self.bot.state_manager.set_active(user_id, "journey")
         player_level = existing_user[4]
         claimed = await self.bot.database.journey.get_claimed(user_id)

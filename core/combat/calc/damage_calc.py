@@ -158,7 +158,7 @@ def calc_crit_damage(
 ) -> int:
     """Phase 4a — crit damage. Returns pre-reduction damage."""
     from core.combat import jewel_engine as _je
-    from core.combat.calcs import get_weapon_tier
+    from core.combat.calc.calcs import get_weapon_tier
 
     max_atk = player.get_total_attack()
 
@@ -292,7 +292,7 @@ def calc_hit_damage(
     calc: list[str],
 ) -> int:
     """Phase 4b — normal hit damage. Returns pre-reduction damage."""
-    from core.combat.calcs import fmt_weapon_passive, get_weapon_tier
+    from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
 
     base_max = player.get_total_attack()
     base_min = 1
@@ -369,7 +369,7 @@ def calc_miss_damage(
     calc: list[str],
 ) -> int:
     """Phase 4c — miss, any on-miss damage sources. Returns total miss damage."""
-    from core.combat.calcs import get_weapon_tier
+    from core.combat.calc.calcs import get_weapon_tier
 
     damage = 0
     miss_parts = []

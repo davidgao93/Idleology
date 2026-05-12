@@ -12,7 +12,7 @@ Business logic lives in:
 import random
 
 from core.combat import jewel_engine as _je
-from core.combat.damage_calc import (
+from core.combat.calc.damage_calc import (
     apply_damage_to_monster,
     apply_monster_damage_reduction,
     calc_crit_damage,
@@ -20,8 +20,8 @@ from core.combat.damage_calc import (
     calc_miss_damage,
 )
 from core.combat.helpers import PlayerTurnResult, _add_ward
-from core.combat.hit_calc import build_attack_multiplier, resolve_crit, resolve_hit
-from core.combat.ward_system import generate_player_ward_on_hit
+from core.combat.calc.hit_calc import build_attack_multiplier, resolve_crit, resolve_hit
+from core.combat.calc.ward_system import generate_player_ward_on_hit
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -299,7 +299,7 @@ def _pt_partner_effects(
 
 def _pt_check_cull(player: Player, monster: Monster, log: list[str]) -> None:
     """Phase 10 — culling strike: if monster HP is below threshold, reduce to 1."""
-    from core.combat.calcs import get_weapon_tier
+    from core.combat.calc.calcs import get_weapon_tier
 
     if monster.hp <= 0:
         return

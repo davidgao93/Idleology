@@ -11,8 +11,8 @@ from discord.ui import Button
 
 from core.base_view import BaseView
 from core.combat import engine, ui
-from core.combat.encounters import EncounterManager
-from core.combat.gen_mob import (
+from core.combat.gen.encounters import EncounterManager
+from core.combat.gen.gen_mob import (
     generate_boss,
     generate_corrupted_encounter,
     generate_encounter,

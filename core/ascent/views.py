@@ -8,9 +8,9 @@ from core.ascent.mechanics import PINNACLE_REWARDS, AscentMechanics
 from core.combat import engine
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
-from core.combat.drops import DropManager
-from core.combat.gen_mob import generate_ascent_monster
-from core.combat.loot import (
+from core.combat.economy.drops import DropManager
+from core.combat.gen.gen_mob import generate_ascent_monster
+from core.combat.economy.loot import (
     generate_accessory,
     generate_armor,
     generate_boot,

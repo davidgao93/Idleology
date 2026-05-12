@@ -15,8 +15,8 @@ import random
 # Re-exports from focused modules (keep all existing import paths working)
 # ---------------------------------------------------------------------------
 
-from core.combat.damage_calc import calculate_damage_taken
-from core.combat.hit_calc import (
+from core.combat.calc.damage_calc import calculate_damage_taken
+from core.combat.calc.hit_calc import (
     calculate_crit_chance,
     calculate_hit_chance,
     calculate_monster_hit_chance,

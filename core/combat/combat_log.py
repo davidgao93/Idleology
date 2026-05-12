@@ -66,12 +66,12 @@ class CombatLogger:
         if not self._file:
             return
 
-        from core.combat.calcs import (
+        from core.combat.calc.calcs import (
             calculate_crit_chance,
             calculate_hit_chance,
             calculate_monster_hit_chance,
         )
-        from core.combat.hit_calc import (
+        from core.combat.calc.hit_calc import (
             _HIT_BASE,
             _HIT_SENSITIVITY,
             _MON_HIT_BASE,

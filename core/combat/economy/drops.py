@@ -1,7 +1,7 @@
 import random
 
 from core.combat import rewards
-from core.combat.loot import (
+from core.combat.economy.loot import (
     generate_accessory,
     generate_armor,
     generate_boot,

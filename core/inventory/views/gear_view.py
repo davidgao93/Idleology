@@ -3,7 +3,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
-from core.combat.calcs import fmt_weapon_passive
+from core.combat.calc.calcs import fmt_weapon_passive
 from core.inventory.inventory import InventoryUI
 
 # Core Imports

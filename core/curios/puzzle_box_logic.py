@@ -1,7 +1,7 @@
 import random
 from collections import defaultdict
 
-from core.combat.drops import roll_essence_drop
+from core.combat.economy.drops import roll_essence_drop
 from core.images import CURIO_PUZZLE_BOX
 
 PUZZLE_BOX_IMAGE = CURIO_PUZZLE_BOX

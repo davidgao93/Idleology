@@ -417,7 +417,7 @@ def _build_slayer_codex_text(p) -> str:
 
 def _compute_combat_bonuses(p) -> dict:
     """Compute deterministic (non-random) combat-start stat bonuses for display."""
-    from core.combat.calcs import get_weapon_tier
+    from core.combat.calc.calcs import get_weapon_tier
 
     cb: dict = {"atk": 0, "def": 0, "hp": 0, "crit": 0, "special_rarity": 0.0}
 

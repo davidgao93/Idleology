@@ -18,6 +18,8 @@ class Settings(commands.Cog, name="settings"):
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
         self.bot.state_manager.set_active(user_id, "settings")
         doors_status = await self.bot.database.users.get_doors_enabled(user_id)
         exp_protection = await self.bot.database.users.get_exp_protection(user_id)

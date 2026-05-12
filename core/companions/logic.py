@@ -6,7 +6,7 @@ from collections import defaultdict
 from core.companions.mechanics import CompanionMechanics
 from core.items.factory import create_companion, load_player
 # Import Generators
-from core.combat.loot import (
+from core.combat.economy.loot import (
     generate_weapon, generate_armor, generate_accessory, 
     generate_glove, generate_boot, generate_helmet
 )

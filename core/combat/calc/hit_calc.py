@@ -83,7 +83,7 @@ def calculate_monster_hit_chance(player: Player, monster: Monster) -> float:
 
 def calculate_crit_chance(player: Player) -> float:
     """Returns effective crit chance (0–100) accounting for weapon tier and infernal."""
-    from core.combat.calcs import get_weapon_tier
+    from core.combat.calc.calcs import get_weapon_tier
 
     idx, _ = get_weapon_tier(player, "piercing")
     chance = player.get_current_crit_chance() + ((idx + 1) * 5 if idx >= 0 else 0)
@@ -198,7 +198,7 @@ def resolve_hit(
     calc: list[str],
 ) -> tuple[bool, float]:
     """Phase 2 — hit chance roll. Returns (is_hit, attack_multiplier)."""
-    from core.combat.calcs import fmt_weapon_passive, get_weapon_tier
+    from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
 
     hit_chance = calculate_hit_chance(player, monster)
     acc_bonus = player.get_emblem_bonus("accuracy") * 2
