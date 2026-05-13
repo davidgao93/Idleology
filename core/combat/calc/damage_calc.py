@@ -17,7 +17,6 @@ apply_damage_to_monster(player, monster, dmg, log)      # final application to m
 
 from __future__ import annotations
 
-import math
 import random
 
 from core.models import Monster, Player
@@ -87,7 +86,9 @@ def roll_monster_damage(
         dmg = int(dmg * fury_mult)
         calc_notes.append(f"hells_fury×{fury_mult:.1f}={dmg}")
 
-    if monster.has_modifier("Spectral") and random.random() < monster.get_modifier_value("Spectral"):
+    if monster.has_modifier(
+        "Spectral"
+    ) and random.random() < monster.get_modifier_value("Spectral"):
         dmg *= 2
         calc_notes.append(f"spectral×2={dmg}")
 
@@ -394,15 +395,7 @@ def calc_miss_damage(
 
     void_passive = player.get_accessory_void_passive()
     if void_passive == "oblivion":
-        glove_p = player.get_glove_passive()
-        glove_l = player.equipped_glove.passive_lvl if player.equipped_glove else 0
-        base_max = player.get_total_attack()
-        base_min = (
-            max(1, int(base_max * (glove_l * 0.02)))
-            if glove_p == "adroit" and glove_l > 0
-            else 1
-        )
-        oblivion_dmg = max(1, int(base_min * 0.5))
+        oblivion_dmg = int(player.get_total_attack() * 0.5 * attack_multiplier)
         damage += oblivion_dmg
         miss_parts.append(f"**Oblivion** phases through for ⬛ **{oblivion_dmg}**")
 

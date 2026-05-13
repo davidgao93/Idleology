@@ -330,6 +330,25 @@ core/combat/
 
 ---
 
+## Combat State Reset Rules
+
+These rules govern which state persists across fights and which is wiped. Always follow this matrix when adding new per-combat state.
+
+| Encounter type | Jewel `skill_charges` | Jewel transients (primed/DoT) | Misc stacks (voracious, gaze, hunger, …) |
+|---|---|---|---|
+| **Normal combat** (single fight, `/combat`) | Reset at encounter start (`CombatView.__init__`) | Fresh from Player load | Fresh from Player load |
+| **Phase bosses** (Aphrodite, Gemini, Lucifer, NEET) | Persist across phases | Persist across phases | Persist across phases |
+| **Ascent** (floor → floor) | Reset once at session start; persist floor-to-floor | Reset between every floor (`_next_floor`) | Reset between every floor (`_next_floor`) |
+| **Codex** (wave → wave) | Reset once at run start; persist wave-to-wave | Reset between every wave (`_setup_next_wave`) | Reset between every wave (`_setup_next_wave`) |
+
+**Jewel `skill_charges`** — accumulated progress toward an unleash, stored in `player.jewel_of_paradise["skill_charges"]` and persisted to DB. Reset via `_je.reset_jewel_charges(player)`.
+
+**Jewel transients** — mid-fight primed/DoT states in `CombatState` (`jewel_cataclysm_primed`, `jewel_onslaught_primed`, `jewel_wardforge_bonus_dmg`, `jewel_acrimony_dot/dot_dmg`). Reset via `_je.reset_jewel_transients(player)`.
+
+**Misc stacks** — `voracious_stacks`, `cursed_precision_active`, `gaze_stacks`, `hunger_stacks`, `celestial_vow_used`. Reset explicitly by name (see `_next_floor` and `_setup_next_wave`).
+
+---
+
 ## Equipment & Items
 
 ### Item Tables (DB)

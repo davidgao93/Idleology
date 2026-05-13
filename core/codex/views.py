@@ -20,6 +20,7 @@ from core.codex.mechanics import (
 from core.combat import engine
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
+from core.combat import jewel_engine as _je
 from core.combat.economy.experience import ExperienceManager
 from core.combat.gen.gen_mob import generate_ascent_monster
 from core.combat.economy.rewards import calculate_rewards
@@ -492,6 +493,7 @@ class CodexRunView(ui.View):
         self.player.hunger_stacks = 0
         self.player.is_invulnerable_this_combat = False
         self.player.celestial_vow_used = False
+        _je.reset_jewel_transients(self.player)
 
         self.combat_logger.log_combat_end(self.player, self.monster, "victory")
 
@@ -1217,6 +1219,8 @@ class CodexMenuView(ui.View):
 
         await self.bot.database.users.modify_currency(self.user_id, "antique_tome", -1)
         self.bot.state_manager.set_active(self.user_id, "codex")
+
+        _je.reset_jewel_charges(self.player)
 
         # Clear active task species — prevents slayer task completion and species-gated
         # emblem bonuses (slayer_dmg / slayer_def), which are tied to assigned tasks.

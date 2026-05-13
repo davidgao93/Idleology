@@ -130,7 +130,7 @@ class EquipConfirmView(BaseView):
         self.parent = parent
         self.part = part
 
-    @ui.button(label="Confirm Consume", style=ButtonStyle.danger)
+    @ui.button(label="Confirm Consume", style=ButtonStyle.danger, emoji="👄")
     async def confirm(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         await self._do_equip()
@@ -172,7 +172,7 @@ class PartDetailView(BaseView):
         self.parent = parent
         self.part = part
 
-    @ui.button(label="Consume", style=ButtonStyle.success, emoji="✅")
+    @ui.button(label="Consume", style=ButtonStyle.success, emoji="👄")
     async def equip(self, interaction: Interaction, button: ui.Button):
         slot = self.part.slot_type
         if slot in self.parent.player.equipped_parts:

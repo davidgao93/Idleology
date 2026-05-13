@@ -248,6 +248,8 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     if player.level >= 50:
         if random.random() < (0.02 + special_drop_chance):
             drops["void_frag"] = True
+        if random.random() < 0.01 + special_drop_chance:
+            drops["unidentified_blueprint"] = True
 
     if player.level >= 60:
         elemental_key_chance = 0.01 + special_drop_chance
@@ -257,10 +259,6 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["sparkling_sprig"] = True
         if random.random() < elemental_key_chance:
             drops["capricious_carp"] = True
-
-    # Unidentified Blueprint — 1% base, affected by special rarity
-    if random.random() < 0.01 + player.get_special_drop_bonus() / 100:
-        drops["unidentified_blueprint"] = True
 
     return drops
 

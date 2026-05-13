@@ -55,6 +55,8 @@ class CombatView(BaseView):
         self.logs = initial_logs or {}
         self.post_combat_view = post_combat_view
 
+        _je.reset_jewel_charges(player)
+
         # Boss / Chain Handling
         self.combat_phases = combat_phases or []  # List of dicts
         self.current_phase_index = 0

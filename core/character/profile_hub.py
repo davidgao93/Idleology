@@ -10,42 +10,64 @@ from core.items.factory import load_player
 
 _WEAPON_PASSIVE_DESC: dict[str, str] = {
     # Burning family — Atk boost (×8% per tier)
-    "burning_1": "Atk +8%",    "burning_2": "Atk +16%",   "burning_3": "Atk +24%",
-    "burning_4": "Atk +32%",   "burning_5": "Atk +40%",
+    "burning_1": "Atk +8%",
+    "burning_2": "Atk +16%",
+    "burning_3": "Atk +24%",
+    "burning_4": "Atk +32%",
+    "burning_5": "Atk +40%",
     # Poison family — Miss damage (×8% per tier)
-    "poison_1": "Miss deals up to 8% Atk",  "poison_2": "Miss deals up to 16% Atk",
-    "poison_3": "Miss deals up to 24% Atk", "poison_4": "Miss deals up to 32% Atk",
+    "poison_1": "Miss deals up to 8% Atk",
+    "poison_2": "Miss deals up to 16% Atk",
+    "poison_3": "Miss deals up to 24% Atk",
+    "poison_4": "Miss deals up to 32% Atk",
     "poison_5": "Miss deals up to 40% Atk",
     # Debilitate family — Def shred (×8% per tier, formerly Polished)
-    "debilitate_1": "Enemy Def -8%",  "debilitate_2": "Enemy Def -16%",
-    "debilitate_3": "Enemy Def -24%", "debilitate_4": "Enemy Def -32%",
+    "debilitate_1": "Enemy Def -8%",
+    "debilitate_2": "Enemy Def -16%",
+    "debilitate_3": "Enemy Def -24%",
+    "debilitate_4": "Enemy Def -32%",
     "debilitate_5": "Enemy Def -40%",
     # Shocking family — Min damage floor (×8% per tier)
-    "shocking_1": "Min Dmg floor 8% of max",  "shocking_2": "Min Dmg floor 16% of max",
-    "shocking_3": "Min Dmg floor 24% of max", "shocking_4": "Min Dmg floor 32% of max",
+    "shocking_1": "Min Dmg floor 8% of max",
+    "shocking_2": "Min Dmg floor 16% of max",
+    "shocking_3": "Min Dmg floor 24% of max",
+    "shocking_4": "Min Dmg floor 32% of max",
     "shocking_5": "Min Dmg floor 40% of max",
     # Sturdy family — Def boost (×8% per tier)
-    "sturdy_1": "Def +8%",  "sturdy_2": "Def +16%", "sturdy_3": "Def +24%",
-    "sturdy_4": "Def +32%", "sturdy_5": "Def +40%",
+    "sturdy_1": "Def +8%",
+    "sturdy_2": "Def +16%",
+    "sturdy_3": "Def +24%",
+    "sturdy_4": "Def +32%",
+    "sturdy_5": "Def +40%",
     # Piercing family — Crit chance (+5 per tier)
-    "piercing_1": "Crit Chance +5%",  "piercing_2": "Crit Chance +10%",
-    "piercing_3": "Crit Chance +15%", "piercing_4": "Crit Chance +20%",
+    "piercing_1": "Crit Chance +5%",
+    "piercing_2": "Crit Chance +10%",
+    "piercing_3": "Crit Chance +15%",
+    "piercing_4": "Crit Chance +20%",
     "piercing_5": "Crit Chance +25%",
     # Cull family — Culling threshold (×8% per tier)
-    "cull_1": "Instantly kill if enemy HP < 8%",  "cull_2": "Instantly kill if enemy HP < 16%",
-    "cull_3": "Instantly kill if enemy HP < 24%", "cull_4": "Instantly kill if enemy HP < 32%",
+    "cull_1": "Instantly kill if enemy HP < 8%",
+    "cull_2": "Instantly kill if enemy HP < 16%",
+    "cull_3": "Instantly kill if enemy HP < 24%",
+    "cull_4": "Instantly kill if enemy HP < 32%",
     "cull_5": "Instantly kill if enemy HP < 40%",
     # Deadeye family — Hit chance (+4 flat per tier)
-    "deadeye_1": "Flat Hit Chance +4",  "deadeye_2": "Flat Hit Chance +8",
-    "deadeye_3": "Flat Hit Chance +12", "deadeye_4": "Flat Hit Chance +16",
+    "deadeye_1": "Flat Hit Chance +4",
+    "deadeye_2": "Flat Hit Chance +8",
+    "deadeye_3": "Flat Hit Chance +12",
+    "deadeye_4": "Flat Hit Chance +16",
     "deadeye_5": "Flat Hit Chance +20",
     # Echo family — Extra hit damage (×10% per tier)
-    "echo_1": "Extra hit 10% Dmg", "echo_2": "Extra hit 20% Dmg",
-    "echo_3": "Extra hit 30% Dmg", "echo_4": "Extra hit 40% Dmg",
+    "echo_1": "Extra hit 10% Dmg",
+    "echo_2": "Extra hit 20% Dmg",
+    "echo_3": "Extra hit 30% Dmg",
+    "echo_4": "Extra hit 40% Dmg",
     "echo_5": "Extra hit 50% Dmg",
     # Arcane family — Ward on hit (+25 per tier)
-    "arcane_1": "Gain 25 Ward on hit",  "arcane_2": "Gain 50 Ward on hit",
-    "arcane_3": "Gain 75 Ward on hit",  "arcane_4": "Gain 100 Ward on hit",
+    "arcane_1": "Gain 25 Ward on hit",
+    "arcane_2": "Gain 50 Ward on hit",
+    "arcane_3": "Gain 75 Ward on hit",
+    "arcane_4": "Gain 100 Ward on hit",
     "arcane_5": "Gain 125 Ward on hit",
 }
 
@@ -86,7 +108,7 @@ _VOID_PASSIVE_DESC: dict[str, str] = {
     "fracture": "On crit, 5% chance to instantly kill",
     "nullfield": "15% chance to completely absorb incoming damage",
     "eternal hunger": "At 10 hit stacks, deal 10% of monster max HP and restore full HP",
-    "oblivion": "Missed attacks still deal 50% of total attack damage",
+    "oblivion": "Missed attacks deal 50% of total attack damage",
 }
 
 _ACCESSORY_PASSIVE_FUNCS: dict = {
@@ -163,6 +185,7 @@ def _get_piercing_crit_bonus(passive: str) -> int:
         except (ValueError, IndexError):
             pass
     return 0
+
 
 _CORRUPTED_DESC: dict[tuple, str] = {
     ("aphrodite", "glove"): "Your ward is considered broken when you are hit.",
@@ -597,7 +620,11 @@ class ProfileBuilder:
 
         # ── Hit Chance ───────────────────────────────────────────────────────
         _HIT_BASE_PCT = 60
-        hit_weapon_pct = int(p.equipped_weapon.hit_chance * 100) if p.equipped_weapon else _HIT_BASE_PCT
+        hit_weapon_pct = (
+            int(p.equipped_weapon.hit_chance * 100)
+            if p.equipped_weapon
+            else _HIT_BASE_PCT
+        )
         hit_ascension = p.get_ascension_bonuses()["hit"] if p.ascension_unlocks else 0
         hit_deadeye = 0
         if p.equipped_weapon:
@@ -623,7 +650,9 @@ class ProfileBuilder:
         # Weapon crit = base template crit + piercing passive bonus.
         # Template crit is already included in get_current_crit_chance();
         # piercing bonus is additive on top.
-        crit_weapon_template = int(p.equipped_weapon.crit_chance * 100) if p.equipped_weapon else 0
+        crit_weapon_template = (
+            int(p.equipped_weapon.crit_chance * 100) if p.equipped_weapon else 0
+        )
         crit_weapon_piercing = 0
         if p.equipped_weapon:
             for _passive in (
@@ -728,7 +757,11 @@ class ProfileBuilder:
         sr_boot = 0
         if p.equipped_boot and p.equipped_boot.passive == "thrill-seeker":
             sr_boot = p.equipped_boot.passive_lvl
-        sr_armor = 3 if (p.equipped_armor and p.equipped_armor.passive == "treasure hunter") else 0
+        sr_armor = (
+            3
+            if (p.equipped_armor and p.equipped_armor.passive == "treasure hunter")
+            else 0
+        )
         sr_companion = p._get_companion_bonus("s_rarity")
         sr_partner_combat = cb["special_rarity"]
         sr_total = min(20, sr_boot + sr_armor + sr_companion)
@@ -961,8 +994,12 @@ class ProfileBuilder:
         user = await bot.database.users.get(user_id, server_id)
 
         r_partner = await bot.database.users.get_currency(user_id, "partnership_runes")
-        mirage_imp = await bot.database.users.get_currency(user_id, "mirage_runes_imperfect")
-        mirage_perf = await bot.database.users.get_currency(user_id, "mirage_runes_perfected")
+        mirage_imp = await bot.database.users.get_currency(
+            user_id, "mirage_runes_imperfect"
+        )
+        mirage_perf = await bot.database.users.get_currency(
+            user_id, "mirage_runes_perfected"
+        )
 
         # Essence inventory
         essence_data = await bot.database.essences.get_all(user_id)
@@ -1269,25 +1306,60 @@ class ProfileBuilder:
     async def build_resources(bot, user_id: str, server_id: str) -> discord.Embed:
         settlement = await bot.database.settlement.get_settlement(user_id, server_id)
         uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
-        blueprint_count = await bot.database.users.get_currency(user_id, "unidentified_blueprint")
+        blueprint_count = await bot.database.users.get_currency(
+            user_id, "unidentified_blueprint"
+        )
 
         ores = await bot.database.skills.get_multi_resource(
             user_id, server_id, "mining", ["iron", "coal", "gold", "platinum", "idea"]
         )
         logs = await bot.database.skills.get_multi_resource(
-            user_id, server_id, "woodcutting", ["oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs"]
+            user_id,
+            server_id,
+            "woodcutting",
+            ["oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs"],
         )
         bones = await bot.database.skills.get_multi_resource(
-            user_id, server_id, "fishing", ["desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones"]
+            user_id,
+            server_id,
+            "fishing",
+            [
+                "desiccated_bones",
+                "regular_bones",
+                "sturdy_bones",
+                "reinforced_bones",
+                "titanium_bones",
+            ],
         )
         ingots = await bot.database.skills.get_multi_resource(
-            user_id, server_id, "mining", ["iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"]
+            user_id,
+            server_id,
+            "mining",
+            ["iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"],
         )
         planks = await bot.database.skills.get_multi_resource(
-            user_id, server_id, "woodcutting", ["oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank"]
+            user_id,
+            server_id,
+            "woodcutting",
+            [
+                "oak_plank",
+                "willow_plank",
+                "mahogany_plank",
+                "magic_plank",
+                "idea_plank",
+            ],
         )
         essence = await bot.database.skills.get_multi_resource(
-            user_id, server_id, "fishing", ["desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence"]
+            user_id,
+            server_id,
+            "fishing",
+            [
+                "desiccated_essence",
+                "regular_essence",
+                "sturdy_essence",
+                "reinforced_essence",
+                "titanium_essence",
+            ],
         )
         rares = await bot.database.users.get_rare_materials(user_id)
 

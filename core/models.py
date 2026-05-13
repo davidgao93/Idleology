@@ -179,7 +179,7 @@ class Companion:
         elif self.passive_type == "s_rarity":  # Special Rarity
             return self.passive_tier  # 1, 2, 3, 4, 5
         elif self.passive_type == "fdr":  # Flat Damage Reduction
-            return 1 + self.passive_tier  # 2, 3, 4, 5, 6
+            return 5 + self.passive_tier * 2  # 6, 9, 11, 13, 15
         elif self.passive_type == "pdr":  # Percent Damage Reduction
             return 2 + self.passive_tier  # 3, 4, 5, 6, 7
         return 0
@@ -252,10 +252,14 @@ class CodexTome:
 
 
 _PART_SLOT_LABELS = {
-    "head": "Head", "torso": "Torso",
-    "right_arm": "Right Arm", "left_arm": "Left Arm",
-    "right_leg": "Right Leg", "left_leg": "Left Leg",
-    "cheeks": "Cheeks", "organs": "Organs",
+    "head": "Head",
+    "torso": "Torso",
+    "right_arm": "Right Arm",
+    "left_arm": "Left Arm",
+    "right_leg": "Right Leg",
+    "left_leg": "Left Leg",
+    "cheeks": "Cheeks",
+    "organs": "Organs",
 }
 
 
@@ -270,13 +274,16 @@ class MonsterPart:
 
     @property
     def display_name(self) -> str:
-        label = _PART_SLOT_LABELS.get(self.slot_type, self.slot_type.replace("_", " ").title())
+        label = _PART_SLOT_LABELS.get(
+            self.slot_type, self.slot_type.replace("_", " ").title()
+        )
         return f"{self.monster_name}'s **{label}**"
 
 
 @dataclass
 class CombatState:
     """Per-combat transient state. Reset to defaults between every fight via Player.reset_combat_state()."""
+
     ward: int = 0
     is_invulnerable: bool = False
     cooldown_reduction_seconds: int = 0
@@ -320,6 +327,7 @@ class CombatState:
 @dataclass
 class CodexRunState:
     """State that persists across waves within a single Codex run. Reset when the run ends."""
+
     atk_penalty: int = 0
     def_penalty: int = 0
     crit_penalty: int = 0
@@ -384,16 +392,18 @@ class Player:
     active_partner: Optional["Partner"] = None
 
     # Paradise Jewel system — loaded at session start, persisted after combat
-    jewel_of_paradise: dict = field(default_factory=lambda: {
-        "unlocked_skills": [],
-        "equipped_skill": None,
-        "skill_levels": {},
-        "skill_charges": {},
-        "passive_slots": [],
-        "passive_jewels_invested": 0,
-        "total_jewels_obtained": 0,
-        "total_jewels_consumed": 0,
-    })
+    jewel_of_paradise: dict = field(
+        default_factory=lambda: {
+            "unlocked_skills": [],
+            "equipped_skill": None,
+            "skill_levels": {},
+            "skill_charges": {},
+            "passive_slots": [],
+            "passive_jewels_invested": 0,
+            "total_jewels_obtained": 0,
+            "total_jewels_consumed": 0,
+        }
+    )
 
     # Per-combat transient state — reset via reset_combat_state()
     cs: CombatState = field(default_factory=CombatState)
@@ -407,210 +417,333 @@ class Player:
     # -----------------------------------------------------------------------
 
     @property
-    def combat_ward(self) -> int: return self.cs.ward
+    def combat_ward(self) -> int:
+        return self.cs.ward
+
     @combat_ward.setter
-    def combat_ward(self, v: int) -> None: self.cs.ward = v
+    def combat_ward(self, v: int) -> None:
+        self.cs.ward = v
 
     @property
-    def is_invulnerable_this_combat(self) -> bool: return self.cs.is_invulnerable
+    def is_invulnerable_this_combat(self) -> bool:
+        return self.cs.is_invulnerable
+
     @is_invulnerable_this_combat.setter
-    def is_invulnerable_this_combat(self, v: bool) -> None: self.cs.is_invulnerable = v
+    def is_invulnerable_this_combat(self, v: bool) -> None:
+        self.cs.is_invulnerable = v
 
     @property
-    def combat_cooldown_reduction_seconds(self) -> int: return self.cs.cooldown_reduction_seconds
+    def combat_cooldown_reduction_seconds(self) -> int:
+        return self.cs.cooldown_reduction_seconds
+
     @combat_cooldown_reduction_seconds.setter
-    def combat_cooldown_reduction_seconds(self, v: int) -> None: self.cs.cooldown_reduction_seconds = v
+    def combat_cooldown_reduction_seconds(self, v: int) -> None:
+        self.cs.cooldown_reduction_seconds = v
 
     @property
-    def celestial_vow_used(self) -> bool: return self.cs.celestial_vow_used
+    def celestial_vow_used(self) -> bool:
+        return self.cs.celestial_vow_used
+
     @celestial_vow_used.setter
-    def celestial_vow_used(self, v: bool) -> None: self.cs.celestial_vow_used = v
+    def celestial_vow_used(self, v: bool) -> None:
+        self.cs.celestial_vow_used = v
 
     @property
-    def voracious_stacks(self) -> int: return self.cs.voracious_stacks
+    def voracious_stacks(self) -> int:
+        return self.cs.voracious_stacks
+
     @voracious_stacks.setter
-    def voracious_stacks(self, v: int) -> None: self.cs.voracious_stacks = v
+    def voracious_stacks(self, v: int) -> None:
+        self.cs.voracious_stacks = v
 
     @property
-    def cursed_precision_active(self) -> bool: return self.cs.cursed_precision_active
+    def cursed_precision_active(self) -> bool:
+        return self.cs.cursed_precision_active
+
     @cursed_precision_active.setter
-    def cursed_precision_active(self, v: bool) -> None: self.cs.cursed_precision_active = v
+    def cursed_precision_active(self, v: bool) -> None:
+        self.cs.cursed_precision_active = v
 
     @property
-    def gaze_stacks(self) -> int: return self.cs.gaze_stacks
+    def gaze_stacks(self) -> int:
+        return self.cs.gaze_stacks
+
     @gaze_stacks.setter
-    def gaze_stacks(self, v: int) -> None: self.cs.gaze_stacks = v
+    def gaze_stacks(self, v: int) -> None:
+        self.cs.gaze_stacks = v
 
     @property
-    def hunger_stacks(self) -> int: return self.cs.hunger_stacks
+    def hunger_stacks(self) -> int:
+        return self.cs.hunger_stacks
+
     @hunger_stacks.setter
-    def hunger_stacks(self, v: int) -> None: self.cs.hunger_stacks = v
+    def hunger_stacks(self, v: int) -> None:
+        self.cs.hunger_stacks = v
 
     @property
-    def lucifer_pdr_burst(self) -> int: return self.cs.lucifer_pdr_burst
+    def lucifer_pdr_burst(self) -> int:
+        return self.cs.lucifer_pdr_burst
+
     @lucifer_pdr_burst.setter
-    def lucifer_pdr_burst(self, v: int) -> None: self.cs.lucifer_pdr_burst = v
+    def lucifer_pdr_burst(self, v: int) -> None:
+        self.cs.lucifer_pdr_burst = v
 
     @property
-    def equilibrium_bonus_xp_pending(self) -> int: return self.cs.equilibrium_bonus_xp_pending
+    def equilibrium_bonus_xp_pending(self) -> int:
+        return self.cs.equilibrium_bonus_xp_pending
+
     @equilibrium_bonus_xp_pending.setter
-    def equilibrium_bonus_xp_pending(self, v: int) -> None: self.cs.equilibrium_bonus_xp_pending = v
+    def equilibrium_bonus_xp_pending(self, v: int) -> None:
+        self.cs.equilibrium_bonus_xp_pending = v
 
     @property
-    def plundering_bonus_gold_pending(self) -> int: return self.cs.plundering_bonus_gold_pending
+    def plundering_bonus_gold_pending(self) -> int:
+        return self.cs.plundering_bonus_gold_pending
+
     @plundering_bonus_gold_pending.setter
-    def plundering_bonus_gold_pending(self, v: int) -> None: self.cs.plundering_bonus_gold_pending = v
+    def plundering_bonus_gold_pending(self, v: int) -> None:
+        self.cs.plundering_bonus_gold_pending = v
 
     @property
-    def alchemy_atk_boost_pct(self) -> float: return self.cs.alchemy_atk_boost_pct
+    def alchemy_atk_boost_pct(self) -> float:
+        return self.cs.alchemy_atk_boost_pct
+
     @alchemy_atk_boost_pct.setter
-    def alchemy_atk_boost_pct(self, v: float) -> None: self.cs.alchemy_atk_boost_pct = v
+    def alchemy_atk_boost_pct(self, v: float) -> None:
+        self.cs.alchemy_atk_boost_pct = v
 
     @property
-    def alchemy_def_boost_pct(self) -> float: return self.cs.alchemy_def_boost_pct
+    def alchemy_def_boost_pct(self) -> float:
+        return self.cs.alchemy_def_boost_pct
+
     @alchemy_def_boost_pct.setter
-    def alchemy_def_boost_pct(self, v: float) -> None: self.cs.alchemy_def_boost_pct = v
+    def alchemy_def_boost_pct(self, v: float) -> None:
+        self.cs.alchemy_def_boost_pct = v
 
     @property
-    def alchemy_def_boost_turns(self) -> int: return self.cs.alchemy_def_boost_turns
+    def alchemy_def_boost_turns(self) -> int:
+        return self.cs.alchemy_def_boost_turns
+
     @alchemy_def_boost_turns.setter
-    def alchemy_def_boost_turns(self, v: int) -> None: self.cs.alchemy_def_boost_turns = v
+    def alchemy_def_boost_turns(self, v: int) -> None:
+        self.cs.alchemy_def_boost_turns = v
 
     @property
-    def alchemy_dmg_reduction_pct(self) -> float: return self.cs.alchemy_dmg_reduction_pct
+    def alchemy_dmg_reduction_pct(self) -> float:
+        return self.cs.alchemy_dmg_reduction_pct
+
     @alchemy_dmg_reduction_pct.setter
-    def alchemy_dmg_reduction_pct(self, v: float) -> None: self.cs.alchemy_dmg_reduction_pct = v
+    def alchemy_dmg_reduction_pct(self, v: float) -> None:
+        self.cs.alchemy_dmg_reduction_pct = v
 
     @property
-    def alchemy_dmg_reduction_turns(self) -> int: return self.cs.alchemy_dmg_reduction_turns
+    def alchemy_dmg_reduction_turns(self) -> int:
+        return self.cs.alchemy_dmg_reduction_turns
+
     @alchemy_dmg_reduction_turns.setter
-    def alchemy_dmg_reduction_turns(self, v: int) -> None: self.cs.alchemy_dmg_reduction_turns = v
+    def alchemy_dmg_reduction_turns(self, v: int) -> None:
+        self.cs.alchemy_dmg_reduction_turns = v
 
     @property
-    def alchemy_overcap_hp(self) -> int: return self.cs.alchemy_overcap_hp
+    def alchemy_overcap_hp(self) -> int:
+        return self.cs.alchemy_overcap_hp
+
     @alchemy_overcap_hp.setter
-    def alchemy_overcap_hp(self, v: int) -> None: self.cs.alchemy_overcap_hp = v
+    def alchemy_overcap_hp(self, v: int) -> None:
+        self.cs.alchemy_overcap_hp = v
 
     @property
-    def alchemy_linger_hp(self) -> int: return self.cs.alchemy_linger_hp
+    def alchemy_linger_hp(self) -> int:
+        return self.cs.alchemy_linger_hp
+
     @alchemy_linger_hp.setter
-    def alchemy_linger_hp(self, v: int) -> None: self.cs.alchemy_linger_hp = v
+    def alchemy_linger_hp(self, v: int) -> None:
+        self.cs.alchemy_linger_hp = v
 
     @property
-    def alchemy_linger_turns(self) -> int: return self.cs.alchemy_linger_turns
+    def alchemy_linger_turns(self) -> int:
+        return self.cs.alchemy_linger_turns
+
     @alchemy_linger_turns.setter
-    def alchemy_linger_turns(self, v: int) -> None: self.cs.alchemy_linger_turns = v
+    def alchemy_linger_turns(self, v: int) -> None:
+        self.cs.alchemy_linger_turns = v
 
     @property
-    def alchemy_guaranteed_hit(self) -> bool: return self.cs.alchemy_guaranteed_hit
+    def alchemy_guaranteed_hit(self) -> bool:
+        return self.cs.alchemy_guaranteed_hit
+
     @alchemy_guaranteed_hit.setter
-    def alchemy_guaranteed_hit(self, v: bool) -> None: self.cs.alchemy_guaranteed_hit = v
+    def alchemy_guaranteed_hit(self, v: bool) -> None:
+        self.cs.alchemy_guaranteed_hit = v
 
     @property
-    def bonus_atk(self) -> int: return self.cs.bonus_atk
+    def bonus_atk(self) -> int:
+        return self.cs.bonus_atk
+
     @bonus_atk.setter
-    def bonus_atk(self, v: int) -> None: self.cs.bonus_atk = v
+    def bonus_atk(self, v: int) -> None:
+        self.cs.bonus_atk = v
 
     @property
-    def bonus_def(self) -> int: return self.cs.bonus_def
+    def bonus_def(self) -> int:
+        return self.cs.bonus_def
+
     @bonus_def.setter
-    def bonus_def(self, v: int) -> None: self.cs.bonus_def = v
+    def bonus_def(self, v: int) -> None:
+        self.cs.bonus_def = v
 
     @property
-    def bonus_crit(self) -> int: return self.cs.bonus_crit
+    def bonus_crit(self) -> int:
+        return self.cs.bonus_crit
+
     @bonus_crit.setter
-    def bonus_crit(self, v: int) -> None: self.cs.bonus_crit = v
+    def bonus_crit(self, v: int) -> None:
+        self.cs.bonus_crit = v
 
     @property
-    def bonus_max_hp(self) -> int: return self.cs.bonus_max_hp
+    def bonus_max_hp(self) -> int:
+        return self.cs.bonus_max_hp
+
     @bonus_max_hp.setter
-    def bonus_max_hp(self, v: int) -> None: self.cs.bonus_max_hp = v
+    def bonus_max_hp(self, v: int) -> None:
+        self.cs.bonus_max_hp = v
 
     @property
-    def atk_multiplier(self) -> float: return self.cs.atk_multiplier
+    def atk_multiplier(self) -> float:
+        return self.cs.atk_multiplier
+
     @atk_multiplier.setter
-    def atk_multiplier(self, v: float) -> None: self.cs.atk_multiplier = v
+    def atk_multiplier(self, v: float) -> None:
+        self.cs.atk_multiplier = v
 
     @property
-    def def_multiplier(self) -> float: return self.cs.def_multiplier
+    def def_multiplier(self) -> float:
+        return self.cs.def_multiplier
+
     @def_multiplier.setter
-    def def_multiplier(self, v: float) -> None: self.cs.def_multiplier = v
+    def def_multiplier(self, v: float) -> None:
+        self.cs.def_multiplier = v
 
     @property
-    def crit_multiplier(self) -> float: return self.cs.crit_multiplier
+    def crit_multiplier(self) -> float:
+        return self.cs.crit_multiplier
+
     @crit_multiplier.setter
-    def crit_multiplier(self, v: float) -> None: self.cs.crit_multiplier = v
+    def crit_multiplier(self, v: float) -> None:
+        self.cs.crit_multiplier = v
 
     @property
-    def partner_special_rarity(self) -> float: return self.cs.partner_special_rarity
+    def partner_special_rarity(self) -> float:
+        return self.cs.partner_special_rarity
+
     @partner_special_rarity.setter
-    def partner_special_rarity(self, v: float) -> None: self.cs.partner_special_rarity = v
+    def partner_special_rarity(self, v: float) -> None:
+        self.cs.partner_special_rarity = v
 
     @property
-    def jewel_cataclysm_primed(self) -> bool: return self.cs.jewel_cataclysm_primed
+    def jewel_cataclysm_primed(self) -> bool:
+        return self.cs.jewel_cataclysm_primed
+
     @jewel_cataclysm_primed.setter
-    def jewel_cataclysm_primed(self, v: bool) -> None: self.cs.jewel_cataclysm_primed = v
+    def jewel_cataclysm_primed(self, v: bool) -> None:
+        self.cs.jewel_cataclysm_primed = v
 
     @property
-    def jewel_cataclysm_bonus_multi(self) -> float: return self.cs.jewel_cataclysm_bonus_multi
+    def jewel_cataclysm_bonus_multi(self) -> float:
+        return self.cs.jewel_cataclysm_bonus_multi
+
     @jewel_cataclysm_bonus_multi.setter
-    def jewel_cataclysm_bonus_multi(self, v: float) -> None: self.cs.jewel_cataclysm_bonus_multi = v
+    def jewel_cataclysm_bonus_multi(self, v: float) -> None:
+        self.cs.jewel_cataclysm_bonus_multi = v
 
     @property
-    def jewel_onslaught_primed(self) -> bool: return self.cs.jewel_onslaught_primed
+    def jewel_onslaught_primed(self) -> bool:
+        return self.cs.jewel_onslaught_primed
+
     @jewel_onslaught_primed.setter
-    def jewel_onslaught_primed(self, v: bool) -> None: self.cs.jewel_onslaught_primed = v
+    def jewel_onslaught_primed(self, v: bool) -> None:
+        self.cs.jewel_onslaught_primed = v
 
     @property
-    def jewel_onslaught_bonus_pct(self) -> float: return self.cs.jewel_onslaught_bonus_pct
+    def jewel_onslaught_bonus_pct(self) -> float:
+        return self.cs.jewel_onslaught_bonus_pct
+
     @jewel_onslaught_bonus_pct.setter
-    def jewel_onslaught_bonus_pct(self, v: float) -> None: self.cs.jewel_onslaught_bonus_pct = v
+    def jewel_onslaught_bonus_pct(self, v: float) -> None:
+        self.cs.jewel_onslaught_bonus_pct = v
 
     @property
-    def jewel_wardforge_bonus_dmg(self) -> int: return self.cs.jewel_wardforge_bonus_dmg
+    def jewel_wardforge_bonus_dmg(self) -> int:
+        return self.cs.jewel_wardforge_bonus_dmg
+
     @jewel_wardforge_bonus_dmg.setter
-    def jewel_wardforge_bonus_dmg(self, v: int) -> None: self.cs.jewel_wardforge_bonus_dmg = v
+    def jewel_wardforge_bonus_dmg(self, v: int) -> None:
+        self.cs.jewel_wardforge_bonus_dmg = v
 
     @property
-    def jewel_acrimony_dot(self) -> int: return self.cs.jewel_acrimony_dot
+    def jewel_acrimony_dot(self) -> int:
+        return self.cs.jewel_acrimony_dot
+
     @jewel_acrimony_dot.setter
-    def jewel_acrimony_dot(self, v: int) -> None: self.cs.jewel_acrimony_dot = v
+    def jewel_acrimony_dot(self, v: int) -> None:
+        self.cs.jewel_acrimony_dot = v
 
     @property
-    def jewel_acrimony_dot_dmg(self) -> int: return self.cs.jewel_acrimony_dot_dmg
+    def jewel_acrimony_dot_dmg(self) -> int:
+        return self.cs.jewel_acrimony_dot_dmg
+
     @jewel_acrimony_dot_dmg.setter
-    def jewel_acrimony_dot_dmg(self, v: int) -> None: self.cs.jewel_acrimony_dot_dmg = v
+    def jewel_acrimony_dot_dmg(self, v: int) -> None:
+        self.cs.jewel_acrimony_dot_dmg = v
 
     # CodexRunState forwarders
     @property
-    def run_atk_penalty(self) -> int: return self.run.atk_penalty
+    def run_atk_penalty(self) -> int:
+        return self.run.atk_penalty
+
     @run_atk_penalty.setter
-    def run_atk_penalty(self, v: int) -> None: self.run.atk_penalty = v
+    def run_atk_penalty(self, v: int) -> None:
+        self.run.atk_penalty = v
 
     @property
-    def run_def_penalty(self) -> int: return self.run.def_penalty
+    def run_def_penalty(self) -> int:
+        return self.run.def_penalty
+
     @run_def_penalty.setter
-    def run_def_penalty(self, v: int) -> None: self.run.def_penalty = v
+    def run_def_penalty(self, v: int) -> None:
+        self.run.def_penalty = v
 
     @property
-    def run_crit_penalty(self) -> int: return self.run.crit_penalty
+    def run_crit_penalty(self) -> int:
+        return self.run.crit_penalty
+
     @run_crit_penalty.setter
-    def run_crit_penalty(self, v: int) -> None: self.run.crit_penalty = v
+    def run_crit_penalty(self, v: int) -> None:
+        self.run.crit_penalty = v
 
     @property
-    def run_max_hp_bonus(self) -> int: return self.run.max_hp_bonus
+    def run_max_hp_bonus(self) -> int:
+        return self.run.max_hp_bonus
+
     @run_max_hp_bonus.setter
-    def run_max_hp_bonus(self, v: int) -> None: self.run.max_hp_bonus = v
+    def run_max_hp_bonus(self, v: int) -> None:
+        self.run.max_hp_bonus = v
 
     @property
-    def bonus_rarity(self) -> int: return self.run.bonus_rarity
+    def bonus_rarity(self) -> int:
+        return self.run.bonus_rarity
+
     @bonus_rarity.setter
-    def bonus_rarity(self, v: int) -> None: self.run.bonus_rarity = v
+    def bonus_rarity(self, v: int) -> None:
+        self.run.bonus_rarity = v
 
     @property
-    def boon_fdr(self) -> int: return self.run.boon_fdr
+    def boon_fdr(self) -> int:
+        return self.run.boon_fdr
+
     @boon_fdr.setter
-    def boon_fdr(self, v: int) -> None: self.run.boon_fdr = v
+    def boon_fdr(self, v: int) -> None:
+        self.run.boon_fdr = v
 
     @property
     def rarity(self) -> int:
@@ -629,8 +762,14 @@ class Player:
 
         vitality_pct = self.get_tome_bonus("vitality")
         asc_hp = self.get_ascension_bonuses()["hp"] if self.ascension_unlocks else 0
-        parts_hp = sum(v["hp"] for v in self.equipped_parts.values()) if self.equipped_parts else 0
-        base = self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp + asc_hp + parts_hp
+        parts_hp = (
+            sum(v["hp"] for v in self.equipped_parts.values())
+            if self.equipped_parts
+            else 0
+        )
+        base = (
+            self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp + asc_hp + parts_hp
+        )
         if vitality_pct > 0:
             base = int(base * (1 + vitality_pct / 100))
         gluttony_pct = sum(
@@ -844,7 +983,11 @@ class Player:
             total += self.get_ascension_bonuses()["pdr"]
 
         # Hard cap: 90% with Impregnable armor passive, otherwise 80%
-        cap = 90 if (self.equipped_armor and self.equipped_armor.passive == "impregnable") else 80
+        cap = (
+            90
+            if (self.equipped_armor and self.equipped_armor.passive == "impregnable")
+            else 80
+        )
         return min(cap, total)
 
     def get_total_fdr(self) -> int:
@@ -1081,8 +1224,8 @@ class Player:
 @dataclass
 class MonsterModifier:
     name: str
-    tier: int          # 1–5 for tiered mods; 0 for flat (no numeral shown)
-    value: float       # resolved numeric value for this tier
+    tier: int  # 1–5 for tiered mods; 0 for flat (no numeral shown)
+    value: float  # resolved numeric value for this tier
     difficulty: float  # contribution to special_drop_chance
 
     @property

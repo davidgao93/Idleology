@@ -116,7 +116,7 @@ class CompanionMechanics:
             new_type = pick_standard()
         else:
             # If standard, we roll for s_rarity or different standard
-            if random.random() < 0.01:
+            if random.random() < 0.05:
                 new_type = "s_rarity"
             else:
                 new_type = pick_standard()
@@ -194,8 +194,8 @@ class CompanionMechanics:
 
                 for res in results:
                     if res == "Gold":
-                        # Gold Amount: Level * 1000 (e.g. Lvl 50 = 50000g, Lvl 100 = 100000g)
-                        amount = comp.level * 500
+                        # Gold Amount: Level * 300 (e.g. Lvl 50 = 15000g, Lvl 100 = 30000g)
+                        amount = comp.level * 300
                         loot_bag.append(("Gold", amount))
                     else:
                         loot_bag.append((res, 1))

@@ -239,7 +239,7 @@ class EquipmentMechanics:
                 qty = 10
                 tier_idx = 4
             else:  # 201+
-                qty = 10 + (ref_lvl - 200)
+                qty = 10 + int((ref_lvl - 200) / 5)
                 tier_idx = 4  # Cap at Idea/Titanium tier
 
             res_defs = [
@@ -539,39 +539,62 @@ class EquipmentMechanics:
 
             res_defs = [
                 ("iron_bar", "oak_plank", "desiccated_essence", "Iron/Oak/Desiccated"),
-                ("steel_bar", "willow_plank", "regular_essence", "Steel/Willow/Regular"),
-                ("gold_bar", "mahogany_plank", "sturdy_essence", "Gold/Mahogany/Sturdy"),
-                ("platinum_bar", "magic_plank", "reinforced_essence", "Platinum/Magic/Reinforced"),
+                (
+                    "steel_bar",
+                    "willow_plank",
+                    "regular_essence",
+                    "Steel/Willow/Regular",
+                ),
+                (
+                    "gold_bar",
+                    "mahogany_plank",
+                    "sturdy_essence",
+                    "Gold/Mahogany/Sturdy",
+                ),
+                (
+                    "platinum_bar",
+                    "magic_plank",
+                    "reinforced_essence",
+                    "Platinum/Magic/Reinforced",
+                ),
                 ("idea_bar", "idea_plank", "titanium_essence", "Idea/Titanium"),
             ]
 
             def_t = res_defs[tier_idx]
 
-            materials.append({
-                "table": "mining",
-                "column": def_t[0],
-                "qty": qty,
-                "name": def_t[0].replace("_", " ").title(),
-            })
-            materials.append({
-                "table": "woodcutting",
-                "column": def_t[1],
-                "qty": qty,
-                "name": def_t[1].replace("_", " ").title(),
-            })
-            materials.append({
-                "table": "fishing",
-                "column": def_t[2],
-                "qty": qty,
-                "name": def_t[2].replace("_", " ").title(),
-            })
+            materials.append(
+                {
+                    "table": "mining",
+                    "column": def_t[0],
+                    "qty": qty,
+                    "name": def_t[0].replace("_", " ").title(),
+                }
+            )
+            materials.append(
+                {
+                    "table": "woodcutting",
+                    "column": def_t[1],
+                    "qty": qty,
+                    "name": def_t[1].replace("_", " ").title(),
+                }
+            )
+            materials.append(
+                {
+                    "table": "fishing",
+                    "column": def_t[2],
+                    "qty": qty,
+                    "name": def_t[2].replace("_", " ").title(),
+                }
+            )
 
         return {"gold": gold_cost, "materials": materials}
 
     _REINFORCE_CAPS = {"attack": 12, "defence": 12, "main_stat": 12, "ward": 3}
 
     @staticmethod
-    def roll_reinforce_outcome(item: "_Reinforceable", stat_col: str = "main_stat") -> int:
+    def roll_reinforce_outcome(
+        item: "_Reinforceable", stat_col: str = "main_stat"
+    ) -> int:
         """Returns the stat gain for a single reinforce. Always at least 1."""
         cap = EquipmentMechanics._REINFORCE_CAPS.get(stat_col, 12)
         expected = cap * (item.level / (item.level + 100))

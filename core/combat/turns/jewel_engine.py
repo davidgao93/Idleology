@@ -400,3 +400,25 @@ def consume_wardforge_bonus(player: "Player") -> int:
     bonus = getattr(player, "jewel_wardforge_bonus_dmg", 0)
     player.jewel_wardforge_bonus_dmg = 0
     return bonus
+
+
+def reset_jewel_charges(player: "Player") -> None:
+    """Reset accumulated skill charges to zero.
+    Call at the start of every new standalone encounter (normal combat, ascent session, codex run).
+    Does NOT reset primed/DoT transients — those are managed by reset_jewel_transients."""
+    jop = getattr(player, "jewel_of_paradise", None)
+    if jop:
+        jop["skill_charges"] = {}
+
+
+def reset_jewel_transients(player: "Player") -> None:
+    """Reset per-fight jewel primed/DoT states in CombatState.
+    Call between each individual monster in Ascent and Codex.
+    Does NOT reset skill_charges — those persist within a session."""
+    player.jewel_cataclysm_primed = False
+    player.jewel_cataclysm_bonus_multi = 0.0
+    player.jewel_onslaught_primed = False
+    player.jewel_onslaught_bonus_pct = 0.0
+    player.jewel_wardforge_bonus_dmg = 0
+    player.jewel_acrimony_dot = 0
+    player.jewel_acrimony_dot_dmg = 0

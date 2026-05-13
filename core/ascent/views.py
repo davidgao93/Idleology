@@ -8,6 +8,7 @@ from core.ascent.mechanics import PINNACLE_REWARDS, AscentMechanics
 from core.combat import engine
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
+from core.combat import jewel_engine as _je
 from core.combat.economy.drops import DropManager
 from core.combat.gen.gen_mob import generate_ascent_monster
 from core.combat.economy.loot import (
@@ -196,6 +197,8 @@ class AscentLobbyView(ui.View):
 
         await self.bot.database.users.modify_currency(self.user_id, "pinnacle_key", -1)
         self.bot.state_manager.set_active(self.user_id, "ascent")
+
+        _je.reset_jewel_charges(self.player)
 
         starting_floor = AscentMechanics.calculate_starting_floor(self.best_floor)
         m_level = AscentMechanics.calculate_floor_monster_level(starting_floor)
@@ -536,6 +539,12 @@ class AscentView(ui.View):
         self.player.reset_combat_bonus()
         self.player.combat_ward = self.player.get_combat_ward_value()
         self.player.is_invulnerable_this_combat = False
+        self.player.voracious_stacks = 0
+        self.player.cursed_precision_active = False
+        self.player.gaze_stacks = 0
+        self.player.hunger_stacks = 0
+        self.player.celestial_vow_used = False
+        _je.reset_jewel_transients(self.player)
 
         m_level = AscentMechanics.calculate_floor_monster_level(self.current_floor)
         n_mods, b_mods = AscentMechanics.get_floor_modifier_counts(self.current_floor)
