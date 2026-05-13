@@ -18,8 +18,8 @@ class SettlementMechanics:
     # Building Definitions
     # 'type': generator (creates from thin air), converter (consumes input), passive (buff)
     BUILDINGS = {
-        "logging_camp": {"type": "generator", "output": "timber", "base_rate": 1},
-        "quarry": {"type": "generator", "output": "stone", "base_rate": 1},
+        "logging_camp": {"type": "generator", "output": "timber", "base_rate": 0.2},
+        "quarry": {"type": "generator", "output": "stone", "base_rate": 0.2},
         "market": {
             "type": "generator",
             "output": "market_gold",

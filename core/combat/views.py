@@ -44,6 +44,7 @@ class CombatView(BaseView):
         monster: Monster,
         initial_logs: dict,
         combat_phases=None,
+        post_combat_view=None,
     ):
         super().__init__(bot, user_id, server_id)
         self.bot = bot
@@ -52,6 +53,7 @@ class CombatView(BaseView):
         self.player = player
         self.monster = monster
         self.logs = initial_logs or {}
+        self.post_combat_view = post_combat_view
 
         # Boss / Chain Handling
         self.combat_phases = combat_phases or []  # List of dicts
@@ -342,7 +344,7 @@ class CombatView(BaseView):
             dmg_frac=dmg_frac,
             killing_blow=self.killing_blow,
         )
-        await message.edit(embed=embed, view=None)
+        await message.edit(embed=embed, view=self.post_combat_view)
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)
         await _je.save_jewel_state(self.bot, self.user_id, self.player)
@@ -1013,7 +1015,7 @@ class CombatView(BaseView):
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
         embed.title = "🌌 Apex Shattered!"
         embed.set_image(url=VICTORY_CELESTIAL)
-        await message.edit(embed=embed, view=None)
+        await message.edit(embed=embed, view=self.post_combat_view)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
@@ -1129,7 +1131,7 @@ class CombatView(BaseView):
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
         embed.title = "⬛ Void Sovereign Defeated!"
         embed.set_thumbnail(url=VICTORY_NEET)
-        await message.edit(embed=embed, view=None)
+        await message.edit(embed=embed, view=self.post_combat_view)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
@@ -1184,7 +1186,7 @@ class CombatView(BaseView):
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
         embed.title = "♊ Bound Sovereigns Defeated!"
         embed.set_image(url=VICTORY_GEMINI)
-        await message.edit(embed=embed, view=None)
+        await message.edit(embed=embed, view=self.post_combat_view)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
@@ -1270,6 +1272,6 @@ class CombatView(BaseView):
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
         embed.title = "☠️ Origin of Corruption Shattered!"
         embed.set_image(url=VICTORY_EVELYNN)
-        await message.edit(embed=embed, view=None)
+        await message.edit(embed=embed, view=self.post_combat_view)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()

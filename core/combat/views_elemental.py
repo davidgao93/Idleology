@@ -7,8 +7,50 @@ from discord import ButtonStyle, Interaction
 from core.base_view import BaseView
 from core.combat import engine
 from core.images import COMBAT_ELEMENTAL
+from core.items.factory import load_player
 from core.models import Monster, Player
 from core.skills.mechanics import SkillMechanics
+
+
+class _ElementalCompletionView(BaseView):
+    """Shown after the Elemental of Elements fight ends — allows repeat or exit."""
+
+    def __init__(self, bot, user_id: str, server_id: str):
+        super().__init__(bot, user_id, server_id)
+
+    @discord.ui.button(label="Repeat", style=ButtonStyle.success, emoji="🔄")
+    async def repeat(self, interaction: Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        uber_data = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
+        )
+        has_keys = all(
+            uber_data.get(k, 0) >= 1
+            for k in ("blessed_bismuth", "sparkling_sprig", "capricious_carp")
+        )
+        if not has_keys:
+            return await interaction.followup.send(
+                "You need 1 Blessed Bismuth, 1 Sparkling Sprig, and 1 Capricious Carp to fight again.",
+                ephemeral=True,
+            )
+
+        await self.bot.database.uber.consume_elemental_keys(self.user_id, self.server_id)
+        self.bot.state_manager.set_active(self.user_id, "elemental_boss")
+        self.stop()
+
+        user_row = await self.bot.database.users.get(self.user_id, self.server_id)
+        player = await load_player(self.user_id, user_row, self.bot.database)
+
+        new_view = ElementalEncounterView(self.bot, player, self.user_id, self.server_id)
+        await interaction.edit_original_response(embed=new_view.build_embed(), view=new_view)
+        new_view.message = await interaction.original_response()
+
+    @discord.ui.button(label="Exit", style=ButtonStyle.secondary, emoji="✖️")
+    async def exit(self, interaction: Interaction, button: discord.ui.Button):
+        self.stop()
+        await interaction.response.defer()
+        await interaction.message.delete()
+
 
 _ELEMENTAL_MONSTER = Monster(
     name="Elemental of Elements",
@@ -94,7 +136,11 @@ class ElementalEncounterView(BaseView):
         self.clear_items()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
-        await message.edit(embed=embed, view=None)
+        completion_view = _ElementalCompletionView(
+            self.bot, self.user_id, self.server_id
+        )
+        await message.edit(embed=embed, view=completion_view)
+        completion_view.message = message
 
     async def _calculate_rewards(self) -> dict:
         multiplier = self.total_damage // 1000

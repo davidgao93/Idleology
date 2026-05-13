@@ -595,6 +595,30 @@ class ProfileBuilder:
                 inline=True,
             )
 
+        # ── Hit Chance ───────────────────────────────────────────────────────
+        _HIT_BASE_PCT = 60
+        hit_weapon_pct = int(p.equipped_weapon.hit_chance * 100) if p.equipped_weapon else _HIT_BASE_PCT
+        hit_ascension = p.get_ascension_bonuses()["hit"] if p.ascension_unlocks else 0
+        hit_deadeye = 0
+        if p.equipped_weapon:
+            for _passive in (
+                p.equipped_weapon.passive,
+                p.equipped_weapon.p_passive,
+                p.equipped_weapon.u_passive,
+            ):
+                if _passive and "deadeye" in _passive.lower():
+                    try:
+                        tier = int(_passive.lower().split("_")[-1])
+                        hit_deadeye += tier * 4
+                    except (ValueError, IndexError):
+                        pass
+        hit_val = f"**Base: {hit_weapon_pct}%**"
+        if hit_deadeye:
+            hit_val += f"\n↳ Deadeye: +{hit_deadeye} flat"
+        if hit_ascension:
+            hit_val += f"\n↳ Ascension: +{hit_ascension} flat"
+        embed.add_field(name="🎯 Base Hit Chance", value=hit_val, inline=True)
+
         # ── Crit Chance ──────────────────────────────────────────────────────
         # Weapon crit = base template crit + piercing passive bonus.
         # Template crit is already included in get_current_crit_chance();
@@ -1429,6 +1453,13 @@ class ProfileHubView(BaseView):
         super().__init__(bot, user_id, server_id)
         self.active_tab = active_tab
         self.update_buttons()
+
+    async def on_timeout(self):
+        if self.message:
+            try:
+                await self.message.delete()
+            except Exception:
+                pass
 
     def update_buttons(self):
         self.clear_items()

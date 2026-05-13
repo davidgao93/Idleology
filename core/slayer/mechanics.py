@@ -5,6 +5,11 @@ from collections import Counter
 from typing import Tuple
 
 
+def _slayer_xp_threshold(lvl: int) -> int:
+    """XP required to advance from level `lvl` to `lvl+1`."""
+    return lvl * 500 + max(0, lvl - 70) ** 2 * 800
+
+
 class SlayerMechanics:
     PASSIVE_POOL = [
         "slayer_dmg",
@@ -22,10 +27,9 @@ class SlayerMechanics:
 
     @staticmethod
     def calculate_level_from_xp(xp: int) -> int:
-        """1000 XP for Lvl 2, 3000 XP for Lvl 3, etc. (Level * 1000)"""
         lvl = 1
-        while xp >= (lvl * 1000):
-            xp -= lvl * 1000
+        while xp >= _slayer_xp_threshold(lvl):
+            xp -= _slayer_xp_threshold(lvl)
             lvl += 1
         return lvl
 
@@ -130,11 +134,11 @@ class SlayerMechanics:
         """
         lvl = 1
         rem_xp = total_xp
-        while rem_xp >= (lvl * 1000):
-            rem_xp -= lvl * 1000
+        while rem_xp >= _slayer_xp_threshold(lvl):
+            rem_xp -= _slayer_xp_threshold(lvl)
             lvl += 1
 
-        return rem_xp, (lvl * 1000)
+        return rem_xp, _slayer_xp_threshold(lvl)
 
     @staticmethod
     def get_passive_description(p_type: str, tier: int) -> str:

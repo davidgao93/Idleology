@@ -1,3 +1,4 @@
+import random
 from datetime import datetime, timedelta
 
 import discord
@@ -219,14 +220,20 @@ class Tavern(commands.Cog, name="tavern"):
                 pass
 
         # Reward
+        curios = random.randint(1, 3)
+        tickets = random.randint(1, 3)
         await self.bot.database.users.update_timer(user_id, "last_checkin_time")
-        await self.bot.database.users.modify_currency(user_id, "curios", 1)
-        await self.bot.database.partners.add_tickets(user_id, 1)
+        await self.bot.database.users.modify_currency(user_id, "curios", curios)
+        await self.bot.database.partners.add_tickets(user_id, tickets)
 
-        await interaction.response.send_message(
-            "✅ Check-in complete! You received a **Curious Curio** and a **Guild Ticket**.",
-            ephemeral=True,
+        embed = discord.Embed(
+            title="✅ Daily Check-in!",
+            description=f"**{interaction.user.display_name}** checked in and collected their rewards.",
+            color=0x00CC77,
         )
+        embed.add_field(name="🎁 Curious Curios", value=str(curios), inline=True)
+        embed.add_field(name="🎫 Guild Tickets", value=str(tickets), inline=True)
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot) -> None:

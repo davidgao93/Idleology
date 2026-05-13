@@ -127,10 +127,14 @@ class Ideology(commands.Cog, name="ideology"):
         await self.bot.database.users.update_timer(user_id, "last_propagate_time")
 
         # Send response
-        await interaction.response.send_message(
-            f"You advocate for **{user_ideology}** and it spreads!\n"
-            f"New followers gained: **{follower_increase}**{bonus_msg} (Total: **{new_followers_count}**).\n"
+        embed = discord.Embed(
+            title="📣 Ideology Spreads!",
+            description=f"**{interaction.user.display_name}** advocates for **{user_ideology}**!",
+            color=0x9B59B6,
         )
+        embed.add_field(name="New Followers", value=f"+**{follower_increase}**{bonus_msg}", inline=True)
+        embed.add_field(name="Total Followers", value=f"**{new_followers_count:,}**", inline=True)
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot) -> None:

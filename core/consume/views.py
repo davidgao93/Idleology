@@ -309,4 +309,5 @@ class ConsumeView(BaseView):
     async def exit(self, interaction: Interaction, button: ui.Button):
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
-        await interaction.response.edit_message(view=None)
+        await interaction.response.defer()
+        await interaction.message.delete()

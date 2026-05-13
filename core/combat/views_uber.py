@@ -22,6 +22,26 @@ from core.images import (
 from core.models import Monster, Player
 
 
+class UberReturnView(BaseView):
+    """Minimal post-combat view that lets the player return to the Uber Hub."""
+
+    def __init__(self, bot, user_id: str, server_id: str, player):
+        super().__init__(bot, user_id, server_id)
+        self.player = player
+
+    @ui.button(label="↩ Return to Lobby", style=ButtonStyle.blurple)
+    async def return_to_lobby(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+        uber_data = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
+        )
+        hub = UberHubView(self.bot, self.user_id, self.server_id, self.player, uber_data)
+        embed = hub.build_embed()
+        await interaction.edit_original_response(embed=embed, view=hub)
+        hub.message = await interaction.original_response()
+        self.stop()
+
+
 class UberHubView(BaseView):
     def __init__(
         self, bot, user_id: str, server_id: str, player: Player, uber_data: dict
@@ -369,6 +389,7 @@ class UberAphroditeLobbyView(BaseView):
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="UBER ENCOUNTER"
         )
+        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
         view = CombatView(
             self.bot,
             self.user_id,
@@ -377,6 +398,7 @@ class UberAphroditeLobbyView(BaseView):
             monster,
             start_logs,
             combat_phases=None,
+            post_combat_view=return_view,
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
@@ -516,6 +538,7 @@ class UberLuciferLobbyView(BaseView):
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="🔥 UBER ENCOUNTER"
         )
+        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
         view = CombatView(
             self.bot,
             self.user_id,
@@ -524,6 +547,7 @@ class UberLuciferLobbyView(BaseView):
             monster,
             start_logs,
             combat_phases=None,
+            post_combat_view=return_view,
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
@@ -666,6 +690,7 @@ class UberEvelynnLobbyView(BaseView):
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="☠️ UBER ENCOUNTER"
         )
+        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
         view = CombatView(
             self.bot,
             self.user_id,
@@ -674,6 +699,7 @@ class UberEvelynnLobbyView(BaseView):
             monster,
             start_logs,
             combat_phases=None,
+            post_combat_view=return_view,
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
@@ -810,6 +836,7 @@ class UberNEETLobbyView(BaseView):
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="⬛ UBER ENCOUNTER"
         )
+        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
         view = CombatView(
             self.bot,
             self.user_id,
@@ -818,6 +845,7 @@ class UberNEETLobbyView(BaseView):
             monster,
             start_logs,
             combat_phases=None,
+            post_combat_view=return_view,
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
@@ -955,6 +983,7 @@ class UberGeminiLobbyView(BaseView):
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="♊ UBER ENCOUNTER"
         )
+        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
         view = CombatView(
             self.bot,
             self.user_id,
@@ -963,6 +992,7 @@ class UberGeminiLobbyView(BaseView):
             monster,
             start_logs,
             combat_phases=None,
+            post_combat_view=return_view,
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
