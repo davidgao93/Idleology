@@ -1,5 +1,7 @@
-import aiosqlite
 from typing import List
+
+import aiosqlite
+
 
 class SocialRepository:
     def __init__(self, connection: aiosqlite.Connection):
@@ -7,11 +9,10 @@ class SocialRepository:
 
     async def get_all_by_server(self, server_id: str) -> List[str]:
         """Fetches a list of ideology names for a specific server."""
-        # Note: I optimized the query to select 'name' specifically, 
+        # Note: I optimized the query to select 'name' specifically,
         # but kept the logic compatible with your existing structure.
         rows = await self.connection.execute(
-            "SELECT name FROM ideologies WHERE server_id=?",
-            (server_id,)
+            "SELECT name FROM ideologies WHERE server_id=?", (server_id,)
         )
         async with rows as cursor:
             results = await cursor.fetchall()
@@ -21,8 +22,7 @@ class SocialRepository:
     async def get_follower_count(self, ideology_name: str) -> int:
         """Fetches the number of followers for a specific ideology."""
         rows = await self.connection.execute(
-            "SELECT followers FROM ideologies WHERE name=?",
-            (ideology_name,)
+            "SELECT followers FROM ideologies WHERE name=?", (ideology_name,)
         )
         async with rows as cursor:
             count = await cursor.fetchone()
@@ -32,7 +32,7 @@ class SocialRepository:
         """Registers a new ideology."""
         await self.connection.execute(
             "INSERT INTO ideologies (user_id, server_id, name) VALUES (?, ?, ?)",
-            (user_id, server_id, name)
+            (user_id, server_id, name),
         )
         await self.connection.commit()
 
@@ -40,14 +40,14 @@ class SocialRepository:
         """Sets the follower count for an ideology."""
         await self.connection.execute(
             "UPDATE ideologies SET followers = ? WHERE name = ?",
-            (new_count, ideology_name)
+            (new_count, ideology_name),
         )
         await self.connection.commit()
 
     async def get_ideology_leaderboard(self, limit: int = 10):
         rows = await self.connection.execute(
             "SELECT name, followers FROM ideologies ORDER BY followers DESC LIMIT ?",
-            (limit,)
+            (limit,),
         )
         async with rows as cursor:
             return await cursor.fetchall()

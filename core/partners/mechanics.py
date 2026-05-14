@@ -99,43 +99,43 @@ _SIGMUND_EFFECTIVENESS = {1: 0.60, 2: 0.70, 3: 0.80, 4: 0.90, 5: 1.00}
 
 # Main classes (available at 4★)
 ATTACKER_MAIN = frozenset({"Assault", "Caster", "Ranger"})
-TANK_MAIN     = frozenset({"Frontline", "Warden", "Aegis"})
-HEALER_MAIN   = frozenset({"Herbalist", "Druid", "Cleric"})
+TANK_MAIN = frozenset({"Frontline", "Warden", "Aegis"})
+HEALER_MAIN = frozenset({"Herbalist", "Druid", "Cleric"})
 
 # Hybrid classes (available at 5★/6★) — fill two roles each
 HYBRID_CLASSES = frozenset({"Vanguard", "Paladin", "Battlemage"})
 
 # Full slot eligibility sets (main + compatible hybrids)
 ATTACKER_CLASSES = ATTACKER_MAIN | {"Vanguard", "Battlemage"}
-TANK_CLASSES     = TANK_MAIN     | {"Vanguard", "Paladin"}
-HEALER_CLASSES   = HEALER_MAIN   | {"Paladin", "Battlemage"}
+TANK_CLASSES = TANK_MAIN | {"Vanguard", "Paladin"}
+HEALER_CLASSES = HEALER_MAIN | {"Paladin", "Battlemage"}
 
 _SLOT_SETS = {
     "attacker": ATTACKER_CLASSES,
-    "tank":     TANK_CLASSES,
-    "healer":   HEALER_CLASSES,
+    "tank": TANK_CLASSES,
+    "healer": HEALER_CLASSES,
 }
 
 # Human-readable slot labels
 SLOT_LABELS = {
     "attacker": "⚔️ Attacker",
-    "tank":     "🛡️ Tank",
-    "healer":   "💚 Healer",
+    "tank": "🛡️ Tank",
+    "healer": "💚 Healer",
 }
 
 # Human-readable class labels with role hints
 CLASS_ROLE_HINT = {
-    "Assault":    "Attacker",
-    "Caster":     "Attacker",
-    "Ranger":     "Attacker",
-    "Frontline":  "Tank",
-    "Warden":     "Tank",
-    "Aegis":      "Tank",
-    "Herbalist":  "Healer",
-    "Druid":      "Healer",
-    "Cleric":     "Healer",
-    "Vanguard":   "Attacker / Tank",
-    "Paladin":    "Healer / Tank",
+    "Assault": "Attacker",
+    "Caster": "Attacker",
+    "Ranger": "Attacker",
+    "Frontline": "Tank",
+    "Warden": "Tank",
+    "Aegis": "Tank",
+    "Herbalist": "Healer",
+    "Druid": "Healer",
+    "Cleric": "Healer",
+    "Vanguard": "Attacker / Tank",
+    "Paladin": "Healer / Tank",
     "Battlemage": "Attacker / Healer",
 }
 

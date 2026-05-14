@@ -3,13 +3,13 @@ Static definitions for Skill Jewels and Paradise Passives.
 All values here are source-of-truth; nothing is hardcoded elsewhere.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Skill Jewels
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class SkillJewelDef:
@@ -143,14 +143,15 @@ ALL_SKILL_KEYS: list[str] = list(SKILL_JEWELS.keys())
 # Passive Definitions
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class PassiveDef:
     key: str
     name: str
-    description_template: str   # use {value} for the rolled number
+    description_template: str  # use {value} for the rolled number
     min_value: float
     max_value: float
-    is_percent: bool = True      # whether {value} should be shown as %
+    is_percent: bool = True  # whether {value} should be shown as %
     skill_specific: Optional[str] = None  # if set, only applies to this skill key
 
 
@@ -308,8 +309,17 @@ PASSIVES: dict[str, PassiveDef] = {
 
 # Passives available in the general roll pool (excludes skill specializations)
 GENERAL_PASSIVE_KEYS: list[str] = [
-    "rapid", "compression", "force", "mirage", "lingering",
-    "savant", "mastery", "fury", "arcane", "sustenance", "fortune",
+    "rapid",
+    "compression",
+    "force",
+    "mirage",
+    "lingering",
+    "savant",
+    "mastery",
+    "fury",
+    "arcane",
+    "sustenance",
+    "fortune",
 ]
 SPEC_PASSIVE_KEYS: list[str] = [k for k in PASSIVES if k.startswith("spec_")]
 

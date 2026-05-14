@@ -1,5 +1,7 @@
+from typing import List, Optional, Tuple
+
 import aiosqlite
-from typing import List, Tuple, Optional
+
 
 class SettingsRepository:
     def __init__(self, connection: aiosqlite.Connection):
@@ -13,15 +15,15 @@ class SettingsRepository:
             VALUES (?, ?)
             ON CONFLICT(guild_id) DO UPDATE SET event_channel_id = excluded.event_channel_id
             """,
-            (guild_id, channel_id)
+            (guild_id, channel_id),
         )
         await self.connection.commit()
 
     async def get_event_channel(self, guild_id: str) -> Optional[str]:
         """Gets the channel ID for a specific guild."""
         rows = await self.connection.execute(
-            "SELECT event_channel_id FROM guild_settings WHERE guild_id = ?", 
-            (guild_id,)
+            "SELECT event_channel_id FROM guild_settings WHERE guild_id = ?",
+            (guild_id,),
         )
         async with rows as cursor:
             result = await cursor.fetchone()
@@ -31,6 +33,8 @@ class SettingsRepository:
         """
         Returns a list of (guild_id, channel_id) tuples for the event loop.
         """
-        rows = await self.connection.execute("SELECT guild_id, event_channel_id FROM guild_settings")
+        rows = await self.connection.execute(
+            "SELECT guild_id, event_channel_id FROM guild_settings"
+        )
         async with rows as cursor:
             return await cursor.fetchall()

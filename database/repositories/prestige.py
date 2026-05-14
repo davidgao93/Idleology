@@ -50,8 +50,12 @@ class PrestigeRepository:
 
     async def set_field(self, user_id: str, field: str, value: str) -> None:
         valid = {
-            "prestige_border", "prestige_title", "prestige_display_name",
-            "prestige_flair", "prestige_death_message", "prestige_monument",
+            "prestige_border",
+            "prestige_title",
+            "prestige_display_name",
+            "prestige_flair",
+            "prestige_death_message",
+            "prestige_monument",
         }
         if field not in valid:
             raise ValueError(f"Invalid prestige field: {field}")

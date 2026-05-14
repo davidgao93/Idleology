@@ -6,22 +6,19 @@ import random
 from typing import Optional
 
 from .data import (
-    SKILL_JEWELS,
-    PASSIVES,
-    REROLL_TYPE_POOL,
-    PASSIVE_SLOT_THRESHOLDS,
-    PASSIVE_SLOT_COSTS,
+    DUST_FROM_JEWEL_BASE,
     DUST_REROLL_TYPE,
     DUST_REROLL_VALUE,
-    DUST_FROM_JEWEL_BASE,
-    SkillJewelDef,
-    PassiveDef,
+    PASSIVE_SLOT_THRESHOLDS,
+    PASSIVES,
+    REROLL_TYPE_POOL,
+    SKILL_JEWELS,
 )
-
 
 # ---------------------------------------------------------------------------
 # Thresholds & levels
 # ---------------------------------------------------------------------------
+
 
 def get_threshold(skill_key: str, effective_level: int) -> int:
     """Return the charge threshold for a skill at a given effective level."""
@@ -31,11 +28,15 @@ def get_threshold(skill_key: str, effective_level: int) -> int:
     elif effective_level >= 20:
         # Interpolate between lv20 and lv30
         t = (effective_level - 20) / 10
-        base = round(defn.threshold_lv20 - t * (defn.threshold_lv20 - defn.threshold_lv30))
+        base = round(
+            defn.threshold_lv20 - t * (defn.threshold_lv20 - defn.threshold_lv30)
+        )
     else:
         # Interpolate between lv1 and lv20
         t = max(0, (effective_level - 1)) / 19
-        base = round(defn.threshold_lv1 - t * (defn.threshold_lv1 - defn.threshold_lv20))
+        base = round(
+            defn.threshold_lv1 - t * (defn.threshold_lv1 - defn.threshold_lv20)
+        )
     return max(1, base)
 
 
@@ -48,6 +49,7 @@ def get_effective_level(skill_key: str, data: dict, passive_modifier: int = 0) -
 # ---------------------------------------------------------------------------
 # Passive helpers
 # ---------------------------------------------------------------------------
+
 
 def _passive_modifier(value: float) -> float:
     """Scale a passive value to 0..1 range within its definition's min/max."""
@@ -90,6 +92,7 @@ def mastery_bonus(data: dict) -> int:
 # ---------------------------------------------------------------------------
 # Combat passive reading helpers
 # ---------------------------------------------------------------------------
+
 
 def get_compression_bonus(data: dict) -> int:
     """Total threshold reduction from Compression passives (floor 0 for the bonus)."""
@@ -144,6 +147,7 @@ def get_fortune_pct(data: dict) -> float:
 # ---------------------------------------------------------------------------
 # Charge system
 # ---------------------------------------------------------------------------
+
 
 def add_charge(data: dict, skill_key: str, amount: int = 1) -> tuple[bool, int]:
     """
@@ -200,6 +204,7 @@ def should_double_proc(data: dict) -> bool:
 # Skill leveling
 # ---------------------------------------------------------------------------
 
+
 # Non-uniform progression: ~40 combats for levels 1→15, ~60 combats for levels 15→20 (100 total)
 def _combats_for_level(current_level: int) -> float:
     """Expected combats to advance one level from current_level."""
@@ -249,6 +254,7 @@ def add_skill_progress(data: dict, skill_key: str) -> bool:
 # Passive rolling
 # ---------------------------------------------------------------------------
 
+
 def _skewed_roll(min_val: float, max_val: float) -> float:
     """
     Weighted roll heavily skewed toward lower values.
@@ -256,7 +262,7 @@ def _skewed_roll(min_val: float, max_val: float) -> float:
     """
     r = random.random()
     # beta-like skew: cube root pushes values toward 0
-    biased = r ** 3
+    biased = r**3
     return round(min_val + biased * (max_val - min_val), 1)
 
 
@@ -280,6 +286,7 @@ def roll_new_passive() -> dict:
 # ---------------------------------------------------------------------------
 # Jewel consumption
 # ---------------------------------------------------------------------------
+
 
 def can_consume_jewel(data: dict) -> bool:
     """True if there is something useful the player can do with a jewel."""
@@ -329,7 +336,10 @@ def consume_jewel_invest_passive(data: dict) -> tuple[bool, str]:
         # A new slot opened — roll a random passive for it
         new_passive = roll_new_passive()
         data.setdefault("passive_slots", []).append(new_passive)
-        return True, f"Passive slot {new_count} unlocked! Rolled **{PASSIVES[new_passive['type']].name}** ({_format_passive_value(new_passive)})."
+        return (
+            True,
+            f"Passive slot {new_count} unlocked! Rolled **{PASSIVES[new_passive['type']].name}** ({_format_passive_value(new_passive)}).",
+        )
     needed = jewels_to_next_slot(data)
     return False, f"Invested. {needed} more jewel(s) needed for the next slot."
 
@@ -345,6 +355,7 @@ def _format_passive_value(slot: dict) -> str:
 # ---------------------------------------------------------------------------
 # Cosmic Dust rerolls
 # ---------------------------------------------------------------------------
+
 
 def dust_from_jewel(alchemy_level: int = 1) -> int:
     """Cosmic Dust awarded for dusting a Jewel of Paradise."""
@@ -395,6 +406,7 @@ def reroll_passive_value(data: dict, slot_index: int) -> tuple[bool, str, int]:
 # Unleash scale helpers
 # ---------------------------------------------------------------------------
 
+
 def _lerp(a: float, b: float, t: float) -> float:
     return a + t * (b - a)
 
@@ -419,7 +431,7 @@ def scale_damage_pct(skill_key: str, level: int, which: str = "high") -> float:
     # Pre-defined per-skill low/high at lv1, lv20, lv30+
     _dmg_table = {
         #          (low_lv1, high_lv1, low_lv20, high_lv20, low_lv30, high_lv30)
-        "surge":   (5, 8, 100, 180, 200, 380),
+        "surge": (5, 8, 100, 180, 200, 380),
         "cataclysm": (50, 50, 150, 150, 250, 250),  # single value (bonus crit multi %)
         "acrimony": (40, 80, 150, 250, 300, 450),
         "bastion": (200, 400, 600, 1000, 1200, 1800),
@@ -491,7 +503,9 @@ def format_unleash_description(skill_key: str, level: int) -> str:
     if skill_key == "bastion":
         return f"Reflect **{low:.0f}–{high:.0f}%** of the triggering hit back at the monster."
     if skill_key == "siphon":
-        return f"Burst heal **{low:.0f}–{high:.0f}%** of max HP; 50% of heal becomes ward."
+        return (
+            f"Burst heal **{low:.0f}–{high:.0f}%** of max HP; 50% of heal becomes ward."
+        )
     if skill_key == "onslaught":
         return f"Next attack gains **+{low:.0f}–{high:.0f}%** ATK multiplier."
 
@@ -502,6 +516,7 @@ def format_unleash_description(skill_key: str, level: int) -> str:
 # ---------------------------------------------------------------------------
 # Draught: potion generation table
 # ---------------------------------------------------------------------------
+
 
 def draught_potion_range(level: int) -> tuple[int, int]:
     if level >= 30:
@@ -520,6 +535,7 @@ def draught_potion_range(level: int) -> tuple[int, int]:
 # ---------------------------------------------------------------------------
 # Format helpers (for UI)
 # ---------------------------------------------------------------------------
+
 
 def format_passive_slot(slot: dict) -> str:
     """Returns a short string like 'Force (28.4%)'."""

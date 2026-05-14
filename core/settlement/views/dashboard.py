@@ -188,7 +188,9 @@ class SettlementDashboardView(SettlementBaseView):
         await interaction.response.defer()
         view = ResearchView(self.bot, self.user_id, self.server_id, self)
         await view.load()
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
 
     async def open_build_menu(self, interaction: Interaction, slot_index: int):

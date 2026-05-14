@@ -16,7 +16,7 @@ from core.partners.mechanics import (
     get_skill_effect_text,
     reroll_skill,
 )
-from core.partners.resources import _rarity_colour, _skill_display_name, _stars
+from core.partners.resources import _rarity_colour, _skill_display_name
 from core.partners.ui import _build_partner_embed
 from core.partners.views._helpers import PartnerBaseView, _apply_dispatch_rewards
 

@@ -1,5 +1,6 @@
-import aiosqlite
 from typing import Optional
+
+import aiosqlite
 
 
 class MawRepository:
@@ -31,7 +32,9 @@ class MawRepository:
         )
         await self.connection.commit()
 
-    async def update_damage(self, user_id: str, cycle_id: int, damage_dealt: int, last_damage_check: int) -> None:
+    async def update_damage(
+        self, user_id: str, cycle_id: int, damage_dealt: int, last_damage_check: int
+    ) -> None:
         await self.connection.execute(
             """UPDATE maw_participants SET damage_dealt = ?, last_damage_check = ?
                WHERE user_id = ? AND cycle_id = ?""",
@@ -39,7 +42,9 @@ class MawRepository:
         )
         await self.connection.commit()
 
-    async def set_boost_used(self, user_id: str, cycle_id: int, damage_dealt: int, boost_ts: int) -> None:
+    async def set_boost_used(
+        self, user_id: str, cycle_id: int, damage_dealt: int, boost_ts: int
+    ) -> None:
         await self.connection.execute(
             """UPDATE maw_participants SET boost_used_at = ?, damage_dealt = ?
                WHERE user_id = ? AND cycle_id = ?""",

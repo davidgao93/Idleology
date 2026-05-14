@@ -18,11 +18,10 @@ from core.partners.resources import (
 )
 from core.partners.ui import _build_partner_embed
 from core.partners.views._helpers import (
-    PartnerBaseView,
     _TASK_LABELS,
+    PartnerBaseView,
     _apply_dispatch_rewards,
 )
-
 
 # ---------------------------------------------------------------------------
 # DispatchReplaceConfirmView

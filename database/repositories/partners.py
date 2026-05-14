@@ -2,21 +2,27 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple
 
-import aiosqlite
-
 from database.base import BaseRepository
 
 # Allowlist prevents SQL injection through dynamic column names
-_VALID_SKILL_COLS = frozenset({
-    "combat_slot_1", "combat_slot_1_lvl",
-    "combat_slot_2", "combat_slot_2_lvl",
-    "combat_slot_3", "combat_slot_3_lvl",
-    "sig_combat_lvl",
-    "dispatch_slot_1", "dispatch_slot_1_lvl",
-    "dispatch_slot_2", "dispatch_slot_2_lvl",
-    "dispatch_slot_3", "dispatch_slot_3_lvl",
-    "sig_dispatch_lvl",
-})
+_VALID_SKILL_COLS = frozenset(
+    {
+        "combat_slot_1",
+        "combat_slot_1_lvl",
+        "combat_slot_2",
+        "combat_slot_2_lvl",
+        "combat_slot_3",
+        "combat_slot_3_lvl",
+        "sig_combat_lvl",
+        "dispatch_slot_1",
+        "dispatch_slot_1_lvl",
+        "dispatch_slot_2",
+        "dispatch_slot_2_lvl",
+        "dispatch_slot_3",
+        "dispatch_slot_3_lvl",
+        "sig_dispatch_lvl",
+    }
+)
 
 
 class PartnerRepository(BaseRepository):
@@ -40,7 +46,9 @@ class PartnerRepository(BaseRepository):
             (user_id,),
         )
         row = await cursor.fetchone()
-        char_shards = await self.get_shard_count(user_id, 0)  # shared pool (partner_id=0)
+        char_shards = await self.get_shard_count(
+            user_id, 0
+        )  # shared pool (partner_id=0)
         return {
             "guild_tickets": row[0],
             "pity_counter": row[1],
@@ -260,7 +268,9 @@ class PartnerRepository(BaseRepository):
         )
         await self.connection.commit()
 
-    async def reset_dispatch_timer(self, user_id: str, partner_id: int, new_start: str) -> None:
+    async def reset_dispatch_timer(
+        self, user_id: str, partner_id: int, new_start: str
+    ) -> None:
         """Resets the primary dispatch timer after reward collection."""
         await self.connection.execute(
             "UPDATE user_partners SET dispatch_start_time = ? WHERE user_id = ? AND partner_id = ?",
@@ -268,7 +278,9 @@ class PartnerRepository(BaseRepository):
         )
         await self.connection.commit()
 
-    async def reset_dispatch_timer_2(self, user_id: str, partner_id: int, new_start: str) -> None:
+    async def reset_dispatch_timer_2(
+        self, user_id: str, partner_id: int, new_start: str
+    ) -> None:
         await self.connection.execute(
             "UPDATE user_partners SET dispatch_start_time_2 = ? WHERE user_id = ? AND partner_id = ?",
             (new_start, user_id, partner_id),

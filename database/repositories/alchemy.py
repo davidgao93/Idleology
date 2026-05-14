@@ -1,5 +1,6 @@
-import aiosqlite
 from typing import List
+
+import aiosqlite
 
 
 class AlchemyRepository:
@@ -27,7 +28,7 @@ class AlchemyRepository:
     async def _ensure_row(self, user_id: str) -> None:
         await self.connection.execute(
             "INSERT OR IGNORE INTO alchemy_data (user_id, level) VALUES (?, 1)",
-            (user_id,)
+            (user_id,),
         )
 
     async def get_level(self, user_id: str) -> int:
@@ -49,8 +50,7 @@ class AlchemyRepository:
     async def set_level(self, user_id: str, level: int) -> None:
         await self._ensure_row(user_id)
         await self.connection.execute(
-            "UPDATE alchemy_data SET level = ? WHERE user_id = ?",
-            (level, user_id)
+            "UPDATE alchemy_data SET level = ? WHERE user_id = ?", (level, user_id)
         )
         await self.connection.commit()
 
@@ -78,27 +78,30 @@ class AlchemyRepository:
         async with self.connection.execute(
             "SELECT slot, passive_type, passive_value FROM potion_passives "
             "WHERE user_id = ? ORDER BY slot",
-            (user_id,)
+            (user_id,),
         ) as cursor:
             rows = await cursor.fetchall()
-        return [{"slot": r[0], "passive_type": r[1], "passive_value": r[2]} for r in rows]
+        return [
+            {"slot": r[0], "passive_type": r[1], "passive_value": r[2]} for r in rows
+        ]
 
-    async def set_passive(self, user_id: str, slot: int,
-                          passive_type: str, passive_value: float) -> None:
+    async def set_passive(
+        self, user_id: str, slot: int, passive_type: str, passive_value: float
+    ) -> None:
         await self.connection.execute(
             """INSERT INTO potion_passives (user_id, slot, passive_type, passive_value)
                VALUES (?, ?, ?, ?)
                ON CONFLICT(user_id, slot) DO UPDATE SET
                    passive_type = excluded.passive_type,
                    passive_value = excluded.passive_value""",
-            (user_id, slot, passive_type, passive_value)
+            (user_id, slot, passive_type, passive_value),
         )
         await self.connection.commit()
 
     async def delete_passive(self, user_id: str, slot: int) -> None:
         await self.connection.execute(
             "DELETE FROM potion_passives WHERE user_id = ? AND slot = ?",
-            (user_id, slot)
+            (user_id, slot),
         )
         await self.connection.commit()
 
@@ -106,26 +109,33 @@ class AlchemyRepository:
     # Transmutation helpers
     # ------------------------------------------------------------------
 
-    async def get_resource_amount(self, user_id: str, server_id: str,
-                                   skill_type: str, col: str) -> int:
+    async def get_resource_amount(
+        self, user_id: str, server_id: str, skill_type: str, col: str
+    ) -> int:
         """Reads a single resource column from the relevant skill table."""
         async with self.connection.execute(
             f"SELECT {col} FROM {skill_type} WHERE user_id = ? AND server_id = ?",
-            (user_id, server_id)
+            (user_id, server_id),
         ) as cursor:
             row = await cursor.fetchone()
         return row[0] if row else 0
 
-    async def transmute(self, user_id: str, server_id: str,
-                        skill_type: str,
-                        src_col: str, src_delta: int,
-                        dst_col: str, dst_delta: int) -> None:
+    async def transmute(
+        self,
+        user_id: str,
+        server_id: str,
+        skill_type: str,
+        src_col: str,
+        src_delta: int,
+        dst_col: str,
+        dst_delta: int,
+    ) -> None:
         """Atomically deduct src and credit dst in the skill table."""
         await self.connection.execute(
             f"UPDATE {skill_type} "
             f"SET {src_col} = {src_col} + ?, {dst_col} = {dst_col} + ? "
             f"WHERE user_id = ? AND server_id = ?",
-            (src_delta, dst_delta, user_id, server_id)
+            (src_delta, dst_delta, user_id, server_id),
         )
         await self.connection.commit()
 
@@ -145,7 +155,7 @@ class AlchemyRepository:
         await self._ensure_row(user_id)
         await self.connection.execute(
             "UPDATE alchemy_data SET cosmic_dust = cosmic_dust + ? WHERE user_id = ?",
-            (delta, user_id)
+            (delta, user_id),
         )
         await self.connection.commit()
 
@@ -165,7 +175,7 @@ class AlchemyRepository:
         table = self._queue_table(slot)
         async with self.connection.execute(
             f"SELECT item_type, quantity, start_time FROM {table} WHERE user_id = ?",
-            (user_id,)
+            (user_id,),
         ) as cursor:
             return await cursor.fetchone()
 
@@ -178,8 +188,14 @@ class AlchemyRepository:
                 result.append((slot, row[0], row[1], row[2]))
         return result
 
-    async def start_disenchant(self, user_id: str, item_type: str,
-                                quantity: int, start_time: str, slot: int = 1) -> None:
+    async def start_disenchant(
+        self,
+        user_id: str,
+        item_type: str,
+        quantity: int,
+        start_time: str,
+        slot: int = 1,
+    ) -> None:
         """Insert or replace the active disenchant task for this user in the given slot."""
         table = self._queue_table(slot)
         await self.connection.execute(
@@ -189,7 +205,7 @@ class AlchemyRepository:
                    item_type  = excluded.item_type,
                    quantity   = excluded.quantity,
                    start_time = excluded.start_time""",
-            (user_id, item_type, quantity, start_time)
+            (user_id, item_type, quantity, start_time),
         )
         await self.connection.commit()
 
@@ -208,16 +224,18 @@ class AlchemyRepository:
         """Reads a single uber material column from uber_progress."""
         async with self.connection.execute(
             f"SELECT {col} FROM uber_progress WHERE user_id = ? AND server_id = ?",
-            (user_id, server_id)
+            (user_id, server_id),
         ) as cursor:
             row = await cursor.fetchone()
         return row[0] if row else 0
 
-    async def deduct_uber_material(self, user_id: str, server_id: str, col: str, amount: int) -> None:
+    async def deduct_uber_material(
+        self, user_id: str, server_id: str, col: str, amount: int
+    ) -> None:
         """Deducts from an uber material column."""
         await self.connection.execute(
             f"UPDATE uber_progress SET {col} = {col} - ? WHERE user_id = ? AND server_id = ?",
-            (amount, user_id, server_id)
+            (amount, user_id, server_id),
         )
         await self.connection.commit()
 
@@ -228,14 +246,16 @@ class AlchemyRepository:
     async def get_essence_quantity(self, user_id: str, essence_type: str) -> int:
         async with self.connection.execute(
             "SELECT quantity FROM player_essences WHERE user_id = ? AND essence_type = ?",
-            (user_id, essence_type)
+            (user_id, essence_type),
         ) as cursor:
             row = await cursor.fetchone()
         return row[0] if row else 0
 
-    async def deduct_essence(self, user_id: str, essence_type: str, amount: int) -> None:
+    async def deduct_essence(
+        self, user_id: str, essence_type: str, amount: int
+    ) -> None:
         await self.connection.execute(
             "UPDATE player_essences SET quantity = quantity - ? WHERE user_id = ? AND essence_type = ?",
-            (amount, user_id, essence_type)
+            (amount, user_id, essence_type),
         )
         await self.connection.commit()

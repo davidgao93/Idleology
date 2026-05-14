@@ -1,6 +1,6 @@
 import json
-import aiosqlite
 
+import aiosqlite
 
 # Jewel costs to unlock each passive slot (cumulative thresholds: 1, 4, 9, 19, 34)
 PASSIVE_SLOT_COSTS = [1, 3, 5, 10, 15]

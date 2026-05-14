@@ -8,7 +8,6 @@ No project-level imports at module load time.
 from dataclasses import dataclass
 from typing import List, Optional
 
-
 # ---------------------------------------------------------------------------
 # Signature skill key maps (partner_id → DB column name)
 # ---------------------------------------------------------------------------

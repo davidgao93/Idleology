@@ -1,6 +1,3 @@
-from typing import Optional, Tuple, Literal
-from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
-
 class TradeManager:
     """Handles logic for mapping items/resources and executing transfers."""
 
@@ -37,18 +34,23 @@ class TradeManager:
     }
 
     @staticmethod
-    async def get_resource_balance(bot, user_id: str, server_id: str, resource_name: str) -> int:
+    async def get_resource_balance(
+        bot, user_id: str, server_id: str, resource_name: str
+    ) -> int:
         table, col = TradeManager.RESOURCE_MAP[resource_name]
-        
+
         if table == "users":
             return await bot.database.users.get_currency(user_id, col)
         else:
             # Skill tables: need to find the index of the column
             # We fetch the row and manually map it based on known schemas
             row = await bot.database.skills.get_data(user_id, server_id, table)
-            if not row: return 0
-            
-            return await bot.database.skills.get_single_resource(user_id, server_id, table, col)
+            if not row:
+                return 0
+
+            return await bot.database.skills.get_single_resource(
+                user_id, server_id, table, col
+            )
 
     @staticmethod
     async def transfer_gold(bot, sender_id: str, receiver_id: str, amount: int) -> bool:
@@ -60,18 +62,31 @@ class TradeManager:
         return True
 
     @staticmethod
-    async def transfer_resource(bot, sender_id: str, receiver_id: str, server_id: str, resource_name: str, amount: int):
+    async def transfer_resource(
+        bot,
+        sender_id: str,
+        receiver_id: str,
+        server_id: str,
+        resource_name: str,
+        amount: int,
+    ):
         table, col = TradeManager.RESOURCE_MAP[resource_name]
-        
+
         if table == "users":
             await bot.database.users.modify_currency(sender_id, col, -amount)
             await bot.database.users.modify_currency(receiver_id, col, amount)
         else:
             # Skill tables require server_id
-            await bot.database.skills.update_single_resource(sender_id, server_id, table, col, -amount)
-            await bot.database.skills.update_single_resource(receiver_id, server_id, table, col, amount)
+            await bot.database.skills.update_single_resource(
+                sender_id, server_id, table, col, -amount
+            )
+            await bot.database.skills.update_single_resource(
+                receiver_id, server_id, table, col, amount
+            )
 
     @staticmethod
-    async def transfer_equipment(bot, sender_id: str, receiver_id: str, item_type: str, item_id: int):
+    async def transfer_equipment(
+        bot, sender_id: str, receiver_id: str, item_type: str, item_id: int
+    ):
         # Using the generic transfer method in equipment repo
         await bot.database.equipment.transfer(item_id, receiver_id, item_type)

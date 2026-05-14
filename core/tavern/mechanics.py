@@ -1,5 +1,3 @@
-import math
-
 class TavernMechanics:
     @staticmethod
     def calculate_potion_cost(player_level: int) -> int:
@@ -23,4 +21,3 @@ class TavernMechanics:
         if player_level >= 20:
             return (int(player_level / 10) * 100) + 400
         return 400
-

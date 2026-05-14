@@ -1,5 +1,6 @@
-import aiosqlite
 from typing import Dict
+
+import aiosqlite
 
 
 class UberRepository:
@@ -81,7 +82,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def increment_engrams(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_engrams(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Modifies the celestial_engrams count (can be negative)."""
         await self.connection.execute(
             "UPDATE uber_progress SET celestial_engrams = celestial_engrams + ? WHERE user_id = ? AND server_id = ?",
@@ -89,7 +92,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def set_blueprint_unlocked(self, user_id: str, server_id: str, unlocked: bool) -> None:
+    async def set_blueprint_unlocked(
+        self, user_id: str, server_id: str, unlocked: bool
+    ) -> None:
         """Sets the celestial blueprint unlocked flag."""
         val = 1 if unlocked else 0
         await self.connection.execute(
@@ -100,7 +105,9 @@ class UberRepository:
 
     # --- Infernal (Lucifer) ---
 
-    async def increment_infernal_sigils(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_infernal_sigils(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Modifies the infernal_sigils count (can be negative)."""
         await self.connection.execute(
             "UPDATE uber_progress SET infernal_sigils = infernal_sigils + ? WHERE user_id = ? AND server_id = ?",
@@ -108,7 +115,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def increment_infernal_engrams(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_infernal_engrams(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Modifies the infernal_engrams count (can be negative)."""
         await self.connection.execute(
             "UPDATE uber_progress SET infernal_engrams = infernal_engrams + ? WHERE user_id = ? AND server_id = ?",
@@ -116,7 +125,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def set_infernal_blueprint_unlocked(self, user_id: str, server_id: str, unlocked: bool) -> None:
+    async def set_infernal_blueprint_unlocked(
+        self, user_id: str, server_id: str, unlocked: bool
+    ) -> None:
         """Sets the infernal blueprint unlocked flag."""
         val = 1 if unlocked else 0
         await self.connection.execute(
@@ -127,7 +138,9 @@ class UberRepository:
 
     # --- Void (NEET) ---
 
-    async def increment_void_shards(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_void_shards(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Modifies the void_shards count (can be negative)."""
         await self.connection.execute(
             "UPDATE uber_progress SET void_shards = void_shards + ? WHERE user_id = ? AND server_id = ?",
@@ -135,7 +148,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def increment_void_engrams(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_void_engrams(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Modifies the void_engrams count (can be negative)."""
         await self.connection.execute(
             "UPDATE uber_progress SET void_engrams = void_engrams + ? WHERE user_id = ? AND server_id = ?",
@@ -143,7 +158,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def set_void_blueprint_unlocked(self, user_id: str, server_id: str, unlocked: bool) -> None:
+    async def set_void_blueprint_unlocked(
+        self, user_id: str, server_id: str, unlocked: bool
+    ) -> None:
         """Sets the void blueprint unlocked flag."""
         val = 1 if unlocked else 0
         await self.connection.execute(
@@ -154,7 +171,9 @@ class UberRepository:
 
     # --- Gemini (Twins) ---
 
-    async def increment_gemini_sigils(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_gemini_sigils(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Modifies the gemini_sigils count (can be negative)."""
         await self.connection.execute(
             "UPDATE uber_progress SET gemini_sigils = gemini_sigils + ? WHERE user_id = ? AND server_id = ?",
@@ -162,7 +181,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def increment_gemini_engrams(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_gemini_engrams(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Modifies the gemini_engrams count (can be negative)."""
         await self.connection.execute(
             "UPDATE uber_progress SET gemini_engrams = gemini_engrams + ? WHERE user_id = ? AND server_id = ?",
@@ -170,7 +191,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def set_gemini_blueprint_unlocked(self, user_id: str, server_id: str, unlocked: bool) -> None:
+    async def set_gemini_blueprint_unlocked(
+        self, user_id: str, server_id: str, unlocked: bool
+    ) -> None:
         """Sets the gemini blueprint unlocked flag."""
         val = 1 if unlocked else 0
         await self.connection.execute(
@@ -181,21 +204,27 @@ class UberRepository:
 
     # --- Elemental Keys ---
 
-    async def increment_blessed_bismuth(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_blessed_bismuth(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         await self.connection.execute(
             "UPDATE uber_progress SET blessed_bismuth = blessed_bismuth + ? WHERE user_id = ? AND server_id = ?",
             (amount, user_id, server_id),
         )
         await self.connection.commit()
 
-    async def increment_sparkling_sprig(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_sparkling_sprig(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         await self.connection.execute(
             "UPDATE uber_progress SET sparkling_sprig = sparkling_sprig + ? WHERE user_id = ? AND server_id = ?",
             (amount, user_id, server_id),
         )
         await self.connection.commit()
 
-    async def increment_capricious_carp(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_capricious_carp(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         await self.connection.execute(
             "UPDATE uber_progress SET capricious_carp = capricious_carp + ? WHERE user_id = ? AND server_id = ?",
             (amount, user_id, server_id),
@@ -216,7 +245,9 @@ class UberRepository:
 
     # --- Corrupted Monsters ---
 
-    async def increment_corruption_sigils(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_corruption_sigils(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Modifies the corruption_sigils count (can be negative)."""
         await self.connection.execute(
             "UPDATE uber_progress SET corruption_sigils = corruption_sigils + ? WHERE user_id = ? AND server_id = ?",
@@ -224,7 +255,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def increment_paradise_jewels(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_paradise_jewels(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Modifies the paradise_jewels count (can be negative)."""
         await self.connection.execute(
             "UPDATE uber_progress SET paradise_jewels = paradise_jewels + ? WHERE user_id = ? AND server_id = ?",
@@ -232,7 +265,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def increment_corruption_engrams(self, user_id: str, server_id: str, amount: int) -> None:
+    async def increment_corruption_engrams(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Modifies the corruption_engrams count (can be negative)."""
         await self.connection.execute(
             "UPDATE uber_progress SET corruption_engrams = corruption_engrams + ? WHERE user_id = ? AND server_id = ?",
@@ -240,7 +275,9 @@ class UberRepository:
         )
         await self.connection.commit()
 
-    async def set_corruption_blueprint_unlocked(self, user_id: str, server_id: str, unlocked: bool) -> None:
+    async def set_corruption_blueprint_unlocked(
+        self, user_id: str, server_id: str, unlocked: bool
+    ) -> None:
         """Sets the corruption blueprint unlocked flag."""
         val = 1 if unlocked else 0
         await self.connection.execute(

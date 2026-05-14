@@ -10,7 +10,15 @@ from .base import SettlementBaseView
 
 
 class BuildConstructionView(SettlementBaseView):
-    def __init__(self, bot, user_id, slot_index, parent_view, uber_prog, researched: set | None = None):
+    def __init__(
+        self,
+        bot,
+        user_id,
+        slot_index,
+        parent_view,
+        uber_prog,
+        researched: set | None = None,
+    ):
         super().__init__(bot, user_id)
         self.slot_index = slot_index
         self.parent = parent_view

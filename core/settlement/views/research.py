@@ -25,29 +25,29 @@ _RESEARCH_COST_ITEM = "unidentified_blueprint"
 # Buildings that require research before they can be built.
 RESEARCHABLE_BUILDINGS: dict[str, str] = {
     "companion_ranch": "Companion Ranch",
-    "apothecary":      "Apothecary",
-    "temple":          "Temple",
-    "barracks":        "Barracks",
-    "black_market":    "Black Market",
-    "market":          "Market",
+    "apothecary": "Apothecary",
+    "temple": "Temple",
+    "barracks": "Barracks",
+    "black_market": "Black Market",
+    "market": "Market",
 }
 
 _BUILDING_EMOJIS: dict[str, str] = {
     "companion_ranch": "🐾",
-    "apothecary":      "⚗️",
-    "temple":          "⛪",
-    "barracks":        "⚔️",
-    "black_market":    "🕵️",
-    "market":          "💰",
+    "apothecary": "⚗️",
+    "temple": "⛪",
+    "barracks": "⚔️",
+    "black_market": "🕵️",
+    "market": "💰",
 }
 
 _BUILDING_DESCS: dict[str, str] = {
     "companion_ranch": "Generates XP Cookies for pets",
-    "apothecary":      "Increases Potion Healing",
-    "temple":          "Increases Propagate follower gain",
-    "barracks":        "Passive ATK/DEF boost per Worker",
-    "black_market":    "Trade resources for mystery caches",
-    "market":          "Generates passive Gold",
+    "apothecary": "Increases Potion Healing",
+    "temple": "Increases Propagate follower gain",
+    "barracks": "Passive ATK/DEF boost per Worker",
+    "black_market": "Trade resources for mystery caches",
+    "market": "Generates passive Gold",
 }
 
 
@@ -97,8 +97,14 @@ class ResearchView(SettlementBaseView):
             if b_type == active_type:
                 continue
             emoji = _BUILDING_EMOJIS[b_type]
-            options.append(SelectOption(label=b_name, value=b_type, emoji=emoji,
-                                        description=_BUILDING_DESCS[b_type]))
+            options.append(
+                SelectOption(
+                    label=b_name,
+                    value=b_type,
+                    emoji=emoji,
+                    description=_BUILDING_DESCS[b_type],
+                )
+            )
 
         if options:
             self._select = ui.Select(
@@ -166,7 +172,9 @@ class ResearchView(SettlementBaseView):
         # Active research queue
         if self._active:
             b_type, start_str = self._active
-            b_name = RESEARCHABLE_BUILDINGS.get(b_type, b_type.replace("_", " ").title())
+            b_name = RESEARCHABLE_BUILDINGS.get(
+                b_type, b_type.replace("_", " ").title()
+            )
             emoji = _BUILDING_EMOJIS.get(b_type, "🔬")
             end = datetime.fromisoformat(start_str) + timedelta(hours=_RESEARCH_HOURS)
             now = datetime.now()

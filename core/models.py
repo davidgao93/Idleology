@@ -13,29 +13,29 @@ Every existing ``from core.models import X`` continues to work unchanged.
 New code should import directly from the canonical module.
 """
 
-from core.items.models import (  # noqa: F401
-    _PART_SLOT_LABELS,
-    Accessory,
-    Armor,
-    Boot,
-    Companion,
-    CodexTome,
-    Glove,
-    Helmet,
-    MonsterPart,
-    Weapon,
-)
 from core.combat.models import (  # noqa: F401
-    CombatState,
     CodexRunState,
+    CombatState,
     DungeonRoomOption,
     DungeonState,
     Monster,
     MonsterModifier,
     Player,
 )
-from core.settlement.models import Building, Settlement  # noqa: F401
+from core.items.models import (  # noqa: F401
+    _PART_SLOT_LABELS,
+    Accessory,
+    Armor,
+    Boot,
+    CodexTome,
+    Companion,
+    Glove,
+    Helmet,
+    MonsterPart,
+    Weapon,
+)
 from core.partners.models import Partner  # noqa: F401
+from core.settlement.models import Building, Settlement  # noqa: F401
 
 __all__ = [
     # items

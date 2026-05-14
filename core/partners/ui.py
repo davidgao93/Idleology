@@ -9,7 +9,12 @@ from core.partners.mechanics import (
     get_sig_dispatch_effect_text,
     get_skill_effect_text,
 )
-from core.partners.resources import _rarity_colour, _sig_display_name, _skill_display_name, _stars
+from core.partners.resources import (
+    _rarity_colour,
+    _sig_display_name,
+    _skill_display_name,
+    _stars,
+)
 
 
 def _build_partner_embed(partner: Partner, items: dict) -> discord.Embed:

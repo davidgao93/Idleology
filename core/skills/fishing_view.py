@@ -1,7 +1,9 @@
 import asyncio
+
 import discord
-from discord import Interaction, ButtonStyle
+from discord import ButtonStyle, Interaction
 from discord.ui import Button
+
 from core.base_view import BaseView
 from core.skills.mechanics import SkillMechanics
 
@@ -14,7 +16,7 @@ class FishingView(BaseView):
         super().__init__(bot, user_id, server_id)
         self.user_mention = user_mention
 
-        self.state = "idle"   # idle | casting | bite | escaped | result
+        self.state = "idle"  # idle | casting | bite | escaped | result
         self.skill_data = None
         self.user_data = None
 
@@ -90,25 +92,30 @@ class FishingView(BaseView):
             color = 0xFF8C00
 
         elif self.state == "escaped":
-            desc = (
-                "💨 The fish slipped the hook...\n\n"
-                "Cast again to try your luck."
-            )
+            desc = "💨 The fish slipped the hook...\n\n" "Cast again to try your luck."
             color = 0x888888
 
         else:  # result
-            lines = [f"**{name}:** +{amt:,}" for name, amt in self.last_yield.items() if amt > 0]
-            desc = "🐟 **You reeled it in!**\n\n" + ("\n".join(lines) or "Nothing caught.")
+            lines = [
+                f"**{name}:** +{amt:,}"
+                for name, amt in self.last_yield.items()
+                if amt > 0
+            ]
+            desc = "🐟 **You reeled it in!**\n\n" + (
+                "\n".join(lines) or "Nothing caught."
+            )
             color = 0x00CC44
 
         title_map = {
-            "idle":     "🎣 Fishing",
-            "casting":  "🎣 Fishing",
-            "bite":     "🎣 Fishing — Something's Biting!",
-            "escaped":  "🎣 Fishing — Got Away!",
-            "result":   "🎣 Fishing — Catch!",
+            "idle": "🎣 Fishing",
+            "casting": "🎣 Fishing",
+            "bite": "🎣 Fishing — Something's Biting!",
+            "escaped": "🎣 Fishing — Got Away!",
+            "result": "🎣 Fishing — Catch!",
         }
-        embed = discord.Embed(title=title_map[self.state], description=desc, color=color)
+        embed = discord.Embed(
+            title=title_map[self.state], description=desc, color=color
+        )
         if self.user_data:
             embed.set_thumbnail(url=self.user_data[7])
         return embed
@@ -141,7 +148,9 @@ class FishingView(BaseView):
             self.add_item(waiting_btn)
 
         elif self.state == "bite":
-            reel_btn = Button(label="Reel In!", style=ButtonStyle.success, emoji="🐟", row=0)
+            reel_btn = Button(
+                label="Reel In!", style=ButtonStyle.success, emoji="🐟", row=0
+            )
             reel_btn.callback = self.reel_callback
             self.add_item(reel_btn)
 
@@ -171,7 +180,9 @@ class FishingView(BaseView):
 
         cost = SkillMechanics.get_entry_cost("fishing", self.rod_tier)
         if self.gold < cost:
-            await interaction.followup.send("You don't have enough gold to buy bait!", ephemeral=True)
+            await interaction.followup.send(
+                "You don't have enough gold to buy bait!", ephemeral=True
+            )
             return
 
         await self.bot.database.skills.charge_entry_cost(self.user_id, cost)
@@ -179,7 +190,9 @@ class FishingView(BaseView):
 
         self.state = "casting"
         self.setup_ui()
-        await interaction.edit_original_response(content=None, embed=self.get_embed(), view=self)
+        await interaction.edit_original_response(
+            content=None, embed=self.get_embed(), view=self
+        )
 
         wait = SkillMechanics.get_fishing_wait(self.rod_tier)
         self._bite_task = asyncio.create_task(self._wait_for_bite(wait))
@@ -221,12 +234,16 @@ class FishingView(BaseView):
 
         info = SkillMechanics.get_skill_info("fishing")
         name_map = {col: label for col, label in info["resources"]}
-        self.last_yield = {name_map.get(col, col): amt for col, amt in yield_dict.items()}
+        self.last_yield = {
+            name_map.get(col, col): amt for col, amt in yield_dict.items()
+        }
 
         self.state = "result"
         self.setup_ui()
         await self.refresh_data()
-        await interaction.edit_original_response(content=None, embed=self.get_embed(), view=self)
+        await interaction.edit_original_response(
+            content=None, embed=self.get_embed(), view=self
+        )
 
     async def pack_up_callback(self, interaction: Interaction):
         self._cancel_tasks()

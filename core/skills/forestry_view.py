@@ -1,8 +1,10 @@
 import asyncio
 import random
+
 import discord
-from discord import Interaction, ButtonStyle
+from discord import ButtonStyle, Interaction
 from discord.ui import Button
+
 from core.base_view import BaseView
 from core.skills.mechanics import SkillMechanics
 
@@ -14,7 +16,7 @@ class ForestryView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str):
         super().__init__(bot, user_id, server_id)
 
-        self.state = "idle"   # idle | chopping | cooldown | ready
+        self.state = "idle"  # idle | chopping | cooldown | ready
         self.skill_data = None
         self.user_data = None
 
@@ -79,7 +81,8 @@ class ForestryView(BaseView):
         elif self.state == "chopping":
             knot_line = (
                 "\n\n⚠️ **A gnarled knot is blocking your swing!** Clear it first."
-                if self.knot_blocking else ""
+                if self.knot_blocking
+                else ""
             )
             desc = (
                 f"**Axe:** {tier.title()} Axe\n\n"
@@ -92,7 +95,11 @@ class ForestryView(BaseView):
 
         elif self.state == "cooldown":
             cooldown = SkillMechanics.get_forestry_cooldown(tier)
-            lines = [f"**{name}:** +{amt:,}" for name, amt in self.last_yield.items() if amt > 0]
+            lines = [
+                f"**{name}:** +{amt:,}"
+                for name, amt in self.last_yield.items()
+                if amt > 0
+            ]
             result_text = "\n".join(lines) or "Nothing gathered."
             mins, secs = divmod(cooldown, 60)
             desc = (
@@ -145,7 +152,11 @@ class ForestryView(BaseView):
 
         elif self.state == "cooldown":
             waiting_btn = Button(
-                label="Waiting...", style=ButtonStyle.secondary, emoji="⏳", disabled=True, row=0
+                label="Waiting...",
+                style=ButtonStyle.secondary,
+                emoji="⏳",
+                disabled=True,
+                row=0,
             )
             self.add_item(waiting_btn)
 
@@ -201,7 +212,9 @@ class ForestryView(BaseView):
             )
             info = SkillMechanics.get_skill_info("woodcutting")
             name_map = {col: label for col, label in info["resources"]}
-            self.last_yield = {name_map.get(col, col): amt for col, amt in yield_dict.items()}
+            self.last_yield = {
+                name_map.get(col, col): amt for col, amt in yield_dict.items()
+            }
 
             self.state = "cooldown"
             self.setup_ui()

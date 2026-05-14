@@ -1,26 +1,28 @@
 import aiosqlite
-from .repositories.users import UserRepository
-from .repositories.equipment import EquipmentRepository
-from .repositories.skills import SkillRepository
-from .repositories.social import SocialRepository
-from .repositories.settings import SettingsRepository
+
+from .repositories.alchemy import AlchemyRepository
+from .repositories.ascension import AscensionRepository
+from .repositories.boss_party import BossPartyRepository
+from .repositories.codex import CodexRepository
 from .repositories.companions import CompanionRepository
 from .repositories.delve import DelveRepository
-from .repositories.settlement import SettlementRepository
-from .repositories.slayer import SlayerRepository
-from .repositories.uber import UberRepository
-from .repositories.codex import CodexRepository
 from .repositories.duels import DuelStatsRepository
-from .repositories.alchemy import AlchemyRepository
+from .repositories.equipment import EquipmentRepository
 from .repositories.essences import EssencesRepository
-from .repositories.ascension import AscensionRepository
-from .repositories.prestige import PrestigeRepository
-from .repositories.monster_parts import MonsterPartsRepository
-from .repositories.partners import PartnerRepository
-from .repositories.boss_party import BossPartyRepository
-from .repositories.maw import MawRepository
-from .repositories.paradise import ParadiseRepository
 from .repositories.journey import JourneyRepository
+from .repositories.maw import MawRepository
+from .repositories.monster_parts import MonsterPartsRepository
+from .repositories.paradise import ParadiseRepository
+from .repositories.partners import PartnerRepository
+from .repositories.prestige import PrestigeRepository
+from .repositories.settings import SettingsRepository
+from .repositories.settlement import SettlementRepository
+from .repositories.skills import SkillRepository
+from .repositories.slayer import SlayerRepository
+from .repositories.social import SocialRepository
+from .repositories.uber import UberRepository
+from .repositories.users import UserRepository
+
 
 class DatabaseManager:
     def __init__(self, *, connection: aiosqlite.Connection) -> None:

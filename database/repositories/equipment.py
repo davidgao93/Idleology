@@ -1,8 +1,11 @@
+from typing import List, Literal, Optional, Tuple
+
 import aiosqlite
-from typing import Literal, Optional, List, Tuple
-from core.models import Weapon, Armor, Accessory, Glove, Boot, Helmet
+
+from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 
 ItemType = Literal["weapon", "armor", "accessory", "glove", "boot", "helmet"]
+
 
 class EquipmentRepository:
     def __init__(self, connection: aiosqlite.Connection):
@@ -15,7 +18,7 @@ class EquipmentRepository:
             "accessories": "accessories",
             "glove": "gloves",
             "boot": "boots",
-            "helmet": "helmets"
+            "helmet": "helmets",
         }
 
     # ---------------------------------------------------------
@@ -25,14 +28,18 @@ class EquipmentRepository:
     async def get_all(self, user_id: str, item_type: ItemType) -> List[Tuple]:
         """Fetch all items of a specific type for a user."""
         table = self.tables[item_type]
-        rows = await self.connection.execute(f"SELECT * FROM {table} WHERE user_id=?", (user_id,))
+        rows = await self.connection.execute(
+            f"SELECT * FROM {table} WHERE user_id=?", (user_id,)
+        )
         async with rows as cursor:
             return await cursor.fetchall()
 
     async def get_by_id(self, item_id: int, item_type: ItemType) -> Optional[Tuple]:
         """Fetch a single item by ID."""
         table = self.tables[item_type]
-        rows = await self.connection.execute(f"SELECT * FROM {table} WHERE item_id=?", (item_id,))
+        rows = await self.connection.execute(
+            f"SELECT * FROM {table} WHERE item_id=?", (item_id,)
+        )
         async with rows as cursor:
             return await cursor.fetchone()
 
@@ -41,8 +48,7 @@ class EquipmentRepository:
         table = self.tables[item_type]
         # Note: SQLite booleans are 1/0, so is_equipped=1 works generally
         rows = await self.connection.execute(
-            f"SELECT * FROM {table} WHERE user_id = ? AND is_equipped = 1", 
-            (user_id,)
+            f"SELECT * FROM {table} WHERE user_id = ? AND is_equipped = 1", (user_id,)
         )
         async with rows as cursor:
             return await cursor.fetchone()
@@ -53,12 +59,11 @@ class EquipmentRepository:
         # 1. Unequip all (safety)
         await self.connection.execute(
             f"UPDATE {table} SET is_equipped = 0 WHERE user_id = ? AND is_equipped = 1",
-            (user_id,)
+            (user_id,),
         )
         # 2. Equip specific
         await self.connection.execute(
-            f"UPDATE {table} SET is_equipped = 1 WHERE item_id = ?",
-            (item_id,)
+            f"UPDATE {table} SET is_equipped = 1 WHERE item_id = ?", (item_id,)
         )
         await self.connection.commit()
 
@@ -67,30 +72,36 @@ class EquipmentRepository:
         table = self.tables[item_type]
         await self.connection.execute(
             f"UPDATE {table} SET is_equipped = 0 WHERE user_id = ? AND is_equipped = 1",
-            (user_id,)
+            (user_id,),
         )
         await self.connection.commit()
 
     async def discard(self, item_id: int, item_type: ItemType) -> None:
         """Permanently delete an item."""
         table = self.tables[item_type]
-        await self.connection.execute(f"DELETE FROM {table} WHERE item_id = ?", (item_id,))
+        await self.connection.execute(
+            f"DELETE FROM {table} WHERE item_id = ?", (item_id,)
+        )
         await self.connection.commit()
 
-    async def transfer(self, item_id: int, new_user_id: str, item_type: ItemType) -> None:
+    async def transfer(
+        self, item_id: int, new_user_id: str, item_type: ItemType
+    ) -> None:
         """Send item to another player (updates user_id)."""
         table = self.tables[item_type]
         # Also unequip it to be safe
         await self.connection.execute(
             f"UPDATE {table} SET user_id = ?, is_equipped = 0 WHERE item_id = ?",
-            (new_user_id, item_id)
+            (new_user_id, item_id),
         )
         await self.connection.commit()
 
     async def get_count(self, user_id: str, item_type: ItemType) -> int:
         """Count items of a type (for inventory limits)."""
         table = self.tables[item_type]
-        rows = await self.connection.execute(f"SELECT COUNT(*) FROM {table} WHERE user_id = ?", (user_id,))
+        rows = await self.connection.execute(
+            f"SELECT COUNT(*) FROM {table} WHERE user_id = ?", (user_id,)
+        )
         res = await rows.fetchone()
         return res[0] if res else 0
 
@@ -105,8 +116,20 @@ class EquipmentRepository:
             is_equipped, forges_remaining, refines_remaining,
             hit_chance, crit_chance, crit_multi, base_rarity)
             VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)""",
-            (w.user, w.name, w.level, w.attack, w.defence, w.rarity, potential, potential,
-             w.hit_chance, w.crit_chance, w.crit_multi, w.base_rarity)
+            (
+                w.user,
+                w.name,
+                w.level,
+                w.attack,
+                w.defence,
+                w.rarity,
+                potential,
+                potential,
+                w.hit_chance,
+                w.crit_chance,
+                w.crit_multi,
+                w.base_rarity,
+            ),
         )
         await self.connection.commit()
 
@@ -116,8 +139,20 @@ class EquipmentRepository:
             """INSERT INTO armor (user_id, item_name, item_level, block, evasion, ward,
             pdr, fdr, temper_remaining, main_stat_type, main_stat, reinforces_remaining)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (a.user, a.name, a.level, a.block, a.evasion, a.ward, a.pdr, a.fdr,
-             potential, a.main_stat_type, a.main_stat, potential)
+            (
+                a.user,
+                a.name,
+                a.level,
+                a.block,
+                a.evasion,
+                a.ward,
+                a.pdr,
+                a.fdr,
+                potential,
+                a.main_stat_type,
+                a.main_stat,
+                potential,
+            ),
         )
         await self.connection.commit()
 
@@ -126,7 +161,7 @@ class EquipmentRepository:
             """INSERT INTO accessories (user_id, item_name, item_level, attack, defence, 
             rarity, ward, crit, is_equipped, potential_remaining, passive_lvl) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 10, 0)""",
-            (a.user, a.name, a.level, a.attack, a.defence, a.rarity, a.ward, a.crit)
+            (a.user, a.name, a.level, a.attack, a.defence, a.rarity, a.ward, a.crit),
         )
         await self.connection.commit()
 
@@ -136,7 +171,18 @@ class EquipmentRepository:
             """INSERT INTO gloves (user_id, item_name, item_level, attack, defence, ward,
             pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl, reinforces_remaining)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 5, 0, ?)""",
-            (g.user, g.name, g.level, g.attack, g.defence, g.ward, g.pdr, g.fdr, g.passive, potential)
+            (
+                g.user,
+                g.name,
+                g.level,
+                g.attack,
+                g.defence,
+                g.ward,
+                g.pdr,
+                g.fdr,
+                g.passive,
+                potential,
+            ),
         )
         await self.connection.commit()
 
@@ -146,7 +192,18 @@ class EquipmentRepository:
             """INSERT INTO boots (user_id, item_name, item_level, attack, defence, ward,
             pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl, reinforces_remaining)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 6, 0, ?)""",
-            (b.user, b.name, b.level, b.attack, b.defence, b.ward, b.pdr, b.fdr, b.passive, potential)
+            (
+                b.user,
+                b.name,
+                b.level,
+                b.attack,
+                b.defence,
+                b.ward,
+                b.pdr,
+                b.fdr,
+                b.passive,
+                potential,
+            ),
         )
         await self.connection.commit()
 
@@ -156,7 +213,17 @@ class EquipmentRepository:
             """INSERT INTO helmets (user_id, item_name, item_level, defence, ward,
             pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl, reinforces_remaining)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 5, 0, ?)""",
-            (h.user, h.name, h.level, h.defence, h.ward, h.pdr, h.fdr, h.passive, potential)
+            (
+                h.user,
+                h.name,
+                h.level,
+                h.defence,
+                h.ward,
+                h.pdr,
+                h.fdr,
+                h.passive,
+                potential,
+            ),
         )
         await self.connection.commit()
 
@@ -164,30 +231,59 @@ class EquipmentRepository:
     # Upgrades & Modifications (Specifics)
     # ---------------------------------------------------------
 
-    async def update_passive(self, item_id: int, item_type: ItemType, passive_name: str, passive_column: str = "passive") -> None:
+    async def update_passive(
+        self,
+        item_id: int,
+        item_type: ItemType,
+        passive_name: str,
+        passive_column: str = "passive",
+    ) -> None:
         """Updates a passive column (passive, pinnacle_passive, utmost_passive, armor_passive)."""
         table = self.tables[item_type]
-        await self.connection.execute(f"UPDATE {table} SET {passive_column} = ? WHERE item_id = ?", (passive_name, item_id))
+        await self.connection.execute(
+            f"UPDATE {table} SET {passive_column} = ? WHERE item_id = ?",
+            (passive_name, item_id),
+        )
         await self.connection.commit()
 
-    async def update_counter(self, item_id: int, item_type: ItemType, column: str, new_value: int) -> None:
+    async def update_counter(
+        self, item_id: int, item_type: ItemType, column: str, new_value: int
+    ) -> None:
         """Updates an integer counter (potential, forges, refines, level)."""
         table = self.tables[item_type]
         # Basic validation to prevent arbitrary SQL injection if column comes from untrusted source
-        allowed = ["forges_remaining", "refines_remaining", "refinement_lvl", "potential_remaining",
-                   "passive_lvl", "temper_remaining", "imbue_remaining", "forge_tier",
-                   "essence_1_val", "essence_2_val", "essence_3_val",
-                   "reinforces_remaining", "reinforcement_lvl"]
+        allowed = [
+            "forges_remaining",
+            "refines_remaining",
+            "refinement_lvl",
+            "potential_remaining",
+            "passive_lvl",
+            "temper_remaining",
+            "imbue_remaining",
+            "forge_tier",
+            "essence_1_val",
+            "essence_2_val",
+            "essence_3_val",
+            "reinforces_remaining",
+            "reinforcement_lvl",
+        ]
         if column not in allowed:
             raise ValueError(f"Invalid column for update_counter: {column}")
-            
-        await self.connection.execute(f"UPDATE {table} SET {column} = ? WHERE item_id = ?", (new_value, item_id))
+
+        await self.connection.execute(
+            f"UPDATE {table} SET {column} = ? WHERE item_id = ?", (new_value, item_id)
+        )
         await self.connection.commit()
 
-    async def increase_stat(self, item_id: int, item_type: ItemType, stat: str, amount: int) -> None:
+    async def increase_stat(
+        self, item_id: int, item_type: ItemType, stat: str, amount: int
+    ) -> None:
         """Increments a stat (attack, defence, pdr, fdr, rarity, block, etc)."""
         table = self.tables[item_type]
-        await self.connection.execute(f"UPDATE {table} SET {stat} = {stat} + ? WHERE item_id = ?", (amount, item_id))
+        await self.connection.execute(
+            f"UPDATE {table} SET {stat} = {stat} + ? WHERE item_id = ?",
+            (amount, item_id),
+        )
         await self.connection.commit()
 
     # ---------------------------------------------------------
@@ -198,7 +294,9 @@ class EquipmentRepository:
 
     def _validate_essence_item_type(self, item_type: ItemType) -> None:
         if item_type not in self._ESSENCE_ITEM_TYPES:
-            raise ValueError(f"Essences can only be applied to glove, boot, or helmet (got '{item_type}')")
+            raise ValueError(
+                f"Essences can only be applied to glove, boot, or helmet (got '{item_type}')"
+            )
 
     async def get_essence_slots(self, item_id: int, item_type: ItemType) -> list:
         """
@@ -210,7 +308,7 @@ class EquipmentRepository:
         cursor = await self.connection.execute(
             f"SELECT essence_1, essence_1_val, essence_2, essence_2_val, "
             f"essence_3, essence_3_val FROM {table} WHERE item_id = ?",
-            (item_id,)
+            (item_id,),
         )
         row = await cursor.fetchone()
         if not row:
@@ -222,7 +320,14 @@ class EquipmentRepository:
                 slots.append((i + 1, t, v or 0.0))
         return slots
 
-    async def apply_essence(self, item_id: int, item_type: ItemType, slot: int, essence_type: str, value: float) -> None:
+    async def apply_essence(
+        self,
+        item_id: int,
+        item_type: ItemType,
+        slot: int,
+        essence_type: str,
+        value: float,
+    ) -> None:
         """Writes a regular essence into the given slot (1, 2, or 3)."""
         self._validate_essence_item_type(item_type)
         if slot not in (1, 2, 3):
@@ -232,17 +337,19 @@ class EquipmentRepository:
         col_val = f"essence_{slot}_val"
         await self.connection.execute(
             f"UPDATE {table} SET {col_type} = ?, {col_val} = ? WHERE item_id = ?",
-            (essence_type, value, item_id)
+            (essence_type, value, item_id),
         )
         await self.connection.commit()
 
-    async def apply_corrupted_essence(self, item_id: int, item_type: ItemType, essence_type: str) -> None:
+    async def apply_corrupted_essence(
+        self, item_id: int, item_type: ItemType, essence_type: str
+    ) -> None:
         """Sets the corrupted essence slot."""
         self._validate_essence_item_type(item_type)
         table = self.tables[item_type]
         await self.connection.execute(
             f"UPDATE {table} SET corrupted_essence = ? WHERE item_id = ?",
-            (essence_type, item_id)
+            (essence_type, item_id),
         )
         await self.connection.commit()
 
@@ -254,11 +361,13 @@ class EquipmentRepository:
             f"UPDATE {table} SET essence_1 = 'none', essence_1_val = 0, "
             f"essence_2 = 'none', essence_2_val = 0, "
             f"essence_3 = 'none', essence_3_val = 0 WHERE item_id = ?",
-            (item_id,)
+            (item_id,),
         )
         await self.connection.commit()
 
-    async def reroll_essences(self, item_id: int, item_type: ItemType, new_values: list) -> None:
+    async def reroll_essences(
+        self, item_id: int, item_type: ItemType, new_values: list
+    ) -> None:
         """
         Replaces the values of all occupied regular essence slots (Essence of Chaos).
         new_values must be a list of floats matching the number of occupied slots in order.
@@ -272,7 +381,7 @@ class EquipmentRepository:
             col_val = f"essence_{slot_index}_val"
             await self.connection.execute(
                 f"UPDATE {table} SET {col_val} = ? WHERE item_id = ?",
-                (new_val, item_id)
+                (new_val, item_id),
             )
         await self.connection.commit()
 
@@ -282,6 +391,7 @@ class EquipmentRepository:
         Returns the slot index that was removed, or 0 if no slots were occupied.
         """
         import random
+
         self._validate_essence_item_type(item_type)
         slots = await self.get_essence_slots(item_id, item_type)
         if not slots:
@@ -290,20 +400,32 @@ class EquipmentRepository:
         table = self.tables[item_type]
         await self.connection.execute(
             f"UPDATE {table} SET essence_{slot_index} = 'none', essence_{slot_index}_val = 0 WHERE item_id = ?",
-            (item_id,)
+            (item_id,),
         )
         await self.connection.commit()
         return slot_index
 
-    async def apply_mirage(self, item_id: int, item_type: ItemType, fields: dict) -> None:
+    async def apply_mirage(
+        self, item_id: int, item_type: ItemType, fields: dict
+    ) -> None:
         """Overwrite a specific set of stat columns on an item (Rune of Mirage)."""
         table = self.tables[item_type]
         allowed = {
-            "item_name", "item_level",
-            "attack", "defence", "rarity", "ward", "crit",
-            "block", "evasion", "pdr", "fdr",
-            "main_stat", "main_stat_type",
-            "reinforcement_lvl", "refinement_lvl",
+            "item_name",
+            "item_level",
+            "attack",
+            "defence",
+            "rarity",
+            "ward",
+            "crit",
+            "block",
+            "evasion",
+            "pdr",
+            "fdr",
+            "main_stat",
+            "main_stat_type",
+            "reinforcement_lvl",
+            "refinement_lvl",
         }
         safe = {k: v for k, v in fields.items() if k in allowed}
         if not safe:
@@ -320,7 +442,7 @@ class EquipmentRepository:
         # Requirements: Unequipped, has an active passive. No refinement/forge limits.
         rows = await self.connection.execute(
             "SELECT * FROM items WHERE user_id = ? AND passive != 'none' AND is_equipped = 0",
-            (user_id,)
+            (user_id,),
         )
         async with rows as cursor:
             return await cursor.fetchall()

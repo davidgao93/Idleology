@@ -22,13 +22,13 @@ class BossPartyRepository:
         if not row:
             return None
         return {
-            "id":           row[0],
-            "attacker_id":  row[1],
-            "tank_id":      row[2],
-            "healer_id":    row[3],
-            "boss_name":    row[4],
-            "boss_max_hp":  row[5],
-            "start_time":   row[6],
+            "id": row[0],
+            "attacker_id": row[1],
+            "tank_id": row[2],
+            "healer_id": row[3],
+            "boss_name": row[4],
+            "boss_max_hp": row[5],
+            "start_time": row[6],
         }
 
     async def create(
@@ -47,8 +47,16 @@ class BossPartyRepository:
                (user_id, server_id, attacker_id, tank_id, healer_id,
                 boss_name, boss_max_hp, start_time)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (user_id, server_id, attacker_id, tank_id, healer_id,
-             boss_name, boss_max_hp, start_time),
+            (
+                user_id,
+                server_id,
+                attacker_id,
+                tank_id,
+                healer_id,
+                boss_name,
+                boss_max_hp,
+                start_time,
+            ),
         )
         await self.connection.commit()
 

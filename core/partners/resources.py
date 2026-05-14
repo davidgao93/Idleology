@@ -4,21 +4,21 @@
 
 _SIG_SKILL_NAMES: dict[str, str] = {
     # Combat signatures
-    "sig_co_skol":    "Essence Communion",
-    "sig_co_eve":     "Final Stand",
-    "sig_co_kay":     "Windfall",
+    "sig_co_skol": "Essence Communion",
+    "sig_co_eve": "Final Stand",
+    "sig_co_kay": "Windfall",
     "sig_co_sigmund": "Decisive Strike",
-    "sig_co_velour":  "Fortune's Tide",
-    "sig_co_flora":   "Nature's Bounty",
-    "sig_co_yvenn":   "Apex Hunter",
+    "sig_co_velour": "Fortune's Tide",
+    "sig_co_flora": "Nature's Bounty",
+    "sig_co_yvenn": "Apex Hunter",
     # Dispatch signatures
-    "sig_di_skol":    "Arcane Salvage",
-    "sig_di_eve":     "Spectral Offering",
-    "sig_di_kay":     "Boundless Journey",
+    "sig_di_skol": "Arcane Salvage",
+    "sig_di_eve": "Spectral Offering",
+    "sig_di_kay": "Boundless Journey",
     "sig_di_sigmund": "Twin Mandate",
-    "sig_di_velour":  "Stellar Fortune",
-    "sig_di_flora":   "Bountiful Harvest",
-    "sig_di_yvenn":   "Hunt Contract",
+    "sig_di_velour": "Stellar Fortune",
+    "sig_di_flora": "Bountiful Harvest",
+    "sig_di_yvenn": "Hunt Contract",
 }
 
 

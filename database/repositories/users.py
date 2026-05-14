@@ -264,7 +264,8 @@ class UserRepository:
     async def get_companion_collect_time(self, user_id: str) -> str | None:
         """Returns the last companion collection timestamp for a user."""
         async with self.connection.execute(
-            "SELECT last_companion_collect_time FROM users WHERE user_id = ?", (user_id,)
+            "SELECT last_companion_collect_time FROM users WHERE user_id = ?",
+            (user_id,),
         ) as cursor:
             row = await cursor.fetchone()
         return row[0] if row else None

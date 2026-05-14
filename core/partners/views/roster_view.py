@@ -8,10 +8,9 @@ from discord import ButtonStyle, Interaction, ui
 from core.images import PARTNERS_DISPATCH
 from core.models import Partner
 from core.partners.data import PARTNER_DATA
-from core.partners.resources import _rarity_colour, _sig_display_name, _skill_display_name, _stars
+from core.partners.resources import _skill_display_name, _stars
 from core.partners.ui import _build_partner_embed, _build_roster_embed
-from core.partners.views._helpers import PartnerBaseView, _TASK_LABELS
-
+from core.partners.views._helpers import _TASK_LABELS, PartnerBaseView
 
 # ---------------------------------------------------------------------------
 # PartnerRosterView

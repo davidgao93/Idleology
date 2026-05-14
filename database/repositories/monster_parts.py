@@ -4,9 +4,14 @@ _INVENTORY_CAP = 20
 
 # Lower tier = destroyed first when inventory is full
 _SLOT_RARITY_TIER = {
-    "head": 0, "torso": 0,
-    "right_arm": 1, "left_arm": 1, "right_leg": 1, "left_leg": 1,
-    "cheeks": 2, "organs": 2,
+    "head": 0,
+    "torso": 0,
+    "right_arm": 1,
+    "left_arm": 1,
+    "right_leg": 1,
+    "left_leg": 1,
+    "cheeks": 2,
+    "organs": 2,
 }
 
 

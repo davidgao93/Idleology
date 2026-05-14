@@ -81,7 +81,9 @@ def _build_hub_embed(
             f"**Charges:** {charges} / {threshold}",
             f"*{defn.charge_trigger}*",
         ]
-        skill_lines.append(f"**Unleash:** {M.format_unleash_description(equipped, eff_level)}")
+        skill_lines.append(
+            f"**Unleash:** {M.format_unleash_description(equipped, eff_level)}"
+        )
 
         embed.add_field(
             name="⚔️ Equipped Skill",

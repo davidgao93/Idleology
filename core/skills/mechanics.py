@@ -1,5 +1,5 @@
 import random
-from typing import Dict, Tuple, Optional, List
+from typing import Dict, List, Optional, Tuple
 
 from core.images import TOOL_AXE, TOOL_PICKAXE, TOOL_ROD
 
@@ -11,46 +11,46 @@ class SkillMechanics:
     # Fishing: (min_wait_seconds, max_wait_seconds) per rod tier
     FISHING_TIMINGS = {
         "desiccated": (270, 330),
-        "regular":    (210, 270),
-        "sturdy":     (150, 210),
-        "reinforced": (90,  150),
-        "titanium":   (45,  75),
+        "regular": (210, 270),
+        "sturdy": (150, 210),
+        "reinforced": (90, 150),
+        "titanium": (45, 75),
     }
 
     # Forestry: cooldown in seconds after a tree is felled, per axe tier
     FORESTRY_COOLDOWNS = {
-        "flimsy":    300,
-        "carved":    240,
-        "chopping":  180,
-        "magic":     120,
-        "felling":    60,
+        "flimsy": 300,
+        "carved": 240,
+        "chopping": 180,
+        "magic": 120,
+        "felling": 60,
     }
 
     # Gold cost to buy bait / forestry pass, per tool tier
     MINIGAME_ENTRY_COSTS = {
         "fishing": {
             "desiccated": 1_000,
-            "regular":    5_000,
-            "sturdy":     15_000,
+            "regular": 5_000,
+            "sturdy": 15_000,
             "reinforced": 30_000,
-            "titanium":   50_000,
+            "titanium": 50_000,
         },
         "forestry": {
-            "flimsy":    1_000,
-            "carved":    5_000,
-            "chopping":  15_000,
-            "magic":     30_000,
-            "felling":   50_000,
+            "flimsy": 1_000,
+            "carved": 5_000,
+            "chopping": 15_000,
+            "magic": 30_000,
+            "felling": 50_000,
         },
     }
 
     # Number of Swing clicks needed to fell a tree, per axe tier
     FORESTRY_SWINGS = {
-        "flimsy":   8,
-        "carved":   6,
+        "flimsy": 8,
+        "carved": 6,
         "chopping": 5,
-        "magic":    4,
-        "felling":  3,
+        "magic": 4,
+        "felling": 3,
     }
 
     @staticmethod
@@ -67,7 +67,9 @@ class SkillMechanics:
     @staticmethod
     def get_entry_cost(activity: str, tool_tier: str) -> int:
         """Returns the gold entry cost for a single fishing cast or forestry session."""
-        return SkillMechanics.MINIGAME_ENTRY_COSTS.get(activity, {}).get(tool_tier, 1_000)
+        return SkillMechanics.MINIGAME_ENTRY_COSTS.get(activity, {}).get(
+            tool_tier, 1_000
+        )
 
     @staticmethod
     def get_swings_needed(axe_tier: str) -> int:
@@ -75,45 +77,45 @@ class SkillMechanics:
         return SkillMechanics.FORESTRY_SWINGS.get(axe_tier, 8)
 
     SKILL_CONFIG = {
-    "mining": {
-        "display_name": "Mining",
-        "emoji": "⛏️",
-        "tool_name": "Pickaxe",
-        "image": TOOL_PICKAXE,
-        "resources": [
-            ("iron", "Iron Ore"),
-            ("coal", "Coal"),
-            ("gold", "Gold Ore"),
-            ("platinum", "Platinum Ore"),
-            ("idea", "Idea Ore")
-        ]
-    },
-    "woodcutting": {
-        "display_name": "Woodcutting",
-        "emoji": "🪓",
-        "tool_name": "Axe",
-        "image": TOOL_AXE,
-        "resources": [
-            ("oak_logs", "Oak Logs"),
-            ("willow_logs", "Willow Logs"),
-            ("mahogany_logs", "Mahogany Logs"),
-            ("magic_logs", "Magic Logs"),
-            ("idea_logs", "Idea Logs")
-        ]
-    },
-    "fishing": {
-        "display_name": "Fishing",
-        "emoji": "🎣",
-        "tool_name": "Rod",
-        "image": TOOL_ROD,
-        "resources": [
-            ("desiccated_bones", "Desiccated Bones"),
-            ("regular_bones", "Regular Bones"),
-            ("sturdy_bones", "Sturdy Bones"),
-            ("reinforced_bones", "Reinforced Bones"),
-            ("titanium_bones", "Titanium Bones")
-        ]
-        }
+        "mining": {
+            "display_name": "Mining",
+            "emoji": "⛏️",
+            "tool_name": "Pickaxe",
+            "image": TOOL_PICKAXE,
+            "resources": [
+                ("iron", "Iron Ore"),
+                ("coal", "Coal"),
+                ("gold", "Gold Ore"),
+                ("platinum", "Platinum Ore"),
+                ("idea", "Idea Ore"),
+            ],
+        },
+        "woodcutting": {
+            "display_name": "Woodcutting",
+            "emoji": "🪓",
+            "tool_name": "Axe",
+            "image": TOOL_AXE,
+            "resources": [
+                ("oak_logs", "Oak Logs"),
+                ("willow_logs", "Willow Logs"),
+                ("mahogany_logs", "Mahogany Logs"),
+                ("magic_logs", "Magic Logs"),
+                ("idea_logs", "Idea Logs"),
+            ],
+        },
+        "fishing": {
+            "display_name": "Fishing",
+            "emoji": "🎣",
+            "tool_name": "Rod",
+            "image": TOOL_ROD,
+            "resources": [
+                ("desiccated_bones", "Desiccated Bones"),
+                ("regular_bones", "Regular Bones"),
+                ("sturdy_bones", "Sturdy Bones"),
+                ("reinforced_bones", "Reinforced Bones"),
+                ("titanium_bones", "Titanium Bones"),
+            ],
+        },
     }
 
     @staticmethod
@@ -129,24 +131,25 @@ class SkillMechanics:
         Indices 3-7 are resources.
         """
         config = SkillMechanics.SKILL_CONFIG.get(skill)
-        if not config or not row: return []
-        
+        if not config or not row:
+            return []
+
         mapped = []
         # DB Indices 3 to 7 correspond to the 5 resources in order
-        for i, (db_col, display_name) in enumerate(config['resources']):
+        for i, (db_col, display_name) in enumerate(config["resources"]):
             amount = row[i + 3]
             mapped.append((display_name, amount))
-            
+
         return mapped
-        
+
     @staticmethod
     def get_tool_tiers(skill: str) -> list[str]:
         if skill == "mining":
-            return ['iron', 'steel', 'gold', 'platinum', 'ideal']
+            return ["iron", "steel", "gold", "platinum", "ideal"]
         elif skill == "woodcutting":
-            return ['flimsy', 'carved', 'chopping', 'magic', 'felling']
+            return ["flimsy", "carved", "chopping", "magic", "felling"]
         elif skill == "fishing":
-            return ['desiccated', 'regular', 'sturdy', 'reinforced', 'titanium']
+            return ["desiccated", "regular", "sturdy", "reinforced", "titanium"]
         return []
 
     @staticmethod
@@ -168,29 +171,29 @@ class SkillMechanics:
         """
         # Define costs tuple: (res1, res2, res3, res4, gold)
         # Mapping matches the DB columns index logic in the repository
-        
+
         costs_map = {}
-        
+
         if skill == "mining":
             costs_map = {
-                'iron': (100, 0, 0, 0, 1000),
-                'steel': (200, 100, 0, 0, 5000),
-                'gold': (300, 200, 100, 0, 10000),
-                'platinum': (600, 400, 200, 100, 100000),
+                "iron": (100, 0, 0, 0, 1000),
+                "steel": (200, 100, 0, 0, 5000),
+                "gold": (300, 200, 100, 0, 10000),
+                "platinum": (600, 400, 200, 100, 100000),
             }
         elif skill == "woodcutting":
             costs_map = {
-                'flimsy': (100, 0, 0, 0, 1000),
-                'carved': (200, 100, 0, 0, 5000),
-                'chopping': (300, 200, 100, 0, 10000),
-                'magic': (600, 400, 200, 100, 100000),
+                "flimsy": (100, 0, 0, 0, 1000),
+                "carved": (200, 100, 0, 0, 5000),
+                "chopping": (300, 200, 100, 0, 10000),
+                "magic": (600, 400, 200, 100, 100000),
             }
         elif skill == "fishing":
             costs_map = {
-                'desiccated': (100, 0, 0, 0, 1000),
-                'regular': (200, 100, 0, 0, 5000),
-                'sturdy': (300, 200, 100, 0, 10000),
-                'reinforced': (600, 400, 200, 100, 50000),
+                "desiccated": (100, 0, 0, 0, 1000),
+                "regular": (200, 100, 0, 0, 5000),
+                "sturdy": (300, 200, 100, 0, 10000),
+                "reinforced": (600, 400, 200, 100, 50000),
             }
 
         cost_tuple = costs_map.get(current_tier)
@@ -198,13 +201,12 @@ class SkillMechanics:
             return None
 
         return {
-            'res_1': cost_tuple[0],
-            'res_2': cost_tuple[1],
-            'res_3': cost_tuple[2],
-            'res_4': cost_tuple[3],
-            'gold': cost_tuple[4]
+            "res_1": cost_tuple[0],
+            "res_2": cost_tuple[1],
+            "res_3": cost_tuple[2],
+            "res_4": cost_tuple[3],
+            "gold": cost_tuple[4],
         }
-    
 
     @staticmethod
     def calculate_yield(skill_type: str, tool_tier: str) -> Dict[str, int]:
@@ -213,34 +215,75 @@ class SkillMechanics:
         Returns a dictionary {resource_column_name: amount}.
         """
         ranges = {}
-        
+
         if skill_type == "mining":
             # Resources: iron, coal, gold, platinum, idea
             ranges = {
-                'iron': {'iron': (3,5), 'steel': (4,7), 'gold': (5,8), 'platinum': (6,10), 'ideal': (7,12)},
-                'coal': {'steel': (3,5), 'gold': (4,7), 'platinum': (5,8), 'ideal': (6,10)},
-                'gold': {'gold': (3,5), 'platinum': (4,7), 'ideal': (5,8)},
-                'platinum': {'platinum': (3,5), 'ideal': (4,7)},
-                'idea': {'ideal': (3,5)}
+                "iron": {
+                    "iron": (3, 5),
+                    "steel": (4, 7),
+                    "gold": (5, 8),
+                    "platinum": (6, 10),
+                    "ideal": (7, 12),
+                },
+                "coal": {
+                    "steel": (3, 5),
+                    "gold": (4, 7),
+                    "platinum": (5, 8),
+                    "ideal": (6, 10),
+                },
+                "gold": {"gold": (3, 5), "platinum": (4, 7), "ideal": (5, 8)},
+                "platinum": {"platinum": (3, 5), "ideal": (4, 7)},
+                "idea": {"ideal": (3, 5)},
             }
         elif skill_type == "fishing":
             # Resources: desiccated_bones, regular_bones, sturdy_bones, reinforced_bones, titanium_bones
             # Note: DB columns usually have _bones suffix, mapping keys here for DB compatibility
             ranges = {
-                'desiccated_bones': {'desiccated': (3,5), 'regular': (4,7), 'sturdy': (5,8), 'reinforced': (6,10), 'titanium': (7,12)},
-                'regular_bones': {'regular': (3,5), 'sturdy': (4,7), 'reinforced': (5,8), 'titanium': (6,10)},
-                'sturdy_bones': {'sturdy': (3,5), 'reinforced': (4,7), 'titanium': (5,8)},
-                'reinforced_bones': {'reinforced': (3,5), 'titanium': (4,7)},
-                'titanium_bones': {'titanium': (3,5)}
+                "desiccated_bones": {
+                    "desiccated": (3, 5),
+                    "regular": (4, 7),
+                    "sturdy": (5, 8),
+                    "reinforced": (6, 10),
+                    "titanium": (7, 12),
+                },
+                "regular_bones": {
+                    "regular": (3, 5),
+                    "sturdy": (4, 7),
+                    "reinforced": (5, 8),
+                    "titanium": (6, 10),
+                },
+                "sturdy_bones": {
+                    "sturdy": (3, 5),
+                    "reinforced": (4, 7),
+                    "titanium": (5, 8),
+                },
+                "reinforced_bones": {"reinforced": (3, 5), "titanium": (4, 7)},
+                "titanium_bones": {"titanium": (3, 5)},
             }
         elif skill_type == "woodcutting":
             # Resources: oak_logs, willow_logs, mahogany_logs, magic_logs, idea_logs
             ranges = {
-                'oak_logs': {'flimsy': (3,5), 'carved': (4,7), 'chopping': (5,8), 'magic': (6,10), 'felling': (7,12)},
-                'willow_logs': {'carved': (3,5), 'chopping': (4,7), 'magic': (5,8), 'felling': (6,10)},
-                'mahogany_logs': {'chopping': (3,5), 'magic': (4,7), 'felling': (5,8)},
-                'magic_logs': {'magic': (3,5), 'felling': (4,7)},
-                'idea_logs': {'felling': (3,5)}
+                "oak_logs": {
+                    "flimsy": (3, 5),
+                    "carved": (4, 7),
+                    "chopping": (5, 8),
+                    "magic": (6, 10),
+                    "felling": (7, 12),
+                },
+                "willow_logs": {
+                    "carved": (3, 5),
+                    "chopping": (4, 7),
+                    "magic": (5, 8),
+                    "felling": (6, 10),
+                },
+                "mahogany_logs": {
+                    "chopping": (3, 5),
+                    "magic": (4, 7),
+                    "felling": (5, 8),
+                },
+                "magic_logs": {"magic": (3, 5), "felling": (4, 7)},
+                "idea_logs": {"felling": (3, 5)},
             }
 
         result = {}
@@ -248,5 +291,5 @@ class SkillMechanics:
             min_val, max_val = tier_map.get(tool_tier, (0, 0))
             if max_val > 0:
                 result[resource] = random.randint(min_val, max_val)
-        
+
         return result

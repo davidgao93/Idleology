@@ -10,7 +10,6 @@ from core.partners.mechanics import next_available_story, portrait_unlocked
 from core.partners.resources import _rarity_colour, _stars
 from core.partners.views._helpers import PartnerBaseView
 
-
 # ---------------------------------------------------------------------------
 # AffinityStoryView
 # ---------------------------------------------------------------------------

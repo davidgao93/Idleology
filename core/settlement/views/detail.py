@@ -370,7 +370,9 @@ class BuildingDetailView(SettlementBaseView):
         await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
 
         if self.building.building_type == "town_hall":
-            await self.bot.database.settlement.expand_building_slots(self.user_id, self.parent.server_id)
+            await self.bot.database.settlement.expand_building_slots(
+                self.user_id, self.parent.server_id
+            )
             self.parent.settlement.building_slots += 1
 
         await self.bot.database.settlement.upgrade_building_tier(self.building.id)

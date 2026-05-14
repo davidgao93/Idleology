@@ -1,6 +1,6 @@
-import aiosqlite
-from typing import Dict, Optional
+from typing import Dict
 
+import aiosqlite
 
 # All valid essence type identifiers.
 ESSENCE_TYPES = {
@@ -27,7 +27,14 @@ ESSENCE_TYPES = {
 
 CORRUPTED_ESSENCE_TYPES = {"aphrodite", "lucifer", "gemini", "neet"}
 UTILITY_ESSENCE_TYPES = {"cleansing", "chaos", "annulment"}
-RARE_ESSENCE_TYPES = {"insight", "evasion", "blocking", "deftness", "precision", "gluttony"}
+RARE_ESSENCE_TYPES = {
+    "insight",
+    "evasion",
+    "blocking",
+    "deftness",
+    "precision",
+    "gluttony",
+}
 COMMON_ESSENCE_TYPES = {"power", "protection"}
 
 
@@ -39,7 +46,7 @@ class EssencesRepository:
         """Returns {essence_type: quantity} for all essence types the player has (qty > 0)."""
         cursor = await self.connection.execute(
             "SELECT essence_type, quantity FROM player_essences WHERE user_id = ? AND quantity > 0",
-            (user_id,)
+            (user_id,),
         )
         rows = await cursor.fetchall()
         return {row[0]: row[1] for row in rows}
@@ -48,7 +55,7 @@ class EssencesRepository:
         """Returns quantity of a specific essence type (0 if none)."""
         cursor = await self.connection.execute(
             "SELECT quantity FROM player_essences WHERE user_id = ? AND essence_type = ?",
-            (user_id, essence_type)
+            (user_id, essence_type),
         )
         row = await cursor.fetchone()
         return row[0] if row else 0
@@ -59,7 +66,7 @@ class EssencesRepository:
             """INSERT INTO player_essences (user_id, essence_type, quantity)
                VALUES (?, ?, ?)
                ON CONFLICT(user_id, essence_type) DO UPDATE SET quantity = quantity + excluded.quantity""",
-            (user_id, essence_type, quantity)
+            (user_id, essence_type, quantity),
         )
         await self.connection.commit()
 
@@ -73,7 +80,7 @@ class EssencesRepository:
             return False
         await self.connection.execute(
             "UPDATE player_essences SET quantity = quantity - ? WHERE user_id = ? AND essence_type = ?",
-            (quantity, user_id, essence_type)
+            (quantity, user_id, essence_type),
         )
         await self.connection.commit()
         return True

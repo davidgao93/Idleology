@@ -1,31 +1,42 @@
-import aiosqlite
 import random
+
+import aiosqlite
+
 from core.models import CodexTome
 
 # Passive types available for tomes
 TOME_PASSIVE_TYPES = [
-    'vitality', 'wrath', 'bastion', 'tenacity', 'bloodthirst',
-    'providence', 'precision', 'affluence', 'bulwark', 'resilience',
+    "vitality",
+    "wrath",
+    "bastion",
+    "tenacity",
+    "bloodthirst",
+    "providence",
+    "precision",
+    "affluence",
+    "bulwark",
+    "resilience",
 ]
 
 # Value ranges per (passive_type, tier). Each tier has a (min, max) tuple.
 # When upgrading to a tier, a float is rolled in this range.
 TOME_TIER_RANGES: dict[str, list[tuple[float, float]]] = {
     # tier index 0 = tier 1, index 4 = tier 5
-    'vitality':    [(3.0, 7.0),  (6.0, 14.0), (10.0, 22.0), (14.0, 30.0), (18.0, 40.0)],
-    'wrath':       [(3.0, 8.0),  (6.0, 15.0), (10.0, 24.0), (14.0, 32.0), (18.0, 42.0)],
-    'bastion':     [(3.0, 8.0),  (6.0, 15.0), (10.0, 24.0), (14.0, 32.0), (18.0, 42.0)],
-    'tenacity':    [(2.0, 5.0),  (4.0, 9.0),  (6.0, 14.0),  (9.0, 19.0),  (12.0, 25.0)],
-    'bloodthirst': [(2.0, 5.0),  (4.0, 9.0),  (6.0, 14.0),  (9.0, 19.0),  (12.0, 25.0)],
-    'providence':  [(3.0, 8.0),  (6.0, 15.0), (10.0, 24.0), (14.0, 32.0), (18.0, 42.0)],
-    'precision':   [(1.0, 3.0),  (2.0, 5.0),  (3.0, 8.0),   (5.0, 11.0),  (7.0, 15.0)],
-    'affluence':   [(3.0, 8.0),  (6.0, 15.0), (10.0, 24.0), (14.0, 32.0), (18.0, 42.0)],
-    'bulwark':     [(1.0, 3.0),  (2.0, 5.0),  (3.0, 8.0),   (5.0, 11.0),  (7.0, 15.0)],
-    'resilience':  [(1.0, 3.0),  (2.0, 5.0),  (3.0, 8.0),   (5.0, 11.0),  (7.0, 15.0)],
+    "vitality": [(3.0, 7.0), (6.0, 14.0), (10.0, 22.0), (14.0, 30.0), (18.0, 40.0)],
+    "wrath": [(3.0, 8.0), (6.0, 15.0), (10.0, 24.0), (14.0, 32.0), (18.0, 42.0)],
+    "bastion": [(3.0, 8.0), (6.0, 15.0), (10.0, 24.0), (14.0, 32.0), (18.0, 42.0)],
+    "tenacity": [(2.0, 5.0), (4.0, 9.0), (6.0, 14.0), (9.0, 19.0), (12.0, 25.0)],
+    "bloodthirst": [(2.0, 5.0), (4.0, 9.0), (6.0, 14.0), (9.0, 19.0), (12.0, 25.0)],
+    "providence": [(3.0, 8.0), (6.0, 15.0), (10.0, 24.0), (14.0, 32.0), (18.0, 42.0)],
+    "precision": [(1.0, 3.0), (2.0, 5.0), (3.0, 8.0), (5.0, 11.0), (7.0, 15.0)],
+    "affluence": [(3.0, 8.0), (6.0, 15.0), (10.0, 24.0), (14.0, 32.0), (18.0, 42.0)],
+    "bulwark": [(1.0, 3.0), (2.0, 5.0), (3.0, 8.0), (5.0, 11.0), (7.0, 15.0)],
+    "resilience": [(1.0, 3.0), (2.0, 5.0), (3.0, 8.0), (5.0, 11.0), (7.0, 15.0)],
 }
 
 # Fragment cost to upgrade from tier N-1 to tier N (index 0 = unlock tier 1)
 TOME_UPGRADE_COSTS = [5, 10, 20, 40, 80]
+
 
 # Reroll cost is 50% of the current tier's upgrade cost (minimum 3)
 def get_reroll_cost(tier: int) -> int:
@@ -51,10 +62,12 @@ class CodexRepository:
     async def get_tomes(self, user_id: str) -> list[CodexTome]:
         cursor = await self.connection.execute(
             "SELECT slot, passive_type, tier, value FROM codex_tomes WHERE user_id = ? ORDER BY slot",
-            (user_id,)
+            (user_id,),
         )
         rows = await cursor.fetchall()
-        return [CodexTome(slot=r[0], passive_type=r[1], tier=r[2], value=r[3]) for r in rows]
+        return [
+            CodexTome(slot=r[0], passive_type=r[1], tier=r[2], value=r[3]) for r in rows
+        ]
 
     async def get_unlocked_slots(self, user_id: str) -> int:
         cursor = await self.connection.execute(
@@ -77,7 +90,7 @@ class CodexRepository:
 
         await self.connection.execute(
             "INSERT INTO codex_tomes (user_id, slot, passive_type, tier, value) VALUES (?, ?, ?, 0, 0.0)",
-            (user_id, slot, passive_type)
+            (user_id, slot, passive_type),
         )
         await self.connection.commit()
         return CodexTome(slot=slot, passive_type=passive_type, tier=0, value=0.0)
@@ -89,7 +102,7 @@ class CodexRepository:
         """
         cursor = await self.connection.execute(
             "SELECT tier, passive_type FROM codex_tomes WHERE user_id = ? AND slot = ?",
-            (user_id, slot)
+            (user_id, slot),
         )
         row = await cursor.fetchone()
         if not row or row[0] >= 5:
@@ -101,7 +114,7 @@ class CodexRepository:
 
         await self.connection.execute(
             "UPDATE codex_tomes SET tier = ?, value = ? WHERE user_id = ? AND slot = ?",
-            (new_tier, new_value, user_id, slot)
+            (new_tier, new_value, user_id, slot),
         )
         await self.connection.commit()
         return True, new_value
@@ -113,7 +126,7 @@ class CodexRepository:
         """
         cursor = await self.connection.execute(
             "SELECT tier, passive_type FROM codex_tomes WHERE user_id = ? AND slot = ?",
-            (user_id, slot)
+            (user_id, slot),
         )
         row = await cursor.fetchone()
         if not row or row[0] == 0:
@@ -124,7 +137,7 @@ class CodexRepository:
 
         await self.connection.execute(
             "UPDATE codex_tomes SET value = ? WHERE user_id = ? AND slot = ?",
-            (new_value, user_id, slot)
+            (new_value, user_id, slot),
         )
         await self.connection.commit()
         return True, new_value
@@ -136,11 +149,11 @@ class CodexRepository:
         """
         cursor = await self.connection.execute(
             "SELECT passive_type FROM codex_tomes WHERE user_id = ? AND slot = ?",
-            (user_id, slot)
+            (user_id, slot),
         )
         row = await cursor.fetchone()
         if not row:
-            return False, ''
+            return False, ""
 
         current_type = row[0]
         candidates = [t for t in TOME_PASSIVE_TYPES if t != current_type]
@@ -148,7 +161,7 @@ class CodexRepository:
 
         await self.connection.execute(
             "UPDATE codex_tomes SET passive_type = ?, tier = 0, value = 0.0 WHERE user_id = ? AND slot = ?",
-            (new_type, user_id, slot)
+            (new_type, user_id, slot),
         )
         await self.connection.commit()
         return True, new_type
@@ -157,14 +170,16 @@ class CodexRepository:
     # Chapter progress
     # ------------------------------------------------------------------
 
-    async def log_chapter_clear(self, user_id: str, chapter_id: int, perfect: bool = False):
+    async def log_chapter_clear(
+        self, user_id: str, chapter_id: int, perfect: bool = False
+    ):
         await self.connection.execute(
             """INSERT INTO codex_progress (user_id, chapter_id, clears, perfect_clears)
                VALUES (?, ?, 1, ?)
                ON CONFLICT(user_id, chapter_id) DO UPDATE SET
                    clears = clears + 1,
                    perfect_clears = perfect_clears + ?""",
-            (user_id, chapter_id, int(perfect), int(perfect))
+            (user_id, chapter_id, int(perfect), int(perfect)),
         )
         await self.connection.commit()
 
@@ -175,7 +190,7 @@ class CodexRepository:
             await self.connection.execute(
                 """UPDATE codex_progress SET perfect_clears = perfect_clears + 1
                    WHERE user_id = ? AND chapter_id = ?""",
-                (user_id, chapter_id)
+                (user_id, chapter_id),
             )
         await self.connection.commit()
 
@@ -183,7 +198,7 @@ class CodexRepository:
         """Returns {chapter_id: {'clears': int, 'perfect_clears': int}}."""
         cursor = await self.connection.execute(
             "SELECT chapter_id, clears, perfect_clears FROM codex_progress WHERE user_id = ?",
-            (user_id,)
+            (user_id,),
         )
         rows = await cursor.fetchall()
-        return {r[0]: {'clears': r[1], 'perfect_clears': r[2]} for r in rows}
+        return {r[0]: {"clears": r[1], "perfect_clears": r[2]} for r in rows}
