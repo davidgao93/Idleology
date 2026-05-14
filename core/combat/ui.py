@@ -3,6 +3,7 @@ from typing import Any, Dict
 import discord
 
 from core.images import COMBAT_REDEMPTION, COMBAT_VICTORY
+from core.items.models import _PART_SLOT_LABELS
 from core.models import Monster, Player
 
 
@@ -265,18 +266,8 @@ def create_victory_embed(
 
     # 5. Monster Body Part Drop
     if rewards.get("body_part"):
-        _PART_LABELS = {
-            "head": "Head",
-            "torso": "Torso",
-            "right_arm": "Right Arm",
-            "left_arm": "Left Arm",
-            "right_leg": "Right Leg",
-            "left_leg": "Left Leg",
-            "cheeks": "Cheeks",
-            "organs": "Organs",
-        }
         slot, mname, hp = rewards["body_part"]
-        label = _PART_LABELS.get(slot, slot)
+        label = _PART_SLOT_LABELS.get(slot, slot)
         loot_lines.append(f"🫀 {mname}'s **{label}** (+{hp} Max HP)")
 
     # Add single Loot field

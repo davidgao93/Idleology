@@ -11,6 +11,20 @@ from core.base_view import BaseView
 from core.combat import engine, rewards
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
+from core.combat.config import (
+    BOSS_PET_CHANCE,
+    BOSS_PET_CHANCE_GEMINI_BOOT,
+    EVELYNN_MIRAGE_RUNE_IMPERFECT_CHANCE,
+    EVELYNN_MIRAGE_RUNE_PERFECTED_CHANCE,
+    NEET_VOID_KEY_CHANCE,
+    REGULAR_PET_CHANCE,
+    REGULAR_PET_CHANCE_GEMINI_BOOT,
+    SLAYER_SCAVENGER_CHANCE_PER_TIER,
+    SLAYER_TASKMASTER_CHANCE_PER_TIER,
+    UBER_BLUEPRINT_CHANCE,
+    UBER_ENGRAM_CHANCE,
+    XP_LOSS_ON_DEFEAT,
+)
 from core.combat.combat_log import CombatLogger
 from core.combat.economy.drops import (
     DropManager,
@@ -422,7 +436,7 @@ class CombatView(BaseView):
     async def _uber_defeat(
         self, message, dmg_frac: float = 0.0, curios_gained: int = 0
     ) -> None:
-        base_loss = int(self.player.exp * 0.10)
+        base_loss = int(self.player.exp * XP_LOSS_ON_DEFEAT)
         xp_loss = await ExperienceManager.remove_experience(
             self.bot, self.user_id, self.player, base_loss
         )
@@ -473,7 +487,7 @@ class CombatView(BaseView):
         if self.player.current_hp <= 0:
             # Defeat Logic (Same as before)
             self.combat_logger.log_combat_end(self.player, self.monster, "defeat")
-            base_loss = int(self.player.exp * 0.10)
+            base_loss = int(self.player.exp * XP_LOSS_ON_DEFEAT)
             xp_loss = await ExperienceManager.remove_experience(
                 self.bot, self.user_id, self.player, base_loss
             )
@@ -595,8 +609,8 @@ class CombatView(BaseView):
             # 1. BOSS PET CHECK (3% Chance, Tier 3 Fixed)
             # Gemini boot: pet drop chance doubled (3% -> 6% boss, 5% -> 10% regular)
             _gemini_boot = self.player.get_boot_corrupted_essence() == "gemini"
-            boss_pet_chance = 0.06 if _gemini_boot else 0.03
-            regular_pet_chance = 0.10 if _gemini_boot else 0.05
+            boss_pet_chance = BOSS_PET_CHANCE_GEMINI_BOOT if _gemini_boot else BOSS_PET_CHANCE
+            regular_pet_chance = REGULAR_PET_CHANCE_GEMINI_BOOT if _gemini_boot else REGULAR_PET_CHANCE
 
             boss_img = self._get_boss_pet_image(self.monster.name)
 
@@ -693,7 +707,7 @@ class CombatView(BaseView):
                     # Scavenger passive (e.g. 5% chance per tier to double drops)
                     drop_bonus_tiers = self.player.get_emblem_bonus("slayer_drops")
                     if drop_bonus_tiers > 0 and random.random() < (
-                        drop_bonus_tiers * 0.05
+                        drop_bonus_tiers * SLAYER_SCAVENGER_CHANCE_PER_TIER
                     ):
                         ess *= 2
                         heart *= 2
@@ -712,7 +726,7 @@ class CombatView(BaseView):
                     # Taskmaster passive (e.g. 5% chance per tier for double progress)
                     prog_gain = 1
                     task_tiers = self.player.get_emblem_bonus("task_progress")
-                    if task_tiers > 0 and random.random() < (task_tiers * 0.05):
+                    if task_tiers > 0 and random.random() < (task_tiers * SLAYER_TASKMASTER_CHANCE_PER_TIER):
                         prog_gain = 2
                         slayer_lines.append(
                             "⚡ **Taskmaster** granted double task progress!"
@@ -803,7 +817,7 @@ class CombatView(BaseView):
                 await message.edit(embed=embed, view=None)
             elif "NEET" in self.monster.name:
                 embed.set_thumbnail(url=VICTORY_NEET)
-                if random.random() < 0.30:
+                if random.random() < NEET_VOID_KEY_CHANCE:
                     embed.add_field(
                         name="Loot", value="Found a **Void Key**.", inline=False
                     )
@@ -884,13 +898,13 @@ class CombatView(BaseView):
         for an uber boss, driven by a config entry from _UBER_CONFIGS.
         Mutates reward_data in-place.
         """
-        if random.random() < 0.10:
+        if random.random() < UBER_ENGRAM_CHANCE:
             engram_fn = getattr(self.bot.database.uber, cfg["engram_fn"])
             await engram_fn(self.user_id, self.server_id, 1)
             reward_data["special"].append(cfg["engram_display"])
             reward_data["msgs"].append(cfg["engram_msg"])
 
-        if random.random() < 0.10:
+        if random.random() < UBER_BLUEPRINT_CHANCE:
             u_prog = await self.bot.database.uber.get_uber_progress(
                 self.user_id, self.server_id
             )
@@ -997,7 +1011,7 @@ class CombatView(BaseView):
         await self._handle_uber_engram_and_blueprint(reward_data, cfg)
 
         # 1% — Rune of Mirage (Imperfect)
-        if random.random() < 0.01:
+        if random.random() < EVELYNN_MIRAGE_RUNE_IMPERFECT_CHANCE:
             await self.bot.database.users.modify_currency(
                 self.user_id, "mirage_runes_imperfect", 1
             )
@@ -1007,7 +1021,7 @@ class CombatView(BaseView):
             )
 
         # 0.1% — Rune of Mirage (Perfected)
-        if random.random() < 0.001:
+        if random.random() < EVELYNN_MIRAGE_RUNE_PERFECTED_CHANCE:
             await self.bot.database.users.modify_currency(
                 self.user_id, "mirage_runes_perfected", 1
             )

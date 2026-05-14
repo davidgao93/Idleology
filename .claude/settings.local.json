@@ -66,7 +66,10 @@
       "Bash(python -m py_compile cogs/combat.py cogs/uber.py cogs/general.py core/ascent/views.py core/codex/views.py core/character/profile_hub.py core/companions/logic.py core/settlement/views/black_market.py core/curios/logic.py core/curios/puzzle_box_logic.py core/inventory/inventory.py core/inventory/upgrades/weapon.py core/inventory/views/gear_view.py tests/test_combat_logic.py)",
       "Bash(python -m py_compile \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\combat\\\\turns\\\\monster_turn.py\")",
       "Bash(Get-ChildItem \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\combat\" -Recurse -Name)",
-      "Bash(grep '\\\\.py$')"
+      "Bash(grep '\\\\.py$')",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(head -50)"
     ]
   }
 }

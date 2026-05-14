@@ -1,6 +1,12 @@
 import random
 from typing import Any, Dict
 
+from core.combat.config import (
+    EMBLEM_FIND_BONUS_PER_TIER,
+    FLORA_CONVERSION_PER_LEVEL,
+    LUCIFER_BOOT_GOLD_CAP,
+    LUCIFER_BOOT_GOLD_PER_MODIFIER,
+)
 from core.models import Monster, Player
 
 
@@ -16,7 +22,7 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
 
     xp_find_tiers = player.get_emblem_bonus("xp_find")
     if xp_find_tiers > 0:
-        base_xp = int(base_xp * (1 + (xp_find_tiers * 0.03)))
+        base_xp = int(base_xp * (1 + (xp_find_tiers * EMBLEM_FIND_BONUS_PER_TIER)))
 
     # Accessory Passive: Infinite Wisdom
     acc_passive = player.get_accessory_passive()
@@ -83,12 +89,12 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     # Gold find
     gold_find_tiers = player.get_emblem_bonus("gold_find")
     if gold_find_tiers > 0:
-        gold_award = int(gold_award * (1 + (gold_find_tiers * 0.03)))
+        gold_award = int(gold_award * (1 + (gold_find_tiers * EMBLEM_FIND_BONUS_PER_TIER)))
 
     # Lucifer boot: gold increases 10% per modifier on the monster (cap 50%)
     if player.get_boot_corrupted_essence() == "lucifer" and monster.modifiers:
         num_mods = len(monster.modifiers)
-        lucifer_bonus_pct = min(0.50, num_mods * 0.10)
+        lucifer_bonus_pct = min(LUCIFER_BOOT_GOLD_CAP, num_mods * LUCIFER_BOOT_GOLD_PER_MODIFIER)
         bonus_gold = int(gold_award * lucifer_bonus_pct)
         gold_award += bonus_gold
         results["msgs"].append(
@@ -116,7 +122,7 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         sig_key = partner.sig_combat_key
         sig_lvl = partner.sig_combat_lvl
         if sig_key == "sig_co_flora" and sig_lvl >= 1:
-            flora_pct = sig_lvl * 0.10
+            flora_pct = sig_lvl * FLORA_CONVERSION_PER_LEVEL
             converted = int(results["gold"] * flora_pct)
             results["gold"] = max(0, results["gold"] - converted)
             results["flora_skilling_gold"] = converted
