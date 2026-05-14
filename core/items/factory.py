@@ -1,4 +1,15 @@
-from core.models import Player, Weapon, Accessory, Armor, Glove, Boot, Helmet, Companion, MonsterPart
+from core.models import (
+    Accessory,
+    Armor,
+    Boot,
+    Companion,
+    Glove,
+    Helmet,
+    MonsterPart,
+    Player,
+    Weapon,
+)
+
 
 def create_weapon(data: tuple) -> Weapon:
     """
@@ -33,17 +44,18 @@ def create_weapon(data: tuple) -> Weapon:
         crit_chance=data[17] if len(data) > 17 else 0.00,
         crit_multi=data[18] if len(data) > 18 else 2.00,
         base_rarity=data[19] if len(data) > 19 else 3,
-        description=""  # Description is typically generated dynamically in views
+        description="",  # Description is typically generated dynamically in views
     )
+
 
 def create_accessory(data: tuple) -> Accessory:
     """
     Maps a database tuple from table `accessories` to an Accessory object.
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5), 
-            rarity(6), ward(7), crit(8), passive(9), is_equipped(10), 
+    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5),
+            rarity(6), ward(7), crit(8), passive(9), is_equipped(10),
             potential_remaining(11), passive_lvl(12)
     """
-    if not data: 
+    if not data:
         return None
 
     return Accessory(
@@ -61,8 +73,9 @@ def create_accessory(data: tuple) -> Accessory:
         potential_remaining=data[11],
         passive_lvl=data[12],
         void_passive=data[13] if len(data) > 13 else "none",
-        description=""
+        description="",
     )
+
 
 def create_armor(data: tuple) -> Armor:
     """
@@ -94,8 +107,9 @@ def create_armor(data: tuple) -> Armor:
         main_stat=data[15] if len(data) > 15 else 0,
         reinforces_remaining=data[16] if len(data) > 16 else 0,
         reinforcement_lvl=data[17] if len(data) > 17 else 0,
-        description=""
+        description="",
     )
+
 
 def create_glove(data: tuple) -> Glove:
     """
@@ -130,11 +144,14 @@ def create_glove(data: tuple) -> Glove:
         essence_2_val=data[16] if len(data) > 16 and data[16] is not None else 0.0,
         essence_3=data[17] if len(data) > 17 and data[17] is not None else "none",
         essence_3_val=data[18] if len(data) > 18 and data[18] is not None else 0.0,
-        corrupted_essence=data[19] if len(data) > 19 and data[19] is not None else "none",
+        corrupted_essence=(
+            data[19] if len(data) > 19 and data[19] is not None else "none"
+        ),
         reinforces_remaining=data[20] if len(data) > 20 else 0,
         reinforcement_lvl=data[21] if len(data) > 21 else 0,
-        description=""
+        description="",
     )
+
 
 def create_boot(data: tuple) -> Boot:
     """
@@ -169,11 +186,14 @@ def create_boot(data: tuple) -> Boot:
         essence_2_val=data[16] if len(data) > 16 and data[16] is not None else 0.0,
         essence_3=data[17] if len(data) > 17 and data[17] is not None else "none",
         essence_3_val=data[18] if len(data) > 18 and data[18] is not None else 0.0,
-        corrupted_essence=data[19] if len(data) > 19 and data[19] is not None else "none",
+        corrupted_essence=(
+            data[19] if len(data) > 19 and data[19] is not None else "none"
+        ),
         reinforces_remaining=data[20] if len(data) > 20 else 0,
         reinforcement_lvl=data[21] if len(data) > 21 else 0,
-        description=""
+        description="",
     )
+
 
 def create_helmet(data: tuple) -> Helmet:
     """
@@ -187,31 +207,41 @@ def create_helmet(data: tuple) -> Helmet:
     if not data:
         return None
     return Helmet(
-        item_id=data[0], user=data[1], name=data[2], level=data[3],
-        defence=data[4], ward=data[5],
-        pdr=data[6], fdr=data[7],
-        passive=data[8], passive_lvl=data[9],
-        is_equipped=bool(data[10]), potential_remaining=data[11],
+        item_id=data[0],
+        user=data[1],
+        name=data[2],
+        level=data[3],
+        defence=data[4],
+        ward=data[5],
+        pdr=data[6],
+        fdr=data[7],
+        passive=data[8],
+        passive_lvl=data[9],
+        is_equipped=bool(data[10]),
+        potential_remaining=data[11],
         essence_1=data[12] if len(data) > 12 and data[12] is not None else "none",
         essence_1_val=data[13] if len(data) > 13 and data[13] is not None else 0.0,
         essence_2=data[14] if len(data) > 14 and data[14] is not None else "none",
         essence_2_val=data[15] if len(data) > 15 and data[15] is not None else 0.0,
         essence_3=data[16] if len(data) > 16 and data[16] is not None else "none",
         essence_3_val=data[17] if len(data) > 17 and data[17] is not None else 0.0,
-        corrupted_essence=data[18] if len(data) > 18 and data[18] is not None else "none",
+        corrupted_essence=(
+            data[18] if len(data) > 18 and data[18] is not None else "none"
+        ),
         reinforces_remaining=data[19] if len(data) > 19 else 0,
         reinforcement_lvl=data[20] if len(data) > 20 else 0,
-        description=""
+        description="",
     )
 
 
 def create_companion(data: tuple) -> Companion:
     """
     Maps a database tuple from table `companions` to a Companion object.
-    Schema: id(0), user_id(1), name(2), species(3), image_url(4), 
+    Schema: id(0), user_id(1), name(2), species(3), image_url(4),
             level(5), exp(6), passive_type(7), passive_tier(8), is_active(9), created_at(10)
     """
-    if not data: return None
+    if not data:
+        return None
     return Companion(
         id=data[0],
         user_id=data[1],
@@ -223,9 +253,14 @@ def create_companion(data: tuple) -> Companion:
         passive_type=data[7],
         passive_tier=data[8],
         is_active=bool(data[9]),
-        balanced_passive=data[11] if len(data) > 11 and data[11] is not None else 'none',
-        balanced_passive_tier=data[12] if len(data) > 12 and data[12] is not None else 0,
+        balanced_passive=(
+            data[11] if len(data) > 11 and data[11] is not None else "none"
+        ),
+        balanced_passive_tier=(
+            data[12] if len(data) > 12 and data[12] is not None else 0
+        ),
     )
+
 
 def create_monster_part(row) -> MonsterPart:
     """Maps a monster_parts DB row to a MonsterPart object."""
@@ -241,9 +276,9 @@ def create_monster_part(row) -> MonsterPart:
 
 async def load_player(user_id: str, user_data: tuple, database) -> Player:
     """
-    Creates a Player object from the user tuple and asynchronously fetches 
+    Creates a Player object from the user tuple and asynchronously fetches
     and attaches all equipped gear using the database connection.
-    
+
     Args:
         user_id (str): The Discord User ID
         user_data (tuple): The raw tuple from the 'users' table
@@ -264,19 +299,22 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         potions=user_data[16],
     )
 
-    server_id = user_data[2] # Assuming index 2 is server_id in users table
-    
+    server_id = user_data[2]  # Assuming index 2 is server_id in users table
+
     # Settlement buffs
-    b_tier, b_workers = await database.settlement.get_building_details(user_id, server_id, "barracks")
-    a_tier, a_workers = await database.settlement.get_building_details(user_id, server_id, "apothecary")
-    
+    b_tier, b_workers = await database.settlement.get_building_details(
+        user_id, server_id, "barracks"
+    )
+    a_tier, a_workers = await database.settlement.get_building_details(
+        user_id, server_id, "apothecary"
+    )
+
     player.apothecary_workers = a_workers
     player.barracks_workers = b_workers
 
-    
     # 2. Fetch and Attach Gear
     # We await the database calls here so the resulting Player object is fully populated
-    
+
     wep_data = await database.equipment.get_equipped(user_id, "weapon")
     if wep_data:
         player.equipped_weapon = create_weapon(wep_data)
@@ -311,8 +349,8 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         player.slayer_emblem = await database.slayer.get_emblem(user_id, server_id)
         # Load Active Task to check for Slayer-specific buffs
         profile = await database.slayer.get_profile(user_id, server_id)
-        player.active_task_species = profile.get('active_task_species')
-    except Exception as e:
+        player.active_task_species = profile.get("active_task_species")
+    except Exception:
         # Failsafe if player hasn't opened /slayer yet
         player.slayer_emblem = {}
         player.active_task_species = None
@@ -351,8 +389,9 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     try:
         partner_row = await database.partners.get_active_combat(user_id)
         if partner_row:
-            from core.partners.data import PARTNER_DATA
             from core.models import Partner
+            from core.partners.data import PARTNER_DATA
+
             static = PARTNER_DATA.get(partner_row[2])
             if static:
                 player.active_partner = Partner.from_row(partner_row, static)
@@ -369,16 +408,26 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
 
     # 4. Handle Passive Stat Modifiers that affect Base Stats immediately (e.g. Hearty Boots)
     if player.equipped_boot:
-        if player.equipped_boot.passive == "hearty" and player.equipped_boot.passive_lvl > 0:
-            hp_bonus_percentage = player.equipped_boot.passive_lvl * 0.05 # 5% per level
+        if (
+            player.equipped_boot.passive == "hearty"
+            and player.equipped_boot.passive_lvl > 0
+        ):
+            hp_bonus_percentage = (
+                player.equipped_boot.passive_lvl * 0.05
+            )  # 5% per level
             bonus_hp = int(player.max_hp * hp_bonus_percentage)
             player.run_max_hp_bonus += bonus_hp
             player.current_hp += bonus_hp
-        
-        if player.equipped_boot.passive == "speedster" and player.equipped_boot.passive_lvl > 0:
-            player.combat_cooldown_reduction_seconds = player.equipped_boot.passive_lvl * 60
-    
+
+        if (
+            player.equipped_boot.passive == "speedster"
+            and player.equipped_boot.passive_lvl > 0
+        ):
+            player.combat_cooldown_reduction_seconds = (
+                player.equipped_boot.passive_lvl * 60
+            )
+
     if player.get_celestial_armor_passive() == "celestial_wind_dancer":
-        player.equipped_helmet = None # Completely nullify the helmet stats/passives
+        player.equipped_helmet = None  # Completely nullify the helmet stats/passives
 
     return player

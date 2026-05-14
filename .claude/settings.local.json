@@ -69,7 +69,12 @@
       "Bash(grep '\\\\.py$')",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\" -Recurse -Directory)",
       "Bash(Select-Object FullName)",
-      "PowerShell(head -50)"
+      "PowerShell(head -50)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\combat\" -Recurse -Force)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\combat\\\\economy\" -Force)",
+      "Bash(Select-Object Name)"
     ]
   }
 }

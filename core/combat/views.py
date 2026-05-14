@@ -6,135 +6,26 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-import core.slayer.mechanics
 from core.base_view import BaseView
-from core.combat import engine, rewards
+from core.combat import engine
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
+from core.combat.combat_log import CombatLogger
 from core.combat.config import (
-    BOSS_PET_CHANCE,
-    BOSS_PET_CHANCE_GEMINI_BOOT,
-    EVELYNN_MIRAGE_RUNE_IMPERFECT_CHANCE,
-    EVELYNN_MIRAGE_RUNE_PERFECTED_CHANCE,
     NEET_VOID_KEY_CHANCE,
-    REGULAR_PET_CHANCE,
-    REGULAR_PET_CHANCE_GEMINI_BOOT,
-    SLAYER_SCAVENGER_CHANCE_PER_TIER,
-    SLAYER_TASKMASTER_CHANCE_PER_TIER,
-    UBER_BLUEPRINT_CHANCE,
-    UBER_ENGRAM_CHANCE,
     XP_LOSS_ON_DEFEAT,
 )
-from core.combat.combat_log import CombatLogger
-from core.combat.economy.drops import (
-    DropManager,
-    apply_boss_sigil_drops,
-    apply_corrupted_monster_drops,
-)
+from core.combat.economy import uber_rewards
 from core.combat.economy.experience import ExperienceManager
+from core.combat.economy.victory import apply_victory_rewards
 from core.combat.gen.gen_mob import generate_boss
-from core.combat.views_lucifer import InfernalContractView, LuciferChoiceView
-from core.companions.mechanics import CompanionMechanics
+from core.combat.views_lucifer import LuciferChoiceView
 from core.images import (
-    BOSS_APHRODITE,
-    BOSS_GEMINI_PET,
-    BOSS_LUCIFER,
-    BOSS_NEET,
-    MONSTER_EVELYNN_PRECURSOR,
     VICTORY_APHRODITE_GEMINI,
-    VICTORY_CELESTIAL,
-    VICTORY_EVELYNN,
-    VICTORY_GEMINI,
-    VICTORY_INFERNAL,
     VICTORY_LUCIFER,
     VICTORY_NEET,
 )
 from core.models import Monster, Player
-
-# ---------------------------------------------------------------------------
-# Uber boss configuration
-# Each entry drives the generic engram / blueprint / stone reward logic.
-# Keys that need custom post-processing (Lucifer → contract; Evelynn → puzzle
-# box + mirage runes) still use _handle_uber_engram_and_blueprint but handle
-# their unique steps in their own handler.
-# ---------------------------------------------------------------------------
-_UBER_CONFIGS: dict[str, dict] = {
-    "Aphrodite": {
-        "engram_fn": "increment_engrams",
-        "engram_display": "Celestial Engram",
-        "engram_msg": "🌌 **A Celestial Engram materializes from Aphrodite's shattered form...**",
-        "blueprint_key": "celestial_blueprint_unlocked",
-        "blueprint_fn": "set_blueprint_unlocked",
-        "blueprint_display": "Celestial Shrine Blueprint",
-        "blueprint_msg": "📜 **You found the Celestial Shrine Blueprint!**",
-        "stone_currency": "celestial_stone",
-        "stone_display": "Celestial Stone",
-        "stone_msg": "🪨 **You found a Celestial Stone!**",
-        "victory_image": VICTORY_CELESTIAL,
-        "image_fn": "set_image",
-        "embed_title": "🌌 Apex Shattered!",
-    },
-    "Lucifer": {
-        "engram_fn": "increment_infernal_engrams",
-        "engram_display": "Infernal Engram",
-        "engram_msg": "🔥 **An Infernal Engram crystallises from Lucifer's shattered crown...**",
-        "blueprint_key": "infernal_blueprint_unlocked",
-        "blueprint_fn": "set_infernal_blueprint_unlocked",
-        "blueprint_display": "Infernal Forge Blueprint",
-        "blueprint_msg": "📜 **You found the Infernal Forge Blueprint!**",
-        "stone_currency": "infernal_cinder",
-        "stone_display": "Infernal Cinder",
-        "stone_msg": "🔥 **The forge roars. You extract an Infernal Cinder.**",
-        "victory_image": VICTORY_INFERNAL,
-        "image_fn": "set_image",
-        "embed_title": "🔥 Infernal Sovereign Defeated!",
-    },
-    "NEET": {
-        "engram_fn": "increment_void_engrams",
-        "engram_display": "Void Engram",
-        "engram_msg": "⬛ **A Void Engram crystallises from the collapsing rift...**",
-        "blueprint_key": "void_blueprint_unlocked",
-        "blueprint_fn": "set_void_blueprint_unlocked",
-        "blueprint_display": "Void Sanctum Blueprint",
-        "blueprint_msg": "📜 **You found the Void Sanctum Blueprint!**",
-        "stone_currency": "void_crystal",
-        "stone_display": "Void Crystal",
-        "stone_msg": "🔮 **The void yields a Void Crystal.**",
-        "victory_image": VICTORY_NEET,
-        "image_fn": "set_thumbnail",
-        "embed_title": "⬛ Void Sovereign Defeated!",
-    },
-    "Castor": {  # Gemini twins — matched by "Castor" substring
-        "engram_fn": "increment_gemini_engrams",
-        "engram_display": "Gemini Engram",
-        "engram_msg": "♊ **A Gemini Engram crystallises from the twins' shattered bond...**",
-        "blueprint_key": "gemini_blueprint_unlocked",
-        "blueprint_fn": "set_gemini_blueprint_unlocked",
-        "blueprint_display": "Twin Shrine Blueprint",
-        "blueprint_msg": "📜 **You found the Twin Shrine Blueprint!**",
-        "stone_currency": "bound_crystal",
-        "stone_display": "Bound Crystal",
-        "stone_msg": "💎 **The twins' bond yields a Bound Crystal.**",
-        "victory_image": VICTORY_GEMINI,
-        "image_fn": "set_image",
-        "embed_title": "♊ Bound Sovereigns Defeated!",
-    },
-    "Evelynn": {
-        "engram_fn": "increment_corruption_engrams",
-        "engram_display": "Corruption Engram",
-        "engram_msg": "☠️ **A Corruption Engram crystallises from the primordial rot...**",
-        "blueprint_key": "corruption_blueprint_unlocked",
-        "blueprint_fn": "set_corruption_blueprint_unlocked",
-        "blueprint_display": "Shrine of Corruption Blueprint",
-        "blueprint_msg": "📜 **You found the Shrine of Corruption Blueprint!**",
-        "stone_currency": "corrupted_crystal",
-        "stone_display": "Corrupted Crystal",
-        "stone_msg": "☠️ **The corruption yields a Corrupted Crystal.**",
-        "victory_image": VICTORY_EVELYNN,
-        "image_fn": "set_image",
-        "embed_title": "☠️ Origin of Corruption Shattered!",
-    },
-}
 
 
 class CombatView(BaseView):
@@ -399,99 +290,21 @@ class CombatView(BaseView):
         else:
             await self.refresh_embed(interaction)
 
-    def _get_boss_pet_image(self, boss_name: str) -> str:
-        if "NEET" in boss_name:
-            return BOSS_NEET
-        if "Aphrodite" in boss_name:
-            return BOSS_APHRODITE
-        if "Gemini" in boss_name:
-            return BOSS_GEMINI_PET
-        if "Lucifer" in boss_name:
-            return BOSS_LUCIFER
-        if "Evelynn" in boss_name:
-            return MONSTER_EVELYNN_PRECURSOR
-        return None
-
-    # --- Uber encounter helpers ---
-
-    def _uber_dmg_frac(self) -> float:
-        return max(
-            0.0,
-            min(
-                1.0,
-                (self.monster.max_hp - max(0, self.monster.hp)) / self.monster.max_hp,
-            ),
-        )
-
-    @staticmethod
-    def _calc_uber_curios(dmg_frac: float) -> int:
-        if dmg_frac >= 1.0:
-            return 3
-        if dmg_frac >= 0.66:
-            return 2
-        if dmg_frac >= 0.33:
-            return 1
-        return 0
-
-    async def _uber_defeat(
-        self, message, dmg_frac: float = 0.0, curios_gained: int = 0
-    ) -> None:
-        base_loss = int(self.player.exp * XP_LOSS_ON_DEFEAT)
-        xp_loss = await ExperienceManager.remove_experience(
-            self.bot, self.user_id, self.player, base_loss
-        )
-        self.player.current_hp = 1
-        embed = combat_ui.create_defeat_embed(
-            self.player,
-            self.monster,
-            xp_loss,
-            curios_gained=curios_gained,
-            dmg_frac=dmg_frac,
-            killing_blow=self.killing_blow,
-        )
-        await message.edit(embed=embed, view=self.post_combat_view)
-        self.bot.state_manager.clear_active(self.user_id)
-        await self.bot.database.users.update_from_player_object(self.player)
-        await _je.save_jewel_state(self.bot, self.user_id, self.player)
-        self.stop()
-
-    async def _uber_finalize_rewards(self, reward_data: dict) -> None:
-        """Apply XP, gold, soulreap, and persist player. Mutates reward_data xp field."""
-        exp_changes = await ExperienceManager.add_experience(
-            self.bot, self.user_id, self.player, reward_data["xp"]
-        )
-        reward_data["xp"] = exp_changes["xp_added"]
-        reward_data["msgs"].extend(exp_changes["msgs"])
-        await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
-        if self.player.get_weapon_infernal() == "soulreap":
-            self.player.current_hp = self.player.total_max_hp
-        await self.bot.database.users.update_from_player_object(self.player)
-        await _je.save_jewel_state(self.bot, self.user_id, self.player)
-
     async def handle_end_state(self, message, interaction: Interaction):
-        """Processes victory or defeat with Phase Logic."""
+        """Processes victory or defeat, including phase transitions for boss chains."""
 
+        # --- UBER ENCOUNTERS ---
         if getattr(self.monster, "is_uber", False):
-            if "Lucifer" in self.monster.name:
-                await self._handle_uber_lucifer_end_state(message, interaction)
-            elif "NEET" in self.monster.name:
-                await self._handle_uber_neet_end_state(message, interaction)
-            elif "Castor" in self.monster.name:
-                await self._handle_uber_gemini_end_state(message, interaction)
-            elif "Evelynn" in self.monster.name:
-                await self._handle_uber_evelynn_end_state(message, interaction)
-            else:
-                await self._handle_uber_end_state(message, interaction)
+            await uber_rewards.handle_uber_end_state(self, message, interaction)
             return
 
+        # --- DEFEAT ---
         if self.player.current_hp <= 0:
-            # Defeat Logic (Same as before)
             self.combat_logger.log_combat_end(self.player, self.monster, "defeat")
             base_loss = int(self.player.exp * XP_LOSS_ON_DEFEAT)
             xp_loss = await ExperienceManager.remove_experience(
                 self.bot, self.user_id, self.player, base_loss
             )
-
             self.player.current_hp = 1
             embed = combat_ui.create_defeat_embed(
                 self.player, self.monster, xp_loss, killing_blow=self.killing_blow
@@ -501,533 +314,111 @@ class CombatView(BaseView):
             await self.bot.database.users.update_from_player_object(self.player)
             await _je.save_jewel_state(self.bot, self.user_id, self.player)
             self.stop()
+            return
 
-        elif self.monster.hp <= 0:
-            # Victory Logic
+        # --- PHASE TRANSITION ---
+        if self.current_phase_index < len(self.combat_phases) - 1:
+            self.current_phase_index += 1
+            next_phase_data = self.combat_phases[self.current_phase_index]
 
-            # --- PHASE CHECK ---
-            if self.current_phase_index < len(self.combat_phases) - 1:
-                # Prepare Next Phase
-                self.current_phase_index += 1
-                next_phase_data = self.combat_phases[self.current_phase_index]
+            self.player.reset_combat_bonus()
+            self.player.is_invulnerable_this_combat = False
 
-                self.player.reset_combat_bonus()
-
-                # Reset transients (Ward resets to base gear value, temporary invuln clears)
-                # self.player.combat_ward = self.player.get_combat_ward_value()
-                self.player.is_invulnerable_this_combat = False
-
-                # Update Monster Object
-                self.monster = await generate_boss(
-                    self.player, self.monster, next_phase_data, self.current_phase_index
-                )
-                self.monster.is_boss = True
-
-                # Apply Start Effects again
-                engine.apply_stat_effects(self.player, self.monster)
-                new_logs = engine.apply_combat_start_passives(self.player, self.monster)
-                self.logs = new_logs
-
-                # Transition Embed
-                trans_embed = discord.Embed(
-                    title="Phase Complete!",
-                    description=f"**{self.monster.name}** rises from the ashes...",
-                    color=discord.Color.orange(),
-                )
-                trans_embed.set_thumbnail(url=self.monster.image)
-                await message.edit(embed=trans_embed, view=None)
-                await asyncio.sleep(2)
-
-                if not self._was_auto:
-                    self.update_buttons()
-
-                # Restart View with new Monster
-                embed = combat_ui.create_combat_embed(
-                    self.player,
-                    self.monster,
-                    new_logs,
-                    title_override=f"⚔️ BOSS PHASE {self.current_phase_index+1}",
-                )
-                await message.edit(embed=embed, view=self)
-                return  # Keep View Alive
-
-            # --- FINAL VICTORY ---
-            self.combat_logger.log_combat_end(self.player, self.monster, "victory")
-
-            reward_data = rewards.calculate_rewards(self.player, self.monster)
-
-            # Special Key Logic from rewards.py
-            special_flags = rewards.check_special_drops(self.player, self.monster)
-            reward_data["special"] = []
-
-            await apply_boss_sigil_drops(
-                self.bot, self.user_id, self.server_id, self.monster, reward_data
+            self.monster = await generate_boss(
+                self.player, self.monster, next_phase_data, self.current_phase_index
             )
+            self.monster.is_boss = True
 
-            # --- Corrupted monster loot ---
-            await apply_corrupted_monster_drops(
-                self.bot, self.user_id, self.server_id, self.monster, reward_data
+            engine.apply_stat_effects(self.player, self.monster)
+            new_logs = engine.apply_combat_start_passives(self.player, self.monster)
+            self.logs = new_logs
+
+            trans_embed = discord.Embed(
+                title="Phase Complete!",
+                description=f"**{self.monster.name}** rises from the ashes...",
+                color=discord.Color.orange(),
             )
+            trans_embed.set_thumbnail(url=self.monster.image)
+            await message.edit(embed=trans_embed, view=None)
+            await asyncio.sleep(2)
 
-            # Grant currencies / items based on special drop flags
-            await rewards.apply_special_flags(
-                self.bot, self.user_id, self.server_id, special_flags, reward_data
-            )
+            if not self._was_auto:
+                self.update_buttons()
 
-            # Process Drops
-            server_id = str(interaction.guild.id)
-            await DropManager.process_drops(
-                self.bot,
-                self.user_id,
-                server_id,
+            embed = combat_ui.create_combat_embed(
                 self.player,
-                self.monster.level,
-                reward_data,
-                monster=self.monster,
+                self.monster,
+                new_logs,
+                title_override=f"⚔️ BOSS PHASE {self.current_phase_index+1}",
             )
+            await message.edit(embed=embed, view=self)
+            return  # Keep view alive for next phase
 
-            # Handle XP / Level Up
-            exp_changes = await ExperienceManager.add_experience(
-                self.bot, self.user_id, self.player, reward_data["xp"]
-            )
+        # --- FINAL VICTORY ---
+        self.combat_logger.log_combat_end(self.player, self.monster, "victory")
 
-            # Update reward_data so the Embed correctly shows 0 XP gained if protected
-            reward_data["xp"] = exp_changes["xp_added"]
-            reward_data["msgs"].extend(exp_changes["msgs"])
+        reward_data = await apply_victory_rewards(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            self.monster,
+            message,
+            self.combat_logger,
+        )
 
-            self.combat_logger.log_rewards(self.player, reward_data)
+        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
 
-            # DB Commits
-            await self.bot.database.users.modify_gold(self.user_id, reward_data["gold"])
+        # Boss-specific final scenes
+        if "Aphrodite" in self.monster.name or "Gemini" in self.monster.name:
+            embed.set_thumbnail(url=VICTORY_APHRODITE_GEMINI)
+            await message.edit(embed=embed, view=None)
 
-            # Companions
-            current_pet_count = await self.bot.database.companions.get_count(
-                self.user_id
-            )
-            boss_pet_triggered = False
-
-            # 1. BOSS PET CHECK (3% Chance, Tier 3 Fixed)
-            # Gemini boot: pet drop chance doubled (3% -> 6% boss, 5% -> 10% regular)
-            _gemini_boot = self.player.get_boot_corrupted_essence() == "gemini"
-            boss_pet_chance = BOSS_PET_CHANCE_GEMINI_BOOT if _gemini_boot else BOSS_PET_CHANCE
-            regular_pet_chance = REGULAR_PET_CHANCE_GEMINI_BOOT if _gemini_boot else REGULAR_PET_CHANCE
-
-            boss_img = self._get_boss_pet_image(self.monster.name)
-
-            if self.monster.is_boss and boss_img and current_pet_count < 20:
-                if random.random() < boss_pet_chance:
-                    boss_pet_triggered = True
-
-                    # Generate Tier 3 Passive
-                    p_type, p_tier = CompanionMechanics.roll_boss_passive()
-
-                    # Add to DB
-                    # We strip title/epithets for the pet name (e.g. "Lucifer, Fallen" -> "Lucifer")
-                    pet_name = self.monster.name.split(",")[0]
-
-                    await self.bot.database.companions.add_companion(
-                        self.user_id,
-                        name=pet_name,
-                        species="Boss",
-                        image=boss_img,
-                        p_type=p_type,
-                        p_tier=p_tier,
-                    )
-
-                    # Initialize Collection Timer (Standard pet behavior)
-                    await self.bot.database.users.initialize_companion_timer(
-                        self.user_id
-                    )
-
-                    # --- SPECIAL EVENT: TAMING CUTSCENE ---
-                    tame_embed = discord.Embed(
-                        title="⚠️ ANOMALY DETECTED ⚠️",
-                        description=f"The spirit of **{pet_name}** refuses to fade...\nIt binds itself to your soul!",
-                        color=discord.Color.dark_theme(),  # Almost black background
-                    )
-                    tame_embed.set_image(url=boss_img)
-                    tame_embed.add_field(
-                        name="LEGENDARY TAMING",
-                        value=f"You have obtained **{pet_name}** (Tier {p_tier} Passive)!",
-                        inline=False,
-                    )
-                    tame_embed.set_footer(
-                        text="A Boss Companion has joined your roster."
-                    )
-
-                    # Show the cutscene for 5 seconds
-                    await message.edit(embed=tame_embed, view=None)
-                    await asyncio.sleep(5)
-
-                    reward_data["msgs"].append(
-                        f"👑 **LEGENDARY:** {pet_name} joined your roster!"
-                    )
-
-            if (
-                not boss_pet_triggered
-                and not self.monster.is_boss
-                and current_pet_count < 20
-                and random.random() < regular_pet_chance
-            ):
-                # Roll Stats
-                p_type, p_tier = CompanionMechanics.roll_new_passive(is_capture=True)
-
-                # Add to DB
-                await self.bot.database.companions.add_companion(
-                    self.user_id,
-                    name=self.monster.name,
-                    species=self.monster.species,
-                    image=self.monster.image,
-                    p_type=p_type,
-                    p_tier=p_tier,
-                )
-
-                # Add notification
-                reward_data["msgs"].append(
-                    f"🕸️ Following it's defeat, the {self.monster.name} decides to join you on your journey!"
-                )
-            # --- SLAYER INTEGRATION ---
-            if not self.monster.is_boss:
-                s_profile = await self.bot.database.slayer.get_profile(
-                    self.user_id, server_id
-                )
-
-                if s_profile["active_task_species"] == self.monster.species:
-                    slayer_lines = []
-
-                    # 1. Base Slayer XP + Drops
-                    await self.bot.database.slayer.add_rewards(
-                        self.user_id, server_id, xp=500, points=0
-                    )
-                    slayer_lines.append("+500 Slayer XP")
-
-                    ess, heart = core.slayer.mechanics.SlayerMechanics.roll_drops(
-                        self.monster.level
-                    )
-                    # Scavenger passive (e.g. 5% chance per tier to double drops)
-                    drop_bonus_tiers = self.player.get_emblem_bonus("slayer_drops")
-                    if drop_bonus_tiers > 0 and random.random() < (
-                        drop_bonus_tiers * SLAYER_SCAVENGER_CHANCE_PER_TIER
-                    ):
-                        ess *= 2
-                        heart *= 2
-
-                    if ess > 0:
-                        await self.bot.database.slayer.modify_materials(
-                            self.user_id, server_id, "violent_essence", ess
-                        )
-                        slayer_lines.append("Found a **Violent Essence**!")
-                    if heart > 0:
-                        await self.bot.database.slayer.modify_materials(
-                            self.user_id, server_id, "imbued_heart", heart
-                        )
-                        slayer_lines.append("Found an **Imbued Heart**!")
-
-                    # Taskmaster passive (e.g. 5% chance per tier for double progress)
-                    prog_gain = 1
-                    task_tiers = self.player.get_emblem_bonus("task_progress")
-                    if task_tiers > 0 and random.random() < (task_tiers * SLAYER_TASKMASTER_CHANCE_PER_TIER):
-                        prog_gain = 2
-                        slayer_lines.append(
-                            "⚡ **Taskmaster** granted double task progress!"
-                        )
-
-                    # Yvenn sig: +T bonus progress per kill
-                    if reward_data.get("yvenn_slayer_bonus"):
-                        prog_gain += reward_data["yvenn_slayer_bonus"]
-
-                    # 2. Progress Tracker
-                    new_prog = s_profile["active_task_progress"] + prog_gain
-
-                    if new_prog >= s_profile["active_task_amount"]:
-                        # Task Complete!
-                        burst_xp, burst_pts = (
-                            core.slayer.mechanics.SlayerMechanics.calculate_task_rewards(
-                                s_profile["active_task_amount"]
-                            )
-                        )
-                        await self.bot.database.slayer.add_rewards(
-                            self.user_id, server_id, xp=burst_xp, points=burst_pts
-                        )
-                        await self.bot.database.slayer.clear_task(
-                            self.user_id, server_id
-                        )
-                        slayer_lines.append(
-                            f"🏆 **Task Complete!** +{burst_xp} Slayer XP | +{burst_pts} Slayer Pts"
-                        )
-                    else:
-                        await self.bot.database.slayer.update_task_progress(
-                            self.user_id, server_id, 1
-                        )
-                        slayer_lines.append(
-                            f"Progress: {new_prog}/{s_profile['active_task_amount']} {self.monster.species}"
-                        )
-
-                    # 3. Level Up Check
-                    new_s_xp = (
-                        s_profile["xp"]
-                        + 100
-                        + (
-                            burst_xp
-                            if new_prog >= s_profile["active_task_amount"]
-                            else 0
-                        )
-                    )
-                    new_s_lvl = (
-                        core.slayer.mechanics.SlayerMechanics.calculate_level_from_xp(
-                            new_s_xp
-                        )
-                    )
-                    if new_s_lvl > s_profile["level"]:
-                        await self.bot.database.slayer.update_level(
-                            self.user_id, server_id, new_s_lvl
-                        )
-                        slayer_lines.append(
-                            f"🎉 **Slayer Level Up!** You are now Level {new_s_lvl}."
-                        )
-
-                    reward_data["msgs"].append(
-                        "🩸 **Slayer Task**\n" + "\n".join(slayer_lines)
-                    )
-            # --- PARTNER END REWARDS ---
-            if self.player.active_partner:
-                from core.combat.economy.rewards import apply_partner_end_rewards
-
-                partner = self.player.active_partner
-                lvl_msgs = apply_partner_end_rewards(self.player, reward_data["xp"])
-                await self.bot.database.partners.update_exp(
-                    self.user_id, partner.partner_id, partner.exp, partner.level
-                )
-                await self.bot.database.partners.increment_affinity(
-                    self.user_id, partner.partner_id
-                )
-                if lvl_msgs:
-                    reward_data["msgs"].append(
-                        f"🤝 **{partner.name}** reached level **{partner.level}**!"
-                    )
-
-            # --------------------------
-            embed = combat_ui.create_victory_embed(
-                self.player, self.monster, reward_data
-            )
-
-            # Final Boss Scenes
-            if "Aphrodite" in self.monster.name or "Gemini" in self.monster.name:
-                embed.set_thumbnail(url=VICTORY_APHRODITE_GEMINI)
-                await message.edit(embed=embed, view=None)
-            elif "NEET" in self.monster.name:
-                embed.set_thumbnail(url=VICTORY_NEET)
-                if random.random() < NEET_VOID_KEY_CHANCE:
-                    embed.add_field(
-                        name="Loot", value="Found a **Void Key**.", inline=False
-                    )
-                    await self.bot.database.users.modify_currency(
-                        self.user_id, "void_keys", 1
-                    )
-                await message.edit(embed=embed, view=None)
-            elif "Lucifer" in self.monster.name:
-                embed.set_thumbnail(url=VICTORY_LUCIFER)
+        elif "NEET" in self.monster.name:
+            embed.set_thumbnail(url=VICTORY_NEET)
+            if random.random() < NEET_VOID_KEY_CHANCE:
                 embed.add_field(
-                    name="❤️‍🔥 A Soul Core manifests...",
-                    value=(
-                        "**Choose how to absorb its power:**\n"
-                        "❤️‍🔥 **Enraged:** Modifies Attack (-1 to +2)\n"
-                        "💙 **Solidified:** Modifies Defence (1- to +2)\n"
-                        "💔 **Unstable:** Shuffles Stats towards equilibrium\n"
-                        "💞 **Inverse:** Swaps Attack and Defence values\n"
-                        "🖤 **Keep:** Store a singular Soul Core"
-                    ),
-                    inline=False,
+                    name="Loot", value="Found a **Void Key**.", inline=False
                 )
-                ping_msg = await message.channel.send(
-                    f"<@{self.user_id}> A Soul Core has manifested — make your choice!\n\nBattle: {message.jump_url}"
-                )
-                await ping_msg.delete(delay=45)
-                contract_choice_view = LuciferChoiceView(
-                    self.bot, self.user_id, self.player
-                )
-                await message.edit(
-                    embed=embed,
-                    view=contract_choice_view,
-                )
-                contract_choice_view.message = message
-                return  # Lucifer View takes over
-            else:
-                await message.edit(embed=embed, view=None)
-
-            # Soulreap: restore HP to full after every successful encounter
-            if self.player.get_weapon_infernal() == "soulreap":
-                self.player.current_hp = self.player.total_max_hp
-
-            self.bot.state_manager.clear_active(self.user_id)
-            await self.bot.database.users.update_from_player_object(self.player)
-            await _je.save_jewel_state(self.bot, self.user_id, self.player)
-            self.stop()
-
-    # --- Uber helper methods ---
-
-    async def _uber_setup(self, message) -> dict | None:
-        """
-        Shared first step for all uber handlers.
-
-        Rolls damage fraction → curio count → grants curios.
-        If the player is defeated, triggers the defeat flow and returns None.
-        On victory, returns a fresh reward_data dict with xp/gold doubled and
-        curios pre-populated — ready for handler-specific drops.
-        """
-        dmg_frac = self._uber_dmg_frac()
-        curios = self._calc_uber_curios(dmg_frac)
-        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
-
-        if self.player.current_hp <= 0:
-            await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
-            return None
-
-        reward_data = rewards.calculate_rewards(self.player, self.monster)
-        reward_data["xp"] *= 2
-        reward_data["gold"] *= 2
-        reward_data["curios"] = curios
-        reward_data["special"] = []
-        return reward_data
-
-    async def _handle_uber_engram_and_blueprint(
-        self, reward_data: dict, cfg: dict
-    ) -> None:
-        """
-        Rolls the standard 10% engram and 10% blueprint/stone drops
-        for an uber boss, driven by a config entry from _UBER_CONFIGS.
-        Mutates reward_data in-place.
-        """
-        if random.random() < UBER_ENGRAM_CHANCE:
-            engram_fn = getattr(self.bot.database.uber, cfg["engram_fn"])
-            await engram_fn(self.user_id, self.server_id, 1)
-            reward_data["special"].append(cfg["engram_display"])
-            reward_data["msgs"].append(cfg["engram_msg"])
-
-        if random.random() < UBER_BLUEPRINT_CHANCE:
-            u_prog = await self.bot.database.uber.get_uber_progress(
-                self.user_id, self.server_id
-            )
-            if not u_prog.get(cfg["blueprint_key"]):
-                blueprint_fn = getattr(self.bot.database.uber, cfg["blueprint_fn"])
-                await blueprint_fn(self.user_id, self.server_id, True)
-                reward_data["special"].append(cfg["blueprint_display"])
-                reward_data["msgs"].append(cfg["blueprint_msg"])
-            else:
                 await self.bot.database.users.modify_currency(
-                    self.user_id, cfg["stone_currency"], 1
+                    self.user_id, "void_keys", 1
                 )
-                reward_data["special"].append(cfg["stone_display"])
-                reward_data["msgs"].append(cfg["stone_msg"])
+            await message.edit(embed=embed, view=None)
 
-    async def _uber_complete_standard(
-        self, message, cfg: dict, reward_data: dict
-    ) -> None:
-        """
-        Finalizes rewards, builds and edits the victory embed, clears state,
-        and stops the view. Used by all standard uber handlers (not Lucifer).
-        """
-        await self._uber_finalize_rewards(reward_data)
-        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = cfg["embed_title"]
-        getattr(embed, cfg["image_fn"])(url=cfg["victory_image"])
-        await message.edit(embed=embed, view=self.post_combat_view)
+        elif "Lucifer" in self.monster.name:
+            embed.set_thumbnail(url=VICTORY_LUCIFER)
+            embed.add_field(
+                name="❤️‍🔥 A Soul Core manifests...",
+                value=(
+                    "**Choose how to absorb its power:**\n"
+                    "❤️‍🔥 **Enraged:** Modifies Attack (-1 to +2)\n"
+                    "💙 **Solidified:** Modifies Defence (1- to +2)\n"
+                    "💔 **Unstable:** Shuffles Stats towards equilibrium\n"
+                    "💞 **Inverse:** Swaps Attack and Defence values\n"
+                    "🖤 **Keep:** Store a singular Soul Core"
+                ),
+                inline=False,
+            )
+            ping_msg = await message.channel.send(
+                f"<@{self.user_id}> A Soul Core has manifested — make your choice!\n\n"
+                f"Battle: {message.jump_url}"
+            )
+            await ping_msg.delete(delay=45)
+            contract_choice_view = LuciferChoiceView(
+                self.bot, self.user_id, self.player
+            )
+            await message.edit(embed=embed, view=contract_choice_view)
+            contract_choice_view.message = message
+            return  # LuciferChoiceView takes over
+
+        else:
+            await message.edit(embed=embed, view=None)
+
+        # Soulreap: restore HP to full after every successful encounter
+        if self.player.get_weapon_infernal() == "soulreap":
+            self.player.current_hp = self.player.total_max_hp
+
         self.bot.state_manager.clear_active(self.user_id)
+        await self.bot.database.users.update_from_player_object(self.player)
+        await _je.save_jewel_state(self.bot, self.user_id, self.player)
         self.stop()
-
-    # --- Uber encounter end-state handlers ---
-
-    async def _handle_uber_end_state(self, message, interaction: Interaction):
-        """Uber Aphrodite (generic fallback)."""
-        reward_data = await self._uber_setup(message)
-        if reward_data is None:
-            return
-        cfg = _UBER_CONFIGS["Aphrodite"]
-        await self._handle_uber_engram_and_blueprint(reward_data, cfg)
-        await self._uber_complete_standard(message, cfg, reward_data)
-
-    async def _handle_uber_lucifer_end_state(self, message, interaction: Interaction):
-        """Uber Lucifer — standard engram/blueprint + Infernal Contract view."""
-        reward_data = await self._uber_setup(message)
-        if reward_data is None:
-            return
-        cfg = _UBER_CONFIGS["Lucifer"]
-        await self._handle_uber_engram_and_blueprint(reward_data, cfg)
-        await self._uber_finalize_rewards(reward_data)
-
-        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = cfg["embed_title"]
-        embed.set_image(url=cfg["victory_image"])
-        contract_view = InfernalContractView(
-            self.bot, self.user_id, self.player, self.server_id, message
-        )
-        embed.add_field(
-            name="🩸 An Infernal Contract materialises...",
-            value=contract_view.contract_summary(),
-            inline=False,
-        )
-        await message.edit(embed=embed, view=contract_view)
-        self.stop()
-
-    async def _handle_uber_neet_end_state(self, message, interaction: Interaction):
-        """Uber NEET."""
-        reward_data = await self._uber_setup(message)
-        if reward_data is None:
-            return
-        cfg = _UBER_CONFIGS["NEET"]
-        await self._handle_uber_engram_and_blueprint(reward_data, cfg)
-        await self._uber_complete_standard(message, cfg, reward_data)
-
-    async def _handle_uber_gemini_end_state(self, message, interaction: Interaction):
-        """Uber Gemini Twins."""
-        reward_data = await self._uber_setup(message)
-        if reward_data is None:
-            return
-        cfg = _UBER_CONFIGS["Castor"]
-        await self._handle_uber_engram_and_blueprint(reward_data, cfg)
-        await self._uber_complete_standard(message, cfg, reward_data)
-
-    async def _handle_uber_evelynn_end_state(self, message, interaction: Interaction):
-        """Uber Evelynn — Origin of Corruption.
-
-        Differs from the standard pattern:
-          - Guaranteed Curio Puzzle Box before the engram/blueprint rolls.
-          - Extra Rune of Mirage (Imperfect) at 1% and (Perfected) at 0.1%.
-        """
-        reward_data = await self._uber_setup(message)
-        if reward_data is None:
-            return
-        cfg = _UBER_CONFIGS["Evelynn"]
-
-        # Guaranteed: Curio Puzzle Box
-        await self.bot.database.users.modify_currency(
-            self.user_id, "curio_puzzle_boxes", 1
-        )
-        reward_data["special"].append("Curio Puzzle Box")
-        reward_data["msgs"].append(
-            "📦 **A Curio Puzzle Box materialises from Evelynn's shattered form...**"
-        )
-
-        await self._handle_uber_engram_and_blueprint(reward_data, cfg)
-
-        # 1% — Rune of Mirage (Imperfect)
-        if random.random() < EVELYNN_MIRAGE_RUNE_IMPERFECT_CHANCE:
-            await self.bot.database.users.modify_currency(
-                self.user_id, "mirage_runes_imperfect", 1
-            )
-            reward_data["special"].append("Rune of Mirage (Imperfect)")
-            reward_data["msgs"].append(
-                "🪞 **A Rune of Mirage (Imperfect) fractures from the Origin's corruption...**"
-            )
-
-        # 0.1% — Rune of Mirage (Perfected)
-        if random.random() < EVELYNN_MIRAGE_RUNE_PERFECTED_CHANCE:
-            await self.bot.database.users.modify_currency(
-                self.user_id, "mirage_runes_perfected", 1
-            )
-            reward_data["special"].append("Rune of Mirage (Perfected)")
-            reward_data["msgs"].append(
-                "🪞 **A Rune of Mirage (Perfected) crystallises from the primordial void...**"
-            )
-
-        await self._uber_complete_standard(message, cfg, reward_data)
