@@ -238,10 +238,10 @@ class DropManager:
 
 # (name_fragment, building_key, uber_db_method, sigil_display)
 _BOSS_SIGIL_CONFIGS = [
-    ("Lucifer",   "infernal_forge",   "increment_infernal_sigils", "Infernal Sigil"),
-    ("NEET",      "void_sanctum",     "increment_void_shards",     "Void Sigil"),
-    ("Aphrodite", "celestial_shrine", "increment_sigils",          "Celestial Sigil"),
-    ("Gemini",    "twin_shrine",      "increment_gemini_sigils",   "Gemini Sigil"),
+    ("Lucifer", "infernal_forge", "increment_infernal_sigils", "Infernal Sigil"),
+    ("NEET", "void_sanctum", "increment_void_shards", "Void Sigil"),
+    ("Aphrodite", "celestial_shrine", "increment_sigils", "Celestial Sigil"),
+    ("Gemini", "twin_shrine", "increment_gemini_sigils", "Gemini Sigil"),
 ]
 
 

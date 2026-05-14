@@ -54,84 +54,84 @@ class AlchemyMechanics:
     # At level 1: min_val; at level 5: up to max_val.
     PASSIVES: dict[str, dict] = {
         "fermented_brew": {
-            "name":    "Fermented Brew",
-            "emoji":   "🍺",
-            "desc":    "+{value:.0f}% bonus to heal amount",
+            "name": "Fermented Brew",
+            "emoji": "🍺",
+            "desc": "+{value:.0f}% bonus to heal amount",
             "min_val": 15.0,
             "max_val": 45.0,
-            "unit":    "%",
+            "unit": "%",
         },
         "venom_cure": {
-            "name":    "Venom Cure",
-            "emoji":   "🐍",
-            "desc":    "Deal damage equal to {value:.1f}× the heal to the enemy",
+            "name": "Venom Cure",
+            "emoji": "🐍",
+            "desc": "Deal damage equal to {value:.1f}× the heal to the enemy",
             "min_val": 2.0,
             "max_val": 6.0,
-            "unit":    "mult",
+            "unit": "mult",
         },
         "warriors_draft": {
-            "name":    "Warrior's Draft",
-            "emoji":   "💪",
-            "desc":    "+{value:.0f}% ATK on your next attack this combat",
+            "name": "Warrior's Draft",
+            "emoji": "💪",
+            "desc": "+{value:.0f}% ATK on your next attack this combat",
             "min_val": 8.0,
             "max_val": 20.0,
-            "unit":    "%",
+            "unit": "%",
         },
         "iron_skin": {
-            "name":    "Iron Skin",
-            "emoji":   "🛡️",
-            "desc":    "+{value:.0f}% DEF for the next 2 monster turns",
+            "name": "Iron Skin",
+            "emoji": "🛡️",
+            "desc": "+{value:.0f}% DEF for the next 2 monster turns",
             "min_val": 8.0,
             "max_val": 20.0,
-            "unit":    "%",
+            "unit": "%",
         },
         "ward_infusion": {
-            "name":    "Ward Infusion",
-            "emoji":   "🔮",
-            "desc":    "Restore Ward equal to {value:.0f}% of the heal amount",
+            "name": "Ward Infusion",
+            "emoji": "🔮",
+            "desc": "Restore Ward equal to {value:.0f}% of the heal amount",
             "min_val": 15.0,
             "max_val": 40.0,
-            "unit":    "%",
+            "unit": "%",
         },
         "overcap_brew": {
-            "name":    "Overcap Brew",
-            "emoji":   "💥",
-            "desc":    "Overheal stored as temp HP up to {value:.0f}% of max HP (lost on hit)",
+            "name": "Overcap Brew",
+            "emoji": "💥",
+            "desc": "Overheal stored as temp HP up to {value:.0f}% of max HP (lost on hit)",
             "min_val": 20.0,
             "max_val": 50.0,
-            "unit":    "%",
+            "unit": "%",
         },
         "unstable_mixture": {
-            "name":    "Unstable Mixture",
-            "emoji":   "🌀",
-            "desc":    "50% chance to double the heal — 50% chance to halve it",
+            "name": "Unstable Mixture",
+            "emoji": "🌀",
+            "desc": "50% chance to double the heal — 50% chance to halve it",
             "min_val": 1.0,
             "max_val": 1.0,
-            "unit":    "bool",
+            "unit": "bool",
         },
         "dulled_pain": {
-            "name":    "Dulled Pain",
-            "emoji":   "🩹",
-            "desc":    "Take {value:.0f}% less damage from the monster's next attack",
+            "name": "Dulled Pain",
+            "emoji": "🩹",
+            "desc": "Take {value:.0f}% less damage from the monster's next attack",
             "min_val": 25.0,
             "max_val": 50.0,
-            "unit":    "%",
+            "unit": "%",
         },
         "lingering_remedy": {
-            "name":    "Lingering Remedy",
-            "emoji":   "🌿",
-            "desc":    "Restore {value:.0f} HP at the start of each of your next 3 turns",
+            "name": "Lingering Remedy",
+            "emoji": "🌿",
+            "desc": "Restore {value:.0f} HP at the start of each of your next 3 turns",
             "min_val": 5.0,
             "max_val": 20.0,
-            "unit":    "flat",
+            "unit": "flat",
         },
         "bottled_courage": {
-            "name":    "Bottled Courage",
-            "emoji":   "⚔️",
-            "desc":    "After healing, your next hit cannot miss",
+            "name": "Bottled Courage",
+            "emoji": "⚔️",
+            "desc": "After healing, your next hit cannot miss",
             "min_val": 1.0,
             "max_val": 1.0,
-            "unit":    "bool",
+            "unit": "bool",
         },
     }
 
@@ -144,18 +144,28 @@ class AlchemyMechanics:
 
     # Ordered resource columns per skill (index 0 = tier 1, index 4 = tier 5)
     SKILL_TIERS: dict[str, list[str]] = {
-        "mining":      ["iron", "coal", "gold", "platinum", "idea"],
-        "fishing":     ["desiccated_bones", "regular_bones", "sturdy_bones",
-                        "reinforced_bones", "titanium_bones"],
-        "woodcutting": ["oak_logs", "willow_logs", "mahogany_logs",
-                        "magic_logs", "idea_logs"],
+        "mining": ["iron", "coal", "gold", "platinum", "idea"],
+        "fishing": [
+            "desiccated_bones",
+            "regular_bones",
+            "sturdy_bones",
+            "reinforced_bones",
+            "titanium_bones",
+        ],
+        "woodcutting": [
+            "oak_logs",
+            "willow_logs",
+            "mahogany_logs",
+            "magic_logs",
+            "idea_logs",
+        ],
     }
 
     # Human-readable tier names matching the same order
     SKILL_TIER_NAMES: dict[str, list[str]] = {
-        "mining":      ["Iron",    "Coal",    "Gold",     "Platinum",    "Idea Ore"],
-        "fishing":     ["Desd.",   "Regular", "Sturdy",   "Reinforced",  "Titanium"],
-        "woodcutting": ["Oak",     "Willow",  "Mahogany", "Magic",       "Idea Logs"],
+        "mining": ["Iron", "Coal", "Gold", "Platinum", "Idea Ore"],
+        "fishing": ["Desd.", "Regular", "Sturdy", "Reinforced", "Titanium"],
+        "woodcutting": ["Oak", "Willow", "Mahogany", "Magic", "Idea Logs"],
     }
 
     # Gold cost per upgrade transmutation, keyed by destination tier index (1=T2 … 4=T5)
@@ -210,27 +220,27 @@ class AlchemyMechanics:
 
     # DB column → human-readable name (also defines display order)
     KEY_DISPLAY_NAMES: dict[str, str] = {
-        "dragon_key":       "Dragon Key",
-        "angel_key":        "Angel Key",
-        "soul_cores":       "Soul Core",
-        "void_frags":       "Void Fragment",
+        "dragon_key": "Dragon Key",
+        "angel_key": "Angel Key",
+        "soul_cores": "Soul Core",
+        "void_frags": "Void Fragment",
         "balance_fragment": "Fragment of Balance",
     }
 
     KEY_EMOJIS: dict[str, str] = {
-        "dragon_key":       "🐉",
-        "angel_key":        "👼",
-        "soul_cores":       "💀",
-        "void_frags":       "🌀",
+        "dragon_key": "🐉",
+        "angel_key": "👼",
+        "soul_cores": "💀",
+        "void_frags": "🌀",
         "balance_fragment": "⚖️",
     }
 
     # Cosmic Dust granted when disenchanting one key of each type.
     DUST_YIELD: dict[str, int] = {
-        "dragon_key":       80,
-        "angel_key":        80,
-        "soul_cores":       35,
-        "void_frags":       55,
+        "dragon_key": 80,
+        "angel_key": 80,
+        "soul_cores": 35,
+        "void_frags": 55,
         "balance_fragment": 65,
     }
 
@@ -239,21 +249,21 @@ class AlchemyMechanics:
     # ------------------------------------------------------------------
 
     ELEMENTAL_DISPLAY_NAMES: dict[str, str] = {
-        "capricious_carp":  "Capricious Carp",
-        "blessed_bismuth":  "Blessed Bismuth",
-        "sparkling_sprig":  "Sparkling Sprig",
+        "capricious_carp": "Capricious Carp",
+        "blessed_bismuth": "Blessed Bismuth",
+        "sparkling_sprig": "Sparkling Sprig",
     }
 
     ELEMENTAL_EMOJIS: dict[str, str] = {
-        "capricious_carp":  "🐟",
-        "blessed_bismuth":  "💎",
-        "sparkling_sprig":  "🌿",
+        "capricious_carp": "🐟",
+        "blessed_bismuth": "💎",
+        "sparkling_sprig": "🌿",
     }
 
     ELEMENTAL_DUST_YIELD: dict[str, int] = {
-        "capricious_carp":  80,
-        "blessed_bismuth":  80,
-        "sparkling_sprig":  80,
+        "capricious_carp": 80,
+        "blessed_bismuth": 80,
+        "sparkling_sprig": 80,
     }
 
     # ------------------------------------------------------------------
@@ -262,58 +272,58 @@ class AlchemyMechanics:
     # ------------------------------------------------------------------
 
     ESSENCE_DISPLAY_NAMES: dict[str, str] = {
-        "power":        "Power Essence",
-        "protection":   "Protection Essence",
-        "insight":      "Insight Essence",
-        "evasion":      "Evasion Essence",
-        "blocking":     "Blocking Essence",
-        "deftness":     "Deftness Essence",
-        "precision":    "Precision Essence",
-        "gluttony":     "Gluttony Essence",
-        "cleansing":    "Cleansing Essence",
-        "chaos":        "Chaos Essence",
-        "annulment":    "Annulment Essence",
-        "aphrodite":    "Aphrodite Essence",
-        "lucifer":      "Lucifer Essence",
-        "gemini":       "Gemini Essence",
-        "neet":         "Neet Essence",
+        "power": "Power Essence",
+        "protection": "Protection Essence",
+        "insight": "Insight Essence",
+        "evasion": "Evasion Essence",
+        "blocking": "Blocking Essence",
+        "deftness": "Deftness Essence",
+        "precision": "Precision Essence",
+        "gluttony": "Gluttony Essence",
+        "cleansing": "Cleansing Essence",
+        "chaos": "Chaos Essence",
+        "annulment": "Annulment Essence",
+        "aphrodite": "Aphrodite Essence",
+        "lucifer": "Lucifer Essence",
+        "gemini": "Gemini Essence",
+        "neet": "Neet Essence",
     }
 
     ESSENCE_EMOJIS: dict[str, str] = {
-        "power":        "🔴",
-        "protection":   "🔵",
-        "insight":      "🟣",
-        "evasion":      "🟢",
-        "blocking":     "🟡",
-        "deftness":     "🟠",
-        "precision":    "⚪",
-        "gluttony":     "🩷",
-        "cleansing":    "💧",
-        "chaos":        "🌪️",
-        "annulment":    "❌",
-        "aphrodite":    "💗",
-        "lucifer":      "🔥",
-        "gemini":       "♊",
-        "neet":         "🌙",
+        "power": "🔴",
+        "protection": "🔵",
+        "insight": "🟣",
+        "evasion": "🟢",
+        "blocking": "🟡",
+        "deftness": "🟠",
+        "precision": "⚪",
+        "gluttony": "🩷",
+        "cleansing": "💧",
+        "chaos": "🌪️",
+        "annulment": "❌",
+        "aphrodite": "💗",
+        "lucifer": "🔥",
+        "gemini": "♊",
+        "neet": "🌙",
     }
 
     # Common → 30, Rare → 60, Utility → 90, Corrupted → 150
     ESSENCE_DUST_YIELD: dict[str, int] = {
-        "power":        30,
-        "protection":   30,
-        "insight":      60,
-        "evasion":      60,
-        "blocking":     60,
-        "deftness":     60,
-        "precision":    60,
-        "gluttony":     60,
-        "cleansing":    90,
-        "chaos":        90,
-        "annulment":    90,
-        "aphrodite":    150,
-        "lucifer":      150,
-        "gemini":       150,
-        "neet":         150,
+        "power": 30,
+        "protection": 30,
+        "insight": 60,
+        "evasion": 60,
+        "blocking": 60,
+        "deftness": 60,
+        "precision": 60,
+        "gluttony": 60,
+        "cleansing": 90,
+        "chaos": 90,
+        "annulment": 90,
+        "aphrodite": 150,
+        "lucifer": 150,
+        "gemini": 150,
+        "neet": 150,
     }
 
     # Base Cosmic Dust cost to synthesize one key (before alchemy discount).
@@ -321,10 +331,10 @@ class AlchemyMechanics:
     # All costs are well above the corresponding DUST_YIELD even at max discount,
     # preventing any profitable disenchant → re-synthesize loop.
     SYNTHESIS_DUST_BASE: dict[str, int] = {
-        "dragon_key":       130,
-        "angel_key":        130,
-        "soul_cores":        60,
-        "void_frags":        90,
+        "dragon_key": 130,
+        "angel_key": 130,
+        "soul_cores": 60,
+        "void_frags": 90,
         "balance_fragment": 105,
     }
 
@@ -356,7 +366,7 @@ class AlchemyMechanics:
         the corresponding DUST_YIELD (guaranteed by the base values chosen).
         """
         base = AlchemyMechanics.SYNTHESIS_DUST_BASE[item_type]
-        discount = level * 0.01          # 0.01 … 0.05
+        discount = level * 0.01  # 0.01 … 0.05
         return math.ceil(base * (1.0 - discount))
 
     # ------------------------------------------------------------------
@@ -365,6 +375,7 @@ class AlchemyMechanics:
     def format_passive_range(passive_type: str) -> str:
         """Returns the passive description showing the full min–max value range."""
         import re
+
         info = AlchemyMechanics.PASSIVES.get(passive_type)
         if not info:
             return passive_type

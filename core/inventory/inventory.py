@@ -435,7 +435,7 @@ class InventoryUI:
 
     @staticmethod
     def get_item_details_embed(item: Equipment, is_equipped: bool) -> discord.Embed:
-        from core.character.profile_hub import (
+        from core.character.passive_data import (
             _ACCESSORY_PASSIVE_FUNCS,
             _ARMOR_PASSIVE_DESC,
             _BOOT_PASSIVE_FUNCS,

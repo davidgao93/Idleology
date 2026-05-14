@@ -19,9 +19,9 @@ from core.combat.calc.damage_calc import (
     calc_hit_damage,
     calc_miss_damage,
 )
-from core.combat.helpers import PlayerTurnResult, _add_ward
 from core.combat.calc.hit_calc import build_attack_multiplier, resolve_crit, resolve_hit
 from core.combat.calc.ward_system import generate_player_ward_on_hit
+from core.combat.helpers import PlayerTurnResult, _add_ward
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -89,12 +89,15 @@ def process_heal(player: Player, monster=None) -> str:
         player.current_hp = potential_hp
 
     if player.get_armor_passive() == "Alchemist" and random.random() < 0.30:
-        msg_prefix = f"⚗️ **Alchemist** preserved your potion!\n"
+        msg_prefix = "⚗️ **Alchemist** preserved your potion!\n"
     else:
         player.potions -= 1
         msg_prefix = ""
 
-    msg = msg_prefix + f"{player.name} uses a potion and heals for **{max(0, heal_amount - overheal)}** HP!"
+    msg = (
+        msg_prefix
+        + f"{player.name} uses a potion and heals for **{max(0, heal_amount - overheal)}** HP!"
+    )
     if player.apothecary_workers > 0:
         msg += f" (Apothecary: +{int(player.apothecary_workers * 0.2)})"
 
@@ -340,7 +343,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         player.alchemy_linger_turns -= 1
 
     attack_multiplier = build_attack_multiplier(player, monster, log, calc)
-    is_hit, attack_multiplier = resolve_hit(player, monster, attack_multiplier, log, calc)
+    is_hit, attack_multiplier = resolve_hit(
+        player, monster, attack_multiplier, log, calc
+    )
 
     _sigmund_proc = False
     if is_hit:

@@ -3,7 +3,6 @@ core/character/profile_hub.py
 ProfileHubView — tabbed profile UI. Embed building lives in profile_ui.py.
 """
 
-import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
@@ -58,20 +57,36 @@ class ProfileHubView(BaseView):
 
         embed = None
         if tab_id == "card":
-            embed = await ProfileBuilder.build_card(self.bot, self.user_id, self.server_id)
+            embed = await ProfileBuilder.build_card(
+                self.bot, self.user_id, self.server_id
+            )
         elif tab_id == "stats":
-            embed = await ProfileBuilder.build_stats(self.bot, self.user_id, self.server_id)
+            embed = await ProfileBuilder.build_stats(
+                self.bot, self.user_id, self.server_id
+            )
         elif tab_id == "passives":
-            embed = await ProfileBuilder.build_passives(self.bot, self.user_id, self.server_id)
+            embed = await ProfileBuilder.build_passives(
+                self.bot, self.user_id, self.server_id
+            )
         elif tab_id == "inventory":
-            embed = await ProfileBuilder.build_inventory(self.bot, self.user_id, self.server_id)
+            embed = await ProfileBuilder.build_inventory(
+                self.bot, self.user_id, self.server_id
+            )
         elif tab_id == "cooldowns":
-            embed = await ProfileBuilder.build_cooldowns(self.bot, self.user_id, self.server_id)
+            embed = await ProfileBuilder.build_cooldowns(
+                self.bot, self.user_id, self.server_id
+            )
         elif tab_id == "crafting":
-            embed = await ProfileBuilder.build_crafting(self.bot, self.user_id, self.server_id)
+            embed = await ProfileBuilder.build_crafting(
+                self.bot, self.user_id, self.server_id
+            )
         elif tab_id == "resources":
-            embed = await ProfileBuilder.build_resources(self.bot, self.user_id, self.server_id)
+            embed = await ProfileBuilder.build_resources(
+                self.bot, self.user_id, self.server_id
+            )
         elif tab_id == "uber":
-            embed = await ProfileBuilder.build_uber(self.bot, self.user_id, self.server_id)
+            embed = await ProfileBuilder.build_uber(
+                self.bot, self.user_id, self.server_id
+            )
 
         await interaction.edit_original_response(embed=embed, view=self)

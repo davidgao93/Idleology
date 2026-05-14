@@ -18,15 +18,13 @@ from core.items.models import (
     Accessory,
     Armor,
     Boot,
-    Companion,
     CodexTome,
+    Companion,
     Glove,
     Helmet,
-    MonsterPart,
     Weapon,
 )
 from core.partners.models import Partner
-
 
 # ---------------------------------------------------------------------------
 # Per-combat transient state

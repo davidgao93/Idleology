@@ -34,15 +34,21 @@ class _ElementalCompletionView(BaseView):
                 ephemeral=True,
             )
 
-        await self.bot.database.uber.consume_elemental_keys(self.user_id, self.server_id)
+        await self.bot.database.uber.consume_elemental_keys(
+            self.user_id, self.server_id
+        )
         self.bot.state_manager.set_active(self.user_id, "elemental_boss")
         self.stop()
 
         user_row = await self.bot.database.users.get(self.user_id, self.server_id)
         player = await load_player(self.user_id, user_row, self.bot.database)
 
-        new_view = ElementalEncounterView(self.bot, player, self.user_id, self.server_id)
-        await interaction.edit_original_response(embed=new_view.build_embed(), view=new_view)
+        new_view = ElementalEncounterView(
+            self.bot, player, self.user_id, self.server_id
+        )
+        await interaction.edit_original_response(
+            embed=new_view.build_embed(), view=new_view
+        )
         new_view.message = await interaction.original_response()
 
     @discord.ui.button(label="Exit", style=ButtonStyle.secondary, emoji="✖️")
@@ -123,7 +129,9 @@ class ElementalEncounterView(BaseView):
             self.turn += 1
             result = engine.process_player_turn(self.player, self.monster)
             self.total_damage += result.damage
-            self.monster.hp = self.monster.max_hp  # reset so instakills/overkill can't end the fight early
+            self.monster.hp = (
+                self.monster.max_hp
+            )  # reset so instakills/overkill can't end the fight early
             self.last_log = result.log
             await message.edit(embed=self.build_embed(), view=self)
             await asyncio.sleep(1.0)

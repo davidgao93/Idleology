@@ -37,7 +37,9 @@ def build_status_text(player: Player) -> str:
         if skill_key == "cataclysm" and player.jewel_cataclysm_primed:
             lines.append("💥 Cataclysm  **PRIMED**")
         if skill_key == "onslaught" and player.jewel_onslaught_primed:
-            lines.append(f"🔥 Onslaught  **PRIMED** (+{player.jewel_onslaught_bonus_pct:.0f}%)")
+            lines.append(
+                f"🔥 Onslaught  **PRIMED** (+{player.jewel_onslaught_bonus_pct:.0f}%)"
+            )
         if skill_key == "wardforge" and player.jewel_wardforge_bonus_dmg > 0:
             lines.append(f"🛡️ Wardforge  +{player.jewel_wardforge_bonus_dmg:,} pending")
         if skill_key == "acrimony" and player.jewel_acrimony_dot > 0:
@@ -53,7 +55,9 @@ def build_status_text(player: Player) -> str:
     if player.alchemy_guaranteed_hit:
         lines.append("⚔️ Bottled Courage  **ready**")
     if player.alchemy_atk_boost_pct > 0:
-        lines.append(f"💪 Warrior's Draft  +{int(player.alchemy_atk_boost_pct * 100)}% ATK  **ready**")
+        lines.append(
+            f"💪 Warrior's Draft  +{int(player.alchemy_atk_boost_pct * 100)}% ATK  **ready**"
+        )
 
     # --- Alchemy: timed buffs ---
     if player.alchemy_def_boost_turns > 0:
@@ -98,7 +102,10 @@ def create_combat_embed(
     logs = logs or {}
     is_uber = getattr(monster, "is_uber", False)
 
-    from core.combat.calc.calcs import calculate_hit_chance, calculate_monster_hit_chance
+    from core.combat.calc.calcs import (
+        calculate_hit_chance,
+        calculate_monster_hit_chance,
+    )
 
     p_hit = int(calculate_hit_chance(player, monster) * 100)
     m_hit = int(calculate_monster_hit_chance(player, monster) * 100)

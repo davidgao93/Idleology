@@ -62,18 +62,14 @@ def generate_player_ward_on_hit(
         ward = int(glove_lvl * 25)
         if ward > 0:
             added = add_ward(player, ward, log)
-            log.append(
-                f"**Ward-Touched ({glove_lvl})** generates 🔮 **{added}** ward!"
-            )
+            log.append(f"**Ward-Touched ({glove_lvl})** generates 🔮 **{added}** ward!")
             _je.process_jewel_trigger(player, None, "ward", added, log)
 
     if is_crit and glove_passive == "ward-fused" and glove_lvl > 0 and raw_damage > 0:
         ward = int(glove_lvl * 50)
         if ward > 0:
             added = add_ward(player, ward, log)
-            log.append(
-                f"**Ward-Fused ({glove_lvl})** generates 🔮 **{added}** ward!"
-            )
+            log.append(f"**Ward-Fused ({glove_lvl})** generates 🔮 **{added}** ward!")
             _je.process_jewel_trigger(player, None, "ward", added, log)
 
     if raw_damage > 0:

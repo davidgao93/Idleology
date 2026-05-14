@@ -405,7 +405,8 @@ def consume_wardforge_bonus(player: "Player") -> int:
 def reset_jewel_charges(player: "Player") -> None:
     """Reset accumulated skill charges to zero.
     Call at the start of every new standalone encounter (normal combat, ascent session, codex run).
-    Does NOT reset primed/DoT transients — those are managed by reset_jewel_transients."""
+    Does NOT reset primed/DoT transients — those are managed by reset_jewel_transients.
+    """
     jop = getattr(player, "jewel_of_paradise", None)
     if jop:
         jop["skill_charges"] = {}

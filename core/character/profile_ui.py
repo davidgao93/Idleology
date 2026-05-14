@@ -702,25 +702,22 @@ class ProfileBuilder:
                 )
             _add_gear_field(icon, slot_label, item, stat_line, lines)
 
-        # ── Slayer & Codex ────────────────────────────────────────────────────
-        other_text = _build_slayer_codex_text(p)
-        if other_text:
-            if len(other_text) > 1020:
-                other_text = other_text[:1020] + "…"
-            embed.add_field(name="🗡️ Slayer & Codex", value=other_text, inline=False)
+        # ── Slayer & Codex Disabled for now────────────────────────────────────────────────────
+        # other_text = _build_slayer_codex_text(p)
+        # if other_text:
+        #     if len(other_text) > 1020:
+        #         other_text = other_text[:1020] + "…"
+        #     embed.add_field(name="🗡️ Slayer & Codex", value=other_text, inline=False)
 
-        if (
-            not any(
-                [
-                    p.equipped_weapon,
-                    p.equipped_armor,
-                    p.equipped_accessory,
-                    p.equipped_glove,
-                    p.equipped_boot,
-                    p.equipped_helmet,
-                ]
-            )
-            and not other_text
+        if not any(
+            [
+                p.equipped_weapon,
+                p.equipped_armor,
+                p.equipped_accessory,
+                p.equipped_glove,
+                p.equipped_boot,
+                p.equipped_helmet,
+            ]
         ):
             embed.description = "No gear equipped and no active passives."
 
@@ -1017,7 +1014,6 @@ class ProfileBuilder:
             get_next_cycle_id,
             is_collection_window,
             is_cycle_active,
-            reward_potential_pct,
         )
 
         now_utc = datetime.now(timezone.utc)
@@ -1032,8 +1028,6 @@ class ProfileBuilder:
 
             maw_record = await bot.database.maw.get_record(user_id, maw_cycle_id)
             if maw_record:
-                dmg = maw_record["damage_dealt"]
-                pct = reward_potential_pct(dmg)
                 boost_used_at = maw_record["boost_used_at"]
                 if boost_available(boost_used_at, now_ts):
                     boost_str = "✅ Ready"
@@ -1041,11 +1035,7 @@ class ProfileBuilder:
                     secs = boost_remaining_seconds(boost_used_at, now_ts)
                     bh, bm = secs // 3600, (secs % 3600) // 60
                     boost_str = f"**{bh}h {bm}m**"
-                maw_value = (
-                    f"{window_line}\n"
-                    f"Contribution: **{dmg:,}** dmg ({pct:.1f}%)\n"
-                    f"Boost: {boost_str}"
-                )
+                maw_value = f"{window_line}\n" f"Boost: {boost_str}"
             else:
                 maw_value = f"{window_line}\nNot signed up this cycle."
 
@@ -1057,18 +1047,12 @@ class ProfileBuilder:
 
             maw_record = await bot.database.maw.get_record(user_id, maw_cycle_id)
             if maw_record:
-                dmg = maw_record["damage_dealt"]
-                pct = reward_potential_pct(dmg)
                 collected_str = (
                     "✅ Collected"
                     if maw_record["rewards_collected"]
                     else "⏳ Not yet collected"
                 )
-                maw_value = (
-                    f"{window_line}\n"
-                    f"Contribution: **{dmg:,}** dmg ({pct:.1f}%)\n"
-                    f"Rewards: {collected_str}"
-                )
+                maw_value = f"{window_line}\n" f"Rewards: {collected_str}"
             else:
                 maw_value = f"{window_line}\nDidn't participate this cycle."
 

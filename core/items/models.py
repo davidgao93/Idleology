@@ -194,7 +194,7 @@ class Companion:
         elif self.passive_type == "rarity":  # Base Rarity
             return self.passive_tier * 3  # 3, 6, 9, 12, 15
         elif self.passive_type == "s_rarity":  # Special Rarity
-            return self.passive_tier  # 1, 2, 3, 4, 5
+            return round(self.passive_tier * 0.4, 1)  # 0.4, 0.8, 1.2, 1.6, 2.0
         elif self.passive_type == "fdr":  # Flat Damage Reduction
             return 5 + self.passive_tier * 2  # 6, 9, 11, 13, 15
         elif self.passive_type == "pdr":  # Percent Damage Reduction
@@ -212,7 +212,7 @@ class Companion:
             "crit": f"+{val} Crit Chance",
             "ward": f"+{val}% HP as Ward",
             "rarity": f"+{val}% Rarity",
-            "s_rarity": f"+{val}% Special Drop Rate",
+            "s_rarity": f"+{val:.1f}% Special Drop Rate",
             "fdr": f"+{val} Flat Dmg Red.",
             "pdr": f"+{val}% Dmg Red.",
         }
@@ -233,7 +233,7 @@ class Companion:
         elif self.balanced_passive == "rarity":
             return t * 3
         elif self.balanced_passive == "s_rarity":
-            return t
+            return round(t * 0.4, 1)
         elif self.balanced_passive == "fdr":
             return 1 + t
         elif self.balanced_passive == "pdr":
@@ -253,7 +253,7 @@ class Companion:
             "crit": f"+{val} Crit Chance",
             "ward": f"+{val}% Ward",
             "rarity": f"+{val}% Rarity",
-            "s_rarity": f"+{val}% Special Drop Rate",
+            "s_rarity": f"+{val:.1f}% Special Drop Rate",
             "fdr": f"+{val} FDR",
             "pdr": f"+{val}% PDR",
         }

@@ -120,6 +120,9 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
             converted = int(results["gold"] * flora_pct)
             results["gold"] = max(0, results["gold"] - converted)
             results["flora_skilling_gold"] = converted
+            results["msgs"].append(
+                f"🌿 **Flora's Blessing (Lv.{sig_lvl})** — {converted:,} GP converted into skilling materials!"
+            )
 
     return results
 
@@ -293,23 +296,23 @@ def apply_partner_end_rewards(player: Player, xp_gained: int) -> list[str]:
 # Flags that require non-trivial DB calls (uber repo, partners, etc.) are
 # handled explicitly in apply_special_flags below.
 _SPECIAL_FLAG_CURRENCY_MAP: Dict[str, tuple] = {
-    "draconic_key":           ("dragon_key",              "Draconic Key"),
-    "angelic_key":            ("angel_key",               "Angelic Key"),
-    "soul_core":              ("soul_cores",              "Soul Core"),
-    "void_frag":              ("void_frags",              "Void Fragment"),
-    "balance_fragment":       ("balance_fragment",        "Fragment of Balance"),
-    "refinement_rune":        ("refinement_runes",        "Rune of Refinement"),
-    "potential_rune":         ("potential_runes",         "Rune of Potential"),
-    "imbue_rune":             ("imbue_runes",             "Rune of Imbuing"),
-    "shatter_rune":           ("shatter_runes",           "Rune of Shattering"),
-    "partnership_rune":       ("partnership_runes",       "Rune of Partnership"),
-    "magma_core":             ("magma_core",              "Magma Core"),
-    "life_root":              ("life_root",               "Life Root"),
-    "spirit_shard":           ("spirit_shard",            "Spirit Shard"),
-    "unidentified_blueprint": ("unidentified_blueprint",  "📋 Unidentified Blueprint"),
-    "spirit_stone":           ("spirit_stones",           "🔮 Spirit Stone"),
-    "antique_tome":           ("antique_tome",            "📖 Antique Tome"),
-    "pinnacle_key":           ("pinnacle_key",            "🗝️ Pinnacle Key"),
+    "draconic_key": ("dragon_key", "Draconic Key"),
+    "angelic_key": ("angel_key", "Angelic Key"),
+    "soul_core": ("soul_cores", "Soul Core"),
+    "void_frag": ("void_frags", "Void Fragment"),
+    "balance_fragment": ("balance_fragment", "Fragment of Balance"),
+    "refinement_rune": ("refinement_runes", "Rune of Refinement"),
+    "potential_rune": ("potential_runes", "Rune of Potential"),
+    "imbue_rune": ("imbue_runes", "Rune of Imbuing"),
+    "shatter_rune": ("shatter_runes", "Rune of Shattering"),
+    "partnership_rune": ("partnership_runes", "Rune of Partnership"),
+    "magma_core": ("magma_core", "Magma Core"),
+    "life_root": ("life_root", "Life Root"),
+    "spirit_shard": ("spirit_shard", "Spirit Shard"),
+    "unidentified_blueprint": ("unidentified_blueprint", "📋 Unidentified Blueprint"),
+    "spirit_stone": ("spirit_stones", "🔮 Spirit Stone"),
+    "antique_tome": ("antique_tome", "📖 Antique Tome"),
+    "pinnacle_key": ("pinnacle_key", "🗝️ Pinnacle Key"),
 }
 
 

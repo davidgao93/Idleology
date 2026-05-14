@@ -150,10 +150,19 @@ _CORRUPTED_DESC: dict[tuple, str] = {
     ("aphrodite", "helmet"): "Your ward can never be reduced by modifiers.",
     ("lucifer", "glove"): "15% of your current ward is added to your hit damage.",
     ("lucifer", "boot"): "Gain up to 50% increased gold per monster modifier.",
-    ("lucifer", "helmet"): "When your ward is broken, gain 15% PDR for the remainder of that encounter.",
-    ("gemini", "glove"): "Critical hits strike twice, the second strike deals less damage.",
+    (
+        "lucifer",
+        "helmet",
+    ): "When your ward is broken, gain 15% PDR for the remainder of that encounter.",
+    (
+        "gemini",
+        "glove",
+    ): "Critical hits strike twice, the second strike deals less damage.",
     ("gemini", "boot"): "Your pet drop chance is doubled.",
-    ("gemini", "helmet"): "Your damage taken is halved, but is split evenly between HP and Ward.",
+    (
+        "gemini",
+        "helmet",
+    ): "Your damage taken is halved, but is split evenly between HP and Ward.",
     ("neet", "glove"): "Your accuracy is 0.",
     ("neet", "boot"): "Whenever you gain resources during combat, gain double instead.",
     ("neet", "helmet"): "Whenever you gain ward, double the ward gained.",
