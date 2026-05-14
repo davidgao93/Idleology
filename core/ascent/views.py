@@ -4,6 +4,7 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.ascent.mechanics import PINNACLE_REWARDS, AscentMechanics
 from core.combat import engine
 from core.combat import ui as combat_ui
@@ -95,7 +96,7 @@ async def _grant_milestone_rewards(
 # ---------------------------------------------------------------------------
 
 
-class AscentLobbyView(ui.View):
+class AscentLobbyView(BaseView):
     def __init__(
         self,
         bot,
@@ -105,10 +106,7 @@ class AscentLobbyView(ui.View):
         best_floor: int,
         pinnacle_keys: int,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id, timeout=600)
         self.player = player
         self.best_floor = best_floor
         self.pinnacle_keys = pinnacle_keys
@@ -179,9 +177,6 @@ class AscentLobbyView(ui.View):
 
         embed.set_footer(text="A Pinnacle Key is consumed when you begin a run.")
         return embed
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="🏔️", row=0)
     async def begin_run(self, interaction: Interaction, button: ui.Button):
@@ -270,13 +265,10 @@ class AscentLobbyView(ui.View):
         await interaction.response.defer()
         await interaction.delete_original_response()
 
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
 
-
-class AscentPinnacleListView(ui.View):
+class AscentPinnacleListView(BaseView):
     def __init__(self, lobby_view: "AscentLobbyView", pages: list[str]):
-        super().__init__(timeout=600)
+        super().__init__(lobby_view.bot, parent=lobby_view)
         self.lobby_view = lobby_view
         self.pages = pages
         self.page = 0
@@ -301,9 +293,6 @@ class AscentPinnacleListView(ui.View):
         )
         return embed
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.lobby_view.user_id
-
     @ui.button(label="◀", style=ButtonStyle.secondary, row=0)
     async def prev_btn(self, interaction: Interaction, button: ui.Button):
         self.page -= 1
@@ -323,16 +312,13 @@ class AscentPinnacleListView(ui.View):
             embed=self.lobby_view.build_embed(), view=self.lobby_view
         )
 
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-
 
 # ---------------------------------------------------------------------------
 # AscentView
 # ---------------------------------------------------------------------------
 
 
-class AscentView(ui.View):
+class AscentView(BaseView):
     def __init__(
         self,
         bot,
@@ -344,10 +330,7 @@ class AscentView(ui.View):
         starting_floor: int,
         best_floor: int,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id, timeout=600)
         self.player = player
         self.monster = initial_monster
         self.logs = start_logs or {}
@@ -361,9 +344,6 @@ class AscentView(ui.View):
 
         self.combat_logger = CombatLogger(player, initial_monster)
         self.combat_logger.log_combat_start(player, initial_monster)
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         if self.player.current_hp > 0:

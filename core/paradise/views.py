@@ -8,6 +8,7 @@ from __future__ import annotations
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.paradise import mechanics as M
 from core.paradise.data import (
     DUST_REROLL_TYPE,
@@ -166,7 +167,7 @@ def _build_hub_embed(
 # ---------------------------------------------------------------------------
 
 
-class ParadiseHubView(ui.View):
+class ParadiseHubView(BaseView):
     def __init__(
         self,
         bot,
@@ -176,14 +177,10 @@ class ParadiseHubView(ui.View):
         jewel_count: int,
         dust: int,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.data = data
         self.jewel_count = jewel_count
         self.dust = dust
-        self.message = None
         self._build_buttons()
 
     def _build_buttons(self) -> None:
@@ -240,17 +237,6 @@ class ParadiseHubView(ui.View):
 
     def build_embed(self) -> discord.Embed:
         return _build_hub_embed(self.data, self.jewel_count, self.dust)
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     async def _refresh(self, interaction: Interaction) -> None:
         view = await _reload_hub(self.bot, self.user_id, self.server_id)
@@ -343,12 +329,9 @@ class ParadiseHubView(ui.View):
 # ---------------------------------------------------------------------------
 
 
-class _SkillSwapView(ui.View):
+class _SkillSwapView(BaseView):
     def __init__(self, bot, user_id, server_id, data, message):
-        super().__init__(timeout=120)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id, timeout=120)
         self.data = data
         self.message = message
 
@@ -377,16 +360,6 @@ class _SkillSwapView(ui.View):
         back = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="◀️")
         back.callback = self._on_back
         self.add_item(back)
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     async def _on_select(self, interaction: Interaction) -> None:
         await interaction.response.defer()
@@ -417,12 +390,9 @@ class _SkillSwapView(ui.View):
 # ---------------------------------------------------------------------------
 
 
-class _ConsumeJewelView(ui.View):
+class _ConsumeJewelView(BaseView):
     def __init__(self, bot, user_id, server_id, data, message):
-        super().__init__(timeout=120)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id, timeout=120)
         self.data = data
         self.message = message
         self._build_buttons()
@@ -485,16 +455,6 @@ class _ConsumeJewelView(ui.View):
         embed.description = "\n".join(lines)
         return embed
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
-
     async def _unlock_skill_callback(self, interaction: Interaction) -> None:
         await interaction.response.defer()
         unlocked = self.data.get("unlocked_skills", [])
@@ -541,12 +501,9 @@ class _ConsumeJewelView(ui.View):
 # ---------------------------------------------------------------------------
 
 
-class _SkillPickView(ui.View):
+class _SkillPickView(BaseView):
     def __init__(self, bot, user_id, server_id, data, remaining_skills, message):
-        super().__init__(timeout=120)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id, timeout=120)
         self.data = data
         self.message = message
 
@@ -572,16 +529,6 @@ class _SkillPickView(ui.View):
         back = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="◀️")
         back.callback = self._on_back
         self.add_item(back)
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     async def _on_select(self, interaction: Interaction) -> None:
         await interaction.response.defer()
@@ -617,12 +564,9 @@ class _SkillPickView(ui.View):
 # ---------------------------------------------------------------------------
 
 
-class _RerollSelectView(ui.View):
+class _RerollSelectView(BaseView):
     def __init__(self, bot, user_id, server_id, data, dust, message):
-        super().__init__(timeout=120)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id, timeout=120)
         self.data = data
         self.dust = dust
         self.message = message
@@ -666,16 +610,6 @@ class _RerollSelectView(ui.View):
         embed.description = "\n".join(lines)
         return embed
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
-
     async def _on_slot_select(self, interaction: Interaction) -> None:
         await interaction.response.defer()
         slot_idx = int(interaction.data["values"][0])
@@ -699,12 +633,9 @@ class _RerollSelectView(ui.View):
         self.stop()
 
 
-class _RerollActionView(ui.View):
+class _RerollActionView(BaseView):
     def __init__(self, bot, user_id, server_id, data, slot_idx, dust, message):
-        super().__init__(timeout=120)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id, timeout=120)
         self.data = data
         self.slot_idx = slot_idx
         self.dust = dust
@@ -753,16 +684,6 @@ class _RerollActionView(ui.View):
             color=discord.Color.blurple(),
         )
         return embed
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        if self.message:
-            try:
-                await self.message.edit(view=None)
-            except Exception:
-                pass
 
     async def _reroll_type_callback(self, interaction: Interaction) -> None:
         await interaction.response.defer()

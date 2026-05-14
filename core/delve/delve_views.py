@@ -1,31 +1,24 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.delve.mechanics import DelveMechanics, DelveState
 from core.images import DELVE_MAIN, DELVE_MINING, DELVE_REWARDS
 from core.skills.mechanics import SkillMechanics
 
 
-class DelveEntryView(ui.View):
+class DelveEntryView(BaseView):
     def __init__(self, bot, user_id, server_id, cost, start_callback):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id, server_id, timeout=600)
         self.cost = cost
         self.start_callback = start_callback
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
     async def on_timeout(self):
-        # Only clear if we timed out here. If start_callback was called, it handles state.
-        if not self.is_finished():
-            self.bot.state_manager.clear_active(self.user_id)
+        self.bot.state_manager.clear_active(self.user_id)
+        if self.message:
             try:
-                await self.message.edit(
-                    content="Permit request timed out.", view=None, embed=None
-                )
-            except:
+                await self.message.edit(content="Permit request timed out.", view=None, embed=None)
+            except Exception:
                 pass
 
     @ui.button(label="Pay Permit & Descend", style=ButtonStyle.success, emoji="🎟️")
@@ -49,12 +42,9 @@ class DelveEntryView(ui.View):
         self.stop()
 
 
-class DelveView(ui.View):
+class DelveView(BaseView):
     def __init__(self, bot, user_id, server_id, state: DelveState, stats: dict):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id, timeout=600)
         self.state = state
         self.stats = stats
 
@@ -69,22 +59,16 @@ class DelveView(ui.View):
                 DelveMechanics.generate_layer(len(self.state.hazards))
             )
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
-        # If timed out during active play
-        if (
-            self.state.depth > 0 and self.children
-        ):  # Children list check ensures not already cleared
+        if self.state.depth > 0 and self.message:
             try:
                 await self.message.edit(
                     content="⚠️ **Signal Lost.** The mine collapsed while you were idle.",
                     view=None,
                     embed=None,
                 )
-            except:
+            except Exception:
                 pass
 
     def update_buttons(self):
@@ -451,17 +435,11 @@ class DelveView(ui.View):
         self.stop()
 
 
-class DelveUpgradeView(ui.View):
+class DelveUpgradeView(BaseView):
     def __init__(self, bot, user_id, server_id, stats):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id, timeout=600)
         self.stats = stats  # dict from repo
         self.update_buttons()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     def update_buttons(self):
         shards = self.stats["shards"]

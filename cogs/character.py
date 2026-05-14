@@ -3,7 +3,8 @@ from discord import Interaction, app_commands
 from discord.ext import commands, tasks
 
 from core.character.leaderboard_views import LeaderboardHubView
-from core.character.profile_hub import ProfileBuilder, ProfileHubView
+from core.character.profile_hub import ProfileHubView
+from core.character.profile_ui import ProfileBuilder
 from core.character.views import PassiveAllocateView
 from core.items.factory import load_player
 

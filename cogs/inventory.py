@@ -4,7 +4,8 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from core.character.profile_hub import ProfileBuilder, ProfileHubView
+from core.character.profile_hub import ProfileHubView
+from core.character.profile_ui import ProfileBuilder
 from core.inventory.views import SLOT_ORDER, GearView, InventoryListView
 
 # Core

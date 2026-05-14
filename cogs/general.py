@@ -4,7 +4,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.character.profile_hub import ProfileBuilder, ProfileHubView
+from core.character.profile_hub import ProfileHubView
+from core.character.profile_ui import ProfileBuilder
 from core.combat.calc.calcs import (
     ACCESSORY_PASSIVE_DESCS,
     BOOT_PASSIVE_DESCS,

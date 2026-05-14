@@ -4,6 +4,7 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.codex.mechanics import (
     CodexBoon,
     CodexChapter,
@@ -118,7 +119,7 @@ class RerollButton(ui.Button):
 # ---------------------------------------------------------------------------
 
 
-class CodexRunView(ui.View):
+class CodexRunView(BaseView):
     """
     Manages a complete Codex run (5 chapters × 7 waves each).
     State machine: "combat" | "respite" | "chapter_transition" | "done"
@@ -134,9 +135,7 @@ class CodexRunView(ui.View):
         start_logs: dict,
         chapter_wave_baseline: dict = None,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id, timeout=600)
         self.player = player
         self.chapters = chapters
         self.chapter_idx = 0
@@ -172,12 +171,6 @@ class CodexRunView(ui.View):
     @property
     def current_chapter(self) -> CodexChapter:
         return self.chapters[self.chapter_idx]
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
 
     # ------------------------------------------------------------------
     # Embed builders
@@ -861,7 +854,7 @@ class CodexRunView(ui.View):
 # ---------------------------------------------------------------------------
 
 
-class CodexTomsView(ui.View):
+class CodexTomsView(BaseView):
     """Shows a player's 5 tome slots and allows upgrading/rerolling."""
 
     def __init__(
@@ -874,9 +867,7 @@ class CodexTomsView(ui.View):
         rerolls: int,
         chapter_history: dict,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id, timeout=600)
         self.player = player
         self.fragments = fragments
         self.pages = pages
@@ -1141,16 +1132,13 @@ class CodexTomsView(ui.View):
         )
         await interaction.response.edit_message(embed=menu.build_embed(), view=menu)
 
-    async def on_timeout(self):
-        pass
-
 
 # ---------------------------------------------------------------------------
 # CodexMenuView — entry point
 # ---------------------------------------------------------------------------
 
 
-class CodexMenuView(ui.View):
+class CodexMenuView(BaseView):
     def __init__(
         self,
         bot,
@@ -1162,9 +1150,7 @@ class CodexMenuView(ui.View):
         chapter_history: dict,
         antique_tomes: int = 0,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id, timeout=600)
         self.player = player
         self.fragments = fragments
         self.pages = pages
@@ -1200,9 +1186,6 @@ class CodexMenuView(ui.View):
         embed.set_thumbnail(url=CODEX_HUB)
         embed.set_footer(text="Level 100+ required to begin a run.")
         return embed
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="📖", row=0)
     async def begin_run(self, interaction: Interaction, button: ui.Button):
@@ -1284,6 +1267,3 @@ class CodexMenuView(ui.View):
         self.stop()
         await interaction.response.defer()
         await interaction.delete_original_response()
-
-    async def on_timeout(self):
-        pass
