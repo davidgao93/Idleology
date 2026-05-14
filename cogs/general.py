@@ -5,6 +5,13 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.character.profile_hub import ProfileBuilder, ProfileHubView
+from core.combat.calc.calcs import (
+    ACCESSORY_PASSIVE_DESCS,
+    BOOT_PASSIVE_DESCS,
+    GLOVE_PASSIVE_DESCS,
+    HELMET_PASSIVE_DESCS,
+    WEAPON_PASSIVE_DEFS,
+)
 from core.combat.gen.modifier_data import (
     BOSS_MOD_NAMES,
     COMMON_MOD_NAMES,
@@ -13,6 +20,7 @@ from core.combat.gen.modifier_data import (
     make_modifier,
 )
 from core.images import TAVERN_KEEPER
+from core.slayer.mechanics import SLAYER_PASSIVE_DEFS, SLAYER_PASSIVE_NAMES
 
 
 class General(commands.Cog, name="general"):
@@ -59,59 +67,12 @@ class General(commands.Cog, name="general"):
     #  HELPER: Weapon Tiers Generation
     # ------------------------------------------------------------------
     def _generate_weapon_details(self) -> str:
-        # Dictionary of Family Name -> (List of Tiers, Lambda for value calculation)
-        # Value calc usually takes (index + 1) as input
-        weapon_families = {
-            "Burning (Atk Boost)": (
-                ["burning", "flaming", "scorching", "incinerating", "carbonising"],
-                lambda i: f"Atk +{int(i*0.08*100)}%",
-            ),
-            "Poisonous (Miss Dmg)": (
-                ["poisonous", "noxious", "venomous", "toxic", "lethal"],
-                lambda i: f"Miss deals up to {int(i*0.08*100)}% Atk",
-            ),
-            "Polished (Def Shred)": (
-                ["polished", "honed", "gleaming", "tempered", "flaring"],
-                lambda i: f"Enemy Def -{int(i*0.08*100)}%",
-            ),
-            "Sparking (Min Dmg)": (
-                ["sparking", "shocking", "discharging", "electrocuting", "vapourising"],
-                lambda i: f"Min Dmg Floor raised to {int(i*0.08*100)}% of Max",
-            ),
-            "Sturdy (Def Boost)": (
-                ["sturdy", "reinforced", "thickened", "impregnable", "impenetrable"],
-                lambda i: f"Player Def +{int(i*0.08*100)}%",
-            ),
-            "Piercing (Crit Rate)": (
-                ["piercing", "keen", "incisive", "puncturing", "penetrating"],
-                lambda i: f"Crit Rolls increased by {i*5} (Easier Crits)",
-            ),
-            "Strengthened (Cull)": (
-                [
-                    "strengthened",
-                    "forceful",
-                    "overwhelming",
-                    "devastating",
-                    "catastrophic",
-                ],
-                lambda i: f"Instantly kill if HP < {int(i*0.08*100)}%",
-            ),
-            "Accurate (Hit Bonus)": (
-                ["accurate", "precise", "sharpshooter", "deadeye", "bullseye"],
-                lambda i: f"Flat Accuracy Roll +{i*4}",
-            ),
-            "Echo (Double Hit)": (
-                ["echo", "echoo", "echooo", "echoooo", "echoes"],
-                lambda i: f"Extra hit dealing {int(i*0.10*100)}% Dmg",
-            ),
-        }
-
         output = ""
-        for family, (tiers, calc) in weapon_families.items():
-            output += f"__**{family}**__\n"
-            for idx, name in enumerate(tiers):
-                val = calc(idx + 1)  # tiers are 1-based for math
-                output += f"`T{idx+1}` **{name.capitalize()}**: {val}\n"
+        for defn in WEAPON_PASSIVE_DEFS.values():
+            output += f"__**{defn.display_name}**__\n"
+            for idx, label in enumerate(defn.tier_labels):
+                val = defn.description(idx + 1)
+                output += f"`T{idx+1}` **{label.capitalize()}**: {val}\n"
             output += "\n"
         return output
 
@@ -260,13 +221,7 @@ class General(commands.Cog, name="general"):
 
         elif category == "accessory":
             embed.title = "📿 Accessory Passive Scaling (Max Lvl 10)"
-            passives = {
-                "Obliterate": lambda l: f"**{l * 2}%** chance to deal Double Damage",
-                "Absorb": lambda l: f"**{l * 10}%** chance to gain 10% of Monster's ATK and DEF",
-                "Prosper": lambda l: f"**{l * 10}%** chance to Double Gold gained",
-                "Infinite Wisdom": lambda l: f"**{l * 5}%** chance to Double XP gained",
-                "Lucky Strikes": lambda l: f"**{l * 10}%** chance for Lucky Hits",
-            }
+            passives = {k.title(): v for k, v in ACCESSORY_PASSIVE_DESCS.items()}
             void_text = (
                 "\n**⬛ Void Passives (Engram):**\n"
                 "**Entropy**: At combat start, 20% of weapon ATK is added to DEF and vice versa.\n"
@@ -283,28 +238,13 @@ class General(commands.Cog, name="general"):
 
         elif category == "glove":
             embed.title = "🧤 Glove Passive Scaling (Max Lvl 5)"
-            passives = {
-                "Ward-Touched": lambda l: f"Gain {l*25} Ward on Hits",
-                "Ward-Fused": lambda l: f"Gain {l*50} Ward on Crits",
-                "Instability": lambda l: f"Hits are 50% dmg OR **{150 + (l*10)}%** dmg",
-                "Deftness": lambda l: f"Crit Floor raised by **{l*5}%**",
-                "Adroit": lambda l: f"Normal Hit Floor raised by **{l*2}%**",
-                "Equilibrium": lambda l: f"Gain **{l*5}%** of Dmg Dealt as XP",
-                "Plundering": lambda l: f"Gain **{l*10}%** of Dmg Dealt as Gold",
-            }
+            passives = {k.title(): v for k, v in GLOVE_PASSIVE_DESCS.items()}
             embed.description = self._generate_scaling_details(passives, 5)
             content_added = True
 
         elif category == "boot":
             embed.title = "👢 Boot Passive Scaling (Max Lvl 6)"
-            passives = {
-                "Speedster": lambda l: f"Cooldown reduced by **{l}m**",
-                "Skiller": lambda l: f"**{l*5}%** chance for extra skill mats",
-                "Treasure-Tracker": lambda l: f"Treasure Mob chance +**{l*0.5}%**",
-                "Hearty": lambda l: f"Max HP +**{l*5}%**",
-                "Cleric": lambda l: f"Potions heal +**{l*10}%** extra",
-                "Thrill-Seeker": lambda l: f"Special Drop Chance +**{l*1}%**",
-            }
+            passives = {k.title(): v for k, v in BOOT_PASSIVE_DESCS.items()}
             embed.description = self._generate_scaling_details(passives, 6)
             content_added = True
 
@@ -331,31 +271,22 @@ class General(commands.Cog, name="general"):
 
         elif category == "helmet":
             embed.title = "🪖 Helmet Passive Scaling (Max Lvl 5)"
-            passives = {
-                "Juggernaut": lambda l: f"Gain **{l * 4}%** of Def as Atk",
-                "Insight": lambda l: f"Crit Dmg Multiplier +**{l * 0.1:.1f}x**",
-                "Volatile": lambda l: f"Deal **{l * 100}%** of Max HP as Dmg on ward break",
-                "Divine": lambda l: f"Converts **{(l * 100)}%** of Potion Overheal to Ward",
-                "Frenzy": lambda l: f"**{l * 0.5}%** Inc Dmg per 1% Missing HP",
-                "Leeching": lambda l: f"Heal for **{l * 2}%** of base damage dealt",
-                "Thorns": lambda l: f"Reflect **{l * 100}%** of blocked damage",
-                "Ghosted": lambda l: f"Gain **{l * 10}** Ward on Evade",
-            }
+            passives = {k.title(): v for k, v in HELMET_PASSIVE_DESCS.items()}
             embed.description = self._generate_scaling_details(passives, 5)
             content_added = True
 
         elif category == "companion":
             embed.title = "🐾 Companion Passive Scaling (Tiers 1–5)"
             comp_passives = {
-                "ATK (+% Attack)": lambda t: f"+**{4 + t}%** Attack",
-                "DEF (+% Defence)": lambda t: f"+**{4 + t}%** Defence",
-                "HIT (Flat Hit Chance)": lambda t: f"+**{t}** Hit Chance",
-                "CRIT (Flat Crit Chance)": lambda t: f"+**{t}** Crit Chance",
-                "WARD (+% HP as Ward)": lambda t: f"+**{t * 5}%** HP as Ward",
-                "RARITY (+% Rarity)": lambda t: f"+**{t * 3}%** Rarity",
-                "S_RARITY (+% Special Drop Rate)": lambda t: f"+**{t}%** Special Drop Rate",
-                "FDR (Flat Dmg Reduction)": lambda t: f"+**{1 + t}** Flat Damage Reduction",
-                "PDR (% Dmg Reduction)": lambda t: f"+**{2 + t}%** Percent Damage Reduction (bypasses cap)",
+                "ATK (+% Attack)": lambda t: f"+{4 + t}% Attack",
+                "DEF (+% Defence)": lambda t: f"+{4 + t}% Defence",
+                "HIT (Flat Hit Chance)": lambda t: f"+{t} Hit Chance",
+                "CRIT (Flat Crit Chance)": lambda t: f"+{t} Crit Chance",
+                "WARD (+% HP as Ward)": lambda t: f"+{t * 5}% HP as Ward",
+                "RARITY (+% Rarity)": lambda t: f"+{t * 3}% Rarity",
+                "S_RARITY (+% Special Drop Rate)": lambda t: f"+{t}% Special Drop Rate",
+                "FDR (Flat Dmg Reduction)": lambda t: f"+{5 + t * 2} Flat Damage Reduction",
+                "PDR (% Dmg Reduction)": lambda t: f"+{2 + t}% Percent Damage Reduction (bypasses cap)",
             }
             comp_text = self._generate_scaling_details(comp_passives, 5)
             comp_text += (
@@ -368,16 +299,9 @@ class General(commands.Cog, name="general"):
         elif category == "slayer":
             embed.title = "🗡️ Slayer Emblem Passive Scaling (Tiers 1–5)"
             slayer_passives = {
-                "Slayer Target Damage": lambda t: f"+**{t * 5}%** damage vs assigned slayer species",
-                "Boss Damage": lambda t: f"+**{t * 5}%** damage vs bosses",
-                "Normal Monster Damage": lambda t: f"+**{t * 2}%** damage vs normal monsters",
-                "Slayer Target Defence": lambda t: f"+**{t * 2}%** defence vs assigned slayer species",
-                "Crit Damage": lambda t: f"+**{t * 5}%** critical hit damage multiplier",
-                "Accuracy": lambda t: f"+**{t * 2}** flat accuracy roll",
-                "Gold Find": lambda t: f"+**{t * 3}%** gold from combat",
-                "XP Find": lambda t: f"+**{t * 3}%** XP from combat",
-                "Double Task Progress": lambda t: f"**{t * 5}%** chance for a task kill to count twice",
-                "Slayer Drop Rate": lambda t: f"**{t * 5}%** chance for extra slayer material drops",
+                SLAYER_PASSIVE_NAMES[k]: v
+                for k, v in SLAYER_PASSIVE_DEFS.items()
+                if k in SLAYER_PASSIVE_NAMES
             }
             embed.description = self._generate_scaling_details(slayer_passives, 5)
             content_added = True

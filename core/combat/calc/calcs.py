@@ -10,6 +10,8 @@ The re-exports below keep all existing callers working unchanged.
 """
 
 import random
+from dataclasses import dataclass
+from typing import Callable
 
 # ---------------------------------------------------------------------------
 # Re-exports from focused modules (keep all existing import paths working)
@@ -26,41 +28,121 @@ from core.combat.calc.hit_calc import (
 # Weapon Passive Family Registry
 #
 # Passives are stored as 'family_tier' strings, e.g. 'burning_3' (1-indexed).
-# Per-tier scale values (used by engine and player_turn):
-#   burning, poison, debilitate, shocking, sturdy, cull  → 0.08 per tier
-#   deadeye  → 4 flat hit chance per tier
-#   piercing → 5 crit chance per tier
-#   echo     → 0.10 per tier
-#   arcane   → 25 ward on hit per tier
-# Checked slots: weapon main passive, pinnacle, utmost.
+# WEAPON_PASSIVE_DEFS is the canonical source for all weapon passive metadata.
+# WEAPON_PASSIVE_FAMILIES and PASSIVE_SCALE are derived from it for backward compat.
 # ---------------------------------------------------------------------------
 
-WEAPON_PASSIVE_FAMILIES: frozenset[str] = frozenset(
-    {
-        "burning",
-        "poison",
-        "debilitate",
-        "shocking",
-        "sturdy",
-        "piercing",
-        "cull",
-        "deadeye",
-        "echo",
-        "arcane",
-    }
-)
 
-PASSIVE_SCALE: dict[str, float] = {
-    "burning": 0.08,
-    "poison": 0.08,
-    "debilitate": 0.08,
-    "shocking": 0.08,
-    "sturdy": 0.08,
-    "cull": 0.08,
-    "deadeye": 4.0,
-    "piercing": 5.0,
-    "echo": 0.10,
-    "arcane": 25.0,
+@dataclass
+class WeaponPassiveDef:
+    key: str                               # internal DB key, e.g. "burning"
+    display_name: str                      # e.g. "Burning (Atk Boost)"
+    tier_labels: tuple                     # 5 display names for T1–T5
+    scale: float                           # per-tier numeric scale (for engine)
+    description: Callable[[int], str]      # 1-based tier index → effect string
+
+
+WEAPON_PASSIVE_DEFS: dict[str, WeaponPassiveDef] = {
+    "burning": WeaponPassiveDef(
+        "burning", "Burning (Atk Boost)",
+        ("burning", "flaming", "scorching", "incinerating", "carbonising"),
+        0.08, lambda i: f"Atk +{int(i * 0.08 * 100)}%",
+    ),
+    "poison": WeaponPassiveDef(
+        "poison", "Poisonous (Miss Dmg)",
+        ("poisonous", "noxious", "venomous", "toxic", "lethal"),
+        0.08, lambda i: f"Miss deals up to {int(i * 0.08 * 100)}% Atk",
+    ),
+    "debilitate": WeaponPassiveDef(
+        "debilitate", "Polished (Def Shred)",
+        ("polished", "honed", "gleaming", "tempered", "flaring"),
+        0.08, lambda i: f"Enemy Def -{int(i * 0.08 * 100)}%",
+    ),
+    "shocking": WeaponPassiveDef(
+        "shocking", "Sparking (Min Dmg)",
+        ("sparking", "shocking", "discharging", "electrocuting", "vapourising"),
+        0.08, lambda i: f"Min Dmg Floor raised to {int(i * 0.08 * 100)}% of Max",
+    ),
+    "sturdy": WeaponPassiveDef(
+        "sturdy", "Sturdy (Def Boost)",
+        ("sturdy", "reinforced", "thickened", "impregnable", "impenetrable"),
+        0.08, lambda i: f"Player Def +{int(i * 0.08 * 100)}%",
+    ),
+    "piercing": WeaponPassiveDef(
+        "piercing", "Piercing (Crit Rate)",
+        ("piercing", "keen", "incisive", "puncturing", "penetrating"),
+        5.0, lambda i: f"Crit Rolls increased by {i * 5} (Easier Crits)",
+    ),
+    "cull": WeaponPassiveDef(
+        "cull", "Strengthened (Cull)",
+        ("strengthened", "forceful", "overwhelming", "devastating", "catastrophic"),
+        0.08, lambda i: f"Instantly kill if HP < {int(i * 0.08 * 100)}%",
+    ),
+    "deadeye": WeaponPassiveDef(
+        "deadeye", "Accurate (Hit Bonus)",
+        ("accurate", "precise", "sharpshooter", "deadeye", "bullseye"),
+        4.0, lambda i: f"Flat Accuracy Roll +{i * 4}",
+    ),
+    "echo": WeaponPassiveDef(
+        "echo", "Echo (Double Hit)",
+        ("echo", "echoo", "echooo", "echoooo", "echoes"),
+        0.10, lambda i: f"Extra hit dealing {int(i * 0.10 * 100)}% Dmg",
+    ),
+    "arcane": WeaponPassiveDef(
+        "arcane", "Arcane (Ward on Hit)",
+        ("arcane", "arcane II", "arcane III", "arcane IV", "arcane V"),
+        25.0, lambda i: f"Gain {int(i * 25)} Ward on Hit",
+    ),
+}
+
+# Backward-compatible constants derived from WEAPON_PASSIVE_DEFS
+WEAPON_PASSIVE_FAMILIES: frozenset[str] = frozenset(WEAPON_PASSIVE_DEFS)
+PASSIVE_SCALE: dict[str, float] = {k: v.scale for k, v in WEAPON_PASSIVE_DEFS.items()}
+
+# ---------------------------------------------------------------------------
+# Gear Passive Description Dicts
+#
+# Canonical source for display descriptions of tiered/levelled gear passives.
+# Keys are lowercase passive names (matching DB storage); values are
+# lambda(level: int) → str. Level is 1-based.
+# ---------------------------------------------------------------------------
+
+ACCESSORY_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
+    "obliterate": lambda l: f"{l * 2}% chance to deal Double Damage",
+    "absorb": lambda l: f"{l * 10}% chance to gain 10% of Monster's ATK and DEF",
+    "prosper": lambda l: f"{l * 10}% chance to Double Gold gained",
+    "infinite wisdom": lambda l: f"{l * 5}% chance to Double XP gained",
+    "lucky strikes": lambda l: f"{l * 10}% chance for Lucky Hits",
+}
+
+GLOVE_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
+    "ward-touched": lambda l: f"Gain {l * 25} Ward on Hits",
+    "ward-fused": lambda l: f"Gain {l * 50} Ward on Crits",
+    "instability": lambda l: f"Hits are 50% dmg OR {150 + (l * 10)}% dmg",
+    "deftness": lambda l: f"Crit Floor raised by {l * 5}%",
+    "adroit": lambda l: f"Normal Hit Floor raised by {l * 2}%",
+    "equilibrium": lambda l: f"Gain {l * 5}% of Dmg Dealt as XP",
+    "plundering": lambda l: f"Gain {l * 10}% of Dmg Dealt as Gold",
+}
+
+BOOT_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
+    "speedster": lambda l: f"Cooldown reduced by {l}m",
+    "skiller": lambda l: f"{l * 5}% chance for extra skill mats",
+    "treasure-tracker": lambda l: f"Treasure Mob chance +{l * 0.5:.1f}%",
+    "hearty": lambda l: f"Max HP +{l * 5}%",
+    "cleric": lambda l: f"Potions heal +{l * 10}% extra",
+    "thrill-seeker": lambda l: f"Special Drop Chance +{l}%",
+}
+
+HELMET_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
+    "juggernaut": lambda l: f"Gain {l * 4}% of Def as Atk",
+    "insight": lambda l: f"Crit Dmg Multiplier +{l * 0.1:.1f}x",
+    "volatile": lambda l: f"Deal {l * 100}% of Max HP as Dmg on ward break",
+    "divine": lambda l: f"Converts {l * 100}% of Potion Overheal to Ward",
+    "frenzy": lambda l: f"{l * 0.5:.1f}% Inc Dmg per 1% Missing HP",
+    "leeching": lambda l: f"Heal for {l * 2}% of base damage dealt",
+    "thorns": lambda l: f"Reflect {l * 100}% of blocked damage",
+    "ghosted": lambda l: f"Gain {l * 10} Ward on Evade",
 }
 
 

@@ -1,6 +1,6 @@
 import random as _random
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from typing import Callable, List
 
 from core.models import MonsterModifier
 
@@ -12,6 +12,7 @@ class ModifierDef:
     tiers: List[float]  # values per tier; single-element list for flat mods
     difficulties: List[float]
     level_gates: List[int]  # min monster.level for each tier; empty for flat/boss/uber
+    description: Callable[[float], str] = field(default=lambda v: "", repr=False)
 
 
 MODIFIER_DEFINITIONS: dict = {
@@ -22,6 +23,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.10, 0.20, 0.30, 0.40, 0.50],
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"+{int(v*100)}% attack",
     ),
     "Fortified": ModifierDef(
         "Fortified",
@@ -29,6 +31,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.10, 0.20, 0.30, 0.40, 0.50],
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"+{int(v*100)}% defence",
     ),
     "Titanic": ModifierDef(
         "Titanic",
@@ -36,6 +39,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[1.50, 1.75, 2.00, 2.25, 2.50],
         difficulties=[0.001, 0.003, 0.005, 0.007, 0.009],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"{int(v*100)}% HP",
     ),
     "Savage": ModifierDef(
         "Savage",
@@ -43,6 +47,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.20, 0.25, 0.30, 0.35, 0.40],
         difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"+{int(v*100)}% damage",
     ),
     "Lethal": ModifierDef(
         "Lethal",
@@ -50,6 +55,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.05, 0.10, 0.15, 0.20, 0.25],
         difficulties=[0.001, 0.002, 0.004, 0.006, 0.007],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"+{int(v*100)}% crit chance",
     ),
     "Devastating": ModifierDef(
         "Devastating",
@@ -57,6 +63,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.5, 0.6, 0.7, 0.8, 1.0],  # added to 2.0 base crit mult
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Crits deal {round(2.0+v, 1)}× damage",
     ),
     "Keen": ModifierDef(
         "Keen",
@@ -64,6 +71,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[5, 7, 10, 13, 15],
         difficulties=[0.002, 0.004, 0.005, 0.007, 0.009],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"+{int(v)} to hit rolls",
     ),
     "Blinding": ModifierDef(
         "Blinding",
@@ -71,6 +79,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[5, 8, 10, 12, 15],  # flat penalty subtracted from player acc_bonus
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"−{int(v)} to your hit rolls",
     ),
     "Jinxed": ModifierDef(
         "Jinxed",
@@ -78,6 +87,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.10, 0.20, 0.30, 0.40, 0.50],
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"{int(v*100)}% chance your hit rolls are unlucky",
     ),
     "Crushing": ModifierDef(
         "Crushing",
@@ -85,6 +95,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.05, 0.06, 0.07, 0.08, 0.10],  # fraction of PDR ignored
         difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Ignores {int(v*100)}% of your PDR",
     ),
     "Searing": ModifierDef(
         "Searing",
@@ -92,6 +103,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.15, 0.20, 0.25, 0.30, 0.35],  # fraction of FDR ignored
         difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Ignores {int(v*100)}% of your FDR",
     ),
     "Stalwart": ModifierDef(
         "Stalwart",
@@ -99,6 +111,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.05, 0.10, 0.15, 0.20, 0.25],  # chance to nullify player damage
         difficulties=[0.001, 0.003, 0.005, 0.007, 0.008],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Nullifies {int(v*100)}% of incoming damage",
     ),
     "Ironclad": ModifierDef(
         "Ironclad",
@@ -106,6 +119,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.10, 0.15, 0.20, 0.25, 0.30],
         difficulties=[0.002, 0.005, 0.007, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"{int(v*100)}% less damage taken",
     ),
     "Vampiric": ModifierDef(
         "Vampiric",
@@ -119,6 +133,7 @@ MODIFIER_DEFINITIONS: dict = {
         ],  # fraction of monster max_hp healed per hit
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Heals {v*100:.1f}% max HP per hit",
     ),
     "Mending": ModifierDef(
         "Mending",
@@ -132,6 +147,7 @@ MODIFIER_DEFINITIONS: dict = {
         ],  # fraction of monster max_hp per every other turn
         difficulties=[0.004, 0.008, 0.009, 0.01, 0.0012],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Heals {v*100:.2f}% max HP every other turn",
     ),
     "Thorned": ModifierDef(
         "Thorned",
@@ -145,6 +161,7 @@ MODIFIER_DEFINITIONS: dict = {
         ],  # fraction of player max_hp dealt to player per hit
         difficulties=[0.003, 0.006, 0.009, 0.012, 0.015],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"You take {int(v*100)}% of max HP on each hit",
     ),
     "Venomous": ModifierDef(
         "Venomous",
@@ -158,6 +175,7 @@ MODIFIER_DEFINITIONS: dict = {
         ],  # fraction of player max_hp dealt to player per miss
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"You take {int(v*100)}% of max HP on each miss",
     ),
     "Enraged": ModifierDef(
         "Enraged",
@@ -171,6 +189,7 @@ MODIFIER_DEFINITIONS: dict = {
         ],  # attack % per stack (1 stack per 25% HP lost)
         difficulties=[0.002, 0.004, 0.006, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"+{int(v*100)}% ATK per 25% HP lost",
     ),
     "Parching": ModifierDef(
         "Parching",
@@ -178,6 +197,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.10, 0.20, 0.30, 0.40, 0.50],  # fraction of base healing removed
         difficulties=[0.001, 0.002, 0.004, 0.006, 0.008],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Your potions heal {int(v*100)}% less",
     ),
     "Veiled": ModifierDef(
         "Veiled",
@@ -191,6 +211,7 @@ MODIFIER_DEFINITIONS: dict = {
         ],  # fraction of monster max_hp as starting ward
         difficulties=[0.001, 0.002, 0.004, 0.006, 0.008],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Starts with {int(v*100)}% max HP as ward",
     ),
     # Ascended is handled separately in generation (special rule)
     # --- Rare tiered ---
@@ -200,6 +221,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.10, 0.20, 0.30, 0.40, 0.50],
         difficulties=[0.005, 0.008, 0.010, 0.013, 0.015],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Minions echo {int(v*100)}% of each hit",
     ),
     "Dampening": ModifierDef(
         "Dampening",
@@ -207,6 +229,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[5, 10, 15, 20, 25],  # subtracted from effective crit_chance
         difficulties=[0.003, 0.005, 0.008, 0.010, 0.013],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Your crit chance −{int(v)}",
     ),
     "Nullifying": ModifierDef(
         "Nullifying",
@@ -214,69 +237,90 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.30, 0.40, 0.50, 0.60, 0.70],  # fraction of crit damage removed
         difficulties=[0.005, 0.008, 0.010, 0.013, 0.015],
         level_gates=[1, 25, 50, 75, 100],
+        description=lambda v: f"Your crits deal {int(v*100)}% less damage",
     ),
     # --- Rare flat ---
     "Unblockable": ModifierDef(
-        "Unblockable", "rare_flat", tiers=[0.20], difficulties=[0.008], level_gates=[]
+        "Unblockable", "rare_flat", tiers=[0.20], difficulties=[0.008], level_gates=[],
+        description=lambda v: "Block chance 80% less effective",
     ),
     "Unavoidable": ModifierDef(
-        "Unavoidable", "rare_flat", tiers=[0.20], difficulties=[0.008], level_gates=[]
+        "Unavoidable", "rare_flat", tiers=[0.20], difficulties=[0.008], level_gates=[],
+        description=lambda v: "Evasion chance 80% less effective",
     ),
     "Dispelling": ModifierDef(
-        "Dispelling", "rare_flat", tiers=[0.80], difficulties=[0.010], level_gates=[]
+        "Dispelling", "rare_flat", tiers=[0.80], difficulties=[0.010], level_gates=[],
+        description=lambda v: "Reduces your ward by 80% at combat start",
     ),
     "Multistrike": ModifierDef(
-        "Multistrike", "rare_flat", tiers=[0.50], difficulties=[0.012], level_gates=[]
+        "Multistrike", "rare_flat", tiers=[0.50], difficulties=[0.012], level_gates=[],
+        description=lambda v: "50% chance to strike twice",
     ),
     "Spectral": ModifierDef(
-        "Spectral", "rare_flat", tiers=[0.20], difficulties=[0.010], level_gates=[]
+        "Spectral", "rare_flat", tiers=[0.20], difficulties=[0.010], level_gates=[],
+        description=lambda v: "20% chance to deal double damage",
     ),
     "Executioner": ModifierDef(
-        "Executioner", "rare_flat", tiers=[0.90], difficulties=[0.015], level_gates=[]
+        "Executioner", "rare_flat", tiers=[0.90], difficulties=[0.015], level_gates=[],
+        description=lambda v: "1% chance to deal 90% of your HP as damage",
     ),
     "Time Lord": ModifierDef(
-        "Time Lord", "rare_flat", tiers=[0.80], difficulties=[0.015], level_gates=[]
+        "Time Lord", "rare_flat", tiers=[0.80], difficulties=[0.015], level_gates=[],
+        description=lambda v: "80% chance to survive a killing blow",
     ),
     # --- Boss flat ---
     "Overwhelming": ModifierDef(
-        "Overwhelming", "boss", tiers=[2.0], difficulties=[0.0], level_gates=[]
+        "Overwhelming", "boss", tiers=[2.0], difficulties=[0.0], level_gates=[],
+        description=lambda v: "Double damage; −25 to accuracy",
     ),
     "Inevitable": ModifierDef(
-        "Inevitable", "boss", tiers=[0.50], difficulties=[0.0], level_gates=[]
+        "Inevitable", "boss", tiers=[0.50], difficulties=[0.0], level_gates=[],
+        description=lambda v: "Always hits; 50% damage",
     ),
     "Sundering": ModifierDef(
-        "Sundering", "boss", tiers=[0.25], difficulties=[0.0], level_gates=[]
+        "Sundering", "boss", tiers=[0.25], difficulties=[0.0], level_gates=[],
+        description=lambda v: "25% of damage bypasses your ward",
     ),
     "Unerring": ModifierDef(
-        "Unerring", "boss", tiers=[0.0], difficulties=[0.0], level_gates=[]
+        "Unerring", "boss", tiers=[0.0], difficulties=[0.0], level_gates=[],
+        description=lambda v: "Hit rolls always take the highest of two",
     ),
     # --- Uber (hardcoded, not rolled) ---
     "Radiant Protection": ModifierDef(
-        "Radiant Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[]
+        "Radiant Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[],
+        description=lambda v: "60% damage reduction",
     ),
     "Infernal Protection": ModifierDef(
-        "Infernal Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[]
+        "Infernal Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[],
+        description=lambda v: "60% damage reduction",
     ),
     "Balanced Protection": ModifierDef(
-        "Balanced Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[]
+        "Balanced Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[],
+        description=lambda v: "60% damage reduction",
     ),
     "Void Protection": ModifierDef(
-        "Void Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[]
+        "Void Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[],
+        description=lambda v: "60% damage reduction",
     ),
     "Hell's Fury": ModifierDef(
-        "Hell's Fury", "uber", tiers=[3.0], difficulties=[0.0], level_gates=[]
+        "Hell's Fury", "uber", tiers=[3.0], difficulties=[0.0], level_gates=[],
+        description=lambda v: "Deals triple damage",
     ),
     "Void Aura": ModifierDef(
-        "Void Aura", "uber", tiers=[0.05], difficulties=[0.0], level_gates=[]
+        "Void Aura", "uber", tiers=[0.05], difficulties=[0.0], level_gates=[],
+        description=lambda v: "Drains 0.5% ATK and DEF per round",
     ),
     "Balanced Strikes": ModifierDef(
-        "Balanced Strikes", "uber", tiers=[0.50], difficulties=[0.0], level_gates=[]
+        "Balanced Strikes", "uber", tiers=[0.50], difficulties=[0.0], level_gates=[],
+        description=lambda v: "Every other turn: 50% hit, bypasses ward",
     ),
     "Corrupted Protection": ModifierDef(
-        "Corrupted Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[]
+        "Corrupted Protection", "uber", tiers=[0.60], difficulties=[0.0], level_gates=[],
+        description=lambda v: "60% damage reduction",
     ),
     "Origin of Corruption": ModifierDef(
-        "Origin of Corruption", "uber", tiers=[0.0], difficulties=[0.0], level_gates=[]
+        "Origin of Corruption", "uber", tiers=[0.0], difficulties=[0.0], level_gates=[],
+        description=lambda v: "Every 3 turns: drains 10% of your ward, healing Evelynn for 10×",
     ),
 }
 

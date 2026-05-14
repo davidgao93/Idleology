@@ -2,12 +2,44 @@ import csv
 import os
 import random
 from collections import Counter
-from typing import Tuple
+from typing import Callable, Tuple
 
 
 def _slayer_xp_threshold(lvl: int) -> int:
     """XP required to advance from level `lvl` to `lvl+1`."""
     return lvl * 500 + max(0, lvl - 70) ** 2 * 800
+
+
+# Canonical display names for slayer emblem passive types.
+SLAYER_PASSIVE_NAMES: dict[str, str] = {
+    "slayer_dmg": "Slayer Target Damage",
+    "boss_dmg": "Boss Damage",
+    "combat_dmg": "Normal Monster Damage",
+    "gold_find": "Gold Find",
+    "xp_find": "XP Find",
+    "slayer_def": "Slayer Target Defense",
+    "crit_dmg": "Critical Hit Damage",
+    "accuracy": "Accuracy",
+    "task_progress": "Double Task Progress",
+    "slayer_drops": "Slayer Material Drop Rate",
+    "corrupted_find": "Corrupted Attunement",
+}
+
+# Canonical description lambdas for slayer emblem passives.
+# Key: p_type string; Value: lambda(tier: int) → plain-text effect string.
+SLAYER_PASSIVE_DEFS: dict[str, Callable[[int], str]] = {
+    "slayer_dmg": lambda t: f"+{t * 5}% damage vs assigned slayer species",
+    "boss_dmg": lambda t: f"+{t * 5}% damage vs bosses",
+    "combat_dmg": lambda t: f"+{t * 2}% damage vs normal monsters",
+    "slayer_def": lambda t: f"+{t * 2}% defence vs assigned slayer species",
+    "crit_dmg": lambda t: f"+{t * 5}% critical hit damage multiplier",
+    "accuracy": lambda t: f"+{t * 2} flat accuracy roll",
+    "gold_find": lambda t: f"+{t * 3}% gold from combat",
+    "xp_find": lambda t: f"+{t * 3}% XP from combat",
+    "task_progress": lambda t: f"{t * 5}% chance for a task kill to count twice",
+    "slayer_drops": lambda t: f"{t * 5}% chance for extra slayer material drops",
+    "corrupted_find": lambda t: f"+{t * 0.2:.1f}% corrupted spawn chance",
+}
 
 
 class SlayerMechanics:
@@ -145,35 +177,8 @@ class SlayerMechanics:
         """Returns a fully formatted string with the calculated mathematical bonus."""
         if p_type == "none" or not p_type:
             return "Empty Slot"
-
-        base_names = {
-            "slayer_dmg": "Slayer Target Damage",
-            "boss_dmg": "Boss Damage",
-            "combat_dmg": "Normal Monster Damage",
-            "gold_find": "Gold Find",
-            "xp_find": "XP Find",
-            "slayer_def": "Slayer Target Defense",
-            "crit_dmg": "Critical Hit Damage",
-            "accuracy": "Accuracy",
-            "task_progress": "Double Task Progress",
-            "slayer_drops": "Slayer Material Drop Rate",
-            "corrupted_find": "Corrupted Attunement",
-        }
-
-        name = base_names.get(p_type, p_type)
-
-        # Format the math directly matching engine.py/rewards.py
-        if p_type in ["slayer_dmg", "boss_dmg", "crit_dmg"]:
-            return f"{name} (+{tier * 5}%)"
-        elif p_type in ["combat_dmg", "slayer_def"]:
-            return f"{name} (+{tier * 2}%)"
-        elif p_type in ["gold_find", "xp_find"]:
-            return f"{name} (+{tier * 3}%)"
-        elif p_type == "accuracy":
-            return f"{name} (+{tier * 2} flat roll)"
-        elif p_type in ["task_progress", "slayer_drops"]:
-            return f"{name} ({tier * 5}% chance)"
-        elif p_type == "corrupted_find":
-            return f"{name} (+{tier * 0.2:.1f}% corrupted spawn chance)"
-
+        name = SLAYER_PASSIVE_NAMES.get(p_type, p_type)
+        fn = SLAYER_PASSIVE_DEFS.get(p_type)
+        if fn:
+            return f"{name} ({fn(tier)})"
         return f"{name} (Tier {tier})"

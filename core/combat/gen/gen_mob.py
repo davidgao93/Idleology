@@ -5,6 +5,7 @@ import random
 from core.combat.gen.modifier_data import (
     BOSS_MOD_NAMES,
     COMMON_MOD_NAMES,
+    MODIFIER_DEFINITIONS,
     RARE_FLAT_MOD_NAMES,
     RARE_TIERED_MOD_NAMES,
     make_modifier,
@@ -407,65 +408,19 @@ def get_modifier_description(mod) -> str:
       - MonsterModifier object (has .name and .value)
       - str (just the modifier name — used by Dojo, etc.)
     """
-    descriptions = {
-        "Empowered": lambda v: f"+{int(v*100)}% attack",
-        "Fortified": lambda v: f"+{int(v*100)}% defence",
-        "Titanic": lambda v: f"{int(v*100)}% HP",
-        "Savage": lambda v: f"+{int(v*100)}% damage",
-        "Lethal": lambda v: f"+{int(v*100)}% crit chance",
-        "Devastating": lambda v: f"Crits deal {round(2.0+v, 1)}× damage",
-        "Keen": lambda v: f"+{int(v)} to hit rolls",
-        "Blinding": lambda v: f"−{int(v)} to your hit rolls",
-        "Jinxed": lambda v: f"{int(v*100)}% chance your hit rolls are unlucky",
-        "Crushing": lambda v: f"Ignores {int(v*100)}% of your PDR",
-        "Searing": lambda v: f"Ignores {int(v*100)}% of your FDR",
-        "Stalwart": lambda v: f"Nullifies {int(v*100)}% of incoming damage",
-        "Ironclad": lambda v: f"{int(v*100)}% less damage taken",
-        "Vampiric": lambda v: f"Heals {int(v*100)}% max HP per hit",
-        "Mending": lambda v: f"Heals {v*100:.2f}% max HP every other turn",
-        "Thorned": lambda v: f"You take {int(v*100)}% of max HP on each hit",
-        "Venomous": lambda v: f"You take {int(v*100)}% of max HP on each miss",
-        "Enraged": lambda v: f"+{int(v*100)}% ATK per 25% HP lost",
-        "Parching": lambda v: f"Your potions heal {int(v*100)}% less",
-        "Veiled": lambda v: f"Starts with {int(v*100)}% max HP as ward",
-        "Ascended": lambda v: f"Level +{int(v)}",
-        "Commanding": lambda v: f"Minions echo {int(v*100)}% of each hit",
-        "Dampening": lambda v: f"Your crit chance −{int(v)}",
-        "Nullifying": lambda v: f"Your crits deal {int(v*100)}% less damage",
-        "Unblockable": lambda v: "Block chance 80% less effective",
-        "Unavoidable": lambda v: "Evasion chance 80% less effective",
-        "Dispelling": lambda v: "Reduces your ward by 80% at combat start",
-        "Multistrike": lambda v: "50% chance to strike twice",
-        "Spectral": lambda v: "20% chance to deal double damage",
-        "Executioner": lambda v: "1% chance to deal 90% of your HP as damage",
-        "Time Lord": lambda v: "80% chance to survive a killing blow",
-        "Overwhelming": lambda v: "Double damage; −25 to accuracy",
-        "Inevitable": lambda v: "Always hits; 50% damage",
-        "Sundering": lambda v: "25% of damage bypasses your ward",
-        "Unerring": lambda v: "Hit rolls always take the highest of two",
-        "Radiant Protection": lambda v: "60% damage reduction",
-        "Infernal Protection": lambda v: "60% damage reduction",
-        "Balanced Protection": lambda v: "60% damage reduction",
-        "Void Protection": lambda v: "60% damage reduction",
-        "Corrupted Protection": lambda v: "60% damage reduction",
-        "Hell's Fury": lambda v: "Deals triple damage",
-        "Void Aura": lambda v: "Drains 0.5% ATK and DEF per round",
-        "Balanced Strikes": lambda v: "Every other turn: 50% hit, bypasses ward",
-        "Origin of Corruption": lambda v: "Every 3 turns: drains 10% of your ward, healing Evelynn for 10×",
-    }
-
-    # Handle both string and MonsterModifier object
     if isinstance(mod, str):
         mod_name = mod.strip()
-        mod_value = 1.0  # default value for static modifiers
+        mod_value = 1.0
     else:
-        # Original MonsterModifier object path
         mod_name = mod.name.strip()
         mod_value = mod.value
 
-    fn = descriptions.get(mod_name)
-    if fn:
-        return fn(mod_value)
+    if mod_name == "Ascended":
+        return f"Level +{int(mod_value)}"
+
+    defn = MODIFIER_DEFINITIONS.get(mod_name)
+    if defn:
+        return defn.description(mod_value)
     return ""
 
 
