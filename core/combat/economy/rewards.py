@@ -285,6 +285,90 @@ def apply_partner_end_rewards(player: Player, xp_gained: int) -> list[str]:
     return level_msgs
 
 
+# ---------------------------------------------------------------------------
+# Special-flag → currency / reward dispatch
+# ---------------------------------------------------------------------------
+
+# Maps a check_special_drops() flag key to (db_currency_key, display_name).
+# Flags that require non-trivial DB calls (uber repo, partners, etc.) are
+# handled explicitly in apply_special_flags below.
+_SPECIAL_FLAG_CURRENCY_MAP: Dict[str, tuple] = {
+    "draconic_key":           ("dragon_key",              "Draconic Key"),
+    "angelic_key":            ("angel_key",               "Angelic Key"),
+    "soul_core":              ("soul_cores",              "Soul Core"),
+    "void_frag":              ("void_frags",              "Void Fragment"),
+    "balance_fragment":       ("balance_fragment",        "Fragment of Balance"),
+    "refinement_rune":        ("refinement_runes",        "Rune of Refinement"),
+    "potential_rune":         ("potential_runes",         "Rune of Potential"),
+    "imbue_rune":             ("imbue_runes",             "Rune of Imbuing"),
+    "shatter_rune":           ("shatter_runes",           "Rune of Shattering"),
+    "partnership_rune":       ("partnership_runes",       "Rune of Partnership"),
+    "magma_core":             ("magma_core",              "Magma Core"),
+    "life_root":              ("life_root",               "Life Root"),
+    "spirit_shard":           ("spirit_shard",            "Spirit Shard"),
+    "unidentified_blueprint": ("unidentified_blueprint",  "📋 Unidentified Blueprint"),
+    "spirit_stone":           ("spirit_stones",           "🔮 Spirit Stone"),
+    "antique_tome":           ("antique_tome",            "📖 Antique Tome"),
+    "pinnacle_key":           ("pinnacle_key",            "🗝️ Pinnacle Key"),
+}
+
+
+async def apply_special_flags(
+    bot,
+    user_id: str,
+    server_id: str,
+    special_flags: Dict[str, Any],
+    reward_data: dict,
+) -> None:
+    """
+    Processes special drop flags returned by check_special_drops().
+
+    For each truthy flag:
+      - Simple currency flags    → users DB write + reward_data["special"] append.
+      - Elemental boss materials → uber DB write  + reward_data["special"] append.
+      - curio                   → curios currency + reward_data["curios"] = 1.
+      - velour_doubled           → doubles current reward_data["special"] list.
+      - yvenn_slayer_bonus       → stored in reward_data for slayer integration.
+
+    Mutates reward_data in-place; no return value.
+    """
+    for key, val in special_flags.items():
+        if not val:
+            continue
+
+        if key in _SPECIAL_FLAG_CURRENCY_MAP:
+            currency_key, display_name = _SPECIAL_FLAG_CURRENCY_MAP[key]
+            await bot.database.users.modify_currency(user_id, currency_key, 1)
+            reward_data["special"].append(display_name)
+
+        elif key == "curio":
+            await bot.database.users.modify_currency(user_id, "curios", 1)
+            reward_data["curios"] = 1
+
+        elif key == "blessed_bismuth":
+            await bot.database.uber.increment_blessed_bismuth(user_id, server_id, 1)
+            reward_data["special"].append("⚗️ Blessed Bismuth")
+
+        elif key == "sparkling_sprig":
+            await bot.database.uber.increment_sparkling_sprig(user_id, server_id, 1)
+            reward_data["special"].append("🌿 Sparkling Sprig")
+
+        elif key == "capricious_carp":
+            await bot.database.uber.increment_capricious_carp(user_id, server_id, 1)
+            reward_data["special"].append("🐟 Capricious Carp")
+
+        elif key == "guild_ticket":
+            await bot.database.partners.add_tickets(user_id, 1)
+            reward_data["special"].append("🎫 Guild Ticket")
+
+        elif key == "velour_doubled":
+            reward_data["special"] = reward_data["special"] * 2
+
+        elif key == "yvenn_slayer_bonus" and isinstance(val, int):
+            # Bonus slayer progress — stored for the slayer integration block
+            reward_data["yvenn_slayer_bonus"] = val
+
+
 def calculate_item_drop_chance(player: Player) -> int:
     """
     Calculates the percentage chance (0-100) for a gear item to drop.

@@ -55,8 +55,8 @@ class _ElementalCompletionView(BaseView):
 _ELEMENTAL_MONSTER = Monster(
     name="Elemental of Elements",
     level=100,
-    hp=999_999_999,
-    max_hp=999_999_999,
+    hp=99_999,
+    max_hp=99_999,
     xp=0,
     attack=1,
     defence=1,
@@ -119,10 +119,11 @@ class ElementalEncounterView(BaseView):
         button.disabled = True
         message = interaction.message
 
-        while self.turn < self.MAX_TURNS and self.monster.hp > 0:
+        while self.turn < self.MAX_TURNS:
             self.turn += 1
             result = engine.process_player_turn(self.player, self.monster)
             self.total_damage += result.damage
+            self.monster.hp = self.monster.max_hp  # reset so instakills/overkill can't end the fight early
             self.last_log = result.log
             await message.edit(embed=self.build_embed(), view=self)
             await asyncio.sleep(1.0)

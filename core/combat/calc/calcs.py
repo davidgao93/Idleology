@@ -17,12 +17,6 @@ from typing import Callable
 # Re-exports from focused modules (keep all existing import paths working)
 # ---------------------------------------------------------------------------
 
-from core.combat.calc.damage_calc import calculate_damage_taken
-from core.combat.calc.hit_calc import (
-    calculate_crit_chance,
-    calculate_hit_chance,
-    calculate_monster_hit_chance,
-)
 
 # ---------------------------------------------------------------------------
 # Weapon Passive Family Registry
@@ -35,63 +29,95 @@ from core.combat.calc.hit_calc import (
 
 @dataclass
 class WeaponPassiveDef:
-    key: str                               # internal DB key, e.g. "burning"
-    display_name: str                      # e.g. "Burning (Atk Boost)"
-    tier_labels: tuple                     # 5 display names for T1–T5
-    scale: float                           # per-tier numeric scale (for engine)
-    description: Callable[[int], str]      # 1-based tier index → effect string
+    key: str  # internal DB key, e.g. "burning"
+    display_name: str  # e.g. "Burning (Atk Boost)"
+    tier_labels: tuple  # 5 display names for T1–T5
+    scale: float  # per-tier numeric scale (for engine)
+    description: Callable[[int], str]  # 1-based tier index → effect string
 
 
 WEAPON_PASSIVE_DEFS: dict[str, WeaponPassiveDef] = {
     "burning": WeaponPassiveDef(
-        "burning", "Burning (Atk Boost)",
-        ("burning", "flaming", "scorching", "incinerating", "carbonising"),
-        0.08, lambda i: f"Atk +{int(i * 0.08 * 100)}%",
+        "burning",
+        "Burning (Atk Boost)",
+        ("Burning I", "Burning II", "Burning III", "Burning IV", "Burning V"),
+        0.08,
+        lambda i: f"Atk +{int(i * 0.08 * 100)}%",
     ),
     "poison": WeaponPassiveDef(
-        "poison", "Poisonous (Miss Dmg)",
-        ("poisonous", "noxious", "venomous", "toxic", "lethal"),
-        0.08, lambda i: f"Miss deals up to {int(i * 0.08 * 100)}% Atk",
+        "poison",
+        "Poisonous (Miss Dmg)",
+        ("Poisonous I", "Poisonous II", "Poisonous III", "Poisonous IV", "Poisonous V"),
+        0.08,
+        lambda i: f"Miss deals up to {int(i * 0.08 * 100)}% Atk",
     ),
     "debilitate": WeaponPassiveDef(
-        "debilitate", "Polished (Def Shred)",
-        ("polished", "honed", "gleaming", "tempered", "flaring"),
-        0.08, lambda i: f"Enemy Def -{int(i * 0.08 * 100)}%",
+        "debilitate",
+        "Debilitate (Def Shred)",
+        (
+            "Debilitate I",
+            "Debilitate II",
+            "Debilitate III",
+            "Debilitate IV",
+            "Debilitate V",
+        ),
+        0.08,
+        lambda i: f"Enemy Def -{int(i * 0.08 * 100)}%",
     ),
     "shocking": WeaponPassiveDef(
-        "shocking", "Sparking (Min Dmg)",
-        ("sparking", "shocking", "discharging", "electrocuting", "vapourising"),
-        0.08, lambda i: f"Min Dmg Floor raised to {int(i * 0.08 * 100)}% of Max",
+        "shocking",
+        "Sparking (Min Dmg)",
+        ("Sparking I", "Sparking II", "Sparking III", "Sparking IV", "Sparking V"),
+        0.08,
+        lambda i: f"Min Dmg Floor raised to {int(i * 0.08 * 100)}% of Max",
     ),
     "sturdy": WeaponPassiveDef(
-        "sturdy", "Sturdy (Def Boost)",
-        ("sturdy", "reinforced", "thickened", "impregnable", "impenetrable"),
-        0.08, lambda i: f"Player Def +{int(i * 0.08 * 100)}%",
+        "sturdy",
+        "Sturdy (Def Boost)",
+        ("Sturdy I", "Sturdy II", "Sturdy III", "Sturdy IV", "Sturdy V"),
+        0.08,
+        lambda i: f"Player Def +{int(i * 0.08 * 100)}%",
     ),
     "piercing": WeaponPassiveDef(
-        "piercing", "Piercing (Crit Rate)",
-        ("piercing", "keen", "incisive", "puncturing", "penetrating"),
-        5.0, lambda i: f"Crit Rolls increased by {i * 5} (Easier Crits)",
+        "piercing",
+        "Piercing (Crit Rate)",
+        ("Piercing I", "Piercing II", "Piercing III", "Piercing IV", "Piercing V"),
+        5.0,
+        lambda i: f"Critical strike chance increased by {i * 5}%",
     ),
     "cull": WeaponPassiveDef(
-        "cull", "Strengthened (Cull)",
-        ("strengthened", "forceful", "overwhelming", "devastating", "catastrophic"),
-        0.08, lambda i: f"Instantly kill if HP < {int(i * 0.08 * 100)}%",
+        "cull",
+        "Strengthened (Cull)",
+        (
+            "Strengthened I",
+            "Strengthened II",
+            "Strengthened III",
+            "Strengthened IV",
+            "Strengthened V",
+        ),
+        0.08,
+        lambda i: f"Instantly kill if HP < {int(i * 0.08 * 100)}%",
     ),
     "deadeye": WeaponPassiveDef(
-        "deadeye", "Accurate (Hit Bonus)",
-        ("accurate", "precise", "sharpshooter", "deadeye", "bullseye"),
-        4.0, lambda i: f"Flat Accuracy Roll +{i * 4}",
+        "deadeye",
+        "Accurate (Hit Bonus)",
+        ("Accurate I", "Accurate II", "Accurate III", "Accurate IV", "Accurate V"),
+        4.0,
+        lambda i: f"Flat Accuracy Roll +{i * 4}",
     ),
     "echo": WeaponPassiveDef(
-        "echo", "Echo (Double Hit)",
-        ("echo", "echoo", "echooo", "echoooo", "echoes"),
-        0.10, lambda i: f"Extra hit dealing {int(i * 0.10 * 100)}% Dmg",
+        "echo",
+        "Echo (Double Hit)",
+        ("Echo I", "Echo II", "Echo III", "Echo IV", "Echo V"),
+        0.10,
+        lambda i: f"Extra hit dealing {int(i * 0.10 * 100)}% Dmg",
     ),
     "arcane": WeaponPassiveDef(
-        "arcane", "Arcane (Ward on Hit)",
-        ("arcane", "arcane II", "arcane III", "arcane IV", "arcane V"),
-        25.0, lambda i: f"Gain {int(i * 25)} Ward on Hit",
+        "arcane",
+        "Arcane (Ward on Hit)",
+        ("Arcane I", "Arcane II", "Arcane III", "Arcane IV", "Arcane V"),
+        25.0,
+        lambda i: f"Gain {int(i * 25)} Ward on Hit",
     ),
 }
 
@@ -177,7 +203,7 @@ def get_weapon_tier(player, key: str) -> tuple[int, str]:
     ):
         if passive_str and passive_str.startswith(prefix):
             try:
-                tier_idx = int(passive_str[len(prefix):]) - 1
+                tier_idx = int(passive_str[len(prefix) :]) - 1
                 if tier_idx > best[0]:
                     best = (tier_idx, passive_str)
             except ValueError:

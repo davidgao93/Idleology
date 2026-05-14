@@ -21,7 +21,7 @@ _WEAPON_PASSIVE_DESC: dict[str, str] = {
     "poison_3": "Miss deals up to 24% Atk",
     "poison_4": "Miss deals up to 32% Atk",
     "poison_5": "Miss deals up to 40% Atk",
-    # Debilitate family — Def shred (×8% per tier, formerly Polished)
+    # Debilitate family — Def shred (×8% per tier)
     "debilitate_1": "Enemy Def -8%",
     "debilitate_2": "Enemy Def -16%",
     "debilitate_3": "Enemy Def -24%",
@@ -188,9 +188,9 @@ def _get_piercing_crit_bonus(passive: str) -> int:
 
 
 _CORRUPTED_DESC: dict[tuple, str] = {
-    ("aphrodite", "glove"): "Your ward is considered broken when you are hit.",
+    ("aphrodite", "glove"): "Your ward is considered broken when it is damaged.",
     ("aphrodite", "boot"): "Your gear drop rate is lucky.",
-    ("aphrodite", "helmet"): "Your ward can never be disabled.",
+    ("aphrodite", "helmet"): "Your ward can never be reduced by modifiers.",
     ("lucifer", "glove"): "15% of your current ward is added to your hit damage.",
     ("lucifer", "boot"): "Gain up to 50% increased gold per monster modifier.",
     (
@@ -240,17 +240,17 @@ _SLAYER_EMBLEM_FUNCS: dict = {
 }
 
 _CODEX_TOME_INFO: dict = {
-    "vitality": ("🌿 Vitality", lambda v: f"+{v}% Max HP"),
-    "wrath": ("🔥 Wrath", lambda v: f"+{v}% of base DEF as bonus ATK"),
-    "bastion": ("🛡️ Bastion", lambda v: f"+{v}% of base ATK as bonus DEF"),
-    "tenacity": ("⚡ Tenacity", lambda v: f"{v}% chance per hit to halve damage"),
-    "bloodthirst": ("🩸 Bloodthirst", lambda v: f"Heal {v}% of critical hit damage"),
-    "providence": ("✨ Providence", lambda v: f"+{v}% more to total rarity"),
-    "precision": ("🎯 Precision", lambda v: f"+{v} flat crit chance"),
-    "insight": ("🎯 Insight", lambda v: f"+{v} flat crit chance"),
-    "affluence": ("💰 Affluence", lambda v: f"+{v}% XP and Gold from combat"),
-    "bulwark": ("🪨 Bulwark", lambda v: f"+{v}% Percent Damage Reduction"),
-    "resilience": ("🔒 Resilience", lambda v: f"+{v} Flat Damage Reduction"),
+    "vitality": ("Vitality", lambda v: f"+{v}% Max HP"),
+    "wrath": ("Wrath", lambda v: f"+{v}% of base DEF as bonus ATK"),
+    "bastion": ("Bastion", lambda v: f"+{v}% of base ATK as bonus DEF"),
+    "tenacity": ("Tenacity", lambda v: f"{v}% chance per hit to halve damage"),
+    "bloodthirst": ("Bloodthirst", lambda v: f"Heal {v}% of critical hit damage"),
+    "providence": ("Providence", lambda v: f"+{v}% more to total rarity"),
+    "precision": ("Precision", lambda v: f"+{v} flat crit chance"),
+    "insight": ("Insight", lambda v: f"+{v} flat crit chance"),
+    "affluence": ("Affluence", lambda v: f"+{v}% XP and Gold from combat"),
+    "bulwark": ("Bulwark", lambda v: f"+{v}% Percent Damage Reduction"),
+    "resilience": ("Resilience", lambda v: f"+{v} Flat Damage Reduction"),
 }
 
 

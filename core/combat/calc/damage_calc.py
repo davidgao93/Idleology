@@ -231,7 +231,7 @@ def calc_crit_damage(
 
     infernal = player.get_weapon_infernal()
     if infernal == "last_rites" and monster.hp > 0:
-        bonus = int(monster.hp * 0.10)
+        bonus = int(monster.hp * 0.05)
         damage += bonus
         calc_dmg_notes.append(f"+last_rites={bonus}")
         log.append(f"**Last Rites** seals {monster.name}'s fate! (+{bonus})")

@@ -72,7 +72,7 @@ class General(commands.Cog, name="general"):
             output += f"__**{defn.display_name}**__\n"
             for idx, label in enumerate(defn.tier_labels):
                 val = defn.description(idx + 1)
-                output += f"`T{idx+1}` **{label.capitalize()}**: {val}\n"
+                output += f"`T{idx+1}` **{label}**: {val}\n"
             output += "\n"
         return output
 
@@ -130,9 +130,7 @@ class General(commands.Cog, name="general"):
         if category == "monster":
             embed.title = "👹 Monster Modifier Details"
             embed.description = (
-                "Modifiers now have **tiers (I–V)** shown after their name. "
                 "Higher monster levels unlock higher tiers. "
-                "Flat modifiers have no tier numeral. "
                 "Boss modifiers only appear on bosses and ascent monsters.\n​"
             )
 
@@ -214,7 +212,7 @@ class General(commands.Cog, name="general"):
                 "**Diabolic Pact**: At combat start, lose 90% maximum HP and double your Attack.\n"
                 "**Perdition**: On miss, deal 75% of your weapon Attack.\n"
                 "**Voracious**: On hit, gain a voracity stack. Each stack increases crit chance by 5 and resets voracity on crit.\n"
-                "**Last Rites**: Critical hits deal an additional 10% of the enemy's current HP."
+                "**Last Rites**: Critical hits deal an additional 5% of the enemy's current HP."
             )
             embed.description = self._generate_weapon_details() + infernal_text
             content_added = True
@@ -228,7 +226,7 @@ class General(commands.Cog, name="general"):
                 "**Void Echo**: At combat start, 15% of weapon ATK is added to your accessory.\n"
                 "**Unravelling**: At combat start, reduce monster Defence by 20%.\n"
                 "**Void Gaze**: On crit, reduce monster ATK by 3% per stack (up to 30 stacks).\n"
-                "**Fracture**: On crit, 5% chance to instantly kill (does not work in Uber).\n"
+                "**Fracture**: On crit, 5% chance to instantly kill (does not work on Uber bosses).\n"
                 "**Nullfield**: 15% chance to completely absorb incoming damage.\n"
                 "**Eternal Hunger**: On hit, gain a hunger stack. At 10 stacks, deal 10% of monster max HP and heal to max HP.\n"
                 "**Oblivion**: On miss, deal 50% of your total ATK as damage."
@@ -325,7 +323,7 @@ class General(commands.Cog, name="general"):
                 "**Overwhelming**: Always deals double damage; −25 to hit rolls.\n"
                 "**Inevitable**: Always hits; deals 50% damage.\n"
                 "**Sundering**: 25% of each hit bypasses your ward directly to HP.\n"
-                "**Unerring**: Hit rolls always take the highest of two dice.\n"
+                "**Unerring**: Accuracy is lucky.\n"
             )
             embed.description = uber_text
             content_added = True

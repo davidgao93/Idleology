@@ -230,3 +230,80 @@ class DropManager:
 
             if item_desc:
                 reward_data["items"].append(item_desc)
+
+
+# ---------------------------------------------------------------------------
+# Boss sigil & corrupted-monster drops (shared by CombatView and ascent)
+# ---------------------------------------------------------------------------
+
+# (name_fragment, building_key, uber_db_method, sigil_display)
+_BOSS_SIGIL_CONFIGS = [
+    ("Lucifer",   "infernal_forge",   "increment_infernal_sigils", "Infernal Sigil"),
+    ("NEET",      "void_sanctum",     "increment_void_shards",     "Void Sigil"),
+    ("Aphrodite", "celestial_shrine", "increment_sigils",          "Celestial Sigil"),
+    ("Gemini",    "twin_shrine",      "increment_gemini_sigils",   "Gemini Sigil"),
+]
+
+
+async def apply_boss_sigil_drops(
+    bot,
+    user_id: str,
+    server_id: str,
+    monster,
+    reward_data: dict,
+) -> None:
+    """
+    Rolls boss sigil drops for Lucifer / NEET / Aphrodite / Gemini.
+    Skips uber variants. Mutates reward_data['special'] in-place.
+
+    Drop formula: 50% base + building_workers * 0.01% for a bonus second drop.
+    """
+    if getattr(monster, "is_uber", False):
+        return
+
+    for name_frag, building_key, incr_fn_name, sigil_name in _BOSS_SIGIL_CONFIGS:
+        if name_frag not in monster.name:
+            continue
+        _, building_workers = await bot.database.settlement.get_building_details(
+            user_id, server_id, building_key
+        )
+        sigils_dropped = 0
+        if random.random() < 0.5:
+            sigils_dropped += 1
+        if random.random() < (building_workers * 0.0001):
+            sigils_dropped += 1
+        incr_fn = getattr(bot.database.uber, incr_fn_name)
+        await incr_fn(user_id, server_id, sigils_dropped)
+        reward_data["special"].extend([sigil_name] * sigils_dropped)
+        break  # Only one boss type can match
+
+
+async def apply_corrupted_monster_drops(
+    bot,
+    user_id: str,
+    server_id: str,
+    monster,
+    reward_data: dict,
+) -> None:
+    """
+    Handles drops from corrupted monsters. No-ops if monster is not corrupted.
+    Mutates reward_data['special'] in-place.
+
+    Drops:
+      - Guaranteed: Sigil of Corruption
+      - 25%: Uncut Paradise Jewel
+      - 0.01%: Rune of Mirage (Imperfect)
+    """
+    if not getattr(monster, "is_corrupted", False):
+        return
+
+    await bot.database.uber.increment_corruption_sigils(user_id, server_id, 1)
+    reward_data["special"].append("☠️ Sigil of Corruption")
+
+    if random.random() < 0.25:
+        await bot.database.uber.increment_paradise_jewels(user_id, server_id, 1)
+        reward_data["special"].append("💎 Uncut Paradise Jewel")
+
+    if random.random() < 0.0001:
+        await bot.database.users.modify_currency(user_id, "mirage_runes_imperfect", 1)
+        reward_data["special"].append("🪞 Rune of Mirage (Imperfect)")

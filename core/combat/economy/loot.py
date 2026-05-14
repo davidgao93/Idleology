@@ -137,9 +137,6 @@ async def generate_accessory(user_id: str, level: int, drop_rune: bool) -> str:
     suffix = random.choice(load_list("assets/items/suff.txt"))
     acc_name = f"{prefix} {accessory_type} {suffix}"
 
-    attack_modifier = 0
-    defence_modifier = 0
-    rarity_modifier = 0
     if drop_rune:
         randroll = random.randint(0, 100)
     else:

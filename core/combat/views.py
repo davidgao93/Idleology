@@ -12,7 +12,11 @@ from core.combat import engine, rewards
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
-from core.combat.economy.drops import DropManager
+from core.combat.economy.drops import (
+    DropManager,
+    apply_boss_sigil_drops,
+    apply_corrupted_monster_drops,
+)
 from core.combat.economy.experience import ExperienceManager
 from core.combat.gen.gen_mob import generate_boss
 from core.combat.views_lucifer import InfernalContractView, LuciferChoiceView
@@ -32,6 +36,92 @@ from core.images import (
     VICTORY_NEET,
 )
 from core.models import Monster, Player
+
+
+# ---------------------------------------------------------------------------
+# Uber boss configuration
+# Each entry drives the generic engram / blueprint / stone reward logic.
+# Keys that need custom post-processing (Lucifer → contract; Evelynn → puzzle
+# box + mirage runes) still use _handle_uber_engram_and_blueprint but handle
+# their unique steps in their own handler.
+# ---------------------------------------------------------------------------
+_UBER_CONFIGS: dict[str, dict] = {
+    "Aphrodite": {
+        "engram_fn":        "increment_engrams",
+        "engram_display":   "Celestial Engram",
+        "engram_msg":       "🌌 **A Celestial Engram materializes from Aphrodite's shattered form...**",
+        "blueprint_key":    "celestial_blueprint_unlocked",
+        "blueprint_fn":     "set_blueprint_unlocked",
+        "blueprint_display":"Celestial Shrine Blueprint",
+        "blueprint_msg":    "📜 **You found the Celestial Shrine Blueprint!**",
+        "stone_currency":   "celestial_stone",
+        "stone_display":    "Celestial Stone",
+        "stone_msg":        "🪨 **You found a Celestial Stone!**",
+        "victory_image":    VICTORY_CELESTIAL,
+        "image_fn":         "set_image",
+        "embed_title":      "🌌 Apex Shattered!",
+    },
+    "Lucifer": {
+        "engram_fn":        "increment_infernal_engrams",
+        "engram_display":   "Infernal Engram",
+        "engram_msg":       "🔥 **An Infernal Engram crystallises from Lucifer's shattered crown...**",
+        "blueprint_key":    "infernal_blueprint_unlocked",
+        "blueprint_fn":     "set_infernal_blueprint_unlocked",
+        "blueprint_display":"Infernal Forge Blueprint",
+        "blueprint_msg":    "📜 **You found the Infernal Forge Blueprint!**",
+        "stone_currency":   "infernal_cinder",
+        "stone_display":    "Infernal Cinder",
+        "stone_msg":        "🔥 **The forge roars. You extract an Infernal Cinder.**",
+        "victory_image":    VICTORY_INFERNAL,
+        "image_fn":         "set_image",
+        "embed_title":      "🔥 Infernal Sovereign Defeated!",
+    },
+    "NEET": {
+        "engram_fn":        "increment_void_engrams",
+        "engram_display":   "Void Engram",
+        "engram_msg":       "⬛ **A Void Engram crystallises from the collapsing rift...**",
+        "blueprint_key":    "void_blueprint_unlocked",
+        "blueprint_fn":     "set_void_blueprint_unlocked",
+        "blueprint_display":"Void Sanctum Blueprint",
+        "blueprint_msg":    "📜 **You found the Void Sanctum Blueprint!**",
+        "stone_currency":   "void_crystal",
+        "stone_display":    "Void Crystal",
+        "stone_msg":        "🔮 **The void yields a Void Crystal.**",
+        "victory_image":    VICTORY_NEET,
+        "image_fn":         "set_thumbnail",
+        "embed_title":      "⬛ Void Sovereign Defeated!",
+    },
+    "Castor": {  # Gemini twins — matched by "Castor" substring
+        "engram_fn":        "increment_gemini_engrams",
+        "engram_display":   "Gemini Engram",
+        "engram_msg":       "♊ **A Gemini Engram crystallises from the twins' shattered bond...**",
+        "blueprint_key":    "gemini_blueprint_unlocked",
+        "blueprint_fn":     "set_gemini_blueprint_unlocked",
+        "blueprint_display":"Twin Shrine Blueprint",
+        "blueprint_msg":    "📜 **You found the Twin Shrine Blueprint!**",
+        "stone_currency":   "bound_crystal",
+        "stone_display":    "Bound Crystal",
+        "stone_msg":        "💎 **The twins' bond yields a Bound Crystal.**",
+        "victory_image":    VICTORY_GEMINI,
+        "image_fn":         "set_image",
+        "embed_title":      "♊ Bound Sovereigns Defeated!",
+    },
+    "Evelynn": {
+        "engram_fn":        "increment_corruption_engrams",
+        "engram_display":   "Corruption Engram",
+        "engram_msg":       "☠️ **A Corruption Engram crystallises from the primordial rot...**",
+        "blueprint_key":    "corruption_blueprint_unlocked",
+        "blueprint_fn":     "set_corruption_blueprint_unlocked",
+        "blueprint_display":"Shrine of Corruption Blueprint",
+        "blueprint_msg":    "📜 **You found the Shrine of Corruption Blueprint!**",
+        "stone_currency":   "corrupted_crystal",
+        "stone_display":    "Corrupted Crystal",
+        "stone_msg":        "☠️ **The corruption yields a Corrupted Crystal.**",
+        "victory_image":    VICTORY_EVELYNN,
+        "image_fn":         "set_image",
+        "embed_title":      "☠️ Origin of Corruption Shattered!",
+    },
+}
 
 
 class CombatView(BaseView):
@@ -457,226 +547,19 @@ class CombatView(BaseView):
             special_flags = rewards.check_special_drops(self.player, self.monster)
             reward_data["special"] = []
 
-            if "Lucifer" in self.monster.name and not getattr(
-                self.monster, "is_uber", False
-            ):
-                _, forge_workers = (
-                    await self.bot.database.settlement.get_building_details(
-                        self.user_id, self.server_id, "infernal_forge"
-                    )
-                )
-                # 50% base drop; Infernal Forge shrine gives a separate chance at a second
-                sigils_dropped = 0
-                if random.random() < 0.5:
-                    sigils_dropped += 1
-                if random.random() < (forge_workers * 0.0001):
-                    sigils_dropped += 1
-                await self.bot.database.uber.increment_infernal_sigils(
-                    self.user_id, self.server_id, sigils_dropped
-                )
-                reward_data["special"].extend(["Infernal Sigil"] * sigils_dropped)
-
-            if "NEET" in self.monster.name and not getattr(
-                self.monster, "is_uber", False
-            ):
-                _, sanctum_workers = (
-                    await self.bot.database.settlement.get_building_details(
-                        self.user_id, self.server_id, "void_sanctum"
-                    )
-                )
-                # 50% base drop; Void Sanctum shrine gives a separate chance at a second
-                shards_dropped = 0
-                if random.random() < 0.5:
-                    shards_dropped += 1
-                if random.random() < (sanctum_workers * 0.0001):
-                    shards_dropped += 1
-                await self.bot.database.uber.increment_void_shards(
-                    self.user_id, self.server_id, shards_dropped
-                )
-                reward_data["special"].extend(["Void Sigil"] * shards_dropped)
-
-            if "Aphrodite" in self.monster.name and not getattr(
-                self.monster, "is_uber", False
-            ):
-                _, shrine_workers = (
-                    await self.bot.database.settlement.get_building_details(
-                        self.user_id, self.server_id, "celestial_shrine"
-                    )
-                )
-                # 50% base drop; Celestial Shrine gives a separate chance at a second
-                sigils_dropped = 0
-                if random.random() < 0.5:
-                    sigils_dropped += 1
-                if random.random() < (shrine_workers * 0.0001):
-                    sigils_dropped += 1
-                await self.bot.database.uber.increment_sigils(
-                    self.user_id, self.server_id, sigils_dropped
-                )
-                reward_data["special"].extend(["Celestial Sigil"] * sigils_dropped)
-
-            if "Gemini" in self.monster.name and not getattr(
-                self.monster, "is_uber", False
-            ):
-                _, shrine_workers = (
-                    await self.bot.database.settlement.get_building_details(
-                        self.user_id, self.server_id, "twin_shrine"
-                    )
-                )
-                # 50% base drop; Twin Shrine gives a separate chance at a second
-                sigils_dropped = 0
-                if random.random() < 0.5:
-                    sigils_dropped += 1
-                if random.random() < (shrine_workers * 0.0001):
-                    sigils_dropped += 1
-                await self.bot.database.uber.increment_gemini_sigils(
-                    self.user_id, self.server_id, sigils_dropped
-                )
-                reward_data["special"].extend(["Gemini Sigil"] * sigils_dropped)
+            await apply_boss_sigil_drops(
+                self.bot, self.user_id, self.server_id, self.monster, reward_data
+            )
 
             # --- Corrupted monster loot ---
-            if getattr(self.monster, "is_corrupted", False):
-                # Guaranteed: Sigil of Corruption
-                await self.bot.database.uber.increment_corruption_sigils(
-                    self.user_id, self.server_id, 1
-                )
-                reward_data["special"].append("☠️ Sigil of Corruption")
-                # 25% chance: Uncut Paradise Jewel
-                if random.random() < 0.25:
-                    await self.bot.database.uber.increment_paradise_jewels(
-                        self.user_id, self.server_id, 1
-                    )
-                    reward_data["special"].append("💎 Uncut Paradise Jewel")
-                # 0.01% (1 in 10,000) — Rune of Mirage (Imperfect), unaffected by rarity
-                if random.random() < 0.0001:
-                    await self.bot.database.users.modify_currency(
-                        self.user_id, "mirage_runes_imperfect", 1
-                    )
-                    reward_data["special"].append("🪞 Rune of Mirage (Imperfect)")
+            await apply_corrupted_monster_drops(
+                self.bot, self.user_id, self.server_id, self.monster, reward_data
+            )
 
-            # Grant Currencies based on flags
-            for key, val in special_flags.items():
-                if val:
-                    # Mapping logic needed here or simple ifs
-                    if key == "draconic_key":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "dragon_key", 1
-                        )
-                        reward_data["special"].append("Draconic Key")
-                    elif key == "angelic_key":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "angel_key", 1
-                        )
-                        reward_data["special"].append("Angelic Key")
-                    elif key == "soul_core":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "soul_cores", 1
-                        )
-                        reward_data["special"].append("Soul Core")
-                    elif key == "void_frag":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "void_frags", 1
-                        )
-                        reward_data["special"].append("Void Fragment")
-                    elif key == "balance_fragment":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "balance_fragment", 1
-                        )
-                        reward_data["special"].append("Fragment of Balance")
-                    elif key == "curio":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "curios", 1
-                        )
-                        reward_data["curios"] = 1
-                    # Boss/Special Runes
-                    elif key == "refinement_rune":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "refinement_runes", 1
-                        )
-                        reward_data["special"].append("Rune of Refinement")
-
-                    elif key == "potential_rune":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "potential_runes", 1
-                        )
-                        reward_data["special"].append("Rune of Potential")
-
-                    elif key == "imbue_rune":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "imbue_runes", 1
-                        )
-                        reward_data["special"].append("Rune of Imbuing")
-
-                    elif key == "shatter_rune":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "shatter_runes", 1
-                        )
-                        reward_data["special"].append("Rune of Shattering")
-
-                    elif key == "partnership_rune":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "partnership_runes", 1
-                        )
-                        reward_data["special"].append("Rune of Partnership")
-                    elif key == "magma_core":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "magma_core", 1
-                        )
-                        reward_data["special"].append("Magma Core")
-                    elif key == "life_root":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "life_root", 1
-                        )
-                        reward_data["special"].append("Life Root")
-                    elif key == "spirit_shard":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "spirit_shard", 1
-                        )
-                        reward_data["special"].append("Spirit Shard")
-                    elif key == "unidentified_blueprint":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "unidentified_blueprint", 1
-                        )
-                        reward_data["special"].append("📋 Unidentified Blueprint")
-                    elif key == "spirit_stone":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "spirit_stones", 1
-                        )
-                        reward_data["special"].append("🔮 Spirit Stone")
-                    elif key == "antique_tome":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "antique_tome", 1
-                        )
-                        reward_data["special"].append("📖 Antique Tome")
-                    elif key == "pinnacle_key":
-                        await self.bot.database.users.modify_currency(
-                            self.user_id, "pinnacle_key", 1
-                        )
-                        reward_data["special"].append("🗝️ Pinnacle Key")
-                    elif key == "blessed_bismuth":
-                        await self.bot.database.uber.increment_blessed_bismuth(
-                            self.user_id, self.server_id, 1
-                        )
-                        reward_data["special"].append("⚗️ Blessed Bismuth")
-                    elif key == "sparkling_sprig":
-                        await self.bot.database.uber.increment_sparkling_sprig(
-                            self.user_id, self.server_id, 1
-                        )
-                        reward_data["special"].append("🌿 Sparkling Sprig")
-                    elif key == "capricious_carp":
-                        await self.bot.database.uber.increment_capricious_carp(
-                            self.user_id, self.server_id, 1
-                        )
-                        reward_data["special"].append("🐟 Capricious Carp")
-                    elif key == "guild_ticket":
-                        await self.bot.database.partners.add_tickets(self.user_id, 1)
-                        reward_data["special"].append("🎫 Guild Ticket")
-                    elif key == "velour_doubled":
-                        # Double all currently-queued special drops
-                        reward_data["special"] = reward_data["special"] * 2
-                    elif key == "yvenn_slayer_bonus" and isinstance(val, int):
-                        # Bonus slayer progress (already handled in slayer block below,
-                        # but store count for messaging)
-                        reward_data["yvenn_slayer_bonus"] = val
+            # Grant currencies / items based on special drop flags
+            await rewards.apply_special_flags(
+                self.bot, self.user_id, self.server_id, special_flags, reward_data
+            )
 
             # Process Drops
             server_id = str(interaction.guild.id)
@@ -968,111 +851,100 @@ class CombatView(BaseView):
             await _je.save_jewel_state(self.bot, self.user_id, self.player)
             self.stop()
 
-    async def _handle_uber_end_state(self, message, interaction: Interaction):
-        """Uber Aphrodite."""
+    # --- Uber helper methods ---
+
+    async def _uber_setup(self, message) -> dict | None:
+        """
+        Shared first step for all uber handlers.
+
+        Rolls damage fraction → curio count → grants curios.
+        If the player is defeated, triggers the defeat flow and returns None.
+        On victory, returns a fresh reward_data dict with xp/gold doubled and
+        curios pre-populated — ready for handler-specific drops.
+        """
         dmg_frac = self._uber_dmg_frac()
         curios = self._calc_uber_curios(dmg_frac)
         await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
 
         if self.player.current_hp <= 0:
             await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
-            return
+            return None
 
         reward_data = rewards.calculate_rewards(self.player, self.monster)
         reward_data["xp"] *= 2
         reward_data["gold"] *= 2
         reward_data["curios"] = curios
         reward_data["special"] = []
+        return reward_data
 
+    async def _handle_uber_engram_and_blueprint(
+        self, reward_data: dict, cfg: dict
+    ) -> None:
+        """
+        Rolls the standard 10% engram and 10% blueprint/stone drops
+        for an uber boss, driven by a config entry from _UBER_CONFIGS.
+        Mutates reward_data in-place.
+        """
         if random.random() < 0.10:
-            await self.bot.database.uber.increment_engrams(
-                self.user_id, self.server_id, 1
-            )
-            reward_data["special"].append("Celestial Engram")
-            reward_data["msgs"].append(
-                "🌌 **A Celestial Engram materializes from Aphrodite's shattered form...**"
-            )
+            engram_fn = getattr(self.bot.database.uber, cfg["engram_fn"])
+            await engram_fn(self.user_id, self.server_id, 1)
+            reward_data["special"].append(cfg["engram_display"])
+            reward_data["msgs"].append(cfg["engram_msg"])
 
         if random.random() < 0.10:
             u_prog = await self.bot.database.uber.get_uber_progress(
                 self.user_id, self.server_id
             )
-            if not u_prog["celestial_blueprint_unlocked"]:
-                await self.bot.database.uber.set_blueprint_unlocked(
-                    self.user_id, self.server_id, True
-                )
-                reward_data["special"].append("Celestial Shrine Blueprint")
-                reward_data["msgs"].append(
-                    "📜 **You found the Celestial Shrine Blueprint!**"
-                )
+            if not u_prog.get(cfg["blueprint_key"]):
+                blueprint_fn = getattr(self.bot.database.uber, cfg["blueprint_fn"])
+                await blueprint_fn(self.user_id, self.server_id, True)
+                reward_data["special"].append(cfg["blueprint_display"])
+                reward_data["msgs"].append(cfg["blueprint_msg"])
             else:
                 await self.bot.database.users.modify_currency(
-                    self.user_id, "celestial_stone", 1
+                    self.user_id, cfg["stone_currency"], 1
                 )
-                reward_data["special"].append("Celestial Stone")
-                reward_data["msgs"].append("🪨 **You found a Celestial Stone!**")
+                reward_data["special"].append(cfg["stone_display"])
+                reward_data["msgs"].append(cfg["stone_msg"])
 
+    async def _uber_complete_standard(
+        self, message, cfg: dict, reward_data: dict
+    ) -> None:
+        """
+        Finalizes rewards, builds and edits the victory embed, clears state,
+        and stops the view. Used by all standard uber handlers (not Lucifer).
+        """
         await self._uber_finalize_rewards(reward_data)
-
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "🌌 Apex Shattered!"
-        embed.set_image(url=VICTORY_CELESTIAL)
+        embed.title = cfg["embed_title"]
+        getattr(embed, cfg["image_fn"])(url=cfg["victory_image"])
         await message.edit(embed=embed, view=self.post_combat_view)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
-    async def _handle_uber_lucifer_end_state(self, message, interaction: Interaction):
-        """Uber Lucifer."""
-        dmg_frac = self._uber_dmg_frac()
-        curios = self._calc_uber_curios(dmg_frac)
-        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
+    # --- Uber encounter end-state handlers ---
 
-        if self.player.current_hp <= 0:
-            await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
+    async def _handle_uber_end_state(self, message, interaction: Interaction):
+        """Uber Aphrodite (generic fallback)."""
+        reward_data = await self._uber_setup(message)
+        if reward_data is None:
             return
+        cfg = _UBER_CONFIGS["Aphrodite"]
+        await self._handle_uber_engram_and_blueprint(reward_data, cfg)
+        await self._uber_complete_standard(message, cfg, reward_data)
 
-        reward_data = rewards.calculate_rewards(self.player, self.monster)
-        reward_data["xp"] *= 2
-        reward_data["gold"] *= 2
-        reward_data["curios"] = curios
-        reward_data["special"] = []
-
-        if random.random() < 0.10:
-            await self.bot.database.uber.increment_infernal_engrams(
-                self.user_id, self.server_id, 1
-            )
-            reward_data["special"].append("Infernal Engram")
-            reward_data["msgs"].append(
-                "🔥 **An Infernal Engram crystallises from Lucifer's shattered crown...**"
-            )
-
-        if random.random() < 0.10:
-            u_prog = await self.bot.database.uber.get_uber_progress(
-                self.user_id, self.server_id
-            )
-            if not u_prog["infernal_blueprint_unlocked"]:
-                await self.bot.database.uber.set_infernal_blueprint_unlocked(
-                    self.user_id, self.server_id, True
-                )
-                reward_data["special"].append("Infernal Forge Blueprint")
-                reward_data["msgs"].append(
-                    "📜 **You found the Infernal Forge Blueprint!**"
-                )
-            else:
-                await self.bot.database.users.modify_currency(
-                    self.user_id, "infernal_cinder", 1
-                )
-                reward_data["special"].append("Infernal Cinder")
-                reward_data["msgs"].append(
-                    "🔥 **The forge roars. You extract an Infernal Cinder.**"
-                )
-
+    async def _handle_uber_lucifer_end_state(self, message, interaction: Interaction):
+        """Uber Lucifer — standard engram/blueprint + Infernal Contract view."""
+        reward_data = await self._uber_setup(message)
+        if reward_data is None:
+            return
+        cfg = _UBER_CONFIGS["Lucifer"]
+        await self._handle_uber_engram_and_blueprint(reward_data, cfg)
         await self._uber_finalize_rewards(reward_data)
 
         embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "🔥 Infernal Sovereign Defeated!"
-        embed.set_image(url=VICTORY_INFERNAL)
-
+        embed.title = cfg["embed_title"]
+        embed.set_image(url=cfg["victory_image"])
         contract_view = InfernalContractView(
             self.bot, self.user_id, self.player, self.server_id, message
         )
@@ -1086,129 +958,35 @@ class CombatView(BaseView):
 
     async def _handle_uber_neet_end_state(self, message, interaction: Interaction):
         """Uber NEET."""
-        dmg_frac = self._uber_dmg_frac()
-        curios = self._calc_uber_curios(dmg_frac)
-        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
-
-        if self.player.current_hp <= 0:
-            await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
+        reward_data = await self._uber_setup(message)
+        if reward_data is None:
             return
-
-        reward_data = rewards.calculate_rewards(self.player, self.monster)
-        reward_data["xp"] *= 2
-        reward_data["gold"] *= 2
-        reward_data["curios"] = curios
-        reward_data["special"] = []
-
-        if random.random() < 0.10:
-            await self.bot.database.uber.increment_void_engrams(
-                self.user_id, self.server_id, 1
-            )
-            reward_data["special"].append("Void Engram")
-            reward_data["msgs"].append(
-                "⬛ **A Void Engram crystallises from the collapsing rift...**"
-            )
-
-        if random.random() < 0.10:
-            u_prog = await self.bot.database.uber.get_uber_progress(
-                self.user_id, self.server_id
-            )
-            if not u_prog["void_blueprint_unlocked"]:
-                await self.bot.database.uber.set_void_blueprint_unlocked(
-                    self.user_id, self.server_id, True
-                )
-                reward_data["special"].append("Void Sanctum Blueprint")
-                reward_data["msgs"].append(
-                    "📜 **You found the Void Sanctum Blueprint!**"
-                )
-            else:
-                await self.bot.database.users.modify_currency(
-                    self.user_id, "void_crystal", 1
-                )
-                reward_data["special"].append("Void Crystal")
-                reward_data["msgs"].append("🔮 **The void yields a Void Crystal.**")
-
-        await self._uber_finalize_rewards(reward_data)
-
-        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "⬛ Void Sovereign Defeated!"
-        embed.set_thumbnail(url=VICTORY_NEET)
-        await message.edit(embed=embed, view=self.post_combat_view)
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
+        cfg = _UBER_CONFIGS["NEET"]
+        await self._handle_uber_engram_and_blueprint(reward_data, cfg)
+        await self._uber_complete_standard(message, cfg, reward_data)
 
     async def _handle_uber_gemini_end_state(self, message, interaction: Interaction):
         """Uber Gemini Twins."""
-        dmg_frac = self._uber_dmg_frac()
-        curios = self._calc_uber_curios(dmg_frac)
-        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
-
-        if self.player.current_hp <= 0:
-            await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
+        reward_data = await self._uber_setup(message)
+        if reward_data is None:
             return
-
-        reward_data = rewards.calculate_rewards(self.player, self.monster)
-        reward_data["xp"] *= 2
-        reward_data["gold"] *= 2
-        reward_data["curios"] = curios
-        reward_data["special"] = []
-
-        if random.random() < 0.10:
-            await self.bot.database.uber.increment_gemini_engrams(
-                self.user_id, self.server_id, 1
-            )
-            reward_data["special"].append("Gemini Engram")
-            reward_data["msgs"].append(
-                "♊ **A Gemini Engram crystallises from the twins' shattered bond...**"
-            )
-
-        if random.random() < 0.10:
-            u_prog = await self.bot.database.uber.get_uber_progress(
-                self.user_id, self.server_id
-            )
-            if not u_prog["gemini_blueprint_unlocked"]:
-                await self.bot.database.uber.set_gemini_blueprint_unlocked(
-                    self.user_id, self.server_id, True
-                )
-                reward_data["special"].append("Twin Shrine Blueprint")
-                reward_data["msgs"].append(
-                    "📜 **You found the Twin Shrine Blueprint!**"
-                )
-            else:
-                await self.bot.database.users.modify_currency(
-                    self.user_id, "bound_crystal", 1
-                )
-                reward_data["special"].append("Bound Crystal")
-                reward_data["msgs"].append(
-                    "💎 **The twins' bond yields a Bound Crystal.**"
-                )
-
-        await self._uber_finalize_rewards(reward_data)
-
-        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "♊ Bound Sovereigns Defeated!"
-        embed.set_image(url=VICTORY_GEMINI)
-        await message.edit(embed=embed, view=self.post_combat_view)
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
+        cfg = _UBER_CONFIGS["Castor"]
+        await self._handle_uber_engram_and_blueprint(reward_data, cfg)
+        await self._uber_complete_standard(message, cfg, reward_data)
 
     async def _handle_uber_evelynn_end_state(self, message, interaction: Interaction):
-        """Uber Evelynn — the Origin of Corruption."""
-        dmg_frac = self._uber_dmg_frac()
-        curios = self._calc_uber_curios(dmg_frac)
-        await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
+        """Uber Evelynn — Origin of Corruption.
 
-        if self.player.current_hp <= 0:
-            await self._uber_defeat(message, dmg_frac=dmg_frac, curios_gained=curios)
+        Differs from the standard pattern:
+          - Guaranteed Curio Puzzle Box before the engram/blueprint rolls.
+          - Extra Rune of Mirage (Imperfect) at 1% and (Perfected) at 0.1%.
+        """
+        reward_data = await self._uber_setup(message)
+        if reward_data is None:
             return
+        cfg = _UBER_CONFIGS["Evelynn"]
 
-        reward_data = rewards.calculate_rewards(self.player, self.monster)
-        reward_data["xp"] *= 2
-        reward_data["gold"] *= 2
-        reward_data["curios"] = curios
-        reward_data["special"] = []
-
-        # Guaranteed: 1 Curio Puzzle Box
+        # Guaranteed: Curio Puzzle Box
         await self.bot.database.users.modify_currency(
             self.user_id, "curio_puzzle_boxes", 1
         )
@@ -1217,37 +995,7 @@ class CombatView(BaseView):
             "📦 **A Curio Puzzle Box materialises from Evelynn's shattered form...**"
         )
 
-        # 10% chance: Corruption Engram
-        if random.random() < 0.10:
-            await self.bot.database.uber.increment_corruption_engrams(
-                self.user_id, self.server_id, 1
-            )
-            reward_data["special"].append("Corruption Engram")
-            reward_data["msgs"].append(
-                "☠️ **A Corruption Engram crystallises from the primordial rot...**"
-            )
-
-        # 10% chance: Shrine of Corruption Blueprint (or Corrupted Crystal if already unlocked)
-        if random.random() < 0.10:
-            u_prog = await self.bot.database.uber.get_uber_progress(
-                self.user_id, self.server_id
-            )
-            if not u_prog.get("corruption_blueprint_unlocked", 0):
-                await self.bot.database.uber.set_corruption_blueprint_unlocked(
-                    self.user_id, self.server_id, True
-                )
-                reward_data["special"].append("Shrine of Corruption Blueprint")
-                reward_data["msgs"].append(
-                    "📜 **You found the Shrine of Corruption Blueprint!**"
-                )
-            else:
-                await self.bot.database.users.modify_currency(
-                    self.user_id, "corrupted_crystal", 1
-                )
-                reward_data["special"].append("Corrupted Crystal")
-                reward_data["msgs"].append(
-                    "☠️ **The corruption yields a Corrupted Crystal.**"
-                )
+        await self._handle_uber_engram_and_blueprint(reward_data, cfg)
 
         # 1% — Rune of Mirage (Imperfect)
         if random.random() < 0.01:
@@ -1269,11 +1017,4 @@ class CombatView(BaseView):
                 "🪞 **A Rune of Mirage (Perfected) crystallises from the primordial void...**"
             )
 
-        await self._uber_finalize_rewards(reward_data)
-
-        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
-        embed.title = "☠️ Origin of Corruption Shattered!"
-        embed.set_image(url=VICTORY_EVELYNN)
-        await message.edit(embed=embed, view=self.post_combat_view)
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
+        await self._uber_complete_standard(message, cfg, reward_data)
