@@ -6,9 +6,8 @@ Helmet), companion/tome models, and monster-part models.  No project-level
 imports at module load time — safe to import from anywhere without circular risk.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Equipment models

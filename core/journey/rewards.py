@@ -1,11 +1,10 @@
 import random
 
 from core.images import (
-    ASCENT_HUB,
+    CODEX_HUB,
     COMBAT_ELEMENTAL,
     COMBAT_VICTORY,
     COMPANIONS_HUB,
-    CODEX_HUB,
     CORRUPTION_GATE,
     ENCOUNTER_SOUL_CORE,
     MAW_MAIN,
@@ -15,10 +14,10 @@ from core.images import (
     UPGRADE_FORGE,
 )
 
-
 # ---------------------------------------------------------------------------
 # Per-milestone grant functions
 # ---------------------------------------------------------------------------
+
 
 async def _grant_level_1(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_stat(user_id, "potions", 20)
@@ -137,8 +136,14 @@ MILESTONES = [
             "Equipment Management",
         ],
         "commands": [
-            "/combat", "/gather", "/fish", "/chop",
-            "/gamble", "/gear", "/weapons", "/armor",
+            "/combat",
+            "/gather",
+            "/fish",
+            "/chop",
+            "/gamble",
+            "/gear",
+            "/weapons",
+            "/armor",
         ],
         "image": TAVERN_KEEPER,
         "grant": _grant_level_1,

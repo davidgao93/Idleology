@@ -7,8 +7,6 @@ from core.base_view import BaseView
 from core.curios.puzzle_box_logic import (
     PUZZLE_BOX_IMAGE,
     REWARD_EMOJIS,
-    REWARD_POOL,
-    _roll_quantity,
     claim_rewards,
     format_slot_display,
     roll_all_slots,
@@ -89,7 +87,9 @@ class PuzzleBoxView(BaseView):
                 inline=True,
             )
 
-        embed.set_footer(text=f"⏳ {self._remaining_seconds}s remaining · Auto-claims on expiry")
+        embed.set_footer(
+            text=f"⏳ {self._remaining_seconds}s remaining · Auto-claims on expiry"
+        )
         return embed
 
     def build_claimed_embed(self) -> discord.Embed:

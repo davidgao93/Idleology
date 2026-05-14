@@ -1,12 +1,24 @@
 import random
 from typing import List, Tuple
 
+
 class BlackjackLogic:
     SUITS = ["♠️", "♥️", "♣️", "♦️"]
     RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
     VALUES = {
-        "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "10": 10,
-        "J": 10, "Q": 10, "K": 10, "A": 11
+        "2": 2,
+        "3": 3,
+        "4": 4,
+        "5": 5,
+        "6": 6,
+        "7": 7,
+        "8": 8,
+        "9": 9,
+        "10": 10,
+        "J": 10,
+        "Q": 10,
+        "K": 10,
+        "A": 11,
     }
 
     @staticmethod
@@ -30,18 +42,21 @@ class BlackjackLogic:
             return f"`{hand[0][0]}{hand[0][1]}` `??`"
         return " ".join([f"`{c[0]}{c[1]}`" for c in hand])
 
+
 class RouletteLogic:
     # Standard Layout
     RED_NUMBERS = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
-    
+
     @staticmethod
     def spin_wheel() -> int:
         return random.randint(0, 36)
 
     @staticmethod
     def get_color(number: int) -> str:
-        if number == 0: return "green"
-        if number in RouletteLogic.RED_NUMBERS: return "red"
+        if number == 0:
+            return "green"
+        if number in RouletteLogic.RED_NUMBERS:
+            return "red"
         return "black"
 
     @staticmethod
@@ -55,17 +70,20 @@ class RouletteLogic:
         bet_target: 'red', 'black', '17', 'even'
         """
         result_color = RouletteLogic.get_color(result_num)
-        
-        if bet_type == 'color':
+
+        if bet_type == "color":
             return bet_target == result_color
-        elif bet_type == 'number':
+        elif bet_type == "number":
             return int(bet_target) == result_num
-        elif bet_type == 'parity':
-            if result_num == 0: return False # 0 loses even/odd bets
-            is_even = (result_num % 2 == 0)
-            return (bet_target == 'even' and is_even) or (bet_target == 'odd' and not is_even)
+        elif bet_type == "parity":
+            if result_num == 0:
+                return False  # 0 loses even/odd bets
+            is_even = result_num % 2 == 0
+            return (bet_target == "even" and is_even) or (
+                bet_target == "odd" and not is_even
+            )
         return False
-    
+
 
 class CrashLogic:
     @staticmethod
@@ -80,10 +98,10 @@ class CrashLogic:
         # 1% instant crash chance
         if u >= 0.99:
             return 1.00
-            
+
         # Standard crash formula
         crash_point = 0.99 / (1 - u)
-        
+
         # Cap at 100x to prevent economy breaking edge cases
         return min(crash_point, 100.00)
 
@@ -98,16 +116,26 @@ class CrashLogic:
         # Growth rate scales with current value to simulate acceleration
         growth = 0.1 + (current_multiplier * 0.05)
         return round(current_multiplier + growth, 2)
-    
+
 
 class HorseRaceLogic:
     def __init__(self):
         self.track_length = 20
         self.horses = [
             {"name": "Thunder Hoof", "emoji": "🐎", "pos": 0, "speed_var": (1, 4)},
-            {"name": "Lightning Bolt", "emoji": "🦄", "pos": 0, "speed_var": (0, 5)}, # High variance
-            {"name": "Old Reliable", "emoji": "🦓", "pos": 0, "speed_var": (2, 3)}, # Steady
-            {"name": "Dark Horse", "emoji": "🐫", "pos": 0, "speed_var": (1, 4)}
+            {
+                "name": "Lightning Bolt",
+                "emoji": "🦄",
+                "pos": 0,
+                "speed_var": (0, 5),
+            },  # High variance
+            {
+                "name": "Old Reliable",
+                "emoji": "🦓",
+                "pos": 0,
+                "speed_var": (2, 3),
+            },  # Steady
+            {"name": "Dark Horse", "emoji": "🐫", "pos": 0, "speed_var": (1, 4)},
         ]
         self.winner = None
 
@@ -115,22 +143,23 @@ class HorseRaceLogic:
         """
         Advances all horses. Returns True if race is finished.
         """
-        if self.winner: return True
+        if self.winner:
+            return True
 
         finished_this_tick = []
 
         # First, move all horses and track which finished this tick
         for horse in self.horses:
-            move = random.randint(*horse['speed_var'])
+            move = random.randint(*horse["speed_var"])
 
             # Catch-up mechanic
-            if horse['pos'] < (max(h['pos'] for h in self.horses) - 5):
+            if horse["pos"] < (max(h["pos"] for h in self.horses) - 5):
                 if random.random() < 0.3:
                     move += 2
 
-            horse['pos'] += move
+            horse["pos"] += move
 
-            if horse['pos'] >= self.track_length:
+            if horse["pos"] >= self.track_length:
                 finished_this_tick.append(horse)
 
         # If any horse finished in this step, randomly pick a winner among them
@@ -139,15 +168,14 @@ class HorseRaceLogic:
 
         return self.winner is not None
 
-
     def get_race_string(self) -> str:
         """Generates the visual track string."""
         track = ""
         for horse in self.horses:
             # Calculate progress
-            prog = min(self.track_length, horse['pos'])
-            
+            prog = min(self.track_length, horse["pos"])
+
             # Draw lane
-            lane = "➖" * prog + horse['emoji'] + "➖" * (self.track_length - prog)
+            lane = "➖" * prog + horse["emoji"] + "➖" * (self.track_length - prog)
             track += f"`{horse['name']}`\n|{lane}|🏁\n\n"
         return track

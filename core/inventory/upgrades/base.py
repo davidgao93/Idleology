@@ -54,7 +54,14 @@ class BaseUpgradeView(BaseView):
         return mining_res, wood_res, fish_res
 
     async def _deduct_smart(
-        self, table: str, raw_col: str, ref_col: str, raw_held: int, cost: int, uid: str, gid: str
+        self,
+        table: str,
+        raw_col: str,
+        ref_col: str,
+        raw_held: int,
+        cost: int,
+        uid: str,
+        gid: str,
     ):
         """Deduct cost from raw resources first, then spill into refined."""
         to_take_raw = min(raw_held, cost)
@@ -80,7 +87,9 @@ class BaseUpgradeView(BaseView):
         snapshot mirrors the format used by _deduct_smart callsites.
         """
         cols = self._resolve_material_columns(costs)
-        mining_res, wood_res, fish_res = await self._fetch_material_amounts(cols, uid, gid)
+        mining_res, wood_res, fish_res = await self._fetch_material_amounts(
+            cols, uid, gid
+        )
         gold = await self.bot.database.users.get_gold(uid)
 
         total_ore = mining_res[0] + mining_res[1]
@@ -111,7 +120,9 @@ class BaseUpgradeView(BaseView):
 
         return has_res, cost_lines, snapshot
 
-    async def _check_listed_materials(self, materials: list, uid: str, sid: str) -> tuple:
+    async def _check_listed_materials(
+        self, materials: list, uid: str, sid: str
+    ) -> tuple:
         """
         Check a list of {table, column, qty, name} material requirements.
         Returns (has_mats: bool, mat_status: str).
@@ -129,7 +140,9 @@ class BaseUpgradeView(BaseView):
             ok = owned >= mat["qty"]
             if not ok:
                 has_mats = False
-            lines.append(f"{'✅' if ok else '❌'} {mat['name']}: {owned:,}/{mat['qty']:,}")
+            lines.append(
+                f"{'✅' if ok else '❌'} {mat['name']}: {owned:,}/{mat['qty']:,}"
+            )
 
         return has_mats, "\n".join(lines)
 

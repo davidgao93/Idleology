@@ -1,7 +1,6 @@
 import random
 from datetime import datetime, timedelta, timezone
 
-
 DAMAGE_CAP = 500_000
 BOOST_DAMAGE = 10_000
 BOOST_COOLDOWN_HOURS = 20
@@ -11,9 +10,13 @@ AVG_HOURLY_DAMAGE = 3_700  # used for fake global calculation
 
 def get_current_cycle_id(now: datetime) -> int:
     """Returns the Unix timestamp (int) of the most recent Sunday 12:00 UTC cycle start."""
-    now_utc = now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    now_utc = (
+        now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    )
     days_since_sunday = (now_utc.weekday() + 1) % 7
-    candidate = now_utc.replace(hour=12, minute=0, second=0, microsecond=0) - timedelta(days=days_since_sunday)
+    candidate = now_utc.replace(hour=12, minute=0, second=0, microsecond=0) - timedelta(
+        days=days_since_sunday
+    )
     if now_utc < candidate:
         candidate -= timedelta(days=7)
     return int(candidate.timestamp())

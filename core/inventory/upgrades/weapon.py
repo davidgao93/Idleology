@@ -29,7 +29,9 @@ class ForgeView(BaseUpgradeView):
             )
 
         uid, gid = self.user_id, str(interaction.guild.id)
-        has_res, cost_lines, self.inventory_snapshot = await self._check_triad_costs(costs, uid, gid)
+        has_res, cost_lines, self.inventory_snapshot = await self._check_triad_costs(
+            costs, uid, gid
+        )
         self.costs = costs
         desc = f"**Cost:**\n{cost_lines}"
 
@@ -75,9 +77,33 @@ class ForgeView(BaseUpgradeView):
             self.inventory_snapshot, uid, gid
         )
 
-        await self._deduct_smart("mining", ore["raw_col"], ore["ref_col"], live_ore[0], self.costs["ore_qty"], uid, gid)
-        await self._deduct_smart("woodcutting", log["raw_col"], log["ref_col"], live_log[0], self.costs["log_qty"], uid, gid)
-        await self._deduct_smart("fishing", bone["raw_col"], bone["ref_col"], live_bone[0], self.costs["bone_qty"], uid, gid)
+        await self._deduct_smart(
+            "mining",
+            ore["raw_col"],
+            ore["ref_col"],
+            live_ore[0],
+            self.costs["ore_qty"],
+            uid,
+            gid,
+        )
+        await self._deduct_smart(
+            "woodcutting",
+            log["raw_col"],
+            log["ref_col"],
+            live_log[0],
+            self.costs["log_qty"],
+            uid,
+            gid,
+        )
+        await self._deduct_smart(
+            "fishing",
+            bone["raw_col"],
+            bone["ref_col"],
+            live_bone[0],
+            self.costs["bone_qty"],
+            uid,
+            gid,
+        )
 
         await self.bot.database.users.modify_gold(uid, -self.costs["gold"])
         await self.bot.database.connection.commit()
@@ -154,9 +180,33 @@ class ForgeView(BaseUpgradeView):
             if not has_res:
                 break
 
-            await self._deduct_smart("mining", snap["ore"]["raw_col"], snap["ore"]["ref_col"], snap["ore"]["raw_amt"], costs["ore_qty"], uid, gid)
-            await self._deduct_smart("woodcutting", snap["log"]["raw_col"], snap["log"]["ref_col"], snap["log"]["raw_amt"], costs["log_qty"], uid, gid)
-            await self._deduct_smart("fishing", snap["bone"]["raw_col"], snap["bone"]["ref_col"], snap["bone"]["raw_amt"], costs["bone_qty"], uid, gid)
+            await self._deduct_smart(
+                "mining",
+                snap["ore"]["raw_col"],
+                snap["ore"]["ref_col"],
+                snap["ore"]["raw_amt"],
+                costs["ore_qty"],
+                uid,
+                gid,
+            )
+            await self._deduct_smart(
+                "woodcutting",
+                snap["log"]["raw_col"],
+                snap["log"]["ref_col"],
+                snap["log"]["raw_amt"],
+                costs["log_qty"],
+                uid,
+                gid,
+            )
+            await self._deduct_smart(
+                "fishing",
+                snap["bone"]["raw_col"],
+                snap["bone"]["ref_col"],
+                snap["bone"]["raw_amt"],
+                costs["bone_qty"],
+                uid,
+                gid,
+            )
             await self.bot.database.users.modify_gold(uid, -costs["gold"])
             await self.bot.database.connection.commit()
 
@@ -311,7 +361,9 @@ class RefineView(BaseUpgradeView):
                 col = mat["column"]
                 qty = mat["qty"]
 
-                success = await self.bot.database.skills.deduct_resource_atomic(uid, sid, table, col, qty)
+                success = await self.bot.database.skills.deduct_resource_atomic(
+                    uid, sid, table, col, qty
+                )
                 if not success:
                     return await interaction.followup.send(
                         f"Insufficient {mat['name']}!", ephemeral=True
@@ -419,7 +471,9 @@ class RefineView(BaseUpgradeView):
             # Check materials
             insufficient = None
             for mat in materials:
-                owned = await self.bot.database.skills.get_single_resource(uid, sid, mat["table"], mat["column"])
+                owned = await self.bot.database.skills.get_single_resource(
+                    uid, sid, mat["table"], mat["column"]
+                )
                 if owned < mat["qty"]:
                     insufficient = mat["name"]
                     break
@@ -431,7 +485,9 @@ class RefineView(BaseUpgradeView):
             # Deduct materials
             failed = False
             for mat in materials:
-                success = await self.bot.database.skills.deduct_resource_atomic(uid, sid, mat["table"], mat["column"], mat["qty"])
+                success = await self.bot.database.skills.deduct_resource_atomic(
+                    uid, sid, mat["table"], mat["column"], mat["qty"]
+                )
                 if not success:
                     failed = True
                     stop_reason = f"Ran out of {mat['name']}."
@@ -537,7 +593,9 @@ class RefineView(BaseUpgradeView):
         sim_mats = {}
         for table, cols in all_mat_cols.items():
             for col in cols:
-                sim_mats[col] = await self.bot.database.skills.get_single_resource(uid, sid, table, col)
+                sim_mats[col] = await self.bot.database.skills.get_single_resource(
+                    uid, sid, table, col
+                )
 
         # Simulate the full loop
         import copy
@@ -664,7 +722,9 @@ class RefineView(BaseUpgradeView):
 
             failed_mat = None
             for mat in materials:
-                success = await self.bot.database.skills.deduct_resource_atomic(uid, sid, mat["table"], mat["column"], mat["qty"])
+                success = await self.bot.database.skills.deduct_resource_atomic(
+                    uid, sid, mat["table"], mat["column"], mat["qty"]
+                )
                 if not success:
                     failed_mat = mat["name"]
                     break

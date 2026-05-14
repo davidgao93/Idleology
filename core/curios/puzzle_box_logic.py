@@ -20,15 +20,15 @@ REWARD_POOL = [
 ]
 
 REWARD_EMOJIS = {
-    "Potential Runes":   "🔷",
-    "Refinement Runes":  "🔶",
-    "Shattering Runes":  "💠",
-    "Guild Tickets":     "🎫",
-    "Gold":              "💰",
-    "Essences":          "🧪",
-    "Elemental Keys":    "🗝️",
-    "Pinnacle Keys":     "🔑",
-    "Antique Tomes":     "📜",
+    "Potential Runes": "🔷",
+    "Refinement Runes": "🔶",
+    "Shattering Runes": "💠",
+    "Guild Tickets": "🎫",
+    "Gold": "💰",
+    "Essences": "🧪",
+    "Elemental Keys": "🗝️",
+    "Pinnacle Keys": "🔑",
+    "Antique Tomes": "📜",
     "Settler Materials": "⚒️",
 }
 
@@ -66,7 +66,9 @@ def roll_all_slots() -> list[tuple[str, int]]:
     return slots
 
 
-async def claim_rewards(bot, user_id: str, server_id: str, slots: list[tuple[str, int]]) -> list[str]:
+async def claim_rewards(
+    bot, user_id: str, server_id: str, slots: list[tuple[str, int]]
+) -> list[str]:
     """Grant pre-rolled slot rewards. Returns display strings for the result embed."""
     lines = []
 
@@ -105,17 +107,27 @@ async def claim_rewards(bot, user_id: str, server_id: str, slots: list[tuple[str
 
         elif rtype == "Elemental Keys":
             key_counts = defaultdict(int)
-            key_labels = {"blessed_bismuth": "Bismuth", "sparkling_sprig": "Sprig", "capricious_carp": "Carp"}
+            key_labels = {
+                "blessed_bismuth": "Bismuth",
+                "sparkling_sprig": "Sprig",
+                "capricious_carp": "Carp",
+            }
             for _ in range(qty):
                 col = random.choice(list(key_labels.keys()))
                 key_counts[col] += 1
             for col, cnt in key_counts.items():
                 if col == "blessed_bismuth":
-                    await bot.database.uber.increment_blessed_bismuth(user_id, server_id, cnt)
+                    await bot.database.uber.increment_blessed_bismuth(
+                        user_id, server_id, cnt
+                    )
                 elif col == "sparkling_sprig":
-                    await bot.database.uber.increment_sparkling_sprig(user_id, server_id, cnt)
+                    await bot.database.uber.increment_sparkling_sprig(
+                        user_id, server_id, cnt
+                    )
                 elif col == "capricious_carp":
-                    await bot.database.uber.increment_capricious_carp(user_id, server_id, cnt)
+                    await bot.database.uber.increment_capricious_carp(
+                        user_id, server_id, cnt
+                    )
             summary = ", ".join(f"{key_labels[c]} x{v}" for c, v in key_counts.items())
             lines.append(f"{emoji} **Elemental Keys** x{qty} — {summary}")
 
@@ -129,7 +141,11 @@ async def claim_rewards(bot, user_id: str, server_id: str, slots: list[tuple[str
 
         elif rtype == "Settler Materials":
             mat_counts = defaultdict(int)
-            mat_labels = {"magma_core": "Magma Core", "life_root": "Life Root", "spirit_shard": "Spirit Shard"}
+            mat_labels = {
+                "magma_core": "Magma Core",
+                "life_root": "Life Root",
+                "spirit_shard": "Spirit Shard",
+            }
             for _ in range(qty):
                 col = random.choice(list(mat_labels.keys()))
                 mat_counts[col] += 1

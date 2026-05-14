@@ -17,7 +17,9 @@ class DelveEntryView(BaseView):
         self.bot.state_manager.clear_active(self.user_id)
         if self.message:
             try:
-                await self.message.edit(content="Permit request timed out.", view=None, embed=None)
+                await self.message.edit(
+                    content="Permit request timed out.", view=None, embed=None
+                )
             except Exception:
                 pass
 

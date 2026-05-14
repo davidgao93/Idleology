@@ -36,12 +36,14 @@ def build_maw_embed(
 ) -> discord.Embed:
     embed = discord.Embed(
         title="🌑 The Maw of Infinity",
-        color=0x1a0033,
+        color=0x1A0033,
     )
 
     cycle_end = get_cycle_end_ts(cycle_id)
     next_cycle = get_next_cycle_id(cycle_id)
-    in_collection = pending_cycle_id is not None and is_collection_window(pending_cycle_id, now_ts)
+    in_collection = pending_cycle_id is not None and is_collection_window(
+        pending_cycle_id, now_ts
+    )
 
     if is_cycle_active(cycle_id, now_ts):
         time_remaining = cycle_end - now_ts
@@ -71,7 +73,9 @@ def build_maw_embed(
         dmg = pending_record["damage_dealt"]
         curios, puzzle_box = calculate_rewards(dmg)
         pct = reward_potential_pct(dmg)
-        reward_lines = [f"**{pct:.1f}%** reward potential reached ({dmg:,} / {DAMAGE_CAP:,} damage)"]
+        reward_lines = [
+            f"**{pct:.1f}%** reward potential reached ({dmg:,} / {DAMAGE_CAP:,} damage)"
+        ]
         if puzzle_box:
             reward_lines.append(f"Reward: **Curio Puzzle Box** + **Curios x{curios}**")
         elif curios > 0:
@@ -96,7 +100,9 @@ def build_maw_embed(
             progress_bar,
         ]
         if puzzle_box:
-            contribution_lines.append(f"On track for: **Curio Puzzle Box** + **Curios x{curios}**")
+            contribution_lines.append(
+                f"On track for: **Curio Puzzle Box** + **Curios x{curios}**"
+            )
         elif curios > 0:
             contribution_lines.append(f"On track for: **Curios x{curios}**")
         else:
@@ -115,7 +121,9 @@ def build_maw_embed(
             inline=False,
         )
 
-    embed.set_footer(text="Damage cap: 500,000 · Boost cooldown: 20h · Cycle resets every Sunday 12:00 UTC")
+    embed.set_footer(
+        text="Damage cap: 500,000 · Boost cooldown: 20h · Cycle resets every Sunday 12:00 UTC"
+    )
 
     if pending_record and not pending_record["rewards_collected"]:
         embed.set_image(url=_MAW_VICTORY_IMAGE)

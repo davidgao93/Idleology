@@ -8,9 +8,9 @@ from core.journey.rewards import MILESTONES
 _MILESTONE_MAP: dict[int, dict] = {m["level"]: m for m in MILESTONES}
 
 # Embed colours
-_COLOR_CLAIMED = 0x57F287   # green
-_COLOR_READY   = 0xF4C542   # gold
-_COLOR_LOCKED  = 0x4F545C   # dark grey
+_COLOR_CLAIMED = 0x57F287  # green
+_COLOR_READY = 0xF4C542  # gold
+_COLOR_LOCKED = 0x4F545C  # dark grey
 
 
 def _milestone_status(milestone_level: int, player_level: int, claimed: set) -> str:
@@ -21,20 +21,22 @@ def _milestone_status(milestone_level: int, player_level: int, claimed: set) -> 
     return "locked"
 
 
-def _build_milestone_embed(milestone: dict, player_level: int, claimed: set) -> discord.Embed:
-    lvl    = milestone["level"]
+def _build_milestone_embed(
+    milestone: dict, player_level: int, claimed: set
+) -> discord.Embed:
+    lvl = milestone["level"]
     status = _milestone_status(lvl, player_level, claimed)
 
     if status == "claimed":
-        icon  = "✅"
+        icon = "✅"
         color = _COLOR_CLAIMED
         status_text = "Reward claimed."
     elif status == "ready":
-        icon  = "🎁"
+        icon = "🎁"
         color = _COLOR_READY
         status_text = "**Reward ready to claim!** Press *Claim Rewards* below."
     else:
-        icon  = "🔒"
+        icon = "🔒"
         color = _COLOR_LOCKED
         status_text = f"Reach **Level {lvl}** to unlock this reward."
 
@@ -82,7 +84,7 @@ class JourneyView(BaseView):
     ):
         super().__init__(bot, user_id, server_id=server_id)
         self.player_level = player_level
-        self.claimed      = claimed
+        self.claimed = claimed
         self.selected_lvl = _default_milestone_level(player_level)
         self._rebuild_items()
 
@@ -92,7 +94,8 @@ class JourneyView(BaseView):
 
     def _pending_milestones(self) -> list:
         return [
-            m for m in MILESTONES
+            m
+            for m in MILESTONES
             if self.player_level >= m["level"] and m["level"] not in self.claimed
         ]
 
