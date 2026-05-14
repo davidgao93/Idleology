@@ -565,11 +565,13 @@ class AscentView(BaseView):
     async def _handle_defeat(self, interaction, message):
         self.combat_logger.log_combat_end(self.player, self.monster, "defeat")
         self.player.current_hp = 1
-        embed = combat_ui.create_defeat_embed(self.player, self.monster, 0)
-        embed.title = f"Defeated on Floor {self.current_floor}"
-        embed.description = (
-            embed.description or ""
-        ) + f"\nBest floor this session: **{self.best_floor}**"
+        embed = combat_ui.create_defeat_embed(
+            self.player,
+            self.monster,
+            0,
+            title=f"Defeated on Floor {self.current_floor}",
+            description_extra=f"\nBest floor this session: **{self.best_floor}**",
+        )
 
         target = (
             interaction.response.edit_message

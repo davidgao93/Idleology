@@ -27,6 +27,42 @@ from core.images import (
 )
 from core.models import Monster, Player
 
+# ---------------------------------------------------------------------------
+# Boss-specific victory embed configuration
+# Drives thumbnail and extra field injection for named boss encounters.
+# NEET and Lucifer still need procedural handling (DB writes / view swap),
+# but their embed appearance is fully determined by this table.
+# ---------------------------------------------------------------------------
+_BOSS_VICTORY_CFG: dict[str, dict] = {
+    "Aphrodite": {"thumbnail_url": VICTORY_APHRODITE_GEMINI},
+    "Gemini": {"thumbnail_url": VICTORY_APHRODITE_GEMINI},
+    "NEET": {"thumbnail_url": VICTORY_NEET},
+    "Lucifer": {
+        "thumbnail_url": VICTORY_LUCIFER,
+        "extra_fields": [
+            {
+                "name": "❤️‍🔥 A Soul Core manifests...",
+                "value": (
+                    "**Choose how to absorb its power:**\n"
+                    "❤️‍🔥 **Enraged:** Modifies Attack (-1 to +2)\n"
+                    "💙 **Solidified:** Modifies Defence (1- to +2)\n"
+                    "💔 **Unstable:** Shuffles Stats towards equilibrium\n"
+                    "💞 **Inverse:** Swaps Attack and Defence values\n"
+                    "🖤 **Keep:** Store a singular Soul Core"
+                ),
+                "inline": False,
+            }
+        ],
+    },
+}
+
+
+def _boss_victory_cfg(monster_name: str) -> dict:
+    for key, cfg in _BOSS_VICTORY_CFG.items():
+        if key in monster_name:
+            return cfg
+    return {}
+
 
 class CombatView(BaseView):
     def __init__(
@@ -367,38 +403,18 @@ class CombatView(BaseView):
             self.combat_logger,
         )
 
-        embed = combat_ui.create_victory_embed(self.player, self.monster, reward_data)
+        embed = combat_ui.create_victory_embed(
+            self.player, self.monster, reward_data,
+            cfg=_boss_victory_cfg(self.monster.name),
+        )
 
-        # Boss-specific final scenes
-        if "Aphrodite" in self.monster.name or "Gemini" in self.monster.name:
-            embed.set_thumbnail(url=VICTORY_APHRODITE_GEMINI)
-            await message.edit(embed=embed, view=None)
+        # NEET: conditional void key — DB write and loot field, then regular edit
+        if "NEET" in self.monster.name and random.random() < NEET_VOID_KEY_CHANCE:
+            embed.add_field(name="Loot", value="Found a **Void Key**.", inline=False)
+            await self.bot.database.users.modify_currency(self.user_id, "void_keys", 1)
 
-        elif "NEET" in self.monster.name:
-            embed.set_thumbnail(url=VICTORY_NEET)
-            if random.random() < NEET_VOID_KEY_CHANCE:
-                embed.add_field(
-                    name="Loot", value="Found a **Void Key**.", inline=False
-                )
-                await self.bot.database.users.modify_currency(
-                    self.user_id, "void_keys", 1
-                )
-            await message.edit(embed=embed, view=None)
-
-        elif "Lucifer" in self.monster.name:
-            embed.set_thumbnail(url=VICTORY_LUCIFER)
-            embed.add_field(
-                name="❤️‍🔥 A Soul Core manifests...",
-                value=(
-                    "**Choose how to absorb its power:**\n"
-                    "❤️‍🔥 **Enraged:** Modifies Attack (-1 to +2)\n"
-                    "💙 **Solidified:** Modifies Defence (1- to +2)\n"
-                    "💔 **Unstable:** Shuffles Stats towards equilibrium\n"
-                    "💞 **Inverse:** Swaps Attack and Defence values\n"
-                    "🖤 **Keep:** Store a singular Soul Core"
-                ),
-                inline=False,
-            )
+        # Lucifer: soul core choice view takes over the interaction
+        if "Lucifer" in self.monster.name:
             ping_msg = await message.channel.send(
                 f"<@{self.user_id}> A Soul Core has manifested — make your choice!\n\n"
                 f"Battle: {message.jump_url}"
@@ -411,8 +427,7 @@ class CombatView(BaseView):
             contract_choice_view.message = message
             return  # LuciferChoiceView takes over
 
-        else:
-            await message.edit(embed=embed, view=None)
+        await message.edit(embed=embed, view=None)
 
         # Soulreap: restore HP to full after every successful encounter
         if self.player.get_weapon_infernal() == "soulreap":

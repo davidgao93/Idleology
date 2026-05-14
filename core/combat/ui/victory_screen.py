@@ -5,7 +5,7 @@ Provides:
   create_victory_embed — Builds the post-combat victory embed with loot summary.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import discord
 
@@ -15,17 +15,34 @@ from core.models import Monster, Player
 
 
 def create_victory_embed(
-    player: Player, monster: Monster, rewards: Dict[str, Any]
+    player: Player,
+    monster: Monster,
+    rewards: Dict[str, Any],
+    *,
+    cfg: Optional[Dict[str, Any]] = None,
 ) -> discord.Embed:
     """
     Generates the Victory screen with consolidated Loot.
+
+    cfg — Optional overrides dict.  Recognised keys:
+
+      "title"         str   Override the default "Victory! 🎉" title.
+      "thumbnail_url" str   Override the default COMBAT_VICTORY thumbnail.
+      "image_url"     str   Set the embed's main image (no default).
+      "extra_fields"  list  Each item is {"name": ..., "value": ..., "inline": bool}
+                            appended after the Loot field.  Use for boss-specific
+                            follow-up prompts (e.g. Lucifer's Soul Core choice).
     """
+    cfg = cfg or {}
+
     embed = discord.Embed(
-        title="Victory! 🎉",
+        title=cfg.get("title", "Victory! 🎉"),
         description=f"{player.name} has slain the {monster.name} with {player.current_hp} ❤️ remaining!",
         color=0x00FF00,
     )
-    embed.set_thumbnail(url=COMBAT_VICTORY)
+    embed.set_thumbnail(url=cfg.get("thumbnail_url") or COMBAT_VICTORY)
+    if img := cfg.get("image_url"):
+        embed.set_image(url=img)
     # Passive Proc Messages (Prosper, Infinite Wisdom, etc)
     if rewards.get("msgs"):
         for msg in rewards["msgs"]:
@@ -95,12 +112,8 @@ def create_victory_embed(
         loot_lines.append(f"{emoji} **{label}**")
 
     # 4. Equipment Drops
-    # We heuristic match the description text since we don't have the object type here
     for item_desc in rewards.get("items", []):
-        # Default to Weapon
-        emoji = "💠"
-
-        loot_lines.append(f"{emoji} {item_desc}")
+        loot_lines.append(f"💠 {item_desc}")
 
     # 5. Monster Body Part Drop
     if rewards.get("body_part"):
@@ -108,10 +121,18 @@ def create_victory_embed(
         label = _PART_SLOT_LABELS.get(slot, slot)
         loot_lines.append(f"🫀 {mname}'s **{label}** (+{hp} Max HP)")
 
-    # Add single Loot field
-    if loot_lines:
-        embed.add_field(name="✨__Loot__✨", value="\n".join(loot_lines), inline=False)
-    else:
-        embed.add_field(name="✨__Loot__✨", value="None", inline=False)
+    embed.add_field(
+        name="✨__Loot__✨",
+        value="\n".join(loot_lines) if loot_lines else "None",
+        inline=False,
+    )
+
+    # Extra fields from cfg (e.g. Lucifer's Soul Core prompt)
+    for field in cfg.get("extra_fields", []):
+        embed.add_field(
+            name=field["name"],
+            value=field["value"],
+            inline=field.get("inline", False),
+        )
 
     return embed

@@ -74,7 +74,8 @@
       "Bash(Select-Object FullName, PSIsContainer)",
       "Bash(Format-Table -AutoSize)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\combat\\\\economy\" -Force)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\ascent\" -Recurse)"
     ]
   }
 }

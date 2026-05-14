@@ -5,7 +5,8 @@ from core.combat import jewel_engine as _je
 from core.combat.calc.damage_calc import calculate_damage_taken
 from core.combat.calc.damage_calc import roll_monster_damage as _roll_monster_damage
 from core.combat.calc.hit_calc import calculate_monster_hit_chance
-from core.combat.helpers import MonsterTurnResult, _add_ward
+from core.combat.calc.ward_system import _add_ward
+from core.combat.helpers import MonsterTurnResult
 from core.models import Monster, Player
 
 

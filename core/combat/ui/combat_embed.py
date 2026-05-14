@@ -110,7 +110,7 @@ def create_combat_embed(
     logs = logs or {}
     is_uber = getattr(monster, "is_uber", False)
 
-    from core.combat.calc.calcs import (
+    from core.combat.calc.hit_calc import (
         calculate_hit_chance,
         calculate_monster_hit_chance,
     )

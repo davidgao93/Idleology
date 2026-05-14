@@ -66,16 +66,14 @@ class CombatLogger:
         if not self._file:
             return
 
-        from core.combat.calc.calcs import (
-            calculate_crit_chance,
-            calculate_hit_chance,
-            calculate_monster_hit_chance,
-        )
         from core.combat.calc.hit_calc import (
             _HIT_BASE,
             _HIT_SENSITIVITY,
             _MON_HIT_BASE,
             _MON_HIT_SENSITIVITY,
+            calculate_crit_chance,
+            calculate_hit_chance,
+            calculate_monster_hit_chance,
         )
 
         p_atk = player.get_total_attack()

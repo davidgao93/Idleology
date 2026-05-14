@@ -672,12 +672,16 @@ class CodexRunView(BaseView):
     # Defeat / Retreat
     # ------------------------------------------------------------------
 
+    # 5 % XP penalty on codex defeat — lighter than regular combat (10 %)
+    # because codex runs are longer multi-wave sessions.
+    _CODEX_XP_LOSS_ON_DEFEAT: float = 0.05
+
     async def _handle_defeat(
         self, interaction: Interaction = None, message: discord.Message = None
     ):
         """Run ends on defeat. No fragment rewards. XP penalty applied."""
         self.combat_logger.log_combat_end(self.player, self.monster, "defeat")
-        base_loss = int(self.player.exp * 0.05)
+        base_loss = int(self.player.exp * self._CODEX_XP_LOSS_ON_DEFEAT)
         xp_loss = await ExperienceManager.remove_experience(
             self.bot, self.user_id, self.player, base_loss
         )

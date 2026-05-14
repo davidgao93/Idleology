@@ -9,7 +9,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-from core.combat.helpers import _add_ward
+from core.combat.calc.ward_system import _add_ward
 from core.paradise import mechanics as M
 from core.paradise.data import SKILL_JEWELS
 
