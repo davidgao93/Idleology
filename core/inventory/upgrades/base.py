@@ -70,6 +70,69 @@ class BaseUpgradeView(BaseView):
                 (to_take_ref, uid, gid),
             )
 
+    async def _check_triad_costs(self, costs: dict, uid: str, gid: str) -> tuple:
+        """
+        Resolve columns, fetch material/gold amounts, evaluate sufficiency,
+        and build the display lines + inventory snapshot in one call.
+
+        Returns (has_res: bool, cost_lines: str, snapshot: dict).
+        cost_lines contains the ⛏️/🪓/🎣/💰 lines — caller prepends their own header.
+        snapshot mirrors the format used by _deduct_smart callsites.
+        """
+        cols = self._resolve_material_columns(costs)
+        mining_res, wood_res, fish_res = await self._fetch_material_amounts(cols, uid, gid)
+        gold = await self.bot.database.users.get_gold(uid)
+
+        total_ore = mining_res[0] + mining_res[1]
+        total_log = wood_res[0] + wood_res[1]
+        total_bone = fish_res[0] + fish_res[1]
+
+        has_res = (
+            total_ore >= costs["ore_qty"]
+            and total_log >= costs["log_qty"]
+            and total_bone >= costs["bone_qty"]
+            and gold >= costs["gold"]
+        )
+
+        snapshot = {
+            "ore": {**cols["ore"], "raw_amt": mining_res[0], "ref_amt": mining_res[1]},
+            "log": {**cols["log"], "raw_amt": wood_res[0], "ref_amt": wood_res[1]},
+            "bone": {**cols["bone"], "raw_amt": fish_res[0], "ref_amt": fish_res[1]},
+        }
+
+        cost_lines = (
+            f"⛏️ {costs['ore_qty']} {costs['ore_type'].title()} (Have: {total_ore})\n"
+            f"🪓 {costs['log_qty']} {costs['log_type'].title()} (Have: {total_log})\n"
+            f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} (Have: {total_bone})\n"
+            f"💰 {costs['gold']:,} Gold"
+        )
+        if total_ore >= costs["ore_qty"] and mining_res[0] < costs["ore_qty"]:
+            cost_lines += "\n*Using Refined Ingots to substitute missing Ore.*"
+
+        return has_res, cost_lines, snapshot
+
+    async def _check_listed_materials(self, materials: list, uid: str, sid: str) -> tuple:
+        """
+        Check a list of {table, column, qty, name} material requirements.
+        Returns (has_mats: bool, mat_status: str).
+        mat_status is a multi-line string starting with a header, or "" if materials is empty.
+        """
+        if not materials:
+            return True, ""
+
+        has_mats = True
+        lines = ["\n**Required Materials:**"]
+        for mat in materials:
+            owned = await self.bot.database.skills.get_single_resource(
+                uid, sid, mat["table"], mat["column"]
+            )
+            ok = owned >= mat["qty"]
+            if not ok:
+                has_mats = False
+            lines.append(f"{'✅' if ok else '❌'} {mat['name']}: {owned:,}/{mat['qty']:,}")
+
+        return has_mats, "\n".join(lines)
+
     async def go_back(self, interaction: Interaction):
         # 1. Import inside method to avoid circular import at top of file
         from core.inventory.inventory import InventoryUI

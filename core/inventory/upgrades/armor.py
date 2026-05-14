@@ -26,38 +26,9 @@ class TemperView(BaseUpgradeView):
             )
 
         uid, gid = self.user_id, str(interaction.guild.id)
-        cols = self._resolve_material_columns(costs)
-        mining_res, wood_res, fish_res = await self._fetch_material_amounts(cols, uid, gid)
-        gold = await self.bot.database.users.get_gold(uid)
-
-        total_ore = mining_res[0] + mining_res[1]
-        total_log = wood_res[0] + wood_res[1]
-        total_bone = fish_res[0] + fish_res[1]
-
-        has_res = (
-            total_ore >= costs["ore_qty"]
-            and total_log >= costs["log_qty"]
-            and total_bone >= costs["bone_qty"]
-            and gold >= costs["gold"]
-        )
-
+        has_res, cost_lines, self.inventory_snapshot = await self._check_triad_costs(costs, uid, gid)
         self.costs = costs
-        self.inventory_snapshot = {
-            "ore": {**cols["ore"], "raw_amt": mining_res[0], "ref_amt": mining_res[1]},
-            "log": {**cols["log"], "raw_amt": wood_res[0], "ref_amt": wood_res[1]},
-            "bone": {**cols["bone"], "raw_amt": fish_res[0], "ref_amt": fish_res[1]},
-        }
-
-        desc = (
-            f"**Temper Cost:**\n"
-            f"⛏️ {costs['ore_qty']} {costs['ore_type'].title()} (Have: {total_ore})\n"
-            f"🪓 {costs['log_qty']} {costs['log_type'].title()} (Have: {total_log})\n"
-            f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} (Have: {total_bone})\n"
-            f"💰 {costs['gold']:,} Gold"
-        )
-
-        if total_ore >= costs["ore_qty"] and mining_res[0] < costs["ore_qty"]:
-            desc += "\n*Using Refined Ingots to substitute missing Ore.*"
+        desc = f"**Temper Cost:**\n{cost_lines}"
 
         # New: Get Runes
         runes = await self.bot.database.users.get_currency(
@@ -307,23 +278,7 @@ class ReinforceView(BaseUpgradeView):
         shatter_runes = await self.bot.database.users.get_currency(uid, "shatter_runes")
 
         has_funds = user_gold >= cost_gold
-        has_mats = True
-
-        mat_status = ""
-        if materials:
-            mat_status = "\n**Required Materials:**"
-            for mat in materials:
-                table, col, qty, name = (
-                    mat["table"],
-                    mat["column"],
-                    mat["qty"],
-                    mat["name"],
-                )
-                owned = await self.bot.database.skills.get_single_resource(uid, sid, table, col)
-                status_icon = "✅" if owned >= qty else "❌"
-                if owned < qty:
-                    has_mats = False
-                mat_status += f"\n{status_icon} {name}: {owned:,}/{qty:,}"
+        has_mats, mat_status = await self._check_listed_materials(materials, uid, sid)
 
         has_slots = self.item.reinforces_remaining > 0
 

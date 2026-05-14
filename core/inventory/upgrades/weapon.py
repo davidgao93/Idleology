@@ -29,38 +29,9 @@ class ForgeView(BaseUpgradeView):
             )
 
         uid, gid = self.user_id, str(interaction.guild.id)
-        cols = self._resolve_material_columns(costs)
-        mining_res, wood_res, fish_res = await self._fetch_material_amounts(cols, uid, gid)
-        gold = await self.bot.database.users.get_gold(uid)
-
-        total_ore = mining_res[0] + mining_res[1]
-        total_log = wood_res[0] + wood_res[1]
-        total_bone = fish_res[0] + fish_res[1]
-
-        has_res = (
-            total_ore >= costs["ore_qty"]
-            and total_log >= costs["log_qty"]
-            and total_bone >= costs["bone_qty"]
-            and gold >= costs["gold"]
-        )
-
+        has_res, cost_lines, self.inventory_snapshot = await self._check_triad_costs(costs, uid, gid)
         self.costs = costs
-        self.inventory_snapshot = {
-            "ore": {**cols["ore"], "raw_amt": mining_res[0], "ref_amt": mining_res[1]},
-            "log": {**cols["log"], "raw_amt": wood_res[0], "ref_amt": wood_res[1]},
-            "bone": {**cols["bone"], "raw_amt": fish_res[0], "ref_amt": fish_res[1]},
-        }
-
-        desc = (
-            f"**Cost:**\n"
-            f"⛏️ {costs['ore_qty']} {costs['ore_type'].title()} (Have: {total_ore})\n"
-            f"🪓 {costs['log_qty']} {costs['log_type'].title()} (Have: {total_log})\n"
-            f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} (Have: {total_bone})\n"
-            f"💰 {costs['gold']:,} Gold"
-        )
-
-        if total_ore >= costs["ore_qty"] and mining_res[0] < costs["ore_qty"]:
-            desc += "\n*Using Refined Ingots to substitute missing Ore.*"
+        desc = f"**Cost:**\n{cost_lines}"
 
         self.embed = discord.Embed(
             title=f"Forge {self.item.name}",
@@ -179,25 +150,13 @@ class ForgeView(BaseUpgradeView):
                 break
 
             # Re-fetch inventory for current cost tier
-            cols = self._resolve_material_columns(costs)
-            mining_res, wood_res, fish_res = await self._fetch_material_amounts(cols, uid, gid)
-
-            gold = await self.bot.database.users.get_gold(uid)
-            total_ore = mining_res[0] + mining_res[1]
-            total_log = wood_res[0] + wood_res[1]
-            total_bone = fish_res[0] + fish_res[1]
-
-            if (
-                total_ore < costs["ore_qty"]
-                or total_log < costs["log_qty"]
-                or total_bone < costs["bone_qty"]
-                or gold < costs["gold"]
-            ):
+            has_res, _, snap = await self._check_triad_costs(costs, uid, gid)
+            if not has_res:
                 break
 
-            await self._deduct_smart("mining", cols["ore"]["raw_col"], cols["ore"]["ref_col"], mining_res[0], costs["ore_qty"], uid, gid)
-            await self._deduct_smart("woodcutting", cols["log"]["raw_col"], cols["log"]["ref_col"], wood_res[0], costs["log_qty"], uid, gid)
-            await self._deduct_smart("fishing", cols["bone"]["raw_col"], cols["bone"]["ref_col"], fish_res[0], costs["bone_qty"], uid, gid)
+            await self._deduct_smart("mining", snap["ore"]["raw_col"], snap["ore"]["ref_col"], snap["ore"]["raw_amt"], costs["ore_qty"], uid, gid)
+            await self._deduct_smart("woodcutting", snap["log"]["raw_col"], snap["log"]["ref_col"], snap["log"]["raw_amt"], costs["log_qty"], uid, gid)
+            await self._deduct_smart("fishing", snap["bone"]["raw_col"], snap["bone"]["ref_col"], snap["bone"]["raw_amt"], costs["bone_qty"], uid, gid)
             await self.bot.database.users.modify_gold(uid, -costs["gold"])
             await self.bot.database.connection.commit()
 
@@ -260,27 +219,7 @@ class RefineView(BaseUpgradeView):
         user_gold = await self.bot.database.users.get_gold(uid)
 
         has_funds = user_gold >= cost_gold
-        has_mats = True
-
-        # Build Material Status String & Check sufficiency
-        mat_status = ""
-        if materials:
-            mat_status = "\n**Required Materials:**"
-            for mat in materials:
-                # Fetch balance
-                # Note: TradeManager logic or raw SQL. Raw SQL is safest here for atomic check.
-                table = mat["table"]
-                col = mat["column"]
-                qty = mat["qty"]
-                name = mat["name"]
-
-                owned = await self.bot.database.skills.get_single_resource(uid, sid, table, col)
-
-                status_icon = "✅" if owned >= qty else "❌"
-                if owned < qty:
-                    has_mats = False
-
-                mat_status += f"\n{status_icon} {name}: {owned:,}/{qty:,}"
+        has_mats, mat_status = await self._check_listed_materials(materials, uid, sid)
 
         # 3. Logic
         has_refines = self.item.refines_remaining > 0
@@ -803,7 +742,7 @@ class VoidforgeView(BaseUpgradeView):
             self.user_id
         )
         self.candidates = [
-            create_weapon(r) for r in raw_rows if r[0] != self.item.item_id
+            create_weapon(r) for r in raw_rows if r["item_id"] != self.item.item_id
         ]
 
         if not self.candidates:

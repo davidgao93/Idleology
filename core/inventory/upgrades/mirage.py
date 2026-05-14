@@ -277,7 +277,7 @@ class MirageView(BaseUpgradeView):
         )
 
         rows = await self.bot.database.equipment.get_all(self.user_id, item_type)
-        self.candidates = [factory(r) for r in rows if r[0] != self.item.item_id]
+        self.candidates = [factory(r) for r in rows if r["item_id"] != self.item.item_id]
 
         if not self.candidates:
             await interaction.followup.send(
