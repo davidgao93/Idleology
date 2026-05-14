@@ -22,7 +22,7 @@ class Journey(commands.Cog, name="journey"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
         self.bot.state_manager.set_active(user_id, "journey")
-        player_level = existing_user[4]
+        player_level = existing_user["level"]
         claimed = await self.bot.database.journey.get_claimed(user_id)
 
         view = JourneyView(self.bot, user_id, server_id, player_level, claimed)

@@ -59,15 +59,15 @@ class Combat(commands.Cog, name="combat"):
         """Calculates dynamic cooldown and checks if user can fight."""
         temp_cooldown_reduction = 0
         equipped_boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
-        if equipped_boot and equipped_boot[9] == "speedster":
-            temp_cooldown_reduction = equipped_boot[12] * 60
+        if equipped_boot and equipped_boot["passive"] == "speedster":
+            temp_cooldown_reduction = equipped_boot["passive_lvl"] * 60
 
         current_duration = self.COMBAT_COOLDOWN - timedelta(
             seconds=temp_cooldown_reduction
         )
         current_duration = max(timedelta(seconds=10), current_duration)
 
-        last_combat_str = existing_user[24]
+        last_combat_str = existing_user["last_combat"]
         if last_combat_str:
             try:
                 last_combat_dt = datetime.fromisoformat(last_combat_str)
@@ -161,10 +161,10 @@ class Combat(commands.Cog, name="combat"):
             doors_enabled = await self.bot.database.users.get_doors_enabled(user_id)
             if doors_enabled:
                 currencies = {
-                    "dragon_key": existing_user[25],
-                    "angel_key": existing_user[26],
-                    "soul_cores": existing_user[28],
-                    "void_frags": existing_user[29],
+                    "dragon_key": existing_user["dragon_key"],
+                    "angel_key": existing_user["angel_key"],
+                    "soul_cores": existing_user["soul_cores"],
+                    "void_frags": existing_user["void_frags"],
                     "balance_fragment": await self.bot.database.users.get_currency(
                         user_id, "balance_fragment"
                     ),

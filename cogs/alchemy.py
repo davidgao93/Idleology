@@ -37,7 +37,7 @@ class Alchemy(commands.Cog, name="alchemy"):
         # 3. Fetch alchemy state
         alchemy_level = await self.bot.database.alchemy.get_level(user_id)
         passives = await self.bot.database.alchemy.get_potion_passives(user_id)
-        gold = existing_user[6]
+        gold = existing_user["gold"]
         spirit_stones = await self.bot.database.users.get_currency(
             user_id, "spirit_stones"
         )

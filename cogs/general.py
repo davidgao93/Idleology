@@ -555,8 +555,8 @@ class General(commands.Cog, name="general"):
         embed = discord.Embed(title="IDs for Trading", color=0xBEBEFE)
         embed.add_field(name="User ID", value=user_id, inline=False)
 
-        w_text = "\n".join([f"**ID {w[0]}**: {w[2]}" for w in weapons]) or "None"
-        a_text = "\n".join([f"**ID {a[0]}**: {a[2]}" for a in accs]) or "None"
+        w_text = "\n".join([f"**ID {w['item_id']}**: {w['item_name']}" for w in weapons]) or "None"
+        a_text = "\n".join([f"**ID {a['item_id']}**: {a['item_name']}" for a in accs]) or "None"
 
         if len(w_text) > 1000:
             w_text = w_text[:950] + "..."

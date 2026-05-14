@@ -22,7 +22,7 @@ class SettlementCog(commands.Cog, name="settlement"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        if existing_user[4] < 50:
+        if existing_user["level"] < 50:
             await interaction.response.send_message(
                 "Settlements can only be founded by those who have proven themselves at **Level 50**.",
                 ephemeral=True,
@@ -35,7 +35,7 @@ class SettlementCog(commands.Cog, name="settlement"):
         settlement = await self.bot.database.settlement.get_settlement(
             user_id, server_id
         )
-        ideology = existing_user[8]
+        ideology = existing_user["ideology"]
 
         # 3. Follower / Worker Validation
         # If player lost followers (e.g. raid/event), we must unassign workers to match cap.

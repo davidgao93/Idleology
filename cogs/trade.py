@@ -33,7 +33,7 @@ class Trade(commands.Cog, name="trade"):
             return
 
         # Level Gate
-        if existing_user[4] < 10:
+        if existing_user["level"] < 10:
             return await interaction.response.send_message(
                 "Trading unlocks at Level 10.", ephemeral=True
             )

@@ -29,14 +29,14 @@ class Delve(commands.Cog):
         mining_data = await self.bot.database.skills.get_data(
             user_id, server_id, "mining"
         )
-        pickaxe = mining_data[2] if mining_data else "iron"
+        pickaxe = mining_data["pickaxe_tier"] if mining_data else "iron"
         delve_stats = await self.bot.database.delve.get_profile(user_id, server_id)
 
         # 3. Calculate Entry Cost
         entry_cost = DelveMechanics.get_entry_cost(delve_stats["fuel_lvl"])
 
         # Pre-check gold
-        if existing_user[6] < entry_cost:
+        if existing_user["gold"] < entry_cost:
             return await interaction.response.send_message(
                 f"You need **{entry_cost:,} Gold** to purchase a mining permit.",
                 ephemeral=True,

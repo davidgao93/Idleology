@@ -89,8 +89,8 @@ class Character(commands.Cog, name="character"):
         users = await self.bot.database.users.get_all()
         self.bot.logger.info("Healing all users")
         for user in users:
-            user_id = user[1]
-            current_hp = user[11]
+            user_id = user["user_id"]
+            current_hp = user["current_hp"]
             player = await load_player(user_id, user, self.bot.database)
             max_hp = player.total_max_hp
             scaling = int(max_hp / 30)
@@ -147,7 +147,7 @@ class Character(commands.Cog, name="character"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        points = data[20]
+        points = data["passive_points"]
         if points <= 0:
             return await interaction.response.send_message(
                 "You have no passive points to spend!", ephemeral=True

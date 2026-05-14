@@ -25,7 +25,7 @@ class Codex(commands.Cog, name="codex"):
             return
 
         # 2. Level gate
-        if existing_user[4] < 80:
+        if existing_user["level"] < 80:
             await interaction.response.send_message(
                 "The Codex only reveals itself to those who have reached **Level 80**.",
                 ephemeral=True,

@@ -65,11 +65,11 @@ class Ideology(commands.Cog, name="ideology"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
-        user_ideology = existing_user[8]
+        user_ideology = existing_user["ideology"]
         followers_count = await self.bot.database.social.get_follower_count(
             user_ideology
         )
-        last_propagate_time = existing_user[14]
+        last_propagate_time = existing_user["last_propagate_time"]
         cooldown_duration = timedelta(hours=18)
 
         try:

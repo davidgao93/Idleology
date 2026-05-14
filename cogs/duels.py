@@ -48,12 +48,12 @@ class Duels(commands.Cog, name="duels"):
             )
 
         # 3. Gold Checks
-        if c_data[6] < amount:
+        if c_data["gold"] < amount:
             return await interaction.response.send_message(
                 "You don't have enough gold!", ephemeral=True
             )
 
-        if t_data[6] < amount:
+        if t_data["gold"] < amount:
             return await interaction.response.send_message(
                 f"{opponent.display_name} doesn't have enough gold!", ephemeral=True
             )

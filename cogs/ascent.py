@@ -21,7 +21,7 @@ class Ascent(commands.Cog, name="ascent"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        if existing_user[4] < 100:
+        if existing_user["level"] < 100:
             await interaction.response.send_message(
                 "Come back at level 100.", ephemeral=True
             )

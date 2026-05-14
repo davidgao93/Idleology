@@ -30,9 +30,9 @@ class Tavern(commands.Cog, name="tavern"):
 
         self.bot.state_manager.set_active(user_id, "shop")
 
-        gold = user_data[6]
-        potions = user_data[16]
-        level = user_data[4]
+        gold = user_data["gold"]
+        potions = user_data["potions"]
+        level = user_data["level"]
 
         potion_cost = TavernMechanics.calculate_potion_cost(level)
         topup_qty = max(0, 20 - potions)
@@ -75,7 +75,7 @@ class Tavern(commands.Cog, name="tavern"):
             return
 
         player = await load_player(user_id, user, self.bot.database)
-        current_hp = user[11]
+        current_hp = user["current_hp"]
         max_hp = player.total_max_hp
 
         if current_hp >= max_hp:
@@ -89,7 +89,7 @@ class Tavern(commands.Cog, name="tavern"):
             )
 
         # Cooldown Check
-        last_rest = user[13]
+        last_rest = user["last_rest_time"]
         cooldown = timedelta(hours=2)
         on_cooldown = False
         remaining_str = ""
@@ -120,8 +120,8 @@ class Tavern(commands.Cog, name="tavern"):
             await interaction.response.send_message(embed=embed)
         else:
             # Paid Rest Prompt
-            cost = TavernMechanics.calculate_rest_cost(user[4])
-            gold = user[6]
+            cost = TavernMechanics.calculate_rest_cost(user["level"])
+            gold = user["gold"]
 
             embed = discord.Embed(
                 title="The Tavern 🛏️",
@@ -162,9 +162,9 @@ class Tavern(commands.Cog, name="tavern"):
             return await interaction.response.send_message(
                 "Bet must be positive.", ephemeral=True
             )
-        if amount > user_data[6]:
+        if amount > user_data["gold"]:
             return await interaction.response.send_message(
-                f"Insufficient funds. You have **{user_data[6]:,}**.", ephemeral=True
+                f"Insufficient funds. You have **{user_data['gold']:,}**.", ephemeral=True
             )
 
         self.bot.state_manager.set_active(user_id, "gamble")
@@ -204,7 +204,7 @@ class Tavern(commands.Cog, name="tavern"):
             return
 
         # Check Timer
-        last_checkin = user[17]
+        last_checkin = user["last_checkin_time"]
         cooldown = timedelta(hours=18)
 
         if last_checkin:

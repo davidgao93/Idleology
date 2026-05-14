@@ -274,7 +274,7 @@ class PrestigeBuilder:
 
         embed = discord.Embed(title="Prestige", color=DEFAULT_COLOR)
 
-        display_name = active.get("display_name") or user[3]
+        display_name = active.get("display_name") or user["name"]
         title_label = _title_label(active.get("title", ""))
         name_str = (
             f"{title_label} **{display_name}**"
@@ -282,7 +282,7 @@ class PrestigeBuilder:
             else f"**{display_name}**"
         )
         embed.description = name_str
-        embed.set_thumbnail(url=user[7])
+        embed.set_thumbnail(url=user["appearance"])
 
         active_flair = _flair_label(active.get("flair", ""))
         embed.add_field(
@@ -292,7 +292,7 @@ class PrestigeBuilder:
                 f"**Flair:** {active_flair or 'None'}\n"
                 f"**Death Msg:** {active.get('death_message') or 'None'}\n"
                 f"**Monument:** {active.get('monument') or 'None'}\n"
-                f"**Avatar:** {'Custom' if user[7] else 'Default'}"
+                f"**Avatar:** {'Custom' if user['appearance'] else 'Default'}"
             ),
             inline=False,
         )

@@ -26,7 +26,7 @@ class Companions(commands.Cog):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        if existing_user[4] < 40:
+        if existing_user["level"] < 40:
             await interaction.response.send_message(
                 "Companions reveal themselves only to adventurers who have reached **Level 40**.",
                 ephemeral=True,

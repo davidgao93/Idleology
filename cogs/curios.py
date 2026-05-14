@@ -21,7 +21,7 @@ class Curios(commands.Cog, name="curios"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        curio_count = existing_user[22]
+        curio_count = existing_user["curios"]
         puzzle_box_count = await self.bot.database.users.get_currency(
             user_id, "curio_puzzle_boxes"
         )

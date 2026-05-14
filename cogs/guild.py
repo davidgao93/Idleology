@@ -68,8 +68,8 @@ class Guild(commands.Cog, name="adventurer's guild"):
             color=0xFFCC00,
         )  # 3. View Instantiation
         view = UnregisterView(
-            self.bot, user_id, existing_user[8]
-        )  # existing_user[8] is ideology
+            self.bot, user_id, existing_user["ideology"]
+        )
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

@@ -6,6 +6,8 @@ import sys
 import time
 from typing import Dict, Tuple
 
+import sqlite3
+
 import aiosqlite
 import discord
 from discord import Interaction, app_commands
@@ -226,11 +228,11 @@ class DiscordBot(commands.Bot):
         )
         self.logger.info("-------------------")
         await self.init_db()
-        self.database = DatabaseManager(
-            connection=await aiosqlite.connect(
-                f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
-            )
+        _conn = await aiosqlite.connect(
+            f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
         )
+        _conn.row_factory = sqlite3.Row
+        self.database = DatabaseManager(connection=_conn)
         await self.load_cogs()
         self.status_task.start()
 

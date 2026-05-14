@@ -95,6 +95,12 @@ class Skills(commands.Cog, name="skills"):
         """Passive resource generation."""
         self.bot.logger.info("Running Skill Regeneration Task...")
 
+        _tool_col = {
+            "mining": "pickaxe_tier",
+            "fishing": "fishing_rod",
+            "woodcutting": "axe_type",
+        }
+
         # We iterate through the 3 types
         for skill in ["mining", "fishing", "woodcutting"]:
             users = await self.bot.database.skills.get_all_users(skill)
@@ -108,7 +114,7 @@ class Skills(commands.Cog, name="skills"):
                 if not data:
                     continue
 
-                tool_tier = data[2]
+                tool_tier = data[_tool_col[skill]]
 
                 resources = SkillMechanics.calculate_yield(skill, tool_tier)
 
