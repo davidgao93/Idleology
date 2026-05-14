@@ -17,6 +17,14 @@ from typing import Callable
 # Re-exports from focused modules (keep all existing import paths working)
 # ---------------------------------------------------------------------------
 
+from core.combat.calc.hit_calc import (  # noqa: E402
+    build_attack_multiplier,
+    calculate_crit_chance,
+    calculate_hit_chance,
+    calculate_monster_hit_chance,
+    resolve_crit,
+    resolve_hit,
+)
 
 # ---------------------------------------------------------------------------
 # Weapon Passive Family Registry
