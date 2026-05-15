@@ -1,11 +1,12 @@
 import discord
-from discord import ButtonStyle, Interaction, ui
+from discord import ButtonStyle, Interaction
+
+from core.base_view import BaseView
 
 
-class LeaderboardHubView(ui.View):
-    def __init__(self, bot, active_tab: str = "levels"):
-        super().__init__(timeout=600)
-        self.bot = bot
+class LeaderboardHubView(BaseView):
+    def __init__(self, bot, user_id: str, active_tab: str = "levels"):
+        super().__init__(bot, user_id)
         self.active_tab = active_tab
         self.update_buttons()
 

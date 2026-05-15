@@ -79,12 +79,7 @@ class TemperView(BaseUpgradeView):
             color=discord.Color.blue() if has_res else discord.Color.red(),
         )
         embed.set_thumbnail(url=UPGRADE_TEMPER)
-
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=embed, view=self)
-        else:
-            await interaction.response.edit_message(embed=embed, view=self)
-        self.message = await interaction.original_response()
+        await self._send_render(interaction, embed)
 
     async def confirm_temper(self, interaction: Interaction, use_rune: bool):
         # Rune Check
@@ -192,11 +187,7 @@ class ImbueView(BaseUpgradeView):
         self.add_item(confirm_btn)
         self.add_back_button()
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=embed, view=self)
-        else:
-            await interaction.response.edit_message(embed=embed, view=self)
-        self.message = await interaction.original_response()
+        await self._send_render(interaction, embed)
 
     async def confirm(self, interaction: Interaction):
         await self.bot.database.users.modify_currency(self.user_id, "imbue_runes", -1)
@@ -313,12 +304,7 @@ class ReinforceView(BaseUpgradeView):
             title=f"Reinforce {self.item.name}", description=desc, color=color
         )
         embed.set_thumbnail(url=UPGRADE_REINFORCE)
-
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=embed, view=self)
-        else:
-            await interaction.response.edit_message(embed=embed, view=self)
-        self.message = await interaction.original_response()
+        await self._send_render(interaction, embed)
 
     async def confirm_reinforce(self, interaction: Interaction):
         itype, stat_col, stat_label, _, is_pct = self._reinforce_info()
@@ -443,11 +429,7 @@ class EngramView(BaseUpgradeView):
         self.add_item(btn_consume)
         self.add_back_button()
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=self.embed, view=self)
-        else:
-            await interaction.response.edit_message(embed=self.embed, view=self)
-        self.message = await interaction.original_response()
+        await self._send_render(interaction, self.embed)
 
     async def confirm_engram(self, interaction: Interaction):
         server_id = str(interaction.guild.id)

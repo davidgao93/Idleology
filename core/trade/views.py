@@ -1,6 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.base_view import BaseView
 from core.trade.logic import TradeManager
 
 
@@ -58,13 +59,10 @@ class GoldModal(ui.Modal, title="Send Gold"):
             await interaction.response.send_message("Invalid amount.", ephemeral=True)
 
 
-class TradeRootView(ui.View):
+class TradeRootView(BaseView):
     def __init__(self, bot, user_id, receiver, server_id):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id, server_id)
         self.receiver = receiver
-        self.server_id = server_id
 
         # Transaction State
         self.tx_type = None  # 'gold', 'resource', 'equipment'
@@ -72,9 +70,6 @@ class TradeRootView(ui.View):
         self.tx_amount = 0
 
         self.show_main_menu()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
@@ -86,9 +81,9 @@ class TradeRootView(ui.View):
         )
 
         try:
-            if hasattr(self, "message"):
+            if self.message:
                 await self.message.edit(embed=embed, view=None)
-        except:
+        except Exception:
             pass
 
     # --- MENUS ---

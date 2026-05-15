@@ -5,7 +5,6 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.alchemy.mechanics import AlchemyMechanics
-from core.alchemy.synthesis_views import _build_synthesis_hub
 from core.base_view import BaseView
 from core.images import ALCHEMY_HUB
 
@@ -95,6 +94,7 @@ class AlchemyHubView(BaseView):
 
     @ui.button(label="Synthesis", style=ButtonStyle.secondary, emoji="⚗️", row=0)
     async def synthesis(self, interaction: Interaction, button: ui.Button):
+        from core.alchemy.synthesis_views import _build_synthesis_hub
         await interaction.response.defer()
         view = await _build_synthesis_hub(self.bot, self.user_id, self.server_id)
         embed = view.build_embed()

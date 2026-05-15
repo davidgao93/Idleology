@@ -1,18 +1,15 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 
-class SettingsView(ui.View):
+
+class SettingsView(BaseView):
     def __init__(self, bot, user_id: str, doors_status: bool, exp_protection: bool):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id)
         self.doors_status = doors_status
         self.exp_protection = exp_protection
         self.rebuild_buttons()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     def rebuild_buttons(self):
         self.clear_items()

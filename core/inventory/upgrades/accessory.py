@@ -81,11 +81,7 @@ class PotentialView(BaseUpgradeView):
 
         self.add_back_button()
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=embed, view=self)
-        else:
-            await interaction.response.edit_message(embed=embed, view=self)
-        self.message = await interaction.original_response()
+        await self._send_render(interaction, embed)
 
     async def confirm_enchant(self, interaction: Interaction, use_rune: bool):
         # Re-check funds/runes
@@ -220,11 +216,7 @@ class VoidEngramView(BaseUpgradeView):
         self.add_item(btn_consume)
         self.add_back_button()
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=self.embed, view=self)
-        else:
-            await interaction.response.edit_message(embed=self.embed, view=self)
-        self.message = await interaction.original_response()
+        await self._send_render(interaction, self.embed)
 
     async def confirm_engram(self, interaction: Interaction):
         server_id = str(interaction.guild.id)

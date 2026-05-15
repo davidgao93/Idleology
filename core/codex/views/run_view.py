@@ -16,7 +16,6 @@ from core.codex.mechanics import (
     get_wave_modifier_counts,
     restore_clean_stats,
     roll_boons,
-    select_run_chapters,
 )
 from core.combat import engine
 from core.combat import jewel_engine as _je
@@ -25,35 +24,8 @@ from core.combat.combat_log import CombatLogger
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
 from core.combat.gen.gen_mob import generate_ascent_monster
-from core.images import CODEX_BOON, CODEX_CHAPTERS, CODEX_HUB, CODEX_TOME
+from core.images import CODEX_BOON, CODEX_CHAPTERS
 from core.models import Monster, Player
-from database.repositories.codex import TOME_UPGRADE_COSTS, get_reroll_cost
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-_PASSIVE_LABELS = {
-    "vitality": ("🌿 Vitality", "+{v:.1f}% Max HP"),
-    "wrath": ("🔥 Wrath", "+{v:.1f}% DEF → ATK"),
-    "bastion": ("🛡️ Bastion", "+{v:.1f}% ATK → DEF"),
-    "tenacity": ("⚡ Tenacity", "{v:.1f}% chance halve dmg"),
-    "bloodthirst": ("🩸 Bloodthirst", "{v:.1f}% crit HP drain"),
-    "providence": ("✨ Providence", "+{v:.1f}% Rarity"),
-    "precision": ("🎯 Insight", "+{v:.1f} Crit Chance"),
-    "affluence": ("💰 Affluence", "+{v:.1f}% XP & Gold"),
-    "bulwark": ("🪨 Bulwark", "+{v:.1f}% PDR"),
-    "resilience": ("🔒 Resilience", "+{v:.1f} FDR"),
-}
-
-
-def _tome_field(tome) -> tuple[str, str]:
-    """Returns (name, value) for an embed field showing a tome slot."""
-    name_tmpl, val_tmpl = _PASSIVE_LABELS.get(
-        tome.passive_type, (tome.passive_type, "{v:.1f}")
-    )
-    stat_str = val_tmpl.format(v=tome.value) if tome.value > 0 else "Not upgraded"
-    return name_tmpl, f"Tier {tome.tier}/5 — {stat_str}"
 
 
 async def _generate_codex_wave_monster(
@@ -76,11 +48,6 @@ async def _generate_codex_wave_monster(
         is_boss=(wave_num == 7),
     )
     return await generate_ascent_monster(player, monster, m_level, n_mods, b_mods)
-
-
-# ---------------------------------------------------------------------------
-# Boon Button (dynamic, created per respite)
-# ---------------------------------------------------------------------------
 
 
 class BoonButton(ui.Button):
@@ -112,11 +79,6 @@ class RerollButton(ui.Button):
 
     async def callback(self, interaction: Interaction):
         await self.run_view.handle_reroll(interaction)
-
-
-# ---------------------------------------------------------------------------
-# CodexRunView — main run state machine
-# ---------------------------------------------------------------------------
 
 
 class CodexRunView(BaseView):
@@ -221,7 +183,6 @@ class CodexRunView(BaseView):
         the bonus accumulator and multipliers need restoring."""
         if not self.chapter_wave_baseline:
             return
-        # Zero per-combat bonuses and multipliers, then re-apply chapter baseline from snapshot
         self.player.reset_combat_bonus()
         self.player.bonus_crit = self.chapter_wave_baseline["bonus_crit"]
         self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
@@ -233,10 +194,7 @@ class CodexRunView(BaseView):
         )
 
     def _projected_ward(self) -> int:
-        """Ward the player will have at the start of the next wave.
-        Uses the chapter wave baseline (snapshotted after signature + boons at chapter start),
-        which is exactly what _restore_wave_baseline will set combat_ward to.
-        """
+        """Ward the player will have at the start of the next wave."""
         return self.chapter_wave_baseline.get("combat_ward", self.player.combat_ward)
 
     def _run_modifiers_text(self) -> str:
@@ -244,7 +202,6 @@ class CodexRunView(BaseView):
         p = self.player
         parts = []
 
-        # Per-wave boon bonuses
         atk_boost = sum(b.value for b in self.active_boons if b.type == "atk_boost")
         def_boost = sum(b.value for b in self.active_boons if b.type == "def_boost")
         crit_boost = sum(
@@ -258,7 +215,6 @@ class CodexRunView(BaseView):
             b.value for b in self.active_boons if b.type == "rarity_boost"
         )
 
-        # Per-wave downside penalties attached to rarity_boost boons
         atk_pen_pct = sum(
             b.downside_value
             for b in self.active_boons
@@ -275,22 +231,18 @@ class CodexRunView(BaseView):
             if b.downside_type == "crit_penalty"
         )
 
-        # Net ATK %
         if atk_boost or atk_pen_pct:
             net = atk_boost - atk_pen_pct
             parts.append(f"ATK {'+' if net >= 0 else ''}{net:.0f}%")
-        # Permanent flat ATK penalty (fragment_boost downside)
         if p.run_atk_penalty:
             parts.append(f"ATK −{p.run_atk_penalty}")
 
-        # Net DEF %
         if def_boost or def_pen_pct:
             net = def_boost - def_pen_pct
             parts.append(f"DEF {'+' if net >= 0 else ''}{net:.0f}%")
         if p.run_def_penalty:
             parts.append(f"DEF −{p.run_def_penalty}")
 
-        # Net Crit (per-wave penalties + permanent run penalty)
         total_crit_pen = crit_pen_pw + p.run_crit_penalty
         if crit_boost or total_crit_pen:
             net = crit_boost - total_crit_pen
@@ -303,19 +255,16 @@ class CodexRunView(BaseView):
         if rarity_boost:
             parts.append(f"Rarity +{rarity_boost:.0f}%")
 
-        # Fragment multiplier (fragment_boost boons and page_drop penalty)
         frag_mult = self.run_state.get("fragment_multiplier", 1.0)
         frag_pct = round((frag_mult - 1.0) * 100)
         if frag_pct:
             parts.append(f"Fragments {'+' if frag_pct >= 0 else ''}{frag_pct}%")
 
-        # Permanent max HP change (max_hp_boost and fragment_boost hp_penalty)
         if p.run_max_hp_bonus:
             parts.append(
                 f"Max HP {'+' if p.run_max_hp_bonus >= 0 else ''}{p.run_max_hp_bonus:,}"
             )
 
-        # One-shot flags still pending
         if self.run_state.get("guaranteed_page_next"):
             parts.append("📄 Page Guaranteed")
         if self.run_state.get("sig_nullify_next"):
@@ -459,8 +408,6 @@ class CodexRunView(BaseView):
         chapter = self.current_chapter
 
         if self.wave_num == 1:
-            # Chapter start: wipe the previous chapter's signature so it doesn't stack,
-            # then apply the new signature and re-apply all accumulated boons on top.
             restore_clean_stats(self.player)
             self.player.combat_ward = self.player.get_combat_ward_value()
 
@@ -471,15 +418,10 @@ class CodexRunView(BaseView):
                 apply_signature_modifier(self.player, chapter)
             apply_per_wave_boons(self.player, self.active_boons)
 
-            # Snapshot post-setup stats for this chapter so combat passives
-            # (sturdy, omnipotent, absorb, Enfeeble, Impenetrable, etc.) are
-            # restored to this value at the start of every subsequent wave.
             self._snapshot_wave_baseline()
         else:
-            # Mid-chapter: restore to post-setup baseline before combat passives fire
             self._restore_wave_baseline()
 
-        # Per-combat transients reset every wave regardless
         self.player.voracious_stacks = 0
         self.player.cursed_precision_active = False
         self.player.gaze_stacks = 0
@@ -511,7 +453,6 @@ class CodexRunView(BaseView):
     ):
         """Called when monster HP drops to 0. Awards XP/Gold, decides next action."""
         rewards = calculate_rewards(self.player, self.monster)
-        # Codex runs 35 waves in rapid succession — nerf to ~5%
         wave_xp = int(rewards["xp"] * 0.05)
         wave_gold = int(rewards["gold"] * 0.05)
         self.cumulative_xp += wave_xp
@@ -519,21 +460,17 @@ class CodexRunView(BaseView):
 
         self.waves_cleared_this_run += 1
 
-        # Soulreap: restore HP to full after every wave clear
         if self.player.get_weapon_infernal() == "soulreap":
             self.player.current_hp = self.player.total_max_hp
 
-        # Respite check (after wave 3 and wave 6)
         if self.wave_num in (3, 6):
             await self._enter_respite(interaction, message)
             return
 
-        # Chapter boss cleared (wave 7)
         if self.wave_num == 7:
             await self._handle_chapter_clear(interaction, message)
             return
 
-        # Continue to next wave
         self.wave_num += 1
         await self._setup_next_wave(interaction, message)
 
@@ -541,7 +478,7 @@ class CodexRunView(BaseView):
         self, interaction: Interaction = None, message: discord.Message = None
     ):
         """Swap to respite state with 2 randomly weighted boons."""
-        self._boon_processing = False  # reset guard for each new respite
+        self._boon_processing = False
         boons = roll_boons(2)
         reroll_available = self.chapter_idx not in self.reroll_used_chapters
         self.clear_items()
@@ -565,7 +502,6 @@ class CodexRunView(BaseView):
         self.clear_items()
         self.add_item(BoonButton(boons[0], self, row=0))
         self.add_item(BoonButton(boons[1], self, row=1))
-        # Reroll button intentionally not re-added — one use per chapter consumed
 
         embed = self._respite_embed(boons, reroll_available=False)
         await (await interaction.original_response()).edit(embed=embed, view=self)
@@ -577,7 +513,7 @@ class CodexRunView(BaseView):
             return
         self._boon_processing = True
         await interaction.response.defer()
-        result_msg = apply_respite_boon(
+        apply_respite_boon(
             self.player, boon, self.active_boons, self.run_state
         )
 
@@ -591,13 +527,11 @@ class CodexRunView(BaseView):
         self, interaction: Interaction = None, message: discord.Message = None
     ):
         """Awards chapter completion, drops page, transitions to next chapter or run end."""
-        # Log chapter clear
         await self.bot.database.codex.log_chapter_clear(
             self.user_id, self.current_chapter.id, perfect=False
         )
         self.chapters_cleared += 1
 
-        # Page drop (5% chance per chapter clear)
         page_dropped = random.random() < 0.05
         if page_dropped:
             await self.bot.database.users.modify_currency(
@@ -605,7 +539,6 @@ class CodexRunView(BaseView):
             )
             self.page_drops.append(self.current_chapter.id)
 
-        # Show chapter clear embed (no buttons during transition)
         embed = self._chapter_clear_embed(
             self.cumulative_xp, self.cumulative_gold, page_dropped
         )
@@ -617,7 +550,6 @@ class CodexRunView(BaseView):
 
         await asyncio.sleep(4)
 
-        # Advance to next chapter or end run
         next_idx = self.chapter_idx + 1
         if next_idx >= len(self.chapters):
             await self._handle_run_complete(msg_obj)
@@ -646,12 +578,11 @@ class CodexRunView(BaseView):
             self.user_id, "codex_fragments", fragments
         )
 
-        # Guaranteed page boon: awarded only on full run completion
         if self.run_state.pop("guaranteed_page_next", False):
             await self.bot.database.users.modify_currency(
                 self.user_id, "codex_pages", 1
             )
-            self.page_drops.append(-1)  # sentinel: full-run page drop
+            self.page_drops.append(-1)
 
         await self.bot.database.users.modify_gold(self.user_id, self.cumulative_gold)
 
@@ -672,8 +603,6 @@ class CodexRunView(BaseView):
     # Defeat / Retreat
     # ------------------------------------------------------------------
 
-    # 5 % XP penalty on codex defeat — lighter than regular combat (10 %)
-    # because codex runs are longer multi-wave sessions.
     _CODEX_XP_LOSS_ON_DEFEAT: float = 0.05
 
     async def _handle_defeat(
@@ -727,7 +656,6 @@ class CodexRunView(BaseView):
         """Clears and re-adds the standard combat buttons."""
         self.clear_items()
         self.add_item(self._attack_btn)
-        self.add_item(self._heal_btn)
         self.add_item(self._auto_btn)
         self.add_item(self._retreat_btn)
 
@@ -763,7 +691,7 @@ class CodexRunView(BaseView):
             await self._refresh_ui(interaction, message)
 
     # ------------------------------------------------------------------
-    # Static combat buttons (attached as instance attributes so _add_combat_buttons works)
+    # Static combat buttons
     # ------------------------------------------------------------------
 
     @ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️", row=0)
@@ -851,423 +779,3 @@ class CodexRunView(BaseView):
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
         await interaction.response.edit_message(embed=embed, view=None)
-
-
-# ---------------------------------------------------------------------------
-# CodexTomsView — Tome management
-# ---------------------------------------------------------------------------
-
-
-class CodexTomsView(BaseView):
-    """Shows a player's 5 tome slots and allows upgrading/rerolling."""
-
-    def __init__(
-        self,
-        bot,
-        user_id: str,
-        player: Player,
-        fragments: int,
-        pages: int,
-        rerolls: int,
-        chapter_history: dict,
-    ):
-        super().__init__(bot, user_id, timeout=600)
-        self.player = player
-        self.fragments = fragments
-        self.pages = pages
-        self.rerolls = rerolls
-        self.chapter_history = chapter_history
-        self.selected_slot: int | None = None
-        self._rebuild()
-
-    def _rebuild(self):
-        self.clear_items()
-        tomes = self.player.codex_tomes
-        slots = len(tomes)
-
-        # Slot select (if any slots are unlocked)
-        if slots > 0:
-            options = [
-                discord.SelectOption(
-                    label=f"Slot {t.slot + 1}: {_PASSIVE_LABELS.get(t.passive_type, (t.passive_type, ''))[0]}",
-                    value=str(t.slot),
-                    description=f"Tier {t.tier}/5",
-                )
-                for t in tomes
-            ]
-            select = ui.Select(
-                placeholder="Select a tome slot...", options=options, row=0
-            )
-            select.callback = self._on_slot_select
-            self.add_item(select)
-
-        # Unlock button (row 1)
-        can_unlock = slots < 5 and self.pages > 0
-        unlock_btn = ui.Button(
-            label=f"Unlock Slot ({self.pages} page{'s' if self.pages != 1 else ''})",
-            style=ButtonStyle.success,
-            disabled=not can_unlock,
-            row=1,
-        )
-        unlock_btn.callback = self._on_unlock
-        self.add_item(unlock_btn)
-
-        # Action buttons for selected slot (row 2)
-        if self.selected_slot is not None:
-            tome = next((t for t in tomes if t.slot == self.selected_slot), None)
-            if tome:
-                # Upgrade
-                can_upgrade = (
-                    tome.tier < 5 and self.fragments >= TOME_UPGRADE_COSTS[tome.tier]
-                )
-                upgrade_cost = TOME_UPGRADE_COSTS[tome.tier] if tome.tier < 5 else 0
-                upgrade_btn = ui.Button(
-                    label=f"Upgrade T{tome.tier}→T{tome.tier+1} ({upgrade_cost}🔷 + 10m💰)",
-                    style=ButtonStyle.primary,
-                    disabled=not can_upgrade,
-                    row=2,
-                )
-                upgrade_btn.callback = self._on_upgrade
-                self.add_item(upgrade_btn)
-
-                # Reroll value
-                reroll_val_cost = get_reroll_cost(tome.tier)
-                can_reroll_val = tome.tier > 0 and self.fragments >= reroll_val_cost
-                reroll_val_btn = ui.Button(
-                    label=f"Reroll Value ({reroll_val_cost}🔷 + 10m💰)",
-                    style=ButtonStyle.secondary,
-                    disabled=not can_reroll_val,
-                    row=2,
-                )
-                reroll_val_btn.callback = self._on_reroll_value
-                self.add_item(reroll_val_btn)
-
-                # Reroll type (costs 1 codex page)
-                can_reroll_type = self.pages > 0
-                reroll_type_btn = ui.Button(
-                    label="Reroll Type (1📄 + 10m💰)",
-                    style=ButtonStyle.danger,
-                    disabled=not can_reroll_type,
-                    row=2,
-                )
-                reroll_type_btn.callback = self._on_reroll_type
-                self.add_item(reroll_type_btn)
-
-        # Exit (row 3)
-        exit_btn = ui.Button(label="Close", style=ButtonStyle.secondary, row=3)
-        exit_btn.callback = self._on_exit
-        self.add_item(exit_btn)
-
-    def _build_embed(self) -> discord.Embed:
-        embed = discord.Embed(
-            title="📚 Codex Tomes",
-            color=discord.Color.dark_purple(),
-        )
-        embed.add_field(
-            name="Resources",
-            value=f"🔷 {self.fragments} Fragments  |  📄 {self.pages} Pages  |  🔁 {self.rerolls} Reroll Tokens",
-            inline=False,
-        )
-        tomes = self.player.codex_tomes
-        if not tomes:
-            embed.add_field(
-                name="No slots unlocked",
-                value="Use a Codex Page to unlock your first slot.",
-                inline=False,
-            )
-        else:
-            for tome in tomes:
-                name, value = _tome_field(tome)
-                embed.add_field(
-                    name=f"Slot {tome.slot + 1}: {name}", value=value, inline=True
-                )
-            unlocked = len(tomes)
-            if unlocked < 5:
-                for i in range(unlocked, 5):
-                    embed.add_field(
-                        name=f"Slot {i + 1}: 🔒 Locked",
-                        value="Requires a Codex Page",
-                        inline=True,
-                    )
-
-        if self.selected_slot is not None:
-            tome = next((t for t in tomes if t.slot == self.selected_slot), None)
-            if tome:
-                name, _ = _PASSIVE_LABELS.get(
-                    tome.passive_type, (tome.passive_type, "")
-                )
-                embed.set_footer(
-                    text=f"Selected: Slot {self.selected_slot + 1} — {name} (Tier {tome.tier}/5, Value {tome.value:.2f})"
-                )
-        embed.set_thumbnail(url=CODEX_TOME)
-        return embed
-
-    async def _refresh(self, interaction: Interaction):
-        self._rebuild()
-        await interaction.response.edit_message(embed=self._build_embed(), view=self)
-
-    async def _on_slot_select(self, interaction: Interaction):
-        self.selected_slot = int(interaction.data["values"][0])
-        await self._refresh(interaction)
-
-    async def _on_unlock(self, interaction: Interaction):
-        await interaction.response.defer()
-        tome = await self.bot.database.codex.unlock_tome_slot(self.user_id)
-        if tome is None:
-            await interaction.followup.send(
-                "All 5 slots are already unlocked.", ephemeral=True
-            )
-            return
-        await self.bot.database.users.modify_currency(self.user_id, "codex_pages", -1)
-        self.pages -= 1
-        self.player.codex_tomes = await self.bot.database.codex.get_tomes(self.user_id)
-        self.selected_slot = tome.slot
-        self._rebuild()
-        await interaction.edit_original_response(embed=self._build_embed(), view=self)
-
-    async def _on_upgrade(self, interaction: Interaction):
-        await interaction.response.defer()
-        tome = next(
-            (t for t in self.player.codex_tomes if t.slot == self.selected_slot), None
-        )
-        if not tome or tome.tier >= 5:
-            return
-        cost = TOME_UPGRADE_COSTS[tome.tier]
-        if self.fragments < cost:
-            await interaction.followup.send(
-                "Not enough Codex Fragments.", ephemeral=True
-            )
-            return
-        gold = await self.bot.database.users.get_gold(self.user_id)
-        if gold < 10_000_000:
-            await interaction.followup.send(
-                "You need **10,000,000 gold** to upgrade a Tome tier.", ephemeral=True
-            )
-            return
-        ok, new_val = await self.bot.database.codex.upgrade_tome(
-            self.user_id, self.selected_slot
-        )
-        if ok:
-            await self.bot.database.users.modify_currency(
-                self.user_id, "codex_fragments", -cost
-            )
-            await self.bot.database.users.modify_gold(self.user_id, -10_000_000)
-            self.fragments -= cost
-            self.player.codex_tomes = await self.bot.database.codex.get_tomes(
-                self.user_id
-            )
-        self._rebuild()
-        await interaction.edit_original_response(embed=self._build_embed(), view=self)
-
-    async def _on_reroll_value(self, interaction: Interaction):
-        await interaction.response.defer()
-        tome = next(
-            (t for t in self.player.codex_tomes if t.slot == self.selected_slot), None
-        )
-        if not tome or tome.tier == 0:
-            return
-        cost = get_reroll_cost(tome.tier)
-        if self.fragments < cost:
-            await interaction.followup.send(
-                "Not enough Codex Fragments.", ephemeral=True
-            )
-            return
-        gold = await self.bot.database.users.get_gold(self.user_id)
-        if gold < 10_000_000:
-            await interaction.followup.send(
-                "You need **10,000,000 gold** to reroll a Tome value.", ephemeral=True
-            )
-            return
-        ok, _ = await self.bot.database.codex.reroll_tome_value(
-            self.user_id, self.selected_slot
-        )
-        if ok:
-            await self.bot.database.users.modify_currency(
-                self.user_id, "codex_fragments", -cost
-            )
-            await self.bot.database.users.modify_gold(self.user_id, -10_000_000)
-            self.fragments -= cost
-            self.player.codex_tomes = await self.bot.database.codex.get_tomes(
-                self.user_id
-            )
-        self._rebuild()
-        await interaction.edit_original_response(embed=self._build_embed(), view=self)
-
-    async def _on_reroll_type(self, interaction: Interaction):
-        await interaction.response.defer()
-        if self.pages <= 0:
-            await interaction.followup.send("No Codex Pages available.", ephemeral=True)
-            return
-        gold = await self.bot.database.users.get_gold(self.user_id)
-        if gold < 10_000_000:
-            await interaction.followup.send(
-                "You need **10,000,000 gold** to reroll a Tome type.", ephemeral=True
-            )
-            return
-        ok, _ = await self.bot.database.codex.reroll_tome_type(
-            self.user_id, self.selected_slot
-        )
-        if ok:
-            await self.bot.database.users.modify_currency(
-                self.user_id, "codex_pages", -1
-            )
-            await self.bot.database.users.modify_gold(self.user_id, -10_000_000)
-            self.pages -= 1
-            self.player.codex_tomes = await self.bot.database.codex.get_tomes(
-                self.user_id
-            )
-        self._rebuild()
-        await interaction.edit_original_response(embed=self._build_embed(), view=self)
-
-    async def _on_exit(self, interaction: Interaction):
-        self.stop()
-        antique_tomes = await self.bot.database.users.get_currency(
-            self.user_id, "antique_tome"
-        )
-        menu = CodexMenuView(
-            self.bot,
-            self.user_id,
-            self.player,
-            self.fragments,
-            self.pages,
-            self.rerolls,
-            self.chapter_history,
-            antique_tomes=antique_tomes,
-        )
-        await interaction.response.edit_message(embed=menu.build_embed(), view=menu)
-
-
-# ---------------------------------------------------------------------------
-# CodexMenuView — entry point
-# ---------------------------------------------------------------------------
-
-
-class CodexMenuView(BaseView):
-    def __init__(
-        self,
-        bot,
-        user_id: str,
-        player: Player,
-        fragments: int,
-        pages: int,
-        rerolls: int,
-        chapter_history: dict,
-        antique_tomes: int = 0,
-    ):
-        super().__init__(bot, user_id, timeout=600)
-        self.player = player
-        self.fragments = fragments
-        self.pages = pages
-        self.rerolls = rerolls
-        self.chapter_history = chapter_history
-        self.antique_tomes = antique_tomes
-
-    def build_embed(self) -> discord.Embed:
-        tomes = self.player.codex_tomes
-        embed = discord.Embed(
-            title="📖 The Codex",
-            description=(
-                "An onslaught of curated chapters, each more brutal than the last.\n"
-                "Five chapters are drawn at random per run. Manage your Tomes of power."
-            ),
-            color=discord.Color.dark_purple(),
-        )
-        embed.add_field(
-            name="Resources",
-            value=(
-                f"📖 {self.antique_tomes} Antique Tome(s)  |  "
-                f"🔷 {self.fragments} Fragments  |  📄 {self.pages} Pages"
-            ),
-            inline=False,
-        )
-        total_clears = sum(v["clears"] for v in self.chapter_history.values())
-        total_perfects = sum(v["perfect_clears"] for v in self.chapter_history.values())
-        embed.add_field(name="Chapter Clears", value=str(total_clears), inline=True)
-        embed.add_field(name="Perfect Clears", value=str(total_perfects), inline=True)
-        embed.add_field(
-            name="Tome Slots Unlocked", value=f"{len(tomes)}/5", inline=True
-        )
-        embed.set_thumbnail(url=CODEX_HUB)
-        embed.set_footer(text="Level 100+ required to begin a run.")
-        return embed
-
-    @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="📖", row=0)
-    async def begin_run(self, interaction: Interaction, button: ui.Button):
-        # Antique Tome check — re-verify and deduct at run start
-        current_tomes = await self.bot.database.users.get_currency(
-            self.user_id, "antique_tome"
-        )
-        if current_tomes < 1:
-            return await interaction.response.send_message(
-                "You need an **Antique Tome** to begin a Codex run.", ephemeral=True
-            )
-
-        await interaction.response.defer()
-
-        await self.bot.database.users.modify_currency(self.user_id, "antique_tome", -1)
-        self.bot.state_manager.set_active(self.user_id, "codex")
-
-        _je.reset_jewel_charges(self.player)
-
-        # Clear active task species — prevents slayer task completion and species-gated
-        # emblem bonuses (slayer_dmg / slayer_def), which are tied to assigned tasks.
-        # All other emblem and companion bonuses apply normally.
-        self.player.active_task_species = None
-
-        # Select 5 chapters for this run
-        chapters = select_run_chapters(5)
-        chapter = chapters[0]
-
-        # Apply chapter 1 signature + generate wave 1 monster
-        self.player.combat_ward = self.player.get_combat_ward_value()
-        apply_signature_modifier(self.player, chapter)
-
-        # Snapshot post-setup stats before combat passives fire
-        wave_baseline = {
-            "bonus_crit": self.player.bonus_crit,
-            "combat_ward": self.player.combat_ward,
-            "atk_multiplier": self.player.atk_multiplier,
-            "def_multiplier": self.player.def_multiplier,
-        }
-
-        monster = await _generate_codex_wave_monster(self.player, chapter, 1)
-        engine.apply_stat_effects(self.player, monster)
-        start_logs = engine.apply_combat_start_passives(self.player, monster)
-
-        view = CodexRunView(
-            self.bot,
-            self.user_id,
-            self.player,
-            chapters,
-            monster,
-            start_logs,
-            chapter_wave_baseline=wave_baseline,
-        )
-
-        embed = view._combat_embed()
-        self.stop()
-        msg = await interaction.edit_original_response(embed=embed, view=view)
-        # Store message reference for auto-combat
-        view._message_ref = msg
-
-    @ui.button(label="Tomes", style=ButtonStyle.primary, emoji="📚", row=0)
-    async def view_tomes(self, interaction: Interaction, button: ui.Button):
-        tomes_view = CodexTomsView(
-            self.bot,
-            self.user_id,
-            self.player,
-            self.fragments,
-            self.pages,
-            self.rerolls,
-            self.chapter_history,
-        )
-        self.stop()
-        await interaction.response.edit_message(
-            embed=tomes_view._build_embed(), view=tomes_view
-        )
-
-    @ui.button(label="Close", style=ButtonStyle.secondary, row=0)
-    async def exit_btn(self, interaction: Interaction, button: ui.Button):
-        self.stop()
-        await interaction.response.defer()
-        await interaction.delete_original_response()

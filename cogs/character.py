@@ -132,7 +132,7 @@ class Character(commands.Cog, name="character"):
 
     @app_commands.command(name="leaderboard", description="View the server hiscores.")
     async def leaderboard(self, interaction: Interaction) -> None:
-        view = LeaderboardHubView(self.bot, "levels")
+        view = LeaderboardHubView(self.bot, str(interaction.user.id), "levels")
         embed = await view.build_embed()
         await interaction.response.send_message(embed=embed, view=view)
 

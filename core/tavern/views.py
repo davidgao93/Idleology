@@ -1,6 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.images import TAVERN_CASINO
 
 # Import minigames directly to handle transitions without Cog
@@ -8,20 +9,14 @@ from core.minigames.views import BlackjackView, CrashView, HorseRaceView, Roulet
 from core.tavern.mechanics import TavernMechanics
 
 
-class ShopView(ui.View):
+class ShopView(BaseView):
     def __init__(self, bot, user_id: str, user_data: tuple):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id)
         self.gold = user_data[6]
         self.potions = user_data[16]
         self.level = user_data[4]
         self.potion_cost = TavernMechanics.calculate_potion_cost(self.level)
-        self.message = None
         self.update_buttons()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
@@ -107,16 +102,11 @@ class ShopView(ui.View):
         self.stop()
 
 
-class RestView(ui.View):
+class RestView(BaseView):
     def __init__(self, bot, user_id, cost, max_hp):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id)
         self.cost = cost
         self.max_hp = max_hp
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     @ui.button(label="Pay for a room?", style=ButtonStyle.success, emoji="🛏️")
     async def confirm_rest(self, interaction: Interaction, button: ui.Button):
@@ -142,15 +132,10 @@ class RestView(ui.View):
         self.stop()
 
 
-class CasinoMenuView(ui.View):
+class CasinoMenuView(BaseView):
     def __init__(self, bot, user_id, bet_amount):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, user_id)
         self.bet_amount = bet_amount
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)

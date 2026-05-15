@@ -21,6 +21,7 @@ from typing import Dict, List, Optional
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_view import BaseView
 from core.images import PARTNERS_BOSS_PARTY, VICTORY_APHRODITE_GEMINI
 from core.models import Partner
 from core.partners.dispatch import (
@@ -185,28 +186,21 @@ def _build_partner_skills_text(partner: Partner) -> str:
 # ===========================================================================
 
 
-class SlotPickerView(ui.View):
+class SlotPickerView(BaseView):
     """Shows eligible partners for a single slot with their dispatch skills."""
 
     def __init__(
         self,
         bot,
-        user_id: str,
         slot_key: str,
         eligible: List[Partner],
         form_view: "BossPartyFormView",
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
+        super().__init__(bot, parent=form_view)
         self.slot_key = slot_key
         self.eligible = eligible
         self.form_view = form_view
-        self.message: Optional[discord.Message] = None
         self._build()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         if self.message:
@@ -320,7 +314,7 @@ class SlotPickerView(ui.View):
 # ===========================================================================
 
 
-class BossPartyFormView(ui.View):
+class BossPartyFormView(BaseView):
     def __init__(
         self,
         bot,
@@ -330,22 +324,15 @@ class BossPartyFormView(ui.View):
         back_view,
         initial_slots: Optional[Dict[str, Optional[Partner]]] = None,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.all_partners = all_partners
         self.back_view = back_view
-        self.message: Optional[discord.Message] = None
         self.slots: Dict[str, Optional[Partner]] = initial_slots or {
             "attacker": None,
             "tank": None,
             "healer": None,
         }
         self._refresh()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         if self.message:
@@ -396,7 +383,7 @@ class BossPartyFormView(ui.View):
             await interaction.response.defer()
             eligible = _eligible_for_slot(self.all_partners, slot_key, self.slots)
             picker = SlotPickerView(
-                self.bot, self.user_id, slot_key, eligible, form_view=self
+                self.bot, slot_key, eligible, form_view=self
             )
             picker.message = self.message
             await interaction.edit_original_response(
@@ -472,7 +459,7 @@ class BossPartyFormView(ui.View):
 # ===========================================================================
 
 
-class BossPartyProgressView(ui.View):
+class BossPartyProgressView(BaseView):
     def __init__(
         self,
         bot,
@@ -482,18 +469,11 @@ class BossPartyProgressView(ui.View):
         partners_by_id: Dict[int, Partner],
         back_view,
     ):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.party_row = party_row
         self.partners_by_id = partners_by_id
         self.back_view = back_view
-        self.message: Optional[discord.Message] = None
         self._refresh_buttons()
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
 
     async def on_timeout(self):
         if self.message:

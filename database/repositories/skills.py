@@ -245,6 +245,53 @@ class SkillRepository:
         )
         await self.connection.commit()
 
+    # ---------------------------------------------------------
+    # Upgrade material helpers (used by upgrade views via base.py)
+    # ---------------------------------------------------------
+
+    async def get_upgrade_materials(
+        self, user_id: str, server_id: str, cols: dict
+    ) -> tuple:
+        """Fetch (raw, refined) amounts for ore, log, and bone in one call.
+
+        `cols` is the dict returned by BaseUpgradeView._resolve_material_columns:
+          {"ore": {"raw_col": ..., "ref_col": ...},
+           "log": {"raw_col": ..., "ref_col": ...},
+           "bone": {"raw_col": ..., "ref_col": ...}}
+        Returns (mining_res, wood_res, fish_res) as (raw, refined) tuples.
+        """
+        mining_res = await self.get_multi_resource(
+            user_id, server_id, "mining",
+            [cols["ore"]["raw_col"], cols["ore"]["ref_col"]],
+        )
+        wood_res = await self.get_multi_resource(
+            user_id, server_id, "woodcutting",
+            [cols["log"]["raw_col"], cols["log"]["ref_col"]],
+        )
+        fish_res = await self.get_multi_resource(
+            user_id, server_id, "fishing",
+            [cols["bone"]["raw_col"], cols["bone"]["ref_col"]],
+        )
+        return mining_res, wood_res, fish_res
+
+    async def deduct_upgrade_material(
+        self,
+        user_id: str,
+        server_id: str,
+        table: str,
+        raw_col: str,
+        ref_col: str,
+        raw_held: int,
+        cost: int,
+    ) -> None:
+        """Deduct cost from raw resources first, spilling into refined if needed."""
+        to_take_raw = min(raw_held, cost)
+        to_take_ref = cost - to_take_raw
+        if to_take_raw > 0:
+            await self.deduct_resource_atomic(user_id, server_id, table, raw_col, to_take_raw)
+        if to_take_ref > 0:
+            await self.deduct_resource_atomic(user_id, server_id, table, ref_col, to_take_ref)
+
     async def charge_entry_cost(self, user_id: str, gold_amount: int) -> None:
         """Deducts gold from a user for a minigame entry cost (bait / forestry pass)."""
         await self.connection.execute(

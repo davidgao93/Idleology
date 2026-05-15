@@ -75,7 +75,11 @@
       "Bash(Format-Table -AutoSize)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\combat\\\\economy\" -Force)",
       "Bash(Select-Object Name)",
-      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\ascent\" -Recurse)"
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\ascent\" -Recurse)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\" -Recurse -Filter \"*.py\")",
+      "Bash(Measure-Object)",
+      "Bash(Select-Object -ExpandProperty Count)",
+      "Bash(python -m py_compile core/codex/views/__init__.py core/codex/views/menu_view.py core/codex/views/run_view.py core/codex/views/tomes_view.py core/inventory/upgrades/__init__.py core/inventory/upgrades/forge.py core/inventory/upgrades/refine.py core/inventory/upgrades/voidforge.py core/inventory/upgrades/infernal_engram.py core/inventory/upgrades/base.py core/combat/views_uber.py core/combat/views_uber_hub.py core/combat/views_uber_aphrodite.py core/combat/views_uber_lucifer.py core/combat/views_uber_neet.py core/combat/views_uber_gemini.py core/combat/views_uber_evelynn.py)"
     ]
   }
 }

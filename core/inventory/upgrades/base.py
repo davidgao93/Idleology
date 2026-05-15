@@ -33,25 +33,10 @@ class BaseUpgradeView(BaseView):
         }
 
     async def _fetch_material_amounts(self, cols: dict, uid: str, gid: str):
-        """Fetch raw and refined amounts for ore, log, and bone from the DB.
+        """Fetch raw and refined amounts for ore, log, and bone.
         Returns (mining_res, wood_res, fish_res) as (raw, refined) tuples.
         """
-        async with self.bot.database.connection.execute(
-            f"SELECT {cols['ore']['raw_col']}, {cols['ore']['ref_col']} FROM mining WHERE user_id=? AND server_id=?",
-            (uid, gid),
-        ) as cursor:
-            mining_res = await cursor.fetchone() or (0, 0)
-        async with self.bot.database.connection.execute(
-            f"SELECT {cols['log']['raw_col']}, {cols['log']['ref_col']} FROM woodcutting WHERE user_id=? AND server_id=?",
-            (uid, gid),
-        ) as cursor:
-            wood_res = await cursor.fetchone() or (0, 0)
-        async with self.bot.database.connection.execute(
-            f"SELECT {cols['bone']['raw_col']}, {cols['bone']['ref_col']} FROM fishing WHERE user_id=? AND server_id=?",
-            (uid, gid),
-        ) as cursor:
-            fish_res = await cursor.fetchone() or (0, 0)
-        return mining_res, wood_res, fish_res
+        return await self.bot.database.skills.get_upgrade_materials(uid, gid, cols)
 
     async def _deduct_smart(
         self,
@@ -64,18 +49,9 @@ class BaseUpgradeView(BaseView):
         gid: str,
     ):
         """Deduct cost from raw resources first, then spill into refined."""
-        to_take_raw = min(raw_held, cost)
-        to_take_ref = cost - to_take_raw
-        if to_take_raw > 0:
-            await self.bot.database.connection.execute(
-                f"UPDATE {table} SET {raw_col} = {raw_col} - ? WHERE user_id=? AND server_id=?",
-                (to_take_raw, uid, gid),
-            )
-        if to_take_ref > 0:
-            await self.bot.database.connection.execute(
-                f"UPDATE {table} SET {ref_col} = {ref_col} - ? WHERE user_id=? AND server_id=?",
-                (to_take_ref, uid, gid),
-            )
+        await self.bot.database.skills.deduct_upgrade_material(
+            uid, gid, table, raw_col, ref_col, raw_held, cost
+        )
 
     async def _check_triad_costs(self, costs: dict, uid: str, gid: str) -> tuple:
         """
@@ -171,6 +147,15 @@ class BaseUpgradeView(BaseView):
             content=None, embed=embed, view=new_detail_view
         )
         self.stop()
+
+    async def _send_render(self, interaction: Interaction, embed, view=None):
+        """Send or edit the upgrade render embed, then cache the message reference."""
+        v = view or self
+        if interaction.response.is_done():
+            await interaction.edit_original_response(embed=embed, view=v)
+        else:
+            await interaction.response.edit_message(embed=embed, view=v)
+        self.message = await interaction.original_response()
 
     def add_back_button(self):
         """Helper to re-add the back button after clearing items."""

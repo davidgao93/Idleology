@@ -331,11 +331,7 @@ class MirageView(BaseUpgradeView):
             color=discord.Color.teal(),
         )
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=embed, view=self)
-        else:
-            await interaction.response.edit_message(embed=embed, view=self)
-        self.message = await interaction.original_response()
+        await self._send_render(interaction, embed)
 
     async def _on_source_selected(self, interaction: Interaction):
         source_id = int(interaction.data["values"][0])
