@@ -100,9 +100,6 @@ class UberNEETLobbyView(BaseView):
         self.stop()
 
     async def start_uber(self, interaction: Interaction):
-        if not await self.bot.check_is_active(interaction, self.user_id):
-            return
-
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
@@ -141,7 +138,9 @@ class UberNEETLobbyView(BaseView):
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="⬛ UBER ENCOUNTER"
         )
-        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
+        return_view = UberReturnView(
+            self.bot, self.user_id, self.server_id, self.player
+        )
         view = CombatView(
             self.bot,
             self.user_id,

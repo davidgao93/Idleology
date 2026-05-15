@@ -100,8 +100,6 @@ class UberAphroditeLobbyView(BaseView):
         self.stop()
 
     async def start_uber(self, interaction: Interaction):
-        if not await self.bot.check_is_active(interaction, self.user_id):
-            return
 
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
@@ -114,7 +112,6 @@ class UberAphroditeLobbyView(BaseView):
         await interaction.response.defer()
 
         await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, -5)
-        self.bot.state_manager.set_active(self.user_id, "uber_boss")
 
         monster = Monster(
             name="",
@@ -139,7 +136,9 @@ class UberAphroditeLobbyView(BaseView):
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="UBER ENCOUNTER"
         )
-        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
+        return_view = UberReturnView(
+            self.bot, self.user_id, self.server_id, self.player
+        )
         view = CombatView(
             self.bot,
             self.user_id,

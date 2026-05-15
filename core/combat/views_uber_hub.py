@@ -18,7 +18,9 @@ class UberReturnView(BaseView):
         uber_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
-        hub = UberHubView(self.bot, self.user_id, self.server_id, self.player, uber_data)
+        hub = UberHubView(
+            self.bot, self.user_id, self.server_id, self.player, uber_data
+        )
         embed = hub.build_embed()
         await interaction.edit_original_response(embed=embed, view=hub)
         hub.message = await interaction.original_response()
@@ -88,6 +90,7 @@ class UberHubView(BaseView):
 
         btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=2)
         btn_close.callback = self.close_view
+
         self.add_item(btn_close)
 
     def build_embed(self) -> discord.Embed:
@@ -145,6 +148,7 @@ class UberHubView(BaseView):
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
         await interaction.delete_original_response()
+        self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
     async def open_aphrodite(self, interaction: Interaction):

@@ -8,7 +8,7 @@ from core.combat.gen.gen_mob import generate_uber_evelynn
 from core.combat.views import CombatView
 from core.combat.views_uber_hub import UberHubView, UberReturnView
 from core.images import CORRUPTION_GATE
-from core.models import Monster, Player
+from core.models import Monster
 
 
 class UberEvelynnLobbyView(BaseView):
@@ -106,9 +106,6 @@ class UberEvelynnLobbyView(BaseView):
         self.stop()
 
     async def start_uber(self, interaction: Interaction):
-        if not await self.bot.check_is_active(interaction, self.user_id):
-            return
-
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
@@ -147,7 +144,9 @@ class UberEvelynnLobbyView(BaseView):
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="☠️ UBER ENCOUNTER"
         )
-        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
+        return_view = UberReturnView(
+            self.bot, self.user_id, self.server_id, self.player
+        )
         view = CombatView(
             self.bot,
             self.user_id,
