@@ -295,6 +295,73 @@ class UserRepository:
         await self.connection.commit()
 
     # ---------------------------------------------------------
+    # Combat Stamina
+    # ---------------------------------------------------------
+
+    async def get_stamina(self, user_id: str) -> dict:
+        """Returns combat_stamina and last_stamina_regen for a user."""
+        async with self.connection.execute(
+            "SELECT combat_stamina, last_stamina_regen FROM users WHERE user_id = ?",
+            (user_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row:
+            return {"combat_stamina": row[0], "last_stamina_regen": row[1]}
+        return {"combat_stamina": 10, "last_stamina_regen": None}
+
+    async def set_stamina(self, user_id: str, value: int) -> None:
+        """Sets combat_stamina to the given value (clamped 0–10)."""
+        await self.connection.execute(
+            "UPDATE users SET combat_stamina = ? WHERE user_id = ?",
+            (max(0, min(10, value)), user_id),
+        )
+        await self.connection.commit()
+
+    async def set_stamina_regen_time(self, user_id: str) -> None:
+        """Stamps last_stamina_regen to NOW, starting the hourly regen clock."""
+        await self.connection.execute(
+            "UPDATE users SET last_stamina_regen = ? WHERE user_id = ?",
+            (datetime.now().isoformat(), user_id),
+        )
+        await self.connection.commit()
+
+    async def regen_stamina_tick(self) -> int:
+        """
+        Grants +1 combat_stamina to every user below cap whose last regen
+        was >= 1 hour ago (or has never been set). Returns number of users updated.
+        """
+        now = datetime.now()
+        async with self.connection.execute(
+            "SELECT user_id, combat_stamina, last_stamina_regen FROM users WHERE combat_stamina < 10"
+        ) as cursor:
+            rows = await cursor.fetchall()
+
+        updated = 0
+        for row in rows:
+            user_id, stamina, last_regen_str = row[0], row[1], row[2]
+            should_grant = False
+            if last_regen_str is None:
+                should_grant = True
+            else:
+                try:
+                    elapsed = (now - datetime.fromisoformat(last_regen_str)).total_seconds()
+                    if elapsed >= 3600:
+                        should_grant = True
+                except ValueError:
+                    should_grant = True
+
+            if should_grant:
+                await self.connection.execute(
+                    "UPDATE users SET combat_stamina = ?, last_stamina_regen = ? WHERE user_id = ?",
+                    (min(10, stamina + 1), now.isoformat(), user_id),
+                )
+                updated += 1
+
+        if updated:
+            await self.connection.commit()
+        return updated
+
+    # ---------------------------------------------------------
     # Leaderboards
     # ---------------------------------------------------------
 

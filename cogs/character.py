@@ -82,6 +82,16 @@ class Character(commands.Cog, name="character"):
         if not self.check_hp.is_running():
             self.bot.logger.info("Starting player health regen task")
             self.check_hp.start()
+        if not self.check_stamina.is_running():
+            self.bot.logger.info("Starting combat stamina regen task")
+            self.check_stamina.start()
+
+    @tasks.loop(minutes=5)
+    async def check_stamina(self):
+        """Grant 1 combat stamina per hour to all users below the cap of 10."""
+        updated = await self.bot.database.users.regen_stamina_tick()
+        if updated:
+            self.bot.logger.info(f"Stamina regen: granted +1 to {updated} user(s)")
 
     @tasks.loop(minutes=15)
     async def check_hp(self):

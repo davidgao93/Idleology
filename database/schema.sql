@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `curios` INTEGER NOT NULL DEFAULT 0,
   `curios_purchased_today` INTEGER NOT NULL DEFAULT 0,
   `last_combat` TIMESTAMP DEFAULT NULL,
+  `combat_stamina` INTEGER NOT NULL DEFAULT 10,
+  `last_stamina_regen` TIMESTAMP DEFAULT NULL,
   `dragon_key` INTEGER NOT NULL DEFAULT 0,
   `angel_key` INTEGER NOT NULL DEFAULT 0,
   `imbue_runes` INTEGER NOT NULL DEFAULT 0,

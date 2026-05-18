@@ -49,38 +49,55 @@ class DoorPromptView(BaseView):
         self.stop()
 
 
+MAX_STAMINA = 10
+COMBAT_COOLDOWN = timedelta(minutes=10)
+
+
 class Combat(commands.Cog, name="combat"):
     def __init__(self, bot):
         self.bot = bot
-        self.COMBAT_COOLDOWN = timedelta(minutes=10)
 
-    async def _check_cooldown(
-        self, interaction: Interaction, user_id: str, existing_user: tuple
-    ) -> bool:
-        """Calculates dynamic cooldown and checks if user can fight."""
-        temp_cooldown_reduction = 0
-        equipped_boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
+    def _get_speedster_reduction(self, equipped_boot) -> int:
+        """Returns the Speedster passive cooldown reduction in seconds."""
         if equipped_boot and equipped_boot["passive"] == "speedster":
-            temp_cooldown_reduction = equipped_boot["passive_lvl"] * 60
+            return equipped_boot["passive_lvl"] * 60
+        return 0
 
-        current_duration = self.COMBAT_COOLDOWN - timedelta(
-            seconds=temp_cooldown_reduction
+    def _effective_cooldown(self, speedster_reduction_sec: int) -> timedelta:
+        return max(
+            timedelta(seconds=10),
+            COMBAT_COOLDOWN - timedelta(seconds=speedster_reduction_sec),
         )
-        current_duration = max(timedelta(seconds=10), current_duration)
+
+    async def _check_stamina(
+        self, interaction: Interaction, user_id: str, existing_user
+    ) -> bool:
+        """If the player has stamina, pass immediately.
+        If empty, fall back to the regular 10-minute cooldown check."""
+        if existing_user["combat_stamina"] > 0:
+            return True
+
+        # No stamina — enforce the regular combat cooldown
+        equipped_boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
+        reduction = self._get_speedster_reduction(equipped_boot)
+        cooldown = self._effective_cooldown(reduction)
 
         last_combat_str = existing_user["last_combat"]
         if last_combat_str:
             try:
                 last_combat_dt = datetime.fromisoformat(last_combat_str)
-                if datetime.now() - last_combat_dt < current_duration:
-                    remaining = current_duration - (datetime.now() - last_combat_dt)
+                elapsed = datetime.now() - last_combat_dt
+                if elapsed < cooldown:
+                    remaining = cooldown - elapsed
+                    mins = remaining.seconds // 60
+                    secs = remaining.seconds % 60
                     await interaction.response.send_message(
-                        f"Please slow down. Try again in {remaining.seconds // 60}m {remaining.seconds % 60}s.",
+                        f"You're too tired for another encounter, try again in {mins}m {secs}s.",
                         ephemeral=True,
                     )
                     return False
             except ValueError:
-                self.bot.logger.warning(f"Invalid last_combat_time for {user_id}")
+                pass
         return True
 
     @app_commands.command(name="combat", description="Engage in combat.")
@@ -94,7 +111,7 @@ class Combat(commands.Cog, name="combat"):
             return
         if not await self.bot.check_is_active(interaction, user_id):
             return
-        if not await self._check_cooldown(interaction, user_id, existing_user):
+        if not await self._check_stamina(interaction, user_id, existing_user):
             return
 
         self.bot.state_manager.set_active(user_id, "combat")
@@ -116,8 +133,22 @@ class Combat(commands.Cog, name="combat"):
             view.message = await interaction.original_response()
             return  # Pause execution here. The view will call _execute_combat if they proceed.
 
-        # If health is fine, proceed immediately. We defer because the logic below can take a moment.
+        # If health is fine, proceed immediately.
         await interaction.response.defer()
+        await self._execute_combat(
+            interaction, user_id, server_id, existing_user, player
+        )
+
+    async def _rematch_execute(
+        self,
+        interaction: Interaction,
+        user_id: str,
+        server_id: str,
+        existing_user,
+        player,
+    ):
+        """Thin wrapper used by PostCombatView's Fight Again button.
+        Skips the state-guard and stamina-check (both handled by the view)."""
         await self._execute_combat(
             interaction, user_id, server_id, existing_user, player
         )
@@ -127,10 +158,17 @@ class Combat(commands.Cog, name="combat"):
         interaction: Interaction,
         user_id: str,
         server_id: str,
-        existing_user: tuple,
+        existing_user,
         player,
     ):
         """The actual combat generation and UI loading logic. Called directly or via the Warning View."""
+        # Consume 1 stamina. Start the regen clock the first time they drop below max.
+        current_stamina = existing_user["combat_stamina"]
+        new_stamina = max(0, current_stamina - 1)
+        await self.bot.database.users.set_stamina(user_id, new_stamina)
+        if current_stamina == MAX_STAMINA:
+            await self.bot.database.users.set_stamina_regen_time(user_id)
+
         is_boss = False
         is_corrupted = False
         combat_phases = []
@@ -209,7 +247,9 @@ class Combat(commands.Cog, name="combat"):
         is_incubated = False
         incubated_encounter = None
         if not is_boss and not is_corrupted:
-            incubated_encounter = await self.bot.database.eggs.get_next_incubated(user_id)
+            incubated_encounter = await self.bot.database.eggs.get_next_incubated(
+                user_id
+            )
             if incubated_encounter:
                 is_incubated = True
 
@@ -266,6 +306,7 @@ class Combat(commands.Cog, name="combat"):
             monster,
             start_logs,
             combat_phases if is_boss else None,
+            rematch_callback=self._rematch_execute,
         )
 
         if interaction.response.is_done():

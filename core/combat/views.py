@@ -2,6 +2,7 @@
 
 import asyncio
 import random
+from datetime import datetime, timedelta
 
 import discord
 from discord import ButtonStyle, Interaction, ui
@@ -64,6 +65,44 @@ def _boss_victory_cfg(monster_name: str) -> dict:
     return {}
 
 
+_COMBAT_COOLDOWN = timedelta(minutes=10)
+
+
+class PostCombatView(BaseView):
+    """Shown after a regular victory. Has a Fight Again button when stamina > 0,
+    or no buttons when stamina is empty (the embed field carries the cooldown info)."""
+
+    def __init__(self, bot, user_id: str, server_id: str, player, stamina: int, rematch_callback):
+        super().__init__(bot, user_id, server_id, timeout=120)
+        self.player = player
+        self.rematch_callback = rematch_callback
+        self._stamina = stamina
+
+        if stamina > 0:
+            btn = discord.ui.Button(
+                label=f"Fight Again  ⚡{stamina}",
+                style=discord.ButtonStyle.green,
+            )
+            btn.callback = self._fight_again
+            self.add_item(btn)
+
+    async def _fight_again(self, interaction: Interaction):
+        await interaction.response.defer()
+
+        # Re-fetch to guard against any race (stamina may have changed)
+        existing_user = await self.bot.database.users.get(self.user_id, self.server_id)
+        if existing_user["combat_stamina"] <= 0:
+            await interaction.followup.send("No stamina remaining!", ephemeral=True)
+            return
+
+        for item in self.children:
+            item.disabled = True
+
+        self.bot.state_manager.set_active(self.user_id, "combat")
+        await self.rematch_callback(interaction, self.user_id, self.server_id, existing_user, self.player)
+        self.stop()
+
+
 class CombatView(BaseView):
     def __init__(
         self,
@@ -75,6 +114,7 @@ class CombatView(BaseView):
         initial_logs: dict,
         combat_phases=None,
         post_combat_view=None,
+        rematch_callback=None,
     ):
         super().__init__(bot, user_id, server_id)
         self.bot = bot
@@ -84,6 +124,7 @@ class CombatView(BaseView):
         self.monster = monster
         self.logs = initial_logs or {}
         self.post_combat_view = post_combat_view
+        self.rematch_callback = rematch_callback
 
         _je.reset_jewel_charges(player)
 
@@ -427,8 +468,6 @@ class CombatView(BaseView):
             contract_choice_view.message = message
             return  # LuciferChoiceView takes over
 
-        await message.edit(embed=embed, view=None)
-
         # Soulreap: restore HP to full after every successful encounter
         if self.player.get_weapon_infernal() == "soulreap":
             self.player.current_hp = self.player.total_max_hp
@@ -436,4 +475,36 @@ class CombatView(BaseView):
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)
         await _je.save_jewel_state(self.bot, self.user_id, self.player)
+
+        # Build post-combat view (Fight Again button or stamina cooldown field)
+        stamina_data = await self.bot.database.users.get_stamina(self.user_id)
+        stamina = stamina_data["combat_stamina"]
+
+        if stamina == 0:
+            equipped_boot = await self.bot.database.equipment.get_equipped(self.user_id, "boot")
+            speedster_reduction = 0
+            if equipped_boot and equipped_boot["passive"] == "speedster":
+                speedster_reduction = equipped_boot["passive_lvl"] * 60
+            cooldown = max(timedelta(seconds=10), _COMBAT_COOLDOWN - timedelta(seconds=speedster_reduction))
+            last_combat_str = await self.bot.database.users.get_timer(self.user_id, "last_combat")
+            time_str = "soon"
+            if last_combat_str:
+                try:
+                    elapsed = datetime.now() - datetime.fromisoformat(last_combat_str)
+                    remaining = cooldown - elapsed
+                    if remaining.total_seconds() > 0:
+                        mins = int(remaining.total_seconds()) // 60
+                        secs = int(remaining.total_seconds()) % 60
+                        time_str = f"{mins}m {secs}s" if mins > 0 else f"{secs}s"
+                    else:
+                        time_str = "now"
+                except ValueError:
+                    pass
+            embed.add_field(name="⚡ Stamina", value=f"Out of stamina — next combat in **{time_str}**", inline=False)
+
+        post_view = PostCombatView(
+            self.bot, self.user_id, self.server_id, self.player, stamina, self.rematch_callback
+        ) if self.rematch_callback else None
+
+        await message.edit(embed=embed, view=post_view)
         self.stop()

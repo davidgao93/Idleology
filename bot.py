@@ -183,6 +183,16 @@ class DiscordBot(commands.Bot):
             ) as file:
                 await db.executescript(file.read())
             await db.commit()
+            # Migrations for columns added after initial schema
+            for stmt in [
+                "ALTER TABLE users ADD COLUMN combat_stamina INTEGER NOT NULL DEFAULT 10",
+                "ALTER TABLE users ADD COLUMN last_stamina_regen TIMESTAMP DEFAULT NULL",
+            ]:
+                try:
+                    await db.execute(stmt)
+                    await db.commit()
+                except Exception:
+                    pass  # Column already exists
 
     async def load_cogs(self) -> None:
         """

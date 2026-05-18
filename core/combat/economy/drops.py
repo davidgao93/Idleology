@@ -43,12 +43,12 @@ _BODY_PART_BASE_CHANCE = 0.02  # 2% base; special rarity adds on top
 # Monster Egg Drop Tables
 # ---------------------------------------------------------------------------
 
-_EGG_BASE_CHANCE = 0.02  # same 2% + special rarity as body parts
+_EGG_BASE_CHANCE = 1.02  # same 2% + special rarity as body parts
 
 _EGG_TIER_WEIGHTS = [
     ("normal", 75),
-    ("rare",   20),
-    ("giga",    5),
+    ("rare", 20),
+    ("giga", 5),
 ]
 _EGG_TIERS, _EGG_WEIGHTS = zip(*_EGG_TIER_WEIGHTS)
 
@@ -284,13 +284,19 @@ async def apply_incubated_monster_drops(
 
     from core.hatchery.mechanics import HatcheryMechanics
 
-    blood_amount = HatcheryMechanics.blood_reward(monster.incubated_egg_tier, monster.level)
-    blood_type   = random.choice(["primordial", "evolutionary", "mutative"])
+    blood_amount = HatcheryMechanics.blood_reward(
+        monster.incubated_egg_tier, monster.level
+    )
+    blood_type = random.choice(["primordial", "evolutionary", "mutative"])
 
     await bot.database.hematurgy.modify_blood(user_id, blood_type, blood_amount)
     await bot.database.eggs.consume_incubated_encounter(monster.incubated_encounter_id)
 
-    blood_names = {"primordial": "Primordial 🩸", "evolutionary": "Evolutionary 🧬", "mutative": "Mutative ☣️"}
+    blood_names = {
+        "primordial": "Primordial 🩸",
+        "evolutionary": "Evolutionary 🧬",
+        "mutative": "Mutative ☣️",
+    }
     reward_data.setdefault("special", [])
     reward_data["special"].append(
         f"🩸 Incubated monster dropped **{blood_amount:,}x {blood_names[blood_type]}** blood!"

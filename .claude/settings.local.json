@@ -82,7 +82,11 @@
       "Bash(python -m py_compile core/codex/views/__init__.py core/codex/views/menu_view.py core/codex/views/run_view.py core/codex/views/tomes_view.py core/inventory/upgrades/__init__.py core/inventory/upgrades/forge.py core/inventory/upgrades/refine.py core/inventory/upgrades/voidforge.py core/inventory/upgrades/infernal_engram.py core/inventory/upgrades/base.py core/combat/views_uber.py core/combat/views_uber_hub.py core/combat/views_uber_aphrodite.py core/combat/views_uber_lucifer.py core/combat/views_uber_neet.py core/combat/views_uber_gemini.py core/combat/views_uber_evelynn.py)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\assets\\\\images\" -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object -ExpandProperty FullName)",
       "PowerShell(head -30)",
-      "Bash(ls -la '/mnt/c/Users/yugao/Idleology/core/settlement/views/')"
+      "Bash(ls -la '/mnt/c/Users/yugao/Idleology/core/settlement/views/')",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\" -Recurse -Directory -Depth 2)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(dir C:\\\\Users\\\\yugao\\\\Idleology\\\\*.py /b)",
+      "Bash(ls /mnt/c/Users/yugao/Idleology/*.py 2>/dev/null || echo \"No py files in root\")"
     ]
   }
 }

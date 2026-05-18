@@ -124,7 +124,7 @@ class TransmuteSourceSelect(ui.Select):
 
     async def callback(self, interaction: Interaction):
         source = self.values[0]
-        view = TransmuteTargetView(self.view, source)
+        view = TransmuteTargetView(self.view.parent, source)
         await interaction.response.edit_message(
             content=f"Select the **target** type to receive {_BLOOD_NAMES[source]} → ?",
             embed=None,
