@@ -39,44 +39,46 @@ _COMBAT_EXP_MIN = 500
 _COMBAT_EXP_MAX = 2000
 
 # ---------------------------------------------------------------------------
-# Gathering material tables  (tool_name → materials list + quantity range)
+# Gathering material tables
+# Each tier entry lists all materials that drop at that tier level,
+# with lower-tier materials yielding larger quantities.
+# Tier names must match SkillMechanics.get_tool_tiers() / DB stored values.
 # ---------------------------------------------------------------------------
 
-_MINING_TIERS: Dict[str, dict] = {
-    "iron": {"materials": ["iron"], "qty": (200, 500)},
-    "steel": {"materials": ["iron", "coal"], "qty": (300, 600)},
-    "gold": {"materials": ["gold"], "qty": (200, 500)},
-    "platinum": {"materials": ["platinum"], "qty": (200, 400)},
-    "idea": {"materials": ["idea"], "qty": (100, 300)},
+_MINING_YIELDS: Dict[str, Dict[str, tuple]] = {
+    "iron":     {"iron": (150, 400)},
+    "steel":    {"iron": (200, 450), "coal": (100, 250)},
+    "gold":     {"iron": (200, 450), "coal": (150, 300), "gold": (100, 250)},
+    "platinum": {"iron": (200, 450), "coal": (150, 300), "gold": (120, 270), "platinum": (80, 200)},
+    "ideal":    {"iron": (200, 450), "coal": (150, 300), "gold": (120, 270), "platinum": (80, 200), "idea": (50, 150)},
 }
 
-_FISHING_TIERS: Dict[str, dict] = {
-    "desiccated": {"materials": ["desiccated_bones"], "qty": (200, 500)},
-    "regular": {"materials": ["regular_bones"], "qty": (300, 600)},
-    "sturdy": {"materials": ["sturdy_bones"], "qty": (200, 500)},
-    "reinforced": {"materials": ["reinforced_bones"], "qty": (200, 400)},
-    "titanium": {"materials": ["titanium_bones"], "qty": (100, 300)},
+_FISHING_YIELDS: Dict[str, Dict[str, tuple]] = {
+    "desiccated": {"desiccated_bones": (150, 400)},
+    "regular":    {"desiccated_bones": (200, 450), "regular_bones": (100, 250)},
+    "sturdy":     {"desiccated_bones": (200, 450), "regular_bones": (150, 300), "sturdy_bones": (100, 250)},
+    "reinforced": {"desiccated_bones": (200, 450), "regular_bones": (150, 300), "sturdy_bones": (120, 270), "reinforced_bones": (80, 200)},
+    "titanium":   {"desiccated_bones": (200, 450), "regular_bones": (150, 300), "sturdy_bones": (120, 270), "reinforced_bones": (80, 200), "titanium_bones": (50, 150)},
 }
 
-_WOODCUTTING_TIERS: Dict[str, dict] = {
-    "flimsy": {"materials": ["oak_logs"], "qty": (200, 500)},
-    "oak": {"materials": ["oak_logs", "willow_logs"], "qty": (300, 600)},
-    "willow": {"materials": ["willow_logs"], "qty": (200, 500)},
-    "mahogany": {"materials": ["mahogany_logs"], "qty": (200, 400)},
-    "magic": {"materials": ["magic_logs"], "qty": (200, 400)},
-    "idea": {"materials": ["idea_logs"], "qty": (100, 300)},
+_WOODCUTTING_YIELDS: Dict[str, Dict[str, tuple]] = {
+    "flimsy":    {"oak_logs": (150, 400)},
+    "carved":    {"oak_logs": (200, 450), "willow_logs": (100, 250)},
+    "chopping":  {"oak_logs": (200, 450), "willow_logs": (150, 300), "mahogany_logs": (100, 250)},
+    "magic":     {"oak_logs": (200, 450), "willow_logs": (150, 300), "mahogany_logs": (120, 270), "magic_logs": (80, 200)},
+    "felling":   {"oak_logs": (200, 450), "willow_logs": (150, 300), "mahogany_logs": (120, 270), "magic_logs": (80, 200), "idea_logs": (50, 150)},
 }
 
-_GATHERING_SKILL_MAP = {
-    "mining": _MINING_TIERS,
-    "fishing": _FISHING_TIERS,
-    "woodcutting": _WOODCUTTING_TIERS,
+_GATHERING_YIELD_MAP: Dict[str, Dict[str, Dict[str, tuple]]] = {
+    "mining": _MINING_YIELDS,
+    "fishing": _FISHING_YIELDS,
+    "woodcutting": _WOODCUTTING_YIELDS,
 }
 
-_TOOL_COLUMN = {
-    "mining": "pickaxe_tier",
-    "fishing": "fishing_rod",
-    "woodcutting": "axe_type",
+_GATHERING_DEFAULT_TIER = {
+    "mining": "iron",
+    "fishing": "desiccated",
+    "woodcutting": "flimsy",
 }
 
 
@@ -276,26 +278,29 @@ def _roll_gathering(
     skill_tiers: Dict[str, str],
     mods: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Rolls gathering dispatch rewards."""
+    """Rolls gathering dispatch rewards.
+
+    Each roll picks one skill at random, then grants all materials accessible
+    at the player's tool tier — lower-tier materials in higher quantities.
+    """
     items: Dict[str, int] = {}
 
     for _ in range(int(rolls)):
-        skill = random.choice(list(_GATHERING_SKILL_MAP.keys()))
-        tier_table = _GATHERING_SKILL_MAP[skill]
-        tool = skill_tiers.get(skill, list(tier_table.keys())[0])
-        tier_data = tier_table.get(tool, list(tier_table.values())[0])
+        skill = random.choice(list(_GATHERING_YIELD_MAP.keys()))
+        yield_table = _GATHERING_YIELD_MAP[skill]
+        default_tier = _GATHERING_DEFAULT_TIER[skill]
+        tool = skill_tiers.get(skill, default_tier)
+        tier_yields = yield_table.get(tool, yield_table[default_tier])
 
-        material = random.choice(tier_data["materials"])
-        qty_min, qty_max = tier_data["qty"]
-        qty = int(random.randint(qty_min, qty_max) * mods["skilling_mult"])
-
-        if (
+        double = (
             mods["flora_double_chance"] > 0
             and random.random() < mods["flora_double_chance"]
-        ):
-            qty *= 2
+        )
+        mult = mods["skilling_mult"] * (2 if double else 1)
 
-        items[material] = items.get(material, 0) + qty
+        for material, (qty_min, qty_max) in tier_yields.items():
+            qty = int(random.randint(qty_min, qty_max) * mult)
+            items[material] = items.get(material, 0) + qty
 
     return {"gold": 0, "exp": 0, "items": items}
 

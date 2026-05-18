@@ -71,4 +71,4 @@ def _rarity_colour(rarity: int) -> int:
 
 
 def _stars(rarity: int) -> str:
-    return "★" * rarity
+    return f"{rarity}★"

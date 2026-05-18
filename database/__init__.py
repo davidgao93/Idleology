@@ -7,8 +7,10 @@ from .repositories.codex import CodexRepository
 from .repositories.companions import CompanionRepository
 from .repositories.delve import DelveRepository
 from .repositories.duels import DuelStatsRepository
+from .repositories.eggs import EggsRepository
 from .repositories.equipment import EquipmentRepository
 from .repositories.essences import EssencesRepository
+from .repositories.hematurgy import HematurgyRepository
 from .repositories.journey import JourneyRepository
 from .repositories.maw import MawRepository
 from .repositories.monster_parts import MonsterPartsRepository
@@ -46,6 +48,8 @@ class DatabaseManager:
         self.ascension = AscensionRepository(connection)
         self.prestige = PrestigeRepository(connection)
         self.monster_parts = MonsterPartsRepository(connection)
+        self.hematurgy = HematurgyRepository(connection)
+        self.eggs = EggsRepository(connection)
         self.partners = PartnerRepository(connection)
         self.boss_party = BossPartyRepository(connection)
         self.maw = MawRepository(connection)

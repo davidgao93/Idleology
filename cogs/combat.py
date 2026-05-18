@@ -16,6 +16,7 @@ from core.combat.gen.gen_mob import (
     generate_boss,
     generate_corrupted_encounter,
     generate_encounter,
+    generate_incubated_monster,
 )
 from core.combat.views import CombatView
 from core.combat.views_dojo import DummyConfigView
@@ -203,6 +204,15 @@ class Combat(commands.Cog, name="combat"):
         if not is_boss:
             await self.bot.database.users.update_timer(user_id, "last_combat")
 
+        # 3c. Incubated encounter — takes priority over a normal random fight
+        #     (skipped if a boss or corrupted encounter was accepted)
+        is_incubated = False
+        incubated_encounter = None
+        if not is_boss and not is_corrupted:
+            incubated_encounter = await self.bot.database.eggs.get_next_incubated(user_id)
+            if incubated_encounter:
+                is_incubated = True
+
         # 4. Generate Initial Monster
         slayer_profile = await self.bot.database.slayer.get_profile(user_id, server_id)
         task_species = slayer_profile["active_task_species"]
@@ -225,6 +235,9 @@ class Combat(commands.Cog, name="combat"):
             monster.is_boss = True
         elif is_corrupted:
             monster = generate_corrupted_encounter(player, monster)
+            combat_phases = [None]
+        elif is_incubated:
+            monster = await generate_incubated_monster(incubated_encounter)
             combat_phases = [None]
         else:
             treasure_chance = 1.0

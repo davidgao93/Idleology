@@ -65,6 +65,20 @@ class PartnerBaseView(BaseView):
 # ---------------------------------------------------------------------------
 
 
+async def _fetch_skill_tiers(bot, user_id: str, server_id: str) -> dict:
+    """Fetch the user's current tool tier for each gathering skill."""
+    tiers = {}
+    for skill, col in (
+        ("mining", "pickaxe_tier"),
+        ("fishing", "fishing_rod"),
+        ("woodcutting", "axe_type"),
+    ):
+        row = await bot.database.skills.get_data(user_id, server_id, skill)
+        if row:
+            tiers[skill] = row[col]
+    return tiers
+
+
 async def _apply_dispatch_rewards(
     bot, user_id: str, server_id: str, partner: Partner
 ) -> list:
@@ -74,10 +88,20 @@ async def _apply_dispatch_rewards(
         and partner.sig_dispatch_lvl >= 1
         and partner.dispatch_task_2 is not None
     )
+
+    task = partner.dispatch_task or "combat"
+    task2 = getattr(partner, "dispatch_task_2", None)
+    needs_gathering = task == "gathering" or task2 == "gathering"
+    skill_tiers = (
+        await _fetch_skill_tiers(bot, user_id, server_id) if needs_gathering else {}
+    )
+
     if is_sigmund:
-        result = calculate_sigmund_rewards(partner)
+        result = calculate_sigmund_rewards(partner, skill_tiers=skill_tiers)
     else:
-        result = calculate_rewards(partner, partner.dispatch_start_time or "")
+        result = calculate_rewards(
+            partner, partner.dispatch_start_time or "", skill_tiers=skill_tiers
+        )
 
     gold = result.get("gold", 0)
     exp = result.get("exp", 0)

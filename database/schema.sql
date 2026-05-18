@@ -566,3 +566,49 @@ CREATE TABLE IF NOT EXISTS boss_party_dispatch (
     start_time    TEXT NOT NULL,
     UNIQUE(user_id, server_id)
 );
+
+-- Hematurgy System
+
+CREATE TABLE IF NOT EXISTS hematurgy_passives (
+    user_id    TEXT NOT NULL,
+    slot_type  TEXT NOT NULL,
+    passive_id TEXT NOT NULL,
+    tier       INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (user_id, slot_type)
+);
+
+CREATE TABLE IF NOT EXISTS hematurgy_blood (
+    user_id      TEXT PRIMARY KEY,
+    primordial   INTEGER NOT NULL DEFAULT 0,
+    evolutionary INTEGER NOT NULL DEFAULT 0,
+    mutative     INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS monster_eggs (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       TEXT NOT NULL,
+    egg_tier      TEXT NOT NULL,
+    monster_level INTEGER NOT NULL,
+    monster_name  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS hatchery_incubation (
+    user_id          TEXT NOT NULL,
+    server_id        TEXT NOT NULL,
+    egg_id           INTEGER NOT NULL,
+    egg_tier         TEXT NOT NULL,
+    monster_level    INTEGER NOT NULL,
+    monster_name     TEXT NOT NULL,
+    start_time       TEXT NOT NULL,
+    duration_seconds INTEGER NOT NULL,
+    PRIMARY KEY (user_id, server_id)
+);
+
+CREATE TABLE IF NOT EXISTS incubated_encounters (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       TEXT NOT NULL,
+    monster_name  TEXT NOT NULL,
+    monster_level INTEGER NOT NULL,
+    egg_tier      TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+);

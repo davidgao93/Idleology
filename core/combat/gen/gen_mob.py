@@ -444,6 +444,97 @@ _CORRUPTED_MONSTER_NAMES: list[tuple[str, str]] = [
 ]
 
 
+async def generate_incubated_monster(encounter: dict) -> "Monster":
+    """Builds a Monster from a queued incubated encounter row.
+
+    The monster's level, name, and species are taken from the stored egg data.
+    Stats are scaled at +20% ATK/DEF, with 2 guaranteed boss modifiers and
+    8 random modifiers all at max tier.
+    """
+    monster = Monster(
+        name=f"[Incubated] {encounter['monster_name']}",
+        level=encounter["monster_level"],
+        hp=0,
+        max_hp=0,
+        xp=0,
+        attack=0,
+        defence=0,
+        modifiers=[],
+        image="",
+        flavor="radiates a feral, half-formed vitality",
+        species="Incubated",
+    )
+
+    monster = calculate_monster_stats(monster)
+
+    # 20% ATK/DEF amplification
+    monster.attack  = int(monster.attack  * 1.2)
+    monster.defence = int(monster.defence * 1.2)
+
+    # HP formula mirrors the standard high-level calculation
+    monster.hp = 10 + int(10 * (monster.level ** 1.65))
+    monster.max_hp = monster.hp
+
+    monster.xp = 1 + monster.level * 100
+
+    # Fetch image from monsters.csv by matching the original name exactly
+    monster = await _fetch_incubated_image(encounter["monster_name"], monster)
+
+    monster.is_boss = True
+    monster.is_incubated = True
+    monster.incubated_encounter_id = encounter["id"]
+    monster.incubated_egg_tier     = encounter["egg_tier"]
+
+    # 2 boss mods + 8 random mods, all at max tier
+    _assign_incubated_modifiers(monster)
+    _apply_spawn_modifiers(monster)
+
+    return monster
+
+
+async def _fetch_incubated_image(original_name: str, monster: "Monster") -> "Monster":
+    """Tries to match the original monster name in monsters.csv to grab its image."""
+    csv_file_path = os.path.join(os.path.dirname(__file__), "../../../assets/monsters.csv")
+    try:
+        with open(csv_file_path, newline="") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                if row["name"] == original_name:
+                    monster.image   = row["url"]
+                    monster.species = row.get("species", "Incubated")
+                    return monster
+    except Exception:
+        pass
+    return monster  # fallback: image stays empty, name already set
+
+
+def _assign_incubated_modifiers(monster) -> None:
+    """Assigns 2 boss mods + 8 random common/rare mods, all at max tier."""
+    used: set = set()
+
+    boss_candidates = list(BOSS_MOD_NAMES)
+    random.shuffle(boss_candidates)
+    for name in boss_candidates[:2]:
+        monster.modifiers.append(make_modifier(name, monster.level, force_max_tier=True))
+        used.add(name)
+
+    remaining = 8
+    attempts  = 0
+    while remaining > 0 and attempts < 80:
+        attempts += 1
+        pool_type = random.choices(
+            ["common", "rare_tiered", "rare_flat"], weights=[65, 20, 15], k=1
+        )[0]
+        pool = {"common": COMMON_MOD_NAMES, "rare_tiered": RARE_TIERED_MOD_NAMES, "rare_flat": RARE_FLAT_MOD_NAMES}[pool_type]
+        candidates = [n for n in pool if n not in used]
+        if not candidates:
+            continue
+        name = random.choice(candidates)
+        used.add(name)
+        monster.modifiers.append(make_modifier(name, monster.level, force_max_tier=True))
+        remaining -= 1
+
+
 def generate_corrupted_encounter(player, monster) -> "Monster":
     """Generate a Corrupted monster encounter.
 

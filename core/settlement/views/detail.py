@@ -181,6 +181,13 @@ class BuildingDetailView(SettlementBaseView):
         btn_upgrade.callback = self.upgrade_building
         self.add_item(btn_upgrade)
 
+        if self.building.building_type == "hatchery":
+            btn_hatchery = ui.Button(
+                label="Open Hatchery", style=ButtonStyle.success, emoji="🐣", row=1
+            )
+            btn_hatchery.callback = self.open_hatchery
+            self.add_item(btn_hatchery)
+
         if self.building.building_type != "town_hall":
             btn_demo = ui.Button(label="Demolish", style=ButtonStyle.danger, row=1)
             btn_demo.callback = self.demolish_prompt
@@ -383,6 +390,20 @@ class BuildingDetailView(SettlementBaseView):
 
         self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
+
+    async def open_hatchery(self, interaction: Interaction):
+        await interaction.response.defer()
+        from core.hatchery.views import HatcheryView
+        hview = HatcheryView(
+            self.bot,
+            self.user_id,
+            self.parent.server_id,
+            self.building,
+            self,
+        )
+        await hview._load()
+        hview._rebuild_buttons()
+        await interaction.edit_original_response(embed=hview.build_embed(), view=hview)
 
     async def go_back(self, interaction: Interaction):
         await interaction.response.edit_message(

@@ -130,6 +130,9 @@ class Monster:
     combat_round: int = 0
     is_essence: bool = False
     is_corrupted: bool = False
+    is_incubated: bool = False
+    incubated_encounter_id: int = 0
+    incubated_egg_tier: str = ""
     ward: int = 0
 
     def has_modifier(self, name: str) -> bool:

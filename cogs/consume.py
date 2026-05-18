@@ -25,9 +25,10 @@ class Consume(commands.Cog, name="consume"):
 
         player = await load_player(user_id, user_data, self.bot.database)
         inventory = await self.bot.database.monster_parts.get_inventory(user_id)
+        eggs = await self.bot.database.eggs.get_eggs(user_id)
 
         self.bot.state_manager.set_active(user_id, "consume")
-        view = ConsumeView(player, inventory, self.bot)
+        view = ConsumeView(player, inventory, self.bot, eggs=eggs)
         await interaction.response.send_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
 

@@ -30,6 +30,7 @@ from core.combat.economy.drops import (
     DropManager,
     apply_boss_sigil_drops,
     apply_corrupted_monster_drops,
+    apply_incubated_monster_drops,
 )
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import (
@@ -269,6 +270,7 @@ async def apply_victory_rewards(
 
     await apply_boss_sigil_drops(bot, user_id, server_id, monster, reward_data)
     await apply_corrupted_monster_drops(bot, user_id, server_id, monster, reward_data)
+    await apply_incubated_monster_drops(bot, user_id, monster, reward_data)
     await apply_special_flags(bot, user_id, server_id, special_flags, reward_data)
 
     await DropManager.process_drops(

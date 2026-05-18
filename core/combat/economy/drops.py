@@ -39,6 +39,19 @@ _CORRUPTED_CHANCE = 0.03  # 3% of all essence drops are corrupted
 
 _BODY_PART_BASE_CHANCE = 0.02  # 2% base; special rarity adds on top
 
+# ---------------------------------------------------------------------------
+# Monster Egg Drop Tables
+# ---------------------------------------------------------------------------
+
+_EGG_BASE_CHANCE = 0.02  # same 2% + special rarity as body parts
+
+_EGG_TIER_WEIGHTS = [
+    ("normal", 75),
+    ("rare",   20),
+    ("giga",    5),
+]
+_EGG_TIERS, _EGG_WEIGHTS = zip(*_EGG_TIER_WEIGHTS)
+
 _PART_SLOT_WEIGHTS = [
     ("head", 0.400),
     ("torso", 0.400),
@@ -150,6 +163,17 @@ class DropManager:
                 )
                 reward_data["body_part"] = (slot, monster.name, hp)
 
+        # 1d. Monster Egg Drop (normal, non-essence monsters only)
+        if monster is not None and not getattr(monster, "is_essence", False):
+            egg_chance = _EGG_BASE_CHANCE + (player.get_special_drop_bonus() / 100)
+            if random.random() < egg_chance:
+                egg_tier = random.choices(_EGG_TIERS, weights=_EGG_WEIGHTS, k=1)[0]
+                added = await bot.database.eggs.add_egg(
+                    user_id, egg_tier, monster_level, monster.name
+                )
+                if added:
+                    reward_data["egg"] = egg_tier
+
         # 2. Gear Drops
         # Aphrodite boot: lucky gear drops — roll twice, take the lower (more likely to beat threshold)
         drop_roll = random.randint(1, 100)
@@ -243,6 +267,34 @@ _BOSS_SIGIL_CONFIGS = [
     ("Aphrodite", "celestial_shrine", "increment_sigils", "Celestial Sigil"),
     ("Gemini", "twin_shrine", "increment_gemini_sigils", "Gemini Sigil"),
 ]
+
+
+async def apply_incubated_monster_drops(
+    bot,
+    user_id: str,
+    monster,
+    reward_data: dict,
+) -> None:
+    """Awards blood and cleans up the incubated encounter queue entry on victory.
+
+    No-ops if the monster is not incubated.
+    """
+    if not getattr(monster, "is_incubated", False):
+        return
+
+    from core.hatchery.mechanics import HatcheryMechanics
+
+    blood_amount = HatcheryMechanics.blood_reward(monster.incubated_egg_tier, monster.level)
+    blood_type   = random.choice(["primordial", "evolutionary", "mutative"])
+
+    await bot.database.hematurgy.modify_blood(user_id, blood_type, blood_amount)
+    await bot.database.eggs.consume_incubated_encounter(monster.incubated_encounter_id)
+
+    blood_names = {"primordial": "Primordial 🩸", "evolutionary": "Evolutionary 🧬", "mutative": "Mutative ☣️"}
+    reward_data.setdefault("special", [])
+    reward_data["special"].append(
+        f"🩸 Incubated monster dropped **{blood_amount:,}x {blood_names[blood_type]}** blood!"
+    )
 
 
 async def apply_boss_sigil_drops(

@@ -423,7 +423,7 @@ class InventoryUI:
                 if item.passive != "none" and item.passive != "":
                     passives.append(item.passive.title())
                 if getattr(item, "void_passive", "none") not in ("none", ""):
-                    passives.append(f"🌀{item.void_passive.title()}")
+                    passives.append(f"🌀{item.void_passive.replace('_', ' ').title()}")
             details_str = f" - {' | '.join(details)}" if details else ""
             passives_str = f" - {', '.join(passives)}" if passives else ""
 

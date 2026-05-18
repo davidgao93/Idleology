@@ -70,6 +70,7 @@ class SettlementMechanics:
             "output": "companion_cookie",
             "base_rate": 0.01,
         },  # 0.01 XP per worker/hr
+        "hatchery": {"type": "special", "effect": "egg_incubation"},
         "celestial_shrine": {"type": "passive", "effect": "sigil_bonus"},
         "infernal_forge": {"type": "passive", "effect": "infernal_sigil_bonus"},
         "void_sanctum": {"type": "passive", "effect": "void_shard_bonus"},

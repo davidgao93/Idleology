@@ -150,7 +150,7 @@ class ItemDetailView(BaseView):
 
         # 3. Mirage (all item types, requires at least one rune)
         if self.mirage_runes_imperfect > 0 or self.mirage_runes_perfected > 0:
-            self.add_upgrade_button("🪞 Mirage", ButtonStyle.secondary, "mirage")
+            self.add_upgrade_button("Mirage", ButtonStyle.secondary, "mirage")
 
         # 4. Standard Actions
         discard_btn = Button(label="Discard", style=ButtonStyle.danger)

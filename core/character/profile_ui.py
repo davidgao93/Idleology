@@ -468,6 +468,11 @@ class ProfileBuilder:
         k_balance = await bot.database.users.get_currency(user_id, "balance_fragment")
         antique_tomes = await bot.database.users.get_currency(user_id, "antique_tome")
         pinnacle_keys = await bot.database.users.get_currency(user_id, "pinnacle_key")
+        puzzle_boxes = await bot.database.users.get_currency(
+            user_id, "curio_puzzle_boxes"
+        )
+        items = await bot.database.partners.get_items(user_id)
+        guild_tickets = items.get("guild_tickets", 0)
 
         embed = discord.Embed(
             title="Inventory Summary",
@@ -498,6 +503,8 @@ class ProfileBuilder:
             name="📦 **Misc Items**",
             value=(
                 f"🎁 Curios: {user[22]}\n"
+                f"🎁 Puzzle Boxes: {puzzle_boxes}\n"
+                f"🎫 Guild Tickets: {guild_tickets}\n"
                 f"📖 Antique Tomes: {antique_tomes}\n🗝️ Pinnacle Keys: {pinnacle_keys}"
             ),
             inline=True,
@@ -702,7 +709,7 @@ class ProfileBuilder:
                 remaining_secs = (cap - elapsed) * 3600
                 h = int(remaining_secs // 3600)
                 m = int((remaining_secs % 3600) // 60)
-                dispatch_status = f"**{h}h {m}m** remaining ({progress_pct}%)"
+                dispatch_status = f"**{h}h {m}m** until cap ({progress_pct}%)"
             embed.add_field(
                 name="📋 Partner Dispatch",
                 value=(

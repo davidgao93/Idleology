@@ -283,7 +283,12 @@ class DispatchView(PartnerBaseView):
                 self.add_item(select)
         sp = self.selected_partner
         active = self._get_active_dispatch()
-        if sp and active and sp.partner_id != active.partner_id:
+        if sp is not None and sp.dispatch_task == "boss_party":
+            collect_btn = ui.Button(
+                label="Collect", style=ButtonStyle.primary, row=1, disabled=True
+            )
+            self.add_item(collect_btn)
+        elif sp and active and sp.partner_id != active.partner_id:
             replace_btn = ui.Button(
                 label="Replace Dispatch", style=ButtonStyle.success, row=1
             )

@@ -1,3 +1,5 @@
+import random
+
 import discord
 from discord import ButtonStyle, Interaction, ui
 
@@ -5,6 +7,10 @@ from core.base_view import BaseView
 from core.images import CONSUME_HUB
 from core.items.factory import create_monster_part
 from core.models import MonsterPart, Player
+
+_EGG_TIER_EMOJI = {"normal": "🥚", "rare": "🪺", "giga": "🐲"}
+_EGG_TIER_LABEL = {"normal": "Normal Egg", "rare": "Rare Egg", "giga": "Giga Egg"}
+_EGG_PASSIVE_POINTS = {"normal": (1, 5), "rare": (5, 10), "giga": (10, 20)}
 
 _SLOT_ORDER = [
     "head",
@@ -281,12 +287,88 @@ class PartSelect(ui.Select):
         await interaction.response.edit_message(embed=embed, view=detail_view)
 
 
+class EggSelect(ui.Select):
+    def __init__(self, eggs: list):
+        """eggs: list of (id, egg_tier, monster_level, monster_name) rows."""
+        options = []
+        for egg in eggs[:25]:
+            tier = egg[1]
+            emoji = _EGG_TIER_EMOJI.get(tier, "🥚")
+            label = f"{_EGG_TIER_LABEL.get(tier, tier)} — lvl {egg[2]} {egg[3]}"
+            options.append(
+                discord.SelectOption(label=label[:100], value=str(egg[0]), emoji=emoji)
+            )
+        super().__init__(placeholder="Select an egg to consume...", options=options, min_values=1, max_values=1)
+        self.eggs_by_id = {str(e[0]): e for e in eggs}
+
+    async def callback(self, interaction: Interaction):
+        egg = self.eggs_by_id.get(self.values[0])
+        if not egg:
+            return await interaction.response.send_message("Egg not found.", ephemeral=True)
+
+        tier = egg[1]
+        lo, hi = _EGG_PASSIVE_POINTS[tier]
+        points = random.randint(lo, hi)
+
+        await self.view.bot.database.eggs.delete_egg(egg[0])
+        await self.view.bot.database.users.modify_currency(self.view.user_id, "passive_points", points)
+
+        # Refresh local egg list
+        self.view.eggs = await self.view.bot.database.eggs.get_eggs(self.view.user_id)
+        self.view._rebuild_select()
+
+        embed = _build_egg_consume_embed(self.view.eggs)
+        embed.set_footer(text=f"You consumed the egg and gained {points} passive point{'s' if points != 1 else ''}!")
+        await interaction.response.edit_message(embed=embed, view=self.view)
+
+
+def _build_egg_consume_embed(eggs: list) -> discord.Embed:
+    counts = {"normal": 0, "rare": 0, "giga": 0}
+    for e in eggs:
+        counts[e[1]] = counts.get(e[1], 0) + 1
+    embed = discord.Embed(
+        title="🥚 Consume Monster Eggs",
+        description=(
+            "Devour monster eggs to gain passive points.\n\n"
+            f"🥚 Normal: **{counts['normal']}**  "
+            f"🪺 Rare: **{counts['rare']}**  "
+            f"🐲 Giga: **{counts['giga']}**\n\n"
+            "**Passive Points Gained:**\n"
+            "🥚 Normal: 1–5  |  🪺 Rare: 5–10  |  🐲 Giga: 10–20"
+        ),
+        color=0xB22222,
+    )
+    return embed
+
+
+class EggConsumeView(BaseView):
+    def __init__(self, bot, parent: "ConsumeView", eggs: list):
+        super().__init__(bot, parent=parent)
+        self.parent = parent
+        self.eggs = eggs
+        self._rebuild_select()
+
+    def _rebuild_select(self):
+        for item in self.children[:]:
+            if isinstance(item, EggSelect):
+                self.remove_item(item)
+        if self.eggs:
+            self.add_item(EggSelect(self.eggs))
+
+    @ui.button(label="Back", style=ButtonStyle.secondary, row=1)
+    async def back(self, interaction: Interaction, button: ui.Button):
+        embed = _build_main_embed(self.parent.player, self.parent.inventory)
+        await interaction.response.edit_message(embed=embed, view=self.parent)
+        self.stop()
+
+
 class ConsumeView(BaseView):
-    def __init__(self, player: Player, inventory: list, bot):
+    def __init__(self, player: Player, inventory: list, bot, eggs: list | None = None):
         super().__init__(bot=bot, user_id=str(player.id))
         self.player = player
         self.inventory = inventory  # raw DB rows
         self.inventory_parts = [create_monster_part(r) for r in inventory]
+        self.eggs = eggs or []
         self.message = None
         self._rebuild_select()
 
@@ -301,11 +383,31 @@ class ConsumeView(BaseView):
     def build_embed(self) -> discord.Embed:
         return _build_main_embed(self.player, self.inventory)
 
-    @ui.button(label="Bulk Discard", style=ButtonStyle.danger, emoji="🗑️", row=1)
+    @ui.button(label="Hematurgy", style=ButtonStyle.primary, emoji="🩸", row=1)
+    async def hematurgy(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+        passives = await self.bot.database.hematurgy.get_all_passives(self.user_id)
+        blood = await self.bot.database.hematurgy.get_blood(self.user_id)
+        from core.hematurgy.views import HematurgyView, _build_hematurgy_embed
+        hview = HematurgyView(self.bot, self, passives, blood)
+        embed = _build_hematurgy_embed(passives, blood)
+        await interaction.edit_original_response(embed=embed, view=hview)
+
+    @ui.button(label="Consume Eggs", style=ButtonStyle.success, emoji="🥚", row=1)
+    async def consume_eggs(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+        eggs = await self.bot.database.eggs.get_eggs(self.user_id)
+        if not eggs:
+            return await interaction.followup.send("You have no monster eggs to consume.", ephemeral=True)
+        egg_view = EggConsumeView(self.bot, self, eggs)
+        embed = _build_egg_consume_embed(eggs)
+        await interaction.edit_original_response(embed=embed, view=egg_view)
+
+    @ui.button(label="Bulk Discard", style=ButtonStyle.danger, emoji="🗑️", row=2)
     async def bulk_discard(self, interaction: Interaction, button: ui.Button):
         await interaction.response.send_modal(BulkDiscardModal(self))
 
-    @ui.button(label="Exit", style=ButtonStyle.secondary, row=1)
+    @ui.button(label="Exit", style=ButtonStyle.secondary, row=2)
     async def exit(self, interaction: Interaction, button: ui.Button):
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()

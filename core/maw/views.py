@@ -158,7 +158,7 @@ class MawView(BaseView):
 
         reward_msg = f"Collected **{curios} Curio{'s' if curios != 1 else ''}**"
         if puzzle_box:
-            reward_msg += " and a **Curio Puzzle Box** *(placeholder — coming soon)*"
+            reward_msg += " and a **Curio Puzzle Box**"
         reward_msg += "!"
 
         self.now_ts = int(time.time())

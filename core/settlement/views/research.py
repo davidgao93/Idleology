@@ -30,6 +30,7 @@ RESEARCHABLE_BUILDINGS: dict[str, str] = {
     "barracks": "Barracks",
     "black_market": "Black Market",
     "market": "Market",
+    "hatchery": "Hatchery",
 }
 
 _BUILDING_EMOJIS: dict[str, str] = {
@@ -39,6 +40,7 @@ _BUILDING_EMOJIS: dict[str, str] = {
     "barracks": "⚔️",
     "black_market": "🕵️",
     "market": "💰",
+    "hatchery": "🐣",
 }
 
 _BUILDING_DESCS: dict[str, str] = {
@@ -48,6 +50,7 @@ _BUILDING_DESCS: dict[str, str] = {
     "barracks": "Passive ATK/DEF boost per Worker",
     "black_market": "Trade resources for mystery caches",
     "market": "Generates passive Gold",
+    "hatchery": "Incubate monster eggs for blood drops",
 }
 
 
