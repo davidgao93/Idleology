@@ -26,6 +26,7 @@ from core.images import (
     VICTORY_LUCIFER,
     VICTORY_NEET,
 )
+from core.items.factory import load_player
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -89,7 +90,11 @@ class PostCombatView(BaseView):
     async def _fight_again(self, interaction: Interaction):
         await interaction.response.defer()
 
-        # Re-fetch to guard against any race (stamina may have changed)
+        if self.bot.state_manager.is_active(self.user_id):
+            await interaction.followup.send("You're already in an activity.", ephemeral=True)
+            return
+
+        # Re-fetch user and reload player so any changes (rest, gear swaps, etc.) are reflected
         existing_user = await self.bot.database.users.get(self.user_id, self.server_id)
         if existing_user["combat_stamina"] <= 0:
             await interaction.followup.send("No stamina remaining!", ephemeral=True)
@@ -98,8 +103,9 @@ class PostCombatView(BaseView):
         for item in self.children:
             item.disabled = True
 
+        fresh_player = await load_player(self.user_id, existing_user, self.bot.database)
         self.bot.state_manager.set_active(self.user_id, "combat")
-        await self.rematch_callback(interaction, self.user_id, self.server_id, existing_user, self.player)
+        await self.rematch_callback(interaction, self.user_id, self.server_id, existing_user, fresh_player)
         self.stop()
 
 
