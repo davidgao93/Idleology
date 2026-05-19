@@ -236,10 +236,6 @@ def calc_crit_damage(
         if cr_bonus > 0:
             base_dmg = int(base_dmg * (1 + cr_bonus))
             calc_dmg_notes.append(f"chain_reaction×{1+cr_bonus:.3f}={base_dmg}")
-            log.append(
-                f"⚡ **Chain Reaction** ({player.cs.hema_chain_stacks} stacks) — "
-                f"+{int(cr_bonus*100)}% crit damage!"
-            )
         er_crit = get_executioners_rite_bonus(player, monster)
         if er_crit > 0:
             base_dmg = int(base_dmg * (1 + er_crit))

@@ -178,6 +178,8 @@ class DiscordBot(commands.Bot):
         async with aiosqlite.connect(
             f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
         ) as db:
+            await db.execute("PRAGMA journal_mode=WAL")
+            await db.execute("PRAGMA busy_timeout=5000")
             with open(
                 f"{os.path.realpath(os.path.dirname(__file__))}/database/schema.sql"
             ) as file:
@@ -242,6 +244,8 @@ class DiscordBot(commands.Bot):
             f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
         )
         _conn.row_factory = sqlite3.Row
+        await _conn.execute("PRAGMA journal_mode=WAL")
+        await _conn.execute("PRAGMA busy_timeout=5000")
         self.database = DatabaseManager(connection=_conn)
         await self.load_cogs()
         self.status_task.start()

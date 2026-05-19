@@ -1,6 +1,7 @@
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from core.hatchery.views import HatcheryView
 from core.settlement.views import SettlementDashboardView
 
 
@@ -68,6 +69,41 @@ class SettlementCog(commands.Cog, name="settlement"):
         embed = view.build_embed()
 
         await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
+
+
+    @app_commands.command(
+        name="hatchery",
+        description="Open your settlement's Hatchery to incubate monster eggs.",
+    )
+    async def hatchery(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        user_data = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, user_data):
+            return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+
+        settlement = await self.bot.database.settlement.get_settlement(user_id, server_id)
+        hatchery_building = next(
+            (b for b in settlement.buildings if b.building_type == "hatchery"), None
+        )
+
+        if hatchery_building is None:
+            return await interaction.response.send_message(
+                "You don't have a **Hatchery** built yet. "
+                "Construct one in your `/settlement` first!",
+                ephemeral=True,
+            )
+
+        self.bot.state_manager.set_active(user_id, "settlement")
+        view = HatcheryView(self.bot, user_id, server_id, hatchery_building, parent_view=None)
+        await view._load()
+        view._rebuild_buttons()
+
+        await interaction.response.send_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
 
 

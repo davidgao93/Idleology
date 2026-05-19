@@ -22,7 +22,7 @@ def get_hp_display(current: int, max_hp: int, ward: int) -> str:
     return display
 
 
-def build_status_text(player: Player) -> str:
+def build_status_text(player: Player, monster: Monster | None = None) -> str:
     lines: list[str] = []
 
     # --- Paradise Jewel ---
@@ -98,6 +98,50 @@ def build_status_text(player: Player) -> str:
     if player.lucifer_pdr_burst > 0:
         lines.append(f"🔥 PDR Burst  +{player.lucifer_pdr_burst}%")
 
+    # --- Hematurgy passive states ---
+    hp = getattr(player, "hematurgy_passives", None)
+    if hp:
+        cs = player.cs
+
+        if "iron_momentum" in hp and cs.hema_momentum_stacks > 0:
+            lines.append(f"⚡ Iron Momentum  {cs.hema_momentum_stacks}/5")
+
+        if "serrated" in hp and cs.hema_serrated_total > 0:
+            lines.append(f"🔪 Serrated  −{cs.hema_serrated_total} ATK")
+
+        if "haemorrhage" in hp and cs.hema_bleed_total > 0:
+            lines.append(f"🩸 Bleed Pool  {cs.hema_bleed_total:,}")
+
+        if "chain_reaction" in hp and cs.hema_chain_stacks > 0:
+            lines.append(f"⛓️ Chain Reaction  {cs.hema_chain_stacks}/5")
+
+        if "phantom_reflex" in hp and cs.hema_phantom_stacks > 0:
+            lines.append(f"🌀 Phantom Reflex  {cs.hema_phantom_stacks}/2")
+
+        if "executioners_rite" in hp and monster is not None:
+            if monster.max_hp > 0 and monster.hp / monster.max_hp < 0.30:
+                lines.append("⚔️ Executioner's Rite  ACTIVE")
+
+        if "fevered_strike" in hp and cs.hema_fevered_count > 0:
+            lines.append(f"🔥 Fevered Strike  ×{cs.hema_fevered_count} potions")
+
+        if "predators_mark" in hp and cs.hema_predators_mark:
+            lines.append("🎯 Predator's Mark  MARKED")
+
+        if "flash_frost" in hp and cs.hema_frost_misses > 0:
+            from core.hematurgy.mechanics import tier_val as _hema_tv
+            threshold = int(_hema_tv("flash_frost", hp["flash_frost"]))
+            lines.append(f"❄️ Flash Frost  {cs.hema_frost_misses}/{threshold}")
+
+        if "spectral_waltz" in hp and cs.hema_blade_count > 0:
+            lines.append(f"👻 Spectral Blades  ×{cs.hema_blade_count}")
+
+        if "tenacity" in hp and cs.hema_tenacity_triggered:
+            lines.append("💪 Tenacity  ACTIVE")
+
+        if "puncture" in hp and cs.hema_puncture_bleed > 0:
+            lines.append(f"💉 Puncture Pool  {cs.hema_puncture_bleed:,}")
+
     return "\n".join(lines)
 
 
@@ -162,7 +206,7 @@ def create_combat_embed(
         inline=True,
     )
 
-    embed.add_field(name="⚙️ Status", value=build_status_text(player), inline=False)
+    embed.add_field(name="⚙️ Status", value=build_status_text(player, monster), inline=False)
 
     for name, message in logs.items():
         if message:

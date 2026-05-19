@@ -389,7 +389,7 @@ class ConsumeView(BaseView):
         passives = await self.bot.database.hematurgy.get_all_passives(self.user_id)
         blood = await self.bot.database.hematurgy.get_blood(self.user_id)
         from core.hematurgy.views import HematurgyView, _build_hematurgy_embed
-        hview = HematurgyView(self.bot, self, passives, blood)
+        hview = HematurgyView(self.bot, passives, blood, parent=self)
         embed = _build_hematurgy_embed(passives, blood)
         await interaction.edit_original_response(embed=embed, view=hview)
 

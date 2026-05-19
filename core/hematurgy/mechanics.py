@@ -5,14 +5,14 @@ import random
 # ---------------------------------------------------------------------------
 
 SLOT_UNLOCK_COSTS = {
-    "head":      500,
-    "torso":     500,
+    "head": 500,
+    "torso": 500,
     "right_arm": 1_000,
-    "left_arm":  1_000,
+    "left_arm": 1_000,
     "right_leg": 1_000,
-    "left_leg":  1_000,
-    "cheeks":    50_000,
-    "organs":    50_000,
+    "left_leg": 1_000,
+    "cheeks": 50_000,
+    "organs": 50_000,
 }
 
 # ---------------------------------------------------------------------------
@@ -26,51 +26,162 @@ UPGRADE_COSTS = {
     5: 5_000,
 }
 
-MUTATIVE_COST = 1_000   # Mutative blood per attempt
-TRANSMUTE_RATIO = 3     # 3 of source → 1 of target
+MUTATIVE_COST = 1_000  # Mutative blood per attempt
+TRANSMUTE_RATIO = 3  # 3 of source → 1 of target
 
 # ---------------------------------------------------------------------------
-# Per-tier values indexed 0–4 (tier-1)
+# Per-tier values indexed 0–6 (tier-1); T1–T5 via Evolutionary blood,
+# T6–T7 are mutation-only chase tiers.
 # ---------------------------------------------------------------------------
 
 _TV: dict[str, list] = {
-    # Main pool
-    "reverberation":        [0.10, 0.15, 0.20, 0.25, 0.30],   # re-echo proc chance
-    "soothing_venom":       [0.25, 0.35, 0.45, 0.55, 0.65],   # poison lifesteal fraction
-    "iron_momentum":        [0.03, 0.05, 0.07, 0.09, 0.11],   # ATK% bonus per stack
-    "serrated":             [5,    10,   15,   20,   25  ],    # flat ATK drain per hit
-    "haemorrhage":          [0.02, 0.03, 0.04, 0.05, 0.06],   # bleed added as % ATK per hit
-    "vital_resonance":      [0.10, 0.15, 0.20, 0.25, 0.30],   # ward→HP fraction
-    "executioners_rite":    [0.10, 0.15, 0.20, 0.25, 0.30],   # ATK+crit-dmg bonus below 30% HP
-    "bloodthirst":          [0.10, 0.15, 0.20, 0.25, 0.30],   # Max HP healed on kill
-    "phantom_reflex":       [0.10, 0.15, 0.20, 0.25, 0.30],   # evasion% per stack on miss
-    "chain_reaction":       [0.08, 0.12, 0.16, 0.20, 0.24],   # crit-dmg multiplier per crit stack
-    "regenerative_tissue":  [0.02, 0.03, 0.04, 0.05, 0.06],   # HP% healed after zero-damage round
-    "fevered_strike":       [0.05, 0.08, 0.11, 0.14, 0.17],   # ATK% per potion consumed
-    "predators_mark":       [0.15, 0.20, 0.25, 0.30, 0.35],   # damage bonus on marked hit
-    "counterforce":         [0.05, 0.08, 0.11, 0.14, 0.17],   # DEF% added as flat ATK each round
-    "tenacity":             [0.10, 0.15, 0.20, 0.25, 0.30],   # ATK+DEF% on first HP<40% drop
+    # Main pool                                            T1     T2     T3     T4     T5     T6     T7
+    "reverberation": [0.40, 0.50, 0.60, 0.70, 0.80, 0.85, 0.90],  # re-echo proc chance
+    "soothing_venom": [
+        0.02,
+        0.04,
+        0.06,
+        0.08,
+        0.10,
+        0.12,
+        0.14,
+    ],  # poison lifesteal fraction
+    "iron_momentum": [0.03, 0.05, 0.07, 0.09, 0.11, 0.13, 0.15],  # ATK% bonus per stack
+    "serrated": [5, 10, 15, 20, 25, 30, 35],  # flat ATK drain per hit
+    "haemorrhage": [
+        0.02,
+        0.03,
+        0.04,
+        0.05,
+        0.06,
+        0.07,
+        0.08,
+    ],  # bleed added as % ATK per hit
+    "vital_resonance": [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40],  # ward→HP fraction
+    "executioners_rite": [
+        0.10,
+        0.15,
+        0.20,
+        0.25,
+        0.30,
+        0.35,
+        0.40,
+    ],  # ATK+crit-dmg bonus below 30% HP
+    "bloodthirst": [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40],  # Max HP healed on kill
+    "phantom_reflex": [
+        0.10,
+        0.15,
+        0.20,
+        0.25,
+        0.30,
+        0.35,
+        0.40,
+    ],  # evasion% per stack on miss
+    "chain_reaction": [
+        0.08,
+        0.12,
+        0.16,
+        0.20,
+        0.24,
+        0.28,
+        0.32,
+    ],  # crit-dmg multiplier per crit stack
+    "regenerative_tissue": [
+        0.02,
+        0.03,
+        0.04,
+        0.05,
+        0.06,
+        0.07,
+        0.08,
+    ],  # HP% healed after zero-damage round
+    "fevered_strike": [
+        0.05,
+        0.08,
+        0.11,
+        0.14,
+        0.17,
+        0.20,
+        0.23,
+    ],  # ATK% per potion consumed
+    "predators_mark": [
+        0.15,
+        0.20,
+        0.25,
+        0.30,
+        0.35,
+        0.40,
+        0.45,
+    ],  # damage bonus on marked hit
+    "counterforce": [
+        0.20,
+        0.25,
+        0.30,
+        0.35,
+        0.40,
+        0.45,
+        0.50,
+    ],  # DEF% added as flat ATK each round
+    "tenacity": [
+        0.10,
+        0.15,
+        0.20,
+        0.25,
+        0.30,
+        0.35,
+        0.40,
+    ],  # ATK+DEF% on first HP<40% drop
     # Mutated pool
-    "spectral_waltz":       [5,    5,    6,    7,    8   ],    # % ATK per blade released
-    "spectral_waltz_max":   [5,    6,    7,    8,    10  ],    # max blade cap
-    "puncture":             [0.05, 0.08, 0.11, 0.14, 0.17],   # crit-dmg fraction added to puncture bleed
-    "flash_frost":          [15,   13,   11,   9,    7   ],    # miss threshold for freeze (int)
-    "ward_inoculation":     [0.60, 0.70, 0.80, 0.90, 1.00],   # ward→damage efficiency
-    "soul_fracture":        [0.03, 0.05, 0.07, 0.09, 0.11],   # ATK% per 10% Max HP lost in combat
+    "spectral_waltz": [5, 5, 6, 7, 8, 9, 10],  # % ATK per blade released
+    "spectral_waltz_max": [5, 6, 7, 8, 10, 12, 15],  # max blade cap
+    "puncture": [
+        0.05,
+        0.08,
+        0.11,
+        0.14,
+        0.17,
+        0.20,
+        0.23,
+    ],  # crit-dmg fraction added to puncture bleed
+    "flash_frost": [15, 13, 11, 9, 7, 5, 3],  # miss threshold for freeze (int)
+    "ward_inoculation": [
+        0.60,
+        0.70,
+        0.80,
+        0.90,
+        1.00,
+        1.10,
+        1.25,
+    ],  # ward→damage efficiency (>1 = bonus dmg)
+    "soul_fracture": [
+        0.03,
+        0.05,
+        0.07,
+        0.09,
+        0.11,
+        0.13,
+        0.15,
+    ],  # ATK% per 10% Max HP lost in combat
 }
+
+# Maximum tier reachable (T5 via Evolutionary, T6/T7 via Mutation only)
+MAX_TIER = 7
+EVO_MAX_TIER = 5
 
 
 def tier_val(passive_id: str, tier: int) -> float:
-    """Returns the numeric value for a passive at the given tier (1-indexed)."""
+    """Returns the numeric value for a passive at the given tier (1-indexed, up to T7)."""
     values = _TV.get(passive_id)
     if not values:
         return 0.0
-    return values[min(max(tier, 1), 5) - 1]
+    idx = min(max(tier, 1), len(values)) - 1
+    return values[idx]
 
 
 # ---------------------------------------------------------------------------
 # Main passive pool (15 passives)
 # ---------------------------------------------------------------------------
+
 
 def _desc(pid: str, tier: int) -> str:
     """Generates a human-readable description for a passive at a given tier."""
@@ -83,9 +194,7 @@ def _desc(pid: str, tier: int) -> str:
                 f"re-echo is -10% less likely, resets on miss)."
             )
         case "soothing_venom":
-            return (
-                f"{pct(v)} of your Poison passive's miss-damage is returned as HP lifesteal."
-            )
+            return f"{pct(v)} of your Poison passive's miss-damage is returned as HP lifesteal."
         case "iron_momentum":
             return (
                 f"Each consecutive hit grants +{pct(v)} ATK (max 5 stacks). "
@@ -99,40 +208,32 @@ def _desc(pid: str, tier: int) -> str:
         case "haemorrhage":
             return (
                 f"Each hit adds a bleed charge worth {pct(v)} ATK. "
-                f"Ticks 10% of total bleed per round. On kill: full bleed discharges instantly."
+                f"Ticks 10% of total bleed per round."
             )
         case "vital_resonance":
-            return (
-                f"{pct(v)} of all ward generated is simultaneously applied as HP recovery."
-            )
+            return f"{pct(v)} of all ward generated is simultaneously applied as HP recovery."
         case "executioners_rite":
-            return (
-                f"While the monster is below 30% HP: +{pct(v)} ATK and +{pct(v)} crit damage."
-            )
+            return f"While the monster is below 30% HP: +{pct(v)} ATK and +{pct(v)} crit damage."
         case "bloodthirst":
-            return (
-                f"On monster kill: restore {pct(v)} of Max HP. Carries into the next fight. "
-                f"(Non-Soulreap alternative.)"
-            )
+            return f"On monster kill: restore {pct(v)} of Max HP."
         case "phantom_reflex":
             return (
                 f"On miss: gain +{pct(v)} Evasion for 1 round (max 2 stacks). "
-                f"Stacks are consumed by incoming hits. Respects 80% evasion cap."
+                f"Lose stacks when hit."
             )
         case "chain_reaction":
             return (
                 f"Each consecutive crit adds +{pct(v)} crit damage (max 5 stacks). "
-                f"Resets on any non-crit outcome."
+                f"Resets on non-crit."
             )
         case "regenerative_tissue":
             return (
-                f"After any round in which zero effective HP damage was taken "
-                f"(fully blocked, evaded, PDR'd, or ward-absorbed): heal {pct(v)} Max HP."
+                f"Heal {pct(v)} Max HP if you didn't take HP damage. "
+                f"(blocked, evaded, ward-absorbed, or reduced to 0)"
             )
         case "fevered_strike":
             return (
-                f"Each potion consumed during combat permanently grants +{pct(v)} ATK "
-                f"for the remainder of the fight."
+                f"Each potion consumed during combat permanently grants +{pct(v)} ATK."
             )
         case "predators_mark":
             return (
@@ -160,7 +261,7 @@ def _desc(pid: str, tier: int) -> str:
             return (
                 f"Crits accumulate bleed equal to {pct(v)} of crit damage dealt. "
                 f"On miss: monster takes 50% of total puncture bleed as burst damage, "
-                f"then bleed resets. Does not interact with Soothing Venom."
+                f"then bleed resets."
             )
         case "flash_frost":
             thresh = int(v)
@@ -182,21 +283,21 @@ def _desc(pid: str, tier: int) -> str:
 
 
 PASSIVE_POOL: dict[str, dict] = {
-    "reverberation":        {"name": "Reverberation",       "description": _desc},
-    "soothing_venom":       {"name": "Soothing Venom",      "description": _desc},
-    "iron_momentum":        {"name": "Iron Momentum",        "description": _desc},
-    "serrated":             {"name": "Serrated",             "description": _desc},
-    "haemorrhage":          {"name": "Haemorrhage",          "description": _desc},
-    "vital_resonance":      {"name": "Vital Resonance",      "description": _desc},
-    "executioners_rite":    {"name": "Executioner's Rite",  "description": _desc},
-    "bloodthirst":          {"name": "Bloodthirst",          "description": _desc},
-    "phantom_reflex":       {"name": "Phantom Reflex",       "description": _desc},
-    "chain_reaction":       {"name": "Chain Reaction",       "description": _desc},
-    "regenerative_tissue":  {"name": "Regenerative Tissue",  "description": _desc},
-    "fevered_strike":       {"name": "Fevered Strike",       "description": _desc},
-    "predators_mark":       {"name": "Predator's Mark",      "description": _desc},
-    "counterforce":         {"name": "Counterforce",         "description": _desc},
-    "tenacity":             {"name": "Tenacity",             "description": _desc},
+    "reverberation": {"name": "Reverberation", "description": _desc},
+    "soothing_venom": {"name": "Soothing Venom", "description": _desc},
+    "iron_momentum": {"name": "Iron Momentum", "description": _desc},
+    "serrated": {"name": "Serrated", "description": _desc},
+    "haemorrhage": {"name": "Haemorrhage", "description": _desc},
+    "vital_resonance": {"name": "Vital Resonance", "description": _desc},
+    "executioners_rite": {"name": "Executioner's Rite", "description": _desc},
+    "bloodthirst": {"name": "Bloodthirst", "description": _desc},
+    "phantom_reflex": {"name": "Phantom Reflex", "description": _desc},
+    "chain_reaction": {"name": "Chain Reaction", "description": _desc},
+    "regenerative_tissue": {"name": "Regenerative Tissue", "description": _desc},
+    "fevered_strike": {"name": "Fevered Strike", "description": _desc},
+    "predators_mark": {"name": "Predator's Mark", "description": _desc},
+    "counterforce": {"name": "Counterforce", "description": _desc},
+    "tenacity": {"name": "Tenacity", "description": _desc},
 }
 
 # ---------------------------------------------------------------------------
@@ -204,24 +305,25 @@ PASSIVE_POOL: dict[str, dict] = {
 # ---------------------------------------------------------------------------
 
 MUTATIVE_POOL: dict[str, dict] = {
-    "spectral_waltz":   {"name": "Spectral Waltz",     "description": _desc},
-    "puncture":         {"name": "Puncture",            "description": _desc},
-    "flash_frost":      {"name": "Flash Frost",         "description": _desc},
-    "ward_inoculation": {"name": "Ward Inoculation",    "description": _desc},
-    "soul_fracture":    {"name": "Soul Fracture",       "description": _desc},
+    "spectral_waltz": {"name": "Spectral Waltz", "description": _desc},
+    "puncture": {"name": "Puncture", "description": _desc},
+    "flash_frost": {"name": "Flash Frost", "description": _desc},
+    "ward_inoculation": {"name": "Ward Inoculation", "description": _desc},
+    "soul_fracture": {"name": "Soul Fracture", "description": _desc},
 }
 
 # ---------------------------------------------------------------------------
 # Mutative outcome weights
 # ---------------------------------------------------------------------------
 
-_MUTATIVE_OUTCOMES = ["delete", "downgrade", "double", "new_passive"]
-_MUTATIVE_WEIGHTS  = [50, 20, 15, 15]
+_MUTATIVE_OUTCOMES = ["delete", "downgrade", "upgrade", "new_passive"]
+_MUTATIVE_WEIGHTS = [50, 20, 15, 15]
 
 
 # ---------------------------------------------------------------------------
 # HematurgyMechanics
 # ---------------------------------------------------------------------------
+
 
 class HematurgyMechanics:
 

@@ -134,25 +134,25 @@ class EncounterManager:
         elif boss_type == "NEET":
             return [
                 {
-                    "name": "NEET, Sadge",
+                    "name": "NEET.Sadge",
                     "level": 444,
                     "modifiers_count": 2,
                     "hp_multiplier": 1.15,
                 },
                 {
-                    "name": "NEET, Madge",
+                    "name": "NEET.Madge",
                     "level": 445,
                     "modifiers_count": 4,
                     "hp_multiplier": 1.25,
                 },
                 {
-                    "name": "NEET, REEEEEE",
+                    "name": "NEET.REEEEEE",
                     "level": 446,
                     "modifiers_count": 6,
                     "hp_multiplier": 1.5,
                 },
                 {
-                    "name": "NEET, Deadge",
+                    "name": "NEET.Deadge",
                     "level": 447,
                     "modifiers_count": 8,
                     "hp_multiplier": 0.2,

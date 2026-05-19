@@ -32,6 +32,32 @@ class Consume(commands.Cog, name="consume"):
         await interaction.response.send_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
 
+    @app_commands.command(
+        name="hematurgy",
+        description="Manage your Hematurgy blood passives directly.",
+    )
+    async def hematurgy(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        user_data = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, user_data):
+            return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+
+        self.bot.state_manager.set_active(user_id, "consume")
+        passives = await self.bot.database.hematurgy.get_all_passives(user_id)
+        blood = await self.bot.database.hematurgy.get_blood(user_id)
+
+        from core.hematurgy.views import HematurgyView, _build_hematurgy_embed
+        view = HematurgyView(
+            self.bot, passives, blood, user_id=user_id, server_id=server_id
+        )
+        embed = _build_hematurgy_embed(passives, blood)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Consume(bot))

@@ -202,7 +202,7 @@ class ParadiseHubView(BaseView):
 
         # Row 0: Consume Jewel
         consume = ui.Button(
-            label="Consume Jewel",
+            label="Cut Jewel",
             style=ButtonStyle.success if can_consume else ButtonStyle.secondary,
             emoji="💎",
             row=0,

@@ -13,9 +13,13 @@ from core.character.passive_data import (
     _ARMOR_PASSIVE_DESC,
     _BOOT_PASSIVE_FUNCS,
     _CELESTIAL_PASSIVE_DESC,
+    _CODEX_TOME_INFO,
     _GLOVE_PASSIVE_FUNCS,
     _HELMET_PASSIVE_FUNCS,
+    _HEMATURGY_SHORT_FUNCS,
     _INFERNAL_PASSIVE_DESC,
+    _SLAYER_EMBLEM_FUNCS,
+    _SLAYER_EMBLEM_NAMES,
     _VOID_PASSIVE_DESC,
     _WEAPON_PASSIVE_DESC,
 )
@@ -24,7 +28,6 @@ from core.character.passive_formatters import (
     _desc_fixed,
     _desc_scaled,
     _format_corrupted,
-    _format_essence_slot,
     _format_weapon_passive,
     _get_piercing_crit_bonus,
     _normalize,
@@ -304,101 +307,67 @@ class ProfileBuilder:
 
     @staticmethod
     async def build_passives(bot, user_id: str, server_id: str) -> discord.Embed:
+        from core.hematurgy.mechanics import HematurgyMechanics
+
         data = await bot.database.users.get(user_id, server_id)
         p = await load_player(user_id, data, bot.database)
 
-        embed = discord.Embed(title="Active Passives & Equipment", color=0x7B68EE)
+        embed = discord.Embed(title="Active Passives", color=0x7B68EE)
         embed.set_thumbnail(url=data[7])
 
-        def _add_gear_field(
-            icon: str, slot: str, item, stat_line: str, passive_lines: list[str]
-        ):
-            if not item:
+        has_any = False
+
+        def _add(name: str, lines: list[str]) -> None:
+            nonlocal has_any
+            if not lines:
                 return
-            body = f"**{item.name}** Lv.{item.level}\n{stat_line}"
-            if passive_lines:
-                body += "\n" + "\n".join(passive_lines)
+            body = "\n".join(lines)
             if len(body) > 1020:
                 body = body[:1020] + "…"
-            embed.add_field(name=f"{icon} {slot}", value=body, inline=False)
+            embed.add_field(name=name, value=body, inline=False)
+            has_any = True
 
         # ── Weapon ───────────────────────────────────────────────────────────
         if p.equipped_weapon:
             w = p.equipped_weapon
-            stat_line = f"ATK: {w.attack} | DEF: {w.defence} | RAR: {w.rarity}%"
             lines: list[str] = []
-            if w.passive != "none":
-                lines.append(
-                    f"• Forge: {_format_weapon_passive(w.passive)} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.passive)}"
-                )
-            if w.p_passive != "none":
-                lines.append(
-                    f"• Pinnacle: {_format_weapon_passive(w.p_passive)} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.p_passive)}"
-                )
-            if w.u_passive != "none":
-                lines.append(
-                    f"• Utmost: {_format_weapon_passive(w.u_passive)} — {_desc_fixed(_WEAPON_PASSIVE_DESC, w.u_passive)}"
-                )
-            if w.infernal_passive != "none":
-                lines.append(
-                    f"• Infernal: {w.infernal_passive.replace('_',' ').title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}"
-                )
-            _add_gear_field("⚔️", "Weapon", w, stat_line, lines)
+            if w.passive not in ("none", ""):
+                lines.append(f"• **Forge:** {_format_weapon_passive(w.passive)} — {_WEAPON_PASSIVE_DESC.get(w.passive, '?')}")
+            if w.p_passive not in ("none", ""):
+                lines.append(f"• **Pinnacle:** {_format_weapon_passive(w.p_passive)} — {_WEAPON_PASSIVE_DESC.get(w.p_passive, '?')}")
+            if w.u_passive not in ("none", ""):
+                lines.append(f"• **Utmost:** {_format_weapon_passive(w.u_passive)} — {_WEAPON_PASSIVE_DESC.get(w.u_passive, '?')}")
+            if w.infernal_passive not in ("none", ""):
+                lines.append(f"• **Infernal:** {w.infernal_passive.replace('_', ' ').title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}")
+            _add("⚔️ Weapon", lines)
 
         # ── Armor ─────────────────────────────────────────────────────────────
         if p.equipped_armor:
             a = p.equipped_armor
-            parts = []
-            if a.block:
-                parts.append(f"BLOCK: {a.block}%")
-            if a.evasion:
-                parts.append(f"EVA: {a.evasion}%")
-            if a.ward:
-                parts.append(f"WARD: {a.ward}%")
-            if a.pdr:
-                parts.append(f"PDR: {a.pdr}%")
-            if a.fdr:
-                parts.append(f"FDR: {a.fdr}")
-            stat_line = " | ".join(parts) or "No defensive stats"
             lines = []
-            if a.passive != "none":
-                lines.append(
-                    f"• {a.passive.replace('_',' ').title()} — {_desc_fixed(_ARMOR_PASSIVE_DESC, a.passive)}"
-                )
-            if a.celestial_passive != "none":
-                lines.append(
-                    f"• {a.celestial_passive.replace('_',' ').title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}"
-                )
-            _add_gear_field("🛡️", "Armor", a, stat_line, lines)
+            if a.passive not in ("none", ""):
+                desc = _ARMOR_PASSIVE_DESC.get(_normalize(a.passive), "Unknown effect")
+                lines.append(f"• **Imbue:** {a.passive.replace('_', ' ').title()} — {desc}")
+            if a.celestial_passive not in ("none", ""):
+                lines.append(f"• **Celestial:** {a.celestial_passive.replace('_', ' ').title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}")
+            _add("🛡️ Armor", lines)
 
         # ── Accessory ─────────────────────────────────────────────────────────
         if p.equipped_accessory:
             acc = p.equipped_accessory
-            parts = []
-            if acc.attack:
-                parts.append(f"ATK: {acc.attack}")
-            if acc.defence:
-                parts.append(f"DEF: {acc.defence}")
-            if acc.rarity:
-                parts.append(f"RAR: {acc.rarity}%")
-            if acc.ward:
-                parts.append(f"WARD: {acc.ward}%")
-            if acc.crit:
-                parts.append(f"CRIT: {acc.crit}")
-            stat_line = " | ".join(parts) or "No stats"
             lines = []
             if acc.passive != "none":
                 desc = _desc_scaled(
                     _ACCESSORY_PASSIVE_FUNCS, acc.passive, acc.passive_lvl
                 )
                 lines.append(
-                    f"• {acc.passive.replace('_',' ').title()} L{acc.passive_lvl} — {desc}"
+                    f"• **Enchant:** {acc.passive.replace('_', ' ').title()} L{acc.passive_lvl} — {desc}"
                 )
             if acc.void_passive != "none":
                 lines.append(
-                    f"• {acc.void_passive.replace('_',' ').title()} — {_desc_fixed(_VOID_PASSIVE_DESC, acc.void_passive)}"
+                    f"• **Void:** {acc.void_passive.replace('_', ' ').title()} — {_desc_fixed(_VOID_PASSIVE_DESC, acc.void_passive)}"
                 )
-            _add_gear_field("📿", "Accessory", acc, stat_line, lines)
+            _add("📿 Accessory", lines)
 
         # ── Glove / Boot / Helmet ─────────────────────────────────────────────
         for icon, slot_label, slot_name, item, pfuncs in (
@@ -408,48 +377,60 @@ class ProfileBuilder:
         ):
             if not item:
                 continue
-            parts = []
-            if hasattr(item, "attack") and item.attack:
-                parts.append(f"ATK: {item.attack}")
-            if item.defence:
-                parts.append(f"DEF: {item.defence}")
-            if item.ward:
-                parts.append(f"WARD: {item.ward}%")
-            if item.pdr:
-                parts.append(f"PDR: {item.pdr}%")
-            if item.fdr:
-                parts.append(f"FDR: {item.fdr}")
-            stat_line = " | ".join(parts) or "No stats"
             lines = []
             if item.passive != "none":
                 desc = _desc_scaled(pfuncs, item.passive, item.passive_lvl)
                 lines.append(
-                    f"• {item.passive.replace('_',' ').title()} L{item.passive_lvl} — {desc}"
+                    f"• **Enchant:** {item.passive.replace('_', ' ').title()} L{item.passive_lvl} — {desc}"
                 )
-            for etype, val in (
-                (item.essence_1, item.essence_1_val),
-                (item.essence_2, item.essence_2_val),
-                (item.essence_3, item.essence_3_val),
-            ):
-                if etype != "none":
-                    lines.append(f"• {_format_essence_slot(etype, val, item)}")
             if item.corrupted_essence != "none":
                 lines.append(
                     f"• {_format_corrupted(item.corrupted_essence, slot_name)}"
                 )
-            _add_gear_field(icon, slot_label, item, stat_line, lines)
+            _add(f"{icon} {slot_label}", lines)
 
-        if not any(
-            [
-                p.equipped_weapon,
-                p.equipped_armor,
-                p.equipped_accessory,
-                p.equipped_glove,
-                p.equipped_boot,
-                p.equipped_helmet,
-            ]
-        ):
-            embed.description = "No gear equipped and no active passives."
+        # ── Slayer Emblem ─────────────────────────────────────────────────────
+        if p.slayer_emblem:
+            lines = []
+            for slot_key in sorted(p.slayer_emblem.keys()):
+                slot_data = p.slayer_emblem.get(slot_key)
+                if not slot_data:
+                    continue
+                ptype = slot_data.get("type")
+                if not ptype or ptype.lower() == "none":
+                    continue
+                tier = slot_data.get("tier", 1)
+                e_name = _SLAYER_EMBLEM_NAMES.get(ptype, ptype.replace("_", " ").title())
+                fn = _SLAYER_EMBLEM_FUNCS.get(ptype)
+                desc = fn(tier) if fn else "?"
+                lines.append(f"• **{e_name}** (T{tier}) — {desc}")
+            _add("🩸 Slayer Emblem", lines)
+
+        # ── Codex Tomes ───────────────────────────────────────────────────────
+        if p.codex_tomes:
+            lines = []
+            for tome in p.codex_tomes:
+                info = _CODEX_TOME_INFO.get(tome.passive_type)
+                if info:
+                    t_name, t_fn = info
+                    lines.append(f"• **{t_name}** (T{tome.tier}) — {t_fn(tome.value)}")
+            _add("📚 Codex Tomes", lines)
+
+        # ── Hematurgy ─────────────────────────────────────────────────────────
+        if p.hematurgy_passives:
+            lines = []
+            for pid, tier in p.hematurgy_passives.items():
+                h_name = HematurgyMechanics.passive_display_name(pid)
+                fn = _HEMATURGY_SHORT_FUNCS.get(pid)
+                h_desc = fn(tier) if fn else "?"
+                lines.append(f"• **{h_name}** (T{tier}) — {h_desc}")
+            chunk = 10
+            for i in range(0, len(lines), chunk):
+                field_name = "💉 Hematurgy" if i == 0 else "​"
+                _add(field_name, lines[i : i + chunk])
+
+        if not has_any:
+            embed.description = "No active passives found."
 
         return embed
 
@@ -575,181 +556,120 @@ class ProfileBuilder:
         user = await bot.database.users.get(user_id, server_id)
         p = await load_player(user_id, user, bot.database)
 
+        embed = discord.Embed(title="Active Timers & Cooldowns", color=0xBEBEFE)
+        embed.set_thumbnail(url=user[7])
+
+        def _fmt_ms(time_str, cooldown_td: timedelta) -> str:
+            """MMm:SSs remaining, for short cooldowns."""
+            if not time_str:
+                return "Ready!"
+            try:
+                total = int(
+                    (
+                        cooldown_td
+                        - (datetime.now() - datetime.fromisoformat(time_str))
+                    ).total_seconds()
+                )
+                if total <= 0:
+                    return "Ready!"
+                m, s = divmod(total, 60)
+                return f"**{m}m:{s:02d}s**"
+            except Exception:
+                return "Ready!"
+
+        def _fmt_hms(time_str, cooldown_td: timedelta) -> str:
+            """HHh:MMm:SSs remaining."""
+            if not time_str:
+                return "Ready!"
+            try:
+                total = int(
+                    (
+                        cooldown_td
+                        - (datetime.now() - datetime.fromisoformat(time_str))
+                    ).total_seconds()
+                )
+                if total <= 0:
+                    return "Ready!"
+                h, r = divmod(total, 3600)
+                m, s = divmod(r, 60)
+                return f"**{h}h:{m:02d}m:{s:02d}s**"
+            except Exception:
+                return "Ready!"
+
+        def _secs_to_hms(secs: int) -> str:
+            h, r = divmod(max(0, secs), 3600)
+            m, s = divmod(r, 60)
+            return f"**{h}h:{m:02d}m:{s:02d}s**"
+
+        # ── Section 1: Core ──────────────────────────────────────────────────
         combat_cd_mins = 10
         if p.equipped_boot and p.equipped_boot.passive == "speedster":
             combat_cd_mins -= p.equipped_boot.passive_lvl
 
-        def get_remaining(time_str, cooldown_td: timedelta):
-            if not time_str:
-                return "Ready!"
-            try:
-                last = datetime.fromisoformat(time_str)
-                diff = datetime.now() - last
-                if diff < cooldown_td:
-                    rem = cooldown_td - diff
-                    return f"**{rem.seconds // 3600}h {(rem.seconds // 60) % 60}m {rem.seconds % 60}s**"
-                return "Ready!"
-            except Exception:
-                return "Ready!"
+        MAX_STAMINA = 10
+        stamina_data = await bot.database.users.get_stamina(user_id)
+        stamina = stamina_data["combat_stamina"]
+        last_regen_str = stamina_data["last_stamina_regen"]
 
-        embed = discord.Embed(title="Active Timers & Cooldowns", color=0xBEBEFE)
-        embed.set_thumbnail(url=user[7])
-
-        embed.add_field(
-            name="/combat ⚔️",
-            value=get_remaining(user[24], timedelta(minutes=combat_cd_mins)),
-            inline=True,
-        )
-        embed.add_field(
-            name="/rest 🛏️",
-            value=get_remaining(user[13], timedelta(hours=2)),
-            inline=True,
-        )
-        embed.add_field(
-            name="/checkin 🛖",
-            value=get_remaining(user[17], timedelta(hours=18)),
-            inline=True,
-        )
-        embed.add_field(
-            name="/propagate 💡",
-            value=get_remaining(user[14], timedelta(hours=18)),
-            inline=True,
-        )
-
-        settlement = await bot.database.settlement.get_settlement(user_id, server_id)
-        if settlement and settlement.last_collection_time:
-            try:
-                s_last = datetime.fromisoformat(settlement.last_collection_time)
-                s_diff = datetime.now() - s_last
-                s_hours = s_diff.total_seconds() / 3600
-                embed.add_field(
-                    name="🏭 Settlement",
-                    value=f"**{s_hours:.2f}** hours of production pending.",
-                    inline=False,
-                )
-            except Exception:
-                pass
-
-        active_comps = await bot.database.companions.get_active(user_id)
-        if not active_comps:
-            embed.add_field(
-                name="🐾 Companions",
-                value="No active companions deployed.",
-                inline=False,
-            )
+        if stamina >= MAX_STAMINA:
+            stamina_line = f"⚡ Stamina: **{stamina}/{MAX_STAMINA}** (full)"
         else:
-            c_time_str = await bot.database.users.get_companion_collect_time(user_id)
-
-            if c_time_str:
+            regen_suffix = ""
+            if last_regen_str:
                 try:
-                    c_last = datetime.fromisoformat(c_time_str)
-                    c_diff = (datetime.now() - c_last).total_seconds()
-                    cycles = int(c_diff // 3600)
-
-                    if cycles >= 48:
-                        embed.add_field(
-                            name="🐾 Companions",
-                            value="**48/48** adventures completed! (MAXED)\nWaiting to be collected.",
-                            inline=False,
-                        )
-                    else:
-                        next_cycle_rem = 3600 - (c_diff % 3600)
-                        next_cycle_str = f"({int(next_cycle_rem // 60)}m {int(next_cycle_rem % 60)}s until next)"
-                        embed.add_field(
-                            name="🐾 Companions",
-                            value=f"**{cycles}/48** adventures completed.\n{next_cycle_str}",
-                            inline=False,
-                        )
-                except Exception:
-                    embed.add_field(
-                        name="🐾 Companions", value="Ready to deploy.", inline=False
+                    next_regen = datetime.fromisoformat(last_regen_str) + timedelta(
+                        hours=1
                     )
-            else:
-                embed.add_field(
-                    name="🐾 Companions", value="Ready to deploy.", inline=False
+                    rem_secs = int((next_regen - datetime.now()).total_seconds())
+                    if rem_secs > 0:
+                        rm, rs = divmod(rem_secs, 60)
+                        regen_suffix = f" · next regen: {rm}m:{rs:02d}s"
+                except Exception:
+                    pass
+            stamina_line = f"⚡ **{stamina}/{MAX_STAMINA}**{regen_suffix}"
+
+        core_lines = ["⚔️ **/combat**", stamina_line]
+        if stamina == 0:
+            core_lines.append(
+                f"Cooldown: {_fmt_ms(user[24], timedelta(minutes=combat_cd_mins))}"
+            )
+
+        core_lines.append(
+            f"🛏️ **/rest** — {_fmt_hms(user[13], timedelta(hours=2))} *(free; paid has no cooldown)*"
+        )
+
+        try:
+            incubation = await bot.database.eggs.get_incubation(user_id, server_id)
+            if incubation:
+                start_dt = datetime.fromisoformat(incubation["start_time"])
+                duration = incubation["duration_seconds"]
+                elapsed_secs = (datetime.utcnow() - start_dt).total_seconds()
+                remaining = max(0.0, duration - elapsed_secs)
+                if remaining > 0:
+                    rh, rr = divmod(int(remaining), 3600)
+                    rm, rs = divmod(rr, 60)
+                    rem_str = f"**{rh}h:{rm:02d}m:{rs:02d}s**"
+                else:
+                    rem_str = "Ready to hatch!"
+                pct = int(min(100, elapsed_secs / max(duration, 1) * 100))
+                core_lines.append(
+                    f"🥚 **Hatchery** — {incubation['monster_name']}: {rem_str} ({pct}%)"
                 )
+        except Exception:
+            pass
 
-        from core.models import Partner
-        from core.partners.data import PARTNER_DATA
-        from core.partners.dispatch import (
-            BOSS_PARTY_DURATION_HOURS,
-            elapsed_hours,
-            get_cap_hours,
-        )
-        from core.partners.resources import _stars
+        embed.add_field(name="⚙️ Core", value="\n".join(core_lines), inline=False)
 
-        rows = await bot.database.partners.get_owned(user_id)
-        partners = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
-            for row in rows
-            if row[2] in PARTNER_DATA
+        # ── Section 2: Daily ─────────────────────────────────────────────────
+        daily_lines = [
+            f"🛖 **/checkin** — {_fmt_hms(user[17], timedelta(hours=18))}",
+            f"💡 **/propagate** — {_fmt_hms(user[14], timedelta(hours=18))}",
         ]
-
-        active_dispatch = next(
-            (
-                p
-                for p in partners
-                if p.is_dispatched and p.dispatch_task != "boss_party"
-            ),
-            None,
-        )
-        boss_party = [
-            p for p in partners if p.is_dispatched and p.dispatch_task == "boss_party"
-        ]
-
-        if active_dispatch:
-            elapsed = elapsed_hours(active_dispatch.dispatch_start_time)
-            cap = get_cap_hours(active_dispatch)
-            elapsed_clamped = min(elapsed, cap)
-            progress_pct = int(elapsed_clamped / cap * 100)
-            task_label = active_dispatch.dispatch_task or "Unknown"
-            if elapsed >= cap:
-                dispatch_status = "✅ Ready to collect!"
-            else:
-                remaining_secs = (cap - elapsed) * 3600
-                h = int(remaining_secs // 3600)
-                m = int((remaining_secs % 3600) // 60)
-                dispatch_status = f"**{h}h {m}m** until cap ({progress_pct}%)"
-            embed.add_field(
-                name="📋 Partner Dispatch",
-                value=(
-                    f"{_stars(active_dispatch.rarity)} **{active_dispatch.name}** — {task_label.title()}\n"
-                    f"{dispatch_status}"
-                ),
-                inline=False,
-            )
-        else:
-            embed.add_field(
-                name="📋 Partner Dispatch",
-                value="No partner currently dispatched.",
-                inline=False,
-            )
-
-        if boss_party:
-            bp_first = boss_party[0]
-            elapsed = elapsed_hours(bp_first.dispatch_start_time)
-            progress_pct = min(100, int(elapsed / BOSS_PARTY_DURATION_HOURS * 100))
-            names = " | ".join(f"{_stars(p.rarity)} {p.name}" for p in boss_party)
-            if progress_pct >= 100:
-                raid_status = "✅ Raid Complete! Collect your rewards."
-            else:
-                remaining_secs = (BOSS_PARTY_DURATION_HOURS - elapsed) * 3600
-                h = int(remaining_secs // 3600)
-                m = int((remaining_secs % 3600) // 60)
-                raid_status = f"**{h}h {m}m** remaining ({progress_pct}%)"
-            embed.add_field(
-                name="🔱 Boss Raid",
-                value=f"{names}\n{raid_status}",
-                inline=False,
-            )
 
         from core.maw.mechanics import (
             boost_available,
             boost_remaining_seconds,
             get_current_cycle_id,
-            get_cycle_end_ts,
-            get_next_cycle_id,
-            is_collection_window,
             is_cycle_active,
         )
 
@@ -758,48 +678,120 @@ class ProfileBuilder:
         maw_cycle_id = get_current_cycle_id(now_utc)
 
         if is_cycle_active(maw_cycle_id, now_ts):
-            cycle_end = get_cycle_end_ts(maw_cycle_id)
-            ends_in = cycle_end - now_ts
-            h, m = ends_in // 3600, (ends_in % 3600) // 60
-            window_line = f"🟢 **Sign-up window OPEN** (ends in {h}h {m}m)"
-
             maw_record = await bot.database.maw.get_record(user_id, maw_cycle_id)
             if maw_record:
                 boost_used_at = maw_record["boost_used_at"]
                 if boost_available(boost_used_at, now_ts):
-                    boost_str = "✅ Ready"
+                    boost_str = "Ready!"
                 else:
-                    secs = boost_remaining_seconds(boost_used_at, now_ts)
-                    bh, bm = secs // 3600, (secs % 3600) // 60
-                    boost_str = f"**{bh}h {bm}m**"
-                maw_value = f"{window_line}\n" f"Boost: {boost_str}"
+                    boost_str = _secs_to_hms(
+                        boost_remaining_seconds(boost_used_at, now_ts)
+                    )
+                daily_lines.append(f"🌀 **Maw Boost** — {boost_str}")
             else:
-                maw_value = f"{window_line}\nNot signed up this cycle."
-
-        elif is_collection_window(maw_cycle_id, now_ts):
-            next_ts = get_next_cycle_id(maw_cycle_id)
-            next_in = next_ts - now_ts
-            h, m = next_in // 3600, (next_in % 3600) // 60
-            window_line = f"📦 **Collection window open** (next cycle in {h}h {m}m)"
-
-            maw_record = await bot.database.maw.get_record(user_id, maw_cycle_id)
-            if maw_record:
-                collected_str = (
-                    "✅ Collected"
-                    if maw_record["rewards_collected"]
-                    else "⏳ Not yet collected"
-                )
-                maw_value = f"{window_line}\n" f"Rewards: {collected_str}"
-            else:
-                maw_value = f"{window_line}\nDidn't participate this cycle."
-
+                daily_lines.append("🌀 **Maw Boost** — Not signed up this cycle")
         else:
-            next_ts = get_next_cycle_id(maw_cycle_id)
-            next_in = next_ts - now_ts
-            h, m = next_in // 3600, (next_in % 3600) // 60
-            maw_value = f"⏳ **Next cycle starts in {h}h {m}m**"
+            daily_lines.append("🌀 **Maw Boost** — No active cycle")
 
-        embed.add_field(name="🌀 Infinite Maw", value=maw_value, inline=False)
+        embed.add_field(name="📅 Daily", value="\n".join(daily_lines), inline=False)
+
+        # ── Section 3: Horizon ───────────────────────────────────────────────
+        horizon_lines = []
+
+        settlement = await bot.database.settlement.get_settlement(user_id, server_id)
+        if settlement and settlement.last_collection_time:
+            try:
+                s_last = datetime.fromisoformat(settlement.last_collection_time)
+                blocks = int((datetime.now() - s_last).total_seconds() // 3600)
+                horizon_lines.append(
+                    f"🏭 **Settlement** — {blocks} block(s) of production completed"
+                )
+            except Exception:
+                pass
+
+        active_comps = await bot.database.companions.get_active(user_id)
+        if not active_comps:
+            horizon_lines.append("🐾 **Companions** — No companions deployed")
+        else:
+            c_time_str = await bot.database.users.get_companion_collect_time(user_id)
+            if c_time_str:
+                try:
+                    c_diff = (
+                        datetime.now() - datetime.fromisoformat(c_time_str)
+                    ).total_seconds()
+                    cycles = min(48, int(c_diff // 3600))
+                    if cycles >= 48:
+                        horizon_lines.append(
+                            "🐾 **Companions** — 48/48 adventures (ready to collect!)"
+                        )
+                    else:
+                        horizon_lines.append(
+                            f"🐾 **Companions** — {cycles}/48 adventures completed"
+                        )
+                except Exception:
+                    horizon_lines.append("🐾 **Companions** — Ready to deploy")
+            else:
+                horizon_lines.append("🐾 **Companions** — Ready to deploy")
+
+        from core.models import Partner
+        from core.partners.data import PARTNER_DATA
+        from core.partners.dispatch import (
+            BOSS_PARTY_DURATION_HOURS,
+            elapsed_hours,
+            get_cap_hours,
+        )
+
+        rows = await bot.database.partners.get_owned(user_id)
+        all_partners = [
+            Partner.from_row(row, PARTNER_DATA[row[2]])
+            for row in rows
+            if row[2] in PARTNER_DATA
+        ]
+
+        active_dispatch = next(
+            (
+                partner
+                for partner in all_partners
+                if partner.is_dispatched and partner.dispatch_task != "boss_party"
+            ),
+            None,
+        )
+        boss_party = [
+            partner
+            for partner in all_partners
+            if partner.is_dispatched and partner.dispatch_task == "boss_party"
+        ]
+
+        if active_dispatch:
+            elapsed = elapsed_hours(active_dispatch.dispatch_start_time)
+            cap = get_cap_hours(active_dispatch)
+            elapsed_h = min(int(cap), int(elapsed))
+            task_label = (active_dispatch.dispatch_task or "unknown").title()
+            if elapsed >= cap:
+                horizon_lines.append(
+                    f"📋 **Partner** — {int(cap)}/{int(cap)} hours of {task_label} completed (ready!)"
+                )
+            else:
+                horizon_lines.append(
+                    f"📋 **Partner** — {elapsed_h}/{int(cap)} hours of {task_label} completed"
+                )
+        else:
+            horizon_lines.append("📋 **Partner** — No partner dispatched")
+
+        if boss_party:
+            bp_elapsed = elapsed_hours(boss_party[0].dispatch_start_time)
+            bp_cap = int(BOSS_PARTY_DURATION_HOURS)
+            bp_done = min(bp_cap, int(bp_elapsed))
+            if bp_done >= bp_cap:
+                horizon_lines.append(
+                    f"🔱 **Boss Raid** — {bp_cap}/{bp_cap} hours completed (ready!)"
+                )
+            else:
+                horizon_lines.append(
+                    f"🔱 **Boss Raid** — {bp_done}/{bp_cap} hours completed"
+                )
+
+        embed.add_field(name="🌅 Horizon", value="\n".join(horizon_lines), inline=False)
 
         return embed
 

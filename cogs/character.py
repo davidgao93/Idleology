@@ -107,6 +107,7 @@ class Character(commands.Cog, name="character"):
             if current_hp < max_hp:
                 new_hp = min(current_hp + 1 + scaling, max_hp)
                 await self.bot.database.users.update_hp(user_id, new_hp)
+        await self.bot.database.users.connection.commit()
 
     @app_commands.command(name="card", description="View your adventurer license.")
     async def card(self, interaction: Interaction):

@@ -148,9 +148,7 @@ def apply_hematurgy_start(player: Player, monster: Monster, log: list[str]) -> N
 # ---------------------------------------------------------------------------
 
 
-def on_haemorrhage_tick(
-    player: Player, monster: Monster, log: list[str]
-) -> None:
+def on_haemorrhage_tick(player: Player, monster: Monster, log: list[str]) -> None:
     """Haemorrhage: deal 10% of accumulated bleed pool as damage at start of player turn."""
     if get_h(player, "haemorrhage") is None:
         return
@@ -190,9 +188,6 @@ def on_player_hit(
     tier_im = get_h(player, "iron_momentum")
     if tier_im is not None:
         player.cs.hema_momentum_stacks = min(5, player.cs.hema_momentum_stacks + 1)
-        stacks = player.cs.hema_momentum_stacks
-        bonus_pct = int(_tv("iron_momentum", tier_im) * stacks * 100)
-        log.append(f"🔥 **Iron Momentum** ({stacks}/5) — +{bonus_pct}% ATK next turn!")
 
     # --- Serrated: permanently reduce monster ATK ---
     tier_ser = get_h(player, "serrated")
@@ -201,6 +196,7 @@ def on_player_hit(
         if is_crit:
             reduction *= 2
         monster.attack = max(0, monster.attack - reduction)
+        player.cs.hema_serrated_total += reduction
         crit_note = " (crit ×2)" if is_crit else ""
         log.append(
             f"🔪 **Serrated**{crit_note} — monster ATK −{reduction} (now {monster.attack})."
@@ -217,11 +213,6 @@ def on_player_hit(
     if tier_cr is not None:
         if is_crit:
             player.cs.hema_chain_stacks = min(5, player.cs.hema_chain_stacks + 1)
-            bonus_pct = int(_tv("chain_reaction", tier_cr) * player.cs.hema_chain_stacks * 100)
-            log.append(
-                f"⚡ **Chain Reaction** ({player.cs.hema_chain_stacks}/5) — "
-                f"+{bonus_pct}% crit dmg next crit!"
-            )
         else:
             if player.cs.hema_chain_stacks > 0:
                 log.append(
@@ -239,7 +230,9 @@ def on_player_hit(
                 actual_mark = min(mark_dmg, monster.hp)
                 monster.hp = max(0, monster.hp - actual_mark)
                 extra += actual_mark
-                log.append(f"🎯 **Predator's Mark** detonates! +{actual_mark} bonus damage!")
+                log.append(
+                    f"🎯 **Predator's Mark** detonates! +{actual_mark} bonus damage!"
+                )
             player.cs.hema_predators_mark = False
         if is_crit:
             player.cs.hema_predators_mark = True
@@ -251,7 +244,9 @@ def on_player_hit(
         max_blades = int(_tv("spectral_waltz_max", tier_sw))
         if is_crit and player.cs.hema_blade_count > 0:
             blade_pct = _tv("spectral_waltz", tier_sw) / 100.0
-            blade_dmg = int(player.get_total_attack() * blade_pct * player.cs.hema_blade_count)
+            blade_dmg = int(
+                player.get_total_attack() * blade_pct * player.cs.hema_blade_count
+            )
             if blade_dmg > 0 and monster.hp > 0:
                 actual_sw = min(blade_dmg, monster.hp)
                 monster.hp = max(0, monster.hp - actual_sw)
@@ -291,7 +286,10 @@ def on_player_miss(
     extra = 0
 
     # --- Iron Momentum: reset stacks ---
-    if get_h(player, "iron_momentum") is not None and player.cs.hema_momentum_stacks > 0:
+    if (
+        get_h(player, "iron_momentum") is not None
+        and player.cs.hema_momentum_stacks > 0
+    ):
         log.append(
             f"🔥 **Iron Momentum** resets! ({player.cs.hema_momentum_stacks} stacks lost)"
         )
@@ -304,15 +302,10 @@ def on_player_miss(
         )
         player.cs.hema_chain_stacks = 0
 
-    # --- Phantom Reflex: add evasion stack (max 2) ---
+    # --- Phantom Reflex: add evasion stack (max 2, displayed in status panel) ---
     tier_pr = get_h(player, "phantom_reflex")
     if tier_pr is not None and player.cs.hema_phantom_stacks < 2:
         player.cs.hema_phantom_stacks += 1
-        bonus_pct = int(_tv("phantom_reflex", tier_pr) * player.cs.hema_phantom_stacks * 100)
-        log.append(
-            f"🌀 **Phantom Reflex** ({player.cs.hema_phantom_stacks}/2) — "
-            f"+{int(_tv('phantom_reflex', tier_pr) * 100)}% Evasion incoming round!"
-        )
 
     # --- Predator's Mark: clear mark on miss ---
     if get_h(player, "predators_mark") is not None and player.cs.hema_predators_mark:
@@ -396,9 +389,7 @@ def on_ward_gained(player: Player, amount: int, log: list[str]) -> int:
     return amount
 
 
-def drain_ward_dmg_buffer(
-    player: Player, monster: Monster, log: list[str]
-) -> None:
+def drain_ward_dmg_buffer(player: Player, monster: Monster, log: list[str]) -> None:
     """Applies buffered Ward Inoculation damage to the monster. Call after ward-gen events."""
     if player.cs.hema_ward_dmg_buffer <= 0 or monster.hp <= 0:
         player.cs.hema_ward_dmg_buffer = 0
@@ -415,9 +406,7 @@ def drain_ward_dmg_buffer(
 # ---------------------------------------------------------------------------
 
 
-def on_monster_turn_start(
-    player: Player, monster: Monster, log: list[str]
-) -> bool:
+def on_monster_turn_start(player: Player, monster: Monster, log: list[str]) -> bool:
     """Flash Frost: if the monster is frozen, skip its action. Returns True to skip."""
     if getattr(monster, "_hema_frozen", False):
         monster._hema_frozen = False
@@ -481,7 +470,9 @@ def on_monster_turn_end(
         heal = int(player.total_max_hp * _tv("regenerative_tissue", tier_rt))
         if heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
-            log.append(f"🌿 **Regenerative Tissue** — zero damage taken, healing {heal} HP!")
+            log.append(
+                f"🌿 **Regenerative Tissue** — zero damage taken, healing {heal} HP!"
+            )
 
 
 # ---------------------------------------------------------------------------

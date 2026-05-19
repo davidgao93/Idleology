@@ -43,7 +43,7 @@ _BODY_PART_BASE_CHANCE = 0.02  # 2% base; special rarity adds on top
 # Monster Egg Drop Tables
 # ---------------------------------------------------------------------------
 
-_EGG_BASE_CHANCE = 1.02  # same 2% + special rarity as body parts
+_EGG_BASE_CHANCE = 0.02  # same 2% + special rarity as body parts
 
 _EGG_TIER_WEIGHTS = [
     ("normal", 75),

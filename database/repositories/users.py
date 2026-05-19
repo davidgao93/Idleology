@@ -129,7 +129,6 @@ class UserRepository:
             "UPDATE users SET appearance = ? WHERE user_id = ?", (url, user_id)
         )
         await self.connection.commit()
-        await self.connection.commit()
 
     async def modify_stat(self, user_id: str, stat: str, amount: int) -> None:
         """

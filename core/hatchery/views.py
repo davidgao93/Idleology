@@ -52,13 +52,15 @@ class EggQueueSelect(ui.Select):
 class HatcheryView(BaseView):
     """Standalone view for the Hatchery building.
 
-    Opened from BuildingDetailView when the building_type is 'hatchery'.
+    Can be opened from BuildingDetailView (parent_view set) or directly via
+    the /hatchery command (parent_view=None).  When standalone, a Close button
+    replaces the Back button and clears the active state on exit.
     """
 
-    def __init__(self, bot, user_id: str, server_id: str, building, parent_view):
+    def __init__(self, bot, user_id: str, server_id: str, building, parent_view=None):
         super().__init__(bot, user_id, server_id)
         self.building    = building      # settlement Building dataclass
-        self.parent_view = parent_view   # BuildingDetailView
+        self.parent_view = parent_view   # BuildingDetailView, or None if standalone
         self._incubation  = None         # cached incubation dict
         self._eggs        = []           # cached egg inventory
 
@@ -151,9 +153,15 @@ class HatcheryView(BaseView):
                 btn_wait = ui.Button(label="Incubating...", style=ButtonStyle.secondary, disabled=True, row=0)
                 self.add_item(btn_wait)
 
-        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
-        btn_back.callback = self._back
-        self.add_item(btn_back)
+        # Show Back only when opened from the settlement view
+        if self.parent_view is not None:
+            btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+            btn_back.callback = self._back
+            self.add_item(btn_back)
+
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
+        btn_close.callback = self._close
+        self.add_item(btn_close)
 
     # ------------------------------------------------------------------ #
     #  Actions
@@ -220,3 +228,9 @@ class HatcheryView(BaseView):
             embed=self.parent_view.build_embed(), view=self.parent_view
         )
         self.stop()
+
+    async def _close(self, interaction: Interaction):
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
+        await interaction.response.defer()
+        await interaction.message.delete()

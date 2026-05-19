@@ -3,6 +3,8 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.hematurgy.mechanics import (
+    EVO_MAX_TIER,
+    MAX_TIER,
     MUTATIVE_COST,
     SLOT_UNLOCK_COSTS,
     TRANSMUTE_RATIO,
@@ -31,6 +33,13 @@ _BLOOD_EMOJI = {"primordial": "🩸", "evolutionary": "🧬", "mutative": "☣�
 _BLOOD_NAMES = {"primordial": "Primordial", "evolutionary": "Evolutionary", "mutative": "Mutative"}
 
 
+def _tier_badge(tier: int) -> str:
+    """Returns a display badge like 'Tier 5/7' or 'Tier 7/7 ✦' for max."""
+    if tier >= MAX_TIER:
+        return f"Tier {tier}/{MAX_TIER} ✦"
+    return f"Tier {tier}/{MAX_TIER}"
+
+
 def _build_hematurgy_embed(passives: dict, blood: dict) -> discord.Embed:
     embed = discord.Embed(
         title="🩸 Hematurgy",
@@ -48,9 +57,10 @@ def _build_hematurgy_embed(passives: dict, blood: dict) -> discord.Embed:
         if slot in passives:
             p = passives[slot]
             name = HematurgyMechanics.passive_display_name(p["passive_id"])
+            badge = _tier_badge(p["tier"])
             embed.add_field(
                 name=f"{emoji} {label}",
-                value=f"✦ **{name}** (Tier {p['tier']}/5)",
+                value=f"✦ **{name}** ({badge})",
                 inline=True,
             )
         else:
@@ -165,6 +175,65 @@ class TransmuteTargetView(BaseView):
 
 
 # ---------------------------------------------------------------------------
+# Mutation confirmation view
+# ---------------------------------------------------------------------------
+
+class MutateConfirmView(BaseView):
+    """Warns the player of all possible mutation outcomes before executing."""
+
+    def __init__(self, slot_detail: "SlotDetailView"):
+        super().__init__(slot_detail.bot, parent=slot_detail)
+        self.slot_detail = slot_detail
+
+    def build_embed(self) -> discord.Embed:
+        passive = self.slot_detail.parent.passives.get(self.slot_detail.slot_type)
+        blood = self.slot_detail.parent.blood
+        name = HematurgyMechanics.passive_display_name(passive["passive_id"])
+        tier = passive["tier"]
+
+        at_max = tier >= MAX_TIER
+        if at_max:
+            upgrade_note = f"no change — already at max T{MAX_TIER}"
+        else:
+            upgrade_note = f"T{tier} → **T{tier + 1}**"
+
+        footer_note = (
+            f"\n\n⚠️ At T{MAX_TIER} maximum — **Upgrade** has no effect. "
+            f"Only downgrade, delete, or transformation are meaningful."
+            if at_max else ""
+        )
+
+        embed = discord.Embed(
+            title="☣️ Mutation Warning",
+            description=(
+                f"You are about to mutate **{name}** ({_tier_badge(tier)}).\n"
+                f"This costs **{MUTATIVE_COST:,} ☣️ Mutative blood** and **cannot be undone**.\n\n"
+                f"**Possible Outcomes:**\n"
+                f"💀 **Delete** (50%) — passive is permanently destroyed\n"
+                f"📉 **Downgrade** (20%) — tier reduced by 1 (destroys if at T1)\n"
+                f"⬆️ **Upgrade** (15%) — {upgrade_note} (bypasses evolutionary cap)\n"
+                f"🔄 **New Passive** (15%) — replaced by a random mutated passive at T1\n\n"
+                f"You have **{blood.get('mutative', 0):,} ☣️** Mutative blood."
+                f"{footer_note}"
+            ),
+            color=0xFF4500,
+        )
+        return embed
+
+    @ui.button(label="Confirm Mutation", style=ButtonStyle.danger, emoji="☣️")
+    async def confirm(self, interaction: Interaction, button: ui.Button):
+        await self.slot_detail._execute_mutate(interaction)
+        self.stop()
+
+    @ui.button(label="Cancel", style=ButtonStyle.secondary)
+    async def cancel(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.edit_message(
+            embed=self.slot_detail.build_embed(), view=self.slot_detail
+        )
+        self.stop()
+
+
+# ---------------------------------------------------------------------------
 # Slot Detail View
 # ---------------------------------------------------------------------------
 
@@ -193,8 +262,9 @@ class SlotDetailView(BaseView):
             self.add_item(btn_unlock)
         else:
             tier = passive["tier"]
-            # Upgrade button
-            if tier < 5:
+
+            # Evolutionary upgrade button — only available T1→T5
+            if tier < EVO_MAX_TIER:
                 cost = UPGRADE_COSTS[tier + 1]
                 can_upgrade = blood.get("evolutionary", 0) >= cost
                 btn_upgrade = ui.Button(
@@ -205,10 +275,17 @@ class SlotDetailView(BaseView):
                 btn_upgrade.callback = self._upgrade
                 self.add_item(btn_upgrade)
             else:
-                btn_max = ui.Button(label="Max Tier Reached", style=ButtonStyle.primary, disabled=True)
-                self.add_item(btn_max)
+                # T5, T6, or T7 — show an informational disabled button
+                if tier >= MAX_TIER:
+                    evo_label = f"Evolutionary Max — T{MAX_TIER} Reached"
+                else:
+                    evo_label = f"Evolutionary Max — Mutate for T{tier + 1}"
+                btn_evo_max = ui.Button(
+                    label=evo_label, style=ButtonStyle.primary, disabled=True
+                )
+                self.add_item(btn_evo_max)
 
-            # Mutate button
+            # Mutate button — always available when a passive is present
             can_mutate = blood.get("mutative", 0) >= MUTATIVE_COST
             btn_mutate = ui.Button(
                 label=f"Mutate ({MUTATIVE_COST:,} ☣️)",
@@ -255,15 +332,21 @@ class SlotDetailView(BaseView):
             tier = passive["tier"]
             desc = HematurgyMechanics.passive_description(passive["passive_id"], tier)
             embed.add_field(
-                name=f"Active Passive — Tier {tier}/5",
+                name=f"Active Passive — {_tier_badge(tier)}",
                 value=f"**{name}**\n{desc}",
                 inline=False,
             )
-            if tier < 5:
+            if tier < EVO_MAX_TIER:
                 upgrade_cost = UPGRADE_COSTS[tier + 1]
                 embed.add_field(
                     name="Upgrade Cost",
-                    value=f"{upgrade_cost:,} 🧬 Evolutionary blood",
+                    value=f"{upgrade_cost:,} 🧬 Evolutionary blood → T{tier + 1}",
+                    inline=True,
+                )
+            elif tier < MAX_TIER:
+                embed.add_field(
+                    name="Next Tier",
+                    value=f"T{tier + 1} available via ☣️ **Mutation** only",
                     inline=True,
                 )
             embed.add_field(
@@ -303,7 +386,7 @@ class SlotDetailView(BaseView):
     async def _upgrade(self, interaction: Interaction):
         await interaction.response.defer()
         passive = self.parent.passives.get(self.slot_type)
-        if passive is None or passive["tier"] >= 5:
+        if passive is None or passive["tier"] >= EVO_MAX_TIER:
             return
 
         cost = UPGRADE_COSTS[passive["tier"] + 1]
@@ -323,6 +406,24 @@ class SlotDetailView(BaseView):
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _mutate(self, interaction: Interaction):
+        """Shows the mutation warning confirmation view before executing."""
+        passive = self.parent.passives.get(self.slot_type)
+        if passive is None:
+            return
+
+        blood = self.parent.blood
+        if blood.get("mutative", 0) < MUTATIVE_COST:
+            return await interaction.response.send_message(
+                "Insufficient Mutative blood.", ephemeral=True
+            )
+
+        confirm_view = MutateConfirmView(self)
+        await interaction.response.edit_message(
+            embed=confirm_view.build_embed(), view=confirm_view
+        )
+
+    async def _execute_mutate(self, interaction: Interaction):
+        """Called by MutateConfirmView.confirm — performs the actual mutation."""
         await interaction.response.defer()
         passive = self.parent.passives.get(self.slot_type)
         if passive is None:
@@ -332,19 +433,25 @@ class SlotDetailView(BaseView):
         if blood["mutative"] < MUTATIVE_COST:
             return await interaction.followup.send("Insufficient Mutative blood.", ephemeral=True)
 
-        await self.parent.bot.database.hematurgy.modify_blood(self.parent.user_id, "mutative", -MUTATIVE_COST)
+        await self.parent.bot.database.hematurgy.modify_blood(
+            self.parent.user_id, "mutative", -MUTATIVE_COST
+        )
 
         outcome = HematurgyMechanics.roll_mutative_outcome()
         footer = ""
 
         if outcome == "delete":
-            await self.parent.bot.database.hematurgy.delete_passive(self.parent.user_id, self.slot_type)
+            await self.parent.bot.database.hematurgy.delete_passive(
+                self.parent.user_id, self.slot_type
+            )
             footer = "☣️ Mutation: the passive was consumed by the blood... it's gone."
 
         elif outcome == "downgrade":
             current_tier = passive["tier"]
             if current_tier <= 1:
-                await self.parent.bot.database.hematurgy.delete_passive(self.parent.user_id, self.slot_type)
+                await self.parent.bot.database.hematurgy.delete_passive(
+                    self.parent.user_id, self.slot_type
+                )
                 footer = "☣️ Mutation: the passive degraded past its limit and was destroyed."
             else:
                 new_tier = current_tier - 1
@@ -353,29 +460,42 @@ class SlotDetailView(BaseView):
                 )
                 footer = f"☣️ Mutation: the passive was weakened to Tier {new_tier}."
 
-        elif outcome == "double":
-            new_tier = min(5, passive["tier"] * 2)
+        elif outcome == "upgrade":
+            new_tier = min(MAX_TIER, passive["tier"] + 1)
             await self.parent.bot.database.hematurgy.set_passive(
                 self.parent.user_id, self.slot_type, passive["passive_id"], new_tier
             )
-            footer = f"☣️ Mutation: the passive surged to Tier {new_tier}!"
+            if new_tier == passive["tier"]:
+                footer = (
+                    f"☣️ Mutation: the passive's power resisted the surge — "
+                    f"already at max T{new_tier}."
+                )
+            else:
+                footer = f"☣️ Mutation: the passive advanced to Tier {new_tier}!"
 
         else:  # new_passive
-            owned = await self.parent.bot.database.hematurgy.get_unlocked_passive_ids(self.parent.user_id)
+            owned = await self.parent.bot.database.hematurgy.get_unlocked_passive_ids(
+                self.parent.user_id
+            )
             new_id = HematurgyMechanics.get_random_mutative_passive(owned)
             if new_id is None:
-                # All mutative passives already owned; fall back to delete
-                await self.parent.bot.database.hematurgy.delete_passive(self.parent.user_id, self.slot_type)
+                await self.parent.bot.database.hematurgy.delete_passive(
+                    self.parent.user_id, self.slot_type
+                )
                 footer = "☣️ Mutation: no new forms available — the passive was dissolved."
             else:
                 await self.parent.bot.database.hematurgy.set_passive(
                     self.parent.user_id, self.slot_type, new_id, 1
                 )
                 name = HematurgyMechanics.passive_display_name(new_id)
-                footer = f"☣️ Mutation: the passive transformed into **{name}**!"
+                footer = f"☣️ Mutation: the passive transformed into {name}!"
 
-        self.parent.passives = await self.parent.bot.database.hematurgy.get_all_passives(self.parent.user_id)
-        self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(self.parent.user_id)
+        self.parent.passives = await self.parent.bot.database.hematurgy.get_all_passives(
+            self.parent.user_id
+        )
+        self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(
+            self.parent.user_id
+        )
         self._build_buttons()
 
         embed = self.build_embed()
@@ -401,7 +521,7 @@ class SlotSelect(ui.Select):
             if slot in passives:
                 p = passives[slot]
                 name = HematurgyMechanics.passive_display_name(p["passive_id"])
-                desc = f"Tier {p['tier']}/5 — {name}"
+                desc = f"{_tier_badge(p['tier'])} — {name}"
             else:
                 cost = SLOT_UNLOCK_COSTS[slot]
                 desc = f"No passive — Unlock: {cost:,} Primordial"
@@ -419,9 +539,30 @@ class SlotSelect(ui.Select):
 # ---------------------------------------------------------------------------
 
 class HematurgyView(BaseView):
-    def __init__(self, bot, parent: "BaseView", passives: dict, blood: dict):
-        super().__init__(bot, parent=parent)
-        self.consume_view = parent  # direct reference for the back button
+    """
+    Can be opened in two modes:
+    - Child mode:     HematurgyView(bot, passives, blood, parent=consume_view)
+                      "Consume" button returns to the existing ConsumeView.
+    - Standalone mode: HematurgyView(bot, passives, blood, user_id=uid, server_id=sid)
+                      "Consume" button opens a fresh ConsumeView.
+                      "Exit" button clears state and deletes the message.
+    """
+
+    def __init__(
+        self,
+        bot,
+        passives: dict,
+        blood: dict,
+        *,
+        parent: "BaseView | None" = None,
+        user_id: str | None = None,
+        server_id: str | None = None,
+    ):
+        if parent is not None:
+            super().__init__(bot, parent=parent)
+        else:
+            super().__init__(bot, user_id, server_id)
+        self.consume_view = parent  # None if standalone
         self.passives = passives
         self.blood = blood
         self._rebuild_select()
@@ -432,6 +573,33 @@ class HematurgyView(BaseView):
                 self.remove_item(item)
         self.add_item(SlotSelect(self.passives))
 
+    # Row 1 — primary navigation + transmute
+    @ui.button(label="Consume", style=ButtonStyle.secondary, emoji="🫀", row=1)
+    async def consume_btn(self, interaction: Interaction, button: ui.Button):
+        if self.consume_view is not None:
+            # Child mode: go back to the existing ConsumeView
+            await interaction.response.edit_message(
+                embed=self.consume_view.build_embed(), view=self.consume_view
+            )
+            self.stop()
+        else:
+            # Standalone: open a fresh ConsumeView for this user
+            await interaction.response.defer()
+            from core.items.factory import load_player
+            from core.consume.views import ConsumeView
+            user_data = await self.bot.database.users.get(
+                self.user_id, str(interaction.guild_id)
+            )
+            player = await load_player(self.user_id, user_data, self.bot.database)
+            inventory = await self.bot.database.monster_parts.get_inventory(self.user_id)
+            eggs = await self.bot.database.eggs.get_eggs(self.user_id)
+            cview = ConsumeView(player, inventory, self.bot, eggs=eggs)
+            await interaction.edit_original_response(
+                embed=cview.build_embed(), view=cview
+            )
+            cview.message = await interaction.original_response()
+            self.stop()
+
     @ui.button(label="Transmute Blood", style=ButtonStyle.secondary, emoji="⚗️", row=1)
     async def transmute(self, interaction: Interaction, button: ui.Button):
         transmute_view = TransmuteSourceView(self)
@@ -441,12 +609,13 @@ class HematurgyView(BaseView):
             view=transmute_view,
         )
 
-    @ui.button(label="Back to Consume", style=ButtonStyle.secondary, row=1)
-    async def back(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.edit_message(
-            embed=self.consume_view.build_embed(), view=self.consume_view
-        )
+    # Row 2 — hard exit
+    @ui.button(label="Exit", style=ButtonStyle.secondary, row=2)
+    async def exit_btn(self, interaction: Interaction, button: ui.Button):
+        self.bot.state_manager.clear_active(self.user_id)
         self.stop()
+        await interaction.response.defer()
+        await interaction.message.delete()
 
 
 class TransmuteSourceView(BaseView):
