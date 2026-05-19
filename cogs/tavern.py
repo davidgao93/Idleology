@@ -5,7 +5,7 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from core.images import TAVERN_CASINO, TAVERN_GAMES, TAVERN_KEEPER, TAVERN_ROULETTE
+from core.images import CHECKIN, TAVERN_CASINO, TAVERN_GAMES, TAVERN_KEEPER, TAVERN_ROULETTE
 from core.items.factory import load_player
 from core.tavern.mechanics import TavernMechanics
 from core.tavern.views import CasinoMenuView, RestView, ShopView
@@ -231,6 +231,7 @@ class Tavern(commands.Cog, name="tavern"):
             description=f"**{interaction.user.display_name}** checked in and collected their rewards.",
             color=0x00CC77,
         )
+        embed.set_thumbnail(url=CHECKIN)
         embed.add_field(name="🎁 Curious Curios", value=str(curios), inline=True)
         embed.add_field(name="🎫 Guild Tickets", value=str(tickets), inline=True)
         await interaction.response.send_message(embed=embed)

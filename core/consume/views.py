@@ -4,7 +4,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.images import CONSUME_HUB
+from core.images import CONSUME_EGG, CONSUME_HUB, CONSUME_SLOT_IMAGES
 from core.items.factory import create_monster_part
 from core.models import MonsterPart, Player
 
@@ -195,6 +195,7 @@ class PartDetailView(BaseView):
                 ),
                 color=0xFF6600,
             )
+            confirm_embed.set_thumbnail(url=CONSUME_SLOT_IMAGES.get(slot, CONSUME_HUB))
             confirm_view = EquipConfirmView(self.parent, self.part)
             await interaction.response.edit_message(
                 embed=confirm_embed, view=confirm_view
@@ -283,6 +284,7 @@ class PartSelect(ui.Select):
             ),
             color=0xB22222,
         )
+        embed.set_thumbnail(url=CONSUME_SLOT_IMAGES.get(part.slot_type, CONSUME_HUB))
         detail_view = PartDetailView(self.view, part)
         await interaction.response.edit_message(embed=embed, view=detail_view)
 
@@ -338,6 +340,7 @@ def _build_egg_consume_embed(eggs: list) -> discord.Embed:
         ),
         color=0xB22222,
     )
+    embed.set_thumbnail(url=CONSUME_EGG)
     return embed
 
 

@@ -6,6 +6,7 @@ from core.character.leaderboard_views import LeaderboardHubView
 from core.character.profile_hub import ProfileHubView
 from core.character.profile_ui import ProfileBuilder
 from core.character.views import PassiveAllocateView
+from core.images import PASSIVES
 from core.items.factory import load_player
 
 """
@@ -171,6 +172,7 @@ class Character(commands.Cog, name="character"):
             description=f"**Points Remaining:** {points}\n\nSelect a stat to upgrade.",
             color=0x00FF00,
         )
+        embed.set_thumbnail(url=PASSIVES)
 
         view = PassiveAllocateView(self.bot, user_id, data)
         view.message = await interaction.response.send_message(embed=embed, view=view)

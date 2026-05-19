@@ -17,6 +17,8 @@ from datetime import datetime, timedelta
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.images import BLUEPRINT_RESEARCH
+
 from .base import SettlementBaseView
 
 _RESEARCH_HOURS = 20
@@ -165,6 +167,7 @@ class ResearchView(SettlementBaseView):
             title="🔬 Settlement Research",
             color=discord.Color.dark_teal(),
         )
+        embed.set_thumbnail(url=BLUEPRINT_RESEARCH)
         embed.description = (
             f"Research buildings before you can construct them.\n"
             f"**Cost:** 1 Unidentified Blueprint per research\n"

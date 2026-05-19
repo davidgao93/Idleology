@@ -77,6 +77,9 @@ ALCHEMY_HUB = "https://cdn.discordapp.com/attachments/1334637411363323996/150051
 # ── ASCENT ────────────────────────────────────────────────────────────────────
 ASCENT_HUB = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512902308696144/ascent_hub.jpeg?ex=69f8b50a&is=69f7638a&hm=9f32e2587fcdcdf1efbe3ae2d36a089ba611ff4fcc05255e85455cc15c646896&"
 
+# ── HEMATURGY ─────────────────────────────────────────────────────────────────
+HEMATURGY = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398699545301032/hematurgy.jpg?ex=6a0e1e9d&is=6a0ccd1d&hm=5ae101bc4cfe9be3aad04ec654d1e64f1dacbcacba89da0716e5b3c48b63b360&"
+
 # ── CODEX ─────────────────────────────────────────────────────────────────────
 CODEX_BOON = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512902715670548/codex_boon.png?ex=69f8b50a&is=69f7638a&hm=0be68b2c4045894fe8ee57d49b53499c3206940e986121fdffd66e9ca2cbe2a2&"
 CODEX_CHAPTERS = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512903261065389/codex_chapters.png?ex=69f8b50a&is=69f7638a&hm=304ab6be2813c21f79b1663ae2a8d879b2d117afe2411ffa8899962d8785d2d4&"
@@ -85,6 +88,26 @@ CODEX_HUB = "https://cdn.discordapp.com/attachments/1334637411363323996/15005129
 
 # ── CONSUME ───────────────────────────────────────────────────────────────────
 CONSUME_HUB = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512904842313799/consume_hub.jpeg?ex=69f8b50a&is=69f7638a&hm=1da8939721bafefeaac308ce9efeee748fe81590f9b81a6d75ec1c6070009863&"
+CONSUME_EGG = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398698597519392/consume_egg.jpg?ex=6a0e1e9d&is=6a0ccd1d&hm=2db7f0a505bb5408eb759a56a4ad0bbdb480b7b996bbedc4a37a47a0a2539655&"
+
+# ── CONSUME / MONSTER PARTS ───────────────────────────────────────────────────
+CONSUME_MONSTER_HEAD = "https://cdn.discordapp.com/attachments/1334637411363323996/1505042264898932857/monster_head.jpg?ex=6a092f56&is=6a07ddd6&hm=c098e8bf9ae9a01ce82091701df8e4e8cd95b15514fe69ef3e50b80ac1272a7b&"
+CONSUME_MONSTER_TORSO = "https://cdn.discordapp.com/attachments/1334637411363323996/1505042284784259172/monster_torso.jpg?ex=6a092f5b&is=6a07dddb&hm=bfff4f8d48c40f60fb78305ebb0ed1f59a1a7a18a7cac1cd9fbc3759124724f4&"
+CONSUME_MONSTER_ARM = "https://cdn.discordapp.com/attachments/1334637411363323996/1505042250114011307/monster_arm.jpg?ex=6a092f52&is=6a07ddd2&hm=f9fb1611e234005295666a4eb6569433bc2ffae176fc446c621076d76d38f22e&"
+CONSUME_MONSTER_LEG = "https://cdn.discordapp.com/attachments/1334637411363323996/1505042271333253350/monster_leg.jpg?ex=6a092f57&is=6a07ddd7&hm=215330b4c6f5c44deb4400a2c2272418f904d512557b57d0cf588b524218e89c&"
+CONSUME_MONSTER_CHEEKS = "https://cdn.discordapp.com/attachments/1334637411363323996/1505042257894572153/monster_cheeks.jpg?ex=6a092f54&is=6a07ddd4&hm=00207c7fb5881924ad09d45b1064598ff08b26ad6603219b5cce066d9ed7327e&"
+CONSUME_MONSTER_ORGANS = "https://cdn.discordapp.com/attachments/1334637411363323996/1505042278220304424/monster_organs.jpg?ex=6a092f59&is=6a07ddd9&hm=8b427cbf608ec8b00b62b3aaa89382c027104b1624503a3a82eeca2e7f130cbe&"
+
+CONSUME_SLOT_IMAGES = {
+    "head": CONSUME_MONSTER_HEAD,
+    "torso": CONSUME_MONSTER_TORSO,
+    "right_arm": CONSUME_MONSTER_ARM,
+    "left_arm": CONSUME_MONSTER_ARM,
+    "right_leg": CONSUME_MONSTER_LEG,
+    "left_leg": CONSUME_MONSTER_LEG,
+    "cheeks": CONSUME_MONSTER_CHEEKS,
+    "organs": CONSUME_MONSTER_ORGANS,
+}
 
 # ── COMPANIONS ────────────────────────────────────────────────────────────────
 COMPANIONS_HUB = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512917202796564/companions_hub.png?ex=69f8b50d&is=69f7638d&hm=1c354bba4eb0c9d1d27d64ffe4d3ab920c03efe965d3c1895f6b64f772fdaf79&"
@@ -136,9 +159,10 @@ SETTLEMENT_BUILDINGS = {
     "black_market": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512961242992801/black_market.png?ex=69f8b518&is=69f76398&hm=385c50f0144a29313fcb7aaeb11c26e0dfb3fbf910e6d504fce8fedcbc28734a&",
     "companion_ranch": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512961599639762/companion_ranch.png?ex=69f8b518&is=69f76398&hm=5d419074c38d7915e96e7f72522888aabb4a53fa6539db27042a0842541b3354&",
     "celestial_shrine": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512960274239799/temple.png?ex=69f8b517&is=69f76397&hm=9c8dae72cc8639210f2ac2215dbdaa4a481b0b1f4127292ad50b698de3174994&",
-    "infernal_forge": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512962056556644/infernal_forge.png?ex=69f8b518&is=69f76398&hm=1367a86b954c3c0f31cad2f99d7d750fe6e5eba9107a7d0aa6089f7393eca809&",
-    "void_sanctum": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512960274239799/temple.png?ex=69f8b517&is=69f76397&hm=9c8dae72cc8639210f2ac2215dbdaa4a481b0b1f4127292ad50b698de3174994&",
-    "twin_shrine": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512960274239799/temple.png?ex=69f8b517&is=69f76397&hm=9c8dae72cc8639210f2ac2215dbdaa4a481b0b1f4127292ad50b698de3174994&",
+    "infernal_forge": "https://cdn.discordapp.com/attachments/1334637411363323996/1506398699851481241/infernal-forge.jpg?ex=6a0e1e9d&is=6a0ccd1d&hm=c68d09b3614dfb61a9762ea4919c1dfc447a87a8fd7a9e77a0d69c0517649bd6&",
+    "void_sanctum": "https://cdn.discordapp.com/attachments/1334637411363323996/1506398698995847178/corrupted-shrine.jpg?ex=6a0e1e9d&is=6a0ccd1d&hm=343c5792a05dc2bcee3e8b560f20f8d9625446f52a935c6bcaa33b63036e5661&",
+    "twin_shrine": "https://cdn.discordapp.com/attachments/1334637411363323996/1506398699268472984/gemini-shrine.jpg?ex=6a0e1e9d&is=6a0ccd1d&hm=b17dc01f9d4e8898eeda4ccc6c5ff85005596b4631c2ce8073f73065a888c95e&",
+    "hatchery": "https://cdn.discordapp.com/attachments/1334637411363323996/1506398700677759057/settlement-hatchery.jpg?ex=6a0e1e9d&is=6a0ccd1d&hm=7f88a18a954aebc3e2a7d12f398daca650598a6802d80715fb71733a13addf8a&",
 }
 
 # ── CORRUPTED MONSTERS ────────────────────────────────────────────────────────
@@ -159,6 +183,34 @@ CORRUPTED_MONSTERS = {
 # ── SLAYER ────────────────────────────────────────────────────────────────────
 SLAYER_MASTER = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512944839196672/slayer_master.jpeg?ex=69f8b514&is=69f76394&hm=80574a877f344b671995071e57369d25bec6f534fcbf943a6a8be049e9f0f1c2&"
 SLAYER_EMBLEM = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512945111568566/slayer_emblem.png?ex=69f8b514&is=69f76394&hm=9e0e91ed0c4e0ba48c7283d29e5faf3dee64b01b3bc1b933a48527e8b9fd72bc&"
+
+# ── PARADISE JEWEL SKILLS ─────────────────────────────────────────────────────
+SKILL_UNCUT = "https://cdn.discordapp.com/attachments/1334637411363323996/1506409619210375291/skill-uncut.jpg?ex=6a0e28c8&is=6a0cd748&hm=d6405a6ec77e08dff6454c264611585dcaad0dd1331b50055ccdadd309c415ed&"
+SKILL_ACRIMONY = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398709829734662/skill-acrimony.jpg?ex=6a0e1e9f&is=6a0ccd1f&hm=276aac7c67999bbb61d9d3f8bf19c69bca55d7d0a3b2ab0055c78dd9635bc967&"
+SKILL_BASTION = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398710114816102/skill-bastion.jpg?ex=6a0e1ea0&is=6a0ccd20&hm=b1a210e6a692ce6b8df116f12b9d83198dbdc333773b35078765330db96e7d2e&"
+SKILL_CATACLYSM = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398710484041758/skill-cataclysm.jpg?ex=6a0e1ea0&is=6a0ccd20&hm=931ff6d71086308275848429e2aa63b666eb16d6d4d0badb2cba1e0dd5f199a2&"
+SKILL_DRAUGHT = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398710949482608/skill-draught.jpg?ex=6a0e1ea0&is=6a0ccd20&hm=e8b12dc767022c53db6d4d2fe6f3e0402274290a1fd69828250710ac336252d3&"
+SKILL_ONSLAUGHT = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398711352397946/skill-onslaught.jpg?ex=6a0e1ea0&is=6a0ccd20&hm=eb7e4fb15c4955c26dd597ea8a6daeb2c2470b55701ff148f2e303bdb7094819&"
+SKILL_SIPHON = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398711671034006/skill-siphon.jpg?ex=6a0e1ea0&is=6a0ccd20&hm=b801accd130ff5b1f82774b22859711c57299fb80efea054a497b66436a5995a&"
+SKILL_SURGE = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398712014835832/skill-surge.jpg?ex=6a0e1ea0&is=6a0ccd20&hm=ce6db5ce0d4fa038d6258a8d167dab19f7dbd2ccd39d3d7767bbde53a7251e9b&"
+SKILL_WARDFORGE = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398712359030844/skill-wardforge.jpg?ex=6a0e1ea0&is=6a0ccd20&hm=9bbab6d1affdd7a86c770dcf66846e9b62868a401b4544141bf4bb8aefdd5af7&"
+
+SKILL_IMAGES = {
+    "acrimony": SKILL_ACRIMONY,
+    "bastion": SKILL_BASTION,
+    "cataclysm": SKILL_CATACLYSM,
+    "draught": SKILL_DRAUGHT,
+    "onslaught": SKILL_ONSLAUGHT,
+    "siphon": SKILL_SIPHON,
+    "surge": SKILL_SURGE,
+    "wardforge": SKILL_WARDFORGE,
+}
+
+# ── GENERAL UI ────────────────────────────────────────────────────────────────
+CHECKIN = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398698001797260/checkin.jpg?ex=6a0e1e9d&is=6a0ccd1d&hm=e059b4f75f4256cec76929d3b5581e176370d004741aeecff9af830975e44dfd&"
+PASSIVES = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398700141023452/passives.jpg?ex=6a0e1e9d&is=6a0ccd1d&hm=7fcf133f17ee9167e88837440785dc3ffc09c9f50763558b574a0eff2af2286a&"
+PROPAGATE = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398700421775451/propagate.jpg?ex=6a0e1e9d&is=6a0ccd1d&hm=651f437341cdcc8b45388221cc0cdba0d8061c826ae05290a8d363141e4589d5&"
+BLUEPRINT_RESEARCH = "https://cdn.discordapp.com/attachments/1334637411363323996/1506398697678831737/blueprint-research.jpg?ex=6a0e1e9d&is=6a0ccd1d&hm=2622c66bb2390a0427bb963148c5edf475331f82fcfbcf8469f2e20c8d9bd5a2&"
 
 # ── TAVERN / GENERAL UI ───────────────────────────────────────────────────────
 TAVERN_KEEPER = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512945447374948/tavern_keeper.jpeg?ex=69f8b514&is=69f76394&hm=f4a3a9fe2ccef135bce7489b28a7b4f3e5afea70c81df77cac7b297d6ab6dd81&"  # also used as help embed logo

@@ -5,10 +5,13 @@ Entry point: ParadiseHubView (opened from /paradise cog command).
 
 from __future__ import annotations
 
+import asyncio
+
 import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.images import SKILL_IMAGES, SKILL_UNCUT
 from core.paradise import mechanics as M
 from core.paradise.data import (
     DUST_REROLL_TYPE,
@@ -58,6 +61,7 @@ def _build_hub_embed(
     equipped = data.get("equipped_skill")
     unlocked = data.get("unlocked_skills", [])
     if equipped and equipped in SKILL_JEWELS:
+        embed.set_thumbnail(url=SKILL_IMAGES.get(equipped, SKILL_UNCUT))
         defn = SKILL_JEWELS[equipped]
         mastery = M.mastery_bonus(data)
         eff_level = M.get_effective_level(equipped, data, mastery)
@@ -91,12 +95,14 @@ def _build_hub_embed(
             inline=False,
         )
     elif unlocked:
+        embed.set_thumbnail(url=SKILL_UNCUT)
         embed.add_field(
             name="⚔️ Equipped Skill",
             value="*No skill equipped — use Swap Skill to select one.*",
             inline=False,
         )
     else:
+        embed.set_thumbnail(url=SKILL_UNCUT)
         embed.add_field(
             name="⚔️ Equipped Skill",
             value=(
@@ -211,17 +217,6 @@ class ParadiseHubView(BaseView):
         consume.callback = self._consume_jewel_callback
         self.add_item(consume)
 
-        # Row 0: Dust Jewel
-        dust_btn = ui.Button(
-            label="Dust Jewel",
-            style=ButtonStyle.secondary,
-            emoji="✨",
-            row=0,
-            disabled=self.jewel_count <= 0,
-        )
-        dust_btn.callback = self._dust_jewel_callback
-        self.add_item(dust_btn)
-
         # Row 1: Reroll (only if passive slots exist)
         if slot_count > 0:
             reroll = ui.Button(
@@ -292,27 +287,6 @@ class ParadiseHubView(BaseView):
         self.stop()
 
     # ------------------------------------------------------------------
-    # Dust Jewel
-    # ------------------------------------------------------------------
-
-    async def _dust_jewel_callback(self, interaction: Interaction) -> None:
-        await interaction.response.defer()
-        alchemy_level = await self.bot.database.alchemy.get_level(self.user_id)
-        dust_gain = M.dust_from_jewel(alchemy_level)
-        await self.bot.database.uber.increment_paradise_jewels(
-            self.user_id, self.server_id, -1
-        )
-        await self.bot.database.alchemy.modify_cosmic_dust(self.user_id, dust_gain)
-        # Update data tracking
-        self.data["total_jewels_obtained"] = self.data.get("total_jewels_obtained", 0)
-        await self.bot.database.paradise.save(self.user_id, self.data)
-        await interaction.followup.send(
-            f"✨ Dusted 1 Jewel of Paradise for **{dust_gain:,} Cosmic Dust**.",
-            ephemeral=True,
-        )
-        await self._refresh(interaction)
-
-    # ------------------------------------------------------------------
     # Reroll Passive
     # ------------------------------------------------------------------
 
@@ -371,9 +345,14 @@ class _SkillSwapView(BaseView):
             self.data.setdefault("skill_charges", {})[skill_key] = 0
         await self.bot.database.paradise.save(self.user_id, self.data)
         defn = SKILL_JEWELS[skill_key]
-        await interaction.followup.send(
-            f"{defn.emoji} Equipped **{defn.name}**.", ephemeral=True
+        result_embed = discord.Embed(
+            title=f"{defn.emoji} Skill Equipped",
+            description=f"**{defn.name}** is now your active jewel skill.",
+            color=discord.Color.from_str("#b967ff"),
         )
+        result_embed.set_thumbnail(url=SKILL_IMAGES.get(skill_key, SKILL_UNCUT))
+        await interaction.edit_original_response(embed=result_embed, view=None)
+        await asyncio.sleep(3)
         await self._back_to_hub(interaction)
 
     async def _on_back(self, interaction: Interaction) -> None:
@@ -484,7 +463,11 @@ class _ConsumeJewelView(BaseView):
             self.user_id, self.server_id, -1
         )
         await self.bot.database.paradise.save(self.user_id, self.data)
-        await interaction.followup.send(f"🔮 {msg}", ephemeral=True)
+        title = "🔮 Passive Slot Unlocked!" if slot_unlocked else "💎 Jewel Invested"
+        result_embed = discord.Embed(title=title, description=msg, color=discord.Color.from_str("#b967ff"))
+        result_embed.set_thumbnail(url=SKILL_UNCUT)
+        await interaction.edit_original_response(embed=result_embed, view=None)
+        await asyncio.sleep(3)
         await self._back_to_hub(interaction)
 
     async def _back_callback(self, interaction: Interaction) -> None:
@@ -545,9 +528,14 @@ class _SkillPickView(BaseView):
         )
         await self.bot.database.paradise.save(self.user_id, self.data)
         defn = SKILL_JEWELS[skill_key]
-        await interaction.followup.send(
-            f"{defn.emoji} **{defn.name}** has been unlocked!", ephemeral=True
+        result_embed = discord.Embed(
+            title=f"{defn.emoji} Skill Unlocked!",
+            description=f"**{defn.name}** has been added to your roster.",
+            color=discord.Color.green(),
         )
+        result_embed.set_thumbnail(url=SKILL_IMAGES.get(skill_key, SKILL_UNCUT))
+        await interaction.edit_original_response(embed=result_embed, view=None)
+        await asyncio.sleep(3)
         await self._back_to_hub(interaction)
 
     async def _on_back(self, interaction: Interaction) -> None:

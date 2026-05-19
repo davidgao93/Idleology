@@ -21,6 +21,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.alchemy.mechanics import AlchemyMechanics
 from core.base_view import BaseView
+from core.paradise.mechanics import dust_from_jewel
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -30,12 +31,18 @@ from core.base_view import BaseView
 _CATEGORY_BOSS_KEYS  = "boss_keys"
 _CATEGORY_ELEMENTAL  = "elemental"
 _CATEGORY_ESSENCES   = "essences"
+_CATEGORY_JEWELS     = "jewels"
 
 _CATEGORY_LABELS = {
     _CATEGORY_BOSS_KEYS: "Boss Keys",
     _CATEGORY_ELEMENTAL: "Elemental Materials",
     _CATEGORY_ESSENCES:  "Essences",
+    _CATEGORY_JEWELS:    "Paradise Jewels",
 }
+
+_JEWEL_ITEM_TYPE      = "paradise_jewel"
+_JEWEL_SYNTH_DUST     = 20_000
+_JEWEL_SYNTH_GOLD     = 10_000_000
 
 
 def _fmt_duration(td: timedelta) -> str:
@@ -126,7 +133,7 @@ class AlchemySynthesisHubView(BaseView):
         synth_btn = ui.Button(
             label="Synthesize Item",
             style=ButtonStyle.primary,
-            emoji="🔑",
+            emoji="⚗️",
             row=0,
         )
         synth_btn.callback = self._on_synthesize
@@ -196,16 +203,21 @@ class AlchemySynthesisHubView(BaseView):
                         inline=False,
                     )
 
-        # --- Boss key reference table ---
+        # --- Reference table: keys + jewels ---
         lines = []
         for col, name in AlchemyMechanics.KEY_DISPLAY_NAMES.items():
             emoji = AlchemyMechanics.KEY_EMOJIS[col]
             yield_val = AlchemyMechanics.DUST_YIELD[col]
             synth_cost = AlchemyMechanics.get_synthesis_dust_cost(level, col)
             lines.append(
-                f"{emoji} **{name}** — disenchant: {yield_val} ✨  |  synthesize: {synth_cost} ✨ + 💰 100k"
+                f"{emoji} **{name}** — disenchant: {yield_val} ✨  |  synthesize: {synth_cost:,} ✨ + 💰 100k"
             )
-        embed.add_field(name="📋 Key Dust Rates", value="\n".join(lines), inline=False)
+        jewel_yield = dust_from_jewel(level)
+        lines.append(
+            f"💎 **Jewel of Paradise** — disenchant: {jewel_yield:,} ✨ (instant, scales with level)  |  "
+            f"synthesize: {_JEWEL_SYNTH_DUST:,} ✨ + 💰 10M"
+        )
+        embed.add_field(name="📋 Dust Rates", value="\n".join(lines), inline=False)
 
         return embed
 
@@ -301,6 +313,8 @@ class AlchemySynthesisHubView(BaseView):
 
 def _get_item_display(item_type: str) -> tuple[str, str, int]:
     """Returns (name, emoji, dust_yield) for any disenchantable item type."""
+    if item_type == _JEWEL_ITEM_TYPE:
+        return ("Jewel of Paradise", "💎", 0)  # yield is level-dependent; computed at disenchant time
     if item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
         return (
             AlchemyMechanics.KEY_DISPLAY_NAMES[item_type],
@@ -323,7 +337,10 @@ def _get_item_display(item_type: str) -> tuple[str, str, int]:
 
 
 async def _get_item_owned(bot, user_id: str, server_id: str, item_type: str) -> int:
-    """Returns how many of an item the player owns, across all 3 item categories."""
+    """Returns how many of an item the player owns, across all item categories."""
+    if item_type == _JEWEL_ITEM_TYPE:
+        uber = await bot.database.uber.get_uber_progress(user_id, server_id)
+        return uber.get("paradise_jewels", 0)
     if item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
         return await bot.database.users.get_currency(user_id, item_type)
     if item_type in AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES:
@@ -335,7 +352,9 @@ async def _get_item_owned(bot, user_id: str, server_id: str, item_type: str) -> 
 
 async def _deduct_item(bot, user_id: str, server_id: str, item_type: str, qty: int) -> None:
     """Deducts qty of item from the appropriate table."""
-    if item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
+    if item_type == _JEWEL_ITEM_TYPE:
+        await bot.database.uber.increment_paradise_jewels(user_id, server_id, -qty)
+    elif item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
         await bot.database.users.modify_currency(user_id, item_type, -qty)
     elif item_type in AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES:
         await bot.database.alchemy.deduct_uber_material(user_id, server_id, item_type, qty)
@@ -352,8 +371,9 @@ class _DisenchantCategorySelect(ui.Select):
     def __init__(self) -> None:
         opts = [
             discord.SelectOption(label="Boss Keys", value=_CATEGORY_BOSS_KEYS, emoji="🔑"),
-            discord.SelectOption(label="Elemental Materials", value=_CATEGORY_ELEMENTAL, emoji="💎"),
+            discord.SelectOption(label="Elemental Materials", value=_CATEGORY_ELEMENTAL, emoji="🌟"),
             discord.SelectOption(label="Essences", value=_CATEGORY_ESSENCES, emoji="🔮"),
+            discord.SelectOption(label="Paradise Jewels", value=_CATEGORY_JEWELS, emoji="💎"),
         ]
         super().__init__(placeholder="Select item category…", options=opts)
         self.selected: str | None = None
@@ -421,17 +441,46 @@ class _DisenchantQuantityModal(ui.Modal, title="How many items to disenchant?"):
             )
             return
 
+        await interaction.response.defer()
+
+        # Jewels are instant — skip the queue entirely
+        if self._item_type == _JEWEL_ITEM_TYPE:
+            jewel_yield = dust_from_jewel(self._parent.alchemy_level)
+            total_dust = jewel_yield * qty
+            await _deduct_item(
+                self._parent.bot,
+                self._parent.user_id,
+                self._parent.server_id,
+                self._item_type,
+                qty,
+            )
+            await self._parent.bot.database.alchemy.modify_cosmic_dust(
+                self._parent.user_id, total_dust
+            )
+            view = await _build_synthesis_hub(
+                self._parent.bot, self._parent.user_id, self._parent.server_id
+            )
+            embed = view.build_embed()
+            embed.colour = discord.Color.gold()
+            embed.title = f"✨ Disenchanted {qty}× Jewel of Paradise"
+            embed.description = (
+                f"💎 **{qty}× Jewel of Paradise** dissolved instantly.\n"
+                f"Gained: ✨ **{total_dust:,} Cosmic Dust**\n\n"
+            ) + (embed.description or "")
+            msg = await interaction.edit_original_response(embed=embed, view=view)
+            view.message = msg
+            self._parent.stop()
+            return
+
         # Guard: slot not grabbed by a race condition
         existing = await self._parent.bot.database.alchemy.get_synthesis_queue(
             self._parent.user_id, self._parent.target_slot
         )
         if existing:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "That queue slot is now busy. Try again.", ephemeral=True
             )
             return
-
-        await interaction.response.defer()
 
         await _deduct_item(
             self._parent.bot,
@@ -521,30 +570,42 @@ class _DisenchantSelectView(BaseView):
         category = self._category_select.selected
         mins = AlchemyMechanics.get_disenchant_minutes(self.alchemy_level)
 
-        if category == _CATEGORY_BOSS_KEYS:
-            items_map = AlchemyMechanics.KEY_DISPLAY_NAMES
-            emojis_map = AlchemyMechanics.KEY_EMOJIS
-            yield_map = AlchemyMechanics.DUST_YIELD
-        elif category == _CATEGORY_ELEMENTAL:
-            items_map = AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES
-            emojis_map = AlchemyMechanics.ELEMENTAL_EMOJIS
-            yield_map = AlchemyMechanics.ELEMENTAL_DUST_YIELD
-        else:
-            items_map = AlchemyMechanics.ESSENCE_DISPLAY_NAMES
-            emojis_map = AlchemyMechanics.ESSENCE_EMOJIS
-            yield_map = AlchemyMechanics.ESSENCE_DUST_YIELD
-
-        self._options_data = []
-        for col, name in items_map.items():
-            owned = await _get_item_owned(self.bot, self.user_id, self.server_id, col)
-            self._options_data.append({
-                "col": col,
-                "name": name,
-                "emoji": emojis_map[col],
+        if category == _CATEGORY_JEWELS:
+            owned = await _get_item_owned(self.bot, self.user_id, self.server_id, _JEWEL_ITEM_TYPE)
+            jewel_yield = dust_from_jewel(self.alchemy_level)
+            self._options_data = [{
+                "col": _JEWEL_ITEM_TYPE,
+                "name": "Jewel of Paradise",
+                "emoji": "💎",
                 "owned": owned,
-                "yield": yield_map[col],
-                "select_desc": f"Own: {owned}  ·  {yield_map[col]} ✨/item  ·  {mins}m/item",
-            })
+                "yield": jewel_yield,
+                "select_desc": f"Own: {owned}  ·  {jewel_yield:,} ✨/jewel  ·  instant",
+            }]
+        else:
+            if category == _CATEGORY_BOSS_KEYS:
+                items_map = AlchemyMechanics.KEY_DISPLAY_NAMES
+                emojis_map = AlchemyMechanics.KEY_EMOJIS
+                yield_map = AlchemyMechanics.DUST_YIELD
+            elif category == _CATEGORY_ELEMENTAL:
+                items_map = AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES
+                emojis_map = AlchemyMechanics.ELEMENTAL_EMOJIS
+                yield_map = AlchemyMechanics.ELEMENTAL_DUST_YIELD
+            else:
+                items_map = AlchemyMechanics.ESSENCE_DISPLAY_NAMES
+                emojis_map = AlchemyMechanics.ESSENCE_EMOJIS
+                yield_map = AlchemyMechanics.ESSENCE_DUST_YIELD
+
+            self._options_data = []
+            for col, name in items_map.items():
+                owned = await _get_item_owned(self.bot, self.user_id, self.server_id, col)
+                self._options_data.append({
+                    "col": col,
+                    "name": name,
+                    "emoji": emojis_map[col],
+                    "owned": owned,
+                    "yield": yield_map[col],
+                    "select_desc": f"Own: {owned}  ·  {yield_map[col]} ✨/item  ·  {mins}m/item",
+                })
 
         # Rebuild item select (remove old one if present)
         if self._item_select is not None:
@@ -552,15 +613,18 @@ class _DisenchantSelectView(BaseView):
         self._item_select = _DisenchantItemSelect(self._options_data)
         self.add_item(self._item_select)
 
+        is_jewels = category == _CATEGORY_JEWELS
+        title_suffix = "(Instant)" if is_jewels else f"(Slot {self.target_slot})"
         embed = discord.Embed(
-            title=f"🔨 Disenchant — {_CATEGORY_LABELS[category]} (Slot {self.target_slot})",
+            title=f"🔨 Disenchant — {_CATEGORY_LABELS[category]} {title_suffix}",
             color=discord.Color.blurple(),
         )
         lines = []
         for d in self._options_data:
             owned_str = f"**{d['owned']}** owned" if d["owned"] > 0 else "*none owned*"
+            time_str = "⚡ instant" if is_jewels else f"⏳ {mins}m/item"
             lines.append(
-                f"{d['emoji']} **{d['name']}** — {owned_str}  ·  ✨ {d['yield']} dust/item  ·  ⏳ {mins}m/item"
+                f"{d['emoji']} **{d['name']}** — {owned_str}  ·  ✨ {d['yield']:,} dust/item  ·  {time_str}"
             )
         embed.description = "\n".join(lines) or "*No items in this category.*"
         await interaction.edit_original_response(embed=embed, view=self)
@@ -624,12 +688,13 @@ class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
     )
 
     def __init__(
-        self, parent: _SynthesizeSelectView, item_type: str, dust_cost_each: int
+        self, parent: "_SynthesizeSelectView", item_type: str, dust_cost_each: int, gold_cost_each: int
     ) -> None:
         super().__init__()
         self._parent = parent
         self._item_type = item_type
         self._dust_cost_each = dust_cost_each
+        self._gold_cost_each = gold_cost_each
 
     async def on_submit(self, interaction: Interaction) -> None:
         raw = self.quantity.value.strip()
@@ -641,7 +706,7 @@ class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
 
         qty = int(raw)
         total_dust = self._dust_cost_each * qty
-        total_gold = AlchemyMechanics.SYNTHESIS_GOLD_COST * qty
+        total_gold = self._gold_cost_each * qty
 
         cosmic_dust = await self._parent.bot.database.alchemy.get_cosmic_dust(
             self._parent.user_id
@@ -671,19 +736,25 @@ class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
         await self._parent.bot.database.users.modify_gold(
             self._parent.user_id, -total_gold
         )
-        await self._parent.bot.database.users.modify_currency(
-            self._parent.user_id, self._item_type, qty
-        )
 
-        name = AlchemyMechanics.KEY_DISPLAY_NAMES[self._item_type]
-        emoji = AlchemyMechanics.KEY_EMOJIS[self._item_type]
+        if self._item_type == _JEWEL_ITEM_TYPE:
+            await self._parent.bot.database.uber.increment_paradise_jewels(
+                self._parent.user_id, self._parent.server_id, qty
+            )
+            name, emoji = "Jewel of Paradise", "💎"
+        else:
+            await self._parent.bot.database.users.modify_currency(
+                self._parent.user_id, self._item_type, qty
+            )
+            name = AlchemyMechanics.KEY_DISPLAY_NAMES[self._item_type]
+            emoji = AlchemyMechanics.KEY_EMOJIS[self._item_type]
 
         view = await _build_synthesis_hub(
             self._parent.bot, self._parent.user_id, self._parent.server_id
         )
         embed = view.build_embed()
         embed.colour = discord.Color.gold()
-        embed.title = f"🔑 Synthesized: {qty}× {emoji} {name}!"
+        embed.title = f"⚗️ Synthesized: {qty}× {emoji} {name}!"
         embed.description = (
             f"You spent ✨ **{total_dust:,} Cosmic Dust** + 💰 **{total_gold:,} Gold** "
             f"and received **{qty}× {emoji} {name}**.\n\n"
@@ -717,16 +788,25 @@ class _SynthesizeSelectView(BaseView):
                     "name": name,
                     "emoji": AlchemyMechanics.KEY_EMOJIS[col],
                     "dust_cost": dust_cost,
-                    "select_desc": f"{dust_cost} ✨ + 100k 💰 → 1× {name}",
+                    "gold_cost": AlchemyMechanics.SYNTHESIS_GOLD_COST,
+                    "select_desc": f"{dust_cost:,} ✨ + 100k 💰 → 1× {name}",
                 }
             )
+        options_data.append({
+            "col": _JEWEL_ITEM_TYPE,
+            "name": "Jewel of Paradise",
+            "emoji": "💎",
+            "dust_cost": _JEWEL_SYNTH_DUST,
+            "gold_cost": _JEWEL_SYNTH_GOLD,
+            "select_desc": f"{_JEWEL_SYNTH_DUST:,} ✨ + 10M 💰 → 1× Jewel of Paradise",
+        })
         self._options_data = options_data
 
         self._select = _SynthesizeKeySelect(options_data)
         self.add_item(self._select)
 
         confirm_btn = ui.Button(
-            label="Synthesize", style=ButtonStyle.primary, emoji="🔑", row=1
+            label="Synthesize", style=ButtonStyle.primary, emoji="⚗️", row=1
         )
         confirm_btn.callback = self._on_confirm
         self.add_item(confirm_btn)
@@ -750,14 +830,12 @@ class _SynthesizeSelectView(BaseView):
 
         lines = []
         for d in self._options_data:
-            dust_cost = AlchemyMechanics.get_synthesis_dust_cost(level, d["col"])
-            can_afford = (
-                self.cosmic_dust >= dust_cost
-                and self.player_gold >= AlchemyMechanics.SYNTHESIS_GOLD_COST
-            )
+            dust_cost = d["dust_cost"] if d["col"] == _JEWEL_ITEM_TYPE else AlchemyMechanics.get_synthesis_dust_cost(level, d["col"])
+            gold_cost = d["gold_cost"]
+            can_afford = self.cosmic_dust >= dust_cost and self.player_gold >= gold_cost
             status = "✅" if can_afford else "❌"
             lines.append(
-                f"{status} {d['emoji']} **{d['name']}** — ✨ {dust_cost:,}  +  💰 100,000"
+                f"{status} {d['emoji']} **{d['name']}** — ✨ {dust_cost:,}  +  💰 {gold_cost:,}"
             )
         embed.add_field(
             name="Available Syntheses", value="\n".join(lines), inline=False
@@ -772,9 +850,11 @@ class _SynthesizeSelectView(BaseView):
             return
 
         col = self._select.selected
-        dust_cost = AlchemyMechanics.get_synthesis_dust_cost(self.alchemy_level, col)
+        data = next(d for d in self._options_data if d["col"] == col)
+        dust_cost = data["dust_cost"] if col == _JEWEL_ITEM_TYPE else AlchemyMechanics.get_synthesis_dust_cost(self.alchemy_level, col)
+        gold_cost = data["gold_cost"]
         await interaction.response.send_modal(
-            _SynthesizeQuantityModal(self, col, dust_cost)
+            _SynthesizeQuantityModal(self, col, dust_cost, gold_cost)
         )
 
     async def _on_back(self, interaction: Interaction) -> None:

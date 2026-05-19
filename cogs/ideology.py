@@ -5,6 +5,8 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from core.images import PROPAGATE
+
 
 class Ideology(commands.Cog, name="ideology"):
     def __init__(self, bot) -> None:
@@ -132,6 +134,7 @@ class Ideology(commands.Cog, name="ideology"):
             description=f"**{interaction.user.display_name}** advocates for **{user_ideology}**!",
             color=0x9B59B6,
         )
+        embed.set_thumbnail(url=PROPAGATE)
         embed.add_field(name="New Followers", value=f"+**{follower_increase}**{bonus_msg}", inline=True)
         embed.add_field(name="Total Followers", value=f"**{new_followers_count:,}**", inline=True)
         await interaction.response.send_message(embed=embed)

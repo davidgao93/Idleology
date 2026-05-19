@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.images import CONSUME_SLOT_IMAGES, HEMATURGY
 from core.hematurgy.mechanics import (
     EVO_MAX_TIER,
     MAX_TIER,
@@ -51,6 +52,7 @@ def _build_hematurgy_embed(passives: dict, blood: dict) -> discord.Embed:
         ),
         color=0x8B0000,
     )
+    embed.set_thumbnail(url=HEMATURGY)
     for slot in _SLOT_ORDER:
         label = _SLOT_LABELS[slot]
         emoji = _SLOT_EMOJI[slot]
@@ -309,6 +311,7 @@ class SlotDetailView(BaseView):
             title=f"{emoji} {slot_label} — Hematurgy",
             color=0x8B0000,
         )
+        embed.set_thumbnail(url=CONSUME_SLOT_IMAGES.get(self.slot_type, HEMATURGY))
 
         embed.add_field(
             name="Blood",
