@@ -252,8 +252,8 @@ class SlotDetailView(BaseView):
             )
         else:
             name = HematurgyMechanics.passive_display_name(passive["passive_id"])
-            desc = HematurgyMechanics.passive_description(passive["passive_id"])
             tier = passive["tier"]
+            desc = HematurgyMechanics.passive_description(passive["passive_id"], tier)
             embed.add_field(
                 name=f"Active Passive — Tier {tier}/5",
                 value=f"**{name}**\n{desc}",

@@ -1,4 +1,4 @@
-from .mechanics import HematurgyMechanics, PASSIVE_POOL, MUTATIVE_POOL, SLOT_UNLOCK_COSTS, UPGRADE_COSTS
+from .mechanics import HematurgyMechanics, MUTATIVE_POOL, PASSIVE_POOL, SLOT_UNLOCK_COSTS, UPGRADE_COSTS
 from .views import HematurgyView
 
 __all__ = [

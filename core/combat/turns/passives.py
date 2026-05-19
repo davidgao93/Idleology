@@ -281,4 +281,12 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
 
     _apply_partner_combat_start(player, monster, logs)
 
+    # --- Hematurgy: Ward Inoculation start effect (runs last, after ward is settled) ---
+    if player.hematurgy_passives:
+        from core.hematurgy.engine import apply_hematurgy_start
+        hema_log: list[str] = []
+        apply_hematurgy_start(player, monster, hema_log)
+        if hema_log:
+            logs["🩸 Hematurgy"] = "\n".join(hema_log)
+
     return logs

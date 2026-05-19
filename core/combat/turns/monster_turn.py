@@ -18,6 +18,14 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             hp_damage=0,
         )
 
+    # --- Hematurgy: Flash Frost freeze check ---
+    if player.hematurgy_passives:
+        from core.hematurgy.engine import on_monster_turn_start
+        _freeze_log: list[str] = []
+        if on_monster_turn_start(player, monster, _freeze_log):
+            monster.combat_round += 1
+            return MonsterTurnResult(log="\n".join(_freeze_log), hp_damage=0)
+
     monster.combat_round += 1
     prev_hp = player.current_hp
     log: list[str] = []
@@ -86,6 +94,8 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         monster_roll = max(monster_roll, random.random())
 
     is_monster_hit = monster_roll <= hit_chance
+    is_dodged = False
+    is_blocked = False
     calc.append(
         f"  hit: {' → '.join(hit_mods)} | roll={monster_roll:.4f} "
         f"→ {'HIT' if is_monster_hit else 'MISS'}"
@@ -144,13 +154,18 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             )
 
         # --- Dodge & Block ---
-        is_dodged = False
-        is_blocked = False
+        # (is_dodged and is_blocked initialized above before the hit-check branch)
+
+        # Phantom Reflex: temporary evasion bonus from miss stacks
+        _pr_bonus = 0.0
+        if player.hematurgy_passives:
+            from core.hematurgy.engine import get_phantom_reflex_evasion_bonus
+            _pr_bonus = get_phantom_reflex_evasion_bonus(player)
 
         if monster.has_modifier("Unavoidable"):
-            dodge_chance = player.get_total_evasion() / 100 * 0.20
+            dodge_chance = (player.get_total_evasion() / 100 + _pr_bonus) * 0.20
         else:
-            dodge_chance = player.get_total_evasion() / 100
+            dodge_chance = player.get_total_evasion() / 100 + _pr_bonus
         if celestial == "celestial_wind_dancer":
             dodge_chance *= 3.0
         if random.random() <= dodge_chance:
@@ -501,6 +516,16 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         )
         if _bastion_log:
             log.extend(_bastion_log)
+
+    # --- Hematurgy: end-of-monster-turn effects ---
+    if player.hematurgy_passives:
+        from core.hematurgy.engine import on_monster_turn_end
+        _hema_log: list[str] = []
+        on_monster_turn_end(
+            player, monster, hp_damage, is_dodged, is_blocked, _hema_log
+        )
+        if _hema_log:
+            log.extend(_hema_log)
 
     calc.append(
         f"  final: ward_remaining={player.combat_ward} hp_damage={hp_damage} "

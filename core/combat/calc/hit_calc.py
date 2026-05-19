@@ -183,6 +183,38 @@ def build_attack_multiplier(
             f"**Frenzy ({helmet_lvl})** rage increases damage by {int(bonus * 100)}%!"
         )
 
+    # --- Hematurgy ATK multipliers ---
+    if player.hematurgy_passives:
+        from core.hematurgy.engine import (
+            get_counterforce_factor,
+            get_executioners_rite_bonus,
+            get_iron_momentum_factor,
+            get_soul_fracture_factor,
+        )
+
+        im_f = get_iron_momentum_factor(player)
+        if im_f > 0:
+            mult *= 1 + im_f
+            calc_sources.append(f"iron_momentum×{1+im_f:.3f}")
+
+        er_f = get_executioners_rite_bonus(player, monster)
+        if er_f > 0:
+            mult *= 1 + er_f
+            calc_sources.append(f"executioners_rite×{1+er_f:.3f}")
+            log.append(
+                f"⚔️ **Executioner's Rite** — monster below 30% HP! +{int(er_f*100)}% ATK!"
+            )
+
+        sf_f = get_soul_fracture_factor(player)
+        if sf_f > 0:
+            mult *= 1 + sf_f
+            calc_sources.append(f"soul_fracture×{1+sf_f:.3f}")
+
+        cf_f = get_counterforce_factor(player)
+        if cf_f > 0:
+            mult *= 1 + cf_f
+            calc_sources.append(f"counterforce×{1+cf_f:.3f}")
+
     src_str = " × ".join(calc_sources) if calc_sources else "none"
     calc.append(
         f"  mult: {src_str} → {mult:.4f}x  (base_atk={player.get_total_attack()})"

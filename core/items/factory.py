@@ -398,6 +398,13 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     except Exception:
         player.active_partner = None
 
+    # --- Fetch Hematurgy Passives ---
+    try:
+        raw = await database.hematurgy.get_all_passives(user_id)
+        player.hematurgy_passives = {v["passive_id"]: v["tier"] for v in raw.values()}
+    except Exception:
+        player.hematurgy_passives = {}
+
     # 3. Pre-compute flat stat cache (base + gear + essences + barracks).
     # Must be done after all gear is attached and before any combat begins.
     player.compute_flat_stats()

@@ -19,7 +19,9 @@ from core.models import Player
 
 def add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
     """Adds ward to the player, doubling if the NEET helmet corrupted essence is active.
-    Returns the final amount added. Logs only if label is provided."""
+    Vital Resonance (hematurgy): X% of ward generated → HP heal.
+    Ward Inoculation (hematurgy): redirects ward to a damage buffer instead.
+    Returns the final amount added to ward (may be 0). Logs only if label is provided."""
     if amount <= 0:
         return 0
     if player.get_helmet_corrupted_essence() == "neet":
@@ -28,6 +30,14 @@ def add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
             log.append(
                 f"🌑 **Void Resonance** doubles ward gain! ({label}: +{amount} 🔮)"
             )
+
+    # Hematurgy hook: may redirect to damage buffer (Ward Inoculation) or heal (Vital Resonance)
+    if player.hematurgy_passives:
+        from core.hematurgy.engine import on_ward_gained
+        amount = on_ward_gained(player, amount, log)
+
+    if amount <= 0:
+        return 0
     player.combat_ward += amount
     return amount
 

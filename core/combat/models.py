@@ -73,6 +73,20 @@ class CombatState:
     jewel_wardforge_bonus_dmg: int = 0
     jewel_acrimony_dot: int = 0
     jewel_acrimony_dot_dmg: int = 0
+    # Hematurgy passive transients
+    hema_momentum_stacks: int = 0       # Iron Momentum ATK stacks (max 5), resets on miss
+    hema_bleed_total: int = 0           # Haemorrhage accumulated bleed pool
+    hema_chain_stacks: int = 0          # Chain Reaction crit-dmg stacks (max 5), resets on non-crit
+    hema_phantom_stacks: int = 0        # Phantom Reflex evasion stacks (max 2), consumed by hits
+    hema_fevered_count: int = 0         # Fevered Strike: potions consumed this fight
+    hema_predators_mark: bool = False   # Predator's Mark active on monster
+    hema_tenacity_triggered: bool = False  # Tenacity one-shot flag
+    hema_hp_lost_combat: int = 0        # Soul Fracture: HP lost during this combat only
+    hema_blade_count: int = 0           # Spectral Waltz blade count
+    hema_puncture_bleed: int = 0        # Puncture accumulated crit-bleed pool
+    hema_frost_misses: int = 0          # Flash Frost consecutive miss counter
+    hema_ward_inoculation: bool = False # Ward Inoculation active (no ward regen, ward→damage)
+    hema_ward_dmg_buffer: int = 0       # Ward Inoculation: accumulated ward→damage pending apply
 
 
 # ---------------------------------------------------------------------------
@@ -263,6 +277,9 @@ class Player:
             "total_jewels_consumed": 0,
         }
     )
+
+    # Hematurgy passives — loaded at session start, maps passive_id → tier (1-5)
+    hematurgy_passives: dict = field(default_factory=dict)
 
     # Per-combat transient state — reset via reset_combat_state()
     cs: CombatState = field(default_factory=CombatState)

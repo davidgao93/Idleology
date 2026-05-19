@@ -226,6 +226,25 @@ def calc_crit_damage(
         calc_dmg_notes.append(f"cataclysm_jewel×{1+cat_bonus:.3f}={base_dmg}")
         log.append(f"💥 **Cataclysm** detonates! (×{1+cat_bonus:.2f} crit damage)")
 
+    # --- Hematurgy: Chain Reaction and Executioner's Rite crit damage bonuses ---
+    if player.hematurgy_passives:
+        from core.hematurgy.engine import (
+            get_chain_reaction_crit_bonus,
+            get_executioners_rite_bonus,
+        )
+        cr_bonus = get_chain_reaction_crit_bonus(player)
+        if cr_bonus > 0:
+            base_dmg = int(base_dmg * (1 + cr_bonus))
+            calc_dmg_notes.append(f"chain_reaction×{1+cr_bonus:.3f}={base_dmg}")
+            log.append(
+                f"⚡ **Chain Reaction** ({player.cs.hema_chain_stacks} stacks) — "
+                f"+{int(cr_bonus*100)}% crit damage!"
+            )
+        er_crit = get_executioners_rite_bonus(player, monster)
+        if er_crit > 0:
+            base_dmg = int(base_dmg * (1 + er_crit))
+            calc_dmg_notes.append(f"executioners_rite_crit×{1+er_crit:.3f}={base_dmg}")
+
     damage = int(base_dmg * attack_multiplier)
     calc_dmg_notes.append(f"×mult={attack_multiplier:.4f}={damage}")
 

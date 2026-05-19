@@ -86,7 +86,8 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\" -Recurse -Directory -Depth 2)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(dir C:\\\\Users\\\\yugao\\\\Idleology\\\\*.py /b)",
-      "Bash(ls /mnt/c/Users/yugao/Idleology/*.py 2>/dev/null || echo \"No py files in root\")"
+      "Bash(ls /mnt/c/Users/yugao/Idleology/*.py 2>/dev/null || echo \"No py files in root\")",
+      "Bash(python -c \"import core.hematurgy.mechanics; print\\('mechanics OK'\\)\")"
     ]
   }
 }

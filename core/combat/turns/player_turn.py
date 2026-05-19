@@ -88,11 +88,20 @@ def process_heal(player: Player, monster=None) -> str:
     else:
         player.current_hp = potential_hp
 
-    if player.get_armor_passive() == "Alchemist" and random.random() < 0.30:
+    alchemist_saved = player.get_armor_passive() == "Alchemist" and random.random() < 0.30
+    if alchemist_saved:
         msg_prefix = "⚗️ **Alchemist** preserved your potion!\n"
     else:
         player.potions -= 1
         msg_prefix = ""
+
+    # --- Hematurgy: Fevered Strike (only when a potion is actually consumed) ---
+    if not alchemist_saved and player.hematurgy_passives:
+        from core.hematurgy.engine import on_potion_used
+        _fevered_log: list[str] = []
+        on_potion_used(player, _fevered_log)
+        if _fevered_log:
+            msg_prefix += "\n".join(_fevered_log) + "\n"
 
     msg = (
         msg_prefix
@@ -342,6 +351,11 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         )
         player.alchemy_linger_turns -= 1
 
+    # --- Hematurgy: Haemorrhage bleed tick (before attack) ---
+    if player.hematurgy_passives:
+        from core.hematurgy.engine import on_haemorrhage_tick
+        on_haemorrhage_tick(player, monster, log)
+
     attack_multiplier = build_attack_multiplier(player, monster, log, calc)
     is_hit, attack_multiplier = resolve_hit(
         player, monster, attack_multiplier, log, calc
@@ -381,9 +395,36 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
 
     actual_damage = apply_monster_damage_reduction(monster, raw_damage, log, calc)
     generate_player_ward_on_hit(player, raw_damage, is_crit, log)
+
+    # Ward Inoculation: drain accumulated ward-damage buffer onto the monster
+    if player.hematurgy_passives and player.cs.hema_ward_dmg_buffer > 0:
+        from core.hematurgy.engine import drain_ward_dmg_buffer
+        drain_ward_dmg_buffer(player, monster, log)
+
     final_hit = apply_damage_to_monster(player, monster, actual_damage, log)
     _pt_post_hit_effects(player, monster, final_hit, is_crit, log)
     _pt_track_pending(player, final_hit, log)
+
+    # --- Hematurgy: post-hit and post-miss passives ---
+    if player.hematurgy_passives:
+        from core.hematurgy.engine import (
+            apply_reverberation, on_kill, on_player_hit, on_player_miss
+        )
+        if is_hit or is_crit:
+            on_player_hit(player, monster, final_hit, is_crit, log)
+            # Reverberation: chance to re-echo after the initial echo fires
+            from core.combat.calc.calcs import get_weapon_tier as _gwt
+            echo_idx, _ = _gwt(player, "echo")
+            if echo_idx >= 0 and final_hit > 0:
+                echo_scale = (echo_idx + 1) * 0.10
+                echo_component = int(final_hit * echo_scale / (1 + echo_scale))
+                apply_reverberation(player, monster, echo_component, log)
+        else:
+            on_player_miss(player, monster, raw_damage, log)
+        # Kill hook
+        if monster.hp <= 0:
+            on_kill(player, log)
+
     _pt_check_cull(player, monster, log)
 
     wf_bonus = _je.consume_wardforge_bonus(player)
