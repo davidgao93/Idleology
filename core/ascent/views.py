@@ -525,6 +525,8 @@ class AscentView(BaseView):
         self.player.hunger_stacks = 0
         self.player.celestial_vow_used = False
         _je.reset_jewel_transients(self.player)
+        from core.hematurgy.engine import reset_hematurgy_transients
+        reset_hematurgy_transients(self.player)
 
         m_level = AscentMechanics.calculate_floor_monster_level(self.current_floor)
         n_mods, b_mods = AscentMechanics.get_floor_modifier_counts(self.current_floor)

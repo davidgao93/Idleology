@@ -76,16 +76,29 @@ class CodexRepository:
         row = await cursor.fetchone()
         return row[0] if row else 0
 
+    async def _get_owned_passive_types(self, user_id: str) -> set[str]:
+        """Returns the set of passive_types already present in this player's tome slots."""
+        cursor = await self.connection.execute(
+            "SELECT passive_type FROM codex_tomes WHERE user_id = ?",
+            (user_id,),
+        )
+        rows = await cursor.fetchall()
+        return {r[0] for r in rows}
+
     async def unlock_tome_slot(self, user_id: str) -> CodexTome | None:
         """
         Consume one codex page to open the next tome slot with a random passive type.
         Returns the new CodexTome, or None if all 5 slots are already unlocked.
+        The new passive type is guaranteed not to duplicate any existing slot.
         """
         unlocked = await self.get_unlocked_slots(user_id)
         if unlocked >= 5:
             return None
 
-        passive_type = random.choice(TOME_PASSIVE_TYPES)
+        owned = await self._get_owned_passive_types(user_id)
+        candidates = [t for t in TOME_PASSIVE_TYPES if t not in owned]
+        # Fallback in the unlikely case all types are taken (shouldn't happen: 10 types, 5 slots)
+        passive_type = random.choice(candidates if candidates else TOME_PASSIVE_TYPES)
         slot = unlocked  # slots 0-4
 
         await self.connection.execute(
@@ -156,7 +169,12 @@ class CodexRepository:
             return False, ""
 
         current_type = row[0]
-        candidates = [t for t in TOME_PASSIVE_TYPES if t != current_type]
+        owned = await self._get_owned_passive_types(user_id)
+        # Exclude every type currently in any slot (other slots + current slot itself)
+        candidates = [t for t in TOME_PASSIVE_TYPES if t not in owned]
+        # Fallback: if somehow no unique types remain, at least avoid the current slot's type
+        if not candidates:
+            candidates = [t for t in TOME_PASSIVE_TYPES if t != current_type]
         new_type = random.choice(candidates)
 
         await self.connection.execute(

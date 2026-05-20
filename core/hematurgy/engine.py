@@ -111,6 +111,37 @@ def get_phantom_reflex_evasion_bonus(player: Player) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Between-fight reset (ascent floors, codex waves)
+# ---------------------------------------------------------------------------
+
+
+def reset_hematurgy_transients(player: Player) -> None:
+    """
+    Resets all per-fight hematurgy state.  Call this alongside the existing
+    stack resets in _next_floor and _setup_next_wave so stacks don't bleed
+    between monsters.  The hematurgy_passives dict (permanent tier data) is
+    intentionally NOT touched.
+    """
+    cs = player.cs
+    cs.hema_momentum_stacks = 0
+    cs.hema_bleed_total = 0
+    cs.hema_chain_stacks = 0
+    cs.hema_phantom_stacks = 0
+    cs.hema_fevered_count = 0
+    cs.hema_predators_mark = False
+    cs.hema_tenacity_triggered = False
+    cs.hema_hp_lost_combat = 0
+    cs.hema_blade_count = 0
+    cs.hema_puncture_bleed = 0
+    cs.hema_frost_misses = 0
+    cs.hema_ward_inoculation = False   # re-applied by apply_hematurgy_start each fight
+    cs.hema_ward_dmg_buffer = 0
+    cs.hema_serrated_total = 0
+    # Clear any freeze flag left on the monster (defensive — uses dynamic attr)
+    # Nothing to clear on player side; monster is replaced each floor/wave anyway.
+
+
+# ---------------------------------------------------------------------------
 # Combat start
 # ---------------------------------------------------------------------------
 

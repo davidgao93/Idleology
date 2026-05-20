@@ -429,6 +429,8 @@ class CodexRunView(BaseView):
         self.player.is_invulnerable_this_combat = False
         self.player.celestial_vow_used = False
         _je.reset_jewel_transients(self.player)
+        from core.hematurgy.engine import reset_hematurgy_transients
+        reset_hematurgy_transients(self.player)
 
         self.combat_logger.log_combat_end(self.player, self.monster, "victory")
 
