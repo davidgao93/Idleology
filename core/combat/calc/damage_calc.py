@@ -157,68 +157,74 @@ def calc_crit_damage(
     log: list[str],
     calc: list[str],
 ) -> int:
-    """Phase 4a — crit damage. Returns pre-reduction damage."""
+    """Phase 4a — crit damage. Returns pre-reduction damage.
+
+    Crits use the same roll range as normal hits (Burning ceiling, Shocking floor),
+    then multiply the rolled value by the crit multiplier.
+    Adroit does NOT apply to crits — it is a Normal Hit Floor only.
+    Deftness applies only to crits, raising the crit roll floor by lvl×5% of ceiling.
+    Cursed Precision: roll the range twice, take the worse result, then multiply.
+    """
     from core.combat import jewel_engine as _je
-    from core.combat.calc.calcs import get_weapon_tier
+    from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
 
-    max_atk = player.get_total_attack()
+    base_max = player.get_total_attack()
+    base_min = 1
+    calc_dmg_notes: list[str] = [f"base_atk={base_max}"]
 
-    crit_floor = 0.5
+    # Burning: raises the ceiling (same as hit damage)
+    burn_idx, burn_name = get_weapon_tier(player, "burning")
+    if burn_idx >= 0:
+        burn_bonus = int(base_max * (burn_idx + 1) * 0.08)
+        base_max += burn_bonus
+        calc_dmg_notes.append(f"burn+{burn_bonus}={base_max}")
+        log.append(
+            f"**{fmt_weapon_passive(burn_name)}** 🔥 burns bright!\n"
+            f"Attack damage potential boosted by **{burn_bonus}**."
+        )
+
+    # Shocking: raises the roll floor (same as hit damage)
+    shock_idx, shock_name = get_weapon_tier(player, "shocking")
+    if shock_idx >= 0:
+        shock_min = int(base_max * (shock_idx + 1) * 0.08)
+        base_min = max(base_min, shock_min)
+        calc_dmg_notes.append(f"shock_min={base_min}")
+        log.append(
+            f"**{fmt_weapon_passive(shock_name)}** surges with ⚡ lightning, ensuring solid impact!"
+        )
+
+    # Deftness: crit-exclusive roll floor (complement to Adroit for normal hits)
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
     if glove_passive == "deftness" and glove_lvl > 0:
-        crit_floor = min(0.75, crit_floor + (glove_lvl * 0.05))
-        log.append(f"**Deftness ({glove_lvl})** hones your crits!")
-
-    crit_min = max(1, int(max_atk * crit_floor) + 1)
-    crit_max = max(crit_min, max_atk)
-    crit_rolled = random.randint(crit_min, crit_max)
+        deft_min = int(base_max * (glove_lvl * 0.05))
+        base_min = max(base_min, deft_min)
+        calc_dmg_notes.append(f"deft_min={base_min}")
+        log.append(f"**Deftness ({glove_lvl})** steadies your critical strike!")
 
     crit_mult = player.get_weapon_crit_multi()
-    nullifying_note = ""
     if monster.has_modifier("Nullifying"):
         null_val = monster.get_modifier_value("Nullifying")
         crit_mult = player.get_weapon_crit_multi() * (1 - null_val)
-        nullifying_note = f" nullifying×{crit_mult:.2f}"
+        log.append(f"The **Nullifying** aura dampens your critical hit! (×{crit_mult:.2f})")
+        calc_dmg_notes.append(f"nullifying×{crit_mult:.2f}")
 
-    base_dmg = int(crit_rolled * crit_mult)
-    calc_dmg_notes: list[str] = [
-        f"range=[{crit_min}–{crit_max}] rolled={crit_rolled} ×{crit_mult:.2f}={base_dmg}{nullifying_note}"
-    ]
-    if nullifying_note:
-        log.append(
-            f"The **Nullifying** aura dampens your critical hit! (×{crit_mult:.2f})"
-        )
-
-    crit_dmg_tiers = player.get_emblem_bonus("crit_dmg")
-    if crit_dmg_tiers > 0:
-        factor = 1 + crit_dmg_tiers * 0.05
-        base_dmg = int(base_dmg * factor)
-        calc_dmg_notes.append(f"crit_dmg_emblem×{factor:.3f}={base_dmg}")
-
-    if player.active_partner:
-        for key, lvl in player.active_partner.combat_skills:
-            if key == "co_crit_damage":
-                factor = 1 + lvl * 0.10
-                base_dmg = int(base_dmg * factor)
-                calc_dmg_notes.append(f"partner_crit_dmg×{factor:.3f}={base_dmg}")
-
-    helmet_passive = player.get_helmet_passive()
-    helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
-    if helmet_passive == "insight" and helmet_lvl > 0:
-        extra = helmet_lvl * 0.1
-        base_dmg = int(base_dmg * (1 + extra))
-        calc_dmg_notes.append(f"insight×{1+extra:.3f}={base_dmg}")
-        log.append(
-            f"**Insight ({helmet_lvl})** exposes a weak point! (Crit Dmg +{int(extra * 100)}%)"
-        )
-
+    # Roll within the crit range, then multiply by crit_mult.
+    # Cursed Precision: roll the range twice, take the worse result.
+    safe_min = min(base_min, base_max)
     if player.cursed_precision_active:
-        alt = int(random.randint(crit_min, crit_max) * player.get_weapon_crit_multi())
-        if alt < base_dmg:
-            base_dmg = alt
-            calc_dmg_notes.append(f"cursed_precision(alt={alt})={base_dmg}")
+        roll_a = random.randint(safe_min, base_max)
+        roll_b = random.randint(safe_min, base_max)
+        cp_roll = min(roll_a, roll_b)
+        base_dmg = int(cp_roll * crit_mult)
+        calc_dmg_notes.append(
+            f"cursed_precision range=[{safe_min}–{base_max}] rolls=({roll_a},{roll_b}) worst={cp_roll} ×{crit_mult:.2f}={base_dmg}"
+        )
         log.append("**Cursed Precision** — the weaker roll applies!")
+    else:
+        rolled = random.randint(safe_min, base_max)
+        base_dmg = int(rolled * crit_mult)
+        calc_dmg_notes.append(f"range=[{safe_min}–{base_max}] rolled={rolled} ×{crit_mult:.2f}={base_dmg}")
 
     cat_bonus = _je.apply_cataclysm_crit_bonus(player)
     if cat_bonus > 0:
@@ -410,7 +416,7 @@ def calc_miss_damage(
 
     void_passive = player.get_accessory_void_passive()
     if void_passive == "oblivion":
-        oblivion_dmg = int(player.get_total_attack() * 0.5 * attack_multiplier)
+        oblivion_dmg = int(player.get_total_attack() * 0.5)
         damage += oblivion_dmg
         miss_parts.append(f"**Oblivion** phases through for ⬛ **{oblivion_dmg}**")
 

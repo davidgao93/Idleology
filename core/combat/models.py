@@ -862,7 +862,7 @@ class Player:
         # Hard cap: 90% with Impregnable armor passive, otherwise 80%
         cap = (
             90
-            if (self.equipped_armor and self.equipped_armor.passive == "impregnable")
+            if (self.equipped_armor and self.equipped_armor.passive == "Impregnable")
             else 80
         )
         return min(cap, total)
@@ -1006,7 +1006,7 @@ class Player:
             bonus += self.equipped_boot.passive_lvl  # 1-6%
 
         # Armor (Treasure Hunter)
-        if self.equipped_armor and self.equipped_armor.passive == "treasure hunter":
+        if self.equipped_armor and self.equipped_armor.passive == "Treasure Hunter":
             bonus += 3
 
         # Companions
@@ -1031,13 +1031,39 @@ class Player:
         return self.equipped_weapon.u_passive if self.equipped_weapon else "none"
 
     def get_weapon_crit_multi(self) -> float:
-        """Returns the crit damage multiplier, including Deftness essence bonuses."""
+        """Returns the total crit damage multiplier.
+
+        Additive sources (all stacked into a single multiplier):
+        - Weapon base crit_multi (from DB template)
+        - Deftness essence bonuses (glove / boot / helmet essence slots)
+        - Insight helmet passive (+lvl × 0.1)
+        - Slayer crit_dmg emblem (+tier × 0.05 per total tier)
+        - Active partner co_crit_damage skill (+lvl × 0.10)
+        """
         from core.items.essence_mechanics import compute_essence_stat_bonus
 
         base = self.equipped_weapon.crit_multi if self.equipped_weapon else 2.0
+
+        # Deftness essence (glove, boot, helmet)
         for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
             if item:
                 base += compute_essence_stat_bonus(item).get("crit_multi", 0.0)
+
+        # Insight helmet passive
+        if self.equipped_helmet and self.get_helmet_passive() == "insight":
+            base += self.equipped_helmet.passive_lvl * 0.1
+
+        # Slayer crit_dmg emblem
+        crit_dmg_tiers = self.get_emblem_bonus("crit_dmg")
+        if crit_dmg_tiers > 0:
+            base += crit_dmg_tiers * 0.05
+
+        # Active partner co_crit_damage
+        if self.active_partner:
+            for key, lvl in self.active_partner.combat_skills:
+                if key == "co_crit_damage":
+                    base += lvl * 0.10
+
         return base
 
     def get_armor_passive(self) -> str:

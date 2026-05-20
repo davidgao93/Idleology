@@ -74,7 +74,7 @@ _INFERNAL_PASSIVE_DESC: dict[str, str] = {
     "diabolic pact": "At combat start, lose 90% max HP and double Attack",
     "perdition": "Missed attacks deal 75% weapon Attack",
     "voracious": "Gain a voracious stack on hit; Each stack gives +5% crit chance. Stacks reset on crit.",
-    "last rites": "Critical hits deal an additional 10% of enemy current HP",
+    "last rites": "Critical hits deal an additional 5% of enemy current HP",
 }
 
 _ARMOR_PASSIVE_DESC: dict[str, str] = {
@@ -97,7 +97,7 @@ _CELESTIAL_PASSIVE_DESC: dict[str, str] = {
 
 _VOID_PASSIVE_DESC: dict[str, str] = {
     "entropy": "At combat start, 20% of weapon ATK added to DEF and vice versa",
-    "void echo": "At combat start, 15% of weapon Attack copied to accessory",
+    "void echo": "Gain 15% of Weapon ATK as bonus ATK at combat start",
     "unravelling": "At combat start, reduce monster Defence by 20%",
     "void gaze": "On crit, reduce monster Attack by 3% per stack (up to 30 stacks)",
     "fracture": "On crit, 5% chance to instantly kill",
@@ -107,7 +107,7 @@ _VOID_PASSIVE_DESC: dict[str, str] = {
 }
 
 _ACCESSORY_PASSIVE_FUNCS: dict = {
-    "obliterate": lambda l: f"{l * 2}% chance to deal Double Damage",
+    "obliterate": lambda l: f"{l * 4}% chance to deal Double Damage",
     "absorb": lambda l: f"{l * 10}% chance to steal 10% of Monster ATK & DEF",
     "prosper": lambda l: f"{l * 10}% chance to Double Gold",
     "infinite wisdom": lambda l: f"{l * 5}% chance to Double XP",
@@ -118,7 +118,7 @@ _GLOVE_PASSIVE_FUNCS: dict = {
     "ward-touched": lambda l: f"Gain {l*25} Ward on Hits",
     "ward-fused": lambda l: f"Gain {l*50} Ward on Crits",
     "instability": lambda l: f"Hits are 50% OR {150 + l * 10}% damage",
-    "deftness": lambda l: f"Crit Floor raised by {l * 5}%",
+    "deftness": lambda l: f"Crit roll floor raised by {l * 5}% of max",
     "adroit": lambda l: f"Normal Hit Floor raised by {l * 2}%",
     "equilibrium": lambda l: f"Gain {l * 5}% of Dmg as Bonus XP",
     "plundering": lambda l: f"Gain {l * 10}% of Dmg as Bonus Gold",

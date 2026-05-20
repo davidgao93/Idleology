@@ -135,7 +135,7 @@ def _compute_combat_bonuses(p) -> dict:
             cb["atk"] += delta
             cb["def"] -= delta
         elif inf == "gilded hunger":
-            cb["atk"] += int(p.equipped_weapon.rarity * 0.1)
+            cb["atk"] += int(p.get_total_rarity() * 0.1)
         elif inf == "cursed precision":
             cb["crit"] += 20
         elif inf == "diabolic pact":

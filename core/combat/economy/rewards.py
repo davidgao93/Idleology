@@ -24,17 +24,7 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     if xp_find_tiers > 0:
         base_xp = int(base_xp * (1 + (xp_find_tiers * EMBLEM_FIND_BONUS_PER_TIER)))
 
-    # Accessory Passive: Infinite Wisdom
-    acc_passive = player.get_accessory_passive()
-    acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
-
-    if acc_passive == "Infinite Wisdom":
-        double_exp_chance = acc_lvl * 0.05
-        if random.random() <= double_exp_chance:
-            base_xp *= 2
-            results["msgs"].append(f"**Infinite Wisdom ({acc_lvl})** grants double XP!")
-
-    # Glove Passive: Equilibrium (Pending XP)
+    # Glove Passive: Equilibrium (Pending XP from combat damage)
     if player.equilibrium_bonus_xp_pending > 0:
         base_xp += player.equilibrium_bonus_xp_pending
         results["msgs"].append(
@@ -43,6 +33,9 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         player.equilibrium_bonus_xp_pending = 0  # Reset
 
     results["xp"] = base_xp
+
+    acc_passive = player.get_accessory_passive()
+    acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
 
     # --- Gold Calculation ---
     rare_monsters = [
@@ -71,14 +64,7 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
 
     gold_award += 20  # Base flat amount
 
-    # Accessory Passive: Prosper
-    if acc_passive == "Prosper":
-        double_gold_chance = acc_lvl * 0.10
-        if random.random() <= double_gold_chance:
-            gold_award *= 2
-            results["msgs"].append(f"**Prosper ({acc_lvl})** grants double Gold!")
-
-    # Glove Passive: Plundering (Pending Gold)
+    # Glove Passive: Plundering (Pending Gold from combat damage)
     if player.plundering_bonus_gold_pending > 0:
         gold_award += player.plundering_bonus_gold_pending
         results["msgs"].append(
@@ -86,12 +72,12 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         )
         player.plundering_bonus_gold_pending = 0  # Reset
 
-    # Gold find
+    # Gold find emblem
     gold_find_tiers = player.get_emblem_bonus("gold_find")
     if gold_find_tiers > 0:
         gold_award = int(gold_award * (1 + (gold_find_tiers * EMBLEM_FIND_BONUS_PER_TIER)))
 
-    # Lucifer boot: gold increases 10% per modifier on the monster (cap 50%)
+    # Lucifer boot: gold increases per modifier on the monster (cap 50%)
     if player.get_boot_corrupted_essence() == "lucifer" and monster.modifiers:
         num_mods = len(monster.modifiers)
         lucifer_bonus_pct = min(LUCIFER_BOOT_GOLD_CAP, num_mods * LUCIFER_BOOT_GOLD_PER_MODIFIER)
@@ -118,6 +104,20 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
                 results["xp"] = int(results["xp"] * (1 + lvl * 0.05))
             elif key == "co_gold_boost":
                 results["gold"] = int(results["gold"] * (1 + lvl * 0.05))
+
+    # Accessory Passive: Prosper — doubles final gold after all other modifiers
+    if acc_passive == "Prosper":
+        double_gold_chance = acc_lvl * 0.10
+        if random.random() <= double_gold_chance:
+            results["gold"] *= 2
+            results["msgs"].append(f"**Prosper ({acc_lvl})** grants double Gold!")
+
+    # Accessory Passive: Infinite Wisdom — doubles final XP after all other modifiers
+    if acc_passive == "Infinite Wisdom":
+        double_exp_chance = acc_lvl * 0.05
+        if random.random() <= double_exp_chance:
+            results["xp"] *= 2
+            results["msgs"].append(f"**Infinite Wisdom ({acc_lvl})** grants double XP!")
 
         sig_key = partner.sig_combat_key
         sig_lvl = partner.sig_combat_lvl

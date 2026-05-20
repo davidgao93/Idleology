@@ -269,9 +269,6 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     p_crit = player.get_current_crit_chance()
 
     crit_mult = player.get_weapon_crit_multi()
-    if player.get_helmet_passive() == "insight":
-        lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
-        crit_mult += lvl * 0.1
     if monster.has_modifier("Nullifying"):
         crit_mult *= 1 - monster.get_modifier_value("Nullifying")
     p_max_dmg = int(p_atk * crit_mult)

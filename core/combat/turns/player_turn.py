@@ -187,7 +187,7 @@ def process_heal(player: Player, monster=None) -> str:
 def _pt_post_hit_effects(
     player: Player, monster: Monster, damage: int, is_crit: bool, log: list[str]
 ) -> None:
-    """Phase 8 — effects that fire after damage lands: leech, bloodthirst, ward regen."""
+    """Phase 8 — effects that fire after damage lands: leech, bloodthirst."""
     if damage <= 0:
         return
 
@@ -209,12 +209,6 @@ def _pt_post_hit_effects(
                 f"**Bloodthirst** siphons **{heal}** HP from the critical strike."
             )
             _je.process_jewel_trigger(player, monster, "heal", heal, log)
-
-    if player.get_celestial_armor_passive() == "celestial_ghostreaver":
-        regen = random.randint(50, 200)
-        added = _add_ward(player, regen, log)
-        log.append(f"✨ **Celestial Ghostreaver** restores **{added}** 🔮 Ward!")
-        _je.process_jewel_trigger(player, monster, "ward", added, log)
 
 
 def _pt_track_pending(player: Player, damage: int, log: list[str]) -> None:
@@ -394,7 +388,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         raw_damage = calc_miss_damage(player, monster, attack_multiplier, log, calc)
 
     actual_damage = apply_monster_damage_reduction(monster, raw_damage, log, calc)
-    generate_player_ward_on_hit(player, raw_damage, is_crit, log)
+    generate_player_ward_on_hit(player, raw_damage, is_hit, is_crit, log)
 
     # Ward Inoculation: drain accumulated ward-damage buffer onto the monster
     if player.hematurgy_passives and player.cs.hema_ward_dmg_buffer > 0:
@@ -404,6 +398,13 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     final_hit = apply_damage_to_monster(player, monster, actual_damage, log)
     _pt_post_hit_effects(player, monster, final_hit, is_crit, log)
     _pt_track_pending(player, final_hit, log)
+
+    # --- Celestial Ghostreaver: ward regen fires every player turn (hit or miss) ---
+    if player.get_celestial_armor_passive() == "celestial_ghostreaver":
+        _gr_regen = random.randint(50, 200)
+        _gr_added = _add_ward(player, _gr_regen, log)
+        log.append(f"✨ **Celestial Ghostreaver** restores **{_gr_added}** 🔮 Ward!")
+        _je.process_jewel_trigger(player, monster, "ward", _gr_added, log)
 
     # --- Hematurgy: post-hit and post-miss passives ---
     if player.hematurgy_passives:

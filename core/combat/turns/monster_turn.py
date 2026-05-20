@@ -108,7 +108,8 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         if celestial == "celestial_fortress":
             missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
             bonus_pdr = int(missing_pct / 5.0)
-            effective_pdr += bonus_pdr
+            pdr_cap = 90 if (player.equipped_armor and player.equipped_armor.passive == "Impregnable") else 80
+            effective_pdr = min(pdr_cap, effective_pdr + bonus_pdr)
             pdr_notes.append(
                 f"+{bonus_pdr}%(fortress,{missing_pct:.1f}%missing)={effective_pdr}%"
             )
@@ -364,7 +365,6 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     ward_gain = int(player.total_max_hp * 0.5)
                     added = _add_ward(player, ward_gain, log)
                     player.celestial_vow_used = True
-                    damage_dealt += player.current_hp - 1
                     log.append(
                         f"\n✨ **Celestial Vow** activates! You survive the fatal blow and gain {added} 🔮 Ward!"
                     )

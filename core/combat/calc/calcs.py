@@ -134,7 +134,7 @@ PASSIVE_SCALE: dict[str, float] = {k: v.scale for k, v in WEAPON_PASSIVE_DEFS.it
 # ---------------------------------------------------------------------------
 
 ACCESSORY_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
-    "obliterate": lambda l: f"{l * 2}% chance to deal Double Damage",
+    "obliterate": lambda l: f"{l * 4}% chance to deal Double Damage",
     "absorb": lambda l: f"{l * 10}% chance to gain 10% of Monster's ATK and DEF",
     "prosper": lambda l: f"{l * 10}% chance to Double Gold gained",
     "infinite wisdom": lambda l: f"{l * 5}% chance to Double XP gained",
@@ -145,7 +145,7 @@ GLOVE_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
     "ward-touched": lambda l: f"Gain {l * 25} Ward on Hits",
     "ward-fused": lambda l: f"Gain {l * 50} Ward on Crits",
     "instability": lambda l: f"Hits are 50% dmg OR {150 + (l * 10)}% dmg",
-    "deftness": lambda l: f"Crit Floor raised by {l * 5}%",
+    "deftness": lambda l: f"Crit roll floor raised by {l * 5}% of max",
     "adroit": lambda l: f"Normal Hit Floor raised by {l * 2}%",
     "equilibrium": lambda l: f"Gain {l * 5}% of Dmg Dealt as XP",
     "plundering": lambda l: f"Gain {l * 10}% of Dmg Dealt as Gold",

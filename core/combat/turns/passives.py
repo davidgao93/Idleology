@@ -31,6 +31,17 @@ def _cs_transcendence(player, monster):
     return f"**✨ Transcendence** channels your power! ⚔️ +**{bonus}** ATK (20% of total ATK+DEF)"
 
 
+def _cs_unlimited_wealth(player, monster):
+    if random.random() > 0.20:
+        return
+    base = player.get_total_rarity()
+    if base <= 0:
+        return
+    mult = 2 if monster.is_boss else 5
+    player.bonus_rarity += base * (mult - 1)
+    return f"💰 **Unlimited Wealth** strikes gold! Rarity ×{mult} ({base:,} → {base * mult:,})"
+
+
 def _cs_absorb(player, monster):
     if not player.equipped_accessory:
         return
@@ -63,19 +74,18 @@ def _cs_inverted_edge(player, monster):
 
 
 def _cs_gilded_hunger(player, monster):
-    if not player.equipped_weapon:
-        return
-    bonus = int(player.equipped_weapon.rarity * 0.1)
+    # Applied after all rarity sources are summed (equipment + companions + bonuses)
+    bonus = int(player.get_total_rarity() * 0.1)
     if bonus > 0:
         player.bonus_atk += bonus
         return f"🔥 **Gilded Hunger** devours rarity! ⚔️ +**{bonus}** ATK"
 
 
 def _cs_diabolic_pact(player, monster):
+    # Deduct 90% of max HP from current HP, floor of 1 (max HP is unchanged)
     cost = int(player.total_max_hp * 0.9)
-    player.bonus_max_hp -= cost
-    if player.current_hp > player.total_max_hp:
-        player.current_hp = player.total_max_hp
+    player.current_hp = max(1, player.current_hp - cost)
+    # Double the player's total attack via the combat-start multiplier
     player.atk_multiplier *= 2.0
     return f"🔥 **Diabolic Pact** sealed in blood! 💀 -{cost} HP → ⚔️ ATK doubled!"
 
@@ -97,12 +107,12 @@ def _cs_entropy(player, monster):
 
 
 def _cs_void_echo(player, monster):
-    if not player.equipped_accessory:
+    if not player.equipped_weapon:
         return
     bonus = int(player.equipped_weapon.attack * 0.15)
     if bonus > 0:
-        player.equipped_accessory.attack += bonus
-        return f"⬛ **Void Echo** resonates! Accessory ⚔️ +**{bonus}** ATK"
+        player.bonus_atk += bonus
+        return f"⬛ **Void Echo** resonates! ⚔️ +**{bonus}** ATK (15% of weapon ATK)"
 
 
 def _cs_unravelling(player, monster):
@@ -115,6 +125,7 @@ def _cs_unravelling(player, monster):
 
 _ARMOR_START_HANDLERS: dict[str, callable] = {
     "Transcendence": _cs_transcendence,
+    "Unlimited Wealth": _cs_unlimited_wealth,
 }
 _ACCESSORY_START_HANDLERS: dict[str, callable] = {
     "Absorb": _cs_absorb,
@@ -123,7 +134,9 @@ _HELMET_START_HANDLERS: dict[str, callable] = {
     "juggernaut": _cs_juggernaut,
 }
 _INFERNAL_START_HANDLERS: dict[str, callable] = {
-    "inverted_edge": _cs_inverted_edge,
+    # inverted_edge is NOT here — it is fired first in apply_combat_start_passives
+    # so that all conversion passives (Transcendence, Juggernaut, Wrath, etc.) see
+    # the already-swapped weapon values.
     "gilded_hunger": _cs_gilded_hunger,
     "diabolic_pact": _cs_diabolic_pact,
     "cursed_precision": _cs_cursed_precision,
@@ -131,7 +144,8 @@ _INFERNAL_START_HANDLERS: dict[str, callable] = {
 _VOID_START_HANDLERS: dict[str, callable] = {
     "entropy": _cs_entropy,
     "void_echo": _cs_void_echo,
-    "unravelling": _cs_unravelling,
+    # unravelling is NOT here — it is combined with Debilitate in apply_combat_start_passives
+    # so that both sources apply additively from the same original defence value.
 }
 
 
@@ -246,6 +260,13 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         if handler and (msg := handler(player, monster)):
             logs[log_key] = msg
 
+    # Inverted Edge fires first — before all conversion passives (Transcendence,
+    # Juggernaut, Wrath tome, etc.) so they all see the already-swapped weapon values.
+    if player.get_weapon_infernal() == "inverted_edge":
+        msg = _cs_inverted_edge(player, monster)
+        if msg:
+            logs["Infernal Passive"] = msg
+
     _dispatch(_ARMOR_START_HANDLERS, player.get_armor_passive(), "Armor Passive")
     _dispatch(
         _ACCESSORY_START_HANDLERS, player.get_accessory_passive(), "Accessory Passive"
@@ -258,14 +279,38 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
 
     weapon_parts = []
 
+    # --- Monster DEF reduction: Debilitate + Unravelling stack ADDITIVELY ---
+    # Both percentages are summed before applying to the original defence value.
+    def_strip_pct = 0.0
+    def_strip_parts: list[str] = []
+
     idx, name = get_weapon_tier(player, "debilitate")
     if idx >= 0:
         pct = (idx + 1) * 0.08
-        flat = int(monster.defence * pct)
+        def_strip_pct += pct
+        def_strip_parts.append(f"💫 **{fmt_weapon_passive(name)}** ({int(pct * 100)}%)")
+
+    if player.get_accessory_void_passive() == "unravelling":
+        def_strip_pct += 0.20
+        def_strip_parts.append("⬛ **Unravelling** (20%)")
+        logs["Void Passive"] = logs.get("Void Passive", "")  # ensure key exists for later merge
+
+    if def_strip_pct > 0 and monster.defence > 0:
+        flat = int(monster.defence * def_strip_pct)
         monster.defence = max(0, monster.defence - flat)
-        weapon_parts.append(
-            f"💫 **{fmt_weapon_passive(name)}**: strips {monster.name}'s 🛡️ DEF by **{flat}** ({int(pct * 100)}%)"
-        )
+        if len(def_strip_parts) == 1:
+            weapon_parts.append(
+                f"{def_strip_parts[0]}: strips {monster.name}'s 🛡️ DEF by **{flat}** ({int(def_strip_pct * 100)}%)"
+            )
+        else:
+            sources = " + ".join(def_strip_parts)
+            weapon_parts.append(
+                f"{sources}: strips {monster.name}'s 🛡️ DEF by **{flat}** ({int(def_strip_pct * 100)}% combined)"
+            )
+        # If unravelling was the only void passive, clear the placeholder log key
+        void_p = player.get_accessory_void_passive()
+        if void_p == "unravelling" and logs.get("Void Passive") == "":
+            del logs["Void Passive"]
 
     idx, name = get_weapon_tier(player, "sturdy")
     if idx >= 0:

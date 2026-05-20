@@ -213,13 +213,12 @@ class ProfileBuilder:
         embed.add_field(name="🎯 Crit Chance", value=crit_val, inline=True)
 
         # ── Crit Multiplier ──────────────────────────────────────────────────
-        crit_multi_equip = 0.0
-        if p.equipped_helmet and _normalize(p.equipped_helmet.passive) == "insight":
-            crit_multi_equip = p.equipped_helmet.passive_lvl * 0.1
-        crit_multi_total = 2.0 + crit_multi_equip
-        cm_val = f"**{crit_multi_total:.1f}×**\n↳ Base: 2.0×"
-        if crit_multi_equip:
-            cm_val += f"\n↳ Equipment: +{crit_multi_equip:.1f}×"
+        weapon_base_multi = p.equipped_weapon.crit_multi if p.equipped_weapon else 2.0
+        crit_multi_total = p.get_weapon_crit_multi()
+        cm_val = f"**{crit_multi_total:.2f}×**\n↳ Weapon: {weapon_base_multi:.2f}×"
+        crit_multi_bonus = round(crit_multi_total - weapon_base_multi, 4)
+        if crit_multi_bonus > 0:
+            cm_val += f"\n↳ Bonuses: +{crit_multi_bonus:.2f}×"
         embed.add_field(name="✨ Crit Multiplier", value=cm_val, inline=True)
 
         # ── PDR ──────────────────────────────────────────────────────────────
@@ -288,19 +287,18 @@ class ProfileBuilder:
             sr_boot = p.equipped_boot.passive_lvl
         sr_armor = (
             3
-            if (p.equipped_armor and p.equipped_armor.passive == "treasure hunter")
+            if (p.equipped_armor and p.equipped_armor.passive == "Treasure Hunter")
             else 0
         )
         sr_companion = p._get_companion_bonus("s_rarity")
         sr_partner_combat = cb["special_rarity"]
         sr_total = min(20, sr_boot + sr_armor + sr_companion)
         sr_val = f"**{sr_total}%** (cap: 20%)"
-        sr_val += f"\n↳ Boot: {sr_boot}%"
-        if sr_armor:
-            sr_val += f"\n↳ Armor: +{sr_armor}%"
-        sr_val += f"\n↳ Companions: {sr_companion}%"
-        if sr_partner_combat:
-            sr_val += f"\n↳ Partner: +{sr_partner_combat:.1f}%"
+        if sr_armor or sr_boot:
+            sr_val += f"\n↳ Equipment: +{sr_armor + sr_boot}%"
+        if sr_companion or sr_partner_combat:
+            sr_bonus = sr_companion + sr_partner_combat
+            sr_val += f"\n↳ Bonuses: {sr_bonus:.1f}%"
         embed.add_field(name="⭐ Special Rarity", value=sr_val, inline=True)
 
         return embed
@@ -332,13 +330,21 @@ class ProfileBuilder:
             w = p.equipped_weapon
             lines: list[str] = []
             if w.passive not in ("none", ""):
-                lines.append(f"• **Forge:** {_format_weapon_passive(w.passive)} — {_WEAPON_PASSIVE_DESC.get(w.passive, '?')}")
+                lines.append(
+                    f"• **Forge:** {_format_weapon_passive(w.passive)} — {_WEAPON_PASSIVE_DESC.get(w.passive, '?')}"
+                )
             if w.p_passive not in ("none", ""):
-                lines.append(f"• **Pinnacle:** {_format_weapon_passive(w.p_passive)} — {_WEAPON_PASSIVE_DESC.get(w.p_passive, '?')}")
+                lines.append(
+                    f"• **Pinnacle:** {_format_weapon_passive(w.p_passive)} — {_WEAPON_PASSIVE_DESC.get(w.p_passive, '?')}"
+                )
             if w.u_passive not in ("none", ""):
-                lines.append(f"• **Utmost:** {_format_weapon_passive(w.u_passive)} — {_WEAPON_PASSIVE_DESC.get(w.u_passive, '?')}")
+                lines.append(
+                    f"• **Utmost:** {_format_weapon_passive(w.u_passive)} — {_WEAPON_PASSIVE_DESC.get(w.u_passive, '?')}"
+                )
             if w.infernal_passive not in ("none", ""):
-                lines.append(f"• **Infernal:** {w.infernal_passive.replace('_', ' ').title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}")
+                lines.append(
+                    f"• **Infernal:** {w.infernal_passive.replace('_', ' ').title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}"
+                )
             _add("⚔️ Weapon", lines)
 
         # ── Armor ─────────────────────────────────────────────────────────────
@@ -347,9 +353,13 @@ class ProfileBuilder:
             lines = []
             if a.passive not in ("none", ""):
                 desc = _ARMOR_PASSIVE_DESC.get(_normalize(a.passive), "Unknown effect")
-                lines.append(f"• **Imbue:** {a.passive.replace('_', ' ').title()} — {desc}")
+                lines.append(
+                    f"• **Imbue:** {a.passive.replace('_', ' ').title()} — {desc}"
+                )
             if a.celestial_passive not in ("none", ""):
-                lines.append(f"• **Celestial:** {a.celestial_passive.replace('_', ' ').title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}")
+                lines.append(
+                    f"• **Celestial:** {a.celestial_passive.replace('_', ' ').title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}"
+                )
             _add("🛡️ Armor", lines)
 
         # ── Accessory ─────────────────────────────────────────────────────────
@@ -400,7 +410,9 @@ class ProfileBuilder:
                 if not ptype or ptype.lower() == "none":
                     continue
                 tier = slot_data.get("tier", 1)
-                e_name = _SLAYER_EMBLEM_NAMES.get(ptype, ptype.replace("_", " ").title())
+                e_name = _SLAYER_EMBLEM_NAMES.get(
+                    ptype, ptype.replace("_", " ").title()
+                )
                 fn = _SLAYER_EMBLEM_FUNCS.get(ptype)
                 desc = fn(tier) if fn else "?"
                 lines.append(f"• **{e_name}** (T{tier}) — {desc}")

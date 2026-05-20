@@ -48,14 +48,14 @@ _add_ward = add_ward
 
 
 def generate_player_ward_on_hit(
-    player: Player, raw_damage: int, is_crit: bool, log: list[str]
+    player: Player, raw_damage: int, is_hit: bool, is_crit: bool, log: list[str]
 ) -> None:
-    """Phase 6 — ward generation triggered by a player attack landing.
+    """Phase 6 — ward generation triggered by a player hit or crit.
 
     Sources handled here:
-    - Ward-Touched glove passive (normal hits only)
+    - Ward-Touched glove passive (normal hits only, not crits or misses)
     - Ward-Fused glove passive (crits only)
-    - Arcane weapon passive (any hit)
+    - Arcane weapon passive (hits and crits; does NOT fire on misses)
     """
     from core.combat import jewel_engine as _je
     from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
@@ -63,26 +63,21 @@ def generate_player_ward_on_hit(
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
 
-    if (
-        not is_crit
-        and glove_passive == "ward-touched"
-        and glove_lvl > 0
-        and raw_damage > 0
-    ):
+    if is_hit and not is_crit and glove_passive == "ward-touched" and glove_lvl > 0:
         ward = int(glove_lvl * 25)
         if ward > 0:
             added = add_ward(player, ward, log)
             log.append(f"**Ward-Touched ({glove_lvl})** generates 🔮 **{added}** ward!")
             _je.process_jewel_trigger(player, None, "ward", added, log)
 
-    if is_crit and glove_passive == "ward-fused" and glove_lvl > 0 and raw_damage > 0:
+    if is_crit and glove_passive == "ward-fused" and glove_lvl > 0:
         ward = int(glove_lvl * 50)
         if ward > 0:
             added = add_ward(player, ward, log)
             log.append(f"**Ward-Fused ({glove_lvl})** generates 🔮 **{added}** ward!")
             _je.process_jewel_trigger(player, None, "ward", added, log)
 
-    if raw_damage > 0:
+    if is_hit or is_crit:
         idx, name = get_weapon_tier(player, "arcane")
         if idx >= 0:
             arcane_ward = (idx + 1) * 25

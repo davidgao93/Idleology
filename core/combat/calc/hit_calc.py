@@ -145,7 +145,7 @@ def build_attack_multiplier(
 
     acc_passive = player.get_accessory_passive()
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
-    if acc_passive == "Obliterate" and random.random() <= (acc_lvl * 0.02):
+    if acc_passive == "Obliterate" and random.random() <= (acc_lvl * 0.04):
         log.append(f"**Obliterate ({acc_lvl})** activates, doubling 💥 damage dealt!")
         mult *= 2.0
         calc_sources.append("obliterate×2.000")
