@@ -22,7 +22,7 @@ from core.combat.config import (
 )
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
-from core.combat.views_lucifer import InfernalContractView
+from core.combat.views.views_lucifer import InfernalContractView
 from core.images import (
     VICTORY_CELESTIAL,
     VICTORY_EVELYNN,

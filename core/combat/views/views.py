@@ -20,7 +20,7 @@ from core.combat.economy import uber_rewards
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.victory import apply_victory_rewards
 from core.combat.gen.gen_mob import generate_boss
-from core.combat.views_lucifer import LuciferChoiceView
+from core.combat.views.views_lucifer import LuciferChoiceView
 from core.images import (
     VICTORY_APHRODITE_GEMINI,
     VICTORY_LUCIFER,
@@ -73,7 +73,9 @@ class PostCombatView(BaseView):
     """Shown after a regular victory. Has a Fight Again button when stamina > 0,
     or no buttons when stamina is empty (the embed field carries the cooldown info)."""
 
-    def __init__(self, bot, user_id: str, server_id: str, player, stamina: int, rematch_callback):
+    def __init__(
+        self, bot, user_id: str, server_id: str, player, stamina: int, rematch_callback
+    ):
         super().__init__(bot, user_id, server_id, timeout=120)
         self.player = player
         self.rematch_callback = rematch_callback
@@ -91,7 +93,9 @@ class PostCombatView(BaseView):
         await interaction.response.defer()
 
         if self.bot.state_manager.is_active(self.user_id):
-            await interaction.followup.send("You're already in an activity.", ephemeral=True)
+            await interaction.followup.send(
+                "You're already in an activity.", ephemeral=True
+            )
             return
 
         # Re-fetch user and reload player so any changes (rest, gear swaps, etc.) are reflected
@@ -105,7 +109,9 @@ class PostCombatView(BaseView):
 
         fresh_player = await load_player(self.user_id, existing_user, self.bot.database)
         self.bot.state_manager.set_active(self.user_id, "combat")
-        await self.rematch_callback(interaction, self.user_id, self.server_id, existing_user, fresh_player)
+        await self.rematch_callback(
+            interaction, self.user_id, self.server_id, existing_user, fresh_player
+        )
         self.stop()
 
 
@@ -451,7 +457,9 @@ class CombatView(BaseView):
         )
 
         embed = combat_ui.create_victory_embed(
-            self.player, self.monster, reward_data,
+            self.player,
+            self.monster,
+            reward_data,
             cfg=_boss_victory_cfg(self.monster.name),
         )
 
@@ -487,12 +495,19 @@ class CombatView(BaseView):
         stamina = stamina_data["combat_stamina"]
 
         if stamina == 0:
-            equipped_boot = await self.bot.database.equipment.get_equipped(self.user_id, "boot")
+            equipped_boot = await self.bot.database.equipment.get_equipped(
+                self.user_id, "boot"
+            )
             speedster_reduction = 0
             if equipped_boot and equipped_boot["passive"] == "speedster":
                 speedster_reduction = equipped_boot["passive_lvl"] * 60
-            cooldown = max(timedelta(seconds=10), _COMBAT_COOLDOWN - timedelta(seconds=speedster_reduction))
-            last_combat_str = await self.bot.database.users.get_timer(self.user_id, "last_combat")
+            cooldown = max(
+                timedelta(seconds=10),
+                _COMBAT_COOLDOWN - timedelta(seconds=speedster_reduction),
+            )
+            last_combat_str = await self.bot.database.users.get_timer(
+                self.user_id, "last_combat"
+            )
             time_str = "soon"
             if last_combat_str:
                 try:
@@ -506,11 +521,24 @@ class CombatView(BaseView):
                         time_str = "now"
                 except ValueError:
                     pass
-            embed.add_field(name="⚡ Stamina", value=f"Out of stamina — next combat in **{time_str}**", inline=False)
+            embed.add_field(
+                name="⚡ Stamina",
+                value=f"Out of stamina — next combat in **{time_str}**",
+                inline=False,
+            )
 
-        post_view = PostCombatView(
-            self.bot, self.user_id, self.server_id, self.player, stamina, self.rematch_callback
-        ) if self.rematch_callback else None
+        post_view = (
+            PostCombatView(
+                self.bot,
+                self.user_id,
+                self.server_id,
+                self.player,
+                stamina,
+                self.rematch_callback,
+            )
+            if self.rematch_callback
+            else None
+        )
 
         await message.edit(embed=embed, view=post_view)
         self.stop()

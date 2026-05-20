@@ -5,8 +5,8 @@ from core.base_view import BaseView
 from core.combat import engine
 from core.combat import ui as combat_ui
 from core.combat.gen.gen_mob import generate_uber_lucifer
-from core.combat.views import CombatView
-from core.combat.views_uber_hub import UberHubView, UberReturnView
+from core.combat.views.views import CombatView
+from core.combat.views.views_uber_hub import UberHubView, UberReturnView
 from core.images import BOSS_LUCIFER
 from core.models import Monster, Player
 

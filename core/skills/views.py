@@ -5,7 +5,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
-from core.combat.views_elemental import ElementalEncounterView
+from core.combat.views.views_elemental import ElementalEncounterView
 from core.items.factory import load_player
 from core.skills.mechanics import SkillMechanics
 

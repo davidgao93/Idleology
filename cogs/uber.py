@@ -1,7 +1,7 @@
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from core.combat.views_uber import UberHubView
+from core.combat.views.views_uber import UberHubView
 from core.items.factory import load_player
 
 

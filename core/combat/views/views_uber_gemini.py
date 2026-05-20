@@ -5,8 +5,8 @@ from core.base_view import BaseView
 from core.combat import engine
 from core.combat import ui as combat_ui
 from core.combat.gen.gen_mob import generate_uber_gemini
-from core.combat.views import CombatView
-from core.combat.views_uber_hub import UberHubView, UberReturnView
+from core.combat.views.views import CombatView
+from core.combat.views.views_uber_hub import UberHubView, UberReturnView
 from core.images import BOSS_GEMINI
 from core.models import Monster, Player
 
@@ -141,7 +141,9 @@ class UberGeminiLobbyView(BaseView):
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="♊ UBER ENCOUNTER"
         )
-        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
+        return_view = UberReturnView(
+            self.bot, self.user_id, self.server_id, self.player
+        )
         view = CombatView(
             self.bot,
             self.user_id,

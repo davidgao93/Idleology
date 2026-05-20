@@ -153,7 +153,7 @@ class UberHubView(BaseView):
 
     async def open_aphrodite(self, interaction: Interaction):
         from core.combat.dummy_engine import DummyEngine
-        from core.combat.views_uber_aphrodite import UberAphroditeLobbyView
+        from core.combat.views.views_uber_aphrodite import UberAphroditeLobbyView
 
         await interaction.response.defer()
         readiness_text = DummyEngine.assess_readiness(
@@ -174,7 +174,7 @@ class UberHubView(BaseView):
 
     async def open_lucifer(self, interaction: Interaction):
         from core.combat.dummy_engine import DummyEngine
-        from core.combat.views_uber_lucifer import UberLuciferLobbyView
+        from core.combat.views.views_uber_lucifer import UberLuciferLobbyView
 
         await interaction.response.defer()
         readiness_text = DummyEngine.assess_readiness(
@@ -195,7 +195,7 @@ class UberHubView(BaseView):
 
     async def open_neet(self, interaction: Interaction):
         from core.combat.dummy_engine import DummyEngine
-        from core.combat.views_uber_neet import UberNEETLobbyView
+        from core.combat.views.views_uber_neet import UberNEETLobbyView
 
         await interaction.response.defer()
         readiness_text = DummyEngine.assess_readiness(self.player, target="neet_uber")
@@ -214,7 +214,7 @@ class UberHubView(BaseView):
 
     async def open_gemini(self, interaction: Interaction):
         from core.combat.dummy_engine import DummyEngine
-        from core.combat.views_uber_gemini import UberGeminiLobbyView
+        from core.combat.views.views_uber_gemini import UberGeminiLobbyView
 
         await interaction.response.defer()
         readiness_text = DummyEngine.assess_readiness(self.player, target="gemini_uber")
@@ -233,7 +233,7 @@ class UberHubView(BaseView):
 
     async def open_evelynn(self, interaction: Interaction):
         from core.combat.dummy_engine import DummyEngine
-        from core.combat.views_uber_evelynn import UberEvelynnLobbyView
+        from core.combat.views.views_uber_evelynn import UberEvelynnLobbyView
 
         await interaction.response.defer()
         readiness_text = DummyEngine.assess_readiness(
