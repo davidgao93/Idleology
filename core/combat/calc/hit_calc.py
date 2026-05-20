@@ -131,26 +131,30 @@ def build_attack_multiplier(
 
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
-    if glove_passive == "instability" and glove_lvl > 0:
-        if random.random() < 0.5:
-            mult *= 0.5
-            calc_sources.append("instability×0.500")
-        else:
-            factor = 1.50 + (glove_lvl * 0.10)
-            mult *= factor
-            calc_sources.append(f"instability×{factor:.3f}")
-        log.append(
-            f"**Instability ({glove_lvl})** gives you {int(mult * 100)}% damage."
-        )
 
     acc_passive = player.get_accessory_passive()
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
 
-    # --- Additive damage bonus pool (Obliterate + Piety + Frenzy all add together) ---
-    # Each source contributes a flat bonus. The pool is applied as a single multiplier
-    # to prevent compounding. Future sources that should be additive with these go here.
+    # --- Additive damage bonus pool ---
+    # Instability, Obliterate, Piety, and Frenzy all contribute additively.
+    # Each source adds (or subtracts) from the pool; a single multiplier is applied.
+    # Solo results: Instability−=×0.5, Instability+=(×1.6–2.0), Obliterate=×2, Piety=×7.
+    # Future additive sources go here to avoid compounding.
     add_pool_bonus = 0.0
     add_pool_parts: list[str] = []
+
+    if glove_passive == "instability" and glove_lvl > 0:
+        if random.random() < 0.5:
+            add_pool_bonus -= 0.5  # −50% = ×0.5 when alone
+            add_pool_parts.append("instability−")
+            log.append(f"**Instability ({glove_lvl})** destabilizes! (−50% damage)")
+        else:
+            bonus = 0.50 + (glove_lvl * 0.10)  # +50–100% above 1× = ×1.6–2.0 alone
+            add_pool_bonus += bonus
+            add_pool_parts.append(f"instability+{int(bonus * 100)}%")
+            log.append(
+                f"**Instability ({glove_lvl})** goes wild! (+{int(bonus * 100)}% damage bonus)"
+            )
 
     if acc_passive == "Obliterate" and random.random() <= (acc_lvl * 0.04):
         add_pool_bonus += 1.0  # +100% = ×2 when alone
@@ -173,7 +177,7 @@ def build_attack_multiplier(
             f"**Frenzy ({helmet_lvl})** rage increases damage by {int(frenzy_bonus * 100)}%!"
         )
 
-    if add_pool_bonus > 0:
+    if add_pool_bonus != 0:
         pool_factor = 1 + add_pool_bonus
         mult *= pool_factor
         calc_sources.append(

@@ -57,20 +57,20 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         (monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale**1.3))
     )
 
-    # Rarity Bonus — diminishing returns via sqrt to prevent runaway scaling at 2000%+
-    rarity = player.get_total_rarity()
-    if rarity > 0:
-        gold_award = int(gold_award * (1 + (rarity**0.5) / 20))
-
-    gold_award += 20  # Base flat amount
-
-    # Glove Passive: Plundering (Pending Gold from combat damage)
+    # Glove Passive: Plundering — added BEFORE rarity so the bonus is rarity-scaled
     if player.plundering_bonus_gold_pending > 0:
         gold_award += player.plundering_bonus_gold_pending
         results["msgs"].append(
             f"**Plundering** snatches an extra {player.plundering_bonus_gold_pending:,} Gold!"
         )
         player.plundering_bonus_gold_pending = 0  # Reset
+
+    # Rarity Bonus — diminishing returns via sqrt to prevent runaway scaling at 2000%+
+    rarity = player.get_total_rarity()
+    if rarity > 0:
+        gold_award = int(gold_award * (1 + (rarity**0.5) / 20))
+
+    gold_award += 20  # Base flat amount
 
     # Gold find emblem
     gold_find_tiers = player.get_emblem_bonus("gold_find")

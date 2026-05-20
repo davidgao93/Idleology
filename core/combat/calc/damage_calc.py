@@ -323,12 +323,8 @@ def calc_hit_damage(
 
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
-    adroit_note = ""
-    if glove_passive == "adroit" and glove_lvl > 0:
-        base_min = max(base_min, int(base_max * (glove_lvl * 0.02)))
-        adroit_note = f" adroit_min={base_min}"
-        log.append(f"**Adroit ({glove_lvl})** sharpens your technique!")
 
+    # Burning raises the damage ceiling first — floor passives must see the true maximum
     burn_note = ""
     idx, name = get_weapon_tier(player, "burning")
     if idx >= 0:
@@ -339,14 +335,28 @@ def calc_hit_damage(
             f"**{fmt_weapon_passive(name)}** 🔥 burns bright!\nAttack damage potential boosted by **{bonus}**."
         )
 
-    spark_note = ""
-    idx, name = get_weapon_tier(player, "shocking")
-    if idx >= 0:
-        base_min = max(base_min, int(base_max * ((idx + 1) * 0.08)))
-        spark_note = f" spark_min={base_min}"
+    # Floor: Adroit + Shocking stack ADDITIVELY against the post-Burning base_max.
+    # Both percentages are summed, then applied once as a single floor.
+    floor_pct = 0.0
+    floor_parts: list[str] = []
+
+    if glove_passive == "adroit" and glove_lvl > 0:
+        floor_pct += glove_lvl * 0.02
+        floor_parts.append(f"adroit{glove_lvl * 2}%")
+        log.append(f"**Adroit ({glove_lvl})** sharpens your technique!")
+
+    shock_idx, shock_name = get_weapon_tier(player, "shocking")
+    if shock_idx >= 0:
+        floor_pct += (shock_idx + 1) * 0.08
+        floor_parts.append(f"shocking{int((shock_idx + 1) * 8)}%")
         log.append(
-            f"**{fmt_weapon_passive(name)}** surges with ⚡ lightning, ensuring solid impact!"
+            f"**{fmt_weapon_passive(shock_name)}** surges with ⚡ lightning, ensuring solid impact!"
         )
+
+    floor_note = ""
+    if floor_pct > 0:
+        base_min = max(1, int(base_max * floor_pct))
+        floor_note = f" floor_min={base_min}({'+'.join(floor_parts)}={int(floor_pct*100)}%)"
 
     rolled = random.randint(min(base_min, base_max), base_max)
     damage = int(rolled * attack_multiplier)
@@ -374,7 +384,7 @@ def calc_hit_damage(
 
     echo_note = f" +echo={echo_damage}" if echo_damage else ""
     calc.append(
-        f"  hit_dmg: range=[{base_min}–{base_max}]{adroit_note}{burn_note}{spark_note} "
+        f"  hit_dmg: range=[{base_min}–{base_max}]{burn_note}{floor_note} "
         f"rolled={rolled} ×mult={attack_multiplier:.4f}={int(rolled*attack_multiplier)}"
         f"{echo_note}{lucifer_note} = {damage}"
     )
