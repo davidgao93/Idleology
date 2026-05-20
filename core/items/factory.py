@@ -413,19 +413,9 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     # This pre-calculates the ward pool based on equipped gear percentages
     player.combat_ward = player.get_combat_ward_value()
 
-    # 4. Handle Passive Stat Modifiers that affect Base Stats immediately (e.g. Hearty Boots)
+    # 4. Boot passives that affect session-start state
     if player.equipped_boot:
-        if (
-            player.equipped_boot.passive == "hearty"
-            and player.equipped_boot.passive_lvl > 0
-        ):
-            hp_bonus_percentage = (
-                player.equipped_boot.passive_lvl * 0.05
-            )  # 5% per level
-            bonus_hp = int(player.max_hp * hp_bonus_percentage)
-            player.run_max_hp_bonus += bonus_hp
-            player.current_hp += bonus_hp
-
+        # Speedster: pre-compute combat cooldown reduction for the cog to read
         if (
             player.equipped_boot.passive == "speedster"
             and player.equipped_boot.passive_lvl > 0
@@ -433,6 +423,12 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
             player.combat_cooldown_reduction_seconds = (
                 player.equipped_boot.passive_lvl * 60
             )
+
+    # Hearty boot passive is now a percentage in total_max_hp (additive with Vitality).
+    # If the player was at or above their base max HP (e.g. full HP from a previous session),
+    # restore current_hp to the new full total_max_hp so the Hearty bonus takes effect immediately.
+    if player.current_hp >= player.max_hp:
+        player.current_hp = player.total_max_hp
 
     if player.get_celestial_armor_passive() == "celestial_wind_dancer":
         player.equipped_helmet = None  # Completely nullify the helmet stats/passives

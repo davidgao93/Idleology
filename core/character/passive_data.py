@@ -130,7 +130,7 @@ _BOOT_PASSIVE_FUNCS: dict = {
     "treasure-tracker": lambda l: f"Treasure Mob chance +{l * 0.5:.1f}%",
     "hearty": lambda l: f"Max HP +{l * 5}%",
     "cleric": lambda l: f"Potions heal {l * 10}% extra",
-    "thrill-seeker": lambda l: f"Special Drop Chance +{l}%",
+    "thrill-seeker": lambda l: f"Special Rarity +{l * 0.5:.1f}%",
 }
 
 _HELMET_PASSIVE_FUNCS: dict = {

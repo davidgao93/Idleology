@@ -282,9 +282,9 @@ class ProfileBuilder:
             embed.add_field(name="✨ Rarity", value=rar_val, inline=True)
 
         # ── Special Rarity ────────────────────────────────────────────────────
-        sr_boot = 0
+        sr_boot = 0.0
         if p.equipped_boot and p.equipped_boot.passive == "thrill-seeker":
-            sr_boot = p.equipped_boot.passive_lvl
+            sr_boot = p.equipped_boot.passive_lvl * 0.5  # 0.5% per level, max 3% at rank 6
         sr_armor = (
             3
             if (p.equipped_armor and p.equipped_armor.passive == "Treasure Hunter")
@@ -292,10 +292,10 @@ class ProfileBuilder:
         )
         sr_companion = p._get_companion_bonus("s_rarity")
         sr_partner_combat = cb["special_rarity"]
-        sr_total = min(20, sr_boot + sr_armor + sr_companion)
-        sr_val = f"**{sr_total}%** (cap: 20%)"
+        sr_total = min(20.0, sr_boot + sr_armor + sr_companion)
+        sr_val = f"**{sr_total:.1f}%** (cap: 20%)"
         if sr_armor or sr_boot:
-            sr_val += f"\n↳ Equipment: +{sr_armor + sr_boot}%"
+            sr_val += f"\n↳ Equipment: +{sr_armor + sr_boot:.1f}%"
         if sr_companion or sr_partner_combat:
             sr_bonus = sr_companion + sr_partner_combat
             sr_val += f"\n↳ Bonuses: {sr_bonus:.1f}%"

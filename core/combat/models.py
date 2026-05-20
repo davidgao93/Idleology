@@ -634,10 +634,21 @@ class Player:
 
     @property
     def total_max_hp(self) -> int:
-        """Effective max HP including run bonuses, chapter penalties, vitality tome, body parts, and Gluttony essences."""
+        """Effective max HP including run bonuses, Hearty boot, Vitality tome, body parts, and Gluttony essences.
+
+        Percentage sources (Hearty + Vitality) are ADDITIVE with each other: their
+        percentages are summed and applied once to the flat base. Gluttony essence
+        is a separate multiplicative layer applied afterwards (different item slot).
+        """
         from core.items.essence_mechanics import compute_essence_stat_bonus
 
         vitality_pct = self.get_tome_bonus("vitality")
+
+        # Hearty boot passive: additive with Vitality (+5% per level)
+        hearty_pct = 0
+        if self.equipped_boot and self.equipped_boot.passive == "hearty":
+            hearty_pct = self.equipped_boot.passive_lvl * 5
+
         asc_hp = self.get_ascension_bonuses()["hp"] if self.ascension_unlocks else 0
         parts_hp = (
             sum(v["hp"] for v in self.equipped_parts.values())
@@ -647,8 +658,9 @@ class Player:
         base = (
             self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp + asc_hp + parts_hp
         )
-        if vitality_pct > 0:
-            base = int(base * (1 + vitality_pct / 100))
+        total_pct = vitality_pct + hearty_pct
+        if total_pct > 0:
+            base = int(base * (1 + total_pct / 100))
         gluttony_pct = sum(
             compute_essence_stat_bonus(item).get("max_hp_pct", 0)
             for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
@@ -998,12 +1010,12 @@ class Player:
         total += self.bonus_rarity
         return total
 
-    def get_special_drop_bonus(self) -> int:
-        """New method for Special Rarity calculation."""
-        bonus = 0
-        # Gear (Thrill Seeker Boot)
+    def get_special_drop_bonus(self) -> float:
+        """Returns total Special Rarity bonus in %, capped at 20%."""
+        bonus = 0.0
+        # Gear (Thrill-Seeker Boot): 0.5% per level, max 3% at rank 6
         if self.equipped_boot and self.equipped_boot.passive == "thrill-seeker":
-            bonus += self.equipped_boot.passive_lvl  # 1-6%
+            bonus += self.equipped_boot.passive_lvl * 0.5
 
         # Armor (Treasure Hunter)
         if self.equipped_armor and self.equipped_armor.passive == "Treasure Hunter":
