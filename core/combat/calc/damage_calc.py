@@ -51,9 +51,11 @@ def roll_monster_damage(
     effective_pdr: int,
     effective_fdr: int,
     calc: list[str] | None = None,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int]:
     """Rolls a single monster damage hit including modifiers, PDR, FDR, and minions.
-    Returns (total_damage, base_damage, minion_damage)."""
+    Returns (total_damage, pre_reduction_damage, base_damage, minion_damage).
+    pre_reduction_damage = raw damage after all monster modifiers but BEFORE player PDR/FDR.
+    Used by Thorns to reflect the true incoming hit rather than the post-mitigation value."""
     m_atk = monster.attack
     p_def = max(player.get_total_defence(), 1)
     base_raw = 5 + monster.level * 1.5
@@ -139,10 +141,10 @@ def roll_monster_damage(
         calc.append(
             "  dmg_roll: "
             + " → ".join(calc_notes)
-            + f" | base={dmg} minions={minions} total={dmg+minions}"
+            + f" | pre_pdr={pre_pdr} base={dmg} minions={minions} total={dmg+minions}"
         )
 
-    return dmg + minions, dmg, minions
+    return dmg + minions, pre_pdr, dmg, minions
 
 
 # ---------------------------------------------------------------------------

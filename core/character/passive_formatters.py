@@ -119,8 +119,9 @@ def _compute_combat_bonuses(p) -> dict:
                 cb["special_rarity"] += lvl * 0.1
 
     # Juggernaut (helmet passive — deterministic: always triggers at combat start)
+    # Uses flat_def to match compute_def_as_atk_bonus() in passives.py
     if p.equipped_helmet and _normalize(p.equipped_helmet.passive) == "juggernaut":
-        cb["atk"] += int(p.get_total_defence() * p.equipped_helmet.passive_lvl * 0.04)
+        cb["atk"] += int(p.flat_def * p.equipped_helmet.passive_lvl * 0.04)
 
     # Sturdy family (weapon passive — boosts defence by a fixed %)
     idx, _ = get_weapon_tier(p, "sturdy")

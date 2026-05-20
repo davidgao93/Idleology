@@ -194,7 +194,8 @@ def _pt_post_hit_effects(
     helmet_passive = player.get_helmet_passive()
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     if helmet_passive == "leeching" and helmet_lvl > 0:
-        heal = int(damage * (0.02 * helmet_lvl))
+        # 0.02% per level: level 1 = 0.02%, level 5 = 0.10% of damage dealt as HP
+        heal = int(damage * (0.0002 * helmet_lvl))
         if heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
             log.append(f"**Leeching** drains life, healing you for **{heal}** HP.")

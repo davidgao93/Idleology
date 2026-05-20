@@ -4,6 +4,47 @@ from typing import Dict
 from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
 from core.models import Monster, Player
 
+
+# ---------------------------------------------------------------------------
+# DEF → ATK Conversion Helper
+# ---------------------------------------------------------------------------
+
+
+def compute_def_as_atk_bonus(player: Player) -> tuple[int, list[str]]:
+    """Computes the combined ATK bonus from all DEF→ATK conversion sources.
+
+    All source percentages are additive: they are summed before being applied
+    to `player.flat_def` (the pre-combat baseline, consistent with Wrath tome).
+
+    Current sources:
+    - Juggernaut helmet passive: lvl × 4% of flat DEF per level
+
+    Returns (total_bonus, description_parts) for logging.
+    Add new DEF→ATK sources here as the game expands.
+    """
+    flat_def = player.flat_def
+    if flat_def <= 0:
+        return 0, []
+
+    total_pct = 0.0
+    parts: list[str] = []
+
+    # Juggernaut: helmet passive — lvl × 4% of flat DEF as bonus ATK
+    if player.get_helmet_passive() == "juggernaut":
+        lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+        if lvl > 0:
+            pct = lvl * 4.0
+            total_pct += pct
+            parts.append(f"+{int(pct)}% DEF (Juggernaut Lv.{lvl})")
+
+    # Future DEF→ATK sources go here (e.g., codex boons, equipment passives)
+
+    if not parts:
+        return 0, []
+
+    bonus = int(flat_def * total_pct / 100)
+    return bonus, parts
+
 # ---------------------------------------------------------------------------
 # Monster Stat Effects
 # Applied once at combat start via apply_stat_effects().
@@ -56,12 +97,11 @@ def _cs_absorb(player, monster):
 
 
 def _cs_juggernaut(player, monster):
-    lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
-    if lvl <= 0:
+    bonus, parts = compute_def_as_atk_bonus(player)
+    if bonus <= 0:
         return
-    bonus = int(player.get_total_defence() * (lvl * 0.04))
     player.bonus_atk += bonus
-    return f"**🪖 Juggernaut** empowers your strikes! ⚔️ +**{bonus}** ATK"
+    return f"**🪖 Juggernaut** empowers your strikes! ⚔️ +**{bonus}** ATK ({', '.join(parts)})"
 
 
 def _cs_inverted_edge(player, monster):

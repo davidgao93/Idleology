@@ -145,15 +145,40 @@ def build_attack_multiplier(
 
     acc_passive = player.get_accessory_passive()
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
+
+    # --- Additive damage bonus pool (Obliterate + Piety + Frenzy all add together) ---
+    # Each source contributes a flat bonus. The pool is applied as a single multiplier
+    # to prevent compounding. Future sources that should be additive with these go here.
+    add_pool_bonus = 0.0
+    add_pool_parts: list[str] = []
+
     if acc_passive == "Obliterate" and random.random() <= (acc_lvl * 0.04):
-        log.append(f"**Obliterate ({acc_lvl})** activates, doubling 💥 damage dealt!")
-        mult *= 2.0
-        calc_sources.append("obliterate×2.000")
+        add_pool_bonus += 1.0  # +100% = ×2 when alone
+        add_pool_parts.append("obliterate")
+        log.append(f"**Obliterate ({acc_lvl})** activates! (+100% damage bonus)")
 
     if player.get_armor_passive() == "Piety" and random.random() < 0.10:
-        mult *= 7.0
-        calc_sources.append("piety×7.000")
-        log.append("🙏 **Piety** blesses your strike! Damage increased 7×!")
+        add_pool_bonus += 6.0  # +600% = ×7 when alone
+        add_pool_parts.append("piety")
+        log.append("🙏 **Piety** blesses your strike! (+600% damage bonus!)")
+
+    helmet_passive = player.get_helmet_passive()
+    helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+    if helmet_passive == "frenzy" and helmet_lvl > 0:
+        missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
+        frenzy_bonus = missing_pct * (0.005 * helmet_lvl)
+        add_pool_bonus += frenzy_bonus
+        add_pool_parts.append(f"frenzy{int(frenzy_bonus * 100)}%")
+        log.append(
+            f"**Frenzy ({helmet_lvl})** rage increases damage by {int(frenzy_bonus * 100)}%!"
+        )
+
+    if add_pool_bonus > 0:
+        pool_factor = 1 + add_pool_bonus
+        mult *= pool_factor
+        calc_sources.append(
+            f"add_pool[{'+'.join(add_pool_parts)}]×{pool_factor:.3f}"
+        )
 
     onslaught_bonus = _je.apply_onslaught_mult(player)
     if onslaught_bonus > 0:
@@ -170,18 +195,6 @@ def build_attack_multiplier(
             f"💪 **Warrior's Draft** boosts damage! (+{int(player.alchemy_atk_boost_pct * 100)}% ATK)"
         )
         player.alchemy_atk_boost_pct = 0.0
-
-    helmet_passive = player.get_helmet_passive()
-    helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
-    if helmet_passive == "frenzy" and helmet_lvl > 0:
-        missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
-        bonus = missing_pct * (0.005 * helmet_lvl)
-        factor = 1 + bonus
-        mult *= factor
-        calc_sources.append(f"frenzy×{factor:.3f}({missing_pct:.1f}%missing)")
-        log.append(
-            f"**Frenzy ({helmet_lvl})** rage increases damage by {int(bonus * 100)}%!"
-        )
 
     # --- Hematurgy ATK multipliers ---
     if player.hematurgy_passives:

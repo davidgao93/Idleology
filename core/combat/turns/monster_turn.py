@@ -117,15 +117,15 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         calc.append(f"  PDR: {' → '.join(pdr_notes)} | FDR: {effective_fdr}")
 
         # --- Base damage roll (Celestial Sanctity takes the lower of two) ---
-        total_damage, dmg_base, minion_dmg = _roll_monster_damage(
+        total_damage, dmg_raw, dmg_base, minion_dmg = _roll_monster_damage(
             player, monster, effective_pdr, effective_fdr, calc
         )
         if celestial == "celestial_sanctity":
-            alt_total, alt_base, alt_minion = _roll_monster_damage(
+            alt_total, alt_raw, alt_base, alt_minion = _roll_monster_damage(
                 player, monster, effective_pdr, effective_fdr
             )
             if alt_total < total_damage:
-                total_damage, dmg_base, minion_dmg = alt_total, alt_base, alt_minion
+                total_damage, dmg_raw, dmg_base, minion_dmg = alt_total, alt_raw, alt_base, alt_minion
                 calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
 
         # --- Multistrike , a double hit, decreased by PDR and FDR ---
@@ -216,8 +216,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 )
 
             if helmet_passive == "thorns" and helmet_lvl > 0:
-                reflect = int(dmg_base * helmet_lvl)
-                monster.hp -= reflect
+                # Reflects pre-PDR/FDR damage — the raw incoming hit before player mitigation
+                reflect = int(dmg_raw * helmet_lvl)
+                monster.hp = max(0, monster.hp - reflect)
                 log.append(
                     f"**Thorns ({helmet_lvl})** reflects **{reflect}** damage back!"
                 )
@@ -394,6 +395,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     )
 
             ward_was_hit = damage_dealt > 0 and previous_ward > 0
+            # Aphrodite glove corrupted essence: all ward damage counts as ward-breaking
             aphrodite_glove_active = (
                 glove_corrupted == "aphrodite"
                 and ward_was_hit
@@ -404,7 +406,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     player.combat_ward == 0 or aphrodite_glove_active
                 ):
                     boom = int(player.total_max_hp * helmet_lvl)
-                    monster.hp -= boom
+                    monster.hp = max(0, monster.hp - boom)
                     if player.combat_ward == 0:
                         log.append(
                             f"\n💥 **Volatile** Shield shatters, dealing **{boom}** damage to {monster.name}!"
@@ -457,7 +459,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 and monster.combat_round % 2 == 0
             ):
                 balanced_pct = monster.get_modifier_value("Balanced Strikes")
-                twin_raw, _, _ = _roll_monster_damage(
+                twin_raw, _, _, _ = _roll_monster_damage(
                     player, monster, effective_pdr, effective_fdr
                 )
                 twin_dmg = max(1, int(twin_raw * balanced_pct))
