@@ -17,6 +17,7 @@ class VoidforgeView(BaseUpgradeView):
         self.candidates = []
         self.gold_cost = 0
         self.selected_target = None
+        self._processing = False
 
     async def render(self, interaction: Interaction):
         self.selected_target = None
@@ -117,17 +118,27 @@ class VoidforgeView(BaseUpgradeView):
 
     async def execute_voidforge(self, interaction: Interaction):
         """Handles the actual deduction and RNG roll."""
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         target = self.selected_target
         if not target:
+            self._processing = False
             return
 
         user_gold = await self.bot.database.users.get_gold(self.user_id)
         if user_gold < self.gold_cost:
+            self._processing = False
             return await interaction.response.send_message(
                 "You no longer have enough gold!", ephemeral=True
             )
 
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
 
         await self.bot.database.users.modify_gold(self.user_id, -self.gold_cost)
         await self.bot.database.users.modify_currency(self.user_id, "void_keys", -1)

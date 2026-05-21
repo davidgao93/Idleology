@@ -35,6 +35,7 @@ database/
   base.py      → BaseRepository
   repositories/ → All SQL lives here
 assets/        → CSV/JSON/TXT game data (monsters, items, exp tables)
+scripts/       → One-off maintenance scripts (image audit, reseed, upload)
 ```
 
 ---
@@ -96,7 +97,7 @@ core/inventory/
 - Each natural feature group gets its own file under `views/`.
 - Upgrade flows go under `upgrades/` with `BaseUpgradeView` as parent. `go_back()` on `BaseUpgradeView` creates a fresh `ItemDetailView` to reset the timeout.
 - `__init__.py` re-exports the public surface so callers import from the module, not from nested files.
-- Settlement (`core/settlement/views/`) follows the same pattern: `base.py`, `construction.py`, `detail.py`, `town_hall.py`, `black_market.py`, `dashboard.py`.
+- Settlement (`core/settlement/views/`) follows the same pattern: `base.py`, `construction.py`, `detail.py`, `town_hall.py`, `black_market.py`, `dashboard.py`, `research.py`.
 - **When to split:** Once a module's view code would exceed ~600–800 lines in a single file, or when a second distinct sub-feature appears. Don't split prematurely.
 
 ---
@@ -124,6 +125,8 @@ async def combat(self, interaction: discord.Interaction):
     await interaction.response.send_message(embed=..., view=view)
 ```
 
+**Combat stamina system:** The `/combat` command uses a stamina pool (`MAX_STAMINA = 10`, `COMBAT_COOLDOWN = 10 min`). If the player has stamina remaining, the fight proceeds immediately (consuming 1 stamina). When stamina hits 0, the regular 10-minute cooldown is enforced. The Speedster boot passive reduces the cooldown by `passive_lvl * 60` seconds (minimum 10 seconds).
+
 ### Core Logic (`core/`)
 
 - **`core/models.py`**: Dataclasses only. No DB calls. Computed properties (`@property`) are fine.
@@ -136,7 +139,7 @@ async def combat(self, interaction: discord.Interaction):
 - All SQL lives in `database/repositories/`. Never write raw SQL outside this directory.
 - Access via `bot.database.<repo>`: `bot.database.users`, `bot.database.equipment`, etc.
 - Call `await repo.commit()` (inherited from `BaseRepository`) after writes.
-- Available repositories: `users`, `equipment`, `skills`, `social`, `settings`, `companions`, `delve`, `settlement`, `slayer`, `uber`, `essences`, `alchemy`, `ascension`, `codex`, `duels`, `trade`, `partners`, `monster_parts`, `prestige`, `maw`, `boss_party`, `paradise`.
+- Available repositories: `users`, `equipment`, `skills`, `social`, `settings`, `companions`, `delve`, `settlement`, `slayer`, `uber`, `essences`, `alchemy`, `ascension`, `codex`, `duels`, `trade`, `partners`, `monster_parts`, `prestige`, `maw`, `boss_party`, `paradise`, `journey`, `hematurgy`.
 
 ---
 
@@ -275,10 +278,8 @@ Tracks multi-room dungeon crawls: `current_floor`, `max_regular_floors`, player 
 
 ```
 core/combat/
-├── engine.py           — Main orchestrator: apply_stat_effects, apply_combat_start_passives
-├── helpers.py          — PlayerTurnResult / MonsterTurnResult dataclasses
 ├── combat_log.py       — Per-fight file logger (enabled via config.json "combat_logging")
-├── dummy_engine.py     — Training dummy simulation (no rewards)
+├── models.py           — Combat-scoped dataclasses
 │
 ├── calc/               — Pure math, no side-effects; safe to unit-test in isolation
 │   ├── calcs.py        — Passive family registry, fmt_weapon_passive, get_weapon_tier; re-exports hit/damage
@@ -286,44 +287,62 @@ core/combat/
 │   ├── damage_calc.py  — roll_monster_damage, calc_crit/hit/miss_damage, apply_monster_damage_reduction, apply_damage_to_monster
 │   └── ward_system.py  — add_ward, generate_player_ward_on_hit
 │
+├── dojo/               — Training dummy simulation (no rewards)
+│   ├── dummy_engine.py — Dummy combat simulation logic
+│   └── views_dojo.py   — DummyConfigView UI
+│
+├── economy/            — Loot, XP, and reward distribution
+│   ├── config.py       — Economy constants and drop rate configuration
+│   ├── drops.py        — DropManager: roll logic, essence drops
+│   ├── experience.py   — ExperienceManager: XP thresholds and level-up logic
+│   ├── loot.py         — Item drop tables and slot selection
+│   ├── rewards.py      — calculate_rewards, apply_partner_end_rewards
+│   ├── uber_rewards.py — Uber boss-specific reward handling
+│   └── victory.py      — Victory state assembly and reward bundling
+│
+├── mobgen/             — Encounter setup and procedural generation
+│   ├── gen_mob.py      — generate_encounter, generate_boss, generate_ascent_monster; modifier application
+│   ├── encounters.py   — EncounterManager: cooldowns, zone/tier selection
+│   └── modifier_data.py — ModifierDef table (all modifier definitions, tiers, level gates, difficulty values)
+│
 ├── turns/              — Turn-by-turn processing; orchestrates calc/ modules
+│   ├── engine.py       — Main orchestrator: apply_stat_effects, apply_combat_start_passives
+│   ├── helpers.py      — PlayerTurnResult / MonsterTurnResult dataclasses
 │   ├── player_turn.py  — process_player_turn (main player action handler + post-hit effects)
 │   ├── monster_turn.py — process_monster_turn (enemy AI + modifier effects)
 │   ├── passives.py     — apply_stat_effects, apply_combat_start_passives (weapon/armor/accessory/glove passives)
 │   └── jewel_engine.py — Paradise Jewel active skill effects and unleash logic
 │
-├── gen/                — Encounter setup and procedural generation
-│   ├── gen_mob.py      — generate_encounter, generate_boss, generate_ascent_monster; modifier application
-│   ├── encounters.py   — EncounterManager: cooldowns, zone/tier selection
-│   └── modifier_data.py — ModifierDef table (all modifier definitions, tiers, level gates, difficulty values)
+├── ui/                 — Stateless embed builders
+│   ├── combat_embed.py — build_combat_embed, stat blocks
+│   ├── defeat_screen.py — Defeat embed builder
+│   └── victory_screen.py — Victory embed builder
 │
-├── economy/            — Loot, XP, and reward distribution
-│   ├── experience.py   — ExperienceManager: XP thresholds and level-up logic
-│   ├── loot.py         — Item drop tables and slot selection
-│   ├── drops.py        — DropManager: roll logic, essence drops
-│   └── rewards.py      — calculate_rewards, apply_partner_end_rewards
-│
-└── views/  (flat — kept at top level to avoid circular imports)
-    ├── ui.py               — Stateless embed builders (build_combat_embed, stat blocks, etc.)
+└── views/              — All combat UI views
     ├── views.py            — CombatView — standard combat flow
-    ├── views_uber.py       — UberHubView and uber boss encounters
     ├── views_elemental.py  — ElementalEncounterView (skills-based elemental combat)
-    ├── views_dojo.py       — DummyConfigView (training dummy UI)
     ├── views_lucifer.py    — InfernalContractView / LuciferChoiceView
+    ├── views_uber.py       — Uber boss entry routing
+    ├── views_uber_aphrodite.py — Aphrodite encounter
+    ├── views_uber_evelynn.py   — Evelynn encounter
+    ├── views_uber_gemini.py    — Gemini encounter
+    ├── views_uber_hub.py       — UberHubView
+    ├── views_uber_lucifer.py   — Lucifer encounter
+    ├── views_uber_neet.py      — NEET encounter
     └── warning_views.py    — CorruptedEncounterGateView, LowHealthWarningView
 ```
 
 **Import conventions:**
 - Always use `from core.combat.calc.calcs import get_weapon_tier` (not `core.combat.calcs`)
-- Always use `from core.combat.gen.modifier_data import make_modifier` (not `core.combat.modifier_data`)
-- `from core.combat import engine` and `from core.combat import ui` work (top-level files)
+- Always use `from core.combat.mobgen.modifier_data import make_modifier` (not `core.combat.gen.modifier_data`)
+- Always use `from core.combat.turns import engine` (not `from core.combat import engine`)
 - `from core.combat import jewel_engine` and `from core.combat import rewards` work via `__init__.py` backward-compat re-exports
 
-**Adding a new modifier:** Add a `ModifierDef` entry to `core/combat/gen/modifier_data.py`, then handle the effect in `turns/monster_turn.py` (or `turns/player_turn.py` if it affects the player's turn). Do not hardcode values anywhere else.
+**Adding a new modifier:** Add a `ModifierDef` entry to `core/combat/mobgen/modifier_data.py`, then handle the effect in `turns/monster_turn.py` (or `turns/player_turn.py` if it affects the player's turn). Do not hardcode values anywhere else.
 
 **Key functions:**
-- `engine.apply_stat_effects(player, monster)` — monster modifiers reduce player stats
-- `engine.apply_combat_start_passives(player)` — weapon/armor/accessory passives on round 1
+- `turns/engine.py: apply_stat_effects(player, monster)` — monster modifiers reduce player stats
+- `turns/engine.py: apply_combat_start_passives(player)` — weapon/armor/accessory passives on round 1
 - `calc/calcs.py: get_weapon_tier(player, key)`, `fmt_weapon_passive(passive_str)`
 - `calc/hit_calc.py: calculate_hit_chance(player, monster)`, `calculate_crit_chance(player)`
 - `calc/damage_calc.py: calculate_damage_taken(player, monster)`
@@ -467,9 +486,15 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 
 | File | Purpose |
 |---|---|
-| `views.py` | Main hub: roster, detail pages, recruitment (roll), skill management |
+| `views/roster_view.py` | Partner roster list |
+| `views/detail_view.py` | Partner detail + skill management |
+| `views/gacha_view.py` | Recruitment (roll) UI |
+| `views/dispatch_view.py` | Dispatch task UI |
+| `views/affinity_view.py` | Affinity story UI |
+| `views/boss_party.py` | Boss party formation |
 | `dispatch.py` | Reward calculation for combat/gathering dispatch tasks |
 | `mechanics.py` | Level/skill progression, cost tables, skill definitions |
+| `models.py` | Partner-scoped dataclasses |
 | `ui.py` | Embed builders |
 | `data.py` | Load partner metadata from `assets/partners.csv` |
 | `resources.py` | Rarity colors, skill name/star display helpers |
@@ -480,14 +505,27 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 - **DB tables:** `user_partners`, `user_partner_items`, `user_partner_shards`.
 - Repository: `database/repositories/partners.py`.
 
+### Journey (`core/journey/`, `cogs/journey.py`)
+- Level milestone reward system. Players claim one-time rewards at specific level thresholds.
+- Milestones defined in `core/journey/rewards.py`. UI in `core/journey/views.py`.
+- Repository: `database/repositories/journey.py`.
+
+### Hematurgy (`core/hematurgy/`, `cogs/hematurgy.py`)
+- Blood-based passive upgrade system. Players unlock and tier up passive effects using Primordial blood (slot unlocks) and Evolutionary/Mutative blood (tier upgrades).
+- Introduces the **Hatchery** settlement building.
+- Passives include: `reverberation`, `soothing_venom`, `iron_momentum`, `serrated`, `haemorrhage`, `vital_resonance`, and more; T6–T7 are mutation-only chase tiers.
+- `core/hematurgy/mechanics.py` — cost tables, tier value tables, upgrade logic.
+- `core/hematurgy/engine.py` — passive effect application.
+- Repository: `database/repositories/hematurgy.py`.
+
 ### Alchemy (`core/alchemy/`, `cogs/alchemy.py`)
 - Potion transmutation with passive effects on potions.
 - Passives stored in `alchemy_data` and `potion_passives` tables.
 - Repository: `database/repositories/alchemy.py`.
 
 ### Settlement (`core/settlement/`, `cogs/settlement.py`)
-- Ideology-linked settlements with buildings (Apothecary, Barracks, Temple, etc.).
-- Views split under `core/settlement/views/`: `base.py`, `construction.py`, `detail.py`, `town_hall.py`, `black_market.py`, `dashboard.py`.
+- Ideology-linked settlements with buildings (Apothecary, Barracks, Temple, Hatchery, etc.).
+- Views split under `core/settlement/views/`: `base.py`, `construction.py`, `detail.py`, `town_hall.py`, `black_market.py`, `dashboard.py`, `research.py`.
 - Repository: `database/repositories/settlement.py`.
 
 ### Slayer (`core/slayer/`, `cogs/slayer.py`)
@@ -531,6 +569,8 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 | `social` | Ideology and follower data |
 | `settings` | User personal preferences |
 | `duels` | Win/loss records |
+| `journey` | Level milestone claim state |
+| `hematurgy` | Blood passive unlock and tier state |
 
 ---
 
@@ -577,12 +617,38 @@ msg = await interaction.followup.send(embed=embed, view=view)
 view.message = msg
 ```
 
+### Double-Click Race Condition Guard
+
+All buttons that trigger state-changing operations must include a re-entry guard to prevent double-click races:
+
+```python
+class MyView(BaseView):
+    def __init__(self, ...):
+        ...
+        self._processing = False  # re-entry guard
+
+    @discord.ui.button(label="Confirm", style=ButtonStyle.primary)
+    async def confirm(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+        # ... do the work
+```
+
+This guard must be present on every button that writes to the database or mutates game state.
+
 ### Loading Asset Files
 
 ```python
 from core.util import load_list
 names = load_list("assets/items/swords.txt")
 ```
+
+### Image Assets
+
+When building new views that display entities (items, companions, monsters, partners, etc.), flag that an image asset may be needed. Image assets live in `assets/` and are managed via `scripts/audit_images.py`, `scripts/reseed_images.py`, and `scripts/upload_new.py`. Recommend generating or sourcing an appropriate image whenever a new entity type is introduced.
 
 ---
 
@@ -596,13 +662,15 @@ names = load_list("assets/items/swords.txt")
 - Do not skip `await interaction.response.defer()` before slow operations.
 - Do not add speculative abstractions — build only what the task requires.
 - Do not add error handling for impossible states; validate only at Discord interaction boundaries.
-- Do not hardcode modifier values outside `core/combat/modifier_data.py`.
+- Do not hardcode modifier values outside `core/combat/mobgen/modifier_data.py`.
+- Do not add a button that mutates state without a re-entry guard (`self._processing` pattern).
+- Do not add a new passive without defining it in the validated passive registry — all passives must have documented, validated behavior.
 
 ---
 
 ## Project Info
 
-- **Version**: 0.90
+- **Version**: 0.91
 - **Runtime**: Python 3.11.5, discord.py, aiosqlite
 - **DB**: SQLite (`database/schema.sql`)
 - **Assets**: `assets/` — CSV/JSON/TXT lookup tables (monsters, exp, item names, system config)

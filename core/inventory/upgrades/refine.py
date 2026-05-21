@@ -14,8 +14,10 @@ class RefineView(BaseUpgradeView):
     def __init__(self, bot, user_id, item: Weapon, parent_view):
         super().__init__(bot, user_id, item, parent_view)
         self.cost_data = {}
+        self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._processing = False
         self.cost_data = EquipmentMechanics.calculate_refine_cost(self.item)
         cost_gold = self.cost_data["gold"]
         materials = self.cost_data.get("materials", [])
@@ -80,6 +82,11 @@ class RefineView(BaseUpgradeView):
         await self._send_render(interaction, self.embed)
 
     async def confirm_refine(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         if self.item.refines_remaining <= 0:
             await self.bot.database.users.modify_currency(
                 self.user_id, "refinement_runes", -1
@@ -96,6 +103,9 @@ class RefineView(BaseUpgradeView):
         uid, sid = self.user_id, str(interaction.guild.id)
 
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
 
         try:
             for mat in materials:
@@ -183,7 +193,14 @@ class RefineView(BaseUpgradeView):
 
     async def refinemaxx(self, interaction: Interaction):
         """Loop-refine until the player runs out of a required resource."""
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
 
         uid, sid = self.user_id, str(interaction.guild.id)
         refines_done = 0
@@ -412,7 +429,14 @@ class RefineView(BaseUpgradeView):
 
     async def refinemaxx_with_runes_execute(self, interaction: Interaction):
         """Execute the rune-extended refinemaxx after confirmation."""
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
         uid, sid = self.user_id, str(interaction.guild.id)
 
         refines_done = 0

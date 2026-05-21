@@ -35,16 +35,26 @@ class DoorPromptView(BaseView):
         self.cost_dict = cost_dict
         self.boss_type = boss_type
         self.accepted = False
+        self._entering = False  # Re-entry guard
 
     @discord.ui.button(label="Enter", style=ButtonStyle.danger)
     async def enter(self, interaction: Interaction, button: Button):
+        if self._entering:
+            await interaction.response.defer()
+            return
+        self._entering = True
+
+        await interaction.response.defer()
+
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
+
         self.accepted = True
         for currency, amount in self.cost_dict.items():
             await self.bot.database.users.modify_currency(
                 self.user_id, currency, -amount
             )
-
-        await interaction.response.defer()
         self.stop()
 
     @discord.ui.button(label="Leave", style=ButtonStyle.secondary)

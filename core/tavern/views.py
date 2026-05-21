@@ -16,6 +16,7 @@ class ShopView(BaseView):
         self.potions = user_data[16]
         self.level = user_data[4]
         self.potion_cost = TavernMechanics.calculate_potion_cost(self.level)
+        self._processing = False
         self.update_buttons()
 
     async def on_timeout(self):
@@ -69,12 +70,18 @@ class ShopView(BaseView):
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def process_potion_buy(self, interaction: Interaction, qty: int):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         cost = self.potion_cost * qty
         await self.bot.database.users.modify_gold(self.user_id, -cost)
         await self.bot.database.users.modify_stat(self.user_id, "potions", qty)
         self.gold -= cost
         self.potions += qty
         msg = f"Here are your **{qty}** potions. Stay safe out there."
+        self._processing = False
         await self.refresh_ui(interaction, msg)
 
     @ui.button(label="🧪 x1", style=ButtonStyle.primary)
@@ -107,9 +114,19 @@ class RestView(BaseView):
         super().__init__(bot, user_id)
         self.cost = cost
         self.max_hp = max_hp
+        self._processing = False
 
     @ui.button(label="Pay for a room?", style=ButtonStyle.success, emoji="🛏️")
     async def confirm_rest(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
+        await interaction.response.defer()
+        button.disabled = True
+        await interaction.edit_original_response(view=self)
+
         # 1. Deduct Gold
         await self.bot.database.users.modify_gold(self.user_id, -self.cost)
         # 2. Heal
@@ -119,7 +136,7 @@ class RestView(BaseView):
         embed.description = f"You paid **{self.cost}** gold.\nYou have rested and regained your health! Current HP: **{self.max_hp}**."
         embed.clear_fields()  # Remove the payment prompt field
 
-        await interaction.response.edit_message(embed=embed, view=None)
+        await interaction.edit_original_response(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 

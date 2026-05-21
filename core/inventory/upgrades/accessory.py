@@ -14,8 +14,10 @@ from core.models import Accessory, Boot, Glove, Helmet
 class PotentialView(BaseUpgradeView):
     def __init__(self, bot, user_id, item, parent_view):
         super().__init__(bot, user_id, item, parent_view)
+        self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._processing = False
         # 1. Determine Item Type & Bonus
         is_accessory = isinstance(self.item, Accessory)
         if is_accessory:
@@ -84,6 +86,11 @@ class PotentialView(BaseUpgradeView):
         await self._send_render(interaction, embed)
 
     async def confirm_enchant(self, interaction: Interaction, use_rune: bool):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         # Re-check funds/runes
         if use_rune:
             runes = await self.bot.database.users.get_currency(
@@ -99,6 +106,11 @@ class PotentialView(BaseUpgradeView):
             bonus = self.rune_bonus
         else:
             bonus = 0
+
+        await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
 
         # Deduct Gold
         await self.bot.database.users.modify_gold(self.user_id, -self.cost)
@@ -168,7 +180,7 @@ class PotentialView(BaseUpgradeView):
             self.add_item(again_btn)
 
         self.add_back_button()
-        await interaction.response.edit_message(embed=result_embed, view=self)
+        await interaction.edit_original_response(embed=result_embed, view=self)
 
 
 class VoidEngramView(BaseUpgradeView):
@@ -176,8 +188,10 @@ class VoidEngramView(BaseUpgradeView):
 
     def __init__(self, bot, user_id, item: Accessory, parent_view):
         super().__init__(bot, user_id, item, parent_view)
+        self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._processing = False
         server_id = str(interaction.guild.id)
 
         uber_prog = await self.bot.database.uber.get_uber_progress(
@@ -219,22 +233,32 @@ class VoidEngramView(BaseUpgradeView):
         await self._send_render(interaction, self.embed)
 
     async def confirm_engram(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         server_id = str(interaction.guild.id)
         uber_prog = await self.bot.database.uber.get_uber_progress(
             self.user_id, server_id
         )
         if uber_prog["void_engrams"] < 1:
+            self._processing = False
             return await interaction.response.send_message(
                 "You do not have any Void Engrams!", ephemeral=True
             )
 
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < 25_000_000:
+            self._processing = False
             return await interaction.response.send_message(
                 "You need **25,000,000 gold** to use a Void Engram.", ephemeral=True
             )
 
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
         await self.bot.database.users.modify_gold(self.user_id, -25_000_000)
         await self.bot.database.uber.increment_void_engrams(self.user_id, server_id, -1)
 

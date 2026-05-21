@@ -17,6 +17,7 @@ class FusionWizardView(BaseView):
         self.parent_a = None
         self.parent_b = None
         self.FUSION_COST = 50000
+        self._processing = False
 
         self.setup_step_one()
 
@@ -155,14 +156,23 @@ class FusionWizardView(BaseView):
         self.add_item(btn_cancel)
 
     async def confirm_fusion(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         # 1. Final Gold Check
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < self.FUSION_COST:
+            self._processing = False
             return await interaction.response.send_message(
                 "Insufficient gold!", ephemeral=True
             )
 
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
 
         # 2. Logic
         # Stats

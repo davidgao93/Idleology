@@ -18,19 +18,29 @@ class RerollConfirmView(BaseView):
         self.comp = companion
         self.runes_owned = runes_owned
         self.origin_view = origin_view  # The Detail View
+        self._processing = False
 
     @ui.button(label="Confirm Reroll", style=ButtonStyle.success, emoji="🎲")
     async def confirm(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         # Double check funds just in case
         runes = await self.bot.database.users.get_currency(
             self.user_id, "partnership_runes"
         )
         if runes < 1:
+            self._processing = False
             return await interaction.response.send_message(
                 "You ran out of runes!", ephemeral=True
             )
 
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
 
         # 1. Deduct
         await self.bot.database.users.modify_currency(
@@ -221,6 +231,7 @@ class CompanionDetailView(BaseView):
         self.user_id = user_id
         self.comp = companion
         self.parent = parent_view
+        self._processing = False
         self.update_buttons()
 
     def update_buttons(self):
@@ -365,6 +376,16 @@ class CompanionDetailView(BaseView):
         await view.render(interaction)
 
     async def release_confirm(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
+        await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
+
         await self.bot.database.companions.delete_companion(self.comp.id, self.user_id)
 
         # Remove from parent list
@@ -373,7 +394,7 @@ class CompanionDetailView(BaseView):
         ]
         self.parent.update_buttons()
 
-        await interaction.response.edit_message(
+        await interaction.edit_original_response(
             embed=self.parent.get_embed(), view=self.parent
         )
 

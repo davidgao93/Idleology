@@ -86,6 +86,7 @@ class BuildingDetailView(SettlementBaseView):
         super().__init__(bot, user_id)
         self.building = building
         self.parent = parent_view
+        self._processing = False
         self.setup_ui()
 
     async def on_timeout(self):
@@ -230,6 +231,10 @@ class BuildingDetailView(SettlementBaseView):
 
     async def execute_demolish(self, interaction: Interaction):
         """The actual database execution after confirmation."""
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         # 1. Remove from DB
@@ -255,6 +260,11 @@ class BuildingDetailView(SettlementBaseView):
         await interaction.response.send_modal(modal)
 
     async def max_workers(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         # Calculate Max Possible
         cap_per_building = SettlementMechanics.get_max_workers(self.building.tier)
 
@@ -272,6 +282,7 @@ class BuildingDetailView(SettlementBaseView):
         target_amount = min(cap_per_building, free_followers)
 
         if target_amount == self.building.workers_assigned:
+            self._processing = False
             return await interaction.response.send_message(
                 "Building already at optimal capacity.", ephemeral=True
             )
@@ -296,9 +307,15 @@ class BuildingDetailView(SettlementBaseView):
         # Rebuild parent grid (so button labels & 🟢/🔴 match)
         self.parent.update_grid()
 
+        self._processing = False
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def upgrade_building(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         target_tier = self.building.tier + 1
         costs = self._get_upgrade_cost(target_tier)
 
@@ -307,31 +324,41 @@ class BuildingDetailView(SettlementBaseView):
             self.parent.settlement.timber < costs["timber"]
             or self.parent.settlement.stone < costs["stone"]
         ):
+            self._processing = False
             return await interaction.response.send_message(
                 "Insufficient Timber or Stone!", ephemeral=True
             )
 
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < costs["gold"]:
+            self._processing = False
             return await interaction.response.send_message(
                 "Insufficient Gold!", ephemeral=True
             )
 
-        # Check Special Items (if any)
+        # Check Special Items (if any) — validate before deducting
         if "special_key" in costs:
             col = costs["special_key"]
             req = costs["special_qty"]
             owned = await self.bot.database.users.get_currency(self.user_id, col)
 
             if owned < req:
+                self._processing = False
                 return await interaction.response.send_message(
                     f"Missing Material: You need **{req}x {costs['special_name']}** (Owned: {owned})",
                     ephemeral=True,
                 )
 
-            await self.bot.database.users.modify_currency(self.user_id, col, -req)
-
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
+
+        # Deduct special material after defer
+        if "special_key" in costs:
+            col = costs["special_key"]
+            req = costs["special_qty"]
+            await self.bot.database.users.modify_currency(self.user_id, col, -req)
 
         # === EMBED-BASED UPGRADE ANIMATION ===
         import asyncio
@@ -388,6 +415,7 @@ class BuildingDetailView(SettlementBaseView):
         self.parent.settlement.timber -= costs["timber"]
         self.parent.settlement.stone -= costs["stone"]
 
+        self._processing = False
         self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 

@@ -12,6 +12,7 @@ class DelveEntryView(BaseView):
         super().__init__(bot, user_id, server_id, timeout=600)
         self.cost = cost
         self.start_callback = start_callback
+        self._processing = False
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
@@ -25,8 +26,14 @@ class DelveEntryView(BaseView):
 
     @ui.button(label="Pay Permit & Descend", style=ButtonStyle.success, emoji="🎟️")
     async def confirm(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < self.cost:
+            self._processing = False
             return await interaction.response.send_message(
                 "You cannot afford the permit fee.", ephemeral=True
             )
@@ -389,11 +396,17 @@ class DelveView(BaseView):
         # Note: We do NOT clear_active here, as we are waiting for Restart/Leave input.
 
     async def restart_callback(self, interaction: Interaction):
+        if self.processing:
+            await interaction.response.defer()
+            return
+        self.processing = True
+
         # 1. Validate Funds
         cost = DelveMechanics.get_entry_cost(self.stats["fuel_lvl"])
         gold = await self.bot.database.users.get_gold(self.user_id)
 
         if gold < cost:
+            self.processing = False
             return await interaction.response.send_message(
                 f"Insufficient funds! You need {cost:,} gold.", ephemeral=True
             )
@@ -441,6 +454,7 @@ class DelveUpgradeView(BaseView):
     def __init__(self, bot, user_id, server_id, stats):
         super().__init__(bot, user_id, server_id, timeout=600)
         self.stats = stats  # dict from repo
+        self._processing = False
         self.update_buttons()
 
     def update_buttons(self):
@@ -467,6 +481,12 @@ class DelveUpgradeView(BaseView):
         )
 
     async def _upgrade(self, interaction, stat_key, db_col):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
+        await interaction.response.defer()
         cost = DelveMechanics.get_upgrade_cost(self.stats[stat_key])
         await self.bot.database.delve.upgrade_stat(
             self.user_id, self.server_id, db_col, cost
@@ -475,10 +495,11 @@ class DelveUpgradeView(BaseView):
         self.stats["shards"] -= cost
         self.stats[stat_key] += 1
 
+        self._processing = False
         self.update_buttons()
         embed = interaction.message.embeds[0]
         embed.description = f"💎 **Obsidian Shards:** {self.stats['shards']}"
-        await interaction.response.edit_message(embed=embed, view=self)
+        await interaction.edit_original_response(embed=embed, view=self)
 
     @ui.button(style=ButtonStyle.primary, row=0)
     async def up_fuel(self, interaction: Interaction, button: ui.Button):

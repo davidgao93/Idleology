@@ -13,8 +13,10 @@ class InfernalEngramView(BaseUpgradeView):
 
     def __init__(self, bot, user_id, item: Weapon, parent_view):
         super().__init__(bot, user_id, item, parent_view)
+        self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._processing = False
         server_id = str(interaction.guild.id)
 
         uber_prog = await self.bot.database.uber.get_uber_progress(
@@ -57,23 +59,33 @@ class InfernalEngramView(BaseUpgradeView):
         await self._send_render(interaction, self.embed)
 
     async def confirm_engram(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         server_id = str(interaction.guild.id)
         uber_prog = await self.bot.database.uber.get_uber_progress(
             self.user_id, server_id
         )
         if uber_prog["infernal_engrams"] < 1:
+            self._processing = False
             return await interaction.response.send_message(
                 "You do not have any Infernal Engrams!", ephemeral=True
             )
 
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < 25_000_000:
+            self._processing = False
             return await interaction.response.send_message(
                 "You need **25,000,000 gold** to use an Infernal Engram.",
                 ephemeral=True,
             )
 
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
         await self.bot.database.users.modify_gold(self.user_id, -25_000_000)
         await self.bot.database.uber.increment_infernal_engrams(
             self.user_id, server_id, -1

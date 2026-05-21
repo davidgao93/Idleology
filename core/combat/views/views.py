@@ -80,6 +80,7 @@ class PostCombatView(BaseView):
         self.player = player
         self.rematch_callback = rematch_callback
         self._stamina = stamina
+        self._launching = False  # Re-entry guard
 
         if stamina > 0:
             btn = discord.ui.Button(
@@ -90,7 +91,19 @@ class PostCombatView(BaseView):
             self.add_item(btn)
 
     async def _fight_again(self, interaction: Interaction):
+        # Synchronous guard — assigned before the first await, so the event loop
+        # cannot schedule a second invocation while this one is still running.
+        if self._launching:
+            await interaction.response.defer()
+            return
+        self._launching = True
+
         await interaction.response.defer()
+
+        # Disable the button right away so Discord shows it as locked.
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
 
         if self.bot.state_manager.is_active(self.user_id):
             await interaction.followup.send(
@@ -98,14 +111,11 @@ class PostCombatView(BaseView):
             )
             return
 
-        # Re-fetch user and reload player so any changes (rest, gear swaps, etc.) are reflected
+        # Re-fetch user and reload player so any changes (rest, gear swaps, etc.) are reflected.
         existing_user = await self.bot.database.users.get(self.user_id, self.server_id)
         if existing_user["combat_stamina"] <= 0:
             await interaction.followup.send("No stamina remaining!", ephemeral=True)
             return
-
-        for item in self.children:
-            item.disabled = True
 
         fresh_player = await load_player(self.user_id, existing_user, self.bot.database)
         self.bot.state_manager.set_active(self.user_id, "combat")

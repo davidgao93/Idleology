@@ -12,8 +12,10 @@ from core.models import Weapon
 class ForgeView(BaseUpgradeView):
     def __init__(self, bot, user_id, item: Weapon, parent_view):
         super().__init__(bot, user_id, item, parent_view)
+        self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._processing = False
         costs = EquipmentMechanics.calculate_forge_cost(self.item)
         if not costs:
             return await interaction.response.send_message(
@@ -53,6 +55,15 @@ class ForgeView(BaseUpgradeView):
         await self._send_render(interaction, self.embed)
 
     async def confirm_forge(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
+
         uid, gid = self.user_id, str(interaction.guild.id)
 
         ore = self.inventory_snapshot["ore"]
@@ -145,11 +156,18 @@ class ForgeView(BaseUpgradeView):
 
         self.add_back_button()
 
-        await interaction.response.edit_message(embed=result_embed, view=self)
+        await interaction.edit_original_response(embed=result_embed, view=self)
 
     async def forgemaxx(self, interaction: Interaction):
         """Loop-forge until the player runs out of resources or forge slots."""
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
         uid, gid = self.user_id, str(interaction.guild.id)
         forges_done = 0
         successes = 0

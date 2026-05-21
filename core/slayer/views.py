@@ -13,6 +13,7 @@ class SlayerDashboardView(BaseView):
         super().__init__(bot, user_id, server_id)  # timeout=600 by default
         self.profile = profile
         self.player_level = player_level
+        self._processing = False
         self.setup_buttons()
 
     def build_embed(self) -> discord.Embed:
@@ -87,6 +88,10 @@ class SlayerDashboardView(BaseView):
         self.add_item(btn_close)
 
     async def get_task(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         species, amount = SlayerMechanics.generate_task(self.player_level)
 
@@ -97,11 +102,18 @@ class SlayerDashboardView(BaseView):
             self.user_id, self.server_id
         )
 
+        self._processing = False
         self.setup_buttons()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def skip_task(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         if self.profile["points"] < 15:
+            self._processing = False
             return await interaction.response.send_message(
                 "Not enough Slayer Points!", ephemeral=True
             )
@@ -115,6 +127,7 @@ class SlayerDashboardView(BaseView):
         self.profile = await self.bot.database.slayer.get_profile(
             self.user_id, self.server_id
         )
+        self._processing = False
         self.setup_buttons()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 

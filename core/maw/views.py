@@ -30,6 +30,7 @@ class MawView(BaseView):
         self.prev_cycle_id = prev_cycle_id
         self.participant_count = participant_count
         self.message = None
+        self._processing = False
         self._build_buttons()
 
     def _build_buttons(self):
@@ -111,8 +112,14 @@ class MawView(BaseView):
                 "This isn't your session.", ephemeral=True
             )
 
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         now_ts = int(time.time())
         if not mechanics.boost_available(self.record.get("boost_used_at"), now_ts):
+            self._processing = False
             return await interaction.response.send_message(
                 "Boost is still on cooldown.", ephemeral=True
             )
@@ -127,6 +134,7 @@ class MawView(BaseView):
         self.record["damage_dealt"] = new_damage
         self.record["boost_used_at"] = now_ts
         self.now_ts = now_ts
+        self._processing = False
         self._build_buttons()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
         self.message = await interaction.original_response()
@@ -136,6 +144,11 @@ class MawView(BaseView):
             return await interaction.response.send_message(
                 "This isn't your session.", ephemeral=True
             )
+
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
 
         dmg = self.pending_record["damage_dealt"]
         curios, puzzle_box = mechanics.calculate_rewards(dmg)
@@ -162,6 +175,7 @@ class MawView(BaseView):
         reward_msg += "!"
 
         self.now_ts = int(time.time())
+        self._processing = False
         self._build_buttons()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
         self.message = await interaction.original_response()

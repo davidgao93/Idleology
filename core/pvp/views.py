@@ -76,6 +76,7 @@ class DuelView(BaseView):
         self.avatars = {p1_id: None, p2_id: None}
         self.current_turn = None
         self.logs = "Duel started!"
+        self._processing = False
 
     async def start_match(self, interaction: Interaction):
         try:
@@ -136,6 +137,11 @@ class DuelView(BaseView):
         return True
 
     async def process_turn(self, interaction: Interaction, action: str):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         attacker = self.current_turn
         defender = self.p1_id if attacker == self.p2_id else self.p2_id
 
@@ -157,9 +163,11 @@ class DuelView(BaseView):
             self.logs = f"💖 **{self.names[attacker]}** healed for **{healed}** HP. ({heals_left} heals remaining)"
 
         if self.hp[defender] <= 0:
+            self._processing = False
             await self.end_match(interaction, winner=attacker, loser=defender)
         else:
             self.current_turn = defender
+            self._processing = False
             self._refresh_buttons()
             await interaction.response.edit_message(
                 embed=self._build_embed(), view=self

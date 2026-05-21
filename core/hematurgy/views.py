@@ -244,6 +244,7 @@ class SlotDetailView(BaseView):
         super().__init__(parent.bot, parent=parent)
         self.parent = parent
         self.slot_type = slot_type
+        self._processing = False
         self._build_buttons()
 
     def _build_buttons(self):
@@ -361,7 +362,14 @@ class SlotDetailView(BaseView):
         return embed
 
     async def _unlock(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
         cost = SLOT_UNLOCK_COSTS[self.slot_type]
         blood = await self.parent.bot.database.hematurgy.get_blood(self.parent.user_id)
         if blood["primordial"] < cost:
@@ -379,6 +387,7 @@ class SlotDetailView(BaseView):
 
         self.parent.passives = await self.parent.bot.database.hematurgy.get_all_passives(self.parent.user_id)
         self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(self.parent.user_id)
+        self._processing = False
         self._build_buttons()
 
         name = HematurgyMechanics.passive_display_name(passive_id)
@@ -387,7 +396,14 @@ class SlotDetailView(BaseView):
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _upgrade(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
         passive = self.parent.passives.get(self.slot_type)
         if passive is None or passive["tier"] >= EVO_MAX_TIER:
             return
@@ -402,6 +418,7 @@ class SlotDetailView(BaseView):
 
         self.parent.passives = await self.parent.bot.database.hematurgy.get_all_passives(self.parent.user_id)
         self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(self.parent.user_id)
+        self._processing = False
         self._build_buttons()
 
         embed = self.build_embed()
@@ -427,6 +444,10 @@ class SlotDetailView(BaseView):
 
     async def _execute_mutate(self, interaction: Interaction):
         """Called by MutateConfirmView.confirm — performs the actual mutation."""
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         passive = self.parent.passives.get(self.slot_type)
         if passive is None:
@@ -499,6 +520,7 @@ class SlotDetailView(BaseView):
         self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(
             self.parent.user_id
         )
+        self._processing = False
         self._build_buttons()
 
         embed = self.build_embed()

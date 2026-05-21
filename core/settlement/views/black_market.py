@@ -63,6 +63,7 @@ class BlackMarketView(SettlementBaseView):
         super().__init__(bot, user_id)
         self.parent = parent_view
         self.building = building
+        self._processing = False
         self.setup_ui()
 
     def _get_multiplier(self) -> float:
@@ -181,6 +182,11 @@ class BlackMarketView(SettlementBaseView):
     # ─────────────────────────────────────────────────────────────
 
     async def upgrade_facility(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         target_tier = self.building.tier + 1
         costs = self._get_upgrade_cost(target_tier)
 
@@ -189,12 +195,14 @@ class BlackMarketView(SettlementBaseView):
             self.parent.settlement.timber < costs["timber"]
             or self.parent.settlement.stone < costs["stone"]
         ):
+            self._processing = False
             return await interaction.response.send_message(
                 "Insufficient Timber or Stone!", ephemeral=True
             )
 
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < costs["gold"]:
+            self._processing = False
             return await interaction.response.send_message(
                 "Insufficient Gold!", ephemeral=True
             )
@@ -204,13 +212,21 @@ class BlackMarketView(SettlementBaseView):
             req = costs["special_qty"]
             owned = await self.bot.database.users.get_currency(self.user_id, col)
             if owned < req:
+                self._processing = False
                 return await interaction.response.send_message(
                     f"Need {req}x {costs['special_name']}!", ephemeral=True
                 )
 
-            await self.bot.database.users.modify_currency(self.user_id, col, -req)
-
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
+
+        # Deduct special material after defer
+        if "special_key" in costs:
+            col = costs["special_key"]
+            req = costs["special_qty"]
+            await self.bot.database.users.modify_currency(self.user_id, col, -req)
 
         # 2. Consume Resources
         changes = {
@@ -231,18 +247,26 @@ class BlackMarketView(SettlementBaseView):
         self.parent.settlement.stone -= costs["stone"]
 
         # 5. Refresh
+        self._processing = False
         self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def buy_equip_cache(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         uid, sid = self.user_id, self.parent.server_id
         cost = 2_500_000
         data = await self.bot.database.users.get(uid, sid)
         if not await self.bot.check_user_registered(interaction, data):
+            self._processing = False
             return
 
         gold = await self.bot.database.users.get_gold(uid)
         if gold < cost:
+            self._processing = False
             return await interaction.response.send_message(
                 f"Not enough Gold! Need {cost:,}g.", ephemeral=True
             )
@@ -280,15 +304,22 @@ class BlackMarketView(SettlementBaseView):
             await self.bot.database.equipment.create_helmet(item)
 
         name = item.name if item else "Nothing"
+        self._processing = False
         await interaction.followup.send(f"📦 **Cache Opened:**\n{name}", ephemeral=True)
 
     async def buy_rune_cache(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         uid = self.user_id
         owned_ref = await self.bot.database.users.get_currency(uid, "refinement_runes")
         owned_pot = await self.bot.database.users.get_currency(uid, "potential_runes")
         owned_sha = await self.bot.database.users.get_currency(uid, "shatter_runes")
 
         if owned_ref < 1 or owned_pot < 1 or owned_sha < 1:
+            self._processing = False
             return await interaction.response.send_message(
                 "Need 1 Refinement Rune, 1 Potential Rune, and 1 Shatter Rune!",
                 ephemeral=True,
@@ -309,15 +340,22 @@ class BlackMarketView(SettlementBaseView):
             label = rtype.replace("_runes", "").replace("_", " ").title() + " Rune"
             rewards.append(label)
 
+        self._processing = False
         await interaction.followup.send(
             f"💎 **Rune Cache Opened:**\n{', '.join(rewards)}", ephemeral=True
         )
 
     async def buy_key_cache(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         cost = 1
         owned = await self.bot.database.users.get_currency(self.user_id, "void_keys")
 
         if owned < cost:
+            self._processing = False
             return await interaction.response.send_message(
                 "Not enough Void Keys!", ephemeral=True
             )
@@ -335,6 +373,7 @@ class BlackMarketView(SettlementBaseView):
             await self.bot.database.users.modify_currency(self.user_id, ktype, 1)
             rewards.append(ktype.replace("_", " ").title())
 
+        self._processing = False
         await interaction.followup.send(
             f"🗝️ **Boss Cache Opened:**\n{', '.join(rewards)}", ephemeral=True
         )
@@ -521,9 +560,15 @@ class BlackMarketView(SettlementBaseView):
         await interaction.followup.send(msg, ephemeral=True)
 
     async def buy_blueprint_trade(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         uid = self.user_id
         owned = await self.bot.database.users.get_currency(uid, "unidentified_blueprint")
         if owned < 1:
+            self._processing = False
             return await interaction.response.send_message(
                 "You need 1 **Unidentified Blueprint**!\n"
                 "Blueprints drop from normal combat (1% chance, affected by special rarity).",
@@ -544,6 +589,7 @@ class BlackMarketView(SettlementBaseView):
         from collections import Counter
         tally = Counter(rewards)
         tally_str = ", ".join(f"{v}x {k}" for k, v in tally.items())
+        self._processing = False
         await interaction.followup.send(
             f"📋 **Blueprint Trade:**\n**Consumed:** 1 Unidentified Blueprint\n**Received:** {tally_str}",
             ephemeral=True,

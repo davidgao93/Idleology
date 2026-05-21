@@ -13,6 +13,7 @@ class TownHallView(SettlementBaseView):
         super().__init__(bot, user_id)
         self.settlement = settlement
         self.parent = parent_view
+        self._processing = False
         self.setup_ui()
 
     async def on_timeout(self):
@@ -88,6 +89,11 @@ class TownHallView(SettlementBaseView):
         self.add_item(btn_back)
 
     async def upgrade(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         target_tier = self.settlement.town_hall_tier + 1
         costs = self._get_upgrade_cost(target_tier)
 
@@ -96,36 +102,42 @@ class TownHallView(SettlementBaseView):
             self.settlement.timber < costs["timber"]
             or self.settlement.stone < costs["stone"]
         ):
+            self._processing = False
             return await interaction.response.send_message(
                 "Insufficient Timber or Stone!", ephemeral=True
             )
 
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < costs["gold"]:
+            self._processing = False
             return await interaction.response.send_message(
                 "Insufficient Gold!", ephemeral=True
             )
 
-        # 2. Check multiple special materials safely
+        # 2. Check multiple special materials safely (validate before deducting)
         if "specials" in costs:
-            # Validate ALL balances before deducting any to prevent partial consumption on failure
             for sp in costs["specials"]:
                 owned = await self.bot.database.users.get_currency(
                     self.user_id, sp["key"]
                 )
                 if owned < sp["qty"]:
+                    self._processing = False
                     return await interaction.response.send_message(
                         f"Need {sp['qty']}x {sp['name']}! (You have {owned})",
                         ephemeral=True,
                     )
 
-            # If all checks pass, deduct them
+        await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
+
+        # Deduct special materials after defer
+        if "specials" in costs:
             for sp in costs["specials"]:
                 await self.bot.database.users.modify_currency(
                     self.user_id, sp["key"], -sp["qty"]
                 )
-
-        await interaction.response.defer()
 
         # 3. Consume Resources
         changes = {
@@ -147,6 +159,7 @@ class TownHallView(SettlementBaseView):
         self.settlement.building_slots += 1
         self.settlement.timber -= costs["timber"]
         self.settlement.stone -= costs["stone"]
+        self._processing = False
         self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 

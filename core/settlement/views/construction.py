@@ -24,6 +24,7 @@ class BuildConstructionView(SettlementBaseView):
         self.parent = parent_view
         self.uber_prog = uber_prog
         self.researched: set = researched or set()
+        self._processing = False
 
         self.setup_select()
 
@@ -158,6 +159,11 @@ class BuildConstructionView(SettlementBaseView):
         self.add_item(cancel)
 
     async def on_select(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         b_type = interaction.data["values"][0]
         cost = CONSTRUCTION_COSTS[b_type]
 
@@ -165,6 +171,7 @@ class BuildConstructionView(SettlementBaseView):
         max_slots = self.parent.settlement.building_slots
 
         if used_slots >= max_slots:
+            self._processing = False
             return await interaction.response.send_message(
                 "No building slots remaining! Upgrade your Town Hall to build more.",
                 ephemeral=True,
@@ -180,6 +187,7 @@ class BuildConstructionView(SettlementBaseView):
             or u_timber < cost.get("timber", 0)
             or u_stone < cost.get("stone", 0)
         ):
+            self._processing = False
             return await interaction.response.send_message(
                 "Insufficient resources!", ephemeral=True
             )

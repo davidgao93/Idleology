@@ -259,12 +259,14 @@ class MirageView(BaseUpgradeView):
         self.candidates = []
         self.mirage_runes_imperfect = 0
         self.mirage_runes_perfected = 0
+        self._processing = False
 
     # ------------------------------------------------------------------
     # Stage 1 — source selection
     # ------------------------------------------------------------------
 
     async def render(self, interaction: Interaction):
+        self._processing = False
         self.source = None
         item_type = _item_type_str(self.item)
         factory = _FACTORIES[item_type]
@@ -410,11 +412,25 @@ class MirageView(BaseUpgradeView):
     # ------------------------------------------------------------------
 
     async def _use_imperfect(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
         await self._apply_mirage(interaction, destroy_source=True)
 
     async def _use_perfected(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
         await self._apply_mirage(interaction, destroy_source=False)
 
     async def _apply_mirage(self, interaction: Interaction, destroy_source: bool):

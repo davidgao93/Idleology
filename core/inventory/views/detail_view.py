@@ -71,6 +71,7 @@ class ItemDetailView(BaseView):
         self.void_keys = 0
         self.mirage_runes_imperfect = 0
         self.mirage_runes_perfected = 0
+        self._processing = False
 
     async def fetch_data(self):
         """Async setup to fetch currency/keys needed for button logic."""
@@ -206,6 +207,12 @@ class ItemDetailView(BaseView):
     # --- Actions ---
 
     async def toggle_equip(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
+        await interaction.response.defer()
         itype = self._get_db_type()
         if self.is_equipped:
             await self.bot.database.equipment.unequip(self.user_id, itype)
@@ -219,8 +226,9 @@ class ItemDetailView(BaseView):
             self.is_equipped = True
 
         await self.fetch_data()  # Re-check keys/status for button display
+        self._processing = False
         embed = InventoryUI.get_item_details_embed(self.item, self.is_equipped)
-        await interaction.response.edit_message(embed=embed, view=self)
+        await interaction.edit_original_response(embed=embed, view=self)
         self.message = await interaction.original_response()
 
     # --- DISCARD LOGIC ---
@@ -265,6 +273,12 @@ class ItemDetailView(BaseView):
 
     async def finalize_discard(self, interaction: Interaction):
         """Performs the actual DB deletion and returns to list via a brief flash."""
+        if self._processing:
+            if not interaction.response.is_done():
+                await interaction.response.defer()
+            return
+        self._processing = True
+
         if not interaction.response.is_done():
             await interaction.response.defer()
 
