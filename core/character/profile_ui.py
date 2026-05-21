@@ -277,6 +277,32 @@ class ProfileBuilder:
                 fdr_val += f"\n↳ Other: {fdr_other}"
             embed.add_field(name="🔒 FDR", value=fdr_val, inline=True)
 
+        # ── Evasion ───────────────────────────────────────────────────────────
+        evasion_armor = p.equipped_armor.evasion if p.equipped_armor else 0
+        evasion_essence = 0
+        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
+            if _item:
+                evasion_essence += compute_essence_stat_bonus(_item).get("evasion", 0)
+        total_evasion = evasion_armor + evasion_essence
+        if total_evasion > 0:
+            eva_val = f"**{total_evasion}%**\n↳ Armor: {evasion_armor}%"
+            if evasion_essence:
+                eva_val += f"\n↳ Essences: +{evasion_essence}%"
+            embed.add_field(name="💨 Evasion", value=eva_val, inline=True)
+
+        # ── Block ─────────────────────────────────────────────────────────────
+        block_armor = p.equipped_armor.block if p.equipped_armor else 0
+        block_essence = 0
+        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
+            if _item:
+                block_essence += compute_essence_stat_bonus(_item).get("block", 0)
+        total_block = block_armor + block_essence
+        if total_block > 0:
+            blk_val = f"**{total_block}%**\n↳ Armor: {block_armor}%"
+            if block_essence:
+                blk_val += f"\n↳ Essences: +{block_essence}%"
+            embed.add_field(name="🧱 Block", value=blk_val, inline=True)
+
         # ── Rarity ───────────────────────────────────────────────────────────
         gear_rarity = p.rarity
         comp_rarity_pct = p._get_companion_bonus("rarity")
@@ -303,7 +329,9 @@ class ProfileBuilder:
         # ── Special Rarity ────────────────────────────────────────────────────
         sr_boot = 0.0
         if p.equipped_boot and p.equipped_boot.passive == "thrill-seeker":
-            sr_boot = p.equipped_boot.passive_lvl * 0.5  # 0.5% per level, max 3% at rank 6
+            sr_boot = (
+                p.equipped_boot.passive_lvl * 0.5
+            )  # 0.5% per level, max 3% at rank 6
         sr_armor = (
             3
             if (p.equipped_armor and p.equipped_armor.passive == "Treasure Hunter")
@@ -311,7 +339,7 @@ class ProfileBuilder:
         )
         sr_companion = p._get_companion_bonus("s_rarity")
         sr_partner_combat = cb["special_rarity"]
-        sr_total = min(20.0, sr_boot + sr_armor + sr_companion)
+        sr_total = min(20.0, sr_boot + sr_armor + sr_companion + sr_partner_combat)
         sr_val = f"**{sr_total:.1f}%** (cap: 20%)"
         if sr_armor or sr_boot:
             sr_val += f"\n↳ Equipment: +{sr_armor + sr_boot:.1f}%"

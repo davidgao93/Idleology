@@ -292,7 +292,7 @@ def calc_crit_damage(
             log.append(f"🔥 **Soul Burn** — ward fuels the crit! (+{ward_bonus})")
 
     if player.get_glove_corrupted_essence() == "gemini":
-        second_pct = random.uniform(0.40, 0.60)
+        second_pct = random.uniform(0.20, 0.40)
         second_hit = int(damage * second_pct)
         if second_hit > 0:
             damage += second_hit

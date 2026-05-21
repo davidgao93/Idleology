@@ -62,7 +62,7 @@ ESSENCE_BRIEF = {
 
 _CORRUPTED_BRIEF: dict[str, dict[str, str]] = {
     "aphrodite": {
-        "glove": "Your ward is considered broken when you are hit.",
+        "glove": "Your ward is considered broken whenever it is damaged.",
         "boot": "Your gear drop rate is lucky.",
         "helmet": "Your ward can never be disabled.",
     },
@@ -74,7 +74,7 @@ _CORRUPTED_BRIEF: dict[str, dict[str, str]] = {
     "gemini": {
         "glove": "Critical hits strike twice, the second strike deals less damage.",
         "boot": "Your pet drop chance is doubled.",
-        "helmet": "Your damage taken is halved, but is split evenly between HP and Ward.",
+        "helmet": "Your damage taken is reduced by 20% and split evenly between HP and Ward.",
     },
     "neet": {
         "glove": "Your accuracy is 0.",

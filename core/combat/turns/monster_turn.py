@@ -323,21 +323,22 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             glove_corrupted = player.get_glove_corrupted_essence()
             helmet_corrupted = player.get_helmet_corrupted_essence()
 
-            # --- Gemini helmet: split damage evenly between ward and HP simultaneously ---
+            # --- Gemini helmet: reduce damage by 20%, then split evenly between ward and HP simultaneously ---
             if (
                 helmet_corrupted == "gemini"
                 and player.combat_ward > 0
                 and total_damage > 0
             ):
-                ward_half = total_damage // 2
-                hp_half = total_damage - ward_half
+                reduced = int(total_damage * 0.8)
+                ward_half = reduced // 2
+                hp_half = reduced - ward_half
                 ward_absorbed = min(ward_half, player.combat_ward)
                 player.combat_ward -= ward_absorbed
                 damage_dealt = ward_absorbed
                 if not is_blocked:
                     log.append(
                         f"{monster.name} {monster.flavor}.\n"
-                        f"**Twin Balance** splits the blow — 🔮 {ward_absorbed} to ward, 💔 {hp_half} bleeds through!"
+                        f"**Twin Balance** reduces and splits the blow (−20%) — 🔮 {ward_absorbed} to ward, 💔 {hp_half} bleeds through!"
                     )
                 total_damage = hp_half
 
@@ -429,6 +430,20 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                         log.append(
                             f"\n💥 **Volatile** (Aphrodite) — ward struck, dealing **{boom}** damage to {monster.name}!"
                         )
+
+            # Lucifer helmet: gain PDR burst when ward is fully broken.
+            # Also triggers via Aphrodite glove (any ward damage = "broken" condition).
+            if helmet_corrupted == "lucifer" and player.lucifer_pdr_burst == 0:
+                lucifer_trigger = False
+                if player.combat_ward == 0 and previous_ward > 0:
+                    lucifer_trigger = True
+                elif aphrodite_glove_active:
+                    lucifer_trigger = True
+                if lucifer_trigger:
+                    player.lucifer_pdr_burst = 15
+                    log.append(
+                        "🔥 **Infernal Resilience** — ward broken, gaining **+15% PDR** for this combat!"
+                    )
 
             # Vampiric: heals X% of max HP per successful hit
             if monster.has_modifier("Vampiric") and damage_dealt > 0:

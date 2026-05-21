@@ -145,7 +145,7 @@ _HELMET_PASSIVE_FUNCS: dict = {
 }
 
 _CORRUPTED_DESC: dict[tuple, str] = {
-    ("aphrodite", "glove"): "Your ward is considered broken when it is damaged.",
+    ("aphrodite", "glove"): "Your ward is considered broken whenever it is damaged.",
     ("aphrodite", "boot"): "Your gear drop rate is lucky.",
     ("aphrodite", "helmet"): "Your ward can never be reduced by modifiers.",
     ("lucifer", "glove"): "15% of your current ward is added to your hit damage.",
@@ -162,7 +162,7 @@ _CORRUPTED_DESC: dict[tuple, str] = {
     (
         "gemini",
         "helmet",
-    ): "Your damage taken is halved, but is split evenly between HP and Ward.",
+    ): "Your damage taken is reduced by 20% and split evenly between HP and Ward.",
     ("neet", "glove"): "Your accuracy is 0.",
     ("neet", "boot"): "Whenever you gain resources during combat, gain double instead.",
     ("neet", "helmet"): "Whenever you gain ward, double the ward gained.",
