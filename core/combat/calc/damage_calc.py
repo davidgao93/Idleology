@@ -211,6 +211,10 @@ def calc_crit_damage(
         log.append(f"The **Nullifying** aura dampens your critical hit! (×{crit_mult:.2f})")
         calc_dmg_notes.append(f"nullifying×{crit_mult:.2f}")
 
+    if player.chapter_crit_dmg_reduction > 0:
+        crit_mult *= (1 - player.chapter_crit_dmg_reduction)
+        calc_dmg_notes.append(f"chapter_dull×{crit_mult:.2f}")
+
     # Roll within the crit range, then multiply by crit_mult.
     # Cursed Precision: roll the range twice, take the worse result.
     safe_min = min(base_min, base_max)

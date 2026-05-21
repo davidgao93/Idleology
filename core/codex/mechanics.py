@@ -1,19 +1,20 @@
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from core.models import Player
 
 
 @dataclass
 class CodexChapter:
-    id: int
-    name: str
+    id: int                    # 1–5 (chapter position in the run)
+    name: str                  # Generated name e.g. "Savage Spire of Blindness"
     flavor: str
-    signature_key: str
-    signature_label: str
-    signature_description: str
-    level_offset: int  # Monster base level = player_level + ascension + level_offset
-    difficulty: int  # 1–5, affects modifier counts and run ordering
+    signature_label: str       # Display name (same as name for generated chapters)
+    signature_description: str # e.g. "Enemies: +30% DMG | -40% Crit Chance"
+    level_offset: int          # Monster base level = player_level + ascension + level_offset
+    difficulty: int            # 1–5, affects modifier counts and wave scaling
+    player_mods: list[tuple[str, float]] = field(default_factory=list)
+    monster_mods: list[tuple[str, int]] = field(default_factory=list)
 
 
 @dataclass
@@ -30,167 +31,170 @@ class CodexBoon:
 
 
 # ---------------------------------------------------------------------------
-# Chapter Pool  (15 entries — no two runs will share all 5 chapters)
+# Chapter generation word pools
 # ---------------------------------------------------------------------------
 
-CHAPTER_POOL: list[CodexChapter] = [
-    CodexChapter(
-        id=1,
-        name="The Iron Horde",
-        flavor="Steel-born warriors march in endless formation.",
-        signature_key="weakened",
-        signature_label="Weakened",
-        signature_description="-30% ATK",
-        level_offset=5,
-        difficulty=1,
-    ),
-    CodexChapter(
-        id=2,
-        name="Blighted Wastes",
-        flavor="Venomous creatures swarm from the rotting earth.",
-        signature_key="decaying",
-        signature_label="Decaying",
-        signature_description="-30% max HP",
-        level_offset=5,
-        difficulty=1,
-    ),
-    CodexChapter(
-        id=3,
-        name="The Hollow Court",
-        flavor="Nobles who sold their souls leer from crumbling thrones.",
-        signature_key="exposed",
-        signature_label="Exposed",
-        signature_description="Ward is disabled at the start of each combat",
-        level_offset=7,
-        difficulty=2,
-    ),
-    CodexChapter(
-        id=4,
-        name="Unending Hunger",
-        flavor="Titanic creatures bloated on ruin and excess.",
-        signature_key="depleted",
-        signature_label="Depleted",
-        signature_description="-40% DEF",
-        level_offset=7,
-        difficulty=2,
-    ),
-    CodexChapter(
-        id=5,
-        name="Celestial Tribunal",
-        flavor="Celestial arbiters pass judgment without mercy.",
-        signature_key="humbled",
-        signature_label="Humbled",
-        signature_description="-20% ATK and -20% DEF",
-        level_offset=9,
-        difficulty=2,
-    ),
-    CodexChapter(
-        id=6,
-        name="The Void Rift",
-        flavor="Reality tears apart. Shield-breakers pour through the cracks.",
-        signature_key="unravelled",
-        signature_label="Unravelled",
-        signature_description="Ward disabled at start and -20% DEF",
-        level_offset=9,
-        difficulty=3,
-    ),
-    CodexChapter(
-        id=7,
-        name="Storm's Eye",
-        flavor="Lightning blinds. Thunder deafens. The Mighty rise.",
-        signature_key="blinded",
-        signature_label="Blinded",
-        signature_description="-40% crit chance",
-        level_offset=11,
-        difficulty=3,
-    ),
-    CodexChapter(
-        id=8,
-        name="The Ashen Field",
-        flavor="A battlefield scorched clean of all hope.",
-        signature_key="scorched",
-        signature_label="Scorched",
-        signature_description="-30% DEF and -20% ATK",
-        level_offset=11,
-        difficulty=3,
-    ),
-    CodexChapter(
-        id=9,
-        name="Midnight Spire",
-        flavor="Ancient curses nest in the dark, feeding on vitality.",
-        signature_key="cursed",
-        signature_label="Cursed",
-        signature_description="-40% max HP",
-        level_offset=13,
-        difficulty=4,
-    ),
-    CodexChapter(
-        id=10,
-        name="Crimson Tide",
-        flavor="Ascended legions spill across the horizon in an endless wave.",
-        signature_key="frenzied",
-        signature_label="Frenzied",
-        signature_description="-30% DEF and -30% crit chance",
-        level_offset=13,
-        difficulty=4,
-    ),
-    CodexChapter(
-        id=11,
-        name="The Abyssal Gate",
-        flavor="Something from the abyss gazes back. It is not impressed.",
-        signature_key="abyss_taint",
-        signature_label="Abyss-Tainted",
-        signature_description="-40% ATK and -40% DEF",
-        level_offset=15,
-        difficulty=4,
-    ),
-    CodexChapter(
-        id=12,
-        name="Shattered Realm",
-        flavor="Laws of reality buckle under impossible weight.",
-        signature_key="broken",
-        signature_label="Broken",
-        signature_description="Ward disabled at start and -30% DEF",
-        level_offset=15,
-        difficulty=4,
-    ),
-    CodexChapter(
-        id=13,
-        name="The Final Theorem",
-        flavor="Numbers made flesh. Perfection made enemy.",
-        signature_key="absolute_zero",
-        signature_label="Absolute Zero",
-        signature_description="-50% ATK and -40% crit chance",
-        level_offset=17,
-        difficulty=5,
-    ),
-    CodexChapter(
-        id=14,
-        name="Apex Convergence",
-        flavor="Every threat converges into one merciless point.",
-        signature_key="convergence",
-        signature_label="Convergence",
-        signature_description="-30% ATK, -30% DEF, ward disabled at start",
-        level_offset=20,
-        difficulty=5,
-    ),
-    CodexChapter(
-        id=15,
-        name="The Eternal Archive",
-        flavor="The archive catalogues your failures. You are just another entry.",
-        signature_key="erased",
-        signature_label="Erased",
-        signature_description="-50% ATK and -50% DEF",
-        level_offset=22,
-        difficulty=5,
-    ),
+_NOUNS = [
+    "Spire", "Void", "Gate", "Citadel", "Archive", "Throne", "Bastion",
+    "Summit", "Maw", "Sanctum", "Rift", "Forge", "Nexus", "Pinnacle", "Abyss",
 ]
+
+# Player debuff types: (type, suffix_word, (diff1_val, diff2_val, diff3_val, diff4_val, diff5_val))
+# None values table means effect is binary (ward_disable)
+_PLAYER_DEBUFFS: list[tuple[str, str, tuple | None]] = [
+    ("atk_pct",      "Weakness",      (0.20, 0.25, 0.30, 0.35, 0.40)),
+    ("def_pct",      "Ruin",          (0.20, 0.25, 0.30, 0.35, 0.40)),
+    ("max_hp_pct",   "Decay",         (0.15, 0.20, 0.25, 0.30, 0.40)),
+    ("ward_disable", "Corruption",    None),
+    ("crit_pct",     "Blindness",     (20.0, 25.0, 30.0, 35.0, 40.0)),
+    ("hit_flat",     "Haze",          (8.0, 10.0, 12.0, 14.0, 18.0)),
+    ("crit_dmg_pct", "Dullness",      (0.20, 0.25, 0.30, 0.35, 0.40)),
+    ("pdr_pct",      "the Flayed",    (0.20, 0.25, 0.30, 0.35, 0.40)),
+    ("ward_gen_pct", "the Fractured", (0.25, 0.30, 0.40, 0.50, 0.60)),
+    ("hp_entry_pct", "the Wounded",   (0.20, 0.25, 0.30, 0.35, 0.40)),
+    ("potion_count", "Scarcity",      (1.0, 1.0, 2.0, 2.0, 3.0)),
+]
+
+# Ward disable only available at difficulty 3+
+_WARD_DISABLE_MIN_DIFF = 3
+
+# Monster buff types: (modifier_name, prefix_word, (diff1_tier, diff2_tier, diff3_tier, diff4_tier, diff5_tier))
+_MONSTER_BUFFS: list[tuple[str, str, tuple]] = [
+    ("Savage",    "Savage",    (1, 2, 3, 3, 4)),
+    ("Ironclad",  "Ironclad",  (1, 2, 3, 3, 4)),
+    ("Lethal",    "Lethal",    (1, 2, 3, 3, 4)),
+    ("Fortified", "Fortified", (1, 2, 3, 3, 4)),
+    ("Titanic",   "Titanic",   (1, 2, 3, 3, 4)),
+    ("Veiled",    "Veiled",    (1, 2, 3, 3, 4)),
+    ("Vampiric",  "Vampiric",  (1, 2, 3, 3, 4)),
+    ("Enraged",   "Enraged",   (1, 2, 3, 3, 4)),
+]
+
+# Per-position modifier budget: (min_total, max_total, max_player, max_monster)
+_MOD_BUDGET = [
+    (1, 2, 2, 0),  # position 1: intro — player debuffs only
+    (1, 2, 2, 1),  # position 2: light mix
+    (2, 3, 2, 1),  # position 3: pressured
+    (2, 3, 2, 2),  # position 4: heavy
+    (2, 4, 2, 2),  # position 5: peak difficulty
+]
+
+_DIFFICULTIES = [1, 2, 3, 4, 5]
+_LEVEL_OFFSETS = [5, 7, 10, 14, 18]
+
+
+# ---------------------------------------------------------------------------
+# Description helpers
+# ---------------------------------------------------------------------------
+
+def _desc_player_mod(mod_type: str, value: float) -> str:
+    if mod_type == "atk_pct":
+        return f"-{int(value * 100)}% ATK"
+    if mod_type == "def_pct":
+        return f"-{int(value * 100)}% DEF"
+    if mod_type == "max_hp_pct":
+        return f"-{int(value * 100)}% Max HP"
+    if mod_type == "ward_disable":
+        return "Ward disabled"
+    if mod_type == "crit_pct":
+        return f"-{int(value)} crit chance"
+    if mod_type == "hit_flat":
+        return f"-{int(value)} hit chance"
+    if mod_type == "crit_dmg_pct":
+        return f"-{int(value * 100)}% crit DMG"
+    if mod_type == "pdr_pct":
+        return f"-{int(value * 100)}% PDR"
+    if mod_type == "ward_gen_pct":
+        return f"-{int(value * 100)}% ward gen"
+    if mod_type == "hp_entry_pct":
+        return f"Enter each fight at {int((1 - value) * 100)}% HP"
+    if mod_type == "potion_count":
+        return f"-{int(value)} potion{'s' if int(value) != 1 else ''}"
+    return mod_type
+
+
+def _desc_monster_mod(modifier_name: str, tier: int) -> str:
+    from core.combat.mobgen.modifier_data import MODIFIER_DEFINITIONS
+    defn = MODIFIER_DEFINITIONS.get(modifier_name)
+    if defn and tier > 0 and tier <= len(defn.tiers):
+        return f"Enemies: {defn.description(defn.tiers[tier - 1])}"
+    return f"Enemies: {modifier_name}"
+
+
+# ---------------------------------------------------------------------------
+# Chapter generation
+# ---------------------------------------------------------------------------
+
+def generate_codex_chapter(position: int) -> CodexChapter:
+    """Generates a random CodexChapter for the given run position (1–5)."""
+    pos_idx = position - 1
+    difficulty = _DIFFICULTIES[pos_idx]
+    diff_idx = difficulty - 1
+    level_offset = _LEVEL_OFFSETS[pos_idx]
+
+    min_mods, max_mods, max_player, max_monster = _MOD_BUDGET[pos_idx]
+    total_mods = random.randint(min_mods, max_mods)
+
+    # Guarantee at least 1 player debuff; fill remaining slots with monster buffs up to budget
+    n_monster = random.randint(0, min(max_monster, total_mods - 1))
+    n_player = min(total_mods - n_monster, max_player)
+    n_monster = total_mods - n_player
+
+    # Pick player debuffs (exclude ward_disable below minimum difficulty)
+    available_player = [
+        entry for entry in _PLAYER_DEBUFFS
+        if entry[0] != "ward_disable" or difficulty >= _WARD_DISABLE_MIN_DIFF
+    ]
+    selected_player = random.sample(available_player, min(n_player, len(available_player)))
+
+    player_mods: list[tuple[str, float]] = []
+    suffix_words: list[str] = []
+    for mod_type, word, vals in selected_player:
+        value = float(vals[diff_idx]) if vals is not None else 1.0
+        player_mods.append((mod_type, value))
+        suffix_words.append(word)
+
+    # Pick monster buffs
+    selected_monster = random.sample(_MONSTER_BUFFS, min(n_monster, len(_MONSTER_BUFFS)))
+
+    monster_mods: list[tuple[str, int]] = []
+    prefix_words: list[str] = []
+    for mod_name, word, tiers in selected_monster:
+        monster_mods.append((mod_name, tiers[diff_idx]))
+        prefix_words.append(word)
+
+    # Build chapter name
+    noun = random.choice(_NOUNS)
+    if prefix_words and suffix_words:
+        suffix_part = " and ".join(suffix_words)
+        name = f"{' '.join(prefix_words)} {noun} of {suffix_part}"
+    elif prefix_words:
+        name = f"{' '.join(prefix_words)} {noun}"
+    elif suffix_words:
+        name = f"{noun} of {' and '.join(suffix_words)}"
+    else:
+        name = noun
+
+    # Build signature description
+    desc_parts = [_desc_monster_mod(n, t) for n, t in monster_mods]
+    desc_parts += [_desc_player_mod(t, v) for t, v in player_mods]
+    description = " | ".join(desc_parts)
+
+    return CodexChapter(
+        id=position,
+        name=name,
+        flavor="",
+        signature_label=name,
+        signature_description=description,
+        level_offset=level_offset,
+        difficulty=difficulty,
+        player_mods=player_mods,
+        monster_mods=monster_mods,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Boon Pool
-# Each entry: (type, label_template, description_template, weight, value_range)
-# value_range is (min, max) float, or None for flag boons.
 # ---------------------------------------------------------------------------
 
 _BOON_DEFINITIONS = [
@@ -283,13 +287,8 @@ _BOON_DEFINITIONS = [
 
 
 def select_run_chapters(count: int = 5) -> list[CodexChapter]:
-    """
-    Sample `count` unique chapters from the pool and sort them by ascending difficulty
-    (with a random tiebreaker so same-difficulty chapters vary in order).
-    """
-    selected = random.sample(CHAPTER_POOL, min(count, len(CHAPTER_POOL)))
-    selected.sort(key=lambda c: (c.difficulty, random.random()))
-    return selected
+    """Generates `count` chapters ordered by ascending difficulty (positions 1–count)."""
+    return [generate_codex_chapter(p) for p in range(1, count + 1)]
 
 
 _RARITY_BOOST_DOWNSIDES = [
@@ -379,7 +378,7 @@ def restore_clean_stats(player: Player) -> None:
     """
     player.bonus_rarity = 0
     player.boon_fdr = 0  # re-applied immediately by apply_per_wave_boons
-    player.reset_combat_bonus()  # zeros bonus_atk/def/crit/max_hp, resets multipliers
+    player.reset_combat_bonus()  # zeros bonus_atk/def/crit/max_hp, multipliers, chapter fields
 
 
 # ---------------------------------------------------------------------------
@@ -389,74 +388,56 @@ def restore_clean_stats(player: Player) -> None:
 
 def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
     """
-    Applies the chapter's signature modifier to the player.
+    Applies all of the chapter's player_mods to the player.
     Must be called AFTER restore_clean_stats and BEFORE apply_per_wave_boons.
     HP reductions go into bonus_max_hp so max_hp stays immutable.
+    Ward generation reduction also scales back the current starting ward.
     """
-    key = chapter.signature_key
-    # Helper: only zero ward if Aphrodite helmet corrupted essence is not active
     _ward_immune = player.get_helmet_corrupted_essence() == "aphrodite"
 
-    if key == "weakened":
-        player.atk_multiplier *= 0.70
+    for mod_type, value in chapter.player_mods:
+        if mod_type == "atk_pct":
+            player.atk_multiplier *= (1 - value)
 
-    elif key == "decaying":
-        player.bonus_max_hp -= int(player.max_hp * 0.30)
-        player.current_hp = min(player.current_hp, player.total_max_hp)
+        elif mod_type == "def_pct":
+            player.def_multiplier *= (1 - value)
 
-    elif key == "exposed":
-        if not _ward_immune:
-            player.combat_ward = 0
+        elif mod_type == "max_hp_pct":
+            player.bonus_max_hp -= int(player.max_hp * value)
+            player.current_hp = min(player.current_hp, player.total_max_hp)
 
-    elif key == "depleted":
-        player.def_multiplier *= 0.60
+        elif mod_type == "ward_disable":
+            if not _ward_immune:
+                player.combat_ward = 0
 
-    elif key == "humbled":
-        player.atk_multiplier *= 0.80
-        player.def_multiplier *= 0.80
+        elif mod_type == "crit_pct":
+            player.bonus_crit -= int(value)
 
-    elif key == "unravelled":
-        if not _ward_immune:
-            player.combat_ward = 0
-        player.def_multiplier *= 0.80
+        elif mod_type == "hit_flat":
+            player.chapter_hit_penalty += int(value)
 
-    elif key == "blinded":
-        player.bonus_crit -= 40
+        elif mod_type == "crit_dmg_pct":
+            player.chapter_crit_dmg_reduction = min(
+                0.80, player.chapter_crit_dmg_reduction + value
+            )
 
-    elif key == "scorched":
-        player.def_multiplier *= 0.70
-        player.atk_multiplier *= 0.80
+        elif mod_type == "pdr_pct":
+            player.chapter_pdr_reduction = min(
+                0.80, player.chapter_pdr_reduction + value
+            )
 
-    elif key == "cursed":
-        player.bonus_max_hp -= int(player.max_hp * 0.40)
-        player.current_hp = min(player.current_hp, player.total_max_hp)
+        elif mod_type == "ward_gen_pct":
+            mult = 1 - value
+            player.chapter_ward_gen_mult *= mult
+            # Also reduce the starting ward that was already computed
+            player.combat_ward = int(player.combat_ward * mult)
 
-    elif key == "frenzied":
-        player.def_multiplier *= 0.70
-        player.bonus_crit -= 30
+        elif mod_type == "hp_entry_pct":
+            new_cap = int(player.total_max_hp * (1 - value))
+            player.current_hp = min(player.current_hp, new_cap)
 
-    elif key == "abyss_taint":
-        player.atk_multiplier *= 0.60
-        player.def_multiplier *= 0.60
-
-    elif key == "broken":
-        if not _ward_immune:
-            player.combat_ward = 0
-        player.def_multiplier *= 0.70
-
-    elif key == "absolute_zero":
-        player.atk_multiplier *= 0.50
-        player.bonus_crit -= 40
-
-    elif key == "convergence":
-        player.atk_multiplier *= 0.70
-        player.def_multiplier *= 0.70
-        if not _ward_immune:
-            player.combat_ward = 0
-
-    elif key == "erased":
-        player.atk_multiplier *= 0.50
-        player.def_multiplier *= 0.50
+        elif mod_type == "potion_count":
+            player.potions = max(0, player.potions - int(value))
 
 
 # ---------------------------------------------------------------------------

@@ -24,6 +24,10 @@ def add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
     Returns the final amount added to ward (may be 0). Logs only if label is provided."""
     if amount <= 0:
         return 0
+    if player.chapter_ward_gen_mult < 1.0:
+        amount = int(amount * player.chapter_ward_gen_mult)
+        if amount <= 0:
+            return 0
     if player.get_helmet_corrupted_essence() == "neet":
         amount *= 2
         if label:

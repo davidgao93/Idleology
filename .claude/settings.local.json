@@ -88,7 +88,8 @@
       "Bash(dir C:\\\\Users\\\\yugao\\\\Idleology\\\\*.py /b)",
       "Bash(ls /mnt/c/Users/yugao/Idleology/*.py 2>/dev/null || echo \"No py files in root\")",
       "Bash(python -c \"import core.hematurgy.mechanics; print\\('mechanics OK'\\)\")",
-      "Bash(Get-ChildItem -Path . -Directory)"
+      "Bash(Get-ChildItem -Path . -Directory)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\codex\\\\\" -Recurse -File | Select-Object FullName)"
     ]
   }
 }

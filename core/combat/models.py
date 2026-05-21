@@ -88,6 +88,11 @@ class CombatState:
     hema_ward_inoculation: bool = False # Ward Inoculation active (no ward regen, ward→damage)
     hema_ward_dmg_buffer: int = 0       # Ward Inoculation: accumulated ward→damage pending apply
     hema_serrated_total: int = 0        # Serrated: cumulative ATK drained from monster this fight
+    # Codex chapter-level penalties (persist across all 7 waves of a chapter)
+    chapter_hit_penalty: int = 0          # flat subtraction from acc_bonus in hit rolls
+    chapter_pdr_reduction: float = 0.0   # multiplicative PDR reduction (0.30 = 30% less PDR)
+    chapter_ward_gen_mult: float = 1.0   # multiplier on all ward generation (1.0 = no reduction)
+    chapter_crit_dmg_reduction: float = 0.0  # multiplier reduction on player crit damage
 
 
 # ---------------------------------------------------------------------------
@@ -518,6 +523,38 @@ class Player:
         self.cs.partner_special_rarity = v
 
     @property
+    def chapter_hit_penalty(self) -> int:
+        return self.cs.chapter_hit_penalty
+
+    @chapter_hit_penalty.setter
+    def chapter_hit_penalty(self, v: int) -> None:
+        self.cs.chapter_hit_penalty = v
+
+    @property
+    def chapter_pdr_reduction(self) -> float:
+        return self.cs.chapter_pdr_reduction
+
+    @chapter_pdr_reduction.setter
+    def chapter_pdr_reduction(self, v: float) -> None:
+        self.cs.chapter_pdr_reduction = v
+
+    @property
+    def chapter_ward_gen_mult(self) -> float:
+        return self.cs.chapter_ward_gen_mult
+
+    @chapter_ward_gen_mult.setter
+    def chapter_ward_gen_mult(self, v: float) -> None:
+        self.cs.chapter_ward_gen_mult = v
+
+    @property
+    def chapter_crit_dmg_reduction(self) -> float:
+        return self.cs.chapter_crit_dmg_reduction
+
+    @chapter_crit_dmg_reduction.setter
+    def chapter_crit_dmg_reduction(self, v: float) -> None:
+        self.cs.chapter_crit_dmg_reduction = v
+
+    @property
     def jewel_cataclysm_primed(self) -> bool:
         return self.cs.jewel_cataclysm_primed
 
@@ -756,6 +793,10 @@ class Player:
         self.cs.def_multiplier = 1.0
         self.cs.crit_multiplier = 1.0
         self.cs.partner_special_rarity = 0.0
+        self.cs.chapter_hit_penalty = 0
+        self.cs.chapter_pdr_reduction = 0.0
+        self.cs.chapter_ward_gen_mult = 1.0
+        self.cs.chapter_crit_dmg_reduction = 0.0
 
     def reset_combat_state(self) -> None:
         """
@@ -870,6 +911,10 @@ class Player:
         # Ascension pinnacle flat PDR
         if self.ascension_unlocks:
             total += self.get_ascension_bonuses()["pdr"]
+
+        # Codex chapter PDR reduction (applied before hard cap)
+        if self.chapter_pdr_reduction > 0:
+            total = int(total * (1 - self.chapter_pdr_reduction))
 
         # Hard cap: 90% with Impregnable armor passive, otherwise 80%
         cap = (

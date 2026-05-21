@@ -31,7 +31,9 @@ from core.models import Monster, Player
 async def _generate_codex_wave_monster(
     player: Player, chapter: CodexChapter, wave_num: int
 ) -> Monster:
-    """Generates a monster for a Codex wave using the ascent generator."""
+    """Generates a monster for a Codex wave, then injects chapter-level monster buffs."""
+    from core.combat.mobgen.modifier_data import make_modifier
+
     m_level = calculate_wave_monster_level(player, chapter, wave_num)
     n_mods, b_mods = get_wave_modifier_counts(wave_num, chapter.difficulty)
     monster = Monster(
@@ -47,7 +49,19 @@ async def _generate_codex_wave_monster(
         flavor="",
         is_boss=(wave_num == 7),
     )
-    return await generate_ascent_monster(player, monster, m_level, n_mods, b_mods)
+    monster = await generate_ascent_monster(player, monster, m_level, n_mods, b_mods)
+
+    # Inject chapter-level monster buffs — guarantee a minimum tier for each named modifier.
+    # If the monster already rolled the same modifier at a higher tier, the higher tier wins.
+    for mod_name, tier in chapter.monster_mods:
+        existing = next((m for m in monster.modifiers if m.name == mod_name), None)
+        if existing is None:
+            monster.modifiers.append(make_modifier(mod_name, m_level, force_tier=tier))
+        elif existing.tier < tier:
+            monster.modifiers.remove(existing)
+            monster.modifiers.append(make_modifier(mod_name, m_level, force_tier=tier))
+
+    return monster
 
 
 class BoonButton(ui.Button):
@@ -175,6 +189,11 @@ class CodexRunView(BaseView):
             "combat_ward": self.player.combat_ward,
             "atk_multiplier": self.player.atk_multiplier,
             "def_multiplier": self.player.def_multiplier,
+            "crit_multiplier": self.player.crit_multiplier,
+            "chapter_hit_penalty": self.player.chapter_hit_penalty,
+            "chapter_pdr_reduction": self.player.chapter_pdr_reduction,
+            "chapter_ward_gen_mult": self.player.chapter_ward_gen_mult,
+            "chapter_crit_dmg_reduction": self.player.chapter_crit_dmg_reduction,
         }
 
     def _restore_wave_baseline(self):
@@ -186,12 +205,13 @@ class CodexRunView(BaseView):
         self.player.reset_combat_bonus()
         self.player.bonus_crit = self.chapter_wave_baseline["bonus_crit"]
         self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
-        self.player.atk_multiplier = self.chapter_wave_baseline.get(
-            "atk_multiplier", 1.0
-        )
-        self.player.def_multiplier = self.chapter_wave_baseline.get(
-            "def_multiplier", 1.0
-        )
+        self.player.atk_multiplier = self.chapter_wave_baseline.get("atk_multiplier", 1.0)
+        self.player.def_multiplier = self.chapter_wave_baseline.get("def_multiplier", 1.0)
+        self.player.crit_multiplier = self.chapter_wave_baseline.get("crit_multiplier", 1.0)
+        self.player.chapter_hit_penalty = self.chapter_wave_baseline.get("chapter_hit_penalty", 0)
+        self.player.chapter_pdr_reduction = self.chapter_wave_baseline.get("chapter_pdr_reduction", 0.0)
+        self.player.chapter_ward_gen_mult = self.chapter_wave_baseline.get("chapter_ward_gen_mult", 1.0)
+        self.player.chapter_crit_dmg_reduction = self.chapter_wave_baseline.get("chapter_crit_dmg_reduction", 0.0)
 
     def _projected_ward(self) -> int:
         """Ward the player will have at the start of the next wave."""

@@ -92,6 +92,11 @@ class CodexMenuView(BaseView):
             "combat_ward": self.player.combat_ward,
             "atk_multiplier": self.player.atk_multiplier,
             "def_multiplier": self.player.def_multiplier,
+            "crit_multiplier": self.player.crit_multiplier,
+            "chapter_hit_penalty": self.player.chapter_hit_penalty,
+            "chapter_pdr_reduction": self.player.chapter_pdr_reduction,
+            "chapter_ward_gen_mult": self.player.chapter_ward_gen_mult,
+            "chapter_crit_dmg_reduction": self.player.chapter_crit_dmg_reduction,
         }
 
         monster = await _generate_codex_wave_monster(self.player, chapter, 1)

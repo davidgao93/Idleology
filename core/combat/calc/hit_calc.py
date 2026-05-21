@@ -268,6 +268,10 @@ def resolve_hit(
         acc_bonus -= penalty
         blinding_note = f" -Blinding{penalty}"
 
+    if player.chapter_hit_penalty:
+        acc_bonus -= player.chapter_hit_penalty
+        blinding_note += f" -ChapterHaze{player.chapter_hit_penalty}"
+
     acc_passive = player.get_accessory_passive()
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
     attack_roll = random.randint(0, 100)
