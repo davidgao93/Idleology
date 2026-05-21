@@ -75,6 +75,10 @@ REROLL_DISPATCH_COST = 5
 MAX_COMBAT_SKILL_LEVEL = 10
 MAX_DISPATCH_SKILL_LEVEL = 5
 
+# Signature upgrade costs in character shards, indexed by current sig level (0→1 … 4→5)
+SIG_UPGRADE_COSTS: List[int] = [1, 1, 1, 1, 1]
+MAX_SIG_LEVEL = 5
+
 # Affinity (encounter_threshold, story_index)
 AFFINITY_THRESHOLDS: List[Tuple[int, int]] = [(25, 1), (50, 2), (75, 3), (100, 4)]
 
@@ -283,6 +287,14 @@ def get_dispatch_upgrade_cost(current_level: int) -> Optional[int]:
     if current_level >= MAX_DISPATCH_SKILL_LEVEL:
         return None
     return DISPATCH_UPGRADE_COSTS[current_level - 1]
+
+
+def get_sig_upgrade_cost(current_level: int) -> Optional[int]:
+    """Character shard cost to upgrade a signature from current_level to current_level+1.
+    Level 0 means locked; upgrading to 1 activates the signature."""
+    if current_level >= MAX_SIG_LEVEL:
+        return None
+    return SIG_UPGRADE_COSTS[current_level]
 
 
 # ===========================================================================

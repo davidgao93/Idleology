@@ -9,14 +9,18 @@ from core.partners.data import PARTNER_DATA
 from core.partners.mechanics import (
     MAX_COMBAT_SKILL_LEVEL,
     MAX_DISPATCH_SKILL_LEVEL,
+    MAX_SIG_LEVEL,
     REROLL_COMBAT_COST,
     REROLL_DISPATCH_COST,
     get_combat_upgrade_cost,
     get_dispatch_upgrade_cost,
+    get_sig_combat_effect_text,
+    get_sig_dispatch_effect_text,
+    get_sig_upgrade_cost,
     get_skill_effect_text,
     reroll_skill,
 )
-from core.partners.resources import _rarity_colour, _skill_display_name
+from core.partners.resources import _rarity_colour, _sig_display_name, _skill_display_name
 from core.partners.ui import _build_partner_embed
 from core.partners.views._helpers import PartnerBaseView, _apply_dispatch_rewards
 
@@ -58,6 +62,7 @@ class PartnerSkillsView(PartnerBaseView):
             embed.set_thumbnail(url=PARTNERS_MALE)
         else:
             embed.set_thumbnail(url=PARTNERS_FEMALE)
+
         shards_key = (
             "combat_skill_shards" if self.mode == "combat" else "dispatch_skill_shards"
         )
@@ -66,9 +71,12 @@ class PartnerSkillsView(PartnerBaseView):
             REROLL_COMBAT_COST if self.mode == "combat" else REROLL_DISPATCH_COST
         )
 
-        lines = [
-            f"**{shards}** {self.mode} shards  |  Reroll costs **{reroll_cost}** shards"
-        ]
+        header = f"**{shards}** {self.mode} shards  |  Reroll costs **{reroll_cost}** shards"
+        if p.rarity >= 6:
+            char_shards = self.items.get("char_shards", 0)
+            header += f"  |  🔷 **{char_shards}** char shards"
+        lines = [header]
+
         slots = p.combat_skills if self.mode == "combat" else p.dispatch_skills
         max_lvl = (
             MAX_COMBAT_SKILL_LEVEL
@@ -90,6 +98,36 @@ class PartnerSkillsView(PartnerBaseView):
                 )
             else:
                 lines.append(f"`S{i}` *Empty*")
+
+        # Signature skill section (6★ only)
+        if p.rarity >= 6:
+            if self.mode == "combat" and p.sig_combat_key:
+                sig_lvl = p.sig_combat_lvl
+                sig_cost = get_sig_upgrade_cost(sig_lvl)
+                cost_str = f" | Upgrade: **{sig_cost}** 🔷" if sig_cost else " | **MAX**"
+                if sig_lvl > 0:
+                    lines.append(
+                        f"`SIG` **{_sig_display_name(p.sig_combat_key)}** Lv.{sig_lvl}/{MAX_SIG_LEVEL} — "
+                        f"{get_sig_combat_effect_text(p.partner_id, sig_lvl)}{cost_str}"
+                    )
+                else:
+                    lines.append(
+                        f"`SIG` **{_sig_display_name(p.sig_combat_key)}** — *Locked*{cost_str}"
+                    )
+            elif self.mode == "dispatch" and p.sig_dispatch_key:
+                sig_lvl = p.sig_dispatch_lvl
+                sig_cost = get_sig_upgrade_cost(sig_lvl)
+                cost_str = f" | Upgrade: **{sig_cost}** 🔷" if sig_cost else " | **MAX**"
+                if sig_lvl > 0:
+                    lines.append(
+                        f"`SIG` **{_sig_display_name(p.sig_dispatch_key)}** Lv.{sig_lvl}/{MAX_SIG_LEVEL} — "
+                        f"{get_sig_dispatch_effect_text(p.partner_id, sig_lvl)}{cost_str}"
+                    )
+                else:
+                    lines.append(
+                        f"`SIG` **{_sig_display_name(p.sig_dispatch_key)}** — *Locked*{cost_str}"
+                    )
+
         embed.description = "\n\n".join(lines)
         return embed
 
@@ -108,23 +146,47 @@ class PartnerSkillsView(PartnerBaseView):
             else MAX_DISPATCH_SKILL_LEVEL
         )
 
+        # Row 0: Upgrade buttons for regular skills (only non-maxed slots)
         for i, (key, lvl) in enumerate(slots):
             key_col, lvl_col = col_pairs[i]
             if key and lvl < max_lvl:
                 upgrade_btn = ui.Button(
-                    label=f"Upgrade S{i + 1}", style=ButtonStyle.primary
+                    label=f"Upgrade S{i + 1}", style=ButtonStyle.primary, row=0
                 )
                 upgrade_btn.callback = self._make_upgrade(i, key_col, lvl_col, key, lvl)
                 self.add_item(upgrade_btn)
 
+        # Row 0: Signature upgrade button (6★ only, when sig is below max)
+        if self.partner.rarity >= 6:
+            sig_lvl = (
+                self.partner.sig_combat_lvl
+                if self.mode == "combat"
+                else self.partner.sig_dispatch_lvl
+            )
+            sig_key = (
+                self.partner.sig_combat_key
+                if self.mode == "combat"
+                else self.partner.sig_dispatch_key
+            )
+            if sig_key and sig_lvl < MAX_SIG_LEVEL:
+                sig_cost = get_sig_upgrade_cost(sig_lvl)
+                label = (
+                    f"{'Unlock' if sig_lvl == 0 else 'Upgrade'} SIG ({sig_cost} 🔷)"
+                )
+                sig_btn = ui.Button(label=label, style=ButtonStyle.blurple, row=0)
+                sig_btn.callback = self._make_sig_upgrade(sig_lvl)
+                self.add_item(sig_btn)
+
+        # Row 1: Reroll buttons for regular skills
         for i, (key, _) in enumerate(slots):
             key_col, lvl_col = col_pairs[i]
             reroll_btn = ui.Button(
-                label=f"Reroll S{i + 1}", style=ButtonStyle.secondary
+                label=f"Reroll S{i + 1}", style=ButtonStyle.secondary, row=1
             )
             reroll_btn.callback = self._make_reroll(i, key_col, lvl_col)
             self.add_item(reroll_btn)
 
+        # Row 2: Mode toggle + Back
         toggle_label = "Dispatch Skills" if self.mode == "combat" else "Combat Skills"
         toggle_btn = ui.Button(label=toggle_label, style=ButtonStyle.secondary, row=2)
         toggle_btn.callback = self._toggle_mode
@@ -157,6 +219,38 @@ class PartnerSkillsView(PartnerBaseView):
                 self.user_id, self.partner.partner_id, lvl_col, new_lvl
             )
             setattr(self.partner, lvl_col, new_lvl)
+            self.items = await self.bot.database.partners.get_items(self.user_id)
+            self._refresh_buttons()
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
+
+        return callback
+
+    def _make_sig_upgrade(self, sig_lvl: int):
+        async def callback(interaction: Interaction):
+            await interaction.response.defer()
+            cost = get_sig_upgrade_cost(sig_lvl)
+            if cost is None:
+                await interaction.followup.send(
+                    "Signature is already at max level!", ephemeral=True
+                )
+                return
+            ok = await self.bot.database.partners.spend_shard(self.user_id, 0, cost)
+            if not ok:
+                await interaction.followup.send(
+                    "Not enough character shards!", ephemeral=True
+                )
+                return
+            new_lvl = sig_lvl + 1
+            lvl_col = "sig_combat_lvl" if self.mode == "combat" else "sig_dispatch_lvl"
+            await self.bot.database.partners.update_skill_level(
+                self.user_id, self.partner.partner_id, lvl_col, new_lvl
+            )
+            if self.mode == "combat":
+                self.partner.sig_combat_lvl = new_lvl
+            else:
+                self.partner.sig_dispatch_lvl = new_lvl
             self.items = await self.bot.database.partners.get_items(self.user_id)
             self._refresh_buttons()
             await interaction.edit_original_response(

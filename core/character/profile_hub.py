@@ -46,6 +46,19 @@ class ProfileHubView(BaseView):
             btn.callback = self.handle_tab_switch
             self.add_item(btn)
 
+        close_btn = ui.Button(
+            label="Close", emoji="✖️", style=ButtonStyle.danger, custom_id="close"
+        )
+        close_btn.callback = self.handle_close
+        self.add_item(close_btn)
+
+    async def handle_close(self, interaction: Interaction):
+        self.stop()
+        try:
+            await interaction.message.delete()
+        except Exception:
+            pass
+
     async def handle_tab_switch(self, interaction: Interaction):
         tab_id = interaction.data["custom_id"]
         if tab_id == self.active_tab:

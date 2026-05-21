@@ -365,7 +365,7 @@ class CodexRunView(BaseView):
         is_perfect = self.chapters_cleared == 5 and self.waves_cleared_this_run == 35
         embed = discord.Embed(
             title="📕 Codex Run Complete",
-            description=("**✨ Codex Cleared!"),
+            description=("✨ Codex Cleared!"),
             color=discord.Color.gold() if is_perfect else discord.Color.blurple(),
         )
         embed.add_field(
