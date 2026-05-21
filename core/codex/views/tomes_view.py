@@ -7,16 +7,16 @@ from core.models import Player
 from database.repositories.codex import TOME_UPGRADE_COSTS, get_reroll_cost
 
 _PASSIVE_LABELS = {
-    "vitality": ("🌿 Vitality", "+{v:.1f}% Max HP"),
-    "wrath": ("🔥 Wrath", "+{v:.1f}% DEF → ATK"),
-    "bastion": ("🛡️ Bastion", "+{v:.1f}% ATK → DEF"),
-    "tenacity": ("⚡ Tenacity", "{v:.1f}% chance halve dmg"),
-    "bloodthirst": ("🩸 Bloodthirst", "{v:.1f}% crit HP drain"),
-    "providence": ("✨ Providence", "+{v:.1f}% Rarity"),
-    "precision": ("🎯 Insight", "+{v:.1f} Crit Chance"),
-    "affluence": ("💰 Affluence", "+{v:.1f}% XP & Gold"),
-    "bulwark": ("🪨 Bulwark", "+{v:.1f}% PDR"),
-    "resilience": ("🔒 Resilience", "+{v:.1f} FDR"),
+    "vitality": ("Vitality", "+{v:.1f}% Max HP"),
+    "wrath": ("Wrath", "+{v:.1f}% DEF → ATK"),
+    "bastion": ("Bastion", "+{v:.1f}% ATK → DEF"),
+    "tenacity": ("Tenacity", "{v:.1f}% chance halve dmg"),
+    "bloodthirst": ("Bloodthirst", "{v:.2f}% crit HP drain"),
+    "providence": ("Providence", "+{v:.1f}% more Rarity"),
+    "precision": ("Insight", "+{v:.1f} Crit Chance"),
+    "affluence": ("Affluence", "+{v:.1f}% XP & Gold"),
+    "bulwark": ("Bulwark", "+{v:.1f}% PDR"),
+    "resilience": ("Resilience", "+{v:.1f} FDR"),
 }
 
 

@@ -177,11 +177,17 @@ class ProfileBuilder:
                         hit_deadeye += tier * 4
                     except (ValueError, IndexError):
                         pass
+        hit_companion = p._get_companion_bonus("hit")
+        hit_accuracy_emblem = p.get_emblem_bonus("accuracy") * 2
         hit_val = f"**Base: {hit_weapon_pct}%**"
         if hit_deadeye:
             hit_val += f"\n↳ Deadeye: +{hit_deadeye} flat"
         if hit_ascension:
             hit_val += f"\n↳ Ascension: +{hit_ascension} flat"
+        if hit_companion:
+            hit_val += f"\n↳ Companion: +{hit_companion} flat"
+        if hit_accuracy_emblem:
+            hit_val += f"\n↳ Accuracy Emblem: +{hit_accuracy_emblem} flat"
         embed.add_field(name="🎯 Base Hit Chance", value=hit_val, inline=True)
 
         # ── Crit Chance ──────────────────────────────────────────────────────
@@ -273,12 +279,25 @@ class ProfileBuilder:
 
         # ── Rarity ───────────────────────────────────────────────────────────
         gear_rarity = p.rarity
+        comp_rarity_pct = p._get_companion_bonus("rarity")
+        prov_pct = p.get_tome_bonus("providence")
+        combined_more_pct = comp_rarity_pct + prov_pct
         total_rarity = p.get_total_rarity()
-        rarity_bonuses = total_rarity - gear_rarity
         if total_rarity > 0:
             rar_val = f"**{total_rarity}%**\n↳ Equipment: {gear_rarity}%"
-            if rarity_bonuses:
-                rar_val += f"\n↳ Bonuses: {rarity_bonuses:+}%"
+            if combined_more_pct > 0 and gear_rarity > 0:
+                after_more = int(gear_rarity * (1 + combined_more_pct / 100))
+                gain = after_more - gear_rarity
+                rar_val += f"\n↳ +{combined_more_pct:.1f}% more (+{gain})"
+                if comp_rarity_pct > 0:
+                    rar_val += f"\n  ↳ Companion: {comp_rarity_pct:.1f}%"
+                if prov_pct > 0:
+                    rar_val += f"\n  ↳ Providence: {prov_pct:.1f}%"
+            else:
+                after_more = gear_rarity
+            codex_bonus = total_rarity - after_more
+            if codex_bonus:
+                rar_val += f"\n↳ Codex: +{codex_bonus}"
             embed.add_field(name="✨ Rarity", value=rar_val, inline=True)
 
         # ── Special Rarity ────────────────────────────────────────────────────

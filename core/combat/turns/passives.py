@@ -58,6 +58,14 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
         if player.get_helmet_corrupted_essence() != "aphrodite":
             player.combat_ward = int(player.combat_ward * 0.20)
 
+    # Slayer Target Defence: +2% flat def per emblem tier vs the active slayer species.
+    # Uses bonus_def so it stacks additively with companion +% def and all other sources.
+    if player.active_task_species and player.active_task_species == monster.species:
+        slayer_def_tiers = player.get_emblem_bonus("slayer_def")
+        if slayer_def_tiers > 0:
+            bonus = int(player.flat_def * slayer_def_tiers * 0.02)
+            player.bonus_def += bonus
+
 
 # ---------------------------------------------------------------------------
 # Combat-Start Passive Handlers

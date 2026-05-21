@@ -110,25 +110,6 @@ def build_attack_multiplier(
     mult = 1.0
     calc_sources: list[str] = []
 
-    if not monster.is_boss:
-        tiers = player.get_emblem_bonus("combat_dmg")
-        if tiers > 0:
-            factor = 1 + tiers * 0.02
-            mult *= factor
-            calc_sources.append(f"combat_dmg_emblem×{factor:.3f}")
-    if monster.is_boss:
-        tiers = player.get_emblem_bonus("boss_dmg")
-        if tiers > 0:
-            factor = 1 + tiers * 0.05
-            mult *= factor
-            calc_sources.append(f"boss_dmg_emblem×{factor:.3f}")
-    if player.active_task_species == monster.species:
-        tiers = player.get_emblem_bonus("slayer_dmg")
-        if tiers > 0:
-            factor = 1 + tiers * 0.05
-            mult *= factor
-            calc_sources.append(f"slayer_emblem×{factor:.3f}")
-
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
 
@@ -136,12 +117,29 @@ def build_attack_multiplier(
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
 
     # --- Additive damage bonus pool ---
-    # Instability, Obliterate, Piety, and Frenzy all contribute additively.
-    # Each source adds (or subtracts) from the pool; a single multiplier is applied.
+    # All percentage damage bonuses stack additively here; a single multiplier is applied.
+    # Damage emblems (combat_dmg / boss_dmg / slayer_dmg), Instability, Obliterate,
+    # Piety, and Frenzy all contribute to add_pool_bonus.
     # Solo results: Instability−=×0.5, Instability+=(×1.6–2.0), Obliterate=×2, Piety=×7.
-    # Future additive sources go here to avoid compounding.
     add_pool_bonus = 0.0
     add_pool_parts: list[str] = []
+
+    # Slayer damage emblems — additive with other bonus sources
+    if not monster.is_boss:
+        tiers = player.get_emblem_bonus("combat_dmg")
+        if tiers > 0:
+            add_pool_bonus += tiers * 0.02
+            add_pool_parts.append(f"combat_dmg+{int(tiers * 2)}%")
+    if monster.is_boss:
+        tiers = player.get_emblem_bonus("boss_dmg")
+        if tiers > 0:
+            add_pool_bonus += tiers * 0.05
+            add_pool_parts.append(f"boss_dmg+{int(tiers * 5)}%")
+    if player.active_task_species and player.active_task_species == monster.species:
+        tiers = player.get_emblem_bonus("slayer_dmg")
+        if tiers > 0:
+            add_pool_bonus += tiers * 0.05
+            add_pool_parts.append(f"slayer_dmg+{int(tiers * 5)}%")
 
     if glove_passive == "instability" and glove_lvl > 0:
         if random.random() < 0.5:
@@ -259,6 +257,11 @@ def resolve_hit(
         log.append(
             f"**{fmt_weapon_passive(name)}** boosts 🎯 accuracy by **{wep_acc}**!"
         )
+
+    # Companion hit passive: flat accuracy bonus (1–5 per tier)
+    comp_hit = player._get_companion_bonus("hit")
+    if comp_hit > 0:
+        acc_bonus += comp_hit
 
     blinding_note = ""
     if monster.has_modifier("Blinding"):

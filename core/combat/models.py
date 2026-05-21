@@ -670,7 +670,7 @@ class Player:
             base = int(base * (1 + gluttony_pct / 100))
         return max(1, base)
 
-    def _get_companion_bonus(self, p_type: str) -> int:
+    def _get_companion_bonus(self, p_type: str) -> float:
         primary = sum(
             c.passive_value for c in self.active_companions if c.passive_type == p_type
         )
@@ -997,14 +997,16 @@ class Player:
         return int((ward_percent / 100) * self.total_max_hp) if ward_percent > 0 else 0
 
     def get_total_rarity(self) -> int:
-        """Full rarity total: gear + companions + tome multiplier + codex boon bonus."""
+        """Full rarity total: gear + (companion + Providence % more, additive) + codex boon bonus."""
         total = self.rarity  # Gear only (weapon + accessory)
-        total += self._get_companion_bonus("rarity")
 
-        # Providence tome: % bonus to total rarity
+        # Companion rarity and Providence tome both provide "% more rarity" and sum additively
+        # before being applied as a single multiplier to gear rarity.
+        comp_rarity_pct = self._get_companion_bonus("rarity")
         prov_pct = self.get_tome_bonus("providence")
-        if prov_pct > 0:
-            total = int(total * (1 + prov_pct / 100))
+        combined_more_pct = comp_rarity_pct + prov_pct
+        if combined_more_pct > 0 and total > 0:
+            total = int(total * (1 + combined_more_pct / 100))
 
         # Codex rarity boon accumulator
         total += self.bonus_rarity

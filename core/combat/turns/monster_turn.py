@@ -352,11 +352,6 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                         )
 
             if total_damage > 0:
-                if player.active_task_species == monster.species:
-                    tiers = player.get_emblem_bonus("slayer_def")
-                    if tiers > 0:
-                        total_damage = int(total_damage * (1 - min(0.50, tiers * 0.02)))
-
                 if (
                     celestial == "celestial_vow"
                     and (player.current_hp - total_damage <= 0)
