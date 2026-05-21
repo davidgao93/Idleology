@@ -369,7 +369,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             and _partner.sig_combat_lvl >= 1
             and random.random() < _partner.sig_combat_lvl * 0.02
         ):
-            attack_multiplier *= 2
+            attack_multiplier += 1.0  # additive +100% with the damage pool
             _sigmund_proc = True
 
     is_crit = resolve_crit(player, monster, is_hit, log, calc)
@@ -393,6 +393,16 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         raw_damage = calc_miss_damage(player, monster, attack_multiplier, log, calc)
 
     actual_damage = apply_monster_damage_reduction(monster, raw_damage, log, calc)
+
+    # Partner: co_curse_taken — monster takes L*2% more damage (applied after all reductions)
+    if player.active_partner and actual_damage > 0:
+        for key, lvl in player.active_partner.combat_skills:
+            if key == "co_curse_taken":
+                bonus = int(actual_damage * lvl * 0.02)
+                actual_damage += bonus
+                calc.append(f"  co_curse_taken: +{lvl * 2}% (+{bonus})")
+                break
+
     generate_player_ward_on_hit(player, raw_damage, is_hit, is_crit, log)
 
     # Ward Inoculation: drain accumulated ward-damage buffer onto the monster

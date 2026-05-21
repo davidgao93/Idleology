@@ -249,9 +249,9 @@ def _apply_partner_combat_start(
                 f"**Curse: Damage Lv.{lvl}** — {monster.name} loses **{reduction}** ATK 🩸"
             )
         elif key == "co_curse_taken":
-            bonus = int(player.flat_atk * lvl * 0.02)
-            player.bonus_atk += bonus
-            parts.append(f"**Curse: Vulnerability Lv.{lvl}** — ⚔️ +{bonus} ATK")
+            parts.append(
+                f"**Curse: Taken Lv.{lvl}** — {monster.name} cursed! Your damage dealt is increased by {lvl * 2}% 🩸"
+            )
         elif key == "co_special_rarity":
             player.partner_special_rarity = lvl * 0.1
             parts.append(

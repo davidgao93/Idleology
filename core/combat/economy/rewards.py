@@ -109,6 +109,19 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
             elif key == "co_gold_boost":
                 results["gold"] = int(results["gold"] * (1 + lvl * 0.05))
 
+        # Flora sig: convert a portion of final gold into skilling materials.
+        # Applied after all gold multipliers so the conversion is from the true final value.
+        sig_key = partner.sig_combat_key
+        sig_lvl = partner.sig_combat_lvl
+        if sig_key == "sig_co_flora" and sig_lvl >= 1:
+            flora_pct = sig_lvl * FLORA_CONVERSION_PER_LEVEL
+            converted = int(results["gold"] * flora_pct)
+            results["gold"] = max(0, results["gold"] - converted)
+            results["flora_skilling_gold"] = converted
+            results["msgs"].append(
+                f"🌿 **Nature's Bounty (Lv.{sig_lvl})** — {converted:,} GP converted into skilling materials!"
+            )
+
     # Accessory Passive: Prosper — doubles final gold after all other modifiers
     if acc_passive == "Prosper":
         double_gold_chance = acc_lvl * 0.10
@@ -122,17 +135,6 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         if random.random() <= double_exp_chance:
             results["xp"] *= 2
             results["msgs"].append(f"**Infinite Wisdom ({acc_lvl})** grants double XP!")
-
-        sig_key = partner.sig_combat_key
-        sig_lvl = partner.sig_combat_lvl
-        if sig_key == "sig_co_flora" and sig_lvl >= 1:
-            flora_pct = sig_lvl * FLORA_CONVERSION_PER_LEVEL
-            converted = int(results["gold"] * flora_pct)
-            results["gold"] = max(0, results["gold"] - converted)
-            results["flora_skilling_gold"] = converted
-            results["msgs"].append(
-                f"🌿 **Flora's Blessing (Lv.{sig_lvl})** — {converted:,} GP converted into skilling materials!"
-            )
 
     return results
 

@@ -122,6 +122,7 @@ class General(commands.Cog, name="general"):
             "slayer",
             "codex",
             "essence",
+            "partner",
         ],
     ):
 
@@ -371,7 +372,7 @@ class General(commands.Cog, name="general"):
                 "Rolls **20–80%** of the item's base PDR and FDR values as a flat bonus to each.\n\n"
                 "**👁️ Essence of Insight**\n"
                 "Grants a flat crit chance increase. "
-                "Rolls **+1–10%** Crit Chance.\n\n"
+                "Rolls **+1–8%** Crit Chance.\n\n"
                 "**💨 Essence of Evasion**\n"
                 "Grants a flat evasion chance bonus. "
                 "Rolls **+1–8%** Evasion.\n\n"
@@ -387,21 +388,66 @@ class General(commands.Cog, name="general"):
                 "Removes one random occupied regular essence slot.\n\n"
                 "**— Corrupted Essences (permanent) —**\n\n"
                 "**💠 Essence of Aphrodite's Disciple**\n"
-                "**Glove:** All ward-affecting hits count as ward-breaking.\n"
+                "**Glove:** Your ward is considered broken whenever it is damaged.\n"
                 "**Boot:** Your equipment drop chance is lucky.\n"
                 "**Helmet:** Your ward cannot be forcibly disabled.\n\n"
                 "**💠 Essence of Lucifer's Heir**\n"
-                "**Glove:** Each attack deals bonus flat damage equal to 15% of your current ward pool (only while ward > 0).\n"
+                "**Glove:** Each attack deals bonus flat damage equal to 15% of your current ward pool.\n"
                 "**Boot:** Gold drops are increased by 10% per modifier on the monster, up to a maximum of +50%.\n"
                 "**Helmet:** When your ward is fully broken, gain 15% PDR for the remainder of that combat.\n\n"
                 "**💠 Essence of Gemini's Lost Twin**\n"
-                "**Glove:** Critical hits strike twice — the second strike deals 40–60% of the first hit's damage.\n"
+                "**Glove:** Critical hits strike twice — the second strike deals 20–40% of the first hit's damage.\n"
                 "**Boot:** Pet drop chance is doubled (5% → 10% from normal enemies; 3% → 6% from bosses).\n"
-                "**Helmet:** Incoming damage splits evenly between ward and HP simultaneously. Your damage taken is halved.\n\n"
+                "**Helmet:** Incoming damage is reduced by 20% then split evenly between ward and HP simultaneously.\n\n"
                 "**💠 Essence of NEET's Voidling**\n"
-                "**Glove:** Your normal hits are now misses — only critical hits deal direct damage. Miss-triggered effects (Perdition, Oblivion, Poison) still apply.\n"
-                "**Boot:** Whenever you receive skilling resources during combat, gain it again.\n"
+                "**Glove:** Your accuracy is 0 — all attacks always miss.\n"
+                "**Boot:** Whenever you receive skilling resources during combat, gain them again.\n"
                 "**Helmet:** When you gain ward, gain twice the amount instead."
+            )
+            content_added = True
+
+        elif category == "partner":
+            embed.title = "🤝 Partner Combat Skills"
+            embed.description = (
+                "Partners have up to **3 combat skill slots** (unlocked at 4★/5★/6★) "
+                "and **1 combat signature** (unique per partner).\n\n"
+                "**— Common Combat Skills —**\n\n"
+                "**Joint Attack** — % chance to attack alongside you each turn. "
+                "Damage is flat based on partner ATK, unaffected by multipliers.\n\n"
+                "**Heal** — Heals you for % max HP every 3 turns.\n\n"
+                "**Damage Reduction** — % chance to reduce damage taken by 50% per hit.\n\n"
+                "**Stat Transfer** — On combat start, adds % of partner ATK/DEF/HP as bonus stats. "
+                "Shown in stat bonuses on the profile.\n\n"
+                "**Monster Debuff** — On combat start, reduces monster ATK and DEF by %. "
+                "Stacks additively with Debilitate (weapon) and Monster Debuff.\n\n"
+                "**XP Boost** — +% XP from combat, additive with all other XP sources. Works in Codex.\n\n"
+                "**Gold Boost** — +% gold from combat, additive with all other gold sources.\n\n"
+                "**Special Find** — +% special rarity, additive with all other sources.\n\n"
+                "**ATK from DEF** — On combat start, adds % of partner DEF to your bonus ATK.\n\n"
+                "**DEF from ATK** — On combat start, adds % of partner ATK to your bonus DEF.\n\n"
+                "**Curse: Damage** — On combat start, reduces monster ATK by %. "
+                "Applied when raw monster damage is rolled.\n\n"
+                "**Curse: Taken** — Monster takes % more damage. "
+                "Applied to your final damage after all reductions (PDR/FDR).\n\n"
+                "**— Rare Combat Skills —**\n\n"
+                "**Crit Rate** — Flat crit chance increase. Stacks with all other crit sources.\n\n"
+                "**Crit Damage** — Flat crit multiplier increase. Stacks with all other crit dmg sources.\n\n"
+                "**Execute** — Culls the monster at % HP. Does NOT stack with the weapon Cull family.\n\n"
+                "**Ward Regen** — Generates ward per turn regardless of hit/miss.\n\n"
+                "**Ward Leech** — % of player damage dealt is gained as ward each turn.\n\n"
+                "**— Combat Signatures —**\n\n"
+                "**Skol — Essence Communion:** Gain N random corrupted essence buffs at combat start. "
+                "Buffs are not granted for essence types the player already equips.\n\n"
+                "**Eve — Final Stand:** When HP would drop to 0, survive by consuming potions and restore HP to full.\n\n"
+                "**Kay — Windfall:** % chance to obtain an extra curio after each combat. "
+                "Does not work in Ascent or Codex.\n\n"
+                "**Sigmund — Decisive Strike:** % chance to add +100% damage on a hit. "
+                "Additive with Piety, Obliterate, and all other damage bonuses.\n\n"
+                "**Velour — Fortune's Tide:** % chance to double all special rarity drops.\n\n"
+                "**Flora — Nature's Bounty:** Converts % of final monster gold into skilling materials. "
+                "Formula: (gold ÷ 1,000) × skill yield. Doubles with NEET boot.\n\n"
+                "**Yvenn — Apex Hunter:** All monsters count as slayer task monsters; "
+                "grants bonus slayer progress per kill and enables slayer damage emblems."
             )
             content_added = True
 

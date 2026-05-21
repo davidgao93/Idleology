@@ -297,7 +297,7 @@ def get_skill_effect_text(key: str, level: int) -> str:
         # --- Common combat ---
         "co_joint_attack": f"{L * 10}% chance to attack alongside you",
         "co_heal": f"Heals you for {L}% max HP every 3 turns",
-        "co_damage_reduction": f"{L * 5}% chance to halve damage taken",
+        "co_damage_reduction": f"{L * 5}% chance to reduce damage taken by 50%",
         "co_stat_transfer": f"On combat start, add {L * 10}% of partner's stats to your base stats",
         "co_monster_debuff": f"On combat start, reduce monster ATK and DEF by {L * 2}%",
         "co_xp_boost": f"+{L * 5}% XP from combat",
@@ -306,13 +306,13 @@ def get_skill_effect_text(key: str, level: int) -> str:
         "co_atk_from_def": f"Your base ATK gains {L * 25}% of partner DEF",
         "co_def_from_atk": f"Your base DEF gains {L * 20}% of partner ATK",
         "co_curse_damage": f"Curses the monster, it deals {L * 2}% less damage",
-        "co_curse_taken": f"Curses the monster, it takes {L * 2}% more damage",
+        "co_curse_taken": f"Curses the monster, it takes {L * 2}% more damage (applied after all reductions)",
         # --- Rare combat ---
         "co_crit_rate": f"+{L}% critical strike chance",
         "co_crit_damage": f"+{L * 10}% critical strike multiplier",
         "co_execute": f"Culls the monster at {L}% HP",
         "co_ward_regen": f"Generate {L * 10} ward per turn to the player",
-        "co_ward_leech": f"{L * 0.1:.1f}% of damage dealt by the player is restored as ward",
+        "co_ward_leech": f"{L * 0.1:.1f}% of damage dealt by the player is gained as ward",
         # --- Common dispatch ---
         "di_exp_boost": f"+{L * 10}% EXP during combat dispatch",
         "di_gold_boost": f"+{L * 10}% gold during combat dispatch",
@@ -333,22 +333,26 @@ def get_sig_combat_effect_text(partner_id: int, tier: int) -> str:
     T = tier
     if partner_id == 1:  # Skol
         n = _SKOL_SIG_BUFFS[T]
-        return f"Gain {n} random corrupted essence buff(s) at combat start"
+        return (
+            f"Gain {n} random corrupted essence buff(s) at combat start. "
+            f"Can pick ones already on gear, effect is not doubled."
+        )
     if partner_id == 2:  # Eve
         p = _EVE_SIG_POTIONS[T]
-        return f"Survive a fatal hit by consuming {p} potion(s)"
+        return f"When HP would drop to 0, survive by consuming {p} potion(s) and restore HP to full."
     if partner_id == 3:  # Kay
-        return f"{T * 5}% chance to obtain an extra curio after combat"
+        return f"{T * 5}% chance to obtain an extra curio after combat (does not apply in Ascent or Codex)"
     if partner_id == 4:  # Sigmund
-        return f"{T * 2}% chance to double your damage on a hit"
+        return f"{T * 2}% chance to add +100% damage on a hit"
     if partner_id == 5:  # Velour
         return f"{T * 2}% chance to double all special rarity drops"
     if partner_id == 6:  # Flora
-        return f"Convert {T * 10}% of monster gold drops into skilling materials"
-    if partner_id == 7:  # Yvenn
         return (
-            f"All monsters count as task monsters; +{T} bonus slayer progress per kill"
+            f"Convert {T * 10}% of final monster gold into skilling materials. "
+            f"Formula: (gold converted ÷ 1000) × skill yield."
         )
+    if partner_id == 7:  # Yvenn
+        return f"All monsters count as slayer task monsters; +{T} bonus slayer progress per kill"
     return "???"
 
 

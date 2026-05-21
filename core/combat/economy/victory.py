@@ -294,6 +294,28 @@ async def apply_victory_rewards(
 
     await bot.database.users.modify_gold(user_id, reward_data["gold"])
 
+    # Flora sig: materialise the converted gold into skilling resources.
+    # gold deduction already happened in calculate_rewards; here we write the skill DB.
+    flora_gold = reward_data.get("flora_skilling_gold", 0)
+    if flora_gold > 0:
+        from core.skills.mechanics import SkillMechanics as _SM
+
+        _skill_type = random.choice(["mining", "woodcutting", "fishing"])
+        _skill_row = await bot.database.skills.get_data(user_id, server_id, _skill_type)
+        if _skill_row:
+            _tool_tier = _skill_row[2]
+            _units = max(1, flora_gold // 1000)
+            _base = _SM.calculate_yield(_skill_type, _tool_tier)
+            _resources = {k: v * _units for k, v in _base.items()}
+            await bot.database.skills.update_batch(
+                user_id, server_id, _skill_type, _resources
+            )
+            # NEET boot doubles skilling yield from Flora too
+            if player.get_boot_corrupted_essence() == "neet":
+                await bot.database.skills.update_batch(
+                    user_id, server_id, _skill_type, _resources
+                )
+
     await _apply_companion_drops(bot, user_id, player, monster, reward_data, message)
     await _apply_slayer_rewards(bot, user_id, server_id, player, monster, reward_data)
 
