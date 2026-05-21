@@ -57,7 +57,7 @@ class CodexMenuView(BaseView):
             name="Tome Slots Unlocked", value=f"{len(tomes)}/5", inline=True
         )
         embed.set_thumbnail(url=CODEX_HUB)
-        embed.set_footer(text="Level 100+ required to begin a run.")
+        embed.set_footer(text="Level 80+ required to begin a run.")
         return embed
 
     @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="📖", row=0)
@@ -89,6 +89,7 @@ class CodexMenuView(BaseView):
 
         wave_baseline = {
             "bonus_crit": self.player.bonus_crit,
+            "bonus_max_hp": self.player.bonus_max_hp,
             "combat_ward": self.player.combat_ward,
             "atk_multiplier": self.player.atk_multiplier,
             "def_multiplier": self.player.def_multiplier,
@@ -97,6 +98,7 @@ class CodexMenuView(BaseView):
             "chapter_pdr_reduction": self.player.chapter_pdr_reduction,
             "chapter_ward_gen_mult": self.player.chapter_ward_gen_mult,
             "chapter_crit_dmg_reduction": self.player.chapter_crit_dmg_reduction,
+            "chapter_hp_entry_pct": self.player.chapter_hp_entry_pct,
         }
 
         monster = await _generate_codex_wave_monster(self.player, chapter, 1)

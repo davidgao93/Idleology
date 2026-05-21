@@ -6,13 +6,13 @@ from core.models import Player
 
 @dataclass
 class CodexChapter:
-    id: int                    # 1–5 (chapter position in the run)
-    name: str                  # Generated name e.g. "Savage Spire of Blindness"
+    id: int  # 1–5 (chapter position in the run)
+    name: str  # Generated name e.g. "Savage Spire of Blindness"
     flavor: str
-    signature_label: str       # Display name (same as name for generated chapters)
-    signature_description: str # e.g. "Enemies: +30% DMG | -40% Crit Chance"
-    level_offset: int          # Monster base level = player_level + ascension + level_offset
-    difficulty: int            # 1–5, affects modifier counts and wave scaling
+    signature_label: str  # Display name (same as name for generated chapters)
+    signature_description: str  # e.g. "Enemies: +30% DMG | -40% Crit Chance"
+    level_offset: int  # Monster base level = player_level + ascension + level_offset
+    difficulty: int  # 1–5, affects modifier counts and wave scaling
     player_mods: list[tuple[str, float]] = field(default_factory=list)
     monster_mods: list[tuple[str, int]] = field(default_factory=list)
 
@@ -35,24 +35,37 @@ class CodexBoon:
 # ---------------------------------------------------------------------------
 
 _NOUNS = [
-    "Spire", "Void", "Gate", "Citadel", "Archive", "Throne", "Bastion",
-    "Summit", "Maw", "Sanctum", "Rift", "Forge", "Nexus", "Pinnacle", "Abyss",
+    "Spire",
+    "Void",
+    "Gate",
+    "Citadel",
+    "Archive",
+    "Throne",
+    "Bastion",
+    "Summit",
+    "Maw",
+    "Sanctum",
+    "Rift",
+    "Forge",
+    "Nexus",
+    "Pinnacle",
+    "Abyss",
 ]
 
 # Player debuff types: (type, suffix_word, (diff1_val, diff2_val, diff3_val, diff4_val, diff5_val))
 # None values table means effect is binary (ward_disable)
 _PLAYER_DEBUFFS: list[tuple[str, str, tuple | None]] = [
-    ("atk_pct",      "Weakness",      (0.20, 0.25, 0.30, 0.35, 0.40)),
-    ("def_pct",      "Ruin",          (0.20, 0.25, 0.30, 0.35, 0.40)),
-    ("max_hp_pct",   "Decay",         (0.15, 0.20, 0.25, 0.30, 0.40)),
-    ("ward_disable", "Corruption",    None),
-    ("crit_pct",     "Blindness",     (20.0, 25.0, 30.0, 35.0, 40.0)),
-    ("hit_flat",     "Haze",          (8.0, 10.0, 12.0, 14.0, 18.0)),
-    ("crit_dmg_pct", "Dullness",      (0.20, 0.25, 0.30, 0.35, 0.40)),
-    ("pdr_pct",      "the Flayed",    (0.20, 0.25, 0.30, 0.35, 0.40)),
+    ("atk_pct", "Weakness", (0.20, 0.25, 0.30, 0.35, 0.40)),
+    ("def_pct", "Ruin", (0.20, 0.25, 0.30, 0.35, 0.40)),
+    ("max_hp_pct", "Decay", (0.15, 0.20, 0.25, 0.30, 0.40)),
+    ("ward_disable", "Corruption", None),
+    ("crit_pct", "Blindness", (20.0, 25.0, 30.0, 35.0, 40.0)),
+    ("hit_flat", "Haze", (8.0, 10.0, 12.0, 14.0, 18.0)),
+    ("crit_dmg_pct", "Dullness", (0.20, 0.25, 0.30, 0.35, 0.40)),
+    ("pdr_pct", "the Flayed", (0.20, 0.25, 0.30, 0.35, 0.40)),
     ("ward_gen_pct", "the Fractured", (0.25, 0.30, 0.40, 0.50, 0.60)),
-    ("hp_entry_pct", "the Wounded",   (0.20, 0.25, 0.30, 0.35, 0.40)),
-    ("potion_count", "Scarcity",      (1.0, 1.0, 2.0, 2.0, 3.0)),
+    ("hp_entry_pct", "the Wounded", (0.20, 0.25, 0.30, 0.35, 0.40)),
+    ("potion_count", "Scarcity", (1.0, 1.0, 2.0, 2.0, 3.0)),
 ]
 
 # Ward disable only available at difficulty 3+
@@ -60,14 +73,14 @@ _WARD_DISABLE_MIN_DIFF = 3
 
 # Monster buff types: (modifier_name, prefix_word, (diff1_tier, diff2_tier, diff3_tier, diff4_tier, diff5_tier))
 _MONSTER_BUFFS: list[tuple[str, str, tuple]] = [
-    ("Savage",    "Savage",    (1, 2, 3, 3, 4)),
-    ("Ironclad",  "Ironclad",  (1, 2, 3, 3, 4)),
-    ("Lethal",    "Lethal",    (1, 2, 3, 3, 4)),
+    ("Savage", "Savage", (1, 2, 3, 3, 4)),
+    ("Ironclad", "Ironclad", (1, 2, 3, 3, 4)),
+    ("Lethal", "Lethal", (1, 2, 3, 3, 4)),
     ("Fortified", "Fortified", (1, 2, 3, 3, 4)),
-    ("Titanic",   "Titanic",   (1, 2, 3, 3, 4)),
-    ("Veiled",    "Veiled",    (1, 2, 3, 3, 4)),
-    ("Vampiric",  "Vampiric",  (1, 2, 3, 3, 4)),
-    ("Enraged",   "Enraged",   (1, 2, 3, 3, 4)),
+    ("Titanic", "Titanic", (1, 2, 3, 3, 4)),
+    ("Veiled", "Veiled", (1, 2, 3, 3, 4)),
+    ("Vampiric", "Vampiric", (1, 2, 3, 3, 4)),
+    ("Enraged", "Enraged", (1, 2, 3, 3, 4)),
 ]
 
 # Per-position modifier budget: (min_total, max_total, max_player, max_monster)
@@ -86,6 +99,7 @@ _LEVEL_OFFSETS = [5, 7, 10, 14, 18]
 # ---------------------------------------------------------------------------
 # Description helpers
 # ---------------------------------------------------------------------------
+
 
 def _desc_player_mod(mod_type: str, value: float) -> str:
     if mod_type == "atk_pct":
@@ -115,6 +129,7 @@ def _desc_player_mod(mod_type: str, value: float) -> str:
 
 def _desc_monster_mod(modifier_name: str, tier: int) -> str:
     from core.combat.mobgen.modifier_data import MODIFIER_DEFINITIONS
+
     defn = MODIFIER_DEFINITIONS.get(modifier_name)
     if defn and tier > 0 and tier <= len(defn.tiers):
         return f"Enemies: {defn.description(defn.tiers[tier - 1])}"
@@ -124,6 +139,7 @@ def _desc_monster_mod(modifier_name: str, tier: int) -> str:
 # ---------------------------------------------------------------------------
 # Chapter generation
 # ---------------------------------------------------------------------------
+
 
 def generate_codex_chapter(position: int) -> CodexChapter:
     """Generates a random CodexChapter for the given run position (1–5)."""
@@ -142,10 +158,13 @@ def generate_codex_chapter(position: int) -> CodexChapter:
 
     # Pick player debuffs (exclude ward_disable below minimum difficulty)
     available_player = [
-        entry for entry in _PLAYER_DEBUFFS
+        entry
+        for entry in _PLAYER_DEBUFFS
         if entry[0] != "ward_disable" or difficulty >= _WARD_DISABLE_MIN_DIFF
     ]
-    selected_player = random.sample(available_player, min(n_player, len(available_player)))
+    selected_player = random.sample(
+        available_player, min(n_player, len(available_player))
+    )
 
     player_mods: list[tuple[str, float]] = []
     suffix_words: list[str] = []
@@ -155,7 +174,9 @@ def generate_codex_chapter(position: int) -> CodexChapter:
         suffix_words.append(word)
 
     # Pick monster buffs
-    selected_monster = random.sample(_MONSTER_BUFFS, min(n_monster, len(_MONSTER_BUFFS)))
+    selected_monster = random.sample(
+        _MONSTER_BUFFS, min(n_monster, len(_MONSTER_BUFFS))
+    )
 
     monster_mods: list[tuple[str, int]] = []
     prefix_words: list[str] = []
@@ -232,14 +253,14 @@ _BOON_DEFINITIONS = [
         "+{v:.0f} FDR",
         "+{v:.0f} FDR this run",
         15,
-        (2.0, 8.0),
+        (20.0, 80.0),
     ),
     (
         "ward_boost",
         "+{v:.0f}% Ward",
         "+{v:.0f}% Max HP as ward this run",
         15,
-        (8.0, 18.0),
+        (8.0, 30.0),
     ),
     (
         "rarity_boost",
@@ -280,7 +301,7 @@ _BOON_DEFINITIONS = [
         "page_drop",
         "Guaranteed Page",
         "Guarantees a Codex Page upon completing the full run",
-        2,
+        1,
         None,
     ),
 ]
@@ -397,10 +418,10 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
 
     for mod_type, value in chapter.player_mods:
         if mod_type == "atk_pct":
-            player.atk_multiplier *= (1 - value)
+            player.atk_multiplier *= 1 - value
 
         elif mod_type == "def_pct":
-            player.def_multiplier *= (1 - value)
+            player.def_multiplier *= 1 - value
 
         elif mod_type == "max_hp_pct":
             player.bonus_max_hp -= int(player.max_hp * value)
@@ -433,8 +454,10 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
             player.combat_ward = int(player.combat_ward * mult)
 
         elif mod_type == "hp_entry_pct":
-            new_cap = int(player.total_max_hp * (1 - value))
-            player.current_hp = min(player.current_hp, new_cap)
+            player.chapter_hp_entry_pct = value
+            player.current_hp = min(
+                player.current_hp, int(player.total_max_hp * (1 - value))
+            )
 
         elif mod_type == "potion_count":
             player.potions = max(0, player.potions - int(value))
@@ -453,9 +476,9 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
     for boon in active_boons:
         t, v = boon.type, boon.value
         if t == "atk_boost":
-            player.atk_multiplier *= (1 + v / 100)
+            player.atk_multiplier *= 1 + v / 100
         elif t == "def_boost":
-            player.def_multiplier *= (1 + v / 100)
+            player.def_multiplier *= 1 + v / 100
         elif t == "crit_boost":
             player.bonus_crit += int(v)
         elif t == "ward_boost":
@@ -466,9 +489,9 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
             player.bonus_rarity += int(flat_rarity * (v / 100))
             dt, dv = boon.downside_type, boon.downside_value
             if dt == "atk_penalty":
-                player.atk_multiplier *= (1 - dv / 100)
+                player.atk_multiplier *= 1 - dv / 100
             elif dt == "def_penalty":
-                player.def_multiplier *= (1 - dv / 100)
+                player.def_multiplier *= 1 - dv / 100
             elif dt == "crit_penalty":
                 player.bonus_crit -= int(dv)
         elif t == "fdr_boost":

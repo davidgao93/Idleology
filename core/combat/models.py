@@ -93,6 +93,7 @@ class CombatState:
     chapter_pdr_reduction: float = 0.0   # multiplicative PDR reduction (0.30 = 30% less PDR)
     chapter_ward_gen_mult: float = 1.0   # multiplier on all ward generation (1.0 = no reduction)
     chapter_crit_dmg_reduction: float = 0.0  # multiplier reduction on player crit damage
+    chapter_hp_entry_pct: float = 0.0    # fraction of max HP the player may not exceed on wave entry
 
 
 # ---------------------------------------------------------------------------
@@ -555,6 +556,14 @@ class Player:
         self.cs.chapter_crit_dmg_reduction = v
 
     @property
+    def chapter_hp_entry_pct(self) -> float:
+        return self.cs.chapter_hp_entry_pct
+
+    @chapter_hp_entry_pct.setter
+    def chapter_hp_entry_pct(self, v: float) -> None:
+        self.cs.chapter_hp_entry_pct = v
+
+    @property
     def jewel_cataclysm_primed(self) -> bool:
         return self.cs.jewel_cataclysm_primed
 
@@ -797,6 +806,7 @@ class Player:
         self.cs.chapter_pdr_reduction = 0.0
         self.cs.chapter_ward_gen_mult = 1.0
         self.cs.chapter_crit_dmg_reduction = 0.0
+        self.cs.chapter_hp_entry_pct = 0.0
 
     def reset_combat_state(self) -> None:
         """

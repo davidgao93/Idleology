@@ -286,7 +286,12 @@ def _accessory_fields(embed, item, passive_funcs: dict, void_desc: dict):
         )
     void_p = getattr(item, "void_passive", "none") or "none"
     if void_p not in ("none", ""):
-        _add_passive_field(embed, "🌀 Void", void_p, _pdesc(void_desc, void_p))
+        _add_passive_field(
+            embed,
+            "🌀 Void",
+            void_p.replace("_", " ").title(),
+            _pdesc(void_desc, void_p),
+        )
 
 
 def _essence_fields(embed, item):

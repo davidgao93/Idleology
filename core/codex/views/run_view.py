@@ -19,6 +19,7 @@ from core.codex.mechanics import (
 )
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
+from core.combat.calc.hit_calc import calculate_crit_chance
 from core.combat.combat_log import CombatLogger
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
@@ -186,6 +187,7 @@ class CodexRunView(BaseView):
         Impenetrable) don't compound across waves."""
         self.chapter_wave_baseline = {
             "bonus_crit": self.player.bonus_crit,
+            "bonus_max_hp": self.player.bonus_max_hp,
             "combat_ward": self.player.combat_ward,
             "atk_multiplier": self.player.atk_multiplier,
             "def_multiplier": self.player.def_multiplier,
@@ -194,6 +196,7 @@ class CodexRunView(BaseView):
             "chapter_pdr_reduction": self.player.chapter_pdr_reduction,
             "chapter_ward_gen_mult": self.player.chapter_ward_gen_mult,
             "chapter_crit_dmg_reduction": self.player.chapter_crit_dmg_reduction,
+            "chapter_hp_entry_pct": self.player.chapter_hp_entry_pct,
         }
 
     def _restore_wave_baseline(self):
@@ -204,6 +207,7 @@ class CodexRunView(BaseView):
             return
         self.player.reset_combat_bonus()
         self.player.bonus_crit = self.chapter_wave_baseline["bonus_crit"]
+        self.player.bonus_max_hp = self.chapter_wave_baseline.get("bonus_max_hp", 0)
         self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
         self.player.atk_multiplier = self.chapter_wave_baseline.get("atk_multiplier", 1.0)
         self.player.def_multiplier = self.chapter_wave_baseline.get("def_multiplier", 1.0)
@@ -212,6 +216,11 @@ class CodexRunView(BaseView):
         self.player.chapter_pdr_reduction = self.chapter_wave_baseline.get("chapter_pdr_reduction", 0.0)
         self.player.chapter_ward_gen_mult = self.chapter_wave_baseline.get("chapter_ward_gen_mult", 1.0)
         self.player.chapter_crit_dmg_reduction = self.chapter_wave_baseline.get("chapter_crit_dmg_reduction", 0.0)
+        self.player.chapter_hp_entry_pct = self.chapter_wave_baseline.get("chapter_hp_entry_pct", 0.0)
+        # Re-apply HP entry cap each wave (bonus_max_hp already restored above so total_max_hp is correct)
+        if self.player.chapter_hp_entry_pct > 0:
+            cap = int(self.player.total_max_hp * (1 - self.player.chapter_hp_entry_pct))
+            self.player.current_hp = min(self.player.current_hp, cap)
 
     def _projected_ward(self) -> int:
         """Ward the player will have at the start of the next wave."""
@@ -301,10 +310,35 @@ class CodexRunView(BaseView):
         atk = p.get_total_attack()
         def_ = p.get_total_defence()
         eff_max_hp = p.get_effective_max_hp()
-        crit_chance = p.get_current_crit_chance()
-        rarity = p.get_total_rarity()
         fdr = p.get_total_fdr()
         pdr = p.get_total_pdr()
+
+        # Hit chance — mirrors profile_ui logic
+        _HIT_BASE_PCT = 60
+        hit_pct = int(p.equipped_weapon.hit_chance * 100) if p.equipped_weapon else _HIT_BASE_PCT
+        hit_ascension = p.get_ascension_bonuses()["hit"] if p.ascension_unlocks else 0
+        hit_deadeye = 0
+        if p.equipped_weapon:
+            for _passive in (p.equipped_weapon.passive, p.equipped_weapon.p_passive, p.equipped_weapon.u_passive):
+                if _passive and "deadeye" in _passive.lower():
+                    try:
+                        hit_deadeye += int(_passive.lower().split("_")[-1]) * 4
+                    except (ValueError, IndexError):
+                        pass
+        hit_companion = p._get_companion_bonus("hit")
+        hit_emblem = p.get_emblem_bonus("accuracy") * 2
+        hit_total = hit_pct + hit_ascension + hit_deadeye + hit_companion + hit_emblem - p.chapter_hit_penalty
+
+        # Crit chance — includes piercing passive + partner bonus (matches engine)
+        crit_chance = calculate_crit_chance(p)
+
+        # Crit multiplier — reduced by chapter dullness modifier if active
+        crit_multi = p.get_weapon_crit_multi()
+        if p.chapter_crit_dmg_reduction > 0:
+            crit_multi *= (1 - p.chapter_crit_dmg_reduction)
+
+        block = p.get_total_block()
+        evasion = p.get_total_evasion()
 
         hp_line = f"❤️ **{p.current_hp:,}/{eff_max_hp:,}**"
         proj_ward = self._projected_ward()
@@ -313,10 +347,17 @@ class CodexRunView(BaseView):
         stats_block = (
             f"⚔️ ATK: **{atk:,}**  🛡️ DEF: **{def_:,}**\n"
             f"{hp_line}\n"
-            f"🎯 Crit Chance: **{crit_chance}%**  ✨ Rarity: **{rarity}%**"
+            f"🎯 Hit: **{hit_total}%**  Crit: **{crit_chance}%**  ×{crit_multi:.2f}"
         )
         if fdr > 0 or pdr > 0:
             stats_block += f"\n🔒 FDR: **{fdr}**  🪨 PDR: **{pdr}%**"
+        if block > 0 or evasion > 0:
+            be_parts = []
+            if block > 0:
+                be_parts.append(f"🛡️ Block: **{block}%**")
+            if evasion > 0:
+                be_parts.append(f"💨 Evasion: **{evasion}%**")
+            stats_block += "\n" + "  ".join(be_parts)
 
         reroll_hint = (
             "\n*(🔄 Reroll available — one use per chapter)*"

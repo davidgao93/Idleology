@@ -159,7 +159,9 @@ def _stat_lines_after(target, source, item_type: str, new_level: int) -> list:
         lines.append(f"ATK: {arrow(target.attack, source.attack)}")
         lines.append(f"DEF: {arrow(target.defence, source.defence)}")
         lines.append(f"Rarity: {arrow(target.rarity, source.rarity, pct)}")
-        lines.append(f"Refine: {arrow(target.refinement_lvl, source.refinement_lvl, lv)}")
+        lines.append(
+            f"Refine: {arrow(target.refinement_lvl, source.refinement_lvl, lv)}"
+        )
     elif item_type == "armor":
         t_label = "ATK" if getattr(target, "main_stat_type", "def") == "atk" else "DEF"
         s_label = "ATK" if getattr(source, "main_stat_type", "def") == "atk" else "DEF"
@@ -172,7 +174,9 @@ def _stat_lines_after(target, source, item_type: str, new_level: int) -> list:
         lines.append(f"Ward: {arrow(target.ward, source.ward, pct)}")
         lines.append(f"PDR: {arrow(target.pdr, source.pdr, pct)}")
         lines.append(f"FDR: {arrow(target.fdr, source.fdr)}")
-        lines.append(f"Reinforce: {arrow(target.reinforcement_lvl, source.reinforcement_lvl, lv)}")
+        lines.append(
+            f"Reinforce: {arrow(target.reinforcement_lvl, source.reinforcement_lvl, lv)}"
+        )
     elif item_type == "accessory":
         lines.append(f"ATK: {arrow(target.attack, source.attack)}")
         lines.append(f"DEF: {arrow(target.defence, source.defence)}")
@@ -185,13 +189,17 @@ def _stat_lines_after(target, source, item_type: str, new_level: int) -> list:
         lines.append(f"Ward: {arrow(target.ward, source.ward, pct)}")
         lines.append(f"PDR: {arrow(target.pdr, source.pdr, pct)}")
         lines.append(f"FDR: {arrow(target.fdr, source.fdr)}")
-        lines.append(f"Reinforce: {arrow(target.reinforcement_lvl, source.reinforcement_lvl, lv)}")
+        lines.append(
+            f"Reinforce: {arrow(target.reinforcement_lvl, source.reinforcement_lvl, lv)}"
+        )
     elif item_type == "helmet":
         lines.append(f"DEF: {arrow(target.defence, source.defence)}")
         lines.append(f"Ward: {arrow(target.ward, source.ward, pct)}")
         lines.append(f"PDR: {arrow(target.pdr, source.pdr, pct)}")
         lines.append(f"FDR: {arrow(target.fdr, source.fdr)}")
-        lines.append(f"Reinforce: {arrow(target.reinforcement_lvl, source.reinforcement_lvl, lv)}")
+        lines.append(
+            f"Reinforce: {arrow(target.reinforcement_lvl, source.reinforcement_lvl, lv)}"
+        )
     return lines
 
 
@@ -279,7 +287,9 @@ class MirageView(BaseUpgradeView):
         )
 
         rows = await self.bot.database.equipment.get_all(self.user_id, item_type)
-        self.candidates = [factory(r) for r in rows if r["item_id"] != self.item.item_id]
+        self.candidates = [
+            factory(r) for r in rows if r["item_id"] != self.item.item_id
+        ]
 
         if not self.candidates:
             await interaction.followup.send(
@@ -325,8 +335,8 @@ class MirageView(BaseUpgradeView):
         embed = discord.Embed(
             title="🪞 Rune of Mirage",
             description=(
-                f"**Target:** Lv.{self.item.level} {self.item.name}\n\n"
-                "Select an item to copy its **stats** onto the target.\n"
+                f"**Selected:** Lv.{self.item.level} {self.item.name}\n\n"
+                "Select an item to copy its **stats** onto this item.\n"
                 "The target's passives and essences are untouched.\n\n"
                 "**Runes available:**\n" + "\n".join(rune_parts)
             ),
@@ -353,9 +363,10 @@ class MirageView(BaseUpgradeView):
 
         source_field = "\n".join(_stat_lines(self.source, item_type)) or "—"
         target_field = "\n".join(_stat_lines(self.item, item_type)) or "—"
-        result_field = "\n".join(
-            _stat_lines_after(self.item, self.source, item_type, new_level)
-        ) or "—"
+        result_field = (
+            "\n".join(_stat_lines_after(self.item, self.source, item_type, new_level))
+            or "—"
+        )
 
         source_label = f"{'[E] ' if getattr(self.source, 'is_equipped', False) else ''}Lv.{self.source.level} {self.source.name}"
 
@@ -396,9 +407,7 @@ class MirageView(BaseUpgradeView):
             btn.callback = self._use_perfected
             self.add_item(btn)
 
-        back_btn = discord.ui.Button(
-            label="Back", style=ButtonStyle.secondary, row=2
-        )
+        back_btn = discord.ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
         back_btn.callback = self._back_to_stage1
         self.add_item(back_btn)
 
@@ -444,9 +453,13 @@ class MirageView(BaseUpgradeView):
         fields["item_level"] = new_level
         fields["item_name"] = new_name
 
-        await self.bot.database.equipment.apply_mirage(self.item.item_id, item_type, fields)
+        await self.bot.database.equipment.apply_mirage(
+            self.item.item_id, item_type, fields
+        )
 
-        rune_col = "mirage_runes_imperfect" if destroy_source else "mirage_runes_perfected"
+        rune_col = (
+            "mirage_runes_imperfect" if destroy_source else "mirage_runes_perfected"
+        )
         await self.bot.database.users.modify_currency(self.user_id, rune_col, -1)
 
         if destroy_source:
@@ -455,7 +468,9 @@ class MirageView(BaseUpgradeView):
             await self.bot.database.equipment.discard(self.source.item_id, item_type)
 
         # Refresh self.item so the detail view shows updated stats
-        new_row = await self.bot.database.equipment.get_by_id(self.item.item_id, item_type)
+        new_row = await self.bot.database.equipment.get_by_id(
+            self.item.item_id, item_type
+        )
         self.item = factory(new_row)
 
         # Patch the GearView's all_items cache so the list reflects changes immediately
@@ -479,5 +494,7 @@ class MirageView(BaseUpgradeView):
 
         is_equipped = self.item.item_id == inventory_view.equipped_id
         embed = InventoryUI.get_item_details_embed(self.item, is_equipped)
-        await interaction.edit_original_response(content=None, embed=embed, view=new_detail)
+        await interaction.edit_original_response(
+            content=None, embed=embed, view=new_detail
+        )
         self.stop()
