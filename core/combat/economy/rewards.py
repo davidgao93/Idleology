@@ -1,7 +1,7 @@
 import random
 from typing import Any, Dict
 
-from core.combat.config import (
+from core.combat.economy.config import (
     EMBLEM_FIND_BONUS_PER_TIER,
     FLORA_CONVERSION_PER_LEVEL,
     LUCIFER_BOOT_GOLD_CAP,
@@ -75,12 +75,16 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     # Gold find emblem
     gold_find_tiers = player.get_emblem_bonus("gold_find")
     if gold_find_tiers > 0:
-        gold_award = int(gold_award * (1 + (gold_find_tiers * EMBLEM_FIND_BONUS_PER_TIER)))
+        gold_award = int(
+            gold_award * (1 + (gold_find_tiers * EMBLEM_FIND_BONUS_PER_TIER))
+        )
 
     # Lucifer boot: gold increases per modifier on the monster (cap 50%)
     if player.get_boot_corrupted_essence() == "lucifer" and monster.modifiers:
         num_mods = len(monster.modifiers)
-        lucifer_bonus_pct = min(LUCIFER_BOOT_GOLD_CAP, num_mods * LUCIFER_BOOT_GOLD_PER_MODIFIER)
+        lucifer_bonus_pct = min(
+            LUCIFER_BOOT_GOLD_CAP, num_mods * LUCIFER_BOOT_GOLD_PER_MODIFIER
+        )
         bonus_gold = int(gold_award * lucifer_bonus_pct)
         gold_award += bonus_gold
         results["msgs"].append(

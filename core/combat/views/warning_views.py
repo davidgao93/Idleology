@@ -2,12 +2,12 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.combat import engine
-from core.combat.gen.modifier_data import (
+from core.combat.mobgen.modifier_data import (
     COMMON_MOD_NAMES,
     RARE_FLAT_MOD_NAMES,
     RARE_TIERED_MOD_NAMES,
 )
+from core.combat.turns import engine
 from core.images import CORRUPTION_GATE
 
 

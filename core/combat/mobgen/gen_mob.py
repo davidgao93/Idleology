@@ -2,7 +2,7 @@ import csv
 import os
 import random
 
-from core.combat.gen.modifier_data import (
+from core.combat.mobgen.modifier_data import (
     BOSS_MOD_NAMES,
     COMMON_MOD_NAMES,
     MODIFIER_DEFINITIONS,
@@ -311,7 +311,9 @@ def calculate_monster_stats(monster):
 
 async def fetch_monster_image(level, monster_data, task_species=None):
     """Fetches a monster image from the monsters.csv file based on the encounter level."""
-    csv_file_path = os.path.join(os.path.dirname(__file__), "../../../assets/monsters.csv")
+    csv_file_path = os.path.join(
+        os.path.dirname(__file__), "../../../assets/monsters.csv"
+    )
     monsters = []
     try:
         with open(csv_file_path, newline="") as csvfile:
@@ -468,11 +470,11 @@ async def generate_incubated_monster(encounter: dict) -> "Monster":
     monster = calculate_monster_stats(monster)
 
     # 20% ATK/DEF amplification
-    monster.attack  = int(monster.attack  * 1.2)
+    monster.attack = int(monster.attack * 1.2)
     monster.defence = int(monster.defence * 1.2)
 
     # HP formula mirrors the standard high-level calculation
-    monster.hp = 10 + int(10 * (monster.level ** 1.65))
+    monster.hp = 10 + int(10 * (monster.level**1.65))
     monster.max_hp = monster.hp
 
     monster.xp = 1 + monster.level * 100
@@ -483,7 +485,7 @@ async def generate_incubated_monster(encounter: dict) -> "Monster":
     monster.is_boss = True
     monster.is_incubated = True
     monster.incubated_encounter_id = encounter["id"]
-    monster.incubated_egg_tier     = encounter["egg_tier"]
+    monster.incubated_egg_tier = encounter["egg_tier"]
 
     # 2 boss mods + 8 random mods, all at max tier
     _assign_incubated_modifiers(monster)
@@ -494,13 +496,15 @@ async def generate_incubated_monster(encounter: dict) -> "Monster":
 
 async def _fetch_incubated_image(original_name: str, monster: "Monster") -> "Monster":
     """Tries to match the original monster name in monsters.csv to grab its image."""
-    csv_file_path = os.path.join(os.path.dirname(__file__), "../../../assets/monsters.csv")
+    csv_file_path = os.path.join(
+        os.path.dirname(__file__), "../../../assets/monsters.csv"
+    )
     try:
         with open(csv_file_path, newline="") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 if row["name"] == original_name:
-                    monster.image   = row["url"]
+                    monster.image = row["url"]
                     monster.species = row.get("species", "Incubated")
                     return monster
     except Exception:
@@ -515,23 +519,31 @@ def _assign_incubated_modifiers(monster) -> None:
     boss_candidates = list(BOSS_MOD_NAMES)
     random.shuffle(boss_candidates)
     for name in boss_candidates[:2]:
-        monster.modifiers.append(make_modifier(name, monster.level, force_max_tier=True))
+        monster.modifiers.append(
+            make_modifier(name, monster.level, force_max_tier=True)
+        )
         used.add(name)
 
     remaining = 8
-    attempts  = 0
+    attempts = 0
     while remaining > 0 and attempts < 80:
         attempts += 1
         pool_type = random.choices(
             ["common", "rare_tiered", "rare_flat"], weights=[65, 20, 15], k=1
         )[0]
-        pool = {"common": COMMON_MOD_NAMES, "rare_tiered": RARE_TIERED_MOD_NAMES, "rare_flat": RARE_FLAT_MOD_NAMES}[pool_type]
+        pool = {
+            "common": COMMON_MOD_NAMES,
+            "rare_tiered": RARE_TIERED_MOD_NAMES,
+            "rare_flat": RARE_FLAT_MOD_NAMES,
+        }[pool_type]
         candidates = [n for n in pool if n not in used]
         if not candidates:
             continue
         name = random.choice(candidates)
         used.add(name)
-        monster.modifiers.append(make_modifier(name, monster.level, force_max_tier=True))
+        monster.modifiers.append(
+            make_modifier(name, monster.level, force_max_tier=True)
+        )
         remaining -= 1
 
 

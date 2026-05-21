@@ -33,7 +33,7 @@ class DummyEngine:
         Monster HP is reset each player turn so the simulation measures per-turn DPS
         rather than fight length.
         """
-        from core.combat import engine
+        from core.combat.turns import engine
 
         sim_player = copy.deepcopy(player)
         sim_monster = copy.deepcopy(monster)
@@ -113,8 +113,8 @@ class DummyEngine:
     @staticmethod
     def _make_uber_proxy(ref_lvl: int, modifier_names: list) -> Monster:
         """Build a proxy Monster using the same stat pipeline as the real generators."""
-        from core.combat.gen.gen_mob import calculate_monster_stats
-        from core.combat.gen.modifier_data import make_modifier
+        from core.combat.mobgen.gen_mob import calculate_monster_stats
+        from core.combat.mobgen.modifier_data import make_modifier
 
         proxy = Monster(
             name="Proxy",

@@ -8,18 +8,18 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.combat import engine
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
-from core.combat.config import (
+from core.combat.economy import uber_rewards
+from core.combat.economy.config import (
     NEET_VOID_KEY_CHANCE,
     XP_LOSS_ON_DEFEAT,
 )
-from core.combat.economy import uber_rewards
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.victory import apply_victory_rewards
-from core.combat.gen.gen_mob import generate_boss
+from core.combat.mobgen.gen_mob import generate_boss
+from core.combat.turns import engine
 from core.combat.views.views_lucifer import LuciferChoiceView
 from core.images import (
     VICTORY_APHRODITE_GEMINI,

@@ -152,7 +152,7 @@ class UberHubView(BaseView):
         self.stop()
 
     async def open_aphrodite(self, interaction: Interaction):
-        from core.combat.dummy_engine import DummyEngine
+        from core.combat.dojo.dummy_engine import DummyEngine
         from core.combat.views.views_uber_aphrodite import UberAphroditeLobbyView
 
         await interaction.response.defer()
@@ -173,7 +173,7 @@ class UberHubView(BaseView):
         self.stop()
 
     async def open_lucifer(self, interaction: Interaction):
-        from core.combat.dummy_engine import DummyEngine
+        from core.combat.dojo.dummy_engine import DummyEngine
         from core.combat.views.views_uber_lucifer import UberLuciferLobbyView
 
         await interaction.response.defer()
@@ -194,7 +194,7 @@ class UberHubView(BaseView):
         self.stop()
 
     async def open_neet(self, interaction: Interaction):
-        from core.combat.dummy_engine import DummyEngine
+        from core.combat.dojo.dummy_engine import DummyEngine
         from core.combat.views.views_uber_neet import UberNEETLobbyView
 
         await interaction.response.defer()
@@ -213,7 +213,7 @@ class UberHubView(BaseView):
         self.stop()
 
     async def open_gemini(self, interaction: Interaction):
-        from core.combat.dummy_engine import DummyEngine
+        from core.combat.dojo.dummy_engine import DummyEngine
         from core.combat.views.views_uber_gemini import UberGeminiLobbyView
 
         await interaction.response.defer()
@@ -232,7 +232,7 @@ class UberHubView(BaseView):
         self.stop()
 
     async def open_evelynn(self, interaction: Interaction):
-        from core.combat.dummy_engine import DummyEngine
+        from core.combat.dojo.dummy_engine import DummyEngine
         from core.combat.views.views_uber_evelynn import UberEvelynnLobbyView
 
         await interaction.response.defer()

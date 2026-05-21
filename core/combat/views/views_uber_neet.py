@@ -2,9 +2,9 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.combat import engine
 from core.combat import ui as combat_ui
-from core.combat.gen.gen_mob import generate_uber_neet
+from core.combat.mobgen.gen_mob import generate_uber_neet
+from core.combat.turns import engine
 from core.combat.views.views import CombatView
 from core.combat.views.views_uber_hub import UberHubView, UberReturnView
 from core.images import BOSS_NEET

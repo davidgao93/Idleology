@@ -18,7 +18,7 @@ import random
 import discord
 
 import core.slayer.mechanics
-from core.combat.config import (
+from core.combat.economy.config import (
     BOSS_PET_CHANCE,
     BOSS_PET_CHANCE_GEMINI_BOOT,
     REGULAR_PET_CHANCE,

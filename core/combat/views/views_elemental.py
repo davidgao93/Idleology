@@ -5,7 +5,7 @@ import discord
 from discord import ButtonStyle, Interaction
 
 from core.base_view import BaseView
-from core.combat import engine
+from core.combat.turns import engine
 from core.images import COMBAT_ELEMENTAL
 from core.items.factory import load_player
 from core.models import Monster, Player

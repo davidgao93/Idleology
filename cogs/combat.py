@@ -10,17 +10,21 @@ from discord.ext import commands
 from discord.ui import Button
 
 from core.base_view import BaseView
-from core.combat import engine, ui
-from core.combat.gen.encounters import EncounterManager
-from core.combat.gen.gen_mob import (
+from core.combat import ui
+from core.combat.dojo.views_dojo import DummyConfigView
+from core.combat.mobgen.encounters import EncounterManager
+from core.combat.mobgen.gen_mob import (
     generate_boss,
     generate_corrupted_encounter,
     generate_encounter,
     generate_incubated_monster,
 )
+from core.combat.turns import engine
 from core.combat.views.views import CombatView
-from core.combat.views.views_dojo import DummyConfigView
-from core.combat.warning_views import CorruptedEncounterGateView, LowHealthWarningView
+from core.combat.views.warning_views import (
+    CorruptedEncounterGateView,
+    LowHealthWarningView,
+)
 from core.items.factory import load_player
 from core.models import Monster
 

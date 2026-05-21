@@ -13,7 +13,7 @@ import random
 
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
-from core.combat.config import (
+from core.combat.economy.config import (
     EVELYNN_MIRAGE_RUNE_IMPERFECT_CHANCE,
     EVELYNN_MIRAGE_RUNE_PERFECTED_CHANCE,
     UBER_BLUEPRINT_CHANCE,

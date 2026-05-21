@@ -5,8 +5,8 @@ from core.base_view import BaseView
 from core.codex.mechanics import apply_signature_modifier, select_run_chapters
 from core.codex.views.run_view import CodexRunView, _generate_codex_wave_monster
 from core.codex.views.tomes_view import CodexTomsView
-from core.combat import engine
 from core.combat import jewel_engine as _je
+from core.combat.turns import engine
 from core.images import CODEX_HUB
 from core.models import Player
 

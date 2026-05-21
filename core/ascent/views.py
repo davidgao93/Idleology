@@ -6,7 +6,6 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.ascent.mechanics import PINNACLE_REWARDS, AscentMechanics
 from core.base_view import BaseView
-from core.combat import engine
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
@@ -19,7 +18,8 @@ from core.combat.economy.loot import (
     generate_helmet,
     generate_weapon,
 )
-from core.combat.gen.gen_mob import generate_ascent_monster
+from core.combat.mobgen.gen_mob import generate_ascent_monster
+from core.combat.turns import engine
 from core.images import ASCENT_HUB
 from core.models import Monster, Player
 
@@ -526,6 +526,7 @@ class AscentView(BaseView):
         self.player.celestial_vow_used = False
         _je.reset_jewel_transients(self.player)
         from core.hematurgy.engine import reset_hematurgy_transients
+
         reset_hematurgy_transients(self.player)
 
         m_level = AscentMechanics.calculate_floor_monster_level(self.current_floor)

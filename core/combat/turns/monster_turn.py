@@ -6,7 +6,7 @@ from core.combat.calc.damage_calc import calculate_damage_taken
 from core.combat.calc.damage_calc import roll_monster_damage as _roll_monster_damage
 from core.combat.calc.hit_calc import calculate_monster_hit_chance
 from core.combat.calc.ward_system import _add_ward
-from core.combat.helpers import MonsterTurnResult
+from core.combat.turns.helpers import MonsterTurnResult
 from core.models import Monster, Player
 
 
@@ -21,6 +21,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     # --- Hematurgy: Flash Frost freeze check ---
     if player.hematurgy_passives:
         from core.hematurgy.engine import on_monster_turn_start
+
         _freeze_log: list[str] = []
         if on_monster_turn_start(player, monster, _freeze_log):
             monster.combat_round += 1
@@ -108,7 +109,14 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         if celestial == "celestial_fortress":
             missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
             bonus_pdr = int(missing_pct / 5.0)
-            pdr_cap = 90 if (player.equipped_armor and player.equipped_armor.passive == "Impregnable") else 80
+            pdr_cap = (
+                90
+                if (
+                    player.equipped_armor
+                    and player.equipped_armor.passive == "Impregnable"
+                )
+                else 80
+            )
             effective_pdr = min(pdr_cap, effective_pdr + bonus_pdr)
             pdr_notes.append(
                 f"+{bonus_pdr}%(fortress,{missing_pct:.1f}%missing)={effective_pdr}%"
@@ -125,7 +133,12 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 player, monster, effective_pdr, effective_fdr
             )
             if alt_total < total_damage:
-                total_damage, dmg_raw, dmg_base, minion_dmg = alt_total, alt_raw, alt_base, alt_minion
+                total_damage, dmg_raw, dmg_base, minion_dmg = (
+                    alt_total,
+                    alt_raw,
+                    alt_base,
+                    alt_minion,
+                )
                 calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
 
         # --- Multistrike , a double hit, decreased by PDR and FDR ---
@@ -161,6 +174,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         _pr_bonus = 0.0
         if player.hematurgy_passives:
             from core.hematurgy.engine import get_phantom_reflex_evasion_bonus
+
             _pr_bonus = get_phantom_reflex_evasion_bonus(player)
 
         if monster.has_modifier("Unavoidable"):
@@ -352,6 +366,11 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                         )
 
             if total_damage > 0:
+                if player.active_task_species == monster.species:
+                    tiers = player.get_emblem_bonus("slayer_def")
+                    if tiers > 0:
+                        total_damage = int(total_damage * (1 - min(0.50, tiers * 0.02)))
+
                 if (
                     celestial == "celestial_vow"
                     and (player.current_hp - total_damage <= 0)
@@ -517,6 +536,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     # --- Hematurgy: end-of-monster-turn effects ---
     if player.hematurgy_passives:
         from core.hematurgy.engine import on_monster_turn_end
+
         _hema_log: list[str] = []
         on_monster_turn_end(
             player, monster, hp_damage, is_dodged, is_blocked, _hema_log

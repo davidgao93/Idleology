@@ -17,13 +17,13 @@ from core.codex.mechanics import (
     restore_clean_stats,
     roll_boons,
 )
-from core.combat import engine
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
-from core.combat.gen.gen_mob import generate_ascent_monster
+from core.combat.mobgen.gen_mob import generate_ascent_monster
+from core.combat.turns import engine
 from core.images import CODEX_BOON, CODEX_CHAPTERS
 from core.models import Monster, Player
 
@@ -430,6 +430,7 @@ class CodexRunView(BaseView):
         self.player.celestial_vow_used = False
         _je.reset_jewel_transients(self.player)
         from core.hematurgy.engine import reset_hematurgy_transients
+
         reset_hematurgy_transients(self.player)
 
         self.combat_logger.log_combat_end(self.player, self.monster, "victory")
@@ -515,9 +516,7 @@ class CodexRunView(BaseView):
             return
         self._boon_processing = True
         await interaction.response.defer()
-        apply_respite_boon(
-            self.player, boon, self.active_boons, self.run_state
-        )
+        apply_respite_boon(self.player, boon, self.active_boons, self.run_state)
 
         self.clear_items()
         self._add_combat_buttons()
