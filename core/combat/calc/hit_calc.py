@@ -175,19 +175,18 @@ def build_attack_multiplier(
             f"**Frenzy ({helmet_lvl})** rage increases damage by {int(frenzy_bonus * 100)}%!"
         )
 
+    onslaught_bonus = _je.apply_onslaught_mult(player)
+    if onslaught_bonus > 0:
+        add_pool_bonus += onslaught_bonus / 100
+        add_pool_parts.append(f"onslaught+{onslaught_bonus:.0f}%")
+        log.append(f"🔥 **Onslaught** unleashes fury! (+{onslaught_bonus:.0f}% ATK)")
+
     if add_pool_bonus != 0:
         pool_factor = 1 + add_pool_bonus
         mult *= pool_factor
         calc_sources.append(
             f"add_pool[{'+'.join(add_pool_parts)}]×{pool_factor:.3f}"
         )
-
-    onslaught_bonus = _je.apply_onslaught_mult(player)
-    if onslaught_bonus > 0:
-        factor = 1 + onslaught_bonus / 100
-        mult *= factor
-        calc_sources.append(f"onslaught_jewel×{factor:.3f}")
-        log.append(f"🔥 **Onslaught** unleashes fury! (+{onslaught_bonus:.0f}% ATK)")
 
     if player.alchemy_atk_boost_pct > 0:
         factor = 1 + player.alchemy_atk_boost_pct

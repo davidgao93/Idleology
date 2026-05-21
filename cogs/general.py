@@ -123,6 +123,8 @@ class General(commands.Cog, name="general"):
             "codex",
             "essence",
             "partner",
+            "paradise",
+            "hematurgy",
         ],
     ):
 
@@ -448,6 +450,60 @@ class General(commands.Cog, name="general"):
                 "Formula: (gold ÷ 1,000) × skill yield. Doubles with NEET boot.\n\n"
                 "**Yvenn — Apex Hunter:** All monsters count as slayer task monsters; "
                 "grants bonus slayer progress per kill and enables slayer damage emblems."
+            )
+            content_added = True
+
+        elif category == "paradise":
+            embed.title = "💎 Paradise Jewel Details"
+            embed.description = (
+                "Each Skill Jewel charges from a specific trigger and unleashes when the charge threshold is met. "
+                "Thresholds decrease as the jewel levels up.\n\n"
+                "**— Skill Jewels —**\n\n"
+                "⚡ **Surge** — Charged by hits. Unleash deals a lightning storm of bonus ATK damage.\n\n"
+                "💥 **Cataclysm** — Charged by crits. Unleash primes the next attack as a guaranteed crit with a bonus crit multiplier.\n\n"
+                "🐍 **Acrimony** — Charged by misses. Unleash deals a venom burst (% of ATK) + 25% of that as DoT over 4 turns.\n\n"
+                "🛡️ **Wardforge** — Charged whenever ward is generated. Unleash grants a ward burst; the next attack gains 30% of current ward as bonus damage.\n\n"
+                "🔱 **Bastion** — Charged whenever you take HP damage. Unleash reflects a multiple of the triggering hit back at the monster.\n\n"
+                "💚 **Siphon** — Charged by HP regeneration (leech, heal, alchemy). Unleash burst-heals % of max HP; 50% of the heal becomes ward.\n\n"
+                "🔥 **Onslaught** — Charged each turn while HP is below 50%. Unleash gives the next attack a large ATK multiplier.\n\n"
+                "🧪 **Draught** — Charged by potion use. Unleash generates 0–3 potions depending on level; overflow becomes ward.\n\n"
+                "**— Passives —**\n\n"
+                "**Charge:** Rapid (+% extra charge chance) · Compression (−N to all thresholds)\n"
+                "**Power:** Force (+% unleash strength) · Mirage (% chance to trigger twice) · Lingering (% chance to keep charges after unleash)\n"
+                "**Mastery:** Savant (+% jewel leveling speed) · Mastery (+N bonus levels to all jewels)\n"
+                "**Synergy:** Fury (+% to damage unleashes) · Arcane (+% ward from jewel effects) · Sustenance (+% healing from jewel effects)\n"
+                "**Utility:** Fortune (% chance to duplicate Paradise Jewels found)\n"
+                "**Specialization (rare):** One exists per jewel — grants a large power bonus to that jewel only."
+            )
+            content_added = True
+
+        elif category == "hematurgy":
+            embed.title = "🩸 Hematurgy Passives"
+            embed.description = (
+                "Hematurgy passives are unlocked with **Primordial Blood** and upgraded with "
+                "**Evolutionary** or **Mutative Blood**. Tiers 6–7 are mutation-only.\n\n"
+                "**— Main Pool (Tiers 1–5) —**\n\n"
+                "**Reverberation** — Echo hits have a chance to retrigger themselves.\n\n"
+                "**Soothing Venom** — Leech HP equal to a % of poison damage dealt.\n\n"
+                "**Iron Momentum** — Gain +ATK per consecutive hit (max 5 stacks; resets on miss).\n\n"
+                "**Serrated** — Reduce monster ATK per hit; crits apply double the reduction.\n\n"
+                "**Haemorrhage** — Hits build a bleed pool equal to % of ATK; pool deals 10% of itself as damage each round.\n\n"
+                "**Vital Resonance** — A % of any ward gained is simultaneously restored as HP.\n\n"
+                "**Executioner's Rite** — +ATK and +crit damage while the monster is below 30% HP.\n\n"
+                "**Bloodthirst** — On kill, restore a % of Max HP.\n\n"
+                "**Phantom Reflex** — On miss, gain a temporary evasion bonus.\n\n"
+                "**Chain Reaction** — +crit damage per consecutive crit (max 5 stacks).\n\n"
+                "**Regenerative Tissue** — Heal a % of Max HP after any round where no damage was dealt.\n\n"
+                "**Fevered Strike** — +ATK for each potion consumed this combat.\n\n"
+                "**Predator's Mark** — Crits mark the target; the next hit deals additional bonus damage.\n\n"
+                "**Counterforce** — A % of total DEF is added as flat bonus ATK.\n\n"
+                "**Tenacity** — Dropping below 40% HP triggers +ATK and +DEF for the rest of that combat.\n\n"
+                "**— Mutated Pool (mutation-only) —**\n\n"
+                "**Spectral Waltz** — Build blade stacks on each hit; crits release all stacks for % ATK damage each.\n\n"
+                "**Puncture** — Crits accumulate crit-damage as a bleed; 50% of the bleed bursts on a miss.\n\n"
+                "**Flash Frost** — After a set number of consecutive misses, freeze the monster for one round.\n\n"
+                "**Ward Inoculation** — At combat start ward converts to DEF and Max HP is doubled; ward generated deals % of its value as damage to the monster.\n\n"
+                "**Soul Fracture** — Gain +ATK for every 10% of Max HP lost during this combat."
             )
             content_added = True
 
