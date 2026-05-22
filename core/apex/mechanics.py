@@ -1,0 +1,405 @@
+"""
+core/apex/mechanics.py — Pure business logic for Apex Hunts.
+
+No I/O, no Discord, no DB — everything here is deterministic given inputs.
+"""
+
+from __future__ import annotations
+
+import random
+import time
+from typing import TYPE_CHECKING
+
+from core.apex.data import (
+    APEX_BY_ZONE,
+    META_SHARD_DROP_CHANCES,
+    PASSIVE_CATEGORY_MAP,
+    PASSIVE_SHARD_MAP,
+    RESONANCE_TABLE,
+    UPGRADE_COSTS,
+    UPGRADE_OUTCOMES,
+    ZONE_DEFS,
+)
+from core.apex.models import ApexHuntProfile
+
+if TYPE_CHECKING:
+    from core.apex.models import SoulStone
+    from core.combat.models import Monster, Player
+
+
+CHARGE_REGEN_SECONDS: float = 8 * 3600  # 8 hours per charge
+MAX_CHARGES: int = 3
+
+
+class ApexMechanics:
+
+    # ------------------------------------------------------------------
+    # Charge management
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def calculate_charges(profile: ApexHuntProfile) -> tuple[int, float | None]:
+        """
+        Applies elapsed-time charge regeneration and returns
+        (new_charge_count, new_last_charge_time).
+
+        Call this before any hunt operation; persist the returned values if changed.
+        """
+        charges = profile.hunt_charges
+        last_ts = profile.last_charge_time
+
+        if charges >= MAX_CHARGES:
+            return MAX_CHARGES, None  # Full — clear the timestamp
+
+        if last_ts is None:
+            # No regen timer running yet
+            return charges, None
+
+        now = time.time()
+        elapsed = now - last_ts
+        regen_count = int(elapsed // CHARGE_REGEN_SECONDS)
+
+        if regen_count <= 0:
+            return charges, last_ts
+
+        new_charges = min(MAX_CHARGES, charges + regen_count)
+        if new_charges >= MAX_CHARGES:
+            return MAX_CHARGES, None
+
+        # Advance timestamp by the consumed regen intervals
+        new_ts = last_ts + regen_count * CHARGE_REGEN_SECONDS
+        return new_charges, new_ts
+
+    @staticmethod
+    def seconds_until_next_charge(profile: ApexHuntProfile) -> int:
+        """Returns seconds until the next charge regenerates (0 if already full)."""
+        charges, _ = ApexMechanics.calculate_charges(profile)
+        if charges >= MAX_CHARGES:
+            return 0
+        last_ts = profile.last_charge_time
+        if last_ts is None:
+            return 0
+        now = time.time()
+        elapsed = now - last_ts
+        remaining = CHARGE_REGEN_SECONDS - (elapsed % CHARGE_REGEN_SECONDS)
+        return max(0, int(remaining))
+
+    # ------------------------------------------------------------------
+    # Monster selection and construction
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def select_apex(zone_key: str):
+        """Randomly selects an ApexMonsterDef from the given zone."""
+        pool = APEX_BY_ZONE.get(zone_key, [])
+        if not pool:
+            raise ValueError(f"No apex monsters defined for zone: {zone_key}")
+        return random.choice(pool)
+
+    @staticmethod
+    def build_apex_monster(apex_def, player_level: int):
+        """
+        Constructs a Monster from an ApexMonsterDef scaled to the player's level.
+        Returns a fully populated Monster instance.
+        """
+        from core.combat.models import Monster
+        from core.combat.mobgen.modifier_data import make_modifier
+
+        # Scale monster to player level + small overshoot for challenge
+        monster_level = max(50, player_level + random.randint(2, 8))
+
+        # Stats: noticeably stronger than normal mobs at the same level
+        hp_base = int(monster_level * 140 * random.uniform(0.9, 1.1))
+        atk_base = int(monster_level * 8.5 * random.uniform(0.9, 1.1))
+        def_base = int(monster_level * 4.5 * random.uniform(0.9, 1.1))
+        xp_base = int(monster_level * 55)
+
+        # Build modifiers — use the monster's defined modifier names
+        modifiers = []
+        for mod_name in set(apex_def.modifiers):  # deduplicate
+            try:
+                mod = make_modifier(mod_name, monster_level)
+                if mod:
+                    modifiers.append(mod)
+            except Exception:
+                pass  # Silently skip unknown/invalid modifiers
+
+        return Monster(
+            name=apex_def.name,
+            level=monster_level,
+            hp=hp_base,
+            max_hp=hp_base,
+            xp=xp_base,
+            attack=atk_base,
+            defence=def_base,
+            modifiers=modifiers,
+            image=apex_def.image,
+            flavor=apex_def.flavor,
+            species="Apex",
+            is_boss=True,
+            is_apex=True,
+        )
+
+    # ------------------------------------------------------------------
+    # Zone modifier application
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def apply_zone_modifier(player, monster, zone_key: str) -> str:
+        """
+        Mutates player CombatState and monster fields to apply the zone's
+        signature effect at combat start.  Returns a log message.
+        """
+        zone = ZONE_DEFS.get(zone_key)
+        if not zone:
+            return ""
+
+        # Tag both player and monster with the active zone
+        player.cs.apex_zone = zone_key
+        monster.apex_zone = zone_key
+
+        if zone.modifier_key == "scorched":
+            player.cs.atk_multiplier *= 1.20
+            monster.flashfire_charges = 4  # Start at 4 instead of 0
+            monster.zone_dmg_boost = 0.20
+            return (
+                "🔥 **Scorched Zone** — Your ATK is boosted +20%. "
+                f"{monster.name}'s Flashfire charges start at 4 and deal +20% damage!"
+            )
+
+        elif zone.modifier_key == "tempest":
+            player.cs.bonus_crit += 15
+            return (
+                "⚡ **Tempest Zone** — Crit Chance +15%. "
+                "Every 3rd monster turn, unavoidable lightning strikes for 8% max HP true damage!"
+            )
+
+        elif zone.modifier_key == "siege_grounds":
+            player.cs.atk_multiplier *= 1.30
+            monster.ward = int(monster.max_hp * 0.30)
+            monster.zone_dr = 0.30
+            return (
+                "🏰 **Siege Grounds** — Your ATK +30%. "
+                f"{monster.name} starts with 30% max HP Ward and gains +30% DR!"
+            )
+
+        elif zone.modifier_key == "living_battlefield":
+            return (
+                "🌿 **Living Battlefield** — "
+                f"{monster.name} regenerates 0.4%/turn. You heal 1% max HP on each connected hit!"
+            )
+
+        elif zone.modifier_key == "tempted_fate":
+            return (
+                "💰 **Tempted Fate** — All XP and Gold doubled! "
+                "Every 4th monster turn, your ward is fully drained!"
+            )
+
+        elif zone.modifier_key == "reality_fracture":
+            return (
+                "🌀 **Reality Fracture** — "
+                "One of the monster's modifiers rerolls every 5 turns. "
+                "You have a 12% chance each turn to force a critical hit!"
+            )
+
+        return ""
+
+    # ------------------------------------------------------------------
+    # Extraction mechanics
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def extraction_chance(
+        passive_count: int,
+        has_corrupted: bool,
+        primal_essence_count: int = 0,
+    ) -> float:
+        """
+        Returns the base extraction success probability (0–1).
+
+        Formula:
+          passive_count_effective = passive_count + primal_essence_count (max 4 effective passives)
+          base = min(0.10 + 0.15 * effective_passives, 0.55)
+          corrupted essence adds +0.10 bonus
+        """
+        effective = min(4, passive_count + primal_essence_count)
+        base = min(0.10 + 0.15 * effective, 0.55)
+        if has_corrupted:
+            base = min(1.0, base + 0.10)
+        return base
+
+    @staticmethod
+    def roll_extraction(base_chance: float, sharpened_fang: bool = False) -> bool:
+        """
+        Rolls for extraction success.
+        With Sharpened Fang: P = 1 − (1 − base)² (lucky mechanic).
+        """
+        if sharpened_fang:
+            p = 1.0 - (1.0 - base_chance) ** 2
+        else:
+            p = base_chance
+        return random.random() < p
+
+    # ------------------------------------------------------------------
+    # Upgrade mechanics
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def upgrade_outcomes_display(
+        tier: int, engorged_heart: bool = False, condensed_blood: bool = False
+    ) -> tuple[float, float, float]:
+        """
+        Returns (success%, stay%, downgrade%) as display percentages (0–100).
+        Adjustments:
+          Engorged Heart: lucky success → P_suc = 1 − (1 − base_suc)²
+          Condensed Blood: downgrade → 0, remainder added to stay
+        """
+        if tier < 1 or tier > 4:
+            raise ValueError(f"Cannot upgrade from tier {tier}")
+        base_suc, base_stay, base_down = UPGRADE_OUTCOMES[tier]
+
+        if condensed_blood:
+            base_stay = base_stay + base_down
+            base_down = 0.0
+
+        if engorged_heart:
+            lucky_suc = 1.0 - (1.0 - base_suc) ** 2
+            delta = lucky_suc - base_suc
+            base_suc = lucky_suc
+            # Redistribute delta from stay (can't exceed 1.0 total)
+            base_stay = max(0.0, base_stay - delta)
+            base_down = max(0.0, 1.0 - base_suc - base_stay)
+
+        return (
+            round(base_suc * 100, 1),
+            round(base_stay * 100, 1),
+            round(base_down * 100, 1),
+        )
+
+    @staticmethod
+    def roll_upgrade(
+        tier: int, engorged_heart: bool = False, condensed_blood: bool = False
+    ) -> str:
+        """Returns 'success', 'stay', or 'downgrade'."""
+        suc_pct, stay_pct, _ = ApexMechanics.upgrade_outcomes_display(
+            tier, engorged_heart, condensed_blood
+        )
+        roll = random.random() * 100
+        if roll < suc_pct:
+            return "success"
+        elif roll < suc_pct + stay_pct:
+            return "stay"
+        return "downgrade"
+
+    # ------------------------------------------------------------------
+    # Victory / defeat drop rolls
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def roll_victory_drops(zone_key: str) -> dict:
+        """
+        Rolls loot for a successful apex hunt.
+        Returns {
+            'shard_type': str,
+            'shard_amount': int,     # 1 or 2
+            'meta': dict             # meta shard type → count (0 or 1 each)
+        }
+        """
+        zone = ZONE_DEFS.get(zone_key)
+        shard_type = zone.shard_type if zone else "rift"
+        shard_amount = 2 if random.random() < 0.20 else 1
+
+        meta: dict[str, int] = {}
+        for meta_name, chance in META_SHARD_DROP_CHANCES.items():
+            if random.random() < chance:
+                meta[meta_name] = 1
+
+        return {
+            "shard_type": shard_type,
+            "shard_amount": shard_amount,
+            "meta": meta,
+        }
+
+    @staticmethod
+    def roll_defeat_drops() -> int:
+        """Returns 1–3 soul fragments as consolation for a defeat."""
+        return random.randint(1, 3)
+
+    # ------------------------------------------------------------------
+    # Resonance helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_resonance(soul_stone: "SoulStone") -> tuple[str, str] | None:
+        """Returns (name, description) of active resonance, or None."""
+        key = soul_stone.resonance_key
+        if key:
+            return RESONANCE_TABLE.get(key)
+        return None
+
+    @staticmethod
+    def get_resonance_multipliers(soul_stone: "SoulStone") -> dict:
+        """
+        Returns a dict of resonance combat multipliers.
+        Keys: 'atk_mult', 'def_mult', 'xp_bonus_pct', 'gold_bonus_pct', 'tyr_pct'
+        """
+        result = {"atk_mult": 1.0, "def_mult": 1.0, "xp_bonus_pct": 0.0, "gold_bonus_pct": 0.0, "tyr_pct": 0.0}
+        key = soul_stone.resonance_key if soul_stone else None
+        if not key:
+            return result
+        if key == "offensive_2":
+            result["atk_mult"] = 1.10
+        elif key == "offensive_3":
+            result["atk_mult"] = 1.25
+        elif key == "defensive_2":
+            result["def_mult"] = 1.08
+        elif key == "defensive_3":
+            result["def_mult"] = 1.15
+        elif key == "mixed_2":
+            result["tyr_pct"] = 0.05
+        elif key == "mixed_3":
+            result["tyr_pct"] = 0.20
+        elif key == "utility_2":
+            result["xp_bonus_pct"] = 20.0
+        elif key == "utility_3":
+            result["gold_bonus_pct"] = 20.0
+        return result
+
+    # ------------------------------------------------------------------
+    # Passive eligibility helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_extractable_passives(item) -> list[str]:
+        """
+        Returns all passive names present on an item that are eligible for soul stone extraction.
+        item should be a Weapon/Armor/Accessory/Glove/Boot/Helmet dataclass.
+        """
+        candidates = []
+
+        def _add(passive_str: str | None) -> None:
+            if not passive_str or passive_str in ("none", ""):
+                return
+            # Strip tier suffix from weapon passives (e.g. "burning_3" → "burning")
+            base = passive_str.rsplit("_", 1)[0] if "_" in passive_str else passive_str
+            if base.lower() in PASSIVE_SHARD_MAP or passive_str.lower() in PASSIVE_SHARD_MAP:
+                key = base.lower() if base.lower() in PASSIVE_SHARD_MAP else passive_str.lower()
+                if key not in candidates:
+                    candidates.append(key)
+
+        # Extract from whatever passive slots the item has
+        for attr in ("passive", "p_passive", "u_passive", "infernal_passive",
+                     "celestial_passive", "void_passive"):
+            _add(getattr(item, attr, None))
+
+        return candidates
+
+    @staticmethod
+    def get_passive_shard_type(passive_key: str) -> str:
+        """Returns the shard type for a given passive (defaults to 'fortune')."""
+        return PASSIVE_SHARD_MAP.get(passive_key, "fortune")
+
+    @staticmethod
+    def get_passive_category(passive_key: str) -> str:
+        """Returns the combat category for a given passive (defaults to 'utility')."""
+        return PASSIVE_CATEGORY_MAP.get(passive_key, "utility")

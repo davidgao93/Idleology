@@ -220,6 +220,22 @@ def _pt_post_hit_effects(
             )
             _je.process_jewel_trigger(player, monster, "heal", heal, log)
 
+    # Living Battlefield: heal 1% of max HP on any connected hit
+    if damage > 0 and getattr(monster, "apex_zone", None) == "grove":
+        grove_heal = max(1, int(player.total_max_hp * 0.01))
+        player.current_hp = min(player.total_max_hp, player.current_hp + grove_heal)
+        log.append(f"🌿 **Living Battlefield** — you heal **{grove_heal}** HP from the strike!")
+
+    # Soul Stone: leeching (separate from helmet leeching)
+    ss_leeching = player.get_soul_stone_passive("leeching")
+    if ss_leeching and damage > 0 and not (
+        player.equipped_helmet and player.get_helmet_passive() == "leeching"
+    ):
+        ss_heal = int(damage * (0.0002 * ss_leeching))
+        if ss_heal > 0:
+            player.current_hp = min(player.total_max_hp, player.current_hp + ss_heal)
+            log.append(f"💎 **Soul Leeching** drains **{ss_heal}** HP.")
+
 
 def _pt_track_pending(player: Player, damage: int, log: list[str]) -> None:
     """Phase 9 — accumulate pending XP/gold from glove passives."""
@@ -427,6 +443,12 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
 
     if is_hit and getattr(player, "jewel_cataclysm_primed", False):
         is_crit = True
+
+    # Reality Fracture: 12% per turn to force a critical hit
+    if is_hit and not is_crit and getattr(monster, "apex_zone", None) == "shattered":
+        if random.random() < 0.12:
+            is_crit = True
+            calc.append("  reality_fracture: forced crit")
 
     if player.get_glove_corrupted_essence() == "neet":
         is_hit = False

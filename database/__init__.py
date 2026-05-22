@@ -1,5 +1,6 @@
 import aiosqlite
 
+from .repositories.apex import ApexRepository
 from .repositories.alchemy import AlchemyRepository
 from .repositories.ascension import AscensionRepository
 from .repositories.boss_party import BossPartyRepository
@@ -55,3 +56,4 @@ class DatabaseManager:
         self.maw = MawRepository(connection)
         self.paradise = ParadiseRepository(connection)
         self.journey = JourneyRepository(connection)
+        self.apex = ApexRepository(connection)

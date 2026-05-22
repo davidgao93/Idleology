@@ -12,7 +12,7 @@ Contains:
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 from core.items.models import (
     Accessory,
@@ -94,6 +94,8 @@ class CombatState:
     chapter_ward_gen_mult: float = 1.0   # multiplier on all ward generation (1.0 = no reduction)
     chapter_crit_dmg_reduction: float = 0.0  # multiplier reduction on player crit damage
     chapter_hp_entry_pct: float = 0.0    # fraction of max HP the player may not exceed on wave entry
+    # Apex zone state (set at combat start by ApexMechanics.apply_zone_modifier)
+    apex_zone: Optional[str] = None      # active zone key, or None for normal combat
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +157,12 @@ class Monster:
     incubated_encounter_id: int = 0
     incubated_egg_tier: str = ""
     ward: int = 0
+
+    # --- Apex zone fields ---
+    is_apex: bool = False                # True for apex hunt encounters
+    apex_zone: Optional[str] = None     # active zone key
+    zone_dr: float = 0.0                # siege_grounds extra DR against player hits
+    zone_dmg_boost: float = 0.0         # scorched extra multiplier on monster damage
 
     # --- New modifier transient state ---
     # Flashfire: charges accumulate each monster turn; at 8 → true damage burst
@@ -323,6 +331,9 @@ class Player:
 
     # Hematurgy passives — loaded at session start, maps passive_id → tier (1-5)
     hematurgy_passives: dict = field(default_factory=dict)
+
+    # Soul Stone — loaded at session start, None if not yet created
+    soul_stone: Optional[Any] = None  # core.apex.models.SoulStone | None
 
     # Per-combat transient state — reset via reset_combat_state()
     cs: CombatState = field(default_factory=CombatState)
@@ -600,6 +611,24 @@ class Player:
         self.cs.chapter_hp_entry_pct = v
 
     @property
+    def apex_zone(self) -> Optional[str]:
+        return self.cs.apex_zone
+
+    @apex_zone.setter
+    def apex_zone(self, v: Optional[str]) -> None:
+        self.cs.apex_zone = v
+
+    # -----------------------------------------------------------------------
+    # Soul Stone helper
+    # -----------------------------------------------------------------------
+
+    def get_soul_stone_passive(self, key: str) -> Optional[int]:
+        """Returns the tier (1–5) of the given passive in any soul stone slot, or None."""
+        if not self.soul_stone:
+            return None
+        return self.soul_stone.get_passive_tier(key)
+
+    @property
     def jewel_cataclysm_primed(self) -> bool:
         return self.cs.jewel_cataclysm_primed
 
@@ -730,6 +759,10 @@ class Player:
         hearty_pct = 0
         if self.equipped_boot and self.equipped_boot.passive == "hearty":
             hearty_pct = self.equipped_boot.passive_lvl * 5
+        # Soul Stone: hearty tier adds +5% per tier
+        ss_hearty = self.get_soul_stone_passive("hearty")
+        if ss_hearty:
+            hearty_pct += ss_hearty * 5
 
         asc_hp = self.get_ascension_bonuses()["hp"] if self.ascension_unlocks else 0
         parts_hp = (
@@ -894,6 +927,13 @@ class Player:
             if atk_pct:
                 total = int(total * (1 + atk_pct / 100))
 
+        # Layer 6: Soul Stone Vulcan Resonance (offensive_2 / offensive_3)
+        if self.soul_stone:
+            from core.apex.mechanics import ApexMechanics
+            res = ApexMechanics.get_resonance_multipliers(self.soul_stone)
+            if res["atk_mult"] != 1.0:
+                total = int(total * res["atk_mult"])
+
         return max(0, total)
 
     def get_total_defence(self) -> int:
@@ -924,6 +964,13 @@ class Player:
             def_pct = self.get_ascension_bonuses()["def_pct"]
             if def_pct:
                 total = int(total * (1 + def_pct / 100))
+
+        # Layer 6: Soul Stone Athena Resonance (defensive_2 / defensive_3)
+        if self.soul_stone:
+            from core.apex.mechanics import ApexMechanics
+            res = ApexMechanics.get_resonance_multipliers(self.soul_stone)
+            if res["def_mult"] != 1.0:
+                total = int(total * res["def_mult"])
 
         return max(0, total)
 
@@ -962,12 +1009,12 @@ class Player:
         if self.chapter_pdr_reduction > 0:
             total = int(total * (1 - self.chapter_pdr_reduction))
 
-        # Hard cap: 90% with Impregnable armor passive, otherwise 80%
-        cap = (
-            90
-            if (self.equipped_armor and self.equipped_armor.passive == "Impregnable")
-            else 80
+        # Hard cap: 90% with Impregnable armor passive OR soul stone impregnable, otherwise 80%
+        has_impregnable = (
+            (self.equipped_armor and self.equipped_armor.passive == "Impregnable")
+            or bool(self.get_soul_stone_passive("impregnable"))
         )
+        cap = 90 if has_impregnable else 80
         return min(cap, total)
 
     def get_total_fdr(self) -> int:
@@ -1109,9 +1156,16 @@ class Player:
         # Gear (Thrill-Seeker Boot): 0.5% per level, max 3% at rank 6
         if self.equipped_boot and self.equipped_boot.passive == "thrill-seeker":
             bonus += self.equipped_boot.passive_lvl * 0.5
+        # Soul Stone: thrill-seeker tier adds 0.5% per tier
+        ss_ts = self.get_soul_stone_passive("thrill-seeker")
+        if ss_ts:
+            bonus += ss_ts * 0.5
 
         # Armor (Treasure Hunter)
         if self.equipped_armor and self.equipped_armor.passive == "Treasure Hunter":
+            bonus += 3
+        # Soul Stone: treasure hunter adds flat 3% bonus
+        if self.get_soul_stone_passive("treasure hunter"):
             bonus += 3
 
         # Companions

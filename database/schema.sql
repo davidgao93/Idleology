@@ -614,3 +614,66 @@ CREATE TABLE IF NOT EXISTS incubated_encounters (
     egg_tier      TEXT NOT NULL,
     created_at    TEXT NOT NULL
 );
+
+-- ============================================================
+-- Apex Hunts System
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS apex_hunt_profiles (
+    user_id          TEXT NOT NULL,
+    server_id        TEXT NOT NULL,
+    hunt_charges     INTEGER NOT NULL DEFAULT 3,
+    last_charge_time REAL    DEFAULT NULL,
+    ashen_wins       INTEGER NOT NULL DEFAULT 0,
+    ashen_losses     INTEGER NOT NULL DEFAULT 0,
+    storm_wins       INTEGER NOT NULL DEFAULT 0,
+    storm_losses     INTEGER NOT NULL DEFAULT 0,
+    citadel_wins     INTEGER NOT NULL DEFAULT 0,
+    citadel_losses   INTEGER NOT NULL DEFAULT 0,
+    grove_wins       INTEGER NOT NULL DEFAULT 0,
+    grove_losses     INTEGER NOT NULL DEFAULT 0,
+    vault_wins       INTEGER NOT NULL DEFAULT 0,
+    vault_losses     INTEGER NOT NULL DEFAULT 0,
+    shattered_wins   INTEGER NOT NULL DEFAULT 0,
+    shattered_losses INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, server_id)
+);
+
+CREATE TABLE IF NOT EXISTS soul_stones (
+    user_id       TEXT NOT NULL,
+    server_id     TEXT NOT NULL,
+    slot_1_passive   TEXT DEFAULT NULL,
+    slot_1_tier      INTEGER DEFAULT NULL,
+    slot_1_category  TEXT DEFAULT NULL,
+    slot_2_passive   TEXT DEFAULT NULL,
+    slot_2_tier      INTEGER DEFAULT NULL,
+    slot_2_category  TEXT DEFAULT NULL,
+    slot_3_passive   TEXT DEFAULT NULL,
+    slot_3_tier      INTEGER DEFAULT NULL,
+    slot_3_category  TEXT DEFAULT NULL,
+    PRIMARY KEY (user_id, server_id)
+);
+
+CREATE TABLE IF NOT EXISTS soul_shards (
+    user_id        TEXT NOT NULL,
+    server_id      TEXT NOT NULL,
+    pyre           INTEGER NOT NULL DEFAULT 0,
+    tempest        INTEGER NOT NULL DEFAULT 0,
+    bulwark        INTEGER NOT NULL DEFAULT 0,
+    verdant        INTEGER NOT NULL DEFAULT 0,
+    fortune        INTEGER NOT NULL DEFAULT 0,
+    rift           INTEGER NOT NULL DEFAULT 0,
+    soul_fragments INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, server_id)
+);
+
+CREATE TABLE IF NOT EXISTS meta_shards (
+    user_id          TEXT NOT NULL,
+    server_id        TEXT NOT NULL,
+    sharpened_fang   INTEGER NOT NULL DEFAULT 0,
+    engorged_heart   INTEGER NOT NULL DEFAULT 0,
+    condensed_blood  INTEGER NOT NULL DEFAULT 0,
+    primal_essence   INTEGER NOT NULL DEFAULT 0,
+    soul_vessel      INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, server_id)
+);

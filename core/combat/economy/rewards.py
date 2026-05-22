@@ -122,6 +122,22 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
                 f"🌿 **Nature's Bounty (Lv.{sig_lvl})** — {converted:,} GP converted into skilling materials!"
             )
 
+    # Soul Stone: Midas Resonance — additive XP/Gold bonuses
+    if player.soul_stone:
+        from core.apex.mechanics import ApexMechanics
+        res = ApexMechanics.get_resonance_multipliers(player.soul_stone)
+        if res["xp_bonus_pct"] > 0:
+            bonus_xp = int(results["xp"] * (res["xp_bonus_pct"] / 100))
+            results["xp"] += bonus_xp
+        if res["gold_bonus_pct"] > 0:
+            bonus_gold = int(results["gold"] * (res["gold_bonus_pct"] / 100))
+            results["gold"] += bonus_gold
+
+    # Tempted Fate (apex zone): 2× XP and Gold
+    if getattr(player.cs, "apex_zone", None) == "vault":
+        results["xp"] *= 2
+        results["gold"] *= 2
+
     # Accessory Passive: Prosper — doubles final gold after all other modifiers
     if acc_passive == "Prosper":
         double_gold_chance = acc_lvl * 0.10

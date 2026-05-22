@@ -192,7 +192,7 @@ def get_weapon_tier(player, key: str) -> tuple[int, str]:
     """
     Returns (tier_index 0–4, passive_string) for the highest active tier of the
     named weapon passive family, or (-1, '') if the player has none.
-    Checks weapon main, pinnacle, and utmost slots.
+    Checks weapon main, pinnacle, utmost slots, and the soul stone.
     """
     prefix = f"{key}_"
     best: tuple[int, str] = (-1, "")
@@ -208,7 +208,25 @@ def get_weapon_tier(player, key: str) -> tuple[int, str]:
                     best = (tier_idx, passive_str)
             except ValueError:
                 continue
+
+    # Also check soul stone for weapon-type passives
+    if key in WEAPON_PASSIVE_FAMILIES:
+        ss_tier = get_soul_stone_passive(player, key)
+        if ss_tier is not None:
+            tier_idx = ss_tier - 1  # 1-based tier → 0-based index
+            if tier_idx > best[0]:
+                best = (tier_idx, f"{key}_{ss_tier}")
+
     return best
+
+
+def get_soul_stone_passive(player, key: str) -> int | None:
+    """
+    Returns the tier (1–5) of the given passive in the player's soul stone, or None.
+    Thin wrapper around player.get_soul_stone_passive() so combat modules can call
+    a standalone function without importing models directly.
+    """
+    return player.get_soul_stone_passive(key)
 
 
 def get_player_passive_indices(player, target_passives: list[str]) -> list[int]:

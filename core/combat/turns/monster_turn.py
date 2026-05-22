@@ -143,6 +143,53 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!"
         )
 
+    # ==========================================================================
+    # APEX ZONE EFFECTS (pre-hit, per monster turn)
+    # ==========================================================================
+
+    apex_zone = getattr(monster, "apex_zone", None)
+
+    # Tempest zone: every 3rd monster turn → unavoidable 8% max HP true damage
+    if apex_zone == "storm" and monster.combat_round % 3 == 0 and monster.combat_round > 0:
+        lightning_dmg = max(1, int(player.total_max_hp * 0.08))
+        player.current_hp = max(0, player.current_hp - lightning_dmg)
+        log.append(
+            f"⚡ **Tempest Lightning** — the storm strikes for **{lightning_dmg}** ⚡ true damage!"
+        )
+
+    # Living Battlefield: monster regen 0.4% max HP per turn
+    if apex_zone == "grove" and monster.hp < monster.max_hp:
+        regen = max(1, int(monster.max_hp * 0.004))
+        monster.hp = min(monster.max_hp, monster.hp + regen)
+        log.append(f"🌿 **Living Battlefield** — the grove heals {monster.name} for **{regen}** HP!")
+
+    # Tempted Fate: every 4th monster turn drain ALL player ward
+    if apex_zone == "vault" and monster.combat_round % 4 == 0 and monster.combat_round > 0:
+        drained = player.combat_ward
+        if drained > 0:
+            player.combat_ward = 0
+            log.append(
+                f"💰 **Tempted Fate** — fortune's price is paid! All **{drained}** 🔮 Ward drained!"
+            )
+
+    # Reality Fracture: every 5th monster turn reroll one modifier
+    if apex_zone == "shattered" and monster.combat_round % 5 == 0 and monster.combat_round > 0:
+        if monster.modifiers:
+            from core.combat.mobgen.modifier_data import make_modifier
+            idx = random.randrange(len(monster.modifiers))
+            old_name = monster.modifiers[idx].name
+            new_mod = make_modifier(old_name, monster.level)
+            if new_mod:
+                monster.modifiers[idx] = new_mod
+                log.append(
+                    f"🌀 **Reality Fracture** — {monster.name}'s **{old_name}** rerolls!"
+                    f" Now tier {new_mod.tier}."
+                )
+
+    # ==========================================================================
+    # END APEX ZONE EFFECTS
+    # ==========================================================================
+
     # --- Origin of Corruption: every 3 turns drain 10% ward → 10× HP heal ---
     if monster.has_modifier("Origin of Corruption") and monster.combat_round % 3 == 0:
         ward_drain = int(player.combat_ward * 0.10)

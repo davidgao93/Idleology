@@ -382,4 +382,75 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         if hema_log:
             logs["🩸 Hematurgy"] = "\n".join(hema_log)
 
+    # --- Soul Stone combat-start passives ---
+    if player.soul_stone:
+        ss_log = _apply_soul_stone_start(player, monster)
+        if ss_log:
+            logs["💎 Soul Stone"] = "\n".join(ss_log)
+
     return logs
+
+
+def _apply_soul_stone_start(player, monster) -> list[str]:
+    """Applies soul stone passives that trigger once at combat start."""
+    from core.apex.mechanics import ApexMechanics
+
+    log: list[str] = []
+
+    # Transcendence (soul stone): +20% of (ATK+DEF) added to ATK
+    ss_transcendence = player.get_soul_stone_passive("transcendence")
+    if ss_transcendence and not (
+        player.equipped_armor and player.equipped_armor.passive == "Transcendence"
+    ):
+        total_atk = player.get_total_attack()
+        total_def = player.get_total_defence()
+        bonus = int((total_atk + total_def) * 0.20)
+        player.bonus_atk += bonus
+        log.append(f"✨ **Soul Transcendence** — ⚔️ +**{bonus}** ATK (20% of ATK+DEF)")
+
+    # Juggernaut (soul stone): DEF→ATK conversion
+    ss_juggernaut = player.get_soul_stone_passive("juggernaut")
+    if ss_juggernaut and not (
+        player.equipped_helmet and player.get_helmet_passive() == "juggernaut"
+    ):
+        pct = ss_juggernaut * 4.0
+        bonus = int(player.flat_def * pct / 100)
+        if bonus > 0:
+            player.bonus_atk += bonus
+            log.append(f"🪖 **Soul Juggernaut** — ⚔️ +**{bonus}** ATK ({int(pct)}% of DEF)")
+
+    # Unlimited Wealth (soul stone): 20% chance to multiply rarity
+    ss_unlimited = player.get_soul_stone_passive("unlimited wealth")
+    if ss_unlimited and not (
+        player.equipped_armor and player.equipped_armor.passive == "Unlimited Wealth"
+    ):
+        if random.random() < 0.20:
+            base = player.get_total_rarity()
+            if base > 0:
+                mult = 2 if monster.is_boss else 5
+                player.bonus_rarity += base * (mult - 1)
+                log.append(f"💰 **Soul Unlimited Wealth** — Rarity ×{mult}!")
+
+    # Tyr Resonance (mixed_2 or mixed_3): redistribute ATK+DEF at combat start
+    if player.soul_stone:
+        res = ApexMechanics.get_resonance_multipliers(player.soul_stone)
+        tyr_pct = res.get("tyr_pct", 0.0)
+        if tyr_pct > 0:
+            # Current effective totals (after all other bonuses)
+            cur_atk = player.get_total_attack()
+            cur_def = player.get_total_defence()
+            combined = int((cur_atk + cur_def) * (1 + tyr_pct))
+            half = combined // 2
+            # Bonus needed: (half - cur_atk) added as bonus_atk, etc.
+            atk_bonus = max(0, half - cur_atk)
+            def_bonus = max(0, half - cur_def)
+            if atk_bonus > 0:
+                player.bonus_atk += atk_bonus
+            if def_bonus > 0:
+                player.bonus_def += def_bonus
+            res_name = "Tyr's Adjudication" if tyr_pct >= 0.20 else "Tyr's Ruling"
+            log.append(
+                f"⚖️ **{res_name}** — ATK+DEF combined +{int(tyr_pct*100)}%, redistributed equally!"
+            )
+
+    return log

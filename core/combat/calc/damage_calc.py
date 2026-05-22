@@ -141,6 +141,13 @@ def roll_monster_damage(
             f"inevitable×{monster.get_modifier_value('Inevitable'):.2f}={dmg}"
         )
 
+    # --- Apex zone: Scorched damage boost (+20% on monster hits) ---
+    zone_boost = getattr(monster, "zone_dmg_boost", 0.0)
+    if zone_boost > 0 and dmg > 0:
+        pre_boost = dmg
+        dmg = int(dmg * (1.0 + zone_boost))
+        calc_notes.append(f"scorched_zone+{int(zone_boost*100)}% {pre_boost}→{dmg}")
+
     if calc is not None:
         calc.append(
             "  dmg_roll: "
@@ -495,6 +502,12 @@ def apply_monster_damage_reduction(
     if getattr(monster, "colossus_dr", 0.0) > 0:
         regular_dr += monster.colossus_dr
         dr_labels.append(f"Colossus {int(monster.colossus_dr * 100)}%")
+
+    # Apex zone: Siege Grounds adds DR against player hits
+    _zone_dr = getattr(monster, "zone_dr", 0.0)
+    if _zone_dr > 0:
+        regular_dr += _zone_dr
+        dr_labels.append(f"Siege Grounds {int(_zone_dr * 100)}%")
 
     if regular_dr > 0 and damage > 0:
         capped_dr = min(0.80, regular_dr)

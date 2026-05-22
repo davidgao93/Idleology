@@ -114,7 +114,29 @@ def create_victory_embed(
     for item_desc in rewards.get("items", []):
         loot_lines.append(f"💠 {item_desc}")
 
-    # 5. Monster Body Part Drop
+    # 5. Apex Shard drops (from apex hunt victory)
+    if rewards.get("apex_shards"):
+        _SHARD_EMOJIS = {
+            "pyre": "🔥", "tempest": "⚡", "bulwark": "🏰",
+            "verdant": "🌿", "fortune": "💰", "rift": "🌀",
+        }
+        shard_type = rewards["apex_shards"]["shard_type"]
+        shard_amt = rewards["apex_shards"]["shard_amount"]
+        emoji = _SHARD_EMOJIS.get(shard_type, "💎")
+        loot_lines.append(
+            f"{emoji} **{shard_amt}x {shard_type.title()} Shard{'s' if shard_amt > 1 else ''}**"
+        )
+    if rewards.get("apex_meta"):
+        from core.apex.data import META_SHARD_DISPLAY
+        for meta_key, count in rewards["apex_meta"].items():
+            display_name, _ = META_SHARD_DISPLAY.get(meta_key, (f"✨ {meta_key.replace('_', ' ').title()}", ""))
+            for _ in range(count):
+                loot_lines.append(display_name)
+    if rewards.get("soul_fragments"):
+        frags = rewards["soul_fragments"]
+        loot_lines.append(f"🔘 **{frags}x Soul Fragment{'s' if frags > 1 else ''}**")
+
+    # 6. Monster Body Part Drop
     if rewards.get("body_part"):
         slot, mname, hp = rewards["body_part"]
         label = _PART_SLOT_LABELS.get(slot, slot)

@@ -1,0 +1,403 @@
+"""
+core/apex/data.py — Static definitions for Apex Hunts.
+
+Contains:
+  ZoneDef           — zone metadata
+  ZONE_DEFS         — 6 zones keyed by zone_key
+  ApexMonsterDef    — apex monster definition
+  APEX_POOL         — 30 apex monsters (5 per zone)
+  APEX_BY_ZONE      — monsters indexed by zone_key
+  PASSIVE_SHARD_MAP — passive_name → shard_type
+  PASSIVE_CATEGORY_MAP — passive_name → category
+  RESONANCE_TABLE   — resonance key → (name, description)
+  UPGRADE_COSTS     — (tier_from, tier_to) → {matching, rift}
+  UPGRADE_OUTCOMES  — (tier_from, tier_to) → (success_pct, stay_pct, downgrade_pct)
+"""
+
+from dataclasses import dataclass, field
+
+# ---------------------------------------------------------------------------
+# Zone definitions
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ZoneDef:
+    key: str
+    name: str
+    emoji: str
+    shard_type: str
+    modifier_key: str
+    modifier_name: str
+    modifier_desc: str
+    color: int  # Discord embed color (hex int)
+
+
+ZONE_DEFS: dict[str, ZoneDef] = {
+    "ashen": ZoneDef(
+        key="ashen",
+        name="Ashen Wastes",
+        emoji="🔥",
+        shard_type="pyre",
+        modifier_key="scorched",
+        modifier_name="Scorched",
+        modifier_desc=(
+            "Your ATK is boosted +20%. The monster's Flashfire charges begin at 4 "
+            "and their strikes deal +20% damage."
+        ),
+        color=0xCC4400,
+    ),
+    "storm": ZoneDef(
+        key="storm",
+        name="Storm Reach",
+        emoji="⚡",
+        shard_type="tempest",
+        modifier_key="tempest",
+        modifier_name="Tempest",
+        modifier_desc=(
+            "You gain +15% Crit Chance. Every 3rd monster turn, unavoidable "
+            "lightning strikes for 8% of your max HP as true damage."
+        ),
+        color=0x4466FF,
+    ),
+    "citadel": ZoneDef(
+        key="citadel",
+        name="Iron Citadel",
+        emoji="🏰",
+        shard_type="bulwark",
+        modifier_key="siege_grounds",
+        modifier_name="Siege Grounds",
+        modifier_desc=(
+            "You deal +30% ATK. The monster starts with 30% max HP Ward and "
+            "an additional 30% DR against your attacks."
+        ),
+        color=0x888888,
+    ),
+    "grove": ZoneDef(
+        key="grove",
+        name="Eternal Grove",
+        emoji="🌿",
+        shard_type="verdant",
+        modifier_key="living_battlefield",
+        modifier_name="Living Battlefield",
+        modifier_desc=(
+            "The monster regenerates 0.4% of max HP each monster turn. "
+            "You heal 1% of your max HP on each connected hit."
+        ),
+        color=0x228833,
+    ),
+    "vault": ZoneDef(
+        key="vault",
+        name="Golden Vault",
+        emoji="💰",
+        shard_type="fortune",
+        modifier_key="tempted_fate",
+        modifier_name="Tempted Fate",
+        modifier_desc=(
+            "All XP and Gold rewards are doubled. Every 4th monster turn, "
+            "all your ward is drained instantly."
+        ),
+        color=0xFFAA00,
+    ),
+    "shattered": ZoneDef(
+        key="shattered",
+        name="Shattered Realm",
+        emoji="🌀",
+        shard_type="rift",
+        modifier_key="reality_fracture",
+        modifier_name="Reality Fracture",
+        modifier_desc=(
+            "One of the monster's modifiers rerolls every 5 turns. "
+            "Each of your turns has a 12% chance to force a critical hit."
+        ),
+        color=0x9900CC,
+    ),
+}
+
+# ---------------------------------------------------------------------------
+# Apex monster definitions
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ApexMonsterDef:
+    name: str
+    zone_key: str
+    flavor: str          # monster.flavor text for combat log
+    modifiers: list      # list of modifier name strings (applied at build time)
+    image: str = ""      # URL or asset key
+
+
+APEX_POOL: list[ApexMonsterDef] = [
+    # ----- Ashen Wastes (pyre) -----
+    ApexMonsterDef("Cinderborn Drake", "ashen",
+                   "breathes scorching flame",
+                   ["Flashfire", "Savage", "Enraged"]),
+    ApexMonsterDef("Ember Tyrant", "ashen",
+                   "bellows a volcanic roar",
+                   ["Flashfire", "Lethal", "Overwhelming"]),
+    ApexMonsterDef("Ashfall Colossus", "ashen",
+                   "shakes the earth with blazing fists",
+                   ["Flashfire", "Ironclad", "Titanic"]),
+    ApexMonsterDef("Magma Hydra", "ashen",
+                   "strikes with molten heads",
+                   ["Flashfire", "Mending", "Multistrike"]),
+    ApexMonsterDef("Pyroclast Specter", "ashen",
+                   "surges through waves of fire",
+                   ["Flashfire", "Spectral", "Venomous"]),
+
+    # ----- Storm Reach (tempest) -----
+    ApexMonsterDef("Stormcaller Wyrm", "storm",
+                   "crackles with electric fury",
+                   ["Keen", "Lethal", "Savage"]),
+    ApexMonsterDef("Tempest Sovereign", "storm",
+                   "commands the winds to strike",
+                   ["Devastating", "Keen", "Blinding"]),
+    ApexMonsterDef("Cyclone Revenant", "storm",
+                   "spins in a vortex of lightning",
+                   ["Multistrike", "Keen", "Lethal"]),
+    ApexMonsterDef("Thunder Behemoth", "storm",
+                   "stomps with crackling force",
+                   ["Overwhelming", "Lethal", "Ironclad"]),
+    ApexMonsterDef("Voltaic Shade", "storm",
+                   "phases through lightning",
+                   ["Spectral", "Keen", "Venomous"]),
+
+    # ----- Iron Citadel (bulwark) -----
+    ApexMonsterDef("Siege Master", "citadel",
+                   "marches with impenetrable armour",
+                   ["Ironclad", "Stalwart", "Crushing"]),
+    ApexMonsterDef("Iron Golem Lord", "citadel",
+                   "pummels with titanium fists",
+                   ["Ironclad", "Titanic", "Devastating"]),
+    ApexMonsterDef("Warden of Iron", "citadel",
+                   "deflects all but the mightiest blows",
+                   ["Ironclad", "Stalwart", "Savage"]),
+    ApexMonsterDef("Fortress Colossus", "citadel",
+                   "absorbs your strikes with layered plate",
+                   ["Ironclad", "Mending", "Ironclad"]),
+    ApexMonsterDef("Bastion Wraith", "citadel",
+                   "warps through impenetrable steel",
+                   ["Stalwart", "Spectral", "Crushing"]),
+
+    # ----- Eternal Grove (verdant) -----
+    ApexMonsterDef("Grove Ancient", "grove",
+                   "channels the forest's endless vitality",
+                   ["Mending", "Vampiric", "Thorned"]),
+    ApexMonsterDef("Thornweald Titan", "grove",
+                   "lashes with living vines",
+                   ["Thorned", "Mending", "Venomous"]),
+    ApexMonsterDef("Verdant Devourer", "grove",
+                   "consumes your life force",
+                   ["Vampiric", "Hemorrhage", "Mending"]),
+    ApexMonsterDef("Living Canopy", "grove",
+                   "rains life-draining spores",
+                   ["Mending", "Parching", "Vampiric"]),
+    ApexMonsterDef("Root Sovereign", "grove",
+                   "binds you with ancient roots",
+                   ["Mending", "Enraged", "Thorned"]),
+
+    # ----- Golden Vault (fortune) -----
+    ApexMonsterDef("Vault Sentinel", "vault",
+                   "guards untold wealth with deadly precision",
+                   ["Lethal", "Savage", "Keen"]),
+    ApexMonsterDef("Gilded Predator", "vault",
+                   "hunts with razor instinct",
+                   ["Lethal", "Blinding", "Devastating"]),
+    ApexMonsterDef("Fortune's Reaper", "vault",
+                   "claims bounty with every strike",
+                   ["Lethal", "Multistrike", "Keen"]),
+    ApexMonsterDef("Greed Incarnate", "vault",
+                   "feeds on your accumulated power",
+                   ["Vampiric", "Lethal", "Savage"]),
+    ApexMonsterDef("Vault Phantom", "vault",
+                   "phases through defences with gilded blades",
+                   ["Spectral", "Lethal", "Savage"]),
+
+    # ----- Shattered Realm (rift) -----
+    ApexMonsterDef("Reality Shredder", "shattered",
+                   "tears apart the fabric of combat",
+                   ["Spectral", "Devastating", "Lethal"]),
+    ApexMonsterDef("Void Fracture", "shattered",
+                   "bends causality to its will",
+                   ["Spectral", "Nullifying", "Savage"]),
+    ApexMonsterDef("Entropy Engine", "shattered",
+                   "accelerates entropy around you",
+                   ["Temporal Collapse", "Spectral", "Lethal"]),
+    ApexMonsterDef("Nexus Abomination", "shattered",
+                   "converges all realities into a killing blow",
+                   ["Multistrike", "Devastating", "Spectral"]),
+    ApexMonsterDef("Rift Leviathan", "shattered",
+                   "swallows you in cascading reality breaks",
+                   ["Overwhelming", "Spectral", "Devastating"]),
+]
+
+# Build lookup by zone
+APEX_BY_ZONE: dict[str, list[ApexMonsterDef]] = {}
+for _m in APEX_POOL:
+    APEX_BY_ZONE.setdefault(_m.zone_key, []).append(_m)
+
+# ---------------------------------------------------------------------------
+# Passive → Shard mapping
+# ---------------------------------------------------------------------------
+
+PASSIVE_SHARD_MAP: dict[str, str] = {
+    # Pyre — fire / damage / damage-over-time
+    "burning": "pyre",
+    "shocking": "pyre",
+    "echo": "pyre",
+    "cull": "pyre",
+    "frenzy": "pyre",
+    "piety": "pyre",
+    "poison": "pyre",
+    # Tempest — accuracy / crit / mobility
+    "piercing": "tempest",
+    "debilitate": "tempest",
+    "deadeye": "tempest",
+    "deftness": "tempest",
+    "adroit": "tempest",
+    "insight": "tempest",
+    "obliterate": "tempest",
+    "lucky strikes": "tempest",
+    # Bulwark — defence / sustain
+    "sturdy": "bulwark",
+    "impregnable": "bulwark",
+    "arcane": "bulwark",
+    "hearty": "bulwark",
+    "cleric": "bulwark",
+    "ward-touched": "bulwark",
+    "ward-fused": "bulwark",
+    "ghosted": "bulwark",
+    # Verdant — lifesteal / healing / nature
+    "transcendence": "verdant",
+    "absorb": "verdant",
+    "juggernaut": "verdant",
+    "leeching": "verdant",
+    "thorns": "verdant",
+    "volatile": "verdant",
+    "divine": "verdant",
+    "instability": "verdant",
+    # Fortune — wealth / utility / gathering
+    "prosper": "fortune",
+    "infinite wisdom": "fortune",
+    "treasure hunter": "fortune",
+    "unlimited wealth": "fortune",
+    "alchemist": "fortune",
+    "speedster": "fortune",
+    "skiller": "fortune",
+    "treasure-tracker": "fortune",
+    "thrill-seeker": "fortune",
+    "plundering": "fortune",
+    "equilibrium": "fortune",
+    # Rift — no exclusive family; rift shards are the T3+ co-cost
+}
+
+# ---------------------------------------------------------------------------
+# Passive → Combat category
+# ---------------------------------------------------------------------------
+
+PASSIVE_CATEGORY_MAP: dict[str, str] = {
+    # Offensive
+    "burning": "offensive",
+    "shocking": "offensive",
+    "echo": "offensive",
+    "cull": "offensive",
+    "poison": "offensive",
+    "obliterate": "offensive",
+    "lucky strikes": "offensive",
+    "debilitate": "offensive",
+    "frenzy": "offensive",
+    "instability": "offensive",
+    "volatile": "offensive",
+    "thorns": "offensive",
+    # Defensive
+    "sturdy": "defensive",
+    "impregnable": "defensive",
+    "ward-touched": "defensive",
+    "ward-fused": "defensive",
+    "ghosted": "defensive",
+    "transcendence": "defensive",
+    "absorb": "defensive",
+    "divine": "defensive",
+    "hearty": "defensive",
+    "cleric": "defensive",
+    # Mixed (offensive-defensive hybrid)
+    "arcane": "mixed",
+    "juggernaut": "mixed",
+    "piety": "mixed",
+    "leeching": "mixed",
+    "deftness": "mixed",
+    "adroit": "mixed",
+    "piercing": "mixed",
+    "deadeye": "mixed",
+    "insight": "mixed",
+    # Utility
+    "prosper": "utility",
+    "infinite wisdom": "utility",
+    "treasure hunter": "utility",
+    "unlimited wealth": "utility",
+    "alchemist": "utility",
+    "speedster": "utility",
+    "skiller": "utility",
+    "treasure-tracker": "utility",
+    "thrill-seeker": "utility",
+    "plundering": "utility",
+    "equilibrium": "utility",
+}
+
+# ---------------------------------------------------------------------------
+# Resonance table
+# ---------------------------------------------------------------------------
+
+RESONANCE_TABLE: dict[str, tuple[str, str]] = {
+    "offensive_2": ("Vulcan's Rage",        "+10% ATK (final multiplier)"),
+    "offensive_3": ("Vulcan's Fury",         "+25% ATK (final multiplier)"),
+    "defensive_2": ("Athena's Stratagem",    "+8% DEF (final multiplier)"),
+    "defensive_3": ("Athena's Grand Design", "+15% DEF (final multiplier)"),
+    "mixed_2":     ("Tyr's Ruling",          "Sum ATK+DEF +5%, redistributed equally at combat start"),
+    "mixed_3":     ("Tyr's Adjudication",    "Sum ATK+DEF +20%, redistributed equally at combat start"),
+    "utility_2":   ("Midas's Wisdom",        "+20% XP (additive)"),
+    "utility_3":   ("Midas's Blessing",      "+20% Gold (additive)"),
+}
+
+# ---------------------------------------------------------------------------
+# Upgrade cost table: (tier_from) → {matching_cost, rift_cost}
+# ---------------------------------------------------------------------------
+
+UPGRADE_COSTS: dict[int, dict] = {
+    1: {"matching": 3, "rift": 0},
+    2: {"matching": 5, "rift": 0},
+    3: {"matching": 8, "rift": 2},
+    4: {"matching": 12, "rift": 5},
+}
+
+# ---------------------------------------------------------------------------
+# Upgrade outcome probabilities: tier_from → (success%, stay%, downgrade%)
+# ---------------------------------------------------------------------------
+
+UPGRADE_OUTCOMES: dict[int, tuple[float, float, float]] = {
+    1: (0.85, 0.15, 0.00),
+    2: (0.70, 0.30, 0.00),
+    3: (0.55, 0.35, 0.10),
+    4: (0.40, 0.35, 0.25),
+}
+
+# ---------------------------------------------------------------------------
+# Meta shard drop chances per hunt victory (independent rolls)
+# ---------------------------------------------------------------------------
+
+META_SHARD_DROP_CHANCES: dict[str, float] = {
+    "sharpened_fang": 0.25,
+    "engorged_heart": 0.25,
+    "condensed_blood": 0.08,
+    "primal_essence": 0.04,
+    "soul_vessel": 0.02,
+}
+
+META_SHARD_DISPLAY: dict[str, tuple[str, str]] = {
+    "sharpened_fang": ("🦷 Sharpened Fang", "Lucky extraction chance (25% → ~44%)"),
+    "engorged_heart": ("❤️ Engorged Heart", "Lucky upgrade chance (better odds)"),
+    "condensed_blood": ("🩸 Condensed Blood", "Prevents tier downgrade on failed upgrade"),
+    "primal_essence": ("✨ Primal Essence", "Counts extracted passives as +1 (improves extraction chance)"),
+    "soul_vessel": ("🏺 Soul Vessel", "Extract a passive without destroying the item"),
+}
