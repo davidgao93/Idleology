@@ -15,6 +15,7 @@ from core.apex.data import PASSIVE_CATEGORY_MAP, PASSIVE_SHARD_MAP, UPGRADE_COST
 from core.apex.mechanics import ApexMechanics
 from core.apex.models import MetaShardInventory, ShardInventory, SoulStone
 from core.base_view import BaseView
+from core.images import APEX_IMPRINT
 
 
 class ImprintView(BaseView):
@@ -173,6 +174,7 @@ class ImprintView(BaseView):
             description=f"From: **{self._selected_item_name}**",
             color=0x9900CC,
         )
+        embed.set_thumbnail(url=APEX_IMPRINT)
 
         # Check target slot
         first_empty = self.soul_stone.first_empty_slot
@@ -301,6 +303,7 @@ class ImprintView(BaseView):
             color = 0xCC0000
 
         embed = discord.Embed(title=result_title, description=result_desc, color=color)
+        embed.set_thumbnail(url=APEX_IMPRINT)
         await interaction.edit_original_response(embed=embed, view=None)
         self.stop()
 
@@ -334,6 +337,7 @@ class ImprintView(BaseView):
                 ),
                 color=0xCC6600,
             )
+            embed.set_thumbnail(url=APEX_IMPRINT)
             return embed
 
         embed = discord.Embed(
@@ -345,6 +349,7 @@ class ImprintView(BaseView):
             ),
             color=0x9900CC,
         )
+        embed.set_thumbnail(url=APEX_IMPRINT)
         # Show current soul stone state
         slot_lines = []
         for i, slot in enumerate(self.soul_stone.slots, 1):

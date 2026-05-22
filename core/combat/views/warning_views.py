@@ -8,7 +8,7 @@ from core.combat.mobgen.modifier_data import (
     RARE_TIERED_MOD_NAMES,
 )
 from core.combat.turns import engine
-from core.images import CORRUPTION_GATE
+from core.images import COMBAT_LOW_HEALTH, CORRUPTION_GATE
 
 
 class LowHealthWarningView(BaseView):
@@ -61,6 +61,7 @@ class LowHealthWarningView(BaseView):
 
         embed = discord.Embed(title="⚠️ Warning: Low Health", color=color)
         embed.description = f"You are about to enter combat with **{self.player.current_hp}/{self.player.total_max_hp} HP**.\nDeath results in a 10% XP penalty."
+        embed.set_thumbnail(url=COMBAT_LOW_HEALTH)
         return embed
 
     async def heal(self, interaction: Interaction):

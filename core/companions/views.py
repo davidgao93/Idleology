@@ -5,6 +5,7 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.companions.engram_view import BalancedEngramView
+from core.images import COMPANIONS_HUB
 from core.companions.logic import CompanionLogic
 from core.companions.mechanics import CompanionMechanics
 from core.models import Companion
@@ -149,6 +150,7 @@ class CompanionListView(BaseView):
 
     def get_embed(self):
         embed = discord.Embed(title="🐾 Companions", color=discord.Color.blue())
+        embed.set_thumbnail(url=COMPANIONS_HUB)
         embed.set_footer(text=f"Roster: {len(self.companions)}/20")
 
         if not self.companions:
@@ -221,6 +223,7 @@ class CompanionListView(BaseView):
             description="Combine two companions to merge their XP and randomize their traits.\n\n**Cost:** 50,000 Gold\nSelect your **Primary** companion below.",
             color=discord.Color.blue(),
         )
+        embed.set_thumbnail(url=COMPANIONS_FUSION)
         await interaction.response.edit_message(embed=embed, view=view)
 
 
@@ -353,6 +356,7 @@ class CompanionDetailView(BaseView):
             description=f"**Companion:** {self.comp.name}\n**Current:** T{self.comp.passive_tier} {self.comp.passive_type.upper()}",
             color=discord.Color.purple(),
         )
+        embed.set_thumbnail(url=self.comp.image_url)
         embed.add_field(
             name="Cost", value=f"1 Rune of Partnership\n(Owned: {runes})", inline=True
         )

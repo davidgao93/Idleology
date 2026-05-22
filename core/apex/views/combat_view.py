@@ -23,6 +23,7 @@ from core.combat.economy.config import XP_LOSS_ON_DEFEAT
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
 from core.combat.views.views import CombatView
+from core.images import APEX_HUB
 from core.models import Monster, Player
 
 
@@ -173,6 +174,7 @@ class ApexCombatView(CombatView):
                     description="Your hunt is complete! Choose your next action.",
                     color=0x9900CC,
                 )
+                lobby_embed.set_thumbnail(url=APEX_HUB)
                 new_msg = await message.channel.send(embed=lobby_embed, view=return_view)
                 return_view.message = new_msg
             except Exception:

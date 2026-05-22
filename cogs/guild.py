@@ -5,7 +5,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.character.views import RegistrationView, UnregisterView
-from core.images import DEFAULT_SILHOUETTE
+from core.images import DEFAULT_SILHOUETTE, GUILD_UNREGISTER
 
 
 class Guild(commands.Cog, name="adventurer's guild"):
@@ -66,7 +66,8 @@ class Guild(commands.Cog, name="adventurer's guild"):
                 "**This action is permanent and deletes all progress.**"
             ),
             color=0xFFCC00,
-        )  # 3. View Instantiation
+        )
+        embed.set_thumbnail(url=GUILD_UNREGISTER)  # 3. View Instantiation
         view = UnregisterView(
             self.bot, user_id, existing_user["ideology"]
         )

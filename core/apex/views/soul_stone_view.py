@@ -21,6 +21,7 @@ from core.apex.models import (
     soul_stone_from_db,
 )
 from core.base_view import BaseView
+from core.images import APEX_SOUL_STONE
 
 
 def _build_soul_stone_embed(
@@ -104,6 +105,7 @@ def _build_soul_stone_embed(
         inline=True,
     )
 
+    embed.set_thumbnail(url=APEX_SOUL_STONE)
     embed.set_footer(text="Imprint: extract passive from gear | Upgrade: improve a slot's tier")
     return embed
 
@@ -210,6 +212,7 @@ class SoulStoneView(BaseView):
             description="Choose a slot to clear. **This action is free and permanent.**",
             color=0xCC0000,
         )
+        embed.set_thumbnail(url=APEX_SOUL_STONE)
         for slot_num, slot in filled:
             passive_display = slot.passive.replace("-", " ").replace("_", " ").title()
             embed.add_field(

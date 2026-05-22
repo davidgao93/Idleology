@@ -3,6 +3,7 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
+from core.images import COMPANIONS_FUSION
 
 
 class FusionWizardView(BaseView):
@@ -51,6 +52,7 @@ class FusionWizardView(BaseView):
         self.setup_step_two()
 
         embed = discord.Embed(title="🧬 Companion Fusion", color=discord.Color.purple())
+        embed.set_thumbnail(url=COMPANIONS_FUSION)
         embed.description = (
             f"**Selected:** {self.parent_a.name}\nSelect the second companion to fuse."
         )
@@ -90,6 +92,7 @@ class FusionWizardView(BaseView):
             description="Select your first companion.",
             color=discord.Color.blue(),
         )
+        embed.set_thumbnail(url=COMPANIONS_FUSION)
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def step_two_callback(self, interaction: Interaction):
@@ -125,6 +128,7 @@ class FusionWizardView(BaseView):
             balanced_line = "• Balanced Passive: None (neither parent is Awakened)"
 
         embed = discord.Embed(title="⚠️ Confirm Fusion", color=discord.Color.gold())
+        embed.set_thumbnail(url=COMPANIONS_FUSION)
         embed.description = (
             f"**Parent 1:** {self.parent_a.name} (T{self.parent_a.passive_tier} {self.parent_a.passive_type})\n"
             f"**Parent 2:** {self.parent_b.name} (T{self.parent_b.passive_tier} {self.parent_b.passive_type})\n\n"

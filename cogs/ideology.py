@@ -5,7 +5,7 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from core.images import PROPAGATE
+from core.images import IDEOLOGY_HUB, PROPAGATE
 
 
 class Ideology(commands.Cog, name="ideology"):
@@ -52,6 +52,7 @@ class Ideology(commands.Cog, name="ideology"):
             description=ideology_info,
             color=0x00FF00,
         )
+        embed.set_thumbnail(url=IDEOLOGY_HUB)
 
         await interaction.response.send_message(embed=embed)
 

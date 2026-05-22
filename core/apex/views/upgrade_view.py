@@ -16,6 +16,7 @@ from core.apex.data import PASSIVE_SHARD_MAP, UPGRADE_COSTS
 from core.apex.mechanics import ApexMechanics
 from core.apex.models import MetaShardInventory, ShardInventory, SoulStone
 from core.base_view import BaseView
+from core.images import APEX_UPGRADE
 
 
 class UpgradeView(BaseView):
@@ -137,6 +138,7 @@ class UpgradeView(BaseView):
             description=f"Soul Stone — Slot {self._selected_slot}",
             color=0x00CC44 if can_afford else 0xCC0000,
         )
+        embed.set_thumbnail(url=APEX_UPGRADE)
 
         # Cost
         cost_lines = [
@@ -245,6 +247,7 @@ class UpgradeView(BaseView):
             color = 0xCC0000
 
         embed = discord.Embed(title=result_title, description=result_desc, color=color)
+        embed.set_thumbnail(url=APEX_UPGRADE)
         consumed_parts = []
         if heart:
             consumed_parts.append("❤️ Engorged Heart")
@@ -319,6 +322,7 @@ class UpgradeView(BaseView):
                 inline=False,
             )
 
+        embed.set_thumbnail(url=APEX_UPGRADE)
         return embed
 
     async def _cancel(self, interaction: Interaction):

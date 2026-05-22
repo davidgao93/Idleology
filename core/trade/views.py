@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
+from core.images import TRADE_HUB
 from core.trade.logic import TradeManager
 
 
@@ -79,6 +80,7 @@ class TradeRootView(BaseView):
             description="The trade session timed out.",
             color=discord.Color.red(),
         )
+        embed.set_thumbnail(url=TRADE_HUB)
 
         try:
             if self.message:
@@ -113,6 +115,7 @@ class TradeRootView(BaseView):
         self.add_item(btn_cancel)
 
     async def update_view(self, interaction: Interaction, embed):
+        embed.set_thumbnail(url=TRADE_HUB)
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=self)
         else:
@@ -370,6 +373,7 @@ class TradeRootView(BaseView):
                 description=f"Sent items to {self.receiver.mention}.",
                 color=discord.Color.green(),
             )
+            embed.set_thumbnail(url=TRADE_HUB)
             await interaction.edit_original_response(embed=embed, view=None)
 
         except Exception as e:

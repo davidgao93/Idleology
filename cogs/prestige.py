@@ -5,6 +5,7 @@ import urllib.request
 import discord
 from discord import ButtonStyle, app_commands, ui
 from discord.ext import commands
+from core.images import PRESTIGE_HUB, PRESTIGE_HALL
 
 # ---------------------------------------------------------------------------
 # Catalogue
@@ -315,6 +316,7 @@ class PrestigeBuilder:
     @staticmethod
     def build_shop() -> discord.Embed:
         embed = discord.Embed(title="Prestige Shop", color=DEFAULT_COLOR)
+        embed.set_thumbnail(url=PRESTIGE_HUB)
 
         titles_text = "\n".join(
             f"`{k}` — {v['label']} · **{v['price']:,}g**" for k, v in TITLES.items()
@@ -344,6 +346,7 @@ class PrestigeBuilder:
     async def build_hall(bot, server_id: str) -> discord.Embed:
         rows = await bot.database.prestige.get_monument_hall(server_id)
         embed = discord.Embed(title="Hall of Fame", color=DEFAULT_COLOR)
+        embed.set_thumbnail(url=PRESTIGE_HALL)
         if not rows:
             embed.description = "No monuments have been erected yet."
         else:

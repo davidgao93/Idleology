@@ -5,6 +5,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.images import BOSS_LUCIFER
 
 
 class LuciferChoiceView(BaseView):
@@ -197,6 +198,7 @@ class InfernalContractView(BaseView):
             + "\n".join(parts),
             color=discord.Color.dark_red(),
         )
+        embed.set_thumbnail(url=BOSS_LUCIFER)
         embed.set_footer(text="There is no going back.")
         self.bot.state_manager.clear_active(self.user_id)
         await interaction.edit_original_response(embed=embed, view=None)
@@ -210,6 +212,7 @@ class InfernalContractView(BaseView):
             description="Lucifer watches you walk away. *He will remember.*",
             color=discord.Color.dark_grey(),
         )
+        embed.set_thumbnail(url=BOSS_LUCIFER)
         self.bot.state_manager.clear_active(self.user_id)
         await interaction.edit_original_response(embed=embed, view=None)
         self.stop()

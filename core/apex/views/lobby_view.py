@@ -24,6 +24,7 @@ from core.apex.models import (
     soul_stone_from_db,
 )
 from core.base_view import BaseView
+from core.images import APEX_HUB
 
 
 def _fmt_time(seconds: int) -> str:
@@ -93,6 +94,7 @@ def _build_lobby_embed(
         )
 
     embed.add_field(name="🗺️ Zones", value="\n".join(zone_lines), inline=False)
+    embed.set_thumbnail(url=APEX_HUB)
     embed.set_footer(
         text="Apex Hunts consume 1 charge per attempt. "
              "Charges regenerate 1 per 8 hours (max 3)."
@@ -127,6 +129,7 @@ def _build_zone_confirm_embed(
         value=f"**{max(0, charges - 1)}/3**",
         inline=True,
     )
+    embed.set_thumbnail(url=APEX_HUB)
     embed.set_footer(
         text="On victory: item shards + chance at meta shards. "
              "On defeat: 1–3 soul fragments consolation."

@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.images import UBER_HUB
 from core.models import Player
 
 
@@ -103,6 +104,7 @@ class UberHubView(BaseView):
             ),
             color=discord.Color.dark_gold(),
         )
+        embed.set_thumbnail(url=UBER_HUB)
         embed.add_field(
             name="🌌 Aphrodite, Celestial Sovereign",
             value=(

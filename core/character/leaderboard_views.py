@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction
 
 from core.base_view import BaseView
+from core.images import LEADERBOARD_HUB
 
 
 class LeaderboardHubView(BaseView):
@@ -102,4 +103,5 @@ class LeaderboardHubView(BaseView):
                 lines.append(f"**{i+1}. {name}** - {wl}")
 
         embed.description = "\n".join(lines) if lines else "No data found."
+        embed.set_thumbnail(url=LEADERBOARD_HUB)
         return embed

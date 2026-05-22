@@ -5,6 +5,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
+from core.images import DUELS_HUB
 from core.pvp.engine import PvPEngine
 
 MAX_HEALS = 8
@@ -183,6 +184,7 @@ class DuelView(BaseView):
             f"**{self.names[winner]}** has defeated **{self.names[loser]}**!\n\n"
             f"Winner receives: **{self.amount * 2:,} gold** (Pot)."
         )
+        embed.set_thumbnail(url=DUELS_HUB)
 
         self.bot.state_manager.clear_active(self.p1_id)
         self.bot.state_manager.clear_active(self.p2_id)

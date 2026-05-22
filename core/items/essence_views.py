@@ -11,6 +11,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button, Select
 
 from core.base_view import BaseView
+from core.images import ESSENCE_HUB
 from core.items.essence_mechanics import (
     CORRUPTED_ESSENCE_TYPES,
     ESSENCE_VALUE_RANGES,
@@ -173,6 +174,7 @@ def _build_essence_embed(item, essence_inventory: dict) -> discord.Embed:
         description=f"*{item_type_label} · Level {item.level}*",
         color=0x9B59B6,
     )
+    embed.set_thumbnail(url=ESSENCE_HUB)
 
     # --- Regular slots ---
     slot_lines = []
@@ -542,6 +544,7 @@ class EssenceView(BaseView):
             description="Choose a regular essence from your inventory.",
             color=0x9B59B6,
         )
+        embed.set_thumbnail(url=ESSENCE_HUB)
         await interaction.response.edit_message(
             embed=embed, view=EssenceSelectView(self, applicable, corrupted=False)
         )
@@ -566,6 +569,7 @@ class EssenceView(BaseView):
             description="⚠️ Corrupted essences cannot be removed once applied.",
             color=0xE74C3C,
         )
+        embed.set_thumbnail(url=ESSENCE_HUB)
         await interaction.response.edit_message(
             embed=embed, view=EssenceSelectView(self, applicable, corrupted=True)
         )
@@ -594,6 +598,7 @@ class EssenceView(BaseView):
             description=desc_map.get(utility_type, ""),
             color=0xE67E22,
         )
+        embed.set_thumbnail(url=ESSENCE_HUB)
         embed.add_field(
             name="Item", value=f"**{self.item.name}** (Lv.{self.item.level})"
         )
