@@ -387,9 +387,6 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         is_hit = False
         is_crit = False
         calc.append("  neet: accuracy 0, always miss")
-        log.append(
-            "🌑 **Void Form** — accuracy reduced to zero, the strike phases through!"
-        )
 
     if is_crit:
         raw_damage = calc_crit_damage(player, monster, attack_multiplier, log, calc)

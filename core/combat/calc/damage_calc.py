@@ -461,9 +461,62 @@ def calc_miss_damage(
 def apply_monster_damage_reduction(
     monster: Monster, damage: int, log: list[str], calc: list[str]
 ) -> int:
-    """Phase 5 — apply monster damage-reduction modifiers."""
+    """Phase 5 — apply monster damage-reduction modifiers.
+
+    Two independent layers applied in order:
+
+    Layer 1 — Regular DR (additive pool, hard cap 80%):
+      Sources: Ironclad modifier, Colossus Protocol (colossus_dr field).
+      All percentages sum first, then the combined rate is capped at 80% and
+      applied once.  This prevents compounding between sources and ensures a
+      hard ceiling even if both are maxed simultaneously.
+
+    Stalwart — chance-based full nullification, checked after Layer 1.
+
+    Layer 2 — Uber Protection (multiplicative, applied after Layer 1):
+      Sources: Radiant / Infernal / Balanced / Void / Corrupted Protection.
+      Treated as a separate multiplicative layer so it cannot be diluted by
+      regular DR stacking.  At most one Protection modifier fires (break).
+
+    Example with Ironclad T5 (30%) + Colossus (30%) + Radiant Protection:
+      1000 × (1 − 0.60) = 400  →  400 × (1 − 0.60) = 160 final damage.
+    """
     pre = damage
 
+    # --- Layer 1: Regular DR (additive pool, hard cap 80%) ---
+    regular_dr = 0.0
+    dr_labels: list[str] = []
+
+    if monster.has_modifier("Ironclad"):
+        v = monster.get_modifier_value("Ironclad")
+        regular_dr += v
+        dr_labels.append(f"Ironclad {int(v * 100)}%")
+
+    if getattr(monster, "colossus_dr", 0.0) > 0:
+        regular_dr += monster.colossus_dr
+        dr_labels.append(f"Colossus {int(monster.colossus_dr * 100)}%")
+
+    if regular_dr > 0 and damage > 0:
+        capped_dr = min(0.80, regular_dr)
+        reduction = int(damage * capped_dr)
+        damage = max(0, damage - reduction)
+        cap_note = " *(capped at 80%)*" if regular_dr > 0.80 else ""
+        source = " + ".join(dr_labels)
+        log.append(
+            f"{monster.name}'s **DR** ({source}{cap_note}) blocks **{reduction}** damage."
+        )
+        calc.append(
+            f"  regular_dr: {source} = {int(regular_dr * 100)}%"
+            f" → applied {int(capped_dr * 100)}%: {pre}→{damage}"
+        )
+
+    # --- Stalwart: chance-based full nullification ---
+    if monster.has_modifier("Stalwart") and damage > 0:
+        if random.random() < monster.get_modifier_value("Stalwart"):
+            log.append(f"{monster.name}'s **Stalwart** shield nullifies the attack!")
+            damage = 0
+
+    # --- Layer 2: Uber Protection (multiplicative, after regular DR) ---
     for prot_name in (
         "Radiant Protection",
         "Infernal Protection",
@@ -476,24 +529,6 @@ def apply_monster_damage_reduction(
             damage = max(0, damage - reduction)
             log.append(f"✨ **{prot_name}** mitigates {reduction} damage!")
             break
-
-    if monster.has_modifier("Ironclad") and damage > 0:
-        reduction = int(damage * monster.get_modifier_value("Ironclad"))
-        damage = max(0, damage - reduction)
-        log.append(
-            f"{monster.name}'s **Ironclad** plating reduces damage by {reduction}."
-        )
-
-    # Colossus Protocol: damage reduction (DEF component) when active
-    if getattr(monster, "colossus_dr", 0.0) > 0 and damage > 0:
-        reduction = int(damage * monster.colossus_dr)
-        damage = max(0, damage - reduction)
-        calc.append(f"  colossus_dr: {int(monster.colossus_dr*100)}% → {damage}")
-
-    if monster.has_modifier("Stalwart") and damage > 0:
-        if random.random() < monster.get_modifier_value("Stalwart"):
-            log.append(f"{monster.name}'s **Stalwart** shield nullifies the attack!")
-            damage = 0
 
     if damage != pre:
         calc.append(f"  mon_reductions: {pre} → {damage} (saved {pre - damage})")
