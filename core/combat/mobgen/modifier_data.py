@@ -217,7 +217,7 @@ MODIFIER_DEFINITIONS: dict = {
     "Flashfire": ModifierDef(
         "Flashfire",
         "common",
-        tiers=[0.08, 0.10, 0.13, 0.16, 0.20],
+        tiers=[0.02, 0.04, 0.06, 0.08, 0.10],
         difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
         description=lambda v: f"Charges each turn; at 8: {int(v*100)}% max HP true dmg",
@@ -236,7 +236,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.02, 0.03, 0.04, 0.05, 0.06],
         difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: f"Hits build crit stacks; evade/block resets all",
+        description=lambda v: "Hits build crit stacks; evade/block resets all",
     ),
     "Onslaught": ModifierDef(
         "Onslaught",
@@ -249,7 +249,7 @@ MODIFIER_DEFINITIONS: dict = {
     "Pressure Surge": ModifierDef(
         "Pressure Surge",
         "common",
-        tiers=[0.18, 0.22, 0.28, 0.35, 0.42],
+        tiers=[0.10, 0.125, 0.15, 0.175, 0.20],
         difficulties=[0.004, 0.006, 0.008, 0.010, 0.013],
         level_gates=[1, 25, 50, 75, 100],
         description=lambda v: f"Builds when you don't crit; at 10: {int(v*100)}% max HP true dmg",
@@ -343,7 +343,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.90],
         difficulties=[0.015],
         level_gates=[],
-        description=lambda v: "1% chance to deal 90% of your HP as damage",
+        description=lambda v: "1% chance to deal 90% of your current HP as true damage",
     ),
     "Time Lord": ModifierDef(
         "Time Lord",
@@ -359,7 +359,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.08],
         difficulties=[0.012],
         level_gates=[],
-        description=lambda v: "Stores 8% of damage you deal; releases as true dmg on your miss",
+        description=lambda v: "Stores 8% of damage you deal; releases through your defences on miss",
     ),
     "Corrosion": ModifierDef(
         "Corrosion",
@@ -375,7 +375,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[1.0],
         difficulties=[0.012],
         level_gates=[],
-        description=lambda v: "Below 25% HP: 5-turn countdown; if it survives, heals to 50%",
+        description=lambda v: "Below 25% HP: 5-turn countdown; if it survives, heals to 25%",
     ),
     # --- Boss flat ---
     "Overwhelming": ModifierDef(
@@ -432,7 +432,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.60],
         difficulties=[0.0],
         level_gates=[],
-        description=lambda v: "Below 50% HP: +60% ATK, +30% DR, negates first hit each turn",
+        description=lambda v: "Below 50% HP: +60% ATK, +30% DR",
     ),
     "Temporal Collapse": ModifierDef(
         "Temporal Collapse",

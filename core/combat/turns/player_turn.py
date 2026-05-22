@@ -296,11 +296,33 @@ def _pt_partner_effects(
             threshold_pct = lvl / 100
             if monster.hp <= int(monster.max_hp * threshold_pct):
                 dmg = monster.hp
-                monster.hp = 0
-                parts.append(
-                    f"💀 **Execute Lv.{lvl}** — {partner.name} executes the "
-                    f"{monster.name}! (**{dmg}** damage)"
-                )
+                # Time Lord: 80% chance to survive the killing blow
+                if monster.has_modifier("Time Lord") and monster.hp > 1 and random.random() < 0.80:
+                    monster.hp = 1
+                    parts.append(
+                        f"💀 **Execute Lv.{lvl}** — {partner.name} strikes for **{dmg - 1}** true damage! "
+                        f"**Time Lord** cheats death — {monster.name} clings to 1 HP!"
+                    )
+                # Undying Resolve: intercept first death
+                elif (
+                    monster.has_modifier("Undying Resolve")
+                    and not monster.undying_resolve_triggered
+                ):
+                    heal_pct = monster.get_modifier_value("Undying Resolve")
+                    monster.hp = max(1, int(monster.max_hp * heal_pct))
+                    monster.undying_resolve_triggered = True
+                    monster.undying_immune_turns = 2
+                    monster.undying_atk_boost_turns = 2
+                    parts.append(
+                        f"💀 **Execute Lv.{lvl}** — {partner.name} strikes for **{dmg}** true damage! "
+                        f"**Undying Resolve!** {monster.name} refuses to die — rises to **{monster.hp}** HP!"
+                    )
+                else:
+                    monster.hp = 0
+                    parts.append(
+                        f"💀 **Execute Lv.{lvl}** — {partner.name} executes the "
+                        f"{monster.name}! (**{dmg}** true damage)"
+                    )
 
     if sigmund_proc:
         sig_lvl = partner.sig_combat_lvl
@@ -313,23 +335,46 @@ def _pt_partner_effects(
     return partner_log, partner_name
 
 
-def _pt_check_cull(player: Player, monster: Monster, log: list[str]) -> None:
-    """Phase 10 — culling strike: if monster HP is below threshold, reduce to 1."""
+def _pt_check_cull(player: Player, monster: Monster, log: list[str]) -> bool:
+    """Culling strike: instantly kills the monster when its HP falls within the cull threshold.
+
+    Deals true damage (bypasses all DR layers, Stalwart, uber protection, and monster ward)
+    by setting HP directly.  Returns True if the killing blow landed (monster.hp == 0).
+
+    Time Lord — 80% chance to survive, leaving the monster at 1 HP; returns False.
+    Undying Resolve — fires in the post-cull block of process_player_turn (move cull before
+    the Undying Resolve check so it can protect from cull kills).
+    """
     from core.combat.calc.calcs import get_weapon_tier
 
     if monster.hp <= 0:
-        return
+        return False
     idx, _ = get_weapon_tier(player, "cull")
-    if idx >= 0:
-        threshold = (idx + 1) * 0.08
-        if monster.hp <= (monster.max_hp * threshold):
-            cull_dmg = monster.hp - 1
-            if cull_dmg > 0:
-                monster.hp = 1
-                log.append(
-                    f"{player.name}'s weapon culls the weakened {monster.name}, "
-                    f"dealing an additional 🪓 __**{cull_dmg}**__ damage!"
-                )
+    if idx < 0:
+        return False
+
+    threshold = (idx + 1) * 0.08
+    if monster.hp > int(monster.max_hp * threshold):
+        return False
+
+    cull_dmg = monster.hp  # true damage = full remaining HP
+
+    # Time Lord: 80% chance to survive the killing blow (stays at 1 HP)
+    if monster.has_modifier("Time Lord") and monster.hp > 1 and random.random() < 0.80:
+        monster.hp = 1
+        log.append(
+            f"{player.name}'s weapon culls the weakened {monster.name} "
+            f"for 🪓 __**{cull_dmg - 1}**__ true damage! "
+            f"**Time Lord** cheats death — {monster.name} clings to 1 HP!"
+        )
+        return False
+
+    monster.hp = 0
+    log.append(
+        f"{player.name}'s weapon culls the weakened {monster.name} "
+        f"for 🪓 __**{cull_dmg}**__ true damage!"
+    )
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -437,8 +482,11 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         monster.colossus_dr = 0.30
         log.append(
             f"⚙️ **Colossus Protocol ENGAGES!** {monster.name}'s power surges — "
-            f"ATK +60%, DR +30%! First hit each turn is nullified!"
+            f"ATK +60%, DR +30%!"
         )
+
+    # --- Culling strike (before Undying Resolve so it can protect from cull kills) ---
+    _cull_fired = _pt_check_cull(player, monster, log)
 
     # Undying Resolve: intercept first death
     if (
@@ -466,18 +514,29 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         monster.death_rattle_countdown = 5
         log.append(
             f"☠️ **Death Rattle** — {monster.name} is mortally wounded! "
-            f"If it survives **5 turns**, it will heal to 50% HP!"
+            f"If it survives **5 turns**, it will heal to 25% HP!"
         )
 
-    # Feedback Core: accumulate 8% of damage dealt on hit; release as true damage on miss
+    # Feedback Core: accumulate 8% of damage dealt on hit; release through defences on miss
     if monster.has_modifier("Feedback Core"):
         if not is_hit and not is_crit:
             if monster.feedback_stored > 0:
-                player.current_hp = max(0, player.current_hp - monster.feedback_stored)
-                log.append(
-                    f"⚡ **Feedback Core** releases **{monster.feedback_stored}** stored energy as true damage!"
-                )
+                burst = monster.feedback_stored
                 monster.feedback_stored = 0
+                # Run through player's defensive layers: PDR → FDR → ward → HP
+                pdr = player.get_total_pdr()
+                fdr = player.get_total_fdr()
+                after_pdr = max(0, int(burst * (1 - pdr / 100)))
+                after_fdr = max(0, after_pdr - fdr)
+                ward_absorbed = min(player.combat_ward, after_fdr)
+                player.combat_ward -= ward_absorbed
+                hp_dmg = after_fdr - ward_absorbed
+                if hp_dmg > 0:
+                    player.current_hp = max(0, player.current_hp - hp_dmg)
+                log.append(
+                    f"⚡ **Feedback Core** releases **{burst}** stored energy!"
+                    f" (−PDR/FDR/Ward → **{hp_dmg}** HP damage)"
+                )
         elif final_hit > 0:
             stored = int(final_hit * 0.08)
             monster.feedback_stored += stored
@@ -532,8 +591,6 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         if monster.hp <= 0:
             on_kill(player, log)
 
-    _pt_check_cull(player, monster, log)
-
     wf_bonus = _je.consume_wardforge_bonus(player)
     if wf_bonus > 0 and is_hit and monster.hp > 0:
         actual_wf = min(wf_bonus, monster.hp)
@@ -568,4 +625,5 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         calc_detail="\n".join(calc),
         partner_log=partner_log,
         partner_name=partner_name,
+        cull_fired=_cull_fired,
     )

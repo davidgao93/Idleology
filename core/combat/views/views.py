@@ -232,7 +232,14 @@ class CombatView(BaseView):
             self.logs[self.monster.name] = m_log
 
         # 3. Check End State
-        await self.check_combat_state(interaction)
+        # If cull delivered the killing blow, show the result for 3 s before transitioning.
+        if p_log.cull_fired and self.monster.hp <= 0:
+            self.update_buttons()
+            await self.refresh_embed(interaction)
+            await asyncio.sleep(3)
+            await self.handle_end_state(interaction.message, interaction)
+        else:
+            await self.check_combat_state(interaction)
 
     @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
     async def heal_btn(self, interaction: Interaction, button: ui.Button):

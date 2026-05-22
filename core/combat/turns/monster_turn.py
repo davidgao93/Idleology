@@ -37,15 +37,11 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     previous_ward = player.combat_ward
 
-    # --- Colossus Protocol: reset per-turn hit negation flag ---
-    if monster.colossus_active:
-        monster.colossus_hit_negated = False
-
     # --- Death Rattle: countdown tick → heal if reaches 0 ---
     if monster.death_rattle_triggered and monster.death_rattle_countdown > 0:
         monster.death_rattle_countdown -= 1
         if monster.death_rattle_countdown == 0:
-            heal_target = int(monster.max_hp * 0.50)
+            heal_target = int(monster.max_hp * 0.25)
             if monster.hp < heal_target:
                 healed = heal_target - monster.hp
                 monster.hp = heal_target
@@ -93,16 +89,17 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 f"⚡ **Pressure Surge RELEASES!** Pent-up force slams for **{burst}** true damage!"
             )
 
-    # --- Soul Siphon: every 2 turns drain ward → monster heals 2× ---
+    # --- Soul Siphon: every 2 turns drain ward → monster heals 50% of drained ---
     if monster.has_modifier("Soul Siphon") and monster.combat_round % 2 == 0:
         v = monster.get_modifier_value("Soul Siphon")
         if player.combat_ward > 0:
             siphon_amt = int(player.combat_ward * v)
             if siphon_amt > 0:
                 player.combat_ward = max(0, player.combat_ward - siphon_amt)
-                monster.hp = min(monster.max_hp, monster.hp + siphon_amt * 2)
+                heal_amt = max(1, siphon_amt // 2)
+                monster.hp = min(monster.max_hp, monster.hp + heal_amt)
                 log.append(
-                    f"💜 **Soul Siphon** drains **{siphon_amt}** 🔮 ward, healing {monster.name} for **{siphon_amt * 2}** HP!"
+                    f"💜 **Soul Siphon** drains **{siphon_amt}** 🔮 ward, healing {monster.name} for **{heal_amt}** HP!"
                 )
 
     # --- Corrosion: +1 corrode stack every 3 turns ---
@@ -113,13 +110,18 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         )
 
     # --- Temporal Collapse: every 6 turns return accumulated player damage as true damage ---
+    # Burst is capped at 35% of player max HP to prevent instant kills — endgame players
+    # can deal 100-200k damage in 6 turns while only having ~1200-1400 HP.
     if monster.has_modifier("Temporal Collapse") and monster.combat_round % 6 == 0 and monster.combat_round > 0:
         if monster.temporal_window_damage > 0:
-            collapse_dmg = monster.temporal_window_damage
+            cap = int(player.total_max_hp * 0.35)
+            was_capped = monster.temporal_window_damage > cap
+            collapse_dmg = min(monster.temporal_window_damage, cap)
             player.current_hp = max(0, player.current_hp - collapse_dmg)
             monster.temporal_window_damage = 0
+            cap_note = " *(capped)*" if was_capped else ""
             log.append(
-                f"⏳ **Temporal Collapse!** Time reverses your strikes — **{collapse_dmg}** true damage!"
+                f"⏳ **Temporal Collapse!** Time reverses your strikes — **{collapse_dmg}** true damage!{cap_note}"
             )
 
     # --- Mending: passive HP regen every other monster turn ---
@@ -270,14 +272,11 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             total_damage += multistrike_damage
             calc.append(f"  multistrike: +{multistrike_damage} → total={total_damage}")
 
-        # --- Executioner ---
+        # --- Executioner: 1% proc; true damage fires after dodge/block if not avoided ---
         is_executed = False
         if monster.has_modifier("Executioner") and random.random() < 0.01:
-            total_damage = max(total_damage, int(player.current_hp * 0.90))
             is_executed = True
-            calc.append(
-                f"  executioner: forced={total_damage} (90% of player_hp={player.current_hp})"
-            )
+            calc.append("  executioner: PROC'd — true damage applied if not dodged/blocked")
 
         # --- Dodge & Block ---
         # (is_dodged and is_blocked initialized above before the hit-check branch)
@@ -421,17 +420,10 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     break
 
         if total_damage > 0 and not is_dodged:
-            # --- Colossus Protocol: negate first hit per turn ---
-            if monster.colossus_active and not monster.colossus_hit_negated and total_damage > 0:
-                monster.colossus_hit_negated = True
-                log.append(
-                    f"⚙️ **Colossus Protocol** — {monster.name}'s strike is deflected by the protocol!"
-                )
-                total_damage = 0
-
-            # --- Volatile Spikes: +1 spike on connected hit (cap 10) ---
+            # --- Volatile Spikes: 30% chance to add +1 spike on connected hit (cap 10) ---
             if monster.has_modifier("Volatile Spikes") and not is_blocked:
-                monster.spike_stacks = min(10, monster.spike_stacks + 1)
+                if random.random() < 0.30:
+                    monster.spike_stacks = min(10, monster.spike_stacks + 1)
 
             # --- Onslaught: +v ATK bonus per consecutive hit ---
             if monster.has_modifier("Onslaught") and not is_blocked:
@@ -595,9 +587,10 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     f"The monster's **Vampiric** essence siphons life, healing it for **{heal}** HP!"
                 )
 
-            # --- Hemorrhage: +1 bleed stack on each hit ---
+            # --- Hemorrhage: 30% chance to add +1 bleed stack on each hit ---
             if monster.has_modifier("Hemorrhage") and damage_dealt > 0:
-                monster.bleed_stacks += 1
+                if random.random() < 0.30:
+                    monster.bleed_stacks += 1
 
             # --- Impending Doom: +1 doom stack per hit; instant kill at 44 ---
             if monster.has_modifier("Impending Doom") and damage_dealt > 0:
@@ -620,10 +613,6 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     f"🩸 **Thorned** — you take **{thorned_dmg}** damage for striking!"
                 )
 
-            if is_executed:
-                log.append(
-                    f"The {monster.name}'s **Executioner** ability cleaves through you!"
-                )
             if minion_dmg > 0:
                 log.append(
                     f"Their minions strike for an additional {minion_dmg} damage!"
@@ -646,6 +635,20 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 player.current_hp = max(0, player.current_hp - twin_dmg)
                 log.append(
                     f"⚡ **Balanced Strikes!** The bound sovereigns strike as one for **{twin_dmg}** damage! *(Bypasses ward)*"
+                )
+
+        # --- Executioner: true damage — bypasses all PDR/FDR/ward/DR layers ---
+        # Fires only when the attack connected (not dodged, not blocked).
+        if is_executed and not is_dodged and not is_blocked and player.current_hp > 0:
+            exec_dmg = int(player.current_hp * 0.90)
+            if exec_dmg > 0:
+                player.current_hp = max(0, player.current_hp - exec_dmg)
+                calc.append(
+                    f"  executioner_true_dmg: {exec_dmg} (90% of {player.current_hp + exec_dmg} current HP)"
+                )
+                log.append(
+                    f"⚔️ The {monster.name}'s **Executioner** cleaves through your defenses"
+                    f" for **{exec_dmg}** 💀 true damage!"
                 )
 
         if not log:

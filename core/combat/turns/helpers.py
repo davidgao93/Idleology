@@ -12,6 +12,7 @@ class PlayerTurnResult:
     calc_detail: str = ""  # numerical breakdown for combat log file only
     partner_log: str = ""  # partner per-turn effects (joint attack, heal, etc.)
     partner_name: str = ""  # embed field name for the partner log
+    cull_fired: bool = False  # True when cull dealt the killing blow this turn
 
     def __str__(self) -> str:
         return self.log
