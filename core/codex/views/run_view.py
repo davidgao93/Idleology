@@ -332,6 +332,9 @@ class CodexRunView(BaseView):
         hit_companion = p._get_companion_bonus("hit")
         hit_emblem = p.get_emblem_bonus("accuracy") * 2
         hit_total = hit_pct + hit_ascension + hit_deadeye + hit_companion + hit_emblem - p.chapter_hit_penalty
+        # NEET glove corrupted essence forces accuracy to 0 in combat
+        if p.get_glove_corrupted_essence() == "neet":
+            hit_total = 0
 
         # Crit chance — includes piercing passive + partner bonus (matches engine)
         crit_chance = calculate_crit_chance(p)

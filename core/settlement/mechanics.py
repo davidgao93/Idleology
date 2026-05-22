@@ -1,7 +1,6 @@
 # core/settlement/mechanics.py
 
-import random
-from typing import Dict, Optional
+from typing import Dict
 
 from core.settlement.constants import (
     ITEM_NAMES,
@@ -130,8 +129,8 @@ class SettlementMechanics:
             #   T5: [5,4,3,2,1]  → 33% / 27% / 20% / 13% / 7%
             active_map = b_data["map"][:tier]
             n = len(active_map)
-            weights = list(range(n, 0, -1))   # [n, n-1, ..., 1]
-            total_weight = n * (n + 1) // 2   # = sum(weights)
+            weights = list(range(n, 0, -1))  # [n, n-1, ..., 1]
+            total_weight = n * (n + 1) // 2  # = sum(weights)
 
             for i, (raw_key, refined_key) in enumerate(active_map):
                 if raw_key not in raw_inventory or raw_inventory[raw_key] <= 0:
@@ -177,26 +176,6 @@ class SettlementMechanics:
         ]
 
     @staticmethod
-    def roll_event(hours_elapsed: float) -> Optional[str]:
-        """
-        Checks if a random event occurred during the elapsed time.
-        """
-        if hours_elapsed < 1:
-            return None
-
-        # 1% chance per hour
-        chance = 0.01 * hours_elapsed
-        if random.random() < chance:
-            events = [
-                "Traveling Merchant visited! Gained 5,000 Gold.",
-                "Minor earthquake! A few stones fell loose (+10 Stone).",
-                "A worker slacked off. Production reduced slightly (Flavor).",
-                "A wandering bard entertained your followers. Morale high!",
-            ]
-            return random.choice(events)
-        return None
-
-    @staticmethod
     def get_multiplier(tier: int) -> float:
         """Black Market tier bonus multiplier."""
         if tier == 1:
@@ -223,8 +202,8 @@ class SettlementMechanics:
         # 1. Uber buildings (flat high cost)
         if building_type in UBER_BUILDINGS:
             cost = {
-                "timber": _round_to_thousand(target_tier * 100_000),
-                "stone": _round_to_thousand(target_tier * 100_000),
+                "timber": _round_to_thousand(target_tier * 20_000),
+                "stone": _round_to_thousand(target_tier * 20_000),
                 "gold": _round_to_thousand(target_tier * 10_000_000),
             }
             special_col = SPECIAL_MAP.get(building_type)
@@ -240,7 +219,7 @@ class SettlementMechanics:
 
         # 2. Black Market (original formula)
         if building_type == "black_market":
-            base_wood = base_stone = 50_000
+            base_wood = base_stone = 20_000
             base_gold = 1000000
             cost = {
                 "timber": _round_to_thousand(int(base_wood * (target_tier**1.5))),
@@ -258,7 +237,7 @@ class SettlementMechanics:
 
         # 3. Town Hall (now up to Tier 7 with all three specials)
         if building_type == "town_hall":
-            base = 50_000
+            base = 20_000
             base_gold = 500_000
             cost = {
                 "timber": _round_to_thousand(int(base * (target_tier**1.5))),
@@ -276,8 +255,8 @@ class SettlementMechanics:
             return cost
 
         # 4. Standard buildings
-        base_wood = 200
-        base_stone = 200
+        base_wood = 500
+        base_stone = 500
         base_gold = 50000
         cost = {
             "timber": _round_to_thousand(int(base_wood * (target_tier**1.5))),

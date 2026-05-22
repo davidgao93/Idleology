@@ -43,10 +43,9 @@ def create_victory_embed(
     embed.set_thumbnail(url=cfg.get("thumbnail_url") or COMBAT_VICTORY)
     if img := cfg.get("image_url"):
         embed.set_image(url=img)
-    # Passive Proc Messages (Prosper, Infinite Wisdom, etc)
+    # Passive Proc Messages (Prosper, Infinite Wisdom, etc) — all compiled into one field
     if rewards.get("msgs"):
-        for msg in rewards["msgs"]:
-            embed.add_field(name="Bonus", value=msg, inline=False)
+        embed.add_field(name="Bonus", value="\n".join(rewards["msgs"]), inline=False)
 
     embed.add_field(
         name="📚 Experience", value=f"{rewards.get('xp', 0):,} XP", inline=True

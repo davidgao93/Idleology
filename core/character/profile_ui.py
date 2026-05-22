@@ -181,9 +181,13 @@ class ProfileBuilder:
         hit_accuracy_emblem = p.get_emblem_bonus("accuracy") * 2
         hit_bonuses = hit_deadeye + hit_ascension + hit_companion + hit_accuracy_emblem
         hit_total = hit_weapon_pct + hit_bonuses
-        hit_val = f"**Total: {hit_total}%**\n↳ Weapon: {hit_weapon_pct}%"
-        if hit_bonuses:
-            hit_val += f"\n↳ Bonuses: +{hit_bonuses} flat"
+        # NEET glove corrupted essence forces accuracy to 0 in combat
+        if p.get_glove_corrupted_essence() == "neet":
+            hit_val = "**Total: 0%**\n↳ *(NEET Glove — always misses)*"
+        else:
+            hit_val = f"**Total: {hit_total}%**\n↳ Weapon: {hit_weapon_pct}%"
+            if hit_bonuses:
+                hit_val += f"\n↳ Bonuses: +{hit_bonuses} flat"
         embed.add_field(name="🎯 Hit Chance", value=hit_val, inline=True)
 
         # ── Crit Chance ──────────────────────────────────────────────────────
