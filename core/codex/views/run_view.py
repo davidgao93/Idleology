@@ -818,6 +818,11 @@ class CodexRunView(BaseView):
         await interaction.response.defer()
         message = interaction.message
 
+        # Disable all buttons for the duration of the auto loop
+        for child in self.children:
+            child.disabled = True
+        await message.edit(view=self)
+
         while (
             self.player.current_hp > (self.player.total_max_hp * 0.2)
             and self.monster.hp > 0
@@ -848,10 +853,13 @@ class CodexRunView(BaseView):
             0 < self.player.current_hp <= (self.player.total_max_hp * 0.2)
             and self.monster.hp > 0
         ):
+            # Low HP pause — re-enable buttons so the player can act
+            for child in self.children:
+                child.disabled = False
             self.logs["Auto-Wave"] = "🛑 Paused: Low HP Protection triggered!"
             await self._refresh_ui(message=message)
             await message.channel.send(
-                f"<@{self.player.id}> ⚠️ Low HP Protection triggered — auto paused!",
+                f"<@{self.user_id}> ⚠️ Low HP Protection triggered — auto paused!",
                 delete_after=15,
             )
         else:

@@ -108,10 +108,10 @@ MODIFIER_DEFINITIONS: dict = {
     "Stalwart": ModifierDef(
         "Stalwart",
         "common",
-        tiers=[0.05, 0.10, 0.15, 0.20, 0.25],  # chance to nullify player damage
+        tiers=[0.05, 0.10, 0.15, 0.20, 0.25],  # chance to nullify ALL player damage that turn
         difficulties=[0.001, 0.003, 0.005, 0.007, 0.008],
         level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: f"Nullifies {int(v*100)}% of incoming damage",
+        description=lambda v: f"{int(v*100)}% chance to nullify all incoming damage",
     ),
     "Ironclad": ModifierDef(
         "Ironclad",
@@ -158,24 +158,24 @@ MODIFIER_DEFINITIONS: dict = {
             0.03,
             0.04,
             0.05,
-        ],  # fraction of player max_hp dealt to player per hit
+        ],  # fraction of player max_hp dealt to player per hit; applies PDR/FDR, bypasses ward
         difficulties=[0.003, 0.006, 0.009, 0.012, 0.015],
         level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: f"You take {int(v*100)}% of max HP on each hit",
+        description=lambda v: f"You take {int(v*100)}% of max HP on each hit (after PDR/FDR; bypasses ward)",
     ),
     "Venomous": ModifierDef(
         "Venomous",
         "common",
         tiers=[
-            0.01,
-            0.02,
-            0.03,
-            0.04,
-            0.05,
-        ],  # fraction of player max_hp dealt to player per miss
+            0.004,
+            0.008,
+            0.012,
+            0.016,
+            0.020,
+        ],  # fraction of player max_hp as true damage on each miss; bypasses all defences
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: f"You take {int(v*100)}% of max HP on each miss",
+        description=lambda v: f"On miss: {v*100:.1f}% of your max HP as true damage",
     ),
     "Enraged": ModifierDef(
         "Enraged",
@@ -186,10 +186,10 @@ MODIFIER_DEFINITIONS: dict = {
             0.15,
             0.20,
             0.25,
-        ],  # attack % per stack (1 stack per 25% HP lost)
+        ],  # attack % per stack (1 stack per 25% HP lost, capped at 3 stacks / 75% HP lost)
         difficulties=[0.002, 0.004, 0.006, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: f"+{int(v*100)}% ATK per 25% HP lost",
+        description=lambda v: f"+{int(v*100)}% ATK per 25% HP lost (max 3 stacks)",
     ),
     "Parching": ModifierDef(
         "Parching",
@@ -228,7 +228,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.0015, 0.0020, 0.0028, 0.0036, 0.0045],
         difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: f"Hits build bleed; {v*100:.2f}% max HP per stack/turn",
+        description=lambda v: f"30% per hit: +1 bleed stack; {v*100:.2f}% max HP true dmg per stack/turn",
     ),
     "Volatile Spikes": ModifierDef(
         "Volatile Spikes",
@@ -236,7 +236,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.02, 0.03, 0.04, 0.05, 0.06],
         difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: "Hits build crit stacks; evade/block resets all",
+        description=lambda v: f"30% per hit: +1 spike (max 10, +{int(v*100)}% monster crit/stack); evade/block resets",
     ),
     "Onslaught": ModifierDef(
         "Onslaught",
@@ -260,7 +260,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.05, 0.08, 0.12, 0.16, 0.20],
         difficulties=[0.003, 0.005, 0.007, 0.009, 0.011],
         level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: f"Every 2 turns: drains {int(v*100)}% ward, heals 2× drained",
+        description=lambda v: f"Every 2 turns: drains {int(v*100)}% ward, heals 50% of drained",
     ),
     "Frenzied Hunger": ModifierDef(
         "Frenzied Hunger",
@@ -327,7 +327,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.50],
         difficulties=[0.012],
         level_gates=[],
-        description=lambda v: "50% chance to strike twice",
+        description=lambda v: "50% chance to strike twice (second hit at 50% damage, after PDR/FDR)",
     ),
     "Spectral": ModifierDef(
         "Spectral",
@@ -343,7 +343,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.90],
         difficulties=[0.015],
         level_gates=[],
-        description=lambda v: "1% chance to deal 90% of your current HP as true damage",
+        description=lambda v: "1% chance: deal 90% of your current HP as true damage (can be evaded/blocked)",
     ),
     "Time Lord": ModifierDef(
         "Time Lord",
@@ -440,7 +440,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.0],
         difficulties=[0.0],
         level_gates=[],
-        description=lambda v: "Every 6 turns: returns all damage dealt to you as true damage",
+        description=lambda v: "Every 6 turns: returns damage dealt as true damage (capped at 35% max HP)",
     ),
     "Undying Resolve": ModifierDef(
         "Undying Resolve",
