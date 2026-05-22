@@ -60,9 +60,13 @@ def get_reroll_gold_cost(tier: int) -> int:
 
 def roll_tome_value(passive_type: str, tier: int) -> float:
     """Roll a stat value in the range for the given passive type and tier (1-5).
-    Uses a triangular distribution weighted towards the lower end of the range."""
+    Uses a triangular distribution weighted towards the lower end of the range.
+    Resilience is always returned as a whole number (FDR is integer-only)."""
     lo, hi = TOME_TIER_RANGES[passive_type][tier - 1]
-    return round(random.triangular(lo, hi, lo), 2)
+    value = round(random.triangular(lo, hi, lo), 2)
+    if passive_type == "resilience":
+        return float(round(value))
+    return value
 
 
 class CodexRepository:

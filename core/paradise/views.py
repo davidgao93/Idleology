@@ -280,7 +280,7 @@ class ParadiseHubView(BaseView):
     async def _consume_jewel_callback(self, interaction: Interaction) -> None:
         await interaction.response.defer()
         view = _ConsumeJewelView(
-            self.bot, self.user_id, self.server_id, self.data, self.message
+            self.bot, self.user_id, self.server_id, self.data, self.jewel_count, self.message
         )
         embed = view.build_embed()
         await interaction.edit_original_response(embed=embed, view=view)
@@ -372,9 +372,10 @@ class _SkillSwapView(BaseView):
 
 
 class _ConsumeJewelView(BaseView):
-    def __init__(self, bot, user_id, server_id, data, message):
+    def __init__(self, bot, user_id, server_id, data, jewel_count, message):
         super().__init__(bot, user_id, server_id, timeout=120)
         self.data = data
+        self.jewel_count = jewel_count
         self.message = message
         self._build_buttons()
 
@@ -413,7 +414,7 @@ class _ConsumeJewelView(BaseView):
         needed = M.jewels_to_next_slot(self.data)
 
         embed = discord.Embed(
-            title="💎 Consume Jewel of Paradise",
+            title="💎 Cut Jewel of Paradise",
             color=discord.Color.from_str("#b967ff"),
         )
         lines = ["Choose how to spend one Jewel of Paradise:\n"]
@@ -457,18 +458,8 @@ class _ConsumeJewelView(BaseView):
         self.stop()
 
     async def _invest_passive_callback(self, interaction: Interaction) -> None:
-        await interaction.response.defer()
-        slot_unlocked, msg = M.consume_jewel_invest_passive(self.data)
-        await self.bot.database.uber.increment_paradise_jewels(
-            self.user_id, self.server_id, -1
-        )
-        await self.bot.database.paradise.save(self.user_id, self.data)
-        title = "🔮 Passive Slot Unlocked!" if slot_unlocked else "💎 Jewel Invested"
-        result_embed = discord.Embed(title=title, description=msg, color=discord.Color.from_str("#b967ff"))
-        result_embed.set_thumbnail(url=SKILL_UNCUT)
-        await interaction.edit_original_response(embed=result_embed, view=None)
-        await asyncio.sleep(3)
-        await self._back_to_hub(interaction)
+        modal = _MultiInvestModal(self)
+        await interaction.response.send_modal(modal)
 
     async def _back_callback(self, interaction: Interaction) -> None:
         await interaction.response.defer()
@@ -479,6 +470,83 @@ class _ConsumeJewelView(BaseView):
         view.message = self.message
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
         self.stop()
+
+
+# ---------------------------------------------------------------------------
+# Multi-invest modal (invest N jewels into passive slot at once)
+# ---------------------------------------------------------------------------
+
+
+class _MultiInvestModal(ui.Modal):
+    def __init__(self, parent_view: "_ConsumeJewelView"):
+        super().__init__(title="Invest Jewels in Passive Slot")
+        self.parent_view = parent_view
+        self.amount_input = ui.TextInput(
+            label="Number of jewels to invest",
+            placeholder=f"1–{parent_view.jewel_count}",
+            min_length=1,
+            max_length=4,
+        )
+        self.add_item(self.amount_input)
+
+    async def on_submit(self, interaction: Interaction) -> None:
+        try:
+            amount = int(self.amount_input.value)
+        except ValueError:
+            await interaction.response.send_message(
+                "Please enter a valid whole number.", ephemeral=True
+            )
+            return
+
+        pv = self.parent_view
+        if amount <= 0:
+            await interaction.response.send_message(
+                "Amount must be at least 1.", ephemeral=True
+            )
+            return
+        if amount > pv.jewel_count:
+            await interaction.response.send_message(
+                f"You only have **{pv.jewel_count}** jewel(s) available.", ephemeral=True
+            )
+            return
+
+        await interaction.response.defer()
+
+        invested = 0
+        last_msg = ""
+        any_slot_unlocked = False
+        for _ in range(amount):
+            if M.get_passive_slot_count(pv.data) >= 5:
+                break
+            slot_unlocked, msg = M.consume_jewel_invest_passive(pv.data)
+            invested += 1
+            last_msg = msg
+            if slot_unlocked:
+                any_slot_unlocked = True
+
+        if invested > 0:
+            await pv.bot.database.uber.increment_paradise_jewels(
+                pv.user_id, pv.server_id, -invested
+            )
+            await pv.bot.database.paradise.save(pv.user_id, pv.data)
+
+        if invested == 0:
+            title = "🔮 All Slots Unlocked"
+            desc = "All 5 passive slots are already unlocked."
+        elif any_slot_unlocked:
+            title = "🔮 Passive Slot Unlocked!"
+            desc = f"Invested **{invested}** jewel(s). {last_msg}"
+        else:
+            title = "💎 Jewels Invested"
+            desc = f"Invested **{invested}** jewel(s). {last_msg}"
+
+        result_embed = discord.Embed(
+            title=title, description=desc, color=discord.Color.from_str("#b967ff")
+        )
+        result_embed.set_thumbnail(url=SKILL_UNCUT)
+        await interaction.edit_original_response(embed=result_embed, view=None)
+        await asyncio.sleep(3)
+        await pv._back_to_hub(interaction)
 
 
 # ---------------------------------------------------------------------------

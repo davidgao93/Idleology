@@ -179,16 +179,12 @@ class ProfileBuilder:
                         pass
         hit_companion = p._get_companion_bonus("hit")
         hit_accuracy_emblem = p.get_emblem_bonus("accuracy") * 2
-        hit_val = f"**Base: {hit_weapon_pct}%**"
-        if hit_deadeye:
-            hit_val += f"\n↳ Deadeye: +{hit_deadeye} flat"
-        if hit_ascension:
-            hit_val += f"\n↳ Ascension: +{hit_ascension} flat"
-        if hit_companion:
-            hit_val += f"\n↳ Companion: +{hit_companion} flat"
-        if hit_accuracy_emblem:
-            hit_val += f"\n↳ Accuracy Emblem: +{hit_accuracy_emblem} flat"
-        embed.add_field(name="🎯 Base Hit Chance", value=hit_val, inline=True)
+        hit_bonuses = hit_deadeye + hit_ascension + hit_companion + hit_accuracy_emblem
+        hit_total = hit_weapon_pct + hit_bonuses
+        hit_val = f"**Total: {hit_total}%**\n↳ Weapon: {hit_weapon_pct}%"
+        if hit_bonuses:
+            hit_val += f"\n↳ Bonuses: +{hit_bonuses} flat"
+        embed.add_field(name="🎯 Hit Chance", value=hit_val, inline=True)
 
         # ── Crit Chance ──────────────────────────────────────────────────────
         crit_weapon_template = (

@@ -21,7 +21,7 @@ _PASSIVE_LABELS = {
     "precision": ("Insight", "+{v:.1f} Crit Chance"),
     "affluence": ("Affluence", "+{v:.1f}% XP & Gold"),
     "bulwark": ("Bulwark", "+{v:.1f}% PDR"),
-    "resilience": ("Resilience", "+{v:.1f} FDR"),
+    "resilience": ("Resilience", "+{v:.0f} FDR"),
 }
 
 

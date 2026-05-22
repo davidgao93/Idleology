@@ -163,8 +163,14 @@ class DropManager:
                 )
                 reward_data["body_part"] = (slot, monster.name, hp)
 
-        # 1d. Monster Egg Drop (normal, non-essence monsters only)
-        if monster is not None and not getattr(monster, "is_essence", False):
+        # 1d. Monster Egg Drop (normal monsters only — no bosses, ubers, calcified, or corrupted)
+        if (
+            monster is not None
+            and not getattr(monster, "is_essence", False)
+            and not getattr(monster, "is_boss", False)
+            and not getattr(monster, "is_uber", False)
+            and not getattr(monster, "is_corrupted", False)
+        ):
             egg_chance = _EGG_BASE_CHANCE + (player.get_special_drop_bonus() / 100)
             if random.random() < egg_chance:
                 egg_tier = random.choices(_EGG_TIERS, weights=_EGG_WEIGHTS, k=1)[0]

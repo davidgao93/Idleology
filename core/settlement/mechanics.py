@@ -116,28 +116,65 @@ class SettlementMechanics:
             changes[b_data["output"]] = production_capacity
 
         elif b_data["type"] == "converter" and raw_inventory:
-            remaining_capacity = production_capacity
+            # Each building tier unlocks the corresponding material slot:
+            #   T1 → slot 0 only, T2 → slots 0-1, T3 → slots 0-2, etc.
+            # All unlocked slots are processed simultaneously from independent
+            # capacity pools — higher-tier (rarer) materials receive a smaller
+            # weighted fraction of the total capacity.
+            #
+            # Weights descend from `tier` down to 1 (slot 0 is heaviest):
+            #   T1: [1]          → 100% to slot 0
+            #   T2: [2, 1]       → 67% / 33%
+            #   T3: [3, 2, 1]    → 50% / 33% / 17%
+            #   T4: [4, 3, 2, 1] → 40% / 30% / 20% / 10%
+            #   T5: [5,4,3,2,1]  → 33% / 27% / 20% / 13% / 7%
+            active_map = b_data["map"][:tier]
+            n = len(active_map)
+            weights = list(range(n, 0, -1))   # [n, n-1, ..., 1]
+            total_weight = n * (n + 1) // 2   # = sum(weights)
 
-            # Iterate through tier mappings (Lowest to Highest)
-            for raw_key, refined_key in b_data["map"]:
-                if raw_key in raw_inventory:
-                    available_raw = raw_inventory[raw_key]
-
-                    # How much can we convert?
-                    amount_to_convert = min(available_raw, remaining_capacity)
-
-                    if amount_to_convert > 0:
-                        changes[raw_key] = changes.get(raw_key, 0) - amount_to_convert
-                        changes[refined_key] = (
-                            changes.get(refined_key, 0) + amount_to_convert
-                        )
-
-                        remaining_capacity -= amount_to_convert
-
-                    if remaining_capacity <= 0:
-                        break
+            for i, (raw_key, refined_key) in enumerate(active_map):
+                if raw_key not in raw_inventory or raw_inventory[raw_key] <= 0:
+                    continue
+                slot_capacity = int(production_capacity * weights[i] / total_weight)
+                amount_to_convert = min(raw_inventory[raw_key], slot_capacity)
+                if amount_to_convert > 0:
+                    changes[raw_key] = changes.get(raw_key, 0) - amount_to_convert
+                    changes[refined_key] = (
+                        changes.get(refined_key, 0) + amount_to_convert
+                    )
 
         return changes
+
+    @staticmethod
+    def get_converter_rates(
+        building_type: str, tier: int, workers: int
+    ) -> list[tuple[str, str, int]]:
+        """
+        Returns the per-hour processing rate for each material slot that is active
+        at the given building tier, as a list of (raw_key, refined_key, rate_per_hr).
+
+        Used by the detail view to display live rates without duplicating the
+        capacity-weighting logic from calculate_production.
+        """
+        b_data = SettlementMechanics.BUILDINGS.get(building_type)
+        if not b_data or b_data.get("type") != "converter":
+            return []
+
+        base_rate = b_data.get("base_rate", 1)
+        active_map = b_data["map"][:tier]
+        n = len(active_map)
+        if n == 0:
+            return []
+
+        total_per_hr = base_rate * tier * workers
+        weights = list(range(n, 0, -1))
+        total_weight = n * (n + 1) // 2
+
+        return [
+            (raw_key, refined_key, int(total_per_hr * weights[i] / total_weight))
+            for i, (raw_key, refined_key) in enumerate(active_map)
+        ]
 
     @staticmethod
     def roll_event(hours_elapsed: float) -> Optional[str]:

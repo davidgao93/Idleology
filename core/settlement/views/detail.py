@@ -6,6 +6,7 @@ from core.images import SETTLEMENT_BUILDINGS
 from core.settlement.constants import (
     BUILDING_INFO,
     ITEM_NAMES,
+    RESOURCE_DISPLAY_NAMES,
     SPECIAL_MAP,
     UBER_BUILDINGS,
     UPGRADE_MESSAGES,
@@ -112,15 +113,38 @@ class BuildingDetailView(SettlementBaseView):
         rate = base_rate * self.building.tier * self.building.workers_assigned
 
         # Adjust description based on building type
-        if b_data.get("type") in ["generator", "converter"]:
-            output_name = (
-                b_data.get("output", "Refined Goods").replace("_", " ").title()
-            )
+        if b_data.get("type") == "generator":
+            output_name = b_data.get("output", "goods").replace("_", " ").title()
             desc = (
                 f"**Level:** {self.building.tier}/5\n"
                 f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
-                f"**Output:** ~{rate}/hr ({output_name})"
+                f"**Output:** ~{rate:,}/hr ({output_name})"
             )
+        elif b_data.get("type") == "converter":
+            tier_rates = SettlementMechanics.get_converter_rates(
+                self.building.building_type,
+                self.building.tier,
+                self.building.workers_assigned,
+            )
+            def _rname(key: str) -> str:
+                return RESOURCE_DISPLAY_NAMES.get(key, key.replace("_", " ").title())
+
+            if tier_rates:
+                rate_lines = "\n".join(
+                    f"  • {_rname(raw)} → {_rname(ref)}: ~{r:,}/hr"
+                    for raw, ref, r in tier_rates
+                )
+                desc = (
+                    f"**Level:** {self.building.tier}/5\n"
+                    f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
+                    f"**Processing Rates (per hr):**\n{rate_lines}"
+                )
+            else:
+                desc = (
+                    f"**Level:** {self.building.tier}/5\n"
+                    f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
+                    f"**Processing Rates:** Assign workers to start converting."
+                )
         else:
             desc = (
                 f"**Level:** {self.building.tier}/5\n"

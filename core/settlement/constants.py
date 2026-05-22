@@ -40,9 +40,9 @@ RESOURCE_DISPLAY_NAMES = {
 BUILDING_INFO = {
     "logging_camp": "Generates Timber over time.",
     "quarry": "Generates Stone over time.",
-    "foundry": "Converts Ore into Ingots.",
-    "sawmill": "Converts Logs into Planks.",
-    "reliquary": "Converts Bones into Essence.",
+    "foundry": "Converts Ore into Ingots. Each tier unlocks the next ore type (T1→Iron, T2→Coal, T3→Gold, T4→Platinum, T5→Idea). All unlocked tiers are processed simultaneously; higher tiers convert at a slower rate.",
+    "sawmill": "Converts Logs into Planks. Each tier unlocks the next log type (T1→Oak, T2→Willow, T3→Mahogany, T4→Magic, T5→Idea). All unlocked tiers are processed simultaneously; higher tiers convert at a slower rate.",
+    "reliquary": "Converts Bones into Essence. Each tier unlocks the next bone type (T1→Desiccated, T2→Regular, T3→Sturdy, T4→Reinforced, T5→Titanium). All unlocked tiers are processed simultaneously; higher tiers convert at a slower rate.",
     "market": "Generates Passive Gold.",
     "barracks": "Passive: +1% Atk/Def per 100 Workers.",
     "temple": "Passive: +5% Propagate follower gain per 100 Workers.",

@@ -254,6 +254,7 @@ class SlotManageView(BaseView):
         self.slot_num = slot_num
         self.slot_data = slot_data
         self.parent = parent_view
+        self.result_msg: str = ""
         self.setup_ui()
 
     def build_embed(self) -> discord.Embed:
@@ -264,6 +265,8 @@ class SlotManageView(BaseView):
             title=f"Modify Slot {self.slot_num}", color=discord.Color.dark_magenta()
         )
         embed.description = f"🩸 **Violent Essence:** {self.profile['violent_essence']}\n❤️ **Imbued Hearts:** {self.profile['imbued_heart']}\n\n"
+        if self.result_msg:
+            embed.description += f"{self.result_msg}\n\n"
 
         if p_type == "none":
             embed.description += "**Status:** Empty\nUse 1 Violent Essence to Awaken a random Tier 1 passive."
@@ -355,11 +358,9 @@ class SlotManageView(BaseView):
             self.user_id, self.server_id, self.slot_num, new_type, 1
         )
 
-        self.setup_ui()
         new_desc = SlayerMechanics.get_passive_description(new_type, 1)
-        await interaction.followup.send(
-            f"Slot Awakened! Gained: **{new_desc}**", ephemeral=True
-        )
+        self.result_msg = f"✅ Slot Awakened! Gained: **{new_desc}**"
+        self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def upgrade_slot(self, interaction: Interaction):
@@ -396,8 +397,8 @@ class SlotManageView(BaseView):
         else:
             msg = f"💨 **Failure.** The essence faded. Slot remains Tier {new_tier}."
 
+        self.result_msg = msg
         self.setup_ui()
-        await interaction.followup.send(msg, ephemeral=True)
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def reroll_slot(self, interaction: Interaction):
@@ -426,13 +427,11 @@ class SlotManageView(BaseView):
             self.slot_data["tier"],
         )
 
-        self.setup_ui()
         new_desc = SlayerMechanics.get_passive_description(
             new_type, self.slot_data["tier"]
         )
-        await interaction.followup.send(
-            f"❤️ **Rerolled!** New Passive: **{new_desc}**", ephemeral=True
-        )
+        self.result_msg = f"❤️ **Rerolled!** New Passive: **{new_desc}**"
+        self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def go_back(self, interaction: Interaction):

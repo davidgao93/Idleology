@@ -206,7 +206,7 @@ _CODEX_TOME_INFO: dict = {
     "precision": ("Insight", lambda v: f"+{v} flat crit chance"),
     "affluence": ("Affluence", lambda v: f"+{v}% XP and Gold from combat"),
     "bulwark": ("Bulwark", lambda v: f"+{v}% Percent Damage Reduction"),
-    "resilience": ("Resilience", lambda v: f"+{v} Flat Damage Reduction"),
+    "resilience": ("Resilience", lambda v: f"+{int(v)} Flat Damage Reduction"),
 }
 
 # Roman numeral display for passive tiers
