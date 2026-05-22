@@ -87,6 +87,7 @@ class UberGeminiLobbyView(BaseView):
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
+        self.bot.state_manager.clear_active(self.user_id)
         await interaction.delete_original_response()
         self.stop()
 

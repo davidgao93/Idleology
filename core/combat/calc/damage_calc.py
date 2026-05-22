@@ -97,6 +97,10 @@ def roll_monster_damage(
     base_crit_chance = 0.10
     if monster.has_modifier("Lethal"):
         base_crit_chance += monster.get_modifier_value("Lethal")
+    # Volatile Spikes: each spike stack adds v to monster crit chance
+    if monster.has_modifier("Volatile Spikes") and monster.spike_stacks > 0:
+        base_crit_chance += monster.spike_stacks * monster.get_modifier_value("Volatile Spikes")
+        calc_notes.append(f"volatile_spikes crit+{monster.spike_stacks * monster.get_modifier_value('Volatile Spikes'):.3f}")
     is_monster_crit = random.random() < base_crit_chance
     if is_monster_crit:
         crit_mult = 2.0
@@ -479,6 +483,12 @@ def apply_monster_damage_reduction(
         log.append(
             f"{monster.name}'s **Ironclad** plating reduces damage by {reduction}."
         )
+
+    # Colossus Protocol: damage reduction (DEF component) when active
+    if getattr(monster, "colossus_dr", 0.0) > 0 and damage > 0:
+        reduction = int(damage * monster.colossus_dr)
+        damage = max(0, damage - reduction)
+        calc.append(f"  colossus_dr: {int(monster.colossus_dr*100)}% → {damage}")
 
     if monster.has_modifier("Stalwart") and damage > 0:
         if random.random() < monster.get_modifier_value("Stalwart"):

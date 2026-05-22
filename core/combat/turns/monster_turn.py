@@ -37,6 +37,91 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     previous_ward = player.combat_ward
 
+    # --- Colossus Protocol: reset per-turn hit negation flag ---
+    if monster.colossus_active:
+        monster.colossus_hit_negated = False
+
+    # --- Death Rattle: countdown tick → heal if reaches 0 ---
+    if monster.death_rattle_triggered and monster.death_rattle_countdown > 0:
+        monster.death_rattle_countdown -= 1
+        if monster.death_rattle_countdown == 0:
+            heal_target = int(monster.max_hp * 0.50)
+            if monster.hp < heal_target:
+                healed = heal_target - monster.hp
+                monster.hp = heal_target
+                log.append(
+                    f"☠️ **Death Rattle** — {monster.name} endures! Heals to **{monster.hp}** HP! (+{healed})"
+                )
+        else:
+            log.append(
+                f"☠️ **Death Rattle** — countdown: **{monster.death_rattle_countdown}** turns remaining..."
+            )
+
+    # --- Flashfire: +1 charge per turn; at 8 → true damage burst ---
+    if monster.has_modifier("Flashfire"):
+        monster.flashfire_charges += 1
+        if monster.flashfire_charges >= 8:
+            v = monster.get_modifier_value("Flashfire")
+            burst = int(player.total_max_hp * v)
+            player.current_hp = max(0, player.current_hp - burst)
+            monster.flashfire_charges = 0
+            log.append(
+                f"🔥 **Flashfire DETONATES!** The buildup erupts for **{burst}** 🔥 true damage!"
+            )
+
+    # --- Hemorrhage: true DoT per stack at start of each monster turn ---
+    if monster.has_modifier("Hemorrhage") and monster.bleed_stacks > 0:
+        v = monster.get_modifier_value("Hemorrhage")
+        bleed_dmg = int(player.total_max_hp * v * monster.bleed_stacks)
+        if bleed_dmg > 0:
+            player.current_hp = max(0, player.current_hp - bleed_dmg)
+            log.append(
+                f"🩸 **Hemorrhage** — {monster.bleed_stacks} bleed stacks deal **{bleed_dmg}** true damage!"
+            )
+
+    # --- Pressure Surge: +1 if player didn't crit; at 10 → true damage ---
+    if monster.has_modifier("Pressure Surge"):
+        if not monster.pressure_player_critted:
+            monster.pressure_stacks = min(10, monster.pressure_stacks + 1)
+        monster.pressure_player_critted = False  # reset; player_turn will write it again
+        if monster.pressure_stacks >= 10:
+            v = monster.get_modifier_value("Pressure Surge")
+            burst = int(player.total_max_hp * v)
+            player.current_hp = max(0, player.current_hp - burst)
+            monster.pressure_stacks = 0
+            log.append(
+                f"⚡ **Pressure Surge RELEASES!** Pent-up force slams for **{burst}** true damage!"
+            )
+
+    # --- Soul Siphon: every 2 turns drain ward → monster heals 2× ---
+    if monster.has_modifier("Soul Siphon") and monster.combat_round % 2 == 0:
+        v = monster.get_modifier_value("Soul Siphon")
+        if player.combat_ward > 0:
+            siphon_amt = int(player.combat_ward * v)
+            if siphon_amt > 0:
+                player.combat_ward = max(0, player.combat_ward - siphon_amt)
+                monster.hp = min(monster.max_hp, monster.hp + siphon_amt * 2)
+                log.append(
+                    f"💜 **Soul Siphon** drains **{siphon_amt}** 🔮 ward, healing {monster.name} for **{siphon_amt * 2}** HP!"
+                )
+
+    # --- Corrosion: +1 corrode stack every 3 turns ---
+    if monster.has_modifier("Corrosion") and monster.combat_round % 3 == 0:
+        monster.corrode_stacks += 1
+        log.append(
+            f"🧪 **Corrosion** — your armour degrades! Corrode stack {monster.corrode_stacks} (−{monster.corrode_stacks * 5} PDR)"
+        )
+
+    # --- Temporal Collapse: every 6 turns return accumulated player damage as true damage ---
+    if monster.has_modifier("Temporal Collapse") and monster.combat_round % 6 == 0 and monster.combat_round > 0:
+        if monster.temporal_window_damage > 0:
+            collapse_dmg = monster.temporal_window_damage
+            player.current_hp = max(0, player.current_hp - collapse_dmg)
+            monster.temporal_window_damage = 0
+            log.append(
+                f"⏳ **Temporal Collapse!** Time reverses your strikes — **{collapse_dmg}** true damage!"
+            )
+
     # --- Mending: passive HP regen every other monster turn ---
     if monster.has_modifier("Mending") and monster.combat_round % 2 == 0:
         # sqrt scaling: same heal at 10k HP, tapers naturally above that
@@ -81,6 +166,11 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         hit_chance = min(0.95, hit_chance + keen_bonus / 100)
         hit_mods.append(f"+{keen_bonus}%(keen)={hit_chance*100:.1f}%")
 
+    # Overwhelming: −25 accuracy penalty (trade-off for double damage)
+    if monster.has_modifier("Overwhelming"):
+        hit_chance = max(0.15, hit_chance - 0.25)
+        hit_mods.append(f"-25%(overwhelming)={hit_chance*100:.1f}%")
+
     # Unerring: hit rolls take the higher of two
     if monster.has_modifier("Unerring"):
         hit_mods.append("unerring(2-roll-high)")
@@ -105,6 +195,10 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     if is_monster_hit:
         # --- PDR / FDR setup ---
         effective_pdr = player.get_total_pdr()
+        # Corrosion: each stack reduces player effective PDR by 5
+        if monster.has_modifier("Corrosion") and monster.corrode_stacks > 0:
+            corrode_reduction = monster.corrode_stacks * int(monster.get_modifier_value("Corrosion"))
+            effective_pdr = max(0, effective_pdr - corrode_reduction)
         pdr_notes = [f"base={effective_pdr}%"]
         if celestial == "celestial_fortress":
             missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
@@ -141,9 +235,27 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 )
                 calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
 
-        # --- Multistrike , a double hit, decreased by PDR and FDR ---
+        # --- Onslaught: apply cumulative ATK bonus from consecutive hits ---
+        if monster.has_modifier("Onslaught") and monster.onslaught_bonus_atk > 0:
+            onslaught_mult = 1.0 + monster.onslaught_bonus_atk
+            total_damage = int(total_damage * onslaught_mult)
+            calc.append(f"  onslaught: ×{onslaught_mult:.3f} → {total_damage}")
+
+        # --- Wrathful Retaliation: ATK multiplier from player crits ---
+        if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
+            wr_mult = 1.0 + monster.wrathful_stacks * monster.get_modifier_value("Wrathful Retaliation")
+            total_damage = int(total_damage * wr_mult)
+            calc.append(f"  wrathful: stacks={monster.wrathful_stacks} ×{wr_mult:.3f} → {total_damage}")
+
+        # --- Undying Resolve: double ATK while ATK boost is active ---
+        if monster.undying_atk_boost_turns > 0:
+            total_damage = int(total_damage * 2.0)
+            calc.append(f"  undying_atk_boost: ×2.0 → {total_damage}")
+            monster.undying_atk_boost_turns -= 1
+
+        # --- Multistrike: 50% chance to strike twice, second hit at 50% damage ---
         multistrike_damage = 0
-        if monster.has_modifier("Multistrike") and random.random() <= hit_chance:
+        if monster.has_modifier("Multistrike") and random.random() <= monster.get_modifier_value("Multistrike"):
             multistrike_damage = max(
                 0,
                 (
@@ -207,6 +319,11 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         # --- Resolve mitigation states ---
         if is_dodged:
             total_damage = 0
+            # Volatile Spikes and Onslaught reset on dodge
+            if monster.has_modifier("Volatile Spikes"):
+                monster.spike_stacks = 0
+            if monster.has_modifier("Onslaught"):
+                monster.onslaught_bonus_atk = 0.0
             log.append(
                 f"{monster.name} {monster.flavor}, but you 🏃 nimbly step aside!"
             )
@@ -218,6 +335,11 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 )
 
         elif is_blocked:
+            # Volatile Spikes and Onslaught reset on block
+            if monster.has_modifier("Volatile Spikes"):
+                monster.spike_stacks = 0
+            if monster.has_modifier("Onslaught"):
+                monster.onslaught_bonus_atk = 0.0
             if celestial == "celestial_glancing_blows":
                 total_damage = int(total_damage * 0.5)
                 log.append(
@@ -299,6 +421,22 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     break
 
         if total_damage > 0 and not is_dodged:
+            # --- Colossus Protocol: negate first hit per turn ---
+            if monster.colossus_active and not monster.colossus_hit_negated and total_damage > 0:
+                monster.colossus_hit_negated = True
+                log.append(
+                    f"⚙️ **Colossus Protocol** — {monster.name}'s strike is deflected by the protocol!"
+                )
+                total_damage = 0
+
+            # --- Volatile Spikes: +1 spike on connected hit (cap 10) ---
+            if monster.has_modifier("Volatile Spikes") and not is_blocked:
+                monster.spike_stacks = min(10, monster.spike_stacks + 1)
+
+            # --- Onslaught: +v ATK bonus per consecutive hit ---
+            if monster.has_modifier("Onslaught") and not is_blocked:
+                monster.onslaught_bonus_atk += monster.get_modifier_value("Onslaught")
+
             damage_dealt = 0
 
             if player.get_tome_bonus("tenacity") > 0 and random.random() < (
@@ -456,6 +594,19 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 log.append(
                     f"The monster's **Vampiric** essence siphons life, healing it for **{heal}** HP!"
                 )
+
+            # --- Hemorrhage: +1 bleed stack on each hit ---
+            if monster.has_modifier("Hemorrhage") and damage_dealt > 0:
+                monster.bleed_stacks += 1
+
+            # --- Impending Doom: +1 doom stack per hit; instant kill at 44 ---
+            if monster.has_modifier("Impending Doom") and damage_dealt > 0:
+                monster.doom_stacks += 1
+                if monster.doom_stacks >= 44:
+                    player.current_hp = 0
+                    log.append(
+                        "☠️ **Impending Doom fulfills itself!** The accumulated curse shatters your existence!"
+                    )
 
             # Thorned: player takes X% of player max HP on each hit
             if not is_dodged and monster.has_modifier("Thorned") and damage_dealt > 0:

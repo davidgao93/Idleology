@@ -191,6 +191,8 @@ class CombatView(BaseView):
         is_over = self.player.current_hp <= 0 or self.monster.hp <= 0
         for child in self.children:
             child.disabled = is_over or self._auto_running
+        # Always update potion count on the heal button label
+        self.heal_btn.label = f"Heal ({self.player.potions}/20)"
         if not is_over and not self._auto_running:
             self.heal_btn.disabled = self.player.potions <= 0
 

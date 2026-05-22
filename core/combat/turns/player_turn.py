@@ -96,6 +96,12 @@ def process_heal(player: Player, monster=None) -> str:
     else:
         player.potions -= 1
         msg_prefix = ""
+        # Frenzied Hunger: each actual potion consumed boosts monster ATK
+        if monster is not None and monster.has_modifier("Frenzied Hunger"):
+            v = monster.get_modifier_value("Frenzied Hunger")
+            monster.attack = int(monster.attack * (1.0 + v))
+            monster.potion_uses_tracked += 1
+            msg_prefix += f"😤 **Frenzied Hunger** — the monster grows stronger! (+{int(v*100)}% ATK)\n"
 
     # --- Hematurgy: Fevered Strike (only when a potion is actually consumed) ---
     if not alchemist_saved and player.hematurgy_passives:
@@ -394,6 +400,14 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
 
     actual_damage = apply_monster_damage_reduction(monster, raw_damage, log, calc)
 
+    # --- Undying Resolve: block all player damage while immune ---
+    if monster.undying_immune_turns > 0:
+        log.append(
+            f"💀 **Undying Resolve** — {monster.name} is invulnerable! ({monster.undying_immune_turns} turn{'s' if monster.undying_immune_turns != 1 else ''} remaining)"
+        )
+        actual_damage = 0
+        monster.undying_immune_turns -= 1
+
     # Partner: co_curse_taken — monster takes L*2% more damage (applied after all reductions)
     if player.active_partner and actual_damage > 0:
         for key, lvl in player.active_partner.combat_skills:
@@ -412,6 +426,80 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         drain_ward_dmg_buffer(player, monster, log)
 
     final_hit = apply_damage_to_monster(player, monster, actual_damage, log)
+
+    # --- Post-damage modifier triggers ---
+
+    # Colossus Protocol: trigger on first time HP drops below 50%
+    if (
+        monster.has_modifier("Colossus Protocol")
+        and not monster.colossus_active
+        and 0 < monster.hp < int(monster.max_hp * 0.50)
+    ):
+        monster.colossus_active = True
+        monster.attack = int(monster.attack * 1.60)
+        monster.colossus_dr = 0.30
+        log.append(
+            f"⚙️ **Colossus Protocol ENGAGES!** {monster.name}'s power surges — "
+            f"ATK +60%, DR +30%! First hit each turn is nullified!"
+        )
+
+    # Undying Resolve: intercept first death
+    if (
+        monster.has_modifier("Undying Resolve")
+        and monster.hp <= 0
+        and not monster.undying_resolve_triggered
+    ):
+        heal_pct = monster.get_modifier_value("Undying Resolve")
+        monster.hp = max(1, int(monster.max_hp * heal_pct))
+        monster.undying_resolve_triggered = True
+        monster.undying_immune_turns = 2
+        monster.undying_atk_boost_turns = 2
+        log.append(
+            f"💀 **Undying Resolve!** {monster.name} refuses to die — rises to **{monster.hp}** HP! "
+            f"Invulnerable for 2 turns, ATK doubled for 2 turns!"
+        )
+
+    # Death Rattle: trigger on first time HP drops below 25%
+    if (
+        monster.has_modifier("Death Rattle")
+        and not monster.death_rattle_triggered
+        and 0 < monster.hp < int(monster.max_hp * 0.25)
+    ):
+        monster.death_rattle_triggered = True
+        monster.death_rattle_countdown = 5
+        log.append(
+            f"☠️ **Death Rattle** — {monster.name} is mortally wounded! "
+            f"If it survives **5 turns**, it will heal to 50% HP!"
+        )
+
+    # Feedback Core: accumulate 8% of damage dealt on hit; release as true damage on miss
+    if monster.has_modifier("Feedback Core"):
+        if not is_hit and not is_crit:
+            if monster.feedback_stored > 0:
+                player.current_hp = max(0, player.current_hp - monster.feedback_stored)
+                log.append(
+                    f"⚡ **Feedback Core** releases **{monster.feedback_stored}** stored energy as true damage!"
+                )
+                monster.feedback_stored = 0
+        elif final_hit > 0:
+            stored = int(final_hit * 0.08)
+            monster.feedback_stored += stored
+
+    # Wrathful Retaliation: +1 stack per player crit
+    if is_crit and monster.has_modifier("Wrathful Retaliation"):
+        monster.wrathful_stacks += 1
+        log.append(
+            f"🔱 **Wrathful Retaliation** — {monster.name} fuels its rage! ({monster.wrathful_stacks} stack{'s' if monster.wrathful_stacks != 1 else ''})"
+        )
+
+    # Temporal Collapse: accumulate player damage across 6-turn window
+    if monster.has_modifier("Temporal Collapse") and final_hit > 0:
+        monster.temporal_window_damage += final_hit
+
+    # Pressure Surge: record whether player critted this turn
+    if monster.has_modifier("Pressure Surge"):
+        monster.pressure_player_critted = is_crit
+
     _pt_post_hit_effects(player, monster, final_hit, is_crit, log)
     _pt_track_pending(player, final_hit, log)
 

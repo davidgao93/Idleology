@@ -156,6 +156,42 @@ class Monster:
     incubated_egg_tier: str = ""
     ward: int = 0
 
+    # --- New modifier transient state ---
+    # Flashfire: charges accumulate each monster turn; at 8 → true damage burst
+    flashfire_charges: int = 0
+    # Hemorrhage: +1 per monster hit; true DoT at start of each monster turn
+    bleed_stacks: int = 0
+    # Volatile Spikes: +1 per monster hit (cap 10), resets on player evade/block; boosts monster crit
+    spike_stacks: int = 0
+    # Onslaught: cumulative ATK% bonus per consecutive hit; resets on player evade/block
+    onslaught_bonus_atk: float = 0.0
+    # Pressure Surge: +1 if player didn't crit last turn (cap 10); true dmg at 10
+    pressure_stacks: int = 0
+    pressure_player_critted: bool = False  # written by player_turn each turn
+    # Feedback Core: stores 8% of player damage dealt; released as true dmg on player miss
+    feedback_stored: int = 0
+    # Corrosion: +1 every 3 monster turns; each stack -5 player effective PDR
+    corrode_stacks: int = 0
+    # Death Rattle: triggers once when HP < 25%; countdown to heal
+    death_rattle_triggered: bool = False
+    death_rattle_countdown: int = -1
+    # Impending Doom: +1 per monster hit; instant kill at 44
+    doom_stacks: int = 0
+    # Wrathful Retaliation: +1 per player crit; boosts monster ATK multiplicatively
+    wrathful_stacks: int = 0
+    # Colossus Protocol: triggers once at <50% HP; negates first hit per turn
+    colossus_active: bool = False
+    colossus_hit_negated: bool = False  # reset each monster turn
+    colossus_dr: float = 0.0           # flat damage reduction applied to player hits
+    # Temporal Collapse: accumulates player damage over 6-turn window; burst true dmg
+    temporal_window_damage: int = 0
+    # Undying Resolve: triggers once on first death; immune + ATK burst for 2 turns
+    undying_resolve_triggered: bool = False
+    undying_immune_turns: int = 0
+    undying_atk_boost_turns: int = 0
+    # Frenzied Hunger: each potion use boosts monster ATK multiplicatively
+    potion_uses_tracked: int = 0
+
     def has_modifier(self, name: str) -> bool:
         return any(m.name == name for m in self.modifiers)
 

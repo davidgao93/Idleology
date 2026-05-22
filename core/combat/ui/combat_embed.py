@@ -56,9 +56,6 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
                 f"  · {player.jewel_acrimony_dot}t left"
             )
 
-    # --- Potions (always shown) ---
-    lines.append(f"🧪 Potions  {player.potions}")
-
     # --- Alchemy: next-attack buffs (consumed on use) ---
     if player.alchemy_guaranteed_hit:
         lines.append("⚔️ Bottled Courage  **ready**")
@@ -145,6 +142,44 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
     return "\n".join(lines)
 
 
+def build_afflictions_text(player: Player, monster: Monster) -> str:
+    """Returns a string of active player-facing debuffs from monster modifiers.
+    Only shows entries relevant to the player (risk indicators / stat penalties)."""
+    lines: list[str] = []
+
+    if monster.has_modifier("Flashfire") and monster.flashfire_charges > 0:
+        lines.append(f"🔥 Flashfire  {monster.flashfire_charges}/8")
+
+    if monster.has_modifier("Hemorrhage") and monster.bleed_stacks > 0:
+        v = monster.get_modifier_value("Hemorrhage")
+        bleed_per_turn = int(player.total_max_hp * v * monster.bleed_stacks)
+        lines.append(f"🩸 Hemorrhage  {monster.bleed_stacks} stacks  ({bleed_per_turn:,}/turn)")
+
+    if monster.has_modifier("Pressure Surge") and monster.pressure_stacks > 0:
+        lines.append(f"⚡ Pressure  {monster.pressure_stacks}/10")
+
+    if monster.has_modifier("Feedback Core") and monster.feedback_stored > 0:
+        lines.append(f"💾 Feedback Core  {monster.feedback_stored:,} stored")
+
+    if monster.has_modifier("Corrosion") and monster.corrode_stacks > 0:
+        pdr_loss = monster.corrode_stacks * int(monster.get_modifier_value("Corrosion"))
+        lines.append(f"🧪 Corroded  {monster.corrode_stacks} stacks  (−{pdr_loss} PDR)")
+
+    if monster.has_modifier("Impending Doom") and monster.doom_stacks > 0:
+        lines.append(f"☠️ Doom  {monster.doom_stacks}/44")
+
+    if monster.has_modifier("Temporal Collapse") and monster.temporal_window_damage > 0:
+        lines.append(f"⏳ Temporal  {monster.temporal_window_damage:,} pending")
+
+    if monster.has_modifier("Death Rattle") and monster.death_rattle_triggered and monster.death_rattle_countdown > 0:
+        lines.append(f"☠️ Death Rattle  {monster.death_rattle_countdown} turns")
+
+    if monster.has_modifier("Undying Resolve") and monster.undying_immune_turns > 0:
+        lines.append(f"💀 Undying  immune {monster.undying_immune_turns}t")
+
+    return "\n".join(lines)
+
+
 def create_combat_embed(
     player: Player,
     monster: Monster,
@@ -207,6 +242,10 @@ def create_combat_embed(
     )
 
     embed.add_field(name="⚙️ Status", value=build_status_text(player, monster), inline=False)
+
+    afflictions = build_afflictions_text(player, monster)
+    if afflictions:
+        embed.add_field(name="⚠️ Afflictions", value=afflictions, inline=False)
 
     for name, message in logs.items():
         if message:
