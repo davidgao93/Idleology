@@ -263,11 +263,11 @@ _BOON_DEFINITIONS = [
         (8.0, 30.0),
     ),
     (
-        "rarity_boost",
-        "+{v:.0f}% Rarity",
-        "+{v:.0f}% Rarity this run",
+        "page_rate_boost",
+        "+{v:.0f}% Page Rate",
+        "+{v:.0f}% increased Codex Page drop chance on chapter clear",
         12,
-        (15.0, 35.0),
+        (15.0, 50.0),
     ),
     (
         "fragment_boost",
@@ -300,7 +300,7 @@ _BOON_DEFINITIONS = [
     (
         "page_drop",
         "Guaranteed Page",
-        "Guarantees a Codex Page upon completing the full run",
+        "Guarantees a Codex Page if this chapter is cleared without dying",
         1,
         None,
     ),
@@ -312,7 +312,7 @@ def select_run_chapters(count: int = 5) -> list[CodexChapter]:
     return [generate_codex_chapter(p) for p in range(1, count + 1)]
 
 
-_RARITY_BOOST_DOWNSIDES = [
+_PAGE_RATE_BOOST_DOWNSIDES = [
     ("atk_penalty", lambda v: round(v * 0.5), "-{:.0f}% ATK"),
     ("def_penalty", lambda v: round(v * 0.5), "-{:.0f}% DEF"),
     ("crit_penalty", lambda v: round(v * 0.7), "-{:.0f}% Crit"),
@@ -327,16 +327,14 @@ _FRAGMENT_BOOST_DOWNSIDES = [
 
 def _roll_downside(boon_type: str, boon_value: float) -> tuple[str | None, float, str]:
     """Returns (downside_type, downside_value, downside_label) for boons that carry a cost."""
-    if boon_type == "rarity_boost":
-        dt, scale_fn, label_tmpl = random.choice(_RARITY_BOOST_DOWNSIDES)
+    if boon_type == "page_rate_boost":
+        dt, scale_fn, label_tmpl = random.choice(_PAGE_RATE_BOOST_DOWNSIDES)
         dv = float(scale_fn(boon_value))
         return dt, dv, label_tmpl.format(dv)
     if boon_type == "fragment_boost":
         dt, scale_fn, label_tmpl = random.choice(_FRAGMENT_BOOST_DOWNSIDES)
         dv = float(scale_fn(boon_value))
         return dt, dv, label_tmpl.format(dv)
-    if boon_type == "page_drop":
-        return "fragment_penalty", 80.0, "-80% Fragments"
     return None, 0.0, ""
 
 
@@ -483,10 +481,8 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
             player.bonus_crit += int(v)
         elif t == "ward_boost":
             player.combat_ward += int(player.total_max_hp * (v / 100))
-        elif t == "rarity_boost":
-            # Scale off clean gear/companion/tome rarity (excludes accumulated bonus_rarity)
-            flat_rarity = player.get_total_rarity() - player.bonus_rarity
-            player.bonus_rarity += int(flat_rarity * (v / 100))
+        elif t == "page_rate_boost":
+            # Downside only — the page rate bonus itself is applied at chapter clear time
             dt, dv = boon.downside_type, boon.downside_value
             if dt == "atk_penalty":
                 player.atk_multiplier *= 1 - dv / 100
@@ -553,13 +549,10 @@ def apply_respite_boon(
         run_state["sig_nullify_next"] = True
         return "The next chapter's signature modifier will be **nullified**"
 
-    # --- One-shot: guarantee next chapter page drop (at -80% fragment gain) ---
+    # --- One-shot: guarantee page drop on chapter clear (if no death this chapter) ---
     if t == "page_drop":
-        run_state["guaranteed_page_next"] = True
-        run_state["fragment_multiplier"] = (
-            run_state.get("fragment_multiplier", 1.0) * 0.20
-        )
-        return "A Codex Page is **guaranteed** upon completing the full run (−80% Fragments this run)"
+        run_state["guaranteed_page_this_chapter"] = True
+        return "A Codex Page is **guaranteed** if you clear this chapter without dying"
 
     # --- Per-wave boon: store and apply immediately for current wave ---
     active_boons.append(boon)
@@ -609,13 +602,16 @@ def calculate_run_fragments(
     chapters_cleared: int,
     is_perfect: bool,
     fragment_multiplier: float,
+    deaths: int = 0,
 ) -> int:
     """
-    fragment reward scales with how many chapters were cleared.
-    Perfect run (all 5 cleared with no deaths mid-run) gives a 50% bonus.
+    Fragment reward scales with how many chapters were cleared.
+    Perfect run (all 5 chapters cleared with no deaths) gives a 50% bonus.
+    Each death penalises the final tally by 10%, capped at 50%.
     fragment_multiplier comes from accumulated fragment_boost boons.
     """
     base = chapters_cleared * 6  # 6 per chapter base
     if is_perfect and chapters_cleared == 5:
         base = int(base * 1.5)
-    return max(1, int(base * fragment_multiplier))
+    death_penalty = min(0.50, deaths * 0.10)
+    return max(1, int(base * fragment_multiplier * (1 - death_penalty)))

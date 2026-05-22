@@ -136,6 +136,10 @@ class CodexRunView(BaseView):
         )  # chapter indices that consumed their reroll
         self.chapters_cleared = 0
         self.waves_cleared_this_run = 0
+        self.deaths = 0
+        self.chapter_start_xp = 0    # XP total at the start of the current chapter (for rollback)
+        self.chapter_start_gold = 0  # Gold total at the start of the current chapter (for rollback)
+        self.cleared_chapter_indices: set[int] = set()  # which chapter positions were cleared
         self.page_drops: list[int] = []  # chapter ids where a page dropped
 
         # XP/gold accumulation across the run
@@ -240,8 +244,8 @@ class CodexRunView(BaseView):
             int(b.value) for b in self.active_boons if b.type == "fdr_boost"
         )
         ward_boost = sum(b.value for b in self.active_boons if b.type == "ward_boost")
-        rarity_boost = sum(
-            b.value for b in self.active_boons if b.type == "rarity_boost"
+        page_rate_boost = sum(
+            b.value for b in self.active_boons if b.type == "page_rate_boost"
         )
 
         atk_pen_pct = sum(
@@ -281,8 +285,8 @@ class CodexRunView(BaseView):
             parts.append(f"FDR +{fdr_boost}")
         if ward_boost:
             parts.append(f"Ward +{ward_boost:.0f}%")
-        if rarity_boost:
-            parts.append(f"Rarity +{rarity_boost:.0f}%")
+        if page_rate_boost:
+            parts.append(f"Page Rate +{page_rate_boost:.0f}%")
 
         frag_mult = self.run_state.get("fragment_multiplier", 1.0)
         frag_pct = round((frag_mult - 1.0) * 100)
@@ -294,8 +298,8 @@ class CodexRunView(BaseView):
                 f"Max HP {'+' if p.run_max_hp_bonus >= 0 else ''}{p.run_max_hp_bonus:,}"
             )
 
-        if self.run_state.get("guaranteed_page_next"):
-            parts.append("📄 Page Guaranteed")
+        if self.run_state.get("guaranteed_page_this_chapter"):
+            parts.append("📄 Page (this chapter)")
         if self.run_state.get("sig_nullify_next"):
             parts.append("⚡ Sig Nullified")
 
@@ -423,10 +427,16 @@ class CodexRunView(BaseView):
     def _summary_embed(
         self, fragments: int, pages_dropped: int, exp_changes: dict
     ) -> discord.Embed:
-        is_perfect = self.chapters_cleared == 5 and self.waves_cleared_this_run == 35
+        is_perfect = self.deaths == 0 and self.chapters_cleared == 5
+        if is_perfect:
+            description = "✨ **Perfect Codex Clear!** All 5 chapters without a single death."
+        elif self.chapters_cleared == 5:
+            description = "All 5 chapters cleared!"
+        else:
+            description = f"{self.chapters_cleared}/5 chapters cleared."
         embed = discord.Embed(
             title="📕 Codex Run Complete",
-            description=("✨ Codex Cleared!"),
+            description=description,
             color=discord.Color.gold() if is_perfect else discord.Color.blurple(),
         )
         embed.add_field(
@@ -446,12 +456,18 @@ class CodexRunView(BaseView):
             embed.add_field(
                 name="📄 Codex Pages", value=str(pages_dropped), inline=True
             )
+        if self.deaths > 0:
+            embed.add_field(
+                name="💀 Deaths",
+                value=f"{self.deaths} (−{min(50, self.deaths * 10)}% Fragments)",
+                inline=True,
+            )
         if exp_changes["msgs"]:
             embed.add_field(
                 name="Level Ups", value="\n".join(exp_changes["msgs"]), inline=False
             )
         chapters_text = "\n".join(
-            f"{'✅' if i < self.chapters_cleared else '❌'} {ch.name}"
+            f"{'✅' if i in self.cleared_chapter_indices else '❌'} {ch.name}"
             for i, ch in enumerate(self.chapters)
         )
         embed.add_field(name="Chapters", value=chapters_text, inline=False)
@@ -469,6 +485,12 @@ class CodexRunView(BaseView):
         chapter = self.current_chapter
 
         if self.wave_num == 1:
+            # Snapshot chapter-start resources so a death can roll them back
+            self.chapter_start_xp = self.cumulative_xp
+            self.chapter_start_gold = self.cumulative_gold
+            # Clear any guaranteed-page flag left over from a prior chapter's boon
+            self.run_state.pop("guaranteed_page_this_chapter", None)
+
             restore_clean_stats(self.player)
             self.player.combat_ward = self.player.get_combat_ward_value()
 
@@ -593,8 +615,14 @@ class CodexRunView(BaseView):
             self.user_id, self.current_chapter.id, perfect=False
         )
         self.chapters_cleared += 1
+        self.cleared_chapter_indices.add(self.chapter_idx)
 
-        page_dropped = random.random() < 0.05
+        page_rate_bonus = sum(
+            b.value for b in self.active_boons if b.type == "page_rate_boost"
+        )
+        page_drop_rate = 0.05 * (1 + page_rate_bonus / 100)
+        guaranteed_page = self.run_state.pop("guaranteed_page_this_chapter", False)
+        page_dropped = guaranteed_page or random.random() < page_drop_rate
         if page_dropped:
             await self.bot.database.users.modify_currency(
                 self.user_id, "codex_pages", 1
@@ -626,25 +654,20 @@ class CodexRunView(BaseView):
 
     async def _handle_run_complete(self, message: discord.Message = None):
         """Finalises a completed run, awards all fragment rewards."""
-        is_perfect = self.waves_cleared_this_run == 35
+        is_perfect = self.deaths == 0 and self.chapters_cleared == 5
         fragments = calculate_run_fragments(
             self.chapters_cleared,
             is_perfect=is_perfect,
             fragment_multiplier=self.run_state.get("fragment_multiplier", 1.0),
+            deaths=self.deaths,
         )
         if is_perfect:
-            chapter_ids = [ch.id for ch in self.chapters[: self.chapters_cleared]]
+            chapter_ids = [ch.id for ch in self.chapters]
             await self.bot.database.codex.log_perfect_run(self.user_id, chapter_ids)
 
         await self.bot.database.users.modify_currency(
             self.user_id, "codex_fragments", fragments
         )
-
-        if self.run_state.pop("guaranteed_page_next", False):
-            await self.bot.database.users.modify_currency(
-                self.user_id, "codex_pages", 1
-            )
-            self.page_drops.append(-1)
 
         await self.bot.database.users.modify_gold(self.user_id, self.cumulative_gold)
 
@@ -665,50 +688,67 @@ class CodexRunView(BaseView):
     # Defeat / Retreat
     # ------------------------------------------------------------------
 
-    _CODEX_XP_LOSS_ON_DEFEAT: float = 0.05
-
     async def _handle_defeat(
         self, interaction: Interaction = None, message: discord.Message = None
     ):
-        """Run ends on defeat. No fragment rewards. XP penalty applied."""
+        """Chapter fails on defeat. XP/gold forfeited. Player advances to the next chapter."""
         self.combat_logger.log_combat_end(self.player, self.monster, "defeat")
-        base_loss = int(self.player.exp * self._CODEX_XP_LOSS_ON_DEFEAT)
-        xp_loss = await ExperienceManager.remove_experience(
-            self.bot, self.user_id, self.player, base_loss
-        )
+        self.deaths += 1
 
-        self.player.current_hp = 1
+        # Forfeit XP and gold accumulated within this chapter
+        chapter_xp_lost = self.cumulative_xp - self.chapter_start_xp
+        chapter_gold_lost = self.cumulative_gold - self.chapter_start_gold
+        self.cumulative_xp = self.chapter_start_xp
+        self.cumulative_gold = self.chapter_start_gold
+
+        # Void any guaranteed-page flag — chapter not cleared
+        self.run_state.pop("guaranteed_page_this_chapter", None)
+
+        # Restore to full HP for the next chapter
+        self.player.current_hp = self.player.total_max_hp
         await self.bot.database.users.update_from_player_object(self.player)
 
+        next_idx = self.chapter_idx + 1
+        is_last_chapter = next_idx >= len(self.chapters)
+        proceed_line = (
+            "Finalising run..."
+            if is_last_chapter
+            else f"Advancing to **Chapter {next_idx + 1}**..."
+        )
+
         embed = discord.Embed(
-            title=f"💀 Defeated — {self.current_chapter.name}",
+            title=f"💀 Chapter Failed — {self.current_chapter.name}",
             description=(
                 f"**{self.player.name}** was slain on Wave {self.wave_num} "
-                f"of Chapter {self.chapter_idx + 1}.\n"
-                f"Chapters cleared: **{self.chapters_cleared}/5**\n"
-                f"Lost **{xp_loss:,}** XP."
+                f"of Chapter {self.chapter_idx + 1}.\n{proceed_line}"
             ),
             color=discord.Color.red(),
         )
         embed.add_field(
-            name="📚 XP Earned", value=f"{self.cumulative_xp:,}", inline=True
+            name="📚 XP Forfeited", value=f"{chapter_xp_lost:,}", inline=True
         )
         embed.add_field(
-            name="💰 Gold Earned", value=f"{self.cumulative_gold:,}", inline=True
+            name="💰 Gold Forfeited", value=f"{chapter_gold_lost:,}", inline=True
         )
-        embed.add_field(
-            name="Rewards", value="No Codex Fragments on defeat.", inline=False
-        )
-
-        self.clear_items()
-        self.stop()
-        self.bot.state_manager.clear_active(self.user_id)
+        embed.add_field(name="💀 Deaths", value=str(self.deaths), inline=True)
 
         msg_obj = message or (
             await interaction.original_response() if interaction else None
         )
         if msg_obj:
             await msg_obj.edit(embed=embed, view=None)
+
+        await asyncio.sleep(4)
+
+        if is_last_chapter:
+            await self._handle_run_complete(msg_obj)
+            return
+
+        self.chapter_idx = next_idx
+        self.wave_num = 1
+        self._add_combat_buttons()
+        if msg_obj:
+            await self._setup_next_wave(message=msg_obj)
 
     # ------------------------------------------------------------------
     # Combat button helpers

@@ -4,7 +4,12 @@ from discord import ButtonStyle, Interaction, ui
 from core.base_view import BaseView
 from core.images import CODEX_TOME
 from core.models import Player
-from database.repositories.codex import TOME_UPGRADE_COSTS, get_reroll_cost
+from database.repositories.codex import (
+    TOME_GOLD_COSTS,
+    TOME_UPGRADE_COSTS,
+    get_reroll_cost,
+    get_reroll_gold_cost,
+)
 
 _PASSIVE_LABELS = {
     "vitality": ("Vitality", "+{v:.1f}% Max HP"),
@@ -88,8 +93,9 @@ class CodexTomsView(BaseView):
                     tome.tier < 5 and self.fragments >= TOME_UPGRADE_COSTS[tome.tier]
                 )
                 upgrade_cost = TOME_UPGRADE_COSTS[tome.tier] if tome.tier < 5 else 0
+                upgrade_gold = TOME_GOLD_COSTS[tome.tier] if tome.tier < 5 else 0
                 upgrade_btn = ui.Button(
-                    label=f"Upgrade T{tome.tier}→T{tome.tier+1} ({upgrade_cost}🔷 + 10m💰)",
+                    label=f"Upgrade T{tome.tier}→T{tome.tier+1} ({upgrade_cost}🔷 + {upgrade_gold // 1_000_000}m💰)",
                     style=ButtonStyle.primary,
                     disabled=not can_upgrade,
                     row=2,
@@ -98,9 +104,10 @@ class CodexTomsView(BaseView):
                 self.add_item(upgrade_btn)
 
                 reroll_val_cost = get_reroll_cost(tome.tier)
+                reroll_val_gold = get_reroll_gold_cost(tome.tier)
                 can_reroll_val = tome.tier > 0 and self.fragments >= reroll_val_cost
                 reroll_val_btn = ui.Button(
-                    label=f"Reroll Value ({reroll_val_cost}🔷 + 10m💰)",
+                    label=f"Reroll Value ({reroll_val_cost}🔷 + {reroll_val_gold // 1_000_000}m💰)",
                     style=ButtonStyle.secondary,
                     disabled=not can_reroll_val,
                     row=2,
@@ -110,7 +117,7 @@ class CodexTomsView(BaseView):
 
                 can_reroll_type = self.pages > 0
                 reroll_type_btn = ui.Button(
-                    label="Reroll Type (1📄 + 10m💰)",
+                    label="Reroll Type (1📄)",
                     style=ButtonStyle.danger,
                     disabled=not can_reroll_type,
                     row=2,
@@ -197,15 +204,16 @@ class CodexTomsView(BaseView):
         if not tome or tome.tier >= 5:
             return
         cost = TOME_UPGRADE_COSTS[tome.tier]
+        gold_cost = TOME_GOLD_COSTS[tome.tier]
         if self.fragments < cost:
             await interaction.followup.send(
                 "Not enough Codex Fragments.", ephemeral=True
             )
             return
         gold = await self.bot.database.users.get_gold(self.user_id)
-        if gold < 10_000_000:
+        if gold < gold_cost:
             await interaction.followup.send(
-                "You need **10,000,000 gold** to upgrade a Tome tier.", ephemeral=True
+                f"You need **{gold_cost:,} gold** to upgrade this Tome tier.", ephemeral=True
             )
             return
         ok, new_val = await self.bot.database.codex.upgrade_tome(
@@ -215,7 +223,7 @@ class CodexTomsView(BaseView):
             await self.bot.database.users.modify_currency(
                 self.user_id, "codex_fragments", -cost
             )
-            await self.bot.database.users.modify_gold(self.user_id, -10_000_000)
+            await self.bot.database.users.modify_gold(self.user_id, -gold_cost)
             self.fragments -= cost
             self.player.codex_tomes = await self.bot.database.codex.get_tomes(
                 self.user_id
@@ -231,15 +239,16 @@ class CodexTomsView(BaseView):
         if not tome or tome.tier == 0:
             return
         cost = get_reroll_cost(tome.tier)
+        gold_cost = get_reroll_gold_cost(tome.tier)
         if self.fragments < cost:
             await interaction.followup.send(
                 "Not enough Codex Fragments.", ephemeral=True
             )
             return
         gold = await self.bot.database.users.get_gold(self.user_id)
-        if gold < 10_000_000:
+        if gold < gold_cost:
             await interaction.followup.send(
-                "You need **10,000,000 gold** to reroll a Tome value.", ephemeral=True
+                f"You need **{gold_cost:,} gold** to reroll a Tome value.", ephemeral=True
             )
             return
         ok, _ = await self.bot.database.codex.reroll_tome_value(
@@ -249,7 +258,7 @@ class CodexTomsView(BaseView):
             await self.bot.database.users.modify_currency(
                 self.user_id, "codex_fragments", -cost
             )
-            await self.bot.database.users.modify_gold(self.user_id, -10_000_000)
+            await self.bot.database.users.modify_gold(self.user_id, -gold_cost)
             self.fragments -= cost
             self.player.codex_tomes = await self.bot.database.codex.get_tomes(
                 self.user_id
@@ -262,12 +271,6 @@ class CodexTomsView(BaseView):
         if self.pages <= 0:
             await interaction.followup.send("No Codex Pages available.", ephemeral=True)
             return
-        gold = await self.bot.database.users.get_gold(self.user_id)
-        if gold < 10_000_000:
-            await interaction.followup.send(
-                "You need **10,000,000 gold** to reroll a Tome type.", ephemeral=True
-            )
-            return
         ok, _ = await self.bot.database.codex.reroll_tome_type(
             self.user_id, self.selected_slot
         )
@@ -275,7 +278,6 @@ class CodexTomsView(BaseView):
             await self.bot.database.users.modify_currency(
                 self.user_id, "codex_pages", -1
             )
-            await self.bot.database.users.modify_gold(self.user_id, -10_000_000)
             self.pages -= 1
             self.player.codex_tomes = await self.bot.database.codex.get_tomes(
                 self.user_id

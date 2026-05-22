@@ -37,18 +37,32 @@ TOME_TIER_RANGES: dict[str, list[tuple[float, float]]] = {
 # Fragment cost to upgrade from tier N-1 to tier N (index 0 = unlock tier 1)
 TOME_UPGRADE_COSTS = [5, 10, 20, 40, 80]
 
+# Gold cost to upgrade from tier N to tier N+1 (index 0 = T0→T1, index 4 = T4→T5)
+TOME_GOLD_COSTS = [1_000_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000]
 
-# Reroll cost is 50% of the current tier's upgrade cost (minimum 3)
+# Gold cost to reroll a tome's stat value at tier N (index 0 = tier 1, index 4 = tier 5)
+REROLL_GOLD_COSTS = [1_000_000, 2_000_000, 3_000_000, 4_000_000, 10_000_000]
+
+
+# Reroll fragment cost is 50% of the current tier's upgrade cost (minimum 3)
 def get_reroll_cost(tier: int) -> int:
     if tier == 0 or tier > 5:
         return 0
     return max(3, TOME_UPGRADE_COSTS[tier - 1] // 2)
 
 
+def get_reroll_gold_cost(tier: int) -> int:
+    """Gold cost to reroll a tome's stat value at the given tier (1-5)."""
+    if tier == 0 or tier > 5:
+        return 0
+    return REROLL_GOLD_COSTS[tier - 1]
+
+
 def roll_tome_value(passive_type: str, tier: int) -> float:
-    """Roll a stat value in the range for the given passive type and tier (1-5)."""
+    """Roll a stat value in the range for the given passive type and tier (1-5).
+    Uses a triangular distribution weighted towards the lower end of the range."""
     lo, hi = TOME_TIER_RANGES[passive_type][tier - 1]
-    return round(random.uniform(lo, hi), 2)
+    return round(random.triangular(lo, hi, lo), 2)
 
 
 class CodexRepository:
