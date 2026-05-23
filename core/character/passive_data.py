@@ -79,7 +79,7 @@ _INFERNAL_PASSIVE_DESC: dict[str, str] = {
 
 _ARMOR_PASSIVE_DESC: dict[str, str] = {
     "impregnable": "During combat: Your PDR cap is increased by 10% (90%)",
-    "piety": "On hit: 10% chance to deal 700% increased damage",
+    "piety": "On hit: 10% chance to deal 600% increased damage",
     "transcendence": "Combat start: Gain 20% of your total ATK and DEF as bonus ATK",
     "treasure hunter": "On victory: +3% Special Rarity",
     "unlimited wealth": "Combat start: 20% chance to gain 200% more Rarity as bonus rarity",
@@ -145,11 +145,20 @@ _HELMET_PASSIVE_FUNCS: dict = {
 }
 
 _CORRUPTED_DESC: dict[tuple, str] = {
-    ("aphrodite", "glove"): "During combat: Your ward is considered broken whenever it is damaged.",
+    (
+        "aphrodite",
+        "glove",
+    ): "During combat: Your ward is considered broken whenever it is damaged.",
     ("aphrodite", "boot"): "On victory: Your gear drop rate is lucky.",
-    ("aphrodite", "helmet"): "During combat: Your ward can never be reduced or disabled by modifiers.",
+    (
+        "aphrodite",
+        "helmet",
+    ): "During combat: Your ward can never be reduced or disabled by modifiers.",
     ("lucifer", "glove"): "On hit: 15% of your current ward is added to your damage.",
-    ("lucifer", "boot"): "On victory: Gain up to 50% increased gold per monster modifier.",
+    (
+        "lucifer",
+        "boot",
+    ): "On victory: Gain up to 50% increased gold per monster modifier.",
     (
         "lucifer",
         "helmet",
@@ -164,8 +173,14 @@ _CORRUPTED_DESC: dict[tuple, str] = {
         "helmet",
     ): "During combat: Your damage taken is reduced by 20% and split evenly between HP and Ward.",
     ("neet", "glove"): "During combat: Your accuracy is 0.",
-    ("neet", "boot"): "On victory: Whenever you gain resources during combat, gain double instead.",
-    ("neet", "helmet"): "During combat: Whenever you gain ward, double the ward gained.",
+    (
+        "neet",
+        "boot",
+    ): "On victory: Whenever you gain resources during combat, gain double instead.",
+    (
+        "neet",
+        "helmet",
+    ): "During combat: Whenever you gain ward, double the ward gained.",
 }
 
 _SLAYER_EMBLEM_NAMES: dict[str, str] = {

@@ -394,6 +394,34 @@ META_SHARD_DROP_CHANCES: dict[str, float] = {
     "soul_vessel": 0.02,
 }
 
+# ---------------------------------------------------------------------------
+# Soul Stone passive tier value table
+#
+# Indexed [T1, T2, T3, T4, T5] (0-based, use `ss_tier - 1`).
+# Weapons / Gloves / Helmets use 1:1 tier→passive_lvl equivalence and need no
+# explicit table — the engine already scales those by passive_lvl.
+# Boots: 6 gear tiers condensed to 5 (max_tier_value / 5 per step).
+# Accessories: 2:1 mapping (soul stone tier × 2 = equivalent passive_lvl).
+# Armor: gear has 1 effective tier; soul stone introduces 5 explicit steps.
+# ---------------------------------------------------------------------------
+
+SOUL_STONE_TIER_VALUES: dict[str, list] = {
+    # --- Armor passives (1 → 5 tiers) ---
+    "impregnable":      [2,   4,   6,   8,   10],    # flat % PDR added
+    "piety":            [120, 240, 360, 480, 600],   # % bonus damage on 10% chance
+    "transcendence":    [4,   8,   12,  16,  20],    # % of (ATK+DEF) added as bonus ATK
+    "treasure hunter":  [0.6, 1.2, 1.8, 2.4, 3.0],  # flat special-rarity bonus
+    "unlimited wealth": [40,  80,  120, 160, 200],   # % rarity bonus on 20% proc
+    "alchemist":        [6,   12,  18,  24,  30],    # % not-consume chance on potion use
+
+    # --- Boot passives (6 gear tiers → 5 soul stone tiers, max_value / 5) ---
+    "speedster": [72,  144, 216, 288, 360],  # seconds of combat cooldown reduction
+    "skiller":   [6,   12,  18,  24,  30],   # % proc chance for skill-mat drop
+
+    # Accessories use a 2:1 tier mapping (soul stone T × 2 = effective passive_lvl)
+    # and are handled inline in the engine — no explicit table entry needed.
+}
+
 META_SHARD_DISPLAY: dict[str, tuple[str, str]] = {
     "sharpened_fang": ("🦷 Sharpened Fang", "Lucky extraction chance (25% → ~44%)"),
     "engorged_heart": ("❤️ Engorged Heart", "Lucky upgrade chance (better odds)"),

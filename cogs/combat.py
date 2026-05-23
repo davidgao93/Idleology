@@ -71,10 +71,16 @@ class Combat(commands.Cog, name="combat"):
     def __init__(self, bot):
         self.bot = bot
 
-    def _get_speedster_reduction(self, equipped_boot) -> int:
-        """Returns the Speedster passive cooldown reduction in seconds."""
+    def _get_speedster_reduction(self, equipped_boot, ss_speedster_tier: int = 0) -> int:
+        """Returns the Speedster passive cooldown reduction in seconds.
+
+        Priority: equipped boot passive > soul stone passive (conflict guard).
+        """
         if equipped_boot and equipped_boot["passive"] == "speedster":
             return equipped_boot["passive_lvl"] * 60
+        if ss_speedster_tier > 0:
+            from core.apex.data import SOUL_STONE_TIER_VALUES
+            return SOUL_STONE_TIER_VALUES["speedster"][ss_speedster_tier - 1]
         return 0
 
     def _effective_cooldown(self, speedster_reduction_sec: int) -> timedelta:
@@ -93,7 +99,15 @@ class Combat(commands.Cog, name="combat"):
 
         # No stamina — enforce the regular combat cooldown
         equipped_boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
-        reduction = self._get_speedster_reduction(equipped_boot)
+        # Soul stone speedster: only checked when no speedster boot is equipped
+        ss_speedster_tier = 0
+        if not (equipped_boot and equipped_boot["passive"] == "speedster"):
+            server_id = str(interaction.guild.id)
+            from core.apex.models import soul_stone_from_db
+            ss_row = await self.bot.database.apex.get_or_create_soul_stone(user_id, server_id)
+            ss = soul_stone_from_db(ss_row)
+            ss_speedster_tier = ss.get_passive_tier("speedster") or 0
+        reduction = self._get_speedster_reduction(equipped_boot, ss_speedster_tier)
         cooldown = self._effective_cooldown(reduction)
 
         last_combat_str = existing_user["last_combat"]

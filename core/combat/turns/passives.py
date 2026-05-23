@@ -394,21 +394,26 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
 def _apply_soul_stone_start(player, monster) -> list[str]:
     """Applies soul stone passives that trigger once at combat start."""
     from core.apex.mechanics import ApexMechanics
+    from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
 
     log: list[str] = []
 
-    # Transcendence (soul stone): +20% of (ATK+DEF) added to ATK
+    # Transcendence (soul stone): T1=4% → T5=20% of (ATK+DEF) as bonus ATK
     ss_transcendence = player.get_soul_stone_passive("transcendence")
     if ss_transcendence and not (
         player.equipped_armor and player.equipped_armor.passive == "Transcendence"
     ):
+        pct = _SST["transcendence"][ss_transcendence - 1]
         total_atk = player.get_total_attack()
         total_def = player.get_total_defence()
-        bonus = int((total_atk + total_def) * 0.20)
+        bonus = int((total_atk + total_def) * pct / 100)
         player.bonus_atk += bonus
-        log.append(f"✨ **Soul Transcendence** — ⚔️ +**{bonus}** ATK (20% of ATK+DEF)")
+        log.append(
+            f"✨ **Soul Transcendence T{ss_transcendence}** — "
+            f"⚔️ +**{bonus}** ATK ({pct}% of ATK+DEF)"
+        )
 
-    # Juggernaut (soul stone): DEF→ATK conversion
+    # Juggernaut (soul stone): T1=4% → T5=20% of flat DEF as bonus ATK
     ss_juggernaut = player.get_soul_stone_passive("juggernaut")
     if ss_juggernaut and not (
         player.equipped_helmet and player.get_helmet_passive() == "juggernaut"
@@ -417,9 +422,9 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
         bonus = int(player.flat_def * pct / 100)
         if bonus > 0:
             player.bonus_atk += bonus
-            log.append(f"🪖 **Soul Juggernaut** — ⚔️ +**{bonus}** ATK ({int(pct)}% of DEF)")
+            log.append(f"🪖 **Soul Juggernaut T{ss_juggernaut}** — ⚔️ +**{bonus}** ATK ({int(pct)}% of DEF)")
 
-    # Unlimited Wealth (soul stone): 20% chance to multiply rarity
+    # Unlimited Wealth (soul stone): 20% chance for T1=+40% → T5=+200% rarity
     ss_unlimited = player.get_soul_stone_passive("unlimited wealth")
     if ss_unlimited and not (
         player.equipped_armor and player.equipped_armor.passive == "Unlimited Wealth"
@@ -427,9 +432,40 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
         if random.random() < 0.20:
             base = player.get_total_rarity()
             if base > 0:
-                mult = 2 if monster.is_boss else 5
-                player.bonus_rarity += base * (mult - 1)
-                log.append(f"💰 **Soul Unlimited Wealth** — Rarity ×{mult}!")
+                bonus_pct = _SST["unlimited wealth"][ss_unlimited - 1]
+                bonus = int(base * bonus_pct / 100)
+                player.bonus_rarity += bonus
+                log.append(
+                    f"💰 **Soul Unlimited Wealth T{ss_unlimited}** — "
+                    f"+{bonus_pct}% Rarity! (+{bonus})"
+                )
+
+    # Absorb (soul stone): 2:1 tier mapping → T1=20% chance → T5=100% chance
+    ss_absorb = player.get_soul_stone_passive("absorb")
+    if ss_absorb and not (
+        player.equipped_accessory and player.get_accessory_passive() == "Absorb"
+    ):
+        equiv_lvl = ss_absorb * 2
+        if random.random() <= equiv_lvl * 0.10:
+            total = monster.attack + monster.defence
+            if total > 0:
+                amount = max(1, int(total * 0.10))
+                player.bonus_atk += amount
+                player.bonus_def += amount
+                log.append(
+                    f"🌀 **Soul Absorb T{ss_absorb}** — ⚔️/🛡️ +**{amount}** each."
+                )
+
+    # Treasure Hunter (soul stone): T1=+0.6 → T5=+3.0 special rarity
+    ss_treasure = player.get_soul_stone_passive("treasure hunter")
+    if ss_treasure and not (
+        player.equipped_armor and player.equipped_armor.passive == "Treasure Hunter"
+    ):
+        bonus = _SST["treasure hunter"][ss_treasure - 1]
+        player.bonus_rarity += bonus
+        log.append(
+            f"🗺️ **Soul Treasure Hunter T{ss_treasure}** — +**{bonus:.1f}** Special Rarity"
+        )
 
     # Tyr Resonance (mixed_2 or mixed_3): redistribute ATK+DEF at combat start
     if player.soul_stone:

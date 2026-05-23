@@ -1009,10 +1009,17 @@ class Player:
         if self.chapter_pdr_reduction > 0:
             total = int(total * (1 - self.chapter_pdr_reduction))
 
+        # Soul stone: impregnable — T1=+2% → T5=+10% PDR (skipped if armor passive active)
+        ss_impregnable = self.get_soul_stone_passive("impregnable")
+        if ss_impregnable and not (
+            self.equipped_armor and self.equipped_armor.passive == "Impregnable"
+        ):
+            total += ss_impregnable * 2
+
         # Hard cap: 90% with Impregnable armor passive OR soul stone impregnable, otherwise 80%
         has_impregnable = (
             (self.equipped_armor and self.equipped_armor.passive == "Impregnable")
-            or bool(self.get_soul_stone_passive("impregnable"))
+            or bool(ss_impregnable)
         )
         cap = 90 if has_impregnable else 80
         return min(cap, total)

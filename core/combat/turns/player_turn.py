@@ -88,11 +88,26 @@ def process_heal(player: Player, monster=None) -> str:
     else:
         player.current_hp = potential_hp
 
-    alchemist_saved = (
-        player.get_armor_passive() == "Alchemist" and random.random() < 0.30
-    )
+    # Armor Alchemist: 30% flat chance; Soul Stone Alchemist: T1=6% → T5=30%
+    # Conflict: soul stone only fires when armor Alchemist is NOT equipped.
+    if player.get_armor_passive() == "Alchemist":
+        alchemist_saved = random.random() < 0.30
+        _alchemist_label = "⚗️ **Alchemist** preserved your potion!\n"
+    else:
+        _ss_alchemist = player.get_soul_stone_passive("alchemist")
+        if _ss_alchemist:
+            from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
+            _save_pct = _SST["alchemist"][_ss_alchemist - 1] / 100
+            alchemist_saved = random.random() < _save_pct
+            _alchemist_label = (
+                f"⚗️ **Soul Alchemist T{_ss_alchemist}** preserved your potion!\n"
+            )
+        else:
+            alchemist_saved = False
+            _alchemist_label = ""
+
     if alchemist_saved:
-        msg_prefix = "⚗️ **Alchemist** preserved your potion!\n"
+        msg_prefix = _alchemist_label
     else:
         player.potions -= 1
         msg_prefix = ""
@@ -454,6 +469,22 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         is_hit = False
         is_crit = False
         calc.append("  neet: accuracy 0, always miss")
+
+    # Soul stone: piety — 10% chance for T1=+120% → T5=+600% bonus damage multiplier
+    # Conflict: skipped if Piety armor passive is equipped.
+    if (is_hit or is_crit) and not (
+        player.equipped_armor and player.equipped_armor.passive == "Piety"
+    ):
+        _ss_piety = player.get_soul_stone_passive("piety")
+        if _ss_piety and random.random() < 0.10:
+            from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
+            _piety_bonus = _SST["piety"][_ss_piety - 1] / 100
+            attack_multiplier += _piety_bonus
+            log.append(
+                f"✨ **Soul Piety T{_ss_piety}** — divine favour! "
+                f"+{int(_piety_bonus * 100)}% bonus damage!"
+            )
+            calc.append(f"  soul_piety_T{_ss_piety}: atk_mult +{_piety_bonus:.2f}")
 
     if is_crit:
         raw_damage = calc_crit_damage(player, monster, attack_multiplier, log, calc)

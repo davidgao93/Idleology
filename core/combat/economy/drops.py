@@ -91,12 +91,21 @@ class DropManager:
         bot, user_id: str, server_id: str, player: Player
     ) -> str | None:
         """
-        Rolls the Skiller boot passive. Returns a log message string if it procs, else None.
+        Rolls the Skiller boot passive or its soul stone equivalent.
+        Boot passive takes priority (conflict guard); soul stone fires only when
+        no skiller boot is equipped.
+        Returns a log message string if it procs, else None.
         Shared by standard combat and ascent — do NOT call from codex.
         """
-        if not (player.equipped_boot and player.equipped_boot.passive == "skiller"):
-            return None
-        proc_chance = player.equipped_boot.passive_lvl * 0.05
+        if player.equipped_boot and player.equipped_boot.passive == "skiller":
+            proc_chance = player.equipped_boot.passive_lvl * 0.05
+        else:
+            _ss_tier = player.get_soul_stone_passive("skiller")
+            if not _ss_tier:
+                return None
+            from core.apex.data import SOUL_STONE_TIER_VALUES
+            proc_chance = SOUL_STONE_TIER_VALUES["skiller"][_ss_tier - 1] / 100
+
         if random.random() >= proc_chance:
             return None
         skill_type = random.choice(["mining", "woodcutting", "fishing"])
