@@ -44,6 +44,10 @@ class UpgradeView(BaseView):
         self._selected_slot: int | None = None
         self._selected_slot_obj = None
 
+        # Toggle state: default ON if the player owns the shard
+        self._use_heart: bool = False
+        self._use_blood: bool = False
+
         self._build_select()
 
     # ------------------------------------------------------------------
@@ -99,18 +103,63 @@ class UpgradeView(BaseView):
         self._selected_slot = slot_num
         self._selected_slot_obj = slot_obj
 
+        # Default toggles to ON if the player owns the shard
+        self._use_heart = bool(self.meta.engorged_heart)
+        self._use_blood = bool(self.meta.condensed_blood)
+
         embed = self._build_confirm_embed()
+        self._rebuild_confirm_view()
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    # ------------------------------------------------------------------
+    # Confirm-screen view builder
+    # ------------------------------------------------------------------
+
+    def _rebuild_confirm_view(self):
+        """Rebuilds the confirm-screen buttons: row 0 = Upgrade + Back; row 1 = meta toggles."""
         self.clear_items()
 
-        confirm = Button(label="Upgrade", style=ButtonStyle.success, emoji="⬆️")
+        confirm = Button(label="Upgrade", style=ButtonStyle.success, emoji="⬆️", row=0)
         confirm.callback = self._confirm_upgrade
         self.add_item(confirm)
 
-        back = Button(label="Back", style=ButtonStyle.secondary)
+        back = Button(label="Back", style=ButtonStyle.secondary, row=0)
         back.callback = self._cancel
         self.add_item(back)
 
+        if self.meta.engorged_heart:
+            heart_btn = Button(
+                label="❤️ Engorged Heart",
+                style=ButtonStyle.success if self._use_heart else ButtonStyle.secondary,
+                row=1,
+            )
+            heart_btn.callback = self._toggle_heart
+            self.add_item(heart_btn)
+
+        if self.meta.condensed_blood:
+            blood_btn = Button(
+                label="🩸 Condensed Blood",
+                style=ButtonStyle.success if self._use_blood else ButtonStyle.secondary,
+                row=1,
+            )
+            blood_btn.callback = self._toggle_blood
+            self.add_item(blood_btn)
+
+    async def _toggle_heart(self, interaction: Interaction):
+        await interaction.response.defer()
+        self._use_heart = not self._use_heart
+        embed = self._build_confirm_embed()
+        self._rebuild_confirm_view()
         await interaction.edit_original_response(embed=embed, view=self)
+
+    async def _toggle_blood(self, interaction: Interaction):
+        await interaction.response.defer()
+        self._use_blood = not self._use_blood
+        embed = self._build_confirm_embed()
+        self._rebuild_confirm_view()
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    # ------------------------------------------------------------------
 
     def _build_confirm_embed(self) -> discord.Embed:
         slot = self._selected_slot_obj
@@ -120,8 +169,8 @@ class UpgradeView(BaseView):
         matching_cost = cost.get("matching", 0)
         rift_cost = cost.get("rift", 0)
 
-        heart = bool(self.meta.engorged_heart)
-        blood = bool(self.meta.condensed_blood)
+        heart = self._use_heart
+        blood = self._use_blood
 
         suc, stay, down = ApexMechanics.upgrade_outcomes_display(
             slot.tier, heart, blood
@@ -157,7 +206,7 @@ class UpgradeView(BaseView):
             outcome_lines.append(f"⬇️ Downgrade (T{max(1, slot.tier - 1)}): **{down}%**")
         embed.add_field(name="📊 Outcomes", value="\n".join(outcome_lines), inline=False)
 
-        # Active meta shards
+        # Active meta shards (reflect current toggle state)
         if heart:
             embed.add_field(
                 name="❤️ Engorged Heart",
@@ -190,8 +239,8 @@ class UpgradeView(BaseView):
         matching_cost = cost.get("matching", 0)
         rift_cost = cost.get("rift", 0)
 
-        heart = bool(self.meta.engorged_heart)
-        blood = bool(self.meta.condensed_blood)
+        heart = self._use_heart
+        blood = self._use_blood
 
         # Attempt shard deduction
         paid = await self.bot.database.apex.deduct_upgrade_cost(
@@ -212,7 +261,7 @@ class UpgradeView(BaseView):
             await interaction.edit_original_response(embed=error_embed, view=self)
             return
 
-        # Consume meta shards
+        # Consume only the meta shards the player chose to use
         if heart:
             await self.bot.database.apex.modify_meta_shard(
                 self.user_id, self.server_id, "engorged_heart", -1
@@ -266,7 +315,7 @@ class UpgradeView(BaseView):
                 inline=False,
             )
 
-        # Add "Done" button to navigate back to soul stone
+        # "Done" button returns to soul stone
         self.clear_items()
         done_btn = Button(label="Done", style=ButtonStyle.secondary)
         done_btn.callback = self._return_to_soul_stone
