@@ -20,6 +20,14 @@ from core.combat.mobgen.modifier_data import (
     RARE_TIERED_MOD_NAMES,
     make_modifier,
 )
+from core.character.passive_data import (
+    _ARMOR_PASSIVE_DESC,
+    _CELESTIAL_PASSIVE_DESC,
+    _CORRUPTED_DESC,
+    _INFERNAL_PASSIVE_DESC,
+    _VOID_PASSIVE_DESC,
+    _WEAPON_PASSIVE_DESC,
+)
 from core.images import TAVERN_KEEPER
 from core.slayer.mechanics import SLAYER_PASSIVE_DEFS, SLAYER_PASSIVE_NAMES
 
@@ -65,15 +73,27 @@ class General(commands.Cog, name="general"):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # ------------------------------------------------------------------
+    #  HELPER: Format a {key: description} passive dict
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _format_passive_descs(passives: dict[str, str]) -> str:
+        lines = []
+        for key, desc in passives.items():
+            name = key.title()
+            lines.append(f"**{name}**: {desc}")
+        return "\n".join(lines)
+
+    # ------------------------------------------------------------------
     #  HELPER: Weapon Tiers Generation
     # ------------------------------------------------------------------
     def _generate_weapon_details(self) -> str:
         output = ""
-        for defn in WEAPON_PASSIVE_DEFS.values():
+        for key, defn in WEAPON_PASSIVE_DEFS.items():
             output += f"__**{defn.display_name}**__\n"
             for idx, label in enumerate(defn.tier_labels):
-                val = defn.description(idx + 1)
-                output += f"`T{idx+1}` **{label}**: {val}\n"
+                tier = idx + 1
+                desc = _WEAPON_PASSIVE_DESC.get(f"{key}_{tier}", defn.description(tier))
+                output += f"`T{tier}` **{label}**: {desc}\n"
             output += "\n"
         return output
 
@@ -209,14 +229,7 @@ class General(commands.Cog, name="general"):
             embed.title = "⚔️ Weapon Passives"
             infernal_text = (
                 "\n**🔥 Infernal Passives (Engram):**\n"
-                "**Soulreap**: Restore HP to full after every successful encounter.\n"
-                "**Inverted Edge**: At combat start, swap weapon Attack and Defence.\n"
-                "**Gilded Hunger**: Gain Attack equal to 10% of weapon rarity.\n"
-                "**Cursed Precision**: +20% Crit Chance. Your critical damage is unlucky.\n"
-                "**Diabolic Pact**: At combat start, lose 90% maximum HP and double your Attack.\n"
-                "**Perdition**: On miss, deal 75% of your weapon Attack.\n"
-                "**Voracious**: On hit, gain a voracity stack. Each stack increases crit chance by 5 and resets voracity on crit.\n"
-                "**Last Rites**: Critical hits deal an additional 5% of the enemy's current HP."
+                + self._format_passive_descs(_INFERNAL_PASSIVE_DESC)
             )
             embed.description = self._generate_weapon_details() + infernal_text
             content_added = True
@@ -226,14 +239,7 @@ class General(commands.Cog, name="general"):
             passives = {k.title(): v for k, v in ACCESSORY_PASSIVE_DESCS.items()}
             void_text = (
                 "\n**⬛ Void Passives (Engram):**\n"
-                "**Entropy**: At combat start, 20% of weapon ATK is added to DEF and vice versa.\n"
-                "**Void Echo**: At combat start, 15% of weapon ATK is added to your accessory.\n"
-                "**Unravelling**: At combat start, reduce monster Defence by 20%.\n"
-                "**Void Gaze**: On crit, reduce monster ATK by 3% per stack (up to 30 stacks).\n"
-                "**Fracture**: On crit, 5% chance to instantly kill (does not work on Uber bosses).\n"
-                "**Nullfield**: 15% chance to completely absorb incoming damage.\n"
-                "**Eternal Hunger**: On hit, gain a hunger stack. At 10 stacks, deal 10% of monster max HP and heal to max HP.\n"
-                "**Oblivion**: On miss, deal 50% of your total ATK as damage."
+                + self._format_passive_descs(_VOID_PASSIVE_DESC)
             )
             embed.description = self._generate_scaling_details(passives, 10) + void_text
             content_added = True
@@ -254,19 +260,9 @@ class General(commands.Cog, name="general"):
             embed.title = "🛡️ Armor Passives"
             armor_text = (
                 "**Standard Passives:**\n"
-                "**Impregnable**: Raises your PDR cap from 80% to 90% during combat.\n"
-                "**Piety**: Attacks have a 10% chance to deal 7× damage.\n"
-                "**Transcendence**: On Combat Start, gain 20% of your total ATK and DEF as bonus ATK.\n"
-                "**Treasure Hunter**: +3% Special Drop Chance.\n"
-                "**Unlimited Wealth**: 20% chance to multiply Player Rarity by 5x (2x vs Bosses).\n"
-                "**Alchemist**: 30% chance to not consume a potion when using one in combat.\n\n"
-                "**🌌 Celestial Passives (Engram):**\n"
-                "**Celestial Ghostreaver**: Generate 50-200 Ward every turn.\n"
-                "**Celestial Glancing Blows**: Doubles Block Chance, Blocked hits deal 50% damage.\n"
-                "**Celestial Wind Dancer**: Triples Evasion Chance, but entirely disables your Helmet.\n"
-                "**Celestial Sanctity**: Enemies roll their final damage twice and apply the lower result.\n"
-                "**Celestial Vow**: Once per combat, survive a fatal blow at 1 HP and gain 50% Max HP as Ward.\n"
-                "**Celestial Fortress**: Gain +1% Percent Damage Reduction for every 5% missing HP."
+                + self._format_passive_descs(_ARMOR_PASSIVE_DESC)
+                + "\n\n**🌌 Celestial Passives (Engram):**\n"
+                + self._format_passive_descs(_CELESTIAL_PASSIVE_DESC)
             )
             embed.description = armor_text
             content_added = True
@@ -360,6 +356,21 @@ class General(commands.Cog, name="general"):
 
         elif category == "essence":
             embed.title = "💎 Essence Details"
+            _deity_display = {
+                "aphrodite": "💠 Essence of Aphrodite's Disciple",
+                "lucifer": "💠 Essence of Lucifer's Heir",
+                "gemini": "💠 Essence of Gemini's Lost Twin",
+                "neet": "💠 Essence of NEET's Voidling",
+            }
+            corrupted_lines = ["**— Corrupted Essences (permanent) —**\n"]
+            for deity in _deity_display:
+                corrupted_lines.append(f"**{_deity_display[deity]}**")
+                for slot in ("glove", "boot", "helmet"):
+                    key = (deity, slot)
+                    if key in _CORRUPTED_DESC:
+                        corrupted_lines.append(f"**{slot.title()}:** {_CORRUPTED_DESC[key]}")
+                corrupted_lines.append("")
+            corrupted_text = "\n".join(corrupted_lines).rstrip()
             embed.description = (
                 "Essences are applied to **Gloves**, **Boots**, and **Helmets**. "
                 "Each item has **3 regular slots** and **1 corrupted slot**.\n"
@@ -388,23 +399,7 @@ class General(commands.Cog, name="general"):
                 "Rerolls the stat values on all occupied regular essence slots. Types are preserved.\n\n"
                 "**✂️ Essence of Annulment**\n"
                 "Removes one random occupied regular essence slot.\n\n"
-                "**— Corrupted Essences (permanent) —**\n\n"
-                "**💠 Essence of Aphrodite's Disciple**\n"
-                "**Glove:** Your ward is considered broken whenever it is damaged.\n"
-                "**Boot:** Your equipment drop chance is lucky.\n"
-                "**Helmet:** Your ward cannot be forcibly disabled.\n\n"
-                "**💠 Essence of Lucifer's Heir**\n"
-                "**Glove:** Each attack deals bonus flat damage equal to 15% of your current ward pool.\n"
-                "**Boot:** Gold drops are increased by 10% per modifier on the monster, up to a maximum of +50%.\n"
-                "**Helmet:** When your ward is fully broken, gain 15% PDR for the remainder of that combat.\n\n"
-                "**💠 Essence of Gemini's Lost Twin**\n"
-                "**Glove:** Critical hits strike twice — the second strike deals 20–40% of the first hit's damage.\n"
-                "**Boot:** Pet drop chance is doubled (5% → 10% from normal enemies; 3% → 6% from bosses).\n"
-                "**Helmet:** Incoming damage is reduced by 20% then split evenly between ward and HP simultaneously.\n\n"
-                "**💠 Essence of NEET's Voidling**\n"
-                "**Glove:** Your accuracy is 0 — all attacks always miss.\n"
-                "**Boot:** Whenever you receive skilling resources during combat, gain them again.\n"
-                "**Helmet:** When you gain ward, gain twice the amount instead."
+                + corrupted_text
             )
             content_added = True
 

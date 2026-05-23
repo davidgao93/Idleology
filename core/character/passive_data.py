@@ -12,10 +12,10 @@ _WEAPON_PASSIVE_DESC: dict[str, str] = {
     "burning_5": "On equip: Gain 40% of total ATK as bonus ATK",
     # Poison family — Miss damage (×8% per tier)
     "poison_1": "On miss: Deal up to 8% of ATK as damage",
-    "poison_2": "On miss: Misses deals up to 16% of ATK as damage",
-    "poison_3": "On miss: Misses deals up to 24% of ATK as damage",
-    "poison_4": "On miss: Misses deals up to 32% of ATK as damage",
-    "poison_5": "On miss: Misses deals up to 40% of ATK as damage",
+    "poison_2": "On miss: Deal up to 16% of ATK as damage",
+    "poison_3": "On miss: Deal up to 24% of ATK as damage",
+    "poison_4": "On miss: Deal up to 32% of ATK as damage",
+    "poison_5": "On miss: Deal up to 40% of ATK as damage",
     # Debilitate family — DEF shred (×8% per tier)
     "debilitate_1": "Combat start: Enemy DEF -8%",
     "debilitate_2": "Combat start: Enemy DEF -16%",
@@ -135,7 +135,7 @@ _BOOT_PASSIVE_FUNCS: dict = {
 
 _HELMET_PASSIVE_FUNCS: dict = {
     "juggernaut": lambda l: f"Combat start: Gain {l * 4}% of total DEF as bonus ATK",
-    "insight": lambda l: f"On equip: Crit Dmg Multiplier +{l * 0.1:.1f}×)",
+    "insight": lambda l: f"On equip: Crit Dmg Multiplier +{l * 0.1:.1f}×",
     "volatile": lambda l: f"During combat: Deal {l * 100}% of Max HP as Dmg on ward break",
     "divine": lambda l: f"During combat: Converts {l * 100}% of Potion Overheal to Ward",
     "frenzy": lambda l: f"During combat: {l * 0.5:.1f}% increased damage per 1% missing HP",
