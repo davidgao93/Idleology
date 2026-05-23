@@ -105,8 +105,8 @@ class ApexMechanics:
         from core.combat.models import Monster
         from core.combat.mobgen.modifier_data import make_modifier
 
-        # Scale monster to player level + small overshoot for challenge
-        monster_level = max(50, player_level + random.randint(2, 8))
+        # Apex hunts are endgame content (unlock at 90): monsters sit well above the player
+        monster_level = max(100, player_level + random.randint(30, 50))
 
         # Stats: noticeably stronger than normal mobs at the same level
         hp_base = int(monster_level * 140 * random.uniform(0.9, 1.1))
@@ -372,25 +372,68 @@ class ApexMechanics:
     @staticmethod
     def get_extractable_passives(item) -> list[str]:
         """
-        Returns all passive names present on an item that are eligible for soul stone extraction.
-        item should be a Weapon/Armor/Accessory/Glove/Boot/Helmet dataclass.
-        """
-        candidates = []
+        Returns passives eligible for soul stone extraction — only at max rank.
 
-        def _add(passive_str: str | None) -> None:
+        Rank requirements per item type:
+          Weapon     — tier 5 suffix (e.g. "burning_5"); infernal passive has no tier → always eligible
+          Armor      — any rank (only 1 tier exists)
+          Accessory  — passive_lvl >= 10
+          Glove      — passive_lvl >= 5
+          Boot       — passive_lvl >= 6
+          Helmet     — passive_lvl >= 5
+        """
+        candidates: list[str] = []
+        item_type_name = type(item).__name__  # "Weapon", "Armor", etc.
+
+        def _add_if_eligible(passive_str: str | None) -> None:
             if not passive_str or passive_str in ("none", ""):
                 return
-            # Strip tier suffix from weapon passives (e.g. "burning_3" → "burning")
-            base = passive_str.rsplit("_", 1)[0] if "_" in passive_str else passive_str
-            if base.lower() in PASSIVE_SHARD_MAP or passive_str.lower() in PASSIVE_SHARD_MAP:
-                key = base.lower() if base.lower() in PASSIVE_SHARD_MAP else passive_str.lower()
-                if key not in candidates:
-                    candidates.append(key)
+            # Strip tier suffix to get the base lookup key
+            if "_" in passive_str:
+                base = passive_str.rsplit("_", 1)[0]
+            else:
+                base = passive_str
+            key = base.lower() if base.lower() in PASSIVE_SHARD_MAP else passive_str.lower()
+            if key in PASSIVE_SHARD_MAP and key not in candidates:
+                candidates.append(key)
 
-        # Extract from whatever passive slots the item has
-        for attr in ("passive", "p_passive", "u_passive", "infernal_passive",
-                     "celestial_passive", "void_passive"):
-            _add(getattr(item, attr, None))
+        if item_type_name == "Weapon":
+            for attr in ("passive", "p_passive", "u_passive"):
+                ps = getattr(item, attr, None)
+                if not ps or ps in ("none", ""):
+                    continue
+                # Weapon passives have a tier suffix — only accept tier 5
+                if "_" in ps:
+                    try:
+                        tier = int(ps.rsplit("_", 1)[1])
+                        if tier >= 5:
+                            _add_if_eligible(ps)
+                    except (ValueError, IndexError):
+                        pass
+            # Infernal passive has no tier suffix — always eligible if present
+            inf = getattr(item, "infernal_passive", None)
+            if inf and inf not in ("none", ""):
+                _add_if_eligible(inf)
+
+        elif item_type_name == "Armor":
+            # Armor passives have only one tier — always eligible
+            _add_if_eligible(getattr(item, "passive", None))
+
+        elif item_type_name == "Accessory":
+            if (getattr(item, "passive_lvl", 0) or 0) >= 10:
+                _add_if_eligible(getattr(item, "passive", None))
+
+        elif item_type_name == "Glove":
+            if (getattr(item, "passive_lvl", 0) or 0) >= 5:
+                _add_if_eligible(getattr(item, "passive", None))
+
+        elif item_type_name == "Boot":
+            if (getattr(item, "passive_lvl", 0) or 0) >= 6:
+                _add_if_eligible(getattr(item, "passive", None))
+
+        elif item_type_name == "Helmet":
+            if (getattr(item, "passive_lvl", 0) or 0) >= 5:
+                _add_if_eligible(getattr(item, "passive", None))
 
         return candidates
 

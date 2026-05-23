@@ -32,10 +32,10 @@ class Apex(commands.Cog, name="apex"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        # Level gate — Apex Hunts are endgame content
-        if existing_user["level"] < 50:
+        # Level gate — Apex Hunts are endgame content (unlocked at 90)
+        if existing_user["level"] < 90:
             return await interaction.response.send_message(
-                "⚠️ Apex Hunts unlock at **Level 50**.",
+                "⚠️ Apex Hunts unlock at **Level 90**.",
                 ephemeral=True,
             )
 

@@ -16,14 +16,14 @@ import discord
 
 from core.apex.data import ZONE_DEFS
 from core.apex.mechanics import ApexMechanics
-from core.apex.models import profile_from_db, shards_from_db, meta_shards_from_db
+from core.apex.models import profile_from_db, shards_from_db, meta_shards_from_db, soul_stone_from_db
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.economy.config import XP_LOSS_ON_DEFEAT
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
+from core.base_view import BaseView
 from core.combat.views.views import CombatView
-from core.images import APEX_HUB
 from core.models import Monster, Player
 
 
@@ -163,24 +163,16 @@ class ApexCombatView(CombatView):
         }
 
         embed = create_victory_embed(self.player, self.monster, reward_data, cfg=cfg)
-        await message.edit(embed=embed, view=None)
 
-        # Return to lobby
-        if self._return_view_factory:
-            try:
-                return_view = await self._return_view_factory()
-                lobby_embed = discord.Embed(
-                    title="Apex Hunt — Lobby",
-                    description="Your hunt is complete! Choose your next action.",
-                    color=0x9900CC,
-                )
-                lobby_embed.set_thumbnail(url=APEX_HUB)
-                new_msg = await message.channel.send(embed=lobby_embed, view=return_view)
-                return_view.message = new_msg
-            except Exception:
-                pass
-
-        await self._cleanup()
+        # Post-victory view lets the player challenge again or return to lobby.
+        # State is NOT cleared here — _PostApexView owns cleanup on action/timeout.
+        post_view = _PostApexView(
+            self.bot, self.user_id, self.server_id,
+            self.player.name, self.zone_key,
+        )
+        await message.edit(embed=embed, view=post_view)
+        post_view.message = message
+        self.stop()  # release this view without clearing active state
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -188,4 +180,131 @@ class ApexCombatView(CombatView):
 
     async def _cleanup(self):
         self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
+
+
+# ---------------------------------------------------------------------------
+# Post-victory routing view
+# ---------------------------------------------------------------------------
+
+
+class _PostApexView(BaseView):
+    """
+    Shown after an Apex victory.  Gives the player two choices:
+      • Challenge Again — same zone, fresh monster, consumes 1 charge
+      • Return to Lobby — rebuild the ApexLobbyView in-place
+    State is cleared when an action is taken or when this view times out.
+    BaseView.on_timeout handles clear_active + button removal automatically.
+    """
+
+    def __init__(self, bot, user_id: str, server_id: str, player_name: str, zone_key: str):
+        super().__init__(bot, user_id, server_id)
+        self.player_name = player_name
+        self.zone_key = zone_key
+        self._processing = False
+
+    @discord.ui.button(label="Challenge Again", style=discord.ButtonStyle.danger, emoji="⚔️", row=0)
+    async def challenge_again(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        # Re-check charges
+        profile_row = await self.bot.database.apex.get_or_create_profile(
+            self.user_id, self.server_id
+        )
+        profile = profile_from_db(profile_row)
+        charges, new_ts = ApexMechanics.calculate_charges(profile)
+        if new_ts != profile.last_charge_time:
+            await self.bot.database.apex.restore_charges(
+                self.user_id, self.server_id, charges, new_ts
+            )
+
+        if charges < 1:
+            secs = ApexMechanics.seconds_until_next_charge(profile)
+            h, rem = divmod(secs, 3600)
+            m = rem // 60
+            time_str = f"{h}h {m}m" if h > 0 else f"{m}m"
+            await interaction.edit_original_response(
+                content=f"⚠️ No hunt charges remaining. Next charge in **{time_str}**.",
+                embed=None,
+                view=None,
+            )
+            self.bot.state_manager.clear_active(self.user_id)
+            self.stop()
+            return
+
+        # Consume 1 charge
+        await self.bot.database.apex.consume_charge(self.user_id, self.server_id)
+
+        # Load fresh player + soul stone
+        from core.items.factory import load_player
+
+        user_row = await self.bot.database.users.get(self.user_id, self.server_id)
+        player = await load_player(self.user_id, user_row, self.bot.database)
+
+        ss_row = await self.bot.database.apex.get_or_create_soul_stone(
+            self.user_id, self.server_id
+        )
+        player.soul_stone = soul_stone_from_db(ss_row)
+
+        # Build a fresh apex monster from the same zone (different random pick)
+        apex_def = ApexMechanics.select_apex(self.zone_key)
+        monster = ApexMechanics.build_apex_monster(apex_def, player.level)
+
+        from core.combat.turns import engine
+
+        zone_log = ApexMechanics.apply_zone_modifier(player, monster, self.zone_key)
+        engine.apply_stat_effects(player, monster)
+        start_logs = engine.apply_combat_start_passives(player, monster)
+        if zone_log:
+            start_logs = {f"🌐 Zone — {ZONE_DEFS[self.zone_key].modifier_name}": zone_log, **start_logs}
+
+        zone = ZONE_DEFS[self.zone_key]
+        embed = combat_ui.create_combat_embed(
+            player, monster, start_logs,
+            title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
+        )
+
+        view = ApexCombatView(
+            self.bot, self.user_id, self.server_id,
+            player, monster, self.zone_key, start_logs,
+        )
+
+        await interaction.edit_original_response(embed=embed, view=view)
+        view.message = await interaction.original_response()
+        self.stop()
+
+    @discord.ui.button(label="Return to Lobby", style=discord.ButtonStyle.secondary, emoji="🏹", row=0)
+    async def return_to_lobby(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        from core.apex.views.lobby_view import ApexLobbyView, _build_lobby_embed
+
+        profile_row = await self.bot.database.apex.get_or_create_profile(
+            self.user_id, self.server_id
+        )
+        profile = profile_from_db(profile_row)
+        charges, new_ts = ApexMechanics.calculate_charges(profile)
+        if new_ts != profile.last_charge_time:
+            await self.bot.database.apex.restore_charges(
+                self.user_id, self.server_id, charges, new_ts
+            )
+            profile.hunt_charges = charges
+            profile.last_charge_time = new_ts
+
+        secs = ApexMechanics.seconds_until_next_charge(profile)
+        lobby_view = ApexLobbyView(
+            self.bot, self.user_id, self.server_id,
+            self.player_name, profile, charges,
+        )
+        lobby_embed = _build_lobby_embed(self.player_name, profile, charges, secs)
+        await interaction.edit_original_response(embed=lobby_embed, view=lobby_view)
+        lobby_view.message = await interaction.original_response()
         self.stop()

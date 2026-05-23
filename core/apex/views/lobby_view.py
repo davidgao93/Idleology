@@ -421,7 +421,7 @@ class ApexLobbyView(BaseView):
 
         view = SoulStoneView(
             self.bot, self.user_id, self.server_id,
-            player, parent=self,
+            player,
         )
 
         # Load soul stone data and build embed
@@ -439,14 +439,14 @@ class ApexLobbyView(BaseView):
         shards = shards_from_db(shards_row)
         meta = meta_shards_from_db(meta_row)
 
+        # Replace the lobby message in-place — no separate ephemeral
         embed = _build_soul_stone_embed(soul_stone, shards, meta, player.name)
-        msg = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        view.message = msg
+        await interaction.edit_original_response(embed=embed, view=view)
+        view.message = await interaction.original_response()
+        self.stop()  # lobby view is superseded; SoulStoneView has the "← Lobby" back button
 
     async def _close(self, interaction: Interaction):
         await interaction.response.defer()
         self.bot.state_manager.clear_active(self.user_id)
-        await interaction.edit_original_response(
-            content="Apex lobby closed.", embed=None, view=None
-        )
+        await interaction.delete_original_response()
         self.stop()

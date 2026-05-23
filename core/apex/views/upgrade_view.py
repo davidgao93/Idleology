@@ -33,10 +33,8 @@ class UpgradeView(BaseView):
         soul_stone: SoulStone,
         shards: ShardInventory,
         meta: MetaShardInventory,
-        *,
-        parent=None,
     ):
-        super().__init__(bot, parent=parent)
+        super().__init__(bot, user_id, server_id)
         self.player = player
         self.soul_stone = soul_stone
         self.shards = shards
@@ -200,10 +198,18 @@ class UpgradeView(BaseView):
             self.user_id, self.server_id, shard_type, matching_cost, rift_cost
         )
         if not paid:
-            await interaction.edit_original_response(
-                content="⚠️ Insufficient shards — upgrade cancelled.", embed=None, view=None
+            error_embed = discord.Embed(
+                title="⚠️ Insufficient Shards",
+                description="You don't have enough shards to attempt this upgrade.",
+                color=0xCC0000,
             )
-            self.stop()
+            error_embed.set_thumbnail(url=APEX_UPGRADE)
+            self.clear_items()
+            back_btn = Button(label="← Back", style=ButtonStyle.secondary)
+            back_btn.callback = self._return_to_soul_stone
+            self.add_item(back_btn)
+            self._processing = False
+            await interaction.edit_original_response(embed=error_embed, view=self)
             return
 
         # Consume meta shards
@@ -260,7 +266,42 @@ class UpgradeView(BaseView):
                 inline=False,
             )
 
-        await interaction.edit_original_response(embed=embed, view=None)
+        # Add "Done" button to navigate back to soul stone
+        self.clear_items()
+        done_btn = Button(label="Done", style=ButtonStyle.secondary)
+        done_btn.callback = self._return_to_soul_stone
+        self.add_item(done_btn)
+
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    # ------------------------------------------------------------------
+    # Navigation helpers
+    # ------------------------------------------------------------------
+
+    async def _return_to_soul_stone(self, interaction: Interaction):
+        """Rebuilds and transitions back to the SoulStoneView with fresh DB data."""
+        await interaction.response.defer()
+
+        from core.apex.models import soul_stone_from_db, shards_from_db, meta_shards_from_db
+        from core.apex.views.soul_stone_view import SoulStoneView, _build_soul_stone_embed
+
+        ss_row = await self.bot.database.apex.get_or_create_soul_stone(
+            self.user_id, self.server_id
+        )
+        shards_row = await self.bot.database.apex.get_or_create_shards(
+            self.user_id, self.server_id
+        )
+        meta_row = await self.bot.database.apex.get_or_create_meta_shards(
+            self.user_id, self.server_id
+        )
+        soul_stone = soul_stone_from_db(ss_row)
+        shards = shards_from_db(shards_row)
+        meta = meta_shards_from_db(meta_row)
+
+        view = SoulStoneView(self.bot, self.user_id, self.server_id, self.player)
+        embed = _build_soul_stone_embed(soul_stone, shards, meta, self.player.name)
+        await interaction.edit_original_response(embed=embed, view=view)
+        view.message = await interaction.original_response()
         self.stop()
 
     def build_embed(self) -> discord.Embed:
@@ -326,8 +367,4 @@ class UpgradeView(BaseView):
         return embed
 
     async def _cancel(self, interaction: Interaction):
-        await interaction.response.defer()
-        await interaction.edit_original_response(
-            content="Upgrade cancelled.", embed=None, view=None
-        )
-        self.stop()
+        await self._return_to_soul_stone(interaction)

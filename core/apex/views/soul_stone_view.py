@@ -2,6 +2,7 @@
 core/apex/views/soul_stone_view.py — Soul Stone management hub.
 
 Shows the three soul stone slots, active resonance, and routes to Imprint/Upgrade/Clear.
+All sub-views replace the current message in-place (no ephemeral pop-overs).
 """
 
 from __future__ import annotations
@@ -65,7 +66,6 @@ def _build_soul_stone_embed(
             inline=False,
         )
     else:
-        # Show hint for next resonance
         filled = [s for s in soul_stone.slots if not s.is_empty]
         if len(filled) < 3:
             embed.add_field(
@@ -111,13 +111,10 @@ def _build_soul_stone_embed(
 
 
 class SoulStoneView(BaseView):
-    """Hub view for soul stone management. Has Imprint, Upgrade, and Clear buttons."""
+    """Hub view for soul stone management. Has Imprint, Upgrade, Clear, and ← Lobby buttons."""
 
-    def __init__(self, bot, user_id: str, server_id: str, player, *, parent=None):
-        if parent:
-            super().__init__(bot, parent=parent)
-        else:
-            super().__init__(bot, user_id, server_id)
+    def __init__(self, bot, user_id: str, server_id: str, player):
+        super().__init__(bot, user_id, server_id)
         self.player = player
         self._processing = False
 
@@ -151,12 +148,12 @@ class SoulStoneView(BaseView):
         view = ImprintView(
             self.bot, self.user_id, self.server_id,
             self.player, soul_stone, shards, meta,
-            parent=self,
         )
         embed = await view.build_embed()
-        msg = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        view.message = msg
+        await interaction.edit_original_response(embed=embed, view=view)
+        view.message = await interaction.original_response()
         self._processing = False
+        self.stop()  # hand off; ImprintView will rebuild SoulStoneView on return
 
     @discord.ui.button(label="Upgrade", style=ButtonStyle.success, emoji="⬆️", row=0)
     async def upgrade_btn(self, interaction: Interaction, button: Button):
@@ -167,11 +164,11 @@ class SoulStoneView(BaseView):
         await interaction.response.defer()
         soul_stone, shards, meta = await self._load_data()
 
-        # Check if there's anything to upgrade
         filled = [s for s in soul_stone.slots if not s.is_empty and (s.tier or 0) < 5]
         if not filled:
+            # Error condition — ephemeral is acceptable here
             await interaction.followup.send(
-                "No slots available to upgrade (all empty or already Tier 5).",
+                "⚠️ No upgradeable slots (all are empty or already Tier 5).",
                 ephemeral=True,
             )
             self._processing = False
@@ -182,12 +179,12 @@ class SoulStoneView(BaseView):
         view = UpgradeView(
             self.bot, self.user_id, self.server_id,
             self.player, soul_stone, shards, meta,
-            parent=self,
         )
         embed = view.build_embed()
-        msg = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        view.message = msg
+        await interaction.edit_original_response(embed=embed, view=view)
+        view.message = await interaction.original_response()
         self._processing = False
+        self.stop()
 
     @discord.ui.button(label="Clear Slot", style=ButtonStyle.danger, emoji="🗑️", row=0)
     async def clear_btn(self, interaction: Interaction, button: Button):
@@ -200,15 +197,17 @@ class SoulStoneView(BaseView):
 
         filled = [(i + 1, s) for i, s in enumerate(soul_stone.slots) if not s.is_empty]
         if not filled:
-            await interaction.followup.send("All slots are already empty.", ephemeral=True)
+            await interaction.followup.send(
+                "⚠️ All slots are already empty.", ephemeral=True
+            )
             self._processing = False
             return
 
         view = _ClearSlotView(
-            self.bot, self.user_id, self.server_id, soul_stone, parent=self
+            self.bot, self.user_id, self.server_id, soul_stone, self.player
         )
         embed = discord.Embed(
-            title="Clear Soul Stone Slot",
+            title="🗑️ Clear Soul Stone Slot",
             description="Choose a slot to clear. **This action is free and permanent.**",
             color=0xCC0000,
         )
@@ -220,26 +219,60 @@ class SoulStoneView(BaseView):
                 value=f"{passive_display} T{slot.tier}",
                 inline=True,
             )
-        msg = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        view.message = msg
+        await interaction.edit_original_response(embed=embed, view=view)
+        view.message = await interaction.original_response()
         self._processing = False
+        self.stop()
 
     @discord.ui.button(label="Refresh", style=ButtonStyle.secondary, emoji="🔄", row=0)
     async def refresh_btn(self, interaction: Interaction, button: Button):
         await interaction.response.defer()
         soul_stone, shards, meta = await self._load_data()
-        embed = _build_soul_stone_embed(
-            soul_stone, shards, meta, self.player.name
-        )
+        embed = _build_soul_stone_embed(soul_stone, shards, meta, self.player.name)
         await interaction.edit_original_response(embed=embed, view=self)
+
+    @discord.ui.button(label="← Lobby", style=ButtonStyle.secondary, emoji="🏹", row=1)
+    async def lobby_btn(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        from core.apex.models import profile_from_db
+        from core.apex.views.lobby_view import ApexLobbyView, _build_lobby_embed
+
+        profile_row = await self.bot.database.apex.get_or_create_profile(
+            self.user_id, self.server_id
+        )
+        profile = profile_from_db(profile_row)
+        charges, new_ts = ApexMechanics.calculate_charges(profile)
+        if new_ts != profile.last_charge_time:
+            await self.bot.database.apex.restore_charges(
+                self.user_id, self.server_id, charges, new_ts
+            )
+            profile.hunt_charges = charges
+            profile.last_charge_time = new_ts
+
+        secs = ApexMechanics.seconds_until_next_charge(profile)
+        lobby_view = ApexLobbyView(
+            self.bot, self.user_id, self.server_id,
+            self.player.name, profile, charges,
+        )
+        lobby_embed = _build_lobby_embed(self.player.name, profile, charges, secs)
+        await interaction.edit_original_response(embed=lobby_embed, view=lobby_view)
+        lobby_view.message = await interaction.original_response()
+        self._processing = False
+        self.stop()
 
 
 class _ClearSlotView(BaseView):
     """Confirmation view for clearing a specific soul stone slot."""
 
-    def __init__(self, bot, user_id, server_id, soul_stone: SoulStone, parent=None):
-        super().__init__(bot, parent=parent)
+    def __init__(self, bot, user_id, server_id, soul_stone: SoulStone, player):
+        super().__init__(bot, user_id, server_id)
         self.soul_stone = soul_stone
+        self.player = player
         self._processing = False
 
         filled = [(i + 1, s) for i, s in enumerate(soul_stone.slots) if not s.is_empty]
@@ -253,8 +286,8 @@ class _ClearSlotView(BaseView):
             btn.callback = self._make_clear_callback(slot_num)
             self.add_item(btn)
 
-        cancel_btn = Button(label="Cancel", style=ButtonStyle.secondary)
-        cancel_btn.callback = self._cancel
+        cancel_btn = Button(label="← Back", style=ButtonStyle.secondary)
+        cancel_btn.callback = self._return_to_soul_stone
         self.add_item(cancel_btn)
 
     def _make_clear_callback(self, slot_num: int):
@@ -267,16 +300,43 @@ class _ClearSlotView(BaseView):
             await self.bot.database.apex.clear_slot(
                 self.user_id, self.server_id, slot_num
             )
-            await interaction.edit_original_response(
-                content=f"✅ Slot {slot_num} cleared.", embed=None, view=None
+            passive_display = self.soul_stone.slots[slot_num - 1].passive.replace("-", " ").replace("_", " ").title()
+
+            # Show result briefly, then offer to go back
+            self.clear_items()
+            done_btn = Button(label="Done", style=ButtonStyle.secondary)
+            done_btn.callback = self._return_to_soul_stone
+            self.add_item(done_btn)
+
+            result_embed = discord.Embed(
+                title="✅ Slot Cleared",
+                description=f"**Slot {slot_num}** ({passive_display}) has been cleared.",
+                color=0x00CC44,
             )
-            self.stop()
+            result_embed.set_thumbnail(url=APEX_SOUL_STONE)
+            await interaction.edit_original_response(embed=result_embed, view=self)
 
         return _callback
 
-    async def _cancel(self, interaction: Interaction):
+    async def _return_to_soul_stone(self, interaction: Interaction):
         await interaction.response.defer()
-        await interaction.edit_original_response(
-            content="Cancelled.", embed=None, view=None
+        from core.apex.models import soul_stone_from_db, shards_from_db, meta_shards_from_db
+
+        ss_row = await self.bot.database.apex.get_or_create_soul_stone(
+            self.user_id, self.server_id
         )
+        shards_row = await self.bot.database.apex.get_or_create_shards(
+            self.user_id, self.server_id
+        )
+        meta_row = await self.bot.database.apex.get_or_create_meta_shards(
+            self.user_id, self.server_id
+        )
+        soul_stone = soul_stone_from_db(ss_row)
+        shards = shards_from_db(shards_row)
+        meta = meta_shards_from_db(meta_row)
+
+        view = SoulStoneView(self.bot, self.user_id, self.server_id, self.player)
+        embed = _build_soul_stone_embed(soul_stone, shards, meta, self.player.name)
+        await interaction.edit_original_response(embed=embed, view=view)
+        view.message = await interaction.original_response()
         self.stop()
