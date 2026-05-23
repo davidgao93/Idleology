@@ -1,9 +1,8 @@
 import discord
-from discord import ButtonStyle, Interaction
+from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.images import LEADERBOARD_HUB
-
 
 class LeaderboardHubView(BaseView):
     def __init__(self, bot, user_id: str, active_tab: str = "levels"):
