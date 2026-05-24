@@ -73,7 +73,9 @@ CREATE TABLE IF NOT EXISTS `users` (
   `stat_invest_hp` INTEGER NOT NULL DEFAULT 0,
   `stat_invest_gold` INTEGER NOT NULL DEFAULT 0,
   `rune_of_regret` INTEGER NOT NULL DEFAULT 0,
-  `development_contracts` INTEGER NOT NULL DEFAULT 0
+  `development_contracts` INTEGER NOT NULL DEFAULT 0,
+  `dc_crafted_today` INTEGER NOT NULL DEFAULT 0,
+  `last_dc_craft_date` TEXT DEFAULT NULL
 );
 
 

@@ -226,6 +226,13 @@ def step_seed_plots(conn: sqlite3.Connection) -> None:
     print(f"    {developed} plot(s) marked developed (common_ground bonus assigned)")
 
 
+def step_alter_users_dc_limit(conn: sqlite3.Connection) -> None:
+    print("\n[7] Adding DC daily-limit columns to 'users' …")
+    existing = _columns(conn, "users")
+    _add_column(conn, "users", "dc_crafted_today",   "INTEGER NOT NULL DEFAULT 0", existing)
+    _add_column(conn, "users", "last_dc_craft_date",  "TEXT DEFAULT NULL",         existing)
+
+
 # ---------------------------------------------------------------------------
 # Verification report
 # ---------------------------------------------------------------------------
@@ -303,6 +310,7 @@ def migrate(db_path: str) -> None:
         step_create_settlement_plots(conn)
         step_assign_plot_indices(conn)
         step_seed_plots(conn)
+        step_alter_users_dc_limit(conn)
 
         conn.execute("COMMIT")
         print("\n✅ Migration committed successfully.")

@@ -20,19 +20,246 @@ from core.settlement.constants import (
     BUILD_MESSAGES,
     BUILDING_INFO,
     CONSTRUCTION_COSTS,
+    RESOURCE_DISPLAY_NAMES,
 )
 from core.settlement.mechanics import SettlementMechanics
 from core.settlement.models import Building, Plot, Settlement
 from core.settlement.plots import (
     META_BUILDINGS,
     PLOT_BONUS_TABLE,
-    can_develop,
+    SHRINE_BUILDING_TYPES,
     get_effective_max_workers,
     roll_plot_bonus,
 )
 from core.settlement.views.research import RESEARCHABLE_BUILDINGS
 
 from .base import SettlementBaseView
+
+# ---------------------------------------------------------------------------
+# Building detail helpers  (output / effect display for PlotDetailView)
+# ---------------------------------------------------------------------------
+
+_OUTPUT_DISPLAY: dict[str, tuple[str, str]] = {
+    "timber":           ("🪵", "Timber"),
+    "stone":            ("🪨", "Stone"),
+    "market_gold":      ("💰", "Gold"),
+    "companion_cookie": ("🐾", "Companion XP"),
+    "war_camp_stamina": ("⚔️", "Combat Stamina"),
+}
+
+_NO_WORKERS = "_No workers assigned — assign workers to begin production._"
+
+
+def _gen_effectiveness(
+    building_type: str,
+    plot_bonus_type: str | None,
+    adj: dict,
+    extra_rate: float = 0.0,
+) -> tuple[float, float]:
+    """
+    Returns (effectiveness_multiplier, effective_base_rate_addition) for a
+    generator building.  Both values are additive on top of base values.
+    """
+    eff = 1.0
+    if plot_bonus_type:
+        b = PLOT_BONUS_TABLE.get(plot_bonus_type, {})
+        applies = b.get("applies_to", "none")
+        val = b.get("value", 0.0)
+        if applies == "generator_mult":
+            eff += val
+        elif applies == "trade_mult" and building_type in ("market", "war_camp"):
+            eff += val
+    eff += adj.get("production_mult", 0.0)
+    return eff, extra_rate  # extra_rate only used by war_camp
+
+
+def _conv_effectiveness(plot_bonus_type: str | None, adj: dict) -> float:
+    eff = 1.0
+    if plot_bonus_type:
+        b = PLOT_BONUS_TABLE.get(plot_bonus_type, {})
+        if b.get("applies_to") == "converter_mult":
+            eff += b.get("value", 0.0)
+    eff += adj.get("converter_mult", 0.0)
+    return eff
+
+
+def _append_building_detail_fields(
+    embed: discord.Embed,
+    b,
+    plot_bonus_type: str | None,
+    adj: dict,
+) -> None:
+    """
+    Appends an 'About' description field and an 'Output / Effect' field
+    to *embed* for an occupied plot.  Operates in-place.
+    """
+    # ── About ───────────────────────────────────────────────────────────
+    if b.is_meta:
+        desc_text = META_BUILDINGS.get(b.building_type, {}).get("description", "")
+    else:
+        desc_text = BUILDING_INFO.get(b.building_type, "")
+    if desc_text:
+        embed.add_field(name="📖 About", value=desc_text, inline=False)
+
+    # ── Output / Effect ─────────────────────────────────────────────────
+    if b.is_meta:
+        _append_meta_effect(embed, b)
+        return
+
+    b_data = SettlementMechanics.BUILDINGS.get(b.building_type, {})
+    category = b_data.get("type", "")
+
+    if category == "generator":
+        _append_generator(embed, b, b_data, plot_bonus_type, adj)
+    elif category == "converter":
+        _append_converter(embed, b, b_data, plot_bonus_type, adj)
+    elif category == "passive":
+        _append_passive_effect(embed, b)
+    # "special" (black_market, hatchery) and "core" (town_hall) — no output field
+
+
+def _append_generator(embed, b, b_data: dict, plot_bonus_type, adj: dict) -> None:
+    workers = b.workers_assigned
+    base_rate: float = b_data["base_rate"]
+    output_key: str = b_data["output"]
+
+    if b.building_type == "war_camp":
+        base_rate += adj.get("war_camp_rate", 0.0)
+
+    eff, _ = _gen_effectiveness(b.building_type, plot_bonus_type, adj)
+    rate = base_rate * b.tier * workers * eff
+
+    emoji, label = _OUTPUT_DISPLAY.get(
+        output_key, ("📦", output_key.replace("_", " ").title())
+    )
+
+    if workers == 0:
+        value = _NO_WORKERS
+    elif output_key == "war_camp_stamina":
+        value = f"{emoji} **{label}:** ~{rate:.4f}/hr"
+    elif output_key == "companion_cookie":
+        value = f"{emoji} **{label}:** ~{rate:.2f}/hr"
+    elif output_key == "market_gold":
+        value = f"{emoji} **{label}:** ~{int(rate):,}/hr"
+    else:
+        value = f"{emoji} **{label}:** ~{rate:.1f}/hr"
+
+    if workers > 0 and eff > 1.0:
+        value += f"\n_×{eff:.2f} effectiveness from bonuses_"
+
+    embed.add_field(name="📊 Output", value=value, inline=False)
+
+
+def _append_converter(embed, b, b_data: dict, plot_bonus_type, adj: dict) -> None:
+    workers = b.workers_assigned
+
+    if workers == 0:
+        embed.add_field(
+            name=f"📊 Conversions (T{b.tier})",
+            value=_NO_WORKERS,
+            inline=False,
+        )
+        return
+
+    eff = _conv_effectiveness(plot_bonus_type, adj)
+    rates = SettlementMechanics.get_converter_rates(b.building_type, b.tier, workers)
+    if not rates:
+        return
+
+    lines = []
+    for raw_key, refined_key, base_hr in rates:
+        adjusted = int(base_hr * eff)
+        raw_name = RESOURCE_DISPLAY_NAMES.get(raw_key, raw_key.replace("_", " ").title())
+        ref_name = RESOURCE_DISPLAY_NAMES.get(refined_key, refined_key.replace("_", " ").title())
+        lines.append(f"• {raw_name} → {ref_name}: ~**{adjusted:,}**/hr")
+
+    if eff > 1.0:
+        lines.append(f"_×{eff:.2f} effectiveness from bonuses_")
+
+    embed.add_field(
+        name=f"📊 Conversions (T{b.tier} — {len(rates)} active slot{'s' if len(rates) != 1 else ''})",
+        value="\n".join(lines),
+        inline=False,
+    )
+
+
+def _append_passive_effect(embed, b) -> None:
+    workers = b.workers_assigned
+    btype = b.building_type
+
+    if workers == 0:
+        embed.add_field(
+            name="⚡ Current Effect",
+            value="_No workers assigned — passive is inactive._",
+            inline=False,
+        )
+        return
+
+    if btype == "barracks":
+        pct = workers / 100
+        value = f"+**{pct:.1f}%** ATK & DEF"
+    elif btype == "temple":
+        pct = workers * 5 / 100
+        value = f"+**{pct:.1f}%** Propagate follower gain"
+    elif btype == "apothecary":
+        pct = workers * 0.02
+        value = f"+**{pct:.1f}%** Potion healing"
+    elif btype in SHRINE_BUILDING_TYPES:
+        value = f"Passive sigil drop bonus — scales with Tier **T{b.tier}**"
+    else:
+        value = "Passive effect active."
+
+    embed.add_field(name="⚡ Current Effect", value=value, inline=False)
+
+
+def _append_meta_effect(embed, b) -> None:
+    meta_data = META_BUILDINGS.get(b.building_type, {})
+    workers = b.workers_assigned
+    btype = b.building_type
+
+    if btype == "watchtower":
+        # Passive — no workers needed
+        embed.add_field(
+            name="⚙️ Adjacency Effect",
+            value=(
+                "Each regular building's worker cap is increased by **+1% per its own tier** "
+                "(T1 → +1 worker per 100, T5 → +5). Global, passive."
+            ),
+            inline=False,
+        )
+        return
+
+    if workers == 0:
+        embed.add_field(
+            name="⚙️ Adjacency Effect",
+            value="_No workers assigned — adjacency effect is inactive._",
+            inline=False,
+        )
+        return
+
+    if btype == "servants_quarters":
+        # 0.002 per worker → display as %: workers * 0.2
+        bonus = min(20.0, workers * 0.2)
+        value = f"+**{bonus:.0f}%** output to adjacent production buildings"
+    elif btype == "supply_depot":
+        value = "+**15%** conversion rate to adjacent converter buildings"
+    elif btype == "grand_cathedral":
+        value = "Adjacent shrine buildings get **×2** worker cap"
+    elif btype == "foremans_post":
+        value = "+**25%** output to all adjacent buildings"
+    elif btype == "shrine_garden":
+        value = "+**15%** effectiveness to adjacent shrine buildings"
+    elif btype == "encampment":
+        value = "Adjacent War Camps: +**0.005** Combat Stamina/hr per War Camp worker"
+    elif btype == "apothecary_annex":
+        # 0.0004 per worker → display as %: workers * 0.04
+        bonus = workers * 0.04
+        value = f"Adjacent Apothecary: +**{bonus:.2f}%** additional healing"
+    else:
+        value = meta_data.get("description", "Meta building effect active.")
+
+    embed.add_field(name="⚙️ Adjacency Effect", value=value, inline=False)
+
 
 # ---------------------------------------------------------------------------
 # Worker management modal (plot-aware)
@@ -85,7 +312,7 @@ class PlotWorkerModal(ui.Modal, title="Manage Workforce"):
 
             await pv.bot.database.settlement.assign_workers(building.id, val)
 
-            # Refresh local state
+            # Refresh settlement state
             pv.parent.settlement = await pv.bot.database.settlement.get_settlement(
                 pv.user_id, pv.parent.server_id
             )
@@ -93,6 +320,16 @@ class PlotWorkerModal(ui.Modal, title="Manage Workforce"):
                 if b.id == building.id:
                     pv.building = b
                     break
+
+            # Recompute adjacency bonuses — worker counts on meta buildings
+            # may have changed, updating what they contribute to neighbours.
+            adj_bonuses = SettlementMechanics.calculate_adjacency_bonuses(
+                pv.parent.plots, pv.parent.settlement.buildings
+            )
+            pv.adj_bonus = adj_bonuses.get(pv.plot.plot_index, {})
+
+            # Rebuild buttons so the worker count label is current
+            pv._build_buttons()
 
             await interaction.response.edit_message(
                 embed=pv.build_embed(), view=pv
@@ -135,6 +372,9 @@ class PlotDetailView(SettlementBaseView):
         self.plot = plot
         self.building = building
         self.parent = parent      # SettlementDashboardView
+        # server_id is a static guild ID — store it directly so BaseView's
+        # assignment in __init__ is overridden cleanly (no property needed).
+        self.server_id = parent.server_id
         self.adj_bonus = adj_bonus or {}
         self._processing = False
         self._build_buttons()
@@ -143,10 +383,6 @@ class PlotDetailView(SettlementBaseView):
     # Passthrough properties (so child views like BlackMarketView that
     # expect a dashboard-like parent still work when given a PlotDetailView)
     # ------------------------------------------------------------------
-
-    @property
-    def server_id(self) -> str:
-        return self.parent.server_id
 
     @property
     def settlement(self):
@@ -221,6 +457,9 @@ class PlotDetailView(SettlementBaseView):
                 desc += f"\n🌺 **Shrine Garden:** +{adj['shrine_boost']:.0%} effectiveness"
             embed.description = desc
 
+            # Description + quantitative output / effect
+            _append_building_detail_fields(embed, b, p.bonus_type, self.adj_bonus)
+
             # Upgrade cost preview
             if not b.is_meta and b.tier < 5:
                 cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
@@ -256,31 +495,16 @@ class PlotDetailView(SettlementBaseView):
         self.add_item(back)
 
     def _add_develop_button(self):
-        developed_set = {
-            pl.plot_index for pl in self.parent.plots if pl.is_developed
-        }
-        can_dev = can_develop(self.plot.plot_index, developed_set)
-        total_developed = len(developed_set)
+        total_developed = sum(1 for pl in self.parent.plots if pl.is_developed)
         dc_cost = total_developed + 1
-
         btn = ui.Button(
             label=f"Develop Plot ({dc_cost} Development Contract{'s' if dc_cost != 1 else ''})",
-            style=ButtonStyle.success if can_dev else ButtonStyle.secondary,
+            style=ButtonStyle.success,
             emoji="🏗️",
-            disabled=not can_dev,
             row=0,
         )
         btn.callback = self._develop_plot
         self.add_item(btn)
-
-        if not can_dev:
-            note = ui.Button(
-                label="Must be adjacent to a developed plot",
-                style=ButtonStyle.secondary,
-                disabled=True,
-                row=1,
-            )
-            self.add_item(note)
 
     def _add_build_buttons(self):
         btn_build = ui.Button(
@@ -471,14 +695,9 @@ class PlotDetailView(SettlementBaseView):
         bonus_label = bonus_data.get("label", bonus_type)
         self._processing = False
         self._build_buttons()
-        await interaction.edit_original_response(
-            content=(
-                f"✅ Plot {self.plot.plot_index} developed!\n"
-                f"Terrain Bonus: {bonus_emoji} **{bonus_label}**"
-            ),
-            embed=self.build_embed(),
-            view=self,
-        )
+        embed = self.build_embed()
+        embed.title = f"📍 Plot {self.plot.plot_index} — ✅ Developed!"
+        await interaction.edit_original_response(content=None, embed=embed, view=self)
 
     # ------------------------------------------------------------------
     # Callbacks — build regular building
@@ -651,11 +870,9 @@ class _DemolishConfirmView(SettlementBaseView):
         self.origin.building = None
         self.origin._build_buttons()
 
-        await interaction.response.edit_message(
-            content=f"✅ **{b.name}** has been demolished.",
-            embed=self.origin.build_embed(),
-            view=self.origin,
-        )
+        embed = self.origin.build_embed()
+        embed.title = f"📍 Plot {self.origin.plot.plot_index} — ✅ {b.name} Demolished"
+        await interaction.response.edit_message(content=None, embed=embed, view=self.origin)
         self.stop()
 
     async def _cancel(self, interaction: Interaction):
@@ -811,10 +1028,10 @@ class MetaBuildingConstructionView(SettlementBaseView):
         self.return_to.building = new_building
         self.return_to._build_buttons()
 
+        embed = self.return_to.build_embed()
+        embed.title = f"📍 Plot {self.plot_index} — ✅ {data['label']} Constructed!"
         await interaction.edit_original_response(
-            content=f"✅ **{data['label']}** constructed on Plot {self.plot_index}!",
-            embed=self.return_to.build_embed(),
-            view=self.return_to,
+            content=None, embed=embed, view=self.return_to
         )
         self.stop()
 

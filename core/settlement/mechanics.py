@@ -123,20 +123,29 @@ class SettlementMechanics:
             for b in buildings
         )
 
-        # Initialise a result entry for every building that has a plot
+        # Initialise a result entry for every building that has a plot.
+        # Meta buildings are excluded from the Watchtower global cap — they
+        # should not be affected by other meta buildings at all.
         result: dict[int, dict] = {}
         for b in buildings:
             if b.plot_index is not None:
                 result[b.plot_index] = {
-                    "production_mult": 0.0,
-                    "converter_mult":  0.0,
-                    "war_camp_rate":   0.0,
-                    "shrine_cap_x2":   False,
-                    "has_watchtower":  has_watchtower,
-                    "shrine_boost":    0.0,
+                    "production_mult":  0.0,
+                    "converter_mult":   0.0,
+                    "war_camp_rate":    0.0,
+                    "shrine_cap_x2":    False,
+                    "has_watchtower":   has_watchtower and not b.is_meta,
+                    "shrine_boost":     0.0,
+                    "apothecary_boost": 0.0,
                 }
 
-        # Process each active meta building and apply its adjacency bonus
+        # Build a quick lookup so we can skip meta-building targets below.
+        building_by_plot: dict[int, "Building"] = {
+            b.plot_index: b for b in buildings if b.plot_index is not None
+        }
+
+        # Process each active meta building and apply its adjacency bonus.
+        # Rule: meta buildings never affect other meta buildings.
         for meta_b in buildings:
             if not meta_b.is_meta or meta_b.plot_index is None:
                 continue
@@ -157,8 +166,14 @@ class SettlementMechanics:
                 if adj_idx == 0 or adj_idx not in result:
                     continue  # TH or plot without a building
 
+                # Meta buildings do not receive bonuses from other meta buildings
+                adj_b = building_by_plot.get(adj_idx)
+                if adj_b and adj_b.is_meta:
+                    continue
+
                 if meta_type == "servants_quarters":
-                    bonus = min(0.20, meta_b.workers_assigned / 10 * 0.01) * ley_amp
+                    # +2% per 10 workers, max +20% (100 workers = full 20%)
+                    bonus = min(0.20, meta_b.workers_assigned * 0.002) * ley_amp
                     result[adj_idx]["production_mult"] += bonus
 
                 elif meta_type == "supply_depot":
@@ -177,6 +192,12 @@ class SettlementMechanics:
                     # Boosts all adjacent buildings' output
                     result[adj_idx]["production_mult"] += 0.25 * ley_amp
                     result[adj_idx]["converter_mult"]  += 0.25 * ley_amp
+
+                elif meta_type == "apothecary_annex":
+                    # +0.04% healing per worker here (0.0004 per worker in decimal)
+                    result[adj_idx]["apothecary_boost"] += (
+                        meta_b.workers_assigned * 0.0004 * ley_amp
+                    )
 
         return result
 

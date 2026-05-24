@@ -91,6 +91,7 @@ class SettlementDashboardView(SettlementBaseView):
             value=f"{len(developed_set)}/20",
             inline=True,
         )
+
         embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["town_hall"])
         return embed
 
@@ -256,8 +257,10 @@ class SettlementDashboardView(SettlementBaseView):
 
     async def open_town_hall(self, interaction: Interaction):
         dc_count = await self.bot.database.users.get_development_contracts(self.user_id)
+        dc_crafted_today = await self.bot.database.users.get_dc_crafted_today(self.user_id)
         view = TownHallView(
-            self.bot, self.user_id, self.settlement, self, dc_count=dc_count
+            self.bot, self.user_id, self.settlement, self,
+            dc_count=dc_count, dc_crafted_today=dc_crafted_today,
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
@@ -425,17 +428,7 @@ class SettlementDashboardView(SettlementBaseView):
             inline=False,
         )
 
-        has_positive = (
-            any(
-                isinstance(v, (int, float)) and v > 0
-                for v in display_changes.values()
-            )
-            or war_camp_stamina > 0
-            or dc_earned > 0
-        )
-        content = "✅ **Collection Complete**" if has_positive else None
-
-        await interaction.edit_original_response(content=content, embed=embed, view=self)
+        await interaction.edit_original_response(content=None, embed=embed, view=self)
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()

@@ -254,13 +254,13 @@ class BuildConstructionView(SettlementBaseView):
             )
             self.return_to.building = new_building
             self.return_to._build_buttons()
+            embed = self.return_to.build_embed()
+            embed.title = (
+                f"✅ Plot {self.plot_index} — "
+                f"{b_type.replace('_', ' ').title()} Constructed!"
+            )
             await interaction.edit_original_response(
-                content=(
-                    f"✅ **{b_type.replace('_', ' ').title()}** "
-                    f"constructed on Plot {self.plot_index}!"
-                ),
-                embed=self.return_to.build_embed(),
-                view=self.return_to,
+                content=None, embed=embed, view=self.return_to
             )
         else:
             self.parent._rebuild_ui()

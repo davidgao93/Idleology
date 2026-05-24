@@ -41,36 +41,67 @@ POSITION_TO_PLOT: dict[tuple[int, int], int] = {
 POSITION_TO_PLOT[TH_POSITION] = 0
 
 # ---------------------------------------------------------------------------
-# Building short codes (2 chars, shown inside the grid cells)
+# Building short codes (3 chars × 2 lines, shown inside the grid cells)
+# Each tuple is (top_line, bot_line) — both exactly 3 ASCII characters.
 # ---------------------------------------------------------------------------
 
-BUILDING_CODES: dict[str, str] = {
-    "logging_camp":     "LC",
-    "quarry":           "QY",
-    "foundry":          "FD",
-    "sawmill":          "SM",
-    "reliquary":        "RQ",
-    "market":           "MK",
-    "barracks":         "BK",
-    "temple":           "TP",
-    "apothecary":       "AP",
-    "black_market":     "BM",
-    "companion_ranch":  "CR",
-    "hatchery":         "HT",
-    "celestial_shrine": "CS",
-    "infernal_shrine":  "IS",
-    "void_shrine":      "VS",
-    "twin_shrine":      "TS",
-    "war_camp":         "WC",
+BUILDING_CODES: dict[str, tuple[str, str]] = {
+    "logging_camp":      ("LOG", "CMP"),
+    "quarry":            ("QUA", "RRY"),
+    "foundry":           ("FOU", "NDY"),
+    "sawmill":           ("SAW", "MIL"),
+    "reliquary":         ("REL", "QRY"),
+    "market":            ("MAR", "KET"),
+    "barracks":          ("BAR", "RCK"),
+    "temple":            ("TEM", "PLE"),
+    "apothecary":        ("APO", "ECY"),
+    "black_market":      ("BLK", "MKT"),
+    "companion_ranch":   ("COM", "RCH"),
+    "hatchery":          ("HAT", "CHR"),
+    "celestial_shrine":  ("CEL", "SHR"),
+    "infernal_shrine":   ("INF", "SHR"),
+    "void_shrine":       ("VOI", "SHR"),
+    "twin_shrine":       ("TWN", "SHR"),
+    "war_camp":          ("WAR", "CMP"),
     # Meta buildings
-    "servants_quarters": "SQ",
-    "grand_cathedral":   "GC",
-    "supply_depot":      "SD",
-    "watchtower":        "WT",
-    "foremans_post":     "FP",
-    "shrine_garden":     "SG",
-    "encampment":        "EC",
-    "apothecary_annex":  "AA",
+    "servants_quarters": ("SRV", "QTR"),
+    "grand_cathedral":   ("GRD", "CTH"),
+    "supply_depot":      ("SUP", "DPT"),
+    "watchtower":        ("WAT", "TWR"),
+    "foremans_post":     ("FOR", "PST"),
+    "shrine_garden":     ("SHR", "GDN"),
+    "encampment":        ("ENC", "AMP"),
+    "apothecary_annex":  ("APO", "ANX"),
+}
+
+# 1:1 emoji mapping — used in the dashboard legend
+BUILDING_EMOJIS: dict[str, str] = {
+    "logging_camp":      "🪵",
+    "quarry":            "🪨",
+    "foundry":           "⚒️",
+    "sawmill":           "🪚",
+    "reliquary":         "🏺",
+    "market":            "💰",
+    "barracks":          "🛡️",
+    "temple":            "⛪",
+    "apothecary":        "⚗️",
+    "black_market":      "🕵️",
+    "companion_ranch":   "🐾",
+    "hatchery":          "🐣",
+    "celestial_shrine":  "✨",
+    "infernal_shrine":   "🌋",
+    "void_shrine":       "🔮",
+    "twin_shrine":       "♊",
+    "war_camp":          "⚔️",
+    # Meta buildings
+    "servants_quarters": "🏠",
+    "grand_cathedral":   "🕍",
+    "supply_depot":      "📦",
+    "watchtower":        "🗼",
+    "foremans_post":     "📋",
+    "shrine_garden":     "🌺",
+    "encampment":        "🏕️",
+    "apothecary_annex":  "💊",
 }
 
 # Building types considered "shrines" for Grand Cathedral and Sacred Ground
@@ -180,8 +211,8 @@ META_BUILDINGS: dict[str, dict] = {
         "cost": {"gold": 15_000, "timber": 500, "stone": 500},
         "max_workers": 100,
         "description": (
-            "Adjacent production buildings gain +1% effectiveness per 10 workers "
-            "here (max +20%)."
+            "Adjacent production buildings gain +2% effectiveness per 10 workers "
+            "here (max +20% at full capacity)."
         ),
         "effect": "production_boost",
     },
@@ -201,7 +232,7 @@ META_BUILDINGS: dict[str, dict] = {
         "cost": {"gold": 25_000, "timber": 1_000, "stone": 1_000},
         "max_workers": 100,
         "description": (
-            "Adjacent converter buildings are 15% more effective per worker."
+            "Adjacent converter buildings are 15% more effective."
         ),
         "effect": "converter_boost",
     },
@@ -211,8 +242,8 @@ META_BUILDINGS: dict[str, dict] = {
         "cost": {"gold": 20_000, "timber": 800, "stone": 1_200},
         "max_workers": 0,
         "description": (
-            "All buildings gain +1% max worker cap per tier. "
-            "Passive — no workers needed."
+            "Each regular building's worker cap is increased by +1% per its own tier "
+            "(T1 → +1%, T5 → +5%). Passive — no workers needed."
         ),
         "effect": "global_cap",
     },
@@ -238,8 +269,8 @@ META_BUILDINGS: dict[str, dict] = {
         "cost": {"gold": 20_000, "timber": 1_000, "stone": 500},
         "max_workers": 100,
         "description": (
-            "Adjacent War Camps generate +0.005 additional stamina per "
-            "worker per hour."
+            "Adjacent War Camps generate +0.005 additional Combat Stamina "
+            "per War Camp worker per hour."
         ),
         "effect": "war_camp_boost",
     },
@@ -334,39 +365,58 @@ def render_grid(
     building_by_plot: dict[int, str],   # plot_index → building_type
 ) -> str:
     """
-    Renders the 5×5 settlement grid as a monospace string suitable for a
-    Discord code block.
+    Renders the 5×5 settlement grid in a monospace code block.
 
-    Cell legend (4 chars each):
-      "    "   dead corner
-      " TH "   Town Hall (centre)
-      " 01 "   undeveloped plot (shows number)
-      " ·· "   developed, empty
-      " LC "   developed with building (2-char code)
+    Each grid row produces TWO text lines; cell width is 3 columns
+    (no padding — 3 ASCII content chars exactly).
+
+      Dead corner   both lines: "   "
+      Town Hall     top: "TWN"   bot: "HAL"
+      Undeveloped   top: "---"   bot: "P##"   (e.g. "P01")
+      Empty plot    both lines: "   "
+      Building      top: TOP     bot: BOT     (from BUILDING_CODES tuple)
     """
-    rows: list[str] = []
+    line_pairs: list[tuple[str, str]] = []
     for r in range(5):
-        cells: list[str] = []
+        top_cells: list[str] = []
+        bot_cells: list[str] = []
         for c in range(5):
             pos = (r, c)
             if pos in DEAD_CORNERS:
-                cells.append("    ")
+                top_cells.append("   ")
+                bot_cells.append("   ")
             elif pos == TH_POSITION:
-                cells.append(" TH ")
+                top_cells.append("TWN")
+                bot_cells.append("HAL")
             else:
                 idx = POSITION_TO_PLOT[pos]
                 if idx not in developed_indices:
-                    cells.append(f" {idx:02d} ")
+                    top_cells.append("---")
+                    bot_cells.append(f"P{idx:02d}")
                 else:
                     b_type = building_by_plot.get(idx)
-                    if b_type:
-                        code = BUILDING_CODES.get(b_type, "??")
-                        cells.append(f" {code} ")
+                    if b_type and b_type in BUILDING_CODES:
+                        t, b = BUILDING_CODES[b_type]
+                        top_cells.append(t)
+                        bot_cells.append(b)
                     else:
-                        cells.append(" ·· ")
-        rows.append("│" + "│".join(cells) + "│")
+                        top_cells.append("   ")
+                        bot_cells.append("   ")
+        line_pairs.append((
+            "│" + "│".join(top_cells) + "│",
+            "│" + "│".join(bot_cells) + "│",
+        ))
 
-    sep = "├────┼────┼────┼────┼────┤"
-    top = "┌────┬────┬────┬────┬────┐"
-    bot = "└────┴────┴────┴────┴────┘"
-    return "```\n" + top + "\n" + f"\n{sep}\n".join(rows) + "\n" + bot + "\n```"
+    top = "┌───┬───┬───┬───┬───┐"
+    sep = "├───┼───┼───┼───┼───┤"
+    bot = "└───┴───┴───┴───┴───┘"
+
+    lines = [top]
+    for i, (top_line, bot_line) in enumerate(line_pairs):
+        if i > 0:
+            lines.append(sep)
+        lines.append(top_line)
+        lines.append(bot_line)
+    lines.append(bot)
+
+    return "```\n" + "\n".join(lines) + "\n```"

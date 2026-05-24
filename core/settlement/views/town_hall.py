@@ -14,8 +14,11 @@ _DC_TIMBER =   500
 _DC_STONE  =   500
 
 
+_DC_DAILY_CAP = 10
+
+
 class DCCraftModal(ui.Modal, title="Craft Development Contracts"):
-    """Modal that lets the player specify how many DCs to craft (1–10)."""
+    """Modal that lets the player specify how many DCs to craft (up to daily cap)."""
 
     quantity = ui.TextInput(
         label="Quantity (1–10)",
@@ -40,6 +43,22 @@ class DCCraftModal(ui.Modal, title="Craft Development Contracts"):
             )
 
         pv = self.parent_view
+
+        # --- Daily cap check ---
+        crafted_today = await pv.bot.database.users.get_dc_crafted_today(pv.user_id)
+        remaining_today = _DC_DAILY_CAP - crafted_today
+        if remaining_today <= 0:
+            return await interaction.response.send_message(
+                f"You've reached the **{_DC_DAILY_CAP} DC** daily craft limit. Come back tomorrow!",
+                ephemeral=True,
+            )
+        if qty > remaining_today:
+            return await interaction.response.send_message(
+                f"You can only craft **{remaining_today}** more DC(s) today "
+                f"(daily limit: {_DC_DAILY_CAP}).",
+                ephemeral=True,
+            )
+
         cost_gold   = qty * _DC_GOLD
         cost_timber = qty * _DC_TIMBER
         cost_stone  = qty * _DC_STONE
@@ -65,20 +84,21 @@ class DCCraftModal(ui.Modal, title="Craft Development Contracts"):
         )
         await pv.bot.database.users.modify_gold(pv.user_id, -cost_gold)
         await pv.bot.database.users.modify_development_contracts(pv.user_id, qty)
+        await pv.bot.database.users.add_dc_crafted_today(pv.user_id, qty)
 
         # Update local state
-        pv.settlement.timber -= cost_timber
-        pv.settlement.stone  -= cost_stone
-        pv.dc_count          += qty
+        pv.settlement.timber  -= cost_timber
+        pv.settlement.stone   -= cost_stone
+        pv.dc_count           += qty
+        pv.dc_crafted_today   += qty
 
-        await interaction.response.edit_message(
-            content=(
-                f"✅ Crafted **{qty}× Development Contract{'s' if qty != 1 else ''}**! "
-                f"You now have **{pv.dc_count}**."
-            ),
-            embed=pv.build_embed(),
-            view=pv,
+        embed = pv.build_embed()
+        embed.title = (
+            f"✅ Town Hall — Crafted {qty}× "
+            f"Development Contract{'s' if qty != 1 else ''}!"
         )
+        embed.colour = discord.Color.green()
+        await interaction.response.edit_message(content=None, embed=embed, view=pv)
 
 
 class TownHallView(SettlementBaseView):
@@ -89,11 +109,13 @@ class TownHallView(SettlementBaseView):
         settlement,
         parent_view,
         dc_count: int = 0,
+        dc_crafted_today: int = 0,
     ):
         super().__init__(bot, user_id)
         self.settlement = settlement
         self.parent = parent_view
         self.dc_count = dc_count
+        self.dc_crafted_today = dc_crafted_today
         self._processing = False
         self.setup_ui()
 
@@ -132,12 +154,14 @@ class TownHallView(SettlementBaseView):
         )
 
         # DC crafting info
+        remaining_today = max(0, _DC_DAILY_CAP - self.dc_crafted_today)
         embed.add_field(
             name="📜 Craft Development Contracts",
             value=(
                 f"Cost per DC: 💰 {_DC_GOLD:,}g | "
                 f"🪵 {_DC_TIMBER:,} Timber | "
                 f"🪨 {_DC_STONE:,} Stone\n"
+                f"Daily crafts remaining: **{remaining_today}/{_DC_DAILY_CAP}**\n"
                 "Use DCs to develop new settlement plots."
             ),
             inline=False,

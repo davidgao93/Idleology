@@ -315,6 +315,38 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def get_dc_crafted_today(self, user_id: str) -> int:
+        """Returns how many DCs have been crafted today; auto-resets on a new calendar day."""
+        from datetime import date
+        today = date.today().isoformat()
+        async with self.connection.execute(
+            "SELECT dc_crafted_today, last_dc_craft_date FROM users WHERE user_id = ?",
+            (user_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return 0
+        crafted, last_date = row
+        return int(crafted) if last_date == today else 0
+
+    async def add_dc_crafted_today(self, user_id: str, qty: int) -> None:
+        """Increments dc_crafted_today; resets the counter automatically on a new day."""
+        from datetime import date
+        today = date.today().isoformat()
+        await self.connection.execute(
+            """
+            UPDATE users
+            SET dc_crafted_today  = CASE
+                    WHEN last_dc_craft_date = ? THEN dc_crafted_today + ?
+                    ELSE ?
+                END,
+                last_dc_craft_date = ?
+            WHERE user_id = ?
+            """,
+            (today, qty, qty, today, user_id),
+        )
+        await self.connection.commit()
+
     # ---------------------------------------------------------
     # Combat Stamina
     # ---------------------------------------------------------
