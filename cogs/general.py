@@ -7,10 +7,6 @@ from discord.ext import commands
 from core.character.profile_hub import ProfileHubView
 from core.character.profile_ui import ProfileBuilder
 from core.combat.calc.calcs import (
-    ACCESSORY_PASSIVE_DESCS,
-    BOOT_PASSIVE_DESCS,
-    GLOVE_PASSIVE_DESCS,
-    HELMET_PASSIVE_DESCS,
     WEAPON_PASSIVE_DEFS,
 )
 from core.combat.mobgen.modifier_data import (
@@ -21,9 +17,13 @@ from core.combat.mobgen.modifier_data import (
     make_modifier,
 )
 from core.character.passive_data import (
+    _ACCESSORY_PASSIVE_FUNCS,
     _ARMOR_PASSIVE_DESC,
+    _BOOT_PASSIVE_FUNCS,
     _CELESTIAL_PASSIVE_DESC,
     _CORRUPTED_DESC,
+    _GLOVE_PASSIVE_FUNCS,
+    _HELMET_PASSIVE_FUNCS,
     _INFERNAL_PASSIVE_DESC,
     _VOID_PASSIVE_DESC,
     _WEAPON_PASSIVE_DESC,
@@ -80,7 +80,7 @@ class General(commands.Cog, name="general"):
         lines = []
         for key, desc in passives.items():
             name = key.title()
-            lines.append(f"**{name}**: {desc}")
+            lines.append(f"**{name}** - {desc}")
         return "\n".join(lines)
 
     # ------------------------------------------------------------------
@@ -93,7 +93,7 @@ class General(commands.Cog, name="general"):
             for idx, label in enumerate(defn.tier_labels):
                 tier = idx + 1
                 desc = _WEAPON_PASSIVE_DESC.get(f"{key}_{tier}", defn.description(tier))
-                output += f"`T{tier}` **{label}**: {desc}\n"
+                output += f"`T{tier}` **{label}** - {desc}\n"
             output += "\n"
         return output
 
@@ -137,7 +137,6 @@ class General(commands.Cog, name="general"):
             "armor",
             "glove",
             "boot",
-            "uber",
             "companion",
             "slayer",
             "codex",
@@ -236,7 +235,7 @@ class General(commands.Cog, name="general"):
 
         elif category == "accessory":
             embed.title = "📿 Accessory Passive Scaling (Max Lvl 10)"
-            passives = {k.title(): v for k, v in ACCESSORY_PASSIVE_DESCS.items()}
+            passives = {k.title(): v for k, v in _ACCESSORY_PASSIVE_FUNCS.items()}
             void_text = (
                 "\n**⬛ Void Passives (Engram):**\n"
                 + self._format_passive_descs(_VOID_PASSIVE_DESC)
@@ -246,13 +245,13 @@ class General(commands.Cog, name="general"):
 
         elif category == "glove":
             embed.title = "🧤 Glove Passive Scaling (Max Lvl 5)"
-            passives = {k.title(): v for k, v in GLOVE_PASSIVE_DESCS.items()}
+            passives = {k.title(): v for k, v in _GLOVE_PASSIVE_FUNCS.items()}
             embed.description = self._generate_scaling_details(passives, 5)
             content_added = True
 
         elif category == "boot":
             embed.title = "👢 Boot Passive Scaling (Max Lvl 6)"
-            passives = {k.title(): v for k, v in BOOT_PASSIVE_DESCS.items()}
+            passives = {k.title(): v for k, v in _BOOT_PASSIVE_FUNCS.items()}
             embed.description = self._generate_scaling_details(passives, 6)
             content_added = True
 
@@ -269,7 +268,7 @@ class General(commands.Cog, name="general"):
 
         elif category == "helmet":
             embed.title = "🪖 Helmet Passive Scaling (Max Lvl 5)"
-            passives = {k.title(): v for k, v in HELMET_PASSIVE_DESCS.items()}
+            passives = {k.title(): v for k, v in _HELMET_PASSIVE_FUNCS.items()}
             embed.description = self._generate_scaling_details(passives, 5)
             content_added = True
 
@@ -302,30 +301,6 @@ class General(commands.Cog, name="general"):
                 if k in SLAYER_PASSIVE_NAMES
             }
             embed.description = self._generate_scaling_details(slayer_passives, 5)
-            content_added = True
-
-        elif category == "uber":
-            embed.title = "⚔️ Uber Boss Modifier Details"
-            uber_text = (
-                "Each Uber boss carries **fixed signature modifiers** plus one random boss modifier.\n\n"
-                "**Aphrodite, Celestial Apex**\n"
-                "**Radiant Protection**: Reduces all incoming damage by 60%.\n\n"
-                "**Lucifer, Infernal Sovereign**\n"
-                "**Infernal Protection**: Reduces all incoming damage by 60%.\n"
-                "**Hell's Fury**: Deals triple damage on every hit.\n\n"
-                "**NEET, the Void Sovereign**\n"
-                "**Void Protection**: Reduces all incoming damage by 60%.\n"
-                "**Void Aura**: Siphons 1.5% of your ATK and DEF each round, regardless of hit.\n\n"
-                "**Castor & Pollux, Bound Sovereigns**\n"
-                "**Balanced Protection**: Reduces all incoming damage by 60%.\n"
-                "**Balanced Strikes**: Every even round, a second coordinated blow lands at 50% damage — bypasses ward and cannot be blocked or evaded.\n\n"
-                "**Random Boss Modifier (one per encounter)**\n"
-                "**Overwhelming**: Always deals double damage; −25 to hit rolls.\n"
-                "**Inevitable**: Always hits; deals 50% damage.\n"
-                "**Sundering**: 25% of each hit bypasses your ward directly to HP.\n"
-                "**Unerring**: Accuracy is lucky.\n"
-            )
-            embed.description = uber_text
             content_added = True
 
         elif category == "codex":
@@ -368,7 +343,7 @@ class General(commands.Cog, name="general"):
                 for slot in ("glove", "boot", "helmet"):
                     key = (deity, slot)
                     if key in _CORRUPTED_DESC:
-                        corrupted_lines.append(f"**{slot.title()}:** {_CORRUPTED_DESC[key]}")
+                        corrupted_lines.append(f"**{slot.title()}** - {_CORRUPTED_DESC[key]}")
                 corrupted_lines.append("")
             corrupted_text = "\n".join(corrupted_lines).rstrip()
             embed.description = (

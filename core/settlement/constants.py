@@ -54,6 +54,7 @@ BUILDING_INFO = {
     "infernal_forge": "Passive: Increases chance to find Infernal Sigils from Lucifer.",
     "void_sanctum": "Passive: Increases chance to find Void Sigils from NEET.",
     "twin_shrine": "Passive: Increases chance to find Gemini Sigils from the Gemini Twins.",
+    "war_camp": "Generates Combat Stamina over time (0.01 per worker/hr). Stamina can exceed the normal cap of 10, but automatic regen is paused while at or above 10.",
 }
 
 # Construction costs (used by BuildConstructionView)
@@ -70,6 +71,7 @@ CONSTRUCTION_COSTS = {
     "black_market": {"gold": 50000, "timber": 50000, "stone": 50000},
     "companion_ranch": {"gold": 30000, "timber": 30000, "stone": 30000},
     "hatchery":        {"gold": 30000, "timber": 30000, "stone": 30000},
+    "war_camp":        {"gold": 20000, "timber": 1500, "stone": 1500},
     "celestial_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
     "infernal_forge": {"gold": 10000000, "timber": 100000, "stone": 100000},
     "void_sanctum": {"gold": 10000000, "timber": 100000, "stone": 100000},
@@ -90,6 +92,7 @@ SPECIAL_MAP = {
     "apothecary": "life_root",
     "companion_ranch": "life_root",
     "hatchery":        "life_root",
+    "war_camp":        "magma_core",
     "celestial_shrine": "celestial_stone",
     "infernal_forge": "infernal_cinder",
     "void_sanctum": "void_crystal",

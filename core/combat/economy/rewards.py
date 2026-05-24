@@ -138,6 +138,10 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         results["xp"] *= 2
         results["gold"] *= 2
 
+    # Stat investment gold bonus (0.1% per point)
+    if getattr(player, "stat_invest_gold", 0) > 0:
+        gold_award = int(gold_award * (1 + player.stat_invest_gold * 0.001))
+
     # Accessory Passive: Prosper — doubles final gold after all other modifiers
     if acc_passive == "Prosper":
         double_gold_chance = acc_lvl * 0.10

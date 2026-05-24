@@ -42,6 +42,23 @@ SLAYER_PASSIVE_DEFS: dict[str, Callable[[int], str]] = {
 }
 
 
+BOSS_TASK_PREFIX = "BOSS:"
+
+# Level-gated boss hunt targets.  ``key`` is appended to BOSS_TASK_PREFIX and
+# used to match monsters in combat; ``name`` is the display name shown to the player.
+BOSS_TASK_CATALOG = [
+    {"key": "aphrodite", "name": "Aphrodite", "min_level": 20},
+    {"key": "lucifer",   "name": "Lucifer",   "min_level": 30},
+    {"key": "gemini",    "name": "Gemini",    "min_level": 40},
+    {"key": "NEET",      "name": "NEET",      "min_level": 50},
+]
+
+# Slayer XP awarded per boss kill (10× normal kill XP of 500).
+BOSS_TASK_XP_PER_KILL = 5_000
+# Flat XP bonus on boss task completion.
+BOSS_TASK_COMPLETION_XP = 20_000
+
+
 class SlayerMechanics:
     PASSIVE_POOL = [
         "slayer_dmg",
@@ -64,6 +81,11 @@ class SlayerMechanics:
             xp -= _slayer_xp_threshold(lvl)
             lvl += 1
         return lvl
+
+    @staticmethod
+    def available_boss_tasks(player_level: int) -> list[dict]:
+        """Returns the boss-task catalog entries the player can currently access."""
+        return [b for b in BOSS_TASK_CATALOG if player_level >= b["min_level"]]
 
     @staticmethod
     def generate_task(player_level: int) -> Tuple[str, int]:

@@ -316,6 +316,23 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def add_stamina_uncapped(self, user_id: str, amount: float) -> None:
+        """Adds stamina without enforcing the normal 10-unit cap. Used by War Camp."""
+        await self.connection.execute(
+            "UPDATE users SET combat_stamina = combat_stamina + ? WHERE user_id = ?",
+            (amount, user_id),
+        )
+        await self.connection.commit()
+
+    async def consume_stamina(self, user_id: str) -> None:
+        """Decrements combat_stamina by 1, flooring at 0. Does NOT enforce the 10-unit cap,
+        so over-cap stamina (e.g. 12.5) drains correctly (→ 11.5) without being truncated."""
+        await self.connection.execute(
+            "UPDATE users SET combat_stamina = MAX(0, combat_stamina - 1) WHERE user_id = ?",
+            (user_id,),
+        )
+        await self.connection.commit()
+
     async def set_stamina_regen_time(self, user_id: str) -> None:
         """Stamps last_stamina_regen to NOW, starting the hourly regen clock."""
         await self.connection.execute(
@@ -444,3 +461,137 @@ class UserRepository:
         )
         async with rows as cursor:
             return await cursor.fetchall()
+
+    # ---------------------------------------------------------
+    # Hard Combat Mode
+    # ---------------------------------------------------------
+
+    async def get_hard_mode(self, user_id: str) -> bool:
+        cursor = await self.connection.execute(
+            "SELECT hard_mode FROM users WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return bool(row[0]) if row else False
+
+    async def toggle_hard_mode(self, user_id: str, status: bool) -> None:
+        val = 1 if status else 0
+        await self.connection.execute(
+            "UPDATE users SET hard_mode = ? WHERE user_id = ?", (val, user_id)
+        )
+        await self.connection.commit()
+
+    # ---------------------------------------------------------
+    # Combat Streak
+    # ---------------------------------------------------------
+
+    async def get_combat_streak(self, user_id: str) -> int:
+        cursor = await self.connection.execute(
+            "SELECT combat_streak FROM users WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else 0
+
+    async def increment_combat_streak(self, user_id: str) -> int:
+        """Increments and returns the new streak value."""
+        await self.connection.execute(
+            "UPDATE users SET combat_streak = combat_streak + 1 WHERE user_id = ?",
+            (user_id,),
+        )
+        await self.connection.commit()
+        cursor = await self.connection.execute(
+            "SELECT combat_streak FROM users WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else 1
+
+    async def reset_combat_streak(self, user_id: str) -> None:
+        await self.connection.execute(
+            "UPDATE users SET combat_streak = 0 WHERE user_id = ?", (user_id,)
+        )
+        await self.connection.commit()
+
+    # ---------------------------------------------------------
+    # Stat Investment (passive_points allocation)
+    # ---------------------------------------------------------
+
+    async def get_stat_investments(self, user_id: str) -> dict:
+        """Returns how many passive_points are invested per stat category."""
+        cursor = await self.connection.execute(
+            "SELECT stat_invest_atk, stat_invest_def, stat_invest_hp, stat_invest_gold "
+            "FROM users WHERE user_id = ?",
+            (user_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return {"atk": 0, "def": 0, "hp": 0, "gold": 0}
+        return {"atk": row[0], "def": row[1], "hp": row[2], "gold": row[3]}
+
+    async def invest_stat_point(self, user_id: str, server_id: str, stat: str) -> bool:
+        """
+        Spends 1 passive_point and allocates it to `stat` (atk/def/hp/gold).
+        Returns False if no passive_points available.
+        """
+        col = f"stat_invest_{stat}"
+        cursor = await self.connection.execute(
+            "SELECT passive_points FROM users WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        row = await cursor.fetchone()
+        if not row or row[0] <= 0:
+            return False
+        await self.connection.execute(
+            f"UPDATE users SET passive_points = passive_points - 1, {col} = {col} + 1 "
+            "WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+        return True
+
+    async def refund_stat_point(self, user_id: str, server_id: str, stat: str) -> bool:
+        """
+        Uses a Rune of Regret: removes 1 from `stat` investment, returns 1 passive_point.
+        Returns False if no points invested in that stat, or no rune available.
+        """
+        col = f"stat_invest_{stat}"
+        cursor = await self.connection.execute(
+            f"SELECT {col}, rune_of_regret FROM users WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        row = await cursor.fetchone()
+        if not row or row[0] <= 0 or row[1] <= 0:
+            return False
+        await self.connection.execute(
+            f"UPDATE users SET {col} = {col} - 1, passive_points = passive_points + 1, "
+            "rune_of_regret = rune_of_regret - 1 "
+            "WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+        return True
+
+    # ---------------------------------------------------------
+    # Pending stat packages (level-up choice)
+    # ---------------------------------------------------------
+
+    async def get_pending_packages(self, user_id: str, server_id: str):
+        """Returns the pending stat package JSON (list of 3 dicts) or None."""
+        import json
+
+        cursor = await self.connection.execute(
+            "SELECT pending_stat_packages FROM users WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        row = await cursor.fetchone()
+        if row and row[0]:
+            return json.loads(row[0])
+        return None
+
+    async def set_pending_packages(self, user_id: str, server_id: str, packages) -> None:
+        import json
+
+        val = json.dumps(packages) if packages else None
+        await self.connection.execute(
+            "UPDATE users SET pending_stat_packages = ? WHERE user_id = ? AND server_id = ?",
+            (val, user_id, server_id),
+        )
+        await self.connection.commit()

@@ -405,6 +405,16 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     except Exception:
         player.hematurgy_passives = {}
 
+    # --- Fetch Stat Investments (passive_point allocations) ---
+    try:
+        stat_inv = await database.users.get_stat_investments(user_id)
+        player.stat_invest_atk = stat_inv["atk"]
+        player.stat_invest_def = stat_inv["def"]
+        player.stat_invest_hp = stat_inv["hp"]
+        player.stat_invest_gold = stat_inv["gold"]
+    except Exception:
+        pass  # defaults to 0 from Player dataclass
+
     # 3. Pre-compute flat stat cache (base + gear + essences + barracks).
     # Must be done after all gear is attached and before any combat begins.
     player.compute_flat_stats()

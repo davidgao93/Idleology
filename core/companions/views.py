@@ -305,15 +305,47 @@ class CompanionDetailView(BaseView):
         embed.set_footer(text=f"Species: {self.comp.species}")
         return embed
 
+    @staticmethod
+    def _companion_slot_cap(level: int, ascension: int) -> int:
+        """Returns the active-companion slot cap based on player progression.
+
+        Level 40  → 1 slot
+        Level 80  → 2 slots
+        Ascension 20+ → 3 slots
+        """
+        if ascension >= 20:
+            return 3
+        if level >= 80:
+            return 2
+        if level >= 40:
+            return 1
+        return 0  # Companions not yet unlocked
+
     async def toggle_active(self, interaction: Interaction):
+        # Fetch current player level/ascension to determine the slot cap
+        user_row = await self.bot.database.users.get(
+            self.user_id, str(interaction.guild.id)
+        )
+        player_level = user_row[4] if user_row else 1
+        player_ascension = user_row[15] if user_row else 0
+        max_slots = self._companion_slot_cap(player_level, player_ascension)
+
         new_state = not self.comp.is_active
+        if new_state and max_slots == 0:
+            return await interaction.response.send_message(
+                "Companions unlock at Level 40!", ephemeral=True
+            )
+
         success = await self.bot.database.companions.set_active(
-            self.user_id, self.comp.id, new_state
+            self.user_id, self.comp.id, new_state, max_active=max_slots
         )
 
         if not success:
+            cap_str = (
+                "1 slot (Level 40), 2 slots (Level 80), 3 slots (Ascension 20+)"
+            )
             return await interaction.response.send_message(
-                "You already have 3 active companions!", ephemeral=True
+                f"You've reached your companion slot cap!\n{cap_str}", ephemeral=True
             )
 
         if new_state:

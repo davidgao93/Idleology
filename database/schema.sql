@@ -64,7 +64,15 @@ CREATE TABLE IF NOT EXISTS `users` (
   `curio_puzzle_boxes` INTEGER NOT NULL DEFAULT 0,
   `mirage_runes_imperfect` INTEGER NOT NULL DEFAULT 0,
   `mirage_runes_perfected` INTEGER NOT NULL DEFAULT 0,
-  `unidentified_blueprint` INTEGER NOT NULL DEFAULT 0
+  `unidentified_blueprint` INTEGER NOT NULL DEFAULT 0,
+  `hard_mode` INTEGER NOT NULL DEFAULT 0,
+  `combat_streak` INTEGER NOT NULL DEFAULT 0,
+  `pending_stat_packages` TEXT DEFAULT NULL,
+  `stat_invest_atk` INTEGER NOT NULL DEFAULT 0,
+  `stat_invest_def` INTEGER NOT NULL DEFAULT 0,
+  `stat_invest_hp` INTEGER NOT NULL DEFAULT 0,
+  `stat_invest_gold` INTEGER NOT NULL DEFAULT 0,
+  `rune_of_regret` INTEGER NOT NULL DEFAULT 0
 );
 
 

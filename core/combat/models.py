@@ -335,6 +335,12 @@ class Player:
     # Soul Stone — loaded at session start, None if not yet created
     soul_stone: Optional[Any] = None  # core.apex.models.SoulStone | None
 
+    # Stat investments (passive_point allocations, 0.1% bonus per point)
+    stat_invest_atk: int = 0
+    stat_invest_def: int = 0
+    stat_invest_hp: int = 0
+    stat_invest_gold: int = 0
+
     # Per-combat transient state — reset via reset_combat_state()
     cs: CombatState = field(default_factory=CombatState)
 
@@ -783,6 +789,9 @@ class Player:
         )
         if gluttony_pct > 0:
             base = int(base * (1 + gluttony_pct / 100))
+        # Stat investment bonus (0.1% per point)
+        if self.stat_invest_hp > 0:
+            base = int(base * (1 + self.stat_invest_hp * 0.001))
         return max(1, base)
 
     def _get_companion_bonus(self, p_type: str) -> float:
@@ -909,6 +918,10 @@ class Player:
         if comp_pct > 0:
             total += int(flat * (comp_pct / 100))
 
+        # Stat investment bonus (0.1% per point, scales off flat)
+        if self.stat_invest_atk > 0:
+            total += int(flat * (self.stat_invest_atk * 0.001))
+
         # Wrath tome: converts % of flat DEF into bonus ATK
         wrath_pct = self.get_tome_bonus("wrath")
         if wrath_pct > 0:
@@ -946,6 +959,10 @@ class Player:
         comp_pct = self._get_companion_bonus("def")
         if comp_pct > 0:
             total += int(flat * (comp_pct / 100))
+
+        # Stat investment bonus (0.1% per point, scales off flat)
+        if self.stat_invest_def > 0:
+            total += int(flat * (self.stat_invest_def * 0.001))
 
         # Bastion tome: converts % of flat ATK into bonus DEF
         bastion_pct = self.get_tome_bonus("bastion")

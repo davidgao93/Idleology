@@ -159,11 +159,57 @@ async def _apply_slayer_rewards(
     monster: Monster,
     reward_data: dict,
 ) -> None:
-    if monster.is_boss:
-        return
+    from core.slayer.mechanics import (
+        BOSS_TASK_COMPLETION_XP,
+        BOSS_TASK_PREFIX,
+        BOSS_TASK_XP_PER_KILL,
+    )
 
     s_profile = await bot.database.slayer.get_profile(user_id, server_id)
-    if s_profile["active_task_species"] != monster.species:
+    task_species = s_profile["active_task_species"]
+
+    # ── Boss task branch ────────────────────────────────────────────────────
+    if monster.is_boss and task_species and task_species.startswith(BOSS_TASK_PREFIX):
+        boss_key = task_species[len(BOSS_TASK_PREFIX):]
+        # Match by checking if the boss key appears anywhere in the monster name
+        if boss_key.lower() not in monster.name.lower():
+            return  # Wrong boss
+
+        slayer_lines = []
+        per_kill_xp = BOSS_TASK_XP_PER_KILL
+        await bot.database.slayer.add_rewards(user_id, server_id, xp=per_kill_xp, points=0)
+        slayer_lines.append(f"💀 **Boss Kill!** +{per_kill_xp:,} Slayer XP")
+
+        new_prog = s_profile["active_task_progress"] + 1
+        if new_prog >= s_profile["active_task_amount"]:
+            await bot.database.slayer.add_rewards(
+                user_id, server_id, xp=BOSS_TASK_COMPLETION_XP, points=s_profile["active_task_amount"]
+            )
+            await bot.database.slayer.clear_task(user_id, server_id)
+            slayer_lines.append(
+                f"🏆 **Boss Task Complete!** +{BOSS_TASK_COMPLETION_XP:,} Slayer XP"
+            )
+        else:
+            await bot.database.slayer.update_task_progress(user_id, server_id, 1)
+            slayer_lines.append(
+                f"Progress: {new_prog}/{s_profile['active_task_amount']} {boss_key.capitalize()}"
+            )
+
+        # Slayer level-up check
+        total_xp_gained = per_kill_xp + (BOSS_TASK_COMPLETION_XP if new_prog >= s_profile["active_task_amount"] else 0)
+        new_s_xp = s_profile["xp"] + total_xp_gained
+        new_s_lvl = core.slayer.mechanics.SlayerMechanics.calculate_level_from_xp(new_s_xp)
+        if new_s_lvl > s_profile["level"]:
+            await bot.database.slayer.update_level(user_id, server_id, new_s_lvl)
+            slayer_lines.append(f"🎉 **Slayer Level Up!** You are now Level {new_s_lvl}.")
+
+        reward_data["msgs"].append("🩸 **Slayer Task**\n" + "\n".join(slayer_lines))
+        return
+
+    if monster.is_boss:
+        return  # No boss task active — skip slayer processing
+
+    if task_species != monster.species:
         return
 
     slayer_lines = []
@@ -284,7 +330,7 @@ async def apply_victory_rewards(
     )
 
     exp_changes = await ExperienceManager.add_experience(
-        bot, user_id, player, reward_data["xp"]
+        bot, user_id, player, reward_data["xp"], server_id=server_id
     )
     reward_data["xp"] = exp_changes["xp_added"]
     reward_data["msgs"].extend(exp_changes["msgs"])

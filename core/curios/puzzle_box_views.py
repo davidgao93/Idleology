@@ -173,10 +173,14 @@ class PuzzleBoxView(BaseView):
 
     async def on_timeout(self):
         if self.claimed or not self.message:
+            # Already claimed or no message reference; let BaseView do normal cleanup.
+            await super().on_timeout()
             return
         try:
             await self._do_claim()
             await self.message.edit(embed=self.build_claimed_embed(), view=self)
         except (discord.NotFound, discord.HTTPException):
             pass
-        await super().on_timeout()
+        # Do NOT call super().on_timeout() here — it would overwrite the claimed embed
+        # with view=None, stripping the "Back to Curios" button we just added.
+        self.stop()

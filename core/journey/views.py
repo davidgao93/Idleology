@@ -192,6 +192,7 @@ class JourneyView(BaseView):
         await interaction.followup.send(embed=reward_embed, ephemeral=True)
 
     async def _on_close(self, interaction: Interaction) -> None:
+        self.bot.state_manager.clear_active(self.user_id)
         await interaction.response.defer()
         await interaction.delete_original_response()
         self.stop()

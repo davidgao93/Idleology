@@ -551,5 +551,5 @@ def format_passive_description(slot: dict) -> str:
     if defn is None:
         return "Unknown passive."
     val = slot["value"]
-    display = f"{val:.1f}%" if defn.is_percent else f"{val:.0f}"
+    display = f"{val:.1f}" if defn.is_percent else f"{val:.0f}"
     return defn.description_template.replace("{value}", display)

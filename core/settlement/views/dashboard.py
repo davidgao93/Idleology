@@ -276,6 +276,12 @@ class SettlementDashboardView(SettlementBaseView):
                     "companion_cookie"
                 )
 
+        # Pop war camp stamina before committing (stored as float, goes to users.combat_stamina)
+        war_camp_stamina = 0.0
+        if "war_camp_stamina" in total_changes:
+            war_camp_stamina = total_changes.pop("war_camp_stamina")
+            display_changes.pop("war_camp_stamina", None)
+
         # Pop market gold before committing to skill tables (it belongs in users.gold)
         market_gold = 0
         if "market_gold" in total_changes:
@@ -288,6 +294,8 @@ class SettlementDashboardView(SettlementBaseView):
         await self.bot.database.settlement.commit_production(uid, sid, total_changes)
         if market_gold > 0:
             await self.bot.database.users.modify_gold(uid, market_gold)
+        if war_camp_stamina > 0:
+            await self.bot.database.users.add_stamina_uncapped(uid, war_camp_stamina)
         await self.bot.database.settlement.update_collection_timer(uid, sid)
 
         # Commit companion XP
@@ -315,6 +323,10 @@ class SettlementDashboardView(SettlementBaseView):
 
                 xp_msg = f"\n🐾 **Companion Ranch:** Distributed {cookie_xp:,} XP among active pets."
 
+        stamina_msg = ""
+        if war_camp_stamina > 0:
+            stamina_msg = f"\n⚔️ **War Camp:** +{war_camp_stamina:.2f} Combat Stamina collected."
+
         # 5. Update local settlement state
         self.settlement.timber += display_changes.get("timber", 0)
         self.settlement.stone += display_changes.get("stone", 0)
@@ -324,7 +336,7 @@ class SettlementDashboardView(SettlementBaseView):
         embed = self.build_embed()
 
         # 7. Use display_changes for the Last Collection field
-        formatted_changes = self._format_changes(display_changes) + xp_msg
+        formatted_changes = self._format_changes(display_changes) + xp_msg + stamina_msg
         embed.add_field(
             name="Last Collection",
             value=(
@@ -335,7 +347,7 @@ class SettlementDashboardView(SettlementBaseView):
         )
 
         # 8. Content message depending on whether anything positive was produced
-        has_positive = any(v > 0 for v in display_changes.values())
+        has_positive = any(v > 0 for v in display_changes.values()) or war_camp_stamina > 0
         if has_positive:
             content = "✅ **Collection Complete**"
         else:

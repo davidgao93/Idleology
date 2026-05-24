@@ -69,6 +69,50 @@ class Apex(commands.Cog, name="apex"):
         view.message = await interaction.original_response()
 
     # ------------------------------------------------------------------
+    # /soul — Direct entry to Soul Stone view
+    # ------------------------------------------------------------------
+
+    @app_commands.command(
+        name="soul",
+        description="Open your Soul Stone directly.",
+    )
+    async def soul(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user):
+            return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+
+        if existing_user["level"] < 90:
+            return await interaction.response.send_message(
+                "⚠️ The Soul Stone unlocks at **Level 90**.",
+                ephemeral=True,
+            )
+
+        from core.items.factory import load_player
+        from core.apex.models import soul_stone_from_db, shards_from_db, meta_shards_from_db
+        from core.apex.views.soul_stone_view import SoulStoneView, _build_soul_stone_embed
+
+        player = await load_player(user_id, existing_user, self.bot.database)
+
+        ss_row = await self.bot.database.apex.get_or_create_soul_stone(user_id, server_id)
+        shards_row = await self.bot.database.apex.get_or_create_shards(user_id, server_id)
+        meta_row = await self.bot.database.apex.get_or_create_meta_shards(user_id, server_id)
+        soul_stone = soul_stone_from_db(ss_row)
+        shards = shards_from_db(shards_row)
+        meta = meta_shards_from_db(meta_row)
+
+        self.bot.state_manager.set_active(user_id, "soul_stone")
+
+        embed = _build_soul_stone_embed(soul_stone, shards, meta, player.name)
+        view = SoulStoneView(self.bot, user_id, server_id, player)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
+
+    # ------------------------------------------------------------------
     # /give_meta_shard — Player-to-player meta shard transfer
     # ------------------------------------------------------------------
 

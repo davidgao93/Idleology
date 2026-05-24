@@ -66,19 +66,30 @@ class CompanionRepository:
         )
         await self.connection.commit()
 
-    async def set_active(self, user_id: str, companion_id: int, active: bool) -> bool:
+    async def set_active(
+        self,
+        user_id: str,
+        companion_id: int,
+        active: bool,
+        max_active: int = 3,
+    ) -> bool:
         """
         Toggles active state.
-        Returns False if trying to activate a 4th companion.
+        Returns False if trying to activate more companions than the player's slot cap.
+
+        Slot caps (pass the result of get_companion_slot_cap):
+          level >= 40        → 1 slot
+          level >= 80        → 2 slots
+          ascension >= 20    → 3 slots
         """
         if active:
-            # Check current active count
+            # Check current active count against the caller-supplied cap
             rows = await self.connection.execute(
                 "SELECT COUNT(*) FROM companions WHERE user_id = ? AND is_active = 1",
                 (user_id,),
             )
             count = (await rows.fetchone())[0]
-            if count >= 3:
+            if count >= max_active:
                 return False
 
         val = 1 if active else 0

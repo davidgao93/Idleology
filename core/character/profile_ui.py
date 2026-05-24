@@ -811,14 +811,19 @@ class ProfileBuilder:
             (
                 partner
                 for partner in all_partners
-                if partner.is_dispatched and partner.dispatch_task != "boss_party"
+                if partner.is_dispatched
+                and partner.dispatch_task
+                and partner.dispatch_task != "boss_party"
             ),
             None,
         )
+        # Include any partner whose task is boss_party, regardless of is_dispatched flag,
+        # as long as they have a start time (covers edge cases where the flag de-synced).
         boss_party = [
             partner
             for partner in all_partners
-            if partner.is_dispatched and partner.dispatch_task == "boss_party"
+            if partner.dispatch_task == "boss_party"
+            and (partner.is_dispatched or partner.dispatch_start_time)
         ]
 
         if active_dispatch:

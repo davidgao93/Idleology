@@ -70,6 +70,11 @@ class SettlementMechanics:
             "base_rate": 0.01,
         },  # 0.01 XP per worker/hr
         "hatchery": {"type": "special", "effect": "egg_incubation"},
+        "war_camp": {
+            "type": "generator",
+            "output": "war_camp_stamina",
+            "base_rate": 0.01,
+        },  # 0.01 stamina per worker/hr
         "celestial_shrine": {"type": "passive", "effect": "sigil_bonus"},
         "infernal_forge": {"type": "passive", "effect": "infernal_sigil_bonus"},
         "void_sanctum": {"type": "passive", "effect": "void_shard_bonus"},
@@ -109,10 +114,16 @@ class SettlementMechanics:
 
         # Rate = Base * Tier * Workers
         # Example: T1 Logging Camp w/ 100 workers = 1 * 1 * 100 = 100 Timber/hr
-        production_capacity = int(base_rate * tier * workers * hours_elapsed)
+        production_raw = base_rate * tier * workers * hours_elapsed
+        production_capacity = int(production_raw)
 
         if b_data["type"] == "generator":
-            changes[b_data["output"]] = production_capacity
+            output_key = b_data["output"]
+            if output_key == "war_camp_stamina":
+                # Keep float precision — stamina is collected in decimal increments
+                changes[output_key] = round(production_raw, 4)
+            else:
+                changes[output_key] = production_capacity
 
         elif b_data["type"] == "converter" and raw_inventory:
             # Each building tier unlocks the corresponding material slot:

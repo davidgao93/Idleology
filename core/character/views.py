@@ -287,6 +287,204 @@ class PassiveAllocateView(BaseView):
         await self.process_allocation(interaction, "max_hp")
 
 
+class StatInvestView(BaseView):
+    """
+    View for allocating passive points permanently into ATK / DEF / HP / Gold.
+    Each point grants a 0.1% bonus multiplier to that stat in combat.
+    A Rune of Regret can be consumed to remove 1 point from any stat.
+    """
+
+    _STAT_MAP = [
+        ("atk",  "⚔️ Attack",      "atk"),
+        ("def",  "🛡️ Defence",     "def"),
+        ("hp",   "❤️ Max HP",      "hp"),
+        ("gold", "💰 Gold Find",   "gold"),
+    ]
+
+    def __init__(self, bot, user_id: str, server_id: str, data):
+        super().__init__(bot, user_id, server_id)
+        self._data = data
+        self._processing = False
+        self._refund_mode = False
+        self._rebuild()
+
+    # ------------------------------------------------------------------
+    # UI construction
+    # ------------------------------------------------------------------
+
+    def _rebuild(self):
+        self.clear_items()
+        points = self._data["passive_points"]
+        runes  = self._data.get("rune_of_regret", 0) or 0
+
+        if self._refund_mode:
+            # ── Refund-selection mode ──────────────────────────────────
+            options = []
+            for db_key, label, _ in self._STAT_MAP:
+                invested = self._data.get(f"stat_invest_{db_key}", 0) or 0
+                if invested > 0:
+                    options.append(
+                        discord.SelectOption(
+                            label=label.split(" ", 1)[1],  # strip emoji
+                            value=db_key,
+                            description=f"Refund 1 of your {invested} {db_key.upper()} points",
+                            emoji=label.split(" ", 1)[0],
+                        )
+                    )
+            if options:
+                sel = discord.ui.Select(
+                    placeholder="Choose a stat to refund 1 point from…",
+                    options=options,
+                    row=0,
+                )
+                sel.callback = self._do_refund
+                self.add_item(sel)
+            cancel = discord.ui.Button(
+                label="Cancel", style=discord.ButtonStyle.secondary, row=1
+            )
+            cancel.callback = self._cancel_refund
+            self.add_item(cancel)
+            return
+
+        # ── Normal invest mode ─────────────────────────────────────────
+        for db_key, label, _ in self._STAT_MAP:
+            btn = discord.ui.Button(
+                label=label,
+                style=discord.ButtonStyle.blurple,
+                disabled=points <= 0,
+                row=0,
+            )
+            btn.callback = self._make_invest_cb(db_key)
+            self.add_item(btn)
+
+        rune_btn = discord.ui.Button(
+            label=f"🔮 Rune of Regret ({runes})",
+            style=discord.ButtonStyle.secondary,
+            disabled=runes <= 0 or not any(
+                (self._data.get(f"stat_invest_{dk}", 0) or 0) > 0
+                for dk, _, __ in self._STAT_MAP
+            ),
+            row=1,
+        )
+        rune_btn.callback = self._enter_refund_mode
+        self.add_item(rune_btn)
+
+        done_btn = discord.ui.Button(
+            label="Done", style=discord.ButtonStyle.danger, row=1
+        )
+        done_btn.callback = self._done
+        self.add_item(done_btn)
+
+    # ------------------------------------------------------------------
+    # Embed
+    # ------------------------------------------------------------------
+
+    def build_embed(self) -> discord.Embed:
+        pts   = self._data["passive_points"]
+        runes = self._data.get("rune_of_regret", 0) or 0
+
+        desc = (
+            f"**Passive Points available:** {pts}\n"
+            f"**Runes of Regret:** {runes}\n\n"
+            "Each point grants **+0.1%** to the chosen stat in combat.\n"
+            "Use a **Rune of Regret** to reclaim 1 point from any stat."
+        )
+        if self._refund_mode:
+            desc = f"**Runes of Regret:** {runes}\n\nSelect a stat to remove 1 point from."
+
+        embed = discord.Embed(
+            title="📊 Stat Allocation",
+            description=desc,
+            color=discord.Color.gold(),
+        )
+
+        total_invested = 0
+        for db_key, label, _ in self._STAT_MAP:
+            invested = self._data.get(f"stat_invest_{db_key}", 0) or 0
+            total_invested += invested
+            embed.add_field(
+                name=label,
+                value=f"**{invested}** pts → **+{invested * 0.1:.1f}%**",
+                inline=True,
+            )
+
+        embed.set_footer(text=f"Total invested: {total_invested} pts")
+        return embed
+
+    # ------------------------------------------------------------------
+    # Callbacks
+    # ------------------------------------------------------------------
+
+    def _make_invest_cb(self, db_key: str):
+        async def callback(interaction: Interaction):
+            if self._processing:
+                await interaction.response.defer()
+                return
+            self._processing = True
+            await interaction.response.defer()
+
+            ok = await self.bot.database.users.invest_stat_point(
+                self.user_id, self.server_id, db_key
+            )
+            self._data = await self.bot.database.users.get(
+                self.user_id, self.server_id
+            )
+            if not ok:
+                await interaction.followup.send(
+                    "No passive points available!", ephemeral=True
+                )
+            self._rebuild()
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
+            self._processing = False
+
+        return callback
+
+    async def _enter_refund_mode(self, interaction: Interaction):
+        self._refund_mode = True
+        self._rebuild()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _cancel_refund(self, interaction: Interaction):
+        self._refund_mode = False
+        self._rebuild()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _do_refund(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        db_key = interaction.data["values"][0]
+        ok = await self.bot.database.users.refund_stat_point(
+            self.user_id, self.server_id, db_key
+        )
+        self._data = await self.bot.database.users.get(self.user_id, self.server_id)
+        self._refund_mode = False
+        self._rebuild()
+
+        msg = "Refund successful!" if ok else "Refund failed — not enough invested or no Rune available."
+        await interaction.followup.send(msg, ephemeral=True)
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+        self._processing = False
+
+    async def _done(self, interaction: Interaction):
+        await interaction.response.defer()
+        self.bot.state_manager.clear_active(self.user_id)
+        try:
+            await interaction.delete_original_response()
+        except Exception:
+            pass
+        self.stop()
+
+    async def on_timeout(self):
+        self.bot.state_manager.clear_active(self.user_id)
+        await super().on_timeout()
+
+
 class UnregisterView(BaseView):
     def __init__(self, bot, user_id: str, ideology: str):
         super().__init__(bot, user_id)

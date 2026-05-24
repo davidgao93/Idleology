@@ -265,6 +265,13 @@ class SoulStoneView(BaseView):
         self._processing = False
         self.stop()
 
+    @discord.ui.button(label="Exit", style=ButtonStyle.danger, emoji="🚪", row=1)
+    async def exit_btn(self, interaction: Interaction, button: Button):
+        await interaction.response.defer()
+        self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
+        self.stop()
+
 
 class _ClearSlotView(BaseView):
     """Confirmation view for clearing a specific soul stone slot."""

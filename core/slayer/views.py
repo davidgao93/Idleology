@@ -5,7 +5,11 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.images import SLAYER_EMBLEM, SLAYER_MASTER
-from core.slayer.mechanics import SlayerMechanics
+from core.slayer.mechanics import (
+    BOSS_TASK_CATALOG,
+    BOSS_TASK_PREFIX,
+    SlayerMechanics,
+)
 
 
 class SlayerDashboardView(BaseView):
@@ -43,9 +47,14 @@ class SlayerDashboardView(BaseView):
             prog = self.profile["active_task_progress"]
             req = self.profile["active_task_amount"]
             species = self.profile["active_task_species"]
+            if species.startswith(BOSS_TASK_PREFIX):
+                boss_name = species[len(BOSS_TASK_PREFIX):].capitalize()
+                task_line = f"Hunt **{req}× {boss_name}** *(Boss Task)*"
+            else:
+                task_line = f"Slay **{req} {species}**"
             embed.add_field(
                 name="Current Task",
-                value=f"Slay **{req} {species}**\n*Progress: {prog}/{req}*",
+                value=f"{task_line}\n*Progress: {prog}/{req}*",
                 inline=False,
             )
         else:
@@ -92,6 +101,18 @@ class SlayerDashboardView(BaseView):
             await interaction.response.defer()
             return
         self._processing = True
+
+        # 10% chance to offer a boss task if the player has access to any
+        available_bosses = SlayerMechanics.available_boss_tasks(self.player_level)
+        if available_bosses and random.random() < 0.10:
+            boss = random.choice(available_bosses)
+            task_key = f"{BOSS_TASK_PREFIX}{boss['key']}"
+            modal = BossTaskAmountModal(task_key, boss["name"], self)
+            # open_modal responds to the interaction — don't defer beforehand
+            self._processing = False
+            await interaction.response.send_modal(modal)
+            return
+
         await interaction.response.defer()
         species, amount = SlayerMechanics.generate_task(self.player_level)
 
@@ -143,6 +164,46 @@ class SlayerDashboardView(BaseView):
         await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
+
+
+class BossTaskAmountModal(ui.Modal, title="Boss Hunt"):
+    """Modal that lets the player choose how many boss kills to hunt (1–10)."""
+
+    count_input = ui.TextInput(
+        label="How many to hunt? (1–10)",
+        placeholder="Enter a number from 1 to 10",
+        min_length=1,
+        max_length=2,
+        required=True,
+    )
+
+    def __init__(self, task_key: str, boss_display_name: str, parent_view):
+        super().__init__()
+        self.task_key = task_key
+        self.boss_display_name = boss_display_name
+        self.parent = parent_view
+
+    async def on_submit(self, interaction: Interaction):
+        try:
+            count = int(self.count_input.value.strip())
+            if not 1 <= count <= 10:
+                raise ValueError
+        except ValueError:
+            return await interaction.response.send_message(
+                "Please enter a number between 1 and 10.", ephemeral=True
+            )
+
+        await interaction.response.defer()
+        await self.parent.bot.database.slayer.assign_task(
+            self.parent.user_id, self.parent.server_id, self.task_key, count
+        )
+        self.parent.profile = await self.parent.bot.database.slayer.get_profile(
+            self.parent.user_id, self.parent.server_id
+        )
+        self.parent.setup_buttons()
+        await interaction.edit_original_response(
+            embed=self.parent.build_embed(), view=self.parent
+        )
 
 
 class EmblemView(BaseView):

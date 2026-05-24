@@ -391,6 +391,8 @@ class PullView(PartnerBaseView):
                 recap_view = PullRecapView(self.bot, self.user_id, self)
                 recap_view.message = self.message
                 await interaction.edit_original_response(view=recap_view)
+        # Stop this view so its timeout doesn't clobber the final view's buttons.
+        self.stop()
 
 
 # ---------------------------------------------------------------------------

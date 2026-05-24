@@ -190,20 +190,30 @@ class Combat(commands.Cog, name="combat"):
         player,
     ):
         """The actual combat generation and UI loading logic. Called directly or via the Warning View."""
-        # Consume 1 stamina. Start the regen clock the first time they drop below max.
+        # Consume 1 stamina. Use consume_stamina (SQL MAX(0, val-1)) so over-cap
+        # values (e.g. 12.5 from War Camp) drain correctly without being truncated.
         current_stamina = existing_user["combat_stamina"]
-        new_stamina = max(0, current_stamina - 1)
-        await self.bot.database.users.set_stamina(user_id, new_stamina)
-        if current_stamina == MAX_STAMINA:
+        await self.bot.database.users.consume_stamina(user_id)
+        # Start the regen clock the moment we cross below the normal cap.
+        # Over-cap stamina (from War Camp) delays the stamp until that crossing.
+        if current_stamina >= MAX_STAMINA and current_stamina - 1 < MAX_STAMINA:
             await self.bot.database.users.set_stamina_regen_time(user_id)
 
         is_boss = False
         is_corrupted = False
         combat_phases = []
 
+        # Fetch hard mode and streak before encounter generation
+        hard_mode = await self.bot.database.users.get_hard_mode(user_id)
+        combat_streak = await self.bot.database.users.get_combat_streak(user_id)
+
         # 3a. Corrupted encounter roll — resolves first (level 100+)
         if player.level >= 100:
-            corrupted_chance = 0.01 + player.get_emblem_bonus("corrupted_find") * 0.002
+            corrupted_chance = (
+                0.01
+                + player.get_emblem_bonus("corrupted_find") * 0.002
+                + (0.02 if hard_mode else 0)
+            )
             if random.random() < corrupted_chance:
                 gate_view = CorruptedEncounterGateView(self.bot, user_id)
                 await interaction.edit_original_response(
@@ -321,6 +331,12 @@ class Combat(commands.Cog, name="combat"):
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)
         engine.log_combat_debug(player, monster, self.bot.logger)
+
+        # Hard mode: double monster ATK and DEF after all stat effects are applied
+        if hard_mode and not is_boss:
+            monster.attack = int(monster.attack * 2)
+            monster.defence = int(monster.defence * 2)
+
         # 6. Launch View
         title = "⚔️ BOSS PHASE 1" if is_boss else None
         embed = ui.create_combat_embed(
@@ -335,6 +351,8 @@ class Combat(commands.Cog, name="combat"):
             start_logs,
             combat_phases if is_boss else None,
             rematch_callback=self._rematch_execute,
+            hard_mode=hard_mode,
+            combat_streak=combat_streak,
         )
 
         if interaction.response.is_done():

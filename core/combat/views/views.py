@@ -47,7 +47,7 @@ _BOSS_VICTORY_CFG: dict[str, dict] = {
                 "value": (
                     "**Choose how to absorb its power:**\n"
                     "❤️‍🔥 **Enraged:** Modifies Attack (-1 to +2)\n"
-                    "💙 **Solidified:** Modifies Defence (1- to +2)\n"
+                    "💙 **Solidified:** Modifies Defence (-1 to +2)\n"
                     "💔 **Unstable:** Shuffles Stats towards equilibrium\n"
                     "💞 **Inverse:** Swaps Attack and Defence values\n"
                     "🖤 **Keep:** Store a singular Soul Core"
@@ -84,7 +84,7 @@ class PostCombatView(BaseView):
 
         if stamina > 0:
             btn = discord.ui.Button(
-                label=f"Fight Again  ⚡{stamina}",
+                label=f"Fight Again  ⚡{stamina:g}",
                 style=discord.ButtonStyle.green,
             )
             btn.callback = self._fight_again
@@ -125,6 +125,128 @@ class PostCombatView(BaseView):
         self.stop()
 
 
+class StatPackagePicker(BaseView):
+    """Post-combat view that presents 3 stat-package options for the player to pick.
+
+    One instance handles all pending level-up packages for a single fight: after
+    the player chooses a package it pops it from the queue and either presents the
+    next one or fires the ``on_done`` callback so the caller can show the
+    post-combat view.
+
+    ``on_done`` is an async callable that receives ``(message)`` — the Discord
+    message object — and is responsible for the final transition.
+    """
+
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        player,
+        pending_packages: list,
+        *,
+        on_done,
+    ):
+        super().__init__(bot, user_id, server_id, timeout=300)
+        self.player = player
+        self.pending = pending_packages  # list of package-sets (list of 3 dicts each)
+        self.on_done = on_done
+        self._processing = False
+        self._build_buttons()
+
+    def _build_buttons(self):
+        self.clear_items()
+        current_set = self.pending[0]  # 3 packages for the current level-up
+        styles = [
+            discord.ButtonStyle.blurple,
+            discord.ButtonStyle.green,
+            discord.ButtonStyle.secondary,
+        ]
+        for i, pkg in enumerate(current_set):
+            label = f"⚔️ +{pkg['atk']}  🛡️ +{pkg['def']}  ❤️ +{pkg['hp']}"
+            btn = discord.ui.Button(
+                label=label, style=styles[i % len(styles)], row=0
+            )
+            btn.callback = self._make_callback(pkg)
+            self.add_item(btn)
+
+    def _make_callback(self, pkg):
+        async def callback(interaction: Interaction):
+            if self._processing:
+                await interaction.response.defer()
+                return
+            self._processing = True
+            await interaction.response.defer()
+
+            # Apply selected package to DB
+            await self.bot.database.users.modify_stat(
+                self.user_id, "attack", pkg["atk"]
+            )
+            await self.bot.database.users.modify_stat(
+                self.user_id, "defence", pkg["def"]
+            )
+            await self.bot.database.users.modify_stat(
+                self.user_id, "max_hp", pkg["hp"]
+            )
+
+            # Apply to player object in memory
+            self.player.base_attack += pkg["atk"]
+            self.player.base_defence += pkg["def"]
+            self.player.max_hp += pkg["hp"]
+            self.player.current_hp = self.player.total_max_hp  # Full heal
+            self.player.compute_flat_stats()
+
+            # Pop the chosen package set and update DB
+            self.pending.pop(0)
+            await self.bot.database.users.set_pending_packages(
+                self.user_id, self.server_id, self.pending or None
+            )
+            # Persist updated stats (level was already saved; we need max_hp etc.)
+            await self.bot.database.users.update_from_player_object(self.player)
+
+            if self.pending:
+                # Another level-up package remains — show it
+                self._processing = False
+                self._build_buttons()
+                await interaction.edit_original_response(
+                    embed=self.build_embed(), view=self
+                )
+            else:
+                self.stop()
+                await self.on_done(interaction.message)
+
+        return callback
+
+    def build_embed(self) -> discord.Embed:
+        remaining = len(self.pending)
+        current_set = self.pending[0]
+
+        suffix = (
+            f" *({remaining} level-up{'s' if remaining != 1 else ''} remaining)*"
+            if remaining > 1
+            else ""
+        )
+        embed = discord.Embed(
+            title="🎉 Level Up! Choose a Stat Package",
+            description=(
+                f"Select one of the packages below to permanently apply to your character.{suffix}\n\n"
+                "Each package has **15 points** distributed across ATK, DEF, and HP."
+            ),
+            color=discord.Color.gold(),
+        )
+        for i, pkg in enumerate(current_set):
+            embed.add_field(
+                name=f"Option {i + 1}",
+                value=(
+                    f"⚔️ **+{pkg['atk']} ATK**\n"
+                    f"🛡️ **+{pkg['def']} DEF**\n"
+                    f"❤️ **+{pkg['hp']} HP**"
+                ),
+                inline=True,
+            )
+        return embed
+
+
 class CombatView(BaseView):
     def __init__(
         self,
@@ -137,6 +259,8 @@ class CombatView(BaseView):
         combat_phases=None,
         post_combat_view=None,
         rematch_callback=None,
+        hard_mode: bool = False,
+        combat_streak: int = 0,
     ):
         super().__init__(bot, user_id, server_id)
         self.bot = bot
@@ -147,6 +271,8 @@ class CombatView(BaseView):
         self.logs = initial_logs or {}
         self.post_combat_view = post_combat_view
         self.rematch_callback = rematch_callback
+        self.hard_mode = hard_mode
+        self.combat_streak = combat_streak  # streak at start of this fight
 
         _je.reset_jewel_charges(player)
 
@@ -209,9 +335,24 @@ class CombatView(BaseView):
             self.monster.image = self.monster.image2
             self.monster.image2 = ""
 
+    def _streak_footer(self) -> str:
+        """Returns a footer string showing the active combat streak bonus (if any)."""
+        if self.combat_streak <= 0:
+            return ""
+        streak_pct = min(50, self.combat_streak // 10)
+        if streak_pct <= 0:
+            return f"🔥 Streak: {self.combat_streak}"
+        return f"🔥 Streak: {self.combat_streak}  (+{streak_pct}% EXP & Gold)"
+
     async def refresh_embed(self, interaction: Interaction):
         self._apply_phase_image_transition()
         embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
+
+        # Append streak info to footer
+        streak_txt = self._streak_footer()
+        if streak_txt:
+            existing = embed.footer.text or ""
+            embed.set_footer(text=f"{streak_txt}  •  {existing}" if existing else streak_txt)
 
         # Check if we have already deferred or responded (e.g. via Fast Auto)
         if interaction.response.is_done():
@@ -409,14 +550,35 @@ class CombatView(BaseView):
         # --- DEFEAT ---
         if self.player.current_hp <= 0:
             self.combat_logger.log_combat_end(self.player, self.monster, "defeat")
-            base_loss = int(self.player.exp * XP_LOSS_ON_DEFEAT)
-            xp_loss = await ExperienceManager.remove_experience(
-                self.bot, self.user_id, self.player, base_loss
-            )
+            # Reset combat streak on any death
+            await self.bot.database.users.reset_combat_streak(self.user_id)
+
+            exp_protected = await self.bot.database.users.get_exp_protection(self.user_id)
+            if self.hard_mode and not exp_protected:
+                # Hard Mode: wipe ALL current-level EXP instead of the standard % loss
+                xp_loss = self.player.exp
+                self.player.exp = 0
+            else:
+                base_loss = int(self.player.exp * XP_LOSS_ON_DEFEAT)
+                xp_loss = await ExperienceManager.remove_experience(
+                    self.bot, self.user_id, self.player, base_loss
+                )
             self.player.current_hp = 1
             embed = combat_ui.create_defeat_embed(
                 self.player, self.monster, xp_loss, killing_blow=self.killing_blow
             )
+            if self.hard_mode:
+                embed.add_field(
+                    name="☠️ Hard Mode",
+                    value="Your EXP for this level has been wiped. Combat streak reset.",
+                    inline=False,
+                )
+            elif self.combat_streak > 0:
+                embed.add_field(
+                    name="💀 Streak Lost",
+                    value=f"Your {self.combat_streak}-win streak has ended.",
+                    inline=False,
+                )
             await message.edit(embed=embed, view=None)
             self.bot.state_manager.clear_active(self.user_id)
             await self.bot.database.users.update_from_player_object(self.player)
@@ -465,6 +627,12 @@ class CombatView(BaseView):
         # --- FINAL VICTORY ---
         self.combat_logger.log_combat_end(self.player, self.monster, "victory")
 
+        # Streak bonus is based on the pre-fight streak (what was shown in the footer
+        # during combat), so the player always receives exactly what was advertised.
+        streak_pct = min(50, self.combat_streak // 10)
+        hard_mode_pct = 50 if self.hard_mode else 0
+        total_bonus_pct = streak_pct + hard_mode_pct
+
         reward_data = await apply_victory_rewards(
             self.bot,
             self.user_id,
@@ -475,12 +643,54 @@ class CombatView(BaseView):
             self.combat_logger,
         )
 
+        # Increment streak after base rewards are applied (avoids DB write ordering issues).
+        new_streak = await self.bot.database.users.increment_combat_streak(self.user_id)
+
+        # Apply streak + hard mode bonus XP and gold on top of base rewards.
+        bonus_xp = 0
+        bonus_gold = 0
+        if total_bonus_pct > 0:
+            bonus_xp = int(reward_data["xp"] * total_bonus_pct / 100)
+            bonus_gold = int(reward_data["gold"] * total_bonus_pct / 100)
+            if bonus_xp > 0:
+                bonus_exp_changes = await ExperienceManager.add_experience(
+                    self.bot, self.user_id, self.player, bonus_xp,
+                    server_id=self.server_id,
+                )
+                reward_data["msgs"].extend(bonus_exp_changes["msgs"])
+            if bonus_gold > 0:
+                await self.bot.database.users.modify_gold(self.user_id, bonus_gold)
+
         embed = combat_ui.create_victory_embed(
             self.player,
             self.monster,
             reward_data,
             cfg=_boss_victory_cfg(self.monster.name),
         )
+
+        # Streak / hard mode bonus field (shown when any bonus applied this fight)
+        if total_bonus_pct > 0:
+            bonus_parts = []
+            if hard_mode_pct > 0:
+                bonus_parts.append("☠️ Hard Mode +50%")
+            if streak_pct > 0:
+                bonus_parts.append(f"🔥 Streak +{streak_pct}%")
+            embed.add_field(
+                name=f"🎯 Bonus Rewards (+{total_bonus_pct}%)",
+                value=(
+                    f"{' | '.join(bonus_parts)}\n"
+                    f"+{bonus_xp:,} XP  •  +{bonus_gold:,} Gold"
+                ),
+                inline=False,
+            )
+
+        # Victory embed footer: show updated streak so the player knows where they stand.
+        if new_streak > 0:
+            new_streak_pct = min(50, new_streak // 10)
+            footer_txt = f"🔥 Streak: {new_streak}"
+            if new_streak_pct > 0:
+                footer_txt += f"  (+{new_streak_pct}% bonus next fight)"
+            embed.set_footer(text=footer_txt)
 
         # NEET: conditional void key — DB write and loot field, then regular edit
         if "NEET" in self.monster.name and random.random() < NEET_VOID_KEY_CHANCE:
@@ -545,6 +755,46 @@ class CombatView(BaseView):
                 value=f"Out of stamina — next combat in **{time_str}**",
                 inline=False,
             )
+
+        # If the player levelled up during this fight, show the stat-package picker
+        # before the Fight Again button.  The picker's on_done callback fires the
+        # final post-combat edit, so we return early here.
+        pending_packages = await self.bot.database.users.get_pending_packages(
+            self.user_id, self.server_id
+        )
+        if pending_packages:
+            _victory_embed = embed  # captured for the on_done closure
+            _stamina = stamina
+            _rematch = self.rematch_callback
+
+            async def _after_packages(msg):
+                """Transition to the post-combat view once all packages are chosen."""
+                post_view = (
+                    PostCombatView(
+                        self.bot,
+                        self.user_id,
+                        self.server_id,
+                        self.player,
+                        _stamina,
+                        _rematch,
+                    )
+                    if _rematch
+                    else None
+                )
+                await msg.edit(embed=_victory_embed, view=post_view)
+
+            picker = StatPackagePicker(
+                self.bot,
+                self.user_id,
+                self.server_id,
+                self.player,
+                pending_packages,
+                on_done=_after_packages,
+            )
+            await message.edit(embed=picker.build_embed(), view=picker)
+            picker.message = message
+            self.stop()
+            return
 
         post_view = (
             PostCombatView(

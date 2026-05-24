@@ -5,8 +5,7 @@ from discord.ext import commands, tasks
 from core.character.leaderboard_views import LeaderboardHubView
 from core.character.profile_hub import ProfileHubView
 from core.character.profile_ui import ProfileBuilder
-from core.character.views import PassiveAllocateView
-from core.images import PASSIVES
+from core.character.views import StatInvestView
 from core.items.factory import load_player
 
 """
@@ -123,8 +122,8 @@ class Character(commands.Cog, name="character"):
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
-    @app_commands.command(name="stats", description="Detailed character sheet.")
-    async def stats(self, interaction: Interaction):
+    @app_commands.command(name="sheet", description="Detailed character sheet.")
+    async def sheet(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
         data = await self.bot.database.users.get(user_id, server_id)
@@ -134,6 +133,27 @@ class Character(commands.Cog, name="character"):
         view = ProfileHubView(self.bot, user_id, server_id, "stats")
         embed = await ProfileBuilder.build_stats(self.bot, user_id, server_id)
         await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
+
+    @app_commands.command(
+        name="stats",
+        description="Allocate passive points into permanent ATK / DEF / HP / Gold bonuses.",
+    )
+    async def stats(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        data = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, data):
+            return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+
+        self.bot.state_manager.set_active(user_id, "stats")
+        view = StatInvestView(self.bot, user_id, server_id, data)
+        await interaction.response.send_message(
+            embed=view.build_embed(), view=view, ephemeral=True
+        )
         view.message = await interaction.original_response()
 
     """
@@ -148,7 +168,7 @@ class Character(commands.Cog, name="character"):
         embed = await view.build_embed()
         await interaction.response.send_message(embed=embed, view=view)
 
-    @app_commands.command(name="passives", description="Spend passive points.")
+    @app_commands.command(name="passives", description="View your active passives.")
     async def passives(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
@@ -156,26 +176,10 @@ class Character(commands.Cog, name="character"):
         data = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, data):
             return
-        if not await self.bot.check_is_active(interaction, user_id):
-            return
 
-        points = data["passive_points"]
-        if points <= 0:
-            return await interaction.response.send_message(
-                "You have no passive points to spend!", ephemeral=True
-            )
-
-        self.bot.state_manager.set_active(user_id, "passives")
-
-        embed = discord.Embed(
-            title="Allocate Passive Points",
-            description=f"**Points Remaining:** {points}\n\nSelect a stat to upgrade.",
-            color=0x00FF00,
-        )
-        embed.set_thumbnail(url=PASSIVES)
-
-        view = PassiveAllocateView(self.bot, user_id, data)
-        view.message = await interaction.response.send_message(embed=embed, view=view)
+        view = ProfileHubView(self.bot, user_id, server_id, "passives")
+        embed = await ProfileBuilder.build_passives(self.bot, user_id, server_id)
+        await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
 
