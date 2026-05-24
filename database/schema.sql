@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `stat_invest_def` INTEGER NOT NULL DEFAULT 0,
   `stat_invest_hp` INTEGER NOT NULL DEFAULT 0,
   `stat_invest_gold` INTEGER NOT NULL DEFAULT 0,
-  `rune_of_regret` INTEGER NOT NULL DEFAULT 0
+  `rune_of_regret` INTEGER NOT NULL DEFAULT 0,
+  `development_contracts` INTEGER NOT NULL DEFAULT 0
 );
 
 
@@ -371,7 +372,20 @@ CREATE TABLE IF NOT EXISTS buildings (
     tier INTEGER DEFAULT 1,
     slot_index INTEGER,
     workers_assigned INTEGER DEFAULT 0,
+    plot_index INTEGER DEFAULT NULL,  -- which settlement plot this building occupies (1-20)
+    is_meta INTEGER NOT NULL DEFAULT 0,  -- 1 = meta building (no tier, doesn't count toward slot cap)
     UNIQUE(user_id, server_id, slot_index)
+);
+
+-- Plot grid for the settlement map system (5×5 minus corners = 20 buildable plots)
+CREATE TABLE IF NOT EXISTS settlement_plots (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     TEXT NOT NULL,
+    server_id   TEXT NOT NULL,
+    plot_index  INTEGER NOT NULL,   -- 1–20
+    is_developed INTEGER NOT NULL DEFAULT 0,
+    bonus_type  TEXT DEFAULT NULL,  -- e.g. "fertile_ground", NULL if undeveloped
+    UNIQUE(user_id, server_id, plot_index)
 );
 
 CREATE TABLE IF NOT EXISTS settlement_research (

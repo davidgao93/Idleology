@@ -1,12 +1,23 @@
 # core/settlement/mechanics.py
 
-from typing import Dict
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict
 
 from core.settlement.constants import (
     ITEM_NAMES,
     SPECIAL_MAP,
     UBER_BUILDINGS,
 )
+from core.settlement.plots import (
+    META_BUILDINGS,
+    PLOT_BONUS_TABLE,
+    SHRINE_BUILDING_TYPES,
+    get_adjacent_plot_indices,
+)
+
+if TYPE_CHECKING:
+    from core.settlement.models import Building, Plot
 
 
 class SettlementMechanics:
@@ -76,15 +87,98 @@ class SettlementMechanics:
             "base_rate": 0.01,
         },  # 0.01 stamina per worker/hr
         "celestial_shrine": {"type": "passive", "effect": "sigil_bonus"},
-        "infernal_forge": {"type": "passive", "effect": "infernal_sigil_bonus"},
-        "void_sanctum": {"type": "passive", "effect": "void_shard_bonus"},
+        "infernal_shrine": {"type": "passive", "effect": "infernal_sigil_bonus"},
+        "void_shrine": {"type": "passive", "effect": "void_shard_bonus"},
         "twin_shrine": {"type": "passive", "effect": "gemini_sigil_bonus"},
     }
 
     @staticmethod
     def get_max_workers(tier: int) -> int:
-        """Higher tier buildings can hold more workers."""
+        """Higher tier buildings can hold more workers (base formula, no bonuses)."""
         return 100 * tier
+
+    @staticmethod
+    def calculate_adjacency_bonuses(
+        plots: list[Plot],
+        buildings: list[Building],
+    ) -> dict[int, dict]:
+        """
+        Computes per-plot adjacency bonuses contributed by active meta buildings.
+
+        Returns a dict mapping plot_index → {
+            "production_mult": float,    # Servant's Quarters + Foreman's Post on generators
+            "converter_mult":  float,    # Supply Depot + Foreman's Post on converters
+            "war_camp_rate":   float,    # Encampment extra stamina base-rate for war_camp
+            "shrine_cap_x2":   bool,     # Grand Cathedral doubles shrine worker cap
+            "has_watchtower":  bool,     # Watchtower is globally present (any plot)
+            "shrine_boost":    float,    # Shrine Garden extra mult for shrine buildings
+        }
+        Only plots that have a building in *buildings* appear in the result.
+        """
+        plot_by_idx: dict[int, Plot] = {p.plot_index: p for p in plots if p.is_developed}
+
+        # Global effect: Watchtower (no workers needed, applies settlement-wide)
+        has_watchtower = any(
+            b.is_meta and b.building_type == "watchtower" and b.plot_index is not None
+            for b in buildings
+        )
+
+        # Initialise a result entry for every building that has a plot
+        result: dict[int, dict] = {}
+        for b in buildings:
+            if b.plot_index is not None:
+                result[b.plot_index] = {
+                    "production_mult": 0.0,
+                    "converter_mult":  0.0,
+                    "war_camp_rate":   0.0,
+                    "shrine_cap_x2":   False,
+                    "has_watchtower":  has_watchtower,
+                    "shrine_boost":    0.0,
+                }
+
+        # Process each active meta building and apply its adjacency bonus
+        for meta_b in buildings:
+            if not meta_b.is_meta or meta_b.plot_index is None:
+                continue
+            # Watchtower is passive (no workers required); all others need workers
+            if meta_b.building_type != "watchtower" and meta_b.workers_assigned <= 0:
+                continue
+
+            meta_type = meta_b.building_type
+            plot_of_meta = plot_by_idx.get(meta_b.plot_index)
+
+            # Ley Line: if the meta building's own plot has this bonus,
+            # amplify every adjacency contribution by ×1.5 (additive 50%).
+            ley_amp = (
+                1.5 if (plot_of_meta and plot_of_meta.bonus_type == "ley_line") else 1.0
+            )
+
+            for adj_idx in get_adjacent_plot_indices(meta_b.plot_index):
+                if adj_idx == 0 or adj_idx not in result:
+                    continue  # TH or plot without a building
+
+                if meta_type == "servants_quarters":
+                    bonus = min(0.20, meta_b.workers_assigned / 10 * 0.01) * ley_amp
+                    result[adj_idx]["production_mult"] += bonus
+
+                elif meta_type == "supply_depot":
+                    result[adj_idx]["converter_mult"] += 0.15 * ley_amp
+
+                elif meta_type == "grand_cathedral":
+                    result[adj_idx]["shrine_cap_x2"] = True
+
+                elif meta_type == "encampment":
+                    result[adj_idx]["war_camp_rate"] += 0.005 * ley_amp
+
+                elif meta_type == "shrine_garden":
+                    result[adj_idx]["shrine_boost"] += 0.15 * ley_amp
+
+                elif meta_type == "foremans_post":
+                    # Boosts all adjacent buildings' output
+                    result[adj_idx]["production_mult"] += 0.25 * ley_amp
+                    result[adj_idx]["converter_mult"]  += 0.25 * ley_amp
+
+        return result
 
     @staticmethod
     def calculate_production(
@@ -93,10 +187,22 @@ class SettlementMechanics:
         workers: int,
         hours_elapsed: float,
         raw_inventory: Dict[str, int] = None,
+        plot_bonus_type: str | None = None,
+        adj_production_mult: float = 0.0,
+        adj_converter_mult: float = 0.0,
+        adj_war_camp_rate: float = 0.0,
+        adj_output_mult: float = 0.0,
     ) -> Dict[str, int]:
         """
         Calculates production for a specific building over time.
         Returns dict of changes: {'iron': -100, 'iron_bar': 100, 'timber': 50}
+
+        Plot / adjacency bonus parameters (all additive, stacking):
+          plot_bonus_type     — the roll assigned to the building's plot
+          adj_production_mult — from adjacent Servant's Quarters / Foreman's Post (generators)
+          adj_converter_mult  — from adjacent Supply Depot / Foreman's Post (converters)
+          adj_war_camp_rate   — additive base_rate bonus for war_camp from Encampment
+          adj_output_mult     — from adjacent Shrine Garden for shrine passives (future use)
         """
         if workers <= 0 or hours_elapsed <= 0:
             return {}
@@ -110,11 +216,35 @@ class SettlementMechanics:
         if base_rate == 0:
             return {}
 
+        # --- Effectiveness multiplier (additive bonuses stacked together) ---
+        effectiveness = 1.0
+        btype = b_data["type"]
+
+        if plot_bonus_type:
+            bonus_data = PLOT_BONUS_TABLE.get(plot_bonus_type, {})
+            applies_to = bonus_data.get("applies_to", "none")
+            val = bonus_data.get("value", 0.0)
+            if applies_to == "generator_mult" and btype == "generator":
+                effectiveness += val
+            elif applies_to == "converter_mult" and btype == "converter":
+                effectiveness += val
+            elif applies_to == "trade_mult" and building_type in ("market", "war_camp"):
+                effectiveness += val
+
+        if btype == "generator":
+            effectiveness += adj_production_mult
+        elif btype == "converter":
+            effectiveness += adj_converter_mult
+
+        # War camp extra stamina rate from adjacent Encampment meta buildings
+        effective_base_rate = base_rate
+        if building_type == "war_camp":
+            effective_base_rate += adj_war_camp_rate
+
         changes = {}
 
-        # Rate = Base * Tier * Workers
-        # Example: T1 Logging Camp w/ 100 workers = 1 * 1 * 100 = 100 Timber/hr
-        production_raw = base_rate * tier * workers * hours_elapsed
+        # Rate = Base * Tier * Workers * Effectiveness
+        production_raw = effective_base_rate * tier * workers * hours_elapsed * effectiveness
         production_capacity = int(production_raw)
 
         if b_data["type"] == "generator":

@@ -51,8 +51,8 @@ BUILDING_INFO = {
     "companion_ranch": "Generator: Produces XP Cookies for pets.",
     "hatchery": "Incubate monster eggs. Workers reduce incubation time (0.1% per worker).",
     "celestial_shrine": "Passive: Increases chance to find Celestial Sigils from Aphrodite.",
-    "infernal_forge": "Passive: Increases chance to find Infernal Sigils from Lucifer.",
-    "void_sanctum": "Passive: Increases chance to find Void Sigils from NEET.",
+    "infernal_shrine": "Passive: Increases chance to find Infernal Sigils from Lucifer.",
+    "void_shrine":     "Passive: Increases chance to find Void Sigils from NEET.",
     "twin_shrine": "Passive: Increases chance to find Gemini Sigils from the Gemini Twins.",
     "war_camp": "Generates Combat Stamina over time (0.01 per worker/hr). Stamina can exceed the normal cap of 10, but automatic regen is paused while at or above 10.",
 }
@@ -73,8 +73,8 @@ CONSTRUCTION_COSTS = {
     "hatchery":        {"gold": 30000, "timber": 30000, "stone": 30000},
     "war_camp":        {"gold": 20000, "timber": 1500, "stone": 1500},
     "celestial_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
-    "infernal_forge": {"gold": 10000000, "timber": 100000, "stone": 100000},
-    "void_sanctum": {"gold": 10000000, "timber": 100000, "stone": 100000},
+    "infernal_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
+    "void_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
     "twin_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
 }
 
@@ -94,8 +94,8 @@ SPECIAL_MAP = {
     "hatchery":        "life_root",
     "war_camp":        "magma_core",
     "celestial_shrine": "celestial_stone",
-    "infernal_forge": "infernal_cinder",
-    "void_sanctum": "void_crystal",
+    "infernal_shrine": "infernal_cinder",
+    "void_shrine": "void_crystal",
     "twin_shrine": "bound_crystal",
 }
 
@@ -109,7 +109,7 @@ ITEM_NAMES = {
     "bound_crystal": "Bound Crystal",
 }
 
-UBER_BUILDINGS = {"celestial_shrine", "infernal_forge", "void_sanctum", "twin_shrine"}
+UBER_BUILDINGS = {"celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine"}
 
 # Black Market bulk trade configuration
 BLACK_MARKET_TRADES = {

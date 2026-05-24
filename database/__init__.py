@@ -19,6 +19,7 @@ from .repositories.paradise import ParadiseRepository
 from .repositories.partners import PartnerRepository
 from .repositories.prestige import PrestigeRepository
 from .repositories.settings import SettingsRepository
+from .repositories.plots import PlotRepository
 from .repositories.settlement import SettlementRepository
 from .repositories.skills import SkillRepository
 from .repositories.slayer import SlayerRepository
@@ -40,6 +41,7 @@ class DatabaseManager:
         self.companions = CompanionRepository(connection)
         self.delve = DelveRepository(connection)
         self.settlement = SettlementRepository(connection)
+        self.plots = PlotRepository(connection)
         self.slayer = SlayerRepository(connection)
         self.uber = UberRepository(connection)
         self.codex = CodexRepository(connection)

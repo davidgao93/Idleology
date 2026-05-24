@@ -294,6 +294,28 @@ class UserRepository:
         await self.connection.commit()
 
     # ---------------------------------------------------------
+    # Development Contracts
+    # ---------------------------------------------------------
+
+    async def get_development_contracts(self, user_id: str) -> int:
+        """Returns the player's current Development Contract count."""
+        async with self.connection.execute(
+            "SELECT development_contracts FROM users WHERE user_id = ?",
+            (user_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row[0] if row else 0
+
+    async def modify_development_contracts(self, user_id: str, delta: int) -> None:
+        """Adds delta (may be negative) to development_contracts, flooring at 0."""
+        await self.connection.execute(
+            "UPDATE users SET development_contracts = MAX(0, development_contracts + ?) "
+            "WHERE user_id = ?",
+            (delta, user_id),
+        )
+        await self.connection.commit()
+
+    # ---------------------------------------------------------
     # Combat Stamina
     # ---------------------------------------------------------
 

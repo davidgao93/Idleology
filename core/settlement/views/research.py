@@ -302,7 +302,7 @@ class ResearchView(SettlementBaseView):
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _on_back(self, interaction: Interaction) -> None:
-        self.parent.update_grid()
+        self.parent._rebuild_ui()
         await interaction.response.edit_message(
             embed=self.parent.build_embed(), view=self.parent
         )

@@ -64,7 +64,7 @@ class WorkerModal(ui.Modal, title="Manage Workforce"):
                     self.parent_view.building = b
                     break
 
-            self.parent_view.parent.update_grid()
+            self.parent_view.parent._rebuild_ui()
 
             await interaction.response.edit_message(
                 embed=self.parent_view.build_embed(), view=self.parent_view
@@ -270,7 +270,7 @@ class BuildingDetailView(SettlementBaseView):
         ]
 
         # 3. Refresh Parent Grid
-        self.parent.update_grid()
+        self.parent._rebuild_ui()
 
         await interaction.edit_original_response(
             content=f"💥 **{self.building.name}** has been demolished. Workers returned to pool.",
@@ -329,7 +329,7 @@ class BuildingDetailView(SettlementBaseView):
                 break
 
         # Rebuild parent grid (so button labels & 🟢/🔴 match)
-        self.parent.update_grid()
+        self.parent._rebuild_ui()
 
         self._processing = False
         await interaction.edit_original_response(embed=self.build_embed(), view=self)

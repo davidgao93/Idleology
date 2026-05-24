@@ -37,7 +37,10 @@ class SettlementRepository:
         )
 
         b_cursor = await self.connection.execute(
-            "SELECT * FROM buildings WHERE user_id = ? AND server_id = ? ORDER BY slot_index ASC",
+            "SELECT id, user_id, server_id, building_type, tier, slot_index, "
+            "workers_assigned, plot_index, is_meta "
+            "FROM buildings WHERE user_id = ? AND server_id = ? "
+            "ORDER BY COALESCE(plot_index, slot_index) ASC",
             (user_id, server_id),
         )
         b_rows = await b_cursor.fetchall()
@@ -50,6 +53,8 @@ class SettlementRepository:
                 tier=r[4],
                 slot_index=r[5],
                 workers_assigned=r[6],
+                plot_index=r[7],
+                is_meta=bool(r[8]),
             )
             for r in b_rows
         ]
@@ -57,11 +62,19 @@ class SettlementRepository:
         return settlement
 
     async def build_structure(
-        self, user_id: str, server_id: str, b_type: str, slot: int
+        self,
+        user_id: str,
+        server_id: str,
+        b_type: str,
+        plot_index: int,
+        is_meta: bool = False,
     ) -> None:
+        """Insert a new building on *plot_index*. slot_index mirrors plot_index."""
         await self.connection.execute(
-            "INSERT INTO buildings (user_id, server_id, building_type, slot_index) VALUES (?, ?, ?, ?)",
-            (user_id, server_id, b_type, slot),
+            "INSERT INTO buildings "
+            "(user_id, server_id, building_type, slot_index, plot_index, is_meta) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, server_id, b_type, plot_index, plot_index, int(is_meta)),
         )
         await self.connection.commit()
 
@@ -189,9 +202,10 @@ class SettlementRepository:
         return row if row else (0, 0)
 
     async def get_used_slots_count(self, user_id: str, server_id: str) -> int:
-        """Counts how many buildings a user has constructed."""
+        """Counts how many *regular* (non-meta) buildings a user has constructed."""
         cursor = await self.connection.execute(
-            "SELECT COUNT(*) FROM buildings WHERE user_id = ? AND server_id = ?",
+            "SELECT COUNT(*) FROM buildings "
+            "WHERE user_id = ? AND server_id = ? AND is_meta = 0",
             (user_id, server_id),
         )
         row = await cursor.fetchone()

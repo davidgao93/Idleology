@@ -6,15 +6,19 @@ from .black_market import BlackMarketView, BulkTradeModal
 from .construction import BuildConstructionView
 from .dashboard import SettlementDashboardView
 from .detail import BuildingDetailView, WorkerModal
-from .town_hall import TownHallView
+from .plot_detail import MetaBuildingConstructionView, PlotDetailView
+from .town_hall import DCCraftModal, TownHallView
 
 __all__ = [
     "SettlementBaseView",
     "BlackMarketView",
     "BulkTradeModal",
     "TownHallView",
+    "DCCraftModal",
     "BuildConstructionView",
     "BuildingDetailView",
     "WorkerModal",
     "SettlementDashboardView",
+    "PlotDetailView",
+    "MetaBuildingConstructionView",
 ]

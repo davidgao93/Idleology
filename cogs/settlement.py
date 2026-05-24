@@ -2,6 +2,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.hatchery.views import HatcheryView
+from core.settlement.models import Plot
 from core.settlement.views import SettlementDashboardView
 
 
@@ -62,9 +63,17 @@ class SettlementCog(commands.Cog, name="settlement"):
                 delete_after=10,
             )
 
-        # 4. Launch Dashboard
+        # 4. Load plots (ensure rows exist first)
+        await self.bot.database.plots.ensure_plots(user_id, server_id)
+        plot_rows = await self.bot.database.plots.get_plots(user_id, server_id)
+        plots = [
+            Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
+            for r in plot_rows
+        ]
+
+        # 5. Launch Dashboard
         view = SettlementDashboardView(
-            self.bot, user_id, server_id, settlement, total_followers
+            self.bot, user_id, server_id, settlement, total_followers, plots=plots
         )
         embed = view.build_embed()
 

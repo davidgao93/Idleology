@@ -4,15 +4,96 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.images import SETTLEMENT_BUILDINGS
 from core.settlement.mechanics import SettlementMechanics
+from core.settlement.plots import get_meta_slots
 
 from .base import SettlementBaseView
 
+# Cost per Development Contract
+_DC_GOLD   = 5_000
+_DC_TIMBER =   500
+_DC_STONE  =   500
+
+
+class DCCraftModal(ui.Modal, title="Craft Development Contracts"):
+    """Modal that lets the player specify how many DCs to craft (1–10)."""
+
+    quantity = ui.TextInput(
+        label="Quantity (1–10)",
+        placeholder="Enter a number between 1 and 10",
+        min_length=1,
+        max_length=2,
+    )
+
+    def __init__(self, parent_view: "TownHallView"):
+        super().__init__()
+        self.parent_view = parent_view
+
+    async def on_submit(self, interaction: Interaction):
+        try:
+            qty = int(self.quantity.value)
+            if not (1 <= qty <= 10):
+                raise ValueError
+        except ValueError:
+            return await interaction.response.send_message(
+                "Please enter a whole number between **1** and **10**.",
+                ephemeral=True,
+            )
+
+        pv = self.parent_view
+        cost_gold   = qty * _DC_GOLD
+        cost_timber = qty * _DC_TIMBER
+        cost_stone  = qty * _DC_STONE
+
+        gold = await pv.bot.database.users.get_gold(pv.user_id)
+        stl  = pv.settlement
+        if (
+            gold          < cost_gold
+            or stl.timber < cost_timber
+            or stl.stone  < cost_stone
+        ):
+            return await interaction.response.send_message(
+                f"Insufficient resources!\n"
+                f"Need: 💰 {cost_gold:,}g | 🪵 {cost_timber:,} | 🪨 {cost_stone:,}\n"
+                f"Have: 💰 {gold:,}g | 🪵 {stl.timber:,} | 🪨 {stl.stone:,}",
+                ephemeral=True,
+            )
+
+        # Deduct resources
+        changes = {"timber": -cost_timber, "stone": -cost_stone}
+        await pv.bot.database.settlement.commit_production(
+            pv.user_id, pv.parent.server_id, changes
+        )
+        await pv.bot.database.users.modify_gold(pv.user_id, -cost_gold)
+        await pv.bot.database.users.modify_development_contracts(pv.user_id, qty)
+
+        # Update local state
+        pv.settlement.timber -= cost_timber
+        pv.settlement.stone  -= cost_stone
+        pv.dc_count          += qty
+
+        await interaction.response.edit_message(
+            content=(
+                f"✅ Crafted **{qty}× Development Contract{'s' if qty != 1 else ''}**! "
+                f"You now have **{pv.dc_count}**."
+            ),
+            embed=pv.build_embed(),
+            view=pv,
+        )
+
 
 class TownHallView(SettlementBaseView):
-    def __init__(self, bot, user_id, settlement, parent_view):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        settlement,
+        parent_view,
+        dc_count: int = 0,
+    ):
         super().__init__(bot, user_id)
         self.settlement = settlement
         self.parent = parent_view
+        self.dc_count = dc_count
         self._processing = False
         self.setup_ui()
 
@@ -20,30 +101,46 @@ class TownHallView(SettlementBaseView):
         try:
             expired_embed = discord.Embed(
                 title="Town Hall Session Expired",
-                description="This Town Hall management session has timed out.\n\n"
-                "Reopen your settlement dashboard to manage it again.",
+                description=(
+                    "This Town Hall management session has timed out.\n\n"
+                    "Reopen your settlement dashboard to manage it again."
+                ),
                 color=discord.Color.dark_grey(),
             )
             await self.parent.message.edit(embed=expired_embed, view=None)
-        except:
+        except Exception:
             pass
         finally:
             self.stop()
 
     def build_embed(self):
-        tier = self.settlement.town_hall_tier
-        slots = self.settlement.building_slots
-
-        next_slots = slots + 1
+        tier       = self.settlement.town_hall_tier
+        meta_cap   = get_meta_slots(tier)
+        meta_used  = sum(1 for b in self.settlement.buildings if b.is_meta)
 
         desc = (
             f"**Level:** {tier}/7\n"
-            f"**Building Slots:** {slots}\n"
+            f"**Meta Building Slots:** {meta_used}/{meta_cap}\n"
             f"**Follower Cap Buff:** +{tier * 10}%\n"
+            f"📜 **Development Contracts:** {self.dc_count}"
         )
 
         embed = discord.Embed(
-            title="🏛️ Town Hall", description=desc, color=discord.Color.dark_blue()
+            title="🏛️ Town Hall",
+            description=desc,
+            color=discord.Color.dark_blue(),
+        )
+
+        # DC crafting info
+        embed.add_field(
+            name="📜 Craft Development Contracts",
+            value=(
+                f"Cost per DC: 💰 {_DC_GOLD:,}g | "
+                f"🪵 {_DC_TIMBER:,} Timber | "
+                f"🪨 {_DC_STONE:,} Stone\n"
+                "Use DCs to develop new settlement plots."
+            ),
+            inline=False,
         )
 
         if tier < 7:
@@ -51,14 +148,16 @@ class TownHallView(SettlementBaseView):
             cost_str = (
                 f"🪵 {costs['timber']:,} | 🪨 {costs['stone']:,} | 💰 {costs['gold']:,}"
             )
-
             if "specials" in costs:
-                reqs = [f"{s['name']} x{s['qty']}" for s in costs["specials"]]
+                reqs = [f"{s['name']} ×{s['qty']}" for s in costs["specials"]]
                 cost_str += f"\n✨ **Requires:** {', '.join(reqs)}"
 
             embed.add_field(
                 name="Upgrade Benefits",
-                value=f"Slots: {slots} ➡️ **{next_slots}**",
+                value=(
+                    f"Meta Slots: {meta_cap} ➡️ **{meta_cap + 1}**\n"
+                    f"Follower Cap: +{tier * 10}% ➡️ **+{(tier + 1) * 10}%**"
+                ),
                 inline=False,
             )
             embed.add_field(name="Upgrade Cost", value=cost_str, inline=False)
@@ -66,27 +165,42 @@ class TownHallView(SettlementBaseView):
             embed.add_field(
                 name="Status", value="🌟 Maximum Tier Reached", inline=False
             )
+
         embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["town_hall"])
         return embed
 
-    def _get_upgrade_cost(self, target_tier):
+    def _get_upgrade_cost(self, target_tier: int) -> dict:
         return SettlementMechanics.get_upgrade_cost("town_hall", target_tier - 1)
 
     def setup_ui(self):
         self.clear_items()
+
+        btn_craft = ui.Button(
+            label="Craft Development Contracts",
+            style=ButtonStyle.blurple,
+            emoji="📜",
+            row=0,
+        )
+        btn_craft.callback = self.craft_dcs
+        self.add_item(btn_craft)
 
         btn_up = ui.Button(
             label="Upgrade Hall",
             style=ButtonStyle.success,
             emoji="⬆️",
             disabled=(self.settlement.town_hall_tier >= 7),
+            row=0,
         )
         btn_up.callback = self.upgrade
         self.add_item(btn_up)
 
-        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary)
+        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
         btn_back.callback = self.go_back
         self.add_item(btn_back)
+
+    async def craft_dcs(self, interaction: Interaction):
+        modal = DCCraftModal(self)
+        await interaction.response.send_modal(modal)
 
     async def upgrade(self, interaction: Interaction):
         if self._processing:
@@ -97,10 +211,9 @@ class TownHallView(SettlementBaseView):
         target_tier = self.settlement.town_hall_tier + 1
         costs = self._get_upgrade_cost(target_tier)
 
-        # 1. Check Resources
         if (
             self.settlement.timber < costs["timber"]
-            or self.settlement.stone < costs["stone"]
+            or self.settlement.stone  < costs["stone"]
         ):
             self._processing = False
             return await interaction.response.send_message(
@@ -114,7 +227,6 @@ class TownHallView(SettlementBaseView):
                 "Insufficient Gold!", ephemeral=True
             )
 
-        # 2. Check multiple special materials safely (validate before deducting)
         if "specials" in costs:
             for sp in costs["specials"]:
                 owned = await self.bot.database.users.get_currency(
@@ -123,7 +235,7 @@ class TownHallView(SettlementBaseView):
                 if owned < sp["qty"]:
                     self._processing = False
                     return await interaction.response.send_message(
-                        f"Need {sp['qty']}x {sp['name']}! (You have {owned})",
+                        f"Need {sp['qty']}× {sp['name']}! (You have {owned})",
                         ephemeral=True,
                     )
 
@@ -132,39 +244,33 @@ class TownHallView(SettlementBaseView):
             item.disabled = True
         await interaction.edit_original_response(view=self)
 
-        # Deduct special materials after defer
         if "specials" in costs:
             for sp in costs["specials"]:
                 await self.bot.database.users.modify_currency(
                     self.user_id, sp["key"], -sp["qty"]
                 )
 
-        # 3. Consume Resources
         changes = {
             "timber": -costs["timber"],
-            "stone": -costs["stone"],
+            "stone":  -costs["stone"],
         }
         await self.bot.database.settlement.commit_production(
             self.user_id, self.parent.server_id, changes
         )
         await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
-
-        # 4. Update DB (Settlements Table)
         await self.bot.database.settlement.upgrade_town_hall(
             self.user_id, self.parent.server_id
         )
 
-        # 5. Update Local State & Refresh
         self.settlement.town_hall_tier += 1
-        self.settlement.building_slots += 1
-        self.settlement.timber -= costs["timber"]
-        self.settlement.stone -= costs["stone"]
+        self.settlement.timber         -= costs["timber"]
+        self.settlement.stone          -= costs["stone"]
         self._processing = False
         self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def go_back(self, interaction: Interaction):
-        self.parent.update_grid()
+        self.parent._rebuild_ui()
         await interaction.response.edit_message(
             embed=self.parent.build_embed(), view=self.parent
         )

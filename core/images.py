@@ -183,8 +183,8 @@ SETTLEMENT_BUILDINGS = {
     "black_market": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512961242992801/black_market.png?ex=69f8b518&is=69f76398&hm=385c50f0144a29313fcb7aaeb11c26e0dfb3fbf910e6d504fce8fedcbc28734a&",
     "companion_ranch": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512961599639762/companion_ranch.png?ex=69f8b518&is=69f76398&hm=5d419074c38d7915e96e7f72522888aabb4a53fa6539db27042a0842541b3354&",
     "celestial_shrine": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512960274239799/temple.png?ex=69f8b517&is=69f76397&hm=9c8dae72cc8639210f2ac2215dbdaa4a481b0b1f4127292ad50b698de3174994&",
-    "infernal_forge": "https://cdn.discordapp.com/attachments/1334637411363323996/1507523697446097056/infernal_forge.jpg?ex=6a123659&is=6a10e4d9&hm=9f0ca30b20906ea250be6fcef8f68c300d9b7e300473677a742aa6dc12d9ba0e&",
-    "void_sanctum": "https://cdn.discordapp.com/attachments/1334637411363323996/1507523688596115657/corrupted_shrine.jpg?ex=6a123657&is=6a10e4d7&hm=08da355b1f716e9f2119c865efb7a384582f7b9ddd00d7bccbd6908ebe8c5536&",
+    "infernal_shrine": "https://cdn.discordapp.com/attachments/1334637411363323996/1507523697446097056/infernal_forge.jpg?ex=6a123659&is=6a10e4d9&hm=9f0ca30b20906ea250be6fcef8f68c300d9b7e300473677a742aa6dc12d9ba0e&",
+    "void_shrine": "https://cdn.discordapp.com/attachments/1334637411363323996/1507523688596115657/corrupted_shrine.jpg?ex=6a123657&is=6a10e4d7&hm=08da355b1f716e9f2119c865efb7a384582f7b9ddd00d7bccbd6908ebe8c5536&",
     "twin_shrine": "https://cdn.discordapp.com/attachments/1334637411363323996/1507523689057484950/gemini_shrine.jpg?ex=6a123657&is=6a10e4d7&hm=8c9630435050b94c891f8f4d25c079271d6aa3e7dcfd7832212ed30edfd0d601&",
     "hatchery": "https://cdn.discordapp.com/attachments/1334637411363323996/1507523698624692407/settlement_hatchery.jpg?ex=6a12365a&is=6a10e4da&hm=d0a8251cec847aeb834f51bb6d7cd66da98f834370099a9ee981bd3486474324&",
 }
