@@ -273,7 +273,8 @@ class SettlementRepository:
 
         # --- Shrine effectiveness (sigil shrines only; temple is excluded) ---
         _SIGIL_SHRINES = frozenset({
-            "celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine"
+            "celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine",
+            "corruption_shrine",
         })
         sacred_ground_val = PLOT_BONUS_TABLE.get("sacred_ground", {}).get("value", 0.20)
         shrine_effectiveness: dict[str, float] = {}

@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `mirage_runes_imperfect` INTEGER NOT NULL DEFAULT 0,
   `mirage_runes_perfected` INTEGER NOT NULL DEFAULT 0,
   `unidentified_blueprint` INTEGER NOT NULL DEFAULT 0,
+  `diviners_rod` INTEGER NOT NULL DEFAULT 0,
   `hard_mode` INTEGER NOT NULL DEFAULT 0,
   `combat_streak` INTEGER NOT NULL DEFAULT 0,
   `pending_stat_packages` TEXT DEFAULT NULL,
@@ -100,9 +101,9 @@ CREATE TABLE IF NOT EXISTS `maw_participants` (
   `user_id`            TEXT    NOT NULL,
   `cycle_id`           INTEGER NOT NULL,
   `signup_timestamp`   INTEGER NOT NULL,
-  `last_damage_check`  INTEGER NOT NULL,
+  `last_fight_ts`      INTEGER NOT NULL DEFAULT 0,
   `damage_dealt`       INTEGER NOT NULL DEFAULT 0,
-  `boost_used_at`      INTEGER DEFAULT NULL,
+  `fights_this_cycle`  INTEGER NOT NULL DEFAULT 0,
   `rewards_collected`  INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (`user_id`, `cycle_id`)
 );

@@ -285,6 +285,8 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["void_frag"] = True
         if random.random() < 0.01 + special_drop_chance:
             drops["unidentified_blueprint"] = True
+        if random.random() < 0.01 + special_drop_chance:
+            drops["diviners_rod"] = True
 
     if player.level >= 60:
         elemental_key_chance = 0.01 + special_drop_chance
@@ -342,6 +344,7 @@ _SPECIAL_FLAG_CURRENCY_MAP: Dict[str, tuple] = {
     "life_root": ("life_root", "Life Root"),
     "spirit_shard": ("spirit_shard", "Spirit Shard"),
     "unidentified_blueprint": ("unidentified_blueprint", "📋 Unidentified Blueprint"),
+    "diviners_rod": ("diviners_rod", "🔮 Diviner's Rod"),
     "spirit_stone": ("spirit_stones", "🔮 Spirit Stone"),
     "antique_tome": ("antique_tome", "📖 Antique Tome"),
     "pinnacle_key": ("pinnacle_key", "🗝️ Pinnacle Key"),

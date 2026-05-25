@@ -4,6 +4,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.combat.economy.drops import _PART_SLOTS, _PART_WEIGHTS
 from core.images import CONSUME_EGG, CONSUME_HUB, CONSUME_SLOT_IMAGES
 from core.items.factory import create_monster_part
 from core.models import MonsterPart, Player
@@ -77,6 +78,44 @@ def _build_main_embed(player: Player, inventory: list) -> discord.Embed:
                 value="*Empty*",
                 inline=True,
             )
+    embed.set_thumbnail(url=CONSUME_HUB)
+    return embed
+
+
+def _build_recycle_select_embed(inventory_count: int) -> discord.Embed:
+    embed = discord.Embed(
+        title="♻️ Recycle Monster Parts",
+        description=(
+            "Select **3 parts** from the dropdown to recycle.\n\n"
+            "Their HP values are summed, boosted by **5%**, then divided by 3.\n"
+            "The result drops into a **random slot** using standard loot odds — "
+            "head and torso are common; cheeks and organs are rare.\n\n"
+            f"**Inventory:** {inventory_count}/20 parts"
+        ),
+        color=0x8B0000,
+    )
+    embed.set_thumbnail(url=CONSUME_HUB)
+    return embed
+
+
+def _build_recycle_confirm_embed(parts: list, new_hp: int) -> discord.Embed:
+    total = sum(p.hp_value for p in parts)
+    boosted = round(total * 1.05)
+    lines = "\n".join(
+        f"{_SLOT_EMOJI.get(p.slot_type, '🫀')} {p.display_name} — +{p.hp_value:,} HP"
+        for p in parts
+    )
+    embed = discord.Embed(
+        title="♻️ Confirm Recycle",
+        description=(
+            f"{lines}\n\n"
+            f"**Sum:** {total:,} → **+5%** → {boosted:,}\n"
+            f"**÷ 3 Result: +{new_hp:,} Max HP**\n\n"
+            "Slot will be assigned randomly on confirm.\n"
+            "⚠️ The 3 selected parts will be **permanently destroyed**."
+        ),
+        color=0x8B0000,
+    )
     embed.set_thumbnail(url=CONSUME_HUB)
     return embed
 
@@ -289,6 +328,108 @@ class PartSelect(ui.Select):
         await interaction.response.edit_message(embed=embed, view=detail_view)
 
 
+class RecycleSelect(ui.Select):
+    def __init__(self, parts: list[MonsterPart]):
+        options = [
+            discord.SelectOption(
+                label=p.display_name.replace("**", "")[:100],
+                description=f"ilvl {p.ilvl} — +{p.hp_value:,} Max HP",
+                value=str(p.id),
+                emoji=_SLOT_EMOJI.get(p.slot_type, "🫀"),
+            )
+            for p in parts[:25]
+        ]
+        super().__init__(
+            placeholder="Choose 3 parts to recycle...",
+            options=options,
+            min_values=3,
+            max_values=3,
+        )
+        self.parts_by_id = {p.id: p for p in parts}
+
+    async def callback(self, interaction: Interaction):
+        selected = [self.parts_by_id[int(v)] for v in self.values]
+        new_hp = max(1, round(sum(p.hp_value for p in selected) * 1.05 / 3))
+        confirm_view = RecycleConfirmView(self.view, selected, new_hp)
+        embed = _build_recycle_confirm_embed(selected, new_hp)
+        await interaction.response.edit_message(embed=embed, view=confirm_view)
+
+
+class RecycleView(BaseView):
+    """Shows a multi-select for choosing exactly 3 parts to recycle."""
+
+    def __init__(self, parent: "ConsumeView"):
+        super().__init__(bot=parent.bot, parent=parent)
+        self.parent = parent
+        self._rebuild_select()
+
+    def _rebuild_select(self):
+        for item in self.children[:]:
+            if isinstance(item, RecycleSelect):
+                self.remove_item(item)
+        if len(self.parent.inventory_parts) >= 3:
+            self.add_item(RecycleSelect(self.parent.inventory_parts))
+
+    @ui.button(label="Back", style=ButtonStyle.secondary, row=1)
+    async def back(self, interaction: Interaction, button: ui.Button):
+        embed = _build_main_embed(self.parent.player, self.parent.inventory)
+        await interaction.response.edit_message(embed=embed, view=self.parent)
+        self.stop()
+
+
+class RecycleConfirmView(BaseView):
+    """Previews the recycle result; Confirm destroys the 3 parts and adds the new one."""
+
+    def __init__(self, recycle_view: "RecycleView", selected: list[MonsterPart], new_hp: int):
+        super().__init__(bot=recycle_view.bot, parent=recycle_view)
+        self.consume_view: "ConsumeView" = recycle_view.parent
+        self.recycle_view = recycle_view
+        self.selected = selected
+        self.new_hp = new_hp
+        self._processing = False
+
+    @ui.button(label="Confirm Recycle", style=ButtonStyle.success, emoji="♻️")
+    async def confirm(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        name = random.choice(self.selected).monster_name
+        slot = random.choices(_PART_SLOTS, weights=_PART_WEIGHTS, k=1)[0]
+        avg_ilvl = round(sum(p.ilvl for p in self.selected) / 3)
+
+        for part in self.selected:
+            await self.bot.database.monster_parts.delete_part(part.id)
+
+        await self.bot.database.monster_parts.add_part(
+            self.consume_view.user_id, slot, name, avg_ilvl, self.new_hp
+        )
+
+        self.consume_view.inventory = await self.bot.database.monster_parts.get_inventory(
+            self.consume_view.user_id
+        )
+        self.consume_view.inventory_parts = [
+            create_monster_part(r) for r in self.consume_view.inventory
+        ]
+        self.consume_view._rebuild_select()
+
+        slot_label = _SLOT_LABELS.get(slot, slot)
+        slot_emoji = _SLOT_EMOJI.get(slot, "🫀")
+        embed = _build_main_embed(self.consume_view.player, self.consume_view.inventory)
+        embed.set_footer(text=f"Recycled into {slot_emoji} {slot_label} — +{self.new_hp:,} Max HP!")
+        await interaction.edit_original_response(embed=embed, view=self.consume_view)
+        self.stop()
+
+    @ui.button(label="Back", style=ButtonStyle.secondary)
+    async def back(self, interaction: Interaction, button: ui.Button):
+        recycle_view = RecycleView(self.consume_view)
+        embed = _build_recycle_select_embed(len(self.consume_view.inventory))
+        await interaction.response.edit_message(embed=embed, view=recycle_view)
+        self.stop()
+
+
 class EggSelect(ui.Select):
     def __init__(self, eggs: list):
         """eggs: list of (id, egg_tier, monster_level, monster_name) rows."""
@@ -405,6 +546,16 @@ class ConsumeView(BaseView):
         egg_view = EggConsumeView(self.bot, self, eggs)
         embed = _build_egg_consume_embed(eggs)
         await interaction.edit_original_response(embed=embed, view=egg_view)
+
+    @ui.button(label="Recycle", style=ButtonStyle.primary, emoji="♻️", row=2)
+    async def recycle(self, interaction: Interaction, button: ui.Button):
+        if len(self.inventory_parts) < 3:
+            return await interaction.response.send_message(
+                "You need at least **3 parts** in your inventory to recycle.", ephemeral=True
+            )
+        recycle_view = RecycleView(self)
+        embed = _build_recycle_select_embed(len(self.inventory))
+        await interaction.response.edit_message(embed=embed, view=recycle_view)
 
     @ui.button(label="Bulk Discard", style=ButtonStyle.danger, emoji="🗑️", row=2)
     async def bulk_discard(self, interaction: Interaction, button: ui.Button):

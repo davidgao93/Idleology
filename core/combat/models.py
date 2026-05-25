@@ -200,6 +200,10 @@ class Monster:
     # Frenzied Hunger: each potion use boosts monster ATK multiplicatively
     potion_uses_tracked: int = 0
 
+    # Hard mode flag — set by _execute_combat for non-boss hard mode encounters;
+    # doubles raw damage output and adds +15 flat accuracy in process_monster_turn.
+    hard_mode: bool = False
+
     def has_modifier(self, name: str) -> bool:
         return any(m.name == name for m in self.modifiers)
 

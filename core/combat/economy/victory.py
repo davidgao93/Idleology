@@ -315,7 +315,7 @@ async def apply_victory_rewards(
     reward_data["special"] = []
 
     await apply_boss_sigil_drops(bot, user_id, server_id, monster, reward_data, player=player)
-    await apply_corrupted_monster_drops(bot, user_id, server_id, monster, reward_data)
+    await apply_corrupted_monster_drops(bot, user_id, server_id, monster, reward_data, player=player)
     await apply_incubated_monster_drops(bot, user_id, monster, reward_data)
     await apply_special_flags(bot, user_id, server_id, special_flags, reward_data)
 

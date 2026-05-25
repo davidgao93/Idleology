@@ -10,7 +10,7 @@ from core.images import SETTLEMENT_BUILDINGS
 from core.settlement.constants import BUILDING_INFO, RESOURCE_DISPLAY_NAMES
 from core.settlement.mechanics import SettlementMechanics
 from core.settlement.models import Plot
-from core.settlement.plots import get_meta_slots, render_grid
+from core.settlement.plots import META_BUILDINGS, get_meta_slots, render_grid
 from core.settlement.views.research import ResearchView
 from core.settlement.views.town_hall import TownHallView
 
@@ -134,18 +134,32 @@ class SettlementDashboardView(SettlementBaseView):
                     )
                 )
             else:
+                # Determine whether this building type accepts any workers at all
+                if b.is_meta:
+                    _max_w = META_BUILDINGS.get(b.building_type, {}).get("max_workers", -1)
+                    _needs_workers = _max_w != 0
+                else:
+                    _needs_workers = True
+
                 if b.building_type == "black_market":
                     status_emoji = "⚫"
+                    worker_desc = "Special trading post"
+                elif not _needs_workers:
+                    status_emoji = "🔵"   # passive/always-on — distinct from active 🟢 / idle 🔴
+                    worker_desc = "Passive — always active"
                 elif b.workers_assigned > 0:
                     status_emoji = "🟢"
+                    worker_desc = f"Workers: {b.workers_assigned:,}"
                 else:
                     status_emoji = "🔴"
+                    worker_desc = "Workers: 0 — inactive"
+
                 label_suffix = " (Meta)" if b.is_meta else f" (T{b.tier})"
                 options.append(
                     SelectOption(
                         label=f"Plot {plot_num:02d} — {b.name}{label_suffix}",
                         value=str(plot_num),
-                        description=f"Workers: {b.workers_assigned:,}",
+                        description=worker_desc,
                         emoji=status_emoji,
                     )
                 )
@@ -352,9 +366,10 @@ class SettlementDashboardView(SettlementBaseView):
             display_changes["Companion XP"] = display_changes.pop("companion_cookie", cookie_xp)
 
         # War Camp stamina
-        war_camp_stamina = 0.0
+        war_camp_stamina = 0
         if "war_camp_stamina" in total_changes:
-            war_camp_stamina = float(total_changes.pop("war_camp_stamina"))
+            # Cap at 10 and convert to int — war camp never exceeds the normal stamina cap
+            war_camp_stamina = min(10, int(float(total_changes.pop("war_camp_stamina"))))
             display_changes.pop("war_camp_stamina", None)
 
         # Market gold
@@ -368,7 +383,7 @@ class SettlementDashboardView(SettlementBaseView):
         if market_gold > 0:
             await self.bot.database.users.modify_gold(uid, market_gold)
         if war_camp_stamina > 0:
-            await self.bot.database.users.add_stamina_uncapped(uid, war_camp_stamina)
+            await self.bot.database.users.add_stamina_capped(uid, war_camp_stamina)
         if dc_earned > 0:
             await self.bot.database.users.modify_development_contracts(uid, dc_earned)
         await self.bot.database.settlement.update_collection_timer(uid, sid)
@@ -399,7 +414,7 @@ class SettlementDashboardView(SettlementBaseView):
 
         stamina_msg = ""
         if war_camp_stamina > 0:
-            stamina_msg = f"\n⚔️ **War Camp:** +{war_camp_stamina:.2f} Combat Stamina."
+            stamina_msg = f"\n⚔️ **War Camp:** +{war_camp_stamina} Combat Stamina."
 
         dc_msg = ""
         if dc_earned > 0:
@@ -432,22 +447,10 @@ class SettlementDashboardView(SettlementBaseView):
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
-        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
-
-    async def on_timeout(self):
-        self.bot.state_manager.clear_active(self.user_id)
         try:
-            expired_embed = discord.Embed(
-                title="Settlement Session Expired",
-                description=(
-                    "This settlement management session has timed out.\n\n"
-                    "Run the command again to reopen the dashboard."
-                ),
-                color=discord.Color.dark_grey(),
-            )
-            await self.message.edit(embed=expired_embed, view=None)
+            await interaction.message.delete()
         except Exception:
             pass
 

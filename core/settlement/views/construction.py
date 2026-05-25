@@ -94,31 +94,16 @@ class BuildConstructionView(SettlementBaseView):
     def _is_available(self, b_type: str) -> bool:
         """True if the building type can currently be built (blueprint checks)."""
         if (
-            (b_type == "celestial_shrine" and not self.uber_prog.get("celestial_blueprint_unlocked"))
+            (b_type == "celestial_shrine"  and not self.uber_prog.get("celestial_blueprint_unlocked"))
             or (b_type == "infernal_shrine" and not self.uber_prog.get("infernal_blueprint_unlocked"))
             or (b_type == "void_shrine"     and not self.uber_prog.get("void_blueprint_unlocked"))
             or (b_type == "twin_shrine"     and not self.uber_prog.get("gemini_blueprint_unlocked"))
+            or (b_type == "corruption_shrine" and not self.uber_prog.get("corruption_blueprint_unlocked"))
         ):
             return False
         if b_type in RESEARCHABLE_BUILDINGS and b_type not in self.researched:
             return False
         return True
-
-    async def on_timeout(self):
-        try:
-            expired_embed = discord.Embed(
-                title="Construction Menu Expired",
-                description=(
-                    "This construction selection session has timed out.\n\n"
-                    "Open the plot again from the settlement dashboard to build."
-                ),
-                color=discord.Color.dark_grey(),
-            )
-            await self.parent.message.edit(embed=expired_embed, view=None)
-        except Exception:
-            pass
-        finally:
-            self.stop()
 
     # -------------------------------------------------------------------------
     # Select
@@ -210,7 +195,11 @@ class BuildConstructionView(SettlementBaseView):
         prog.set_thumbnail(url=SETTLEMENT_HUB)
         for i, msg in enumerate(chosen, 1):
             prog.description = f"**Step {i}/3:** {msg}"
-            await interaction.edit_original_response(embed=prog)
+            # Strip interactive components on first frame so the select can't be re-clicked
+            if i == 1:
+                await interaction.edit_original_response(embed=prog, view=discord.ui.View())
+            else:
+                await interaction.edit_original_response(embed=prog)
             if i < 3:
                 await asyncio.sleep(2)
 

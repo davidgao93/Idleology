@@ -1,15 +1,36 @@
-import random
+"""
+core/maw/mechanics.py — Maw of Infinity cycle logic and reward calculation.
+
+Cycle cadence: opens every Sunday 12:00 UTC, active for 5.5 days (ends
+Saturday 00:00 UTC), then a collection window until the next Sunday 12:00.
+
+Fighting: players initiate 10-turn encounters manually. Up to 5 fights per
+cycle, with a 20-hour cooldown between fights. Each fight runs a real
+process_player_turn simulation against the Maw (attack=1, def=1, 99k HP
+that never dies).
+
+Rewards (manual collection during the collection window):
+  - Everyone: 3 base curios + proportional pool share + 10 guild tickets
+  - Pool size: 10 + 11 + 12 + ... per participant (grows with participation)
+  - Top 3 by damage: also receive a Curio Puzzle Box
+"""
+
 from datetime import datetime, timedelta, timezone
 
-DAMAGE_CAP = 500_000
-BOOST_DAMAGE = 10_000
-BOOST_COOLDOWN_HOURS = 20
-HOURLY_DAMAGE_POOL = [100, 1_000, 10_000]
-AVG_HOURLY_DAMAGE = 3_700  # used for fake global calculation
+FIGHT_COOLDOWN_HOURS = 20
+MAX_FIGHTS_PER_CYCLE = 5
+MAW_TURNS = 10
 
+BASE_CURIOS = 3
+BASE_GUILD_TICKETS = 10
+
+
+# ---------------------------------------------------------------------------
+# Cycle timing helpers
+# ---------------------------------------------------------------------------
 
 def get_current_cycle_id(now: datetime) -> int:
-    """Returns the Unix timestamp (int) of the most recent Sunday 12:00 UTC cycle start."""
+    """Returns the Unix timestamp of the most recent Sunday 12:00 UTC cycle start."""
     now_utc = (
         now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
     )
@@ -43,34 +64,57 @@ def is_collection_window(cycle_id: int, now_ts: int) -> bool:
     return get_cycle_end_ts(cycle_id) <= now_ts < get_next_cycle_id(cycle_id)
 
 
-def roll_hourly_damage(hours: int) -> int:
-    return sum(random.choice(HOURLY_DAMAGE_POOL) for _ in range(hours))
+# ---------------------------------------------------------------------------
+# Fight availability
+# ---------------------------------------------------------------------------
 
-
-def calculate_fake_global(participant_count: int, cycle_id: int, now_ts: int) -> int:
-    hours_elapsed = max(0, (now_ts - cycle_id) / 3600)
-    return int(participant_count * hours_elapsed * AVG_HOURLY_DAMAGE)
-
-
-def calculate_rewards(damage_dealt: int) -> tuple[int, bool]:
-    """Returns (curio_count, puzzle_box)."""
-    pct = min(damage_dealt / DAMAGE_CAP, 1.0)
-    milestones = int(pct * 10)
-    puzzle_box = pct >= 0.8
-    return milestones, puzzle_box
-
-
-def reward_potential_pct(damage_dealt: int) -> float:
-    return min(damage_dealt / DAMAGE_CAP, 1.0) * 100
-
-
-def boost_available(boost_used_at: int | None, now_ts: int) -> bool:
-    if boost_used_at is None:
+def fight_available(last_fight_ts: int | None, fights_this_cycle: int, now_ts: int) -> bool:
+    """True if the player can start a new fight right now."""
+    if fights_this_cycle >= MAX_FIGHTS_PER_CYCLE:
+        return False
+    if not last_fight_ts:  # 0 or None → never fought
         return True
-    return (now_ts - boost_used_at) >= BOOST_COOLDOWN_HOURS * 3600
+    return (now_ts - last_fight_ts) >= FIGHT_COOLDOWN_HOURS * 3600
 
 
-def boost_remaining_seconds(boost_used_at: int, now_ts: int) -> int:
-    elapsed = now_ts - boost_used_at
-    remaining = BOOST_COOLDOWN_HOURS * 3600 - elapsed
+def fight_remaining_seconds(last_fight_ts: int, now_ts: int) -> int:
+    """Seconds until the fight cooldown expires. Returns 0 if already ready."""
+    elapsed = now_ts - last_fight_ts
+    remaining = FIGHT_COOLDOWN_HOURS * 3600 - elapsed
     return max(0, remaining)
+
+
+# ---------------------------------------------------------------------------
+# Reward calculation
+# ---------------------------------------------------------------------------
+
+def calculate_pool_size(participant_count: int) -> int:
+    """Pool grows by 1 curio per additional participant: 10 + 11 + 12 + …"""
+    n = participant_count
+    return n * 10 + n * (n - 1) // 2
+
+
+def calculate_rewards(
+    player_damage: int,
+    total_damage: int,
+    participant_count: int,
+    is_top3: bool,
+) -> tuple[int, int, bool]:
+    """Returns (curios, guild_tickets, puzzle_box).
+
+    curios = BASE_CURIOS + proportional share of the cycle pool.
+    guild_tickets = BASE_GUILD_TICKETS (flat, everyone).
+    puzzle_box = True only for top-3 contributors.
+    """
+    pool = calculate_pool_size(participant_count)
+    pct = player_damage / total_damage if total_damage > 0 else 0.0
+    pool_share = round(pool * pct)
+    curios = BASE_CURIOS + pool_share
+    return curios, BASE_GUILD_TICKETS, is_top3
+
+
+def contribution_pct(player_damage: int, total_damage: int) -> float:
+    """Player's percentage share of all damage dealt this cycle."""
+    if total_damage <= 0:
+        return 0.0
+    return player_damage / total_damage * 100

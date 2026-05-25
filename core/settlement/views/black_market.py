@@ -72,9 +72,6 @@ class BlackMarketView(SettlementBaseView):
     def _get_upgrade_cost(self, target_tier):
         return SettlementMechanics.get_upgrade_cost("black_market", self.building.tier)
 
-    async def on_timeout(self):
-        self.stop()
-
     def setup_ui(self):
         self.clear_items()
 

@@ -62,6 +62,7 @@ BUILDING_CODES: dict[str, tuple[str, str]] = {
     "infernal_shrine":   ("INF", "SHR"),
     "void_shrine":       ("VOI", "SHR"),
     "twin_shrine":       ("TWN", "SHR"),
+    "corruption_shrine": ("COR", "SHR"),
     "war_camp":          ("WAR", "CMP"),
     # Meta buildings
     "servants_quarters": ("SRV", "QTR"),
@@ -92,6 +93,7 @@ BUILDING_EMOJIS: dict[str, str] = {
     "infernal_shrine":   "🌋",
     "void_shrine":       "🔮",
     "twin_shrine":       "♊",
+    "corruption_shrine": "☠️",
     "war_camp":          "⚔️",
     # Meta buildings
     "servants_quarters": "🏠",
@@ -106,7 +108,8 @@ BUILDING_EMOJIS: dict[str, str] = {
 
 # Building types considered "shrines" for Grand Cathedral and Sacred Ground
 SHRINE_BUILDING_TYPES: frozenset[str] = frozenset({
-    "celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine", "temple",
+    "celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine",
+    "corruption_shrine", "temple",
 })
 
 # ---------------------------------------------------------------------------
@@ -212,7 +215,7 @@ META_BUILDINGS: dict[str, dict] = {
         "max_workers": 100,
         "description": (
             "Adjacent production buildings gain +2% effectiveness per 10 workers "
-            "here (max +20% at full capacity)."
+            "here, up to +20% at full capacity."
         ),
         "effect": "production_boost",
     },
@@ -269,8 +272,8 @@ META_BUILDINGS: dict[str, dict] = {
         "cost": {"gold": 20_000, "timber": 1_000, "stone": 500},
         "max_workers": 100,
         "description": (
-            "Adjacent War Camps generate +0.005 additional Combat Stamina "
-            "per War Camp worker per hour."
+            "Adjacent War Camps generate +0.5 additional Combat Stamina "
+            "per 100 War Camp workers/hr."
         ),
         "effect": "war_camp_boost",
     },
@@ -280,8 +283,8 @@ META_BUILDINGS: dict[str, dict] = {
         "cost": {"gold": 35_000, "timber": 1_500, "stone": 1_500},
         "max_workers": 100,
         "description": (
-            "Adjacent Apothecary gains +0.04% additional healing per "
-            "worker assigned here."
+            "Adjacent Apothecary gains +4% to its flat heal bonus "
+            "per 100 workers assigned here."
         ),
         "effect": "apothecary_boost",
     },
@@ -372,8 +375,8 @@ def render_grid(
 
       Dead corner   both lines: "   "
       Town Hall     top: "TWN"   bot: "HAL"
-      Undeveloped   top: "---"   bot: "P##"   (e.g. "P01")
-      Empty plot    both lines: "   "
+      Undeveloped   top: "LCK"   bot: "P##"   (e.g. "P01")
+      Empty plot    top: "---"   bot: "P##"
       Building      top: TOP     bot: BOT     (from BUILDING_CODES tuple)
     """
     line_pairs: list[tuple[str, str]] = []
@@ -391,7 +394,7 @@ def render_grid(
             else:
                 idx = POSITION_TO_PLOT[pos]
                 if idx not in developed_indices:
-                    top_cells.append("---")
+                    top_cells.append("LCK")
                     bot_cells.append(f"P{idx:02d}")
                 else:
                     b_type = building_by_plot.get(idx)
@@ -400,8 +403,8 @@ def render_grid(
                         top_cells.append(t)
                         bot_cells.append(b)
                     else:
-                        top_cells.append("   ")
-                        bot_cells.append("   ")
+                        top_cells.append("---")
+                        bot_cells.append(f"P{idx:02d}")
         line_pairs.append((
             "│" + "│".join(top_cells) + "│",
             "│" + "│".join(bot_cells) + "│",

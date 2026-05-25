@@ -15,7 +15,7 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
-from core.images import SETTLEMENT_HUB
+from core.images import SETTLEMENT_BUILDINGS, SETTLEMENT_HUB
 from core.settlement.constants import (
     BUILD_MESSAGES,
     BUILDING_INFO,
@@ -238,8 +238,8 @@ def _append_passive_effect(
         if shrine_boost > 0:
             shrine_eff += shrine_boost
             bonus_sources.append(f"Shrine Garden +{shrine_boost:.0%}")
-        bonus_chance = workers * 0.01 * shrine_eff   # expressed as %
-        cap_chance   = b.tier * 100 * 0.01 * shrine_eff
+        bonus_chance = workers * 0.05 * shrine_eff   # expressed as %
+        cap_chance   = b.tier * 100 * 0.05 * shrine_eff
         value = (
             f"**50%** base sigil drop + **{bonus_chance:.2f}%** bonus second drop "
             f"(cap ≈ {cap_chance:.2f}% at T{b.tier})"
@@ -259,12 +259,12 @@ def _append_meta_effect(embed, b) -> None:
     btype = b.building_type
 
     if btype == "watchtower":
-        # Passive — no workers needed
+        # Passive — no workers needed; effect applies settlement-wide, not just to neighbours
         embed.add_field(
-            name="⚙️ Adjacency Effect",
+            name="⚙️ Global Effect",
             value=(
                 "Each regular building's worker cap is increased by **+1% per its own tier** "
-                "(T1 → +1 worker per 100, T5 → +5). Global, passive."
+                "(T1 → +1 worker per 100, T5 → +5). Settlement-wide, passive."
             ),
             inline=False,
         )
@@ -291,7 +291,7 @@ def _append_meta_effect(embed, b) -> None:
     elif btype == "shrine_garden":
         value = "+**15%** effectiveness to adjacent shrine buildings"
     elif btype == "encampment":
-        value = "Adjacent War Camps: +**0.005** Combat Stamina/hr per War Camp worker"
+        value = "Adjacent War Camps: +**0.5** Combat Stamina/hr per 100 War Camp workers"
     elif btype == "apothecary_annex":
         # 0.0004 per worker → display as %: workers * 0.04
         bonus = workers * 0.04
@@ -501,6 +501,11 @@ class PlotDetailView(SettlementBaseView):
             # Description + quantitative output / effect
             _append_building_detail_fields(embed, b, p.bonus_type, self.adj_bonus)
 
+            # Building thumbnail
+            thumb = SETTLEMENT_BUILDINGS.get(b.building_type)
+            if thumb:
+                embed.set_thumbnail(url=thumb)
+
             # Upgrade cost preview
             if not b.is_meta and b.tier < 5:
                 cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
@@ -530,6 +535,9 @@ class PlotDetailView(SettlementBaseView):
             self._add_build_buttons()
         else:
             self._add_manage_buttons()
+
+        if p.is_developed:
+            self._add_diviners_rod_button()
 
         back = ui.Button(label="Back", style=ButtonStyle.secondary, row=4)
         back.callback = self._go_back
@@ -870,6 +878,65 @@ class PlotDetailView(SettlementBaseView):
         await interaction.response.edit_message(embed=embed, view=view)
 
     # ------------------------------------------------------------------
+    # Callbacks — Diviner's Rod
+    # ------------------------------------------------------------------
+
+    def _add_diviners_rod_button(self):
+        btn = ui.Button(
+            label="Use Diviner's Rod",
+            style=ButtonStyle.secondary,
+            emoji="🔮",
+            row=3,
+        )
+        btn.callback = self._use_diviners_rod
+        self.add_item(btn)
+
+    async def _use_diviners_rod(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
+        rods = await self.bot.database.users.get_currency(self.user_id, "diviners_rod")
+        if rods < 1:
+            self._processing = False
+            return await interaction.response.send_message(
+                "You don't have any **Diviner's Rods**! "
+                "They can drop from combat at level 50+.",
+                ephemeral=True,
+            )
+
+        await interaction.response.defer()
+
+        new_bonus = roll_plot_bonus()
+        await self.bot.database.users.modify_currency(self.user_id, "diviners_rod", -1)
+        await self.bot.database.plots.reroll_bonus(
+            self.user_id, self.parent.server_id, self.plot.plot_index, new_bonus
+        )
+
+        # Refresh local plot state
+        plot_rows = await self.bot.database.plots.get_plots(
+            self.user_id, self.parent.server_id
+        )
+        from core.settlement.models import Plot as PlotModel
+        self.parent.plots = [
+            PlotModel(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
+            for r in plot_rows
+        ]
+        self.plot = next(
+            (p for p in self.parent.plots if p.plot_index == self.plot.plot_index),
+            self.plot,
+        )
+
+        bonus_data = PLOT_BONUS_TABLE.get(new_bonus, {})
+        self._processing = False
+        self._build_buttons()
+        embed = self.build_embed()
+        embed.title = f"📍 Plot {self.plot.plot_index} — 🔮 Terrain Rerolled!"
+        embed.color = discord.Color.purple()
+        await interaction.edit_original_response(content=None, embed=embed, view=self)
+
+    # ------------------------------------------------------------------
     # Back
     # ------------------------------------------------------------------
 
@@ -943,8 +1010,7 @@ class MetaBuildingConstructionView(SettlementBaseView):
         embed = discord.Embed(
             title="⚙️ Build Meta Building",
             description=(
-                "Meta buildings provide powerful adjacency bonuses to neighbouring plots.\n"
-                "They do **not** count toward your regular building slot cap.\n\n"
+                "Meta buildings provide powerful adjacency bonuses to neighbouring plots.\n\n"
                 "**Available Meta Buildings:**"
             ),
             color=discord.Color.blurple(),
@@ -1033,10 +1099,10 @@ class MetaBuildingConstructionView(SettlementBaseView):
 
         await interaction.response.defer()
 
-        # Short construction animation
+        # Short construction animation — strip select immediately so it can't be re-clicked
         prog = discord.Embed(title="⚙️ Construction in Progress", color=discord.Color.orange())
         prog.description = "Laying the foundations for the new meta building..."
-        await interaction.edit_original_response(embed=prog)
+        await interaction.edit_original_response(embed=prog, view=discord.ui.View())
         await asyncio.sleep(2)
 
         # Deduct resources

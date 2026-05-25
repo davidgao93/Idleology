@@ -357,9 +357,13 @@ class ApexLobbyView(BaseView):
             start_logs = {f"🌐 Zone — {ZONE_DEFS[zone_key].modifier_name}": zone_log, **start_logs}
 
         # Build initial combat embed
+        from core.combat import jewel_engine as _je
         from core.combat import ui as combat_ui
         from core.apex.views.combat_view import ApexCombatView
 
+        # Reset jewel charges before building the embed so the status bar shows 0
+        # on the very first frame. The reset in CombatView.__init__ is kept as a guard.
+        _je.reset_jewel_charges(player)
         zone = ZONE_DEFS[zone_key]
         embed = combat_ui.create_combat_embed(
             player, monster, start_logs,

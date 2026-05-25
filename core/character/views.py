@@ -303,7 +303,7 @@ class StatInvestView(BaseView):
 
     def __init__(self, bot, user_id: str, server_id: str, data):
         super().__init__(bot, user_id, server_id)
-        self._data = data
+        self._data = dict(data)  # sqlite3.Row → dict so .get() works
         self._processing = False
         self._refund_mode = False
         self._rebuild()
@@ -426,9 +426,9 @@ class StatInvestView(BaseView):
             ok = await self.bot.database.users.invest_stat_point(
                 self.user_id, self.server_id, db_key
             )
-            self._data = await self.bot.database.users.get(
+            self._data = dict(await self.bot.database.users.get(
                 self.user_id, self.server_id
-            )
+            ))
             if not ok:
                 await interaction.followup.send(
                     "No passive points available!", ephemeral=True
@@ -462,7 +462,7 @@ class StatInvestView(BaseView):
         ok = await self.bot.database.users.refund_stat_point(
             self.user_id, self.server_id, db_key
         )
-        self._data = await self.bot.database.users.get(self.user_id, self.server_id)
+        self._data = dict(await self.bot.database.users.get(self.user_id, self.server_id))
         self._refund_mode = False
         self._rebuild()
 

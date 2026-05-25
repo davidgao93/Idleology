@@ -59,6 +59,22 @@ class PlotRepository:
     # Writes
     # ------------------------------------------------------------------
 
+    async def reroll_bonus(
+        self,
+        user_id: str,
+        server_id: str,
+        plot_index: int,
+        new_bonus_type: str,
+    ) -> None:
+        """Overwrite the terrain bonus on an already-developed plot."""
+        await self.connection.execute(
+            "UPDATE settlement_plots "
+            "SET bonus_type = ? "
+            "WHERE user_id = ? AND server_id = ? AND plot_index = ?",
+            (new_bonus_type, user_id, server_id, plot_index),
+        )
+        await self.connection.commit()
+
     async def develop_plot(
         self,
         user_id: str,

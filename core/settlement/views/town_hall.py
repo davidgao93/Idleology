@@ -119,22 +119,6 @@ class TownHallView(SettlementBaseView):
         self._processing = False
         self.setup_ui()
 
-    async def on_timeout(self):
-        try:
-            expired_embed = discord.Embed(
-                title="Town Hall Session Expired",
-                description=(
-                    "This Town Hall management session has timed out.\n\n"
-                    "Reopen your settlement dashboard to manage it again."
-                ),
-                color=discord.Color.dark_grey(),
-            )
-            await self.parent.message.edit(embed=expired_embed, view=None)
-        except Exception:
-            pass
-        finally:
-            self.stop()
-
     def build_embed(self):
         tier       = self.settlement.town_hall_tier
         meta_cap   = get_meta_slots(tier)

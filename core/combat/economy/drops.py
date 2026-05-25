@@ -356,7 +356,7 @@ async def apply_boss_sigil_drops(
         sigils_dropped = 0
         if random.random() < 0.5:
             sigils_dropped += 1
-        if random.random() < (building_workers * 0.0001 * shrine_eff):
+        if random.random() < (building_workers * 0.0005 * shrine_eff):
             sigils_dropped += 1
         incr_fn = getattr(bot.database.uber, incr_fn_name)
         await incr_fn(user_id, server_id, sigils_dropped)
@@ -370,6 +370,7 @@ async def apply_corrupted_monster_drops(
     server_id: str,
     monster,
     reward_data: dict,
+    player=None,
 ) -> None:
     """
     Handles drops from corrupted monsters. No-ops if monster is not corrupted.
@@ -377,14 +378,31 @@ async def apply_corrupted_monster_drops(
 
     Drops:
       - Guaranteed: Sigil of Corruption
+      - ``corruption_shrine_workers * 0.0001 * shrine_eff`` chance for a bonus
+        second Sigil of Corruption (pass *player* to apply shrine_effectiveness).
       - 25%: Uncut Paradise Jewel
       - 0.01%: Rune of Mirage (Imperfect)
     """
     if not getattr(monster, "is_corrupted", False):
         return
 
+    # Guaranteed first sigil
     await bot.database.uber.increment_corruption_sigils(user_id, server_id, 1)
     reward_data["special"].append("☠️ Sigil of Corruption")
+
+    # Corruption Shrine: bonus second sigil chance
+    _, corruption_workers = await bot.database.settlement.get_building_details(
+        user_id, server_id, "corruption_shrine"
+    )
+    if corruption_workers > 0:
+        shrine_eff = 1.0
+        if player is not None:
+            shrine_eff = getattr(player, "shrine_effectiveness", {}).get(
+                "corruption_shrine", 1.0
+            )
+        if random.random() < (corruption_workers * 0.0005 * shrine_eff):
+            await bot.database.uber.increment_corruption_sigils(user_id, server_id, 1)
+            reward_data["special"].append("☠️ Sigil of Corruption")
 
     if random.random() < 0.25:
         await bot.database.uber.increment_paradise_jewels(user_id, server_id, 1)

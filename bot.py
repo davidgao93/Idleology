@@ -186,6 +186,10 @@ class DiscordBot(commands.Bot):
             for stmt in [
                 "ALTER TABLE users ADD COLUMN combat_stamina INTEGER NOT NULL DEFAULT 10",
                 "ALTER TABLE users ADD COLUMN last_stamina_regen TIMESTAMP DEFAULT NULL",
+                # Maw rework: add fights_this_cycle cap tracking.
+                "ALTER TABLE maw_participants ADD COLUMN fights_this_cycle INTEGER NOT NULL DEFAULT 0",
+                # Maw rework: rename last_damage_check → last_fight_ts (SQLite 3.25+).
+                "ALTER TABLE maw_participants RENAME COLUMN last_damage_check TO last_fight_ts",
             ]:
                 try:
                     await db.execute(stmt)

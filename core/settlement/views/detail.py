@@ -92,16 +92,11 @@ class BuildingDetailView(SettlementBaseView):
 
     async def on_timeout(self):
         try:
-            expired_embed = discord.Embed(
-                title="Building Session Expired",
-                description=f"Management for **{self.building.name}** has timed out.\n\n"
-                "Open the building again from the settlement dashboard to continue.",
-                color=discord.Color.dark_grey(),
-            )
-            await self.parent.message.edit(embed=expired_embed, view=None)
-        except:
+            await self.parent.message.delete()
+        except Exception:
             pass
         finally:
+            self.bot.state_manager.clear_active(self.user_id)
             self.stop()
 
     def build_embed(self):

@@ -46,15 +46,16 @@ BUILDING_INFO = {
     "market": "Generates Passive Gold.",
     "barracks": "Passive: +1% Atk/Def per 100 Workers.",
     "temple": "Passive: +5% Propagate follower gain per 100 Workers.",
-    "apothecary": "Passive: Increases Potion Healing (+0.02% HP per assigned Worker).",
-    "black_market": "Special: Trade various resources for myterious caches.",
+    "apothecary": "Passive: Increases Potion Healing (+20 flat HP per 100 Workers per potion use).",
+    "black_market": "Special: Trade various resources for mysterious caches.",
     "companion_ranch": "Generator: Produces XP Cookies for pets.",
-    "hatchery": "Incubate monster eggs. Workers reduce incubation time (0.1% per worker).",
+    "hatchery": "Incubate monster eggs. Workers reduce incubation time (10% per 100 Workers).",
     "celestial_shrine": "Passive: Increases chance to find Celestial Sigils from Aphrodite.",
     "infernal_shrine": "Passive: Increases chance to find Infernal Sigils from Lucifer.",
     "void_shrine":     "Passive: Increases chance to find Void Sigils from NEET.",
     "twin_shrine": "Passive: Increases chance to find Gemini Sigils from the Gemini Twins.",
-    "war_camp": "Generates Combat Stamina over time (0.01 per worker/hr). Stamina can exceed the normal cap of 10, but automatic regen is paused while at or above 10.",
+    "corruption_shrine": "Passive: Increases chance to find bonus Corruption Sigils from Corrupted monsters.",
+    "war_camp": "Generates Combat Stamina over time. Collection is capped at **10 stamina** and never exceeds the normal maximum. (~10 per 24h at 100 workers; ~5h at 500 workers.)",
 }
 
 # Construction costs (used by BuildConstructionView)
@@ -76,6 +77,7 @@ CONSTRUCTION_COSTS = {
     "infernal_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
     "void_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
     "twin_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
+    "corruption_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
 }
 
 # Special material mapping for upgrades
@@ -97,6 +99,7 @@ SPECIAL_MAP = {
     "infernal_shrine": "infernal_cinder",
     "void_shrine": "void_crystal",
     "twin_shrine": "bound_crystal",
+    "corruption_shrine": "corrupted_crystal",
 }
 
 ITEM_NAMES = {
@@ -107,9 +110,10 @@ ITEM_NAMES = {
     "infernal_cinder": "Infernal Cinder",
     "void_crystal": "Void Crystal",
     "bound_crystal": "Bound Crystal",
+    "corrupted_crystal": "Corrupted Crystal",
 }
 
-UBER_BUILDINGS = {"celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine"}
+UBER_BUILDINGS = {"celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine", "corruption_shrine"}
 
 # Black Market bulk trade configuration
 BLACK_MARKET_TRADES = {

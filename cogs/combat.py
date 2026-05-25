@@ -10,6 +10,7 @@ from discord.ext import commands
 from discord.ui import Button
 
 from core.base_view import BaseView
+from core.combat import jewel_engine as _je
 from core.combat import ui
 from core.combat.dojo.views_dojo import DummyConfigView
 from core.combat.mobgen.encounters import EncounterManager
@@ -332,12 +333,15 @@ class Combat(commands.Cog, name="combat"):
         start_logs = engine.apply_combat_start_passives(player, monster)
         engine.log_combat_debug(player, monster, self.bot.logger)
 
-        # Hard mode: double monster ATK and DEF after all stat effects are applied
+        # Hard mode: flag the monster so process_monster_turn applies
+        # 2× raw damage and +15 flat accuracy on every turn.
         if hard_mode and not is_boss:
-            monster.attack = int(monster.attack * 2)
-            monster.defence = int(monster.defence * 2)
+            monster.hard_mode = True
 
         # 6. Launch View
+        # Reset jewel charges before building the embed so the status bar shows 0
+        # on the very first frame. The reset in CombatView.__init__ is kept as a guard.
+        _je.reset_jewel_charges(player)
         title = "⚔️ BOSS PHASE 1" if is_boss else None
         embed = ui.create_combat_embed(
             player, monster, start_logs, title_override=title

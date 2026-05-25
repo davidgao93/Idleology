@@ -78,18 +78,19 @@ class SettlementMechanics:
         "companion_ranch": {
             "type": "generator",
             "output": "companion_cookie",
-            "base_rate": 0.01,
-        },  # 0.01 XP per worker/hr
+            "base_rate": 0.1,
+        },  # 0.1 XP per worker/hr
         "hatchery": {"type": "special", "effect": "egg_incubation"},
         "war_camp": {
             "type": "generator",
             "output": "war_camp_stamina",
-            "base_rate": 0.01,
-        },  # 0.01 stamina per worker/hr
+            "base_rate": 0.004167,
+        },  # ~10 stamina per 24h at 100 workers; ~5h at 500 workers (tier NOT used)
         "celestial_shrine": {"type": "passive", "effect": "sigil_bonus"},
         "infernal_shrine": {"type": "passive", "effect": "infernal_sigil_bonus"},
         "void_shrine": {"type": "passive", "effect": "void_shard_bonus"},
         "twin_shrine": {"type": "passive", "effect": "gemini_sigil_bonus"},
+        "corruption_shrine": {"type": "passive", "effect": "corruption_sigil_bonus"},
     }
 
     @staticmethod
@@ -149,9 +150,12 @@ class SettlementMechanics:
         for meta_b in buildings:
             if not meta_b.is_meta or meta_b.plot_index is None:
                 continue
-            # Watchtower is passive (no workers required); all others need workers
-            if meta_b.building_type != "watchtower" and meta_b.workers_assigned <= 0:
-                continue
+            # Watchtower is passive (no workers required);
+            # all others must be fully staffed to activate.
+            if meta_b.building_type != "watchtower":
+                _required = META_BUILDINGS.get(meta_b.building_type, {}).get("max_workers", 100)
+                if meta_b.workers_assigned < _required:
+                    continue
 
             meta_type = meta_b.building_type
             plot_of_meta = plot_by_idx.get(meta_b.plot_index)
@@ -264,14 +268,18 @@ class SettlementMechanics:
 
         changes = {}
 
-        # Rate = Base * Tier * Workers * Effectiveness
-        production_raw = effective_base_rate * tier * workers * hours_elapsed * effectiveness
+        # War camp scales by workers only (no tier factor) to avoid 25× runaway scaling.
+        # All other generators use the standard tier × workers formula.
+        if building_type == "war_camp":
+            production_raw = effective_base_rate * workers * hours_elapsed * effectiveness
+        else:
+            production_raw = effective_base_rate * tier * workers * hours_elapsed * effectiveness
         production_capacity = int(production_raw)
 
         if b_data["type"] == "generator":
             output_key = b_data["output"]
             if output_key == "war_camp_stamina":
-                # Keep float precision — stamina is collected in decimal increments
+                # Keep float precision; int-conversion and cap applied at collection time
                 changes[output_key] = round(production_raw, 4)
             else:
                 changes[output_key] = production_capacity

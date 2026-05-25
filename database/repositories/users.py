@@ -378,6 +378,14 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def add_stamina_capped(self, user_id: str, amount: int) -> None:
+        """Adds stamina, honouring the normal 10-unit cap. Used by the new War Camp collection."""
+        await self.connection.execute(
+            "UPDATE users SET combat_stamina = MIN(10, combat_stamina + ?) WHERE user_id = ?",
+            (amount, user_id),
+        )
+        await self.connection.commit()
+
     async def consume_stamina(self, user_id: str) -> None:
         """Decrements combat_stamina by 1, flooring at 0. Does NOT enforce the 10-unit cap,
         so over-cap stamina (e.g. 12.5) drains correctly (→ 11.5) without being truncated."""
