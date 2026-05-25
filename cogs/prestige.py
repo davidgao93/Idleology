@@ -522,6 +522,7 @@ class PrestigeHubView(ui.View):
     # --- Action buttons ---
 
     async def _handle_close(self, interaction: discord.Interaction) -> None:
+        self.bot.state_manager.clear_active(self.user_id)
         self.stop()
         await interaction.response.defer()
         await interaction.delete_original_response()

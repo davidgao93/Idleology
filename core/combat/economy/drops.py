@@ -325,12 +325,18 @@ async def apply_boss_sigil_drops(
     server_id: str,
     monster,
     reward_data: dict,
+    player=None,
 ) -> None:
     """
     Rolls boss sigil drops for Lucifer / NEET / Aphrodite / Gemini.
     Skips uber variants. Mutates reward_data['special'] in-place.
 
-    Drop formula: 50% base + building_workers * 0.01% for a bonus second drop.
+    Drop formula:
+      • 50% base chance for the first sigil.
+      • ``building_workers * 0.0001 * shrine_eff`` chance for a bonus second sigil,
+        where ``shrine_eff`` (≥ 1.0) incorporates the ``sacred_ground`` plot bonus
+        (+20%) and any adjacent Shrine Garden meta building (+15%).
+        Pass *player* to apply these bonuses; omit it to use the flat formula.
     """
     if getattr(monster, "is_uber", False):
         return
@@ -341,10 +347,16 @@ async def apply_boss_sigil_drops(
         _, building_workers = await bot.database.settlement.get_building_details(
             user_id, server_id, building_key
         )
+        # Shrine effectiveness: sacred_ground plot bonus + Shrine Garden adjacency
+        shrine_eff = 1.0
+        if player is not None:
+            shrine_eff = getattr(player, "shrine_effectiveness", {}).get(
+                building_key, 1.0
+            )
         sigils_dropped = 0
         if random.random() < 0.5:
             sigils_dropped += 1
-        if random.random() < (building_workers * 0.0001):
+        if random.random() < (building_workers * 0.0001 * shrine_eff):
             sigils_dropped += 1
         incr_fn = getattr(bot.database.uber, incr_fn_name)
         await incr_fn(user_id, server_id, sigils_dropped)

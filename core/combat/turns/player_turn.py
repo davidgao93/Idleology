@@ -68,7 +68,9 @@ def process_heal(player: Player, monster=None) -> str:
         _unstable_result = None
 
     if player.apothecary_workers > 0:
-        flat_bonus = int(player.apothecary_workers * 0.2)
+        flat_bonus = int(
+            player.apothecary_workers * 0.2 * (1.0 + player.apothecary_boost_pct)
+        )
         heal_amount += flat_bonus
 
     overcap = potion_passives_by_type.get("overcap_brew", 0)
@@ -132,7 +134,7 @@ def process_heal(player: Player, monster=None) -> str:
         + f"{player.name} uses a potion and heals for **{max(0, heal_amount - overheal)}** HP!"
     )
     if player.apothecary_workers > 0:
-        msg += f" (Apothecary: +{int(player.apothecary_workers * 0.2)})"
+        msg += f" (Apothecary: +{int(player.apothecary_workers * 0.2 * (1.0 + player.apothecary_boost_pct))})"
 
     if _unstable_result:
         msg += f"\n🌀 **Unstable Mixture** — heal was {_unstable_result}!"

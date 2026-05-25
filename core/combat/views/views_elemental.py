@@ -53,6 +53,7 @@ class _ElementalCompletionView(BaseView):
 
     @discord.ui.button(label="Exit", style=ButtonStyle.secondary, emoji="✖️")
     async def exit(self, interaction: Interaction, button: discord.ui.Button):
+        self.bot.state_manager.clear_active(self.user_id)
         self.stop()
         await interaction.response.defer()
         await interaction.message.delete()

@@ -114,7 +114,7 @@ def _append_building_detail_fields(
     elif category == "converter":
         _append_converter(embed, b, b_data, plot_bonus_type, adj)
     elif category == "passive":
-        _append_passive_effect(embed, b)
+        _append_passive_effect(embed, b, plot_bonus_type, adj)
     # "special" (black_market, hatchery) and "core" (town_hall) — no output field
 
 
@@ -183,9 +183,12 @@ def _append_converter(embed, b, b_data: dict, plot_bonus_type, adj: dict) -> Non
     )
 
 
-def _append_passive_effect(embed, b) -> None:
+def _append_passive_effect(
+    embed, b, plot_bonus_type: str | None = None, adj: dict | None = None
+) -> None:
     workers = b.workers_assigned
     btype = b.building_type
+    adj = adj or {}
 
     if workers == 0:
         embed.add_field(
@@ -197,15 +200,53 @@ def _append_passive_effect(embed, b) -> None:
 
     if btype == "barracks":
         pct = workers / 100
-        value = f"+**{pct:.1f}%** ATK & DEF"
+        # Natural cap: T5 (500 workers) = 5%; Watchtower can add ~0.25% more
+        value = f"+**{pct:.1f}%** ATK & DEF (cap ≈ {b.tier}% at T{b.tier})"
+
     elif btype == "temple":
         pct = workers * 5 / 100
-        value = f"+**{pct:.1f}%** Propagate follower gain"
+        value = f"+**{pct:.1f}%** Propagate follower gain (cap ≈ {b.tier * 5}% at T{b.tier})"
+
     elif btype == "apothecary":
-        pct = workers * 0.02
-        value = f"+**{pct:.1f}%** Potion healing"
-    elif btype in SHRINE_BUILDING_TYPES:
-        value = f"Passive sigil drop bonus — scales with Tier **T{b.tier}**"
+        # Actual formula in player_turn.py:
+        #   flat_bonus = int(workers * 0.2 * (1 + apothecary_boost_pct))
+        # apothecary_boost comes from the adj dict (Apothecary Annex adjacency).
+        boost_pct = adj.get("apothecary_boost", 0.0)
+        flat = int(workers * 0.2 * (1.0 + boost_pct))
+        cap_flat = int(b.tier * 100 * 0.2)
+        if boost_pct > 0:
+            value = (
+                f"+**{flat:,} flat HP** per potion use "
+                f"_(×{1.0 + boost_pct:.2f} from Apothecary Annex)_\n"
+                f"_(base cap ≈ +{cap_flat:,} HP at T{b.tier})_"
+            )
+        else:
+            value = (
+                f"+**{flat:,} flat HP** per potion use "
+                f"(cap ≈ +{cap_flat:,} HP at T{b.tier})"
+            )
+
+    elif btype in SHRINE_BUILDING_TYPES and btype != "temple":
+        # Drop formula: 50% base + workers * 0.0001 * shrine_eff chance for second sigil.
+        # shrine_eff incorporates sacred_ground (+20%) and Shrine Garden adjacency (+15%).
+        shrine_eff = 1.0
+        bonus_sources: list[str] = []
+        if plot_bonus_type == "sacred_ground":
+            shrine_eff += 0.20
+            bonus_sources.append("Sacred Ground +20%")
+        shrine_boost = adj.get("shrine_boost", 0.0)
+        if shrine_boost > 0:
+            shrine_eff += shrine_boost
+            bonus_sources.append(f"Shrine Garden +{shrine_boost:.0%}")
+        bonus_chance = workers * 0.01 * shrine_eff   # expressed as %
+        cap_chance   = b.tier * 100 * 0.01 * shrine_eff
+        value = (
+            f"**50%** base sigil drop + **{bonus_chance:.2f}%** bonus second drop "
+            f"(cap ≈ {cap_chance:.2f}% at T{b.tier})"
+        )
+        if bonus_sources:
+            value += f"\n_Effectiveness ×{shrine_eff:.2f}: {', '.join(bonus_sources)}_"
+
     else:
         value = "Passive effect active."
 

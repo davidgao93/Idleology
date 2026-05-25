@@ -261,6 +261,7 @@ class AscentLobbyView(BaseView):
 
     @ui.button(label="Close", style=ButtonStyle.secondary, row=0)
     async def close_btn(self, interaction: Interaction, button: ui.Button):
+        self.bot.state_manager.clear_active(self.user_id)
         self.stop()
         await interaction.response.defer()
         await interaction.delete_original_response()

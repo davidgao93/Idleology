@@ -53,6 +53,10 @@ class SettingsView(BaseView):
             hard_btn.callback = self.toggle_hard_mode
             self.add_item(hard_btn)
 
+        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=3)
+        close_btn.callback = self._close
+        self.add_item(close_btn)
+
     def build_embed(self) -> discord.Embed:
         doors_str = "🟢 ENABLED" if self.doors_status else "🔴 DISABLED"
         exp_str = "🟢 ENABLED" if self.exp_protection else "🔴 DISABLED"
@@ -95,3 +99,9 @@ class SettingsView(BaseView):
         await self.bot.database.users.toggle_hard_mode(self.user_id, self.hard_mode)
         self.rebuild_buttons()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _close(self, interaction: Interaction):
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
+        await interaction.response.defer()
+        await interaction.delete_original_response()

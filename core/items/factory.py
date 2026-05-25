@@ -312,6 +312,14 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     player.apothecary_workers = a_workers
     player.barracks_workers = b_workers
 
+    # Settlement adjacency bonuses (Apothecary Annex + Shrine Garden / Sacred Ground)
+    try:
+        combat_bonuses = await database.settlement.get_combat_bonuses(user_id, server_id)
+        player.apothecary_boost_pct = combat_bonuses["apothecary_boost_pct"]
+        player.shrine_effectiveness = combat_bonuses["shrine_effectiveness"]
+    except Exception:
+        pass  # defaults to 0.0 / {} from Player dataclass
+
     # 2. Fetch and Attach Gear
     # We await the database calls here so the resulting Player object is fully populated
 

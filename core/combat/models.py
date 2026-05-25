@@ -289,6 +289,8 @@ class Player:
     # Settlement buffs
     apothecary_workers: int = 0
     barracks_workers: int = 0
+    apothecary_boost_pct: float = 0.0            # from adjacent Apothecary Annex
+    shrine_effectiveness: dict = field(default_factory=dict)  # btype → drop-rate multiplier
 
     # Slayer
     slayer_emblem: dict = field(default_factory=dict)

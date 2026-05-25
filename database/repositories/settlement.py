@@ -201,6 +201,95 @@ class SettlementRepository:
         row = await cursor.fetchone()
         return row if row else (0, 0)
 
+    async def get_combat_bonuses(self, user_id: str, server_id: str) -> dict:
+        """
+        Computes settlement adjacency and plot bonuses that affect live combat:
+
+        - ``apothecary_boost_pct``: additive multiplier on the Apothecary's flat
+          heal bonus (from an adjacent Apothecary Annex meta building).
+        - ``shrine_effectiveness``: dict mapping each sigil-shrine building type
+          to a float multiplier (≥ 1.0) applied to the per-worker second-sigil
+          drop chance (from ``sacred_ground`` plot bonus and/or an adjacent
+          Shrine Garden meta building).
+
+        Returns default values (all bonuses zero / empty) when the player has no
+        settlement, no relevant buildings, or the tables do not yet exist.
+        """
+        from core.settlement.mechanics import SettlementMechanics
+        from core.settlement.models import Building, Plot
+        from core.settlement.plots import PLOT_BONUS_TABLE
+
+        _DEFAULT = {"apothecary_boost_pct": 0.0, "shrine_effectiveness": {}}
+
+        # Load all buildings
+        try:
+            b_cursor = await self.connection.execute(
+                "SELECT id, user_id, server_id, building_type, tier, slot_index, "
+                "workers_assigned, plot_index, is_meta "
+                "FROM buildings WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
+            )
+            buildings = [
+                Building(
+                    id=r[0], user_id=r[1], server_id=r[2], building_type=r[3],
+                    tier=r[4], slot_index=r[5], workers_assigned=r[6],
+                    plot_index=r[7], is_meta=bool(r[8]),
+                )
+                for r in await b_cursor.fetchall()
+            ]
+        except Exception:
+            return _DEFAULT
+
+        if not buildings:
+            return _DEFAULT
+
+        # Load all plots (may not exist for brand-new players)
+        try:
+            p_cursor = await self.connection.execute(
+                "SELECT plot_index, is_developed, bonus_type "
+                "FROM settlement_plots WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
+            )
+            plots = [
+                Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
+                for r in await p_cursor.fetchall()
+            ]
+        except Exception:
+            plots = []
+
+        adj_bonuses = SettlementMechanics.calculate_adjacency_bonuses(plots, buildings)
+        plot_bonus_by_idx = {
+            p.plot_index: p.bonus_type for p in plots if p.is_developed
+        }
+
+        # --- Apothecary Annex boost ---
+        apothecary_boost_pct = 0.0
+        for b in buildings:
+            if b.building_type == "apothecary" and b.plot_index is not None:
+                apothecary_boost_pct = (
+                    adj_bonuses.get(b.plot_index, {}).get("apothecary_boost", 0.0)
+                )
+                break
+
+        # --- Shrine effectiveness (sigil shrines only; temple is excluded) ---
+        _SIGIL_SHRINES = frozenset({
+            "celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine"
+        })
+        sacred_ground_val = PLOT_BONUS_TABLE.get("sacred_ground", {}).get("value", 0.20)
+        shrine_effectiveness: dict[str, float] = {}
+        for b in buildings:
+            if b.building_type in _SIGIL_SHRINES and b.plot_index is not None:
+                eff = 1.0
+                if plot_bonus_by_idx.get(b.plot_index) == "sacred_ground":
+                    eff += sacred_ground_val
+                eff += adj_bonuses.get(b.plot_index, {}).get("shrine_boost", 0.0)
+                shrine_effectiveness[b.building_type] = eff
+
+        return {
+            "apothecary_boost_pct": apothecary_boost_pct,
+            "shrine_effectiveness": shrine_effectiveness,
+        }
+
     async def get_used_slots_count(self, user_id: str, server_id: str) -> int:
         """Counts how many *regular* (non-meta) buildings a user has constructed."""
         cursor = await self.connection.execute(
