@@ -2,42 +2,128 @@ import random
 from typing import Any, Dict
 
 from core.combat.economy.config import (
+    CO_GOLD_BOOST_PER_LEVEL,
+    CO_XP_BOOST_PER_LEVEL,
     EMBLEM_FIND_BONUS_PER_TIER,
     FLORA_CONVERSION_PER_LEVEL,
+    GEAR_DROP_BASE_CHANCE,
+    GEAR_DROP_MAX_BONUS,
+    GEAR_DROP_SCALING_CONSTANT,
+    GOLD_BASE_FLAT,
+    GOLD_RARITY_DENOMINATOR,
+    GUILD_TICKET_BASE_CHANCE,
+    GUILD_TICKET_MIN_LEVEL,
+    INFINITE_WISDOM_CHANCE_PER_LEVEL,
     LUCIFER_BOOT_GOLD_CAP,
     LUCIFER_BOOT_GOLD_PER_MODIFIER,
+    MODIFIER_DIFFICULTY_CAP,
+    PROSPER_CHANCE_PER_LEVEL,
+    SOUL_CORE_BASE_CHANCE,
+    SPECIAL_DROP_BASE_CHANCE,
+    SPIRIT_STONE_BASE_CHANCE,
+    STAT_INVEST_GOLD_PER_POINT,
+    VOID_FRAG_BASE_CHANCE,
 )
 from core.models import Monster, Player
 
 
 def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     """
-    Calculates XP and Gold rewards based on player stats, passives, and monster level.
-    Returns a dict containing 'xp', 'gold', and a list of 'msgs' for logs.
+    Calculates XP and Gold rewards for a combat victory.
+
+    XP flow
+    -------
+    1. Base XP from monster.
+    2. Single additive pool: xp_find emblem, Affluence tome, co_xp_boost partner
+       skill, Midas soul-stone, Infinite Wisdom proc (+100 %), Apex Vault (+100 %).
+    3. final_xp = base_xp × (1 + additive_pool).
+    4. Flat bonus: Equilibrium glove pending XP added AFTER pool — unscaled.
+
+    Gold flow
+    ---------
+    1. Base gold from monster level / reward_scale formula.
+    2. Rarity multiplier (sole multiplicative step): × (1 + √rarity / denom).
+    3. Flat floor: +GOLD_BASE_FLAT.
+    4. Single additive pool: gold_find emblem, Infernal Plunder (Lucifer boot),
+       Affluence tome, co_gold_boost partner skill, Midas soul-stone,
+       stat_invest_gold, Prosper proc (+100 %), Apex Vault (+100 %).
+    5. final_gold = step-3 result × (1 + additive_pool).
+    6. Flat bonus: Plundering glove pending gold added AFTER pool — unscaled.
+    7. Flora sig: converts a portion of final_gold into skilling materials.
+
+    Returns a dict: 'xp', 'gold', 'msgs', 'items'.
     """
-    results = {"xp": 0, "gold": 0, "msgs": [], "items": []}
-
-    # --- XP Calculation ---
-    base_xp = monster.xp
-
-    xp_find_tiers = player.get_emblem_bonus("xp_find")
-    if xp_find_tiers > 0:
-        base_xp = int(base_xp * (1 + (xp_find_tiers * EMBLEM_FIND_BONUS_PER_TIER)))
-
-    # Glove Passive: Equilibrium (Pending XP from combat damage)
-    if player.equilibrium_bonus_xp_pending > 0:
-        base_xp += player.equilibrium_bonus_xp_pending
-        results["msgs"].append(
-            f"**Equilibrium** siphons an extra {player.equilibrium_bonus_xp_pending:,} XP!"
-        )
-        player.equilibrium_bonus_xp_pending = 0  # Reset
-
-    results["xp"] = base_xp
+    results: Dict[str, Any] = {"xp": 0, "gold": 0, "msgs": [], "items": []}
 
     acc_passive = player.get_accessory_passive()
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
 
-    # --- Gold Calculation ---
+    # ── Shared bonuses — computed once ──────────────────────────────────────
+    affluence_pct = player.get_tome_bonus("affluence")        # e.g. 15 → 0.15
+    in_vault = getattr(player.cs, "apex_zone", None) == "vault"
+
+    # Midas soul-stone resonance
+    midas_xp_frac = 0.0
+    midas_gold_frac = 0.0
+    if player.soul_stone:
+        from core.apex.mechanics import ApexMechanics
+        res = ApexMechanics.get_resonance_multipliers(player.soul_stone)
+        if res["xp_bonus_pct"] > 0:
+            midas_xp_frac = res["xp_bonus_pct"] / 100
+        if res["gold_bonus_pct"] > 0:
+            midas_gold_frac = res["gold_bonus_pct"] / 100
+
+    # Partner combat skill fractions
+    co_xp_frac = 0.0
+    co_gold_frac = 0.0
+    partner_sig_key: str | None = None
+    partner_sig_lvl: int = 0
+    if player.active_partner:
+        partner = player.active_partner
+        for key, lvl in partner.combat_skills:
+            if key == "co_xp_boost":
+                co_xp_frac += lvl * CO_XP_BOOST_PER_LEVEL
+            elif key == "co_gold_boost":
+                co_gold_frac += lvl * CO_GOLD_BOOST_PER_LEVEL
+        partner_sig_key = partner.sig_combat_key
+        partner_sig_lvl = partner.sig_combat_lvl
+
+    # ── XP ──────────────────────────────────────────────────────────────────
+    base_xp = monster.xp
+    xp_additive = 0.0
+
+    xp_find_tiers = player.get_emblem_bonus("xp_find")
+    if xp_find_tiers > 0:
+        xp_additive += xp_find_tiers * EMBLEM_FIND_BONUS_PER_TIER
+
+    if affluence_pct > 0:
+        xp_additive += affluence_pct / 100
+
+    xp_additive += co_xp_frac
+    xp_additive += midas_xp_frac
+
+    if in_vault:
+        xp_additive += 1.0  # +100 % from Apex Vault
+
+    # Infinite Wisdom — proc adds +100 % to XP pool
+    if acc_passive == "Infinite Wisdom":
+        if random.random() < acc_lvl * INFINITE_WISDOM_CHANCE_PER_LEVEL:
+            xp_additive += 1.0
+            results["msgs"].append(
+                f"**Infinite Wisdom ({acc_lvl})** grants +100% XP!"
+            )
+
+    results["xp"] = int(base_xp * (1 + xp_additive))
+
+    # Equilibrium glove: flat XP added AFTER pool — unaffected by modifiers
+    if player.equilibrium_bonus_xp_pending > 0:
+        results["xp"] += player.equilibrium_bonus_xp_pending
+        results["msgs"].append(
+            f"**Equilibrium** siphons an extra {player.equilibrium_bonus_xp_pending:,} XP!"
+        )
+        player.equilibrium_bonus_xp_pending = 0
+
+    # ── Gold ─────────────────────────────────────────────────────────────────
     rare_monsters = [
         "Treasure Chest",
         "Random Korean Lady",
@@ -47,130 +133,106 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         "Capybara Sauna",
     ]
 
-    reward_scale = 0
     if monster.name in rare_monsters:
         reward_scale = int(player.level / 10)
     else:
         reward_scale = max(0, (monster.level - player.level) / 10)
 
-    gold_award = int(
-        (monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale**1.3))
+    gold_base = int(
+        (monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale ** 1.3))
     )
 
-    # Glove Passive: Plundering — added BEFORE rarity so the bonus is rarity-scaled
+    # Rarity — sole multiplicative step, applied first
+    rarity = player.get_total_rarity()
+    if rarity > 0:
+        gold_base = int(gold_base * (1 + (rarity ** 0.5) / GOLD_RARITY_DENOMINATOR))
+
+    gold_base += GOLD_BASE_FLAT
+
+    # Additive pool
+    gold_additive = 0.0
+
+    gold_find_tiers = player.get_emblem_bonus("gold_find")
+    if gold_find_tiers > 0:
+        gold_additive += gold_find_tiers * EMBLEM_FIND_BONUS_PER_TIER
+
+    # Lucifer boot: Infernal Plunder — % per modifier, capped
+    if player.get_boot_corrupted_essence() == "lucifer" and monster.modifiers:
+        num_mods = len(monster.modifiers)
+        lucifer_pct = min(
+            LUCIFER_BOOT_GOLD_CAP, num_mods * LUCIFER_BOOT_GOLD_PER_MODIFIER
+        )
+        gold_additive += lucifer_pct
+        results["msgs"].append(
+            f"🔥 **Infernal Plunder** — {num_mods} modifier"
+            f"{'s' if num_mods > 1 else ''} grant +{int(lucifer_pct * 100)}% increased gold!"
+        )
+
+    if affluence_pct > 0:
+        gold_additive += affluence_pct / 100
+
+    gold_additive += co_gold_frac
+    gold_additive += midas_gold_frac
+
+    # Stat investment gold bonus (0.1 % per point)
+    if getattr(player, "stat_invest_gold", 0) > 0:
+        gold_additive += player.stat_invest_gold * STAT_INVEST_GOLD_PER_POINT
+
+    if in_vault:
+        gold_additive += 1.0  # +100 % from Apex Vault
+
+    # Prosper — proc adds +100 % to gold pool
+    if acc_passive == "Prosper":
+        if random.random() < acc_lvl * PROSPER_CHANCE_PER_LEVEL:
+            gold_additive += 1.0
+            results["msgs"].append(f"**Prosper ({acc_lvl})** grants +100% Gold!")
+
+    results["gold"] = int(gold_base * (1 + gold_additive))
+
+    # Plundering glove: flat gold added AFTER pool — unaffected by modifiers
     if player.plundering_bonus_gold_pending > 0:
-        gold_award += player.plundering_bonus_gold_pending
+        results["gold"] += player.plundering_bonus_gold_pending
         results["msgs"].append(
             f"**Plundering** snatches an extra {player.plundering_bonus_gold_pending:,} Gold!"
         )
-        player.plundering_bonus_gold_pending = 0  # Reset
+        player.plundering_bonus_gold_pending = 0
 
-    # Rarity Bonus — diminishing returns via sqrt to prevent runaway scaling at 2000%+
-    rarity = player.get_total_rarity()
-    if rarity > 0:
-        gold_award = int(gold_award * (1 + (rarity**0.5) / 20))
-
-    gold_award += 20  # Base flat amount
-
-    # Gold find emblem
-    gold_find_tiers = player.get_emblem_bonus("gold_find")
-    if gold_find_tiers > 0:
-        gold_award = int(
-            gold_award * (1 + (gold_find_tiers * EMBLEM_FIND_BONUS_PER_TIER))
-        )
-
-    # Lucifer boot: gold increases per modifier on the monster (cap 50%)
-    if player.get_boot_corrupted_essence() == "lucifer" and monster.modifiers:
-        num_mods = len(monster.modifiers)
-        lucifer_bonus_pct = min(
-            LUCIFER_BOOT_GOLD_CAP, num_mods * LUCIFER_BOOT_GOLD_PER_MODIFIER
-        )
-        bonus_gold = int(gold_award * lucifer_bonus_pct)
-        gold_award += bonus_gold
+    # Flora sig: convert a portion of final gold into skilling materials.
+    # Applied after all gold multipliers so the conversion is from the true final value.
+    if partner_sig_key == "sig_co_flora" and partner_sig_lvl >= 1:
+        flora_pct = partner_sig_lvl * FLORA_CONVERSION_PER_LEVEL
+        converted = int(results["gold"] * flora_pct)
+        results["gold"] = max(0, results["gold"] - converted)
+        results["flora_skilling_gold"] = converted
         results["msgs"].append(
-            f"🔥 **Infernal Plunder** — {num_mods} modifiers grant +{int(lucifer_bonus_pct * 100)}% gold! (+{bonus_gold:,})"
+            f"🌿 **Nature's Bounty (Lv.{partner_sig_lvl})** — "
+            f"{converted:,} GP converted into skilling materials!"
         )
-
-    results["gold"] = gold_award
-
-    # Codex Tome: Affluence (+% XP and Gold from all combat)
-    affluence_pct = player.get_tome_bonus("affluence")
-    if affluence_pct > 0:
-        mult = 1 + (affluence_pct / 100)
-        results["xp"] = int(results["xp"] * mult)
-        results["gold"] = int(results["gold"] * mult)
-
-    # Partner combat skill bonuses (applied after affluence)
-    if player.active_partner:
-        partner = player.active_partner
-        for key, lvl in partner.combat_skills:
-            if key == "co_xp_boost":
-                results["xp"] = int(results["xp"] * (1 + lvl * 0.05))
-            elif key == "co_gold_boost":
-                results["gold"] = int(results["gold"] * (1 + lvl * 0.05))
-
-        # Flora sig: convert a portion of final gold into skilling materials.
-        # Applied after all gold multipliers so the conversion is from the true final value.
-        sig_key = partner.sig_combat_key
-        sig_lvl = partner.sig_combat_lvl
-        if sig_key == "sig_co_flora" and sig_lvl >= 1:
-            flora_pct = sig_lvl * FLORA_CONVERSION_PER_LEVEL
-            converted = int(results["gold"] * flora_pct)
-            results["gold"] = max(0, results["gold"] - converted)
-            results["flora_skilling_gold"] = converted
-            results["msgs"].append(
-                f"🌿 **Nature's Bounty (Lv.{sig_lvl})** — {converted:,} GP converted into skilling materials!"
-            )
-
-    # Soul Stone: Midas Resonance — additive XP/Gold bonuses
-    if player.soul_stone:
-        from core.apex.mechanics import ApexMechanics
-        res = ApexMechanics.get_resonance_multipliers(player.soul_stone)
-        if res["xp_bonus_pct"] > 0:
-            bonus_xp = int(results["xp"] * (res["xp_bonus_pct"] / 100))
-            results["xp"] += bonus_xp
-        if res["gold_bonus_pct"] > 0:
-            bonus_gold = int(results["gold"] * (res["gold_bonus_pct"] / 100))
-            results["gold"] += bonus_gold
-
-    # Tempted Fate (apex zone): 2× XP and Gold
-    if getattr(player.cs, "apex_zone", None) == "vault":
-        results["xp"] *= 2
-        results["gold"] *= 2
-
-    # Stat investment gold bonus (0.1% per point)
-    if getattr(player, "stat_invest_gold", 0) > 0:
-        gold_award = int(gold_award * (1 + player.stat_invest_gold * 0.001))
-
-    # Accessory Passive: Prosper — doubles final gold after all other modifiers
-    if acc_passive == "Prosper":
-        double_gold_chance = acc_lvl * 0.10
-        if random.random() <= double_gold_chance:
-            results["gold"] *= 2
-            results["msgs"].append(f"**Prosper ({acc_lvl})** grants double Gold!")
-
-    # Accessory Passive: Infinite Wisdom — doubles final XP after all other modifiers
-    if acc_passive == "Infinite Wisdom":
-        double_exp_chance = acc_lvl * 0.05
-        if random.random() <= double_exp_chance:
-            results["xp"] *= 2
-            results["msgs"].append(f"**Infinite Wisdom ({acc_lvl})** grants double XP!")
 
     return results
 
 
 def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     """
-    Determines which special items (Keys, Runes, Curios) drop.
-    Returns a dict of flags like {'draconic_key': True, 'refinement_rune': True}
+    Determines which special items (Keys, Runes, Curios, Stones) drop.
+
+    Special Drop Pool formula (non-boss, for every eligible drop):
+        chance = base_rate
+                 + min(MODIFIER_DIFFICULTY_CAP, sum(m.difficulty for m in modifiers))
+                 + player.get_special_drop_bonus() / 100
+
+    Items in the pool: Spirit Stones, Guild Tickets, material/key/rune drops.
+    Body Parts and Eggs are handled separately in drops.py using the same formula.
+
+    Returns a dict of truthy flags like {'spirit_stone': True, 'draconic_key': True}.
     """
     drops = {}
 
+    # ── Boss encounters ──────────────────────────────────────────────────────
     if monster.is_boss:
         special_bonus = player.get_special_drop_bonus() / 100
         rare_chance = 0.05 + special_bonus
 
-        # Boss-specific drop configurations
         boss_configs = {
             "Aphrodite": {
                 "refinement_rune": 0.33,
@@ -191,7 +253,6 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             },
         }
 
-        # Apply boss-specific drops (only the first match wins)
         for boss_name, config in boss_configs.items():
             if boss_name in monster.name:
                 for item, chance in config.items():
@@ -199,12 +260,10 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
                         drops[item] = True
                 break
 
-        # Common rare drops (identical for all these bosses)
         for item in ["spirit_stone", "antique_tome", "pinnacle_key"]:
             if random.random() < rare_chance:
                 drops[item] = True
 
-        # Common elemental boss drops — only available once the player has reached Level 60
         if player.level >= 60:
             for item in ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]:
                 if random.random() < rare_chance:
@@ -212,13 +271,31 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
 
         return drops
 
-    # --- PARTNER DROPS ---
+    # ── Compute special drop pool bonus ─────────────────────────────────────
+    # Used by guild tickets, spirit stones, and all level-gated drops.
+    special_rarity = player.get_special_drop_bonus() / 100
+    mod_difficulty_bonus = min(
+        MODIFIER_DIFFICULTY_CAP,
+        sum(m.difficulty for m in monster.modifiers),
+    )
+    special_drop_chance = mod_difficulty_bonus + special_rarity
+
+    # Rare monsters always receive the full difficulty cap bonus + a free curio.
+    rare_monsters = [
+        "Treasure Chest",
+        "Random Korean Lady",
+        "KPOP STAR",
+        "Loot Goblin",
+        "Yggdrasil",
+        "Capybara Sauna",
+    ]
+    if monster.name in rare_monsters:
+        special_drop_chance = MODIFIER_DIFFICULTY_CAP + special_rarity
+        drops["curio"] = True
+
+    # ── Partner signature drops ──────────────────────────────────────────────
     if player.active_partner:
         partner = player.active_partner
-        # Guild ticket: rare drop from any fight
-        if random.random() < 0.01 + player.get_special_drop_bonus() / 100:
-            drops["guild_ticket"] = True
-
         sig_key = partner.sig_combat_key
         sig_lvl = partner.sig_combat_lvl
         if sig_key == "sig_co_kay" and sig_lvl >= 1:
@@ -230,72 +307,49 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         if sig_key == "sig_co_yvenn" and sig_lvl >= 1:
             drops["yvenn_slayer_bonus"] = sig_lvl
 
-    # --- STANDARD MOBS ---
-    # 1% Spirit Stone drop from any normal combat encounter
-    if random.random() < 0.01 + (player.get_special_drop_bonus() / 100):
+    # ── Guild Ticket — level-gated, no active partner required ──────────────
+    if player.level >= GUILD_TICKET_MIN_LEVEL:
+        if random.random() < GUILD_TICKET_BASE_CHANCE + special_drop_chance:
+            drops["guild_ticket"] = True
+
+    # ── Spirit Stone — now uses full special_drop_chance (incl. difficulty) ─
+    if random.random() < SPIRIT_STONE_BASE_CHANCE + special_drop_chance:
         drops["spirit_stone"] = True
 
-    rare_monsters = [
-        "Treasure Chest",
-        "Random Korean Lady",
-        "KPOP STAR",
-        "Loot Goblin",
-        "Yggdrasil",
-        "Capybara Sauna",
-    ]
+    # ── Level-less common material drops ─────────────────────────────────────
+    for item in ("magma_core", "life_root", "spirit_shard"):
+        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+            drops[item] = True
 
-    special_drop_chance = min(0.05, sum(m.difficulty for m in monster.modifiers))
-    if monster.name in rare_monsters:
-        special_drop_chance = 0.05
-        drops["curio"] = True
-
-    special_drop_chance += player.get_special_drop_bonus() / 100
-
-    if random.random() < 0.01 + special_drop_chance:
-        drops["magma_core"] = True
-    if random.random() < 0.01 + special_drop_chance:
-        drops["life_root"] = True
-    if random.random() < 0.01 + special_drop_chance:
-        drops["spirit_shard"] = True
-
-    # Level-gated drops — each tier unlocks when the corresponding system opens
+    # ── Level-gated drops ────────────────────────────────────────────────────
     if player.level >= 20:
-        if random.random() < (0.01 + special_drop_chance):
-            drops["draconic_key"] = True
-        if random.random() < (0.01 + special_drop_chance):
-            drops["angelic_key"] = True
-        if random.random() < (0.01 + special_drop_chance):
-            drops["shatter_rune"] = True
-        key_drop_chance = 0.01
-        if random.random() < key_drop_chance + special_drop_chance:
-            drops["antique_tome"] = True
-        if random.random() < key_drop_chance + special_drop_chance:
-            drops["pinnacle_key"] = True
+        for item in ("draconic_key", "angelic_key", "shatter_rune"):
+            if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+                drops[item] = True
+        for item in ("antique_tome", "pinnacle_key"):
+            if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+                drops[item] = True
 
     if player.level >= 30:
-        if random.random() < (0.03 + special_drop_chance):
+        if random.random() < SOUL_CORE_BASE_CHANCE + special_drop_chance:
             drops["soul_core"] = True
 
     if player.level >= 40:
-        if random.random() < (0.01 + special_drop_chance):
+        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
             drops["balance_fragment"] = True
 
     if player.level >= 50:
-        if random.random() < (0.02 + special_drop_chance):
+        if random.random() < VOID_FRAG_BASE_CHANCE + special_drop_chance:
             drops["void_frag"] = True
-        if random.random() < 0.01 + special_drop_chance:
-            drops["unidentified_blueprint"] = True
-        if random.random() < 0.01 + special_drop_chance:
-            drops["diviners_rod"] = True
+        for item in ("unidentified_blueprint", "diviners_rod"):
+            if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+                drops[item] = True
 
     if player.level >= 60:
-        elemental_key_chance = 0.01 + special_drop_chance
-        if random.random() < elemental_key_chance:
-            drops["blessed_bismuth"] = True
-        if random.random() < elemental_key_chance:
-            drops["sparkling_sprig"] = True
-        if random.random() < elemental_key_chance:
-            drops["capricious_carp"] = True
+        elemental_chance = SPECIAL_DROP_BASE_CHANCE + special_drop_chance
+        for item in ("blessed_bismuth", "sparkling_sprig", "capricious_carp"):
+            if random.random() < elemental_chance:
+                drops[item] = True
 
     return drops
 
@@ -409,22 +463,15 @@ async def apply_special_flags(
 
 def calculate_item_drop_chance(player: Player) -> int:
     """
-    Calculates the percentage chance (0-100) for a gear item to drop.
-    Base: 10%
-    Max Cap: 30% (Asymptotic)
-    Scaling: 100% Rarity = 20% Total Chance
+    Calculates the percentage chance (0–100) for a gear item to drop.
+
+    Base:  GEAR_DROP_BASE_CHANCE  (10 %)
+    Cap:   base + GEAR_DROP_MAX_BONUS  (30 % asymptotic)
+    Scale: bonus = MAX_BONUS × rarity / (rarity + SCALING_CONSTANT)
+           → 100 % rarity ≈ 18.2 % total, asymptotes to 30 % at infinite rarity.
     """
-    base_chance = 10.0
-    max_bonus_chance = 20.0  # The most you can possibly add to the base
-
-    scaling_constant = 1000.0
-
     rarity = max(0, player.get_total_rarity())
-
-    # Formula: MaxBonus * ( R / (R + K) )
-    # As R gets huge, the fraction approaches 1.0, giving the full MaxBonus.
-    bonus_chance = max_bonus_chance * (rarity / (rarity + scaling_constant))
-
-    total_chance = base_chance + bonus_chance
-
-    return int(total_chance)
+    bonus_chance = GEAR_DROP_MAX_BONUS * (
+        rarity / (rarity + GEAR_DROP_SCALING_CONSTANT)
+    )
+    return int(GEAR_DROP_BASE_CHANCE + bonus_chance)

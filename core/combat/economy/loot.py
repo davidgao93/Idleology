@@ -1,5 +1,16 @@
 import random
 
+from core.combat.economy.config import (
+    ACC_STAT_CAPS,
+    ARMOR_STAT_CAPS,
+    BOOT_STAT_CAPS,
+    GLOVE_STAT_CAPS,
+    HELM_STAT_CAPS,
+    WEAPON_ATTACK_ROLL_CHANCE,
+    WEAPON_DEFENCE_ROLL_CHANCE,
+    WEAPON_RARITY_ROLL_CHANCE,
+    WEAPON_STAT_CAPS,
+)
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 from core.util import load_list
 
@@ -41,21 +52,13 @@ _TEMPLATE_WEIGHTS = [
     0.10,  # Mediocre (4 × 0.10  = 0.40)
 ]
 
-# Soft caps for each stat per equipment type.
-# get_scaled_stat approaches these asymptotically — they are never literally hit.
-_WEAPON_CAPS = {"attack": 80, "defence": 80, "rarity": 200}
-_ACC_CAPS = {"attack": 80, "defence": 80, "rarity": 200, "ward": 60, "crit": 20}
-_ARMOR_CAPS = {
-    "block": 50,
-    "evasion": 50,
-    "ward": 100,
-    "pdr": 40,
-    "fdr": 80,
-    "main_stat": 60,
-}
-_GLOVE_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
-_BOOT_CAPS = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
-_HELM_CAPS = {"defence": 40, "ward": 80, "pdr": 15, "fdr": 50}
+# Stat caps imported from config — edit core/combat/economy/config.py to tune.
+_WEAPON_CAPS = WEAPON_STAT_CAPS
+_ACC_CAPS = ACC_STAT_CAPS
+_ARMOR_CAPS = ARMOR_STAT_CAPS
+_GLOVE_CAPS = GLOVE_STAT_CAPS
+_BOOT_CAPS = BOOT_STAT_CAPS
+_HELM_CAPS = HELM_STAT_CAPS
 
 
 def get_scaled_stat(
@@ -95,15 +98,15 @@ async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
     weapon.level = level
     # If a rune cannot be dropped, set attack mod to always be true (curio case)
     if drop_rune:
-        if random.randint(0, 100) < 80:  # 80% chance for attack roll
+        if random.randint(0, 100) < WEAPON_ATTACK_ROLL_CHANCE:
             weapon.attack = int(get_scaled_stat(level, _WEAPON_CAPS["attack"]))
     else:
         weapon.attack = int(get_scaled_stat(level, _WEAPON_CAPS["attack"]))
 
-    if random.randint(0, 100) < 50:  # 50% chance for defense roll
+    if random.randint(0, 100) < WEAPON_DEFENCE_ROLL_CHANCE:
         weapon.defence = int(get_scaled_stat(level, _WEAPON_CAPS["defence"]))
 
-    if random.randint(0, 100) < 20:  # 20% chance for rarity roll
+    if random.randint(0, 100) < WEAPON_RARITY_ROLL_CHANCE:
         weapon.rarity = int(get_scaled_stat(level, _WEAPON_CAPS["rarity"]))
 
     if weapon.attack > 0 or weapon.defence > 0 or weapon.rarity > 0:

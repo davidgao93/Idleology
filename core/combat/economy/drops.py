@@ -1,6 +1,16 @@
 import random
 
 from core.combat import rewards
+from core.combat.economy.config import (
+    BODY_PART_BASE_CHANCE,
+    BOSS_SIGIL_FIRST_CHANCE,
+    CORRUPTED_ESSENCE_CHANCE,
+    CORRUPTED_MIRAGE_RUNE_CHANCE,
+    CORRUPTED_PARADISE_JEWEL_CHANCE,
+    EGG_BASE_CHANCE,
+    MODIFIER_DIFFICULTY_CAP,
+    SIGIL_WORKER_MULTIPLIER,
+)
 from core.combat.economy.loot import (
     generate_accessory,
     generate_armor,
@@ -31,26 +41,10 @@ _REGULAR_ESSENCE_TABLE = [
 ]
 _REGULAR_ESSENCE_POOL = [e for e, w in _REGULAR_ESSENCE_TABLE for _ in range(w)]
 _CORRUPTED_ESSENCE_POOL = ["aphrodite", "lucifer", "gemini", "neet"]
-_CORRUPTED_CHANCE = 0.03  # 3% of all essence drops are corrupted
 
 # ---------------------------------------------------------------------------
 # Monster Body Part Drop Tables
 # ---------------------------------------------------------------------------
-
-_BODY_PART_BASE_CHANCE = 0.05  # 5% base; special rarity adds on top
-
-# ---------------------------------------------------------------------------
-# Monster Egg Drop Tables
-# ---------------------------------------------------------------------------
-
-_EGG_BASE_CHANCE = 0.05  # same 5% + special rarity as body parts
-
-_EGG_TIER_WEIGHTS = [
-    ("normal", 75),
-    ("rare", 20),
-    ("giga", 5),
-]
-_EGG_TIERS, _EGG_WEIGHTS = zip(*_EGG_TIER_WEIGHTS)
 
 _PART_SLOT_WEIGHTS = [
     ("head", 0.400),
@@ -63,6 +57,17 @@ _PART_SLOT_WEIGHTS = [
     ("organs", 0.010),
 ]
 _PART_SLOTS, _PART_WEIGHTS = zip(*_PART_SLOT_WEIGHTS)
+
+# ---------------------------------------------------------------------------
+# Monster Egg Drop Tables
+# ---------------------------------------------------------------------------
+
+_EGG_TIER_WEIGHTS = [
+    ("normal", 75),
+    ("rare", 20),
+    ("giga", 5),
+]
+_EGG_TIERS, _EGG_WEIGHTS = zip(*_EGG_TIER_WEIGHTS)
 
 
 def roll_monster_part(monster_name: str, ilvl: int) -> tuple:
@@ -78,9 +83,9 @@ def roll_monster_part(monster_name: str, ilvl: int) -> tuple:
 def roll_essence_drop() -> str:
     """
     Returns an essence type string for an essence-infused monster kill.
-    3% chance to return a corrupted essence, otherwise weighted regular table.
+    CORRUPTED_ESSENCE_CHANCE to return a corrupted essence, otherwise weighted regular table.
     """
-    if random.random() < _CORRUPTED_CHANCE:
+    if random.random() < CORRUPTED_ESSENCE_CHANCE:
         return random.choice(_CORRUPTED_ESSENCE_POOL)
     return random.choice(_REGULAR_ESSENCE_POOL)
 
@@ -140,10 +145,26 @@ class DropManager:
     ):
         """
         Handles DB updates for items, runes, and skill procs.
+
+        Special drop pool formula (body parts, eggs):
+            chance = base_rate
+                     + min(MODIFIER_DIFFICULTY_CAP, sum(m.difficulty for m in modifiers))
+                     + player.get_special_drop_bonus() / 100
         """
 
         # 0. Ensure essences list exists in reward_data
         reward_data.setdefault("essences", [])
+
+        # Compute special drop pool bonus once — reused for body parts and eggs.
+        special_rarity = player.get_special_drop_bonus() / 100
+        if monster is not None:
+            mod_difficulty_bonus = min(
+                MODIFIER_DIFFICULTY_CAP,
+                sum(m.difficulty for m in monster.modifiers),
+            )
+        else:
+            mod_difficulty_bonus = 0.0
+        special_drop_chance = mod_difficulty_bonus + special_rarity
 
         # 1. Skiller Boot Passive (Skill Mats)
         skiller_msg = await DropManager.proc_skiller(bot, user_id, server_id, player)
@@ -158,9 +179,7 @@ class DropManager:
 
         # 1c. Monster Body Part Drop (normal, non-essence monsters only)
         if monster is not None and not getattr(monster, "is_essence", False):
-            part_chance = _BODY_PART_BASE_CHANCE + (
-                player.get_special_drop_bonus() / 100
-            )
+            part_chance = BODY_PART_BASE_CHANCE + special_drop_chance
             _part_roll = random.random()
             reward_data.setdefault("rolls", {})
             reward_data["rolls"]["part_chance_pct"] = round(part_chance * 100, 3)
@@ -182,7 +201,7 @@ class DropManager:
             and not getattr(monster, "is_corrupted", False)
             and not getattr(monster, "is_incubated", False)
         ):
-            egg_chance = _EGG_BASE_CHANCE + (player.get_special_drop_bonus() / 100)
+            egg_chance = EGG_BASE_CHANCE + special_drop_chance
             _egg_roll = random.random()
             reward_data.setdefault("rolls", {})
             reward_data["rolls"]["egg_chance_pct"] = round(egg_chance * 100, 3)
@@ -338,11 +357,11 @@ async def apply_boss_sigil_drops(
     Skips uber variants. Mutates reward_data['special'] in-place.
 
     Drop formula:
-      • 50% base chance for the first sigil.
-      • ``building_workers * 0.0001 * shrine_eff`` chance for a bonus second sigil,
-        where ``shrine_eff`` (≥ 1.0) incorporates the ``sacred_ground`` plot bonus
-        (+20%) and any adjacent Shrine Garden meta building (+15%).
-        Pass *player* to apply these bonuses; omit it to use the flat formula.
+      • BOSS_SIGIL_FIRST_CHANCE (50 %) for the first sigil.
+      • building_workers × SIGIL_WORKER_MULTIPLIER × shrine_eff chance for a
+        bonus second sigil, where shrine_eff (≥ 1.0) incorporates the
+        sacred_ground plot bonus (+20 %) and any adjacent Shrine Garden meta
+        building (+15 %). Pass player to apply these bonuses; omit for flat formula.
     """
     if getattr(monster, "is_uber", False):
         return
@@ -353,16 +372,15 @@ async def apply_boss_sigil_drops(
         _, building_workers = await bot.database.settlement.get_building_details(
             user_id, server_id, building_key
         )
-        # Shrine effectiveness: sacred_ground plot bonus + Shrine Garden adjacency
         shrine_eff = 1.0
         if player is not None:
             shrine_eff = getattr(player, "shrine_effectiveness", {}).get(
                 building_key, 1.0
             )
         sigils_dropped = 0
-        if random.random() < 0.5:
+        if random.random() < BOSS_SIGIL_FIRST_CHANCE:
             sigils_dropped += 1
-        if random.random() < (building_workers * 0.0005 * shrine_eff):
+        if random.random() < (building_workers * SIGIL_WORKER_MULTIPLIER * shrine_eff):
             sigils_dropped += 1
         incr_fn = getattr(bot.database.uber, incr_fn_name)
         await incr_fn(user_id, server_id, sigils_dropped)
@@ -384,10 +402,10 @@ async def apply_corrupted_monster_drops(
 
     Drops:
       - Guaranteed: Sigil of Corruption
-      - ``corruption_shrine_workers * 0.0001 * shrine_eff`` chance for a bonus
-        second Sigil of Corruption (pass *player* to apply shrine_effectiveness).
-      - 25%: Uncut Paradise Jewel
-      - 0.01%: Rune of Mirage (Imperfect)
+      - corruption_shrine_workers × SIGIL_WORKER_MULTIPLIER × shrine_eff chance
+        for a bonus second Sigil of Corruption (pass player to apply shrine_effectiveness).
+      - CORRUPTED_PARADISE_JEWEL_CHANCE (25 %): Uncut Paradise Jewel
+      - CORRUPTED_MIRAGE_RUNE_CHANCE (0.01 %): Rune of Mirage (Imperfect)
     """
     if not getattr(monster, "is_corrupted", False):
         return
@@ -406,14 +424,14 @@ async def apply_corrupted_monster_drops(
             shrine_eff = getattr(player, "shrine_effectiveness", {}).get(
                 "corruption_shrine", 1.0
             )
-        if random.random() < (corruption_workers * 0.0005 * shrine_eff):
+        if random.random() < (corruption_workers * SIGIL_WORKER_MULTIPLIER * shrine_eff):
             await bot.database.uber.increment_corruption_sigils(user_id, server_id, 1)
             reward_data["special"].append("☠️ Sigil of Corruption")
 
-    if random.random() < 0.25:
+    if random.random() < CORRUPTED_PARADISE_JEWEL_CHANCE:
         await bot.database.uber.increment_paradise_jewels(user_id, server_id, 1)
         reward_data["special"].append("💎 Uncut Paradise Jewel")
 
-    if random.random() < 0.0001:
+    if random.random() < CORRUPTED_MIRAGE_RUNE_CHANCE:
         await bot.database.users.modify_currency(user_id, "mirage_runes_imperfect", 1)
         reward_data["special"].append("🪞 Rune of Mirage (Imperfect)")

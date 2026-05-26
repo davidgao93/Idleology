@@ -86,3 +86,119 @@ LUCIFER_BOOT_GOLD_CAP: float = 0.50
 
 # Fraction of earned gold converted to skilling materials per signature level.
 FLORA_CONVERSION_PER_LEVEL: float = 0.10
+
+# ---------------------------------------------------------------------------
+# Special drop pool — applies to Body Parts, Eggs, Spirit Stones, Guild Tickets,
+# and all level-gated material/key/rune drops.
+# Formula: chance = base_rate + min(MODIFIER_DIFFICULTY_CAP, sum_difficulty)
+#                              + player.get_special_drop_bonus() / 100
+# ---------------------------------------------------------------------------
+
+# Hard cap on the modifier-difficulty contribution to the special drop pool.
+MODIFIER_DIFFICULTY_CAP: float = 0.05
+
+# Generic base rate used by most special drops (magma core, keys, runes, etc.)
+SPECIAL_DROP_BASE_CHANCE: float = 0.01
+
+# Drop-specific base rates that differ from the generic baseline.
+SPIRIT_STONE_BASE_CHANCE: float = 0.01
+SOUL_CORE_BASE_CHANCE: float = 0.03
+VOID_FRAG_BASE_CHANCE: float = 0.02
+
+# Guild Ticket — drops without an active partner; requires a minimum level.
+GUILD_TICKET_BASE_CHANCE: float = 0.01
+GUILD_TICKET_MIN_LEVEL: int = 20
+
+# Body part and egg base drop chances (also now boosted by modifier difficulty).
+BODY_PART_BASE_CHANCE: float = 0.05
+EGG_BASE_CHANCE: float = 0.05
+
+# Corrupted essence selection chance (3 % of all essence drops are corrupted).
+CORRUPTED_ESSENCE_CHANCE: float = 0.03
+
+# Corrupted-monster additional drops.
+CORRUPTED_PARADISE_JEWEL_CHANCE: float = 0.25
+CORRUPTED_MIRAGE_RUNE_CHANCE: float = 0.0001
+
+# ---------------------------------------------------------------------------
+# Boss / corruption sigil drops
+# ---------------------------------------------------------------------------
+
+# Flat chance for the first sigil on each named boss kill.
+BOSS_SIGIL_FIRST_CHANCE: float = 0.50
+
+# Bonus-second-sigil rate: workers * this * shrine_effectiveness.
+# Used for both named bosses and corrupted monsters.
+SIGIL_WORKER_MULTIPLIER: float = 0.0005
+
+# ---------------------------------------------------------------------------
+# Gold calculation
+# ---------------------------------------------------------------------------
+
+# Flat gold added to every reward after the rarity multiplier.
+GOLD_BASE_FLAT: int = 20
+
+# Divisor used in the rarity multiplier: mult = 1 + sqrt(rarity) / denominator.
+GOLD_RARITY_DENOMINATOR: float = 20.0
+
+# Fraction of final gold added per point of stat_invest_gold.
+STAT_INVEST_GOLD_PER_POINT: float = 0.001
+
+# ---------------------------------------------------------------------------
+# Gear item drop thresholds
+# ---------------------------------------------------------------------------
+
+GEAR_DROP_BASE_CHANCE: float = 10.0      # % floor for any rarity
+GEAR_DROP_MAX_BONUS: float = 20.0        # % maximum bonus achievable via rarity
+GEAR_DROP_SCALING_CONSTANT: float = 1000.0  # rarity value at which bonus = half max
+
+# ---------------------------------------------------------------------------
+# Accessory passive proc rates
+# ---------------------------------------------------------------------------
+
+# Chance per passive level for Prosper to grant +100 % gold.
+PROSPER_CHANCE_PER_LEVEL: float = 0.10
+
+# Chance per passive level for Infinite Wisdom to grant +100 % XP.
+INFINITE_WISDOM_CHANCE_PER_LEVEL: float = 0.05
+
+# ---------------------------------------------------------------------------
+# Partner combat skill rates
+# ---------------------------------------------------------------------------
+
+# XP / gold bonus per skill level of the co_xp_boost / co_gold_boost skills.
+CO_XP_BOOST_PER_LEVEL: float = 0.05
+CO_GOLD_BOOST_PER_LEVEL: float = 0.05
+
+# ---------------------------------------------------------------------------
+# Gear stat soft-caps per equipment slot
+# (get_scaled_stat approaches these asymptotically — never literally reached)
+# ---------------------------------------------------------------------------
+
+WEAPON_STAT_CAPS: dict = {"attack": 80, "defence": 80, "rarity": 200}
+ACC_STAT_CAPS: dict = {
+    "attack": 80,
+    "defence": 80,
+    "rarity": 200,
+    "ward": 60,
+    "crit": 20,
+}
+ARMOR_STAT_CAPS: dict = {
+    "block": 50,
+    "evasion": 50,
+    "ward": 100,
+    "pdr": 40,
+    "fdr": 80,
+    "main_stat": 60,
+}
+GLOVE_STAT_CAPS: dict = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
+BOOT_STAT_CAPS: dict = {"attack": 80, "defence": 80, "ward": 100, "pdr": 15, "fdr": 50}
+HELM_STAT_CAPS: dict = {"defence": 40, "ward": 80, "pdr": 15, "fdr": 50}
+
+# ---------------------------------------------------------------------------
+# Weapon stat roll chances (integer percent)
+# ---------------------------------------------------------------------------
+
+WEAPON_ATTACK_ROLL_CHANCE: int = 80
+WEAPON_DEFENCE_ROLL_CHANCE: int = 50
+WEAPON_RARITY_ROLL_CHANCE: int = 20
