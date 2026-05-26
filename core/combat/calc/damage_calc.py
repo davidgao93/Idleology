@@ -31,12 +31,14 @@ _DMG_VARIANCE = (0.85, 1.15)
 
 def calculate_damage_taken(player: Player, monster: Monster) -> int:
     """Raw monster damage before PDR/FDR.
-    Guaranteed base from monster level, amplified/dampened by stat surplus."""
+    Guaranteed base from monster level, amplified/dampened by stat surplus.
+    Hard mode applies a 1.2× surplus multiplier on top of its 2× ATK boost."""
     p_def = max(player.get_total_defence(), 1)
     base_raw = 5 + monster.level * 1.5
     surplus = (monster.attack - p_def) / p_def
     surplus = max(-0.95, surplus)
-    raw = base_raw * (1.0 + surplus)
+    surplus_mult = 1.2 if monster.hard_mode else 1.0
+    raw = base_raw * (1.0 + surplus * surplus_mult)
     return max(1, int(raw * random.uniform(*_DMG_VARIANCE)))
 
 
@@ -60,10 +62,12 @@ def roll_monster_damage(
     p_def = max(player.get_total_defence(), 1)
     base_raw = 5 + monster.level * 1.5
     surplus = max(-0.95, (m_atk - p_def) / p_def)
+    surplus_mult = 1.2 if monster.hard_mode else 1.0
     dmg = calculate_damage_taken(player, monster)
 
+    hard_note = f" surplus_mult=×{surplus_mult}" if monster.hard_mode else ""
     calc_notes: list[str] = [
-        f"m_atk={m_atk} p_def={p_def} base={base_raw:.0f} surplus={surplus:+.3f} → raw≈{int(base_raw*(1+surplus))} rolled={dmg}"
+        f"m_atk={m_atk} p_def={p_def} base={base_raw:.0f} surplus={surplus:+.3f}{hard_note} → raw≈{int(base_raw*(1+surplus*surplus_mult))} rolled={dmg}"
     ]
 
     if monster.has_modifier("Enraged"):

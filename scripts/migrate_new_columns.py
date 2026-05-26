@@ -18,6 +18,7 @@ NEW_COLUMNS = [
     ("stat_invest_hp", "INTEGER NOT NULL DEFAULT 0"),
     ("stat_invest_gold", "INTEGER NOT NULL DEFAULT 0"),
     ("rune_of_regret", "INTEGER NOT NULL DEFAULT 0"),
+    ("diviners_rod", "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 

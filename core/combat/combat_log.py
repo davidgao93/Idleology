@@ -112,6 +112,7 @@ class CombatLogger:
             f"[START] Monster: HP {monster.hp}/{monster.max_hp} | "
             f"Atk {m_atk} | Def {m_def} | "
             f"Mods: {', '.join(monster.display_modifiers) or 'None'}"
+            + (" | HARD MODE" if monster.hard_mode else "")
         )
         self._w(
             f"[CALC]  Player hit:   base={_HIT_BASE*100:.0f}% + ({p_atk}-{m_def})/{m_def if m_def else 1} × {_HIT_SENSITIVITY*100:.0f}% "
@@ -126,6 +127,72 @@ class CombatLogger:
             f"(base={player.get_current_crit_chance()}%)"
         )
         self._w("")
+
+    def log_transient_states(self, player: Player, after_label: str = "") -> None:
+        """Log all active jewel/hematurgy transient states after a turn.
+        Outputs nothing if all transients are at zero/inactive to keep logs clean."""
+        if not self._file:
+            return
+
+        lines: list[str] = []
+
+        # ── Paradise Jewel transients ──────────────────────────────────────
+        jop = getattr(player, "jewel_of_paradise", None)
+        if jop and jop.get("equipped_skill"):
+            skill_key = jop["equipped_skill"]
+            charges = jop.get("skill_charges", {}).get(skill_key, 0)
+            if charges:
+                lines.append(f"[JEWEL-{skill_key.upper()}] charges={charges}")
+            if getattr(player, "jewel_cataclysm_primed", False):
+                bonus_pct = getattr(player, "jewel_cataclysm_bonus_multi", 0.0) * 100
+                lines.append(
+                    f"[JEWEL-CATACLYSM] PRIMED  +{bonus_pct:.0f}% crit multi"
+                )
+            if getattr(player, "jewel_onslaught_primed", False):
+                bonus_pct = getattr(player, "jewel_onslaught_bonus_pct", 0.0)
+                lines.append(f"[JEWEL-ONSLAUGHT] PRIMED  +{bonus_pct:.0f}% ATK")
+            dot = getattr(player, "jewel_acrimony_dot", 0)
+            if dot > 0:
+                dot_dmg = getattr(player, "jewel_acrimony_dot_dmg", 0)
+                lines.append(
+                    f"[JEWEL-ACRIMONY] DoT  {dot} turns left  {dot_dmg}/turn"
+                )
+            wf = getattr(player, "jewel_wardforge_bonus_dmg", 0)
+            if wf:
+                lines.append(f"[JEWEL-WARDFORGE] pending bonus_dmg={wf}")
+
+        # ── Hematurgy transients ───────────────────────────────────────────
+        cs = getattr(player, "cs", None)
+        if cs is not None and getattr(player, "hematurgy_passives", None):
+            _HEMA_FIELDS = [
+                ("hema_momentum_stacks", "Iron Momentum stacks"),
+                ("hema_chain_stacks",    "Chain Reaction stacks"),
+                ("hema_phantom_stacks",  "Phantom Reflex stacks"),
+                ("hema_blade_count",     "Spectral Waltz blades"),
+                ("hema_bleed_total",     "Haemorrhage pool"),
+                ("hema_puncture_bleed",  "Puncture pool"),
+                ("hema_frost_misses",    "Flash Frost misses"),
+                ("hema_hp_lost_combat",  "Soul Fracture HP lost"),
+                ("hema_ward_dmg_buffer", "Ward Inoculation buffer"),
+                ("hema_fevered_count",   "Fevered Strike potions"),
+                ("hema_serrated_total",  "Serrated ATK reduced"),
+            ]
+            for attr, label in _HEMA_FIELDS:
+                val = getattr(cs, attr, 0)
+                if val:
+                    lines.append(f"[HEMA-STATE] {label}: {val}")
+            if getattr(cs, "hema_predators_mark", False):
+                lines.append("[HEMA-STATE] Predator's Mark: ACTIVE")
+            if getattr(cs, "hema_tenacity_triggered", False):
+                lines.append("[HEMA-STATE] Tenacity: TRIGGERED")
+            if getattr(cs, "hema_ward_inoculation", False):
+                lines.append("[HEMA-STATE] Ward Inoculation: ACTIVE")
+
+        if lines:
+            prefix = f" after {after_label}" if after_label else ""
+            self._w(f"  [TRANSIENTS{prefix}]")
+            for line in lines:
+                self._w(f"    {line}")
 
     def log_player_turn(self, result, monster: Monster) -> None:
         if not self._file:
@@ -147,6 +214,7 @@ class CombatLogger:
             self._w("  --- calc ---")
             for line in result.calc_detail.splitlines():
                 self._w(line)
+
         self._w("")
 
     def log_monster_turn(self, result, player: Player) -> None:
@@ -167,9 +235,15 @@ class CombatLogger:
             self._w("  --- calc ---")
             for line in result.calc_detail.splitlines():
                 self._w(line)
+
+        # Log active transient states at end of each full round
+        self.log_transient_states(player, after_label="monster turn")
+
         self._w("")
 
-    def log_rewards(self, player: Player, reward_data: dict) -> None:
+    def log_rewards(
+        self, player: Player, reward_data: dict, monster: Monster | None = None
+    ) -> None:
         if not self._file:
             return
 
@@ -183,7 +257,7 @@ class CombatLogger:
         self._w(
             f"[XP/GOLD]   XP: {reward_data.get('xp', 0):,} | Gold: {reward_data.get('gold', 0):,}"
         )
-        self._w(f"[PLAYER]    Rarity: {rarity}% | Special Drop Bonus: {special_bonus}%")
+        self._w(f"[PLAYER]    Rarity: {rarity}% | Special Drop Bonus: {special_bonus:.2f}%")
 
         # Gear drop roll
         gear_roll = rolls.get("gear_roll")
@@ -209,6 +283,45 @@ class CombatLogger:
             if rolls.get("part_hit") and "body_part" in reward_data:
                 slot, name, hp = reward_data["body_part"]
                 self._w(f"[PART]      {name} ({slot}) +{hp} HP")
+
+        # Egg drop roll (normal monsters only)
+        egg_chance_pct = rolls.get("egg_chance_pct")
+        if egg_chance_pct is not None:
+            egg_roll_pct = rolls.get("egg_roll_pct", 0.0)
+            hit_str = "HIT" if rolls.get("egg_hit") else "MISS"
+            self._w(
+                f"[EGG ROLL]  {egg_roll_pct:.2f}% vs chance {egg_chance_pct:.3f}% → {hit_str}"
+            )
+            if rolls.get("egg_hit") and "egg" in reward_data:
+                self._w(f"[EGG]       Tier: {reward_data['egg']}")
+
+        # Special drop context — show effective thresholds so rolls are interpretable
+        if monster is not None:
+            if not monster.is_boss:
+                mod_difficulty = 0.0
+                if monster.modifiers:
+                    mod_difficulty = min(
+                        0.05, sum(m.difficulty for m in monster.modifiers)
+                    )
+                spirit_thr = round((0.01 + special_bonus / 100) * 100, 3)
+                material_thr = round(
+                    (0.01 + mod_difficulty + special_bonus / 100) * 100, 3
+                )
+                ctx = (
+                    f"[SPECIAL CTX] Spirit stone: {spirit_thr:.3f}%"
+                    f" | Materials/keys: {material_thr:.3f}%"
+                    f" | Mod difficulty pool: {mod_difficulty:.4f}"
+                )
+                if player.active_partner:
+                    guild_thr = round((0.01 + special_bonus / 100) * 100, 3)
+                    ctx += f" | Guild ticket: {guild_thr:.3f}%"
+                self._w(ctx)
+            else:
+                rare_thr = round((0.05 + special_bonus / 100) * 100, 3)
+                self._w(
+                    f"[SPECIAL CTX] Boss rare drop threshold: {rare_thr:.3f}%"
+                    f" (spirit stone, antique tome, pinnacle key, elemental mats)"
+                )
 
         # Essence drop (essence monsters only)
         essences = reward_data.get("essences", [])
@@ -263,7 +376,14 @@ class CombatLogger:
 
 
 def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> None:
-    """Logs a pre-combat stat summary and theoretical max damage for both sides."""
+    """Logs a pre-combat stat summary and theoretical max damage for both sides.
+
+    Monster damage formula (matches calculate_damage_taken):
+      base_raw = 5 + level * 1.5
+      surplus  = clamp((m_atk - p_def) / p_def, −0.95, ∞)
+      raw      = base_raw * (1 + surplus * surplus_mult)   [surplus_mult=1.2 in hard mode]
+      max_raw  = raw * 1.15 variance ceiling
+    """
     p_atk = player.get_total_attack()
     p_def = player.get_total_defence()
     p_crit = player.get_current_crit_chance()
@@ -279,7 +399,13 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     m_atk = monster.attack
     m_def = monster.defence
 
-    raw_base = m_atk * max(0.0, 1.0 - p_def / m_atk) if m_atk > 0 else 0.0
+    # Correct formula — must mirror calculate_damage_taken exactly
+    _base_raw = 5.0 + monster.level * 1.5
+    _p_def_clamped = max(p_def, 1)
+    _surplus = max(-0.95, (m_atk - _p_def_clamped) / _p_def_clamped)
+    _surplus_mult = 1.2 if monster.hard_mode else 1.0
+    raw_base = _base_raw * (1.0 + _surplus * _surplus_mult)
+
     if monster.has_modifier("Savage"):
         raw_base *= 1 + monster.get_modifier_value("Savage")
     if monster.has_modifier("Hell's Fury"):
@@ -298,6 +424,8 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     if monster.has_modifier("Spectral"):
         m_max_dmg *= 2
 
+    hard_note = " [HARD MODE ×1.2 surplus]" if monster.hard_mode else ""
+
     log.info(f"--- COMBAT DEBUG: {player.name} VS {monster.name} ---")
     log.info(
         f"PLAYER : HP {player.current_hp}/{player.max_hp} | Atk {p_atk} | Def {p_def} | "
@@ -306,6 +434,10 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     mod_display = ", ".join(monster.display_modifiers) if monster.modifiers else "None"
     log.info(
         f"MONSTER: HP {monster.hp}/{monster.max_hp} | Atk {m_atk} | Def {m_def} | Mods: {mod_display}"
+        + hard_note
     )
-    log.info(f"THEORETICAL MAX HIT -> Player: ~{p_max_dmg} | Monster: ~{m_max_dmg}")
+    log.info(
+        f"FORMULA: base={_base_raw:.1f} surplus={_surplus:+.3f} ×{_surplus_mult} → raw≈{raw_base:.1f}"
+    )
+    log.info(f"THEORETICAL MAX HIT -> Player: ~{p_max_dmg} | Monster: ~{m_max_dmg}{hard_note}")
     log.info("--------------------------------------------------")

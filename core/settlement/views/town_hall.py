@@ -1,5 +1,6 @@
 # core/settlement/views/town_hall.py
 import discord
+from datetime import datetime, timedelta
 from discord import ButtonStyle, Interaction, ui
 
 from core.images import SETTLEMENT_BUILDINGS
@@ -137,15 +138,22 @@ class TownHallView(SettlementBaseView):
             color=discord.Color.dark_blue(),
         )
 
-        # DC crafting info
+        # DC crafting info — compute time until next midnight reset
         remaining_today = max(0, _DC_DAILY_CAP - self.dc_crafted_today)
+        now = datetime.now()
+        next_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        secs_left = int((next_midnight - now).total_seconds())
+        h, _r = divmod(secs_left, 3600)
+        m, s = divmod(_r, 60)
+        reset_str = f"{h}h:{m:02d}m:{s:02d}s"
         embed.add_field(
             name="📜 Craft Development Contracts",
             value=(
                 f"Cost per DC: 💰 {_DC_GOLD:,}g | "
                 f"🪵 {_DC_TIMBER:,} Timber | "
                 f"🪨 {_DC_STONE:,} Stone\n"
-                f"Daily crafts remaining: **{remaining_today}/{_DC_DAILY_CAP}**\n"
+                f"Daily crafts remaining: **{remaining_today}/{_DC_DAILY_CAP}** "
+                f"*(resets in {reset_str})*\n"
                 "Use DCs to develop new settlement plots."
             ),
             inline=False,

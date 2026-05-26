@@ -289,10 +289,11 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 )
                 calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
 
-        # Hard mode: double the raw damage output (applied after PDR/FDR)
-        if monster.hard_mode:
-            total_damage = int(total_damage * 2)
-            calc.append(f"  hard_mode: ×2 → {total_damage}")
+        # Hard mode: 15% chance to crit → +50% damage
+        if monster.hard_mode and random.random() < 0.15:
+            total_damage = int(total_damage * 1.5)
+            calc.append(f"  hard_mode_crit: ×1.5 → {total_damage}")
+            log.append(f"💥 **Hard Mode** — {monster.name} lands a critical strike!")
 
         # --- Onslaught: apply cumulative ATK bonus from consecutive hits ---
         if monster.has_modifier("Onslaught") and monster.onslaught_bonus_atk > 0:

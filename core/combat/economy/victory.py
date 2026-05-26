@@ -336,7 +336,7 @@ async def apply_victory_rewards(
     reward_data["msgs"].extend(exp_changes["msgs"])
 
     if combat_logger:
-        combat_logger.log_rewards(player, reward_data)
+        combat_logger.log_rewards(player, reward_data, monster)
 
     await bot.database.users.modify_gold(user_id, reward_data["gold"])
 

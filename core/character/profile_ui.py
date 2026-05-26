@@ -726,8 +726,9 @@ class ProfileBuilder:
         ]
 
         from core.maw.mechanics import (
-            boost_available,
-            boost_remaining_seconds,
+            MAX_FIGHTS_PER_CYCLE,
+            fight_available,
+            fight_remaining_seconds,
             get_current_cycle_id,
             is_cycle_active,
         )
@@ -739,18 +740,36 @@ class ProfileBuilder:
         if is_cycle_active(maw_cycle_id, now_ts):
             maw_record = await bot.database.maw.get_record(user_id, maw_cycle_id)
             if maw_record:
-                boost_used_at = maw_record["boost_used_at"]
-                if boost_available(boost_used_at, now_ts):
-                    boost_str = "Ready!"
+                fights_done = maw_record["fights_this_cycle"]
+                last_fight_ts = maw_record["last_fight_ts"]
+                fights_left = max(0, MAX_FIGHTS_PER_CYCLE - fights_done)
+                if fights_done >= MAX_FIGHTS_PER_CYCLE:
+                    fight_str = f"All fights used (0/{MAX_FIGHTS_PER_CYCLE} left)"
+                elif fight_available(last_fight_ts, fights_done, now_ts):
+                    fight_str = f"Ready! ({fights_left}/{MAX_FIGHTS_PER_CYCLE} left)"
                 else:
-                    boost_str = _secs_to_hms(
-                        boost_remaining_seconds(boost_used_at, now_ts)
+                    fight_str = (
+                        f"{_secs_to_hms(fight_remaining_seconds(last_fight_ts, now_ts))}"
+                        f" ({fights_left}/{MAX_FIGHTS_PER_CYCLE} left)"
                     )
-                daily_lines.append(f"🌀 **Maw Boost** — {boost_str}")
+                daily_lines.append(f"🌑 **Maw Fight** — {fight_str}")
             else:
-                daily_lines.append("🌀 **Maw Boost** — Not signed up this cycle")
+                daily_lines.append(f"🌑 **Maw Fight** — Not participated this cycle")
         else:
-            daily_lines.append("🌀 **Maw Boost** — No active cycle")
+            daily_lines.append("🌑 **Maw Fight** — No active cycle")
+
+        # DC craft daily reset
+        dc_crafted_today = await bot.database.users.get_dc_crafted_today(user_id)
+        _dc_now = datetime.now()
+        _next_midnight = _dc_now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        _dc_secs = int((_next_midnight - _dc_now).total_seconds())
+        _dch, _dcr = divmod(_dc_secs, 3600)
+        _dcm, _dcs = divmod(_dcr, 60)
+        dc_reset_str = f"**{_dch}h:{_dcm:02d}m:{_dcs:02d}s**"
+        _dc_remaining = max(0, 10 - dc_crafted_today)
+        daily_lines.append(
+            f"📜 **DC Craft** — {_dc_remaining}/10 remaining · resets in {dc_reset_str}"
+        )
 
         embed.add_field(name="📅 Daily", value="\n".join(daily_lines), inline=False)
 

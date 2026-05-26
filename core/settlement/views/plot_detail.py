@@ -138,7 +138,7 @@ def _append_generator(embed, b, b_data: dict, plot_bonus_type, adj: dict) -> Non
     elif output_key == "war_camp_stamina":
         value = f"{emoji} **{label}:** ~{rate:.4f}/hr"
     elif output_key == "companion_cookie":
-        value = f"{emoji} **{label}:** ~{rate:.2f}/hr"
+        value = f"{emoji} **{label}:** ~{int(rate):,}/hr"
     elif output_key == "market_gold":
         value = f"{emoji} **{label}:** ~{int(rate):,}/hr"
     else:
@@ -491,9 +491,11 @@ class PlotDetailView(SettlementBaseView):
             )
             if bonus_label:
                 desc += f"\n\n**Terrain Bonus:** {bonus_label}"
-            if adj.get("production_mult") or adj.get("converter_mult"):
-                eff = adj.get("production_mult", adj.get("converter_mult", 0.0))
-                desc += f"\n🔗 **Adjacency Bonus:** +{eff:.0%} effectiveness"
+            _b_cat = b_data.get("type", "")
+            if _b_cat == "generator" and adj.get("production_mult"):
+                desc += f"\n🔗 **Adjacency Bonus:** +{adj['production_mult']:.0%} effectiveness"
+            elif _b_cat == "converter" and adj.get("converter_mult"):
+                desc += f"\n🔗 **Adjacency Bonus:** +{adj['converter_mult']:.0%} effectiveness"
             if adj.get("shrine_boost"):
                 desc += f"\n🌺 **Shrine Garden:** +{adj['shrine_boost']:.0%} effectiveness"
             embed.description = desc

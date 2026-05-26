@@ -37,13 +37,13 @@ _CORRUPTED_CHANCE = 0.03  # 3% of all essence drops are corrupted
 # Monster Body Part Drop Tables
 # ---------------------------------------------------------------------------
 
-_BODY_PART_BASE_CHANCE = 0.02  # 2% base; special rarity adds on top
+_BODY_PART_BASE_CHANCE = 0.05  # 5% base; special rarity adds on top
 
 # ---------------------------------------------------------------------------
 # Monster Egg Drop Tables
 # ---------------------------------------------------------------------------
 
-_EGG_BASE_CHANCE = 0.02  # same 2% + special rarity as body parts
+_EGG_BASE_CHANCE = 0.05  # same 5% + special rarity as body parts
 
 _EGG_TIER_WEIGHTS = [
     ("normal", 75),
@@ -104,6 +104,7 @@ class DropManager:
             if not _ss_tier:
                 return None
             from core.apex.data import SOUL_STONE_TIER_VALUES
+
             proc_chance = SOUL_STONE_TIER_VALUES["skiller"][_ss_tier - 1] / 100
 
         if random.random() >= proc_chance:
@@ -182,7 +183,12 @@ class DropManager:
             and not getattr(monster, "is_incubated", False)
         ):
             egg_chance = _EGG_BASE_CHANCE + (player.get_special_drop_bonus() / 100)
-            if random.random() < egg_chance:
+            _egg_roll = random.random()
+            reward_data.setdefault("rolls", {})
+            reward_data["rolls"]["egg_chance_pct"] = round(egg_chance * 100, 3)
+            reward_data["rolls"]["egg_roll_pct"] = round(_egg_roll * 100, 3)
+            reward_data["rolls"]["egg_hit"] = _egg_roll < egg_chance
+            if _egg_roll < egg_chance:
                 egg_tier = random.choices(_EGG_TIERS, weights=_EGG_WEIGHTS, k=1)[0]
                 added = await bot.database.eggs.add_egg(
                     user_id, egg_tier, monster_level, monster.name

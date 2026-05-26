@@ -5,7 +5,7 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.companions.engram_view import BalancedEngramView
-from core.images import COMPANIONS_HUB
+from core.images import COMPANIONS_HUB, COMPANIONS_FUSION
 from core.companions.logic import CompanionLogic
 from core.companions.mechanics import CompanionMechanics
 from core.models import Companion

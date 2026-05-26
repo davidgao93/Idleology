@@ -328,17 +328,23 @@ class Combat(commands.Cog, name="combat"):
             )
             combat_phases = [None]
 
-        # 5. Apply Start Effects
+        # 5. Hard mode: scale monster base stats before combat starts.
+        # Applies to all encounter types reached via /combat (regular, boss doors,
+        # corrupted, calcified, incubated). Uber bosses, Ascent, Codex, Apex, and
+        # special modes are not routed through this path so they are unaffected.
+        if hard_mode:
+            monster.attack = int(monster.attack * 2)
+            monster.defence = int(monster.defence * 2)
+            monster.hp = int(monster.hp * 1.5)
+            monster.max_hp = monster.hp
+            monster.hard_mode = True  # per-turn: +15 flat accuracy, +15% crit chance
+
+        # 6. Apply Start Effects
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)
         engine.log_combat_debug(player, monster, self.bot.logger)
 
-        # Hard mode: flag the monster so process_monster_turn applies
-        # 2× raw damage and +15 flat accuracy on every turn.
-        if hard_mode and not is_boss:
-            monster.hard_mode = True
-
-        # 6. Launch View
+        # 7. Launch View
         # Reset jewel charges before building the embed so the status bar shows 0
         # on the very first frame. The reset in CombatView.__init__ is kept as a guard.
         _je.reset_jewel_charges(player)
