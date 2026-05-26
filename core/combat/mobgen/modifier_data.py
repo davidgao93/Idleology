@@ -370,10 +370,10 @@ MODIFIER_DEFINITIONS: dict = {
     "Corrosion": ModifierDef(
         "Corrosion",
         "rare_flat",
-        tiers=[5.0],
+        tiers=[3.0],
         difficulties=[0.010],
         level_gates=[],
-        description=lambda v: "Every 3 turns: gains a Corrode stack (each stack −5 your PDR)",
+        description=lambda v: "Every 3 turns: gains a Corrode stack (max 5; each stack −3 your PDR)",
     ),
     "Death Rattle": ModifierDef(
         "Death Rattle",
@@ -438,7 +438,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.60],
         difficulties=[0.0],
         level_gates=[],
-        description=lambda v: "Below 50% HP: +60% ATK, +30% DR",
+        description=lambda v: "Below 50% HP: +30% ATK, +15% DR",
     ),
     "Temporal Collapse": ModifierDef(
         "Temporal Collapse",

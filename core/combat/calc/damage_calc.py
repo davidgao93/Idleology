@@ -103,9 +103,12 @@ def roll_monster_damage(
         base_crit_chance += monster.get_modifier_value("Lethal")
     # Volatile Spikes: each spike stack adds v to monster crit chance
     if monster.has_modifier("Volatile Spikes") and monster.spike_stacks > 0:
-        base_crit_chance += monster.spike_stacks * monster.get_modifier_value("Volatile Spikes")
-        calc_notes.append(f"volatile_spikes crit+{monster.spike_stacks * monster.get_modifier_value('Volatile Spikes'):.3f}")
-    is_monster_crit = random.random() < base_crit_chance
+        spikes_bonus = monster.spike_stacks * monster.get_modifier_value("Volatile Spikes")
+        base_crit_chance += spikes_bonus
+        calc_notes.append(f"volatile_spikes crit+{spikes_bonus:.3f}")
+    crit_roll = random.random()
+    is_monster_crit = crit_roll < base_crit_chance
+    calc_notes.append(f"mon_crit: {base_crit_chance*100:.1f}% roll={crit_roll:.4f} → {'CRIT' if is_monster_crit else 'no crit'}")
     if is_monster_crit:
         crit_mult = 2.0
         if monster.has_modifier("Devastating"):
@@ -489,8 +492,8 @@ def apply_monster_damage_reduction(
       Treated as a separate multiplicative layer so it cannot be diluted by
       regular DR stacking.  At most one Protection modifier fires (break).
 
-    Example with Ironclad T5 (30%) + Colossus (30%) + Radiant Protection:
-      1000 × (1 − 0.60) = 400  →  400 × (1 − 0.60) = 160 final damage.
+    Example with Ironclad T5 (30%) + Colossus (15%) + Radiant Protection:
+      1000 × (1 − 0.45) = 550  →  550 × (1 − 0.60) = 220 final damage.
     """
     pre = damage
 

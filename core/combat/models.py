@@ -997,7 +997,8 @@ class Player:
 
         return max(0, total)
 
-    def get_total_pdr(self) -> int:
+    def _calc_raw_pdr(self) -> tuple[int, int]:
+        """Returns (raw_pdr, pdr_cap) before the hard cap is applied."""
         from core.items.essence_mechanics import compute_essence_stat_bonus
 
         total = 0
@@ -1045,7 +1046,16 @@ class Player:
             or bool(ss_impregnable)
         )
         cap = 90 if has_impregnable else 80
-        return min(cap, total)
+        return max(0, total), cap
+
+    def get_total_pdr(self) -> int:
+        raw, cap = self._calc_raw_pdr()
+        return min(cap, raw)
+
+    def get_raw_pdr(self) -> int:
+        """PDR total before the hard cap — excess acts as a buffer against Corrosion."""
+        raw, _ = self._calc_raw_pdr()
+        return raw
 
     def get_total_fdr(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus

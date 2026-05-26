@@ -104,11 +104,13 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     f"💜 **Soul Siphon** drains **{siphon_amt}** 🔮 ward, healing {monster.name} for **{heal_amt}** HP!"
                 )
 
-    # --- Corrosion: +1 corrode stack every 3 turns ---
+    # --- Corrosion: +1 corrode stack every 3 turns (cap 5) ---
     if monster.has_modifier("Corrosion") and monster.combat_round % 3 == 0:
-        monster.corrode_stacks += 1
+        if monster.corrode_stacks < 5:
+            monster.corrode_stacks += 1
+        v = int(monster.get_modifier_value("Corrosion"))
         log.append(
-            f"🧪 **Corrosion** — your armour degrades! Corrode stack {monster.corrode_stacks} (−{monster.corrode_stacks * 5} PDR)"
+            f"🧪 **Corrosion** — your armour degrades! Corrode stack {monster.corrode_stacks}/5 (−{monster.corrode_stacks * v} PDR)"
         )
 
     # --- Temporal Collapse: every 6 turns return accumulated player damage as true damage ---
@@ -270,12 +272,12 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     if is_monster_hit:
         # --- PDR / FDR setup ---
         effective_pdr = player.get_total_pdr()
-        # Corrosion: each stack reduces player effective PDR by 5
+        # Corrosion: each stack reduces player PDR; excess PDR above the cap acts as a buffer
         if monster.has_modifier("Corrosion") and monster.corrode_stacks > 0:
             corrode_reduction = monster.corrode_stacks * int(
                 monster.get_modifier_value("Corrosion")
             )
-            effective_pdr = max(0, effective_pdr - corrode_reduction)
+            effective_pdr = min(effective_pdr, max(0, player.get_raw_pdr() - corrode_reduction))
         pdr_notes = [f"base={effective_pdr}%"]
         if celestial == "celestial_fortress":
             missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100

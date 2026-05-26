@@ -533,11 +533,11 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         and 0 < monster.hp < int(monster.max_hp * 0.50)
     ):
         monster.colossus_active = True
-        monster.attack = int(monster.attack * 1.60)
-        monster.colossus_dr = 0.30
+        monster.attack = int(monster.attack * 1.30)
+        monster.colossus_dr = 0.15
         log.append(
             f"⚙️ **Colossus Protocol ENGAGES!** {monster.name}'s power surges — "
-            f"ATK +60%, DR +30%!"
+            f"ATK +30%, DR +15%!"
         )
 
     # --- Culling strike (before Undying Resolve so it can protect from cull kills) ---
