@@ -108,7 +108,13 @@ MODIFIER_DEFINITIONS: dict = {
     "Stalwart": ModifierDef(
         "Stalwart",
         "common",
-        tiers=[0.05, 0.10, 0.15, 0.20, 0.25],  # chance to nullify ALL player damage that turn
+        tiers=[
+            0.05,
+            0.10,
+            0.15,
+            0.20,
+            0.25,
+        ],  # chance to nullify ALL player damage that turn
         difficulties=[0.001, 0.003, 0.005, 0.007, 0.008],
         level_gates=[1, 25, 50, 75, 100],
         description=lambda v: f"{int(v*100)}% chance to nullify all incoming damage",
@@ -440,7 +446,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.0],
         difficulties=[0.0],
         level_gates=[],
-        description=lambda v: "Every 6 turns: returns damage dealt as true damage (capped at 35% max HP)",
+        description=lambda v: "Every 6 turns: returns damage dealt as true damage (capped at 15% max HP)",
     ),
     "Undying Resolve": ModifierDef(
         "Undying Resolve",

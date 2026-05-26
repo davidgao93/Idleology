@@ -552,7 +552,8 @@ class QuestBoardView(BaseView):
     async def _on_open_shop(self, interaction: Interaction) -> None:
         await interaction.response.defer()
         from core.quests.shop_views import TokenShopView
-        shop = TokenShopView(self.bot, parent=self)
+        tokens = self.meta.get("tokens", 0)
+        shop = TokenShopView(self.bot, parent=self, tokens=tokens)
         embed = shop.build_embed()
         await interaction.edit_original_response(embed=embed, view=shop)
 

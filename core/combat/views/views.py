@@ -537,6 +537,7 @@ class CombatView(BaseView):
                 await self.refresh_embed(interaction)  # Show final hit
                 await self.handle_end_state(interaction.message, interaction)
         else:
+            self.update_buttons()
             await self.refresh_embed(interaction)
 
     async def handle_end_state(self, message, interaction: Interaction):

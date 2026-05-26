@@ -13,22 +13,28 @@ _SHOP_COLOR = 0xF0A500
 
 
 class TokenShopView(BaseView):
-    def __init__(self, bot, parent: "BaseView"):
+    def __init__(self, bot, parent: "BaseView", tokens: int = 0):
         super().__init__(bot, parent=parent)
         self._processing = False
         self._selected_item_id: str | None = None
+        self._tokens = tokens
         self._build_components()
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title="🛒 Quest Token Shop",
-            description="Spend your Quest Tokens on upgrades and utilities.",
+            description=(
+                "Spend your Quest Tokens on upgrades and utilities.\n\n"
+                f"🎫 **Your Tokens: {self._tokens}**"
+            ),
             color=_SHOP_COLOR,
         )
         for item in TOKEN_SHOP_ITEMS:
-            one_time = "(One-time unlock)" if item.get("one_time") else ""
+            one_time = " *(One-time)*" if item.get("one_time") else ""
+            selected = item["id"] == self._selected_item_id
+            name_prefix = "➤ " if selected else ""
             embed.add_field(
-                name=f"{item['label']} — {item['cost']}🎫 {one_time}",
+                name=f"{name_prefix}{item['label']} — {item['cost']}🎫{one_time}",
                 value=item["description"],
                 inline=False,
             )
@@ -105,6 +111,11 @@ class TokenShopView(BaseView):
                     f"Not enough Quest Tokens (need {item_def['cost']}).", ephemeral=True
                 )
                 return
+
+            # Update local token count and clear selection
+            self._tokens -= item_def["cost"]
+            self._selected_item_id = None
+            self.confirm_btn.disabled = True
 
             # Apply effect
             result_msg = await self._apply_item(item_def, meta)
@@ -213,5 +224,6 @@ class _ShopItemSelect(discord.ui.Select):
     async def callback(self, interaction: Interaction) -> None:
         await interaction.response.defer()
         self.view.set_selected(self.values[0])
-        # Re-render to enable confirm button
-        await interaction.edit_original_response(view=self.view)
+        # Rebuild embed to show selection indicator and enable confirm button
+        embed = self.view.build_embed()
+        await interaction.edit_original_response(embed=embed, view=self.view)

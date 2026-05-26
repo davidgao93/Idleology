@@ -346,6 +346,9 @@ class AscentView(BaseView):
         self.combat_logger = CombatLogger(player, initial_monster)
         self.combat_logger.log_combat_start(player, initial_monster)
 
+        self.heal.label = f"Heal ({self.player.potions}/20)"
+        self.heal.disabled = self.player.potions <= 0
+
     async def on_timeout(self):
         if self.player.current_hp > 0:
             await self._end_run(
@@ -357,9 +360,14 @@ class AscentView(BaseView):
     def _floor_title(self) -> str:
         return f"Ascent Floor {self.current_floor} | {self.player.name}"
 
+    def _update_heal_btn(self):
+        self.heal.label = f"Heal ({self.player.potions}/20)"
+        self.heal.disabled = self.player.potions <= 0
+
     async def _refresh(
         self, interaction: Interaction = None, message: discord.Message = None
     ):
+        self._update_heal_btn()
         embed = combat_ui.create_combat_embed(
             self.player, self.monster, self.logs, title_override=self._floor_title()
         )
@@ -574,6 +582,10 @@ class AscentView(BaseView):
 
         self.combat_logger = CombatLogger(self.player, self.monster)
         self.combat_logger.log_combat_start(self.player, self.monster)
+
+        for child in self.children:
+            child.disabled = False
+        self._update_heal_btn()
 
         msg_obj = message if message else (await interaction.original_response())
         embed = combat_ui.create_combat_embed(

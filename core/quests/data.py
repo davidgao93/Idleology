@@ -1,10 +1,10 @@
 """
 core/quests/data.py — Quest definitions, damage bands, horizon paths, and check-in track.
 """
+
 from __future__ import annotations
 
 import random
-
 
 # ---------------------------------------------------------------------------
 # Daily Quest Pool
@@ -110,10 +110,42 @@ DAILY_QUESTS = [
     {
         "id": "hatch_egg",
         "label": "Hatchery Commission",
-        "flavor": "The Hatchery Guild requests field data on incubated specimens. Release your charges into the wild.",
+        "flavor": "The Hatchery Guild requests field data on incubated specimens. Release and slay the creature in the wild.",
         "event_type": "egg_release",
+        "level_required": 50,
+        "goals": {1: 1, 3: 3},
+    },
+    {
+        "id": "use_refinement_rune",
+        "label": "Refinement Ritual",
+        "flavor": "The Weaponsmiths' Union tracks rune usage as a mark of dedication. Prove your commitment to the craft.",
+        "event_type": "rune_refinement",
         "level_required": 1,
         "goals": {1: 1, 3: 3},
+    },
+    {
+        "id": "use_shatter_rune",
+        "label": "Shatter Protocol",
+        "flavor": "The Armorers' Guild demands proof of reinforcement mastery. Push your gear beyond its limits.",
+        "event_type": "rune_shatter",
+        "level_required": 1,
+        "goals": {1: 1, 3: 3},
+    },
+    {
+        "id": "use_potential_rune",
+        "label": "Potential Unleashed",
+        "flavor": "The Academy of Potential requires demonstration of enchantment skill. Channel the rune's energy.",
+        "event_type": "rune_potential",
+        "level_required": 1,
+        "goals": {1: 1, 3: 3},
+    },
+    {
+        "id": "casino_gold",
+        "label": "High Roller",
+        "flavor": "The casino owners have posted a bounty for their most profitable players. Show them what winning looks like.",
+        "event_type": "casino_win",
+        "level_required": 1,
+        "goals": {1: 15_000, 3: 100_000},
     },
 ]
 
@@ -123,15 +155,15 @@ DAILY_QUESTS = [
 # ---------------------------------------------------------------------------
 
 DAMAGE_BANDS = [
-    (1,  10,  500,       1_500),
-    (11, 20,  20_000,    60_000),
-    (21, 30,  50_000,    150_000),
-    (31, 40,  100_000,   300_000),
-    (41, 50,  200_000,   600_000),
-    (51, 60,  350_000,   1_000_000),
-    (61, 70,  600_000,   1_800_000),
-    (71, 80,  1_000_000, 3_000_000),
-    (81, 90,  1_500_000, 4_500_000),
+    (1, 10, 500, 1_500),
+    (11, 20, 20_000, 60_000),
+    (21, 30, 50_000, 150_000),
+    (31, 40, 100_000, 300_000),
+    (41, 50, 200_000, 600_000),
+    (51, 60, 350_000, 1_000_000),
+    (61, 70, 600_000, 1_800_000),
+    (71, 80, 1_000_000, 3_000_000),
+    (81, 90, 1_500_000, 4_500_000),
     (91, 999, 2_500_000, 7_500_000),
 ]
 
@@ -150,7 +182,7 @@ def get_damage_goals(level: int) -> tuple:
 HORIZON_PATHS = {
     "alchemist": {
         "name": "The Alchemist's Obsession",
-        "description": "The alchemical society has recently been investigating rumors of mutations in Spirit Stones. Obtain them through combat.",
+        "description": "The alchemical society has recently been investigating rumors of mutations in Spirit Stones dropped by monsters. Slay them.",
         "event_type": "combat_win",
         "goal": 50,
         "token_reward": 3,
@@ -182,7 +214,7 @@ HORIZON_PATHS = {
     },
     "blood_compact": {
         "name": "The Blood Compact",
-        "description": "The Blood Compact calls on hatchery handlers. Release your incubated charges into the world.",
+        "description": "The Blood Compact calls on hatchery handlers. Release your incubated creatures and slay them.",
         "event_type": "egg_release",
         "goal": 3,
         "token_reward": 3,
@@ -309,7 +341,10 @@ TOKEN_SHOP_ITEMS = [
 # Check-in reward granting
 # ---------------------------------------------------------------------------
 
-async def grant_checkin_day(bot, user_id: str, server_id: str, day: int, level: int) -> list:
+
+async def grant_checkin_day(
+    bot, user_id: str, server_id: str, day: int, level: int
+) -> list:
     """Grant the check-in reward for the given day based on player level. Returns display strings."""
     rewards = []
 
@@ -337,7 +372,14 @@ async def grant_checkin_day(bot, user_id: str, server_id: str, day: int, level: 
             await bot.database.quests.add_tokens(user_id, 2)
             rewards.append("🎫 +2 Quest Tokens")
         elif level >= 30:
-            essence_pool = ["power", "protection", "insight", "evasion", "blocking", "deftness"]
+            essence_pool = [
+                "power",
+                "protection",
+                "insight",
+                "evasion",
+                "blocking",
+                "deftness",
+            ]
             for _ in range(3):
                 etype = random.choice(essence_pool)
                 await bot.database.essences.add(user_id, etype)
@@ -361,7 +403,11 @@ async def grant_checkin_day(bot, user_id: str, server_id: str, day: int, level: 
             for _ in range(count):
                 m = random.choice(mat_pool)
                 mats[m] = mats.get(m, 0) + 1
-            _MAT_LABELS = {"magma_core": "Magma Core", "life_root": "Life Root", "spirit_shard": "Spirit Shard"}
+            _MAT_LABELS = {
+                "magma_core": "Magma Core",
+                "life_root": "Life Root",
+                "spirit_shard": "Spirit Shard",
+            }
             for m, n in mats.items():
                 await bot.database.users.modify_currency(user_id, m, n)
                 rewards.append(f"🪨 +{n} {_MAT_LABELS[m]}{'s' if n > 1 else ''}")
@@ -420,7 +466,14 @@ async def grant_checkin_day(bot, user_id: str, server_id: str, day: int, level: 
             await bot.database.users.modify_currency(user_id, "curios", 1)
             rewards.append("📦 +1 Curio")
         elif level >= 30:
-            essence_pool = ["power", "protection", "insight", "evasion", "blocking", "deftness"]
+            essence_pool = [
+                "power",
+                "protection",
+                "insight",
+                "evasion",
+                "blocking",
+                "deftness",
+            ]
             for _ in range(2):
                 etype = random.choice(essence_pool)
                 await bot.database.essences.add(user_id, etype)
@@ -454,7 +507,14 @@ async def grant_checkin_day(bot, user_id: str, server_id: str, day: int, level: 
             await bot.database.quests.add_tokens(user_id, 2)
             rewards.append("🎫 +2 Quest Tokens")
         elif level >= 30:
-            essence_pool = ["power", "protection", "insight", "evasion", "blocking", "deftness"]
+            essence_pool = [
+                "power",
+                "protection",
+                "insight",
+                "evasion",
+                "blocking",
+                "deftness",
+            ]
             for _ in range(3):
                 etype = random.choice(essence_pool)
                 await bot.database.essences.add(user_id, etype)
@@ -512,7 +572,11 @@ async def grant_checkin_day(bot, user_id: str, server_id: str, day: int, level: 
             for _ in range(count):
                 m = random.choice(mat_pool)
                 mats[m] = mats.get(m, 0) + 1
-            _MAT_LABELS = {"magma_core": "Magma Core", "life_root": "Life Root", "spirit_shard": "Spirit Shard"}
+            _MAT_LABELS = {
+                "magma_core": "Magma Core",
+                "life_root": "Life Root",
+                "spirit_shard": "Spirit Shard",
+            }
             for m, n in mats.items():
                 await bot.database.users.modify_currency(user_id, m, n)
                 rewards.append(f"🪨 +{n} {_MAT_LABELS[m]}{'s' if n > 1 else ''}")
@@ -546,7 +610,14 @@ async def grant_checkin_day(bot, user_id: str, server_id: str, day: int, level: 
             await bot.database.users.modify_currency(user_id, "curios", 1)
             rewards.append("📦 +1 Curio")
         elif level >= 30:
-            essence_pool = ["power", "protection", "insight", "evasion", "blocking", "deftness"]
+            essence_pool = [
+                "power",
+                "protection",
+                "insight",
+                "evasion",
+                "blocking",
+                "deftness",
+            ]
             for _ in range(3):
                 etype = random.choice(essence_pool)
                 await bot.database.essences.add(user_id, etype)

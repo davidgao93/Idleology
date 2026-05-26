@@ -104,6 +104,16 @@ class RouletteView(BaseView):
             )  # 35:1 for number, 1:1 (2x return) for color/parity
             payout = self.bet_amount * multiplier
             await self.bot.database.users.modify_gold(self.user_id, payout)
+            net_win = payout - self.bet_amount
+            if net_win > 0:
+                try:
+                    from core.quests.mechanics import tick_quest_progress
+                    await tick_quest_progress(
+                        self.bot, self.user_id, str(interaction.guild_id),
+                        "casino_win", value=net_win,
+                    )
+                except Exception:
+                    pass
 
         # 4. Build Embed
         color_map = {
@@ -298,6 +308,16 @@ class BlackjackView(BaseView):
 
         if payout > 0:
             await self.bot.database.users.modify_gold(self.user_id, payout)
+            net_win = payout - self.bet_amount
+            if net_win > 0:
+                try:
+                    from core.quests.mechanics import tick_quest_progress
+                    guild_id = str(interaction.guild_id) if interaction else ""
+                    await tick_quest_progress(
+                        self.bot, self.user_id, guild_id, "casino_win", value=net_win
+                    )
+                except Exception:
+                    pass
 
         await self.update_table(interaction)
 
@@ -534,6 +554,15 @@ class CrashView(BaseView):
 
         winnings = int(self.bet_amount * self.current_multiplier)
         await self.bot.database.users.modify_gold(self.user_id, winnings)
+        net_win = winnings - self.bet_amount
+        if net_win > 0:
+            try:
+                from core.quests.mechanics import tick_quest_progress
+                await tick_quest_progress(
+                    self.bot, self.user_id, str(interaction.guild_id), "casino_win", value=net_win
+                )
+            except Exception:
+                pass
 
         embed = discord.Embed(title="✅ Cashed Out!", color=discord.Color.green())
         embed.description = f"You ejected at **{self.current_multiplier:.2f}x**!\n\n**Winnings:** {winnings:,} gold\n**Profit:** {winnings - self.bet_amount:,} gold"
@@ -701,6 +730,16 @@ class HorseRaceView(BaseView):
         if winner == picked_horse:
             winnings = self.bet_amount * 4
             await self.bot.database.users.modify_gold(self.user_id, winnings)
+            net_win = winnings - self.bet_amount
+            if net_win > 0:
+                try:
+                    from core.quests.mechanics import tick_quest_progress
+                    await tick_quest_progress(
+                        self.bot, self.user_id, str(self.original_interaction.guild_id),
+                        "casino_win", value=net_win,
+                    )
+                except Exception:
+                    pass
             embed.color = discord.Color.gold()
             embed.add_field(
                 name="Congratulations!",

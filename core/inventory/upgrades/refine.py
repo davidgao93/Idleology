@@ -95,6 +95,13 @@ class RefineView(BaseUpgradeView):
                 self.item.item_id, "weapon", "refines_remaining", 1
             )
             self.item.refines_remaining += 1
+            try:
+                from core.quests.mechanics import tick_quest_progress
+                await tick_quest_progress(
+                    self.bot, self.user_id, str(interaction.guild_id), "rune_refinement"
+                )
+            except Exception:
+                pass
             await self.render(interaction)
             return
 
@@ -506,6 +513,16 @@ class RefineView(BaseUpgradeView):
             )
             await self.bot.database.connection.commit()
             refines_done += 1
+
+        if runes_used > 0:
+            try:
+                from core.quests.mechanics import tick_quest_progress
+                await tick_quest_progress(
+                    self.bot, self.user_id, str(interaction.guild_id),
+                    "rune_refinement", value=runes_used,
+                )
+            except Exception:
+                pass
 
         gains_str = (
             ", ".join(f"+{v} {k.title()}" for k, v in total_gains.items() if v > 0)

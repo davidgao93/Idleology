@@ -101,6 +101,13 @@ class TemperView(BaseUpgradeView):
             await self.bot.database.users.modify_currency(
                 self.user_id, "potential_runes", -1
             )
+            try:
+                from core.quests.mechanics import tick_quest_progress
+                await tick_quest_progress(
+                    self.bot, self.user_id, str(interaction.guild_id), "rune_potential"
+                )
+            except Exception:
+                pass
             bonus = 10
         else:
             bonus = 0
@@ -354,6 +361,13 @@ class ReinforceView(BaseUpgradeView):
                 self.item.item_id, itype, "reinforces_remaining", 1
             )
             self.item.reinforces_remaining += 1
+            try:
+                from core.quests.mechanics import tick_quest_progress
+                await tick_quest_progress(
+                    self.bot, self.user_id, str(interaction.guild_id), "rune_shatter"
+                )
+            except Exception:
+                pass
             await self.render(interaction)
             return
 

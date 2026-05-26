@@ -46,6 +46,12 @@ class Consume(commands.Cog, name="consume"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
+        if user_data["level"] < 50:
+            return await interaction.response.send_message(
+                "The Hematurgy system unlocks at **Level 50** via the Hatchery settlement building.",
+                ephemeral=True,
+            )
+
         self.bot.state_manager.set_active(user_id, "consume")
         passives = await self.bot.database.hematurgy.get_all_passives(user_id)
         blood = await self.bot.database.hematurgy.get_blood(user_id)

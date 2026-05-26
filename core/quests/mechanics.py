@@ -114,6 +114,14 @@ def format_goal_description(quest_id: str, tier: int, goal: int) -> str:
         return f"Complete {goal} Apex hunt{'s' if goal > 1 else ''}"
     elif event == "egg_release":
         return f"Release {goal} incubated egg{'s' if goal > 1 else ''}"
+    elif event == "rune_refinement":
+        return f"Use {goal} Refinement Rune{'s' if goal > 1 else ''}"
+    elif event == "rune_shatter":
+        return f"Use {goal} Shatter Rune{'s' if goal > 1 else ''}"
+    elif event == "rune_potential":
+        return f"Use {goal} Potential Rune{'s' if goal > 1 else ''}"
+    elif event == "casino_win":
+        return f"Win {goal:,} gold from the casino"
     return f"Complete {goal} time{'s' if goal > 1 else ''}"
 
 
@@ -147,8 +155,9 @@ async def tick_quest_progress(
             if quest_def["event_type"] != event_type:
                 continue
 
-            # Damage uses value directly; others increment by 1
-            tick_amount = value if event_type == "damage" else 1
+            # Some events use the raw value (damage amount, gold won, runes used, etc.)
+            _VALUE_EVENTS = {"damage", "casino_win", "rune_refinement", "rune_shatter", "rune_potential"}
+            tick_amount = value if event_type in _VALUE_EVENTS else 1
             updated = await bot.database.quests.tick_contract_progress(
                 user_id, server_id, contract["quest_id"], tick_amount
             )

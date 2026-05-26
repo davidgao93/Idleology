@@ -79,7 +79,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     if monster.has_modifier("Pressure Surge"):
         if not monster.pressure_player_critted:
             monster.pressure_stacks = min(10, monster.pressure_stacks + 1)
-        monster.pressure_player_critted = False  # reset; player_turn will write it again
+        monster.pressure_player_critted = (
+            False  # reset; player_turn will write it again
+        )
         if monster.pressure_stacks >= 10:
             v = monster.get_modifier_value("Pressure Surge")
             burst = int(player.total_max_hp * v)
@@ -112,9 +114,13 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     # --- Temporal Collapse: every 6 turns return accumulated player damage as true damage ---
     # Burst is capped at 35% of player max HP to prevent instant kills — endgame players
     # can deal 100-200k damage in 6 turns while only having ~1200-1400 HP.
-    if monster.has_modifier("Temporal Collapse") and monster.combat_round % 6 == 0 and monster.combat_round > 0:
+    if (
+        monster.has_modifier("Temporal Collapse")
+        and monster.combat_round % 6 == 0
+        and monster.combat_round > 0
+    ):
         if monster.temporal_window_damage > 0:
-            cap = int(player.total_max_hp * 0.35)
+            cap = int(player.total_max_hp * 0.15)
             was_capped = monster.temporal_window_damage > cap
             collapse_dmg = min(monster.temporal_window_damage, cap)
             player.current_hp = max(0, player.current_hp - collapse_dmg)
@@ -150,7 +156,11 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     apex_zone = getattr(monster, "apex_zone", None)
 
     # Tempest zone: every 3rd monster turn → unavoidable 8% max HP true damage
-    if apex_zone == "storm" and monster.combat_round % 3 == 0 and monster.combat_round > 0:
+    if (
+        apex_zone == "storm"
+        and monster.combat_round % 3 == 0
+        and monster.combat_round > 0
+    ):
         lightning_dmg = max(1, int(player.total_max_hp * 0.08))
         player.current_hp = max(0, player.current_hp - lightning_dmg)
         log.append(
@@ -161,10 +171,16 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     if apex_zone == "grove" and monster.hp < monster.max_hp:
         regen = max(1, int(monster.max_hp * 0.004))
         monster.hp = min(monster.max_hp, monster.hp + regen)
-        log.append(f"🌿 **Living Battlefield** — the grove heals {monster.name} for **{regen}** HP!")
+        log.append(
+            f"🌿 **Living Battlefield** — the grove heals {monster.name} for **{regen}** HP!"
+        )
 
     # Tempted Fate: every 4th monster turn drain ALL player ward
-    if apex_zone == "vault" and monster.combat_round % 4 == 0 and monster.combat_round > 0:
+    if (
+        apex_zone == "vault"
+        and monster.combat_round % 4 == 0
+        and monster.combat_round > 0
+    ):
         drained = player.combat_ward
         if drained > 0:
             player.combat_ward = 0
@@ -173,9 +189,14 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
             )
 
     # Reality Fracture: every 5th monster turn reroll one modifier
-    if apex_zone == "shattered" and monster.combat_round % 5 == 0 and monster.combat_round > 0:
+    if (
+        apex_zone == "shattered"
+        and monster.combat_round % 5 == 0
+        and monster.combat_round > 0
+    ):
         if monster.modifiers:
             from core.combat.mobgen.modifier_data import make_modifier
+
             idx = random.randrange(len(monster.modifiers))
             old_name = monster.modifiers[idx].name
             new_mod = make_modifier(old_name, monster.level)
@@ -251,7 +272,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         effective_pdr = player.get_total_pdr()
         # Corrosion: each stack reduces player effective PDR by 5
         if monster.has_modifier("Corrosion") and monster.corrode_stacks > 0:
-            corrode_reduction = monster.corrode_stacks * int(monster.get_modifier_value("Corrosion"))
+            corrode_reduction = monster.corrode_stacks * int(
+                monster.get_modifier_value("Corrosion")
+            )
             effective_pdr = max(0, effective_pdr - corrode_reduction)
         pdr_notes = [f"base={effective_pdr}%"]
         if celestial == "celestial_fortress":
@@ -303,9 +326,13 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
 
         # --- Wrathful Retaliation: ATK multiplier from player crits ---
         if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
-            wr_mult = 1.0 + monster.wrathful_stacks * monster.get_modifier_value("Wrathful Retaliation")
+            wr_mult = 1.0 + monster.wrathful_stacks * monster.get_modifier_value(
+                "Wrathful Retaliation"
+            )
             total_damage = int(total_damage * wr_mult)
-            calc.append(f"  wrathful: stacks={monster.wrathful_stacks} ×{wr_mult:.3f} → {total_damage}")
+            calc.append(
+                f"  wrathful: stacks={monster.wrathful_stacks} ×{wr_mult:.3f} → {total_damage}"
+            )
 
         # --- Undying Resolve: double ATK while ATK boost is active ---
         if monster.undying_atk_boost_turns > 0:
@@ -315,7 +342,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
 
         # --- Multistrike: 50% chance to strike twice, second hit at 50% damage ---
         multistrike_damage = 0
-        if monster.has_modifier("Multistrike") and random.random() <= monster.get_modifier_value("Multistrike"):
+        if monster.has_modifier(
+            "Multistrike"
+        ) and random.random() <= monster.get_modifier_value("Multistrike"):
             multistrike_damage = max(
                 0,
                 (
@@ -334,7 +363,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         is_executed = False
         if monster.has_modifier("Executioner") and random.random() < 0.01:
             is_executed = True
-            calc.append("  executioner: PROC'd — true damage applied if not dodged/blocked")
+            calc.append(
+                "  executioner: PROC'd — true damage applied if not dodged/blocked"
+            )
 
         # --- Dodge & Block ---
         # (is_dodged and is_blocked initialized above before the hit-check branch)

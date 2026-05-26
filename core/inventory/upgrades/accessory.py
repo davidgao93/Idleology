@@ -103,6 +103,13 @@ class PotentialView(BaseUpgradeView):
             await self.bot.database.users.modify_currency(
                 self.user_id, "potential_runes", -1
             )
+            try:
+                from core.quests.mechanics import tick_quest_progress
+                await tick_quest_progress(
+                    self.bot, self.user_id, str(interaction.guild_id), "rune_potential"
+                )
+            except Exception:
+                pass
             bonus = self.rune_bonus
         else:
             bonus = 0
