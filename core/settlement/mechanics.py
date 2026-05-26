@@ -109,7 +109,7 @@ class SettlementMechanics:
         Returns a dict mapping plot_index → {
             "production_mult": float,    # Servant's Quarters + Foreman's Post on generators
             "converter_mult":  float,    # Supply Depot + Foreman's Post on converters
-            "war_camp_rate":   float,    # Encampment extra stamina base-rate for war_camp
+            "war_camp_rate":   float,    # Encampment speed multiplier for war_camp (0.10 = 10% faster)
             "shrine_cap_x2":   bool,     # Grand Cathedral doubles shrine worker cap
             "has_watchtower":  bool,     # Watchtower is globally present (any plot)
             "shrine_boost":    float,    # Shrine Garden extra mult for shrine buildings
@@ -187,7 +187,7 @@ class SettlementMechanics:
                     result[adj_idx]["shrine_cap_x2"] = True
 
                 elif meta_type == "encampment":
-                    result[adj_idx]["war_camp_rate"] += 0.005 * ley_amp
+                    result[adj_idx]["war_camp_rate"] += 0.10 * ley_amp
 
                 elif meta_type == "shrine_garden":
                     result[adj_idx]["shrine_boost"] += 0.15 * ley_amp
@@ -261,19 +261,18 @@ class SettlementMechanics:
         elif btype == "converter":
             effectiveness += adj_converter_mult
 
-        # War camp extra stamina rate from adjacent Encampment meta buildings
-        effective_base_rate = base_rate
-        if building_type == "war_camp":
-            effective_base_rate += adj_war_camp_rate
+        # Encampment meta building gives adjacent war camps a % speed boost
+        if building_type == "war_camp" and adj_war_camp_rate:
+            effectiveness += adj_war_camp_rate
 
         changes = {}
 
         # War camp scales by workers only (no tier factor) to avoid 25× runaway scaling.
         # All other generators use the standard tier × workers formula.
         if building_type == "war_camp":
-            production_raw = effective_base_rate * workers * hours_elapsed * effectiveness
+            production_raw = base_rate * workers * hours_elapsed * effectiveness
         else:
-            production_raw = effective_base_rate * tier * workers * hours_elapsed * effectiveness
+            production_raw = base_rate * tier * workers * hours_elapsed * effectiveness
         production_capacity = int(production_raw)
 
         if b_data["type"] == "generator":

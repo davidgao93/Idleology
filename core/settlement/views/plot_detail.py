@@ -70,7 +70,9 @@ def _gen_effectiveness(
         elif applies == "trade_mult" and building_type in ("market", "war_camp"):
             eff += val
     eff += adj.get("production_mult", 0.0)
-    return eff, extra_rate  # extra_rate only used by war_camp
+    if building_type == "war_camp":
+        eff += adj.get("war_camp_rate", 0.0)
+    return eff, extra_rate
 
 
 def _conv_effectiveness(plot_bonus_type: str | None, adj: dict) -> float:
@@ -123,11 +125,11 @@ def _append_generator(embed, b, b_data: dict, plot_bonus_type, adj: dict) -> Non
     base_rate: float = b_data["base_rate"]
     output_key: str = b_data["output"]
 
-    if b.building_type == "war_camp":
-        base_rate += adj.get("war_camp_rate", 0.0)
-
     eff, _ = _gen_effectiveness(b.building_type, plot_bonus_type, adj)
-    rate = base_rate * b.tier * workers * eff
+    if b.building_type == "war_camp":
+        rate = base_rate * workers * eff
+    else:
+        rate = base_rate * b.tier * workers * eff
 
     emoji, label = _OUTPUT_DISPLAY.get(
         output_key, ("📦", output_key.replace("_", " ").title())
@@ -136,7 +138,7 @@ def _append_generator(embed, b, b_data: dict, plot_bonus_type, adj: dict) -> Non
     if workers == 0:
         value = _NO_WORKERS
     elif output_key == "war_camp_stamina":
-        value = f"{emoji} **{label}:** ~{rate:.4f}/hr"
+        value = f"{emoji} **{label}:** ~{rate:.2f}/hr"
     elif output_key == "companion_cookie":
         value = f"{emoji} **{label}:** ~{int(rate):,}/hr"
     elif output_key == "market_gold":
@@ -291,7 +293,7 @@ def _append_meta_effect(embed, b) -> None:
     elif btype == "shrine_garden":
         value = "+**15%** effectiveness to adjacent shrine buildings"
     elif btype == "encampment":
-        value = "Adjacent War Camps: +**0.5** Combat Stamina/hr per 100 War Camp workers"
+        value = "Adjacent War Camps generate stamina **10% faster**"
     elif btype == "apothecary_annex":
         # 0.0004 per worker → display as %: workers * 0.04
         bonus = workers * 0.04
