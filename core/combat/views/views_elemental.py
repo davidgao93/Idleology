@@ -142,6 +142,11 @@ class ElementalEncounterView(BaseView):
     async def _finalize(self, message: discord.Message):
         rewards = await self._calculate_rewards()
         await self._award_rewards(rewards)
+        try:
+            from core.quests.mechanics import tick_quest_progress
+            await tick_quest_progress(self.bot, self.user_id, self.server_id, "elemental_defeat")
+        except Exception as e:
+            print(f"[Quest tick error in elemental]: {e}")
         embed = self._build_completion_embed(rewards)
         self.clear_items()
         self.bot.state_manager.clear_active(self.user_id)

@@ -7,8 +7,73 @@ from discord.ext import commands
 
 from core.images import CHECKIN, TAVERN_CASINO, TAVERN_GAMES, TAVERN_KEEPER, TAVERN_ROULETTE
 from core.items.factory import load_player
+from core.quests.data import CHECKIN_DAY_LABELS
 from core.tavern.mechanics import TavernMechanics
 from core.tavern.views import CasinoMenuView, RestView, ShopView
+
+
+def _build_checkin_embed(
+    current_day: int,
+    can_checkin: bool,
+    remaining: timedelta | None,
+) -> discord.Embed:
+    """Build the 14-day check-in track embed."""
+    embed = discord.Embed(
+        title="📅 Daily Check-in Track",
+        color=0x7289DA,
+    )
+
+    # Build two rows of 7 days
+    rows = ["", ""]
+    for day in range(1, 15):
+        row_idx = 0 if day <= 7 else 1
+        if day <= current_day:
+            rows[row_idx] += "✅"
+        elif day == current_day + 1:
+            rows[row_idx] += "🔶"
+        else:
+            rows[row_idx] += "⬜"
+
+    # Day labels for the current/next milestone
+    day_labels_str = "  ".join(
+        f"**{d}** {CHECKIN_DAY_LABELS.get(d, '')}"
+        for d in (1, 7, 14)
+    )
+
+    track_display = (
+        f"Days 1–7:  {rows[0]}\n"
+        f"Days 8–14: {rows[1]}\n\n"
+        f"Milestones: {day_labels_str}"
+    )
+    embed.description = track_display
+
+    if current_day > 0:
+        embed.add_field(
+            name="Current Day",
+            value=f"Day **{current_day}** / 14",
+            inline=True,
+        )
+
+    if can_checkin:
+        next_day = (current_day % 14) + 1 if current_day > 0 else 1
+        label = CHECKIN_DAY_LABELS.get(next_day, "")
+        embed.add_field(
+            name="Next Reward",
+            value=f"Day {next_day} — {label}",
+            inline=True,
+        )
+    else:
+        if remaining:
+            total_secs = int(remaining.total_seconds())
+            h = total_secs // 3600
+            m = (total_secs % 3600) // 60
+            embed.add_field(
+                name="Available In",
+                value=f"**{h}h {m}m**",
+                inline=True,
+            )
+
+    return embed
 
 
 class Tavern(commands.Cog, name="tavern"):
@@ -194,7 +259,7 @@ class Tavern(commands.Cog, name="tavern"):
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
-    @app_commands.command(name="checkin", description="Daily check-in reward.")
+    @app_commands.command(name="checkin", description="Daily check-in — claim your track reward.")
     async def checkin(self, interaction: Interaction) -> None:
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
@@ -203,37 +268,47 @@ class Tavern(commands.Cog, name="tavern"):
         if not await self.bot.check_user_registered(interaction, user):
             return
 
-        # Check Timer
-        last_checkin = user["last_checkin_time"]
-        cooldown = timedelta(hours=18)
+        # Level gate
+        if user["level"] < 10:
+            return await interaction.response.send_message(
+                "The check-in track unlocks at **Level 10**.", ephemeral=True
+            )
 
-        if last_checkin:
+        await self.bot.database.quests.ensure_meta(user_id)
+        meta = await self.bot.database.quests.get_meta(user_id)
+
+        last_time = meta["checkin_last_time"]
+        cooldown = timedelta(hours=18)
+        can_checkin = True
+        rem = None
+        if last_time:
             try:
-                diff = datetime.now() - datetime.fromisoformat(last_checkin)
+                diff = datetime.now() - datetime.fromisoformat(last_time)
                 if diff < cooldown:
                     rem = cooldown - diff
-                    return await interaction.response.send_message(
-                        f"Check-in available in **{rem.seconds // 3600}h {(rem.seconds // 60) % 60}m**.",
-                        ephemeral=True,
-                    )
-            except:
+                    can_checkin = False
+            except Exception:
                 pass
 
-        # Reward
-        curios = random.randint(1, 3)
-        tickets = random.randint(1, 3)
-        await self.bot.database.users.update_timer(user_id, "last_checkin_time")
-        await self.bot.database.users.modify_currency(user_id, "curios", curios)
-        await self.bot.database.partners.add_tickets(user_id, tickets)
+        current_day = meta["checkin_day"]
+        next_day = (current_day % 14) + 1 if current_day > 0 else 1
 
-        embed = discord.Embed(
-            title="✅ Daily Check-in!",
-            description=f"**{interaction.user.display_name}** checked in and collected their rewards.",
-            color=0x00CC77,
-        )
-        embed.set_thumbnail(url=CHECKIN)
-        embed.add_field(name="🎁 Curious Curios", value=str(curios), inline=True)
-        embed.add_field(name="🎫 Guild Tickets", value=str(tickets), inline=True)
+        embed = _build_checkin_embed(current_day, can_checkin, rem)
+
+        if can_checkin:
+            level = user["level"]
+            from core.quests.data import grant_checkin_day
+            rewards = await grant_checkin_day(self.bot, user_id, server_id, next_day, level)
+            await self.bot.database.quests.advance_checkin(user_id)
+            embed = _build_checkin_embed(next_day, False, timedelta(hours=18))
+            embed.add_field(
+                name=f"Day {next_day} Reward",
+                value="\n".join(rewards) if rewards else "No rewards this day.",
+                inline=False,
+            )
+            embed.color = 0x00CC77
+            embed.set_thumbnail(url=CHECKIN)
+
         await interaction.response.send_message(embed=embed)
 
 

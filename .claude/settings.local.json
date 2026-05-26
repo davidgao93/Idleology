@@ -91,7 +91,24 @@
       "Bash(Get-ChildItem -Path . -Directory)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\codex\\\\\" -Recurse -File | Select-Object FullName)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\" -Directory)",
-      "Bash(python -c \"from cogs.general import General; print\\('OK'\\)\")"
+      "Bash(python -c \"from cogs.general import General; print\\('OK'\\)\")",
+      "Bash(python -m py_compile database/repositories/quests.py)",
+      "Bash(python -m py_compile core/quests/data.py)",
+      "Bash(python -m py_compile core/quests/mechanics.py)",
+      "Bash(python -m py_compile core/quests/views.py)",
+      "Bash(python -m py_compile core/quests/shop_views.py)",
+      "Bash(python -m py_compile cogs/tavern.py)",
+      "Bash(python -m py_compile core/combat/economy/victory.py)",
+      "Bash(python -m py_compile core/codex/views/run_view.py)",
+      "Bash(python -m py_compile core/ascent/views.py)",
+      "Bash(python -m py_compile core/apex/views/combat_view.py)",
+      "Bash(python -c \"from database.repositories.quests import QuestsRepository; print\\('QuestsRepository import OK'\\)\")",
+      "Bash(\"venv/Scripts/python.exe\" -c \"from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, TOKEN_SHOP_ITEMS, get_damage_goals; print\\('data module OK, quests:', len\\(DAILY_QUESTS\\), 'paths:', len\\(HORIZON_PATHS\\)\\); g1, g3 = get_damage_goals\\(50\\); print\\('damage goals at level 50:', g1, g3\\)\")",
+      "Bash(venv/Scripts/python.exe -c ' *)",
+      "Bash(\"venv/Scripts/python.exe\" -m py_compile core/quests/views.py)",
+      "Bash(\"venv/Scripts/python.exe\" -m py_compile core/quests/mechanics.py)",
+      "Bash(\"venv/Scripts/python.exe\" -m py_compile database/repositories/quests.py core/quests/data.py core/quests/mechanics.py core/quests/views.py core/quests/shop_views.py core/quests/__init__.py cogs/quests.py cogs/tavern.py core/combat/economy/victory.py core/codex/views/run_view.py core/ascent/views.py core/apex/views/combat_view.py core/combat/views/views_elemental.py database/__init__.py bot.py)",
+      "Bash(python -m py_compile core/quests/views.py core/quests/mechanics.py core/quests/data.py core/quests/shop_views.py core/quests/__init__.py cogs/quests.py cogs/tavern.py database/repositories/quests.py core/combat/economy/victory.py core/ascent/views.py core/apex/views/combat_view.py core/combat/views/views_elemental.py core/codex/views/run_view.py)"
     ]
   }
 }

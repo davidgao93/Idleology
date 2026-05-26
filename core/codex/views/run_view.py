@@ -668,6 +668,12 @@ class CodexRunView(BaseView):
             chapter_ids = [ch.id for ch in self.chapters]
             await self.bot.database.codex.log_perfect_run(self.user_id, chapter_ids)
 
+        try:
+            from core.quests.mechanics import tick_quest_progress
+            await tick_quest_progress(self.bot, self.user_id, getattr(self, "server_id", ""), "codex_complete")
+        except Exception as e:
+            print(f"[Quest tick error in codex]: {e}")
+
         await self.bot.database.users.modify_currency(
             self.user_id, "codex_fragments", fragments
         )

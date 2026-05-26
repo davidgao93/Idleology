@@ -186,6 +186,11 @@ async def _apply_slayer_rewards(
                 user_id, server_id, xp=BOSS_TASK_COMPLETION_XP, points=s_profile["active_task_amount"]
             )
             await bot.database.slayer.clear_task(user_id, server_id)
+            try:
+                from core.quests.mechanics import tick_quest_progress
+                await tick_quest_progress(bot, user_id, server_id, "slayer_task_complete")
+            except Exception as _qe:
+                print(f"[Quest tick error in slayer boss task]: {_qe}")
             slayer_lines.append(
                 f"🏆 **Boss Task Complete!** +{BOSS_TASK_COMPLETION_XP:,} Slayer XP"
             )
@@ -263,6 +268,11 @@ async def _apply_slayer_rewards(
             user_id, server_id, xp=burst_xp, points=burst_pts
         )
         await bot.database.slayer.clear_task(user_id, server_id)
+        try:
+            from core.quests.mechanics import tick_quest_progress
+            await tick_quest_progress(bot, user_id, server_id, "slayer_task_complete")
+        except Exception as _qe:
+            print(f"[Quest tick error in slayer regular task]: {_qe}")
         slayer_lines.append(
             f"🏆 **Task Complete!** +{burst_xp} Slayer XP | +{burst_pts} Slayer Pts"
         )
@@ -313,6 +323,8 @@ async def apply_victory_rewards(
     reward_data = calculate_rewards(player, monster)
     special_flags = check_special_drops(player, monster)
     reward_data["special"] = []
+    # Total damage dealt to the monster (used by damage quest tracking)
+    reward_data["total_damage"] = monster.max_hp
 
     await apply_boss_sigil_drops(bot, user_id, server_id, monster, reward_data, player=player)
     await apply_corrupted_monster_drops(bot, user_id, server_id, monster, reward_data, player=player)
@@ -376,5 +388,54 @@ async def apply_victory_rewards(
             reward_data["msgs"].append(
                 f"🤝 **{partner.name}** reached level **{partner.level}**!"
             )
+
+    # Quest progress tracking
+    try:
+        from core.quests.mechanics import tick_quest_progress
+        quest_msgs = []
+
+        # Combat win (all victories)
+        quest_msgs += await tick_quest_progress(bot, user_id, server_id, "combat_win")
+
+        # Damage dealt
+        total_dmg = reward_data.get("total_damage", 0)
+        if total_dmg > 0:
+            quest_msgs += await tick_quest_progress(bot, user_id, server_id, "damage", total_dmg)
+
+        # Boss kills — uber bosses specifically
+        if getattr(monster, "is_uber", False) and monster.is_boss:
+            boss_name = monster.name.lower()
+            if "aphrodite" in boss_name:
+                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:aphrodite")
+                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "uber_complete")
+            elif "lucifer" in boss_name:
+                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:lucifer")
+                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "uber_complete")
+            elif "castor" in boss_name or "pollux" in boss_name or "gemini" in boss_name:
+                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:gemini")
+                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "uber_complete")
+            elif "neet" in boss_name:
+                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:neet")
+                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "uber_complete")
+            elif "evelynn" in boss_name:
+                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:evelynn")
+                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "uber_complete")
+
+        # Calcified monsters
+        if getattr(monster, "is_essence", False):
+            quest_msgs += await tick_quest_progress(bot, user_id, server_id, "calcified_kill")
+
+        # Corrupted monsters
+        if getattr(monster, "is_corrupted", False):
+            quest_msgs += await tick_quest_progress(bot, user_id, server_id, "corrupted_kill")
+
+        # Incubated monsters (egg_release hook)
+        if getattr(monster, "is_incubated", False):
+            quest_msgs += await tick_quest_progress(bot, user_id, server_id, "egg_release")
+
+        if quest_msgs:
+            reward_data["msgs"].extend(quest_msgs)
+    except Exception as e:
+        print(f"[Quest tick error in victory]: {e}")
 
     return reward_data

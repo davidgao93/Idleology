@@ -140,6 +140,12 @@ class ApexCombatView(CombatView):
             self.user_id, self.server_id, self.zone_key
         )
 
+        try:
+            from core.quests.mechanics import tick_quest_progress
+            await tick_quest_progress(self.bot, self.user_id, self.server_id, "apex_complete")
+        except Exception as e:
+            print(f"[Quest tick error in apex]: {e}")
+
         # Persist player state
         await self.bot.database.users.update_from_player_object(self.player)
         await _je.save_jewel_state(self.bot, self.user_id, self.player)

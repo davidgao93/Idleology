@@ -108,7 +108,7 @@ core/inventory/
 
 - **No business logic.** Validate inputs, call `core/`, render output.
 - **No raw SQL.** Always go through `self.bot.database.<repository>`.
-- **No `wait_for()` loops.** All multi-step interactions must use `discord.ui.View`.
+- **No `wait_for()` loops.**
 - Defer interactions before any database write: `await interaction.response.defer()`.
 - Always check `self.bot.state_manager.is_active(user_id)` before starting an interactive operation.
 

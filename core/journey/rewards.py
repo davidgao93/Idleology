@@ -1,9 +1,9 @@
 import random
 
 from core.images import (
+    APEX_HUB,
     CODEX_HUB,
     COMBAT_ELEMENTAL,
-    COMBAT_VICTORY,
     COMPANIONS_HUB,
     CORRUPTION_GATE,
     ENCOUNTER_SOUL_CORE,
@@ -222,11 +222,11 @@ MILESTONES = [
     },
     {
         "level": 90,
-        "title": "Endgame",
+        "title": "Apex Hunts",
         "reward_desc": "500,000 Gold",
-        "systems": [],
-        "commands": [],
-        "image": COMBAT_VICTORY,
+        "systems": ["Apex Hunt"],
+        "commands": ["/apex"],
+        "image": APEX_HUB,
         "grant": _grant_level_90,
     },
     {

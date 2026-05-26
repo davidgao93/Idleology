@@ -246,6 +246,7 @@ class DiscordBot(commands.Bot):
         )
         _conn.row_factory = sqlite3.Row
         self.database = DatabaseManager(connection=_conn)
+        await self.database.quests.create_tables()
         await self.load_cogs()
         self.status_task.start()
 
