@@ -200,6 +200,31 @@ async def _uber_setup(view, message) -> dict | None:
     reward_data["gold"] *= 2
     reward_data["curios"] = curios
     reward_data["special"] = []
+
+    # Quest progress — must run here because uber encounters skip apply_victory_rewards.
+    # Note: boss_kill:* ticks are intentionally NOT here — uber kills track uber_complete only.
+    # The slay_* quests are for the normal multi-phase boss encounters.
+    try:
+        from core.quests.mechanics import tick_quest_progress
+        quest_msgs = []
+
+        quest_msgs += await tick_quest_progress(
+            view.bot, view.user_id, view.server_id, "uber_complete"
+        )
+        quest_msgs += await tick_quest_progress(
+            view.bot, view.user_id, view.server_id, "combat_win"
+        )
+        total_dmg = view.monster.max_hp
+        if total_dmg > 0:
+            quest_msgs += await tick_quest_progress(
+                view.bot, view.user_id, view.server_id, "damage", total_dmg
+            )
+
+        if quest_msgs:
+            reward_data["msgs"].extend(quest_msgs)
+    except Exception as e:
+        print(f"[Quest tick error in uber_setup]: {e}")
+
     return reward_data
 
 

@@ -55,13 +55,15 @@ class LowHealthWarningView(BaseView):
         btn_flee.callback = self.flee
         self.add_item(btn_flee)
 
-    def build_embed(self) -> discord.Embed:
+    def build_embed(self, heal_log: str | None = None) -> discord.Embed:
         is_safe = self.player.current_hp >= (self.player.total_max_hp * 0.25)
         color = discord.Color.orange() if is_safe else discord.Color.red()
 
         embed = discord.Embed(title="⚠️ Warning: Low Health", color=color)
         embed.description = f"You are about to enter combat with **{self.player.current_hp}/{self.player.total_max_hp} HP**.\nDeath results in a 10% XP penalty."
         embed.set_thumbnail(url=COMBAT_LOW_HEALTH)
+        if heal_log:
+            embed.add_field(name="🧪 Potion Used", value=heal_log, inline=False)
         return embed
 
     async def heal(self, interaction: Interaction):
@@ -70,7 +72,7 @@ class LowHealthWarningView(BaseView):
 
         self.update_buttons()
         await interaction.response.edit_message(
-            content=f"*{msg}*", embed=self.build_embed(), view=self
+            content=None, embed=self.build_embed(heal_log=msg), view=self
         )
 
     async def fight(self, interaction: Interaction):

@@ -29,22 +29,22 @@ from core.paradise.mechanics import dust_from_jewel
 # ---------------------------------------------------------------------------
 
 # Item categories for the disenchant picker
-_CATEGORY_BOSS_KEYS  = "boss_keys"
-_CATEGORY_ELEMENTAL  = "elemental"
-_CATEGORY_ESSENCES   = "essences"
-_CATEGORY_JEWELS     = "jewels"
+_CATEGORY_BOSS_KEYS = "boss_keys"
+_CATEGORY_ELEMENTAL = "elemental"
+_CATEGORY_ESSENCES = "essences"
+_CATEGORY_JEWELS = "jewels"
 
 _CATEGORY_LABELS = {
     _CATEGORY_BOSS_KEYS: "Boss Keys",
     _CATEGORY_ELEMENTAL: "Elemental Materials",
-    _CATEGORY_ESSENCES:  "Essences",
-    _CATEGORY_JEWELS:    "Paradise Jewels",
+    _CATEGORY_ESSENCES: "Essences",
+    _CATEGORY_JEWELS: "Paradise Jewels",
 }
 
-_JEWEL_ITEM_TYPE      = "paradise_jewel"
-_JEWEL_SYNTH_DUST     = 20_000
-_JEWEL_SYNTH_GOLD     = 10_000_000
-_JEWEL_DISENCHANT_MINS = 240   # 4 hours per jewel
+_JEWEL_ITEM_TYPE = "paradise_jewel"
+_JEWEL_SYNTH_DUST = 20_000
+_JEWEL_SYNTH_GOLD = 10_000_000
+_JEWEL_DISENCHANT_MINS = 240  # 4 hours per jewel
 
 
 def _fmt_duration(td: timedelta) -> str:
@@ -96,7 +96,7 @@ class AlchemySynthesisHubView(BaseView):
         server_id: str,
         alchemy_level: int,
         cosmic_dust: int,
-        all_queues: list,   # [(slot, item_type, quantity, start_time), ...]
+        all_queues: list,  # [(slot, item_type, quantity, start_time), ...]
         player_gold: int,
     ):
         super().__init__(bot, user_id, server_id)
@@ -186,7 +186,9 @@ class AlchemySynthesisHubView(BaseView):
             else:
                 _, item_type, qty, start_str = queues_by_slot[slot]
                 item_mins = _get_per_item_minutes(item_type, level)
-                end = datetime.fromisoformat(start_str) + timedelta(minutes=item_mins * qty)
+                end = datetime.fromisoformat(start_str) + timedelta(
+                    minutes=item_mins * qty
+                )
                 now = datetime.now()
                 name, emoji, yield_val = _get_item_display(item_type)
                 if item_type == _JEWEL_ITEM_TYPE:
@@ -234,7 +236,7 @@ class AlchemySynthesisHubView(BaseView):
         )
         embed.add_field(
             name="🔨 Disenchant Only",
-            value="🐟🌿💎 **Elemental Materials** · 🔮 **Essences** — cannot be synthesized",
+            value="**Elemental Keys** and **Essences** cannot be synthesized",
             inline=False,
         )
 
@@ -249,7 +251,9 @@ class AlchemySynthesisHubView(BaseView):
         # Find the first free slot
         slot_count = AlchemyMechanics.get_disenchant_queue_slots(self.alchemy_level)
         active_slots = {q[0] for q in self.all_queues}
-        free_slot = next((s for s in range(1, slot_count + 1) if s not in active_slots), None)
+        free_slot = next(
+            (s for s in range(1, slot_count + 1) if s not in active_slots), None
+        )
         if free_slot is None:
             await interaction.followup.send("All queue slots are busy.", ephemeral=True)
             return
@@ -288,16 +292,22 @@ class AlchemySynthesisHubView(BaseView):
             await self.bot.database.alchemy.clear_synthesis_queue(self.user_id, slot)
 
         if collected_total == 0:
-            await interaction.followup.send("Nothing is ready to collect yet.", ephemeral=True)
+            await interaction.followup.send(
+                "Nothing is ready to collect yet.", ephemeral=True
+            )
             return
 
-        await self.bot.database.alchemy.modify_cosmic_dust(self.user_id, collected_total)
+        await self.bot.database.alchemy.modify_cosmic_dust(
+            self.user_id, collected_total
+        )
 
         view = await _build_synthesis_hub(self.bot, self.user_id, self.server_id)
         embed = view.build_embed()
         embed.colour = discord.Color.gold()
         embed.title = f"✨ Collected {collected_total:,} Cosmic Dust!"
-        embed.description = "\n".join(collected_lines) + "\n\n" + (embed.description or "")
+        embed.description = (
+            "\n".join(collected_lines) + "\n\n" + (embed.description or "")
+        )
         msg = await interaction.edit_original_response(embed=embed, view=view)
         view.message = msg
         self.stop()
@@ -332,10 +342,15 @@ class AlchemySynthesisHubView(BaseView):
 # Item display helper — works for all categories
 # ---------------------------------------------------------------------------
 
+
 def _get_item_display(item_type: str) -> tuple[str, str, int]:
     """Returns (name, emoji, dust_yield) for any disenchantable item type."""
     if item_type == _JEWEL_ITEM_TYPE:
-        return ("Jewel of Paradise", "💎", 0)  # yield is level-dependent; computed at call sites
+        return (
+            "Jewel of Paradise",
+            "💎",
+            0,
+        )  # yield is level-dependent; computed at call sites
     if item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
         return (
             AlchemyMechanics.KEY_DISPLAY_NAMES[item_type],
@@ -365,20 +380,26 @@ async def _get_item_owned(bot, user_id: str, server_id: str, item_type: str) -> 
     if item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
         return await bot.database.users.get_currency(user_id, item_type)
     if item_type in AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES:
-        return await bot.database.alchemy.get_uber_material(user_id, server_id, item_type)
+        return await bot.database.alchemy.get_uber_material(
+            user_id, server_id, item_type
+        )
     if item_type in AlchemyMechanics.ESSENCE_DISPLAY_NAMES:
         return await bot.database.alchemy.get_essence_quantity(user_id, item_type)
     return 0
 
 
-async def _deduct_item(bot, user_id: str, server_id: str, item_type: str, qty: int) -> None:
+async def _deduct_item(
+    bot, user_id: str, server_id: str, item_type: str, qty: int
+) -> None:
     """Deducts qty of item from the appropriate table."""
     if item_type == _JEWEL_ITEM_TYPE:
         await bot.database.uber.increment_paradise_jewels(user_id, server_id, -qty)
     elif item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
         await bot.database.users.modify_currency(user_id, item_type, -qty)
     elif item_type in AlchemyMechanics.ELEMENTAL_DISPLAY_NAMES:
-        await bot.database.alchemy.deduct_uber_material(user_id, server_id, item_type, qty)
+        await bot.database.alchemy.deduct_uber_material(
+            user_id, server_id, item_type, qty
+        )
     elif item_type in AlchemyMechanics.ESSENCE_DISPLAY_NAMES:
         await bot.database.alchemy.deduct_essence(user_id, item_type, qty)
 
@@ -391,10 +412,18 @@ async def _deduct_item(bot, user_id: str, server_id: str, item_type: str, qty: i
 class _DisenchantCategorySelect(ui.Select):
     def __init__(self) -> None:
         opts = [
-            discord.SelectOption(label="Boss Keys", value=_CATEGORY_BOSS_KEYS, emoji="🔑"),
-            discord.SelectOption(label="Elemental Materials", value=_CATEGORY_ELEMENTAL, emoji="🌟"),
-            discord.SelectOption(label="Essences", value=_CATEGORY_ESSENCES, emoji="🔮"),
-            discord.SelectOption(label="Paradise Jewels", value=_CATEGORY_JEWELS, emoji="💎"),
+            discord.SelectOption(
+                label="Boss Keys", value=_CATEGORY_BOSS_KEYS, emoji="🔑"
+            ),
+            discord.SelectOption(
+                label="Elemental Materials", value=_CATEGORY_ELEMENTAL, emoji="🌟"
+            ),
+            discord.SelectOption(
+                label="Essences", value=_CATEGORY_ESSENCES, emoji="🔮"
+            ),
+            discord.SelectOption(
+                label="Paradise Jewels", value=_CATEGORY_JEWELS, emoji="💎"
+            ),
         ]
         super().__init__(placeholder="Select item category…", options=opts)
         self.selected: str | None = None
@@ -418,7 +447,9 @@ class _DisenchantItemSelect(ui.Select):
         ]
         if not opts:
             opts = [discord.SelectOption(label="No valid items owned", value="_none")]
-        super().__init__(placeholder="Select an item to disenchant…", options=opts, row=1)
+        super().__init__(
+            placeholder="Select an item to disenchant…", options=opts, row=1
+        )
         self._data_by_col = {d["col"]: d for d in options_data}
         self.selected: str | None = None
 
@@ -482,8 +513,11 @@ class _DisenchantQuantityModal(ui.Modal, title="How many items to disenchant?"):
             qty,
         )
         await self._parent.bot.database.alchemy.start_disenchant(
-            self._parent.user_id, self._item_type, qty,
-            datetime.now().isoformat(), self._parent.target_slot
+            self._parent.user_id,
+            self._item_type,
+            qty,
+            datetime.now().isoformat(),
+            self._parent.target_slot,
         )
 
         level = self._parent.alchemy_level
@@ -496,7 +530,11 @@ class _DisenchantQuantityModal(ui.Modal, title="How many items to disenchant?"):
 
         # Format time display
         if total_mins >= 60:
-            time_str = f"{total_mins // 60}h {total_mins % 60}m" if total_mins % 60 else f"{total_mins // 60}h"
+            time_str = (
+                f"{total_mins // 60}h {total_mins % 60}m"
+                if total_mins % 60
+                else f"{total_mins // 60}h"
+            )
         else:
             time_str = f"{total_mins} minutes"
 
@@ -550,21 +588,27 @@ class _DisenchantSelectView(BaseView):
         )
         return embed
 
-    async def _load_items_for_category(self, interaction: Interaction, category: str) -> None:
+    async def _load_items_for_category(
+        self, interaction: Interaction, category: str
+    ) -> None:
         await interaction.response.defer()
         mins = AlchemyMechanics.get_disenchant_minutes(self.alchemy_level)
 
         if category == _CATEGORY_JEWELS:
-            owned = await _get_item_owned(self.bot, self.user_id, self.server_id, _JEWEL_ITEM_TYPE)
+            owned = await _get_item_owned(
+                self.bot, self.user_id, self.server_id, _JEWEL_ITEM_TYPE
+            )
             jewel_yield = dust_from_jewel(self.alchemy_level)
-            self._options_data = [{
-                "col": _JEWEL_ITEM_TYPE,
-                "name": "Jewel of Paradise",
-                "emoji": "💎",
-                "owned": owned,
-                "yield": jewel_yield,
-                "select_desc": f"Own: {owned}  ·  {jewel_yield:,} ✨/jewel  ·  4h/jewel",
-            }]
+            self._options_data = [
+                {
+                    "col": _JEWEL_ITEM_TYPE,
+                    "name": "Jewel of Paradise",
+                    "emoji": "💎",
+                    "owned": owned,
+                    "yield": jewel_yield,
+                    "select_desc": f"Own: {owned}  ·  {jewel_yield:,} ✨/jewel  ·  4h/jewel",
+                }
+            ]
         else:
             if category == _CATEGORY_BOSS_KEYS:
                 items_map = AlchemyMechanics.KEY_DISPLAY_NAMES
@@ -581,15 +625,19 @@ class _DisenchantSelectView(BaseView):
 
             self._options_data = []
             for col, name in items_map.items():
-                owned = await _get_item_owned(self.bot, self.user_id, self.server_id, col)
-                self._options_data.append({
-                    "col": col,
-                    "name": name,
-                    "emoji": emojis_map[col],
-                    "owned": owned,
-                    "yield": yield_map[col],
-                    "select_desc": f"Own: {owned}  ·  {yield_map[col]} ✨/item  ·  {mins}m/item",
-                })
+                owned = await _get_item_owned(
+                    self.bot, self.user_id, self.server_id, col
+                )
+                self._options_data.append(
+                    {
+                        "col": col,
+                        "name": name,
+                        "emoji": emojis_map[col],
+                        "owned": owned,
+                        "yield": yield_map[col],
+                        "select_desc": f"Own: {owned}  ·  {yield_map[col]} ✨/item  ·  {mins}min/item",
+                    }
+                )
 
         # Rebuild item select (remove old one if present)
         if self._item_select is not None:
@@ -658,7 +706,11 @@ class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
     )
 
     def __init__(
-        self, parent: "_SynthesizeSelectView", item_type: str, dust_cost_each: int, gold_cost_each: int
+        self,
+        parent: "_SynthesizeSelectView",
+        item_type: str,
+        dust_cost_each: int,
+        gold_cost_each: int,
     ) -> None:
         super().__init__()
         self._parent = parent
@@ -762,14 +814,16 @@ class _SynthesizeSelectView(BaseView):
                     "select_desc": f"{dust_cost:,} ✨ + 100k 💰 → 1× {name}",
                 }
             )
-        options_data.append({
-            "col": _JEWEL_ITEM_TYPE,
-            "name": "Jewel of Paradise",
-            "emoji": "💎",
-            "dust_cost": _JEWEL_SYNTH_DUST,
-            "gold_cost": _JEWEL_SYNTH_GOLD,
-            "select_desc": f"{_JEWEL_SYNTH_DUST:,} ✨ + 10M 💰 → 1× Jewel of Paradise",
-        })
+        options_data.append(
+            {
+                "col": _JEWEL_ITEM_TYPE,
+                "name": "Jewel of Paradise",
+                "emoji": "💎",
+                "dust_cost": _JEWEL_SYNTH_DUST,
+                "gold_cost": _JEWEL_SYNTH_GOLD,
+                "select_desc": f"{_JEWEL_SYNTH_DUST:,} ✨ + 10M 💰 → 1× Jewel of Paradise",
+            }
+        )
         self._options_data = options_data
 
         self._select = _SynthesizeItemSelect(options_data)
@@ -794,7 +848,11 @@ class _SynthesizeSelectView(BaseView):
 
         lines = []
         for d in self._options_data:
-            dust_cost = d["dust_cost"] if d["col"] == _JEWEL_ITEM_TYPE else AlchemyMechanics.get_synthesis_dust_cost(level, d["col"])
+            dust_cost = (
+                d["dust_cost"]
+                if d["col"] == _JEWEL_ITEM_TYPE
+                else AlchemyMechanics.get_synthesis_dust_cost(level, d["col"])
+            )
             gold_cost = d["gold_cost"]
             can_afford = self.cosmic_dust >= dust_cost and self.player_gold >= gold_cost
             status = "✅" if can_afford else "❌"
@@ -814,7 +872,11 @@ class _SynthesizeSelectView(BaseView):
             )
             return
         data = next(d for d in self._options_data if d["col"] == col)
-        dust_cost = data["dust_cost"] if col == _JEWEL_ITEM_TYPE else AlchemyMechanics.get_synthesis_dust_cost(self.alchemy_level, col)
+        dust_cost = (
+            data["dust_cost"]
+            if col == _JEWEL_ITEM_TYPE
+            else AlchemyMechanics.get_synthesis_dust_cost(self.alchemy_level, col)
+        )
         gold_cost = data["gold_cost"]
         await interaction.response.send_modal(
             _SynthesizeQuantityModal(self, col, dust_cost, gold_cost)

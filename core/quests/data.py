@@ -60,14 +60,6 @@ DAILY_QUESTS = [
         "goals": {1: 1, 3: 3},
     },
     {
-        "id": "slay_evelynn",
-        "label": "The Corruption Front",
-        "flavor": "Evelynn's corruption spreads further each day. The resistance cannot hold without intervention.",
-        "event_type": "boss_kill:evelynn",
-        "level_required": 100,
-        "goals": {1: 1, 3: 3},
-    },
-    {
         "id": "slay_calcified",
         "label": "Essence Disruption",
         "flavor": "Calcified monsters have begun appearing in unusual numbers, their essence threatening local mages.",
@@ -156,15 +148,15 @@ DAILY_QUESTS = [
 
 DAMAGE_BANDS = [
     (1, 10, 500, 1_500),
-    (11, 20, 20_000, 60_000),
-    (21, 30, 50_000, 150_000),
-    (31, 40, 100_000, 300_000),
-    (41, 50, 200_000, 600_000),
-    (51, 60, 350_000, 1_000_000),
-    (61, 70, 600_000, 1_800_000),
-    (71, 80, 1_000_000, 3_000_000),
-    (81, 90, 1_500_000, 4_500_000),
-    (91, 999, 2_500_000, 7_500_000),
+    (11, 20, 1_500, 4_500),
+    (21, 30, 4_500, 13_500),
+    (31, 40, 15_000, 45_000),
+    (41, 50, 40_000, 120_000),
+    (51, 60, 120_000, 300_000),
+    (61, 70, 300_000, 900_000),
+    (71, 80, 250_000, 500_000),
+    (81, 90, 500_000, 2_000_000),
+    (91, 999, 1_000_000, 3_000_000),
 ]
 
 

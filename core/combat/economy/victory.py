@@ -402,24 +402,19 @@ async def apply_victory_rewards(
         if total_dmg > 0:
             quest_msgs += await tick_quest_progress(bot, user_id, server_id, "damage", total_dmg)
 
-        # Boss kills — uber bosses specifically
-        if getattr(monster, "is_uber", False) and monster.is_boss:
+        # Named boss kills (normal multi-phase encounters; uber bosses never reach this path)
+        if monster.is_boss:
             boss_name = monster.name.lower()
             if "aphrodite" in boss_name:
                 quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:aphrodite")
-                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "uber_complete")
             elif "lucifer" in boss_name:
                 quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:lucifer")
-                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "uber_complete")
             elif "castor" in boss_name or "pollux" in boss_name or "gemini" in boss_name:
                 quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:gemini")
-                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "uber_complete")
             elif "neet" in boss_name:
                 quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:neet")
-                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "uber_complete")
             elif "evelynn" in boss_name:
                 quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:evelynn")
-                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "uber_complete")
 
         # Calcified monsters
         if getattr(monster, "is_essence", False):

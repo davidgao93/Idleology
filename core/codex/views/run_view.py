@@ -530,6 +530,9 @@ class CodexRunView(BaseView):
         self.combat_logger = CombatLogger(self.player, self.monster)
         self.combat_logger.log_combat_start(self.player, self.monster)
 
+        for child in self.children:
+            child.disabled = False
+
         embed = self._combat_embed()
         msg_obj = message or (
             await interaction.original_response() if interaction else None

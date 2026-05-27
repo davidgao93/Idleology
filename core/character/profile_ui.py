@@ -619,7 +619,7 @@ class ProfileBuilder:
         embed.set_thumbnail(url=user[7])
 
         def _fmt_ms(time_str, cooldown_td: timedelta) -> str:
-            """MMm:SSs remaining, for short cooldowns."""
+            """MMm SSs remaining, for short cooldowns."""
             if not time_str:
                 return "Ready!"
             try:
@@ -632,12 +632,12 @@ class ProfileBuilder:
                 if total <= 0:
                     return "Ready!"
                 m, s = divmod(total, 60)
-                return f"**{m}m:{s:02d}s**"
+                return f"**{m}m {s:02d}s**"
             except Exception:
                 return "Ready!"
 
         def _fmt_hms(time_str, cooldown_td: timedelta) -> str:
-            """HHh:MMm:SSs remaining."""
+            """HH MMm SSs remaining."""
             if not time_str:
                 return "Ready!"
             try:
@@ -651,14 +651,14 @@ class ProfileBuilder:
                     return "Ready!"
                 h, r = divmod(total, 3600)
                 m, s = divmod(r, 60)
-                return f"**{h}h:{m:02d}m:{s:02d}s**"
+                return f"**{h}h {m:02d}m {s:02d}s**"
             except Exception:
                 return "Ready!"
 
         def _secs_to_hms(secs: int) -> str:
             h, r = divmod(max(0, secs), 3600)
             m, s = divmod(r, 60)
-            return f"**{h}h:{m:02d}m:{s:02d}s**"
+            return f"**{h}h {m:02d}m {s:02d}s**"
 
         # ── Section 1: Core ──────────────────────────────────────────────────
         combat_cd_mins = 10
@@ -682,7 +682,7 @@ class ProfileBuilder:
                     rem_secs = int((next_regen - datetime.now()).total_seconds())
                     if rem_secs > 0:
                         rm, rs = divmod(rem_secs, 60)
-                        regen_suffix = f" · next regen: {rm}m:{rs:02d}s"
+                        regen_suffix = f" · next regen: {rm}m {rs:02d}s"
                 except Exception:
                     pass
             stamina_line = f"⚡ **{stamina}/{MAX_STAMINA}**{regen_suffix}"
@@ -707,7 +707,7 @@ class ProfileBuilder:
                 if remaining > 0:
                     rh, rr = divmod(int(remaining), 3600)
                     rm, rs = divmod(rr, 60)
-                    rem_str = f"**{rh}h:{rm:02d}m:{rs:02d}s**"
+                    rem_str = f"**{rh}h {rm:02d}m {rs:02d}s**"
                 else:
                     rem_str = "Ready to hatch!"
                 pct = int(min(100, elapsed_secs / max(duration, 1) * 100))
@@ -754,18 +754,20 @@ class ProfileBuilder:
                     )
                 daily_lines.append(f"🌑 **Maw Fight** — {fight_str}")
             else:
-                daily_lines.append(f"🌑 **Maw Fight** — Not participated this cycle")
+                daily_lines.append("🌑 **Maw Fight** — Not participated this cycle")
         else:
             daily_lines.append("🌑 **Maw Fight** — No active cycle")
 
         # DC craft daily reset
         dc_crafted_today = await bot.database.users.get_dc_crafted_today(user_id)
         _dc_now = datetime.now()
-        _next_midnight = _dc_now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        _next_midnight = _dc_now.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ) + timedelta(days=1)
         _dc_secs = int((_next_midnight - _dc_now).total_seconds())
         _dch, _dcr = divmod(_dc_secs, 3600)
         _dcm, _dcs = divmod(_dcr, 60)
-        dc_reset_str = f"**{_dch}h:{_dcm:02d}m:{_dcs:02d}s**"
+        dc_reset_str = f"**{_dch}h {_dcm:02d}m {_dcs:02d}s**"
         _dc_remaining = max(0, 10 - dc_crafted_today)
         daily_lines.append(
             f"📜 **DC Craft** — {_dc_remaining}/10 remaining · resets in {dc_reset_str}"
