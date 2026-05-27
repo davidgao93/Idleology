@@ -206,6 +206,38 @@ class Monster:
     # Flat damage reduction against player hits from Nightmarish/Delirious modes.
     difficulty_dr: float = 0.0
 
+    # =====================================================================
+    # New clean combat stat model (Phase 1+)
+    # =====================================================================
+
+    # Base values captured once after monster generation + all spawn-time modifiers.
+    # These should not change during a combat encounter.
+    base_attack: int = 0
+    base_defence: int = 0
+    base_max_hp: int = 0
+
+    # Additive percentage bonuses applied on top of base stats.
+    # These are the correct place for spawn-time % boosts (Empowered, Fortified,
+    # difficulty scaling, uber setup adjustments, etc.).
+    bonus_attack_pct: float = 0.0
+    bonus_defence_pct: float = 0.0
+    bonus_max_hp_pct: float = 0.0
+
+    # Flat reductions (used by various debuffs that subtract a flat amount).
+    # effective_* properties combine flat + percentage.
+    flat_attack_reduction: int = 0
+    flat_defence_reduction: int = 0
+
+    # Damage modification pools (outgoing damage only)
+    # All "% increased damage" and "% decreased damage" sources accumulate here.
+    # Positive values = increased, negative values = decreased.
+    damage_increased_pct: float = 0.0
+
+    # Separate multiplicative layer for "% more damage" / "% less damage" effects.
+    # Applied AFTER the increased/decreased pool.
+    # 1.0 = normal. Example: 0.5 = 50% less damage.
+    damage_more_mult: float = 1.0
+
     @property
     def hard_mode(self) -> bool:
         """True when any difficulty mode is active. Keeps legacy callers working."""
@@ -229,6 +261,69 @@ class Monster:
             else:
                 result.append(m.display_name)
         return result
+
+    # ------------------------------------------------------------------
+    # Effective stat helpers (respect base + bonuses + flat reductions)
+    # ------------------------------------------------------------------
+
+    @property
+    def effective_attack(self) -> int:
+        """Returns the monster's current effective attack after bonuses and flat reductions."""
+        val = self.base_attack if self.base_attack > 0 else self.attack
+        val = int(val * (1 + self.bonus_attack_pct))
+        val = max(0, val - self.flat_attack_reduction)
+        return val
+
+    @property
+    def effective_defence(self) -> int:
+        """Returns the monster's current effective defence after bonuses and flat reductions."""
+        val = self.base_defence if self.base_defence > 0 else self.defence
+        val = int(val * (1 + self.bonus_defence_pct))
+        val = max(0, val - self.flat_defence_reduction)
+        return val
+
+    @property
+    def effective_max_hp(self) -> int:
+        """Returns the monster's effective max HP after bonuses."""
+        val = self.base_max_hp if self.base_max_hp > 0 else self.max_hp
+        return int(val * (1 + self.bonus_max_hp_pct))
+
+    def get_total_damage_mult(self) -> float:
+        """
+        Returns the final multiplier to apply to monster outgoing damage rolls.
+
+        All sources of "% increased damage" / "% decreased damage" should
+        accumulate into damage_increased_pct.
+
+        "% more" / "% less" effects go into damage_more_mult and are applied
+        after the increased pool.
+        """
+        increased = 1.0 + self.damage_increased_pct
+        return increased * self.damage_more_mult
+
+    def reset_combat_bonuses(self) -> None:
+        """
+        Resets all transient combat bonuses and damage modification pools.
+        Call this explicitly when a monster is being reused across fights
+        (e.g. in the Dojo or certain multi-phase encounters).
+        """
+        self.bonus_attack_pct = 0.0
+        self.bonus_defence_pct = 0.0
+        self.bonus_max_hp_pct = 0.0
+        self.flat_attack_reduction = 0
+        self.flat_defence_reduction = 0
+        self.damage_increased_pct = 0.0
+        self.damage_more_mult = 1.0
+
+        # Also reset common transient stacks that affect stats/damage
+        self.onslaught_bonus_atk = 0.0
+        self.wrathful_stacks = 0
+        self.colossus_active = False
+        self.colossus_dr = 0.0
+        self.undying_atk_boost_turns = 0
+        self.potion_uses_tracked = 0
+        # Note: We intentionally do NOT reset stacks like bleed_stacks,
+        # flashfire_charges, etc. here — those are managed by their own logic.
 
 
 # ---------------------------------------------------------------------------

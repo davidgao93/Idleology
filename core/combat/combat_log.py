@@ -407,12 +407,24 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     _surplus_mult = _DIFFICULTY_SURPLUS_MULT_LOG[monster.difficulty_level]
     raw_base = _base_raw * (1.0 + _surplus * _surplus_mult)
 
+    # Phase 1: Use unified damage pools for theoretical max hit calculation
+    monster.damage_increased_pct = 0.0
+    monster.damage_more_mult = 1.0
+
     if monster.has_modifier("Savage"):
-        raw_base *= 1 + monster.get_modifier_value("Savage")
+        monster.damage_increased_pct += monster.get_modifier_value("Savage")
     if monster.has_modifier("Hell's Fury"):
-        raw_base *= monster.get_modifier_value("Hell's Fury")
+        monster.damage_increased_pct += 2.0   # +200% increased
     if monster.has_modifier("Overwhelming"):
-        raw_base *= 2
+        monster.damage_increased_pct += 1.0   # +100% increased
+    if monster.has_modifier("Spectral"):
+        monster.damage_increased_pct += 1.0   # on proc for max hit we assume it procs
+
+    if monster.has_modifier("Inevitable"):
+        monster.damage_more_mult = monster.get_modifier_value("Inevitable")
+
+    # Apply unified multiplier to the raw base (before PDR/FDR for max theoretical)
+    raw_base *= monster.get_total_damage_mult()
 
     pdr = player.get_total_pdr()
     if monster.has_modifier("Crushing"):
@@ -422,8 +434,6 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
         fdr = max(0, int(fdr * (1 - monster.get_modifier_value("Searing"))))
 
     m_max_dmg = max(0, int(raw_base * 1.15 * (1 - pdr / 100)) - fdr)
-    if monster.has_modifier("Spectral"):
-        m_max_dmg *= 2
 
     _DIFF_NAMES_LOG = ["", "HARD", "EXTREME", "NIGHTMARISH", "DELIRIOUS"]
     hard_note = (

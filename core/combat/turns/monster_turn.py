@@ -301,6 +301,22 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         effective_fdr = player.get_total_fdr()
         calc.append(f"  PDR: {' → '.join(pdr_notes)} | FDR: {effective_fdr}")
 
+        # --- Phase 1: Feed dynamic per-turn damage bonuses into the unified pool ---
+        # These will be included in the single multiplier applied inside roll_monster_damage
+        if monster.has_modifier("Onslaught") and monster.onslaught_bonus_atk > 0:
+            monster.damage_increased_pct += monster.onslaught_bonus_atk
+            calc.append(f"  onslaught_prebuff+{monster.onslaught_bonus_atk:.2f}")
+
+        if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
+            wr_val = monster.wrathful_stacks * monster.get_modifier_value("Wrathful Retaliation")
+            monster.damage_increased_pct += wr_val
+            calc.append(f"  wrathful_prebuff+{wr_val:.2f}(stacks={monster.wrathful_stacks})")
+
+        if monster.undying_atk_boost_turns > 0:
+            monster.damage_increased_pct += 1.0  # 100% increased damage for the phase
+            calc.append("  undying_prebuff+100%")
+            monster.undying_atk_boost_turns -= 1
+
         # --- Base damage roll (Celestial Sanctity takes the lower of two) ---
         total_damage, dmg_raw, dmg_base, minion_dmg = _roll_monster_damage(
             player, monster, effective_pdr, effective_fdr, calc
@@ -318,27 +334,9 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 )
                 calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
 
-        # --- Onslaught: apply cumulative ATK bonus from consecutive hits ---
-        if monster.has_modifier("Onslaught") and monster.onslaught_bonus_atk > 0:
-            onslaught_mult = 1.0 + monster.onslaught_bonus_atk
-            total_damage = int(total_damage * onslaught_mult)
-            calc.append(f"  onslaught: ×{onslaught_mult:.3f} → {total_damage}")
-
-        # --- Wrathful Retaliation: ATK multiplier from player crits ---
-        if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
-            wr_mult = 1.0 + monster.wrathful_stacks * monster.get_modifier_value(
-                "Wrathful Retaliation"
-            )
-            total_damage = int(total_damage * wr_mult)
-            calc.append(
-                f"  wrathful: stacks={monster.wrathful_stacks} ×{wr_mult:.3f} → {total_damage}"
-            )
-
-        # --- Undying Resolve: double ATK while ATK boost is active ---
-        if monster.undying_atk_boost_turns > 0:
-            total_damage = int(total_damage * 2.0)
-            calc.append(f"  undying_atk_boost: ×2.0 → {total_damage}")
-            monster.undying_atk_boost_turns -= 1
+        # Dynamic bonuses (Onslaught, Wrathful, Undying) are now pre-added to
+        # monster.damage_increased_pct before the roll (Phase 1 unified system).
+        # The single multiplier is applied inside _roll_monster_damage.
 
         # --- Multistrike: 50% chance to strike twice, second hit at 50% damage ---
         multistrike_damage = 0

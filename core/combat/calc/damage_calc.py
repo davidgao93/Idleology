@@ -75,33 +75,59 @@ def roll_monster_damage(
         f"m_atk={m_atk} p_def={p_def} base={base_raw:.0f} surplus={surplus:+.3f}{diff_note} → raw≈{int(base_raw*(1+surplus*surplus_mult))} rolled={dmg}"
     ]
 
+    # =====================================================================
+    # Phase 1: New unified damage modification system
+    # - All "% increased / % decreased damage" accumulate additively into
+    #   monster.damage_increased_pct
+    # - "% more / % less damage" go into monster.damage_more_mult (applied after)
+    # - Final multiplier is applied ONCE, before PDR/FDR and before minion echoes.
+    # - Zone damage boost counts as increased (will be renamed later).
+    # - True damage sources (Flashfire etc.) are intentionally excluded.
+    # =====================================================================
+
+    # Phase 1: Accumulate static modifier contributions.
+    # Dynamic per-turn bonuses (Onslaught, Wrathful, Undying) may be pre-added by caller.
+    # We do NOT hard-reset here so pre-contributions survive.
+    if monster.damage_more_mult == 0.0:  # safety default
+        monster.damage_more_mult = 1.0
+
     if monster.has_modifier("Enraged"):
         enrage_pct = monster.get_modifier_value("Enraged")
         hp_lost = 1.0 - (monster.hp / monster.max_hp) if monster.max_hp > 0 else 0.0
         stacks = min(3, int(hp_lost / 0.25))
         if stacks > 0:
-            enrage_mult = 1 + enrage_pct * stacks
-            dmg = int(dmg * enrage_mult)
-            calc_notes.append(f"enraged×{enrage_mult:.2f}(stacks={stacks})={dmg}")
+            monster.damage_increased_pct += enrage_pct * stacks
+            calc_notes.append(f"enraged+{enrage_pct*stacks:.2f}(stacks={stacks})")
 
     if monster.has_modifier("Savage"):
-        dmg = int(dmg * (1 + monster.get_modifier_value("Savage")))
-        calc_notes.append(f"savage×{1+monster.get_modifier_value('Savage'):.2f}={dmg}")
+        monster.damage_increased_pct += monster.get_modifier_value("Savage")
+        calc_notes.append(f"savage+{monster.get_modifier_value('Savage'):.2f}")
 
     if monster.has_modifier("Overwhelming"):
-        dmg *= 2
-        calc_notes.append(f"overwhelming×2={dmg}")
+        # Value is 2.0 → +100% increased
+        monster.damage_increased_pct += 1.0
+        calc_notes.append("overwhelming+100%")
 
     if monster.has_modifier("Hell's Fury"):
-        fury_mult = monster.get_modifier_value("Hell's Fury")
-        dmg = int(dmg * fury_mult)
-        calc_notes.append(f"hells_fury×{fury_mult:.1f}={dmg}")
+        # Value is 3.0 → +200% increased
+        monster.damage_increased_pct += 2.0
+        calc_notes.append("hells_fury+200%")
 
-    if monster.has_modifier(
-        "Spectral"
-    ) and random.random() < monster.get_modifier_value("Spectral"):
-        dmg *= 2
-        calc_notes.append(f"spectral×2={dmg}")
+    if monster.has_modifier("Spectral") and random.random() < monster.get_modifier_value("Spectral"):
+        monster.damage_increased_pct += 1.0
+        calc_notes.append("spectral+100% (proc)")
+
+    # Zone effects (Scorched) count as increased per design
+    zone_boost = getattr(monster, "zone_dmg_boost", 0.0)
+    if zone_boost > 0:
+        monster.damage_increased_pct += zone_boost
+        calc_notes.append(f"zone_scorched+{int(zone_boost*100)}%")
+
+    # "More/Less" layer (applied after increased pool)
+    if monster.has_modifier("Inevitable"):
+        # Value is 0.5 → 50% less damage (multiplicative after increased)
+        monster.damage_more_mult = monster.get_modifier_value("Inevitable")
+        calc_notes.append(f"inevitable more_mult={monster.damage_more_mult:.2f}")
 
     base_crit_chance = 0.10
     if monster.has_modifier("Lethal"):
@@ -125,6 +151,20 @@ def roll_monster_damage(
             crit_mult += monster.get_modifier_value("Devastating")
         dmg = int(dmg * crit_mult)
         calc_notes.append(f"monster_crit×{crit_mult:.1f}={dmg}")
+
+    # Apply the unified damage multiplier (increased pool + more layer).
+    # This is the single point where all additive "increased/decreased" and
+    # multiplicative "more/less" effects are resolved.
+    # Applied BEFORE PDR/FDR and BEFORE Commanding minion echoes.
+    total_dmg_mult = monster.get_total_damage_mult()
+    if total_dmg_mult != 1.0:
+        pre_mult = dmg
+        dmg = int(dmg * total_dmg_mult)
+        calc_notes.append(
+            f"unified_dmg_mult×{total_dmg_mult:.2f} "
+            f"(inc={monster.damage_increased_pct:.2f}, more={monster.damage_more_mult:.2f}) "
+            f"{pre_mult}→{dmg}"
+        )
 
     pdr = effective_pdr
     if monster.has_modifier("Crushing"):
@@ -152,18 +192,9 @@ def roll_monster_damage(
     if minions > 0:
         calc_notes.append(f"commanding_echo={minions}")
 
-    if monster.has_modifier("Inevitable"):
-        dmg = max(1, int(dmg * monster.get_modifier_value("Inevitable")))
-        calc_notes.append(
-            f"inevitable×{monster.get_modifier_value('Inevitable'):.2f}={dmg}"
-        )
-
-    # --- Apex zone: Scorched damage boost (+20% on monster hits) ---
-    zone_boost = getattr(monster, "zone_dmg_boost", 0.0)
-    if zone_boost > 0 and dmg > 0:
-        pre_boost = dmg
-        dmg = int(dmg * (1.0 + zone_boost))
-        calc_notes.append(f"scorched_zone+{int(zone_boost*100)}% {pre_boost}→{dmg}")
+    # Old individual Inevitable and zone blocks have been consolidated
+    # into the unified damage pool system above (Phase 1 refactor).
+    # True damage sources (Flashfire, Hemorrhage, etc.) intentionally bypass this path.
 
     if calc is not None:
         calc.append(
