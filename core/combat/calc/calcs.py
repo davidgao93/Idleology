@@ -166,7 +166,7 @@ HELMET_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
     "volatile": lambda l: f"Deal {l * 100}% of Max HP as Dmg on ward break",
     "divine": lambda l: f"Converts {l * 100}% of Potion Overheal to Ward",
     "frenzy": lambda l: f"{l * 0.5:.1f}% Inc Dmg per 1% Missing HP",
-    "leeching": lambda l: f"Heal {l * 0.02:.2f}% of dmg dealt",
+    "leeching": lambda l: f"Heal {l * 0.2:.2f}% of dmg dealt",
     "thorns": lambda l: f"Reflect {l * 100}% of blocked damage",
     "ghosted": lambda l: f"Gain {l * 10} Ward on Evade",
 }

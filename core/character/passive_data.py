@@ -139,7 +139,7 @@ _HELMET_PASSIVE_FUNCS: dict = {
     "volatile": lambda l: f"During combat: Deal {l * 100}% of Max HP as Dmg on ward break",
     "divine": lambda l: f"During combat: Converts {l * 100}% of Potion Overheal to Ward",
     "frenzy": lambda l: f"During combat: {l * 0.5:.1f}% increased damage per 1% missing HP",
-    "leeching": lambda l: f"During combat: Heal {l * 0.02:.2f}% of damage dealt",
+    "leeching": lambda l: f"During combat: Heal {l * 0.2:.2f}% of damage dealt",
     "thorns": lambda l: f"On block: Reflect {l * 100}% of blocked damage",
     "ghosted": lambda l: f"On dodge: Gain {l * 10} Ward",
 }

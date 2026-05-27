@@ -99,6 +99,7 @@ def process_heal(player: Player, monster=None) -> str:
         _ss_alchemist = player.get_soul_stone_passive("alchemist")
         if _ss_alchemist:
             from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
+
             _save_pct = _SST["alchemist"][_ss_alchemist - 1] / 100
             alchemist_saved = random.random() < _save_pct
             _alchemist_label = (
@@ -220,8 +221,8 @@ def _pt_post_hit_effects(
     helmet_passive = player.get_helmet_passive()
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
     if helmet_passive == "leeching" and helmet_lvl > 0:
-        # 0.02% per level: level 1 = 0.02%, level 5 = 0.10% of damage dealt as HP
-        heal = int(damage * (0.0002 * helmet_lvl))
+        # 0.2% per level: level 1 = 0.2%, level 5 = 1% of damage dealt as HP
+        heal = int(damage * (0.002 * helmet_lvl))
         if heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
             log.append(f"**Leeching** drains life, healing you for **{heal}** HP.")
@@ -241,14 +242,18 @@ def _pt_post_hit_effects(
     if damage > 0 and getattr(monster, "apex_zone", None) == "grove":
         grove_heal = max(1, int(player.total_max_hp * 0.01))
         player.current_hp = min(player.total_max_hp, player.current_hp + grove_heal)
-        log.append(f"🌿 **Living Battlefield** — you heal **{grove_heal}** HP from the strike!")
+        log.append(
+            f"🌿 **Living Battlefield** — you heal **{grove_heal}** HP from the strike!"
+        )
 
     # Soul Stone: leeching (separate from helmet leeching)
     ss_leeching = player.get_soul_stone_passive("leeching")
-    if ss_leeching and damage > 0 and not (
-        player.equipped_helmet and player.get_helmet_passive() == "leeching"
+    if (
+        ss_leeching
+        and damage > 0
+        and not (player.equipped_helmet and player.get_helmet_passive() == "leeching")
     ):
-        ss_heal = int(damage * (0.0002 * ss_leeching))
+        ss_heal = int(damage * (0.002 * ss_leeching))
         if ss_heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + ss_heal)
             log.append(f"💎 **Soul Leeching** drains **{ss_heal}** HP.")
@@ -330,7 +335,11 @@ def _pt_partner_effects(
             if monster.hp <= int(monster.max_hp * threshold_pct):
                 dmg = monster.hp
                 # Time Lord: 80% chance to survive the killing blow
-                if monster.has_modifier("Time Lord") and monster.hp > 1 and random.random() < 0.80:
+                if (
+                    monster.has_modifier("Time Lord")
+                    and monster.hp > 1
+                    and random.random() < 0.80
+                ):
                     monster.hp = 1
                     parts.append(
                         f"💀 **Execute Lv.{lvl}** — {partner.name} strikes for **{dmg - 1}** true damage! "
@@ -480,6 +489,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         _ss_piety = player.get_soul_stone_passive("piety")
         if _ss_piety and random.random() < 0.10:
             from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
+
             _piety_bonus = _SST["piety"][_ss_piety - 1] / 100
             attack_multiplier += _piety_bonus
             log.append(
