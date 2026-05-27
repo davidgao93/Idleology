@@ -156,10 +156,12 @@ class DummyEngine:
             proxy = DummyEngine._make_uber_proxy(
                 ref_lvl, ["Infernal Protection", "Hell's Fury"]
             )
-            proxy.attack = int(proxy.attack * 1.3)
-            proxy.defence = int(proxy.defence * 0.3)
-            proxy.attack += int(ref_lvl * 1.0)
-            proxy.defence += int(ref_lvl * 0.2)
+            proxy.bonus_attack_pct += 0.30
+            proxy.bonus_defence_pct -= 0.70
+            proxy.base_attack += int(ref_lvl * 1.0)
+            proxy.base_defence += int(ref_lvl * 0.2)
+            proxy.attack = int(proxy.base_attack * (1 + proxy.bonus_attack_pct))
+            proxy.defence = int(proxy.base_defence * (1 + proxy.bonus_defence_pct))
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
@@ -177,8 +179,10 @@ class DummyEngine:
             proxy = DummyEngine._make_uber_proxy(
                 ref_lvl, ["Void Protection", "Void Aura"]
             )
-            proxy.attack += int(ref_lvl * 0.8)
-            proxy.defence += int(ref_lvl * 0.5)
+            proxy.base_attack += int(ref_lvl * 0.8)
+            proxy.base_defence += int(ref_lvl * 0.5)
+            proxy.attack = int(proxy.base_attack * (1 + proxy.bonus_attack_pct))
+            proxy.defence = int(proxy.base_defence * (1 + proxy.bonus_defence_pct))
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
@@ -196,8 +200,10 @@ class DummyEngine:
             proxy = DummyEngine._make_uber_proxy(
                 ref_lvl, ["Balanced Protection", "Balanced Strikes"]
             )
-            proxy.attack += int(ref_lvl * 0.65)
-            proxy.defence += int(ref_lvl * 0.65)
+            proxy.base_attack += int(ref_lvl * 0.65)
+            proxy.base_defence += int(ref_lvl * 0.65)
+            proxy.attack = int(proxy.base_attack * (1 + proxy.bonus_attack_pct))
+            proxy.defence = int(proxy.base_defence * (1 + proxy.bonus_defence_pct))
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
@@ -213,8 +219,10 @@ class DummyEngine:
 
         if target == "evelynn_uber":
             proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Corrupted Protection"])
-            proxy.attack = int(proxy.attack * 1.4)
-            proxy.defence = int(proxy.defence * 0.85)
+            proxy.bonus_attack_pct += 0.40
+            proxy.bonus_defence_pct -= 0.15
+            proxy.attack = int(proxy.base_attack * (1 + proxy.bonus_attack_pct))
+            proxy.defence = int(proxy.base_defence * (1 + proxy.bonus_defence_pct))
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)

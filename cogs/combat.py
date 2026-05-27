@@ -332,19 +332,25 @@ class Combat(commands.Cog, name="combat"):
             )
             combat_phases = [None]
 
-        # 5. Difficulty scaling: scale monster base stats before combat starts.
-        # Applies to all encounter types reached via /combat (regular, boss doors,
-        # corrupted, calcified, incubated). Uber bosses, Ascent, Codex, Apex, and
-        # special modes are not routed through this path so they are unaffected.
+        # 5. Difficulty scaling: Phase 2 — use bonus pools where possible.
         _DIFFICULTY_ATK_MULT = [1.0, 2.0, 2.5, 3.0, 4.0]
         _DIFFICULTY_DR = [0.0, 0.0, 0.0, 0.10, 0.25]
         if hard_mode > 0:
-            monster.attack = int(monster.attack * _DIFFICULTY_ATK_MULT[hard_mode])
-            monster.defence = int(monster.defence * _DIFFICULTY_ATK_MULT[hard_mode])
+            mult = _DIFFICULTY_ATK_MULT[hard_mode]
+            # Apply as bonus (additive with other spawn bonuses)
+            monster.bonus_attack_pct += (mult - 1.0)
+            monster.bonus_defence_pct += (mult - 1.0)
+
+            # HP scaling still direct for now
             monster.hp = int(monster.hp * 1.5)
             monster.max_hp = monster.hp
+
             monster.difficulty_level = hard_mode
             monster.difficulty_dr = _DIFFICULTY_DR[hard_mode]
+
+            # Dual-write live fields
+            monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+            monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
         # 6. Apply Start Effects
         engine.apply_stat_effects(player, monster)

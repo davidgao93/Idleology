@@ -239,24 +239,35 @@ def _assign_ascent_modifiers(monster, num_mods: int, num_boss_mods: int = 0) -> 
 
 
 def _apply_spawn_modifiers(monster) -> None:
-    """Apply modifiers that mutate monster stats at spawn time."""
+    """Apply modifiers that affect monster stats at spawn time.
+    Phase 2: % effects now accumulate into bonus_*_pct pools.
+    """
     if monster.has_modifier("Ascended"):
         level_added = int(monster.get_modifier_value("Ascended"))
         monster.level += level_added
         monster = calculate_monster_stats(monster)
+
     if monster.has_modifier("Empowered"):
-        monster.attack = int(
-            monster.attack * (1 + monster.get_modifier_value("Empowered"))
-        )
+        monster.bonus_attack_pct += monster.get_modifier_value("Empowered")
+
     if monster.has_modifier("Fortified"):
-        monster.defence = int(
-            monster.defence * (1 + monster.get_modifier_value("Fortified"))
-        )
+        monster.bonus_defence_pct += monster.get_modifier_value("Fortified")
+
     if monster.has_modifier("Titanic"):
-        monster.hp = int(monster.hp * monster.get_modifier_value("Titanic"))
-        monster.max_hp = monster.hp
+        monster.bonus_max_hp_pct += (monster.get_modifier_value("Titanic") - 1.0)
+
     if monster.has_modifier("Veiled"):
         monster.ward = int(monster.max_hp * monster.get_modifier_value("Veiled"))
+
+    # Dual-write live fields during Phase 2 so existing code continues to work
+    # (will be removed in Phase 3)
+    if monster.bonus_attack_pct != 0 or monster.bonus_defence_pct != 0:
+        monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+        monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
+
+    if monster.bonus_max_hp_pct != 0:
+        monster.max_hp = int(monster.base_max_hp * (1 + monster.bonus_max_hp_pct))
+        monster.hp = monster.max_hp
 
 
 def level_exponent(level: int) -> float:
@@ -304,6 +315,9 @@ def level_exponent(level: int) -> float:
 
 
 def calculate_monster_stats(monster):
+    """Compute base stats for a monster and store them in base_* fields.
+    Live .attack / .defence are kept in sync during Phase 2 transition.
+    """
     if monster.level < 5:
         base_attack = base_defence = monster.level
     else:
@@ -314,8 +328,13 @@ def calculate_monster_stats(monster):
             monster.level**exp_b * 1.3
         )  # player attack is typically 30% higher than player def
 
-    monster.attack = int(base_attack)
-    monster.defence = int(base_defence)
+    monster.base_attack = int(base_attack)
+    monster.base_defence = int(base_defence)
+
+    # Dual-write for Phase 2 transition compatibility
+    monster.attack = monster.base_attack
+    monster.defence = monster.base_defence
+
     return monster
 
 
@@ -479,13 +498,18 @@ async def generate_incubated_monster(encounter: dict) -> "Monster":
 
     monster = calculate_monster_stats(monster)
 
-    # 20% ATK/DEF amplification
-    monster.attack = int(monster.attack * 1.2)
-    monster.defence = int(monster.defence * 1.2)
+    # Phase 2: 20% ATK/DEF amplification via bonus pools
+    monster.bonus_attack_pct += 0.20
+    monster.bonus_defence_pct += 0.20
 
     # HP formula mirrors the standard high-level calculation
-    monster.hp = 10 + int(10 * (monster.level**1.65))
-    monster.max_hp = monster.hp
+    monster.base_max_hp = 10 + int(10 * (monster.level**1.65))
+    monster.hp = monster.base_max_hp
+    monster.max_hp = monster.base_max_hp
+
+    # Dual-write during Phase 2
+    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
     monster.xp = 1 + monster.level * 100
 
@@ -571,14 +595,13 @@ def generate_corrupted_encounter(player, monster) -> "Monster":
     monster.level = player.level + player.ascension
     monster = calculate_monster_stats(monster)
 
-    # HP: 2× a normal monster of equivalent level
+    # HP: 2× a normal monster of equivalent level (using base for Phase 2)
     base_hp = random.randint(0, 9) + int(
         10 * (monster.level ** random.uniform(1.6, 1.7))
     )
-    monster.hp = int(base_hp * 0.7)
-    monster.max_hp = monster.hp
-
-    monster.attack = int(monster.attack)
+    monster.base_max_hp = int(base_hp * 0.7)
+    monster.hp = monster.base_max_hp
+    monster.max_hp = monster.base_max_hp
 
     monster.xp = random.randint(1, 9) + monster.level * 100
 
@@ -593,6 +616,10 @@ def generate_corrupted_encounter(player, monster) -> "Monster":
     apply_all_corrupted_modifiers(monster)
     _apply_spawn_modifiers(monster)
 
+    # Dual-write live fields (Phase 2)
+    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
+
     print(monster)
     return monster
 
@@ -605,8 +632,9 @@ async def generate_uber_lucifer(player, monster):
     monster = calculate_monster_stats(monster)
 
     base_hp = random.randint(0, 9) + int(10 * (monster.level**1.7))
-    monster.hp = int(base_hp * 2)
-    monster.max_hp = monster.hp
+    monster.base_max_hp = int(base_hp * 2)
+    monster.hp = monster.base_max_hp
+    monster.max_hp = monster.base_max_hp
     monster.xp = 75000
 
     monster.name = "Lucifer, Infernal Sovereign"
@@ -615,16 +643,22 @@ async def generate_uber_lucifer(player, monster):
     monster.species = "Demon"
     monster.is_boss = True
 
-    monster.attack = int(monster.attack * 1.3)
-    monster.defence = int(monster.defence * 0.3)
+    # Phase 2: Use bonus pools for % adjustments
+    monster.bonus_attack_pct += 0.30
+    monster.bonus_defence_pct -= 0.70   # 30% of original = -70%
 
     monster.modifiers = [
         make_modifier("Infernal Protection", monster.level),
         make_modifier("Hell's Fury", monster.level),
     ]
 
-    monster.attack += int(monster.level * 1.0)
-    monster.defence += int(monster.level * 0.2)
+    # Flat additions — bake into base for now (Phase 2)
+    monster.base_attack += int(monster.level * 1.0)
+    monster.base_defence += int(monster.level * 0.2)
+
+    # Dual-write live fields
+    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
     boss_pool = [n for n in BOSS_MOD_NAMES]
     random.shuffle(boss_pool)
@@ -641,8 +675,9 @@ def generate_uber_neet(player, monster):
     monster = calculate_monster_stats(monster)
 
     base_hp = random.randint(0, 9) + int(10 * (monster.level**1.4))
-    monster.hp = int(base_hp * 2)
-    monster.max_hp = monster.hp
+    monster.base_max_hp = int(base_hp * 2)
+    monster.hp = monster.base_max_hp
+    monster.max_hp = monster.base_max_hp
     monster.xp = 75000
 
     monster.name = "NEET, the Void Sovereign"
@@ -656,8 +691,12 @@ def generate_uber_neet(player, monster):
         make_modifier("Void Aura", monster.level),
     ]
 
-    monster.attack += int(monster.level * 0.8)
-    monster.defence += int(monster.level * 0.5)
+    # Flat additions baked into base (Phase 2)
+    monster.base_attack += int(monster.level * 0.8)
+    monster.base_defence += int(monster.level * 0.5)
+
+    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
     boss_pool = [n for n in BOSS_MOD_NAMES]
     random.shuffle(boss_pool)
@@ -674,8 +713,9 @@ def generate_uber_gemini(player, monster):
     monster = calculate_monster_stats(monster)
 
     base_hp = random.randint(0, 9) + int(10 * (monster.level**1.7))
-    monster.hp = int(base_hp * 2)
-    monster.max_hp = monster.hp
+    monster.base_max_hp = int(base_hp * 2)
+    monster.hp = monster.base_max_hp
+    monster.max_hp = monster.base_max_hp
     monster.xp = 75000
 
     monster.name = "Castor & Pollux, Bound Sovereigns"
@@ -689,8 +729,11 @@ def generate_uber_gemini(player, monster):
         make_modifier("Balanced Strikes", monster.level),
     ]
 
-    monster.attack += int(monster.level * 0.65)
-    monster.defence += int(monster.level * 0.65)
+    monster.base_attack += int(monster.level * 0.65)
+    monster.base_defence += int(monster.level * 0.65)
+
+    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
     boss_pool = [n for n in BOSS_MOD_NAMES]
     random.shuffle(boss_pool)
@@ -707,8 +750,9 @@ def generate_uber_evelynn(player, monster):
     monster = calculate_monster_stats(monster)
 
     base_hp = random.randint(0, 9) + int(10 * (monster.level**1.65))
-    monster.hp = int(base_hp * 2)
-    monster.max_hp = monster.hp
+    monster.base_max_hp = int(base_hp * 2)
+    monster.hp = monster.base_max_hp
+    monster.max_hp = monster.base_max_hp
     monster.xp = 75000
 
     monster.name = "Evelynn, the Origin of Corruption"
@@ -729,8 +773,12 @@ def generate_uber_evelynn(player, monster):
         ]
     )
 
-    monster.attack = int(monster.attack * 1.4)
-    monster.defence = int(monster.defence * 0.85)
+    # Phase 2: % scaling via bonuses
+    monster.bonus_attack_pct += 0.40
+    monster.bonus_defence_pct -= 0.15   # results in 85% of base
+
+    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
     print(monster)
     return monster
@@ -744,8 +792,9 @@ async def generate_uber_aphrodite(player, monster):
     monster = calculate_monster_stats(monster)
 
     base_hp = random.randint(0, 9) + int(10 * (monster.level**1.7))
-    monster.hp = int(base_hp * 4.0)
-    monster.max_hp = monster.hp
+    monster.base_max_hp = int(base_hp * 4.0)
+    monster.hp = monster.base_max_hp
+    monster.max_hp = monster.base_max_hp
     monster.xp = 75000
 
     monster.name = "Aphrodite, Celestial Apex"
@@ -761,7 +810,11 @@ async def generate_uber_aphrodite(player, monster):
     for name in boss_pool[: random.randint(1, 2)]:
         monster.modifiers.append(make_modifier(name, monster.level))
 
-    monster.attack += int(monster.level * 0.5)
-    monster.defence += int(monster.level * 0.5)
+    # Flat additions baked into base
+    monster.base_attack += int(monster.level * 0.5)
+    monster.base_defence += int(monster.level * 0.5)
+
+    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
     return monster
