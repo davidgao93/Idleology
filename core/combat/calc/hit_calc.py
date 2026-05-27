@@ -48,7 +48,7 @@ def calculate_hit_chance(player: Player, monster: Monster) -> float:
     hit_base = (
         player.equipped_weapon.hit_chance if player.equipped_weapon else _HIT_BASE
     )
-    m_def = monster.defence
+    m_def = monster.effective_defence
     if m_def <= 0:
         base = _HIT_MAX
     else:
@@ -71,7 +71,7 @@ def calculate_hit_chance(player: Player, monster: Monster) -> float:
 
 def calculate_monster_hit_chance(player: Player, monster: Monster) -> float:
     """Monster hit chance based on attack-vs-defence ratio. Equal stats → 50%."""
-    m_atk = monster.attack
+    m_atk = monster.effective_attack
     if m_atk <= 0:
         return _MON_HIT_MIN
     pct_diff = (m_atk - player.get_total_defence()) / m_atk

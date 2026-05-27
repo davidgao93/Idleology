@@ -40,7 +40,7 @@ def calculate_damage_taken(player: Player, monster: Monster) -> int:
     Difficulty mode scales the surplus multiplier (Hard ×1.2 … Delirious ×1.5)."""
     p_def = max(player.get_total_defence(), 1)
     base_raw = 5 + monster.level * 1.5
-    surplus = (monster.attack - p_def) / p_def
+    surplus = (monster.effective_attack - p_def) / p_def
     surplus = max(-0.95, surplus)
     surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
     raw = base_raw * (1.0 + surplus * surplus_mult)
@@ -63,7 +63,7 @@ def roll_monster_damage(
     Returns (total_damage, pre_reduction_damage, base_damage, minion_damage).
     pre_reduction_damage = raw damage after all monster modifiers but BEFORE player PDR/FDR.
     Used by Thorns to reflect the true incoming hit rather than the post-mitigation value."""
-    m_atk = monster.attack
+    m_atk = monster.effective_attack
     p_def = max(player.get_total_defence(), 1)
     base_raw = 5 + monster.level * 1.5
     surplus = max(-0.95, (m_atk - p_def) / p_def)
@@ -330,10 +330,10 @@ def calc_crit_damage(
         player.voracious_stacks = 0
 
     void_passive = player.get_accessory_void_passive()
-    if void_passive == "void_gaze" and player.gaze_stacks < 30 and monster.attack > 0:
+    if void_passive == "void_gaze" and player.gaze_stacks < 30 and monster.effective_attack > 0:
         player.gaze_stacks += 1
-        reduction = max(1, int(monster.attack * 0.03))
-        monster.attack = max(0, monster.attack - reduction)
+        reduction = max(1, int(monster.effective_attack * 0.03))
+        monster.flat_attack_reduction += reduction
         log.append(
             f"⬛ **Void Gaze** ({player.gaze_stacks}/30) — {monster.name}'s ATK -{reduction}!"
         )

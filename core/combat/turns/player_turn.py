@@ -114,10 +114,10 @@ def process_heal(player: Player, monster=None) -> str:
     else:
         player.potions -= 1
         msg_prefix = ""
-        # Frenzied Hunger: each actual potion consumed boosts monster ATK
+        # Frenzied Hunger: each actual potion consumed boosts monster ATK (Phase 3)
         if monster is not None and monster.has_modifier("Frenzied Hunger"):
             v = monster.get_modifier_value("Frenzied Hunger")
-            monster.attack = int(monster.attack * (1.0 + v))
+            monster.bonus_attack_pct += v
             monster.potion_uses_tracked += 1
             msg_prefix += f"😤 **Frenzied Hunger** — the monster grows stronger! (+{int(v*100)}% ATK)\n"
 
@@ -543,7 +543,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         and 0 < monster.hp < int(monster.max_hp * 0.50)
     ):
         monster.colossus_active = True
-        monster.attack = int(monster.attack * 1.30)
+        monster.bonus_attack_pct += 0.30
         monster.colossus_dr = 0.15
         log.append(
             f"⚙️ **Colossus Protocol ENGAGES!** {monster.name}'s power surges — "

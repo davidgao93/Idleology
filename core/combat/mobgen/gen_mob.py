@@ -270,6 +270,33 @@ def _apply_spawn_modifiers(monster) -> None:
         monster.hp = monster.max_hp
 
 
+def finalize_monster_spawn(monster: "Monster") -> "Monster":
+    """Centralized final step for Phase 2+ spawn logic.
+
+    - Ensures base_* fields are populated if they weren't set earlier.
+    - Applies all accumulated bonus_*_pct and flat_*_bonus to produce final live stats.
+    - This is the single place that should be called at the end of every
+      monster generation path to keep things consistent.
+    """
+    # Fallback snapshot if bases were never explicitly set
+    if monster.base_attack == 0:
+        monster.base_attack = monster.attack
+    if monster.base_defence == 0:
+        monster.base_defence = monster.defence
+    if monster.base_max_hp == 0:
+        monster.base_max_hp = monster.max_hp
+
+    # Apply current bonuses + flat bonuses to live fields
+    monster.attack = monster.effective_attack
+    monster.defence = monster.effective_defence
+
+    if monster.bonus_max_hp_pct != 0 or monster.flat_attack_bonus != 0:  # rough check
+        monster.max_hp = monster.effective_max_hp
+        monster.hp = min(monster.hp, monster.max_hp)
+
+    return monster
+
+
 def level_exponent(level: int) -> float:
     if level < 5:
         return 1.0
@@ -615,10 +642,7 @@ def generate_corrupted_encounter(player, monster) -> "Monster":
     monster.modifiers = []
     apply_all_corrupted_modifiers(monster)
     _apply_spawn_modifiers(monster)
-
-    # Dual-write live fields (Phase 2)
-    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
-    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
+    finalize_monster_spawn(monster)
 
     print(monster)
     return monster
@@ -656,14 +680,11 @@ async def generate_uber_lucifer(player, monster):
     monster.base_attack += int(monster.level * 1.0)
     monster.base_defence += int(monster.level * 0.2)
 
-    # Dual-write live fields
-    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
-    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
-
     boss_pool = [n for n in BOSS_MOD_NAMES]
     random.shuffle(boss_pool)
     monster.modifiers.append(make_modifier(boss_pool[0], monster.level))
 
+    finalize_monster_spawn(monster)
     return monster
 
 
@@ -695,13 +716,11 @@ def generate_uber_neet(player, monster):
     monster.base_attack += int(monster.level * 0.8)
     monster.base_defence += int(monster.level * 0.5)
 
-    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
-    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
-
     boss_pool = [n for n in BOSS_MOD_NAMES]
     random.shuffle(boss_pool)
     monster.modifiers.append(make_modifier(boss_pool[0], monster.level))
 
+    finalize_monster_spawn(monster)
     return monster
 
 

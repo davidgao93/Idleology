@@ -352,6 +352,9 @@ class Combat(commands.Cog, name="combat"):
             monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
             monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
+        # Phase 3: Ensure all combat bonuses are reset before the fight begins
+        monster.reset_combat_bonuses()
+
         # 6. Apply Start Effects
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)

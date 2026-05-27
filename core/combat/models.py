@@ -223,6 +223,11 @@ class Monster:
     bonus_defence_pct: float = 0.0
     bonus_max_hp_pct: float = 0.0
 
+    # Flat bonuses (used for spawn-time flat additions like +level*X in uber generators).
+    # These are added to base *before* the percentage multiplier.
+    flat_attack_bonus: int = 0
+    flat_defence_bonus: int = 0
+
     # Flat reductions (used by various debuffs that subtract a flat amount).
     # effective_* properties combine flat + percentage.
     flat_attack_reduction: int = 0
@@ -268,16 +273,22 @@ class Monster:
 
     @property
     def effective_attack(self) -> int:
-        """Returns the monster's current effective attack after bonuses and flat reductions."""
-        val = self.base_attack if self.base_attack > 0 else self.attack
+        """Returns the monster's current effective attack.
+        Formula: (base + flat_bonus) * (1 + bonus_pct) - flat_reduction
+        """
+        base = self.base_attack if self.base_attack > 0 else self.attack
+        val = base + self.flat_attack_bonus
         val = int(val * (1 + self.bonus_attack_pct))
         val = max(0, val - self.flat_attack_reduction)
         return val
 
     @property
     def effective_defence(self) -> int:
-        """Returns the monster's current effective defence after bonuses and flat reductions."""
-        val = self.base_defence if self.base_defence > 0 else self.defence
+        """Returns the monster's current effective defence.
+        Formula: (base + flat_bonus) * (1 + bonus_pct) - flat_reduction
+        """
+        base = self.base_defence if self.base_defence > 0 else self.defence
+        val = base + self.flat_defence_bonus
         val = int(val * (1 + self.bonus_defence_pct))
         val = max(0, val - self.flat_defence_reduction)
         return val
@@ -285,8 +296,9 @@ class Monster:
     @property
     def effective_max_hp(self) -> int:
         """Returns the monster's effective max HP after bonuses."""
-        val = self.base_max_hp if self.base_max_hp > 0 else self.max_hp
-        return int(val * (1 + self.bonus_max_hp_pct))
+        base = self.base_max_hp if self.base_max_hp > 0 else self.max_hp
+        val = int(base * (1 + self.bonus_max_hp_pct))
+        return max(1, val)
 
     def get_total_damage_mult(self) -> float:
         """
@@ -303,27 +315,29 @@ class Monster:
 
     def reset_combat_bonuses(self) -> None:
         """
-        Resets all transient combat bonuses and damage modification pools.
-        Call this explicitly when a monster is being reused across fights
-        (e.g. in the Dojo or certain multi-phase encounters).
+        Resets transient combat-only bonuses and damage pools.
+        Spawn-established bonuses (Empowered, difficulty, etc.) should generally
+        survive this call. Only combat-dynamic fields are cleared.
         """
-        self.bonus_attack_pct = 0.0
-        self.bonus_defence_pct = 0.0
-        self.bonus_max_hp_pct = 0.0
-        self.flat_attack_reduction = 0
-        self.flat_defence_reduction = 0
+        # Clear combat-dynamic damage modification
         self.damage_increased_pct = 0.0
         self.damage_more_mult = 1.0
 
-        # Also reset common transient stacks that affect stats/damage
+        # Clear combat-accumulated flat reductions (but not spawn flat bonuses)
+        self.flat_attack_reduction = 0
+        self.flat_defence_reduction = 0
+
+        # Reset common per-fight transient stacks
         self.onslaught_bonus_atk = 0.0
         self.wrathful_stacks = 0
         self.colossus_active = False
         self.colossus_dr = 0.0
         self.undying_atk_boost_turns = 0
         self.potion_uses_tracked = 0
-        # Note: We intentionally do NOT reset stacks like bleed_stacks,
-        # flashfire_charges, etc. here — those are managed by their own logic.
+
+        # Note: We do NOT clear bonus_*_pct or flat_*_bonus here,
+        # as those may contain spawn-time or persistent bonuses.
+        # Only clear things that are purely per-fight accumulations.
 
 
 # ---------------------------------------------------------------------------

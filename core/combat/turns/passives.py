@@ -96,7 +96,7 @@ def _cs_absorb(player, monster):
         return
     chance = player.equipped_accessory.passive_lvl * 0.10
     if random.random() <= chance:
-        total = monster.attack + monster.defence
+        total = monster.effective_attack + monster.effective_defence
         if total > 0:
             amount = max(1, int(total * 0.10))
             player.bonus_atk += amount
@@ -164,10 +164,10 @@ def _cs_void_echo(player, monster):
 
 
 def _cs_unravelling(player, monster):
-    if monster.defence <= 0:
+    if monster.effective_defence <= 0:
         return
-    strip = int(monster.defence * 0.20)
-    monster.defence = max(0, monster.defence - strip)
+    strip = int(monster.effective_defence * 0.20)
+    monster.flat_defence_reduction += strip
     return f"⬛ **Unravelling** strips {monster.name}'s 🛡️ DEF by **{strip}** (20%)"
 
 
@@ -234,17 +234,17 @@ def _apply_partner_combat_start(
                 f"**Atk→Def Lv.{lvl}** — 🛡️ +{bonus} DEF (from {partner.name}'s ATK)"
             )
         elif key == "co_monster_debuff":
-            atk_red = max(1, int(monster.attack * lvl * 0.02))
-            def_red = max(1, int(monster.defence * lvl * 0.02))
-            monster.attack = max(0, monster.attack - atk_red)
-            monster.defence = max(0, monster.defence - def_red)
+            atk_red = max(1, int(monster.effective_attack * lvl * 0.02))
+            def_red = max(1, int(monster.effective_defence * lvl * 0.02))
+            monster.flat_attack_reduction += atk_red
+            monster.flat_defence_reduction += def_red
             parts.append(
                 f"**Monster Debuff Lv.{lvl}** — {monster.name} loses "
                 f"**{atk_red}** ATK and **{def_red}** DEF"
             )
         elif key == "co_curse_damage":
-            reduction = max(1, int(monster.attack * lvl * 0.02))
-            monster.attack = max(0, monster.attack - reduction)
+            reduction = max(1, int(monster.effective_attack * lvl * 0.02))
+            monster.flat_attack_reduction += reduction
             parts.append(
                 f"**Curse: Damage Lv.{lvl}** — {monster.name} loses **{reduction}** ATK 🩸"
             )
@@ -343,9 +343,9 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         def_strip_parts.append("⬛ **Unravelling** (20%)")
         logs["Void Passive"] = logs.get("Void Passive", "")  # ensure key exists for later merge
 
-    if def_strip_pct > 0 and monster.defence > 0:
-        flat = int(monster.defence * def_strip_pct)
-        monster.defence = max(0, monster.defence - flat)
+    if def_strip_pct > 0 and monster.effective_defence > 0:
+        flat = int(monster.effective_defence * def_strip_pct)
+        monster.flat_defence_reduction += flat
         if len(def_strip_parts) == 1:
             weapon_parts.append(
                 f"{def_strip_parts[0]}: strips {monster.name}'s 🛡️ DEF by **{flat}** ({int(def_strip_pct * 100)}%)"
@@ -447,7 +447,7 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
     ):
         equiv_lvl = ss_absorb * 2
         if random.random() <= equiv_lvl * 0.10:
-            total = monster.attack + monster.defence
+            total = monster.effective_attack + monster.effective_defence
             if total > 0:
                 amount = max(1, int(total * 0.10))
                 player.bonus_atk += amount

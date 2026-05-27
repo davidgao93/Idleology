@@ -78,8 +78,8 @@ class CombatLogger:
 
         p_atk = player.get_total_attack()
         p_def = player.get_total_defence()
-        m_atk = monster.attack
-        m_def = monster.defence
+        m_atk = monster.effective_attack
+        m_def = monster.effective_defence
 
         p_hit = calculate_hit_chance(player, monster)
         m_hit = calculate_monster_hit_chance(player, monster)
@@ -396,8 +396,8 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
         lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
         p_max_dmg = int(p_max_dmg * (1.50 + (lvl * 0.10)))
 
-    m_atk = monster.attack
-    m_def = monster.defence
+    m_atk = monster.effective_attack
+    m_def = monster.effective_defence
 
     # Correct formula — must mirror calculate_damage_taken exactly
     _base_raw = 5.0 + monster.level * 1.5

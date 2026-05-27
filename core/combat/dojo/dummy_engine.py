@@ -38,6 +38,9 @@ class DummyEngine:
         sim_player = copy.deepcopy(player)
         sim_monster = copy.deepcopy(monster)
 
+        # Phase 3: Reset any combat transients on the copied monster
+        sim_monster.reset_combat_bonuses()
+
         # Initialise ward and apply the same one-time combat-start effects the real fight uses
         sim_player.combat_ward = sim_player.get_combat_ward_value()
         engine.apply_stat_effects(sim_player, sim_monster)

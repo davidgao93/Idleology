@@ -220,17 +220,17 @@ def on_player_hit(
     if tier_im is not None:
         player.cs.hema_momentum_stacks = min(5, player.cs.hema_momentum_stacks + 1)
 
-    # --- Serrated: permanently reduce monster ATK ---
+    # --- Serrated: permanently reduce monster ATK (Phase 3)
     tier_ser = get_h(player, "serrated")
-    if tier_ser is not None and monster.attack > 0:
+    if tier_ser is not None and monster.effective_attack > 0:
         reduction = int(_tv("serrated", tier_ser))
         if is_crit:
             reduction *= 2
-        monster.attack = max(0, monster.attack - reduction)
+        monster.flat_attack_reduction += reduction
         player.cs.hema_serrated_total += reduction
         crit_note = " (crit ×2)" if is_crit else ""
         log.append(
-            f"🔪 **Serrated**{crit_note} — monster ATK −{reduction} (now {monster.attack})."
+            f"🔪 **Serrated**{crit_note} — monster ATK −{reduction} (now {monster.effective_attack})."
         )
 
     # --- Haemorrhage: add bleed charge ---
