@@ -95,7 +95,7 @@ FLORA_CONVERSION_PER_LEVEL: float = 0.10
 # ---------------------------------------------------------------------------
 
 # Hard cap on the modifier-difficulty contribution to the special drop pool.
-MODIFIER_DIFFICULTY_CAP: float = 0.05
+MODIFIER_DIFFICULTY_CAP: float = 0.08
 
 # Generic base rate used by most special drops (magma core, keys, runes, etc.)
 SPECIAL_DROP_BASE_CHANCE: float = 0.01

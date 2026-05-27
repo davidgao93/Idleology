@@ -29,15 +29,20 @@ _DMG_VARIANCE = (0.85, 1.15)
 # ---------------------------------------------------------------------------
 
 
+_DIFFICULTY_SURPLUS_MULT = [1.0, 1.2, 1.3, 1.4, 1.5]
+# Flat crit chance added to base monster crit per difficulty tier (all sources sum together).
+_DIFFICULTY_CRIT_CHANCE = [0.0, 0.15, 0.20, 0.30, 0.50]
+
+
 def calculate_damage_taken(player: Player, monster: Monster) -> int:
     """Raw monster damage before PDR/FDR.
     Guaranteed base from monster level, amplified/dampened by stat surplus.
-    Hard mode applies a 1.2× surplus multiplier on top of its 2× ATK boost."""
+    Difficulty mode scales the surplus multiplier (Hard ×1.2 … Delirious ×1.5)."""
     p_def = max(player.get_total_defence(), 1)
     base_raw = 5 + monster.level * 1.5
     surplus = (monster.attack - p_def) / p_def
     surplus = max(-0.95, surplus)
-    surplus_mult = 1.2 if monster.hard_mode else 1.0
+    surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
     raw = base_raw * (1.0 + surplus * surplus_mult)
     return max(1, int(raw * random.uniform(*_DMG_VARIANCE)))
 
@@ -62,12 +67,12 @@ def roll_monster_damage(
     p_def = max(player.get_total_defence(), 1)
     base_raw = 5 + monster.level * 1.5
     surplus = max(-0.95, (m_atk - p_def) / p_def)
-    surplus_mult = 1.2 if monster.hard_mode else 1.0
+    surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
     dmg = calculate_damage_taken(player, monster)
 
-    hard_note = f" surplus_mult=×{surplus_mult}" if monster.hard_mode else ""
+    diff_note = f" surplus_mult=×{surplus_mult}" if monster.difficulty_level > 0 else ""
     calc_notes: list[str] = [
-        f"m_atk={m_atk} p_def={p_def} base={base_raw:.0f} surplus={surplus:+.3f}{hard_note} → raw≈{int(base_raw*(1+surplus*surplus_mult))} rolled={dmg}"
+        f"m_atk={m_atk} p_def={p_def} base={base_raw:.0f} surplus={surplus:+.3f}{diff_note} → raw≈{int(base_raw*(1+surplus*surplus_mult))} rolled={dmg}"
     ]
 
     if monster.has_modifier("Enraged"):
@@ -106,6 +111,11 @@ def roll_monster_damage(
         spikes_bonus = monster.spike_stacks * monster.get_modifier_value("Volatile Spikes")
         base_crit_chance += spikes_bonus
         calc_notes.append(f"volatile_spikes crit+{spikes_bonus:.3f}")
+    # Difficulty: flat bonus to crit chance (all sources sum together)
+    if monster.difficulty_level > 0:
+        diff_crit = _DIFFICULTY_CRIT_CHANCE[monster.difficulty_level]
+        base_crit_chance += diff_crit
+        calc_notes.append(f"difficulty_crit+{diff_crit*100:.0f}%")
     crit_roll = random.random()
     is_monster_crit = crit_roll < base_crit_chance
     calc_notes.append(f"mon_crit: {base_crit_chance*100:.1f}% roll={crit_roll:.4f} → {'CRIT' if is_monster_crit else 'no crit'}")
@@ -515,6 +525,12 @@ def apply_monster_damage_reduction(
     if _zone_dr > 0:
         regular_dr += _zone_dr
         dr_labels.append(f"Siege Grounds {int(_zone_dr * 100)}%")
+
+    # Difficulty DR: Nightmarish (+10%) and Delirious (+25%)
+    _diff_dr = getattr(monster, "difficulty_dr", 0.0)
+    if _diff_dr > 0:
+        regular_dr += _diff_dr
+        dr_labels.append(f"Difficulty {int(_diff_dr * 100)}%")
 
     if regular_dr > 0 and damage > 0:
         capped_dr = min(0.80, regular_dr)

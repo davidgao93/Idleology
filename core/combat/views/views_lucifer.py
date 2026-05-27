@@ -6,6 +6,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.images import BOSS_LUCIFER
+from core.combat.views.views_uber_hub import UberReturnView
 
 
 class LuciferChoiceView(BaseView):
@@ -201,7 +202,8 @@ class InfernalContractView(BaseView):
         embed.set_thumbnail(url=BOSS_LUCIFER)
         embed.set_footer(text="There is no going back.")
         self.bot.state_manager.clear_active(self.user_id)
-        await interaction.edit_original_response(embed=embed, view=None)
+        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
+        await interaction.edit_original_response(embed=embed, view=return_view)
         self.stop()
 
     @ui.button(label="Reject Contract", style=discord.ButtonStyle.secondary, emoji="🖤")
@@ -214,5 +216,6 @@ class InfernalContractView(BaseView):
         )
         embed.set_thumbnail(url=BOSS_LUCIFER)
         self.bot.state_manager.clear_active(self.user_id)
-        await interaction.edit_original_response(embed=embed, view=None)
+        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
+        await interaction.edit_original_response(embed=embed, view=return_view)
         self.stop()

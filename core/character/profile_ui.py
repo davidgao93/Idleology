@@ -720,8 +720,16 @@ class ProfileBuilder:
         embed.add_field(name="⚙️ Core", value="\n".join(core_lines), inline=False)
 
         # ── Section 2: Daily ─────────────────────────────────────────────────
+        quest_meta: dict = {}
+        try:
+            await bot.database.quests.ensure_meta(user_id)
+            quest_meta = await bot.database.quests.get_meta(user_id)
+        except Exception:
+            pass
+        checkin_last = quest_meta.get("checkin_last_time") if quest_meta else None
+
         daily_lines = [
-            f"🛖 **/checkin** — {_fmt_hms(user[17], timedelta(hours=18))}",
+            f"🛖 **/checkin** — {_fmt_hms(checkin_last, timedelta(hours=18))}",
             f"💡 **/propagate** — {_fmt_hms(user[14], timedelta(hours=18))}",
         ]
 

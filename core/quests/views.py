@@ -375,11 +375,10 @@ class QuestBoardView(BaseView):
                     )
                     return
 
-            # Roll new quest excluding current
+            # Roll new quest — always tier 3, excluding already-shown quests
             existing_ids = [r["quest_id"] for r in self.board]
             new_quest_id, new_tier = reroll_slot(
                 self._player_level,
-                exclude_tier=slot_row["tier"],
                 exclude_quest_ids=existing_ids,
             )
             await self.bot.database.quests.update_board_slot_quest(

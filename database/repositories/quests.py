@@ -67,10 +67,23 @@ class QuestsRepository(BaseRepository):
                 extra_slot_unlocked INTEGER DEFAULT 0,
                 horizon_boost_uses INTEGER DEFAULT 0,
                 checkin_day INTEGER DEFAULT 0,
-                checkin_last_time TEXT
+                checkin_last_time TEXT,
+                enrichment_unlocked INTEGER DEFAULT 0,
+                prospector_unlocked INTEGER DEFAULT 0
             )
             """
         )
+        # Migrations for existing databases
+        for col, defval in (
+            ("enrichment_unlocked", "0"),
+            ("prospector_unlocked", "0"),
+        ):
+            try:
+                await self.connection.execute(
+                    f"ALTER TABLE quest_meta ADD COLUMN {col} INTEGER DEFAULT {defval}"
+                )
+            except Exception:
+                pass  # column already exists
         await self.connection.commit()
 
     # ------------------------------------------------------------------
@@ -87,7 +100,8 @@ class QuestsRepository(BaseRepository):
     async def get_meta(self, user_id: str) -> dict:
         cursor = await self.connection.execute(
             "SELECT user_id, tokens, veteran_unlocked, extra_slot_unlocked, "
-            "horizon_boost_uses, checkin_day, checkin_last_time "
+            "horizon_boost_uses, checkin_day, checkin_last_time, "
+            "enrichment_unlocked, prospector_unlocked "
             "FROM quest_meta WHERE user_id = ?",
             (user_id,),
         )
@@ -101,6 +115,8 @@ class QuestsRepository(BaseRepository):
                 "horizon_boost_uses": 0,
                 "checkin_day": 0,
                 "checkin_last_time": None,
+                "enrichment_unlocked": 0,
+                "prospector_unlocked": 0,
             }
         return {
             "user_id": row[0],
@@ -110,6 +126,8 @@ class QuestsRepository(BaseRepository):
             "horizon_boost_uses": row[4],
             "checkin_day": row[5],
             "checkin_last_time": row[6],
+            "enrichment_unlocked": row[7],
+            "prospector_unlocked": row[8],
         }
 
     async def add_tokens(self, user_id: str, amount: int) -> None:
@@ -131,8 +149,11 @@ class QuestsRepository(BaseRepository):
         return True
 
     async def set_meta_field(self, user_id: str, field: str, value) -> None:
-        """Generic field setter for veteran_unlocked, extra_slot_unlocked, horizon_boost_uses."""
-        allowed = {"veteran_unlocked", "extra_slot_unlocked", "horizon_boost_uses"}
+        """Generic field setter for quest_meta boolean/integer fields."""
+        allowed = {
+            "veteran_unlocked", "extra_slot_unlocked", "horizon_boost_uses",
+            "enrichment_unlocked", "prospector_unlocked",
+        }
         if field not in allowed:
             raise ValueError(f"Invalid meta field: {field}")
         await self.connection.execute(

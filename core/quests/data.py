@@ -274,6 +274,32 @@ CHECKIN_DAY_LABELS = {
 # ---------------------------------------------------------------------------
 
 TOKEN_SHOP_ITEMS = [
+    # ── Consumables ──────────────────────────────────────────────────────────
+    {
+        "id": "curio",
+        "label": "Curio",
+        "cost": 3,
+        "description": "Purchase one Curious Curio.",
+    },
+    {
+        "id": "equip_cache",
+        "label": "Equipment Cache",
+        "cost": 10,
+        "description": "Receive 1 random equipment item (ilvl capped at 100).",
+    },
+    {
+        "id": "rune_cache",
+        "label": "Rune Cache",
+        "cost": 10,
+        "description": "Receive 1–5 random Runes (Refinement, Potential, or Shatter).",
+    },
+    {
+        "id": "key_cache",
+        "label": "Boss Key Cache",
+        "cost": 10,
+        "description": "Receive 1–5 random Boss Keys.",
+    },
+    # ── Utility ───────────────────────────────────────────────────────────────
     {
         "id": "board_reset",
         "label": "Board Reset",
@@ -281,28 +307,27 @@ TOKEN_SHOP_ITEMS = [
         "description": "Clear the 20-hour contract cooldown immediately.",
     },
     {
-        "id": "reroll_restore",
-        "label": "Reroll Restore",
-        "cost": 2,
-        "description": "Restore one used free reroll on any active contract slot.",
-    },
-    {
-        "id": "contract_swap",
-        "label": "Contract Swap",
-        "cost": 5,
-        "description": "Replace one locked quest with a fresh roll of the same tier.",
-    },
-    {
-        "id": "track_advance",
-        "label": "Track Advance",
-        "cost": 12,
-        "description": "Claim one check-in day reward without pressing check-in.",
-    },
-    {
         "id": "horizon_boost",
         "label": "Horizon Boost",
         "cost": 8,
         "description": "Next 10 qualifying actions count as 2 toward your Horizon quest.",
+    },
+    # ── Permanent Upgrades ───────────────────────────────────────────────────
+    {
+        "id": "enrichment",
+        "label": "Enrichment",
+        "cost": 50,
+        "description": "Permanently increase quest gold rewards by 50%. One-time unlock.",
+        "one_time": True,
+        "unlock_field": "enrichment_unlocked",
+    },
+    {
+        "id": "prospector_license",
+        "label": "Prospector's License",
+        "cost": 50,
+        "description": "Receive a free gathering materials cache on every quest turn-in. One-time unlock.",
+        "one_time": True,
+        "unlock_field": "prospector_unlocked",
     },
     {
         "id": "quest_veteran",
@@ -319,12 +344,6 @@ TOKEN_SHOP_ITEMS = [
         "description": "Permanently unlock a 4th daily contract slot. One-time unlock.",
         "one_time": True,
         "unlock_field": "extra_slot_unlocked",
-    },
-    {
-        "id": "curio",
-        "label": "Curio",
-        "cost": 6,
-        "description": "Purchase one Curious Curio.",
     },
 ]
 

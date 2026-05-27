@@ -3,13 +3,38 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 
-_HARD_MODE_DESC = (
-    "**☠️ Hard Combat Mode** — {status}\n"
-    "Monster ATK and DEF are doubled. Corrupted encounter rate +2%. "
-    "On death, your current-level EXP is wiped. "
-    "Victories grant an additional **+50% EXP & Gold** (additive with other bonuses). "
-    "Requires level 100."
-)
+# ---------------------------------------------------------------------------
+# Difficulty tier definitions
+# ---------------------------------------------------------------------------
+
+_DIFFICULTY_NAMES = ["Off", "Hard", "Extreme", "Nightmarish", "Delirious"]
+_DIFFICULTY_EMOJIS = ["⬜", "☠️", "💀", "👁️", "🌀"]
+
+_DIFFICULTY_DESCRIPTIONS = {
+    0: (
+        "Standard encounters — no penalties or bonuses."
+    ),
+    1: (
+        "**☠️ Hard** — Monster ATK & DEF ×2, +15% hit & crit chance, ×1.2 surge multiplier. "
+        "Corrupted rate +2%. Victories grant **+50% EXP & Gold**. "
+        "On death, current-level EXP is wiped."
+    ),
+    2: (
+        "**💀 Extreme** — Monster ATK & DEF ×2.5, +20% hit & crit chance, ×1.3 surge multiplier. "
+        "Corrupted rate +5%. Victories grant **+75% EXP & Gold**. "
+        "On death, current-level EXP is wiped."
+    ),
+    3: (
+        "**👁️ Nightmarish** — Monster ATK & DEF ×3, +30% hit & crit chance, ×1.4 surge multiplier, "
+        "+10% monster DR. Corrupted rate +8%. Victories grant **+100% EXP & Gold**. "
+        "On death, current-level EXP is wiped."
+    ),
+    4: (
+        "**🌀 Delirious** — Monster ATK & DEF ×4, +50% hit & crit chance, ×1.5 surge multiplier, "
+        "+25% monster DR. Corrupted rate +10%. Victories grant **+150% EXP & Gold**. "
+        "On death, current-level EXP is wiped."
+    ),
+}
 
 
 class SettingsView(BaseView):
@@ -19,13 +44,13 @@ class SettingsView(BaseView):
         user_id: str,
         doors_status: bool,
         exp_protection: bool,
-        hard_mode: bool = False,
+        difficulty: int = 0,
         player_level: int = 1,
     ):
         super().__init__(bot, user_id)
         self.doors_status = doors_status
         self.exp_protection = exp_protection
-        self.hard_mode = hard_mode
+        self.difficulty = max(0, min(4, difficulty))
         self.player_level = player_level
         self.rebuild_buttons()
 
@@ -47,11 +72,51 @@ class SettingsView(BaseView):
         self.add_item(exp_btn)
 
         if self.player_level >= 100:
-            hard_lbl = "Disable Hard Mode" if self.hard_mode else "Enable Hard Mode"
-            hard_style = ButtonStyle.danger if self.hard_mode else ButtonStyle.blurple
-            hard_btn = ui.Button(label=hard_lbl, style=hard_style, emoji="☠️", row=2)
-            hard_btn.callback = self.toggle_hard_mode
-            self.add_item(hard_btn)
+            select = ui.Select(
+                placeholder=f"⚔️ Combat Difficulty: {_DIFFICULTY_EMOJIS[self.difficulty]} {_DIFFICULTY_NAMES[self.difficulty]}",
+                options=[
+                    discord.SelectOption(
+                        label="⬜ Off",
+                        value="0",
+                        description="Standard encounters.",
+                        default=(self.difficulty == 0),
+                    ),
+                    discord.SelectOption(
+                        label="☠️ Hard",
+                        value="1",
+                        description="ATK & DEF ×2 | +50% EXP & Gold | Corrupted +2%",
+                        default=(self.difficulty == 1),
+                    ),
+                    discord.SelectOption(
+                        label="💀 Extreme",
+                        value="2",
+                        description="ATK & DEF ×2.5 | +75% EXP & Gold | Corrupted +5%",
+                        default=(self.difficulty == 2),
+                    ),
+                    discord.SelectOption(
+                        label="👁️ Nightmarish",
+                        value="3",
+                        description="ATK & DEF ×3 | +100% EXP & Gold | Corrupted +8%",
+                        default=(self.difficulty == 3),
+                    ),
+                    discord.SelectOption(
+                        label="🌀 Delirious",
+                        value="4",
+                        description="ATK & DEF ×4 | +150% EXP & Gold | Corrupted +10%",
+                        default=(self.difficulty == 4),
+                    ),
+                ],
+                row=2,
+            )
+
+            async def _difficulty_callback(interaction: Interaction, s=select):
+                self.difficulty = int(s.values[0])
+                await self.bot.database.users.set_difficulty(self.user_id, self.difficulty)
+                self.rebuild_buttons()
+                await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+            select.callback = _difficulty_callback
+            self.add_item(select)
 
         close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=3)
         close_btn.callback = self._close
@@ -60,7 +125,6 @@ class SettingsView(BaseView):
     def build_embed(self) -> discord.Embed:
         doors_str = "🟢 ENABLED" if self.doors_status else "🔴 DISABLED"
         exp_str = "🟢 ENABLED" if self.exp_protection else "🔴 DISABLED"
-        hard_str = "🟢 ENABLED" if self.hard_mode else "🔴 DISABLED"
 
         desc = (
             "**🚪 Boss Doors** — {doors}\n"
@@ -73,7 +137,12 @@ class SettingsView(BaseView):
         ).format(doors=doors_str, exp=exp_str)
 
         if self.player_level >= 100:
-            desc += "\n\n" + _HARD_MODE_DESC.format(status=hard_str)
+            diff_name = f"{_DIFFICULTY_EMOJIS[self.difficulty]} {_DIFFICULTY_NAMES[self.difficulty]}"
+            desc += (
+                f"\n\n**⚔️ Combat Difficulty** — {diff_name}\n"
+                + _DIFFICULTY_DESCRIPTIONS[self.difficulty]
+                + "\n*Requires level 100. Applies to all `/combat` encounters.*"
+            )
 
         embed = discord.Embed(
             title="Settings", description=desc, color=discord.Color.blue()
@@ -91,12 +160,6 @@ class SettingsView(BaseView):
         await self.bot.database.users.toggle_exp_protection(
             self.user_id, self.exp_protection
         )
-        self.rebuild_buttons()
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
-
-    async def toggle_hard_mode(self, interaction: Interaction):
-        self.hard_mode = not self.hard_mode
-        await self.bot.database.users.toggle_hard_mode(self.user_id, self.hard_mode)
         self.rebuild_buttons()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 

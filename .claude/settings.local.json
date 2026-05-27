@@ -110,7 +110,8 @@
       "Bash(\"venv/Scripts/python.exe\" -m py_compile database/repositories/quests.py core/quests/data.py core/quests/mechanics.py core/quests/views.py core/quests/shop_views.py core/quests/__init__.py cogs/quests.py cogs/tavern.py core/combat/economy/victory.py core/codex/views/run_view.py core/ascent/views.py core/apex/views/combat_view.py core/combat/views/views_elemental.py database/__init__.py bot.py)",
       "Bash(python -m py_compile core/quests/views.py core/quests/mechanics.py core/quests/data.py core/quests/shop_views.py core/quests/__init__.py cogs/quests.py cogs/tavern.py database/repositories/quests.py core/combat/economy/victory.py core/ascent/views.py core/apex/views/combat_view.py core/combat/views/views_elemental.py core/codex/views/run_view.py)",
       "Bash(python -m py_compile core/minigames/views.py core/quests/data.py core/quests/mechanics.py core/quests/shop_views.py core/quests/views.py core/inventory/upgrades/refine.py core/inventory/upgrades/armor.py core/inventory/upgrades/accessory.py cogs/consume.py)",
-      "Bash(python -m py_compile core/combat/economy/uber_rewards.py core/combat/economy/victory.py)"
+      "Bash(python -m py_compile core/combat/economy/uber_rewards.py core/combat/economy/victory.py)",
+      "Bash(python -m py_compile database/repositories/quests.py core/quests/data.py core/quests/mechanics.py core/quests/views.py core/quests/shop_views.py core/character/profile_ui.py cogs/tavern.py)"
     ]
   }
 }

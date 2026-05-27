@@ -204,16 +204,18 @@ class Combat(commands.Cog, name="combat"):
         is_corrupted = False
         combat_phases = []
 
-        # Fetch hard mode and streak before encounter generation
+        # Fetch difficulty level (0=off, 1=hard, 2=extreme, 3=nightmarish, 4=delirious)
         hard_mode = await self.bot.database.users.get_hard_mode(user_id)
         combat_streak = await self.bot.database.users.get_combat_streak(user_id)
+
+        _DIFFICULTY_CORRUPTED_BONUS = [0.0, 0.02, 0.05, 0.08, 0.10]
 
         # 3a. Corrupted encounter roll — resolves first (level 100+)
         if player.level >= 100:
             corrupted_chance = (
                 0.01
                 + player.get_emblem_bonus("corrupted_find") * 0.002
-                + (0.02 if hard_mode else 0)
+                + _DIFFICULTY_CORRUPTED_BONUS[hard_mode]
             )
             if random.random() < corrupted_chance:
                 gate_view = CorruptedEncounterGateView(self.bot, user_id)
@@ -271,10 +273,12 @@ class Combat(commands.Cog, name="combat"):
                     combat_phases = EncounterManager.get_boss_phases(boss_type)
                     await self.bot.database.users.update_timer(user_id, "last_combat")
                 else:
+                    turn_embed = discord.Embed(
+                        description="*You turn away from the ominous presence... Live to fight another day.*",
+                        color=discord.Color.dark_grey(),
+                    )
                     await interaction.edit_original_response(
-                        content="*You turn away from the ominous presence...*",
-                        embed=None,
-                        view=None,
+                        content=None, embed=turn_embed, view=None
                     )
                     await asyncio.sleep(1.0)
 
@@ -328,16 +332,19 @@ class Combat(commands.Cog, name="combat"):
             )
             combat_phases = [None]
 
-        # 5. Hard mode: scale monster base stats before combat starts.
+        # 5. Difficulty scaling: scale monster base stats before combat starts.
         # Applies to all encounter types reached via /combat (regular, boss doors,
         # corrupted, calcified, incubated). Uber bosses, Ascent, Codex, Apex, and
         # special modes are not routed through this path so they are unaffected.
-        if hard_mode:
-            monster.attack = int(monster.attack * 2)
-            monster.defence = int(monster.defence * 2)
+        _DIFFICULTY_ATK_MULT = [1.0, 2.0, 2.5, 3.0, 4.0]
+        _DIFFICULTY_DR = [0.0, 0.0, 0.0, 0.10, 0.25]
+        if hard_mode > 0:
+            monster.attack = int(monster.attack * _DIFFICULTY_ATK_MULT[hard_mode])
+            monster.defence = int(monster.defence * _DIFFICULTY_ATK_MULT[hard_mode])
             monster.hp = int(monster.hp * 1.5)
             monster.max_hp = monster.hp
-            monster.hard_mode = True  # per-turn: +15 flat accuracy, +15% crit chance
+            monster.difficulty_level = hard_mode
+            monster.difficulty_dr = _DIFFICULTY_DR[hard_mode]
 
         # 6. Apply Start Effects
         engine.apply_stat_effects(player, monster)

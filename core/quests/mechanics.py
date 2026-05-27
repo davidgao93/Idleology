@@ -46,21 +46,16 @@ def roll_board(level: int) -> list:
     return result
 
 
-def reroll_slot(level: int, exclude_tier: int, exclude_quest_ids: list) -> tuple:
-    """Roll a new quest for a slot, excluding the given tier and already-used quest_ids."""
+def reroll_slot(level: int, exclude_quest_ids: list) -> tuple:
+    """Roll a new quest for a slot, always at tier 3 difficulty."""
     eligible = get_eligible_quests(level)
     available = [q for q in eligible if q["id"] not in exclude_quest_ids]
     if not available:
-        # Fall back to any quest not matching exclude_quest_ids exactly
-        available = [q for q in eligible]
+        available = list(eligible)
     if not available:
-        available = DAILY_QUESTS
-
+        available = list(DAILY_QUESTS)
     quest = random.choice(available)
-    # Try to give a different tier
-    opposite_tier = 3 if exclude_tier == 1 else 1
-    tier = random.choices([opposite_tier, exclude_tier], weights=[60, 40], k=1)[0]
-    return (quest["id"], tier)
+    return (quest["id"], 3)
 
 
 def get_board_cooldown_remaining(locked_at_iso: str) -> timedelta:
@@ -217,7 +212,13 @@ async def grant_contract_reward(
     bonus_tokens = 1 if meta.get("veteran_unlocked") else 0
     total_tokens = base_tokens + bonus_tokens
 
-    gold = _GOLD_REWARDS.get(tier, 25_000)
+    base_gold = _GOLD_REWARDS.get(tier, 25_000)
+
+    # Enrichment perk: +50% gold on quest turn-in
+    if meta.get("enrichment_unlocked"):
+        gold = int(base_gold * 1.5)
+    else:
+        gold = base_gold
 
     await bot.database.quests.add_tokens(user_id, total_tokens)
     await bot.database.users.modify_gold(user_id, gold)
@@ -226,7 +227,25 @@ async def grant_contract_reward(
     msgs = [f"🎫 +{total_tokens} Quest Token{'s' if total_tokens > 1 else ''}"]
     if bonus_tokens:
         msgs.append("  *(+1 Quest Veteran bonus)*")
-    msgs.append(f"💰 +{gold:,} Gold")
+    gold_note = " *(+50% Enrichment)*" if meta.get("enrichment_unlocked") else ""
+    msgs.append(f"💰 +{gold:,} Gold{gold_note}")
+
+    # Prospector perk: grant a small gathering cache on every turn-in
+    if meta.get("prospector_unlocked"):
+        try:
+            import random as _random
+            skill_type = _random.choice(["mining", "woodcutting", "fishing"])
+            skill_row = await bot.database.skills.get_data(user_id, server_id, skill_type)
+            if skill_row:
+                from core.skills.mechanics import SkillMechanics
+                tool_tier = skill_row[2]
+                base = SkillMechanics.calculate_yield(skill_type, tool_tier)
+                resources = {k: v * 3 for k, v in base.items()}
+                await bot.database.skills.update_batch(user_id, server_id, skill_type, resources)
+                msgs.append(f"⛏️ Prospector's Cache: +{skill_type.title()} materials")
+        except Exception as e:
+            print(f"[Prospector perk error]: {e}")
+
     return msgs
 
 

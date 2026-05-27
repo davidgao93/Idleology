@@ -128,59 +128,74 @@ class TokenShopView(BaseView):
             self._processing = False
 
     async def _apply_item(self, item_def: dict, meta: dict) -> str:
+        import random as _random
         item_id = item_def["id"]
 
-        if item_id == "board_reset":
+        # ── Consumables ──────────────────────────────────────────────────────
+        if item_id == "curio":
+            await self.bot.database.users.modify_currency(self.user_id, "curios", 1)
+            return "+1 Curio purchased!"
+
+        elif item_id == "equip_cache":
+            from core.combat.economy.loot import (
+                generate_accessory, generate_armor, generate_boot,
+                generate_glove, generate_helmet, generate_weapon,
+            )
+            user_row = await self.bot.database.users.get(self.user_id, self.server_id)
+            level = user_row["level"] if user_row else 1
+            ilvl = min(level, 100)
+            slot = _random.choices(
+                ["weapon", "armor", "accessory", "glove", "boot", "helmet"],
+                weights=[35, 10, 25, 10, 10, 10], k=1
+            )[0]
+            if slot == "weapon":
+                item = await generate_weapon(self.user_id, ilvl, False)
+                await self.bot.database.equipment.create_weapon(item)
+            elif slot == "armor":
+                item = await generate_armor(self.user_id, ilvl, False)
+                await self.bot.database.equipment.create_armor(item)
+            elif slot == "accessory":
+                item = await generate_accessory(self.user_id, ilvl, False)
+                await self.bot.database.equipment.create_accessory(item)
+            elif slot == "glove":
+                item = await generate_glove(self.user_id, ilvl)
+                await self.bot.database.equipment.create_glove(item)
+            elif slot == "boot":
+                item = await generate_boot(self.user_id, ilvl)
+                await self.bot.database.equipment.create_boot(item)
+            else:
+                item = await generate_helmet(self.user_id, ilvl)
+                await self.bot.database.equipment.create_helmet(item)
+            return f"📦 Equipment Cache opened: **{item.name}**"
+
+        elif item_id == "rune_cache":
+            rune_pool = ["refinement_runes", "potential_runes", "shatter_runes"]
+            qty = _random.randint(1, 5)
+            received = []
+            for _ in range(qty):
+                rtype = _random.choice(rune_pool)
+                await self.bot.database.users.modify_currency(self.user_id, rtype, 1)
+                received.append(rtype.replace("_runes", "").replace("_", " ").title() + " Rune")
+            from collections import Counter
+            tally = Counter(received)
+            return "💎 Rune Cache: " + ", ".join(f"{v}× {k}" for k, v in tally.items())
+
+        elif item_id == "key_cache":
+            key_pool = ["dragon_key", "angel_key", "soul_cores", "balance_fragment"]
+            qty = _random.randint(1, 5)
+            received = []
+            for _ in range(qty):
+                ktype = _random.choice(key_pool)
+                await self.bot.database.users.modify_currency(self.user_id, ktype, 1)
+                received.append(ktype.replace("_", " ").title())
+            from collections import Counter
+            tally = Counter(received)
+            return "🗝️ Key Cache: " + ", ".join(f"{v}× {k}" for k, v in tally.items())
+
+        # ── Utility ──────────────────────────────────────────────────────────
+        elif item_id == "board_reset":
             await self.bot.database.quests.reset_board_cooldown(self.user_id, self.server_id)
             return "Board cooldown cleared!"
-
-        elif item_id == "reroll_restore":
-            # Restore free reroll on first slot with used free reroll
-            board = await self.bot.database.quests.get_board(self.user_id, self.server_id)
-            for slot_row in board:
-                if slot_row["free_reroll_used"]:
-                    await self.bot.database.quests.restore_free_reroll(
-                        self.user_id, self.server_id, slot_row["slot"]
-                    )
-                    return f"Free reroll restored for Slot {slot_row['slot']}!"
-            # Also check contract slots
-            return "Free reroll restored!"
-
-        elif item_id == "contract_swap":
-            # Swap first incomplete contract with fresh roll of same tier
-            from core.quests.mechanics import reroll_slot, compute_goal_for_quest
-            contracts = await self.bot.database.quests.get_contracts(self.user_id, self.server_id)
-            incomplete = [c for c in contracts if not c["turned_in"] and not c["completed"]]
-            if not incomplete:
-                await self.bot.database.quests.add_tokens(self.user_id, item_def["cost"])  # refund
-                return "No eligible contracts to swap."
-            target = incomplete[0]
-            existing_ids = [c["quest_id"] for c in contracts]
-            user_row = await self.bot.database.users.get(self.user_id, self.server_id)
-            level = user_row["level"] if user_row else 1
-            new_id, new_tier = reroll_slot(
-                level,
-                exclude_tier=target["tier"],
-                exclude_quest_ids=existing_ids,
-            )
-            # Keep same tier for the swap
-            new_tier = target["tier"]
-            goal = compute_goal_for_quest(new_id, new_tier, level)
-            await self.bot.database.quests.set_contract_slot(
-                self.user_id, self.server_id, target["slot"], new_id, new_tier, goal
-            )
-            return f"Contract Slot {target['slot']} replaced with a fresh quest!"
-
-        elif item_id == "track_advance":
-            from core.quests.data import grant_checkin_day
-            meta_fresh = await self.bot.database.quests.get_meta(self.user_id)
-            current_day = meta_fresh["checkin_day"]
-            next_day = (current_day % 14) + 1 if current_day > 0 else 1
-            user_row = await self.bot.database.users.get(self.user_id, self.server_id)
-            level = user_row["level"] if user_row else 1
-            rewards = await grant_checkin_day(self.bot, self.user_id, self.server_id, next_day, level)
-            await self.bot.database.quests.advance_checkin(self.user_id)
-            return f"Day {next_day} claimed!\n" + "\n".join(rewards)
 
         elif item_id == "horizon_boost":
             current_uses = meta.get("horizon_boost_uses", 0)
@@ -189,6 +204,15 @@ class TokenShopView(BaseView):
             )
             return "+10 Horizon Boost uses added!"
 
+        # ── Permanent Upgrades ───────────────────────────────────────────────
+        elif item_id == "enrichment":
+            await self.bot.database.quests.set_meta_field(self.user_id, "enrichment_unlocked", 1)
+            return "Enrichment unlocked! Quest gold rewards permanently increased by 50%."
+
+        elif item_id == "prospector_license":
+            await self.bot.database.quests.set_meta_field(self.user_id, "prospector_unlocked", 1)
+            return "Prospector's License unlocked! Gathering cache granted on every quest turn-in."
+
         elif item_id == "quest_veteran":
             await self.bot.database.quests.set_meta_field(self.user_id, "veteran_unlocked", 1)
             return "Quest Veteran unlocked! +1 bonus token on every completion."
@@ -196,10 +220,6 @@ class TokenShopView(BaseView):
         elif item_id == "extra_slot":
             await self.bot.database.quests.set_meta_field(self.user_id, "extra_slot_unlocked", 1)
             return "Contract Extension unlocked! 4th slot available."
-
-        elif item_id == "curio":
-            await self.bot.database.users.modify_currency(self.user_id, "curios", 1)
-            return "+1 Curio purchased!"
 
         return "Purchase applied."
 

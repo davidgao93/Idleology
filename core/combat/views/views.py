@@ -259,7 +259,7 @@ class CombatView(BaseView):
         combat_phases=None,
         post_combat_view=None,
         rematch_callback=None,
-        hard_mode: bool = False,
+        hard_mode: int = 0,
         combat_streak: int = 0,
     ):
         super().__init__(bot, user_id, server_id)
@@ -271,7 +271,7 @@ class CombatView(BaseView):
         self.logs = initial_logs or {}
         self.post_combat_view = post_combat_view
         self.rematch_callback = rematch_callback
-        self.hard_mode = hard_mode
+        self.hard_mode = hard_mode  # int: 0=off, 1=hard, 2=extreme, 3=nightmarish, 4=delirious
         self.combat_streak = combat_streak  # streak at start of this fight
 
         _je.reset_jewel_charges(player)
@@ -554,9 +554,11 @@ class CombatView(BaseView):
             # Reset combat streak on any death
             await self.bot.database.users.reset_combat_streak(self.user_id)
 
+            _DIFFICULTY_NAMES = ["", "Hard", "Extreme", "Nightmarish", "Delirious"]
+            _DIFFICULTY_EMOJIS = ["", "☠️", "💀", "👁️", "🌀"]
             exp_protected = await self.bot.database.users.get_exp_protection(self.user_id)
-            if self.hard_mode and not exp_protected:
-                # Hard Mode: wipe ALL current-level EXP instead of the standard % loss
+            if self.hard_mode > 0 and not exp_protected:
+                # Any difficulty mode: wipe ALL current-level EXP instead of the standard % loss
                 xp_loss = self.player.exp
                 self.player.exp = 0
             else:
@@ -568,9 +570,10 @@ class CombatView(BaseView):
             embed = combat_ui.create_defeat_embed(
                 self.player, self.monster, xp_loss, killing_blow=self.killing_blow
             )
-            if self.hard_mode:
+            if self.hard_mode > 0:
+                diff_name = f"{_DIFFICULTY_EMOJIS[self.hard_mode]} {_DIFFICULTY_NAMES[self.hard_mode]} Mode"
                 embed.add_field(
-                    name="☠️ Hard Mode",
+                    name=f"{diff_name}",
                     value="Your EXP for this level has been wiped. Combat streak reset.",
                     inline=False,
                 )
@@ -630,8 +633,11 @@ class CombatView(BaseView):
 
         # Streak bonus is based on the pre-fight streak (what was shown in the footer
         # during combat), so the player always receives exactly what was advertised.
+        _DIFFICULTY_REWARD_PCT = [0, 50, 75, 100, 150]
+        _DIFFICULTY_NAMES_V = ["", "Hard", "Extreme", "Nightmarish", "Delirious"]
+        _DIFFICULTY_EMOJIS_V = ["", "☠️", "💀", "👁️", "🌀"]
         streak_pct = min(50, self.combat_streak // 10)
-        hard_mode_pct = 50 if self.hard_mode else 0
+        hard_mode_pct = _DIFFICULTY_REWARD_PCT[self.hard_mode] if self.hard_mode else 0
         total_bonus_pct = streak_pct + hard_mode_pct
 
         reward_data = await apply_victory_rewards(
@@ -673,7 +679,9 @@ class CombatView(BaseView):
         if total_bonus_pct > 0:
             bonus_parts = []
             if hard_mode_pct > 0:
-                bonus_parts.append("☠️ Hard Mode +50%")
+                diff_emoji = _DIFFICULTY_EMOJIS_V[self.hard_mode]
+                diff_name = _DIFFICULTY_NAMES_V[self.hard_mode]
+                bonus_parts.append(f"{diff_emoji} {diff_name} Mode +{hard_mode_pct}%")
             if streak_pct > 0:
                 bonus_parts.append(f"🔥 Streak +{streak_pct}%")
             embed.add_field(

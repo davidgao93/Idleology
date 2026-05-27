@@ -78,6 +78,16 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
             modifier_checks.append(25 + int(player.get_total_rarity() / 10))
         if monster.level >= 100:
             modifier_checks.append(50 + int(player.get_total_rarity() / 10))
+        if monster.level > 110:
+            modifier_checks.append(55 + int(player.get_total_rarity() / 10))
+        if monster.level > 120:
+            modifier_checks.append(60 + int(player.get_total_rarity() / 10))
+        if monster.level > 130:
+            modifier_checks.append(65 + int(player.get_total_rarity() / 10))
+        if monster.level > 140:
+            modifier_checks.append(70 + int(player.get_total_rarity() / 10))
+        if monster.level >= 150:
+            modifier_checks.append(75 + int(player.get_total_rarity() / 10))
 
         num_mods = sum(
             1 for chance in modifier_checks if random.randint(1, 100) <= chance

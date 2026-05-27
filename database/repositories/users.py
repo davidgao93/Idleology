@@ -528,19 +528,24 @@ class UserRepository:
     # Hard Combat Mode
     # ---------------------------------------------------------
 
-    async def get_hard_mode(self, user_id: str) -> bool:
+    async def get_hard_mode(self, user_id: str) -> int:
+        """Returns the difficulty level (0=off, 1=hard, 2=extreme, 3=nightmarish, 4=delirious)."""
         cursor = await self.connection.execute(
             "SELECT hard_mode FROM users WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return bool(row[0]) if row else False
+        return int(row[0]) if row else 0
 
-    async def toggle_hard_mode(self, user_id: str, status: bool) -> None:
-        val = 1 if status else 0
+    async def set_difficulty(self, user_id: str, level: int) -> None:
+        """Persists the difficulty level (0–4)."""
         await self.connection.execute(
-            "UPDATE users SET hard_mode = ? WHERE user_id = ?", (val, user_id)
+            "UPDATE users SET hard_mode = ? WHERE user_id = ?", (max(0, min(4, level)), user_id)
         )
         await self.connection.commit()
+
+    async def toggle_hard_mode(self, user_id: str, status: bool) -> None:
+        """Legacy shim — sets difficulty to 1 (Hard) or 0 (Off)."""
+        await self.set_difficulty(user_id, 1 if status else 0)
 
     # ---------------------------------------------------------
     # Combat Streak

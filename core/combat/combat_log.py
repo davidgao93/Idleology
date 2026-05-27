@@ -112,7 +112,7 @@ class CombatLogger:
             f"[START] Monster: HP {monster.hp}/{monster.max_hp} | "
             f"Atk {m_atk} | Def {m_def} | "
             f"Mods: {', '.join(monster.display_modifiers) or 'None'}"
-            + (" | HARD MODE" if monster.hard_mode else "")
+            + (f" | {['','HARD','EXTREME','NIGHTMARISH','DELIRIOUS'][monster.difficulty_level]} MODE" if monster.difficulty_level > 0 else "")
         )
         self._w(
             f"[CALC]  Player hit:   base={_HIT_BASE*100:.0f}% + ({p_atk}-{m_def})/{m_def if m_def else 1} × {_HIT_SENSITIVITY*100:.0f}% "
@@ -403,7 +403,8 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     _base_raw = 5.0 + monster.level * 1.5
     _p_def_clamped = max(p_def, 1)
     _surplus = max(-0.95, (m_atk - _p_def_clamped) / _p_def_clamped)
-    _surplus_mult = 1.2 if monster.hard_mode else 1.0
+    _DIFFICULTY_SURPLUS_MULT_LOG = [1.0, 1.2, 1.3, 1.4, 1.5]
+    _surplus_mult = _DIFFICULTY_SURPLUS_MULT_LOG[monster.difficulty_level]
     raw_base = _base_raw * (1.0 + _surplus * _surplus_mult)
 
     if monster.has_modifier("Savage"):
@@ -424,7 +425,11 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     if monster.has_modifier("Spectral"):
         m_max_dmg *= 2
 
-    hard_note = " [HARD MODE ×1.2 surplus]" if monster.hard_mode else ""
+    _DIFF_NAMES_LOG = ["", "HARD", "EXTREME", "NIGHTMARISH", "DELIRIOUS"]
+    hard_note = (
+        f" [{_DIFF_NAMES_LOG[monster.difficulty_level]} MODE ×{_surplus_mult} surplus]"
+        if monster.difficulty_level > 0 else ""
+    )
 
     log.info(f"--- COMBAT DEBUG: {player.name} VS {monster.name} ---")
     log.info(

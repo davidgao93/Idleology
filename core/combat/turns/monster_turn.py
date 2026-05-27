@@ -230,10 +230,14 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     hit_chance = hit_chance_base
     hit_mods: list[str] = [f"base={hit_chance_base*100:.1f}%"]
 
-    # Hard mode: +15 flat accuracy bonus applied before other modifiers
-    if monster.hard_mode:
-        hit_chance = min(0.95, hit_chance + 0.15)
-        hit_mods.append(f"+15%(hard_mode)={hit_chance*100:.1f}%")
+    # Difficulty: scaled flat accuracy bonus applied before other modifiers
+    _DIFFICULTY_HIT_BONUS = [0.0, 0.15, 0.20, 0.30, 0.50]
+    _DIFFICULTY_NAMES_MT = ["", "hard", "extreme", "nightmarish", "delirious"]
+    if monster.difficulty_level > 0:
+        hit_bonus = _DIFFICULTY_HIT_BONUS[monster.difficulty_level]
+        diff_label = _DIFFICULTY_NAMES_MT[monster.difficulty_level]
+        hit_chance = min(0.95, hit_chance + hit_bonus)
+        hit_mods.append(f"+{int(hit_bonus*100)}%({diff_label}_mode)={hit_chance*100:.1f}%")
 
     # Keen: flat bonus treated as +X% hit chance (capped at 0.95 unless Inevitable)
     keen_bonus = (
@@ -313,12 +317,6 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                     alt_minion,
                 )
                 calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
-
-        # Hard mode: 15% chance to crit → +50% damage
-        if monster.hard_mode and random.random() < 0.15:
-            total_damage = int(total_damage * 1.5)
-            calc.append(f"  hard_mode_crit: ×1.5 → {total_damage}")
-            log.append(f"💥 **Hard Mode** — {monster.name} lands a critical strike!")
 
         # --- Onslaught: apply cumulative ATK bonus from consecutive hits ---
         if monster.has_modifier("Onslaught") and monster.onslaught_bonus_atk > 0:

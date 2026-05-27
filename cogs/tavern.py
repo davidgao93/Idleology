@@ -23,27 +23,28 @@ def _build_checkin_embed(
         color=0x7289DA,
     )
 
-    # Build two rows of 7 days
-    rows = ["", ""]
+    # Build two rows of 7 days — spaces between cells for readability
+    cells: list[str] = []
     for day in range(1, 15):
-        row_idx = 0 if day <= 7 else 1
         if day <= current_day:
-            rows[row_idx] += "✅"
+            cells.append("✅")
         elif day == current_day + 1:
-            rows[row_idx] += "🔶"
+            cells.append("🔶")
         else:
-            rows[row_idx] += "⬜"
+            cells.append("⬜")
 
-    # Day labels for the current/next milestone
-    day_labels_str = "  ".join(
-        f"**{d}** {CHECKIN_DAY_LABELS.get(d, '')}"
+    row1 = " ".join(cells[:7])
+    row2 = " ".join(cells[7:])
+
+    milestone_lines = "\n".join(
+        f"  **Day {d}** — {CHECKIN_DAY_LABELS.get(d, '')}"
         for d in (1, 7, 14)
     )
 
     track_display = (
-        f"Days 1–7:  {rows[0]}\n"
-        f"Days 8–14: {rows[1]}\n\n"
-        f"Milestones: {day_labels_str}"
+        f"**Days 1–7:**\n{row1}\n"
+        f"**Days 8–14:**\n{row2}\n\n"
+        f"**Milestones:**\n{milestone_lines}"
     )
     embed.description = track_display
 
