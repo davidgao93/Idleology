@@ -93,7 +93,7 @@ raw       = max(1, int(raw_roll))
 | 3 | **Overwhelming** | `× 2` |
 | 4 | **Hell's Fury** | `× 3.0` (uber) |
 | 5 | **Spectral** | 20% chance `× 2` |
-| 6 | **Lethal** / **Volatile Spikes** crit | Roll monster crit at `10% + Lethal_bonus + spike_stacks × v_spikes`; crit multiplies by `2.0 + Devastating_bonus` |
+| 6 | **Lethal** / **Volatile Spikes** crit | Roll monster crit at `10% + Lethal_bonus + spike_stacks × v_spikes`; crit multiplies by `1.5 + Devastating_bonus` |
 | 7 | **Crushing** | Reduces effective PDR by `v × PDR` before PDR step |
 | 8 | **Searing** | Reduces effective FDR by `v × FDR` before FDR step |
 
@@ -341,7 +341,7 @@ Rolled from the common pool for regular and boss encounters. Tier is gated by mo
 | **Titanic** | 150/175/200/225/250% HP | 1/25/50/75/100 | Monster starts with X% of base HP |
 | **Savage** | +20/25/30/35/40% damage | 1/25/50/75/100 | All hits deal X% more damage |
 | **Lethal** | +5/10/15/20/25% crit chance | 1/25/50/75/100 | +X% monster crit chance (base 10%) |
-| **Devastating** | +0.5/0.6/0.7/0.8/1.0 to crit mult | 1/25/50/75/100 | Crits deal 2.5×/2.6×/2.7×/2.8×/3.0× |
+| **Devastating** | +0.5/0.6/0.7/0.8/1.0 to crit mult | 1/25/50/75/100 | Crits deal 2.0×/2.1×/2.2×/2.3×/2.5× (base 1.5×) |
 | **Keen** | +5/7/10/13/15 hit | 1/25/50/75/100 | +X percentage points to monster hit chance |
 | **Blinding** | −5/8/10/12/15 hit | 1/25/50/75/100 | −X percentage points from player hit rolls |
 | **Jinxed** | 10/20/30/40/50% | 1/25/50/75/100 | X% chance player's hit roll is disadvantaged |
@@ -391,7 +391,7 @@ Single value; no tiers. Rolled from the rare flat pool.
 | **Spectral** | 0.20 | 20% chance to deal double damage |
 | **Executioner** | 0.90 | 1% chance: deal 90% of player current HP as **true damage** (can be evaded/blocked) |
 | **Time Lord** | 0.80 | 80% chance to survive a killing blow (HP reduced to 1 instead of 0) |
-| **Feedback Core** | 0.08 | Stores 8% of player's damage dealt; on player miss: releases stored energy through player PDR → FDR → ward → HP |
+
 | **Corrosion** | 5 | Every 3 monster turns: +1 Corrode stack (each stack permanently −5 effective PDR for this fight) |
 | **Death Rattle** | 1.0 | Triggers on first time HP drops below 25%: 5-turn countdown; if monster survives, heals to 25% max HP |
 
@@ -460,4 +460,3 @@ Hardcoded per uber encounter; not rolled from any pool.
 | **Player → monster normal** | N/A | N/A | ✅ | ✅ | ✅ | Full monster DR pipeline |
 | **Player → monster cull** | ❌ | ❌ | ❌ | ❌ | ❌ | True damage; Time Lord / Undying Resolve can intercept |
 | **Partner execute** | ❌ | ❌ | ❌ | ❌ | ❌ | True damage; Time Lord / Undying Resolve checked inline |
-| **Feedback Core release** | ✅ | ✅ | ✅ | N/A | N/A | Runs through player's own PDR/FDR/ward on release |

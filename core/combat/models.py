@@ -176,8 +176,6 @@ class Monster:
     # Pressure Surge: +1 if player didn't crit last turn (cap 10); true dmg at 10
     pressure_stacks: int = 0
     pressure_player_critted: bool = False  # written by player_turn each turn
-    # Feedback Core: stores 8% of player damage dealt; released as true dmg on player miss
-    feedback_stored: int = 0
     # Corrosion: +1 every 3 monster turns; each stack -5 player effective PDR
     corrode_stacks: int = 0
     # Death Rattle: triggers once when HP < 25%; countdown to heal

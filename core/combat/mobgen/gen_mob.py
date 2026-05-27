@@ -53,16 +53,19 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
     else:
         monster = await fetch_monster_image(monster.level, monster, task_species)
 
+    # Phase 2+ style: set base_max_hp, let finalize_monster_spawn apply bonuses (Titanic etc.)
     if player.level == 1:
-        monster.hp = 10
+        base_hp = 10
     elif player.level > 1 and player.level <= 10:
-        monster.hp = max(10, random.randint(1, 4) + int(7 * monster.level))
+        base_hp = max(10, random.randint(1, 4) + int(7 * monster.level))
     else:
-        monster.hp = random.randint(0, 9) + int(
+        base_hp = random.randint(0, 9) + int(
             10 * (monster.level ** random.uniform(1.6, 1.7))
         )
 
-    monster.max_hp = monster.hp
+    monster.base_max_hp = base_hp
+    monster.hp = base_hp
+    monster.max_hp = base_hp
     monster.xp = random.randint(1, 9) + monster.level * 100
 
     monster.modifiers = []
@@ -97,6 +100,7 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
             _apply_spawn_modifiers(monster)
         _roll_essence_spawn(monster, player.level)
 
+    finalize_monster_spawn(monster)
     return monster
 
 
@@ -112,11 +116,14 @@ async def generate_boss(player, monster, phase, phase_index):
     monster = calculate_monster_stats(monster)
     monster = await fetch_monster_image(phase["level"], monster)
 
-    monster.hp = random.randint(0, 9) + int(
+    # Phase 2+ style
+    base_hp = random.randint(0, 9) + int(
         10 * (monster.level ** random.uniform(1.6, 1.7))
     )
-    monster.hp = int(monster.hp * phase["hp_multiplier"])
-    monster.max_hp = monster.hp
+    base_hp = int(base_hp * phase["hp_multiplier"])
+    monster.base_max_hp = base_hp
+    monster.hp = base_hp
+    monster.max_hp = base_hp
     monster.xp = random.randint(1, 9) + monster.level * 100
 
     monster.modifiers = []
@@ -124,6 +131,7 @@ async def generate_boss(player, monster, phase, phase_index):
         monster, phase["modifiers_count"], is_boss=True, force_max_tier=True
     )
     _apply_spawn_modifiers(monster)
+    finalize_monster_spawn(monster)
     print(monster)
     return monster
 
@@ -150,17 +158,20 @@ async def generate_ascent_monster(
 
     monster = await fetch_monster_image(random.randint(30, 120), monster)
 
-    monster.hp = random.randint(0, 9) + int(
+    # Phase 2+ style
+    base_hp = random.randint(0, 9) + int(
         10 * (monster.level ** random.uniform(1.6, 1.7))
     )
-
-    monster.max_hp = monster.hp
+    monster.base_max_hp = base_hp
+    monster.hp = base_hp
+    monster.max_hp = base_hp
     monster.xp = int(monster.max_hp * (1 + ascent_stage_level / 50))
 
     monster.modifiers = []
     total_mods = num_normal_mods + num_boss_mods
     _assign_ascent_modifiers(monster, total_mods, num_boss_mods=num_boss_mods)
     _apply_spawn_modifiers(monster)
+    finalize_monster_spawn(monster)
     monster.is_boss = True
     return monster
 
@@ -290,7 +301,7 @@ def finalize_monster_spawn(monster: "Monster") -> "Monster":
     monster.attack = monster.effective_attack
     monster.defence = monster.effective_defence
 
-    if monster.bonus_max_hp_pct != 0 or monster.flat_attack_bonus != 0:  # rough check
+    if monster.bonus_max_hp_pct != 0:
         monster.max_hp = monster.effective_max_hp
         monster.hp = min(monster.hp, monster.max_hp)
 
@@ -836,4 +847,5 @@ async def generate_uber_aphrodite(player, monster):
     monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
     monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
+    finalize_monster_spawn(monster)
     return monster

@@ -303,18 +303,17 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
 
         # --- Phase 1: Feed dynamic per-turn damage bonuses into the unified pool ---
         # These will be included in the single multiplier applied inside roll_monster_damage
-        if monster.has_modifier("Onslaught") and monster.onslaught_bonus_atk > 0:
-            monster.damage_increased_pct += monster.onslaught_bonus_atk
-            calc.append(f"  onslaught_prebuff+{monster.onslaught_bonus_atk:.2f}")
+        # Onslaught now boosts the monster's effective ATK (for surplus calc) instead of direct damage pool
+        # The bonus is already in monster.onslaught_bonus_atk and will be factored in damage_calc
 
         if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
             wr_val = monster.wrathful_stacks * monster.get_modifier_value("Wrathful Retaliation")
             monster.damage_increased_pct += wr_val
-            calc.append(f"  wrathful_prebuff+{wr_val:.2f}(stacks={monster.wrathful_stacks})")
+            calc.append(f"  +{wr_val:.2f} to damage_increased_pct from Wrathful Retaliation ({monster.wrathful_stacks} stacks)")
 
         if monster.undying_atk_boost_turns > 0:
-            monster.damage_increased_pct += 1.0  # 100% increased damage for the phase
-            calc.append("  undying_prebuff+100%")
+            monster.damage_increased_pct += 1.0
+            calc.append("  +1.00 to damage_increased_pct from Undying Resolve phase")
             monster.undying_atk_boost_turns -= 1
 
         # --- Base damage roll (Celestial Sanctity takes the lower of two) ---
@@ -334,9 +333,8 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 )
                 calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
 
-        # Dynamic bonuses (Onslaught, Wrathful, Undying) are now pre-added to
-        # monster.damage_increased_pct before the roll (Phase 1 unified system).
-        # The single multiplier is applied inside _roll_monster_damage.
+        # Dynamic bonuses: Wrathful and Undying feed damage_increased_pct.
+        # Onslaught now affects monster effective ATK (factored in damage_calc).
 
         # --- Multistrike: 50% chance to strike twice, second hit at 50% damage ---
         multistrike_damage = 0
@@ -608,6 +606,19 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                         log.append(
                             f"{monster.name} {monster.flavor}. You take 💔 **{total_damage}** damage!"
                         )
+
+            # --- Commanding / Minion Army: % of applied damage as true damage echo ---
+            minion_echo_pct = 0.0
+            if monster.has_modifier("Minion Army"):
+                minion_echo_pct = 0.15
+            elif monster.has_modifier("Commanding"):
+                minion_echo_pct = 0.075
+
+            if minion_echo_pct > 0 and total_damage > 0 and not is_dodged and not is_blocked:
+                echo_dmg = int(total_damage * minion_echo_pct)
+                if echo_dmg > 0:
+                    player.current_hp = max(0, player.current_hp - echo_dmg)
+                    log.append(f"👹 Minions strike for **{echo_dmg}** true damage!")
 
             if void_passive == "eternal_hunger" and damage_dealt > 0:
                 player.hunger_stacks += 1

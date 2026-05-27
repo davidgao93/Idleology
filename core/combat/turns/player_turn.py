@@ -582,30 +582,6 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             f"If it survives **5 turns**, it will heal to 25% HP!"
         )
 
-    # Feedback Core: accumulate 8% of damage dealt on hit; release through defences on miss
-    if monster.has_modifier("Feedback Core"):
-        if not is_hit and not is_crit:
-            if monster.feedback_stored > 0:
-                burst = monster.feedback_stored
-                monster.feedback_stored = 0
-                # Run through player's defensive layers: PDR → FDR → ward → HP
-                pdr = player.get_total_pdr()
-                fdr = player.get_total_fdr()
-                after_pdr = max(0, int(burst * (1 - pdr / 100)))
-                after_fdr = max(0, after_pdr - fdr)
-                ward_absorbed = min(player.combat_ward, after_fdr)
-                player.combat_ward -= ward_absorbed
-                hp_dmg = after_fdr - ward_absorbed
-                if hp_dmg > 0:
-                    player.current_hp = max(0, player.current_hp - hp_dmg)
-                log.append(
-                    f"⚡ **Feedback Core** releases **{burst}** stored energy!"
-                    f" (−PDR/FDR/Ward → **{hp_dmg}** HP damage)"
-                )
-        elif final_hit > 0:
-            stored = int(final_hit * 0.08)
-            monster.feedback_stored += stored
-
     # Wrathful Retaliation: +1 stack per player crit
     if is_crit and monster.has_modifier("Wrathful Retaliation"):
         monster.wrathful_stacks += 1

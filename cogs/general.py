@@ -38,92 +38,71 @@ from core.slayer.mechanics import SLAYER_PASSIVE_DEFS, SLAYER_PASSIVE_NAMES
 # ---------------------------------------------------------------------------
 
 class ModDetailsMonsterView(BaseView):
-    """Two-button view toggling between Common and Rare/Boss modifier listings."""
+    """
+    Direct category selection view.
+    Every section is directly accessible via its own button — no Previous/Next needed.
+    """
 
-    def __init__(self, bot, user_id: str, common_lines: list, rare_tiered_lines: list,
-                 rare_flat_lines: list, boss_lines: list):
+    def __init__(self, bot, user_id: str,
+                 common_part1: list, common_part2: list,
+                 rare_tiered_lines: list, rare_flat_lines: list, boss_lines: list):
         super().__init__(bot, user_id)
-        self.common_lines = common_lines
-        self.rare_tiered_lines = rare_tiered_lines
-        self.rare_flat_lines = rare_flat_lines
-        self.boss_lines = boss_lines
-        self.page = "common"
-        self._rebuild()
+        self.categories = {
+            "common1": ("🔵 Common Tiered — Part 1", common_part1),
+            "common2": ("🔵 Common Tiered — Part 2", common_part2),
+            "rare_tiered": ("🟣 Rare Tiered", rare_tiered_lines),
+            "rare_flat": ("🟣 Rare Flat", rare_flat_lines),
+            "boss_uber": ("🔴 Boss & Uber", boss_lines),
+        }
+        self.current_category = "common1"
+        self._rebuild_buttons()
 
-    def _rebuild(self):
+    def _rebuild_buttons(self):
         self.clear_items()
 
-        btn_common = ui.Button(
-            label="Common",
-            style=ButtonStyle.primary if self.page == "common" else ButtonStyle.secondary,
-            emoji="🔵",
-        )
-        btn_common.callback = self._to_common
-        self.add_item(btn_common)
+        # All category buttons are always shown and directly clickable
+        button_labels = {
+            "common1": "Common 1",
+            "common2": "Common 2",
+            "rare_tiered": "Rare Tiered",
+            "rare_flat": "Rare Flat",
+            "boss_uber": "Boss & Uber",
+        }
 
-        btn_rare = ui.Button(
-            label="Rare & Boss",
-            style=ButtonStyle.primary if self.page == "rare_boss" else ButtonStyle.secondary,
-            emoji="🟣",
-        )
-        btn_rare.callback = self._to_rare_boss
-        self.add_item(btn_rare)
+        for key, (full_title, _) in self.categories.items():
+            style = ButtonStyle.primary if key == self.current_category else ButtonStyle.secondary
+            btn = ui.Button(label=button_labels[key], style=style, row=0)
+            btn.callback = self._make_category_callback(key)
+            self.add_item(btn)
+
+    def _make_category_callback(self, category_key):
+        async def callback(interaction: Interaction):
+            self.current_category = category_key
+            self._rebuild_buttons()
+            await interaction.response.edit_message(embed=self.build_embed(), view=self)
+        return callback
 
     def build_embed(self) -> discord.Embed:
-        if self.page == "common":
-            embed = discord.Embed(
-                title="👹 Monster Modifiers — Common",
-                description=(
-                    "Higher monster levels unlock higher tiers. "
-                    "All shown as **T1 → T5** where values differ."
-                ),
-                color=discord.Color.blue(),
+        title, lines = self.categories[self.current_category]
+
+        embed = discord.Embed(
+            title=f"👹 Monster Modifiers — {title}",
+            description="Higher monster levels unlock higher tiers.",
+            color=discord.Color.blue() if "Common" in title else discord.Color.purple(),
+        )
+
+        if lines:
+            field_value = "\n".join(lines)
+            embed.add_field(
+                name="Modifiers",
+                value=field_value,
+                inline=False
             )
-            # Split into thirds to stay well under the 1024-char field limit
-            lines = self.common_lines
-            n = len(lines)
-            cut1, cut2 = n // 3, (n * 2) // 3
-            groups = [lines[:cut1], lines[cut1:cut2], lines[cut2:]]
-            labels = [
-                "🔵 Common *(I–V)* — Part 1",
-                "🔵 Common *(I–V)* — Part 2",
-                "🔵 Common *(I–V)* — Part 3",
-            ]
-            for label, chunk in zip(labels, groups):
-                if chunk:
-                    embed.add_field(name=label, value="\n".join(chunk), inline=False)
         else:
-            embed = discord.Embed(
-                title="👹 Monster Modifiers — Rare & Boss",
-                description="Boss modifiers only appear on bosses and ascent monsters.",
-                color=discord.Color.purple(),
-            )
-            embed.add_field(
-                name="🟣 Rare Tiered *(I–V)*",
-                value="\n".join(self.rare_tiered_lines),
-                inline=False,
-            )
-            embed.add_field(
-                name="🟣 Rare Flat",
-                value="\n".join(self.rare_flat_lines),
-                inline=False,
-            )
-            embed.add_field(
-                name="🔴 Boss Only",
-                value="\n".join(self.boss_lines),
-                inline=False,
-            )
+            embed.add_field(name="No modifiers", value="This category is empty.", inline=False)
+
+        embed.set_footer(text="Click any button above to jump directly to that section.")
         return embed
-
-    async def _to_common(self, interaction: Interaction):
-        self.page = "common"
-        self._rebuild()
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
-
-    async def _to_rare_boss(self, interaction: Interaction):
-        self.page = "rare_boss"
-        self._rebuild()
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
 
 class General(commands.Cog, name="general"):
@@ -246,13 +225,19 @@ class General(commands.Cog, name="general"):
 
         if category == "monster":
             from core.combat.mobgen.gen_mob import get_modifier_description
+            from core.combat.mobgen.modifier_data import MODIFIER_DEFINITIONS
 
             def _tier_range(name: str) -> str:
                 t1 = make_modifier(name, 1)
-                t5 = make_modifier(name, 200)
+                defn = MODIFIER_DEFINITIONS[name]
+                max_available_tier = len(defn.tiers)
+                t_max = make_modifier(name, 200, force_max_tier=True)
                 d1 = get_modifier_description(t1)
-                d5 = get_modifier_description(t5)
-                return d1 if d1 == d5 else f"{d1} → {d5}"
+                d_max = get_modifier_description(t_max)
+                if d1 == d_max:
+                    return d1
+                else:
+                    return f"{d1} → {d_max} (max T{max_available_tier})"
 
             def _flat_desc(name: str) -> str:
                 return get_modifier_description(make_modifier(name, 50))
@@ -261,10 +246,15 @@ class General(commands.Cog, name="general"):
             common_sorted = sorted(COMMON_MOD_NAMES)
             common_lines = [f"**{n}**: {_tier_range(n)}" for n in common_sorted]
             asc_t1 = make_modifier("Ascended", 10)
-            asc_t5 = make_modifier("Ascended", 200)
+            asc_t_max = make_modifier("Ascended", 200, force_max_tier=True)
             common_lines.append(
-                f"**Ascended**: {get_modifier_description(asc_t1)} → {get_modifier_description(asc_t5)} *(scales with level)*"
+                f"**Ascended**: {get_modifier_description(asc_t1)} → {get_modifier_description(asc_t_max)} *(scales with level)*"
             )
+
+            # Split Common into two logical pages to avoid 1024 char limit
+            mid = len(common_lines) // 2
+            common_part1 = common_lines[:mid]
+            common_part2 = common_lines[mid:]
 
             rare_tiered_lines = [
                 f"**{n}**: {_tier_range(n)}" for n in sorted(RARE_TIERED_MOD_NAMES)
@@ -278,7 +268,9 @@ class General(commands.Cog, name="general"):
 
             user_id = str(interaction.user.id)
             view = ModDetailsMonsterView(
-                self.bot, user_id, common_lines, rare_tiered_lines, rare_flat_lines, boss_lines
+                self.bot, user_id,
+                common_part1, common_part2,
+                rare_tiered_lines, rare_flat_lines, boss_lines
             )
             await interaction.response.send_message(
                 embed=view.build_embed(), view=view, ephemeral=True

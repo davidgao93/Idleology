@@ -30,7 +30,7 @@ class Settings(commands.Cog, name="settings"):
             self.bot, user_id, doors_status, exp_protection, difficulty, player_level
         )
         await interaction.response.send_message(
-            embed=view.build_embed(), view=view, ephemeral=True
+            embed=view.build_embed(), view=view, ephemeral=False
         )
 
 

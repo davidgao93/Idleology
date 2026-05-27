@@ -399,6 +399,10 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     m_atk = monster.effective_attack
     m_def = monster.effective_defence
 
+    # Onslaught bonus applies to ATK for max hit calculation too
+    if monster.has_modifier("Onslaught") and monster.onslaught_bonus_atk > 0:
+        m_atk = int(m_atk * (1 + monster.onslaught_bonus_atk))
+
     # Correct formula — must mirror calculate_damage_taken exactly
     _base_raw = 5.0 + monster.level * 1.5
     _p_def_clamped = max(p_def, 1)

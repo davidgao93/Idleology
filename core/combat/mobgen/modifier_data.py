@@ -63,7 +63,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.5, 0.6, 0.7, 0.8, 1.0],  # added to 2.0 base crit mult
         difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
         level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: f"Combat start: Crits deal {round(2.0+v, 1)}× damage",
+        description=lambda v: f"Combat start: Crits deal {round(1.5+v, 1)}× damage",
     ),
     "Keen": ModifierDef(
         "Keen",
@@ -195,7 +195,7 @@ MODIFIER_DEFINITIONS: dict = {
         ],  # attack % per stack (1 stack per 25% HP lost, capped at 3 stacks / 75% HP lost)
         difficulties=[0.002, 0.004, 0.006, 0.009, 0.012],
         level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: f"During combat: +{int(v*100)}% ATK per 25% HP lost (max 3 stacks)",
+        description=lambda v: f"During combat: +{int(v*100)}% DMG per 25% HP lost (max 3 stacks)",
     ),
     "Parching": ModifierDef(
         "Parching",
@@ -281,10 +281,18 @@ MODIFIER_DEFINITIONS: dict = {
     "Commanding": ModifierDef(
         "Commanding",
         "rare_tiered",
-        tiers=[0.10, 0.20, 0.30, 0.40, 0.50],
-        difficulties=[0.005, 0.008, 0.010, 0.013, 0.015],
-        level_gates=[1, 25, 50, 75, 100],
-        description=lambda v: f"During combat: Minions echo {int(v*100)}% of each hit",
+        tiers=[0.075],  # Fixed 7.5%
+        difficulties=[0.005],
+        level_gates=[1],  # Single tier
+        description=lambda v: "On hit: Minions deal 7.5% of damage applied to you as true damage (bypasses all layers)",
+    ),
+    "Minion Army": ModifierDef(
+        "Minion Army",
+        "boss",
+        tiers=[0.15],  # 15% for boss version
+        difficulties=[0.0],
+        level_gates=[],
+        description=lambda v: "On hit: Minions deal 15% of damage applied to you as true damage (bypasses all layers)",
     ),
     "Dampening": ModifierDef(
         "Dampening",
@@ -359,14 +367,7 @@ MODIFIER_DEFINITIONS: dict = {
         level_gates=[],
         description=lambda v: "On lethal hit: 80% chance to survive at 1 HP",
     ),
-    "Feedback Core": ModifierDef(
-        "Feedback Core",
-        "rare_flat",
-        tiers=[0.08],
-        difficulties=[0.012],
-        level_gates=[],
-        description=lambda v: "On miss: Releases stored damage (8% of damage you dealt this fight) through your defences",
-    ),
+
     "Corrosion": ModifierDef(
         "Corrosion",
         "rare_flat",
@@ -398,7 +399,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.50],
         difficulties=[0.0],
         level_gates=[],
-        description=lambda v: "Combat start: Always hits; deals 50% damage",
+        description=lambda v: "Combat start: Always hits; 50% less damage (applied after increased sources)",
     ),
     "Sundering": ModifierDef(
         "Sundering",
@@ -430,7 +431,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.08],
         difficulties=[0.0],
         level_gates=[],
-        description=lambda v: f"On your crit: +{int(v*100)}% ATK (stacking)",
+        description=lambda v: f"On your crit: +{int(v*100)}% DMG (stacking)",
     ),
     "Colossus Protocol": ModifierDef(
         "Colossus Protocol",
@@ -511,7 +512,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.50],
         difficulties=[0.0],
         level_gates=[],
-        description=lambda v: "Every other turn: 50% chance to hit, bypassing Ward",
+        description=lambda v: "Every even turn: Deals 50% damage, bypassing Ward",
     ),
     "Corrupted Protection": ModifierDef(
         "Corrupted Protection",

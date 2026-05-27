@@ -158,9 +158,6 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
     if monster.has_modifier("Pressure Surge") and monster.pressure_stacks > 0:
         lines.append(f"⚡ Pressure  {monster.pressure_stacks}/10")
 
-    if monster.has_modifier("Feedback Core") and monster.feedback_stored > 0:
-        lines.append(f"💾 Feedback Core  {monster.feedback_stored:,} stored")
-
     if monster.has_modifier("Corrosion") and monster.corrode_stacks > 0:
         pdr_loss = monster.corrode_stacks * int(monster.get_modifier_value("Corrosion"))
         lines.append(f"🧪 Corroded  {monster.corrode_stacks} stacks  (−{pdr_loss} PDR)")

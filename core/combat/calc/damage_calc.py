@@ -64,6 +64,9 @@ def roll_monster_damage(
     pre_reduction_damage = raw damage after all monster modifiers but BEFORE player PDR/FDR.
     Used by Thorns to reflect the true incoming hit rather than the post-mitigation value."""
     m_atk = monster.effective_attack
+    # Onslaught boosts the monster's effective ATK for this calculation
+    if monster.has_modifier("Onslaught"):
+        m_atk = int(m_atk * (1 + monster.onslaught_bonus_atk))
     p_def = max(player.get_total_defence(), 1)
     base_raw = 5 + monster.level * 1.5
     surplus = max(-0.95, (m_atk - p_def) / p_def)
@@ -146,7 +149,7 @@ def roll_monster_damage(
     is_monster_crit = crit_roll < base_crit_chance
     calc_notes.append(f"mon_crit: {base_crit_chance*100:.1f}% roll={crit_roll:.4f} → {'CRIT' if is_monster_crit else 'no crit'}")
     if is_monster_crit:
-        crit_mult = 2.0
+        crit_mult = 1.5   # Base monster crit multiplier (reduced from 2.0 for better balance)
         if monster.has_modifier("Devastating"):
             crit_mult += monster.get_modifier_value("Devastating")
         dmg = int(dmg * crit_mult)
@@ -160,9 +163,45 @@ def roll_monster_damage(
     if total_dmg_mult != 1.0:
         pre_mult = dmg
         dmg = int(dmg * total_dmg_mult)
+
+        # Build a breakdown of what contributed to the increased damage pool
+        inc_sources = []
+        if monster.has_modifier("Savage"):
+            inc_sources.append(f"Savage+{monster.get_modifier_value('Savage')*100:.0f}%")
+        if monster.has_modifier("Enraged"):
+            enrage_val = monster.get_modifier_value("Enraged")
+            hp_lost = 1.0 - (monster.hp / monster.max_hp) if monster.max_hp > 0 else 0.0
+            enrage_stacks = min(3, int(hp_lost / 0.25))
+            if enrage_stacks > 0:
+                inc_sources.append(f"Enraged+{enrage_val*enrage_stacks*100:.0f}% ({enrage_stacks} stacks)")
+        if monster.has_modifier("Onslaught") and monster.onslaught_bonus_atk > 0:
+            inc_sources.append(f"Onslaught+{monster.onslaught_bonus_atk*100:.0f}%")
+        if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
+            wr_val = monster.wrathful_stacks * monster.get_modifier_value("Wrathful Retaliation")
+            inc_sources.append(f"Wrathful+{wr_val*100:.0f}% ({monster.wrathful_stacks} stacks)")
+        if monster.undying_atk_boost_turns > 0:
+            inc_sources.append("Undying+100%")
+        if getattr(monster, "zone_dmg_boost", 0.0) > 0:
+            inc_sources.append(f"Zone+{int(monster.zone_dmg_boost*100)}%")
+        if monster.has_modifier("Overwhelming"):
+            inc_sources.append("Overwhelming+100%")
+        if monster.has_modifier("Hell's Fury"):
+            inc_sources.append("Hell's Fury+200%")
+        if monster.has_modifier("Spectral"):
+            # Note: this is only added on proc, but we can note if the modifier is present
+            inc_sources.append("Spectral (possible +100% on proc)")
+
+        breakdown = f" from [{', '.join(inc_sources)}]" if inc_sources else ""
+        more_note = ""
+        if monster.damage_more_mult != 1.0:
+            if monster.has_modifier("Inevitable"):
+                more_note = " (from Inevitable 50% less damage)"
+            else:
+                more_note = f" (from other more/less source)"
+
         calc_notes.append(
             f"unified_dmg_mult×{total_dmg_mult:.2f} "
-            f"(inc={monster.damage_increased_pct:.2f}, more={monster.damage_more_mult:.2f}) "
+            f"(inc={monster.damage_increased_pct:.2f}, more={monster.damage_more_mult:.2f}){breakdown}{more_note} "
             f"{pre_mult}→{dmg}"
         )
 
@@ -183,14 +222,8 @@ def roll_monster_damage(
     if fdr > 0:
         calc_notes.append(f"FDR={fdr} {pre_fdr}→{dmg}")
 
+    # Commanding / Minion Army echo is now handled as post-hit true damage in monster_turn.py
     minions = 0
-    if monster.has_modifier("Commanding"):
-        echo_pct = monster.get_modifier_value("Commanding")
-        raw_echo = int(pre_fdr * echo_pct)
-        minions = max(0, int((raw_echo - fdr) * (1 - pdr / 100)))
-    minions = max(0, minions)
-    if minions > 0:
-        calc_notes.append(f"commanding_echo={minions}")
 
     # Old individual Inevitable and zone blocks have been consolidated
     # into the unified damage pool system above (Phase 1 refactor).
