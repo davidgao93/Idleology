@@ -55,6 +55,12 @@ def calculate_hit_chance(player: Player, monster: Monster) -> float:
         pct_diff = (player.get_total_attack() - m_def) / m_def
         base = min(max(hit_base + pct_diff * _HIT_SENSITIVITY, _HIT_MIN), _HIT_MAX)
 
+    # Rookie accuracy boost: +30% at level 1, linearly tapering to 0 at level 50.
+    # Helps new players land hits before their stats scale up, then fades naturally.
+    if player.level < 50:
+        rookie_bonus = 0.30 * (1.0 - (player.level - 1) / 49.0)
+        base = min(_HIT_MAX, base + rookie_bonus)
+
     if player.ascension_unlocks:
         hit_bonus = player.get_ascension_bonuses()["hit"]
         if hit_bonus:

@@ -1,18 +1,21 @@
 import random
 
 from core.images import (
+    ALCHEMY_HUB,
     APEX_HUB,
     CODEX_HUB,
     COMBAT_ELEMENTAL,
     COMPANIONS_HUB,
     CORRUPTION_GATE,
     ENCOUNTER_SOUL_CORE,
+    HEMATURGY,
     MAW_MAIN,
     PARTNERS_HUB,
     SETTLEMENT_HUB,
     TAVERN_KEEPER,
     UPGRADE_FORGE,
 )
+from core.items.models import Weapon
 
 # ---------------------------------------------------------------------------
 # Per-milestone grant functions
@@ -21,7 +24,24 @@ from core.images import (
 
 async def _grant_level_1(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_stat(user_id, "potions", 20)
-    return ["🧪 **+20 Potions**"]
+    starter = Weapon(
+        user=user_id,
+        name="Adventurer's Blade",
+        level=1,
+        attack=3,
+        defence=1,
+        rarity=2,
+        passive="none",
+        description="",
+        p_passive="none",
+        u_passive="none",
+        hit_chance=0.65,
+        crit_chance=0.05,
+        crit_multi=2.0,
+        base_rarity=2,
+    )
+    await bot.database.equipment.create_weapon(starter)
+    return ["⚔️ **Adventurer's Blade** (starter weapon added to inventory)", "🧪 **+20 Potions**"]
 
 
 async def _grant_level_10(bot, user_id: str, server_id: str) -> list:
@@ -128,12 +148,13 @@ MILESTONES = [
     {
         "level": 1,
         "title": "The Beginning",
-        "reward_desc": "20 Potions",
+        "reward_desc": "Adventurer's Blade (starter weapon) + 20 Potions",
         "systems": [
-            "Combat",
-            "Gathering Skills",
-            "Tavern Gambling",
-            "Equipment Management",
+            "Combat — fight monsters to earn gold, XP, and equipment drops",
+            "Gathering Skills — mine ore, fish, and chop wood passively while idle",
+            "Daily Quests — take contracts from the board for tokens and gold",
+            "Tavern Gambling — risk your gold for a chance at big rewards",
+            "Equipment Management — collect, equip, and upgrade your gear",
         ],
         "commands": [
             "/combat",
@@ -144,6 +165,7 @@ MILESTONES = [
             "/gear",
             "/weapons",
             "/armor",
+            "/quests",
         ],
         "image": TAVERN_KEEPER,
         "grant": _grant_level_1,
@@ -152,7 +174,10 @@ MILESTONES = [
         "level": 10,
         "title": "New Connections",
         "reward_desc": "10 Guild Tickets",
-        "systems": ["Partner Guild", "Trade System"],
+        "systems": [
+            "Partner Guild — recruit NPC allies; deploy them in combat or send on dispatch tasks",
+            "Trade System — exchange items and gold with other adventurers",
+        ],
         "commands": ["/partner", "/trade"],
         "image": PARTNERS_HUB,
         "grant": _grant_level_10,
@@ -161,44 +186,61 @@ MILESTONES = [
         "level": 20,
         "title": "The Infinite Maw",
         "reward_desc": "3 Curios + 50,000 Gold",
-        "systems": ["Maw of Infinity", "Aphrodite Gate"],
-        "commands": ["/maw"],
+        "systems": [
+            "Maw of Infinity — weekly world boss; deal damage over the week for cumulative rewards",
+            "Uber Bosses — Aphrodite unlocked; spend keys to challenge elite encounters",
+        ],
+        "commands": ["/maw", "/uber"],
         "image": MAW_MAIN,
         "grant": _grant_level_20,
     },
     {
         "level": 30,
-        "title": "Essence Awakens",
+        "title": "Essence & Alchemy",
         "reward_desc": "3 Essences of Power + 100,000 Gold",
-        "systems": ["Calcified Monsters (Essence Drops)", "Lucifer Gate"],
-        "commands": ["/consume", "/gear"],
-        "image": ENCOUNTER_SOUL_CORE,
+        "systems": [
+            "Calcified Monsters — rare calcified enemies drop Essences to socket into equipment",
+            "Alchemy — transmute potions with passive effects that carry into every fight",
+            "Lucifer Gate — second Uber Boss unlocked",
+        ],
+        "commands": ["/consume", "/gear", "/alchemy"],
+        "image": ALCHEMY_HUB,
         "grant": _grant_level_30,
     },
     {
         "level": 40,
         "title": "Bonds & Balance",
         "reward_desc": "3 Random Boss Keys + 150,000 Gold",
-        "systems": ["Companion System", "Gemini Gate"],
+        "systems": [
+            "Companion System — raise creatures that passively boost your combat stats",
+            "Gemini Gate — third Uber Boss unlocked",
+        ],
         "commands": ["/companions"],
         "image": COMPANIONS_HUB,
         "grant": _grant_level_40,
     },
     {
         "level": 50,
-        "title": "Foundations",
+        "title": "Foundations of Power",
         "reward_desc": "1 Void Key + 200,000 Gold",
-        "systems": ["Settlement System", "NEET Gate", "Voidforge"],
-        "commands": ["/settlement"],
-        "image": SETTLEMENT_HUB,
+        "systems": [
+            "Settlement System — build and manage your ideology's home base for passive production",
+            "Hematurgy — spend blood to unlock and upgrade powerful passive abilities",
+            "NEET Gate — fourth Uber Boss unlocked",
+            "Voidforge — infuse weapons with Void passives using Void Crystals",
+        ],
+        "commands": ["/settlement", "/hematurgy"],
+        "image": HEMATURGY,
         "grant": _grant_level_50,
     },
     {
         "level": 60,
         "title": "Elemental Forces",
         "reward_desc": "1 Capricious Carp + 1 Sparkling Sprig + 1 Blessed Bismuth",
-        "systems": ["Elemental Encounters"],
-        "commands": ["/uber"],
+        "systems": [
+            "Elemental of Elements — a powerful gathering boss encountered while fishing, mining, or woodcutting; defeating it rewards rare Elemental Keys",
+        ],
+        "commands": ["/gather", "/fish", "/chop"],
         "image": COMBAT_ELEMENTAL,
         "grant": _grant_level_60,
     },
@@ -215,17 +257,22 @@ MILESTONES = [
         "level": 80,
         "title": "The Codex",
         "reward_desc": "1 Antique Tome",
-        "systems": ["Codex"],
+        "systems": [
+            "Codex — wave survival mode; complete runs to earn Tomes that permanently multiply your stats",
+        ],
         "commands": ["/codex"],
         "image": CODEX_HUB,
         "grant": _grant_level_80,
     },
     {
         "level": 90,
-        "title": "Apex Hunts",
+        "title": "The Edge of Everything",
         "reward_desc": "500,000 Gold",
-        "systems": ["Apex Hunt"],
-        "commands": ["/apex"],
+        "systems": [
+            "Apex Hunts — fight escalating Apex monsters for exclusive meta shards and rewards",
+            "Soul System — collect Soul Cores from Apex hunts to power permanent soul upgrades",
+        ],
+        "commands": ["/apex", "/soul"],
         "image": APEX_HUB,
         "grant": _grant_level_90,
     },
@@ -233,7 +280,10 @@ MILESTONES = [
         "level": 100,
         "title": "Pinnacle",
         "reward_desc": "1 Pinnacle Key",
-        "systems": ["Corrupted Monsters", "Ascent Mode"],
+        "systems": [
+            "Corrupted Monsters — high-danger combat encounters with corrupted drops",
+            "Ascent Mode — climb numbered floors for permanent stat bonuses; Evelynn (final Uber) unlocked",
+        ],
         "commands": ["/ascent"],
         "image": CORRUPTION_GATE,
         "grant": _grant_level_100,

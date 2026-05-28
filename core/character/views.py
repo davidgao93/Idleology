@@ -7,6 +7,7 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 from discord.ui import Button, Modal, Select, TextInput
 
 from core.base_view import BaseView
+from core.character.tutorial import TutorialView
 from core.images import DEFAULT_SILHOUETTE
 
 
@@ -180,9 +181,17 @@ class RegistrationView(BaseView):
             "Each milestone unlocks new systems and grants valuable items — start there first!"
         )
 
-        await self.message.edit(embed=embed, view=None)
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
+        # Hand off to the tutorial. State remains locked until the tutorial
+        # finishes or times out — TutorialView clears it on _on_finish / on_timeout.
+        tutorial = TutorialView(
+            self.bot,
+            self.user_id,
+            str(interaction.guild.id),
+            finish_embed=embed,
+        )
+        tutorial.message = self.message
+        await self.message.edit(embed=tutorial.build_embed(), view=tutorial)
+        self.stop()  # RegistrationView is done; do NOT clear state here
 
 
 class IdeologyModal(Modal, title="Choose Your Path"):

@@ -37,14 +37,26 @@ _DIFFICULTY_CRIT_CHANCE = [0.0, 0.15, 0.20, 0.30, 0.50]
 def calculate_damage_taken(player: Player, monster: Monster) -> int:
     """Raw monster damage before PDR/FDR.
     Guaranteed base from monster level, amplified/dampened by stat surplus.
-    Difficulty mode scales the surplus multiplier (Hard ×1.2 … Delirious ×1.5)."""
+    Difficulty mode scales the surplus multiplier (Hard ×1.2 … Delirious ×1.5).
+
+    Rookie shield: players below level 50 receive at most (player.level − 2) damage
+    per hit, floored at 1.  Cap starts at 1 (levels 1–3) and rises by +1 per level,
+    reaching the uncapped formula at level 50."""
     p_def = max(player.get_total_defence(), 1)
-    base_raw = 5 + monster.level * 1.5
+    base_raw = monster.level * 1.5
     surplus = (monster.effective_attack - p_def) / p_def
     surplus = max(-0.95, surplus)
     surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
     raw = base_raw * (1.0 + surplus * surplus_mult)
-    return max(1, int(raw * random.uniform(*_DMG_VARIANCE)))
+    dmg = max(1, int(raw * random.uniform(*_DMG_VARIANCE)))
+
+    # Rookie damage shield: levels 1–3 cap at 1; each level above 3 raises by 1.
+    # Removed entirely at level 50 where the normal formula takes over.
+    if player.level < 50:
+        rookie_cap = max(1, player.level - 2)
+        dmg = min(rookie_cap, dmg)
+
+    return dmg
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +74,8 @@ def roll_monster_damage(
     """Rolls a single monster damage hit including modifiers, PDR, FDR, and minions.
     Returns (total_damage, pre_reduction_damage, base_damage, minion_damage).
     pre_reduction_damage = raw damage after all monster modifiers but BEFORE player PDR/FDR.
-    Used by Thorns to reflect the true incoming hit rather than the post-mitigation value."""
+    Used by Thorns to reflect the true incoming hit rather than the post-mitigation value.
+    """
     m_atk = monster.effective_attack
     # Onslaught boosts the monster's effective ATK for this calculation
     if monster.has_modifier("Onslaught"):
@@ -120,7 +133,9 @@ def roll_monster_damage(
         monster.damage_increased_pct += 2.0
         calc_notes.append("hells_fury+200%")
 
-    if monster.has_modifier("Spectral") and random.random() < monster.get_modifier_value("Spectral"):
+    if monster.has_modifier(
+        "Spectral"
+    ) and random.random() < monster.get_modifier_value("Spectral"):
         monster.damage_increased_pct += 1.0
         calc_notes.append("spectral+100% (proc)")
 
@@ -141,7 +156,9 @@ def roll_monster_damage(
         base_crit_chance += monster.get_modifier_value("Lethal")
     # Volatile Spikes: each spike stack adds v to monster crit chance
     if monster.has_modifier("Volatile Spikes") and monster.spike_stacks > 0:
-        spikes_bonus = monster.spike_stacks * monster.get_modifier_value("Volatile Spikes")
+        spikes_bonus = monster.spike_stacks * monster.get_modifier_value(
+            "Volatile Spikes"
+        )
         base_crit_chance += spikes_bonus
         calc_notes.append(f"volatile_spikes crit+{spikes_bonus:.3f}")
     # Difficulty: flat bonus to crit chance (all sources sum together)
@@ -151,9 +168,13 @@ def roll_monster_damage(
         calc_notes.append(f"difficulty_crit+{diff_crit*100:.0f}%")
     crit_roll = random.random()
     is_monster_crit = crit_roll < base_crit_chance
-    calc_notes.append(f"mon_crit: {base_crit_chance*100:.1f}% roll={crit_roll:.4f} → {'CRIT' if is_monster_crit else 'no crit'}")
+    calc_notes.append(
+        f"mon_crit: {base_crit_chance*100:.1f}% roll={crit_roll:.4f} → {'CRIT' if is_monster_crit else 'no crit'}"
+    )
     if is_monster_crit:
-        crit_mult = 1.5   # Base monster crit multiplier (reduced from 2.0 for better balance)
+        crit_mult = (
+            1.5  # Base monster crit multiplier (reduced from 2.0 for better balance)
+        )
         if monster.has_modifier("Devastating"):
             crit_mult += monster.get_modifier_value("Devastating")
         dmg = int(dmg * crit_mult)
@@ -171,16 +192,24 @@ def roll_monster_damage(
         # Build a breakdown of what contributed to the increased damage pool *for this hit*
         inc_sources = []
         if monster.has_modifier("Savage"):
-            inc_sources.append(f"Savage+{monster.get_modifier_value('Savage')*100:.0f}%")
+            inc_sources.append(
+                f"Savage+{monster.get_modifier_value('Savage')*100:.0f}%"
+            )
         if monster.has_modifier("Enraged"):
             enrage_val = monster.get_modifier_value("Enraged")
             hp_lost = 1.0 - (monster.hp / monster.max_hp) if monster.max_hp > 0 else 0.0
             enrage_stacks = min(3, int(hp_lost / 0.25))
             if enrage_stacks > 0:
-                inc_sources.append(f"Enraged+{enrage_val*enrage_stacks*100:.0f}% ({enrage_stacks} stacks)")
+                inc_sources.append(
+                    f"Enraged+{enrage_val*enrage_stacks*100:.0f}% ({enrage_stacks} stacks)"
+                )
         if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
-            wr_val = monster.wrathful_stacks * monster.get_modifier_value("Wrathful Retaliation")
-            inc_sources.append(f"Wrathful+{wr_val*100:.0f}% ({monster.wrathful_stacks} stacks)")
+            wr_val = monster.wrathful_stacks * monster.get_modifier_value(
+                "Wrathful Retaliation"
+            )
+            inc_sources.append(
+                f"Wrathful+{wr_val*100:.0f}% ({monster.wrathful_stacks} stacks)"
+            )
         if monster.undying_atk_boost_turns > 0:
             inc_sources.append("Undying+100%")
         if getattr(monster, "zone_dmg_boost", 0.0) > 0:
@@ -199,7 +228,7 @@ def roll_monster_damage(
             if monster.has_modifier("Inevitable"):
                 more_note = " (from Inevitable 50% less damage)"
             else:
-                more_note = f" (from other more/less source)"
+                more_note = " (from other more/less source)"
 
         calc_notes.append(
             f"unified_dmg_mult×{total_dmg_mult:.2f} "
@@ -304,11 +333,13 @@ def calc_crit_damage(
     if monster.has_modifier("Nullifying"):
         null_val = monster.get_modifier_value("Nullifying")
         crit_mult = player.get_weapon_crit_multi() * (1 - null_val)
-        log.append(f"The **Nullifying** aura dampens your critical hit! (×{crit_mult:.2f})")
+        log.append(
+            f"The **Nullifying** aura dampens your critical hit! (×{crit_mult:.2f})"
+        )
         calc_dmg_notes.append(f"nullifying×{crit_mult:.2f}")
 
     if player.chapter_crit_dmg_reduction > 0:
-        crit_mult *= (1 - player.chapter_crit_dmg_reduction)
+        crit_mult *= 1 - player.chapter_crit_dmg_reduction
         calc_dmg_notes.append(f"chapter_dull×{crit_mult:.2f}")
 
     # Roll within the crit range, then multiply by crit_mult.
@@ -326,7 +357,9 @@ def calc_crit_damage(
     else:
         rolled = random.randint(safe_min, base_max)
         base_dmg = int(rolled * crit_mult)
-        calc_dmg_notes.append(f"range=[{safe_min}–{base_max}] rolled={rolled} ×{crit_mult:.2f}={base_dmg}")
+        calc_dmg_notes.append(
+            f"range=[{safe_min}–{base_max}] rolled={rolled} ×{crit_mult:.2f}={base_dmg}"
+        )
 
     cat_bonus = _je.apply_cataclysm_crit_bonus(player)
     if cat_bonus > 0:
@@ -340,6 +373,7 @@ def calc_crit_damage(
             get_chain_reaction_crit_bonus,
             get_executioners_rite_bonus,
         )
+
         cr_bonus = get_chain_reaction_crit_bonus(player)
         if cr_bonus > 0:
             base_dmg = int(base_dmg * (1 + cr_bonus))
@@ -367,7 +401,11 @@ def calc_crit_damage(
         player.voracious_stacks = 0
 
     void_passive = player.get_accessory_void_passive()
-    if void_passive == "void_gaze" and player.gaze_stacks < 30 and monster.effective_attack > 0:
+    if (
+        void_passive == "void_gaze"
+        and player.gaze_stacks < 30
+        and monster.effective_attack > 0
+    ):
         player.gaze_stacks += 1
         reduction = max(1, int(monster.effective_attack * 0.03))
         monster.flat_attack_reduction += reduction
@@ -460,7 +498,9 @@ def calc_hit_damage(
     floor_note = ""
     if floor_pct > 0:
         base_min = max(1, int(base_max * floor_pct))
-        floor_note = f" floor_min={base_min}({'+'.join(floor_parts)}={int(floor_pct*100)}%)"
+        floor_note = (
+            f" floor_min={base_min}({'+'.join(floor_parts)}={int(floor_pct*100)}%)"
+        )
 
     rolled = random.randint(min(base_min, base_max), base_max)
     damage = int(rolled * attack_multiplier)

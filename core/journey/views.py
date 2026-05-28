@@ -62,7 +62,7 @@ def _build_milestone_embed(
             inline=True,
         )
 
-    embed.set_image(url=milestone["image"])
+    embed.set_thumbnail(url=milestone["image"])
     embed.set_footer(text=f"Your Level: {player_level}")
     return embed
 

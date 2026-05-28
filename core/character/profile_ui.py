@@ -533,8 +533,8 @@ class ProfileBuilder:
         embed.add_field(
             name="🔑 **Boss Items**",
             value=(
-                f"🐉 Draconic Keys: {user[25]}\n🪽 Angelic Keys: {user[26]}\n🟣 Void Frags: {user[29]}\n"
-                f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {user[28]}"
+                f"🐉 Draconic Keys: {user[27]}\n🪽 Angelic Keys: {user[28]}\n🟣 Void Frags: {user[31]}\n"
+                f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {user[30]}"
             ),
             inline=True,
         )
@@ -572,8 +572,8 @@ class ProfileBuilder:
         embed.add_field(
             name="💎 **Runes**",
             value=(
-                f"🔨 Refinement: {user[19]}\n✨ Potential: {user[21]}\n🔮 Imbuing: {user[27]}\n"
-                f"💥 Shatter: {user[31]}\n🤝 Partnership: {r_partner}\n"
+                f"🔨 Refinement: {user[19]}\n✨ Potential: {user[21]}\n🔮 Imbuing: {user[29]}\n"
+                f"💥 Shatter: {user[33]}\n🤝 Partnership: {r_partner}\n"
                 f"🪞 Mirage (Imperfect): {mirage_imp}\n🪞 Mirage (Perfected): {mirage_perf}"
             ),
             inline=True,
@@ -581,7 +581,7 @@ class ProfileBuilder:
 
         embed.add_field(
             name="🗝️ **Void Keys**",
-            value=f"🗝️ Void Keys: {user[30]}",
+            value=f"🗝️ Void Keys: {user[32]}",
             inline=True,
         )
 
@@ -790,7 +790,7 @@ class ProfileBuilder:
         if settlement and settlement.last_collection_time:
             try:
                 s_last = datetime.fromisoformat(settlement.last_collection_time)
-                blocks = int((datetime.now() - s_last).total_seconds() // 3600)
+                blocks = max(0, int((datetime.now() - s_last).total_seconds() // 3600))
                 horizon_lines.append(
                     f"🏭 **Settlement** — {blocks} block(s) of production completed"
                 )

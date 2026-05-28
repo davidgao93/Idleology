@@ -41,13 +41,24 @@ class UberHubView(BaseView):
         self.message = None
         self._build_buttons()
 
+    # Minimum level required per boss
+    _BOSS_LEVELS = {
+        "aphrodite": 20,
+        "lucifer": 30,
+        "gemini": 40,
+        "neet": 50,
+        "evelynn": 100,
+    }
+
     def _build_buttons(self):
         self.clear_items()
+        lvl = self.player.level
 
         btn_aphro = ui.Button(
             label="Aphrodite",
             style=ButtonStyle.blurple,
             emoji="🌌",
+            disabled=lvl < self._BOSS_LEVELS["aphrodite"],
             row=0,
         )
         btn_aphro.callback = self.open_aphrodite
@@ -57,33 +68,37 @@ class UberHubView(BaseView):
             label="Lucifer",
             style=ButtonStyle.danger,
             emoji="🔥",
+            disabled=lvl < self._BOSS_LEVELS["lucifer"],
             row=0,
         )
         btn_lucifer.callback = self.open_lucifer
         self.add_item(btn_lucifer)
 
-        btn_neet = ui.Button(
-            label="NEET",
-            style=ButtonStyle.secondary,
-            emoji="⬛",
-            row=0,
-        )
-        btn_neet.callback = self.open_neet
-        self.add_item(btn_neet)
-
         btn_gemini = ui.Button(
             label="Gemini",
             style=ButtonStyle.blurple,
             emoji="♊",
+            disabled=lvl < self._BOSS_LEVELS["gemini"],
             row=0,
         )
         btn_gemini.callback = self.open_gemini
         self.add_item(btn_gemini)
 
+        btn_neet = ui.Button(
+            label="NEET",
+            style=ButtonStyle.secondary,
+            emoji="⬛",
+            disabled=lvl < self._BOSS_LEVELS["neet"],
+            row=0,
+        )
+        btn_neet.callback = self.open_neet
+        self.add_item(btn_neet)
+
         btn_evelynn = ui.Button(
             label="Evelynn",
             style=ButtonStyle.danger,
             emoji="☠️",
+            disabled=lvl < self._BOSS_LEVELS["evelynn"],
             row=1,
         )
         btn_evelynn.callback = self.open_evelynn
@@ -91,10 +106,10 @@ class UberHubView(BaseView):
 
         btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=2)
         btn_close.callback = self.close_view
-
         self.add_item(btn_close)
 
     def build_embed(self) -> discord.Embed:
+        lvl = self.player.level
         embed = discord.Embed(
             title="⚔️ Uber Encounters",
             description=(
@@ -105,43 +120,59 @@ class UberHubView(BaseView):
             color=discord.Color.dark_gold(),
         )
         embed.set_thumbnail(url=UBER_HUB)
+
+        def _boss_field(name: str, flavor: str, key_text: str, req_lvl: int) -> str:
+            if lvl >= req_lvl:
+                return f"{flavor}\n**Keys:** {key_text}"
+            return f"🔒 Unlocks at Level {req_lvl}"
+
         embed.add_field(
             name="🌌 Aphrodite, Celestial Sovereign",
-            value=(
-                f"Aphrodite's fury has been unleashed.\n"
-                f"**Keys:** {self.uber_data['celestial_sigils']} Celestial Sigils *(costs 3)*"
+            value=_boss_field(
+                "aphrodite",
+                "Aphrodite's fury has been unleashed.",
+                f"{self.uber_data['celestial_sigils']} Celestial Sigils *(costs 3)*",
+                self._BOSS_LEVELS["aphrodite"],
             ),
             inline=False,
         )
         embed.add_field(
             name="🔥 Lucifer, Infernal Sovereign",
-            value=(
-                f"Lucifer's fury knows no bounds.\n"
-                f"**Keys:** {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*"
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="⬛ NEET, Void Sovereign",
-            value=(
-                f"NEET's pain has no known depths.\n"
-                f"**Keys:** {self.uber_data['void_shards']} Void Sigils *(costs 3)*"
+            value=_boss_field(
+                "lucifer",
+                "Lucifer's fury knows no bounds.",
+                f"{self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*",
+                self._BOSS_LEVELS["lucifer"],
             ),
             inline=False,
         )
         embed.add_field(
             name="♊ Castor & Pollux, Bound Sovereigns",
-            value=(
-                f"The Gemini's balance is absolute.\n"
-                f"**Keys:** {self.uber_data['gemini_sigils']} Gemini Sigils *(costs 3)*"
+            value=_boss_field(
+                "gemini",
+                "The Gemini's balance is absolute.",
+                f"{self.uber_data['gemini_sigils']} Gemini Sigils *(costs 3)*",
+                self._BOSS_LEVELS["gemini"],
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="⬛ NEET, Void Sovereign",
+            value=_boss_field(
+                "neet",
+                "NEET's pain has no known depths.",
+                f"{self.uber_data['void_shards']} Void Sigils *(costs 3)*",
+                self._BOSS_LEVELS["neet"],
             ),
             inline=False,
         )
         embed.add_field(
             name="☠️ Evelynn, the Primordial Corruptor",
-            value=(
-                f"The source of all corruption stirs.\n"
-                f"**Keys:** {self.uber_data['corruption_sigils']} Sigils of Corruption *(costs 3)*"
+            value=_boss_field(
+                "evelynn",
+                "The source of all corruption stirs.",
+                f"{self.uber_data['corruption_sigils']} Sigils of Corruption *(costs 3)*",
+                self._BOSS_LEVELS["evelynn"],
             ),
             inline=False,
         )

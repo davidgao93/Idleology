@@ -151,7 +151,7 @@ class QuestBoardView(BaseView):
                     value=(
                         f"{path_def['description']}\n"
                         f"**Progress:** {progress}/{goal}\n"
-                        f"**Reward:** {path_def['token_reward']} Quest Tokens + special loot"
+                        f"**Reward:** {path_def['token_reward']} Quest Tokens + {path_def.get('loot_preview', 'special loot')}"
                     ),
                     inline=False,
                 )
@@ -617,8 +617,8 @@ class _AbandonSelect(discord.ui.Select):
 class _HorizonSelect(discord.ui.Select):
     def __init__(self, player_level: int, current_horizon, row: int):
         options = []
-        for path_id, path_def in HORIZON_PATHS.items():
-            available = player_level >= path_def["level_required"]
+        sorted_paths = sorted(HORIZON_PATHS.items(), key=lambda x: x[1]["level_required"])
+        for path_id, path_def in sorted_paths:
             label = path_def["name"][:50]
             desc = f"Lv.{path_def['level_required']} req  |  {path_def['token_reward']} tokens"
             options.append(

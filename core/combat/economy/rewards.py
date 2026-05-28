@@ -59,7 +59,7 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     acc_lvl = player.equipped_accessory.passive_lvl if player.equipped_accessory else 0
 
     # ── Shared bonuses — computed once ──────────────────────────────────────
-    affluence_pct = player.get_tome_bonus("affluence")        # e.g. 15 → 0.15
+    affluence_pct = player.get_tome_bonus("affluence")  # e.g. 15 → 0.15
     in_vault = getattr(player.cs, "apex_zone", None) == "vault"
 
     # Midas soul-stone resonance
@@ -67,6 +67,7 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     midas_gold_frac = 0.0
     if player.soul_stone:
         from core.apex.mechanics import ApexMechanics
+
         res = ApexMechanics.get_resonance_multipliers(player.soul_stone)
         if res["xp_bonus_pct"] > 0:
             midas_xp_frac = res["xp_bonus_pct"] / 100
@@ -109,9 +110,7 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     if acc_passive == "Infinite Wisdom":
         if random.random() < acc_lvl * INFINITE_WISDOM_CHANCE_PER_LEVEL:
             xp_additive += 1.0
-            results["msgs"].append(
-                f"**Infinite Wisdom ({acc_lvl})** grants +100% XP!"
-            )
+            results["msgs"].append(f"**Infinite Wisdom ({acc_lvl})** grants +100% XP!")
 
     results["xp"] = int(base_xp * (1 + xp_additive))
 
@@ -139,13 +138,13 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         reward_scale = max(0, (monster.level - player.level) / 10)
 
     gold_base = int(
-        (monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale ** 1.3))
+        (monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale**1.3))
     )
 
     # Rarity — sole multiplicative step, applied first
     rarity = player.get_total_rarity()
     if rarity > 0:
-        gold_base = int(gold_base * (1 + (rarity ** 0.5) / GOLD_RARITY_DENOMINATOR))
+        gold_base = int(gold_base * (1 + (rarity**0.5) / GOLD_RARITY_DENOMINATOR))
 
     gold_base += GOLD_BASE_FLAT
 
@@ -260,14 +259,21 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
                         drops[item] = True
                 break
 
-        for item in ["spirit_stone", "antique_tome", "pinnacle_key"]:
+        if player.level >= 30:
             if random.random() < rare_chance:
-                drops[item] = True
+                drops["spirit_stone"] = True
 
         if player.level >= 60:
             for item in ["blessed_bismuth", "sparkling_sprig", "capricious_carp"]:
                 if random.random() < rare_chance:
                     drops[item] = True
+        if player.level >= 80:
+            if random.random() < rare_chance:
+                drops["antique_tome"] = True
+
+        if player.level >= 100:
+            if random.random() < rare_chance:
+                drops["pinnacle_key"] = True
 
         return drops
 
@@ -312,15 +318,6 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         if random.random() < GUILD_TICKET_BASE_CHANCE + special_drop_chance:
             drops["guild_ticket"] = True
 
-    # ── Spirit Stone — now uses full special_drop_chance (incl. difficulty) ─
-    if random.random() < SPIRIT_STONE_BASE_CHANCE + special_drop_chance:
-        drops["spirit_stone"] = True
-
-    # ── Level-less common material drops ─────────────────────────────────────
-    for item in ("magma_core", "life_root", "spirit_shard"):
-        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
-            drops[item] = True
-
     # ── Level-gated drops ────────────────────────────────────────────────────
     if player.level >= 20:
         for item in ("draconic_key", "angelic_key", "shatter_rune"):
@@ -333,6 +330,8 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     if player.level >= 30:
         if random.random() < SOUL_CORE_BASE_CHANCE + special_drop_chance:
             drops["soul_core"] = True
+        if random.random() < SPIRIT_STONE_BASE_CHANCE + special_drop_chance:
+            drops["spirit_stone"] = True
 
     if player.level >= 40:
         if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
@@ -344,12 +343,23 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         for item in ("unidentified_blueprint", "diviners_rod"):
             if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
                 drops[item] = True
+        for item in ("magma_core", "life_root", "spirit_shard"):
+            if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+                drops[item] = True
 
     if player.level >= 60:
         elemental_chance = SPECIAL_DROP_BASE_CHANCE + special_drop_chance
         for item in ("blessed_bismuth", "sparkling_sprig", "capricious_carp"):
             if random.random() < elemental_chance:
                 drops[item] = True
+
+    if player.level >= 80:
+        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+            drops["antique_tome"] = True
+
+    if player.level >= 100:
+        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+            drops["pinnacle_key"] = True
 
     return drops
 

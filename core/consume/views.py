@@ -523,6 +523,9 @@ class ConsumeView(BaseView):
                 self.remove_item(item)
         if self.inventory_parts:
             self.add_item(PartSelect(self.inventory_parts))
+        # Gate Hematurgy button until level 50
+        if hasattr(self, "hematurgy"):
+            self.hematurgy.disabled = self.player.level < 50
 
     def build_embed(self) -> discord.Embed:
         return _build_main_embed(self.player, self.inventory)
