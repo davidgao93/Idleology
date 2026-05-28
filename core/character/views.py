@@ -10,6 +10,31 @@ from core.base_view import BaseView
 from core.images import DEFAULT_SILHOUETTE
 
 
+_CLASS_DESCRIPTIONS = {
+    "Artificer": "Inventor of arcane machinery",
+    "Barb": "Primal warrior of raw fury",
+    "Bard": "Weaver of music and magic",
+    "Cleric": "Devout wielder of divine power",
+    "Druid": "Guardian of nature's balance",
+    "Fighter": "Seasoned veteran of countless battles",
+    "Monk": "Master of mind and body",
+    "Mystic": "Seeker of hidden knowledge",
+    "Paladin": "Holy champion of justice",
+    "Ranger": "Scout of the untamed wilds",
+    "Rogue": "Shadow walker and opportunist",
+    "Rune": "Inscriber of ancient rune magic",
+    "Sorc": "Channeler of raw magical power",
+    "Warlock": "Bound to a dark patron",
+    "Wizard": "Scholar of the arcane arts",
+    "Dragonborn": "Bearer of draconic heritage",
+    "Drow": "Child of the sunless depths",
+    "Elf": "Ancient and graceful forest dweller",
+    "ElfMage": "Elven master of the arcane",
+    "Gnome": "Small but endlessly inventive",
+    "Orc": "Powerful warrior of ancestral pride",
+}
+
+
 class RegistrationView(BaseView):
     """
     Step 1: Gender Selection (Buttons)
@@ -30,7 +55,7 @@ class RegistrationView(BaseView):
                 reader = csv.DictReader(file)
                 for row in reader:
                     if row["Sex"].upper() == gender_code:
-                        apps.append(row["URL"])
+                        apps.append((row["Class"], row["URL"]))
         except Exception:
             pass
         return apps
@@ -47,42 +72,47 @@ class RegistrationView(BaseView):
 
     async def process_gender(self, interaction: Interaction, gender: str):
         self.gender = gender
-        urls = self._load_appearances(gender)
+        portraits = self._load_appearances(gender)
 
-        self.clear_items()  # Clear gender buttons
+        self.clear_items()
 
-        if not urls:
-            # Fallback if no images found
+        if not portraits:
             self.appearance_url = DEFAULT_SILHOUETTE
-            # Skip straight to modal button if no images
             confirm_btn = Button(label="Confirm Setup", style=ButtonStyle.success)
             confirm_btn.callback = self.on_confirm_appearance
             self.add_item(confirm_btn)
             await interaction.response.edit_message(view=self)
             return
 
-        # 1. Default to first image
-        self.appearance_url = urls[0]
+        self.appearance_url = portraits[0][1]
 
-        # 2. Build Select Menu
         options = []
-        for i, url in enumerate(urls[:25]):
-            options.append(SelectOption(label=f"Portrait {i+1}", value=url))
+        for class_name, url in portraits[:25]:
+            desc = _CLASS_DESCRIPTIONS.get(class_name, "A unique portrait")
+            options.append(SelectOption(label=class_name, value=url, description=desc))
 
-        select = Select(placeholder="Preview Appearance...", options=options)
-        select.callback = self.on_select_appearance  # Updates preview only
+        select = Select(placeholder="Choose your portrait...", options=options)
+        select.callback = self.on_select_appearance
         self.add_item(select)
 
-        # 3. Build Confirm Button
-        confirm_btn = Button(
-            label="Confirm Appearance", style=ButtonStyle.success, row=1
-        )
-        confirm_btn.callback = self.on_confirm_appearance  # Moves to next step
+        other_gender = "F" if gender == "M" else "M"
+        other_label = "Switch to Female" if gender == "M" else "Switch to Male"
+        other_emoji = "♀️" if gender == "M" else "♂️"
+
+        async def _switch_cb(i: Interaction):
+            await self.process_gender(i, other_gender)
+
+        switch_btn = Button(label=other_label, emoji=other_emoji, style=ButtonStyle.secondary, row=1)
+        switch_btn.callback = _switch_cb
+        self.add_item(switch_btn)
+
+        confirm_btn = Button(label="Confirm Appearance", style=ButtonStyle.success, row=1)
+        confirm_btn.callback = self.on_confirm_appearance
         self.add_item(confirm_btn)
 
-        # 4. Update Embed to show first image immediately
+        gender_label = "Male" if gender == "M" else "Female"
         embed = interaction.message.embeds[0]
-        embed.description = f"Gender: **{'Male' if gender == 'M' else 'Female'}**\nSelect an appearance from the menu to preview it."
+        embed.description = f"Gender: **{gender_label}**\nSelect a portrait from the menu to preview it."
         embed.set_image(url=self.appearance_url)
 
         await interaction.response.edit_message(embed=embed, view=self)
@@ -150,16 +180,25 @@ class RegistrationView(BaseView):
             "Each milestone unlocks new systems and grants valuable items — start there first!"
         )
 
-        # Clear buttons
-        await interaction.response.edit_message(embed=embed, view=None)
+        await self.message.edit(embed=embed, view=None)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
 
 class IdeologyModal(Modal, title="Choose Your Path"):
+    context = TextInput(
+        label="What is an ideology?",
+        style=discord.TextStyle.paragraph,
+        default=(
+            "Your ideology is the creed you carry into the world. "
+            "Name it, spread it, and recruit followers. "
+            "Others can join your cause — or found their own."
+        ),
+        required=False,
+    )
     ideology = TextInput(
         label="Ideology Name",
-        placeholder="e.g. The Order of Code",
+        placeholder="e.g. The Order of the Flame",
         max_length=24,
         required=True,
     )

@@ -91,6 +91,17 @@ class PostCombatView(BaseView):
             btn.callback = self._fight_again
             self.add_item(btn)
 
+    async def on_timeout(self) -> None:
+        """Expire the Fight Again button without touching active state.
+        The player was already freed at victory time; calling clear_active here
+        would incorrectly interrupt any new fight they started within this window."""
+        if self.message:
+            try:
+                await self.message.edit(view=None)
+            except (discord.NotFound, discord.HTTPException):
+                pass
+        self.stop()
+
     async def _fight_again(self, interaction: Interaction):
         # Synchronous guard — assigned before the first await, so the event loop
         # cannot schedule a second invocation while this one is still running.
@@ -110,12 +121,14 @@ class PostCombatView(BaseView):
             await interaction.followup.send(
                 "You're already in an activity.", ephemeral=True
             )
+            self.stop()  # View is unusable (buttons disabled); stop to cancel the timeout.
             return
 
         # Re-fetch user and reload player so any changes (rest, gear swaps, etc.) are reflected.
         existing_user = await self.bot.database.users.get(self.user_id, self.server_id)
         if existing_user["combat_stamina"] <= 0:
             await interaction.followup.send("No stamina remaining!", ephemeral=True)
+            self.stop()
             return
 
         fresh_player = await load_player(self.user_id, existing_user, self.bot.database)
@@ -295,6 +308,11 @@ class CombatView(BaseView):
 
         self.update_buttons()
 
+        # Free Yourself is only relevant during a Verdant Colossus encounter.
+        # Remove it entirely for every other fight so it never appears.
+        if "Verdant Colossus" not in monster.name:
+            self.remove_item(self.free_yourself_btn)
+
     async def on_timeout(self):
         # Only trigger flee logic if the fight is still active
         if self.player.current_hp > 0 and self.monster.hp > 0:
@@ -327,35 +345,26 @@ class CombatView(BaseView):
         for child in self.children:
             child.disabled = is_over or self._auto_running
 
-        # Verdant Snare handling (Artisan Mastery prestige boss or any source of the modifier)
-        # Only the Verdant Colossus currently applies it, but we detect via flag + modifier for robustness.
-        verdant_snare_active = False
-        if is_snared:
-            if getattr(self.monster, "prestige_boss_type", None) == "colossus":
-                verdant_snare_active = True
-            else:
-                mods = getattr(self.monster, "modifiers", []) or []
-                verdant_snare_active = any(
-                    getattr(m, "name", "") == "Verdant Snare" for m in mods
-                )
-
-        if verdant_snare_active:
-            # Player is snared — only "Free Yourself" is usable. Lock everything else.
-            self.attack_btn.disabled = True
-            self.heal_btn.disabled = True
-            self.flee_btn.disabled = True
-            self.auto_btn.disabled = True
-            if hasattr(self, "fast_auto_btn"):
+        # Free Yourself is only in self.children during Verdant Colossus encounters
+        # (removed in __init__ for all other fights).
+        snare_locks_combat = False
+        if self.free_yourself_btn in self.children:
+            if is_snared and not is_over and not self._auto_running:
+                # Player is snared — only Free Yourself is usable, lock everything else.
+                self.attack_btn.disabled = True
+                self.heal_btn.disabled = True
+                self.flee_btn.disabled = True
+                self.auto_btn.disabled = True
                 self.fast_auto_btn.disabled = True
-            if hasattr(self, "free_yourself_btn"):
                 self.free_yourself_btn.disabled = False
-        else:
-            if hasattr(self, "free_yourself_btn"):
+                snare_locks_combat = True
+            else:
                 self.free_yourself_btn.disabled = True
 
-        # Always update potion count on the heal button label
+        # Always update potion count on the heal button label.
+        # Re-enable heal normally if combat is ongoing and player isn't locked by a snare.
         self.heal_btn.label = f"Heal ({self.player.potions}/20)"
-        if not is_over and not self._auto_running and not verdant_snare_active:
+        if not is_over and not self._auto_running and not snare_locks_combat:
             self.heal_btn.disabled = self.player.potions <= 0
 
     def _do_monster_turn(self, *, context_note: str = "") -> str:
@@ -485,7 +494,7 @@ class CombatView(BaseView):
 
                 self._apply_phase_image_transition()
                 embed = combat_ui.create_combat_embed(
-                    self.player, self.monster, self.logs
+                    self.player, self.monster, self.logs, compact=True
                 )
                 await message.edit(embed=embed, view=self)
                 await asyncio.sleep(1.0)
@@ -772,6 +781,9 @@ class CombatView(BaseView):
 
         # Lucifer: soul core choice view takes over the interaction
         if "Lucifer" in self.monster.name:
+            self.bot.state_manager.clear_active(self.user_id)
+            await self.bot.database.users.update_from_player_object(self.player)
+            await _je.save_jewel_state(self.bot, self.user_id, self.player)
             ping_msg = await message.channel.send(
                 f"<@{self.user_id}> A Soul Core has manifested — make your choice!\n\n"
                 f"Battle: {message.jump_url}"
@@ -782,16 +794,21 @@ class CombatView(BaseView):
             )
             await message.edit(embed=embed, view=contract_choice_view)
             contract_choice_view.message = message
+            self.stop()
             return  # LuciferChoiceView takes over
 
         # Prestige Gathering Boss (Artisan Mastery Phase 2) — custom harvest view
         prestige_type = getattr(self.monster, "prestige_boss_type", None)
         if prestige_type in ("golem", "leviathan", "colossus"):
+            self.bot.state_manager.clear_active(self.user_id)
+            await self.bot.database.users.update_from_player_object(self.player)
+            await _je.save_jewel_state(self.bot, self.user_id, self.player)
             harvest_view = PrestigeBossHarvestView(
                 self.bot, self.user_id, self.server_id, self.player, self.monster, prestige_type, self.rematch_callback
             )
             await message.edit(embed=embed, view=harvest_view)
             harvest_view.message = message
+            self.stop()
             return  # Harvest view takes over the interaction
 
         # Soulreap: restore HP to full after every successful encounter
@@ -865,6 +882,8 @@ class CombatView(BaseView):
                     else None
                 )
                 await msg.edit(embed=_victory_embed, view=post_view)
+                if post_view:
+                    post_view.message = msg
 
             picker = StatPackagePicker(
                 self.bot,
@@ -893,4 +912,6 @@ class CombatView(BaseView):
         )
 
         await message.edit(embed=embed, view=post_view)
+        if post_view:
+            post_view.message = message
         self.stop()

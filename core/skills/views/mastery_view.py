@@ -19,6 +19,13 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
+from core.images import (
+    ARTISAN_MASTERY_HUB,
+    ARTISAN_MASTERY_ATTUNEMENT,
+    MASTERY_MINING,
+    MASTERY_FISHING,
+    MASTERY_WOODCUTTING,
+)
 from core.skills.mastery import (
     NODE_LABELS,
     get_tree,
@@ -118,15 +125,22 @@ class ArtisanMasteryHubView(BaseView):
         return cb
 
     async def back_callback(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         if self.parent_view:
+            # Unlock the gather view's guard before handing control back
+            self.parent_view._processing = False
             await self.parent_view.refresh_state()
             await interaction.edit_original_response(
                 embed=self.parent_view.get_embed(), view=self.parent_view
             )
         else:
+            # No parent — this was a standalone hub, so fully exit
             await interaction.delete_original_response()
-        self.bot.state_manager.clear_active(self.user_id)
+            self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
     def get_embed(self) -> discord.Embed:
@@ -138,6 +152,7 @@ class ArtisanMasteryHubView(BaseView):
             ),
             color=0x2E8B57,
         )
+        embed.set_thumbnail(url=ARTISAN_MASTERY_HUB)
         embed.set_footer(text="The Black Market is seeking rare gathering materials for trade.")
         return embed
 
@@ -314,6 +329,10 @@ class SkillMasteryView(BaseView):
         return cb
 
     async def back_to_hub_callback(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         if self.parent_view:
             await self.parent_view.refresh()
@@ -481,8 +500,11 @@ class SkillMasteryView(BaseView):
             # This appears even at 0/10 so players know what the extra points do.
             total_cost = get_branch_total_cost(self.skill, branch)
             if progress["invested"] >= total_cost:
-                bonus_inv = progress.get("bonus_invested", 0)
-                branch_lines.append(f"  → Bonus Investment: **{bonus_inv}/10**")
+                # Header is shown in the "next_node == bonus" block when actively investing.
+                # Only show header here if the branch is fully maxed (no longer in "bonus" next_node state).
+                if next_node != "bonus":
+                    bonus_inv = progress.get("bonus_invested", 0)
+                    branch_lines.append(f"  → Bonus Investment: **{bonus_inv}/10**")
 
                 if branch == "yield":
                     current = get_yield_proc_bonus(self.skill, m) * 100
@@ -506,6 +528,16 @@ class SkillMasteryView(BaseView):
             description=desc,
             color=0x2E8B57,
         )
+        # Set skill-specific mastery header image when available
+        skill_img = None
+        if self.skill == "mining":
+            skill_img = MASTERY_MINING
+        elif self.skill == "fishing":
+            skill_img = MASTERY_FISHING
+        elif self.skill == "woodcutting":
+            skill_img = MASTERY_WOODCUTTING
+        if skill_img:
+            embed.set_thumbnail(url=skill_img)
         embed.set_footer(text="Invest in a branch to progress the tree. Nodes unlock automatically at thresholds.")
         return embed
 
@@ -622,6 +654,10 @@ class AttunementView(BaseView):
         return cb
 
     async def back_callback(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         if self.parent_view:
             await self.parent_view.refresh()
@@ -631,7 +667,7 @@ class AttunementView(BaseView):
             )
         else:
             await interaction.delete_original_response()
-        self._processing = False
+        self.stop()
 
     def get_embed(self) -> discord.Embed:
         if not self.mastery_row:
@@ -672,5 +708,6 @@ class AttunementView(BaseView):
             description=desc,
             color=0x2E8B57,
         )
+        embed.set_thumbnail(url=ARTISAN_MASTERY_ATTUNEMENT)
         embed.set_footer(text="Excess points after full mastery convert into Insight (5 pts = 1 Insight).")
         return embed

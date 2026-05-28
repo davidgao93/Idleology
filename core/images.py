@@ -244,3 +244,71 @@ TAVERN_GAMES = "https://cdn.discordapp.com/attachments/1334637411363323996/15005
 TAVERN_ROULETTE = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512946206281738/tavern_roulette.jpeg?ex=69f8b514&is=69f76394&hm=88200c170f94e9f47dc070f2f1b6a9ca67b4aa660170c072c6b7f4580ea73f7d&"
 TAVERN_CASINO = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512946495951030/tavern_casino.jpeg?ex=69f8b514&is=69f76394&hm=652f9b4e7e07797ea6b3c52265bfc0267b742c50051fbbef779ec4c88df0950a&"  # also used in minigames
 DEFAULT_SILHOUETTE = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512946823102566/default_silhouette.jpeg?ex=69f8b514&is=69f76394&hm=31db3a8a07afdcf6563ade9036515d2a727003c11801dd76e6192d75cd19583a&"  # guild/character fallback
+
+# ── ARTISAN MASTERY ───────────────────────────────────────────────────────────
+ARTISAN_MASTERY_HUB = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612091655327875/artisan_mastery_hub.jpg?ex=6a19cf51&is=6a187dd1&hm=0f7c82e6fa80506606fb659dfe1a178ab2bfee2cca3a00855c2dc82a4a9e2137&"
+ARTISAN_MASTERY_ATTUNEMENT = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612091412320534/artisan_mastery_attunement.jpg?ex=6a19cf51&is=6a187dd1&hm=3e650c77bfbbbe7cb45e9d768fe9f38ecf3b33239d85467ac127dfeb3dfb857c&"
+MASTERY_MINING = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612113365045529/mastery_mining.jpg?ex=6a19cf57&is=6a187dd7&hm=20f2a245794a1a4b65f444a09ff8c8cc0743fe7cd9a9c74fa8b6a2741548d71f&"
+MASTERY_FISHING = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612113109323856/mastery_fishing.jpg?ex=6a19cf57&is=6a187dd7&hm=53324220d5025de53987afb06a84a4e2ffd4d1d9be998e995bde28e1c3130ed5&"
+MASTERY_WOODCUTTING = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612112861987067/master_woodcutting.jpg?ex=6a19cf56&is=6a187dd6&hm=75c3a5473e3e56c34cc6801d632f3ba6a67c2bd741bdf92e848cfb2a1fc5e113&"
+
+# ── PRESTIGE GATHERING BOSSES ────────────────────────────────────────────────
+# Fight = used in normal combat encounter
+# Defeat = used in PrestigeBossHarvestView ("Gather Remnants")
+MERIDIAN_GOLEM_FIGHT = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612121774624768/meridian_golem_fight.jpg?ex=6a19cf59&is=6a187dd9&hm=6c2e8a735a0e453edc66d30e39d8322a69f6af0e96314a0e34588d61ee40b998&"
+MERIDIAN_GOLEM_DEFEAT = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612113650384926/meridian_golem_defeat.jpg?ex=6a19cf57&is=6a187dd7&hm=43f2285eff97bfb9b9cb8eec2bb749d2d772ab754b4d179da85fc5a14cce48e0&"
+
+DROWNED_LEVIATHAN_FIGHT = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612093207351407/drowned_leviathan_fight.jpg?ex=6a19cf52&is=6a187dd2&hm=9fb8f1685ad6127708638df003ac1854ef91ec31da7aa0f20d8f07da7546474d&"
+DROWNED_LEVIATHAN_DEFEAT = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612092955689150/drowned_leviathan_defeat.jpg?ex=6a19cf52&is=6a187dd2&hm=93ac6b551e68f7d6d043978af890463332049e1cab2b0d715b0b0e69256b2fee&"
+
+VERDANT_COLOSSUS_FIGHT = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612132952445170/verdant_colossus_fight.jpg?ex=6a19cf5b&is=6a187ddb&hm=495b55c976006ef83661f85d2081f3d3dae036e775e7c4a79a7ba519866de7a0&"
+VERDANT_COLOSSUS_DEFEAT = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612132621357276/verdant_colossus_defeat.jpg?ex=6a19cf5b&is=6a187ddb&hm=a860dfc1d3efddfd271802111d7d06ff385db583c44552836935fee02de4a094&"
+
+# ── APEX MONSTERS ─────────────────────────────────────────────────────────────
+APEX_CINDERBORN_DRAKE = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612092377010176/cinderborn_drake.jpg?ex=6a19cf52&is=6a187dd2&hm=a17a6f1a7cd27f745cef66cbb9054646ac708afa07ba5b62d4a8fd92ba11a7b0&"
+APEX_EMBER_TYRANT = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612093492559942/ember_tyrant.jpg?ex=6a19cf52&is=6a187dd2&hm=0aa906d764a9eac67694201a210d0fcbe688836ec9eacfcdf7a025c7551ef88c&"
+APEX_ASHFALL_COLOSSUS = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612091886272552/ashfall_colossus.jpg?ex=6a19cf51&is=6a187dd1&hm=08b87c249240bba325937eb909c72fc0c7ef16d3248f71c6f044b467e7b7eb58&"
+APEX_MAGMA_HYDRA = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612112585167022/magma_hydra.jpg?ex=6a19cf56&is=6a187dd6&hm=5e47fad8707f145b01efedde70c4d15deebd6b3d45a763552ef1c1e16bd2c565&"
+APEX_PYROCLAST_SPECTER = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612122265620582/pyroclast_specter.jpg?ex=6a19cf59&is=6a187dd9&hm=8718169eb35f17c5f771c5cb2cac7692277b6cad7db5d2b1a98e7f2b955ce988&"
+
+APEX_STORMCALLER_WYRM = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612123767046184/stormcaller_wyrm.jpg?ex=6a19cf59&is=6a187dd9&hm=95c3cfddc10f3a9d83f7eecef3c965613f0bb77cc745cde74d255fc89ff7f1ac&"
+APEX_TEMPEST_SOVEREIGN = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612124039548950/tempest_sovereign.jpg?ex=6a19cf59&is=6a187dd9&hm=37de68ec25b2dfe68d411d89797731d7d84290383c053786a6471697fb8a5e80&"
+APEX_CYCLONE_REVENANT = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612092611887295/cyclone_revenant.jpg?ex=6a19cf52&is=6a187dd2&hm=a9dc8518d64c1723ae48c1e5d266888c2373966eec05ef40a9f8476fb0efd771&"
+APEX_THUNDER_BEHEMOTH = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612131849601277/thunder_behemoth.jpg?ex=6a19cf5b&is=6a187ddb&hm=c932bdacc0b3790f6e1a9f179b32c9d10a9bea2107ffbb4d19b83170ef3d3025&"
+APEX_VOLTAIC_SHADE = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612133732843570/voltaic_shade.jpg?ex=6a19cf5b&is=6a187ddb&hm=0ead831e70cbadb659c71270fedc84af46cf6f9594cfe4303467f2f7b660dc22&"
+
+APEX_SIEGE_MASTER = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612123523780800/siege_master.jpg?ex=6a19cf59&is=6a187dd9&hm=006b7fb03fa570ba05ab83ed22b536d71a6071bde465737539e249d8c0e86d87&"
+APEX_IRON_GOLEM_LORD = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612103726661732/iron_golem_lord.jpg?ex=6a19cf54&is=6a187dd4&hm=356fba25d5dfa3756d95d9771534a0a409466d46795764fc396b9321196d70d8&"
+APEX_WARDEN_OF_IRON = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612133959209200/warden_of_iron.jpg?ex=6a19cf5b&is=6a187ddb&hm=251b65c9a0096b3befcbcf3db0b68ad142021c87c77c34ee8dc80904d28a8c71&"
+APEX_FORTRESS_COLOSSUS = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612102418039076/fortress_colossus.jpg?ex=6a19cf54&is=6a187dd4&hm=e568df5419f54627364df4da12bbbf7e132d16b7863128ca62831d00091f268b&"
+APEX_BASTION_WRAITH = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612092133605640/bastion_wraith.jpg?ex=6a19cf52&is=6a187dd2&hm=8a1b9fa5758506904d4ca3e56401aefdadc899f078639bf42cfb92491e8f607f&"
+
+APEX_GROVE_ANCIENT = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612103474876546/grove_ancient.jpg?ex=6a19cf54&is=6a187dd4&hm=c7d0f11f7c755a2ed0fefcd562f176cadcd9bc35856b87881a40137b131b8c87&"
+APEX_THORNWEALD_TITAN = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612124307984577/thornweald_titan.jpg?ex=6a19cf59&is=6a187dd9&hm=c7a485c13da28f5001fff6885f8638a2771261961e19f7b462a1c176936e6ff7&"
+APEX_VERDANT_DEVOURER = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612133233594398/verdant_devourer.jpg?ex=6a19cf5b&is=6a187ddb&hm=8d29d0df53f5fb6b942a74c6083e6c1eb1457d8fa3d13eebea31b08c10608297&"
+APEX_LIVING_CANOPY = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612112295624885/living_canopy.jpg?ex=6a19cf56&is=6a187dd6&hm=63503bd1daa5f2c15498a33fdddae67ddca3a198f6784ecfdfd4de95a12ca388&"
+APEX_ROOT_SOVEREIGN = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612123251147053/root_sovereign.jpg?ex=6a19cf59&is=6a187dd9&hm=92f861e5c2597f2ada332ef788f2e1cdb5cdbcb4bd912c5feb4a7e22b13c0429&"
+
+APEX_VAULT_SENTINEL = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612123523780800/siege_master.jpg?ex=6a19cf59&is=6a187dd9&hm=006b7fb03fa570ba05ab83ed22b536d71a6071bde465737539e249d8c0e86d87&"
+APEX_GILDED_PREDATOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612102984273980/gilded_predator.jpg?ex=6a19cf54&is=6a187dd4&hm=d233ad106d529fd00972b489f6d712a1b3fbff1421b9cd5ebaf71e99d5d21e0b&"
+APEX_FORTUNES_REAPER = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612102644666609/fortunes_reaper.jpg?ex=6a19cf54&is=6a187dd4&hm=a65a05e6108c2d2883b568c77d44a1112390448db07397ce86dd29905e6f6f6b&"
+APEX_GREED_INCARNATE = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612103210897710/greed_incarnate.jpg?ex=6a19cf54&is=6a187dd4&hm=04c42b6db7d5ec14753843c51063bcb0830b45dd1b1a7611a5fee19ce9f6678e&"
+APEX_VAULT_PHANTOM = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612132075835553/vault_phantom.jpg?ex=6a19cf5b&is=6a187ddb&hm=af61a1cea7aedce67a090c367b8feddae64d39c21f4bf624073f4839c2f98adf&"
+
+APEX_REALITY_SHREDDER = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612122534051850/reality_shredder.jpg?ex=6a19cf59&is=6a187dd9&hm=c11a0cca6dc8d3330ac734dd36621f04cb88b6f30f949fdc7367cc85cb4df625&"
+APEX_VOID_FRACTURE = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612133472800778/void_fracture.jpg?ex=6a19cf5b&is=6a187ddb&hm=f88999bd0087e91e1943c3f429e35a7fcdd541a234504a9238c59b2392fce86c&"
+APEX_ENTROPY_ENGINE = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612103726661732/iron_golem_lord.jpg?ex=6a19cf54&is=6a187dd4&hm=356fba25d5dfa3756d95d9771534a0a409466d46795764fc396b9321196d70d8&"
+APEX_NEXUS_ABOMINATION = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612122026283258/nexus_abomination.jpg?ex=6a19cf59&is=6a187dd9&hm=e7075d92b22650c3a8b05a55a94a5c56bbcb1ded4d405ea2546891d717e27e24&"
+APEX_RIFT_LEVIATHAN = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612122735120434/rift_leviathan.jpg?ex=6a19cf59&is=6a187dd9&hm=053b56c2498cc3873dc79861d2d7f7df005cfb5552dfa566eac6ef379c03c72e&"
+
+# ── PARTNER AFFINITY STORY IMAGES ─────────────────────────────────────────────
+# Used in AffinityStoryView (set_image for story illustrations)
+EVE_AFFINITY_1 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612101461872721/eve_affinity_1.jpg?ex=6a19cf54&is=6a187dd4&hm=db300ee0e6ec4c142501fe2d293fb30bd2f0ff7a74f1726e7f89aa7f2a0a6613&"
+EVE_AFFINITY_2 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612101705011440/eve_affinity_2.jpg?ex=6a19cf54&is=6a187dd4&hm=c629797840d2d3c423d5d86b78d78d626988ad66887c71d67fb44c58507b6d96&"
+EVE_AFFINITY_3 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612101960990761/eve_affinity_3.jpg?ex=6a19cf54&is=6a187dd4&hm=3b74ba71c56b630f86f0b296e380453081682daceb4ca97a1b3962828abf0d5e&"
+EVE_AFFINITY_4 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612102191419442/eve_affinity_4.jpg?ex=6a19cf54&is=6a187dd4&hm=53849de9a63de8b8ab6dfb1ce99d69a1cee0358cb5d8eae6f51503721db45c04&"
+
+KAY_AFFINITY_1 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612111272349876/kay_affinity_1.jpg?ex=6a19cf56&is=6a187dd6&hm=34b8fce01bbc321a8350f59d731b7030561dcc6bb5898e7bf03a3689bf6bc6a9&"
+KAY_AFFINITY_2 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612111570141367/kay_affinity_2.jpg?ex=6a19cf56&is=6a187dd6&hm=293d82d257bc20b73af1106453a405d254f33d5237379d0e4129e0b8c436ede2&"
+KAY_AFFINITY_3 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612111817478254/kay_affinity_3.jpg?ex=6a19cf56&is=6a187dd6&hm=7cc198970203b583e475ab067650c7afbd919b1c6e1381d89815c30a0330282b&"
+KAY_AFFINITY_4 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612112048033992/kay_affinity_4.jpg?ex=6a19cf56&is=6a187dd6&hm=1dbfaa623958f387844bd3bc80bc4c2caac694afc4936da9daa60cbbe13199ae&"

@@ -16,6 +16,39 @@ Contains:
 
 from dataclasses import dataclass, field
 
+from core.images import (  # Apex monster combat images
+    APEX_CINDERBORN_DRAKE,
+    APEX_EMBER_TYRANT,
+    APEX_ASHFALL_COLOSSUS,
+    APEX_MAGMA_HYDRA,
+    APEX_PYROCLAST_SPECTER,
+    APEX_STORMCALLER_WYRM,
+    APEX_TEMPEST_SOVEREIGN,
+    APEX_CYCLONE_REVENANT,
+    APEX_THUNDER_BEHEMOTH,
+    APEX_VOLTAIC_SHADE,
+    APEX_SIEGE_MASTER,
+    APEX_IRON_GOLEM_LORD,
+    APEX_WARDEN_OF_IRON,
+    APEX_FORTRESS_COLOSSUS,
+    APEX_BASTION_WRAITH,
+    APEX_GROVE_ANCIENT,
+    APEX_THORNWEALD_TITAN,
+    APEX_VERDANT_DEVOURER,
+    APEX_LIVING_CANOPY,
+    APEX_ROOT_SOVEREIGN,
+    APEX_VAULT_SENTINEL,
+    APEX_GILDED_PREDATOR,
+    APEX_FORTUNES_REAPER,
+    APEX_GREED_INCARNATE,
+    APEX_VAULT_PHANTOM,
+    APEX_REALITY_SHREDDER,
+    APEX_VOID_FRACTURE,
+    APEX_ENTROPY_ENGINE,
+    APEX_NEXUS_ABOMINATION,
+    APEX_RIFT_LEVIATHAN,
+)
+
 # ---------------------------------------------------------------------------
 # Zone definitions
 # ---------------------------------------------------------------------------
@@ -387,11 +420,11 @@ UPGRADE_OUTCOMES: dict[int, tuple[float, float, float]] = {
 # ---------------------------------------------------------------------------
 
 META_SHARD_DROP_CHANCES: dict[str, float] = {
-    "sharpened_fang": 0.25,
-    "engorged_heart": 0.25,
-    "condensed_blood": 0.08,
-    "primal_essence": 0.04,
-    "soul_vessel": 0.02,
+    "sharpened_fang": 0.12,
+    "engorged_heart": 0.10,
+    "condensed_blood": 0.06,
+    "primal_essence": 0.03,
+    "soul_vessel": 0.015,
 }
 
 # ---------------------------------------------------------------------------
@@ -428,4 +461,38 @@ META_SHARD_DISPLAY: dict[str, tuple[str, str]] = {
     "condensed_blood": ("🩸 Condensed Blood", "Prevents tier downgrade on failed upgrade"),
     "primal_essence": ("✨ Primal Essence", "Counts extracted passives as +1 (improves extraction chance)"),
     "soul_vessel": ("🏺 Soul Vessel", "Extract a passive without destroying the item"),
+}
+
+# Map Apex monster name → combat image constant
+APEX_MONSTER_IMAGES: dict[str, str] = {
+    "Cinderborn Drake": APEX_CINDERBORN_DRAKE,
+    "Ember Tyrant": APEX_EMBER_TYRANT,
+    "Ashfall Colossus": APEX_ASHFALL_COLOSSUS,
+    "Magma Hydra": APEX_MAGMA_HYDRA,
+    "Pyroclast Specter": APEX_PYROCLAST_SPECTER,
+    "Stormcaller Wyrm": APEX_STORMCALLER_WYRM,
+    "Tempest Sovereign": APEX_TEMPEST_SOVEREIGN,
+    "Cyclone Revenant": APEX_CYCLONE_REVENANT,
+    "Thunder Behemoth": APEX_THUNDER_BEHEMOTH,
+    "Voltaic Shade": APEX_VOLTAIC_SHADE,
+    "Siege Master": APEX_SIEGE_MASTER,
+    "Iron Golem Lord": APEX_IRON_GOLEM_LORD,
+    "Warden of Iron": APEX_WARDEN_OF_IRON,
+    "Fortress Colossus": APEX_FORTRESS_COLOSSUS,
+    "Bastion Wraith": APEX_BASTION_WRAITH,
+    "Grove Ancient": APEX_GROVE_ANCIENT,
+    "Thornweald Titan": APEX_THORNWEALD_TITAN,
+    "Verdant Devourer": APEX_VERDANT_DEVOURER,
+    "Living Canopy": APEX_LIVING_CANOPY,
+    "Root Sovereign": APEX_ROOT_SOVEREIGN,
+    "Vault Sentinel": APEX_VAULT_SENTINEL,
+    "Gilded Predator": APEX_GILDED_PREDATOR,
+    "Fortune's Reaper": APEX_FORTUNES_REAPER,
+    "Greed Incarnate": APEX_GREED_INCARNATE,
+    "Vault Phantom": APEX_VAULT_PHANTOM,
+    "Reality Shredder": APEX_REALITY_SHREDDER,
+    "Void Fracture": APEX_VOID_FRACTURE,
+    "Entropy Engine": APEX_ENTROPY_ENGINE,
+    "Nexus Abomination": APEX_NEXUS_ABOMINATION,
+    "Rift Leviathan": APEX_RIFT_LEVIATHAN,
 }

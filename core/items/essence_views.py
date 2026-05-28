@@ -643,8 +643,12 @@ class EssenceView(BaseView):
             self.item = new_item
             self.parent.item = new_item  # keep ItemDetailView in sync
 
-            # Also refresh the stale entry in the parent list view so that navigating
-            # Back → Back → re-selecting the item shows the updated essence slots.
+            # Update the in-memory item in the parent list so that navigating
+            # Back → Back → re-selecting shows the updated essence slots.
+            # Do NOT call update_buttons() here — InventoryListView holds persistent
+            # custom_ids ("select_0", "close", etc.) and rebuilding them while the view
+            # is still registered causes interaction-routing conflicts.  The list view
+            # rebuilds its own buttons when go_back() is called.
             parent_list = self.parent.parent  # InventoryListView or GearView
             if hasattr(parent_list, "items"):
                 item_list = parent_list.items
@@ -653,7 +657,6 @@ class EssenceView(BaseView):
                         if getattr(it, "item_id", None) == new_item.item_id:
                             item_list[i] = new_item
                             break
-                    parent_list.update_buttons()
 
         self.essence_inventory = await self.bot.database.essences.get_all(self.user_id)
         self._build_buttons()

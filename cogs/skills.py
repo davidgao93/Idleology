@@ -13,6 +13,7 @@ from core.skills.mastery import (
     has_nature_attunement_unlocked,
     get_attunement_progress,
     INSIGHT_CONVERSION_RATE,
+    get_below_tier_chance,
 )
 from core.skills.mechanics import SkillMechanics
 from core.skills.views import GatherView
@@ -142,6 +143,19 @@ class Skills(commands.Cog, name="skills"):
 
                 # --- 2. Yield (with mastery multipliers) ---
                 resources = SkillMechanics.calculate_yield_with_mastery(skill, tool_tier, mrow)
+
+                # Below-tier signature resource chance (from 2pt Quality nodes)
+                below_tier_chance = get_below_tier_chance(skill, mrow)
+                if below_tier_chance > 0 and random.random() < below_tier_chance:
+                    sig_map = {
+                        "mining": "idea",
+                        "fishing": "titanium_bones",
+                        "woodcutting": "idea_logs",
+                    }
+                    sig = sig_map.get(skill)
+                    if sig:
+                        # Grant one unit of the signature resource even below tool tier
+                        resources[sig] = resources.get(sig, 0) + 1
 
                 # --- 3. Rich event + remnant generation (Quality investment) ---
                 is_rich = roll_rich_event(skill, mrow)

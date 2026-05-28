@@ -413,6 +413,14 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     except Exception:
         player.hematurgy_passives = {}
 
+    # --- Fetch Soul Stone ---
+    try:
+        ss_row = await database.apex.get_or_create_soul_stone(user_id, server_id)
+        from core.apex.models import soul_stone_from_db
+        player.soul_stone = soul_stone_from_db(ss_row)
+    except Exception:
+        player.soul_stone = None
+
     # --- Fetch Stat Investments (passive_point allocations) ---
     try:
         stat_inv = await database.users.get_stat_investments(user_id)

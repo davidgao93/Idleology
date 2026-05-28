@@ -10,6 +10,7 @@ class PlayerTurnResult:
     is_hit: bool  # True for both normal hits and crits
     is_crit: bool  # True only for crits (subset of is_hit)
     calc_detail: str = ""  # numerical breakdown for combat log file only
+    compact_log: str = ""  # condensed log for auto-battle display (no flavor text)
     partner_log: str = ""  # partner per-turn effects (joint attack, heal, etc.)
     partner_name: str = ""  # embed field name for the partner log
     cull_fired: bool = False  # True when cull dealt the killing blow this turn
@@ -23,6 +24,7 @@ class MonsterTurnResult:
     log: str
     hp_damage: int  # net HP lost by the player this turn
     calc_detail: str = ""  # numerical breakdown for combat log file only
+    compact_log: str = ""  # condensed log for auto-battle display (no flavor text)
 
     def __str__(self) -> str:
         return self.log

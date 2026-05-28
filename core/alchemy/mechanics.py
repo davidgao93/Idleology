@@ -45,6 +45,18 @@ class AlchemyMechanics:
             return 3
         return 2  # level 1-2
 
+    @staticmethod
+    def get_effective_upgrade_ratio(alchemy_level: int, has_master_baiter: bool = False) -> int:
+        """Master Baiter (permanent) gives one-step better upgrade ratios."""
+        effective = alchemy_level + 1 if has_master_baiter else alchemy_level
+        return AlchemyMechanics.get_upgrade_ratio(effective)
+
+    @staticmethod
+    def get_effective_downgrade_ratio(alchemy_level: int, has_master_baiter: bool = False) -> int:
+        """Master Baiter (permanent) gives one-step better downgrade ratios."""
+        effective = alchemy_level + 1 if has_master_baiter else alchemy_level
+        return AlchemyMechanics.get_downgrade_ratio(effective)
+
     # ------------------------------------------------------------------
     # Potion Passives
     # ------------------------------------------------------------------

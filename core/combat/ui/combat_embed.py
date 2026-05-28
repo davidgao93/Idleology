@@ -182,6 +182,7 @@ def create_combat_embed(
     monster: Monster,
     logs: Dict[str, str] = None,
     title_override: str = None,
+    compact: bool = False,
 ) -> discord.Embed:
     logs = logs or {}
     is_uber = getattr(monster, "is_uber", False)
@@ -246,7 +247,12 @@ def create_combat_embed(
 
     for name, message in logs.items():
         if message:
-            embed.add_field(name=name, value=str(message), inline=False)
+            # In compact mode use the condensed log (no flavor text); fall back to full log
+            if compact:
+                text = getattr(message, "compact_log", None) or str(message)
+            else:
+                text = str(message)
+            embed.add_field(name=name, value=text, inline=False)
             # Partner per-turn effects are stored on PlayerTurnResult
             if (
                 hasattr(message, "partner_log")

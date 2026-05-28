@@ -11,6 +11,8 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
+from collections import Counter
+
 from core.apex.data import RESONANCE_TABLE, ZONE_DEFS
 from core.apex.mechanics import ApexMechanics
 from core.apex.models import (
@@ -23,6 +25,71 @@ from core.apex.models import (
 )
 from core.base_view import BaseView
 from core.images import APEX_SOUL_STONE
+
+
+_CAT_EMOJI: dict[str, str] = {
+    "offensive": "🔥",
+    "defensive": "🛡️",
+    "mixed": "⚖️",
+    "utility": "💰",
+}
+_ALL_CATEGORIES = ("offensive", "defensive", "mixed", "utility")
+
+
+def _resonance_hint_text(soul_stone: SoulStone) -> str | None:
+    """
+    Returns a resonance hint string shown when no resonance is currently active.
+
+    • 0 passives → None  (caller shows generic blurb)
+    • 1 passive  → current-category progression + full T2/T3 table
+    • 2 passives → which T2 options are still reachable with the last slot
+    • 3 passives → all-different nudge to clear and reconfigure
+    """
+    filled = [s for s in soul_stone.slots if not s.is_empty and s.category]
+    if not filled:
+        return None
+
+    cat_counts: Counter[str] = Counter(s.category for s in filled)
+    lines: list[str] = []
+
+    if len(filled) == 1:
+        cat = next(iter(cat_counts))
+        em = _CAT_EMOJI.get(cat, "✨")
+        t2 = RESONANCE_TABLE.get(f"{cat}_2")
+        t3 = RESONANCE_TABLE.get(f"{cat}_3")
+
+        lines.append(f"Your **{cat.title()}** passive can lead to:")
+        if t2:
+            lines.append(f"  {em} **2× {cat.title()}** → **{t2[0]}** — *{t2[1]}*")
+        if t3:
+            lines.append(f"  {em} **3× {cat.title()}** → **{t3[0]}** — *{t3[1]}*")
+
+        lines.append("")
+        lines.append("**All resonances** *(T2 = 2 matching slots · T3 = all 3 slots):*")
+        for c in _ALL_CATEGORIES:
+            cem = _CAT_EMOJI.get(c, "✨")
+            t2r = RESONANCE_TABLE.get(f"{c}_2")
+            t3r = RESONANCE_TABLE.get(f"{c}_3")
+            if t2r and t3r:
+                lines.append(f"{cem} **{c.title()}:** {t2r[0]} / {t3r[0]}")
+
+    elif len(filled) == 2:
+        # No resonance with 2 slots means they hold two different categories.
+        lines.append("**1 slot remaining** — add a matching category to unlock a resonance:")
+        for cat in cat_counts:
+            em = _CAT_EMOJI.get(cat, "✨")
+            t2 = RESONANCE_TABLE.get(f"{cat}_2")
+            if t2:
+                lines.append(f"  {em} Add **{cat.title()}** → **{t2[0]}** — *{t2[1]}*")
+        lines.append("")
+        lines.append("*T3 resonance is no longer reachable — it requires all 3 slots to match.*")
+
+    elif len(filled) == 3:
+        # All slots filled with three different categories — no resonance possible.
+        lines.append("All 3 slots are filled but no category has a majority.")
+        lines.append("Clear a slot and replace it so at least 2 slots share a category.")
+
+    return "\n".join(lines) if lines else None
 
 
 def _build_soul_stone_embed(
@@ -66,13 +133,16 @@ def _build_soul_stone_embed(
             inline=False,
         )
     else:
-        filled = [s for s in soul_stone.slots if not s.is_empty]
-        if len(filled) < 3:
+        hint = _resonance_hint_text(soul_stone)
+        if hint:
+            embed.add_field(name="✨ Resonance Paths", value=hint, inline=False)
+        else:
+            # No passives yet — brief intro so the player knows the system exists.
             embed.add_field(
                 name="✨ Resonance",
                 value=(
                     "*No resonance active. Fill 2 or 3 slots with the same category "
-                    "(offensive / defensive / mixed / utility) to activate a bonus.*"
+                    "(Offensive / Defensive / Mixed / Utility) to unlock a permanent combat bonus.*"
                 ),
                 inline=False,
             )

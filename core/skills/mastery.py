@@ -63,16 +63,16 @@ MINING_TREE: Dict[str, Dict[str, Any]] = {
     "never_empty": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
 
     # Quality (Vein Memory)
-    "ideal_seeker": {"branch": "quality", "cost": 1, "desc": "+20% yield to Idea Ore specifically."},
-    "crystallized_insight": {"branch": "quality", "cost": 2, "desc": "+38% Idea Ore yield. 6% chance to produce Idea Ore even below current tool tier.", "requires": ["ideal_seeker"]},
-    "geode_cores": {"branch": "quality", "cost": 3, "desc": "Unlocks Geode Cores. Enables Rich Vein events (Quality signature output)."},
-    "worldcore_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Vein base chance 22%, 2.6x multiplier, guarantees 3-5 Geode Cores.", "requires": ["geode_cores"]},
+    "ideal_seeker": {"branch": "quality", "cost": 1, "desc": "+20% yield to Idea Ore from passive hourly mining ticks."},
+    "crystallized_insight": {"branch": "quality", "cost": 2, "desc": "+38% Idea Ore yield from passive hourly ticks. Additionally, 6% chance to produce Idea Ore even when using a lower-tier pickaxe.", "requires": ["ideal_seeker"]},
+    "geode_cores": {"branch": "quality", "cost": 3, "desc": "Unlocks Geode Cores. Passive hourly mining ticks now have a 5.5% chance to produce 1-2 Geode Cores as remnants. **Rich Vein** events now have a 4% base chance (upgrades to 22% with the 5pt Worldcore Resonance node in this branch, or 3% with a 5pt Synergy capstone). On Rich trigger: 2.6× yield + guaranteed 3-5 Geode Cores."},
+    "worldcore_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Vein events now occur with 22% base chance per passive tick. On trigger, yield is multiplied by 2.6× and you are guaranteed 3-5 Geode Cores.", "requires": ["geode_cores"]},
 
     # Synergy (Stonebound Mastery)
     "tool_resonance": {"branch": "synergy", "cost": 1, "desc": "Tool upgrade costs reduced by 12%."},
-    "skilled_hands": {"branch": "synergy", "cost": 2, "desc": "Skiller procs: +65% chance and +45% extra yield."},
+    "skilled_hands": {"branch": "synergy", "cost": 2, "desc": "Skiller procs on combat victory are 65% more likely (1.65\u00d7 multiplier) and grant 45% more resources (1.45\u00d7 multiplier)."},
     "master_quarry": {"branch": "synergy", "cost": 3, "desc": "Global refining bonus: +10% more bars from any ore conversion."},
-    "living_mountain": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Ore from all sources + small independent Rich proc chance.", "requires": ["master_quarry"]},
+    "living_mountain": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Ore yield from passive hourly mining ticks + small independent 3% Rich proc chance.", "requires": ["master_quarry"]},
     "echo_first_vein": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: small chance for Meridian Golem treasure boss during combat.", "requires": ["living_mountain"]},
 }
 
@@ -84,16 +84,16 @@ FISHING_TREE: Dict[str, Dict[str, Any]] = {
     "never_empty_nets": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
 
     # Quality (Abyssal Memory)
-    "tide_seeker": {"branch": "quality", "cost": 1, "desc": "+20% yield to Titanium Bones specifically."},
-    "abyssal_memory": {"branch": "quality", "cost": 2, "desc": "+38% Titanium Bones. 6% chance below current tool tier.", "requires": ["tide_seeker"]},
-    "tide_relics": {"branch": "quality", "cost": 3, "desc": "Unlocks Tide Relics. Enables Rich Catch events."},
-    "deep_current_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Catch 22% base, 2.6x, guarantees 3-5 Tide Relics.", "requires": ["tide_relics"]},
+    "tide_seeker": {"branch": "quality", "cost": 1, "desc": "+20% yield to Titanium Bones from passive hourly fishing ticks."},
+    "abyssal_memory": {"branch": "quality", "cost": 2, "desc": "+38% Titanium Bones yield from passive hourly ticks. Additionally, 6% chance to produce Titanium Bones even when using a lower-tier rod.", "requires": ["tide_seeker"]},
+    "tide_relics": {"branch": "quality", "cost": 3, "desc": "Unlocks Tide Relics. Passive hourly fishing ticks now have a 5.5% chance to produce 1-2 Tide Relics as remnants. **Rich Catch** events now have a 4% base chance (upgrades to 22% with the 5pt Deep Current Resonance node in this branch, or 3% with a 5pt Synergy capstone). On Rich trigger: 2.6× yield + guaranteed 3-5 Tide Relics."},
+    "deep_current_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Catch events now occur with 22% base chance per passive tick. On trigger, yield is multiplied by 2.6× and you are guaranteed 3-5 Tide Relics.", "requires": ["tide_relics"]},
 
     # Synergy (Tidebound Mastery)
     "lighter_bait": {"branch": "synergy", "cost": 1, "desc": "Bait cost reduced by 12%."},
-    "favored_currents": {"branch": "synergy", "cost": 2, "desc": "Skiller: +65% chance and +45% extra yield."},
-    "master_baiter": {"branch": "synergy", "cost": 3, "desc": "Global alchemy bonus: one-step better transmutation ratio (once per day)."},
-    "old_ones_favor": {"branch": "synergy", "cost": 5, "desc": "+55% Titanium Bones + small Rich proc chance.", "requires": ["master_baiter"]},
+    "favored_currents": {"branch": "synergy", "cost": 2, "desc": "Skiller procs on combat victory are 65% more likely (1.65\u00d7 multiplier) and grant 45% more resources (1.45\u00d7 multiplier)."},
+    "master_baiter": {"branch": "synergy", "cost": 3, "desc": "Permanent alchemy bonus: one-step better transmutation ratios."},
+    "old_ones_favor": {"branch": "synergy", "cost": 5, "desc": "+55% Titanium Bones yield from passive hourly fishing ticks + small independent 3% Rich proc chance.", "requires": ["master_baiter"]},
     "lord_of_the_deep": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: chance for Drowned Leviathan treasure boss during combat.", "requires": ["old_ones_favor"]},
 }
 
@@ -105,16 +105,16 @@ WOODCUTTING_TREE: Dict[str, Dict[str, Any]] = {
     "forest_bounty": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
 
     # Quality (Heartwood Memory)
-    "heartwood_seeker": {"branch": "quality", "cost": 1, "desc": "+20% yield to Idea Logs specifically."},
-    "living_heartwood": {"branch": "quality", "cost": 2, "desc": "+38% Idea Logs + 6% below-tier chance.", "requires": ["heartwood_seeker"]},
-    "heartwood_shards": {"branch": "quality", "cost": 3, "desc": "Unlocks Heartwood Shards. Enables Rich Felling events."},
-    "elder_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Felling 22% base, 2.6x, guarantees 3-5 Heartwood Shards.", "requires": ["heartwood_shards"]},
+    "heartwood_seeker": {"branch": "quality", "cost": 1, "desc": "+20% yield to Idea Logs from passive hourly woodcutting ticks."},
+    "living_heartwood": {"branch": "quality", "cost": 2, "desc": "+38% Idea Logs yield from passive hourly ticks. Additionally, 6% chance to produce Idea Logs even when using a lower-tier axe.", "requires": ["heartwood_seeker"]},
+    "heartwood_shards": {"branch": "quality", "cost": 3, "desc": "Unlocks Heartwood Shards. Passive hourly woodcutting ticks now have a 5.5% chance to produce 1-2 Heartwood Shards as remnants. **Rich Felling** events now have a 4% base chance (upgrades to 22% with the 5pt Elder Resonance node in this branch, or 3% with a 5pt Synergy capstone). On Rich trigger: 2.6× yield + guaranteed 3-5 Heartwood Shards."},
+    "elder_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Felling events now occur with 22% base chance per passive tick. On trigger, yield is multiplied by 2.6× and you are guaranteed 3-5 Heartwood Shards.", "requires": ["heartwood_shards"]},
 
     # Synergy (Rootbound Mastery)
     "foresters_eye": {"branch": "synergy", "cost": 1, "desc": "Forestry pass cost reduced by 12%."},
-    "skilled_forester": {"branch": "synergy", "cost": 2, "desc": "Skiller: +65% chance and +45% extra yield."},
+    "skilled_forester": {"branch": "synergy", "cost": 2, "desc": "Skiller procs on combat victory are 65% more likely (1.65\u00d7 multiplier) and grant 45% more resources (1.45\u00d7 multiplier)."},
     "seasoned_timber": {"branch": "synergy", "cost": 3, "desc": "Global refining bonus: +10% more planks from any wood conversion."},
-    "forest_remembers": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Logs + small independent Rich proc chance.", "requires": ["seasoned_timber"]},
+    "forest_remembers": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Logs yield from passive hourly woodcutting ticks + small independent 3% Rich proc chance.", "requires": ["seasoned_timber"]},
     "elderheart": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: chance for Verdant Colossus treasure boss during combat.", "requires": ["forest_remembers"]},
 }
 
@@ -349,7 +349,7 @@ def get_yield_multiplier(skill: SkillType, mastery_row: dict) -> float:
     return mult
 
 def get_signature_resource_bonus(skill: SkillType, mastery_row: dict) -> float:
-    """Quality branch signature bonuses (+20/38% to idea/titanium/idea_logs)."""
+    """Quality branch signature bonuses (+20/38%) + Synergy 5pt capstone (+55% from passive hourly ticks per Living Mountain / Old One's Favor / Forest Remembers)."""
     alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
     bonus = 1.0
     tree = ALL_TREES[skill]
@@ -357,7 +357,19 @@ def get_signature_resource_bonus(skill: SkillType, mastery_row: dict) -> float:
         if node in ("ideal_seeker", "tide_seeker", "heartwood_seeker"):
             bonus += 0.20
         elif node in ("crystallized_insight", "abyssal_memory", "living_heartwood"):
-            bonus += 0.18  # cumulative
+            bonus += 0.18  # cumulative to 38%
+
+    # Synergy capstone: +55% to the signature resource (Idea Ore / Titanium Bones / Idea Logs) from ALL sources.
+    # This stacks multiplicatively with the Quality bonus. The "small independent Rich proc" is already
+    # handled in get_rich_event_chance (3% fallback when no Worldcore but synergy 5pt owned).
+    synergy_nodes = _get_unlocked_nodes_from_alloc(alloc, "synergy")
+    if skill == "mining" and "living_mountain" in synergy_nodes:
+        bonus += 0.55
+    elif skill == "fishing" and "old_ones_favor" in synergy_nodes:
+        bonus += 0.55
+    elif skill == "woodcutting" and "forest_remembers" in synergy_nodes:
+        bonus += 0.55
+
     return bonus
 
 def get_below_tier_chance(skill: SkillType, mastery_row: dict) -> float:
@@ -369,18 +381,33 @@ def get_below_tier_chance(skill: SkillType, mastery_row: dict) -> float:
     return 0.0
 
 def get_rich_event_chance(skill: SkillType, mastery_row: dict) -> float:
-    """Base Rich proc chance. 22% only if the 5pt Quality node is owned, plus bonus from extra Quality investment."""
+    """Base Rich proc chance per passive tick.
+
+    - 4% base chance once the 3pt Quality unlock node (Geode Cores / Tide Relics / Heartwood Shards) is taken.
+    - Upgraded to 22% when the 5pt Resonance node in the same Quality branch is taken.
+    - 3% fallback from Synergy 5pt capstones (Living Mountain / Old One's Favor / Forest Remembers)
+      if the player does not have the Quality 5pt resonance.
+    Plus any additional % from Quality branch bonus investment points (+0.5% per point).
+    """
     alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
     quality_nodes = _get_unlocked_nodes_from_alloc(alloc, "quality")
+    synergy_nodes = _get_unlocked_nodes_from_alloc(alloc, "synergy")
 
     base = 0.0
-    if "worldcore_resonance" in quality_nodes or "deep_current_resonance" in quality_nodes or "elder_resonance" in quality_nodes:
+
+    resonance_nodes = ("worldcore_resonance", "deep_current_resonance", "elder_resonance")
+    if any(n in quality_nodes for n in resonance_nodes):
         base = 0.22
     else:
-        # Small chance from 5pt synergy capstones (Living etc)
-        synergy = _get_unlocked_nodes_from_alloc(alloc, "synergy")
-        if any(n in synergy for n in ("living_mountain", "old_ones_favor", "forest_remembers")):
-            base = 0.03
+        # 3pt Quality unlock now grants a small base chance when events are first enabled
+        unlock_nodes = ("geode_cores", "tide_relics", "heartwood_shards")
+        if any(n in quality_nodes for n in unlock_nodes):
+            base = 0.04
+        else:
+            # Small independent chance from Synergy 5pt capstones (alternative path)
+            synergy_caps = ("living_mountain", "old_ones_favor", "forest_remembers")
+            if any(n in synergy_nodes for n in synergy_caps):
+                base = 0.03
 
     bonus = get_rich_base_bonus(skill, mastery_row)
     return base + bonus
@@ -720,9 +747,9 @@ def get_yield_proc_bonus(skill: SkillType, mastery_row: dict) -> float:
 
 def get_rich_base_bonus(skill: SkillType, mastery_row: dict) -> float:
     """
-    Additional % to the base Rich event chance
-    (Worldcore Resonance / Deep Current Resonance / Elder Resonance).
-    +0.5% per bonus point (max +5%).
+    Additional % to the base Rich event chance.
+    +0.5% per Quality branch bonus investment point (max +5%).
+    Now applies on top of the 4% base from the 3pt unlock (or higher bases from 5pt nodes).
     """
     bonus_points = _get_bonus_points(skill, "quality", mastery_row)
     return bonus_points * 0.005

@@ -20,6 +20,7 @@ from core.combat.economy.loot import (
     generate_weapon,
 )
 from core.models import Player
+from core.skills.mastery import get_skiller_bonus
 from core.skills.mechanics import SkillMechanics
 
 # ---------------------------------------------------------------------------
@@ -112,14 +113,30 @@ class DropManager:
 
             proc_chance = SOUL_STONE_TIER_VALUES["skiller"][_ss_tier - 1] / 100
 
+        skill_type = random.choice(["mining", "woodcutting", "fishing"])
+
+        # Apply Artisan Mastery Synergy Skiller bonus (if owned)
+        try:
+            mastery_row = await bot.database.skills.get_mastery(user_id, server_id)
+            chance_mult, yield_mult = get_skiller_bonus(mastery_row, skill_type)
+            proc_chance *= chance_mult
+        except Exception:
+            chance_mult, yield_mult = 1.0, 1.0
+
         if random.random() >= proc_chance:
             return None
-        skill_type = random.choice(["mining", "woodcutting", "fishing"])
+
         skill_row = await bot.database.skills.get_data(user_id, server_id, skill_type)
         if not skill_row:
             return None
         tool_tier = skill_row[2]
         resources = SkillMechanics.calculate_yield(skill_type, tool_tier)
+
+        # Apply yield multiplier from mastery
+        if yield_mult != 1.0:
+            for k in resources:
+                resources[k] = int(resources[k] * yield_mult)
+
         await bot.database.skills.update_batch(
             user_id, server_id, skill_type, resources
         )

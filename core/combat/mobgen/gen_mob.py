@@ -875,9 +875,8 @@ async def generate_prestige_golem(player, monster):
     monster.name = "Meridian Golem"
     monster.flavor = "stomps and bellows fiercely"
     monster.species = "Golem"
-    # TODO: Add dedicated image asset for Meridian Golem
-    if not getattr(monster, "image", None):
-        monster.image = COMBAT_DUMMY
+    from core.images import MERIDIAN_GOLEM_FIGHT
+    monster.image = MERIDIAN_GOLEM_FIGHT
 
     monster.modifiers = []
     mod = make_modifier("Meridian Golem DR", monster.level)
@@ -909,9 +908,8 @@ async def generate_prestige_leviathan(player, monster):
     monster.name = "Drowned Leviathan"
     monster.flavor = "bites from impossible depths"
     monster.species = "Leviathan"
-    # TODO: Add dedicated image asset for Drowned Leviathan
-    if not getattr(monster, "image", None):
-        monster.image = COMBAT_DUMMY
+    from core.images import DROWNED_LEVIATHAN_FIGHT
+    monster.image = DROWNED_LEVIATHAN_FIGHT
 
     monster.modifiers = []
     mod = make_modifier("Leviathan Bite", monster.level)
@@ -943,9 +941,8 @@ async def generate_prestige_colossus(player, monster):
     monster.name = "Verdant Colossus"
     monster.flavor = "ensnares you with titanic roots"
     monster.species = "Colossus"
-    # TODO: Add dedicated image asset for Verdant Colossus
-    if not getattr(monster, "image", None):
-        monster.image = COMBAT_DUMMY
+    from core.images import VERDANT_COLOSSUS_FIGHT
+    monster.image = VERDANT_COLOSSUS_FIGHT
 
     monster.modifiers = []
     mod = make_modifier("Verdant Snare", monster.level)

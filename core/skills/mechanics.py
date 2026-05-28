@@ -1,4 +1,4 @@
-import random
+﻿import random
 from typing import Dict, List, Optional, Tuple
 
 from core.images import TOOL_AXE, TOOL_PICKAXE, TOOL_ROD
@@ -328,3 +328,39 @@ class SkillMechanics:
                 amt = int(amt * sig_mult)
             result[res] = max(0, amt)
         return result
+
+    @staticmethod
+    def get_upgrade_cost(skill: str, current_tier: str, reduction: float = 0.0) -> dict | None:
+        """Returns upgrade costs (dict with res_1..4 + gold) with optional reduction (0.0-0.12) from synergy 1pt nodes."""
+        base_costs = {
+            "mining": {
+                "iron": (100, 0, 0, 0, 1000),
+                "steel": (200, 100, 0, 0, 5000),
+                "gold": (300, 200, 100, 0, 10000),
+                "platinum": (600, 400, 200, 100, 100000),
+            },
+            "woodcutting": {
+                "flimsy": (100, 0, 0, 0, 1000),
+                "carved": (200, 100, 0, 0, 5000),
+                "chopping": (300, 200, 100, 0, 10000),
+                "magic": (600, 400, 200, 100, 100000),
+            },
+            "fishing": {
+                "desiccated": (100, 0, 0, 0, 1000),
+                "regular": (200, 100, 0, 0, 5000),
+                "sturdy": (300, 200, 100, 0, 10000),
+                "reinforced": (600, 400, 200, 100, 50000),
+            },
+        }
+        costs = base_costs.get(skill, {}).get(current_tier)
+        if not costs:
+            return None
+        red = max(0.0, min(0.5, float(reduction or 0.0)))
+        factor = 1.0 - red
+        return {
+            "res_1": int(costs[0] * factor),
+            "res_2": int(costs[1] * factor),
+            "res_3": int(costs[2] * factor),
+            "res_4": int(costs[3] * factor),
+            "gold": int(costs[4] * factor),
+        }

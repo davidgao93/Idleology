@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from core.apex.data import (
     APEX_BY_ZONE,
+    APEX_MONSTER_IMAGES,
     META_SHARD_DROP_CHANCES,
     PASSIVE_CATEGORY_MAP,
     PASSIVE_SHARD_MAP,
@@ -133,7 +134,7 @@ class ApexMechanics:
             attack=atk_base,
             defence=def_base,
             modifiers=modifiers,
-            image=apex_def.image,
+            image=APEX_MONSTER_IMAGES.get(apex_def.name, apex_def.image),
             flavor=apex_def.flavor,
             species="Apex",
             is_boss=True,

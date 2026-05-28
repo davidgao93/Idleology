@@ -158,14 +158,16 @@ class AlchemyHubView(BaseView):
             self.bot, self.user_id, self.server_id, self.alchemy_level, cost
         )
         new_level = self.alchemy_level + 1
+        up_r = AlchemyMechanics.get_upgrade_ratio(new_level)
+        dn_r = AlchemyMechanics.get_downgrade_ratio(new_level)
+
         embed = discord.Embed(
             title="⬆️ Level Up Alchemy?",
             description=(
                 f"Upgrade from **Level {self.alchemy_level}** → **Level {new_level}**\n\n"
                 f"Cost: 🔮 **{cost}** Spirit Stones\n"
                 f"New slot count: **{AlchemyMechanics.get_slot_count(new_level)}**\n"
-                f"New transmutation ratio: **{AlchemyMechanics.get_upgrade_ratio(new_level)}:1** upgrade / "
-                f"**1:{AlchemyMechanics.get_downgrade_ratio(new_level)}** downgrade\n\n"
+                f"New transmutation ratio: **{up_r}:1** upgrade / **1:{dn_r}** downgrade\n\n"
                 f"✨ The new slot will be available for a free roll in the Potion Lab!"
             ),
             color=discord.Color.gold(),
@@ -263,6 +265,21 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
         opt = self._opt
         gold_cost_each = opt["gold_cost"]
         ratio = opt["ratio"]
+
+        # Master Baiter (permanent) — one-step better ratios
+        try:
+            mrow = await self._view.bot.database.skills.get_mastery(
+                self._view.user_id, self._view.server_id
+            )
+            from core.skills.mastery import has_master_baiter
+            if has_master_baiter(mrow):
+                # Improve the ratio by 1 step (lower number is better for upgrade)
+                if opt["type"] == "upgrade":
+                    ratio = max(2, ratio - 1)
+                else:
+                    ratio = min(5, ratio + 1)  # downgrade gives more when improved
+        except Exception:
+            pass
 
         # Validate gold
         user_row = await self._view.bot.database.users.get(
@@ -400,8 +417,16 @@ class AlchemyTransmuteView(BaseView):
         self._options_data: list = []
 
     async def build_embed(self) -> discord.Embed:
-        up_ratio = AlchemyMechanics.get_upgrade_ratio(self.alchemy_level)
-        dn_ratio = AlchemyMechanics.get_downgrade_ratio(self.alchemy_level)
+        has_baiter = False
+        try:
+            mrow = await self.bot.database.skills.get_mastery(self.user_id, self.server_id)
+            from core.skills.mastery import has_master_baiter
+            has_baiter = has_master_baiter(mrow)
+        except Exception:
+            pass
+
+        up_ratio = AlchemyMechanics.get_effective_upgrade_ratio(self.alchemy_level, has_baiter)
+        dn_ratio = AlchemyMechanics.get_effective_downgrade_ratio(self.alchemy_level, has_baiter)
 
         amounts: dict[tuple, int] = {}
         for skill, cols in AlchemyMechanics.SKILL_TIERS.items():

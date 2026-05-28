@@ -207,7 +207,7 @@ Players who go deep into one branch feel very different from those who spread ou
 |------|------|--------|
 | Ideal Seeker | 1 | **+20%** yield to Idea Ore specifically. |
 | Crystallized Insight | 2 | Idea Ore bonus → **+38%**. 6% chance to produce Idea Ore even below current tool tier. |
-| Geode Cores | 3 | Unlocks **Geode Cores**. Enables Rich Vein events. |
+| Geode Cores | 3 | Unlocks **Geode Cores**. Enables **Rich Vein** events (22% base chance granted by the 5pt Worldcore Resonance node; 2.6× yield + guaranteed 3-5 Geode Cores). |
 | Worldcore Resonance | 5 (req. Geode Cores) | Rich event base chance **22%**, **2.6×** multiplier, guarantees **3–5** Geode Cores. |
 
 **Branch 3: Stonebound Mastery (Synergy) — Locked Numbers**
@@ -216,7 +216,7 @@ Players who go deep into one branch feel very different from those who spread ou
 | Tool Resonance | 1 | Tool upgrade costs reduced by **12%**. |
 | Skilled Hands | 2 | Skiller procs: **+65%** chance and **+45%** extra yield. |
 | Master Quarry | 3 | **Global refining bonus:** +**10%** more bars from any ore conversion. |
-| Living Mountain | 5 | **+55%** Idea Ore from all sources + small independent Rich proc chance. |
+| Living Mountain | 5 | **+55%** Idea Ore from all sources + small independent 3% Rich proc chance. |
 | Echo of the First Vein | 8 (very high) | **Prestige Capstone.** Grants a small chance (1–2%, similar to Treasure Monsters) for a combat encounter to instead spawn the **Meridian Golem**, a special remnant-themed "treasure boss". 
 
 **Spawn Priority**: Inserted after Treasure Monster but before Regular Monster in the encounter generation chain (Corrupted → Named Boss → Incubated → Treasure → Skilling Boss → Regular).
@@ -245,7 +245,7 @@ The node description will explicitly state: "Grants a chance to encounter the Me
 - Parallel to Vein Memory.
 - 1pt: **+20%** Titanium Bones
 - 2pt: **+38%** + 6% below-tier chance
-- 3pt: Unlocks **Tide Relics**
+- 3pt: Unlocks **Tide Relics**. Enables Rich Catch events (22% base chance from the 5pt Deep Current Resonance node)
 - 5pt: Rich Catch **22%** base, **2.6×**, 3–5 guaranteed remnants
 
 **Branch 3: Tidebound Mastery (Synergy) — Locked Numbers**
@@ -254,7 +254,7 @@ The node description will explicitly state: "Grants a chance to encounter the Me
 | Lighter Bait | 1 | Bait cost reduced by **12%**. |
 | Favored by the Currents | 2 | Skiller: **+65%** chance and **+45%** extra yield. |
 | Master Baiter | 3 | **Global alchemy bonus:** One-step better transmutation ratio, usable **once per day**. |
-| The Old One's Favor | 5 | **+55%** Titanium Bones + small Rich proc chance. |
+| The Old One's Favor | 5 | **+55%** Titanium Bones + small independent 3% Rich proc chance. |
 | Lord of the Deep | 8 (very high) | **Prestige Capstone.** Grants a small chance (1–2%, similar to Treasure Monsters) for a combat encounter to instead spawn the **Drowned Leviathan**, a special remnant-themed "treasure boss".
 
 **Spawn Priority**: Same as above (after Treasure Monster, before Regular).
@@ -284,7 +284,7 @@ Symmetric structure to the above two.
 | Forester's Eye | 1 | Forestry pass cost reduced by **12%**. |
 | Skilled Forester | 2 | Skiller: **+65%** chance and **+45%** extra yield. |
 | Seasoned Timber | 3 | **Global refining bonus:** +**10%** more planks from any wood conversion. |
-| The Forest Remembers | 5 | **+55%** Idea Logs + small Rich proc chance. |
+| The Forest Remembers | 5 | **+55%** Idea Logs + small independent 3% Rich proc chance. |
 | Elderheart | 8 (very high) | **Prestige Capstone.** Grants a small chance (1–2%, similar to Treasure Monsters) for a combat encounter to instead spawn the **Verdant Colossus**, a special remnant-themed "treasure boss".
 
 **Spawn Priority**: Inserted after Treasure Monster but before Regular Monster.
@@ -368,7 +368,7 @@ All values below are proposed as final for implementation unless playtesting sho
 ### Quality Branch (Vein Memory / Abyssal Memory / Heartwood Memory) — Locked
 - 1 pt: **+20%** to signature resource (Idea Ore / Titanium Bones / Idea Logs)
 - 2 pt: **+38%** to signature + 6% chance to produce signature resource below tool tier
-- 3 pt: Unlocks remnants + Rich events for that skill
+- 3 pt: Unlocks remnants (5.5% baseline chance for 1-2) + enables Rich events at 4% base chance (upgrades to 22% with 5pt Resonance in same branch, or 3% from a Synergy 5pt capstone)
 - 5 pt: Rich event base chance **22%**, multiplier **2.6×**, guarantees **3–5** remnants
 
 **Remnant Generation (when Quality 3pt+ owned):**
@@ -380,7 +380,7 @@ All values below are proposed as final for implementation unless playtesting sho
 - Skiller synergy: **+65%** proc chance and **+45%** extra yield
 - Settlement refining: **+10%** more refined output
 - Alchemy (Master Baiter equivalent): One-step better ratio, usable **once per day**
-- 5pt capstone: **+55%** to signature resource + small independent Rich proc chance
+- 5pt capstone: **+55%** to signature resource + small independent 3% Rich proc chance
 
 ### Prestige Capstones (8pt)
 - Boss encounter rate: **1–2%** (Treasure Monster style)

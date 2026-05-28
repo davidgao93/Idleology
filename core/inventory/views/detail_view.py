@@ -203,6 +203,7 @@ class ItemDetailView(BaseView):
             self.bot, self.user_id, self.item, item_type, self, essence_inventory
         )
         await interaction.edit_original_response(embed=view._get_embed(), view=view)
+        view.message = await interaction.original_response()
 
     # --- Actions ---
 

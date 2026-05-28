@@ -252,6 +252,8 @@ def calc_crit_damage(
     attack_multiplier: float,
     log: list[str],
     calc: list[str],
+    *,
+    clog: list[str] | None = None,
 ) -> int:
     """Phase 4a — crit damage. Returns pre-reduction damage.
 
@@ -403,6 +405,8 @@ def calc_crit_damage(
     if idx >= 0:
         log.append("The weapon glimmers with power!")
     log.append(f"Critical Hit! Damage: 🗡️ **{damage}**")
+    if clog is not None:
+        clog.append(f"Critical Hit! Damage: 🗡️ **{damage}**")
     return damage
 
 
@@ -412,6 +416,8 @@ def calc_hit_damage(
     attack_multiplier: float,
     log: list[str],
     calc: list[str],
+    *,
+    clog: list[str] | None = None,
 ) -> int:
     """Phase 4b — normal hit damage. Returns pre-reduction damage."""
     from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
@@ -490,6 +496,10 @@ def calc_hit_damage(
     log.append(f"Hit! Damage: 💥 **{damage - echo_damage}**")
     if echo_damage:
         log.append(f"The hit is 🎶 echoed!\nEcho damage: 💥 **{echo_damage}**")
+    if clog is not None:
+        clog.append(f"Hit! Damage: 💥 **{damage - echo_damage}**")
+        if echo_damage:
+            clog.append(f"↩️ Echo: 💥 **{echo_damage}**")
     return damage
 
 
@@ -499,6 +509,8 @@ def calc_miss_damage(
     attack_multiplier: float,
     log: list[str],
     calc: list[str],
+    *,
+    clog: list[str] | None = None,
 ) -> int:
     """Phase 4c — miss, any on-miss damage sources. Returns total miss damage."""
     from core.combat.calc.calcs import get_weapon_tier
@@ -534,9 +546,14 @@ def calc_miss_damage(
         player.voracious_stacks += 1
 
     if miss_parts:
-        log.append("Miss! But " + ", ".join(miss_parts) + " damage.")
+        _miss_line = "Miss! But " + ", ".join(miss_parts) + " damage."
+        log.append(_miss_line)
+        if clog is not None:
+            clog.append(_miss_line)
     else:
         log.append("Miss!")
+        if clog is not None:
+            clog.append("Miss!")
     calc.append(
         f"  miss_dmg: {damage} (sources: {', '.join(miss_parts) if miss_parts else 'none'})"
     )

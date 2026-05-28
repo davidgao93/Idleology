@@ -65,7 +65,15 @@ class ImprintView(BaseView):
     # ------------------------------------------------------------------
 
     def _gather_candidates(self) -> list[dict]:
-        """Returns all max-rank extractable passives from equipped gear."""
+        """Returns all max-rank extractable passives from equipped gear,
+        excluding any passive already imprinted in the soul stone."""
+        # Build the set of passives already occupying a soul stone slot
+        already_imprinted: set[str] = set()
+        if self.soul_stone:
+            already_imprinted = {
+                s.passive for s in self.soul_stone.slots if not s.is_empty
+            }
+
         candidates = []
         gear_items = [
             (self.player.equipped_weapon, "Weapon"),
@@ -93,6 +101,8 @@ class ImprintView(BaseView):
                 and getattr(item, "corrupted_essence", "none") not in ("none", "")
             )
             for p in passives:
+                if p in already_imprinted:
+                    continue  # already imprinted — not eligible
                 candidates.append({
                     "passive": p,
                     "item_type": item_type,
@@ -283,7 +293,7 @@ class ImprintView(BaseView):
         embed.add_field(name="📍 Target Slot", value=f"Slot {first_empty}", inline=True)
 
         destruction_note = (
-            "🏺 **Soul Vessel active** — the item is preserved on success!"
+            "🏺 **Soul Vessel active** — the item is preserved regardless of outcome."
             if vessel else
             "⚠️ **The item will be destroyed** on the extraction attempt."
         )
@@ -371,18 +381,15 @@ class ImprintView(BaseView):
             )
 
         # Item destruction / Soul Vessel handling
+        # Soul Vessel protects the item regardless of success or failure — always consumed.
         item_destroyed = False
-        if success:
-            if not vessel:
-                item_destroyed = True
-                await self._destroy_item(self._selected_item)
-            else:
-                # Consume Soul Vessel — item survives
-                await self.bot.database.apex.modify_meta_shard(
-                    self.user_id, self.server_id, "soul_vessel", -1
-                )
+        if vessel:
+            # Consume the vessel; item survives no matter what
+            await self.bot.database.apex.modify_meta_shard(
+                self.user_id, self.server_id, "soul_vessel", -1
+            )
         else:
-            # Always destroy on failure
+            # No vessel — item is destroyed on any attempt (success or failure)
             item_destroyed = True
             await self._destroy_item(self._selected_item)
 
@@ -397,16 +404,15 @@ class ImprintView(BaseView):
             result_title = "✅ Extraction Successful!"
             result_desc = (
                 f"**{passive_display}** (T1) has been imprinted into Slot {first_empty}!\n"
-                + ("🏺 Soul Vessel preserved the item." if vessel else
-                   "⚠️ The item was destroyed." if item_destroyed else "")
+                + ("🏺 Soul Vessel preserved the item." if vessel else "⚠️ The item was destroyed.")
             )
             color = 0x00CC44
         else:
             result_title = "❌ Extraction Failed"
             result_desc = (
                 f"The passive could not be extracted.\n"
-                f"⚠️ The item was destroyed.\n"
-                f"*(Base chance was {base_chance * 100:.1f}%)*"
+                + ("🏺 Soul Vessel preserved the item." if vessel else "⚠️ The item was destroyed.")
+                + f"\n*(Base chance was {base_chance * 100:.1f}%)*"
             )
             color = 0xCC0000
 
@@ -487,7 +493,8 @@ class ImprintView(BaseView):
             embed = discord.Embed(
                 title="🔏 Imprint — No Eligible Passives",
                 description=(
-                    "None of your equipped items have passives at the required max rank for extraction.\n\n"
+                    "None of your equipped items have passives at the required max rank for extraction, "
+                    "or all eligible passives are already imprinted in your Soul Stone.\n\n"
                     "**Requirements:**\n"
                     "• Weapon: passive at Tier 5 (e.g. Burning 5)\n"
                     "• Armor: any rank (single-tier passives always eligible)\n"
@@ -505,7 +512,7 @@ class ImprintView(BaseView):
             description=(
                 "Select an item to extract its max-rank passive into the Soul Stone.\n\n"
                 "**⚠️ The item is destroyed** on the extraction attempt "
-                "(unless Soul Vessel is active and the extraction succeeds)."
+                "(unless Soul Vessel is active — it preserves the item regardless of outcome)."
             ),
             color=0x9900CC,
         )
