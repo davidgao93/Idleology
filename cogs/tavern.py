@@ -185,9 +185,10 @@ class Tavern(commands.Cog, name="tavern"):
             embed.set_thumbnail(url=TAVERN_GAMES)
             await interaction.response.send_message(embed=embed)
         else:
-            # Paid Rest Prompt
+            # Paid Rest (cooldown active)
             cost = TavernMechanics.calculate_rest_cost(user["level"])
             gold = user["gold"]
+            auto_pay = await self.bot.database.users.get_auto_rest_pay(user_id)
 
             embed = discord.Embed(
                 title="The Tavern 🛏️",
@@ -197,14 +198,31 @@ class Tavern(commands.Cog, name="tavern"):
             embed.set_image(url=TAVERN_ROULETTE)
 
             if gold >= cost:
-                self.bot.state_manager.set_active(user_id, "rest")
-                embed.add_field(
-                    name="The Tavernkeeper",
-                    value=f"I have an extra room available for **{cost} gold**.",
-                )
-                view = RestView(self.bot, user_id, cost, max_hp)
-                await interaction.response.send_message(embed=embed, view=view)
-                view.message = await interaction.original_response()
+                if auto_pay:
+                    # Auto-pay path: perform the rest immediately without confirmation
+                    await self.bot.database.users.modify_gold(user_id, -cost)
+                    await self.bot.database.users.update_hp(user_id, max_hp)
+
+                    success_embed = discord.Embed(
+                        title="The Tavern 🛏️",
+                        description=(
+                            f"**Auto-paid {cost} gold** for a room.\n"
+                            f"You have rested and regained your health! Current HP: **{max_hp}**."
+                        ),
+                        color=0x00CC77,
+                    )
+                    success_embed.set_thumbnail(url=TAVERN_GAMES)
+                    await interaction.response.send_message(embed=success_embed)
+                else:
+                    # Normal paid rest prompt
+                    self.bot.state_manager.set_active(user_id, "rest")
+                    embed.add_field(
+                        name="The Tavernkeeper",
+                        value=f"I have an extra room available for **{cost} gold**.",
+                    )
+                    view = RestView(self.bot, user_id, cost, max_hp)
+                    await interaction.response.send_message(embed=embed, view=view)
+                    view.message = await interaction.original_response()
             else:
                 embed.add_field(
                     name="The Tavernkeeper",

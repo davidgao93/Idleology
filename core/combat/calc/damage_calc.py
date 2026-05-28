@@ -74,8 +74,11 @@ def roll_monster_damage(
     dmg = calculate_damage_taken(player, monster)
 
     diff_note = f" surplus_mult=×{surplus_mult}" if monster.difficulty_level > 0 else ""
+    post_surplus = base_raw * (1.0 + surplus * surplus_mult)
+    var_low = int(post_surplus * 0.85)
+    var_high = int(post_surplus * 1.15)
     calc_notes: list[str] = [
-        f"m_atk={m_atk} p_def={p_def} base={base_raw:.0f} surplus={surplus:+.3f}{diff_note} → raw≈{int(base_raw*(1+surplus*surplus_mult))} rolled={dmg}"
+        f"m_atk={m_atk} p_def={p_def} base_raw={base_raw:.0f} surplus={surplus:+.3f}×{surplus_mult:.1f} → post_surplus={post_surplus:.0f} variance[0.85–1.15] range[{var_low}–{var_high}] rolled={dmg}"
     ]
 
     # =====================================================================
@@ -88,9 +91,10 @@ def roll_monster_damage(
     # - True damage sources (Flashfire etc.) are intentionally excluded.
     # =====================================================================
 
-    # Phase 1: Accumulate static modifier contributions.
-    # Dynamic per-turn bonuses (Onslaught, Wrathful, Undying) may be pre-added by caller.
-    # We do NOT hard-reset here so pre-contributions survive.
+    # Phase 1: Accumulate contributions for *this specific damage roll*.
+    # Caller resets pools each monster turn and may pre-add dynamic bonuses (Wrathful, Undying).
+    # Static always-on sources (Savage etc.) + any proc effects are applied fresh here.
+    # Onslaught affects the surplus calc via boosted m_atk (visible in the first line of dmg_roll).
     if monster.damage_more_mult == 0.0:  # safety default
         monster.damage_more_mult = 1.0
 
@@ -164,7 +168,7 @@ def roll_monster_damage(
         pre_mult = dmg
         dmg = int(dmg * total_dmg_mult)
 
-        # Build a breakdown of what contributed to the increased damage pool
+        # Build a breakdown of what contributed to the increased damage pool *for this hit*
         inc_sources = []
         if monster.has_modifier("Savage"):
             inc_sources.append(f"Savage+{monster.get_modifier_value('Savage')*100:.0f}%")
@@ -174,8 +178,6 @@ def roll_monster_damage(
             enrage_stacks = min(3, int(hp_lost / 0.25))
             if enrage_stacks > 0:
                 inc_sources.append(f"Enraged+{enrage_val*enrage_stacks*100:.0f}% ({enrage_stacks} stacks)")
-        if monster.has_modifier("Onslaught") and monster.onslaught_bonus_atk > 0:
-            inc_sources.append(f"Onslaught+{monster.onslaught_bonus_atk*100:.0f}%")
         if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
             wr_val = monster.wrathful_stacks * monster.get_modifier_value("Wrathful Retaliation")
             inc_sources.append(f"Wrathful+{wr_val*100:.0f}% ({monster.wrathful_stacks} stacks)")
@@ -201,7 +203,7 @@ def roll_monster_damage(
 
         calc_notes.append(
             f"unified_dmg_mult×{total_dmg_mult:.2f} "
-            f"(inc={monster.damage_increased_pct:.2f}, more={monster.damage_more_mult:.2f}){breakdown}{more_note} "
+            f"((1+inc={monster.damage_increased_pct:.2f})×more={monster.damage_more_mult:.2f}){breakdown}{more_note} "
             f"{pre_mult}→{dmg}"
         )
 

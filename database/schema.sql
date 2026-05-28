@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `unidentified_blueprint` INTEGER NOT NULL DEFAULT 0,
   `diviners_rod` INTEGER NOT NULL DEFAULT 0,
   `hard_mode` INTEGER NOT NULL DEFAULT 0,
+  `auto_rest_pay` INTEGER NOT NULL DEFAULT 0,
   `combat_streak` INTEGER NOT NULL DEFAULT 0,
   `pending_stat_packages` TEXT DEFAULT NULL,
   `stat_invest_atk` INTEGER NOT NULL DEFAULT 0,

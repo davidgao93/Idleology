@@ -37,8 +37,8 @@ class UberGeminiLobbyView(BaseView):
 
         btn_start = ui.Button(
             label="Challenge the Twins",
-            style=ButtonStyle.danger if self.sigils >= 5 else ButtonStyle.secondary,
-            disabled=(self.sigils < 5),
+            style=ButtonStyle.danger if self.sigils >= 3 else ButtonStyle.secondary,
+            disabled=(self.sigils < 3),
             emoji="⚔️",
             row=0,
         )
@@ -63,7 +63,7 @@ class UberGeminiLobbyView(BaseView):
             "You approach two chubby kids. A voice — no, two voices, perfectly in time:\n"
             '*"We are balance made flesh. For every blow you land, we answer in kind."*\n'
             '*"You think to yourself, I need to layoff the drugs..."*\n\n'
-            f"**Entry Cost:** 5 Gemini Sigils\n"
+            f"**Entry Cost:** 3 Gemini Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "⚡ **Balanced Protection** — globally reduces all incoming damage by 60%.\n"
@@ -108,7 +108,7 @@ class UberGeminiLobbyView(BaseView):
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
-        if current_data["gemini_sigils"] < 5:
+        if current_data["gemini_sigils"] < 3:
             return await interaction.response.send_message(
                 "You do not have enough Gemini Sigils.", ephemeral=True
             )
@@ -116,7 +116,7 @@ class UberGeminiLobbyView(BaseView):
         await interaction.response.defer()
 
         await self.bot.database.uber.increment_gemini_sigils(
-            self.user_id, self.server_id, -5
+            self.user_id, self.server_id, -3
         )
 
         monster = Monster(

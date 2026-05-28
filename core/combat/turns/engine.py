@@ -29,7 +29,7 @@ __all__ = [
     "apply_stat_effects",
     "apply_combat_start_passives",
     "process_player_turn",
-    "process_monster_turn",
+    "process_monster_turn",  # now accepts optional context_note="" for retaliation logging
     "process_heal",
     # Logging
     "CombatLogger",

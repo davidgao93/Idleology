@@ -23,11 +23,12 @@ class Settings(commands.Cog, name="settings"):
         self.bot.state_manager.set_active(user_id, "settings")
         doors_status = await self.bot.database.users.get_doors_enabled(user_id)
         exp_protection = await self.bot.database.users.get_exp_protection(user_id)
+        auto_rest_pay = await self.bot.database.users.get_auto_rest_pay(user_id)
         difficulty = await self.bot.database.users.get_hard_mode(user_id)
         player_level = existing_user[4]  # level column index
 
         view = SettingsView(
-            self.bot, user_id, doors_status, exp_protection, difficulty, player_level
+            self.bot, user_id, doors_status, exp_protection, auto_rest_pay, difficulty, player_level
         )
         await interaction.response.send_message(
             embed=view.build_embed(), view=view, ephemeral=False

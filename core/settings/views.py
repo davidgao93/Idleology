@@ -44,12 +44,14 @@ class SettingsView(BaseView):
         user_id: str,
         doors_status: bool,
         exp_protection: bool,
+        auto_rest_pay: bool = False,
         difficulty: int = 0,
         player_level: int = 1,
     ):
         super().__init__(bot, user_id)
         self.doors_status = doors_status
         self.exp_protection = exp_protection
+        self.auto_rest_pay = auto_rest_pay
         self.difficulty = max(0, min(4, difficulty))
         self.player_level = player_level
         self.rebuild_buttons()
@@ -70,6 +72,14 @@ class SettingsView(BaseView):
         exp_btn = ui.Button(label=exp_lbl, style=exp_style, emoji="🛡️", row=1)
         exp_btn.callback = self.toggle_exp_protection
         self.add_item(exp_btn)
+
+        rest_lbl = (
+            "Disable Auto-Pay Rest" if self.auto_rest_pay else "Enable Auto-Pay Rest"
+        )
+        rest_style = ButtonStyle.danger if self.auto_rest_pay else ButtonStyle.success
+        rest_btn = ui.Button(label=rest_lbl, style=rest_style, emoji="💰", row=2)
+        rest_btn.callback = self.toggle_auto_rest_pay
+        self.add_item(rest_btn)
 
         if self.player_level >= 100:
             select = ui.Select(
@@ -106,7 +116,7 @@ class SettingsView(BaseView):
                         default=(self.difficulty == 4),
                     ),
                 ],
-                row=2,
+                row=3,
             )
 
             async def _difficulty_callback(interaction: Interaction, s=select):
@@ -118,7 +128,7 @@ class SettingsView(BaseView):
             select.callback = _difficulty_callback
             self.add_item(select)
 
-        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=3)
+        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=4)
         close_btn.callback = self._close
         self.add_item(close_btn)
 
@@ -133,8 +143,11 @@ class SettingsView(BaseView):
             "encounters and fight only standard monsters (useful for Slayer tasks or general grinding).\n\n"
             "**🛡️ EXP Protection** — {exp}\n"
             "When enabled, you will still see experience rewards but will not actually gain it. "
-            "Useful for staying at your current level."
-        ).format(doors=doors_str, exp=exp_str)
+            "Useful for staying at your current level.\n\n"
+            "**💰 Auto-Pay for Rest** — {rest}\n"
+            "When enabled, using `/rest` while on cooldown will automatically pay the gold cost "
+            "to instantly rest (if you have enough gold), skipping the confirmation prompt."
+        ).format(doors=doors_str, exp=exp_str, rest=("🟢 ENABLED" if self.auto_rest_pay else "🔴 DISABLED"))
 
         if self.player_level >= 100:
             diff_name = f"{_DIFFICULTY_EMOJIS[self.difficulty]} {_DIFFICULTY_NAMES[self.difficulty]}"
@@ -159,6 +172,14 @@ class SettingsView(BaseView):
         self.exp_protection = not self.exp_protection
         await self.bot.database.users.toggle_exp_protection(
             self.user_id, self.exp_protection
+        )
+        self.rebuild_buttons()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def toggle_auto_rest_pay(self, interaction: Interaction):
+        self.auto_rest_pay = not self.auto_rest_pay
+        await self.bot.database.users.toggle_auto_rest_pay(
+            self.user_id, self.auto_rest_pay
         )
         self.rebuild_buttons()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)

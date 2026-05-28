@@ -37,8 +37,8 @@ class UberLuciferLobbyView(BaseView):
 
         btn_start = ui.Button(
             label="Challenge Lucifer",
-            style=ButtonStyle.danger if self.sigils >= 5 else ButtonStyle.secondary,
-            disabled=(self.sigils < 5),
+            style=ButtonStyle.danger if self.sigils >= 3 else ButtonStyle.secondary,
+            disabled=(self.sigils < 3),
             emoji="⚔️",
             row=0,
         )
@@ -62,7 +62,7 @@ class UberLuciferLobbyView(BaseView):
             "A chibi Lucifer appears and squeaks:\n"
             '*"You dare enter my domain? I will grind your bones to ash."*\n'
             '*"Hand me your sigils and I may let you live..."*\n\n'
-            f"**Entry Cost:** 5 Infernal Sigils\n"
+            f"**Entry Cost:** 3 Infernal Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "🔥 **Infernal Protection** — globally reduces all incoming damage by 60%.\n"
@@ -108,7 +108,7 @@ class UberLuciferLobbyView(BaseView):
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
-        if current_data["infernal_sigils"] < 5:
+        if current_data["infernal_sigils"] < 3:
             return await interaction.response.send_message(
                 "You do not have enough Infernal Sigils.", ephemeral=True
             )
@@ -116,7 +116,7 @@ class UberLuciferLobbyView(BaseView):
         await interaction.response.defer()
 
         await self.bot.database.uber.increment_infernal_sigils(
-            self.user_id, self.server_id, -5
+            self.user_id, self.server_id, -3
         )
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
 

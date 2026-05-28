@@ -109,7 +109,7 @@ class UberHubView(BaseView):
             name="🌌 Aphrodite, Celestial Sovereign",
             value=(
                 f"Aphrodite's fury has been unleashed.\n"
-                f"**Keys:** {self.uber_data['celestial_sigils']} Celestial Sigils *(costs 5)*"
+                f"**Keys:** {self.uber_data['celestial_sigils']} Celestial Sigils *(costs 3)*"
             ),
             inline=False,
         )
@@ -117,7 +117,7 @@ class UberHubView(BaseView):
             name="🔥 Lucifer, Infernal Sovereign",
             value=(
                 f"Lucifer's fury knows no bounds.\n"
-                f"**Keys:** {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 5)*"
+                f"**Keys:** {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*"
             ),
             inline=False,
         )
@@ -125,7 +125,7 @@ class UberHubView(BaseView):
             name="⬛ NEET, Void Sovereign",
             value=(
                 f"NEET's pain has no known depths.\n"
-                f"**Keys:** {self.uber_data['void_shards']} Void Sigils *(costs 5)*"
+                f"**Keys:** {self.uber_data['void_shards']} Void Sigils *(costs 3)*"
             ),
             inline=False,
         )
@@ -133,7 +133,7 @@ class UberHubView(BaseView):
             name="♊ Castor & Pollux, Bound Sovereigns",
             value=(
                 f"The Gemini's balance is absolute.\n"
-                f"**Keys:** {self.uber_data['gemini_sigils']} Gemini Sigils *(costs 5)*"
+                f"**Keys:** {self.uber_data['gemini_sigils']} Gemini Sigils *(costs 3)*"
             ),
             inline=False,
         )

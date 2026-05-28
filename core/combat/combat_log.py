@@ -456,7 +456,7 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
         + hard_note
     )
     log.info(
-        f"FORMULA: base={_base_raw:.1f} surplus={_surplus:+.3f} ×{_surplus_mult} → raw≈{raw_base:.1f}"
+        f"FORMULA: base_raw={_base_raw:.1f} surplus={_surplus:+.3f} ×{_surplus_mult:.1f} → post_surplus={raw_base:.1f} (variance max uses ×1.15 for theoretical)"
     )
     log.info(f"THEORETICAL MAX HIT -> Player: ~{p_max_dmg} | Monster: ~{m_max_dmg}{hard_note}")
     log.info("--------------------------------------------------")

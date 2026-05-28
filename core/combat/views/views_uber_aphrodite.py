@@ -37,8 +37,8 @@ class UberAphroditeLobbyView(BaseView):
 
         btn_start = ui.Button(
             label="Challenge Aphrodite",
-            style=ButtonStyle.danger if self.sigils >= 5 else ButtonStyle.secondary,
-            disabled=(self.sigils < 5),
+            style=ButtonStyle.danger if self.sigils >= 3 else ButtonStyle.secondary,
+            disabled=(self.sigils < 3),
             emoji="⚔️",
             row=0,
         )
@@ -59,7 +59,7 @@ class UberAphroditeLobbyView(BaseView):
 
         desc = (
             "A chibi angel appears and says: ME HUNGRY, FEED ME SIGILS!\n\n"
-            f"**Entry Cost:** 5 Celestial Sigils\n"
+            f"**Entry Cost:** 3 Celestial Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "🛡️ **Radiant Protection** — globally reduces all incoming damage by 60%.\n"
@@ -105,14 +105,14 @@ class UberAphroditeLobbyView(BaseView):
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
-        if current_data["celestial_sigils"] < 5:
+        if current_data["celestial_sigils"] < 3:
             return await interaction.response.send_message(
                 "You do not have enough Celestial Sigils.", ephemeral=True
             )
 
         await interaction.response.defer()
 
-        await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, -5)
+        await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, -3)
 
         monster = Monster(
             name="",

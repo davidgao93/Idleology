@@ -322,9 +322,9 @@ class CombatView(BaseView):
         if not is_over and not self._auto_running:
             self.heal_btn.disabled = self.player.potions <= 0
 
-    def _do_monster_turn(self) -> str:
+    def _do_monster_turn(self, *, context_note: str = "") -> str:
         hp_before = self.player.current_hp
-        log = engine.process_monster_turn(self.player, self.monster)
+        log = engine.process_monster_turn(self.player, self.monster, context_note=context_note)
         self.killing_blow = hp_before - max(0, self.player.current_hp)
         self.combat_logger.log_monster_turn(log, self.player)
         return log
@@ -387,9 +387,9 @@ class CombatView(BaseView):
         h_log = engine.process_heal(self.player, self.monster)
         self.logs = {"Heal": h_log}
 
-        # Monster still hits you when you potion
+        # Monster still hits you when you potion (retaliation turn)
         if self.monster.hp > 0:
-            m_log = self._do_monster_turn()
+            m_log = self._do_monster_turn(context_note="(retaliation to heal/potion)")
             self.logs[self.monster.name] = m_log
 
         await self.check_combat_state(interaction)

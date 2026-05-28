@@ -37,8 +37,8 @@ class UberNEETLobbyView(BaseView):
 
         btn_start = ui.Button(
             label="Challenge NEET",
-            style=ButtonStyle.danger if self.shards >= 5 else ButtonStyle.secondary,
-            disabled=(self.shards < 5),
+            style=ButtonStyle.danger if self.shards >= 3 else ButtonStyle.secondary,
+            disabled=(self.shards < 3),
             emoji="⚔️",
             row=0,
         )
@@ -61,7 +61,7 @@ class UberNEETLobbyView(BaseView):
         desc = (
             "A Chibi voidling NEET appears:\n"
             '*"You have wandered too far into the void. Give me some shards and I may guide you back."*\n\n'
-            f"**Entry Cost:** 5 Void Sigils\n"
+            f"**Entry Cost:** 3 Void Sigils\n"
             f"**Owned:** {self.shards}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "⬛ **Void Protection** — globally reduces all incoming damage by 60%.\n"
@@ -104,7 +104,7 @@ class UberNEETLobbyView(BaseView):
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
-        if current_data["void_shards"] < 5:
+        if current_data["void_shards"] < 3:
             return await interaction.response.send_message(
                 "You do not have enough Void Sigils.", ephemeral=True
             )
@@ -112,7 +112,7 @@ class UberNEETLobbyView(BaseView):
         await interaction.response.defer()
 
         await self.bot.database.uber.increment_void_shards(
-            self.user_id, self.server_id, -5
+            self.user_id, self.server_id, -3
         )
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
 

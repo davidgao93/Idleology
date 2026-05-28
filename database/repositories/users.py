@@ -543,6 +543,22 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def get_auto_rest_pay(self, user_id: str) -> bool:
+        """Fetches the auto-pay for tavern rest preference. Defaults to False."""
+        cursor = await self.connection.execute(
+            "SELECT auto_rest_pay FROM users WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return bool(row[0]) if row else False
+
+    async def toggle_auto_rest_pay(self, user_id: str, status: bool) -> None:
+        """Updates the auto-pay for tavern rest preference."""
+        val = 1 if status else 0
+        await self.connection.execute(
+            "UPDATE users SET auto_rest_pay = ? WHERE user_id = ?", (val, user_id)
+        )
+        await self.connection.commit()
+
     async def toggle_hard_mode(self, user_id: str, status: bool) -> None:
         """Legacy shim — sets difficulty to 1 (Hard) or 0 (Off)."""
         await self.set_difficulty(user_id, 1 if status else 0)

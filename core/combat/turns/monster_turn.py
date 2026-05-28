@@ -10,7 +10,7 @@ from core.combat.turns.helpers import MonsterTurnResult
 from core.models import Monster, Player
 
 
-def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
+def process_monster_turn(player: Player, monster: Monster, *, context_note: str = "") -> MonsterTurnResult:
     """Executes the monster's turn, applies damage to player, and returns combat log."""
     if player.is_invulnerable_this_combat:
         return MonsterTurnResult(
@@ -31,6 +31,8 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
     prev_hp = player.current_hp
     log: list[str] = []
     calc: list[str] = []
+    if context_note:
+        calc.append(f"  [context]{context_note}")
 
     celestial = player.get_celestial_armor_passive()
     helmet_passive = player.get_helmet_passive()
@@ -301,10 +303,16 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
         effective_fdr = player.get_total_fdr()
         calc.append(f"  PDR: {' → '.join(pdr_notes)} | FDR: {effective_fdr}")
 
-        # --- Phase 1: Feed dynamic per-turn damage bonuses into the unified pool ---
-        # These will be included in the single multiplier applied inside roll_monster_damage
-        # Onslaught now boosts the monster's effective ATK (for surplus calc) instead of direct damage pool
-        # The bonus is already in monster.onslaught_bonus_atk and will be factored in damage_calc
+        # --- Phase 1: Prepare unified damage modifier pools for this turn's hit ---
+        # Reset ensures static always-on sources (Savage, Overwhelming, Hell's Fury, zone, Enraged, Spectral proc)
+        # are applied exactly once per damage roll and do not accumulate across turns or internal re-rolls
+        # (e.g. Celestial Sanctity "lower of two" or Balanced Strikes twin).
+        monster.damage_increased_pct = 0.0
+        monster.damage_more_mult = 1.0
+
+        # Dynamic per-turn / per-phase bonuses (Wrathful stacks, Undying phase) are added below.
+        # These are the base that roll_monster_damage will build static contributions on top of.
+        # Onslaught now boosts effective ATK (surplus) instead of the damage pool.
 
         if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
             wr_val = monster.wrathful_stacks * monster.get_modifier_value("Wrathful Retaliation")
@@ -333,8 +341,7 @@ def process_monster_turn(player: Player, monster: Monster) -> MonsterTurnResult:
                 )
                 calc.append(f"  celestial_sanctity: took lower roll → {total_damage}")
 
-        # Dynamic bonuses: Wrathful and Undying feed damage_increased_pct.
-        # Onslaught now affects monster effective ATK (factored in damage_calc).
+        # (Wrathful/Undying dynamic contributions for the turn were prepared before the roll call.)
 
         # --- Multistrike: 50% chance to strike twice, second hit at 50% damage ---
         multistrike_damage = 0
