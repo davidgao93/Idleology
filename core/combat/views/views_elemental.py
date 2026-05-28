@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import random
 
 import discord
 from discord import ButtonStyle, Interaction
@@ -10,6 +11,11 @@ from core.images import COMBAT_ELEMENTAL
 from core.items.factory import load_player
 from core.models import Monster, Player
 from core.skills.mechanics import SkillMechanics
+from core.skills.mastery import (
+    get_attunement_rune_bonus,
+    get_mastery_insight,
+    get_insight_rune_bonus,
+)
 
 
 class _ElementalCompletionView(BaseView):
@@ -142,12 +148,20 @@ class ElementalEncounterView(BaseView):
     async def _finalize(self, message: discord.Message):
         rewards = await self._calculate_rewards()
         await self._award_rewards(rewards)
+
+        rune_gained = False
+        try:
+            rune_gained = await self._roll_nature_rune()
+        except Exception:
+            pass
+
         try:
             from core.quests.mechanics import tick_quest_progress
             await tick_quest_progress(self.bot, self.user_id, self.server_id, "elemental_defeat")
         except Exception as e:
             print(f"[Quest tick error in elemental]: {e}")
-        embed = self._build_completion_embed(rewards)
+
+        embed = self._build_completion_embed(rewards, rune_gained=rune_gained)
         self.clear_items()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
@@ -180,7 +194,21 @@ class ElementalEncounterView(BaseView):
                     self.user_id, self.server_id, skill_type, resources
                 )
 
-    def _build_completion_embed(self, rewards: dict) -> discord.Embed:
+    async def _roll_nature_rune(self) -> bool:
+        """Roll for a Rune of Nature using base 3% + Nature's Attunement + Insight."""
+        mrow = await self.bot.database.skills.get_mastery(self.user_id, self.server_id)
+        base_chance = 0.03
+        att_bonus = get_attunement_rune_bonus(mrow)
+        insight = get_mastery_insight(mrow)
+        insight_bonus = get_insight_rune_bonus(insight)
+        total_chance = base_chance + att_bonus + insight_bonus
+
+        if random.random() < total_chance:
+            await self.bot.database.skills.add_runes_of_nature(self.user_id, 1)
+            return True
+        return False
+
+    def _build_completion_embed(self, rewards: dict, rune_gained: bool = False) -> discord.Embed:
         multiplier = self.total_damage // 1000
         embed = discord.Embed(
             title="⚗️ Elemental of Elements — Complete!",
@@ -209,6 +237,13 @@ class ElementalEncounterView(BaseView):
                 name=f"{info['emoji']} {info['display_name']}",
                 value="\n".join(lines),
                 inline=True,
+            )
+
+        if rune_gained:
+            embed.add_field(
+                name="✨ Rare Drop",
+                value="**You received a Rune of Nature!**",
+                inline=False,
             )
 
         return embed

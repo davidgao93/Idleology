@@ -315,6 +315,14 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def modify_spirit_stones(self, user_id: str, delta: int) -> None:
+        """Adds delta (may be negative) to spirit_stones, flooring at 0."""
+        await self.connection.execute(
+            "UPDATE users SET spirit_stones = MAX(0, spirit_stones + ?) WHERE user_id = ?",
+            (delta, user_id),
+        )
+        await self.connection.commit()
+
     async def get_dc_crafted_today(self, user_id: str) -> int:
         """Returns how many DCs have been crafted today; auto-resets on a new calendar day."""
         from datetime import date

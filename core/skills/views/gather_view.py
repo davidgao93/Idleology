@@ -8,6 +8,7 @@ from core.base_view import BaseView
 from core.combat.views.views_elemental import ElementalEncounterView
 from core.items.factory import load_player
 from core.skills.mechanics import SkillMechanics
+from core.skills.views.mastery_view import ArtisanMasteryHubView
 
 
 class GatherView(BaseView):
@@ -63,7 +64,32 @@ class GatherView(BaseView):
             btn.callback = self._make_tab_callback(s)
             self.add_item(btn)
 
-        # --- ROW 1: ACTIONS ---
+        # --- ROW 2: ARTISAN MASTERY + ELEMENTAL RESONANCE ---
+        # Mastery goes first on row 2
+        mastery_btn = Button(
+            label="Artisan Mastery",
+            emoji="🪨",
+            style=ButtonStyle.success,
+            row=2,
+        )
+        mastery_btn.callback = self.mastery_callback
+        self.add_item(mastery_btn)
+
+        # Elemental Resonance also on row 2 (after Mastery)
+        if self.uber_data and all(
+            self.uber_data.get(k, 0) >= 1
+            for k in ("blessed_bismuth", "sparkling_sprig", "capricious_carp")
+        ):
+            resonance_btn = Button(
+                label="Elemental Resonance",
+                emoji="🌀",
+                style=ButtonStyle.blurple,
+                row=2,
+            )
+            resonance_btn.callback = self.resonance_callback
+            self.add_item(resonance_btn)
+
+        # --- ROW 3 (last row): Upgrade/Maxed + Close ---
         if self.skill_data:
             current_tier = self.skill_data[2]
             next_tier = SkillMechanics.get_next_tier(self.current_skill, current_tier)
@@ -79,7 +105,7 @@ class GatherView(BaseView):
                     style=ButtonStyle.success if can_afford else ButtonStyle.secondary,
                     disabled=not can_afford,
                     emoji="⬆️",
-                    row=1,
+                    row=3,
                 )
                 up_btn.callback = self.upgrade_callback
                 self.add_item(up_btn)
@@ -89,27 +115,14 @@ class GatherView(BaseView):
                     style=ButtonStyle.primary,
                     disabled=True,
                     emoji="🌟",
-                    row=1,
+                    row=3,
                 )
                 self.add_item(max_btn)
 
-        close_btn = Button(label="Close", style=ButtonStyle.danger, row=1)
+        # Close button is always last on the final row
+        close_btn = Button(label="Close", style=ButtonStyle.danger, row=3)
         close_btn.callback = self.close_callback
         self.add_item(close_btn)
-
-        # --- ROW 2: ELEMENTAL RESONANCE ---
-        if self.uber_data and all(
-            self.uber_data.get(k, 0) >= 1
-            for k in ("blessed_bismuth", "sparkling_sprig", "capricious_carp")
-        ):
-            resonance_btn = Button(
-                label="Elemental Resonance",
-                emoji="🌀",
-                style=ButtonStyle.blurple,
-                row=2,
-            )
-            resonance_btn.callback = self.resonance_callback
-            self.add_item(resonance_btn)
 
     def _make_tab_callback(self, skill: str):
         """Creates a proper async callback for tabs (avoids lambda pitfalls)."""
@@ -187,8 +200,8 @@ class GatherView(BaseView):
         embed = discord.Embed(
             title=f"{info['display_name']} Station", description=desc, color=0x00FF00
         )
-        embed.set_thumbnail(url=self.user_data[7])  # User PFP
-        embed.set_image(url=info["image"])
+        # Tool image as thumbnail only (no large image, no user portrait)
+        embed.set_thumbnail(url=info["image"])
         return embed
 
     def _check_affordability(self, costs) -> bool:
@@ -281,3 +294,12 @@ class GatherView(BaseView):
         await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
+
+    async def mastery_callback(self, interaction: Interaction):
+        """Open the new minimal Artisan Mastery Hub (4 buttons only)."""
+        await interaction.response.defer()
+        # Do not clear gather state — mastery is a sub-activity of gather
+        hub = ArtisanMasteryHubView(self.bot, self.user_id, self.server_id, parent_view=self)
+        await hub.refresh()
+        await interaction.edit_original_response(embed=hub.get_embed() if hasattr(hub, "get_embed") else None, view=hub)
+        hub.message = await interaction.original_response()

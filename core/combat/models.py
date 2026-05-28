@@ -96,6 +96,8 @@ class CombatState:
     chapter_hp_entry_pct: float = 0.0    # fraction of max HP the player may not exceed on wave entry
     # Apex zone state (set at combat start by ApexMechanics.apply_zone_modifier)
     apex_zone: Optional[str] = None      # active zone key, or None for normal combat
+    # Prestige gathering boss (Artisan Mastery) transient
+    is_snared: bool = False  # Verdant Colossus snare effect
 
 
 # ---------------------------------------------------------------------------

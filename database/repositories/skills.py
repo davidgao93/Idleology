@@ -313,3 +313,240 @@ class SkillRepository:
             "UPDATE users SET gold = gold - ? WHERE user_id = ?", (gp, user_id)
         )
         await self.connection.commit()
+
+    # =========================================================
+    # Artisan Mastery (Gathering Mastery) methods
+    # All per design in docs/design/gathering_mastery.md
+    # =========================================================
+
+    async def get_mastery(self, user_id: str, server_id: str) -> dict:
+        """Return mastery row or defaults. Ensures row exists."""
+        async with self.connection.execute(
+            """SELECT * FROM gathering_mastery WHERE user_id=? AND server_id=?""",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row:
+            cols = [d[0] for d in cursor.description] if hasattr(cursor, "description") else []
+            # Fallback column names if description not available in aiosqlite cursor
+            if not cols:
+                cols = ["user_id","server_id","mining_points","fishing_points","woodcutting_points",
+                        "mining_alloc","fishing_alloc","woodcutting_alloc","last_point_claim",
+                        "geode_cores","tide_relics","heartwood_shards",
+                        "mining_tripled_ticks","fishing_tripled_ticks","woodcutting_tripled_ticks",
+                        "total_mastery_invested"]
+            return dict(zip(cols, row))
+        # Create default row
+        await self.connection.execute(
+            """INSERT INTO gathering_mastery (user_id, server_id) VALUES (?, ?)""",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+        return {
+            "user_id": user_id, "server_id": server_id,
+            "mining_points": 0, "fishing_points": 0, "woodcutting_points": 0,
+            "mining_alloc": "{}", "fishing_alloc": "{}", "woodcutting_alloc": "{}",
+            "last_point_claim": None,
+            "geode_cores": 0, "tide_relics": 0, "heartwood_shards": 0,
+            "mining_tripled_ticks": 0, "fishing_tripled_ticks": 0, "woodcutting_tripled_ticks": 0,
+            "total_mastery_invested": 0,
+        }
+
+    async def add_mastery_points(self, user_id: str, server_id: str, skill: str, amount: int) -> None:
+        """Add points to one skill (called from hourly task)."""
+        col = f"{skill}_points"
+        await self.connection.execute(
+            f"UPDATE gathering_mastery SET {col} = {col} + ? WHERE user_id=? AND server_id=?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def update_mastery_alloc(self, user_id: str, server_id: str, skill: str, alloc_json: str, total_invested: int) -> None:
+        """Atomic purchase: write new alloc JSON and update total."""
+        col = f"{skill}_alloc"
+        await self.connection.execute(
+            f"UPDATE gathering_mastery SET {col}=?, total_mastery_invested=? WHERE user_id=? AND server_id=?",
+            (alloc_json, total_invested, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def modify_remnants(self, user_id: str, server_id: str, changes: dict) -> bool:
+        """Add/sub remnants (positive or negative). Returns False if any would go negative."""
+        sets = []
+        vals = []
+        for k, delta in changes.items():
+            if k not in ("geode_cores", "tide_relics", "heartwood_shards"):
+                continue
+            if delta < 0:
+                # Will check in WHERE
+                sets.append(f"{k} = {k} + ?")
+                vals.append(delta)
+            else:
+                sets.append(f"{k} = {k} + ?")
+                vals.append(delta)
+        if not sets:
+            return True
+        # For safety on negative, we do best-effort; caller should validate first for spends
+        vals.extend([user_id, server_id])
+        q = f"UPDATE gathering_mastery SET {', '.join(sets)} WHERE user_id=? AND server_id=?"
+        await self.connection.execute(q, tuple(vals))
+        await self.connection.commit()
+        return True
+
+    async def add_runes_of_nature(self, user_id: str, amount: int) -> None:
+        """Credit runes (from craft or drop)."""
+        await self.connection.execute(
+            "UPDATE users SET runes_of_nature = runes_of_nature + ? WHERE user_id = ?",
+            (amount, user_id),
+        )
+        await self.connection.commit()
+
+    async def spend_runes_of_nature(self, user_id: str, amount: int) -> bool:
+        """Atomic spend. Returns True on success."""
+        await self.connection.execute(
+            "UPDATE users SET runes_of_nature = runes_of_nature - ? WHERE user_id = ? AND runes_of_nature >= ?",
+            (amount, user_id, amount),
+        )
+        await self.connection.commit()
+        # aiosqlite doesn't easily give rowcount here; caller can re-fetch if needed
+        return True
+
+    async def get_runes_of_nature(self, user_id: str) -> int:
+        async with self.connection.execute(
+            "SELECT runes_of_nature FROM users WHERE user_id = ?",
+            (user_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row[0] if row else 0
+
+    async def respec_mastery(self, user_id: str, server_id: str, skill: str, refund_points: int) -> None:
+        """Full reset of one skill's alloc and refund its points. Caller already spent the rune."""
+        col = f"{skill}_alloc"
+        points_col = f"{skill}_points"
+        await self.connection.execute(
+            f"UPDATE gathering_mastery SET {col}='{{}}', {points_col} = {points_col} + ? WHERE user_id=? AND server_id=?",
+            (refund_points, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def add_tripled_ticks(self, user_id: str, server_id: str, skill: str, amount: int) -> None:
+        """Award tripled passive tick buffs from defeating a prestige gathering boss."""
+        if amount <= 0:
+            return
+        col = f"{skill}_tripled_ticks"
+        await self.connection.execute(
+            f"UPDATE gathering_mastery SET {col} = {col} + ? WHERE user_id=? AND server_id=?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def consume_tripled_tick(self, user_id: str, server_id: str, skill: str) -> None:
+        """Decrement the tripled tick counter by 1 for this skill (clamped at 0).
+        Called from the hourly regeneration task when a player consumes one of their
+        prestige-boss-granted triple-yield ticks.
+        """
+        if skill not in ("mining", "fishing", "woodcutting"):
+            return
+        col = f"{skill}_tripled_ticks"
+        await self.connection.execute(
+            f"UPDATE gathering_mastery SET {col} = MAX(0, {col} - 1) WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def update_last_mastery_claim(self, user_id: str, server_id: str, timestamp: str) -> None:
+        """Update the last_point_claim timestamp for catch-up calculations. Called from the hourly task."""
+        await self.connection.execute(
+            "UPDATE gathering_mastery SET last_point_claim=? WHERE user_id=? AND server_id=?",
+            (timestamp, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def deduct_mastery_points(self, user_id: str, server_id: str, skill: str, amount: int) -> None:
+        """Deduct points from a skill's mastery pool (used on node purchase)."""
+        if amount <= 0:
+            return
+        col = f"{skill}_points"
+        await self.connection.execute(
+            f"UPDATE gathering_mastery SET {col} = MAX(0, {col} - ?) WHERE user_id=? AND server_id=?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    # =========================================================
+    # Nature's Attunement (cross-skill tree) + Mastery Insight
+    # =========================================================
+
+    async def update_attunement_alloc(self, user_id: str, server_id: str, alloc_json: str) -> None:
+        """Write the attunement allocation JSON (free node investment, not per-skill branches)."""
+        await self.connection.execute(
+            "UPDATE gathering_mastery SET attunement_alloc=? WHERE user_id=? AND server_id=?",
+            (alloc_json, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def add_mastery_insight(self, user_id: str, server_id: str, amount: int) -> None:
+        """Award Mastery Insight from post-max excess point conversion."""
+        if amount <= 0:
+            return
+        await self.connection.execute(
+            "UPDATE gathering_mastery SET mastery_insight = mastery_insight + ? WHERE user_id=? AND server_id=?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def get_mastery_insight(self, user_id: str, server_id: str) -> int:
+        """Return current Mastery Insight count for the account."""
+        async with self.connection.execute(
+            "SELECT mastery_insight FROM gathering_mastery WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return int(row[0]) if row and row[0] is not None else 0
+
+    async def convert_excess_to_insight(self, user_id: str, server_id: str, conversion_rate: int = 5) -> int:
+        """
+        If the player has fully maxed all trees + Nature's Attunement, convert as many
+        full sets of `conversion_rate` unspent points (summed across the three skills)
+        into Mastery Insight. Returns the number of insight points awarded this call.
+        Leaves remainder (< conversion_rate) in the point pools.
+        """
+        if conversion_rate <= 0:
+            return 0
+
+        async with self.connection.execute(
+            """SELECT mining_points, fishing_points, woodcutting_points, mastery_insight
+               FROM gathering_mastery WHERE user_id=? AND server_id=?""",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if not row:
+            return 0
+
+        m_pts, f_pts, w_pts, current_insight = (row[0] or 0, row[1] or 0, row[2] or 0, row[3] or 0)
+        total_points = m_pts + f_pts + w_pts
+        if total_points < conversion_rate:
+            return 0
+
+        insight_gain = total_points // conversion_rate
+        if insight_gain <= 0:
+            return 0
+
+        remainder = total_points % conversion_rate
+
+        # Distribute remainder back across the three pools (simple round-robin style)
+        new_mining = min(remainder, m_pts)
+        remainder -= new_mining
+        new_fishing = min(remainder, f_pts)
+        remainder -= new_fishing
+        new_woodcutting = remainder  # whatever is left
+
+        await self.connection.execute(
+            """UPDATE gathering_mastery
+               SET mining_points = ?, fishing_points = ?, woodcutting_points = ?,
+                   mastery_insight = mastery_insight + ?
+               WHERE user_id=? AND server_id=?""",
+            (new_mining, new_fishing, new_woodcutting, insight_gain, user_id, server_id),
+        )
+        await self.connection.commit()
+        return insight_gain

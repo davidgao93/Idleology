@@ -265,7 +265,7 @@ def _apply_spawn_modifiers(monster) -> None:
         monster.bonus_defence_pct += monster.get_modifier_value("Fortified")
 
     if monster.has_modifier("Titanic"):
-        monster.bonus_max_hp_pct += (monster.get_modifier_value("Titanic") - 1.0)
+        monster.bonus_max_hp_pct += monster.get_modifier_value("Titanic") - 1.0
 
     if monster.has_modifier("Veiled"):
         monster.ward = int(monster.max_hp * monster.get_modifier_value("Veiled"))
@@ -680,7 +680,7 @@ async def generate_uber_lucifer(player, monster):
 
     # Phase 2: Use bonus pools for % adjustments
     monster.bonus_attack_pct += 0.30
-    monster.bonus_defence_pct -= 0.70   # 30% of original = -70%
+    monster.bonus_defence_pct -= 0.70  # 30% of original = -70%
 
     monster.modifiers = [
         make_modifier("Infernal Protection", monster.level),
@@ -805,7 +805,7 @@ def generate_uber_evelynn(player, monster):
 
     # Phase 2: % scaling via bonuses
     monster.bonus_attack_pct += 0.40
-    monster.bonus_defence_pct -= 0.15   # results in 85% of base
+    monster.bonus_defence_pct -= 0.15  # results in 85% of base
 
     monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
     monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
@@ -848,4 +848,112 @@ async def generate_uber_aphrodite(player, monster):
     monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
     finalize_monster_spawn(monster)
+    return monster
+
+
+# =========================================================
+# Prestige Gathering Boss Generation (Artisan Mastery Phase 2)
+# Rare "treasure boss" encounters for the Synergy capstones.
+# =========================================================
+
+
+async def generate_prestige_golem(player, monster):
+    """Meridian Golem — Mining prestige boss. High DR."""
+    ref_level = player.level + player.ascension
+    monster.level = ref_level
+    monster = calculate_monster_stats(monster)
+
+    base_hp = random.randint(0, 9) + int(
+        10 * (monster.level ** random.uniform(1.6, 1.7))
+    )
+    monster.base_max_hp = base_hp
+    monster.hp = base_hp
+    monster.max_hp = base_hp
+    monster.xp = random.randint(1, 9) + monster.level * 100
+
+    # Override random monster data with proper boss identity
+    monster.name = "Meridian Golem"
+    monster.flavor = "stomps and bellows fiercely"
+    monster.species = "Golem"
+    # TODO: Add dedicated image asset for Meridian Golem
+    if not getattr(monster, "image", None):
+        monster.image = COMBAT_DUMMY
+
+    monster.modifiers = []
+    mod = make_modifier("Meridian Golem DR", monster.level)
+    if mod:
+        monster.modifiers.append(mod)
+
+    _apply_spawn_modifiers(monster)
+    finalize_monster_spawn(monster)
+    monster.is_boss = True
+    monster.prestige_boss_type = "golem"
+    return monster
+
+
+async def generate_prestige_leviathan(player, monster):
+    """Drowned Leviathan — Fishing prestige boss. True damage bites."""
+    ref_level = player.level + player.ascension
+    monster.level = ref_level
+    monster = calculate_monster_stats(monster)
+
+    base_hp = random.randint(0, 9) + int(
+        10 * (monster.level ** random.uniform(1.6, 1.7))
+    )
+    monster.base_max_hp = base_hp
+    monster.hp = base_hp
+    monster.max_hp = base_hp
+    monster.xp = random.randint(1, 9) + monster.level * 100
+
+    # Override random monster data with proper boss identity
+    monster.name = "Drowned Leviathan"
+    monster.flavor = "bites from impossible depths"
+    monster.species = "Leviathan"
+    # TODO: Add dedicated image asset for Drowned Leviathan
+    if not getattr(monster, "image", None):
+        monster.image = COMBAT_DUMMY
+
+    monster.modifiers = []
+    mod = make_modifier("Leviathan Bite", monster.level)
+    if mod:
+        monster.modifiers.append(mod)
+
+    _apply_spawn_modifiers(monster)
+    finalize_monster_spawn(monster)
+    monster.is_boss = True
+    monster.prestige_boss_type = "leviathan"
+    return monster
+
+
+async def generate_prestige_colossus(player, monster):
+    """Verdant Colossus — Woodcutting prestige boss. Snare effect."""
+    ref_level = player.level + player.ascension
+    monster.level = ref_level
+    monster = calculate_monster_stats(monster)
+
+    base_hp = random.randint(0, 9) + int(
+        10 * (monster.level ** random.uniform(1.6, 1.7))
+    )
+    monster.base_max_hp = base_hp
+    monster.hp = base_hp
+    monster.max_hp = base_hp
+    monster.xp = random.randint(1, 9) + monster.level * 100
+
+    # Override random monster data with proper boss identity
+    monster.name = "Verdant Colossus"
+    monster.flavor = "ensnares you with titanic roots"
+    monster.species = "Colossus"
+    # TODO: Add dedicated image asset for Verdant Colossus
+    if not getattr(monster, "image", None):
+        monster.image = COMBAT_DUMMY
+
+    monster.modifiers = []
+    mod = make_modifier("Verdant Snare", monster.level)
+    if mod:
+        monster.modifiers.append(mod)
+
+    _apply_spawn_modifiers(monster)
+    finalize_monster_spawn(monster)
+    monster.is_boss = True
+    monster.prestige_boss_type = "colossus"
     return monster

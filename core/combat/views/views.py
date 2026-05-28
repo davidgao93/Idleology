@@ -21,6 +21,7 @@ from core.combat.economy.victory import apply_victory_rewards
 from core.combat.mobgen.gen_mob import generate_boss
 from core.combat.turns import engine
 from core.combat.views.views_lucifer import LuciferChoiceView
+from core.combat.views.views_prestige_boss import PrestigeBossHarvestView
 from core.images import (
     VICTORY_APHRODITE_GEMINI,
     VICTORY_LUCIFER,
@@ -276,12 +277,18 @@ class CombatView(BaseView):
 
         _je.reset_jewel_charges(player)
 
+        # Per-encounter reset for Verdant Snare flag (rematch paths reuse the Player object;
+        # fresh load_player paths get a default False via dataclass anyway).
+        # Prestige phase chains use lighter reset_combat_bonus for other transients.
+        player.cs.is_snared = False
+
         # Boss / Chain Handling
         self.combat_phases = combat_phases or []  # List of dicts
         self.current_phase_index = 0
         self._auto_running = False
         self._was_auto = False
         self.killing_blow = 0
+        self._processing = False  # Re-entry guard for mutating actions (Free Yourself, etc.)
 
         self.combat_logger = CombatLogger(player, monster)
         self.combat_logger.log_combat_start(player, monster)
@@ -315,11 +322,40 @@ class CombatView(BaseView):
     def update_buttons(self):
         # Toggle buttons based on current state (Enabled if both alive, Disabled if one dead)
         is_over = self.player.current_hp <= 0 or self.monster.hp <= 0
+        is_snared = getattr(self.player.cs, "is_snared", False)
+
         for child in self.children:
             child.disabled = is_over or self._auto_running
+
+        # Verdant Snare handling (Artisan Mastery prestige boss or any source of the modifier)
+        # Only the Verdant Colossus currently applies it, but we detect via flag + modifier for robustness.
+        verdant_snare_active = False
+        if is_snared:
+            if getattr(self.monster, "prestige_boss_type", None) == "colossus":
+                verdant_snare_active = True
+            else:
+                mods = getattr(self.monster, "modifiers", []) or []
+                verdant_snare_active = any(
+                    getattr(m, "name", "") == "Verdant Snare" for m in mods
+                )
+
+        if verdant_snare_active:
+            # Player is snared — only "Free Yourself" is usable. Lock everything else.
+            self.attack_btn.disabled = True
+            self.heal_btn.disabled = True
+            self.flee_btn.disabled = True
+            self.auto_btn.disabled = True
+            if hasattr(self, "fast_auto_btn"):
+                self.fast_auto_btn.disabled = True
+            if hasattr(self, "free_yourself_btn"):
+                self.free_yourself_btn.disabled = False
+        else:
+            if hasattr(self, "free_yourself_btn"):
+                self.free_yourself_btn.disabled = True
+
         # Always update potion count on the heal button label
         self.heal_btn.label = f"Heal ({self.player.potions}/20)"
-        if not is_over and not self._auto_running:
+        if not is_over and not self._auto_running and not verdant_snare_active:
             self.heal_btn.disabled = self.player.potions <= 0
 
     def _do_monster_turn(self, *, context_note: str = "") -> str:
@@ -394,6 +430,33 @@ class CombatView(BaseView):
 
         await self.check_combat_state(interaction)
 
+    @ui.button(label="Free Yourself", style=ButtonStyle.secondary, emoji="🌿", row=1)
+    async def free_yourself_btn(self, interaction: Interaction, button: ui.Button):
+        # Re-entry guard (mandatory for any button that mutates combat state per AGENTS.md)
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
+        if not getattr(self.player.cs, "is_snared", False):
+            await interaction.response.send_message("You are not currently snared.", ephemeral=True)
+            self._processing = False
+            return
+
+        await interaction.response.defer()
+
+        self.player.cs.is_snared = False
+        snare_source = getattr(self.monster, "name", "the enemy")
+        self.logs = {"Free Yourself": f"You break free from {snare_source}'s snare!"}
+
+        # Monster gets a free retaliation turn after you free yourself (per design)
+        if self.monster.hp > 0:
+            m_log = self._do_monster_turn(context_note="(retaliation after breaking snare)")
+            self.logs[self.monster.name] = m_log
+
+        self._processing = False
+        await self.check_combat_state(interaction)
+
     @ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
     async def auto_btn(self, interaction: Interaction, button: ui.Button):
         # Simple Auto: Process turns in a loop.
@@ -462,6 +525,7 @@ class CombatView(BaseView):
 
     @ui.button(label="Flee", style=ButtonStyle.secondary, emoji="🏃")
     async def flee_btn(self, interaction: Interaction, button: ui.Button):
+        self.player.cs.is_snared = False  # Clean up any transient snare before leaving the fight
         self.logs["Flee"] = "You managed to escape safely!"
         self.update_buttons()  # Disable all
 
@@ -719,6 +783,16 @@ class CombatView(BaseView):
             await message.edit(embed=embed, view=contract_choice_view)
             contract_choice_view.message = message
             return  # LuciferChoiceView takes over
+
+        # Prestige Gathering Boss (Artisan Mastery Phase 2) — custom harvest view
+        prestige_type = getattr(self.monster, "prestige_boss_type", None)
+        if prestige_type in ("golem", "leviathan", "colossus"):
+            harvest_view = PrestigeBossHarvestView(
+                self.bot, self.user_id, self.server_id, self.player, self.monster, prestige_type, self.rematch_callback
+            )
+            await message.edit(embed=embed, view=harvest_view)
+            harvest_view.message = message
+            return  # Harvest view takes over the interaction
 
         # Soulreap: restore HP to full after every successful encounter
         if self.player.get_weapon_infernal() == "soulreap":

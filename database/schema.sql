@@ -77,7 +77,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `rune_of_regret` INTEGER NOT NULL DEFAULT 0,
   `development_contracts` INTEGER NOT NULL DEFAULT 0,
   `dc_crafted_today` INTEGER NOT NULL DEFAULT 0,
-  `last_dc_craft_date` TEXT DEFAULT NULL
+  `last_dc_craft_date` TEXT DEFAULT NULL,
+  `runes_of_nature` INTEGER NOT NULL DEFAULT 0
 );
 
 
@@ -703,3 +704,44 @@ CREATE TABLE IF NOT EXISTS meta_shards (
     soul_vessel      INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );
+
+-- ============================================================
+-- Artisan Mastery (Gathering Mastery) System
+-- Per design doc (docs/design/gathering_mastery.md) + 2026 expansions:
+-- Points exclusively from hourly passive (1.8/day at BiS tool), 3-branch trees per skill + 10 bonus pts/branch,
+-- Nature's Attunement cross-skill tree (3 nodes x 5 pts, gate = 20+ invested in each main tree),
+-- Mastery Insight (post-max infinite scaling: 5 excess pts -> 1 insight, tiny global yield / remnant / rune bonuses),
+-- Remnants via Quality branch + Rich procs, Rune of Nature (68x3 remnants + 350k gold + 2 spirit stones),
+-- Respecs (1 rune per skill), Black Market exchange (55 remnants = 1 rare Settlement currency),
+-- Prestige gathering bosses (Golem/Leviathan/Colossus) with triple ticks + Free Yourself snare.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS gathering_mastery (
+    user_id TEXT NOT NULL,
+    server_id TEXT NOT NULL,
+    mining_points INTEGER DEFAULT 0,
+    fishing_points INTEGER DEFAULT 0,
+    woodcutting_points INTEGER DEFAULT 0,
+    mining_alloc TEXT DEFAULT '{}',
+    fishing_alloc TEXT DEFAULT '{}',
+    woodcutting_alloc TEXT DEFAULT '{}',
+    last_point_claim TEXT,
+    -- Remnant currencies (Quality branch output, used for Rune crafting + Black Market)
+    geode_cores INTEGER DEFAULT 0,
+    tide_relics INTEGER DEFAULT 0,
+    heartwood_shards INTEGER DEFAULT 0,
+    mining_tripled_ticks INTEGER DEFAULT 0,
+    fishing_tripled_ticks INTEGER DEFAULT 0,
+    woodcutting_tripled_ticks INTEGER DEFAULT 0,
+    total_mastery_invested INTEGER DEFAULT 0,
+    -- Nature's Attunement (cross-skill tree unlocked at 20+ pts per main tree)
+    attunement_alloc TEXT DEFAULT '{}',
+    -- Post-max infinite scaling (every 5 excess points across skills -> 1 insight)
+    mastery_insight INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, server_id)
+);
+
+-- For existing databases run once:
+-- ALTER TABLE users ADD COLUMN runes_of_nature INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE gathering_mastery ADD COLUMN attunement_alloc TEXT DEFAULT '{}';
+-- ALTER TABLE gathering_mastery ADD COLUMN mastery_insight INTEGER DEFAULT 0;

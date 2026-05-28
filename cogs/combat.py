@@ -1,6 +1,7 @@
 # cogs/combat.py
 
 import asyncio
+import json
 import random
 from datetime import datetime, timedelta
 
@@ -19,6 +20,9 @@ from core.combat.mobgen.gen_mob import (
     generate_corrupted_encounter,
     generate_encounter,
     generate_incubated_monster,
+    generate_prestige_colossus,
+    generate_prestige_golem,
+    generate_prestige_leviathan,
 )
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
@@ -72,7 +76,9 @@ class Combat(commands.Cog, name="combat"):
     def __init__(self, bot):
         self.bot = bot
 
-    def _get_speedster_reduction(self, equipped_boot, ss_speedster_tier: int = 0) -> int:
+    def _get_speedster_reduction(
+        self, equipped_boot, ss_speedster_tier: int = 0
+    ) -> int:
         """Returns the Speedster passive cooldown reduction in seconds.
 
         Priority: equipped boot passive > soul stone passive (conflict guard).
@@ -81,6 +87,7 @@ class Combat(commands.Cog, name="combat"):
             return equipped_boot["passive_lvl"] * 60
         if ss_speedster_tier > 0:
             from core.apex.data import SOUL_STONE_TIER_VALUES
+
             return SOUL_STONE_TIER_VALUES["speedster"][ss_speedster_tier - 1]
         return 0
 
@@ -105,7 +112,10 @@ class Combat(commands.Cog, name="combat"):
         if not (equipped_boot and equipped_boot["passive"] == "speedster"):
             server_id = str(interaction.guild.id)
             from core.apex.models import soul_stone_from_db
-            ss_row = await self.bot.database.apex.get_or_create_soul_stone(user_id, server_id)
+
+            ss_row = await self.bot.database.apex.get_or_create_soul_stone(
+                user_id, server_id
+            )
             ss = soul_stone_from_db(ss_row)
             ss_speedster_tier = ss.get_passive_tier("speedster") or 0
         reduction = self._get_speedster_reduction(equipped_boot, ss_speedster_tier)
@@ -332,14 +342,65 @@ class Combat(commands.Cog, name="combat"):
             )
             combat_phases = [None]
 
+            # Prestige Gathering Boss (Artisan Mastery Phase 2) — rare treasure bosses
+            # Each owned capstone gives an independent ~1% chance.
+            # If multiple are owned, one is chosen uniformly at random when the roll succeeds.
+            if (
+                not is_treasure
+                and not is_boss
+                and not is_corrupted
+                and not is_incubated
+            ):
+                from core.skills.mastery import get_unlocked_nodes
+
+                mrow = await self.bot.database.skills.get_mastery(user_id, server_id)
+
+                owned = []
+                if "echo_first_vein" in get_unlocked_nodes(
+                    json.loads(mrow.get("mining_alloc", "{}") or "{}"), "synergy"
+                ):
+                    owned.append("golem")
+                if "lord_of_the_deep" in get_unlocked_nodes(
+                    json.loads(mrow.get("fishing_alloc", "{}") or "{}"), "synergy"
+                ):
+                    owned.append("leviathan")
+                if "elderheart" in get_unlocked_nodes(
+                    json.loads(mrow.get("woodcutting_alloc", "{}") or "{}"), "synergy"
+                ):
+                    owned.append("colossus")
+
+                if owned:
+                    # 1% base chance per owned prestige capstone + bonus from extra Synergy investment
+                    from core.skills.mastery import get_prestige_spawn_bonus
+
+                    base_chance = len(owned) * 1.0
+                    bonus = 0.0
+                    if "golem" in owned:
+                        bonus += get_prestige_spawn_bonus("mining", mrow) * 100
+                    if "leviathan" in owned:
+                        bonus += get_prestige_spawn_bonus("fishing", mrow) * 100
+                    if "colossus" in owned:
+                        bonus += get_prestige_spawn_bonus("woodcutting", mrow) * 100
+
+                    prestige_chance = base_chance + bonus
+                    if random.random() * 100 < prestige_chance:
+                        chosen = random.choice(owned)
+                        if chosen == "golem":
+                            monster = await generate_prestige_golem(player, monster)
+                        elif chosen == "leviathan":
+                            monster = await generate_prestige_leviathan(player, monster)
+                        else:
+                            monster = await generate_prestige_colossus(player, monster)
+                        combat_phases = [None]
+
         # 5. Difficulty scaling: Phase 2 — use bonus pools where possible.
         _DIFFICULTY_ATK_MULT = [1.0, 2.0, 2.5, 3.0, 4.0]
         _DIFFICULTY_DR = [0.0, 0.0, 0.0, 0.10, 0.25]
         if hard_mode > 0:
             mult = _DIFFICULTY_ATK_MULT[hard_mode]
             # Apply as bonus (additive with other spawn bonuses)
-            monster.bonus_attack_pct += (mult - 1.0)
-            monster.bonus_defence_pct += (mult - 1.0)
+            monster.bonus_attack_pct += mult - 1.0
+            monster.bonus_defence_pct += mult - 1.0
 
             # HP scaling still direct for now
             monster.hp = int(monster.hp * 1.5)
@@ -350,7 +411,9 @@ class Combat(commands.Cog, name="combat"):
 
             # Dual-write live fields
             monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
-            monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
+            monster.defence = int(
+                monster.base_defence * (1 + monster.bonus_defence_pct)
+            )
 
         # Phase 3: Ensure all combat bonuses are reset before the fight begins
         monster.reset_combat_bonuses()

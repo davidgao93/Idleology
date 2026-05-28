@@ -530,6 +530,31 @@ MODIFIER_DEFINITIONS: dict = {
         level_gates=[],
         description=lambda v: "Every 3 turns: Drains 10% of your Ward, healing for 10× the amount",
     ),
+    # --- Prestige Gathering Boss Modifiers (unrollable "uber" style, for Artisan Mastery capstones) ---
+    "Meridian Golem DR": ModifierDef(
+        "Meridian Golem DR",
+        "uber",
+        tiers=[0.15],
+        difficulties=[0.0],
+        level_gates=[],
+        description=lambda v: "This ancient construct has +15% additional Physical Damage Reduction",
+    ),
+    "Leviathan Bite": ModifierDef(
+        "Leviathan Bite",
+        "uber",
+        tiers=[0.01],
+        difficulties=[0.0],
+        level_gates=[],
+        description=lambda v: "50% chance per turn: Deals 1% of your Max HP as true damage",
+    ),
+    "Verdant Snare": ModifierDef(
+        "Verdant Snare",
+        "uber",
+        tiers=[0.10],
+        difficulties=[0.0],
+        level_gates=[],
+        description=lambda v: "10% chance per turn to snare you, preventing your action until freed",
+    ),
 }
 
 COMMON_MOD_NAMES = [k for k, v in MODIFIER_DEFINITIONS.items() if v.pool == "common"]

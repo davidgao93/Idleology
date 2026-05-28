@@ -7,6 +7,7 @@ from discord import ButtonStyle, Interaction, ui
 from core.alchemy.mechanics import AlchemyMechanics
 from core.base_view import BaseView
 from core.images import ALCHEMY_HUB
+from core.skills.mastery import get_attunement_alchemy_bonus
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -292,6 +293,19 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
                     ephemeral=True,
                 )
                 return
+
+            # Druidic Ritual (Nature's Attunement) bonus — +X% output on upgrades
+            dst_delta = qty
+            try:
+                mrow = await self._view.bot.database.skills.get_mastery(
+                    self._view.user_id, self._view.server_id
+                )
+                bonus = get_attunement_alchemy_bonus(mrow)
+                if bonus > 0:
+                    dst_delta = int(qty * (1.0 + bonus))
+            except Exception:
+                pass
+
             await self._view.bot.database.alchemy.transmute(
                 self._view.user_id,
                 self._view.server_id,
@@ -299,14 +313,16 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
                 opt["src_col"],
                 -(ratio * qty),
                 opt["dst_col"],
-                qty,
+                dst_delta,
             )
             await self._view.bot.database.users.modify_gold(
                 self._view.user_id, -total_gold
             )
             self._view.player_gold = max(0, self._view.player_gold - total_gold)
+
+            bonus_text = f" (+{dst_delta - qty} from Druidic Ritual)" if dst_delta > qty else ""
             await interaction.response.send_message(
-                f"✅ Transmuted **{ratio * qty}×** {opt['src_col']} → **{qty}×** {opt['dst_col']}! "
+                f"✅ Transmuted **{ratio * qty}×** {opt['src_col']} → **{dst_delta}×** {opt['dst_col']}!{bonus_text} "
                 f"(-💰 {total_gold:,})",
                 ephemeral=True,
             )

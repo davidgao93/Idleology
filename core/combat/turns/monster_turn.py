@@ -77,6 +77,15 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
                 f"🩸 **Hemorrhage** — {monster.bleed_stacks} bleed stacks deal **{bleed_dmg}** true damage!"
             )
 
+    # --- Verdant Colossus (Artisan Mastery prestige boss) snare chance ---
+    if monster.has_modifier("Verdant Snare") and not player.cs.is_snared:
+        v = monster.get_modifier_value("Verdant Snare")
+        if random.random() < v:
+            player.cs.is_snared = True
+            log.append(
+                f"🌿 **Verdant Snare!** {monster.name} entangles you! You cannot act until you free yourself."
+            )
+
     # --- Pressure Surge: +1 if player didn't crit; at 10 → true damage ---
     if monster.has_modifier("Pressure Surge"):
         if not monster.pressure_player_critted:

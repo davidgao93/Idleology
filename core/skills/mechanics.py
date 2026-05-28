@@ -3,6 +3,9 @@ from typing import Dict, List, Optional, Tuple
 
 from core.images import TOOL_AXE, TOOL_PICKAXE, TOOL_ROD
 
+# Artisan Mastery integration (MVP)
+from core.skills import mastery as Mastery
+
 
 class SkillMechanics:
 
@@ -292,4 +295,36 @@ class SkillMechanics:
             if max_val > 0:
                 result[resource] = random.randint(min_val, max_val)
 
+        return result
+
+    @staticmethod
+    def calculate_yield_with_mastery(
+        skill_type: str, tool_tier: str, mastery_row: dict | None
+    ) -> Dict[str, int]:
+        """
+        Mastery-aware yield. Applies global Yield branch multipliers + Quality signature
+        resource bonuses. Signature below-tier chance is handled by caller (passive only).
+        Rich events and remnant generation are handled exclusively in the hourly task.
+        """
+        base = SkillMechanics.calculate_yield(skill_type, tool_tier)
+        if not mastery_row:
+            return base
+
+        y_mult = Mastery.get_yield_multiplier(skill_type, mastery_row)
+        sig_mult = Mastery.get_signature_resource_bonus(skill_type, mastery_row)
+
+        # Map display/internal names for signature resources
+        sig_map = {
+            "mining": ("idea", "idea"),
+            "fishing": ("titanium_bones", "titanium_bones"),
+            "woodcutting": ("idea_logs", "idea_logs"),
+        }
+        sig_col = sig_map.get(skill_type, (None, None))[0]
+
+        result = {}
+        for res, amt in base.items():
+            amt = int(amt * y_mult)
+            if sig_col and res == sig_col:
+                amt = int(amt * sig_mult)
+            result[res] = max(0, amt)
         return result

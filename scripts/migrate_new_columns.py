@@ -20,6 +20,7 @@ NEW_COLUMNS = [
     ("rune_of_regret", "INTEGER NOT NULL DEFAULT 0"),
     ("diviners_rod", "INTEGER NOT NULL DEFAULT 0"),
     ("auto_rest_pay", "INTEGER NOT NULL DEFAULT 0"),
+    ("runes_of_nature", "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 

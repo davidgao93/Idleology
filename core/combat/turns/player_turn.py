@@ -429,6 +429,12 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     log: list[str] = []
     calc: list[str] = []
 
+    # --- Verdant Snare (Artisan Mastery prestige boss) ---
+    if getattr(player.cs, "is_snared", False):
+        snare_source = getattr(monster, "name", "the enemy")
+        log.append(f"You are **snared** by {snare_source} and cannot act this turn!")
+        return PlayerTurnResult(log="\n".join(log), damage_dealt=0, is_crit=False, is_hit=False)
+
     _je.tick_acrimony_dot(player, monster, log)
     _je.tick_onslaught_charge(player, monster, log)
 
