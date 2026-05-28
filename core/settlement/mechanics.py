@@ -217,6 +217,7 @@ class SettlementMechanics:
         adj_converter_mult: float = 0.0,
         adj_war_camp_rate: float = 0.0,
         adj_output_mult: float = 0.0,
+        mastery_converter_output_mult: float = 0.0,  # From Master Quarry / Seasoned Timber
     ) -> Dict[str, int]:
         """
         Calculates production for a specific building over time.
@@ -228,6 +229,7 @@ class SettlementMechanics:
           adj_converter_mult  — from adjacent Supply Depot / Foreman's Post (converters)
           adj_war_camp_rate   — additive base_rate bonus for war_camp from Encampment
           adj_output_mult     — from adjacent Shrine Garden for shrine passives (future use)
+          mastery_converter_output_mult — +10% from Master Quarry / Seasoned Timber synergy nodes
         """
         if workers <= 0 or hours_elapsed <= 0:
             return {}
@@ -307,10 +309,12 @@ class SettlementMechanics:
                 slot_capacity = int(production_capacity * weights[i] / total_weight)
                 amount_to_convert = min(raw_inventory[raw_key], slot_capacity)
                 if amount_to_convert > 0:
+                    output_amount = amount_to_convert
+                    if mastery_converter_output_mult > 0:
+                        output_amount = int(amount_to_convert * (1.0 + mastery_converter_output_mult))
+
                     changes[raw_key] = changes.get(raw_key, 0) - amount_to_convert
-                    changes[refined_key] = (
-                        changes.get(refined_key, 0) + amount_to_convert
-                    )
+                    changes[refined_key] = changes.get(refined_key, 0) + output_amount
 
         return changes
 

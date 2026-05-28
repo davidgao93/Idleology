@@ -297,6 +297,16 @@ class SettlementDashboardView(SettlementBaseView):
         wood   = await self.bot.database.skills.get_data(uid, sid, "woodcutting")
         fish   = await self.bot.database.skills.get_data(uid, sid, "fishing")
 
+        # Artisan Mastery refining bonuses (Synergy branch)
+        mastery_row = await self.bot.database.skills.get_mastery(uid, sid)
+        refining_bonus = 0.0
+        if mastery_row:
+            from core.skills.mastery import has_master_quarry, has_seasoned_timber
+            if has_master_quarry(mastery_row):
+                refining_bonus += 0.10
+            if has_seasoned_timber(mastery_row):
+                refining_bonus += 0.10
+
         raw_inv = {
             "iron":              mining[3], "coal":          mining[4],
             "gold":              mining[5], "platinum":      mining[6],
@@ -342,6 +352,7 @@ class SettlementDashboardView(SettlementBaseView):
                 adj_production_mult=adj.get("production_mult", 0.0),
                 adj_converter_mult=adj.get("converter_mult", 0.0),
                 adj_war_camp_rate=adj.get("war_camp_rate", 0.0),
+                mastery_converter_output_mult=refining_bonus,
             )
             for k, v in changes.items():
                 total_changes[k] = total_changes.get(k, 0) + v

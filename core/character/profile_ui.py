@@ -949,6 +949,12 @@ class ProfileBuilder:
         )
         rares = await bot.database.users.get_rare_materials(user_id)
 
+        # Artisan Mastery remnants (Quality branch output)
+        mastery_row = await bot.database.skills.get_mastery(user_id, server_id)
+        geode_cores = mastery_row.get("geode_cores", 0) or 0
+        tide_relics = mastery_row.get("tide_relics", 0) or 0
+        heartwood_shards = mastery_row.get("heartwood_shards", 0) or 0
+
         embed = discord.Embed(
             title="Storage Warehouse", color=discord.Color.dark_orange()
         )
@@ -970,6 +976,13 @@ class ProfileBuilder:
             f"📋 Unidentified Blueprints: {blueprint_count}"
         )
         embed.add_field(name="🏭 Settlement", value=settlement_value, inline=False)
+
+        mastery_value = (
+            f"⛏️ **Geode Cores:** {geode_cores:,}\n"
+            f"🐟 **Tide Relics:** {tide_relics:,}\n"
+            f"🪵 **Heartwood Shards:** {heartwood_shards:,}"
+        )
+        embed.add_field(name="🌿 Artisan Mastery (Remnants)", value=mastery_value, inline=False)
 
         return embed
 

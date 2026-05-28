@@ -57,9 +57,9 @@ RICH_REMNANT_GUARANTEED_AVG = 4.0
 
 MINING_TREE: Dict[str, Dict[str, Any]] = {
     # Yield (Deep Veins)
-    "enduring_veins": {"branch": "yield", "cost": 1, "desc": "+8% total ore yield from all mining sources."},
-    "bountiful_veins": {"branch": "yield", "cost": 2, "desc": "+16% total ore yield from all mining sources.", "requires": ["enduring_veins"]},
-    "motherlode": {"branch": "yield", "cost": 5, "desc": "+26% total ore yield from all mining sources.", "requires": ["bountiful_veins"]},
+    "enduring_veins": {"branch": "yield", "cost": 1, "desc": "+8% total ore yield from passive hourly mining ticks."},
+    "bountiful_veins": {"branch": "yield", "cost": 2, "desc": "+16% total ore yield from passive hourly mining ticks.", "requires": ["enduring_veins"]},
+    "motherlode": {"branch": "yield", "cost": 5, "desc": "+26% total ore yield from passive hourly mining ticks.", "requires": ["bountiful_veins"]},
     "never_empty": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
 
     # Quality (Vein Memory)
@@ -73,15 +73,14 @@ MINING_TREE: Dict[str, Dict[str, Any]] = {
     "skilled_hands": {"branch": "synergy", "cost": 2, "desc": "Skiller procs: +65% chance and +45% extra yield."},
     "master_quarry": {"branch": "synergy", "cost": 3, "desc": "Global refining bonus: +10% more bars from any ore conversion."},
     "living_mountain": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Ore from all sources + small independent Rich proc chance.", "requires": ["master_quarry"]},
-    # Prestige capstone stubbed for MVP (full boss generation deferred)
-    "echo_first_vein": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: small chance for Meridian Golem treasure boss (deferred in MVP).", "requires": ["living_mountain"]},
+    "echo_first_vein": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: small chance for Meridian Golem treasure boss during combat.", "requires": ["living_mountain"]},
 }
 
 FISHING_TREE: Dict[str, Dict[str, Any]] = {
     # Yield (Patient Waters) — symmetric
-    "patient_waters": {"branch": "yield", "cost": 1, "desc": "+8% total bone yield from all fishing sources."},
-    "abundant_catch": {"branch": "yield", "cost": 2, "desc": "+16% total bone yield from all fishing sources.", "requires": ["patient_waters"]},
-    "bountiful_haul": {"branch": "yield", "cost": 5, "desc": "+26% total bone yield from all fishing sources.", "requires": ["abundant_catch"]},
+    "patient_waters": {"branch": "yield", "cost": 1, "desc": "+8% total bone yield from passive hourly fishing ticks."},
+    "abundant_catch": {"branch": "yield", "cost": 2, "desc": "+16% total bone yield from passive hourly fishing ticks.", "requires": ["patient_waters"]},
+    "bountiful_haul": {"branch": "yield", "cost": 5, "desc": "+26% total bone yield from passive hourly fishing ticks.", "requires": ["abundant_catch"]},
     "never_empty_nets": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
 
     # Quality (Abyssal Memory)
@@ -95,14 +94,14 @@ FISHING_TREE: Dict[str, Dict[str, Any]] = {
     "favored_currents": {"branch": "synergy", "cost": 2, "desc": "Skiller: +65% chance and +45% extra yield."},
     "master_baiter": {"branch": "synergy", "cost": 3, "desc": "Global alchemy bonus: one-step better transmutation ratio (once per day)."},
     "old_ones_favor": {"branch": "synergy", "cost": 5, "desc": "+55% Titanium Bones + small Rich proc chance.", "requires": ["master_baiter"]},
-    "lord_of_the_deep": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: chance for Drowned Leviathan treasure boss (deferred).", "requires": ["old_ones_favor"]},
+    "lord_of_the_deep": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: chance for Drowned Leviathan treasure boss during combat.", "requires": ["old_ones_favor"]},
 }
 
 WOODCUTTING_TREE: Dict[str, Dict[str, Any]] = {
     # Yield (Strong Arm)
-    "strong_arm": {"branch": "yield", "cost": 1, "desc": "+8% total log yield from all woodcutting sources."},
-    "mighty_swing": {"branch": "yield", "cost": 2, "desc": "+16% total log yield from all woodcutting sources.", "requires": ["strong_arm"]},
-    "titanic_felling": {"branch": "yield", "cost": 5, "desc": "+26% total log yield from all woodcutting sources.", "requires": ["mighty_swing"]},
+    "strong_arm": {"branch": "yield", "cost": 1, "desc": "+8% total log yield from passive hourly woodcutting ticks."},
+    "mighty_swing": {"branch": "yield", "cost": 2, "desc": "+16% total log yield from passive hourly woodcutting ticks.", "requires": ["strong_arm"]},
+    "titanic_felling": {"branch": "yield", "cost": 5, "desc": "+26% total log yield from passive hourly woodcutting ticks.", "requires": ["mighty_swing"]},
     "forest_bounty": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
 
     # Quality (Heartwood Memory)
@@ -116,7 +115,7 @@ WOODCUTTING_TREE: Dict[str, Dict[str, Any]] = {
     "skilled_forester": {"branch": "synergy", "cost": 2, "desc": "Skiller: +65% chance and +45% extra yield."},
     "seasoned_timber": {"branch": "synergy", "cost": 3, "desc": "Global refining bonus: +10% more planks from any wood conversion."},
     "forest_remembers": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Logs + small independent Rich proc chance.", "requires": ["seasoned_timber"]},
-    "elderheart": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: chance for Verdant Colossus treasure boss (deferred).", "requires": ["forest_remembers"]},
+    "elderheart": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: chance for Verdant Colossus treasure boss during combat.", "requires": ["forest_remembers"]},
 }
 
 ALL_TREES = {

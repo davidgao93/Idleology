@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple
 
 from core.images import TOOL_AXE, TOOL_PICKAXE, TOOL_ROD
 
-# Artisan Mastery integration (MVP)
+# Artisan Mastery integration
 from core.skills import mastery as Mastery
 
 
