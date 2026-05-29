@@ -6,6 +6,7 @@ from core.character.leaderboard_views import LeaderboardHubView
 from core.character.profile_hub import ProfileHubView
 from core.character.profile_ui import ProfileBuilder
 from core.character.views import StatInvestView
+from core.combat.views.views import StatPackagePicker
 from core.items.factory import load_player
 
 """
@@ -151,7 +152,7 @@ class Character(commands.Cog, name="character"):
 
     @app_commands.command(
         name="allocate_stats",
-        description="Allocate passive points into permanent ATK / DEF / HP / Gold bonuses.",
+        description="Spend pending stat packages and passive points; recover packages lost on disconnect.",
     )
     async def allocate_stats(self, interaction: Interaction):
         user_id = str(interaction.user.id)
@@ -163,6 +164,42 @@ class Character(commands.Cog, name="character"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
+        # Check for unspent level-up stat packages first.  These are persisted to DB
+        # so a server disconnect during combat will never permanently lose them.
+        pending_packages = await self.bot.database.users.get_pending_packages(
+            user_id, server_id
+        )
+        if pending_packages:
+            self.bot.state_manager.set_active(user_id, "allocate_stats")
+            player = await load_player(user_id, data, self.bot.database)
+
+            async def _on_packages_done(msg):
+                done_embed = discord.Embed(
+                    title="✅ Stat Packages Applied!",
+                    description=(
+                        "Your base stats have been updated.\n\n"
+                        "Run `/allocate_stats` again to spend any passive points you've earned."
+                    ),
+                    color=discord.Color.green(),
+                )
+                self.bot.state_manager.clear_active(user_id)
+                await msg.edit(embed=done_embed, view=None)
+
+            picker = StatPackagePicker(
+                self.bot,
+                user_id,
+                server_id,
+                player,
+                pending_packages,
+                on_done=_on_packages_done,
+            )
+            await interaction.response.send_message(
+                embed=picker.build_embed(), view=picker, ephemeral=True
+            )
+            picker.message = await interaction.original_response()
+            return
+
+        # No pending packages — show passive-point allocation as normal.
         self.bot.state_manager.set_active(user_id, "allocate_stats")
         view = StatInvestView(self.bot, user_id, server_id, data)
         await interaction.response.send_message(

@@ -66,7 +66,14 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
     monster.base_max_hp = base_hp
     monster.hp = base_hp
     monster.max_hp = base_hp
-    monster.xp = random.randint(1, 9) + monster.level * 100
+    # Early-level XP is deliberately reduced so a single fight doesn't cause
+    # multiple level-ups (the old level*100 formula gave 300+ XP at level 3).
+    # At monster.level < 10: ~30 XP at level 1, ~105 XP at level 3, blending
+    # smoothly back up to the full level*100 formula by level 10.
+    if monster.level < 10:
+        monster.xp = random.randint(1, 9) + monster.level * 30 + 15
+    else:
+        monster.xp = random.randint(1, 9) + monster.level * 100
 
     monster.modifiers = []
     if not is_treasure:

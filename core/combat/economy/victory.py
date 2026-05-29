@@ -76,6 +76,11 @@ async def _apply_companion_drops(
     reward_data: dict,
     message,
 ) -> None:
+    # Companions only become tameable once the player reaches level 40.
+    # Before that, monsters are too weak to bond with an adventurer.
+    if player.level < 40:
+        return
+
     current_pet_count = await bot.database.companions.get_count(user_id)
 
     _gemini_boot = player.get_boot_corrupted_essence() == "gemini"

@@ -48,170 +48,69 @@ class UserRepository:
     async def unregister(self, user_id: str, server_id: str) -> None:
         """
         Deletes a user and all associated data.
-        Tables keyed by (user_id, server_id) use both values.
-        Tables keyed by user_id alone use only user_id.
+
+        The `users` and `ideologies` rows are hard-deleted (raise on failure).
+        All other tables are best-effort: if a table doesn't exist in an older
+        schema the delete is silently skipped so nothing blocks the wipe.
         """
         u = (user_id,)
         us = (user_id, server_id)
-        try:
-            # ── Core user row ──────────────────────────────────────────────
-            await self.connection.execute(
-                "DELETE FROM users WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM ideologies WHERE user_id=?", u
-            )
 
-            # ── Equipment ─────────────────────────────────────────────────
-            await self.connection.execute("DELETE FROM items WHERE user_id=?", u)
-            await self.connection.execute("DELETE FROM accessories WHERE user_id=?", u)
-            await self.connection.execute("DELETE FROM armor WHERE user_id=?", u)
-            await self.connection.execute("DELETE FROM gloves WHERE user_id=?", u)
-            await self.connection.execute("DELETE FROM boots WHERE user_id=?", u)
-            await self.connection.execute("DELETE FROM helmets WHERE user_id=?", u)
+        # ── Hard deletes — must succeed ────────────────────────────────────
+        await self.connection.execute(
+            "DELETE FROM users WHERE user_id=? AND server_id=?", us
+        )
+        await self.connection.execute(
+            "DELETE FROM ideologies WHERE user_id=?", u
+        )
 
-            # ── Gathering skills ───────────────────────────────────────────
-            await self.connection.execute("DELETE FROM mining WHERE user_id=?", u)
-            await self.connection.execute("DELETE FROM fishing WHERE user_id=?", u)
-            await self.connection.execute("DELETE FROM woodcutting WHERE user_id=?", u)
-            await self.connection.execute(
-                "DELETE FROM gathering_mastery WHERE user_id=? AND server_id=?", us
-            )
+        # ── Best-effort cleanup: tables keyed by user_id only ──────────────
+        _by_user = [
+            "items", "accessories", "armor", "gloves", "boots", "helmets",
+            "companions",
+            "monster_parts", "monster_parts_equipped",
+            "monster_eggs", "incubated_encounters",
+            "mining", "fishing", "woodcutting",
+            "journey_milestones", "ascension_unlocks",
+            "codex_progress", "codex_tomes",
+            "alchemy_data", "potion_passives",
+            "synthesis_queue", "synthesis_queue_2", "synthesis_queue_3",
+            "duel_stats", "player_essences",
+            "user_partners", "user_partner_items", "user_partner_shards",
+            "paradise_jewel_data",
+            "hematurgy_passives", "hematurgy_blood",
+            "prestige_owned", "maw_participants",
+            "quest_board", "quest_contracts", "quest_horizon", "quest_meta",
+        ]
+        for table in _by_user:
+            try:
+                await self.connection.execute(
+                    f"DELETE FROM {table} WHERE user_id=?", u
+                )
+            except Exception as e:
+                print(f"[unregister] skipped {table}: {e}")
 
-            # ── Companions & monster parts ─────────────────────────────────
-            await self.connection.execute("DELETE FROM companions WHERE user_id=?", u)
-            await self.connection.execute("DELETE FROM monster_parts WHERE user_id=?", u)
-            await self.connection.execute(
-                "DELETE FROM monster_parts_equipped WHERE user_id=?", u
-            )
-            await self.connection.execute("DELETE FROM monster_eggs WHERE user_id=?", u)
-            await self.connection.execute(
-                "DELETE FROM hatchery_incubation WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM incubated_encounters WHERE user_id=?", u
-            )
+        # ── Best-effort cleanup: tables keyed by (user_id, server_id) ──────
+        _by_user_server = [
+            "gathering_mastery",
+            "hatchery_incubation",
+            "delve_progress",
+            "slayer_profiles", "slayer_emblems",
+            "uber_progress",
+            "settlements", "buildings", "settlement_plots", "settlement_research",
+            "apex_hunt_profiles",
+            "soul_stones", "soul_shards", "meta_shards",
+            "boss_party_dispatch",
+        ]
+        for table in _by_user_server:
+            try:
+                await self.connection.execute(
+                    f"DELETE FROM {table} WHERE user_id=? AND server_id=?", us
+                )
+            except Exception as e:
+                print(f"[unregister] skipped {table}: {e}")
 
-            # ── Progression & milestones ───────────────────────────────────
-            await self.connection.execute(
-                "DELETE FROM journey_milestones WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM ascension_unlocks WHERE user_id=?", u
-            )
-
-            # ── Per-server systems ─────────────────────────────────────────
-            await self.connection.execute(
-                "DELETE FROM delve_progress WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM slayer_profiles WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM slayer_emblems WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM uber_progress WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM settlements WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM buildings WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM settlement_plots WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM settlement_research WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM apex_hunt_profiles WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM soul_stones WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM soul_shards WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM meta_shards WHERE user_id=? AND server_id=?", us
-            )
-            await self.connection.execute(
-                "DELETE FROM boss_party_dispatch WHERE user_id=? AND server_id=?", us
-            )
-
-            # ── Global systems (user_id only) ──────────────────────────────
-            await self.connection.execute(
-                "DELETE FROM codex_progress WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM codex_tomes WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM alchemy_data WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM potion_passives WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM synthesis_queue WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM synthesis_queue_2 WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM synthesis_queue_3 WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM duel_stats WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM player_essences WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM user_partners WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM user_partner_items WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM user_partner_shards WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM paradise_jewel_data WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM hematurgy_passives WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM hematurgy_blood WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM prestige_owned WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM maw_participants WHERE user_id=?", u
-            )
-
-            # ── Quests ─────────────────────────────────────────────────────
-            await self.connection.execute(
-                "DELETE FROM quest_board WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM quest_contracts WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM quest_horizon WHERE user_id=?", u
-            )
-            await self.connection.execute(
-                "DELETE FROM quest_meta WHERE user_id=?", u
-            )
-
-            await self.connection.commit()
-        except Exception as e:
-            print(f"Error during user unregistration: {e}")
-            raise
+        await self.connection.commit()
 
     # ---------------------------------------------------------
     # Player Stats & State Object

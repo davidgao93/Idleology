@@ -137,17 +137,39 @@ class RegistrationView(BaseView):
 
     async def complete_registration(self, interaction: Interaction, ideology: str):
         await interaction.response.defer()
+        sid = str(interaction.guild.id)
+
+        # 0. Enforce ideology uniqueness per server BEFORE writing anything to the DB.
+        existing = await self.bot.database.social.get_all_by_server(sid)
+        if ideology.strip().lower() in [i.lower() for i in existing]:
+            error_embed = discord.Embed(
+                title="❌ Ideology Name Taken",
+                description=(
+                    f'**"{ideology}"** already exists on this server.\n\n'
+                    "Each ideology must be unique — it represents your creed and integrates "
+                    "with your settlement. Please choose a different name."
+                ),
+                color=discord.Color.red(),
+            )
+            self.clear_items()
+            retry_btn = ui.Button(
+                label="Choose a Different Name", style=ButtonStyle.primary
+            )
+            retry_btn.callback = self.on_confirm_appearance
+            self.add_item(retry_btn)
+            await interaction.edit_original_response(embed=error_embed, view=self)
+            return
+
         # 1. Register User
         await self.bot.database.users.register(
             self.user_id,
-            str(interaction.guild.id),
+            sid,
             self.name,
             self.appearance_url,
             ideology,
         )
 
         # 2. Initialize Skills
-        sid = str(interaction.guild.id)
         await self.bot.database.skills.initialize(self.user_id, sid, "mining", "iron")
         await self.bot.database.skills.initialize(
             self.user_id, sid, "fishing", "desiccated"
@@ -159,21 +181,13 @@ class RegistrationView(BaseView):
         # 3. Starter Pack (potions are granted via /journey Level 1 claim)
         await self.bot.database.users.modify_gold(self.user_id, 200)
 
-        # 4. Handle Ideology Logic
-        ideologies = await self.bot.database.social.get_all_by_server(sid)
+        # 4. Found the ideology — name is guaranteed unique at this point.
+        await self.bot.database.social.create_ideology(self.user_id, sid, ideology)
+        await self.bot.database.social.update_followers(ideology, 1)
+        ideology_line = f"You have founded a new ideology: **{ideology}**!"
 
         embed = discord.Embed(title="Registration Complete! 🎉", color=0x00FF00)
         embed.set_thumbnail(url=self.appearance_url)
-
-        if ideology in ideologies:
-            count = await self.bot.database.social.get_follower_count(ideology)
-            await self.bot.database.social.update_followers(ideology, count + 1)
-            ideology_line = f"You have adopted **{ideology}** (Followers: {count+1})."
-        else:
-            await self.bot.database.social.create_ideology(self.user_id, sid, ideology)
-            await self.bot.database.social.update_followers(ideology, 1)
-            ideology_line = f"You have founded a new ideology: **{ideology}**!"
-
         embed.description = (
             f"Welcome, **{self.name}**! {ideology_line}\n\n"
             "**Your adventure begins now.**\n"
@@ -553,17 +567,8 @@ class UnregisterView(BaseView):
 
     @ui.button(label="Confirm Retirement", style=ButtonStyle.danger, emoji="✅")
     async def confirm(self, interaction: Interaction, button: ui.Button):
-        # 1. Update Social Followers
-        followers_count = await self.bot.database.social.get_follower_count(
-            self.ideology
-        )
-        if followers_count > 0:
-            await self.bot.database.social.update_followers(
-                self.ideology, followers_count - 1
-            )
-
-        # 2. Delete User Data
-        # Note: Repositories should handle cascade, but explicit call here is fine based on your repo logic
+        # Delete all user data, including the ideology row (hard-deleted in unregister).
+        # The ideology name is freed for others to use on this server.
         await self.bot.database.users.unregister(
             self.user_id, str(interaction.guild.id)
         )

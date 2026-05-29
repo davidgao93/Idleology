@@ -4,17 +4,64 @@ import random
 from core.models import Player
 
 
-def _gen_packages() -> list[dict]:
-    """Generate 3 distinct stat package options, each with 15 points across atk/def/hp.
-    Each stat gets at least 1 point; the rest are distributed randomly.
+def _gen_packages(base_atk: int = 0, base_def: int = 0, base_hp: int = 0) -> list[dict]:
+    """Generate 3 stat packages of 15 points each (atk/def/hp, all ≥ 1).
+
+    Packages lean toward whichever stat is furthest below the balanced target
+    (ATK ≈ DEF, HP = ATK + 10), but only once a stat is *more than 20% below
+    its target* — moderate natural skew within that window still produces
+    fully-random packages.  Bias uses linear weighting (not squared) for a
+    gentle push rather than a hard lock-in.  Three options are produced with
+    jitter ±1 / ±2 / ±3 so the player always has genuine choice.
     """
-    packages = []
-    for _ in range(3):
-        a = random.randint(1, 13)
-        b = random.randint(1, 14 - a)
-        c = 15 - a - b  # always >= 1 since a <= 13 and a+b <= 14
-        packages.append({"atk": a, "def": b, "hp": c})
-    return packages
+    TOTAL = 15
+
+    # Reference: ideal equal value for ATK and DEF; HP target = ref + 10.
+    ref = (base_atk + base_def + max(0, base_hp - 10)) / 3
+
+    # 20 % tolerance — deviations within this band are considered fine.
+    tolerance = max(1.0, ref * 0.20)
+
+    raw_deficits = {
+        "atk": max(0.0, ref - base_atk),
+        "def": max(0.0, ref - base_def),
+        "hp":  max(0.0, (ref + 10) - base_hp),
+    }
+    # Only the portion that exceeds the tolerance drives the bias.
+    deficits = {k: max(0.0, v - tolerance) for k, v in raw_deficits.items()}
+
+    if sum(deficits.values()) < 0.5:
+        # All stats within the 20 % tolerance window — fully random distribution.
+        packages = []
+        for _ in range(3):
+            a = random.randint(1, 13)
+            b = random.randint(1, 14 - a)
+            packages.append({"atk": a, "def": b, "hp": TOTAL - a - b})
+        return packages
+
+    # Linear weighting (softer than squared) + 0.5 floor so every stat always
+    # gets at least a token allocation even when its deficit is zero.
+    weights = {k: deficits[k] + 0.5 for k in deficits}
+    w_sum = sum(weights.values())
+    ideal = {k: weights[k] / w_sum * TOTAL for k in weights}
+
+    def _make_pkg(variance: int) -> dict:
+        a = max(1, round(ideal["atk"] + random.uniform(-variance, variance)))
+        d = max(1, round(ideal["def"] + random.uniform(-variance, variance)))
+        h = TOTAL - a - d
+        if h < 1:
+            # Clamp: shave points from the larger of a/d to restore hp >= 1.
+            excess = 1 - h
+            if a >= d:
+                a = max(1, a - excess)
+            else:
+                d = max(1, d - excess)
+            h = TOTAL - a - d
+        return {"atk": a, "def": d, "hp": h}
+
+    # Increasing jitter gives the player genuine choice while still steering
+    # all three options toward the under-invested stat(s).
+    return [_make_pkg(v) for v in (1, 2, 3)]
 
 
 class ExperienceManager:
@@ -97,22 +144,26 @@ class ExperienceManager:
                 # Full-heal to current max HP (base stats unchanged until package chosen).
                 player.current_hp = player.total_max_hp
 
-                # Generate 3 package options and queue them.
-                packages = _gen_packages()
+                # Generate 3 package options biased toward the most underallocated
+                # stat so the player can keep their build balanced over time.
+                packages = _gen_packages(
+                    player.base_attack, player.base_defence, player.max_hp
+                )
                 new_packages.append(packages)
                 changes["packages_generated"] += 1
 
                 changes["msgs"].append(f"🎉 **LEVEL UP!** ({player.level})")
-                changes["msgs"].append(
-                    "📦 **Stat packages available** — choose after combat!"
-                )
+                # (No "choose after combat" message: the stat-package picker
+                # interrupts the post-combat flow automatically.)
 
                 if player.level % 10 == 0:
                     await bot.database.users.modify_currency(
                         user_id, "passive_points", 2
                     )
                     changes["msgs"].append(
-                        "✨ **Milestone!** Gained **2** Passive Points!"
+                        "✨ **Milestone!** Gained **2** Passive Points! "
+                        "Use `/allocate_stats` to spend them on permanent bonuses, "
+                        "and check `/journey` to see what you've just unlocked and claim your rewards!"
                     )
 
         # 4. Persist pending packages to DB (append to any already-pending sets).

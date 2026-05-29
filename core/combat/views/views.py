@@ -240,11 +240,18 @@ class StatPackagePicker(BaseView):
             if remaining > 1
             else ""
         )
+
+        cur_atk = self.player.base_attack
+        cur_def = self.player.base_defence
+        cur_hp  = self.player.max_hp
+
         embed = discord.Embed(
             title="🎉 Level Up! Choose a Stat Package",
             description=(
                 f"Select one of the packages below to permanently apply to your character.{suffix}\n\n"
-                "Each package has **15 points** distributed across ATK, DEF, and HP."
+                f"**Current base stats:** ⚔️ {cur_atk} ATK  🛡️ {cur_def} DEF  ❤️ {cur_hp} HP\n\n"
+                "Each package has **15 points** distributed across ATK, DEF, and HP. "
+                "Packages are weighted toward whichever stat is furthest behind."
             ),
             color=discord.Color.gold(),
         )
@@ -252,9 +259,9 @@ class StatPackagePicker(BaseView):
             embed.add_field(
                 name=f"Option {i + 1}",
                 value=(
-                    f"⚔️ **+{pkg['atk']} ATK**\n"
-                    f"🛡️ **+{pkg['def']} DEF**\n"
-                    f"❤️ **+{pkg['hp']} HP**"
+                    f"⚔️ **+{pkg['atk']}** ATK → {cur_atk + pkg['atk']}\n"
+                    f"🛡️ **+{pkg['def']}** DEF → {cur_def + pkg['def']}\n"
+                    f"❤️ **+{pkg['hp']}** HP → {cur_hp + pkg['hp']}"
                 ),
                 inline=True,
             )
