@@ -1,6 +1,7 @@
 from discord import Interaction, app_commands
 from discord.ext import commands, tasks
 
+from core.first_use import TutorialGateView
 from core.skills.fishing_view import FishingView
 from core.skills.forestry_view import ForestryView
 from core.skills.mastery import (
@@ -50,16 +51,21 @@ class Skills(commands.Cog, name="skills"):
         # 2. State Lock
         self.bot.state_manager.set_active(user_id, "gather")
 
-        # 3. View Initialization
-        # We start with Mining by default
-        view = GatherView(self.bot, user_id, server_id, initial_skill="mining")
+        async def _build():
+            view = GatherView(self.bot, user_id, server_id, initial_skill="mining")
+            await view.refresh_state()
+            return view.get_embed(), view
 
-        # 4. Fetch Initial Data inside View
-        # We manually call refresh_state here before sending so the first embed is populated
-        await view.refresh_state()
+        if not await self.bot.database.tutorials.has_seen(user_id, "gather"):
+            await self.bot.database.tutorials.mark_seen(user_id, "gather")
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "gather", build_main=_build
+            )
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
 
-        embed = view.get_embed()
-
+        embed, view = await _build()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

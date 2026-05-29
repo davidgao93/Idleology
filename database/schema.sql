@@ -741,6 +741,17 @@ CREATE TABLE IF NOT EXISTS gathering_mastery (
     PRIMARY KEY (user_id, server_id)
 );
 
+-- ── FIRST-USE TUTORIALS ───────────────────────────────────────────────────────
+-- Tracks which tutorial prompts a player has already been shown.
+-- Keyed by (user_id, feature_key); no server_id needed since tutorials are
+-- per-player globally.
+CREATE TABLE IF NOT EXISTS tutorial_seen (
+    user_id     TEXT NOT NULL,
+    feature_key TEXT NOT NULL,
+    seen_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, feature_key)
+);
+
 -- For existing databases run once:
 -- ALTER TABLE users ADD COLUMN runes_of_nature INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE gathering_mastery ADD COLUMN attunement_alloc TEXT DEFAULT '{}';

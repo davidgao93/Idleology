@@ -4,6 +4,7 @@ from discord.ext import commands
 
 from core.delve.delve_views import DelveEntryView, DelveUpgradeView, DelveView
 from core.delve.mechanics import DelveMechanics, DelveState
+from core.first_use import TutorialGateView
 from core.images import DELVE_HUB
 
 
@@ -43,6 +44,41 @@ class Delve(commands.Cog):
             )
 
         self.bot.state_manager.set_active(user_id, "delve")
+
+        # 3a. First-use tutorial (fires before the entry view on the very first visit)
+        if not await self.bot.database.tutorials.has_seen(user_id, "delve"):
+            await self.bot.database.tutorials.mark_seen(user_id, "delve")
+
+            async def _build_entry():
+                async def start_game(inter: Interaction):
+                    state = DelveState(
+                        max_fuel=DelveMechanics.get_max_fuel(delve_stats["fuel_lvl"]),
+                        current_fuel=DelveMechanics.get_max_fuel(delve_stats["fuel_lvl"]),
+                        pickaxe_tier=pickaxe,
+                    )
+                    view = DelveView(self.bot, user_id, server_id, state, delve_stats)
+                    embed = view.build_embed("Systems online. Permit verified.")
+                    await inter.response.edit_message(embed=embed, view=view)
+                    view.message = await inter.original_response()
+
+                entry_embed = discord.Embed(
+                    title="⛏️ Deep Delve Expedition", color=discord.Color.dark_grey()
+                )
+                entry_embed.description = (
+                    f"**Permit Cost:** {entry_cost:,} Gold\n"
+                    f"**Fuel Capacity:** {DelveMechanics.get_max_fuel(delve_stats['fuel_lvl'])}\n\n"
+                    "The Guild requires a permit for all deep earth operations.\n"
+                    "Deeper layers yield high rewards, but stability is critical.\n"
+                    "Once your fuel reaches 0, it's over, you lose it all.\n"
+                    "Extract before the mines consume you."
+                )
+                entry_embed.set_thumbnail(url=DELVE_HUB)
+                return entry_embed, DelveEntryView(self.bot, user_id, server_id, entry_cost, start_game)
+
+            gate = TutorialGateView(self.bot, user_id, server_id, "delve", build_main=_build_entry)
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
 
         # 4. Define Start Callback
         # This function is passed to the Entry View to run AFTER gold is paid

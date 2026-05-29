@@ -7,6 +7,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.images import QUEST_SHOP
 from core.quests.data import TOKEN_SHOP_ITEMS
 
 _SHOP_COLOR = 0xF0A500
@@ -29,6 +30,7 @@ class TokenShopView(BaseView):
             ),
             color=_SHOP_COLOR,
         )
+        embed.set_author(name="Lira", icon_url=QUEST_SHOP)
         for item in TOKEN_SHOP_ITEMS:
             one_time = " *(One-time)*" if item.get("one_time") else ""
             selected = item["id"] == self._selected_item_id

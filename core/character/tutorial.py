@@ -3,18 +3,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
-
-# ── Asset URLs ────────────────────────────────────────────────────────────────
-# Discord CDN signed URLs expire after ~90 days.  If images break, re-upload
-# to the same channel and update the constants below.
-# Source channel: 1334637411363323996
-
-AMARA_PORTRAIT = (
-    "https://cdn.discordapp.com/attachments/1334637411363323996"
-    "/1509665755707215992/guildmaster_amara.jpg"
-    "?ex=6a1a014c&is=6a18afcc"
-    "&hm=0e213ea0757113d5ec7d3f6cad0ebd458b57d804e4f0a413d3146487b74ad8c5&"
-)
+from core.images import AMARA_PORTRAIT
 
 _SCENES = [
     {

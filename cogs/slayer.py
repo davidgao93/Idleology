@@ -1,6 +1,7 @@
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from core.first_use import TutorialGateView
 from core.slayer.views import SlayerDashboardView
 
 
@@ -15,26 +16,29 @@ class Slayer(commands.Cog, name="slayer"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        # 1. Standard Validation
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        # 2. State Lock
         self.bot.state_manager.set_active(user_id, "slayer")
 
-        # 3. Fetch Slayer Data
-        profile = await self.bot.database.slayer.get_profile(user_id, server_id)
-        player_level = existing_user[
-            4
-        ]  # We need player level to generate appropriate tasks
+        async def _build():
+            profile = await self.bot.database.slayer.get_profile(user_id, server_id)
+            view = SlayerDashboardView(
+                self.bot, user_id, server_id, profile, existing_user[4]
+            )
+            return view.build_embed(), view
 
-        # 4. Launch Dashboard View
-        view = SlayerDashboardView(self.bot, user_id, server_id, profile, player_level)
-        embed = view.build_embed()
+        if not await self.bot.database.tutorials.has_seen(user_id, "slayer"):
+            await self.bot.database.tutorials.mark_seen(user_id, "slayer")
+            gate = TutorialGateView(self.bot, user_id, server_id, "slayer", build_main=_build)
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
 
+        embed, view = await _build()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

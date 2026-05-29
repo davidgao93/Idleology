@@ -6,6 +6,7 @@ from discord.ext import commands
 
 from core.character.profile_hub import ProfileHubView
 from core.character.profile_ui import ProfileBuilder
+from core.first_use import TutorialGateView
 from core.inventory.views import SLOT_ORDER, GearView, InventoryListView
 
 # Core
@@ -58,10 +59,21 @@ class Inventory(commands.Cog, name="inventory"):
 
         self.bot.state_manager.set_active(user_id, "inventory")
 
-        all_items = await _fetch_all_slots(self.bot, user_id)
+        async def _build():
+            all_items = await _fetch_all_slots(self.bot, user_id)
+            view = GearView(self.bot, user_id, all_items, initial_slot=initial_slot)
+            return view.build_embed(interaction.user.display_name), view
 
-        view = GearView(self.bot, user_id, all_items, initial_slot=initial_slot)
-        embed = view.build_embed(interaction.user.display_name)
+        if not await self.bot.database.tutorials.has_seen(user_id, "inventory"):
+            await self.bot.database.tutorials.mark_seen(user_id, "inventory")
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "inventory", build_main=_build
+            )
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
+
+        embed, view = await _build()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

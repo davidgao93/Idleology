@@ -71,7 +71,7 @@ class VoidforgeView(BaseUpgradeView):
             ),
             color=discord.Color.dark_purple(),
         )
-        embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
+        embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_VOIDFORGE)
 
         await self._send_render(interaction, embed)
 
@@ -108,7 +108,7 @@ class VoidforgeView(BaseUpgradeView):
             ),
             color=discord.Color.red(),
         )
-        embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
+        embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_VOIDFORGE)
 
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -194,7 +194,7 @@ class VoidforgeView(BaseUpgradeView):
         embed = discord.Embed(
             title="Voidforge Result", description=res_txt, color=color
         )
-        embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
+        embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_VOIDFORGE)
 
         self.clear_items()
         self.add_back_button()

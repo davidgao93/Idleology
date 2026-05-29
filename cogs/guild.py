@@ -4,7 +4,8 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from core.character.tutorial import AMARA_PORTRAIT, TutorialView
+from core.character.tutorial import TutorialView
+from core.images import AMARA_PORTRAIT
 from core.character.views import RegistrationView, UnregisterView
 from core.images import GUILD_UNREGISTER
 

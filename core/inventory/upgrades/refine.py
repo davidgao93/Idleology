@@ -77,7 +77,7 @@ class RefineView(BaseUpgradeView):
         self.embed = discord.Embed(
             title=f"Refine {self.item.name}", description=desc, color=color
         )
-        self.embed.set_thumbnail(url=UPGRADE_REFINE)
+        self.embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_REFINE)
 
         await self._send_render(interaction, self.embed)
 
@@ -170,7 +170,7 @@ class RefineView(BaseUpgradeView):
             embed = discord.Embed(
                 title="Refine Complete! ✨", color=discord.Color.green()
             )
-            embed.set_thumbnail(url=UPGRADE_REFINE)
+            embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_REFINE)
             embed.description = (
                 f"**Gains:** {res_str}\n"
                 f"**Refinement:** +{self.item.refinement_lvl}\n\n"
@@ -290,7 +290,7 @@ class RefineView(BaseUpgradeView):
         embed = discord.Embed(
             title="Refinemaxx Complete! ⚡", color=discord.Color.gold()
         )
-        embed.set_thumbnail(url=UPGRADE_REFINE)
+        embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_REFINE)
         embed.description = (
             f"**Refines Performed:** {refines_done}\n"
             f"**Stopped Because:** {stop_reason}\n\n"
@@ -411,7 +411,7 @@ class RefineView(BaseUpgradeView):
         embed = discord.Embed(
             title="⚠️ Refinemaxx ✨ Confirmation", color=discord.Color.orange()
         )
-        embed.set_thumbnail(url=UPGRADE_REFINE)
+        embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_REFINE)
         embed.description = (
             f"This will perform **{total_cycles:,}** refine(s) using up to **{runes_used}** Rune(s).\n\n"
             f"**Estimated Resources Consumed:**\n"
@@ -532,7 +532,7 @@ class RefineView(BaseUpgradeView):
         embed = discord.Embed(
             title="Refinemaxx ✨ Complete!", color=discord.Color.gold()
         )
-        embed.set_thumbnail(url=UPGRADE_REFINE)
+        embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_REFINE)
         embed.description = (
             f"**Refines Performed:** {refines_done:,}\n"
             f"**Runes Consumed:** {runes_used}\n"

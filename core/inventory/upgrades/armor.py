@@ -80,7 +80,7 @@ class TemperView(BaseUpgradeView):
             description=desc,
             color=discord.Color.blue() if has_res else discord.Color.red(),
         )
-        embed.set_thumbnail(url=UPGRADE_TEMPER)
+        embed.set_author(name="Armorsmith Veyra", icon_url=UPGRADE_TEMPER)
         await self._send_render(interaction, embed)
 
     async def confirm_temper(self, interaction: Interaction, use_rune: bool):
@@ -138,7 +138,7 @@ class TemperView(BaseUpgradeView):
         )
 
         res_embed = discord.Embed(title="Temper Result")
-        res_embed.set_thumbnail(url=UPGRADE_TEMPER)
+        res_embed.set_author(name="Armorsmith Veyra", icon_url=UPGRADE_TEMPER)
         if success:
             self.item.temper_remaining -= 1
             await self.bot.database.equipment.update_counter(
@@ -198,7 +198,7 @@ class ImbueView(BaseUpgradeView):
             description=f"Cost: 1 Rune of Imbuing (Owned: {runes})\nSuccess Rate: **50%**\n\nGrants a powerful passive ability.",
             color=discord.Color.purple(),
         )
-        embed.set_thumbnail(url=UPGRADE_TEMPER)
+        embed.set_author(name="Armorsmith Veyra", icon_url=UPGRADE_TEMPER)
         self.clear_items()
         confirm_btn = Button(
             label="Imbue", style=ButtonStyle.primary, disabled=(runes == 0)
@@ -227,7 +227,7 @@ class ImbueView(BaseUpgradeView):
         )
 
         embed = discord.Embed(title="Imbue Result")
-        embed.set_thumbnail(url=UPGRADE_TEMPER)
+        embed.set_author(name="Armorsmith Veyra", icon_url=UPGRADE_TEMPER)
         if random.random() <= 0.5:
             new_p = random.choice(
                 [
@@ -334,7 +334,7 @@ class ReinforceView(BaseUpgradeView):
         embed = discord.Embed(
             title=f"Reinforce {self.item.name}", description=desc, color=color
         )
-        embed.set_thumbnail(url=UPGRADE_REINFORCE)
+        embed.set_author(name="Armorsmith Veyra", icon_url=UPGRADE_REINFORCE)
         await self._send_render(interaction, embed)
 
     async def confirm_reinforce(self, interaction: Interaction):
@@ -415,7 +415,7 @@ class ReinforceView(BaseUpgradeView):
             embed = discord.Embed(
                 title="Reinforce Complete! ✨", color=discord.Color.green()
             )
-            embed.set_thumbnail(url=UPGRADE_REINFORCE)
+            embed.set_author(name="Armorsmith Veyra", icon_url=UPGRADE_REINFORCE)
             embed.description = (
                 f"**Gain:** +{gain}{suffix} {stat_label}\n"
                 f"**Reinforcement:** +{self.item.reinforcement_lvl}\n\n"
@@ -464,7 +464,7 @@ class EngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.purple(),
         )
-        self.embed.set_thumbnail(url=UPGRADE_CELESTIAL_ENGRAM)
+        self.embed.set_author(name="Artificer Sylas", icon_url=UPGRADE_CELESTIAL_ENGRAM)
 
         self.clear_items()
         btn_consume = Button(
@@ -523,7 +523,7 @@ class EngramView(BaseUpgradeView):
             title="🌌 Engram Resonated!", color=discord.Color.gold()
         )
         res_embed.description = f"The Engram shatters, weaving divine energy into your armor.\n\n**New Passive:** {display_new}"
-        res_embed.set_thumbnail(url=UPGRADE_CELESTIAL_ENGRAM)
+        res_embed.set_author(name="Artificer Sylas", icon_url=UPGRADE_CELESTIAL_ENGRAM)
 
         self.clear_items()
         if uber_prog["celestial_engrams"] - 1 > 0:

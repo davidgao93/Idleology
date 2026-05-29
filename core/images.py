@@ -1,6 +1,15 @@
 # Centralised image URL registry.
 # All imgur (and future CDN) URLs live here — never hardcode them elsewhere.
 
+# ── NPC PORTRAITS (for embed.set_author — square-ish headshots work best) ─────
+# These are intentionally kept as full CDN URLs for easy reuse as author icons.
+AMARA_PORTRAIT = (
+    "https://cdn.discordapp.com/attachments/1334637411363323996"
+    "/1509665755707215992/guildmaster_amara.jpg"
+    "?ex=6a1a014c&is=6a18afcc"
+    "&hm=0e213ea0757113d5ec7d3f6cad0ebd458b57d804e4f0a413d3146487b74ad8c5&"
+)
+
 # ── COMBAT ────────────────────────────────────────────────────────────────────
 COMBAT_VICTORY = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512645961482270/combat_victory.png?ex=69f8b4cc&is=69f7634c&hm=98c607e7f4ef046069201a604d70b06c0adc16b42dfde6feb11d8ec5489a699c&"
 COMBAT_REDEMPTION = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512646523260968/combat_redemption.png?ex=69f8b4cd&is=69f7634d&hm=8872a1beecb580641323693b67bd3f2235a2f7a14a2248b5a478b9cd5ff5721a&"
@@ -207,6 +216,13 @@ CORRUPTED_MONSTERS = {
 # ── SLAYER ────────────────────────────────────────────────────────────────────
 SLAYER_MASTER = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512944839196672/slayer_master.jpeg?ex=69f8b514&is=69f76394&hm=80574a877f344b671995071e57369d25bec6f534fcbf943a6a8be049e9f0f1c2&"
 SLAYER_EMBLEM = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512945111568566/slayer_emblem.png?ex=69f8b514&is=69f76394&hm=9e0e91ed0c4e0ba48c7283d29e5faf3dee64b01b3bc1b933a48527e8b9fd72bc&"
+
+# ── QUESTS ────────────────────────────────────────────────────────────────────
+QUEST_BOARD = "https://cdn.discordapp.com/attachments/1334637411363323996/1509665756294545558/quest_board.jpg?ex=6a1a014c&is=6a18afcc&hm=092888c4013254e6544ea5cef26d654afc6d99cc70c9ab39afdd55dd2ebdd6f6&"
+QUEST_SHOP = "https://cdn.discordapp.com/attachments/1334637411363323996/1509665756802060429/quest_shop.jpg?ex=6a1a014c&is=6a18afcc&hm=703ba9cfd01f11b75d98d69e126b8cbbcb199fa05dc724c3a7dc788b84fee82e&"
+
+# ── TAVERN / POTION SHOP ──────────────────────────────────────────────────────
+POTION_SHOP = "https://cdn.discordapp.com/attachments/1334637411363323996/1509665756001079316/potion_shop.jpg?ex=6a1a014c&is=6a18afcc&hm=c5fa81b24406ce6d43a6264d30d2196fbdd871c0c377cae373c934e96d2ef8b4&"
 
 # ── PARADISE JEWEL SKILLS ─────────────────────────────────────────────────────
 SKILL_UNCUT = "https://cdn.discordapp.com/attachments/1334637411363323996/1506409619210375291/skill-uncut.jpg?ex=6a0e28c8&is=6a0cd748&hm=d6405a6ec77e08dff6454c264611585dcaad0dd1331b50055ccdadd309c415ed&"

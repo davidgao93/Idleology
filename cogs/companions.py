@@ -4,6 +4,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.companions.views import CompanionListView
+from core.first_use import TutorialGateView
 from core.images import COMPANIONS_HUB
 from core.items.factory import create_companion
 
@@ -34,21 +35,42 @@ class Companions(commands.Cog):
             return
 
         self.bot.state_manager.set_active(user_id, "companions")
-        # 2. Fetch Data
-        rows = await self.bot.database.companions.get_all(user_id)
-        if not rows:
+
+        async def _build():
+            rows = await self.bot.database.companions.get_all(user_id)
+            companions = [create_companion(row) for row in rows] if rows else []
+            view = CompanionListView(self.bot, user_id, companions)
+            embed = view.get_embed()
+            embed.set_thumbnail(url=COMPANIONS_HUB)
+            return embed, view
+
+        # No companions yet is fine — show the tutorial (or empty roster) regardless.
+        rows_check = await self.bot.database.companions.get_all(user_id)
+        if not rows_check:
+            # Still show the tutorial if first visit, but use an informational embed instead.
+            if not await self.bot.database.tutorials.has_seen(user_id, "companions"):
+                await self.bot.database.tutorials.mark_seen(user_id, "companions")
+                gate = TutorialGateView(
+                    self.bot, user_id, server_id, "companions", build_main=_build
+                )
+                await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+                gate.message = await interaction.original_response()
+                return
             return await interaction.response.send_message(
-                "You have no companions yet.", ephemeral=True
+                "You have no companions yet. Defeat monsters in combat after level 40 to tame them!",
+                ephemeral=True,
             )
 
-        companions = [create_companion(row) for row in rows]
+        if not await self.bot.database.tutorials.has_seen(user_id, "companions"):
+            await self.bot.database.tutorials.mark_seen(user_id, "companions")
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "companions", build_main=_build
+            )
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
 
-        # 3. View
-        self.bot.state_manager.set_active(user_id, "companions")
-        view = CompanionListView(self.bot, user_id, companions)
-        embed = view.get_embed()
-        embed.set_thumbnail(url=COMPANIONS_HUB)
-
+        embed, view = await _build()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

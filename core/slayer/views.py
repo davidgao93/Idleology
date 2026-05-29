@@ -30,7 +30,7 @@ class SlayerDashboardView(BaseView):
         )
 
         embed = discord.Embed(title="💀 Slayer Master", color=discord.Color.dark_red())
-        embed.set_thumbnail(url=SLAYER_MASTER)
+        embed.set_author(name="Slayer Master Kael", icon_url=SLAYER_MASTER)
 
         embed.add_field(
             name="Profile",

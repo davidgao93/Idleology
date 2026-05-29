@@ -26,10 +26,10 @@ class ShopView(BaseView):
         try:
             embed = self.message.embeds[0]
             for i, field in enumerate(embed.fields):
-                if "tavernkeeper" in field.name.lower():
+                if "tavernkeeper" in field.name.lower() or field.name == "Elara":
                     embed.set_field_at(
                         i,
-                        name="The tavernkeeper",
+                        name="Elara",
                         value="*Zzz...* (The shop has closed)",
                         inline=False,
                     )
@@ -65,7 +65,7 @@ class ShopView(BaseView):
             ),
             inline=False,
         )
-        embed.set_field_at(2, name="The tavernkeeper", value=msg, inline=False)
+        embed.set_field_at(2, name="Elara", value=msg, inline=False)
         self.update_buttons()
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -80,7 +80,7 @@ class ShopView(BaseView):
         await self.bot.database.users.modify_stat(self.user_id, "potions", qty)
         self.gold -= cost
         self.potions += qty
-        msg = f"Here are your **{qty}** potions. Stay safe out there."
+        msg = f"Here are your **{qty}** potions. Stay safe out there."  # Elara's voice in the field update
         self._processing = False
         await self.refresh_ui(interaction, msg)
 

@@ -34,7 +34,7 @@ class ForgeView(BaseUpgradeView):
             description=desc,
             color=discord.Color.green() if has_res else discord.Color.red(),
         )
-        self.embed.set_thumbnail(url=UPGRADE_FORGE)
+        self.embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_FORGE)
 
         self.clear_items()
 
@@ -247,7 +247,7 @@ class ForgeView(BaseUpgradeView):
             ),
             color=discord.Color.gold() if successes > 0 else discord.Color.dark_grey(),
         )
-        result_embed.set_thumbnail(url=UPGRADE_FORGE)
+        result_embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_FORGE)
 
         self.clear_items()
         self.add_back_button()

@@ -9,6 +9,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.images import AMARA_PORTRAIT, QUEST_BOARD
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, TOKEN_SHOP_ITEMS
 from core.quests.mechanics import (
     BOARD_COOLDOWN_HOURS,
@@ -115,6 +116,8 @@ class QuestBoardView(BaseView):
 
     def _build_board_embed(self, tokens: int) -> discord.Embed:
         embed = discord.Embed(title="📋 Quest Board", color=_BOARD_COLOR)
+        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_PORTRAIT)
+        embed.set_thumbnail(url=QUEST_BOARD)
 
         for slot_row in self.board:
             slot = slot_row["slot"]
@@ -167,6 +170,8 @@ class QuestBoardView(BaseView):
 
     def _build_contracts_embed(self, tokens: int) -> discord.Embed:
         embed = discord.Embed(title="📋 Quest Board — Active Contracts", color=_BOARD_COLOR)
+        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_PORTRAIT)
+        embed.set_thumbnail(url=QUEST_BOARD)
 
         active = [c for c in self.contracts if not c["turned_in"]]
         for contract in active:
@@ -225,6 +230,8 @@ class QuestBoardView(BaseView):
             description=f"The board has been cleared. Check back in **{_fmt_td(rem)}**.",
             color=_BOARD_COLOR,
         )
+        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_PORTRAIT)
+        embed.set_thumbnail(url=QUEST_BOARD)
         embed.set_footer(text=f"Quest Tokens: {tokens}")
         return embed
 

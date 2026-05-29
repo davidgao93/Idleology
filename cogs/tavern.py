@@ -5,7 +5,8 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from core.images import CHECKIN, TAVERN_CASINO, TAVERN_GAMES, TAVERN_KEEPER, TAVERN_ROULETTE
+from core.first_use import TutorialGateView
+from core.images import AMARA_PORTRAIT, CHECKIN, POTION_SHOP, TAVERN_CASINO, TAVERN_GAMES, TAVERN_KEEPER, TAVERN_ROULETTE
 from core.items.factory import load_player
 from core.quests.data import CHECKIN_DAY_LABELS
 from core.tavern.mechanics import TavernMechanics
@@ -96,36 +97,44 @@ class Tavern(commands.Cog, name="tavern"):
 
         self.bot.state_manager.set_active(user_id, "shop")
 
-        gold = user_data["gold"]
-        potions = user_data["potions"]
-        level = user_data["level"]
+        async def _build():
+            gold = user_data["gold"]
+            potions = user_data["potions"]
+            level = user_data["level"]
+            potion_cost = TavernMechanics.calculate_potion_cost(level)
+            topup_qty = max(0, 20 - potions)
+            embed = discord.Embed(
+                title="Tavern Shop 🏪",
+                description="Welcome to the shop! Here are the items you can buy:",
+                color=0xFFCC00,
+            )
+            embed.set_author(name="Elara", icon_url=POTION_SHOP)
+            embed.add_field(name="Your Gold 💰", value=f"{gold:,}", inline=False)
+            embed.add_field(
+                name="Potion 🧪",
+                value=(
+                    f"x1: **{potion_cost:,}** gold\n"
+                    f"x5: **{potion_cost * 5:,}** gold\n"
+                    f"Top Up ({topup_qty}): **{potion_cost * topup_qty:,}** gold"
+                ),
+                inline=False,
+            )
+            embed.add_field(
+                name="Elara",
+                value="The shelves are a bit bare today, but I still have what you need.",
+                inline=False,
+            )
+            view = ShopView(self.bot, user_id, user_data)
+            return embed, view
 
-        potion_cost = TavernMechanics.calculate_potion_cost(level)
-        topup_qty = max(0, 20 - potions)
+        if not await self.bot.database.tutorials.has_seen(user_id, "shop"):
+            await self.bot.database.tutorials.mark_seen(user_id, "shop")
+            gate = TutorialGateView(self.bot, user_id, server_id, "shop", build_main=_build)
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
 
-        embed = discord.Embed(
-            title="Tavern Shop 🏪",
-            description="Welcome to the shop! Here are the items you can buy:",
-            color=0xFFCC00,
-        )
-        embed.set_thumbnail(url=TAVERN_KEEPER)
-        embed.add_field(name="Your Gold 💰", value=f"{gold:,}", inline=False)
-        embed.add_field(
-            name="Potion 🧪",
-            value=(
-                f"x1: **{potion_cost:,}** gold\n"
-                f"x5: **{potion_cost * 5:,}** gold\n"
-                f"Top Up ({topup_qty}): **{potion_cost * topup_qty:,}** gold"
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="The tavernkeeper",
-            value="Hello traveler, the pickings are slim I'm afraid...",
-            inline=False,
-        )
-
-        view = ShopView(self.bot, user_id, user_data)
+        embed, view = await _build()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
@@ -216,16 +225,18 @@ class Tavern(commands.Cog, name="tavern"):
                 else:
                     # Normal paid rest prompt
                     self.bot.state_manager.set_active(user_id, "rest")
+                    embed.set_author(name="Gilda", icon_url=TAVERN_KEEPER)
                     embed.add_field(
-                        name="The Tavernkeeper",
+                        name="Gilda",
                         value=f"I have an extra room available for **{cost} gold**.",
                     )
                     view = RestView(self.bot, user_id, cost, max_hp)
                     await interaction.response.send_message(embed=embed, view=view)
                     view.message = await interaction.original_response()
             else:
+                embed.set_author(name="Gilda", icon_url=TAVERN_KEEPER)
                 embed.add_field(
-                    name="The Tavernkeeper",
+                    name="Gilda",
                     value=f"I have a room for **{cost} gold**, but you can't afford it.",
                 )
                 await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -258,7 +269,7 @@ class Tavern(commands.Cog, name="tavern"):
             description=f"Table Stake: **{amount:,} gold**.\nSelect a game:",
             color=0xFFD700,
         )
-        embed.set_thumbnail(url=TAVERN_CASINO)
+        embed.set_author(name="Vespera", icon_url=TAVERN_CASINO)
         embed.add_field(
             name="🃏 Blackjack", value="Beat the dealer to 21. (2x Payout)", inline=True
         )

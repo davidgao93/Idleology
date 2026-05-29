@@ -56,7 +56,7 @@ class PotentialView(BaseUpgradeView):
             description=desc,
             color=discord.Color.purple(),
         )
-        embed.set_thumbnail(url=UPGRADE_ENCHANT)
+        embed.set_author(name="Artificer Sylas", icon_url=UPGRADE_ENCHANT)
 
         # --- BUTTONS ---
         self.clear_items()
@@ -147,7 +147,7 @@ class PotentialView(BaseUpgradeView):
         )
 
         result_embed = discord.Embed(title="Enchantment Result")
-        result_embed.set_thumbnail(url=UPGRADE_ENCHANT)
+        result_embed.set_author(name="Artificer Sylas", icon_url=UPGRADE_ENCHANT)
 
         if success:
             if self.item.passive == "none":
@@ -225,7 +225,7 @@ class VoidEngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.dark_theme(),
         )
-        self.embed.set_thumbnail(url=UPGRADE_VOID_ENGRAM)
+        self.embed.set_author(name="Artificer Sylas", icon_url=UPGRADE_VOID_ENGRAM)
         self.clear_items()
         btn_consume = Button(
             label="Consume Engram",
@@ -283,7 +283,7 @@ class VoidEngramView(BaseUpgradeView):
             description=f"The Engram dissolves into the void, reshaping your accessory.\n\n**New Passive:** {display_new}",
             color=discord.Color.dark_theme(),
         )
-        res_embed.set_thumbnail(url=UPGRADE_VOID_ENGRAM)
+        res_embed.set_author(name="Artificer Sylas", icon_url=UPGRADE_VOID_ENGRAM)
         self.clear_items()
         if uber_prog["void_engrams"] - 1 > 0:
             btn_again = Button(label="Roll Again", style=ButtonStyle.primary)

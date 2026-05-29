@@ -1,6 +1,7 @@
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from core.first_use import TutorialGateView
 from core.hatchery.views import HatcheryView
 from core.settlement.models import Plot
 from core.settlement.views import SettlementDashboardView
@@ -33,50 +34,49 @@ class SettlementCog(commands.Cog, name="settlement"):
 
         self.bot.state_manager.set_active(user_id, "settlement")
 
-        # 2. Fetch Data
-        settlement = await self.bot.database.settlement.get_settlement(
-            user_id, server_id
-        )
-        ideology = existing_user["ideology"]
-
-        # 3. Follower / Worker Validation
-        # If player lost followers (e.g. raid/event), we must unassign workers to match cap.
-        total_followers = await self.bot.database.social.get_follower_count(ideology)
-        total_assigned = sum(b.workers_assigned for b in settlement.buildings)
-
-        if total_assigned > total_followers:
-            # Simple logic: Remove from buildings in reverse order until valid
-            diff = total_assigned - total_followers
-            for building in reversed(settlement.buildings):
-                if diff <= 0:
-                    break
-                to_remove = min(building.workers_assigned, diff)
-                building.workers_assigned -= to_remove
-                diff -= to_remove
-                # Commit fix immediately
-                await self.bot.database.settlement.assign_workers(
-                    building.id, building.workers_assigned
-                )
-
-            await interaction.channel.send(
-                f"⚠️ **Workforce Shortage!** {total_assigned - total_followers} workers have abandoned their posts.",
-                delete_after=10,
+        async def _build():
+            settlement = await self.bot.database.settlement.get_settlement(
+                user_id, server_id
             )
+            ideology = existing_user["ideology"]
+            total_followers = await self.bot.database.social.get_follower_count(ideology)
+            total_assigned = sum(b.workers_assigned for b in settlement.buildings)
+            if total_assigned > total_followers:
+                diff = total_assigned - total_followers
+                for building in reversed(settlement.buildings):
+                    if diff <= 0:
+                        break
+                    to_remove = min(building.workers_assigned, diff)
+                    building.workers_assigned -= to_remove
+                    diff -= to_remove
+                    await self.bot.database.settlement.assign_workers(
+                        building.id, building.workers_assigned
+                    )
+                await interaction.channel.send(
+                    f"⚠️ **Workforce Shortage!** {total_assigned - total_followers} workers have abandoned their posts.",
+                    delete_after=10,
+                )
+            await self.bot.database.plots.ensure_plots(user_id, server_id)
+            plot_rows = await self.bot.database.plots.get_plots(user_id, server_id)
+            plots = [
+                Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
+                for r in plot_rows
+            ]
+            view = SettlementDashboardView(
+                self.bot, user_id, server_id, settlement, total_followers, plots=plots
+            )
+            return view.build_embed(), view
 
-        # 4. Load plots (ensure rows exist first)
-        await self.bot.database.plots.ensure_plots(user_id, server_id)
-        plot_rows = await self.bot.database.plots.get_plots(user_id, server_id)
-        plots = [
-            Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
-            for r in plot_rows
-        ]
+        if not await self.bot.database.tutorials.has_seen(user_id, "settlement"):
+            await self.bot.database.tutorials.mark_seen(user_id, "settlement")
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "settlement", build_main=_build
+            )
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
 
-        # 5. Launch Dashboard
-        view = SettlementDashboardView(
-            self.bot, user_id, server_id, settlement, total_followers, plots=plots
-        )
-        embed = view.build_embed()
-
+        embed, view = await _build()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
