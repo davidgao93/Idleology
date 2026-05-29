@@ -26,6 +26,32 @@ This keeps the current resource economy mostly intact while adding depth, freque
 
 ---
 
+## Core Turn Processing Model (Critical Concept)
+
+One of the most important aspects of this system is how time advances:
+
+- **Each Development Turn processes all active systems simultaneously.**
+- When the player clicks **"Next Turn"**, the following all happen at once:
+  - The Nursery produces workers.
+  - All active construction and upgrade projects advance by 1 turn.
+  - The Black Market merchant processes deals.
+  - The Idlem Foundry generates Idlem.
+  - Any ongoing events tick down.
+  - Scheduled events may trigger.
+  - Passive Zeal generation for that turn is added.
+
+- The **main Settlement Dashboard** becomes the central hub. It shows:
+  - Current status ("Settlement — Day 47")
+  - What is happening **this turn**
+  - What is **upcoming** in the next few turns
+  - A summary of what **just happened** on the previous turn
+
+- Sub-systems (Plot Management, Black Market, Nursery management, specific building details, resource collection) are accessed from this dashboard but the player returns to the main view to actually advance time via the "Next Turn" button.
+
+This design creates a clear mental model: manage your settlement → review the turn summary → decide whether to advance another turn.
+
+---
+
 ## 2. Goals & Non-Goals
 
 ### Goals
@@ -82,8 +108,12 @@ Currently the primary (and almost only) way to gain workers is the `/propagate` 
 
 **New Building: Nursery**
 - Produces workers **exclusively by spending Development Turns** (no real-time passive generation).
-- This becomes the main long-term growth path for active settlement players.
-- Thematically perfect as a dedicated facility for raising and training new settlers loyal to the ideology.
+- Target numbers (for balancing):
+  - A dedicated active player hitting the ~600 Zeal soft cap per day generates roughly **60 turns**.
+  - Goal: ~**100 workers per day** from active play.
+  - Starting generation target: **~1.2 workers per turn** on average.
+- Excess workers beyond what buildings can use can be assigned to the Town Hall for a very small bonus to passive Zeal generation.
+- **Events** can dynamically affect the worker population (e.g. a meteor strike reducing workers, or a "baby boom" suddenly increasing Nursery output for several turns). This makes the worker economy feel alive.
 
 ### Building Consolidation — Uber Shrine
 The five separate Uber Shrines (celestial, infernal, void, twin, corruption) consume too much grid space.
@@ -94,13 +124,20 @@ The five separate Uber Shrines (celestial, infernal, void, twin, corruption) con
 - Each statue has its own independent "worshipper" worker pool.
 - This dramatically reduces grid pressure while preserving all current mechanical identity and power.
 
-### New Resource: Idlem
+### New Resource: Idlem & Idlem Foundry
 - **Name**: Idlem
-- Production: 1–2 per Development Turn only. **No real-time passive generation**.
-- Purpose:
-  - Primary currency for the future Black Market passive tree.
-  - Required for final-tier (T5) upgrades on many buildings.
-- This resource is deliberately meant to feel scarce and prestigious.
+- **Generator**: New dedicated building called the **Idlem Foundry**.
+  - Generates Idlem **per turn tick** (roughly 1-2 per turn at base).
+  - No real-time passive generation outside of turns.
+- **Purpose**:
+  - Primary currency for the Black Market passive tree.
+  - Required for final-tier (T5) upgrades.
+- **Events** can interact with Idlem (e.g. force loss of stored Idlem/timber/stone, or temporarily disable Idlem production for X turns). This creates meaningful short-term decisions.
+
+### Assistant Character ("The Maid")
+- Introduce a recurring helpful NPC (working name: "The Maid" or a more flavorful ideology-appropriate title) who acts as a tutorial/explanation guide for the settlement systems.
+- Similar in role to Guildmaster Amara in the early tutorial — she can provide contextual explanations, flavor, and guidance as the player unlocks new features (Nursery, Idlem Foundry, events, etc.).
+- This greatly improves onboarding for what will become one of the deepest systems in the game.
 
 ---
 
@@ -133,18 +170,26 @@ This is the main "progress unit" for the settlement (the "day" or "work cycle").
 #### Sources (Tunable — start conservative)
 
 **Active / Semi-Active Sources (Primary)**
-- **Combat**: Primary source of **Zeal**. Small amounts per victory with strong diminishing returns. Goal: ~600 Zeal should be reasonably achievable for active players in a day, after which returns drop sharply.
-- **Quests**: Reliable injections of Zeal on contract and Horizon completions.
+- **Combat**: Primary source of **Zeal**.
+  - Base: **10 Zeal per combat** for the first 10 combats (aligned with the 10-stamina pool).
+  - This is the main way active players generate Development Turns.
+  - Strong diminishing returns apply after the daily soft target (see Caps section).
+- **Quests**:
+  - Difficulty-scaled rewards (examples):
+    - 1★ quest → **30 Zeal** (costs 5 turns in the quest system)
+    - 3★ quest → **90 Zeal** (costs 15 turns)
+  - Generic/non-zeal-targeted quests still grant a small bonus of **10–30 Zeal**.
+  - These rewards are **in addition** to normal quest rewards.
 - **Deliberate Settlement Activity**:
   - Black Market merchant mini-game (major source + sink).
-  - Running the new **Nursery** building (see Workers section).
+  - Running the **Nursery** and **Idlem Foundry**.
   - Partner dispatch tasks with a "Settlement Support" focus.
 
 **Passive / Idle Sources (Secondary but Important)**
-- Modest baseline passive Zeal generation.
-- Each Town Hall tier grants a linear **+10%** increase to passive generation.
-- At maximum tier (currently 7), this results in a 70% increase over baseline. This is meaningful but deliberately not competitive with active play.
-- Expedition Camp plot bonus continues to award Development Contracts (with potential future synergy to Zeal).
+- Baseline passive generation: **~1 Development Turn per hour** (10 Zeal/hour).
+- This scales up to approximately **2 turns per hour** at the highest Town Hall tier.
+- Players can "Gather Zeal" / collect this passive generation on demand.
+- This provides a respectable floor for players who are less active while still making active play significantly more rewarding.
 
 **Event Sources**
 - Many events award Zeal or full Development Turns on resolution.
@@ -218,19 +263,24 @@ This design strongly enables the "just one more turn" fantasy. After a productiv
 
 Events trigger based on the total **Settlement — Day [X]** counter (cumulative Development Turns advanced by the settlement).
 
-### Two Event Types
+### Event Types
 
-**1. Scheduled / Upcoming Events** ("Will occur after X turns")
-- The player is given advance warning.
-- They can prepare (reassign workers, stock resources, spend turns on defenses, etc.).
-- Creates planning and anticipation.
+Events are tied to specific turn ticks and come in three main flavors:
 
-**2. Active Window Events** ("Happening for the next X turns")
-- The event is currently active.
-- The player has a limited window to respond optimally (e.g. defeat a raid, take advantage of a production surge, trade during a special market window).
-- Creates urgency and "just one more turn" decisions.
+1. **Upcoming / Scheduled** ("Will occur after X turns")
+   - Player receives advance notice.
+   - Primarily used for defensive events so the player can prepare (reassign workers, stock resources, etc.).
 
-This distinction is important for player agency and satisfaction.
+2. **Ongoing / Active Window** ("Happening for the next X turns")
+   - The event is currently active and affecting the settlement.
+   - Player can (and often should) make decisions during this window.
+
+3. **Instant**
+   - One-time effects with no player reaction window (pure flavor or immediate consequence).
+
+**Initial Scope**: Design and implement a roster of **8–10 solid events** for launch rather than trying to create dozens immediately. More can be added over time.
+
+Defensive events in particular will use the normal combat system with custom monster generation, modifiers, and custom loot tables (similar to how Uber bosses currently work), and will reward special settler materials on victory.
 
 **Event Categories** (examples):
 
@@ -353,10 +403,12 @@ Before we move into detailed technical scoping, the following areas need clear d
 - How many events do we want in the first release?
 - Full table of "Scheduled" vs "Active Window" events with their DT triggers.
 
-### 7. UI & Player Communication
-- How is the "Settlement — Day [X]" counter displayed?
-- How do players see upcoming/predicted events?
-- Project management UI (list of active projects, easy investment buttons).
+### 7. UI & Player Communication (Resolved Direction)
+- **"Settlement — Day [X]"** lives in the **main dashboard embed title**.
+- The main dashboard is the "command center": shows current turn effects, upcoming events, and recent history.
+- Sub-views handle detailed management (plots, Black Market, specific buildings, resource collection).
+- "Next Turn" button on the main dashboard advances all systems simultaneously.
+- Passive resource collection is moved to its own view so the main screen stays focused on turn planning and events.
 
 ### 8. Black Market (High Priority Separate Doc)
 - Value calculation formula (this will make or break the system).
@@ -367,4 +419,12 @@ Before we move into detailed technical scoping, the following areas need clear d
 - After the Uber Shrine consolidation, what is the realistic future plan for the 20-plot grid?
 - Are there plans for more regular buildings that would require grid expansion mechanics?
 
-Once we have solid answers on the above (especially Zeal economy numbers, Nursery costs, and the two-event-type philosophy), we can move to a scoped implementation plan with clear milestones.
+Many of the above points have now been resolved in this iteration of the document. Remaining high-priority items for the next phase (especially before implementation) are:
+
+- Precise Zeal economy curve and quest scaling numbers
+- Exact Nursery generation rate and worker targets
+- Idlem Foundry tuning + event interactions with Idlem
+- Initial set of 8–10 events (with full definitions of triggers and effects)
+- Detailed Black Market value formula and passive tree (separate document)
+
+Once these are locked, the main Settlement Turns design should be solid enough to begin technical scoping and implementation.
