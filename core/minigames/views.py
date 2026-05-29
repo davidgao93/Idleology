@@ -319,11 +319,29 @@ class BlackjackView(BaseView):
                 except Exception:
                     pass
 
-        await self.update_table(interaction)
+        # Build the final embed from scratch — avoids Discord caching issues with
+        # original_response() that cause stale embeds to appear after a restart.
+        p_score = self.deck.calculate_score(self.player_hand)
+        d_score = self.deck.calculate_score(self.dealer_hand)
+        final_embed = discord.Embed(
+            title="🃏 Blackjack Table",
+            description=msg,
+            color=discord.Color.gold(),
+        )
+        final_embed.set_thumbnail(url=TAVERN_CASINO)
+        final_embed.add_field(
+            name=f"Dealer's Hand ({d_score})",
+            value=self.deck.format_hand(self.dealer_hand),
+            inline=False,
+        )
+        final_embed.add_field(
+            name=f"Your Hand ({p_score})",
+            value=self.deck.format_hand(self.player_hand),
+            inline=False,
+        )
+        final_embed.set_footer(text=f"Bet: {self.bet_amount:,} gold")
 
-        final_embed = (await self.original_interaction.original_response()).embeds[0]
-        final_embed.description = msg
-
+        self.clear_items()
         # Add Restart Button
         restart_btn = Button(label="Play Again", style=ButtonStyle.primary, emoji="🔄")
         restart_btn.callback = self.restart_game

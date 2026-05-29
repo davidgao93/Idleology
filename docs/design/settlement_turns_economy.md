@@ -16,7 +16,7 @@ Your settlement operates on its own rhythm of **Development Turns** (virtual wor
 
 **Key Pillars:**
 - **Hybrid time model**: Real-time passive production for generators (timber, stone, bars, stamina, etc.) remains the backbone for fully idle players.
-- **Development Turns** as the new active/semi-active development currency.
+- **Development Turns** as the primary development/progress unit. These are purchased using a more granular Ideology-themed token.
 - **Events** on turn milestones create the "just one more turn" tension.
 - **Sinks & Mini-games**: Black Market becomes a proper merchant value-trading mini-game with processing time. Research and Construction become turn-gated.
 - **Cross-system integration**: Combat, quests, and settlement activities all feed the turn economy.
@@ -51,7 +51,11 @@ This keeps the current resource economy mostly intact while adding depth, freque
 - **Core settlement resources**: Timber, Stone (player-collected + generated).
 - **Processed materials**: Iron/Steel/Gold/Platinum/Idea bars, various Logs/Planks, Bone → Essence lines.
 - **Special upgrade materials**: Magma Core, Life Root, Spirit Shard, Celestial Stone, Infernal Cinder, Void Crystal, etc. (used for T3+ building upgrades).
-- **Development Contracts (DCs)**: Used to develop plots and (in some contexts) Town Hall progress. Earned slowly from "Expedition Camp" plot bonuses (1 DC per 48h per such plot).
+- **New Resource: Idlem**
+  - Produced **only through Development Turns** (1–2 per turn at base, no real-time passive generation).
+  - Used for the new Black Market passive tree and final-tier building upgrades.
+  - Deliberately scarce and valuable.
+- **Development Contracts (DCs)**: Used to develop plots and (in some contexts) Town Hall progress. Earned slowly from "Expedition Camp" plot bonuses (1 DC per 48h per such plot). Can also be awarded by events.
 - **Side outputs**: War Camp Stamina, Companion Cookies (→ pet XP), Market Gold (direct to player gold).
 
 ### Current Progression Gates
@@ -71,34 +75,85 @@ This keeps the current resource economy mostly intact while adding depth, freque
 
 ---
 
+## Additional Major Design Decisions
+
+### Workers Economy
+Currently the primary (and almost only) way to gain workers is the `/propagate` command.
+
+**New Building: Nursery**
+- Produces workers **exclusively by spending Development Turns** (no real-time passive generation).
+- This becomes the main long-term growth path for active settlement players.
+- Thematically perfect as a dedicated facility for raising and training new settlers loyal to the ideology.
+
+### Building Consolidation — Uber Shrine
+The five separate Uber Shrines (celestial, infernal, void, twin, corruption) consume too much grid space.
+
+**Proposed Merge**:
+- Single building: **"Uber Shrine"**
+- Inside the building are individual statues/altars for each of the five powers.
+- Each statue has its own independent "worshipper" worker pool.
+- This dramatically reduces grid pressure while preserving all current mechanical identity and power.
+
+### New Resource: Idlem
+- **Name**: Idlem
+- Production: 1–2 per Development Turn only. **No real-time passive generation**.
+- Purpose:
+  - Primary currency for the future Black Market passive tree.
+  - Required for final-tier (T5) upgrades on many buildings.
+- This resource is deliberately meant to feel scarce and prestigious.
+
+---
+
 ## 4. Proposed Development Turns Economy
 
-### Core Currency: Development Turns (DT)
-**Working Name**: Development Turns (internal: `settlement_development_turns`).
+### Core Currencies
 
-**Fantasy**: These represent cycles of focused planning, labor direction, and settlement momentum. The player "spends" their personal attention and external activity to generate this momentum.
+**Development Turns (DT)**  
+This is the main "progress unit" for the settlement (the "day" or "work cycle").
+
+- 1 Development Turn = 10 base tokens (see below).
+- Used for: Construction, Upgrades, Research, Black Market processing, Nursery worker production, special projects, and resolving certain events.
+- The player advances their settlement by spending these turns.
+
+**Base Token: Zeal** (proposed name)  
+**Working Name**: **Zeal** (internal: `settlement_zeal`).
+
+- **Fantasy**: Zeal represents the raw ideological drive, fervor, and conviction your followers pour into the settlement. It is the granular resource earned from the wider world.
+- Earned primarily from **combat** (small amounts per victory, with strong diminishing returns).
+- Also earned from quest completions, certain settlement activities, and events.
+- **Conversion**: 10 Zeal = 1 Development Turn.
+- This granularity makes diminishing returns clean and fair (you don't suddenly go from "getting turns" to "getting nothing").
+
+**Rationale for "Zeal"**:
+- Strongly tied to the Ideology theme of the game.
+- Short, punchy, and evocative ("Your actions generate Zeal for your cause").
+- Feels like a token you can "spend" or "invest" into your settlement's future.
+- Alternatives considered: Fervor, Conviction, Mandate, Devotion, Allegiance. "Zeal" won for brevity and thematic strength.
 
 #### Sources (Tunable — start conservative)
 
 **Active / Semi-Active Sources (Primary)**
-- **Combat**: Small base amount per victory (e.g. 1–3 DT base, scaled lightly by player level or settlement Town Hall tier). Bonus for killing monsters near settlement level or using certain settlement passives.
-- **Quests**: Fixed amount on contract/Horizon completion (e.g. 5–15 DT depending on tier). Bonus from "Prospector's License" or other quest-related unlocks.
+- **Combat**: Primary source of **Zeal**. Small amounts per victory with strong diminishing returns. Goal: ~600 Zeal should be reasonably achievable for active players in a day, after which returns drop sharply.
+- **Quests**: Reliable injections of Zeal on contract and Horizon completions.
 - **Deliberate Settlement Activity**:
-  - Using the Black Market merchant mini-game (see below).
-  - Certain worker "focus" actions (temporarily assign extra workers to a "Planning Hall" meta building for DT generation).
-  - Partner dispatch tasks with a new "Settlement Support" focus.
+  - Black Market merchant mini-game (major source + sink).
+  - Running the new **Nursery** building (see Workers section).
+  - Partner dispatch tasks with a "Settlement Support" focus.
 
 **Passive / Idle Sources (Secondary but Important)**
-- Very slow background generation (e.g. 1 DT every 4–8 real hours, improved significantly by Town Hall tier and specific meta buildings like a future "Council Archives" or "Labor Exchange").
-- Expedition Camp plot bonus could give a chance at DTs in addition to (or instead of some) DCs.
+- Modest baseline passive Zeal generation.
+- Each Town Hall tier grants a linear **+10%** increase to passive generation.
+- At maximum tier (currently 7), this results in a 70% increase over baseline. This is meaningful but deliberately not competitive with active play.
+- Expedition Camp plot bonus continues to award Development Contracts (with potential future synergy to Zeal).
 
 **Event Sources**
-- Many turn-based events will award DTs on resolution (see Events section).
+- Many events award Zeal or full Development Turns on resolution.
 
-**Caps & Anti-Farming**
-- Daily soft cap on combat/quest DT income (resets on a rolling 24h or server daily).
-- Diminishing returns on very high activity (e.g. after 50–80 DT from combat in a day, further gains are heavily reduced).
-- This prevents no-lifers from completely breaking the pace while still letting dedicated players pull ahead.
+**Caps (Hard + Soft)**
+- **Hard daily cap**: Approximately 80 Development Turns (~800 Zeal) per 24-hour period before further gains become negligible (1-2 Zeal per encounter at the extreme end).
+- 600 Zeal per day should be a realistic target for dedicated active play.
+- After ~600 Zeal the returns become heavily diminished (soft wall), eventually hitting the hard wall.
+- This structure protects the economy while still rewarding high activity up to a healthy point. Exact numbers will be refined in playtesting.
 
 #### Sinks (The Heart of the Design)
 
@@ -117,13 +172,16 @@ This keeps the current resource economy mostly intact while adding depth, freque
    - Can be done "instantly" by dumping turns, or accelerated gradually.
    - Still limited to one active research project at a time for focus.
 
-4. **Black Market Merchant Mini-Game** (Major New Sink + Fun)
-   - Player offers a bundle of resources (timber, stone, bars, runes, keys, gear, bones, etc.).
-   - The system calculates a "Value" based on rarity, quantity, and current settlement tier.
-   - Higher value = better possible rewards + more turns required to process the deal.
-   - Processing takes 3–25+ DTs (player can choose to "rush" by spending extra DTs for better results or accept the base time).
-   - On completion, player returns to collect a randomized but value-appropriate reward (caches, special materials, rare plot bonuses, temporary buffs, etc.).
-   - This becomes the primary sink for "junk" the player doesn't want while feeling like a proper shady merchant negotiation.
+4. **Black Market Merchant Mini-Game** (Major New Sink + Fun) — **Requires its own dedicated design document**
+   - Player offers a mixed bundle of resources.
+   - System calculates opaque but fair "Value".
+   - Deal takes a variable number of Development Turns to process.
+   - **Future Passive Tree** (primarily powered by Idlem):
+     - Processing time reduction
+     - Base value multipliers
+     - Toggleable targeted reward biases (more runes, skilling materials, gold, curios, gear, monster eggs, Consume body parts, etc.)
+     - High-tier nodes for exciting outcomes (rare eggs, mysterious flesh for Consume, etc.)
+   - This will be one of the deepest and most replayable systems in the settlement.
 
 5. **Special Projects / Long-term Investments** (New Tab)
    - Things like "Expand Grid" (+2–4 plots), "Improve Passive Generation", "Unlock New Building Category", "Permanent Worker Efficiency", etc.
@@ -140,31 +198,47 @@ This keeps the current resource economy mostly intact while adding depth, freque
 
 ## 5. Project System (Construction, Upgrades, Research, Black Market Deals)
 
-All major time-gated actions become **Projects**:
+All major development actions become **Projects**:
 
 - A project has:
-  - Total DT cost
-  - Current DT invested
+  - Total Development Turn cost
+  - Current investment
   - Status (In Progress / Paused / Completed)
-  - (Optional) Resource costs paid upfront or over time
+  - Optional resource costs
 
-- Player can contribute any number of their current DTs to any active project at any time (from the main Settlement dashboard or a new "Projects" tab).
-- Multiple projects can run in parallel, but with soft limits (e.g. only 2–3 active major projects at once, more for small ones).
-- When a project reaches 100%, it completes on the next "turn advance" or immediately if the player forces it.
+- **Unlimited simultaneous projects** are allowed. There is no artificial limit on how many projects the player can have running at once.
+- The player can freely allocate Development Turns across any active projects from the main Settlement interface.
+- A visible **"Settlement — Day [X]"** tracker is shown prominently. This represents the total number of Development Turns the settlement has advanced since founding and provides excellent long-term context for events and progression.
 
-This creates the beautiful loop: "I just got 12 DT from that big combat session. Do I finish the Market now, push the Foundry upgrade, or save for the next Research?"
+This design strongly enables the "just one more turn" fantasy. After a productive combat session, the player can immediately decide where to invest their new turns across multiple projects.
 
 ---
 
 ## 6. Events — The "Just One More Turn" Engine
 
-Events trigger based on **cumulative turns advanced** by the player (global counter per settlement, not per project).
+Events trigger based on the total **Settlement — Day [X]** counter (cumulative Development Turns advanced by the settlement).
+
+### Two Event Types
+
+**1. Scheduled / Upcoming Events** ("Will occur after X turns")
+- The player is given advance warning.
+- They can prepare (reassign workers, stock resources, spend turns on defenses, etc.).
+- Creates planning and anticipation.
+
+**2. Active Window Events** ("Happening for the next X turns")
+- The event is currently active.
+- The player has a limited window to respond optimally (e.g. defeat a raid, take advantage of a production surge, trade during a special market window).
+- Creates urgency and "just one more turn" decisions.
+
+This distinction is important for player agency and satisfaction.
 
 **Event Categories** (examples):
 
 **Crises (Risk + Decision)**
-- "Raiding Party": A building (or random plot) is attacked. Spend DTs + possibly fight a special encounter (or use settlement defenses) to resolve. Failure = building disabled until repaired with DTs + resources.
-- "Worker Unrest": Temporary production penalty unless you spend DTs on morale or accept a resource cost.
+- **Defensive Events** should be implemented as proper **Settlement-specific boss encounters**, using generation logic similar to the gathering monster system (scaled appropriately to the settlement's power).
+- Failure: The targeted building is **disabled** until repaired with Development Turns + resources. It does **not** get destroyed.
+- Success: The player earns special high-value "settler materials" (new reward type).
+- These are a core source of both tension and exciting rewards.
 
 **Opportunities (Positive but Time-Sensitive)**
 - "Merchant Caravan": Temporary excellent trade rates at Black Market (or a special one-time merchant event). Expires after X turns.
@@ -245,18 +319,52 @@ Events trigger based on **cumulative turns advanced** by the player (global coun
 
 ---
 
-## 10. Open Questions for Discussion
-
-1. Exact name for the currency ("Development Turns", "Settlement Momentum", "Civic Labor", "Progress Tokens")?
-2. How generous should passive DT generation be at different Town Hall tiers?
-3. Should there be a hard daily cap on total DTs earnable, or only soft diminishing returns?
-4. How many simultaneous active projects should the player be allowed?
-5. Should failing defensive events ever destroy buildings, or only disable them temporarily?
-6. Do we want a "Rush" mechanic (spend extra DTs or gold to complete projects faster)?
-7. How visible should the "total turns advanced" counter be to the player?
+**This document is intended as the living draft.**
 
 ---
 
-**This document is intended as the living draft.** Once we align on the high-level economy and event philosophy, we can move to detailed spec for individual features (Black Market value formula, exact DT costs per building, event tables, etc.).
+## Elements to Nail Down Before Scoping / Implementation
 
-Next steps after alignment: Detailed Black Market mini-game spec + first-pass DT economy numbers + DB schema changes.
+Before we move into detailed technical scoping, the following areas need clear decisions:
+
+### 1. Zeal Economy Tuning
+- Exact Zeal per combat victory at different player levels.
+- Precise diminishing return curve (how many Zeal at 100 combats? 300? 600?).
+- How much Zeal should come from quests vs combat vs other activities?
+
+### 2. Passive Generation Baseline
+- What is the actual baseline passive Zeal per hour at Town Hall Tier 1?
+- How does this interact with the daily hard cap?
+
+### 3. Nursery Building
+- Cost per worker in Development Turns?
+- Any worker cap or soft limits?
+- Does it have tiers?
+
+### 4. Idlem Generation & Uses
+- Exact generation rate per turn (1? 1.5? 2?).
+- Full list of things that will eventually cost Idlem (beyond Black Market tree and T5 upgrades).
+
+### 5. Defensive Event Boss System
+- Should these use the normal combat system with modified monsters, or a lighter settlement-specific resolution system?
+- What are the "special settler materials" they reward?
+
+### 6. Event Design Depth
+- How many events do we want in the first release?
+- Full table of "Scheduled" vs "Active Window" events with their DT triggers.
+
+### 7. UI & Player Communication
+- How is the "Settlement — Day [X]" counter displayed?
+- How do players see upcoming/predicted events?
+- Project management UI (list of active projects, easy investment buttons).
+
+### 8. Black Market (High Priority Separate Doc)
+- Value calculation formula (this will make or break the system).
+- Risk/reward structure.
+- Full passive tree design.
+
+### 9. Long-term Grid & Building Roster
+- After the Uber Shrine consolidation, what is the realistic future plan for the 20-plot grid?
+- Are there plans for more regular buildings that would require grid expansion mechanics?
+
+Once we have solid answers on the above (especially Zeal economy numbers, Nursery costs, and the two-event-type philosophy), we can move to a scoped implementation plan with clear milestones.

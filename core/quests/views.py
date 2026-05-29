@@ -559,7 +559,7 @@ class QuestBoardView(BaseView):
         await interaction.response.defer()
         from core.quests.shop_views import TokenShopView
         tokens = self.meta.get("tokens", 0)
-        shop = TokenShopView(self.bot, parent=self, tokens=tokens)
+        shop = TokenShopView(self.bot, parent=self, tokens=tokens, player_level=self._player_level)
         embed = shop.build_embed()
         await interaction.edit_original_response(embed=embed, view=shop)
 

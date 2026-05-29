@@ -31,6 +31,7 @@ from discord import ButtonStyle, Interaction, ui
 from core.base_view import BaseView
 from core.images import (
     ALCHEMY_HUB,
+    COMBAT_VICTORY,
     COMPANIONS_HUB,
     DELVE_HUB,
     INVENTORY_HUB,
@@ -49,6 +50,24 @@ from core.images import (
 # ---------------------------------------------------------------------------
 
 TUTORIALS: dict[str, dict] = {
+    "combat": {
+        "title": "⚔️ Combat",
+        "description": (
+            "Every fight puts your stats against a monster's. "
+            "**Attack** determines how hard you hit; **Defence** reduces how hard they hit you. "
+            "**Hit chance** is affected by your accuracy and the monster's evasion — "
+            "a miss deals no damage. Land a **Critical Hit** for bonus damage. "
+            "Use **Potions** to restore HP during the fight. "
+            "If things look grim, you can always **Flee** — though it costs you a turn."
+        ),
+        "tips": [
+            "Higher **ATK** and **DEF** come from your equipped gear — upgrade it regularly.",
+            "Each **Weapon passive** activates under specific conditions — read them in `/gear`.",
+            "Potions scale with your level, so they stay useful all game.",
+        ],
+        "image": COMBAT_VICTORY,
+        "color": discord.Color.red(),
+    },
     "slayer": {
         "title": "⚔️ Slayer Tasks",
         "description": (

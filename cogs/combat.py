@@ -13,6 +13,7 @@ from discord.ui import Button
 from core.base_view import BaseView
 from core.combat import jewel_engine as _je
 from core.combat import ui
+from core.first_use import TUTORIALS
 from core.combat.dojo.views_dojo import DummyConfigView
 from core.combat.mobgen.encounters import EncounterManager
 from core.combat.mobgen.gen_mob import (
@@ -32,6 +33,83 @@ from core.combat.views.warning_views import (
 )
 from core.items.factory import load_player
 from core.models import Monster
+
+
+class CombatTutorialView(BaseView):
+    """First-time combat tutorial gate. Shown once; 'Begin Combat' re-enters the full combat flow."""
+
+    def __init__(self, bot, cog, user_id: str, server_id: str, existing_user):
+        super().__init__(bot, user_id, server_id, timeout=300)
+        self._cog = cog
+        self._existing_user = existing_user
+        self._processing = False
+
+        btn = discord.ui.Button(
+            label="Begin Combat →",
+            style=ButtonStyle.success,
+            emoji="⚔️",
+        )
+        btn.callback = self._begin
+        self.add_item(btn)
+
+    def build_embed(self) -> discord.Embed:
+        data = TUTORIALS["combat"]
+        embed = discord.Embed(
+            title=data["title"],
+            description=data["description"],
+            color=data.get("color", discord.Color.red()),
+        )
+        if tips := data.get("tips"):
+            embed.add_field(
+                name="Quick Tips",
+                value="\n".join(f"• {t}" for t in tips),
+                inline=False,
+            )
+        if img := data.get("image"):
+            embed.set_thumbnail(url=img)
+        embed.set_footer(text="✨ First visit — this message only appears once.")
+        return embed
+
+    async def _begin(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
+        # Re-check state (in case player opened another activity while reading)
+        user_id = self.user_id
+        server_id = self.server_id
+        if self.bot.state_manager.is_active(user_id):
+            await interaction.response.send_message(
+                "You're already in an active session.", ephemeral=True
+            )
+            self._processing = False
+            return
+
+        # Fresh data — stamina may have changed since the tutorial was shown
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self._cog._check_stamina(interaction, user_id, existing_user):
+            self.bot.state_manager.clear_active(user_id)
+            self._processing = False
+            return
+
+        self.bot.state_manager.set_active(user_id, "combat")
+        player = await load_player(user_id, existing_user, self.bot.database)
+
+        # Health check
+        if player.current_hp < (player.total_max_hp * 0.25):
+            view = LowHealthWarningView(
+                self.bot, user_id, server_id, existing_user, player,
+                self._cog._execute_combat,
+            )
+            await interaction.response.edit_message(embed=view.build_embed(), view=view)
+            view.message = interaction.message
+            self.stop()
+            return
+
+        await interaction.response.defer()
+        self.stop()
+        await self._cog._execute_combat(interaction, user_id, server_id, existing_user, player)
 
 
 class DoorPromptView(BaseView):
@@ -151,6 +229,14 @@ class Combat(commands.Cog, name="combat"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
         if not await self._check_stamina(interaction, user_id, existing_user):
+            return
+
+        # First-time combat tutorial — show once before entering the fight
+        if not await self.bot.database.tutorials.has_seen(user_id, "combat"):
+            await self.bot.database.tutorials.mark_seen(user_id, "combat")
+            gate = CombatTutorialView(self.bot, self, user_id, server_id, existing_user)
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
             return
 
         self.bot.state_manager.set_active(user_id, "combat")

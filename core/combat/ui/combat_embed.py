@@ -201,9 +201,12 @@ def create_combat_embed(
             f"**{m}**" for m in monster.display_modifiers
         )
 
+    p_atk = player.get_total_attack()
+    p_def = player.get_total_defence()
+
     description = (
-        f"A level **{monster.level}** {monster.name} approaches!\n"
-        f"{mod_text}\n\n"
+        f"A level **{monster.level}** {monster.name} approaches!{mod_text}\n\n"
+        f"⚔️ {p_atk:,} vs {monster.attack:,} | 🛡️ {p_def:,} vs {monster.defence:,}\n"
         f"~{p_hit}% to hit | ~{m_hit}% to be hit"
     )
 

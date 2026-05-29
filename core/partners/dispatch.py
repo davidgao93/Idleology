@@ -273,17 +273,27 @@ def _roll_combat(rolls: float, mods: Dict[str, Any], level: int = 1) -> Dict[str
     return {"gold": gold, "exp": exp, "items": items}
 
 
+def _gathering_level_mult(level: int) -> float:
+    """1% output reduction per level below 100; full output at level 100."""
+    clamped = max(1, min(level, 100))
+    return clamped / 100.0
+
+
 def _roll_gathering(
     rolls: float,
     skill_tiers: Dict[str, str],
     mods: Dict[str, Any],
+    level: int = 100,
 ) -> Dict[str, Any]:
     """Rolls gathering dispatch rewards.
 
     Each roll picks one skill at random, then grants all materials accessible
     at the player's tool tier — lower-tier materials in higher quantities.
+    Output scales with partner level: full yield at level 100, 1% reduction
+    per level below that (e.g. level 50 → 50% output).
     """
     items: Dict[str, int] = {}
+    lv_mult = _gathering_level_mult(level)
 
     for _ in range(int(rolls)):
         skill = random.choice(list(_GATHERING_YIELD_MAP.keys()))
@@ -296,7 +306,7 @@ def _roll_gathering(
             mods["flora_double_chance"] > 0
             and random.random() < mods["flora_double_chance"]
         )
-        mult = mods["skilling_mult"] * (2 if double else 1)
+        mult = mods["skilling_mult"] * (2 if double else 1) * lv_mult
 
         for material, (qty_min, qty_max) in tier_yields.items():
             qty = int(random.randint(qty_min, qty_max) * mult)
@@ -366,7 +376,7 @@ def calculate_rewards(
     if task == "combat":
         result = _roll_combat(rolls, mods, level=partner.level)
     elif task == "gathering":
-        result = _roll_gathering(rolls, skill_tiers, mods)
+        result = _roll_gathering(rolls, skill_tiers, mods, level=partner.level)
     elif task == "boss":
         result = _roll_boss(rolls, mods)
     else:

@@ -153,6 +153,7 @@ MILESTONES = [
             "Combat — fight monsters to earn gold, XP, and equipment drops",
             "Gathering Skills — mine ore, fish, and chop wood passively while idle",
             "Daily Quests — take contracts from the board for tokens and gold",
+            "Slayer Tasks — the Slayer Master assigns species to hunt for bonus rewards; available from level 1",
             "Tavern Gambling — risk your gold for a chance at big rewards",
             "Equipment Management — collect, equip, and upgrade your gear",
         ],

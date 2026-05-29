@@ -728,10 +728,13 @@ class ProfileBuilder:
             pass
         checkin_last = quest_meta.get("checkin_last_time") if quest_meta else None
 
+        player_level = user["level"] if isinstance(user, dict) else user[4]
+
         daily_lines = [
-            f"🛖 **/checkin** — {_fmt_hms(checkin_last, timedelta(hours=18))}",
             f"💡 **/propagate** — {_fmt_hms(user[14], timedelta(hours=18))}",
         ]
+        if player_level >= 10:
+            daily_lines.insert(0, f"🛖 **/checkin** — {_fmt_hms(checkin_last, timedelta(hours=18))}")
 
         from core.maw.mechanics import (
             MAX_FIGHTS_PER_CYCLE,
@@ -745,81 +748,85 @@ class ProfileBuilder:
         now_ts = int(now_utc.timestamp())
         maw_cycle_id = get_current_cycle_id(now_utc)
 
-        if is_cycle_active(maw_cycle_id, now_ts):
-            maw_record = await bot.database.maw.get_record(user_id, maw_cycle_id)
-            if maw_record:
-                fights_done = maw_record["fights_this_cycle"]
-                last_fight_ts = maw_record["last_fight_ts"]
-                fights_left = max(0, MAX_FIGHTS_PER_CYCLE - fights_done)
-                if fights_done >= MAX_FIGHTS_PER_CYCLE:
-                    fight_str = f"All fights used (0/{MAX_FIGHTS_PER_CYCLE} left)"
-                elif fight_available(last_fight_ts, fights_done, now_ts):
-                    fight_str = f"Ready! ({fights_left}/{MAX_FIGHTS_PER_CYCLE} left)"
+        if player_level >= 20:
+            if is_cycle_active(maw_cycle_id, now_ts):
+                maw_record = await bot.database.maw.get_record(user_id, maw_cycle_id)
+                if maw_record:
+                    fights_done = maw_record["fights_this_cycle"]
+                    last_fight_ts = maw_record["last_fight_ts"]
+                    fights_left = max(0, MAX_FIGHTS_PER_CYCLE - fights_done)
+                    if fights_done >= MAX_FIGHTS_PER_CYCLE:
+                        fight_str = f"All fights used (0/{MAX_FIGHTS_PER_CYCLE} left)"
+                    elif fight_available(last_fight_ts, fights_done, now_ts):
+                        fight_str = f"Ready! ({fights_left}/{MAX_FIGHTS_PER_CYCLE} left)"
+                    else:
+                        fight_str = (
+                            f"{_secs_to_hms(fight_remaining_seconds(last_fight_ts, now_ts))}"
+                            f" ({fights_left}/{MAX_FIGHTS_PER_CYCLE} left)"
+                        )
+                    daily_lines.append(f"🌑 **Maw Fight** — {fight_str}")
                 else:
-                    fight_str = (
-                        f"{_secs_to_hms(fight_remaining_seconds(last_fight_ts, now_ts))}"
-                        f" ({fights_left}/{MAX_FIGHTS_PER_CYCLE} left)"
-                    )
-                daily_lines.append(f"🌑 **Maw Fight** — {fight_str}")
+                    daily_lines.append("🌑 **Maw Fight** — Not participated this cycle")
             else:
-                daily_lines.append("🌑 **Maw Fight** — Not participated this cycle")
-        else:
-            daily_lines.append("🌑 **Maw Fight** — No active cycle")
+                daily_lines.append("🌑 **Maw Fight** — No active cycle")
 
         # DC craft daily reset
-        dc_crafted_today = await bot.database.users.get_dc_crafted_today(user_id)
-        _dc_now = datetime.now()
-        _next_midnight = _dc_now.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ) + timedelta(days=1)
-        _dc_secs = int((_next_midnight - _dc_now).total_seconds())
-        _dch, _dcr = divmod(_dc_secs, 3600)
-        _dcm, _dcs = divmod(_dcr, 60)
-        dc_reset_str = f"**{_dch}h {_dcm:02d}m {_dcs:02d}s**"
-        _dc_remaining = max(0, 10 - dc_crafted_today)
-        daily_lines.append(
-            f"📜 **DC Craft** — {_dc_remaining}/10 remaining · resets in {dc_reset_str}"
-        )
+        if player_level >= 50:
+            dc_crafted_today = await bot.database.users.get_dc_crafted_today(user_id)
+            _dc_now = datetime.now()
+            _next_midnight = _dc_now.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) + timedelta(days=1)
+            _dc_secs = int((_next_midnight - _dc_now).total_seconds())
+            _dch, _dcr = divmod(_dc_secs, 3600)
+            _dcm, _dcs = divmod(_dcr, 60)
+            dc_reset_str = f"**{_dch}h {_dcm:02d}m {_dcs:02d}s**"
+            _dc_remaining = max(0, 10 - dc_crafted_today)
+            daily_lines.append(
+                f"📜 **DC Craft** — {_dc_remaining}/10 remaining · resets in {dc_reset_str}"
+            )
 
         embed.add_field(name="📅 Daily", value="\n".join(daily_lines), inline=False)
 
         # ── Section 3: Horizon ───────────────────────────────────────────────
         horizon_lines = []
 
-        settlement = await bot.database.settlement.get_settlement(user_id, server_id)
-        if settlement and settlement.last_collection_time:
-            try:
-                s_last = datetime.fromisoformat(settlement.last_collection_time)
-                blocks = max(0, int((datetime.now() - s_last).total_seconds() // 3600))
-                horizon_lines.append(
-                    f"🏭 **Settlement** — {blocks} block(s) of production completed"
-                )
-            except Exception:
-                pass
-
-        active_comps = await bot.database.companions.get_active(user_id)
-        if not active_comps:
-            horizon_lines.append("🐾 **Companions** — No companions deployed")
-        else:
-            c_time_str = await bot.database.users.get_companion_collect_time(user_id)
-            if c_time_str:
+        if player_level >= 50:
+            settlement = await bot.database.settlement.get_settlement(user_id, server_id)
+            if settlement and settlement.last_collection_time:
                 try:
-                    c_diff = (
-                        datetime.now() - datetime.fromisoformat(c_time_str)
-                    ).total_seconds()
-                    cycles = min(48, int(c_diff // 3600))
-                    if cycles >= 48:
-                        horizon_lines.append(
-                            "🐾 **Companions** — 48/48 adventures (ready to collect!)"
-                        )
-                    else:
-                        horizon_lines.append(
-                            f"🐾 **Companions** — {cycles}/48 adventures completed"
-                        )
+                    s_last = datetime.fromisoformat(settlement.last_collection_time)
+                    blocks = max(0, int((datetime.now() - s_last).total_seconds() // 3600))
+                    horizon_lines.append(
+                        f"🏭 **Settlement** — {blocks} block(s) of production completed"
+                    )
                 except Exception:
-                    horizon_lines.append("🐾 **Companions** — Ready to deploy")
+                    pass
+
+        if player_level >= 40:
+            active_comps = await bot.database.companions.get_active(user_id)
+            if not active_comps:
+                horizon_lines.append("🐾 **Companions** — No companions deployed")
             else:
-                horizon_lines.append("🐾 **Companions** — Ready to deploy")
+                c_time_str = await bot.database.users.get_companion_collect_time(user_id)
+                if c_time_str:
+                    try:
+                        c_diff = (
+                            datetime.now() - datetime.fromisoformat(c_time_str)
+                        ).total_seconds()
+                        cycles = min(48, int(c_diff // 3600))
+                        if cycles >= 48:
+                            horizon_lines.append(
+                                "🐾 **Companions** — 48/48 adventures (ready to collect!)"
+                            )
+                        else:
+                            horizon_lines.append(
+                                f"🐾 **Companions** — {cycles}/48 adventures completed"
+                            )
+                    except Exception:
+                        horizon_lines.append("🐾 **Companions** — Ready to deploy")
+                else:
+                    horizon_lines.append("🐾 **Companions** — Ready to deploy")
 
         from core.models import Partner
         from core.partners.data import PARTNER_DATA
@@ -829,47 +836,50 @@ class ProfileBuilder:
             get_cap_hours,
         )
 
-        rows = await bot.database.partners.get_owned(user_id)
-        all_partners = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
-            for row in rows
-            if row[2] in PARTNER_DATA
-        ]
+        if player_level >= 10:
+            rows = await bot.database.partners.get_owned(user_id)
+            all_partners = [
+                Partner.from_row(row, PARTNER_DATA[row[2]])
+                for row in rows
+                if row[2] in PARTNER_DATA
+            ]
 
-        active_dispatch = next(
-            (
+            active_dispatch = next(
+                (
+                    partner
+                    for partner in all_partners
+                    if partner.is_dispatched
+                    and partner.dispatch_task
+                    and partner.dispatch_task != "boss_party"
+                ),
+                None,
+            )
+            # Include any partner whose task is boss_party, regardless of is_dispatched flag,
+            # as long as they have a start time (covers edge cases where the flag de-synced).
+            boss_party = [
                 partner
                 for partner in all_partners
-                if partner.is_dispatched
-                and partner.dispatch_task
-                and partner.dispatch_task != "boss_party"
-            ),
-            None,
-        )
-        # Include any partner whose task is boss_party, regardless of is_dispatched flag,
-        # as long as they have a start time (covers edge cases where the flag de-synced).
-        boss_party = [
-            partner
-            for partner in all_partners
-            if partner.dispatch_task == "boss_party"
-            and (partner.is_dispatched or partner.dispatch_start_time)
-        ]
+                if partner.dispatch_task == "boss_party"
+                and (partner.is_dispatched or partner.dispatch_start_time)
+            ]
 
-        if active_dispatch:
-            elapsed = elapsed_hours(active_dispatch.dispatch_start_time)
-            cap = get_cap_hours(active_dispatch)
-            elapsed_h = min(int(cap), int(elapsed))
-            task_label = (active_dispatch.dispatch_task or "unknown").title()
-            if elapsed >= cap:
-                horizon_lines.append(
-                    f"📋 **Partner** — {int(cap)}/{int(cap)} hours of {task_label} completed (ready!)"
-                )
+            if active_dispatch:
+                elapsed = elapsed_hours(active_dispatch.dispatch_start_time)
+                cap = get_cap_hours(active_dispatch)
+                elapsed_h = min(int(cap), int(elapsed))
+                task_label = (active_dispatch.dispatch_task or "unknown").title()
+                if elapsed >= cap:
+                    horizon_lines.append(
+                        f"📋 **Partner** — {int(cap)}/{int(cap)} hours of {task_label} completed (ready!)"
+                    )
+                else:
+                    horizon_lines.append(
+                        f"📋 **Partner** — {elapsed_h}/{int(cap)} hours of {task_label} completed"
+                    )
             else:
-                horizon_lines.append(
-                    f"📋 **Partner** — {elapsed_h}/{int(cap)} hours of {task_label} completed"
-                )
+                horizon_lines.append("📋 **Partner** — No partner dispatched")
         else:
-            horizon_lines.append("📋 **Partner** — No partner dispatched")
+            boss_party = []
 
         if boss_party:
             bp_elapsed = elapsed_hours(boss_party[0].dispatch_start_time)

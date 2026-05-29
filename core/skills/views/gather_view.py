@@ -187,7 +187,11 @@ class GatherView(BaseView):
             or "No resources gathered."
         )
 
-        desc = f"Current Tool: {tier_display}\n\n{res_text}"
+        artisan_pts = 0
+        if hasattr(self, "mastery_row") and self.mastery_row:
+            artisan_pts = self.mastery_row.get(f"{self.current_skill}_points", 0) or 0
+
+        desc = f"Current Tool: {tier_display}\n🛠️ **Artisan Points:** {artisan_pts}\n\n{res_text}"
 
         # Upgrade Costs
         next_tier = SkillMechanics.get_next_tier(self.current_skill, current_tier)
@@ -289,6 +293,11 @@ class GatherView(BaseView):
             await self.bot.database.skills.upgrade_fishing_rod(
                 self.user_id, self.server_id, next_tier, cost_tuple
             )
+
+        # Award 1 artisan point for the upgraded skill
+        await self.bot.database.skills.add_mastery_points(
+            self.user_id, self.server_id, self.current_skill, 1
+        )
 
         # Refresh State
         await self.refresh_state()

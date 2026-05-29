@@ -174,9 +174,9 @@ def get_damage_goals(level: int) -> tuple:
 HORIZON_PATHS = {
     "slayer": {
         "name": "The Slayer's Reckoning",
-        "description": "The Slayer's Guild has posted an urgent commission. Complete your assigned tasks with distinction.",
+        "description": "The Slayer's Guild has posted an urgent commission. Complete 3 assigned Slayer tasks to fulfill it.",
         "event_type": "slayer_task_complete",
-        "goal": 5,
+        "goal": 3,
         "token_reward": 4,
         "level_required": 1,
         "loot_preview": "⚔️ +3 Violent Essence",
@@ -187,7 +187,7 @@ HORIZON_PATHS = {
         "event_type": "egg_release",
         "goal": 3,
         "token_reward": 3,
-        "level_required": 1,
+        "level_required": 50,
         "loot_preview": "🩸 +1 Evolutionary Blood, +1 Mutative Blood",
     },
     "sovereign": {
@@ -294,7 +294,7 @@ TOKEN_SHOP_ITEMS = [
         "id": "equip_cache",
         "label": "Equipment Cache",
         "cost": 10,
-        "description": "Receive 1 random equipment item (ilvl capped at 100).",
+        "description": "Receive 1 random equipment item at your level (capped at ilvl 100).",
     },
     {
         "id": "rune_cache",
@@ -314,12 +314,6 @@ TOKEN_SHOP_ITEMS = [
         "label": "Board Reset",
         "cost": 5,
         "description": "Clear the 20-hour contract cooldown immediately.",
-    },
-    {
-        "id": "horizon_boost",
-        "label": "Horizon Boost",
-        "cost": 8,
-        "description": "Next 10 qualifying actions count as 2 toward your Horizon quest.",
     },
     # ── Permanent Upgrades ───────────────────────────────────────────────────
     {

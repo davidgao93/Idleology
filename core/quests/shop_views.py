@@ -14,12 +14,22 @@ _SHOP_COLOR = 0xF0A500
 
 
 class TokenShopView(BaseView):
-    def __init__(self, bot, parent: "BaseView", tokens: int = 0):
+    def __init__(self, bot, parent: "BaseView", tokens: int = 0, player_level: int = 1):
         super().__init__(bot, parent=parent)
         self._processing = False
         self._selected_item_id: str | None = None
         self._tokens = tokens
+        self._player_level = player_level
         self._build_components()
+
+    def _visible_items(self) -> list:
+        """Return shop items visible at this player's level."""
+        out = []
+        for item in TOKEN_SHOP_ITEMS:
+            if item["id"] == "key_cache" and self._player_level < 50:
+                continue
+            out.append(item)
+        return out
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
@@ -31,7 +41,7 @@ class TokenShopView(BaseView):
             color=_SHOP_COLOR,
         )
         embed.set_author(name="Lira", icon_url=QUEST_SHOP)
-        for item in TOKEN_SHOP_ITEMS:
+        for item in self._visible_items():
             one_time = " *(One-time)*" if item.get("one_time") else ""
             selected = item["id"] == self._selected_item_id
             name_prefix = "➤ " if selected else ""
@@ -47,7 +57,7 @@ class TokenShopView(BaseView):
 
         # Item select
         options = []
-        for item in TOKEN_SHOP_ITEMS:
+        for item in self._visible_items():
             options.append(
                 discord.SelectOption(
                     label=f"{item['label']} ({item['cost']}🎫)",

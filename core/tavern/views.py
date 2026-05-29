@@ -236,8 +236,7 @@ class CasinoMenuView(BaseView):
 
     @ui.button(label="Cancel", emoji="❌", style=ButtonStyle.gray, row=2)
     async def cancel(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.edit_message(
-            content="Gambling cancelled.", embed=None, view=None
-        )
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
+        await interaction.response.defer()
+        await interaction.delete_original_response()
