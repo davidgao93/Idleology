@@ -730,8 +730,25 @@ class ProfileBuilder:
 
         player_level = user["level"] if isinstance(user, dict) else user[4]
 
+        # Board reset cooldown
+        board_cooldown_str = "Ready!"
+        try:
+            from core.quests.mechanics import get_board_cooldown_remaining
+            all_contracts = await bot.database.quests.get_contracts(user_id, server_id)
+            if all_contracts:
+                latest = max(all_contracts, key=lambda c: c.get("locked_at", ""), default=None)
+                if latest and latest.get("locked_at"):
+                    rem = get_board_cooldown_remaining(latest["locked_at"])
+                    if rem.total_seconds() > 0:
+                        rh, rr = divmod(int(rem.total_seconds()), 3600)
+                        rm, rs = divmod(rr, 60)
+                        board_cooldown_str = f"**{rh}h {rm:02d}m {rs:02d}s**"
+        except Exception:
+            pass
+
         daily_lines = [
             f"💡 **/propagate** — {_fmt_hms(user[14], timedelta(hours=18))}",
+            f"📋 **Quest Board** — {board_cooldown_str}",
         ]
         if player_level >= 10:
             daily_lines.insert(0, f"🛖 **/checkin** — {_fmt_hms(checkin_last, timedelta(hours=18))}")

@@ -194,7 +194,7 @@ class Character(commands.Cog, name="character"):
                 on_done=_on_packages_done,
             )
             await interaction.response.send_message(
-                embed=picker.build_embed(), view=picker, ephemeral=True
+                embed=picker.build_embed(), view=picker
             )
             picker.message = await interaction.original_response()
             return
@@ -203,7 +203,7 @@ class Character(commands.Cog, name="character"):
         self.bot.state_manager.set_active(user_id, "allocate_stats")
         view = StatInvestView(self.bot, user_id, server_id, data)
         await interaction.response.send_message(
-            embed=view.build_embed(), view=view, ephemeral=True
+            embed=view.build_embed(), view=view
         )
         view.message = await interaction.original_response()
 

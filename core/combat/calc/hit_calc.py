@@ -55,8 +55,9 @@ def calculate_hit_chance(player: Player, monster: Monster) -> float:
         pct_diff = (player.get_total_attack() - m_def) / m_def
         base = min(max(hit_base + pct_diff * _HIT_SENSITIVITY, _HIT_MIN), _HIT_MAX)
 
-    # Rookie accuracy boost: +30% at level 1, linearly tapering to 0 at level 50.
-    # Helps new players land hits before their stats scale up, then fades naturally.
+    # Evelynn's corruption: players start with +30% hit chance at level 1 but lose
+    # 1 hit chance permanently each level as her influence takes hold.  The bonus
+    # tapers linearly to 0 at level 50 when the corruption window ends.
     if player.level < 50:
         rookie_bonus = 0.30 * (1.0 - (player.level - 1) / 49.0)
         base = min(_HIT_MAX, base + rookie_bonus)

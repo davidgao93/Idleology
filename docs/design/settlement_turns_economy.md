@@ -5,6 +5,8 @@
 **Date:** 2026  
 **Related Systems:** Settlement (all buildings, plots, research, black market, town hall, workers), Combat (drops + stamina), Quests (board + horizon), Partners (dispatch), Alchemy, Hematurgy (Hatchery), Skills (gathering), Prestige sinks
 
+**For AI Implementer Note:** This document, combined with the Black Market one, provides the full spec. Follow AGENTS.md / CLAUDE.md strictly: all SQL in database/repositories/, views extend BaseView, stateless builders in .py or ui.py files, cogs are thin, use core/images.py for assets, etc. Add new methods to repositories as needed. New currency columns go on the users or settlements table following existing patterns (direct INTEGER columns). Track total turns on the settlements table. Use transactions for "Next Turn" processing to keep state consistent.
+
 ---
 
 ## 1. Executive Summary
@@ -98,6 +100,72 @@ This design creates a clear mental model: manage your settlement → review the 
 - Black Market is just another vendor with good rates.
 - Very few reasons to return to the settlement screen between big collection moments.
 - Limited "heartbeat" or surprise.
+
+---
+
+## Database Schema Changes (Required for Implementation)
+
+### Additions to `users` table (following existing currency column pattern)
+```sql
+`settlement_zeal` INTEGER NOT NULL DEFAULT 0,
+`idlem` INTEGER NOT NULL DEFAULT 0,
+```
+
+### Additions to `settlements` table
+```sql
+`total_development_turns` INTEGER NOT NULL DEFAULT 0,  -- "Settlement — Day [X]"
+`pending_zeal` INTEGER NOT NULL DEFAULT 0,  -- for passive accumulation between gathers
+```
+
+### New table: `settlement_pending_deals` (for Black Market)
+```sql
+CREATE TABLE IF NOT EXISTS settlement_pending_deals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    server_id TEXT NOT NULL,
+    offer_data TEXT NOT NULL,  -- JSON of resources offered
+    total_value INTEGER NOT NULL,
+    turns_remaining INTEGER NOT NULL,
+    active_biases TEXT NOT NULL,  -- JSON array or comma list of active bias keys
+    created_turn INTEGER NOT NULL,  -- the total_development_turns at creation
+    UNIQUE(user_id, server_id)
+);
+```
+
+### New table or extend research for turn-based projects? 
+For v1, construction/upgrades/research can be handled by storing "required_turns" and "invested_turns" on the buildings table or a new `settlement_projects` table. Recommend a simple `settlement_projects` for flexibility:
+
+```sql
+CREATE TABLE IF NOT EXISTS settlement_projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    server_id TEXT NOT NULL,
+    project_type TEXT NOT NULL,  -- 'construction', 'upgrade', 'research', 'nursery', etc.
+    target_id INTEGER,  -- building id or research type or null
+    required_turns INTEGER NOT NULL,
+    invested_turns INTEGER NOT NULL DEFAULT 0,
+    data TEXT,  -- JSON for extra info (e.g. building_type for new builds)
+    UNIQUE(user_id, server_id, project_type, target_id)
+);
+```
+
+Update repositories/settlement.py with methods for zeal/idlem, total_turns, pending deals, projects, etc.
+
+Existing `last_collection_time` and real-time production logic remains for passive resource generators.
+
+---
+
+## New Buildings & Changes to BUILDINGS / CONSTRUCTION_COSTS
+
+In `core/settlement/constants.py` and `mechanics.py`:
+
+- Add "nursery": {"type": "special", "effect": "worker_production_via_turns"}
+- Add "idlem_foundry": {"type": "special", "effect": "idlem_production_via_turns"}
+- Merge logic for "uber_shrine" (single building_type that supports multiple internal "statues" via workers_assigned split or sub-data). Each statue type has its own worker pool effect (sigil bonuses).
+
+Update plots.py BUILDING_CODES, EMOJIS, META_BUILDINGS if needed.
+
+Construction costs for new buildings will use the turn system (see Projects below).
 
 ---
 
@@ -373,31 +441,24 @@ Defensive events in particular will use the normal combat system with custom mon
 
 ---
 
-## Elements to Nail Down Before Scoping / Implementation
+## Final Implementation Notes for AI Agent
 
-Before we move into detailed technical scoping, the following areas need clear decisions:
+(See the detailed "Implementation Guidance for AI Agent" section earlier in this document for DB schema, Next Turn flow, projects, events, new buildings, The Maid, tuning parameters, and testing checklist.)
 
-### 1. Zeal Economy Tuning
-- Exact Zeal per combat victory at different player levels.
-- Precise diminishing return curve (how many Zeal at 100 combats? 300? 600?).
-- How much Zeal should come from quests vs combat vs other activities?
+This design + the Black Market merchant document together form a complete, self-contained spec. The agent should be able to:
 
-### 2. Passive Generation Baseline
-- What is the actual baseline passive Zeal per hour at Town Hall Tier 1?
-- How does this interact with the daily hard cap?
+- Implement the Zeal/Idlem currencies and turn tracking.
+- Build the core "Next Turn" simultaneous processing engine.
+- Add Nursery, Idlem Foundry, and the merged Uber Shrine.
+- Wire in the initial events (8-10 with the three types).
+- Integrate the full Black Market mini-game (value calc, offering with toggles, pending deals, processing on turn, reward rolls using the category breakdowns).
+- Update all affected views and the main dashboard to the new "manage then Next Turn" pattern.
+- Introduce the helpful Maid NPC for onboarding.
+- Preserve all existing real-time generator behavior.
 
-### 3. Nursery Building
-- Cost per worker in Development Turns?
-- Any worker cap or soft limits?
-- Does it have tiers?
+All per the project's strict layered architecture. 
 
-### 4. Idlem Generation & Uses
-- Exact generation rate per turn (1? 1.5? 2?).
-- Full list of things that will eventually cost Idlem (beyond Black Market tree and T5 upgrades).
-
-### 5. Defensive Event Boss System
-- Should these use the normal combat system with modified monsters, or a lighter settlement-specific resolution system?
-- What are the "special settler materials" they reward?
+The two documents are now ready for full implementation, testing, and review by an AI agent with access to the entire codebase.
 
 ### 6. Event Design Depth
 - How many events do we want in the first release?
@@ -419,12 +480,88 @@ Before we move into detailed technical scoping, the following areas need clear d
 - After the Uber Shrine consolidation, what is the realistic future plan for the 20-plot grid?
 - Are there plans for more regular buildings that would require grid expansion mechanics?
 
-Many of the above points have now been resolved in this iteration of the document. Remaining high-priority items for the next phase (especially before implementation) are:
+---
 
-- Precise Zeal economy curve and quest scaling numbers
-- Exact Nursery generation rate and worker targets
-- Idlem Foundry tuning + event interactions with Idlem
-- Initial set of 8–10 events (with full definitions of triggers and effects)
-- Detailed Black Market value formula and passive tree (separate document)
+## 10. Implementation Guidance for AI Agent
 
-Once these are locked, the main Settlement Turns design should be solid enough to begin technical scoping and implementation.
+### Core Flow: "Next Turn"
+- In `SettlementDashboardView` (main view in `core/settlement/views/dashboard.py`):
+  - Add "Next Turn" button (primary action).
+  - On click (with _processing guard):
+    1. Load current total_turns, zeal, idlem, projects, pending deals, active events.
+    2. Compute passive zeal for the "hour" equivalent if using time, but primarily advance by 1 turn using stored total.
+    3. For each active project: invested_turns += 1. If invested >= required, complete it (build building, finish research, add workers from nursery, add idlem from foundry, etc.).
+    4. Process Black Market pending deals (see Black Market doc): decrement turns_remaining. If 0, roll rewards using current biases + value, grant them, delete deal.
+    5. Tick any ongoing events (decrement duration, apply effects like worker loss, production pause, or trigger completion rewards).
+    6. Check for new events based on the new total_turns (see Events section below). Add upcoming/scheduled to state or a pending_events structure.
+    7. Update total_development_turns += 1.
+    8. Add any passive zeal generation for this turn (based on Town Hall + meta buildings).
+    9. Commit in a single transaction where possible.
+    10. Rebuild embed with new "Day X", "This turn summary", "Upcoming", recent log.
+  - All sub views (plot detail, black market, nursery detail, etc.) should have "Back to Dashboard" that returns without advancing time.
+
+### Projects System
+- Use `settlement_projects` table.
+- When starting construction/upgrade/research/nursery work/idlem production: insert project row with required_turns (calculated from building costs or fixed).
+- On Next Turn, advance all projects for the user.
+- Completion logic in a central `SettlementMechanics.process_project_completion` or similar pure-ish function, then repo updates.
+- For new builds: data contains building_type + plot_index. On complete, call existing build_structure but without immediate resource cost (costs paid when queuing? or part upfront).
+- Research: similar to current but turn-based instead of 20h timer. Remove or deprecate time-based research start_time for turn projects.
+
+### Events
+- Track total_turns on settlements.
+- Define events in `core/settlement/mechanics.py` or a new events.py as a list of dicts with:
+  - trigger_turn (or range/modulo for recurring)
+  - type: 'upcoming', 'ongoing', 'instant'
+  - duration_turns (for ongoing)
+  - effects: dict (e.g. {"disable_building": "some_type", "worker_loss": 50, "add_zeal": 20})
+  - message templates for dashboard.
+- On Next Turn, check if any events should trigger based on total_turns.
+- Store active/pending events per user (new table `settlement_active_events` or JSON on settlements for simplicity in v1).
+- "Upcoming" events are shown in dashboard with countdown turns.
+- Defensive events: when triggered, create a special combat encounter (use existing combat flow but with custom monster from settlement context + modifiers). On win, grant special materials + resolve event. On loss or flee, disable building.
+
+### New Buildings Processing (on Next Turn or dedicated)
+- Nursery: if project invested, add ~1.2 workers (use float accumulator or per-turn roll for variance) to available workforce (but workers are assigned per building; perhaps add to a global pool and player assigns).
+- Idlem Foundry: add Idlem directly.
+- Worker assignment remains via existing UI, but now workers can come from Nursery turns.
+
+### Assistant ("The Maid")
+- Add a button "Ask the Maid" or contextual help on dashboard.
+- Simple view or embed updates with flavor text explaining current systems, recent events, tips.
+- Store a small state for "seen tutorials" if needed.
+- Portrait: add to `core/images.py` as e.g. `SETTLEMENT_MAID`.
+
+### Other
+- Zeal collection: "Gather Zeal" button on dashboard that adds pending_zeal to main zeal and resets timer/accumulator.
+- Update all relevant views (construction, detail, town_hall, plot_detail, research, black_market) to integrate with turn/project system instead of instant or time.
+- In cogs/settlement.py: no logic changes, just route to updated views.
+- Follow BaseView for all interactive views.
+- Add new repo methods in `database/repositories/settlement.py` and possibly `users.py` for the new currencies and structures.
+- Update `core/settlement/mechanics.py` with pure functions for production-per-turn, event effects, value calcs if shared.
+- For Uber Shrine merge: treat as one building_type="uber_shrine", use workers_assigned for total, but store per-statue workers in a JSON or additional columns/sub-table. Effects apply based on per-statue counts.
+
+### Tuning Parameters (put in constants.py or mechanics)
+- Zeal per combat base (10 for first 10)
+- Quest zeal rewards by difficulty
+- Passive zeal per turn baseline (10), +10% per TH tier
+- Daily hard cap 800 zeal
+- Nursery workers per turn ~1.2
+- Idlem per turn 1-2
+- Event roster size for v1: 8-10
+
+### Testing Checklist for Agent
+- Fresh player (level 1): can access settlement, basic buildings, earn zeal from combat, advance turns.
+- "Next Turn" processes multiple projects + deals + events atomically.
+- Passive real-time collection still works for generators.
+- Black Market (details in its doc) integrates.
+- Events of all three types trigger correctly.
+- Worker economy flows (propagate + nursery + assignment + events).
+- No economy breakage (use existing sinks, no new infinite loops).
+- UI remains responsive, uses BaseView patterns.
+
+---
+
+Many of the above points have now been resolved. The design is ready for full implementation following the project's layered architecture.
+
+The companion Black Market design document provides the details for the merchant mini-game, pending deals processing on Next Turn, passive tree with toggles, value/roll system, and Madame Vespera NPC.

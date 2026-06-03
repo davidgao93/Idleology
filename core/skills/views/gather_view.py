@@ -299,13 +299,11 @@ class GatherView(BaseView):
             self.user_id, self.server_id, self.current_skill, 1
         )
 
-        # Refresh State
+        # Refresh State and reflect upgrade directly in the embed
         await self.refresh_state()
-
-        await interaction.followup.send(
-            f"🎉 **Upgraded to {next_tier.title()}!**", ephemeral=True
-        )
-        await interaction.edit_original_response(embed=self.get_embed(), view=self)
+        embed = self.get_embed()
+        embed.description = f"✅ **Upgraded to {next_tier.title()}!**\n\n" + (embed.description or "")
+        await interaction.edit_original_response(embed=embed, view=self)
         self._processing = False
 
     async def resonance_callback(self, interaction: Interaction):

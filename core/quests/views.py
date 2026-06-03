@@ -303,7 +303,10 @@ class QuestBoardView(BaseView):
         if incomplete:
             self.add_item(_AbandonSelect(incomplete, row=1))
 
-        # Claim Horizon (row 2)
+        # Horizon path select (row 2) — always available so paths can be swapped at any time
+        self.add_item(_HorizonSelect(self._player_level, self.horizon, row=2))
+
+        # Claim Horizon (row 3)
         horizon_complete = (
             self.horizon
             and self.horizon["completed"]
@@ -313,27 +316,30 @@ class QuestBoardView(BaseView):
             label="Claim Horizon",
             style=ButtonStyle.success,
             disabled=not horizon_complete,
-            row=2,
+            row=3,
         )
         h_btn.callback = self._on_claim_horizon
         self.add_item(h_btn)
 
         # Quest Shop
-        shop_btn = discord.ui.Button(label="Quest Shop", style=ButtonStyle.secondary, row=2)
+        shop_btn = discord.ui.Button(label="Quest Shop", style=ButtonStyle.secondary, row=3)
         shop_btn.callback = self._on_open_shop
         self.add_item(shop_btn)
 
         # Close
-        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.danger, row=2)
+        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.danger, row=3)
         close_btn.callback = self._on_close
         self.add_item(close_btn)
 
     def _add_empty_components(self) -> None:
-        shop_btn = discord.ui.Button(label="Quest Shop", style=ButtonStyle.secondary, row=0)
+        # Allow horizon path selection even while waiting for the board to reset
+        self.add_item(_HorizonSelect(self._player_level, self.horizon, row=0))
+
+        shop_btn = discord.ui.Button(label="Quest Shop", style=ButtonStyle.secondary, row=1)
         shop_btn.callback = self._on_open_shop
         self.add_item(shop_btn)
 
-        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.danger, row=0)
+        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.danger, row=1)
         close_btn.callback = self._on_close
         self.add_item(close_btn)
 

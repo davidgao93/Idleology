@@ -97,13 +97,18 @@ FLORA_CONVERSION_PER_LEVEL: float = 0.10
 # Hard cap on the modifier-difficulty contribution to the special drop pool.
 MODIFIER_DIFFICULTY_CAP: float = 0.08
 
-# Generic base rate used by most special drops (magma core, keys, runes, etc.)
+# Generic base rate used by most special drops (magma core, runes, etc.)
 SPECIAL_DROP_BASE_CHANCE: float = 0.01
 
 # Drop-specific base rates that differ from the generic baseline.
 SPIRIT_STONE_BASE_CHANCE: float = 0.01
-SOUL_CORE_BASE_CHANCE: float = 0.03
-VOID_FRAG_BASE_CHANCE: float = 0.02
+SOUL_CORE_BASE_CHANCE: float = 0.05   # +2% from 0.03
+VOID_FRAG_BASE_CHANCE: float = 0.04   # +2% from 0.02
+
+# Boss key drop rates (each raised +2% from the generic SPECIAL_DROP_BASE_CHANCE baseline).
+DRACONIC_KEY_BASE_CHANCE: float = 0.03
+ANGELIC_KEY_BASE_CHANCE: float = 0.03
+BALANCE_FRAG_BASE_CHANCE: float = 0.03
 
 # Guild Ticket — drops without an active partner; requires a minimum level.
 GUILD_TICKET_BASE_CHANCE: float = 0.01

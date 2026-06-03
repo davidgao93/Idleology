@@ -18,6 +18,9 @@ from core.combat.economy.config import (
     LUCIFER_BOOT_GOLD_PER_MODIFIER,
     MODIFIER_DIFFICULTY_CAP,
     PROSPER_CHANCE_PER_LEVEL,
+    ANGELIC_KEY_BASE_CHANCE,
+    BALANCE_FRAG_BASE_CHANCE,
+    DRACONIC_KEY_BASE_CHANCE,
     SOUL_CORE_BASE_CHANCE,
     SPECIAL_DROP_BASE_CHANCE,
     SPIRIT_STONE_BASE_CHANCE,
@@ -320,12 +323,12 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
 
     # ── Level-gated drops ────────────────────────────────────────────────────
     if player.level >= 20:
-        for item in ("draconic_key", "angelic_key", "shatter_rune"):
-            if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
-                drops[item] = True
-        for item in ("antique_tome", "pinnacle_key"):
-            if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
-                drops[item] = True
+        if random.random() < DRACONIC_KEY_BASE_CHANCE + special_drop_chance:
+            drops["draconic_key"] = True
+        if random.random() < ANGELIC_KEY_BASE_CHANCE + special_drop_chance:
+            drops["angelic_key"] = True
+        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+            drops["shatter_rune"] = True
 
     if player.level >= 30:
         if random.random() < SOUL_CORE_BASE_CHANCE + special_drop_chance:
@@ -334,7 +337,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["spirit_stone"] = True
 
     if player.level >= 40:
-        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+        if random.random() < BALANCE_FRAG_BASE_CHANCE + special_drop_chance:
             drops["balance_fragment"] = True
 
     if player.level >= 50:

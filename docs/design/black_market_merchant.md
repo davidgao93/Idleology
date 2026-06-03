@@ -5,6 +5,8 @@
 **Date:** 2026  
 **Related Systems:** Settlement Turns Economy (Development Turns, Idlem, Nursery, Events), Settlement (all buildings), Combat (loot & drops), Quests, Partners (Dispatch), Alchemy, Consume (body parts), Skills (gathering materials)
 
+**For AI Implementer Note:** Read this together with `settlement_turns_economy.md`. The Turns system (Next Turn button, total_development_turns, projects) must exist first. Black Market deals are processed as part of the simultaneous "Next Turn" tick. Follow AGENTS.md strictly. Add new repo methods. Store pending deals in a dedicated table. Use JSON for offer_data and active_biases for flexibility. All views extend BaseView. Add Madame Vespera portrait to core/images.py.
+
 ---
 
 ## 1. Executive Summary
@@ -41,6 +43,15 @@ The system serves three purposes:
 - Allowing players to directly control exact rewards (the tree provides bias and chance, not guarantees).
 
 ---
+
+## Database Schema (see also settlement_turns_economy.md)
+Use the `settlement_pending_deals` table defined in the main Settlement doc (with offer_data JSON, total_value, turns_remaining, active_biases JSON, created_turn).
+
+Add helper methods in repository for:
+- create_pending_deal
+- get_pending_deals (for user)
+- decrement_deal_turns or process_completed_deals (called from Next Turn)
+- delete_deal
 
 ## 3. Current State (What Exists Today)
 
@@ -131,6 +142,20 @@ Reward categories should be broad and desirable:
 
 Rare high-Value deals + strong passive investment should occasionally produce exciting "jackpot" results (multiple giga eggs, rare Consume parts, large batches of high-tier runes, etc.).
 
+### 5.5 Processing on "Next Turn" (Critical Integration Point)
+In the main Settlement "Next Turn" handler (see settlement_turns_economy.md):
+- For each pending deal for the user:
+  - turns_remaining -= 1
+  - if turns_remaining <= 0:
+    - Use the stored value + active_biases (toggles) to compute number of base rolls + extra rolls per bias.
+    - Execute the roll logic as described in 9.3 (base table + extra category rolls).
+    - Grant the aggregated rewards via the appropriate DB methods (modify_currency, create_equipment, add_egg, etc.).
+    - Log the results for the "This turn summary".
+    - Delete the deal row.
+- This happens as part of the atomic simultaneous update for the turn.
+
+The Black Market view (when opened) should show any active pending deals with countdown (turns_remaining) and allow viewing/claiming if complete (though claim is automatic on next turn, or provide a "Claim Completed Deals" button for UX).
+
 ---
 
 ## 6. The Idlem Passive Tree
@@ -196,26 +221,283 @@ Higher tiers of these nodes can add:
 
 ---
 
-## 9. Open Questions & Gaps to Fill
+## 9. Filled Decisions & Concrete Proposals
 
-1. **Value Formula** — What are the actual weights and categories? How much should different resources be worth relative to each other?
-2. **Exact processing time curve** — How long should a "good" deal take vs a "great" deal? (e.g. 5–8 turns for average, 15–30+ for excellent?)
-3. **Reward generation tables** — How do we actually roll the final loot based on Value + biases?
-4. **Passive tree node costs** (in Idlem) and exact power levels.
-5. **Respec / flexibility** — Can players change their biases easily, or is there meaningful friction?
-6. **How does the current tier system (Black Market building tiers) interact with the new merchant?** Does higher tier give baseline advantages?
-7. **Any direct combat or quest integration** beyond just feeding resources?
-8. **Visual / flavor** — What does the merchant look like? Do we want a recurring NPC character here too?
+All open questions from the previous version have been addressed below with concrete proposals based on your direction and research into the existing Partner Dispatch and Curios systems.
+
+### 9.1 Value Formula — Proposed Item Values
+
+We will use **Timber and Stone as the baseline unit of 1 Value each**.
+
+Here is a first-pass relative value table (these are starting points and will need heavy playtesting):
+
+**Baseline (Value = 1)**
+- Timber: 1
+- Stone: 1
+
+**Low-Mid Tier Materials (Value 2–8)**
+- Iron Ore / Coal: 2
+- Gold Ore: 3
+- Platinum Ore / Idea Ore: 4–5
+- All basic Logs (Oak, Willow, etc.): 2–3
+- Refined Bars / Planks (Iron, Steel, Oak, etc.): 4–6
+- Higher-tier Bones: 3–6
+- Refined Essences: 5–8
+
+**High-Value / Rare Items**
+- Unidentified Blueprint: 800
+- Magma Core / Life Root / Spirit Shard: 1,200 each
+- Higher settler materials (Celestial Stone, Infernal Cinder, etc.): 2,500–4,000
+- Refinement / Potential / Shatter Runes: 150 each
+- Imbuing Runes: 250
+- All Boss Keys (Dragon, Angelic, Void Frag, Balance, Soul Core): 400–600 each
+- Void Keys: 350
+- Elemental Keys (Bismuth, Sprig, Carp): 800 each
+- Antique Tomes: 1,800
+- Pinnacle Keys: 2,200
+- Uber Sigils (any type): 3,000 each
+- Artisan Mastery Remnants: 1,500–2,500 (depending on type)
+
+**Notes on Valuation**
+- These values are deliberately front-loaded toward rare/endgame items so that bringing high-tier loot feels exciting and generates long processing times.
+- We may add small multipliers for quantity (e.g. bringing 100+ of something gives a slight efficiency bonus) to encourage bulk dumping of common materials.
+
+### 9.2 Processing Time Curve
+
+Agreed with your proposal:
+
+- Base formula: `Turns = 5 + (Total Value / 10,000) × 5` (roughly)
+  - 10,000 Value → **5 turns**
+  - 150,000 Value (e.g. 50 × 3k sigils) → **~80 turns** before any bonuses (close to your 65-turn example; we can tune the divisor).
+
+Higher Black Market building tiers will apply a flat percentage reduction to the final turn count (e.g. T5 might reduce total turns by 25–30%). Loot quality bonuses come **only** from the passive tree.
+
+### 9.3 Reward Rolling System (Modeled on Existing Systems)
+
+After researching `core/partners/dispatch.py` and `core/curios/logic.py`, here is the recommended approach:
+
+**Base Rolls**
+- The player gets a number of **base rolls** = `floor(Total Value / 2,000)` (or similar tuned divisor).
+- Each base roll picks from a master weighted loot table (modeled directly after the Curio drop table in `curios/logic.py`).
+
+**How the Passive Tree Affects Rolls (Your Requested Model)**
+- Most bias nodes in the tree grant **"extra rolls"** for their specific category.
+- These extra rolls are resolved **independently** using the same logic as Partner signature skills (`extra_reward_chance`, `settlement_mat_chance`, etc. in dispatch.py).
+- Example: A strong "Rune Focus" node might say: "Gain +2 extra Rune rolls per 10,000 Value offered."
+- These extra rolls are checked with `random.random() < chance` or added as additional `random.choices` pulls from a narrowed sub-table.
+
+This creates the exact "add additional chances per roll" behavior you wanted, similar to how Partner signatures work.
+
+**Master Loot Categories & Detailed Breakdowns**
+
+We will use a system of **base rolls** (from Value) + **extra category rolls** granted by the passive tree.
+
+Each "roll" (base or extra) will pull from a master weighted table or a category-specific sub-table.
+
+Here is the proposed category structure with example weights for the **base table** and quantity ranges per roll. These are starting points for tuning.
+
+### Base Weighted Table (for normal rolls)
+Modeled after Curios + Combat drops. Weights are relative.
+
+- **Gold**: 25 (various amounts)
+- **Refinement / Potential / Shatter Runes**: 12 each (1-3 per roll)
+- **Imbuing Runes**: 4 (1 per roll)
+- **Boss Keys** (random from dragon/angelic/void/balance/soul): 15 (1 per roll)
+- **Elemental Keys** (random bismuth/sprig/carp): 6 (1 per roll)
+- **Gathering Materials** (random from current-tier ores/logs/bones): 10 (bulk quantities, e.g. 50-200)
+- **Settler Materials** (random magma/life/spirit + higher if unlocked): 5 (1-2 per roll)
+- **Essences** (random regular or corrupted): 8 (1-3, with sub-roll for type)
+- **Monster Eggs** (weighted normal/rare/giga): 4 (1 per roll)
+- **Consume Body Parts** (random slot + monster-appropriate): 3 (1 per roll)
+- **Curios**: 3 (1 per roll)
+- **Guild Tickets**: 4 (1-2 per roll)
+- **High Progression**:
+  - Antique Tomes: 1.5
+  - Pinnacle Keys: 1.5
+  - Spirit Stones: 2
+- **Gear** (equipment cache): 8 (uses the standard slot weights: weapon 35, accessory 25, armor 10, glove/boot/helmet 10 each). ilvl based on player level, capped reasonably.
+- **Other** (blueprints, rods, etc. at very low weight): 2-3 total
+
+This creates a healthy mix where common things like gold/runes/keys are frequent, while exciting things like tomes, eggs, parts are rare but possible.
+
+### Category-Specific Sub-Tables (when tree grants extra rolls for a bias)
+
+When the tree adds an extra roll for e.g. "Runes", it will roll from a narrowed table or use independent chances.
+
+**Runes Category** (extra rolls from Rune bias):
+- Refinement: 40
+- Potential: 40
+- Shatter: 30
+- Imbuing: 10
+- (Higher tiers can add Partnership runes or special ones)
+
+Quantity per rune roll: 1-5, with slight bias to lower for imbuing.
+
+**Gathering / Skilling Materials** (from Gathering bias):
+- Pulls from the same yield tables as dispatch gathering, scaled by a "Black Market quality" factor.
+- Favors higher tier materials the player has unlocked.
+- Can include refined versions (bars/planks/essences) at lower weight.
+
+**Keys & Sigils**:
+- Boss Keys pool (as above)
+- Elemental Keys pool
+- Uber Sigils (celestial/infernal/void/gemini/corruption) at higher bias tiers
+- Quantity: 1 per roll mostly, sometimes 2 for lower value keys.
+
+**Eggs & Consume**:
+- Eggs: use the _EGG_TIER_WEIGHTS (normal 75, rare 20, giga 5)
+- Consume Parts: use _PART_SLOT_WEIGHTS + random appropriate monster name (or generic "unknown").
+- Can have events or high bias that produce "special" parts or higher hp.
+
+**Curios / High Value**:
+- Curios (1)
+- Puzzle Box components or direct puzzle boxes at high bias
+- Antique Tomes / Pinnacle Keys (rare even in this category)
+
+**Gear**:
+- Same slot weights as current equip caches in quests (weapon heavy).
+- The tree can bias toward specific slots or "better passive" rolls (future enhancement).
+
+**Gold**:
+- Scaled amount based on roll value: e.g. 10k-100k+ per gold roll, higher with Value.
+
+**Essences**:
+- Regular essences with the weighted table from drops.py (_REGULAR_ESSENCE_TABLE)
+- Chance for corrupted at high bias or high Value.
+
+This structure allows the tree to "add additional chances per roll" — when a bias is active, for each base roll we also perform 1+ extra rolls from the biased sub-table (or independent random checks as in Partner signatures).
+
+For example:
+- Base 10 rolls from master table.
+- Rune bias tier 3 adds "+3 extra rune rolls".
+- Those 3 extra rolls are resolved using the Rune sub-table (or weighted random.choices on runes only).
+
+This mirrors Partner dispatch exactly (base loot roll + independent extra chance rolls for special categories).
+
+### Example Full Roll Resolution
+
+Deal Value produces **12 base rolls**.
+
+Player has these biases toggled on:
+- Rune Bias (tier 3): +3 extra rune rolls
+- Egg & Consume Bias (tier 2): +2 extra rolls (split or combined chance for eggs/parts)
+
+Resolution:
+1. Perform 12 independent pulls from the master base weighted table (using random.choices with the weights above). This might yield e.g.:
+   - 4 Gold
+   - 3 Refinement Runes
+   - 2 Boss Keys
+   - 1 Gathering material bundle
+   - 1 Curio
+   - 1 Gear piece
+
+2. Perform the 3 extra Rune rolls from the Rune sub-table (or equivalent independent chances):
+   - 2 Refinement Runes
+   - 1 Imbuing Rune
+
+3. Perform the 2 extra Egg/Consume rolls:
+   - 1 Rare Egg
+   - 1 Body Part (e.g. "head" from some monster)
+
+Final aggregated rewards are granted in batches (e.g. all runes added at once, all keys, etc.) and displayed grouped for the player.
+
+Higher Value = more base rolls = bigger overall haul.
+Active biases = the haul is skewed toward what the player wants that cycle.
+
+This gives excellent "I set my biases for runes and eggs this week" gameplay while the base table ensures there's always some variety and filler (gold, basic mats).
+
+### Additional Tuning Notes for Categories
+- **Quantities**: For "bulk" categories like Gathering Materials, scale the quantity with the Value of the deal (or just use fixed good ranges since the number of rolls already scales with Value).
+- **Rarity inside categories**: Use sub-weights (e.g. inside Eggs, normal is common, giga is rare).
+- **Level/Player Power scaling**: Some categories (gear ilvl, essence quality, part hp) should scale with the player's current level or settlement tier for relevance.
+- **Caps**: To prevent abuse, some high-value rewards (tomes, pinnacle) should have low base weights and rely on high Value + specific biases for realistic acquisition rates.
+
+This gives us a flexible, extensible system that can absorb new reward types easily as the game grows.
+
+### 9.4 Proposed Passive Tree (First Draft with Rough Idlem Costs)
+
+**Branch 1: Efficiency (Cheap, always useful)**
+- Processing Time Reduction I–V: 50 / 120 / 250 / 450 / 800 Idlem
+- Small chance for instant completion on low-value deals
+
+**Branch 2: Value (Mid cost)**
+- Offer Value +5% / +10% / +15%: 200 / 500 / 1,000 Idlem
+
+**Branch 3: Targeted Biases (The main gameplay)**
+These are the toggleable ones the player activates when making an offer.
+
+- **Rune Bias** (Refinement/Potential/Shatter/Imbuing): +X extra rune rolls. Costs: 150 / 400 / 900 Idlem
+- **Gathering Materials Bias**: +X extra rolls for ores/logs/bones. Costs similar.
+- **Key & Sigil Bias**: Boss keys + Uber sigils.
+- **Egg & Consume Bias**: Monster eggs + body parts.
+- **High-End Bias**: Antique Tomes + Pinnacle Keys + Elemental Keys.
+- **Gear Bias**: Equipment caches with better passive chances.
+- **Curio Bias**: Increased curios / puzzle components.
+
+Higher tiers of bias nodes increase the number of extra rolls and unlock rare jackpot versions (e.g. "Giga Eggs", "Mysterious High-Tier Flesh", "Unique Passive Gear").
+
+### 9.5 Respec / Flexibility
+
+As you decided: **No traditional respec**.
+
+When the player opens the trade interface, they see toggle buttons for the major bias categories. 
+- Turning a bias **on** adds its extra rolls to the pool.
+- Turning more on dilutes the overall pool (standard weighted random behavior).
+- This gives excellent short-term control without permanent commitment.
+
+### 9.6 Black Market Building Tier Interaction
+
+Higher tiers of the physical Black Market building provide **only turn reductions** (percentage off the final processing time). All improvements to loot quality, value, and bias strength come exclusively from the Idlem passive tree.
+
+### 9.7 Integration
+
+Minimal direct integration. This is primarily a high-agency conversion / sink mini-game. It can still be lightly touched by Settlement events (e.g. "The merchant is feeling generous this cycle" or "Supply issues are slowing all current deals").
+
+### 9.8 NPC / Flavor
+
+**Proposed Character: "Madame Vespera"** (or "The Broker" / "Madame Lysara")
+
+- A sharp, well-dressed, slightly world-weary woman who runs the Black Market operation.
+- She has dialogue that changes based on the Value of the deal you're offering and which biases you have active.
+- She can also occasionally comment on events ("Word on the street is the merchant caravans are nervous this cycle...").
+
+We can give her a dedicated portrait (similar to Amara) when the asset is ready. Add to `core/images.py` as e.g. `BLACK_MARKET_MADAME_VESPERA`.
+
+### Implementation Files & Changes (for AI Agent)
+- **New/Modified Views**: Extend or heavily update `core/settlement/views/black_market.py`. Add offering multi-select UI, bias toggle buttons (discord.ui.Button or Select for categories), pending deal display.
+- **Mechanics**: Add functions in `core/settlement/mechanics.py` or new `black_market.py` in settlement: `calculate_offer_value(offer_dict)`, `get_base_rolls(value)`, `roll_black_market_rewards(value, active_biases, player_level)`, `compute_processing_turns(value, building_tier)`.
+- **Repository**: Extend `database/repositories/settlement.py` with pending deal CRUD and process_completed.
+- **Dashboard Integration**: From main SettlementDashboardView, button to open Black Market. Show summary of any active deals.
+- **On Next Turn**: In the central turn processor (new or in dashboard/mechanics), call the processing for deals.
+- **Constants**: Expand `BLACK_MARKET_TRADES` or new dicts in `core/settlement/constants.py` for value table, base loot weights, category sub-weights.
+- **Models**: Minor if needed for pending deals.
+- **cogs/settlement.py**: Thin, just ensure state guard.
+- **Images**: Add Madame Vespera portrait.
+
+### Edge Cases & Testing
+- Offer with value 0 or very small.
+- Multiple pending deals.
+- Player has no resources of certain types.
+- Tree nodes at different investment levels.
+- Event modifying a pending deal mid-processing.
+- Atomicity: use DB transaction for Next Turn deal processing + reward grants.
+- UI must disable "Next Turn" while processing (use _processing flag).
+- Follow double-click guard pattern on all mutating buttons.
 
 ---
 
-**Next Steps**
+**Implementation Readiness**
 
-This document is intentionally high-to-medium level. The highest priority work items before implementation are:
+This document + the main `settlement_turns_economy.md` now contain:
+- Clear mechanics and formulas (with starting numbers)
+- Rolling system modeled on real codebase (Curios + Partner dispatch)
+- Category breakdowns with weights and sub-tables
+- Passive tree proposal with costs and toggle system (no respec)
+- Exact DB requirements
+- Processing flow tied to "Next Turn"
+- NPC details
+- File and class guidance
+- Tuning notes and testing points
 
-- Detailed Value calculation formula + example tables.
-- First pass at the passive tree node list with costs and effects.
-- Reward generation logic and category weights.
-- UI flow sketches for the offering screen and passive tree.
+The design is ready for an AI agent with full codebase access to implement the Black Market merchant mini-game as part of the larger Settlement Turns feature. Any remaining numbers (exact weights, divisors) should be implemented as constants in mechanics/constants that can be easily adjusted after playtesting.
 
-Once those are aligned, we can move into technical scoping for the Black Market merchant system.

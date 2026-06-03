@@ -156,6 +156,20 @@ class ExperienceManager:
                 # (No "choose after combat" message: the stat-package picker
                 # interrupts the post-combat flow automatically.)
 
+                # Evelynn's corruption narrative: the rookie accuracy bonus tapers as
+                # the player levels up; each level-up within the corruption window
+                # surfaces as a permanent hit-chance loss caused by her influence.
+                if player.level <= 50:
+                    if player.level == 2:
+                        changes["msgs"].append(
+                            "🩸 A strange wave of corruption washes over you — "
+                            "you permanently lose **1** hit chance."
+                        )
+                    else:
+                        changes["msgs"].append(
+                            "🩸 *Evelynn's corruption deepens* — you permanently lose **1** hit chance."
+                        )
+
                 if player.level % 10 == 0:
                     await bot.database.users.modify_currency(
                         user_id, "passive_points", 2
