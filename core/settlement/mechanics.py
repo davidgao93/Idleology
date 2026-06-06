@@ -91,6 +91,12 @@ class SettlementMechanics:
         "void_shrine": {"type": "passive", "effect": "void_shard_bonus"},
         "twin_shrine": {"type": "passive", "effect": "gemini_sigil_bonus"},
         "corruption_shrine": {"type": "passive", "effect": "corruption_sigil_bonus"},
+        # Consolidated uber shrine — replaces the five individual shrines.
+        # Internal per-statue worker allocation stored as JSON in building data.
+        "uber_shrine": {"type": "passive", "effect": "all_sigil_bonus"},
+        # New turn-based buildings
+        "nursery": {"type": "special", "effect": "worker_production"},
+        "idlem_foundry": {"type": "special", "effect": "idlem_production"},
     }
 
     @staticmethod
@@ -218,6 +224,7 @@ class SettlementMechanics:
         adj_war_camp_rate: float = 0.0,
         adj_output_mult: float = 0.0,
         mastery_converter_output_mult: float = 0.0,  # From Master Quarry / Seasoned Timber
+        event_generator_bonus: float = 0.0,          # From active settlement events (e.g. resource_windfall)
     ) -> Dict[str, int]:
         """
         Calculates production for a specific building over time.
@@ -260,6 +267,7 @@ class SettlementMechanics:
 
         if btype == "generator":
             effectiveness += adj_production_mult
+            effectiveness += event_generator_bonus
         elif btype == "converter":
             effectiveness += adj_converter_mult
 

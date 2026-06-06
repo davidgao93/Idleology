@@ -109,7 +109,7 @@ BUILDING_EMOJIS: dict[str, str] = {
 # Building types considered "shrines" for Grand Cathedral and Sacred Ground
 SHRINE_BUILDING_TYPES: frozenset[str] = frozenset({
     "celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine",
-    "corruption_shrine", "temple",
+    "corruption_shrine", "uber_shrine", "temple",
 })
 
 # ---------------------------------------------------------------------------

@@ -1,599 +1,818 @@
-# core/settlement/views/black_market.py
+"""
+core/settlement/views/black_market.py
+Redesigned Black Market — Merchant Mini-Game with Passive Tree.
+
+Flow:
+  1. Main view: shows Madame Vespera greeting, pending deal status, buttons.
+  2. "Make Offer" → OfferBuilderView: build a resource bundle across pages.
+  3. "Submit Offer" → calculate value / turns, deduct resources, create pending deal.
+  4. "Passive Tree" → BMPassiveTreeView: spend Idlem to unlock/upgrade nodes.
+  5. Deals process automatically on each Next Turn click.
+"""
+from __future__ import annotations
+
 import random
 
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
-from core.combat.economy.loot import (
-    generate_accessory,
-    generate_armor,
-    generate_boot,
-    generate_glove,
-    generate_helmet,
-    generate_weapon,
+from core.images import BLACK_MARKET_VESPERA, SETTLEMENT_BUILDINGS
+from core.settlement.constants import (
+    BM_ITEM_VALUES,
+    BM_OFFERABLE_RESOURCES,
+    BM_TREE_NODES,
+    SETTLEMENT_EVENTS,
 )
-from core.images import SETTLEMENT_BUILDINGS
-from core.items.factory import load_player
 from core.settlement.mechanics import SettlementMechanics
+from core.settlement.turn_engine import (
+    calculate_offer_value,
+    compute_processing_turns,
+)
 
 from .base import SettlementBaseView
 
+# Resources grouped by category for the offering UI (up to 25 per select page)
+_BM_RESOURCE_PAGES: list[list[tuple[str, str]]] = [
+    [  # Page 1: Settlement basics + ores
+        ("timber", "🪵 Timber"),
+        ("stone", "🪨 Stone"),
+        ("iron", "⛏️ Iron Ore"),
+        ("coal", "🪨 Coal"),
+        ("gold", "🏅 Gold Ore"),
+        ("platinum", "💿 Platinum Ore"),
+        ("idea", "💡 Idea Ore"),
+        ("iron_bar", "🔧 Iron Bars"),
+        ("steel_bar", "🔧 Steel Bars"),
+        ("gold_bar", "🔧 Gold Bars"),
+        ("platinum_bar", "🔧 Platinum Bars"),
+        ("idea_bar", "🔧 Idea Bars"),
+        ("oak_logs", "🌲 Oak Logs"),
+        ("willow_logs", "🌲 Willow Logs"),
+        ("mahogany_logs", "🌲 Mahogany Logs"),
+        ("magic_logs", "🌲 Magic Logs"),
+        ("idea_logs", "🌲 Idea Logs"),
+        ("oak_plank", "🪵 Oak Planks"),
+        ("willow_plank", "🪵 Willow Planks"),
+        ("mahogany_plank", "🪵 Mahogany Planks"),
+        ("magic_plank", "🪵 Magic Planks"),
+        ("idea_plank", "🪵 Idea Planks"),
+        ("desiccated_bones", "🦴 Desiccated Bones"),
+        ("regular_bones", "🦴 Regular Bones"),
+        ("sturdy_bones", "🦴 Sturdy Bones"),
+    ],
+    [  # Page 2: High-value + runes + keys
+        ("reinforced_bones", "🦴 Reinforced Bones"),
+        ("titanium_bones", "🦴 Titanium Bones"),
+        ("refinement_runes", "🔮 Refinement Runes"),
+        ("potential_runes", "🔮 Potential Runes"),
+        ("shatter_runes", "🔮 Shatter Runes"),
+        ("imbue_runes", "🔮 Imbuing Runes"),
+        ("dragon_key", "🗝️ Draconic Keys"),
+        ("angel_key", "🗝️ Angelic Keys"),
+        ("soul_cores", "💠 Soul Cores"),
+        ("balance_fragment", "⚖️ Fragments of Balance"),
+        ("void_frags", "🌑 Void Fragments"),
+        ("magma_core", "🔥 Magma Cores"),
+        ("life_root", "🌿 Life Roots"),
+        ("spirit_shard", "🌟 Spirit Shards"),
+        ("curios", "📦 Curios"),
+        ("unidentified_blueprint", "📋 Blueprints"),
+        ("spirit_stones", "🔮 Spirit Stones"),
+        ("celestial_stone", "⭐ Celestial Stone"),
+        ("infernal_cinder", "🔥 Infernal Cinder"),
+        ("void_crystal", "💜 Void Crystal"),
+        ("bound_crystal", "🔗 Bound Crystal"),
+        ("corrupted_crystal", "🌑 Corrupted Crystal"),
+        ("blessed_bismuth", "🔑 Blessed Bismuth"),
+        ("sparkling_sprig", "🌿 Sparkling Sprig"),
+        ("capricious_carp", "🐟 Capricious Carp"),
+    ],
+    [  # Page 3: Refined essences (produced by Reliquary; stored in fishing skill table)
+        ("desiccated_essence", "⚗️ Desiccated Essence"),
+        ("regular_essence",    "⚗️ Regular Essence"),
+        ("sturdy_essence",     "⚗️ Sturdy Essence"),
+        ("reinforced_essence", "⚗️ Reinforced Essence"),
+        ("titanium_essence",   "⚗️ Titanium Essence"),
+    ],
+]
 
-class BulkTradeModal(ui.Modal):
-    quantity = ui.TextInput(
-        label="How many trades? (1-99)",
-        placeholder="Enter a number e.g. 5",
-        min_length=1,
-        max_length=2,
-    )
-
-    def __init__(self, market_view: "BlackMarketView", trade_key: str):
-        short_titles = {
-            "equip": "Bulk Trade: Equipment Caches",
-            "rune": "Bulk Trade: Rune Caches",
-            "key": "Bulk Trade: Boss Key Caches",
-        }
-
-        super().__init__(title=short_titles[trade_key])
-        self.market_view = market_view
-        self.trade_key = trade_key
-
-    async def on_submit(self, interaction: Interaction):
-        try:
-            requested = int(self.quantity.value)
-            if requested <= 0:
-                raise ValueError
-        except ValueError:
-            return await interaction.response.send_message(
-                "Please enter a positive integer.", ephemeral=True
-            )
-
-        await interaction.response.defer(ephemeral=True)
-        mv = self.market_view
-        if self.trade_key == "equip":
-            await mv._bulk_equip_cache(interaction, requested)
-        elif self.trade_key == "rune":
-            await mv._bulk_rune_cache(interaction, requested)
-        elif self.trade_key == "key":
-            await mv._bulk_key_cache(interaction, requested)
+_VESPERA_GREETINGS = [
+    "Madame Vespera tilts her head. 'What have you brought me today?'",
+    "'Interesting selection,' she murmurs, filing her nails. 'Let's see what this fetches.'",
+    "'Ah, another visitor.' She gestures to the scale. 'Place your offering.'",
+    "'I trust you've brought something worth my time?' A thin smile. 'Show me.'",
+    "'The market is quiet today,' she says. 'Which means I'm in a generous mood.'",
+]
 
 
 class BlackMarketView(SettlementBaseView):
-    def __init__(self, bot, user_id, parent_view, building):
+    """Main Black Market hub — shows pending deal, make offer, passive tree."""
+
+    def __init__(self, bot, user_id: str, parent_view, building):
         super().__init__(bot, user_id)
         self.parent = parent_view
+        self.server_id = parent_view.server_id
         self.building = building
         self._processing = False
-        self.setup_ui()
+        self._setup_ui()
 
-    def _get_multiplier(self) -> float:
-        return SettlementMechanics.get_multiplier(self.building.tier)
-
-    def _get_upgrade_cost(self, target_tier):
-        return SettlementMechanics.get_upgrade_cost("black_market", self.building.tier)
-
-    def setup_ui(self):
+    def _setup_ui(self) -> None:
         self.clear_items()
 
-        mult = int((self._get_multiplier() - 1) * 100)
-        bonus_str = f" (+{mult}%)" if mult > 0 else ""
-
-        # 1. Caches
-        btn_equip = ui.Button(
-            label=f"Equipment{bonus_str}", style=ButtonStyle.primary, emoji="🎒"
+        offer_btn = ui.Button(
+            label="Make Offer", style=ButtonStyle.primary, emoji="📦", row=0
         )
-        btn_equip.callback = self.buy_equip_cache
-        self.add_item(btn_equip)
+        offer_btn.callback = self._on_make_offer
+        self.add_item(offer_btn)
 
-        btn_rune = ui.Button(
-            label=f"Runes{bonus_str}", style=ButtonStyle.primary, emoji="💎"
+        tree_btn = ui.Button(
+            label="Passive Tree", style=ButtonStyle.blurple, emoji="🌿", row=0
         )
-        btn_rune.callback = self.buy_rune_cache
-        self.add_item(btn_rune)
+        tree_btn.callback = self._on_passive_tree
+        self.add_item(tree_btn)
 
-        btn_key = ui.Button(
-            label=f"Keys{bonus_str}", style=ButtonStyle.primary, emoji="🗝️"
-        )
-        btn_key.callback = self.buy_key_cache
-        self.add_item(btn_key)
-
-        # 2. Blueprint trade
-        btn_bp = ui.Button(
-            label="Blueprint Trade", style=ButtonStyle.blurple, emoji="📋", row=1
-        )
-        btn_bp.callback = self.buy_blueprint_trade
-        self.add_item(btn_bp)
-
-        # 3. Bulk trade-in
-        btn_bulk = ui.Button(
-            label="Bulk Trade-In", style=ButtonStyle.secondary, emoji="📦", row=1
-        )
-        btn_bulk.callback = self.open_bulk_trade
-        self.add_item(btn_bulk)
-
-        # 3. Upgrade Button
         if self.building.tier < 5:
-            btn_up = ui.Button(
-                label="Upgrade Facility", style=ButtonStyle.success, emoji="⬆️", row=1
+            up_btn = ui.Button(
+                label="Upgrade Facility", style=ButtonStyle.success, emoji="⬆️", row=0
             )
-            btn_up.callback = self.upgrade_facility
-            self.add_item(btn_up)
-        else:
-            btn_max = ui.Button(
-                label="Max Level", style=ButtonStyle.success, disabled=True, row=1
-            )
-            self.add_item(btn_max)
+            up_btn.callback = self._on_upgrade
+            self.add_item(up_btn)
 
-        # Back
-        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
-        btn_back.callback = self.go_back
-        self.add_item(btn_back)
+        back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1)
+        back_btn.callback = self._on_back
+        self.add_item(back_btn)
 
-    def build_embed(self):
+    def build_embed(
+        self,
+        pending_deal: dict | None = None,
+        zeal_data: dict | None = None,
+    ) -> discord.Embed:
         tier = self.building.tier
-        mult = self._get_multiplier()
+        mult = SettlementMechanics.get_multiplier(tier)
 
         embed = discord.Embed(
-            title=f"🕵️ The Black Market (Tier {tier})", color=discord.Color.dark_gray()
+            title=f"🌑 The Black Market (Tier {tier})",
+            description=random.choice(_VESPERA_GREETINGS),
+            color=discord.Color.dark_gray(),
         )
-        embed.description = f"**Loot Bonus:** {int((mult-1)*100)}%\nGoods acquired through... unconventional means.\n"
+        embed.set_author(name="Madame Vespera", icon_url=BLACK_MARKET_VESPERA)
+        embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
 
         embed.add_field(
-            name="🎒 Equipment Cache",
-            value="**Cost:** 2,500,000 Gold\n**Contents:** 1 Random Equipment (ilvl capped at 100)",
-            inline=False,
+            name="📊 Facility Tier",
+            value=f"Tier **{tier}** — {int((mult-1)*100)}% turn cost reduction",
+            inline=True,
         )
-        embed.add_field(
-            name="💎 Rune Cache",
-            value="**Cost:** 1 Refinement Rune, 1 Potential Rune, 1 Shatter Rune\n**Contents:** 1-5 Random Runes",
-            inline=False,
-        )
-        embed.add_field(
-            name="🗝️ Boss Key Cache",
-            value="**Cost:** 1 Void Key\n**Contents:** 1-5 Random Boss Keys",
-            inline=False,
-        )
-        embed.add_field(
-            name="📋 Blueprint Trade",
-            value="**Cost:** 1 Unidentified Blueprint\n**Contents:** 1-3 Settlement Materials (Magma Core, Life Root, Spirit Shard)",
-            inline=False,
-        )
-
-        if tier < 5:
-            costs = self._get_upgrade_cost(tier + 1)
-            cost_str = (
-                f"🪵 {costs['timber']:,} | 🪨 {costs['stone']:,} | 💰 {costs['gold']:,}"
+        if zeal_data:
+            embed.add_field(
+                name="⚗️ Idlem Available",
+                value=f"{zeal_data.get('idlem', 0):,}",
+                inline=True,
             )
-            if "special_key" in costs:
-                cost_str += f" | ✨ {costs['special_name']} x{costs['special_qty']}"
-            embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
+        embed.add_field(name="​", value="​", inline=True)  # spacer
 
-        embed.set_thumbnail(
-            url=SETTLEMENT_BUILDINGS["black_market"]
-        )  # still imported from main views for now
+        embed.add_field(
+            name="📖 How it works",
+            value=(
+                "Bring a bundle of resources. Vespera calculates their **Value** "
+                "and processes the deal over **Development Turns**, returning a "
+                "curated loot package based on your passive tree biases."
+            ),
+            inline=False,
+        )
+
+        if pending_deal:
+            embed.add_field(
+                name="⏳ Deal in Progress",
+                value=(
+                    f"Value: **{pending_deal['total_value']:,}** — "
+                    f"**{pending_deal['turns_remaining']}** turn(s) remaining\n"
+                    f"Biases: {', '.join(pending_deal.get('active_biases', [])) or 'none'}"
+                ),
+                inline=False,
+            )
+        else:
+            embed.add_field(
+                name="✅ Ready for a Deal",
+                value="No active deal. Make an offer to get started!",
+                inline=False,
+            )
+
         return embed
 
-    # ─────────────────────────────────────────────────────────────
-    # All the original methods (buy_*, _bulk_*, upgrade_facility, etc.)
-    # are copied exactly as they were — no changes needed.
-    # ─────────────────────────────────────────────────────────────
+    async def _on_make_offer(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
 
-    async def upgrade_facility(self, interaction: Interaction):
+        # Check if a deal is already active
+        pending = await self.bot.database.settlement.get_pending_deal(self.user_id, self.server_id)
+        if pending:
+            await interaction.response.send_message(
+                "You already have an active deal processing. Wait for it to complete before submitting another offer.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.defer()
+        tree_nodes = await self.bot.database.settlement.get_bm_tree(self.user_id, self.server_id)
+        view = OfferBuilderView(
+            self.bot, self.user_id, self.server_id, self.building,
+            self, tree_nodes=tree_nodes
+        )
+        await interaction.edit_original_response(embed=view.build_embed(), view=view)
+
+    async def _on_passive_tree(self, interaction: Interaction) -> None:
+        await interaction.response.defer()
+        tree_nodes = await self.bot.database.settlement.get_bm_tree(self.user_id, self.server_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        view = BMPassiveTreeView(
+            self.bot, self.user_id, self.server_id, self.building,
+            self, tree_nodes=tree_nodes, idlem=zeal_data.get("idlem", 0)
+        )
+        await interaction.edit_original_response(embed=view.build_embed(), view=view)
+
+    async def _on_upgrade(self, interaction: Interaction) -> None:
         if self._processing:
             await interaction.response.defer()
             return
         self._processing = True
 
         target_tier = self.building.tier + 1
-        costs = self._get_upgrade_cost(target_tier)
+        costs = SettlementMechanics.get_upgrade_cost("black_market", self.building.tier)
 
-        # 1. Check Settlement Resources
         if (
-            self.parent.settlement.timber < costs["timber"]
-            or self.parent.settlement.stone < costs["stone"]
+            self.parent.settlement.timber < costs.get("timber", 0)
+            or self.parent.settlement.stone < costs.get("stone", 0)
         ):
             self._processing = False
-            return await interaction.response.send_message(
-                "Insufficient Timber or Stone!", ephemeral=True
-            )
+            return await interaction.response.send_message("Insufficient Timber or Stone!", ephemeral=True)
 
         gold = await self.bot.database.users.get_gold(self.user_id)
-        if gold < costs["gold"]:
+        if gold < costs.get("gold", 0):
             self._processing = False
-            return await interaction.response.send_message(
-                "Insufficient Gold!", ephemeral=True
-            )
+            return await interaction.response.send_message("Insufficient Gold!", ephemeral=True)
 
-        if "special_key" in costs:
-            col = costs["special_key"]
-            req = costs["special_qty"]
-            owned = await self.bot.database.users.get_currency(self.user_id, col)
-            if owned < req:
+        # Check specials (black_market needs all 3)
+        for spec in costs.get("specials", []):
+            owned = await self.bot.database.users.get_currency(self.user_id, spec["key"])
+            if owned < spec["qty"]:
                 self._processing = False
                 return await interaction.response.send_message(
-                    f"Need {req}x {costs['special_name']}!", ephemeral=True
+                    f"Need {spec['qty']}× {spec['name']}!", ephemeral=True
                 )
 
         await interaction.response.defer()
-        for item in self.children:
-            item.disabled = True
-        await interaction.edit_original_response(view=self)
 
-        # Deduct special material after defer
-        if "special_key" in costs:
-            col = costs["special_key"]
-            req = costs["special_qty"]
-            await self.bot.database.users.modify_currency(self.user_id, col, -req)
+        for spec in costs.get("specials", []):
+            await self.bot.database.users.modify_currency(self.user_id, spec["key"], -spec["qty"])
 
-        # 2. Consume Resources
-        changes = {
-            "timber": -costs["timber"],
-            "stone": -costs["stone"],
-        }
         await self.bot.database.settlement.commit_production(
-            self.user_id, self.parent.server_id, changes
+            self.user_id, self.server_id,
+            {"timber": -costs.get("timber", 0), "stone": -costs.get("stone", 0)}
         )
-        await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
-
-        # 3. Update DB
+        await self.bot.database.users.modify_gold(self.user_id, -costs.get("gold", 0))
         await self.bot.database.settlement.upgrade_building_tier(self.building.id)
-
-        # 4. Update Local State
         self.building.tier += 1
-        self.parent.settlement.timber -= costs["timber"]
-        self.parent.settlement.stone -= costs["stone"]
+        self.parent.settlement.timber -= costs.get("timber", 0)
+        self.parent.settlement.stone -= costs.get("stone", 0)
 
-        # 5. Refresh
         self._processing = False
-        self.setup_ui()
+        self._setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
-    async def buy_equip_cache(self, interaction: Interaction):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-
-        uid, sid = self.user_id, self.parent.server_id
-        cost = 2_500_000
-        data = await self.bot.database.users.get(uid, sid)
-        if not await self.bot.check_user_registered(interaction, data):
-            self._processing = False
-            return
-
-        gold = await self.bot.database.users.get_gold(uid)
-        if gold < cost:
-            self._processing = False
-            return await interaction.response.send_message(
-                f"Not enough Gold! Need {cost:,}g.", ephemeral=True
-            )
-
-        player = await load_player(uid, data, self.bot.database)
-        await interaction.response.defer()
-
-        await self.bot.database.users.modify_gold(uid, -cost)
-
-        ilvl = min(player.level, 100)
-        slot = random.choices(
-            population=["weapon", "armor", "accessory", "glove", "boot", "helmet"],
-            weights=[35, 10, 25, 10, 10, 10],
-            k=1,
-        )[0]
-
-        item = None
-        if slot == "weapon":
-            item = await generate_weapon(uid, ilvl, False)
-            await self.bot.database.equipment.create_weapon(item)
-        elif slot == "armor":
-            item = await generate_armor(uid, ilvl, False)
-            await self.bot.database.equipment.create_armor(item)
-        elif slot == "accessory":
-            item = await generate_accessory(uid, ilvl, False)
-            await self.bot.database.equipment.create_accessory(item)
-        elif slot == "glove":
-            item = await generate_glove(uid, ilvl)
-            await self.bot.database.equipment.create_glove(item)
-        elif slot == "boot":
-            item = await generate_boot(uid, ilvl)
-            await self.bot.database.equipment.create_boot(item)
-        elif slot == "helmet":
-            item = await generate_helmet(uid, ilvl)
-            await self.bot.database.equipment.create_helmet(item)
-
-        name = item.name if item else "Nothing"
-        self._processing = False
-        await interaction.followup.send(f"📦 **Cache Opened:**\n{name}", ephemeral=True)
-
-    async def buy_rune_cache(self, interaction: Interaction):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-
-        uid = self.user_id
-        owned_ref = await self.bot.database.users.get_currency(uid, "refinement_runes")
-        owned_pot = await self.bot.database.users.get_currency(uid, "potential_runes")
-        owned_sha = await self.bot.database.users.get_currency(uid, "shatter_runes")
-
-        if owned_ref < 1 or owned_pot < 1 or owned_sha < 1:
-            self._processing = False
-            return await interaction.response.send_message(
-                "Need 1 Refinement Rune, 1 Potential Rune, and 1 Shatter Rune!",
-                ephemeral=True,
-            )
-
-        await interaction.response.defer()
-        await self.bot.database.users.modify_currency(uid, "refinement_runes", -1)
-        await self.bot.database.users.modify_currency(uid, "potential_runes", -1)
-        await self.bot.database.users.modify_currency(uid, "shatter_runes", -1)
-
-        base_qty = random.randint(1, 5)
-        final_qty = int(base_qty * self._get_multiplier())
-        rewards = []
-        rune_pool = ["refinement_runes", "potential_runes", "shatter_runes"]
-        for _ in range(final_qty):
-            rtype = random.choice(rune_pool)
-            await self.bot.database.users.modify_currency(uid, rtype, 1)
-            label = rtype.replace("_runes", "").replace("_", " ").title() + " Rune"
-            rewards.append(label)
-
-        self._processing = False
-        await interaction.followup.send(
-            f"💎 **Rune Cache Opened:**\n{', '.join(rewards)}", ephemeral=True
-        )
-
-    async def buy_key_cache(self, interaction: Interaction):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-
-        cost = 1
-        owned = await self.bot.database.users.get_currency(self.user_id, "void_keys")
-
-        if owned < cost:
-            self._processing = False
-            return await interaction.response.send_message(
-                "Not enough Void Keys!", ephemeral=True
-            )
-
-        await interaction.response.defer()
-        await self.bot.database.users.modify_currency(self.user_id, "void_keys", -cost)
-
-        base_qty = random.randint(1, 3)
-        final_qty = int(base_qty * self._get_multiplier())
-        rewards = []
-        for _ in range(final_qty):
-            ktype = random.choice(
-                ["dragon_key", "angel_key", "soul_cores", "balance_fragment"]
-            )
-            await self.bot.database.users.modify_currency(self.user_id, ktype, 1)
-            rewards.append(ktype.replace("_", " ").title())
-
-        self._processing = False
-        await interaction.followup.send(
-            f"🗝️ **Boss Cache Opened:**\n{', '.join(rewards)}", ephemeral=True
-        )
-
-    async def open_bulk_trade(self, interaction: Interaction):
-        class TradeSelect(ui.Select):
-            def __init__(self_inner):
-                options = [
-                    SelectOption(
-                        label="Equipment Cache",
-                        description="2.5M Gold each",
-                        emoji="🎒",
-                        value="equip",
-                    ),
-                    SelectOption(
-                        label="Rune Cache",
-                        description="1 each: Refine/Potential/Shatter Rune",
-                        emoji="💎",
-                        value="rune",
-                    ),
-                    SelectOption(
-                        label="Boss Key Cache",
-                        description="1 Void Key each",
-                        emoji="🗝️",
-                        value="key",
-                    ),
-                ]
-                super().__init__(
-                    placeholder="Select trade type...",
-                    options=options,
-                    min_values=1,
-                    max_values=1,
-                )
-
-            async def callback(self_inner, inner_interaction: Interaction):
-                modal = BulkTradeModal(self, self_inner.values[0])
-                await inner_interaction.response.send_modal(modal)
-
-        select_view = ui.View(timeout=600)
-        select_view.add_item(TradeSelect())
-        await interaction.response.send_message(
-            "Select which trade to bulk execute:", view=select_view, ephemeral=True
-        )
-
-    async def _bulk_equip_cache(self, interaction: Interaction, requested: int):
-        uid, sid = self.user_id, self.parent.server_id
-        cost_per = 2_500_000
-
-        gold = await self.bot.database.users.get_gold(uid)
-        possible = min(requested, gold // cost_per)
-        if possible <= 0:
-            return await interaction.followup.send(
-                f"Not enough Gold for even one Equipment Cache (need {cost_per:,}g each).",
-                ephemeral=True,
-            )
-
-        total_cost = possible * cost_per
-        await self.bot.database.users.modify_gold(uid, -total_cost)
-
-        data = await self.bot.database.users.get(uid, sid)
-        player = await load_player(uid, data, self.bot.database)
-        ilvl = min(player.level, 100)
-
-        log = []
-        for _ in range(possible):
-            slot = random.choices(
-                ["weapon", "armor", "accessory", "glove", "boot", "helmet"],
-                weights=[35, 10, 25, 10, 10, 10],
-                k=1,
-            )[0]
-            item = None
-            if slot == "weapon":
-                item = await generate_weapon(uid, ilvl, False)
-                await self.bot.database.equipment.create_weapon(item)
-            elif slot == "armor":
-                item = await generate_armor(uid, ilvl, False)
-                await self.bot.database.equipment.create_armor(item)
-            elif slot == "accessory":
-                item = await generate_accessory(uid, ilvl, False)
-                await self.bot.database.equipment.create_accessory(item)
-            elif slot == "glove":
-                item = await generate_glove(uid, ilvl)
-                await self.bot.database.equipment.create_glove(item)
-            elif slot == "boot":
-                item = await generate_boot(uid, ilvl)
-                await self.bot.database.equipment.create_boot(item)
-            elif slot == "helmet":
-                item = await generate_helmet(uid, ilvl)
-                await self.bot.database.equipment.create_helmet(item)
-            if item:
-                log.append(item.name)
-
-        unused = requested - possible
-        msg = (
-            f"📦 **Bulk Equipment Cache** ({possible}x opened)\n"
-            f"**Consumed:** {total_cost:,} Gold\n"
-            f"**Received:** {', '.join(log) or 'Nothing'}"
-        )
-        if unused > 0:
-            msg += f"\n*({unused} trades skipped — insufficient gold)*"
-        await interaction.followup.send(msg, ephemeral=True)
-
-    async def _bulk_rune_cache(self, interaction: Interaction, requested: int):
-        uid = self.user_id
-        owned_ref = await self.bot.database.users.get_currency(uid, "refinement_runes")
-        owned_pot = await self.bot.database.users.get_currency(uid, "potential_runes")
-        owned_sha = await self.bot.database.users.get_currency(uid, "shatter_runes")
-        possible = min(requested, owned_ref, owned_pot, owned_sha)
-
-        if possible <= 0:
-            return await interaction.followup.send(
-                "Need 1 of each rune (Refinement, Potential, Shatter) per cache.",
-                ephemeral=True,
-            )
-
-        await self.bot.database.users.modify_currency(
-            uid, "refinement_runes", -possible
-        )
-        await self.bot.database.users.modify_currency(uid, "potential_runes", -possible)
-        await self.bot.database.users.modify_currency(uid, "shatter_runes", -possible)
-
-        rune_pool = ["refinement_runes", "potential_runes", "shatter_runes"]
-        rewards = []
-        for _ in range(possible):
-            base_qty = random.randint(1, 4)
-            final_qty = int(base_qty * self._get_multiplier())
-            for _ in range(final_qty):
-                rtype = random.choice(rune_pool)
-                await self.bot.database.users.modify_currency(uid, rtype, 1)
-                label = rtype.replace("_runes", "").replace("_", " ").title() + " Rune"
-                rewards.append(label)
-
-        from collections import Counter
-
-        tally = Counter(rewards)
-        tally_str = ", ".join(f"{v}x {k}" for k, v in tally.items())
-
-        unused = requested - possible
-        msg = (
-            f"💎 **Bulk Rune Cache** ({possible}x opened)\n"
-            f"**Consumed:** {possible}x each Refinement/Potential/Shatter Rune\n"
-            f"**Received:** {tally_str or 'Nothing'}"
-        )
-        if unused > 0:
-            msg += f"\n*({unused} trades skipped — insufficient runes)*"
-        await interaction.followup.send(msg, ephemeral=True)
-
-    async def _bulk_key_cache(self, interaction: Interaction, requested: int):
-        uid = self.user_id
-        owned = await self.bot.database.users.get_currency(uid, "void_keys")
-        possible = min(requested, owned)
-
-        if possible <= 0:
-            return await interaction.followup.send(
-                "No Void Keys available.", ephemeral=True
-            )
-
-        await self.bot.database.users.modify_currency(uid, "void_keys", -possible)
-
-        rewards = []
-        for _ in range(possible):
-            base_qty = random.randint(1, 5)
-            final_qty = int(base_qty * self._get_multiplier())
-            for _ in range(final_qty):
-                ktype = random.choice(
-                    ["dragon_key", "angel_key", "soul_cores", "balance_fragment"]
-                )
-                await self.bot.database.users.modify_currency(uid, ktype, 1)
-                rewards.append(ktype.replace("_", " ").title())
-
-        from collections import Counter
-
-        tally = Counter(rewards)
-        tally_str = ", ".join(f"{v}x {k}" for k, v in tally.items())
-
-        unused = requested - possible
-        msg = (
-            f"🗝️ **Bulk Boss Key Cache** ({possible}x opened)\n"
-            f"**Consumed:** {possible} Void Key(s)\n"
-            f"**Received:** {tally_str or 'Nothing'}"
-        )
-        if unused > 0:
-            msg += f"\n*({unused} trades skipped — only had {owned} Void Keys)*"
-        await interaction.followup.send(msg, ephemeral=True)
-
-    async def buy_blueprint_trade(self, interaction: Interaction) -> None:
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-
-        uid = self.user_id
-        owned = await self.bot.database.users.get_currency(uid, "unidentified_blueprint")
-        if owned < 1:
-            self._processing = False
-            return await interaction.response.send_message(
-                "You need 1 **Unidentified Blueprint**!\n"
-                "Blueprints drop from normal combat (1% chance, affected by special rarity).",
-                ephemeral=True,
-            )
-
-        await interaction.response.defer()
-        await self.bot.database.users.modify_currency(uid, "unidentified_blueprint", -1)
-
-        mat_pool = ["magma_core", "life_root", "spirit_shard"]
-        qty = random.randint(1, 3)
-        rewards = []
-        for _ in range(qty):
-            mat = random.choice(mat_pool)
-            await self.bot.database.users.modify_currency(uid, mat, 1)
-            rewards.append(mat.replace("_", " ").title())
-
-        from collections import Counter
-        tally = Counter(rewards)
-        tally_str = ", ".join(f"{v}x {k}" for k, v in tally.items())
-        self._processing = False
-        await interaction.followup.send(
-            f"📋 **Blueprint Trade:**\n**Consumed:** 1 Unidentified Blueprint\n**Received:** {tally_str}",
-            ephemeral=True,
-        )
-
-    async def go_back(self, interaction: Interaction):
+    async def _on_back(self, interaction: Interaction) -> None:
+        self.parent._rebuild_ui()
         await interaction.response.edit_message(
             embed=self.parent.build_embed(), view=self.parent
+        )
+        self.stop()
+
+
+# ---------------------------------------------------------------------------
+# Offer Builder
+# ---------------------------------------------------------------------------
+
+class OfferBuilderView(SettlementBaseView):
+    """
+    Multi-step offering UI.
+    Row 0: page select (choose a resource from the current page)
+    Row 1: page navigation + submit / cancel
+    """
+
+    MAX_OFFER_ITEMS = 8  # max distinct resource types in one offer
+
+    def __init__(
+        self,
+        bot, user_id: str, server_id: str, building,
+        parent_market: BlackMarketView,
+        tree_nodes: dict | None = None,
+    ):
+        super().__init__(bot, user_id)
+        self.server_id = server_id
+        self.building = building
+        self.parent_market = parent_market
+        self.tree_nodes = tree_nodes or {}
+        self._current_page = 0
+        self._offer: dict[str, int] = {}  # resource_key → qty
+        self._active_biases: list[str] = []
+        self._processing = False
+        self._build_ui()
+
+    def _build_ui(self) -> None:
+        self.clear_items()
+
+        page = _BM_RESOURCE_PAGES[self._current_page]
+        options = [
+            SelectOption(
+                label=label,
+                value=key,
+                description=f"Value: {BM_ITEM_VALUES.get(key, 0):,}/unit",
+            )
+            for key, label in page
+        ]
+
+        sel = ui.Select(
+            placeholder=f"Add resource to offer (page {self._current_page + 1}/{len(_BM_RESOURCE_PAGES)})...",
+            options=options,
+            row=0,
+        )
+        sel.callback = self._on_resource_select
+        self.add_item(sel)
+
+        if self._current_page > 0:
+            prev_btn = ui.Button(label="◀ Prev", style=ButtonStyle.secondary, row=1)
+            prev_btn.callback = self._on_prev_page
+            self.add_item(prev_btn)
+
+        if self._current_page < len(_BM_RESOURCE_PAGES) - 1:
+            next_btn = ui.Button(label="Next ▶", style=ButtonStyle.secondary, row=1)
+            next_btn.callback = self._on_next_page
+            self.add_item(next_btn)
+
+        if self._offer:
+            submit_btn = ui.Button(
+                label="Submit Offer", style=ButtonStyle.success, emoji="✅", row=1
+            )
+            submit_btn.callback = self._on_submit
+            self.add_item(submit_btn)
+
+            clear_btn = ui.Button(
+                label="Clear Offer", style=ButtonStyle.danger, emoji="🗑️", row=1
+            )
+            clear_btn.callback = self._on_clear
+            self.add_item(clear_btn)
+
+        cancel_btn = ui.Button(label="Cancel", style=ButtonStyle.secondary, emoji="❌", row=2)
+        cancel_btn.callback = self._on_cancel
+        self.add_item(cancel_btn)
+
+        # Bias toggles (row 3) — only show bias nodes the player has unlocked
+        bias_row = 3
+        bias_count = 0
+        for node_key, node in BM_TREE_NODES.items():
+            if node.get("branch") != "bias":
+                continue
+            if node_key not in self.tree_nodes:
+                continue
+            if bias_count >= 4:
+                break
+            toggled = node_key in self._active_biases
+            btn = ui.Button(
+                label=f"{'✅' if toggled else '○'} {node['name']}",
+                style=ButtonStyle.blurple if toggled else ButtonStyle.secondary,
+                row=bias_row,
+            )
+            btn.callback = self._make_bias_toggle(node_key)
+            self.add_item(btn)
+            bias_count += 1
+
+    def _make_bias_toggle(self, node_key: str):
+        async def callback(interaction: Interaction) -> None:
+            await interaction.response.defer()
+            if node_key in self._active_biases:
+                self._active_biases.remove(node_key)
+            else:
+                self._active_biases.append(node_key)
+            self._build_ui()
+            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+        return callback
+
+    def build_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="📦 Build Your Offer",
+            description=(
+                "Select resources from the list to add them to your offer bundle.\n"
+                "You'll enter the quantity via a modal. Value is calculated when you submit."
+            ),
+            color=discord.Color.dark_gray(),
+        )
+        embed.set_author(name="Madame Vespera", icon_url=BLACK_MARKET_VESPERA)
+
+        if self._offer:
+            offer_lines = []
+            estimated = calculate_offer_value(self._offer, self.tree_nodes, self.building.tier)
+            for key, qty in self._offer.items():
+                label = next((l for k, l in sum(_BM_RESOURCE_PAGES, []) if k == key), key)
+                val = BM_ITEM_VALUES.get(key, 0) * qty
+                offer_lines.append(f"• {label}: **{qty:,}** (≈ {val:,} value)")
+            embed.add_field(
+                name=f"🧾 Current Offer (Value ≈ {estimated:,})",
+                value="\n".join(offer_lines) or "—",
+                inline=False,
+            )
+            turns = compute_processing_turns(estimated, self.building.tier, self.tree_nodes)
+            embed.add_field(
+                name="⏭️ Estimated Processing",
+                value=f"**{turns}** Development Turn(s)",
+                inline=True,
+            )
+        else:
+            embed.add_field(
+                name="🧾 Current Offer",
+                value="*Nothing added yet. Select a resource above.*",
+                inline=False,
+            )
+
+        if self._active_biases:
+            bias_names = [BM_TREE_NODES[b]["name"] for b in self._active_biases if b in BM_TREE_NODES]
+            embed.add_field(
+                name="🎯 Active Biases",
+                value=", ".join(bias_names),
+                inline=True,
+            )
+
+        return embed
+
+    async def _on_resource_select(self, interaction: Interaction) -> None:
+        resource_key = interaction.data["values"][0]
+        if len(self._offer) >= self.MAX_OFFER_ITEMS and resource_key not in self._offer:
+            await interaction.response.send_message(
+                f"You can only include up to {self.MAX_OFFER_ITEMS} distinct resource types.",
+                ephemeral=True,
+            )
+            return
+
+        label = next(
+            (l for k, l in sum(_BM_RESOURCE_PAGES, []) if k == resource_key),
+            resource_key
+        )
+        modal = QuantityInputModal(self, resource_key, label)
+        await interaction.response.send_modal(modal)
+
+    async def _on_prev_page(self, interaction: Interaction) -> None:
+        self._current_page = max(0, self._current_page - 1)
+        self._build_ui()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _on_next_page(self, interaction: Interaction) -> None:
+        self._current_page = min(len(_BM_RESOURCE_PAGES) - 1, self._current_page + 1)
+        self._build_ui()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _on_clear(self, interaction: Interaction) -> None:
+        self._offer.clear()
+        self._build_ui()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _on_submit(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        try:
+            if not self._offer:
+                await interaction.followup.send("Nothing in your offer.", ephemeral=True)
+                return
+
+            # Verify player has the resources
+            uid = self.user_id
+            sid = self.server_id
+
+            # Build resource ownership check (mixed sources)
+            user_row = await self.bot.database.users.get(uid, sid)
+            settlement = await self.bot.database.settlement.get_settlement(uid, sid)
+            skill_mining = await self.bot.database.skills.get_data(uid, sid, "mining")
+            skill_wood = await self.bot.database.skills.get_data(uid, sid, "woodcutting")
+            skill_fish = await self.bot.database.skills.get_data(uid, sid, "fishing")
+
+            _OWNED: dict = {}
+            _OWNED["timber"] = settlement.timber
+            _OWNED["stone"] = settlement.stone
+            _OWNED["gold"] = user_row["gold"] if user_row else 0
+
+            # Mapping for skill data (order matches DB column order starting at index 3)
+            _MINING_COLS = ["iron", "coal", "gold", "platinum", "idea",
+                            "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"]
+            _WOOD_COLS = ["oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
+                          "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank"]
+            _FISH_COLS = ["desiccated_bones", "regular_bones", "sturdy_bones",
+                          "reinforced_bones", "titanium_bones",
+                          "desiccated_essence", "regular_essence", "sturdy_essence",
+                          "reinforced_essence", "titanium_essence"]
+
+            if skill_mining:
+                for i, col in enumerate(_MINING_COLS):
+                    _OWNED[col] = skill_mining[3 + i] if len(skill_mining) > 3 + i else 0
+            if skill_wood:
+                for i, col in enumerate(_WOOD_COLS):
+                    _OWNED[col] = skill_wood[3 + i] if len(skill_wood) > 3 + i else 0
+            if skill_fish:
+                for i, col in enumerate(_FISH_COLS):
+                    _OWNED[col] = skill_fish[3 + i] if len(skill_fish) > 3 + i else 0
+
+            # User currency columns
+            for key in self._offer:
+                if key not in _OWNED:
+                    try:
+                        _OWNED[key] = await self.bot.database.users.get_currency(uid, key)
+                    except Exception:
+                        _OWNED[key] = 0
+
+            # Validate all offered quantities
+            for res, qty in self._offer.items():
+                if _OWNED.get(res, 0) < qty:
+                    label = next((l for k, l in sum(_BM_RESOURCE_PAGES, []) if k == res), res)
+                    await interaction.followup.send(
+                        f"Not enough **{label}**! You have {_OWNED.get(res, 0):,}, need {qty:,}.",
+                        ephemeral=True,
+                    )
+                    return
+
+            # Calculate value and turns
+            tree_nodes = await self.bot.database.settlement.get_bm_tree(uid, sid)
+
+            # Check for active events (merchant caravan = value bonus)
+            active_events = await self.bot.database.settlement.get_active_events(uid, sid)
+            event_value_bonus = 0.0
+            for ev in active_events:
+                if ev["event_type"] == "ongoing":
+                    ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
+                    event_value_bonus += ev_def.get("effects", {}).get("bm_value_bonus", 0.0)
+
+            value = calculate_offer_value(self._offer, tree_nodes, self.building.tier)
+            value = int(value * (1 + event_value_bonus))
+            turns = compute_processing_turns(value, self.building.tier, tree_nodes)
+
+            if value <= 0:
+                await interaction.followup.send(
+                    "This offer has no tradeable value.", ephemeral=True
+                )
+                return
+
+            # Deduct resources
+            settlement_changes: dict = {}
+            user_currency_changes: dict = {}
+
+            for res, qty in self._offer.items():
+                if res in ("timber", "stone"):
+                    settlement_changes[res] = settlement_changes.get(res, 0) - qty
+                elif res in (
+                    "iron", "coal", "gold", "platinum", "idea",
+                    "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar",
+                    "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
+                    "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank",
+                    "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
+                    "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence",
+                ):
+                    settlement_changes[res] = settlement_changes.get(res, 0) - qty
+                else:
+                    user_currency_changes[res] = user_currency_changes.get(res, 0) - qty
+
+            if settlement_changes:
+                await self.bot.database.settlement.commit_production(uid, sid, settlement_changes)
+            for cur, delta in user_currency_changes.items():
+                try:
+                    await self.bot.database.users.modify_currency(uid, cur, delta)
+                except Exception:
+                    pass
+
+            # Get current turn count for record-keeping
+            turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
+            current_turn = turns_data.get("total_development_turns", 0)
+
+            await self.bot.database.settlement.create_pending_deal(
+                uid, sid,
+                offer_data=self._offer,
+                total_value=value,
+                turns_required=turns,
+                active_biases=self._active_biases,
+                current_turn=current_turn,
+            )
+
+            embed = discord.Embed(
+                title="✅ Deal Submitted",
+                description=(
+                    f"**Vespera eyes the goods and nods.**\n\n"
+                    f"Value assessed: **{value:,}**\n"
+                    f"Processing: **{turns}** Development Turn(s)\n\n"
+                    f"Advance turns on the dashboard to collect your loot."
+                ),
+                color=discord.Color.green(),
+            )
+            embed.set_author(name="Madame Vespera", icon_url=BLACK_MARKET_VESPERA)
+            await interaction.edit_original_response(embed=embed, view=discord.ui.View())
+
+            import asyncio
+            await asyncio.sleep(2)
+
+            # Return to main market view
+            pending = await self.bot.database.settlement.get_pending_deal(uid, sid)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
+            self.parent_market._setup_ui()
+            await interaction.edit_original_response(
+                embed=self.parent_market.build_embed(pending_deal=pending, zeal_data=zeal_data),
+                view=self.parent_market,
+            )
+            self.stop()
+
+        finally:
+            self._processing = False
+
+    async def _on_cancel(self, interaction: Interaction) -> None:
+        pending = await self.bot.database.settlement.get_pending_deal(self.user_id, self.server_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        self.parent_market._setup_ui()
+        await interaction.response.edit_message(
+            embed=self.parent_market.build_embed(pending_deal=pending, zeal_data=zeal_data),
+            view=self.parent_market,
+        )
+        self.stop()
+
+
+class QuantityInputModal(ui.Modal):
+    qty_input = ui.TextInput(
+        label="How many? (enter a number)",
+        placeholder="e.g. 100",
+        min_length=1,
+        max_length=10,
+    )
+
+    def __init__(self, offer_view: OfferBuilderView, resource_key: str, resource_label: str):
+        super().__init__(title=f"Add {resource_label[:30]}...")
+        self.offer_view = offer_view
+        self.resource_key = resource_key
+
+    async def on_submit(self, interaction: Interaction) -> None:
+        try:
+            qty = int(self.qty_input.value.replace(",", "").replace(".", ""))
+            if qty <= 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            await interaction.response.send_message("Please enter a positive number.", ephemeral=True)
+            return
+
+        self.offer_view._offer[self.resource_key] = (
+            self.offer_view._offer.get(self.resource_key, 0) + qty
+        )
+        self.offer_view._build_ui()
+        await interaction.response.edit_message(
+            embed=self.offer_view.build_embed(), view=self.offer_view
+        )
+
+
+# ---------------------------------------------------------------------------
+# BM Passive Tree
+# ---------------------------------------------------------------------------
+
+class BMPassiveTreeView(SettlementBaseView):
+    """Spend Idlem to unlock/upgrade Black Market passive tree nodes."""
+
+    def __init__(
+        self, bot, user_id: str, server_id: str, building,
+        parent_market: BlackMarketView,
+        tree_nodes: dict | None = None,
+        idlem: int = 0,
+    ):
+        super().__init__(bot, user_id)
+        self.server_id = server_id
+        self.building = building
+        self.parent_market = parent_market
+        self.tree_nodes = tree_nodes or {}
+        self.idlem = idlem
+        self._processing = False
+        self._build_ui()
+
+    def _build_ui(self) -> None:
+        self.clear_items()
+
+        options = []
+        for key, node in BM_TREE_NODES.items():
+            current_lvl = self.tree_nodes.get(key, 0)
+            max_lvl = node["max_level"]
+            if current_lvl >= max_lvl:
+                continue  # fully unlocked
+            next_cost = node["idlem_costs"][current_lvl]  # cost for next level
+            label = f"{node['name']} (Lv{current_lvl} → {current_lvl+1})"
+            desc = f"{node['description'][:50]} | Cost: {next_cost} Idlem"
+            options.append(SelectOption(label=label, value=key, description=desc))
+
+        if options:
+            sel = ui.Select(
+                placeholder="Choose a node to unlock/upgrade...",
+                options=options[:25],
+                row=0,
+            )
+            sel.callback = self._on_unlock
+            self.add_item(sel)
+        else:
+            no_btn = ui.Button(
+                label="All Nodes Unlocked!",
+                style=ButtonStyle.success,
+                disabled=True,
+                row=0,
+            )
+            self.add_item(no_btn)
+
+        back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1)
+        back_btn.callback = self._on_back
+        self.add_item(back_btn)
+
+    def build_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="🌿 Black Market Passive Tree",
+            description=(
+                f"Invest **Idlem** to unlock and upgrade passive nodes that modify "
+                f"your deal processing, value, and reward composition.\n\n"
+                f"⚗️ **Your Idlem:** {self.idlem:,}"
+            ),
+            color=discord.Color.dark_teal(),
+        )
+
+        branches: dict[str, list[str]] = {}
+        for key, node in BM_TREE_NODES.items():
+            branch = node.get("branch", "other")
+            current_lvl = self.tree_nodes.get(key, 0)
+            max_lvl = node["max_level"]
+            status = "✅" if current_lvl >= max_lvl else (f"Lv{current_lvl}" if current_lvl > 0 else "🔒")
+            next_cost = node["idlem_costs"][current_lvl] if current_lvl < max_lvl else "—"
+            line = f"{status} **{node['name']}** — {node['description']} (next: {next_cost} Idlem)"
+            branches.setdefault(branch, []).append(line)
+
+        branch_labels = {"efficiency": "⚡ Efficiency", "value": "💹 Value", "bias": "🎯 Biases"}
+        for branch, lines in branches.items():
+            embed.add_field(
+                name=branch_labels.get(branch, branch.title()),
+                value="\n".join(lines),
+                inline=False,
+            )
+
+        return embed
+
+    async def _on_unlock(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        try:
+            node_key = interaction.data["values"][0]
+            node = BM_TREE_NODES.get(node_key)
+            if not node:
+                return
+
+            current_lvl = self.tree_nodes.get(node_key, 0)
+            if current_lvl >= node["max_level"]:
+                await interaction.followup.send("This node is already fully unlocked.", ephemeral=True)
+                return
+
+            cost = node["idlem_costs"][current_lvl]
+            ok = await self.bot.database.settlement.spend_idlem(self.user_id, cost)
+            if not ok:
+                await interaction.followup.send(
+                    f"Need **{cost} Idlem** to unlock this. You have {self.idlem}.",
+                    ephemeral=True,
+                )
+                return
+
+            new_lvl = current_lvl + 1
+            await self.bot.database.settlement.set_bm_node(
+                self.user_id, self.server_id, node_key, new_lvl
+            )
+
+            self.tree_nodes[node_key] = new_lvl
+            self.idlem -= cost
+
+            self._build_ui()
+            embed = self.build_embed()
+            embed.add_field(
+                name="✅ Node Unlocked",
+                value=f"**{node['name']}** upgraded to level {new_lvl}!",
+                inline=False,
+            )
+            await interaction.edit_original_response(embed=embed, view=self)
+        finally:
+            self._processing = False
+
+    async def _on_back(self, interaction: Interaction) -> None:
+        pending = await self.bot.database.settlement.get_pending_deal(self.user_id, self.server_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        self.parent_market._setup_ui()
+        await interaction.response.edit_message(
+            embed=self.parent_market.build_embed(pending_deal=pending, zeal_data=zeal_data),
+            view=self.parent_market,
         )
         self.stop()

@@ -14,14 +14,29 @@ class PlotRepository:
     # Initialisation
     # ------------------------------------------------------------------
 
+    # Plots orthogonally adjacent to the Town Hall (grid 2,2) — unlocked for free.
+    _TH_ADJACENT = (6, 10, 11, 15)
+
     async def ensure_plots(self, user_id: str, server_id: str) -> None:
-        """Insert all 20 plot rows (undeveloped) if they don't already exist."""
+        """Insert all 20 plot rows (undeveloped) if they don't already exist,
+        then auto-develop the 4 Town Hall-adjacent plots so new players can
+        immediately place Logging Camp / Quarry."""
         for plot_index in range(1, 21):
             await self.connection.execute(
                 "INSERT OR IGNORE INTO settlement_plots "
                 "(user_id, server_id, plot_index) VALUES (?, ?, ?)",
                 (user_id, server_id, plot_index),
             )
+        # Unlock TH-adjacent plots that haven't been developed yet.
+        # Using 'common_ground' keeps it consistent with the migration script.
+        await self.connection.execute(
+            "UPDATE settlement_plots "
+            "SET is_developed = 1, bonus_type = 'common_ground' "
+            "WHERE user_id = ? AND server_id = ? "
+            "AND plot_index IN (6, 10, 11, 15) "
+            "AND is_developed = 0",
+            (user_id, server_id),
+        )
         await self.connection.commit()
 
     # ------------------------------------------------------------------

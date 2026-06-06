@@ -139,7 +139,7 @@ async def combat(self, interaction: discord.Interaction):
 - All SQL lives in `database/repositories/`. Never write raw SQL outside this directory.
 - Access via `bot.database.<repo>`: `bot.database.users`, `bot.database.equipment`, etc.
 - Call `await repo.commit()` (inherited from `BaseRepository`) after writes.
-- Available repositories: `users`, `equipment`, `skills`, `social`, `settings`, `companions`, `delve`, `settlement`, `slayer`, `uber`, `essences`, `alchemy`, `ascension`, `codex`, `duels`, `trade`, `partners`, `monster_parts`, `prestige`, `maw`, `boss_party`, `paradise`, `journey`, `hematurgy`.
+- Available repositories: `users`, `equipment`, `skills`, `social`, `settings`, `companions`, `delve`, `settlement`, `slayer`, `uber`, `essences`, `alchemy`, `ascension`, `codex`, `duels`, `trade`, `partners`, `monster_parts`, `prestige`, `maw`, `boss_party`, `paradise`, `journey`, `hematurgy`, `quests`.
 
 ---
 
@@ -298,7 +298,7 @@ core/combat/
 │   ├── loot.py         — Item drop tables and slot selection
 │   ├── rewards.py      — calculate_rewards, apply_partner_end_rewards
 │   ├── uber_rewards.py — Uber boss-specific reward handling
-│   └── victory.py      — Victory state assembly and reward bundling
+│   └── victory.py      — `apply_victory_rewards`: full post-victory orchestration (rewards, XP, companion drops, slayer task, quest progress ticking, settlement Zeal)
 │
 ├── mobgen/             — Encounter setup and procedural generation
 │   ├── gen_mob.py      — generate_encounter, generate_boss, generate_ascent_monster; modifier application
@@ -525,8 +525,86 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 
 ### Settlement (`core/settlement/`, `cogs/settlement.py`)
 - Ideology-linked settlements with buildings (Apothecary, Barracks, Temple, Hatchery, etc.).
-- Views split under `core/settlement/views/`: `base.py`, `construction.py`, `detail.py`, `town_hall.py`, `black_market.py`, `dashboard.py`, `research.py`.
+- Views split under `core/settlement/views/`: `base.py`, `construction.py`, `detail.py`, `town_hall.py`, `black_market.py`, `dashboard.py`, `research.py`, `plot_detail.py`, `nursery_foundry.py`.
 - Repository: `database/repositories/settlement.py`.
+
+**Settlement Grid / Plot System (`core/settlement/plots.py`)**
+- 5×5 grid (corners excluded); 20 developable plots + Town Hall at center. Plot indices 1–20.
+- Each plot has a `bonus_type` rolled from `PLOT_BONUS_TABLE` (Fertile Ground, Rich Seam, Sacred Ground, Gold Vein, Bedrock, Trade Route, Ancient Foundation, Ley Line, Expedition Camp, Common Ground).
+- `can_develop(plot_index, developed_indices)` — plot must be adjacent to an already-developed plot or TH.
+- `render_grid(developed_indices, building_by_plot)` — renders the settlement grid as a monospace code block.
+- `get_effective_max_workers(building_type, tier, plot_bonus_type, adj_shrine_cap_x2, has_watchtower)` — computes worker cap including plot + adjacency bonuses.
+- `PlotDetailView` / `MetaBuildingConstructionView` — UI for managing plots and constructing meta buildings.
+
+**Meta Buildings** (placed on plots alongside regular buildings):
+- Up to `town_hall_tier` meta buildings allowed (T1 = 1 slot, T7 = 7 slots).
+- Must be fully staffed to activate (Watchtower is passive — no workers needed).
+- Meta buildings never affect other meta buildings. Ley Line plots amplify adjacency bonuses by ×1.5.
+
+| Meta Building | Effect |
+|---|---|
+| Servant's Quarters | +2% generator output per 10 workers (max +20%) to adjacent generators |
+| Supply Depot | +15% converter effectiveness to adjacent converters |
+| Grand Cathedral | Doubles worker cap for adjacent shrine buildings |
+| Watchtower | Global +1% × tier worker cap increase on all regular buildings |
+| Foreman's Post | +25% output to all adjacent buildings |
+| Shrine Garden | +15% effectiveness to adjacent shrine buildings |
+| Encampment | +0.5 stamina/hr per 100 War Camp workers to adjacent War Camps |
+| Apothecary Annex | +4% flat heal per 100 workers to adjacent Apothecary |
+
+**Development Turns / Zeal Economy (`core/settlement/turn_engine.py`)**
+- Players earn **Zeal** from combat wins (10 per win) and quest completions (30/90 for 1★/3★).
+- Passive Zeal accrues each Development Turn based on Town Hall tier.
+- Daily Zeal caps: soft cap 600 (gains halved above), hard cap 800.
+- `ZEAL_TO_DT = 10` — 10 Zeal converts to 1 Development Turn.
+- `compute_zeal_gain(base, earned_today)` — applies soft/hard cap logic.
+- `process_next_turn(bot, user_id, server_id, town_hall_tier)` — orchestrates one Development Turn: advances projects, ticks Black Market deal, fires/expires events, increments total turns, awards passive Zeal.
+
+**Settlement Projects** (turn-based; replaces instant build/upgrade):
+- Construction and upgrades queue as projects with DT costs (`PROJECT_CONSTRUCTION_DT`, `PROJECT_UPGRADE_DT_PER_TIER`).
+- Project types: `construction`, `upgrade`, `research`, `nursery`, `foundry_idlem`.
+- `construction_dt_cost(building_type, event_effects)` — returns DT cost, halved during Inspiration Surge.
+- `upgrade_dt_cost(building_type, target_tier)` — DT cost scales with tier.
+
+**New Buildings**:
+- **Nursery** — produces workers via Development Turns (~1–2 per turn). `NurseryView` in `nursery_foundry.py`. Workers increment ideology follower count on completion.
+- **Idlem Foundry** — produces Idlem (~1–2 per turn). `IdlemFoundryView` in `nursery_foundry.py`. Idlem powers the Black Market passive tree.
+- **Uber Shrine** — consolidated shrine replacing the five individual shrines. Internal per-statue worker allocation stored as JSON in building data.
+
+**Black Market Passive Tree** (powered by Idlem):
+- Three branches: Efficiency (−10%/−20%/−35% deal turns; Instant Deals for ≤5-turn deals), Value (+5%/+10%/+15% offer value), Biases (extra loot rolls per deal category).
+- Bias nodes: `rune_bias`, `gathering_bias`, `key_bias`, `egg_bias`, `gear_bias`, `high_end_bias`, `gold_bias`.
+- `calculate_offer_value(offer, tree_nodes, bm_tier)` — computes total Value score for a trade offer.
+- `compute_processing_turns(value, bm_tier, tree_nodes)` — returns DT cost for a deal.
+- `roll_bm_rewards(value, active_biases, player_level, tree_nodes)` — rolls loot for a completed deal.
+- `BMPassiveTreeView` and `OfferBuilderView` in `black_market.py`.
+
+**Settlement Events** (scheduled by total Development Turns):
+- Opportunity events: Merchant Caravan (+25% BM value for 5 turns), Inspiration Surge (halved construction DT for 3 turns), Resource Windfall (+50% generator output for 4 turns), Ideological Rally (instant +100 Zeal), Baby Boom (Nursery ×2 for 5 turns), Foundry Surge (Idlem Foundry ×2 for 4 turns), Wandering Scholar (+3 Blueprints).
+- Crisis events (with advance warning): Bandit Raid, Plague Outbreak, Void Incursion.
+- Event types: `instant` (fires immediately), `ongoing` (active for N turns), `upcoming` (advanced warning before firing).
+- `tick_events`, `add_event`, `remove_event` in the settlement repository.
+
+**Settlement Repository new key methods**: `advance_projects`, `delete_project`, `upsert_project`, `get_projects`, `get_pending_deal`, `decrement_deal_turn`, `delete_pending_deal`, `get_bm_tree`, `tick_events`, `get_active_events`, `add_event`, `remove_event`, `increment_turns`, `get_turns_data`, `add_pending_zeal`, `add_zeal`, `get_zeal_data`, `reset_daily_zeal_if_needed`, `add_idlem`, `complete_research`, `upgrade_building_tier`, `build_structure`.
+
+### Quests (`core/quests/`, `cogs/quests.py`)
+- Daily contract board + long-form Horizon path system. Players earn Quest Tokens redeemable in the quest shop.
+- **Daily Contracts**: 3 slots rolled from `DAILY_QUESTS`. Each slot is tier 1 or tier 3 (60/40). Reroll costs a token; cooldown 20 hours.
+- **Horizon Paths**: Long-form quests (`HORIZON_PATHS`). Each path grants tokens + a unique special reward on completion.
+- **Quest Tokens**: Currency for the quest shop (`shop_views.py`). Earned from contract and horizon turn-ins.
+- **Perks**: `veteran_unlocked` (+1 bonus token per turn-in), `enrichment_unlocked` (+50% gold on turn-in), `prospector_unlocked` (gathering cache on turn-in), `horizon_boost_uses` (Horizon progress counts as 2 per boost use).
+
+| File | Purpose |
+|---|---|
+| `data.py` | `DAILY_QUESTS`, `HORIZON_PATHS`, `get_damage_goals` |
+| `mechanics.py` | `roll_board`, `reroll_slot`, `tick_quest_progress`, `grant_contract_reward`, `grant_horizon_reward` |
+| `views.py` | Quest board UI, contract and horizon views |
+| `shop_views.py` | Quest shop (redeem tokens) |
+
+- **`tick_quest_progress(bot, user_id, server_id, event_type, value)`** — called from `victory.py` and other completion hooks; ticks matching contracts and the active Horizon quest.
+- Event types tracked: `combat_win`, `damage`, `boss_kill:<name>`, `calcified_kill`, `corrupted_kill`, `codex_complete`, `ascent_floor`, `apex_complete`, `egg_release`, `rune_refinement`, `rune_shatter`, `rune_potential`, `casino_win`, `slayer_task_complete`.
+- Quest completion also grants **Zeal** for the settlement system (30 for 1★, 90 for 3★).
+- Repository: `database/repositories/quests.py`. Key methods: `ensure_meta`, `get_meta`, `get_contracts`, `tick_contract_progress`, `complete_contract`, `get_horizon`, `tick_horizon_progress`, `complete_horizon`, `add_tokens`, `decrement_horizon_boost`.
 
 ### Slayer (`core/slayer/`, `cogs/slayer.py`)
 - Task-based system; completing tasks earns points and emblems.
@@ -552,7 +630,7 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 | `equipment` | `get_all`, `get_by_id`, `add_item`, `delete_item`, `equip`, `upgrade`, `add_essence`, `remove_essence` |
 | `companions` | `get_all`, `get_active`, `add_companion`, `delete_companion`, `set_active`, `level_up`, `update_passive` |
 | `skills` | `get_data`, `update_batch`, `add_resources`, `upgrade_tool` |
-| `settlement` | `get_settlement`, `get_buildings`, `add_building`, `update_building`, `update_resources` |
+| `settlement` | `get_settlement`, `get_buildings`, `build_structure`, `assign_workers`, `upgrade_building_tier`, `update_resources`, `upsert_project`, `get_projects`, `advance_projects`, `delete_project`, `get_pending_deal`, `decrement_deal_turn`, `delete_pending_deal`, `get_bm_tree`, `get_active_events`, `add_event`, `remove_event`, `tick_events`, `increment_turns`, `get_turns_data`, `add_pending_zeal`, `add_zeal`, `get_zeal_data`, `reset_daily_zeal_if_needed`, `add_idlem`, `complete_research` |
 | `slayer` | `get_profile`, `update_level`, `get_emblem`, `update_emblem_slot`, `update_active_task` |
 | `uber` | `get_progress`, `update_progress`, `add_sigils` |
 | `essences` | `get_essence_count`, `add_essence`, `remove_essence`, `get_all_essences` |
@@ -571,6 +649,7 @@ Gloves, boots, and helmets support up to 3 regular essence slots + 1 corrupted e
 | `duels` | Win/loss records |
 | `journey` | Level milestone claim state |
 | `hematurgy` | Blood passive unlock and tier state |
+| `quests` | `ensure_meta`, `get_meta`, `get_contracts`, `tick_contract_progress`, `complete_contract`, `get_horizon`, `tick_horizon_progress`, `complete_horizon`, `add_tokens`, `decrement_horizon_boost` |
 
 ---
 

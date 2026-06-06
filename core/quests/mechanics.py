@@ -246,6 +246,21 @@ async def grant_contract_reward(
         except Exception as e:
             print(f"[Prospector perk error]: {e}")
 
+    # Grant Zeal for quest completion (30 for 1★, 90 for 3★)
+    try:
+        from core.settlement.constants import ZEAL_PER_COMBAT
+        from core.settlement.turn_engine import compute_zeal_gain
+        _zeal_base = 30 if tier == 1 else 90
+        await bot.database.settlement.reset_daily_zeal_if_needed(user_id)
+        _zeal_data = await bot.database.settlement.get_zeal_data(user_id)
+        _earned = _zeal_data.get("zeal_earned_today", 0)
+        _actual = compute_zeal_gain(_zeal_base, _earned)
+        if _actual > 0:
+            await bot.database.settlement.add_zeal(user_id, _actual)
+            msgs.append(f"🔥 +{_actual} Zeal")
+    except Exception:
+        pass
+
     return msgs
 
 

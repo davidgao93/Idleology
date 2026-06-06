@@ -438,4 +438,17 @@ async def apply_victory_rewards(
     except Exception as e:
         print(f"[Quest tick error in victory]: {e}")
 
+    # Settlement Zeal (10 per combat win, subject to daily cap)
+    try:
+        from core.settlement.constants import ZEAL_PER_COMBAT
+        from core.settlement.turn_engine import compute_zeal_gain
+        await bot.database.settlement.reset_daily_zeal_if_needed(user_id)
+        zeal_data = await bot.database.settlement.get_zeal_data(user_id)
+        earned_today = zeal_data.get("zeal_earned_today", 0)
+        actual_zeal = compute_zeal_gain(ZEAL_PER_COMBAT, earned_today)
+        if actual_zeal > 0:
+            await bot.database.settlement.add_zeal(user_id, actual_zeal)
+    except Exception:
+        pass  # Zeal is non-critical; never break combat on its failure
+
     return reward_data

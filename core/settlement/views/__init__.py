@@ -2,7 +2,7 @@
 """Settlement UI views package — clean public API."""
 
 from .base import SettlementBaseView
-from .black_market import BlackMarketView, BulkTradeModal
+from .black_market import BlackMarketView, BMPassiveTreeView, OfferBuilderView
 from .construction import BuildConstructionView
 from .dashboard import SettlementDashboardView
 from .detail import BuildingDetailView, WorkerModal
@@ -12,7 +12,8 @@ from .town_hall import DCCraftModal, TownHallView
 __all__ = [
     "SettlementBaseView",
     "BlackMarketView",
-    "BulkTradeModal",
+    "BMPassiveTreeView",
+    "OfferBuilderView",
     "TownHallView",
     "DCCraftModal",
     "BuildConstructionView",

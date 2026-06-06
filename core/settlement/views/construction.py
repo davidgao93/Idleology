@@ -3,7 +3,13 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.images import SETTLEMENT_HUB
-from core.settlement.constants import BUILD_MESSAGES, BUILDING_INFO, CONSTRUCTION_COSTS
+from core.settlement.constants import (
+    BUILD_MESSAGES,
+    BUILDING_INFO,
+    CONSTRUCTION_COSTS,
+    PROJECT_CONSTRUCTION_DT,
+)
+from core.settlement.turn_engine import construction_dt_cost
 from core.settlement.views.research import RESEARCHABLE_BUILDINGS
 
 from .base import SettlementBaseView
@@ -82,6 +88,8 @@ class BuildConstructionView(SettlementBaseView):
                 cost_str += f" | 🪵 {cost['timber']:,}"
             if cost.get("stone"):
                 cost_str += f" | 🪨 {cost['stone']:,}"
+            dt = construction_dt_cost(b_type)
+            cost_str += f" | ⏭️ {dt} DT"
 
             embed.add_field(
                 name=f"✅ {b_type.replace('_', ' ').title()}",
@@ -179,37 +187,21 @@ class BuildConstructionView(SettlementBaseView):
 
         await interaction.response.defer()
 
-        # === Construction animation ===
-        import asyncio
-        import random
-
-        chosen = random.choices(
-            population=[msg for msg, _ in BUILD_MESSAGES],
-            weights=[w for _, w in BUILD_MESSAGES],
-            k=3,
+        # === Queue as Development Turn project ===
+        # Determine active event effects (construction DT halved, etc.)
+        active_events = await self.bot.database.settlement.get_active_events(
+            self.user_id, self.parent.server_id
         )
-        prog = discord.Embed(
-            title="🏗️ Construction in Progress",
-            color=discord.Color.orange(),
-        )
-        prog.set_thumbnail(url=SETTLEMENT_HUB)
-        for i, msg in enumerate(chosen, 1):
-            prog.description = f"**Step {i}/3:** {msg}"
-            # Strip interactive components on first frame so the select can't be re-clicked
-            if i == 1:
-                await interaction.edit_original_response(embed=prog, view=discord.ui.View())
-            else:
-                await interaction.edit_original_response(embed=prog)
-            if i < 3:
-                await asyncio.sleep(2)
+        event_effects: dict = {}
+        from core.settlement.constants import SETTLEMENT_EVENTS
+        for ev in active_events:
+            if ev["event_type"] == "ongoing":
+                ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
+                event_effects.update(ev_def.get("effects", {}))
 
-        prog.title = "✅ Construction Complete"
-        prog.description = "**Building complete!** The new structure is now operational."
-        prog.color = discord.Color.green()
-        await interaction.edit_original_response(embed=prog)
-        await asyncio.sleep(1.5)
+        dt_required = construction_dt_cost(b_type, event_effects)
 
-        # === Actual build logic ===
+        # Deduct resources immediately (reserved for the project)
         changes = {
             "timber": -cost.get("timber", 0),
             "stone":  -cost.get("stone",  0),
@@ -219,37 +211,41 @@ class BuildConstructionView(SettlementBaseView):
         )
         await self.bot.database.users.modify_gold(self.user_id, -cost.get("gold", 0))
 
-        await self.bot.database.settlement.build_structure(
-            self.user_id,
-            self.parent.server_id,
-            b_type,
-            self.plot_index,
+        # Create the project
+        await self.bot.database.settlement.upsert_project(
+            user_id=self.user_id,
+            server_id=self.parent.server_id,
+            project_type="construction",
+            target_id=None,
+            required_turns=dt_required,
+            data={"building_type": b_type, "plot_index": self.plot_index},
         )
 
-        # Refresh settlement
+        # Show confirmation
+        embed = discord.Embed(
+            title="🏗️ Construction Queued!",
+            description=(
+                f"**{b_type.replace('_', ' ').title()}** will be built on Plot {self.plot_index} "
+                f"after **{dt_required} Development Turn(s)**.\n\n"
+                f"Resources have been reserved. Click **Next Turn** on the dashboard to advance construction."
+            ),
+            color=discord.Color.blue(),
+        )
+        embed.set_thumbnail(url=SETTLEMENT_HUB)
+        await interaction.edit_original_response(embed=embed, view=discord.ui.View())
+
+        import asyncio
+        await asyncio.sleep(2)
+
+        # Return to plot detail or dashboard
         self.parent.settlement = await self.bot.database.settlement.get_settlement(
             self.user_id, self.parent.server_id
         )
 
         if self.return_to is not None:
-            # Navigate back to the PlotDetailView that opened this construction menu
-            new_building = next(
-                (
-                    b
-                    for b in self.parent.settlement.buildings
-                    if b.plot_index == self.plot_index
-                ),
-                None,
-            )
-            self.return_to.building = new_building
             self.return_to._build_buttons()
-            embed = self.return_to.build_embed()
-            embed.title = (
-                f"✅ Plot {self.plot_index} — "
-                f"{b_type.replace('_', ' ').title()} Constructed!"
-            )
             await interaction.edit_original_response(
-                content=None, embed=embed, view=self.return_to
+                content=None, embed=self.return_to.build_embed(), view=self.return_to
             )
         else:
             self.parent._rebuild_ui()

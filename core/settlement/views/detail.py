@@ -208,6 +208,27 @@ class BuildingDetailView(SettlementBaseView):
             btn_hatchery.callback = self.open_hatchery
             self.add_item(btn_hatchery)
 
+        if self.building.building_type == "nursery":
+            btn_nursery = ui.Button(
+                label="Manage Nursery", style=ButtonStyle.success, emoji="👶", row=1
+            )
+            btn_nursery.callback = self.open_nursery
+            self.add_item(btn_nursery)
+
+        if self.building.building_type == "idlem_foundry":
+            btn_foundry = ui.Button(
+                label="Manage Foundry", style=ButtonStyle.blurple, emoji="⚗️", row=1
+            )
+            btn_foundry.callback = self.open_idlem_foundry
+            self.add_item(btn_foundry)
+
+        if self.building.building_type == "black_market":
+            btn_bm = ui.Button(
+                label="Open Market", style=ButtonStyle.danger, emoji="🌑", row=1
+            )
+            btn_bm.callback = self.open_black_market
+            self.add_item(btn_bm)
+
         if self.building.building_type != "town_hall":
             btn_demo = ui.Button(label="Demolish", style=ButtonStyle.danger, row=1)
             btn_demo.callback = self.demolish_prompt
@@ -451,6 +472,37 @@ class BuildingDetailView(SettlementBaseView):
         await hview._load()
         hview._rebuild_buttons()
         await interaction.edit_original_response(embed=hview.build_embed(), view=hview)
+
+    async def open_nursery(self, interaction: Interaction):
+        await interaction.response.defer()
+        from core.settlement.views.nursery_foundry import NurseryView
+        view = NurseryView(
+            self.bot, self.user_id, self.parent.server_id, self.building, self.parent
+        )
+        projects = await self.bot.database.settlement.get_projects(self.user_id, self.parent.server_id)
+        await interaction.edit_original_response(embed=view.build_embed(projects=projects), view=view)
+
+    async def open_idlem_foundry(self, interaction: Interaction):
+        await interaction.response.defer()
+        from core.settlement.views.nursery_foundry import IdlemFoundryView
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        view = IdlemFoundryView(
+            self.bot, self.user_id, self.parent.server_id, self.building, self.parent
+        )
+        projects = await self.bot.database.settlement.get_projects(self.user_id, self.parent.server_id)
+        await interaction.edit_original_response(
+            embed=view.build_embed(projects=projects, idlem=zeal_data.get("idlem", 0)), view=view
+        )
+
+    async def open_black_market(self, interaction: Interaction):
+        await interaction.response.defer()
+        from core.settlement.views.black_market import BlackMarketView
+        view = BlackMarketView(self.bot, self.user_id, self.parent, self.building)
+        pending = await self.bot.database.settlement.get_pending_deal(self.user_id, self.parent.server_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        await interaction.edit_original_response(
+            embed=view.build_embed(pending_deal=pending, zeal_data=zeal_data), view=view
+        )
 
     async def go_back(self, interaction: Interaction):
         await interaction.response.edit_message(

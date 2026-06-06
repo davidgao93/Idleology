@@ -78,7 +78,11 @@ CREATE TABLE IF NOT EXISTS `users` (
   `development_contracts` INTEGER NOT NULL DEFAULT 0,
   `dc_crafted_today` INTEGER NOT NULL DEFAULT 0,
   `last_dc_craft_date` TEXT DEFAULT NULL,
-  `runes_of_nature` INTEGER NOT NULL DEFAULT 0
+  `runes_of_nature` INTEGER NOT NULL DEFAULT 0,
+  `settlement_zeal` INTEGER NOT NULL DEFAULT 0,
+  `idlem` INTEGER NOT NULL DEFAULT 0,
+  `zeal_earned_today` INTEGER NOT NULL DEFAULT 0,
+  `last_zeal_reset` TEXT DEFAULT NULL
 );
 
 
@@ -362,10 +366,12 @@ CREATE TABLE IF NOT EXISTS settlements (
     user_id TEXT,
     server_id TEXT,
     town_hall_tier INTEGER DEFAULT 1,
-    building_slots INTEGER DEFAULT 3, 
-    timber INTEGER DEFAULT 0, -- Specific settlement resource
-    stone INTEGER DEFAULT 0,  -- Specific settlement resource
+    building_slots INTEGER DEFAULT 3,
+    timber INTEGER DEFAULT 0,
+    stone INTEGER DEFAULT 0,
     last_collection_time TEXT,
+    total_development_turns INTEGER NOT NULL DEFAULT 0,
+    pending_zeal INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );
 
@@ -752,7 +758,64 @@ CREATE TABLE IF NOT EXISTS tutorial_seen (
     PRIMARY KEY (user_id, feature_key)
 );
 
+-- ── Settlement Turns Economy ──────────────────────────────────────────────────
+
+-- Pending multi-turn Black Market deals waiting to be processed by Next Turn.
+CREATE TABLE IF NOT EXISTS settlement_pending_deals (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id          TEXT    NOT NULL,
+    server_id        TEXT    NOT NULL,
+    offer_data       TEXT    NOT NULL,  -- JSON: {resource: qty, ...}
+    total_value      INTEGER NOT NULL,
+    turns_remaining  INTEGER NOT NULL,
+    active_biases    TEXT    NOT NULL DEFAULT '[]',  -- JSON array of bias keys
+    created_turn     INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(user_id, server_id)
+);
+
+-- Active construction / upgrade / research / nursery / foundry projects.
+-- Each row represents one in-progress project spending Development Turns.
+-- Uniqueness is enforced at the application layer (upsert_project) to avoid
+-- SQLite's prohibition on expressions in UNIQUE constraints.
+CREATE TABLE IF NOT EXISTS settlement_projects (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        TEXT    NOT NULL,
+    server_id      TEXT    NOT NULL,
+    project_type   TEXT    NOT NULL,  -- 'construction','upgrade','research','nursery','foundry'
+    target_id      INTEGER,           -- buildings.id for upgrades; NULL for new builds
+    required_turns INTEGER NOT NULL,
+    invested_turns INTEGER NOT NULL DEFAULT 0,
+    data           TEXT    DEFAULT NULL  -- JSON extra info (building_type, plot_index, etc.)
+);
+
+-- Active settlement events (upcoming, ongoing, instant-resolved).
+CREATE TABLE IF NOT EXISTS settlement_active_events (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        TEXT    NOT NULL,
+    server_id      TEXT    NOT NULL,
+    event_key      TEXT    NOT NULL,  -- matches key in SETTLEMENT_EVENTS constant
+    event_type     TEXT    NOT NULL,  -- 'upcoming','ongoing','instant'
+    turns_until    INTEGER NOT NULL DEFAULT 0,   -- for upcoming: turns until it fires
+    turns_remaining INTEGER NOT NULL DEFAULT 0,  -- for ongoing: turns left
+    data           TEXT    DEFAULT NULL          -- JSON extra state per-event
+);
+
+-- Black Market passive tree node investment (Idlem-powered).
+CREATE TABLE IF NOT EXISTS bm_passive_tree (
+    user_id   TEXT    NOT NULL,
+    server_id TEXT    NOT NULL,
+    node_key  TEXT    NOT NULL,  -- e.g. 'efficiency_1', 'rune_bias_2'
+    level     INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (user_id, server_id, node_key)
+);
+
 -- For existing databases run once:
 -- ALTER TABLE users ADD COLUMN runes_of_nature INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE gathering_mastery ADD COLUMN attunement_alloc TEXT DEFAULT '{}';
 -- ALTER TABLE gathering_mastery ADD COLUMN mastery_insight INTEGER DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN settlement_zeal INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN idlem INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN zeal_earned_today INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN last_zeal_reset TEXT DEFAULT NULL;
+-- ALTER TABLE settlements ADD COLUMN total_development_turns INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE settlements ADD COLUMN pending_zeal INTEGER NOT NULL DEFAULT 0;

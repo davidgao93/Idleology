@@ -1,5 +1,6 @@
 # database/repositories/settlement.py
 
+import json
 import aiosqlite
 
 from core.models import Building, Settlement
@@ -274,7 +275,7 @@ class SettlementRepository:
         # --- Shrine effectiveness (sigil shrines only; temple is excluded) ---
         _SIGIL_SHRINES = frozenset({
             "celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine",
-            "corruption_shrine",
+            "corruption_shrine", "uber_shrine",
         })
         sacred_ground_val = PLOT_BONUS_TABLE.get("sacred_ground", {}).get("value", 0.20)
         shrine_effectiveness: dict[str, float] = {}
@@ -374,5 +375,458 @@ class SettlementRepository:
             "UPDATE settlements SET town_hall_tier = town_hall_tier + 1, building_slots = building_slots + 1 "
             "WHERE user_id = ? AND server_id = ?",
             (user_id, server_id),
+        )
+        await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Settlement Turns Economy
+    # ------------------------------------------------------------------
+
+    async def get_turns_data(self, user_id: str, server_id: str) -> dict:
+        """Returns {total_development_turns, pending_zeal} for the settlement."""
+        _default = {"total_development_turns": 0, "pending_zeal": 0}
+        try:
+            cursor = await self.connection.execute(
+                "SELECT total_development_turns, pending_zeal FROM settlements "
+                "WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
+            )
+            row = await cursor.fetchone()
+            if row:
+                return {"total_development_turns": row[0] or 0, "pending_zeal": row[1] or 0}
+        except Exception:
+            pass
+        return _default
+
+    async def increment_turns(self, user_id: str, server_id: str, amount: int = 1) -> None:
+        try:
+            await self.connection.execute(
+                "UPDATE settlements SET total_development_turns = total_development_turns + ? "
+                "WHERE user_id = ? AND server_id = ?",
+                (amount, user_id, server_id),
+            )
+            await self.connection.commit()
+        except Exception:
+            pass
+
+    async def add_pending_zeal(self, user_id: str, server_id: str, amount: int) -> None:
+        try:
+            await self.connection.execute(
+                "UPDATE settlements SET pending_zeal = pending_zeal + ? "
+                "WHERE user_id = ? AND server_id = ?",
+                (amount, user_id, server_id),
+            )
+            await self.connection.commit()
+        except Exception:
+            pass
+
+    async def collect_pending_zeal(self, user_id: str, server_id: str) -> int:
+        """Transfers all pending_zeal to user.settlement_zeal; returns amount collected."""
+        try:
+            cursor = await self.connection.execute(
+                "SELECT pending_zeal FROM settlements WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
+            )
+            row = await cursor.fetchone()
+            amount = (row[0] or 0) if row else 0
+            if amount <= 0:
+                return 0
+            await self.connection.execute(
+                "UPDATE settlements SET pending_zeal = 0 WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
+            )
+            await self.connection.execute(
+                "UPDATE users SET settlement_zeal = settlement_zeal + ? WHERE user_id = ?",
+                (amount, user_id),
+            )
+            await self.connection.commit()
+            return amount
+        except Exception:
+            return 0
+
+    # ------------------------------------------------------------------
+    # Zeal & Idlem on users table
+    # ------------------------------------------------------------------
+
+    async def get_zeal_data(self, user_id: str) -> dict:
+        """Returns {settlement_zeal, idlem, zeal_earned_today, last_zeal_reset}."""
+        _default = {"settlement_zeal": 0, "idlem": 0, "zeal_earned_today": 0, "last_zeal_reset": None}
+        try:
+            cursor = await self.connection.execute(
+                "SELECT settlement_zeal, idlem, zeal_earned_today, last_zeal_reset "
+                "FROM users WHERE user_id = ?",
+                (user_id,),
+            )
+            row = await cursor.fetchone()
+            if row:
+                return {
+                    "settlement_zeal": row[0] or 0,
+                    "idlem": row[1] or 0,
+                    "zeal_earned_today": row[2] or 0,
+                    "last_zeal_reset": row[3],
+                }
+        except Exception:
+            pass
+        return _default
+
+    async def add_zeal(self, user_id: str, amount: int) -> int:
+        """Adds Zeal; returns new total."""
+        try:
+            await self.connection.execute(
+                "UPDATE users SET settlement_zeal = settlement_zeal + ?, "
+                "zeal_earned_today = zeal_earned_today + ? WHERE user_id = ?",
+                (amount, amount, user_id),
+            )
+            await self.connection.commit()
+            cursor = await self.connection.execute(
+                "SELECT settlement_zeal FROM users WHERE user_id = ?", (user_id,)
+            )
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+        except Exception:
+            return 0
+
+    async def spend_zeal(self, user_id: str, amount: int) -> bool:
+        """Deducts Zeal if sufficient; returns True on success."""
+        try:
+            cursor = await self.connection.execute(
+                "SELECT settlement_zeal FROM users WHERE user_id = ?", (user_id,)
+            )
+            row = await cursor.fetchone()
+            current = (row[0] or 0) if row else 0
+            if current < amount:
+                return False
+            await self.connection.execute(
+                "UPDATE users SET settlement_zeal = settlement_zeal - ? WHERE user_id = ?",
+                (amount, user_id),
+            )
+            await self.connection.commit()
+            return True
+        except Exception:
+            return False
+
+    async def reset_daily_zeal_if_needed(self, user_id: str) -> None:
+        """Resets zeal_earned_today if a new UTC day has started."""
+        from datetime import datetime, timezone
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        try:
+            cursor = await self.connection.execute(
+                "SELECT last_zeal_reset FROM users WHERE user_id = ?", (user_id,)
+            )
+            row = await cursor.fetchone()
+            last = row[0] if row else None
+            if last != today:
+                await self.connection.execute(
+                    "UPDATE users SET zeal_earned_today = 0, last_zeal_reset = ? WHERE user_id = ?",
+                    (today, user_id),
+                )
+                await self.connection.commit()
+        except Exception:
+            pass
+
+    async def add_idlem(self, user_id: str, amount: int) -> None:
+        try:
+            await self.connection.execute(
+                "UPDATE users SET idlem = idlem + ? WHERE user_id = ?",
+                (amount, user_id),
+            )
+            await self.connection.commit()
+        except Exception:
+            pass
+
+    async def spend_idlem(self, user_id: str, amount: int) -> bool:
+        try:
+            cursor = await self.connection.execute(
+                "SELECT idlem FROM users WHERE user_id = ?", (user_id,)
+            )
+            row = await cursor.fetchone()
+            if not row or (row[0] or 0) < amount:
+                return False
+            await self.connection.execute(
+                "UPDATE users SET idlem = idlem - ? WHERE user_id = ?", (amount, user_id)
+            )
+            await self.connection.commit()
+            return True
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------
+    # Projects
+    # ------------------------------------------------------------------
+
+    async def get_projects(self, user_id: str, server_id: str) -> list[dict]:
+        cursor = await self.connection.execute(
+            "SELECT id, project_type, target_id, required_turns, invested_turns, data "
+            "FROM settlement_projects WHERE user_id = ? AND server_id = ? "
+            "ORDER BY id ASC",
+            (user_id, server_id),
+        )
+        rows = await cursor.fetchall()
+        return [
+            {
+                "id": r[0], "project_type": r[1], "target_id": r[2],
+                "required_turns": r[3], "invested_turns": r[4],
+                "data": json.loads(r[5]) if r[5] else {},
+            }
+            for r in rows
+        ]
+
+    async def upsert_project(
+        self,
+        user_id: str,
+        server_id: str,
+        project_type: str,
+        target_id: int | None,
+        required_turns: int,
+        data: dict | None = None,
+    ) -> int:
+        """
+        Creates or updates a project row; returns its row id.
+
+        Uniqueness is keyed on (user_id, server_id, project_type, target_id).
+        We use an explicit SELECT + UPDATE/INSERT instead of ON CONFLICT because
+        SQLite prohibits expressions (e.g. COALESCE) inside UNIQUE constraints
+        and ON CONFLICT target lists.
+        """
+        data_json = json.dumps(data or {})
+
+        # Try to find an existing row with the same logical key.
+        if target_id is None:
+            cursor = await self.connection.execute(
+                "SELECT id FROM settlement_projects "
+                "WHERE user_id = ? AND server_id = ? AND project_type = ? AND target_id IS NULL",
+                (user_id, server_id, project_type),
+            )
+        else:
+            cursor = await self.connection.execute(
+                "SELECT id FROM settlement_projects "
+                "WHERE user_id = ? AND server_id = ? AND project_type = ? AND target_id = ?",
+                (user_id, server_id, project_type, target_id),
+            )
+        existing = await cursor.fetchone()
+
+        if existing:
+            row_id = existing[0]
+            await self.connection.execute(
+                "UPDATE settlement_projects SET required_turns = ?, data = ? WHERE id = ?",
+                (required_turns, data_json, row_id),
+            )
+        else:
+            await self.connection.execute(
+                "INSERT INTO settlement_projects "
+                "(user_id, server_id, project_type, target_id, required_turns, invested_turns, data) "
+                "VALUES (?, ?, ?, ?, ?, 0, ?)",
+                (user_id, server_id, project_type, target_id, required_turns, data_json),
+            )
+            cursor2 = await self.connection.execute(
+                "SELECT last_insert_rowid()"
+            )
+            r = await cursor2.fetchone()
+            row_id = r[0] if r else -1
+
+        await self.connection.commit()
+        return row_id
+
+    async def advance_projects(self, user_id: str, server_id: str) -> list[dict]:
+        """Increments invested_turns by 1 for all projects; returns completed ones."""
+        await self.connection.execute(
+            "UPDATE settlement_projects SET invested_turns = invested_turns + 1 "
+            "WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+        cursor = await self.connection.execute(
+            "SELECT id, project_type, target_id, required_turns, invested_turns, data "
+            "FROM settlement_projects "
+            "WHERE user_id = ? AND server_id = ? AND invested_turns >= required_turns",
+            (user_id, server_id),
+        )
+        rows = await cursor.fetchall()
+        return [
+            {
+                "id": r[0], "project_type": r[1], "target_id": r[2],
+                "required_turns": r[3], "invested_turns": r[4],
+                "data": json.loads(r[5]) if r[5] else {},
+            }
+            for r in rows
+        ]
+
+    async def delete_project(self, project_id: int) -> None:
+        await self.connection.execute(
+            "DELETE FROM settlement_projects WHERE id = ?", (project_id,)
+        )
+        await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Pending Black Market deals
+    # ------------------------------------------------------------------
+
+    async def get_pending_deal(self, user_id: str, server_id: str) -> dict | None:
+        cursor = await self.connection.execute(
+            "SELECT id, offer_data, total_value, turns_remaining, active_biases, created_turn "
+            "FROM settlement_pending_deals WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        return {
+            "id": row[0],
+            "offer_data": json.loads(row[1]),
+            "total_value": row[2],
+            "turns_remaining": row[3],
+            "active_biases": json.loads(row[4]) if row[4] else [],
+            "created_turn": row[5],
+        }
+
+    async def create_pending_deal(
+        self,
+        user_id: str,
+        server_id: str,
+        offer_data: dict,
+        total_value: int,
+        turns_required: int,
+        active_biases: list,
+        current_turn: int,
+    ) -> None:
+        await self.connection.execute(
+            """INSERT INTO settlement_pending_deals
+               (user_id, server_id, offer_data, total_value, turns_remaining, active_biases, created_turn)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(user_id, server_id) DO UPDATE SET
+                   offer_data = excluded.offer_data,
+                   total_value = excluded.total_value,
+                   turns_remaining = excluded.turns_remaining,
+                   active_biases = excluded.active_biases,
+                   created_turn = excluded.created_turn""",
+            (
+                user_id, server_id,
+                json.dumps(offer_data), total_value, turns_required,
+                json.dumps(active_biases), current_turn,
+            ),
+        )
+        await self.connection.commit()
+
+    async def decrement_deal_turn(self, user_id: str, server_id: str) -> dict | None:
+        """Decrements turns_remaining by 1; returns deal if now complete (turns_remaining <= 0)."""
+        await self.connection.execute(
+            "UPDATE settlement_pending_deals SET turns_remaining = turns_remaining - 1 "
+            "WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+        return await self.get_pending_deal(user_id, server_id)
+
+    async def delete_pending_deal(self, user_id: str, server_id: str) -> None:
+        await self.connection.execute(
+            "DELETE FROM settlement_pending_deals WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Active Events
+    # ------------------------------------------------------------------
+
+    async def get_active_events(self, user_id: str, server_id: str) -> list[dict]:
+        cursor = await self.connection.execute(
+            "SELECT id, event_key, event_type, turns_until, turns_remaining, data "
+            "FROM settlement_active_events WHERE user_id = ? AND server_id = ? "
+            "ORDER BY id ASC",
+            (user_id, server_id),
+        )
+        rows = await cursor.fetchall()
+        return [
+            {
+                "id": r[0], "event_key": r[1], "event_type": r[2],
+                "turns_until": r[3], "turns_remaining": r[4],
+                "data": json.loads(r[5]) if r[5] else {},
+            }
+            for r in rows
+        ]
+
+    async def add_event(
+        self,
+        user_id: str,
+        server_id: str,
+        event_key: str,
+        event_type: str,
+        turns_until: int = 0,
+        turns_remaining: int = 0,
+        data: dict | None = None,
+    ) -> None:
+        await self.connection.execute(
+            """INSERT INTO settlement_active_events
+               (user_id, server_id, event_key, event_type, turns_until, turns_remaining, data)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (user_id, server_id, event_key, event_type, turns_until, turns_remaining,
+             json.dumps(data or {})),
+        )
+        await self.connection.commit()
+
+    async def tick_events(self, user_id: str, server_id: str) -> tuple[list[dict], list[dict]]:
+        """
+        Advances all events by one turn.
+        Returns (newly_fired, expired) where:
+          - newly_fired: upcoming events whose turns_until reached 0
+          - expired: ongoing events whose turns_remaining reached 0
+        """
+        events = await self.get_active_events(user_id, server_id)
+        newly_fired: list[dict] = []
+        expired: list[dict] = []
+
+        for ev in events:
+            if ev["event_type"] == "upcoming":
+                new_until = ev["turns_until"] - 1
+                await self.connection.execute(
+                    "UPDATE settlement_active_events SET turns_until = ? WHERE id = ?",
+                    (new_until, ev["id"]),
+                )
+                if new_until <= 0:
+                    newly_fired.append(ev)
+            elif ev["event_type"] == "ongoing":
+                new_rem = ev["turns_remaining"] - 1
+                await self.connection.execute(
+                    "UPDATE settlement_active_events SET turns_remaining = ? WHERE id = ?",
+                    (new_rem, ev["id"]),
+                )
+                if new_rem <= 0:
+                    expired.append(ev)
+
+        await self.connection.commit()
+        return newly_fired, expired
+
+    async def remove_event(self, event_id: int) -> None:
+        await self.connection.execute(
+            "DELETE FROM settlement_active_events WHERE id = ?", (event_id,)
+        )
+        await self.connection.commit()
+
+    async def remove_events_by_key(self, user_id: str, server_id: str, event_key: str) -> None:
+        await self.connection.execute(
+            "DELETE FROM settlement_active_events WHERE user_id = ? AND server_id = ? AND event_key = ?",
+            (user_id, server_id, event_key),
+        )
+        await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # BM Passive Tree
+    # ------------------------------------------------------------------
+
+    async def get_bm_tree(self, user_id: str, server_id: str) -> dict[str, int]:
+        """Returns {node_key: level} for all unlocked BM passive nodes."""
+        cursor = await self.connection.execute(
+            "SELECT node_key, level FROM bm_passive_tree WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        rows = await cursor.fetchall()
+        return {r[0]: r[1] for r in rows}
+
+    async def set_bm_node(self, user_id: str, server_id: str, node_key: str, level: int) -> None:
+        await self.connection.execute(
+            """INSERT INTO bm_passive_tree (user_id, server_id, node_key, level)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(user_id, server_id, node_key) DO UPDATE SET level = excluded.level""",
+            (user_id, server_id, node_key, level),
         )
         await self.connection.commit()

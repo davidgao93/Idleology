@@ -308,7 +308,30 @@ def _append_meta_effect(embed, b) -> None:
 # Worker management modal (plot-aware)
 # ---------------------------------------------------------------------------
 
-_DC_COST_PER_PLOT = 1  # Each plot costs (plots_developed + 1) DCs, handled dynamically
+# Plots unlocked for free at settlement creation (adjacent to Town Hall).
+# They count toward total_developed for pricing, but paid_developed is tracked
+# separately so the DC cost curve still totals 210 across all 16 purchasable plots.
+_FREE_PLOT_INDICES: frozenset[int] = frozenset({6, 10, 11, 15})
+# DCs the free plots would have cost in the original curve (1+2+3+4 = 10).
+# Redistributed as +1 on each of the first 10 paid unlocks.
+_FREE_PLOTS_RECOVERED: int = sum(range(1, len(_FREE_PLOT_INDICES) + 1))  # 10
+
+
+def _compute_dc_cost(plots: list) -> int:
+    """
+    DC cost to develop the next undeveloped plot.
+
+    Base: total_developed + 1  (free TH-adjacent plots count, raising the floor).
+    Recovery: +1 on each of the first _FREE_PLOTS_RECOVERED paid unlocks so the
+    full 16-plot curve totals 210 DCs, identical to the original 20-plot curve.
+    """
+    total_developed = sum(1 for p in plots if p.is_developed)
+    paid_developed = sum(
+        1 for p in plots
+        if p.is_developed and p.plot_index not in _FREE_PLOT_INDICES
+    )
+    extra = 1 if paid_developed < _FREE_PLOTS_RECOVERED else 0
+    return total_developed + 1 + extra
 
 
 class PlotWorkerModal(ui.Modal, title="Manage Workforce"):
@@ -548,8 +571,7 @@ class PlotDetailView(SettlementBaseView):
         self.add_item(back)
 
     def _add_develop_button(self):
-        total_developed = sum(1 for pl in self.parent.plots if pl.is_developed)
-        dc_cost = total_developed + 1
+        dc_cost = _compute_dc_cost(self.parent.plots)
         btn = ui.Button(
             label=f"Develop Plot ({dc_cost} Development Contract{'s' if dc_cost != 1 else ''})",
             style=ButtonStyle.success,
@@ -695,7 +717,7 @@ class PlotDetailView(SettlementBaseView):
         self._processing = True
 
         developed_set = {pl.plot_index for pl in self.parent.plots if pl.is_developed}
-        dc_cost = len(developed_set) + 1
+        dc_cost = _compute_dc_cost(self.parent.plots)
 
         dcs = await self.bot.database.users.get_development_contracts(self.user_id)
         if dcs < dc_cost:

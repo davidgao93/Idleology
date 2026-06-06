@@ -196,7 +196,15 @@ SETTLEMENT_BUILDINGS = {
     "void_shrine": "https://cdn.discordapp.com/attachments/1334637411363323996/1507523688596115657/corrupted_shrine.jpg?ex=6a123657&is=6a10e4d7&hm=08da355b1f716e9f2119c865efb7a384582f7b9ddd00d7bccbd6908ebe8c5536&",
     "twin_shrine": "https://cdn.discordapp.com/attachments/1334637411363323996/1507523689057484950/gemini_shrine.jpg?ex=6a123657&is=6a10e4d7&hm=8c9630435050b94c891f8f4d25c079271d6aa3e7dcfd7832212ed30edfd0d601&",
     "hatchery": "https://cdn.discordapp.com/attachments/1334637411363323996/1507523698624692407/settlement_hatchery.jpg?ex=6a12365a&is=6a10e4da&hm=d0a8251cec847aeb834f51bb6d7cd66da98f834370099a9ee981bd3486474324&",
+    # New buildings (reuse closest existing asset until custom art is added)
+    "nursery": "https://cdn.discordapp.com/attachments/1334637411363323996/1507523698624692407/settlement_hatchery.jpg?ex=6a12365a&is=6a10e4da&hm=d0a8251cec847aeb834f51bb6d7cd66da98f834370099a9ee981bd3486474324&",
+    "idlem_foundry": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512957656858624/foundry.png?ex=69f8b517&is=69f76397&hm=fa1c04e144931075d410fb821892f50f949e345aa0288ddac7201ce01a6e8c79&",
+    "uber_shrine": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512960274239799/temple.png?ex=69f8b517&is=69f76397&hm=9c8dae72cc8639210f2ac2215dbdaa4a481b0b1f4127292ad50b698de3174994&",
 }
+
+# Settlement NPC portraits
+SETTLEMENT_MAID = SETTLEMENT_HUB          # placeholder — replace with dedicated art
+BLACK_MARKET_VESPERA = SETTLEMENT_BUILDINGS["black_market"]  # placeholder
 
 # ── CORRUPTED MONSTERS ────────────────────────────────────────────────────────
 # Dict keyed by monster name stem (without "corrupted_" prefix).

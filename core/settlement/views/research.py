@@ -24,6 +24,17 @@ from .base import SettlementBaseView
 _RESEARCH_HOURS = 20
 _RESEARCH_COST_ITEM = "unidentified_blueprint"
 
+# DT required per research (via Next Turn; can also wait 20h)
+_RESEARCH_DT_COSTS: dict[str, int] = {
+    "companion_ranch": 30,
+    "apothecary": 30,
+    "temple": 25,
+    "barracks": 25,
+    "black_market": 40,
+    "market": 25,
+    "hatchery": 35,
+}
+
 # Buildings that require research before they can be built.
 RESEARCHABLE_BUILDINGS: dict[str, str] = {
     "companion_ranch": "Companion Ranch",
@@ -171,7 +182,7 @@ class ResearchView(SettlementBaseView):
         embed.description = (
             f"Research buildings before you can construct them.\n"
             f"**Cost:** 1 Unidentified Blueprint per research\n"
-            f"**Duration:** {_RESEARCH_HOURS} hours\n\n"
+            f"**Completion:** {_RESEARCH_HOURS}h wait **or** advance enough Development Turns\n\n"
             f"📋 **Blueprints owned:** {self._blueprint_count}"
         )
 
@@ -266,6 +277,17 @@ class ResearchView(SettlementBaseView):
             self.user_id, self.server_id, b_type, datetime.now().isoformat()
         )
 
+        # Also queue as a DT project (completes through Next Turn clicks)
+        dt_cost = _RESEARCH_DT_COSTS.get(b_type, 30)
+        await self.bot.database.settlement.upsert_project(
+            user_id=self.user_id,
+            server_id=self.server_id,
+            project_type="research",
+            target_id=None,
+            required_turns=dt_cost,
+            data={"building_type": b_type},
+        )
+
         await self.load()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
@@ -281,9 +303,27 @@ class ResearchView(SettlementBaseView):
 
         b_type, start_str = active
         end = datetime.fromisoformat(start_str) + timedelta(hours=_RESEARCH_HOURS)
-        if datetime.now() < end:
+        time_done = datetime.now() >= end
+
+        # Also check if the DT project has completed
+        dt_done = False
+        projects = await self.bot.database.settlement.get_projects(self.user_id, self.server_id)
+        research_proj = next(
+            (p for p in projects if p["project_type"] == "research"
+             and p.get("data", {}).get("building_type") == b_type),
+            None,
+        )
+        if research_proj and research_proj["invested_turns"] >= research_proj["required_turns"]:
+            dt_done = True
+            await self.bot.database.settlement.delete_project(research_proj["id"])
+
+        if not time_done and not dt_done:
+            time_left = _fmt_duration(end - datetime.now())
+            dt_needed = (research_proj["required_turns"] - research_proj["invested_turns"]) if research_proj else "?"
             await interaction.response.send_message(
-                f"Research isn't done yet — {_fmt_duration(end - datetime.now())} remaining.",
+                f"Research isn't done yet.\n"
+                f"⏰ Time remaining: **{time_left}**\n"
+                f"⏭️ Or advance **{dt_needed}** more Development Turn(s) via **Next Turn**.",
                 ephemeral=True,
             )
             return

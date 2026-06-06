@@ -25,9 +25,9 @@ class SettlementCog(commands.Cog, name="settlement"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        if existing_user["level"] < 50:
+        if existing_user["level"] < 20:
             await interaction.response.send_message(
-                "Settlements can only be founded by those who have proven themselves at **Level 50**.",
+                "Settlements can only be founded by those who have proven themselves at **Level 20**.",
                 ephemeral=True,
             )
             return
@@ -39,7 +39,9 @@ class SettlementCog(commands.Cog, name="settlement"):
                 user_id, server_id
             )
             ideology = existing_user["ideology"]
-            total_followers = await self.bot.database.social.get_follower_count(ideology)
+            total_followers = await self.bot.database.social.get_follower_count(
+                ideology
+            )
             total_assigned = sum(b.workers_assigned for b in settlement.buildings)
             if total_assigned > total_followers:
                 diff = total_assigned - total_followers
@@ -65,7 +67,27 @@ class SettlementCog(commands.Cog, name="settlement"):
             view = SettlementDashboardView(
                 self.bot, user_id, server_id, settlement, total_followers, plots=plots
             )
-            return view.build_embed(), view
+            turns_data = await self.bot.database.settlement.get_turns_data(
+                user_id, server_id
+            )
+            zeal_data = await self.bot.database.settlement.get_zeal_data(user_id)
+            active_events = await self.bot.database.settlement.get_active_events(
+                user_id, server_id
+            )
+            projects = await self.bot.database.settlement.get_projects(
+                user_id, server_id
+            )
+            pending_deal = await self.bot.database.settlement.get_pending_deal(
+                user_id, server_id
+            )
+            embed = view.build_embed(
+                turns_data=turns_data,
+                zeal_data=zeal_data,
+                active_events=active_events,
+                projects=projects,
+                pending_deal=pending_deal,
+            )
+            return embed, view
 
         if not await self.bot.database.tutorials.has_seen(user_id, "settlement"):
             await self.bot.database.tutorials.mark_seen(user_id, "settlement")
@@ -79,7 +101,6 @@ class SettlementCog(commands.Cog, name="settlement"):
         embed, view = await _build()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
-
 
     @app_commands.command(
         name="hatchery",
@@ -95,7 +116,9 @@ class SettlementCog(commands.Cog, name="settlement"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        settlement = await self.bot.database.settlement.get_settlement(user_id, server_id)
+        settlement = await self.bot.database.settlement.get_settlement(
+            user_id, server_id
+        )
         hatchery_building = next(
             (b for b in settlement.buildings if b.building_type == "hatchery"), None
         )
@@ -108,7 +131,9 @@ class SettlementCog(commands.Cog, name="settlement"):
             )
 
         self.bot.state_manager.set_active(user_id, "settlement")
-        view = HatcheryView(self.bot, user_id, server_id, hatchery_building, parent_view=None)
+        view = HatcheryView(
+            self.bot, user_id, server_id, hatchery_building, parent_view=None
+        )
         await view._load()
         view._rebuild_buttons()
 
