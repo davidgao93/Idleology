@@ -111,7 +111,20 @@
       "Bash(python -m py_compile core/quests/views.py core/quests/mechanics.py core/quests/data.py core/quests/shop_views.py core/quests/__init__.py cogs/quests.py cogs/tavern.py database/repositories/quests.py core/combat/economy/victory.py core/ascent/views.py core/apex/views/combat_view.py core/combat/views/views_elemental.py core/codex/views/run_view.py)",
       "Bash(python -m py_compile core/minigames/views.py core/quests/data.py core/quests/mechanics.py core/quests/shop_views.py core/quests/views.py core/inventory/upgrades/refine.py core/inventory/upgrades/armor.py core/inventory/upgrades/accessory.py cogs/consume.py)",
       "Bash(python -m py_compile core/combat/economy/uber_rewards.py core/combat/economy/victory.py)",
-      "Bash(python -m py_compile database/repositories/quests.py core/quests/data.py core/quests/mechanics.py core/quests/views.py core/quests/shop_views.py core/character/profile_ui.py cogs/tavern.py)"
+      "Bash(python -m py_compile database/repositories/quests.py core/quests/data.py core/quests/mechanics.py core/quests/views.py core/quests/shop_views.py core/character/profile_ui.py cogs/tavern.py)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\\\\core\\\\skills\" -Recurse | ForEach-Object { \"$\\($_.FullName\\) $\\(if \\($_.PSIsContainer\\) {'[DIR]'} else {'[FILE]'}\\)\" })",
+      "Bash(python -c \"from core.skills.mechanics import SkillMechanics; print\\('mechanics OK'\\); print\\('FAM_HOURS:', SkillMechanics.FAMILIARIZATION_HOURS\\); print\\('MAX_MOM:', SkillMechanics.MAX_MOMENTUM_MINUTES\\)\")",
+      "Bash(python -m py_compile core/skills/mechanics.py)",
+      "Bash(python -m py_compile database/repositories/skills.py)",
+      "Bash(python -m py_compile core/skills/fishing_view.py)",
+      "Bash(python -m py_compile core/skills/forestry_view.py)",
+      "Bash(python -m py_compile core/skills/views/gather_view.py)",
+      "Bash(python -m py_compile tests/test_combat_logic.py)",
+      "Bash(python -m py_compile tests/tests.py)",
+      "Bash(python -m py_compile tests/test_dispatch_sim.py)",
+      "Bash(python -m py_compile database/schema.sql)",
+      "Bash(python -m py_compile core/delve/delve_views.py)",
+      "Bash(python -m py_compile core/character/profile_ui.py)"
     ]
   }
 }

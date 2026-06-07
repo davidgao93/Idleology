@@ -6,7 +6,7 @@ from core.combat.calc.damage_calc import calculate_damage_taken
 from core.combat.calc.damage_calc import roll_monster_damage as _roll_monster_damage
 from core.combat.calc.hit_calc import calculate_monster_hit_chance
 from core.combat.calc.ward_system import _add_ward
-from core.combat.turns.helpers import MonsterTurnResult
+from core.combat.turns.helpers import MonsterTurnResult, capture_compact_events
 from core.models import Monster, Player
 
 
@@ -62,7 +62,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             # skip in compact — countdown visible in Afflictions field
 
     # --- Flashfire: +1 charge per turn; at 8 → true damage burst ---
-    _pre = len(log)
+    start = len(log)
     if monster.has_modifier("Flashfire"):
         monster.flashfire_charges += 1
         if monster.flashfire_charges >= 8:
@@ -73,10 +73,10 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             log.append(
                 f"🔥 **Flashfire DETONATES!** The buildup erupts for **{burst}** 🔥 true damage!"
             )
-    clog.extend(log[_pre:])  # captures detonation only (silent on charge buildup)
+    capture_compact_events(log, clog, start)  # detonation only (silent on charge buildup)
 
     # --- Hemorrhage: true DoT per stack at start of each monster turn ---
-    _pre = len(log)
+    start = len(log)
     if monster.has_modifier("Hemorrhage") and monster.bleed_stacks > 0:
         v = monster.get_modifier_value("Hemorrhage")
         bleed_dmg = int(player.total_max_hp * v * monster.bleed_stacks)
@@ -85,10 +85,10 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             log.append(
                 f"🩸 **Hemorrhage** — {monster.bleed_stacks} bleed stacks deal **{bleed_dmg}** true damage!"
             )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # --- Verdant Colossus (Artisan Mastery prestige boss) snare chance ---
-    _pre = len(log)
+    start = len(log)
     if monster.has_modifier("Verdant Snare") and not player.cs.is_snared:
         v = monster.get_modifier_value("Verdant Snare")
         if random.random() < v:
@@ -96,10 +96,10 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             log.append(
                 f"🌿 **Verdant Snare!** {monster.name} entangles you! You cannot act until you free yourself."
             )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # --- Pressure Surge: +1 if player didn't crit; at 10 → true damage ---
-    _pre = len(log)
+    start = len(log)
     if monster.has_modifier("Pressure Surge"):
         if not monster.pressure_player_critted:
             monster.pressure_stacks = min(10, monster.pressure_stacks + 1)
@@ -114,7 +114,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             log.append(
                 f"⚡ **Pressure Surge RELEASES!** Pent-up force slams for **{burst}** true damage!"
             )
-    clog.extend(log[_pre:])  # captures release burst only (silent on stack increment)
+    capture_compact_events(log, clog, start)  # release burst only (silent on stack increment)
 
     # --- Soul Siphon: every 2 turns drain ward → monster heals 50% of drained ---
     if monster.has_modifier("Soul Siphon") and monster.combat_round % 2 == 0:
@@ -143,7 +143,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
     # --- Temporal Collapse: every 6 turns return accumulated player damage as true damage ---
     # Burst is capped at 35% of player max HP to prevent instant kills — endgame players
     # can deal 100-200k damage in 6 turns while only having ~1200-1400 HP.
-    _pre = len(log)
+    start = len(log)
     if (
         monster.has_modifier("Temporal Collapse")
         and monster.combat_round % 6 == 0
@@ -159,7 +159,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             log.append(
                 f"⏳ **Temporal Collapse!** Time reverses your strikes — **{collapse_dmg}** true damage!{cap_note}"
             )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # --- Mending: passive HP regen every other monster turn ---
     if monster.has_modifier("Mending") and monster.combat_round % 2 == 0:
@@ -172,7 +172,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
         # skip in compact — HP regen visible in monster HP bar
 
     # --- Void Aura drain (regardless of hit) ---
-    _pre = len(log)
+    start = len(log)
     if monster.has_modifier("Void Aura"):
         drain_atk = max(1, int(player.flat_atk * 0.005))
         drain_def = max(0, int(player.flat_def * 0.005))
@@ -181,7 +181,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
         log.append(
             f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!"
         )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # ==========================================================================
     # APEX ZONE EFFECTS (pre-hit, per monster turn)
@@ -190,7 +190,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
     apex_zone = getattr(monster, "apex_zone", None)
 
     # Tempest zone: every 3rd monster turn → unavoidable 8% max HP true damage
-    _pre = len(log)
+    start = len(log)
     if (
         apex_zone == "storm"
         and monster.combat_round % 3 == 0
@@ -201,7 +201,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
         log.append(
             f"⚡ **Tempest Lightning** — the storm strikes for **{lightning_dmg}** ⚡ true damage!"
         )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # Living Battlefield: monster regen 0.4% max HP per turn
     if apex_zone == "grove" and monster.hp < monster.max_hp:
@@ -213,7 +213,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
         # skip in compact — monster HP regen visible in HP bar
 
     # Tempted Fate: every 4th monster turn drain ALL player ward
-    _pre = len(log)
+    start = len(log)
     if (
         apex_zone == "vault"
         and monster.combat_round % 4 == 0
@@ -225,7 +225,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             log.append(
                 f"💰 **Tempted Fate** — fortune's price is paid! All **{drained}** 🔮 Ward drained!"
             )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # Reality Fracture: every 5th monster turn reroll one modifier
     if (
@@ -845,7 +845,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             clog.append("🏃 Miss!")
 
     # Partner: sig_co_eve — survive a fatal hit by consuming potions
-    _pre = len(log)
+    start = len(log)
     if (
         player.current_hp <= 0
         and player.active_partner
@@ -863,13 +863,13 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
                 f" — Intercepted a fatal blow! Consumed {potions_needed} potion(s). "
                 f"You recover to full HP before taking the blow!"
             )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     player.current_hp = max(0, player.current_hp)
     hp_damage = max(0, prev_hp - player.current_hp)
 
     # --- Paradise Jewel: Bastion — charge on HP damage taken ---
-    _pre = len(log)
+    start = len(log)
     if hp_damage > 0:
         _bastion_log: list[str] = []
         _je.process_jewel_trigger(
@@ -877,7 +877,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
         )
         if _bastion_log:
             log.extend(_bastion_log)
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # --- Hematurgy: end-of-monster-turn effects ---
     if player.hematurgy_passives:

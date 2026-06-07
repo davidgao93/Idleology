@@ -222,7 +222,6 @@ class Combat(commands.Cog, name="combat"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        # 1. Validation
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
@@ -241,10 +240,9 @@ class Combat(commands.Cog, name="combat"):
 
         self.bot.state_manager.set_active(user_id, "combat")
 
-        # 2. Load Player
         player = await load_player(user_id, existing_user, self.bot.database)
 
-        # 3. Health Check Interceptor
+        # Health check interceptor (low HP warning gate)
         if player.current_hp < (player.total_max_hp * 0.25):
             view = LowHealthWarningView(
                 self.bot,
@@ -392,7 +390,6 @@ class Combat(commands.Cog, name="combat"):
             if incubated_encounter:
                 is_incubated = True
 
-        # 4. Generate Initial Monster
         slayer_profile = await self.bot.database.slayer.get_profile(user_id, server_id)
         task_species = slayer_profile["active_task_species"]
 
@@ -479,7 +476,6 @@ class Combat(commands.Cog, name="combat"):
                             monster = await generate_prestige_colossus(player, monster)
                         combat_phases = [None]
 
-        # 5. Difficulty scaling: Phase 2 — use bonus pools where possible.
         _DIFFICULTY_ATK_MULT = [1.0, 2.0, 2.5, 3.0, 4.0]
         _DIFFICULTY_DR = [0.0, 0.0, 0.0, 0.10, 0.25]
         if hard_mode > 0:
@@ -504,12 +500,11 @@ class Combat(commands.Cog, name="combat"):
         # Phase 3: Ensure all combat bonuses are reset before the fight begins
         monster.reset_combat_bonuses()
 
-        # 6. Apply Start Effects
+        # Apply start-of-combat stat effects and passives (weapon/armor/etc.)
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)
         engine.log_combat_debug(player, monster, self.bot.logger)
 
-        # 7. Launch View
         # Reset jewel charges before building the embed so the status bar shows 0
         # on the very first frame. The reset in CombatView.__init__ is kept as a guard.
         _je.reset_jewel_charges(player)
@@ -542,7 +537,6 @@ class Combat(commands.Cog, name="combat"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        # 1. Validation
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
@@ -551,12 +545,10 @@ class Combat(commands.Cog, name="combat"):
 
         self.bot.state_manager.set_active(user_id, "dojo")
 
-        # 2. Load Player
         from core.items.factory import load_player
 
         player = await load_player(user_id, existing_user, self.bot.database)
 
-        # 3. Launch View
         view = DummyConfigView(self.bot, user_id, player)
         embed = view.build_embed()
 

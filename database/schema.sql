@@ -269,7 +269,10 @@ CREATE TABLE IF NOT EXISTS `mining` (
     `steel_bar` INTEGER DEFAULT 0,
     `gold_bar` INTEGER DEFAULT 0,
     `platinum_bar` INTEGER DEFAULT 0,
-    `idea_bar` INTEGER DEFAULT 0
+    `idea_bar` INTEGER DEFAULT 0,
+    -- Gathering Expansion: tool familiarization gate + session momentum (gathering_expansion.md)
+    `familiarization_end` TEXT DEFAULT NULL,
+    `momentum_minutes` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `fishing` (
@@ -285,7 +288,10 @@ CREATE TABLE IF NOT EXISTS `fishing` (
     `regular_essence` INTEGER DEFAULT 0,
     `sturdy_essence` INTEGER DEFAULT 0,
     `reinforced_essence` INTEGER DEFAULT 0,
-    `titanium_essence` INTEGER DEFAULT 0
+    `titanium_essence` INTEGER DEFAULT 0,
+    -- Gathering Expansion: tool familiarization gate + session momentum (gathering_expansion.md)
+    `familiarization_end` TEXT DEFAULT NULL,
+    `momentum_minutes` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `woodcutting` (
@@ -301,7 +307,10 @@ CREATE TABLE IF NOT EXISTS `woodcutting` (
     `willow_plank` INTEGER DEFAULT 0,
     `mahogany_plank` INTEGER DEFAULT 0,
     `magic_plank` INTEGER DEFAULT 0,
-    `idea_plank` INTEGER DEFAULT 0
+    `idea_plank` INTEGER DEFAULT 0,
+    -- Gathering Expansion: tool familiarization gate + session momentum (gathering_expansion.md)
+    `familiarization_end` TEXT DEFAULT NULL,
+    `momentum_minutes` INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS helmets (
@@ -813,6 +822,14 @@ CREATE TABLE IF NOT EXISTS bm_passive_tree (
 -- ALTER TABLE users ADD COLUMN runes_of_nature INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE gathering_mastery ADD COLUMN attunement_alloc TEXT DEFAULT '{}';
 -- ALTER TABLE gathering_mastery ADD COLUMN mastery_insight INTEGER DEFAULT 0;
+-- Gathering Expansion (docs/design/gathering_expansion.md):
+-- Familiarization gates + momentum live on the per-skill tables (clean separation from passive mastery).
+-- ALTER TABLE mining ADD COLUMN familiarization_end TEXT DEFAULT NULL;
+-- ALTER TABLE mining ADD COLUMN momentum_minutes INTEGER DEFAULT 0;
+-- ALTER TABLE fishing ADD COLUMN familiarization_end TEXT DEFAULT NULL;
+-- ALTER TABLE fishing ADD COLUMN momentum_minutes INTEGER DEFAULT 0;
+-- ALTER TABLE woodcutting ADD COLUMN familiarization_end TEXT DEFAULT NULL;
+-- ALTER TABLE woodcutting ADD COLUMN momentum_minutes INTEGER DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN settlement_zeal INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN idlem INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE users ADD COLUMN zeal_earned_today INTEGER NOT NULL DEFAULT 0;

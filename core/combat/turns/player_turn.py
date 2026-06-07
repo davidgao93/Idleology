@@ -21,7 +21,7 @@ from core.combat.calc.damage_calc import (
 )
 from core.combat.calc.hit_calc import build_attack_multiplier, resolve_crit, resolve_hit
 from core.combat.calc.ward_system import _add_ward, generate_player_ward_on_hit
-from core.combat.turns.helpers import PlayerTurnResult
+from core.combat.turns.helpers import PlayerTurnResult, capture_compact_events
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -519,19 +519,19 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         raw_damage = calc_miss_damage(player, monster, attack_multiplier, log, calc, clog=clog)
 
     # Monster DR — capture in compact (explains why damage was reduced)
-    _pre = len(log)
+    start = len(log)
     actual_damage = apply_monster_damage_reduction(monster, raw_damage, log, calc)
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # --- Undying Resolve: block all player damage while immune ---
-    _pre = len(log)
+    start = len(log)
     if monster.undying_immune_turns > 0:
         log.append(
             f"💀 **Undying Resolve** — {monster.name} is invulnerable! ({monster.undying_immune_turns} turn{'s' if monster.undying_immune_turns != 1 else ''} remaining)"
         )
         actual_damage = 0
         monster.undying_immune_turns -= 1
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # Partner: co_curse_taken — monster takes L*2% more damage (applied after all reductions)
     if player.active_partner and actual_damage > 0:
@@ -551,14 +551,14 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         drain_ward_dmg_buffer(player, monster, log)
 
     # Apply damage to monster ward+HP — capture Time Lord / ward shatter events
-    _pre = len(log)
+    start = len(log)
     final_hit = apply_damage_to_monster(player, monster, actual_damage, log)
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # --- Post-damage modifier triggers ---
 
     # Colossus Protocol: trigger on first time HP drops below 50%
-    _pre = len(log)
+    start = len(log)
     if (
         monster.has_modifier("Colossus Protocol")
         and not monster.colossus_active
@@ -571,15 +571,15 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             f"⚙️ **Colossus Protocol ENGAGES!** {monster.name}'s power surges — "
             f"ATK +30%, DR +15%!"
         )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # --- Culling strike (before Undying Resolve so it can protect from cull kills) ---
-    _pre = len(log)
+    start = len(log)
     _cull_fired = _pt_check_cull(player, monster, log)
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # Undying Resolve: intercept first death
-    _pre = len(log)
+    start = len(log)
     if (
         monster.has_modifier("Undying Resolve")
         and monster.hp <= 0
@@ -594,10 +594,10 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             f"💀 **Undying Resolve!** {monster.name} refuses to die — rises to **{monster.hp}** HP! "
             f"Invulnerable for 2 turns, ATK doubled for 2 turns!"
         )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # Death Rattle: trigger on first time HP drops below 25%
-    _pre = len(log)
+    start = len(log)
     if (
         monster.has_modifier("Death Rattle")
         and not monster.death_rattle_triggered
@@ -609,7 +609,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             f"☠️ **Death Rattle** — {monster.name} is mortally wounded! "
             f"If it survives **5 turns**, it will heal to 25% HP!"
         )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # Wrathful Retaliation: +1 stack per player crit (log only — effect shown in next hit number)
     if is_crit and monster.has_modifier("Wrathful Retaliation"):
@@ -662,7 +662,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             on_kill(player, log)
 
     # Wardforge bonus — capture in compact (it deals extra damage to monster)
-    _pre = len(log)
+    start = len(log)
     wf_bonus = _je.consume_wardforge_bonus(player)
     if wf_bonus > 0 and is_hit and monster.hp > 0:
         actual_wf = min(wf_bonus, monster.hp)
@@ -670,7 +670,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         log.append(
             f"🛡️ **Wardforge** — ward energy surges for **{actual_wf}** bonus damage!"
         )
-    clog.extend(log[_pre:])
+    capture_compact_events(log, clog, start)
 
     # Jewel triggers — capture in compact (unleashes are significant events)
     _jewel_log: list[str] = []

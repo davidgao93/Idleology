@@ -8,10 +8,11 @@ from core.skills.mechanics import SkillMechanics
 
 
 class DelveEntryView(BaseView):
-    def __init__(self, bot, user_id, server_id, cost, start_callback):
+    def __init__(self, bot, user_id, server_id, cost, start_callback, *, parent_gather_view=None):
         super().__init__(bot, user_id, server_id, timeout=600)
         self.cost = cost
         self.start_callback = start_callback
+        self.parent_gather_view = parent_gather_view
         self._processing = False
 
     async def on_timeout(self):
@@ -44,18 +45,24 @@ class DelveEntryView(BaseView):
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary)
     async def cancel(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.edit_message(
-            content="Expedition cancelled.", embed=None, view=None
-        )
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
+        if self.parent_gather_view:
+            self.stop()
+            await self.parent_gather_view.refresh_and_resume(interaction)
+        else:
+            await interaction.response.edit_message(
+                content="Expedition cancelled.", embed=None, view=None
+            )
+            self.bot.state_manager.clear_active(self.user_id)
+            self.stop()
 
 
 class DelveView(BaseView):
-    def __init__(self, bot, user_id, server_id, state: DelveState, stats: dict):
+    def __init__(self, bot, user_id, server_id, state: DelveState, stats: dict, *, parent_gather_view=None):
         super().__init__(bot, user_id, server_id, timeout=600)
         self.state = state
         self.stats = stats
+        self.parent_gather_view = parent_gather_view
+        self.initial_stability: int = 100
 
         self.processing = False
 
@@ -376,6 +383,32 @@ class DelveView(BaseView):
                 inline=False,
             )
 
+            # Session quality scoring + momentum banking
+            quality = SkillMechanics.calculate_delve_quality(
+                self.state.stability, self.state.depth
+            )
+            momentum = SkillMechanics.get_momentum_minutes(quality)
+            if quality != "none":
+                quality_labels = {"good": "🌟 Good", "great": "⭐ Great", "masterful": "✨ Masterful"}
+                quality_txt = quality_labels[quality]
+                if momentum:
+                    quality_txt += f" — +{momentum} min Momentum"
+                embed.add_field(name="Session Quality", value=quality_txt, inline=False)
+                if momentum:
+                    try:
+                        max_mom = SkillMechanics.MAX_MOMENTUM_MINUTES.get("mining", 300)
+                        await self.bot.database.skills.add_session_momentum(
+                            self.user_id, self.server_id, "mining", momentum, max_mom
+                        )
+                    except Exception:
+                        pass
+                # Masterful extractions grant a small settlement Zeal bonus (non-critical)
+                if quality == "masterful":
+                    try:
+                        await self.bot.database.settlement.add_zeal(self.user_id, 5)
+                    except Exception:
+                        pass
+
         # 2. Add Restart Options
         self.clear_items()
 
@@ -387,9 +420,14 @@ class DelveView(BaseView):
         restart_btn.callback = self.restart_callback
         self.add_item(restart_btn)
 
-        leave_btn = ui.Button(label="Leave", style=ButtonStyle.secondary)
-        leave_btn.callback = self.leave_callback
-        self.add_item(leave_btn)
+        if self.parent_gather_view:
+            gather_btn = ui.Button(label="← Gathering", style=ButtonStyle.secondary)
+            gather_btn.callback = self.leave_callback
+            self.add_item(gather_btn)
+        else:
+            leave_btn = ui.Button(label="Leave", style=ButtonStyle.secondary)
+            leave_btn.callback = self.leave_callback
+            self.add_item(leave_btn)
 
         await interaction.edit_original_response(embed=embed, view=self)
 
@@ -435,7 +473,10 @@ class DelveView(BaseView):
             pickaxe_tier=self.state.pickaxe_tier,
         )
 
-        new_view = DelveView(self.bot, self.user_id, self.server_id, new_state, stats)
+        new_view = DelveView(
+            self.bot, self.user_id, self.server_id, new_state, stats,
+            parent_gather_view=self.parent_gather_view,
+        )
         embed = new_view.build_embed("Systems re-initialized. Permit renewed.")
 
         await interaction.edit_original_response(embed=embed, view=new_view)
@@ -444,10 +485,14 @@ class DelveView(BaseView):
         self.stop()
 
     async def leave_callback(self, interaction: Interaction):
-        await interaction.response.defer()
-        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
+        if self.parent_gather_view:
+            self.bot.state_manager.set_active(self.user_id, "gather")
+            await self.parent_gather_view.refresh_and_resume(interaction)
+        else:
+            await interaction.response.defer()
+            await interaction.delete_original_response()
 
 
 class DelveUpgradeView(BaseView):

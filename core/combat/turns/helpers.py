@@ -28,3 +28,14 @@ class MonsterTurnResult:
 
     def __str__(self) -> str:
         return self.log
+
+
+def capture_compact_events(log: list[str], clog: list[str], start_len: int) -> None:
+    """Append any new entries added to `log` (since `start_len`) into the compact log.
+
+    Used throughout monster/player turn processing to surface only "significant"
+    events (detonations, procs, DoTs, bursts — not silent charge-ups or countdowns)
+    into the auto-battle / compact view. Pure and side-effect free.
+    """
+    if len(log) > start_len:
+        clog.extend(log[start_len:])

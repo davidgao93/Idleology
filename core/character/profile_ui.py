@@ -913,6 +913,45 @@ class ProfileBuilder:
 
         embed.add_field(name="🌅 Horizon", value="\n".join(horizon_lines), inline=False)
 
+        # ── Section 4: Gathering ─────────────────────────────────────────────
+        # Familiarization gate timers + banked Momentum per skill.
+        # Only shown when at least one skill has an active or recently-cleared gate.
+        try:
+            from core.skills.mechanics import SkillMechanics
+
+            _skill_cfg = {
+                "mining":      ("⛏️", "Mining"),
+                "fishing":     ("🎣", "Fishing"),
+                "woodcutting": ("🪓", "Woodcutting"),
+            }
+            gathering_lines: list[str] = []
+            for sk, (emo, label) in _skill_cfg.items():
+                fam_end, mom = await bot.database.skills.get_familiarization_state(
+                    user_id, server_id, sk
+                )
+                remaining = SkillMechanics.get_familiarization_remaining_seconds(fam_end, mom)
+                if remaining > 0:
+                    gh, gr = divmod(remaining // 60, 60)
+                    line = f"{emo} **{label}** — Familiarizing: **{gh}h {gr:02d}m**"
+                    if mom:
+                        line += f" *(Momentum: −{mom} min applied)*"
+                    gathering_lines.append(line)
+                elif fam_end:
+                    # Gate recently lifted but momentum still banked
+                    line = f"{emo} **{label}** — ✅ Gate lifted"
+                    if mom:
+                        line += f" *(+{mom} min Momentum available for next gate)*"
+                    gathering_lines.append(line)
+
+            if gathering_lines:
+                embed.add_field(
+                    name="⛏️ Gathering",
+                    value="\n".join(gathering_lines),
+                    inline=False,
+                )
+        except Exception:
+            pass
+
         return embed
 
     @staticmethod

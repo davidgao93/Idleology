@@ -83,7 +83,6 @@ class Inventory(commands.Cog, name="inventory"):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
-        # 1. Validation
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
@@ -92,7 +91,6 @@ class Inventory(commands.Cog, name="inventory"):
 
         self.bot.state_manager.set_active(user_id, "inventory")
 
-        # 2. Fetch Data
         raw_items = await self.bot.database.equipment.get_all(user_id, item_type)
         if not raw_items:
             self.bot.state_manager.clear_active(user_id)
@@ -100,10 +98,8 @@ class Inventory(commands.Cog, name="inventory"):
                 f"You search your bags for {item_type}s, but find nothing."
             )
 
-        # 3. Process Models
         items = [factory_func(item) for item in raw_items]
 
-        # 4. Sort (Equipped first, then Level descending)
         equipped_raw = await self.bot.database.equipment.get_equipped(
             user_id, item_type
         )
@@ -111,7 +107,6 @@ class Inventory(commands.Cog, name="inventory"):
 
         items.sort(key=lambda x: (x.item_id == equipped_id, x.level), reverse=True)
 
-        # 5. Launch View
         view = InventoryListView(self.bot, user_id, items, emoji)
         # Note: We need to pass the user name for the embed title
         embed = await view.get_current_embed(interaction.user.display_name)
@@ -188,7 +183,6 @@ class Inventory(commands.Cog, name="inventory"):
 
         view = ProfileHubView(self.bot, user_id, server_id, active_tab="essences")
 
-        # 4. Send the message
         await interaction.response.send_message(embed=embed, view=view)
 
 

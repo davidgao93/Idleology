@@ -1,4 +1,8 @@
-# core/combat/views.py
+"""Main CombatView and post-combat / phase / auto-battle orchestration.
+
+Extends BaseView. Delegates embeds to core.combat.ui, victory rewards to economy.victory,
+and turn processing to core.combat.turns.engine + player_turn/monster_turn.
+"""
 
 import asyncio
 import random

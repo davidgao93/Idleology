@@ -12,13 +12,8 @@ from core.models import (
 
 
 def create_weapon(data: tuple) -> Weapon:
-    """
-    Maps a database tuple from table `items` to a Weapon object.
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5),
-            rarity(6), passive(7), is_equipped(8), forges_remaining(9),
-            refines_remaining(10), refinement_lvl(11), pinnacle_passive(12), utmost_passive(13),
-            infernal_passive(14), forge_tier(15), hit_chance(16), crit_chance(17),
-            crit_multi(18), base_rarity(19)
+    """Map a DB row tuple from the `items` table to a Weapon model.
+    See database/schema.sql (column order) and core/items/models.py (dataclass).
     """
     if not data:
         return None
@@ -49,11 +44,8 @@ def create_weapon(data: tuple) -> Weapon:
 
 
 def create_accessory(data: tuple) -> Accessory:
-    """
-    Maps a database tuple from table `accessories` to an Accessory object.
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5),
-            rarity(6), ward(7), crit(8), passive(9), is_equipped(10),
-            potential_remaining(11), passive_lvl(12)
+    """Map a DB row tuple from the `accessories` table to an Accessory model.
+    See database/schema.sql (column order) and core/items/models.py (dataclass).
     """
     if not data:
         return None
@@ -78,12 +70,8 @@ def create_accessory(data: tuple) -> Accessory:
 
 
 def create_armor(data: tuple) -> Armor:
-    """
-    Maps a database tuple from table `armor` to an Armor object.
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), block(4), evasion(5),
-            ward(6), armor_passive(7), is_equipped(8), temper_remaining(9),
-            imbue_remaining(10), pdr(11), fdr(12), celestial_armor_passive(13),
-            main_stat_type(14), main_stat(15), reinforces_remaining(16), reinforcement_lvl(17)
+    """Map a DB row tuple from the `armor` table to an Armor model.
+    See database/schema.sql (column order) and core/items/models.py (dataclass).
     """
     if not data:
         return None
@@ -112,14 +100,8 @@ def create_armor(data: tuple) -> Armor:
 
 
 def create_glove(data: tuple) -> Glove:
-    """
-    Maps a database tuple from table `gloves` to a Glove object.
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5),
-            ward(6), pdr(7), fdr(8), passive(9), is_equipped(10),
-            potential_remaining(11), passive_lvl(12),
-            essence_1(13), essence_1_val(14), essence_2(15), essence_2_val(16),
-            essence_3(17), essence_3_val(18), corrupted_essence(19),
-            reinforces_remaining(20), reinforcement_lvl(21)
+    """Map a DB row tuple from the `gloves` table to a Glove model.
+    See database/schema.sql (column order) and core/items/models.py (dataclass).
     """
     if not data:
         return None
@@ -154,14 +136,8 @@ def create_glove(data: tuple) -> Glove:
 
 
 def create_boot(data: tuple) -> Boot:
-    """
-    Maps a database tuple from table `boots` to a Boot object.
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), attack(4), defence(5),
-            ward(6), pdr(7), fdr(8), passive(9), is_equipped(10),
-            potential_remaining(11), passive_lvl(12),
-            essence_1(13), essence_1_val(14), essence_2(15), essence_2_val(16),
-            essence_3(17), essence_3_val(18), corrupted_essence(19),
-            reinforces_remaining(20), reinforcement_lvl(21)
+    """Map a DB row tuple from the `boots` table to a Boot model.
+    See database/schema.sql (column order) and core/items/models.py (dataclass).
     """
     if not data:
         return None
@@ -196,13 +172,8 @@ def create_boot(data: tuple) -> Boot:
 
 
 def create_helmet(data: tuple) -> Helmet:
-    """
-    Schema: item_id(0), user_id(1), item_name(2), item_level(3), defence(4),
-            ward(5), pdr(6), fdr(7), passive(8), passive_lvl(9),
-            is_equipped(10), potential_remaining(11),
-            essence_1(12), essence_1_val(13), essence_2(14), essence_2_val(15),
-            essence_3(16), essence_3_val(17), corrupted_essence(18),
-            reinforces_remaining(19), reinforcement_lvl(20)
+    """Map a DB row tuple from the `helmets` table to a Helmet model.
+    See database/schema.sql (column order) and core/items/models.py (dataclass).
     """
     if not data:
         return None

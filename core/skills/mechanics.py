@@ -56,6 +56,30 @@ class SkillMechanics:
         "felling": 3,
     }
 
+    # ─── Gathering Expansion: Familiarization Gates + Session Quality ────────────
+
+    # Hours each tool upgrade gate lasts after purchasing that tier.
+    # Key = the tier just purchased; gate controls when the NEXT upgrade is unlocked.
+    # Only non-BiS tiers appear (BiS tiers don't gate another upgrade).
+    FAMILIARIZATION_HOURS: dict = {
+        "mining": {"steel": 4, "gold": 6, "platinum": 10},
+        "woodcutting": {"carved": 4, "chopping": 6, "magic": 10},
+        "fishing": {"regular": 4, "sturdy": 6, "reinforced": 10},
+    }
+
+    # Maximum momentum (minutes) a player can bank per skill across the whole path.
+    # 25% of total gate hours → 25% * (4+6+10) * 60 = 300 min per skill.
+    MAX_MOMENTUM_MINUTES: dict = {skill: 300 for skill in ("mining", "woodcutting", "fishing")}
+
+    # Momentum (minutes toward next gate) earned per session quality tier.
+    MOMENTUM_MINUTES: dict = {"none": 0, "good": 10, "great": 15, "masterful": 22}
+
+    # Yield multiplier applied on top of base yield for quality sessions.
+    QUALITY_YIELD_BONUS: dict = {"none": 1.0, "good": 1.05, "great": 1.10, "masterful": 1.15}
+
+    # Forestry: max seconds between swings to count as "in rhythm".
+    FORESTRY_RHYTHM_WINDOW: int = 45
+
     @staticmethod
     def get_fishing_wait(rod_tier: str) -> int:
         """Returns a randomised wait time in seconds for the given rod tier."""
@@ -328,6 +352,91 @@ class SkillMechanics:
                 amt = int(amt * sig_mult)
             result[res] = max(0, amt)
         return result
+
+    # ─── Gathering Expansion: Pure calculation helpers ────────────────────────────
+
+    @staticmethod
+    def get_familiarization_hours(skill: str, new_tier: str) -> int:
+        """Gate hours after purchasing new_tier (0 = no gate, e.g. BiS tier)."""
+        return SkillMechanics.FAMILIARIZATION_HOURS.get(skill, {}).get(new_tier, 0)
+
+    @staticmethod
+    def get_familiarization_remaining_seconds(
+        end_iso: Optional[str], momentum_minutes: int = 0
+    ) -> int:
+        """Seconds remaining on the gate after applying banked momentum. 0 = gate lifted."""
+        if not end_iso:
+            return 0
+        from datetime import datetime, timezone
+        try:
+            end = datetime.fromisoformat(end_iso)
+            if end.tzinfo is None:
+                end = end.replace(tzinfo=timezone.utc)
+            raw = max(0, int((end - datetime.now(timezone.utc)).total_seconds()))
+            return max(0, raw - momentum_minutes * 60)
+        except Exception:
+            return 0
+
+    @staticmethod
+    def calculate_fishing_quality(focus_streak: int, approach: str) -> str:
+        """Quality tier for a successful fishing reel."""
+        if approach == "aggressive":
+            if focus_streak >= 5:
+                return "masterful"
+            if focus_streak >= 3:
+                return "great"
+            if focus_streak >= 1:
+                return "good"
+        else:  # steady
+            if focus_streak >= 7:
+                return "masterful"
+            if focus_streak >= 4:
+                return "great"
+            if focus_streak >= 2:
+                return "good"
+        return "none"
+
+    @staticmethod
+    def calculate_forestry_quality(rhythm_hits: int, total_swings: int) -> str:
+        """Quality tier for a felled tree based on rhythm percentage."""
+        if total_swings == 0:
+            return "none"
+        pct = rhythm_hits / total_swings
+        if pct >= 0.90:
+            return "masterful"
+        if pct >= 0.70:
+            return "great"
+        if pct >= 0.50:
+            return "good"
+        return "none"
+
+    @staticmethod
+    def calculate_delve_quality(stability_remaining: int, depth_reached: int) -> str:
+        """Quality tier for a delve extraction."""
+        if depth_reached < 5:
+            return "none"
+        if stability_remaining >= 80 and depth_reached >= 20:
+            return "masterful"
+        if stability_remaining >= 55 and depth_reached >= 12:
+            return "great"
+        if stability_remaining >= 35 and depth_reached >= 6:
+            return "good"
+        return "none"
+
+    @staticmethod
+    def get_momentum_minutes(quality: str) -> int:
+        """Momentum minutes earned for a given session quality tier."""
+        return SkillMechanics.MOMENTUM_MINUTES.get(quality, 0)
+
+    @staticmethod
+    def apply_quality_to_yield(
+        yield_dict: Dict[str, int], quality: str
+    ) -> Dict[str, int]:
+        """Apply quality yield multiplier; returns a new dict."""
+        mult = SkillMechanics.QUALITY_YIELD_BONUS.get(quality, 1.0)
+        if mult == 1.0:
+            return dict(yield_dict)
+        return {k: max(1, int(v * mult)) for k, v in yield_dict.items() if v > 0}
 
     @staticmethod
     def get_upgrade_cost(skill: str, current_tier: str, reduction: float = 0.0) -> dict | None:

@@ -30,6 +30,9 @@ class SkillRepository:
             ],
         }
 
+        # Expansion columns on per-skill tables (safe to query directly)
+        self._expansion_cols = {"familiarization_end", "momentum_minutes"}
+
         # Extended whitelist covering both raw and refined (used by upgrade views, trade)
         self.allowed_columns_extended = {
             "mining": [
@@ -334,7 +337,7 @@ class SkillRepository:
                         "mining_alloc","fishing_alloc","woodcutting_alloc","last_point_claim",
                         "geode_cores","tide_relics","heartwood_shards",
                         "mining_tripled_ticks","fishing_tripled_ticks","woodcutting_tripled_ticks",
-                        "total_mastery_invested"]
+                        "total_mastery_invested","attunement_alloc","mastery_insight"]
             return dict(zip(cols, row))
         # Create default row
         await self.connection.execute(
@@ -503,6 +506,68 @@ class SkillRepository:
         ) as cursor:
             row = await cursor.fetchone()
         return int(row[0]) if row and row[0] is not None else 0
+
+    # =========================================================
+    # Gathering Expansion: Familiarization + Session Momentum
+    # Per design doc (docs/design/gathering_expansion.md)
+    # =========================================================
+
+    async def get_familiarization_state(
+        self, user_id: str, server_id: str, skill: str
+    ) -> tuple:
+        """Returns (familiarization_end_iso, momentum_minutes) for a skill's gate.
+
+        Data lives on the per-skill table (mining/fishing/woodcutting), keeping it
+        separate from the purely-passive gathering_mastery (artisan points/trees).
+        """
+        try:
+            async with self.connection.execute(
+                f"SELECT familiarization_end, momentum_minutes FROM {skill}"
+                " WHERE user_id=? AND server_id=?",
+                (user_id, server_id),
+            ) as cursor:
+                row = await cursor.fetchone()
+            return (row[0], int(row[1] or 0)) if row else (None, 0)
+        except Exception:
+            return (None, 0)
+
+    async def set_familiarization_end(
+        self, user_id: str, server_id: str, skill: str, end_iso: str
+    ) -> None:
+        """Start a familiarization gate after a tool upgrade (stored on skill table)."""
+        try:
+            await self.connection.execute(
+                f"UPDATE {skill} SET familiarization_end=? WHERE user_id=? AND server_id=?",
+                (end_iso, user_id, server_id),
+            )
+            await self.connection.commit()
+        except Exception:
+            pass
+
+    async def add_session_momentum(
+        self,
+        user_id: str,
+        server_id: str,
+        skill: str,
+        minutes: int,
+        max_minutes: int,
+    ) -> None:
+        """Bank momentum minutes from a quality session, capped at max_minutes.
+
+        Max is the 25% total-gate cap across the skill's full upgrade path:
+        25% × (4 + 6 + 10) hrs × 60 = 300 min per skill.
+        """
+        if minutes <= 0:
+            return
+        try:
+            await self.connection.execute(
+                f"UPDATE {skill} SET momentum_minutes = MIN(?, momentum_minutes + ?)"
+                " WHERE user_id=? AND server_id=?",
+                (max_minutes, minutes, user_id, server_id),
+            )
+            await self.connection.commit()
+        except Exception:
+            pass
 
     async def convert_excess_to_insight(self, user_id: str, server_id: str, conversion_rate: int = 5) -> int:
         """
