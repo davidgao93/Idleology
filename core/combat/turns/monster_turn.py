@@ -37,6 +37,17 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
     if context_note:
         calc.append(f"  [context]{context_note}")
 
+    # Decrement powerful distilled potion transients (Aegis shield, Panacea immunity, etc.)
+    if getattr(player, "alchemy_shield_turns", 0) > 0:
+        player.alchemy_shield_turns -= 1
+        if player.alchemy_shield_turns <= 0:
+            player.alchemy_shield_hp = 0
+    if getattr(player, "alchemy_ailment_immunity_turns", 0) > 0:
+        player.alchemy_ailment_immunity_turns -= 1
+        if player.alchemy_ailment_immunity_turns > 0:
+            # Simple representation: player is protected this turn
+            log.append(f"🌿 **Panacea** — protected from ailments this turn ({player.alchemy_ailment_immunity_turns} remaining).")
+
     celestial = player.get_celestial_armor_passive()
     helmet_passive = player.get_helmet_passive()
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
@@ -650,6 +661,20 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
                     if tiers > 0:
                         total_damage = int(total_damage * (1 - min(0.50, tiers * 0.02)))
 
+                # Astral Aegis shield (powerful distilled passive) — absorb damage, prevent death while active
+                shield_hp = getattr(player, "alchemy_shield_hp", 0)
+                if shield_hp > 0 and total_damage > 0:
+                    absorb = min(shield_hp, total_damage)
+                    player.alchemy_shield_hp = max(0, shield_hp - absorb)
+                    total_damage -= absorb
+                    if absorb > 0:
+                        _shield_msg = f"🛡️ **Astral Aegis** absorbs **{absorb}** damage!"
+                        log.append(_shield_msg)
+                        clog.append(_shield_msg)
+                    if player.alchemy_shield_hp <= 0:
+                        player.alchemy_shield_turns = 0
+                        log.append("🛡️ Astral Aegis shield has been depleted.")
+
                 if (
                     celestial == "celestial_vow"
                     and (player.current_hp - total_damage <= 0)
@@ -662,6 +687,15 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
                     _vow_msg = f"✨ **Celestial Vow** activates! You survive the fatal blow and gain {added} 🔮 Ward!"
                     log.append(f"\n{_vow_msg}")
                     clog.append(_vow_msg)
+                elif getattr(player, "alchemy_shield_hp", 0) > 0 and (player.current_hp - total_damage <= 0):
+                    # Astral Aegis saves from lethal while shield active
+                    remaining_shield = player.alchemy_shield_hp
+                    player.current_hp = max(1, player.current_hp)
+                    player.alchemy_shield_hp = 0
+                    player.alchemy_shield_turns = 0
+                    _aegis_save = f"🛡️ **Astral Aegis** shatters to prevent a lethal blow!"
+                    log.append(f"\n{_aegis_save}")
+                    clog.append(_aegis_save)
                 else:
                     damage_dealt += total_damage
                     player.current_hp -= total_damage

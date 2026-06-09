@@ -56,6 +56,12 @@ class CombatState:
     alchemy_linger_hp: int = 0
     alchemy_linger_turns: int = 0
     alchemy_guaranteed_hit: bool = False
+    # New powerful distilled potion transients (from 9-step distillation)
+    alchemy_ailment_immunity_turns: int = 0
+    alchemy_eclipse_strikes: int = 0
+    alchemy_eclipse_bonus: float = 0.0
+    alchemy_shield_hp: int = 0
+    alchemy_shield_turns: int = 0
     # Per-combat bonus accumulators and multipliers
     bonus_atk: int = 0
     bonus_def: int = 0
@@ -633,6 +639,47 @@ class Player:
     @alchemy_guaranteed_hit.setter
     def alchemy_guaranteed_hit(self, v: bool) -> None:
         self.cs.alchemy_guaranteed_hit = v
+
+    # New powerful distilled potion passives (from distillation system)
+    @property
+    def alchemy_ailment_immunity_turns(self) -> int:
+        return self.cs.alchemy_ailment_immunity_turns
+
+    @alchemy_ailment_immunity_turns.setter
+    def alchemy_ailment_immunity_turns(self, v: int) -> None:
+        self.cs.alchemy_ailment_immunity_turns = v
+
+    @property
+    def alchemy_eclipse_strikes(self) -> int:
+        return self.cs.alchemy_eclipse_strikes
+
+    @alchemy_eclipse_strikes.setter
+    def alchemy_eclipse_strikes(self, v: int) -> None:
+        self.cs.alchemy_eclipse_strikes = v
+
+    @property
+    def alchemy_eclipse_bonus(self) -> float:
+        return self.cs.alchemy_eclipse_bonus
+
+    @alchemy_eclipse_bonus.setter
+    def alchemy_eclipse_bonus(self, v: float) -> None:
+        self.cs.alchemy_eclipse_bonus = v
+
+    @property
+    def alchemy_shield_hp(self) -> int:
+        return self.cs.alchemy_shield_hp
+
+    @alchemy_shield_hp.setter
+    def alchemy_shield_hp(self, v: int) -> None:
+        self.cs.alchemy_shield_hp = v
+
+    @property
+    def alchemy_shield_turns(self) -> int:
+        return self.cs.alchemy_shield_turns
+
+    @alchemy_shield_turns.setter
+    def alchemy_shield_turns(self, v: int) -> None:
+        self.cs.alchemy_shield_turns = v
 
     @property
     def bonus_atk(self) -> int:

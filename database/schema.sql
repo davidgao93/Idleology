@@ -499,6 +499,21 @@ CREATE TABLE IF NOT EXISTS potion_passives (
     PRIMARY KEY (user_id, slot)
 );
 
+-- Potion Distillation sessions (multi-step Sage Elixir style crafting for powerful passives).
+-- Stores live progress for the 9-step reagent choice + event system.
+-- `data` is JSON containing: base_type, duration_mod, value_mod, active_modifiers (dict of event state),
+-- history (list of step results), dust_spent, etc.
+-- The full table (and any future columns) will be created by schema.sql executescript for everyone.
+-- Old DBs get it automatically on next bot startup because of CREATE IF NOT EXISTS.
+CREATE TABLE IF NOT EXISTS potion_distillations (
+    user_id TEXT NOT NULL,
+    server_id TEXT NOT NULL,
+    step INTEGER NOT NULL DEFAULT 0,
+    data TEXT NOT NULL,
+    started_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, server_id)
+);
+
 CREATE TABLE IF NOT EXISTS synthesis_queue (
     user_id    TEXT PRIMARY KEY,
     item_type  TEXT NOT NULL,
@@ -836,3 +851,15 @@ CREATE TABLE IF NOT EXISTS bm_passive_tree (
 -- ALTER TABLE users ADD COLUMN last_zeal_reset TEXT DEFAULT NULL;
 -- ALTER TABLE settlements ADD COLUMN total_development_turns INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE settlements ADD COLUMN pending_zeal INTEGER NOT NULL DEFAULT 0;
+
+-- Alchemy Distillation System (new multi-step powerful potion passive crafting, Lost Ark Sage Elixir inspired):
+-- New table for in-progress 9-step distillations (created automatically via CREATE IF NOT EXISTS above for all DBs, including old ones on next startup).
+-- CREATE TABLE IF NOT EXISTS potion_distillations (
+--     user_id TEXT NOT NULL,
+--     server_id TEXT NOT NULL,
+--     step INTEGER NOT NULL DEFAULT 0,
+--     data TEXT NOT NULL,  -- JSON: base_type, duration_mod, value_mod, active_modifiers, history, dust_spent...
+--     started_at TEXT NOT NULL DEFAULT (datetime('now')),
+--     PRIMARY KEY (user_id, server_id)
+-- );
+-- Future columns on this table or potion_passives (for richer distilled passive data) will be listed here.

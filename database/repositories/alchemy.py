@@ -1,4 +1,5 @@
-from typing import List
+from typing import Any, Dict, List, Optional
+import json
 
 import aiosqlite
 
@@ -257,5 +258,48 @@ class AlchemyRepository:
         await self.connection.execute(
             "UPDATE player_essences SET quantity = quantity - ? WHERE user_id = ? AND essence_type = ?",
             (amount, user_id, essence_type),
+        )
+        await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Potion Distillation sessions (9-step Sage Elixir style crafting)
+    # Session is stored as JSON in the `data` column for flexibility.
+    # ------------------------------------------------------------------
+
+    async def get_distillation(self, user_id: str, server_id: str) -> Optional[Dict[str, Any]]:
+        """Returns the active distillation session or None.
+        The returned dict has keys: step, data (already parsed JSON dict), started_at.
+        """
+        async with self.connection.execute(
+            "SELECT step, data, started_at FROM potion_distillations WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if not row:
+            return None
+        return {
+            "step": row[0],
+            "data": json.loads(row[1]) if row[1] else {},
+            "started_at": row[2],
+        }
+
+    async def upsert_distillation(self, user_id: str, server_id: str, step: int, data: Dict[str, Any]) -> None:
+        """Create or update the distillation session for this user/server."""
+        data_json = json.dumps(data)
+        await self.connection.execute(
+            """INSERT INTO potion_distillations (user_id, server_id, step, data)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(user_id, server_id) DO UPDATE SET
+                   step = excluded.step,
+                   data = excluded.data""",
+            (user_id, server_id, step, data_json),
+        )
+        await self.connection.commit()
+
+    async def delete_distillation(self, user_id: str, server_id: str) -> None:
+        """Abandon / clear an in-progress distillation."""
+        await self.connection.execute(
+            "DELETE FROM potion_distillations WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
         )
         await self.connection.commit()
