@@ -2,7 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
-from core.images import UPGRADE_INFERNAL_ENGRAM
+from core.images import SYLAS_AUTHOR, UPGRADE_INFERNAL_ENGRAM
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.models import Weapon
@@ -43,7 +43,8 @@ class InfernalEngramView(BaseUpgradeView):
             description=desc,
             color=discord.Color.dark_red(),
         )
-        self.embed.set_author(name="Artificer Sylas", icon_url=UPGRADE_INFERNAL_ENGRAM)
+        self.embed.set_author(name="Artificer Sylas", icon_url=SYLAS_AUTHOR)
+        self.embed.set_thumbnail(url=UPGRADE_INFERNAL_ENGRAM)
 
         self.clear_items()
         btn_consume = Button(
@@ -105,7 +106,8 @@ class InfernalEngramView(BaseUpgradeView):
             description=f"The Engram shatters in hellfire, branding your weapon.\n\n**New Passive:** {display_new}",
             color=discord.Color.red(),
         )
-        res_embed.set_author(name="Artificer Sylas", icon_url=UPGRADE_INFERNAL_ENGRAM)
+        res_embed.set_author(name="Artificer Sylas", icon_url=SYLAS_AUTHOR)
+        res_embed.set_thumbnail(url=UPGRADE_INFERNAL_ENGRAM)
 
         self.clear_items()
         if uber_prog["infernal_engrams"] - 1 > 0:

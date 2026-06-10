@@ -10,6 +10,31 @@ AMARA_PORTRAIT = (
     "&hm=0e213ea0757113d5ec7d3f6cad0ebd458b57d804e4f0a413d3146487b74ad8c5&"
 )
 
+MAID_SPRITZ_PORTRAIT = (
+    "https://cdn.discordapp.com/attachments/1334637411363323996"
+    "/1514311718191239328/maid_portrait.jpg"
+    "?ex=6a2ae830&is=6a2996b0"
+    "&hm=6816908585f7847f37d4c4747a97f7bca203aa73324e8afefce0d7aee36c329c&"
+)
+
+# ── AUTHOR PORTRAITS (larger dedicated headshots for embed.set_thumbnail) ─────
+# These are the primary portraits used for NPC "voice" on embeds.
+# Previously small icons were passed to set_author(icon_url=...); we now use
+# set_thumbnail() with these for better visibility + set_author(name=...) only.
+AMARA_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321498754646038/amara_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=1acbc5a03498b012818174eef8e4122e5aad9dbacb8d2fe626c41712ff535675&"
+QUEST_SHOP_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321500193423420/quest_shop_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=58e3fda24dcf189e3832e2c28dc217dcc66c42f0240623eeca65c678a32c721e&"
+SLAYER_MASTER_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321500415463494/slayer_master_portrait.jpeg?ex=6a2af14c&is=6a299fcc&hm=fbfcaa46508bb3e13f0dec144de832b8d7c6120ef02e1c16e27b2f49000d3f9f&"
+BAR_MAID_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321498968690708/bar_maid_portrait.jpeg?ex=6a2af14c&is=6a299fcc&hm=5649bc84fe4d78f518254f06d14d4f35cf45982a2db5b75418b281ec346b98d6&"
+CASINO_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321499559952414/casino_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=8d17e4ceab7175dd41167534a7b2b0e229f0e607d72f4fc8b4e30fabe26283a9&"
+POTION_SHOP_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321499975061624/potion_shop_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=a6d7c0231f772865d4c2da884f8d917a9898d2751bd3bac93821fa7170c3e3b1&"
+HARLAN_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321499765477488/harlan_portrait.jpeg?ex=6a2af14c&is=6a299fcc&hm=572eb27722eb196242aae16fee3a06fc279aea7742d4021c8307294a19e0b5cb&"
+SYLAS_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321500679966791/sylas_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=a8b86fd26be5eeffe95d8d25e9888165a61287d2dc85a7d7d0b06c26c69e2bb7&"
+VEYRA_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321500977627148/veyra_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=de9016cfb9c45f214e8365ab2cf4a186a3985b5c607358fbc7a74d73dbc75f68&"
+BLACK_MARKET_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321499266355240/black_market_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=e0cd77b18b1ec8778d46092983f7149747b19b379008e2fe9c051c56cc128a97&"
+
+# Convenience alias for the maid portrait (already defined above)
+MAID_AUTHOR = MAID_SPRITZ_PORTRAIT
+
 # ── COMBAT ────────────────────────────────────────────────────────────────────
 COMBAT_VICTORY = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512645961482270/combat_victory.png?ex=69f8b4cc&is=69f7634c&hm=98c607e7f4ef046069201a604d70b06c0adc16b42dfde6feb11d8ec5489a699c&"
 COMBAT_REDEMPTION = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512646523260968/combat_redemption.png?ex=69f8b4cd&is=69f7634d&hm=8872a1beecb580641323693b67bd3f2235a2f7a14a2248b5a478b9cd5ff5721a&"
@@ -177,7 +202,8 @@ GACHA_BANNER_5STAR = "https://cdn.discordapp.com/attachments/1334637411363323996
 GACHA_BANNER_6STAR = "https://cdn.discordapp.com/attachments/1334637411363323996/1500515436054446341/gacha_banner_6star.jpeg?ex=69f8b766&is=69f765e6&hm=4c521c1fc1d5f8daffc4b813fa8a59d150cc8ba16da7b6d01f01c83ea0667374&"
 
 # ── SETTLEMENT ────────────────────────────────────────────────────────────────
-SETTLEMENT_HUB = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512935745949777/settlement_hub.png?ex=69f8b512&is=69f76392&hm=9de3f1fbe984f1d5920139c291a431ff079b6afeb0b59a66cfe5d74fad8c28ad&"
+SETTLEMENT_CONSTRUCTION = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512935745949777/settlement_hub.png?ex=69f8b512&is=69f76392&hm=9de3f1fbe984f1d5920139c291a431ff079b6afeb0b59a66cfe5d74fad8c28ad&"
+SETTLEMENT_HUB = SETTLEMENT_CONSTRUCTION  # backward-compat alias
 SETTLEMENT_BUILDINGS = {
     "town_hall": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512947166777546/town_hall.png?ex=69f8b514&is=69f76394&hm=2c2d76de14655f2d02a4a3a76b77522f2244ed8546057dc17f5e2d958e56ad2d&",
     "logging_camp": "https://cdn.discordapp.com/attachments/1334637411363323996/1500512947531944107/logging_camp.png?ex=69f8b514&is=69f76394&hm=6c07eda02de100c0ffc4ac4bf55f2679f21c777b4de14cac315d76fb9f9cf9ee&",
@@ -203,7 +229,7 @@ SETTLEMENT_BUILDINGS = {
 }
 
 # Settlement NPC portraits
-SETTLEMENT_MAID = SETTLEMENT_HUB          # placeholder — replace with dedicated art
+SETTLEMENT_MAID = MAID_SPRITZ_PORTRAIT
 BLACK_MARKET_VESPERA = SETTLEMENT_BUILDINGS["black_market"]  # placeholder
 
 # ── CORRUPTED MONSTERS ────────────────────────────────────────────────────────
@@ -265,7 +291,7 @@ GUILD_UNREGISTER = "https://cdn.discordapp.com/attachments/1334637411363323996/1
 # ── TAVERN / GENERAL UI ───────────────────────────────────────────────────────
 TAVERN_KEEPER = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512945447374948/tavern_keeper.jpeg?ex=69f8b514&is=69f76394&hm=f4a3a9fe2ccef135bce7489b28a7b4f3e5afea70c81df77cac7b297d6ab6dd81&"  # also used as help embed logo
 TAVERN_GAMES = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512945850024048/tavern_games.jpeg?ex=69f8b514&is=69f76394&hm=6b14a97a92706c0fb8aa4301a4b793d6cf9f4e01810d572721fdba269c33cb9a&"
-TAVERN_ROULETTE = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512946206281738/tavern_roulette.jpeg?ex=69f8b514&is=69f76394&hm=88200c170f94e9f47dc070f2f1b6a9ca67b4aa660170c072c6b7f4580ea73f7d&"
+BAR_MAID = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512946206281738/tavern_roulette.jpeg?ex=69f8b514&is=69f76394&hm=88200c170f94e9f47dc070f2f1b6a9ca67b4aa660170c072c6b7f4580ea73f7d&"
 TAVERN_CASINO = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512946495951030/tavern_casino.jpeg?ex=69f8b514&is=69f76394&hm=652f9b4e7e07797ea6b3c52265bfc0267b742c50051fbbef779ec4c88df0950a&"  # also used in minigames
 DEFAULT_SILHOUETTE = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512946823102566/default_silhouette.jpeg?ex=69f8b514&is=69f76394&hm=31db3a8a07afdcf6563ade9036515d2a727003c11801dd76e6192d75cd19583a&"  # guild/character fallback
 

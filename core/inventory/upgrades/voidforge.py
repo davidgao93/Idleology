@@ -5,7 +5,7 @@ from discord import ButtonStyle, Interaction, SelectOption
 from discord.ui import Button, Select
 
 from core.combat.calc.calcs import fmt_weapon_passive
-from core.images import UPGRADE_VOIDFORGE
+from core.images import HARLAN_AUTHOR, UPGRADE_VOIDFORGE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.factory import create_weapon
 from core.models import Weapon
@@ -71,7 +71,8 @@ class VoidforgeView(BaseUpgradeView):
             ),
             color=discord.Color.dark_purple(),
         )
-        embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_VOIDFORGE)
+        embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
+        embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
 
         await self._send_render(interaction, embed)
 
@@ -108,7 +109,8 @@ class VoidforgeView(BaseUpgradeView):
             ),
             color=discord.Color.red(),
         )
-        embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_VOIDFORGE)
+        embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
+        embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
 
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -194,7 +196,8 @@ class VoidforgeView(BaseUpgradeView):
         embed = discord.Embed(
             title="Voidforge Result", description=res_txt, color=color
         )
-        embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_VOIDFORGE)
+        embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
+        embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
 
         self.clear_items()
         self.add_back_button()

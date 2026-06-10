@@ -309,9 +309,10 @@ def _append_meta_effect(embed, b) -> None:
 # ---------------------------------------------------------------------------
 
 # Plots unlocked for free at settlement creation (adjacent to Town Hall).
+# New layout inner ring: P01=(2,1) left, P03=(1,2) above, P05=(2,3) right, P07=(3,2) below.
 # They count toward total_developed for pricing, but paid_developed is tracked
 # separately so the DC cost curve still totals 210 across all 16 purchasable plots.
-_FREE_PLOT_INDICES: frozenset[int] = frozenset({6, 10, 11, 15})
+_FREE_PLOT_INDICES: frozenset[int] = frozenset({1, 3, 5, 7})
 # DCs the free plots would have cost in the original curve (1+2+3+4 = 10).
 # Redistributed as +1 on each of the first 10 paid unlocks.
 _FREE_PLOTS_RECOVERED: int = sum(range(1, len(_FREE_PLOT_INDICES) + 1))  # 10
@@ -433,6 +434,7 @@ class PlotDetailView(SettlementBaseView):
         building: Building | None,
         parent,
         adj_bonus: dict | None = None,
+        pending_construction: str | None = None,
     ):
         super().__init__(bot, user_id)
         self.plot = plot
@@ -442,6 +444,7 @@ class PlotDetailView(SettlementBaseView):
         # assignment in __init__ is overridden cleanly (no property needed).
         self.server_id = parent.server_id
         self.adj_bonus = adj_bonus or {}
+        self.pending_construction: str | None = pending_construction
         self._processing = False
         self._build_buttons()
 
@@ -484,6 +487,17 @@ class PlotDetailView(SettlementBaseView):
             embed.description = (
                 "This plot has not been developed yet.\n\n"
                 "Develop it to unlock a permanent terrain bonus and build here."
+            )
+        elif self.building is None and self.pending_construction:
+            b_name = self.pending_construction.replace("_", " ").title()
+            embed = discord.Embed(
+                title=f"📍 Plot {p.plot_index} — 🏗️ Under Construction",
+                color=discord.Color.orange(),
+            )
+            embed.description = (
+                (f"**Terrain Bonus:** {bonus_label}\n\n" if bonus_label else "")
+                + f"**{b_name}** is queued for construction here.\n\n"
+                "Click **Next Turn** on the dashboard to advance the project."
             )
         elif self.building is None:
             embed = discord.Embed(
@@ -558,6 +572,16 @@ class PlotDetailView(SettlementBaseView):
 
         if not p.is_developed:
             self._add_develop_button()
+        elif self.building is None and self.pending_construction:
+            # Show an inert indicator — no build actions while construction is queued
+            lbl = self.pending_construction.replace("_", " ").title()
+            btn = ui.Button(
+                label=f"🏗️ {lbl} — construction queued",
+                style=ButtonStyle.secondary,
+                disabled=True,
+                row=0,
+            )
+            self.add_item(btn)
         elif self.building is None:
             self._add_build_buttons()
         else:
@@ -781,11 +805,10 @@ class PlotDetailView(SettlementBaseView):
     async def _open_construction(self, interaction: Interaction):
         from core.settlement.views.construction import BuildConstructionView
 
-        uber_prog = await self.bot.database.uber.get_uber_progress(
-            self.user_id, self.parent.server_id
-        )
-        researched = await self.bot.database.settlement.get_researched(
-            self.user_id, self.parent.server_id
+        uber_prog, researched, user_data = await asyncio.gather(
+            self.bot.database.uber.get_uber_progress(self.user_id, self.parent.server_id),
+            self.bot.database.settlement.get_researched(self.user_id, self.parent.server_id),
+            self.bot.database.users.get(self.user_id, self.parent.server_id),
         )
         view = BuildConstructionView(
             bot=self.bot,
@@ -796,6 +819,7 @@ class PlotDetailView(SettlementBaseView):
             uber_prog=uber_prog,
             researched=researched,
             return_to_detail=self,
+            player_level=user_data["level"] if user_data else 0,
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
@@ -1042,6 +1066,7 @@ class MetaBuildingConstructionView(SettlementBaseView):
             color=discord.Color.blurple(),
         )
         existing_types = {b.building_type for b in self.parent.settlement.buildings if b.is_meta}
+        pending_types = self._pending_meta_types()
         for key, data in META_BUILDINGS.items():
             cost = data["cost"]
             cost_str = (
@@ -1049,20 +1074,35 @@ class MetaBuildingConstructionView(SettlementBaseView):
                 f"🪵 {cost.get('timber', 0):,} | "
                 f"🪨 {cost.get('stone', 0):,}"
             )
-            already = " *(already built)*" if key in existing_types else ""
+            if key in existing_types:
+                suffix = " *(already built)*"
+            elif key in pending_types:
+                suffix = " *(under construction)*"
+            else:
+                suffix = ""
             embed.add_field(
-                name=f"{data['emoji']} {data['label']}{already}",
+                name=f"{data['emoji']} {data['label']}{suffix}",
                 value=f"{data['description']}\n*Cost: {cost_str}*",
                 inline=False,
             )
         return embed
 
+    def _pending_meta_types(self) -> set[str]:
+        """Returns meta building types that already have a queued construction project."""
+        return {
+            proj["data"].get("building_type", "")
+            for proj in self.parent.projects
+            if proj.get("project_type") == "construction"
+            and proj.get("data", {}).get("building_type") in META_BUILDINGS
+        }
+
     def _build_select(self):
         self.clear_items()
         existing_types = {b.building_type for b in self.parent.settlement.buildings if b.is_meta}
+        pending_types = self._pending_meta_types()
         options = []
         for key, data in META_BUILDINGS.items():
-            if key in existing_types:
+            if key in existing_types or key in pending_types:
                 continue
             cost = data["cost"]
             desc = (

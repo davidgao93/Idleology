@@ -1,4 +1,3 @@
-import random
 from datetime import datetime, timedelta
 
 import discord
@@ -6,7 +5,18 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.first_use import TutorialGateView
-from core.images import AMARA_PORTRAIT, CHECKIN, POTION_SHOP, TAVERN_CASINO, TAVERN_GAMES, TAVERN_KEEPER, TAVERN_ROULETTE
+from core.images import (
+    BAR_MAID,
+    BAR_MAID_AUTHOR,
+    CASINO_AUTHOR,
+    CHECKIN,
+    POTION_SHOP,
+    POTION_SHOP,
+    POTION_SHOP_AUTHOR,
+    TAVERN_CASINO,
+    TAVERN_GAMES,
+    TAVERN_KEEPER,
+)
 from core.items.factory import load_player
 from core.quests.data import CHECKIN_DAY_LABELS
 from core.tavern.mechanics import TavernMechanics
@@ -38,8 +48,7 @@ def _build_checkin_embed(
     row2 = " ".join(cells[7:])
 
     milestone_lines = "\n".join(
-        f"  **Day {d}** — {CHECKIN_DAY_LABELS.get(d, '')}"
-        for d in (1, 7, 14)
+        f"  **Day {d}** — {CHECKIN_DAY_LABELS.get(d, '')}" for d in (1, 7, 14)
     )
 
     track_display = (
@@ -104,11 +113,16 @@ class Tavern(commands.Cog, name="tavern"):
             potion_cost = TavernMechanics.calculate_potion_cost(level)
             topup_qty = max(0, 20 - potions)
             embed = discord.Embed(
-                title="Tavern Shop 🏪",
-                description="Welcome to the shop! Here are the items you can buy:",
+                title="Tavern Shop",
+                description=(
+                    "Still alive, adventurer? Good. The shelves are a bit bare today, "
+                    "but I still have what you need — potions to keep you on your feet. "
+                    "Buy a few before you go getting yourself killed again."
+                ),
                 color=0xFFCC00,
             )
-            embed.set_author(name="Elara", icon_url=POTION_SHOP)
+            embed.set_author(name="Elara", icon_url=POTION_SHOP_AUTHOR)
+            embed.set_thumbnail(url=POTION_SHOP)
             embed.add_field(name="Your Gold 💰", value=f"{gold:,}", inline=False)
             embed.add_field(
                 name="Potion 🧪",
@@ -119,17 +133,15 @@ class Tavern(commands.Cog, name="tavern"):
                 ),
                 inline=False,
             )
-            embed.add_field(
-                name="Elara",
-                value="The shelves are a bit bare today, but I still have what you need.",
-                inline=False,
-            )
+            embed.add_field(name="Elara", value="What'll it be?", inline=False)
             view = ShopView(self.bot, user_id, user_data)
             return embed, view
 
         if not await self.bot.database.tutorials.has_seen(user_id, "shop"):
             await self.bot.database.tutorials.mark_seen(user_id, "shop")
-            gate = TutorialGateView(self.bot, user_id, server_id, "shop", build_main=_build)
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "shop", build_main=_build
+            )
             await interaction.response.send_message(embed=gate.build_embed(), view=gate)
             gate.message = await interaction.original_response()
             return
@@ -204,7 +216,7 @@ class Tavern(commands.Cog, name="tavern"):
                 description=f"You need to wait {remaining_str} before resting for free again.",
                 color=0xFFCC00,
             )
-            embed.set_image(url=TAVERN_ROULETTE)
+            embed.set_image(url=BAR_MAID)
 
             if gold >= cost:
                 if auto_pay:
@@ -225,19 +237,21 @@ class Tavern(commands.Cog, name="tavern"):
                 else:
                     # Normal paid rest prompt
                     self.bot.state_manager.set_active(user_id, "rest")
-                    embed.set_author(name="Gilda", icon_url=TAVERN_KEEPER)
+                    embed.set_author(name="Gilda", icon_url=BAR_MAID_AUTHOR)
+                    embed.set_thumbnail(url=TAVERN_KEEPER)
                     embed.add_field(
                         name="Gilda",
-                        value=f"I have an extra room available for **{cost} gold**.",
+                        value=f"I have an extra room available for **{cost} gold**. Clean sheets and no questions asked.",
                     )
                     view = RestView(self.bot, user_id, cost, max_hp)
                     await interaction.response.send_message(embed=embed, view=view)
                     view.message = await interaction.original_response()
             else:
-                embed.set_author(name="Gilda", icon_url=TAVERN_KEEPER)
+                embed.set_author(name="Gilda", icon_url=BAR_MAID_AUTHOR)
+                embed.set_thumbnail(url=TAVERN_KEEPER)
                 embed.add_field(
                     name="Gilda",
-                    value=f"I have a room for **{cost} gold**, but you can't afford it.",
+                    value=f"I have a room for **{cost} gold**, but you can't afford it. Come back when you're not so broke.",
                 )
                 await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -259,17 +273,23 @@ class Tavern(commands.Cog, name="tavern"):
             )
         if amount > user_data["gold"]:
             return await interaction.response.send_message(
-                f"Insufficient funds. You have **{user_data['gold']:,}**.", ephemeral=True
+                f"Insufficient funds. You have **{user_data['gold']:,}**.",
+                ephemeral=True,
             )
 
         self.bot.state_manager.set_active(user_id, "gamble")
 
         embed = discord.Embed(
-            title="The Tavern Casino 🎲",
-            description=f"Table Stake: **{amount:,} gold**.\nSelect a game:",
+            title="The Tavern Casino",
+            description=(
+                f"Table Stake: **{amount:,} gold**. Feeling lucky, or just desperate?\n"
+                "Pick your poison — blackjack, roulette, crash, or the horses. "
+                "House always wins in the end, but maybe tonight's different."
+            ),
             color=0xFFD700,
         )
-        embed.set_author(name="Vespera", icon_url=TAVERN_CASINO)
+        embed.set_author(name="Vespera", icon_url=CASINO_AUTHOR)
+        embed.set_thumbnail(url=TAVERN_CASINO)
         embed.add_field(
             name="🃏 Blackjack", value="Beat the dealer to 21. (2x Payout)", inline=True
         )
@@ -289,7 +309,9 @@ class Tavern(commands.Cog, name="tavern"):
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
-    @app_commands.command(name="checkin", description="Daily check-in — claim your track reward.")
+    @app_commands.command(
+        name="checkin", description="Daily check-in — claim your track reward."
+    )
     async def checkin(self, interaction: Interaction) -> None:
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
@@ -328,7 +350,10 @@ class Tavern(commands.Cog, name="tavern"):
         if can_checkin:
             level = user["level"]
             from core.quests.data import grant_checkin_day
-            rewards = await grant_checkin_day(self.bot, user_id, server_id, next_day, level)
+
+            rewards = await grant_checkin_day(
+                self.bot, user_id, server_id, next_day, level
+            )
             await self.bot.database.quests.advance_checkin(user_id)
             embed = _build_checkin_embed(next_day, False, timedelta(hours=18))
             embed.add_field(

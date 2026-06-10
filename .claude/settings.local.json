@@ -124,7 +124,18 @@
       "Bash(python -m py_compile tests/test_dispatch_sim.py)",
       "Bash(python -m py_compile database/schema.sql)",
       "Bash(python -m py_compile core/delve/delve_views.py)",
-      "Bash(python -m py_compile core/character/profile_ui.py)"
+      "Bash(python -m py_compile core/character/profile_ui.py)",
+      "Bash(python -c \"import core.settlement.views.dashboard\")",
+      "Bash(python -c \"import core.settlement.views.construction; import core.combat.economy.rewards; import core.journey.rewards; import core.images\")",
+      "Bash(python -m py_compile core/settlement/views/dashboard.py core/settlement/views/construction.py core/combat/economy/rewards.py core/journey/rewards.py core/images.py)",
+      "Bash(python -m py_compile cogs/settlement.py core/character/profile_ui.py core/settlement/views/plot_detail.py)",
+      "Bash(python -m py_compile core/settlement/constants.py)",
+      "Bash(python -m py_compile core/settlement/views/dashboard.py)",
+      "Bash(python -m py_compile core/settlement/plots.py)",
+      "Bash(python -m py_compile database/repositories/plots.py)",
+      "Bash(python -m py_compile core/minigames/views.py)",
+      "Bash(python -m py_compile core/settlement/views/construction.py)",
+      "Bash(python -m py_compile core/settlement/views/plot_detail.py)"
     ]
   }
 }

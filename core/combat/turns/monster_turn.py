@@ -37,11 +37,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
     if context_note:
         calc.append(f"  [context]{context_note}")
 
-    # Decrement powerful distilled potion transients (Aegis shield, Panacea immunity, etc.)
-    if getattr(player, "alchemy_shield_turns", 0) > 0:
-        player.alchemy_shield_turns -= 1
-        if player.alchemy_shield_turns <= 0:
-            player.alchemy_shield_hp = 0
+    # Decrement Panacea immunity turns at start of monster turn (before ailments land)
     if getattr(player, "alchemy_ailment_immunity_turns", 0) > 0:
         player.alchemy_ailment_immunity_turns -= 1
         if player.alchemy_ailment_immunity_turns > 0:
@@ -687,9 +683,8 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
                     _vow_msg = f"✨ **Celestial Vow** activates! You survive the fatal blow and gain {added} 🔮 Ward!"
                     log.append(f"\n{_vow_msg}")
                     clog.append(_vow_msg)
-                elif getattr(player, "alchemy_shield_hp", 0) > 0 and (player.current_hp - total_damage <= 0):
-                    # Astral Aegis saves from lethal while shield active
-                    remaining_shield = player.alchemy_shield_hp
+                elif shield_hp > 0 and (player.current_hp - total_damage <= 0):
+                    # Astral Aegis saves from lethal: shield was active but depleted mid-hit
                     player.current_hp = max(1, player.current_hp)
                     player.alchemy_shield_hp = 0
                     player.alchemy_shield_turns = 0
@@ -704,6 +699,12 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
                             f"{monster.name} {monster.flavor}. You take 💔 **{total_damage}** damage!"
                         )
                         clog.append(f"You take 💔 **{total_damage}** damage!")
+
+                # Tick Astral Aegis duration down after this monster attack
+                if getattr(player, "alchemy_shield_turns", 0) > 0:
+                    player.alchemy_shield_turns -= 1
+                    if player.alchemy_shield_turns <= 0:
+                        player.alchemy_shield_hp = 0
 
             # --- Commanding / Minion Army: % of applied damage as true damage echo ---
             minion_echo_pct = 0.0

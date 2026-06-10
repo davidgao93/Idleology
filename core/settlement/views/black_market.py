@@ -16,7 +16,7 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
-from core.images import BLACK_MARKET_VESPERA, SETTLEMENT_BUILDINGS
+from core.images import BLACK_MARKET_AUTHOR, SETTLEMENT_BUILDINGS
 from core.settlement.constants import (
     BM_ITEM_VALUES,
     BM_OFFERABLE_RESOURCES,
@@ -96,12 +96,12 @@ _BM_RESOURCE_PAGES: list[list[tuple[str, str]]] = [
     ],
 ]
 
-_VESPERA_GREETINGS = [
-    "Madame Vespera tilts her head. 'What have you brought me today?'",
-    "'Interesting selection,' she murmurs, filing her nails. 'Let's see what this fetches.'",
-    "'Ah, another visitor.' She gestures to the scale. 'Place your offering.'",
+_MAX_GREETINGS = [
+    "Max tilts his head. 'What have you brought me today?'",
+    "'Interesting selection,' he murmurs. 'Let's see what this fetches.'",
+    "'Ah, another visitor.' He gestures to the scale. 'Place your offering.'",
     "'I trust you've brought something worth my time?' A thin smile. 'Show me.'",
-    "'The market is quiet today,' she says. 'Which means I'm in a generous mood.'",
+    "'The market is quiet today,' he says. 'Which means I'm in a generous mood.'",
 ]
 
 
@@ -151,11 +151,11 @@ class BlackMarketView(SettlementBaseView):
         mult = SettlementMechanics.get_multiplier(tier)
 
         embed = discord.Embed(
-            title=f"🌑 The Black Market (Tier {tier})",
-            description=random.choice(_VESPERA_GREETINGS),
+            title=f"The Black Market (Tier {tier})",
+            description=random.choice(_MAX_GREETINGS),
             color=discord.Color.dark_gray(),
         )
-        embed.set_author(name="Madame Vespera", icon_url=BLACK_MARKET_VESPERA)
+        embed.set_author(name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR)
         embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
 
         embed.add_field(
@@ -407,7 +407,8 @@ class OfferBuilderView(SettlementBaseView):
             ),
             color=discord.Color.dark_gray(),
         )
-        embed.set_author(name="Madame Vespera", icon_url=BLACK_MARKET_VESPERA)
+        embed.set_author(name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR)
+        embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
 
         if self._offer:
             offer_lines = []
@@ -550,7 +551,14 @@ class OfferBuilderView(SettlementBaseView):
             for ev in active_events:
                 if ev["event_type"] == "ongoing":
                     ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
-                    event_value_bonus += ev_def.get("effects", {}).get("bm_value_bonus", 0.0)
+                    raw_val = ev_def.get("effects", {}).get("bm_value_bonus", 0.0)
+                    ev_data = ev.get("data") or {}
+                    if raw_val == "band":
+                        raw_val = ev_data.get("band", 0.0)
+                    elif raw_val == "neg_band":
+                        raw_val = -ev_data.get("band", 0.0)
+                    if isinstance(raw_val, (int, float)):
+                        event_value_bonus += raw_val
 
             value = calculate_offer_value(self._offer, tree_nodes, self.building.tier)
             value = int(value * (1 + event_value_bonus))
@@ -605,14 +613,15 @@ class OfferBuilderView(SettlementBaseView):
             embed = discord.Embed(
                 title="✅ Deal Submitted",
                 description=(
-                    f"**Vespera eyes the goods and nods.**\n\n"
+                    f"**Max eyes the goods and gives a thin smile.**\n\n"
                     f"Value assessed: **{value:,}**\n"
                     f"Processing: **{turns}** Development Turn(s)\n\n"
                     f"Advance turns on the dashboard to collect your loot."
                 ),
                 color=discord.Color.green(),
             )
-            embed.set_author(name="Madame Vespera", icon_url=BLACK_MARKET_VESPERA)
+            embed.set_author(name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR)
+            embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
             await interaction.edit_original_response(embed=embed, view=discord.ui.View())
 
             import asyncio

@@ -84,6 +84,7 @@ class ResearchView(SettlementBaseView):
         self._researched: set[str] = set()
         self._active: tuple[str, str] | None = None  # (building_type, start_time)
         self._blueprint_count: int = 0
+        self._research_projects: list = []
 
     # ------------------------------------------------------------------
     # Data loading (call before sending)
@@ -98,6 +99,9 @@ class ResearchView(SettlementBaseView):
         )
         self._blueprint_count = await self.bot.database.users.get_currency(
             self.user_id, _RESEARCH_COST_ITEM
+        )
+        self._research_projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.server_id
         )
         self._rebuild_ui()
 
@@ -182,7 +186,7 @@ class ResearchView(SettlementBaseView):
         embed.description = (
             f"Research buildings before you can construct them.\n"
             f"**Cost:** 1 Unidentified Blueprint per research\n"
-            f"**Completion:** {_RESEARCH_HOURS}h wait **or** advance enough Development Turns\n\n"
+            f"**Completion:** Advance Development Turns via **Next Turn**\n\n"
             f"📋 **Blueprints owned:** {self._blueprint_count}"
         )
 
@@ -193,19 +197,31 @@ class ResearchView(SettlementBaseView):
                 b_type, b_type.replace("_", " ").title()
             )
             emoji = _BUILDING_EMOJIS.get(b_type, "🔬")
-            end = datetime.fromisoformat(start_str) + timedelta(hours=_RESEARCH_HOURS)
-            now = datetime.now()
-            if now >= end:
+            research_proj = next(
+                (p for p in self._research_projects if p["project_type"] == "research"
+                 and p.get("data", {}).get("building_type") == b_type),
+                None,
+            )
+            if research_proj:
+                invested = research_proj["invested_turns"]
+                required = research_proj["required_turns"]
+                if invested >= required:
+                    embed.add_field(
+                        name="🔬 Research Queue — ✅ READY",
+                        value=f"{emoji} **{b_name}** — click **Collect Research** to unlock!",
+                        inline=False,
+                    )
+                else:
+                    remaining_dt = required - invested
+                    embed.add_field(
+                        name="🔬 Research Queue — ⏳ In Progress",
+                        value=f"{emoji} **{b_name}**\n**{invested}/{required} DTs** — {remaining_dt} more turn(s) needed",
+                        inline=False,
+                    )
+            else:
                 embed.add_field(
                     name="🔬 Research Queue — ✅ READY",
                     value=f"{emoji} **{b_name}** — click **Collect Research** to unlock!",
-                    inline=False,
-                )
-            else:
-                remaining = end - now
-                embed.add_field(
-                    name="🔬 Research Queue — ⏳ In Progress",
-                    value=f"{emoji} **{b_name}**\nReady in: **{_fmt_duration(remaining)}**",
                     inline=False,
                 )
         else:
@@ -302,28 +318,23 @@ class ResearchView(SettlementBaseView):
             return
 
         b_type, start_str = active
-        end = datetime.fromisoformat(start_str) + timedelta(hours=_RESEARCH_HOURS)
-        time_done = datetime.now() >= end
 
-        # Also check if the DT project has completed
-        dt_done = False
+        # Research only completes via Development Turns.
         projects = await self.bot.database.settlement.get_projects(self.user_id, self.server_id)
         research_proj = next(
             (p for p in projects if p["project_type"] == "research"
              and p.get("data", {}).get("building_type") == b_type),
             None,
         )
-        if research_proj and research_proj["invested_turns"] >= research_proj["required_turns"]:
-            dt_done = True
+        dt_done = research_proj and research_proj["invested_turns"] >= research_proj["required_turns"]
+        if dt_done:
             await self.bot.database.settlement.delete_project(research_proj["id"])
 
-        if not time_done and not dt_done:
-            time_left = _fmt_duration(end - datetime.now())
+        if not dt_done:
             dt_needed = (research_proj["required_turns"] - research_proj["invested_turns"]) if research_proj else "?"
             await interaction.response.send_message(
                 f"Research isn't done yet.\n"
-                f"⏰ Time remaining: **{time_left}**\n"
-                f"⏭️ Or advance **{dt_needed}** more Development Turn(s) via **Next Turn**.",
+                f"⏭️ Advance **{dt_needed}** more Development Turn(s) via **Next Turn**.",
                 ephemeral=True,
             )
             return

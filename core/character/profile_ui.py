@@ -788,7 +788,7 @@ class ProfileBuilder:
                 daily_lines.append("🌑 **Maw Fight** — No active cycle")
 
         # DC craft daily reset
-        if player_level >= 50:
+        if player_level >= 10:
             dc_crafted_today = await bot.database.users.get_dc_crafted_today(user_id)
             _dc_now = datetime.now()
             _next_midnight = _dc_now.replace(
@@ -808,7 +808,7 @@ class ProfileBuilder:
         # ── Section 3: Horizon ───────────────────────────────────────────────
         horizon_lines = []
 
-        if player_level >= 50:
+        if player_level >= 10:
             settlement = await bot.database.settlement.get_settlement(user_id, server_id)
             if settlement and settlement.last_collection_time:
                 try:

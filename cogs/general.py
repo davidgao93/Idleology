@@ -29,7 +29,7 @@ from core.character.passive_data import (
     _VOID_PASSIVE_DESC,
     _WEAPON_PASSIVE_DESC,
 )
-from core.images import AMARA_PORTRAIT, TAVERN_KEEPER
+from core.images import AMARA_AUTHOR, AMARA_PORTRAIT, TAVERN_KEEPER
 from core.slayer.mechanics import SLAYER_PASSIVE_DEFS, SLAYER_PASSIVE_NAMES
 
 
@@ -612,7 +612,8 @@ class General(commands.Cog, name="general"):
             description="Welcome to **Idleology**! 💡\nUse `/register` to start your journey.",
             color=0xBEBEFE,
         )
-        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_PORTRAIT)
+        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
+        embed.set_thumbnail(url=AMARA_PORTRAIT)
 
         for category, cmds in categories.items():
             command_list = []

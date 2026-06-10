@@ -2,7 +2,7 @@
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
-from core.images import SETTLEMENT_HUB
+from core.images import SETTLEMENT_CONSTRUCTION
 from core.settlement.constants import (
     BUILD_MESSAGES,
     BUILDING_INFO,
@@ -26,6 +26,7 @@ class BuildConstructionView(SettlementBaseView):
         researched: set | None = None,
         plot_bonus_type: str | None = None,
         return_to_detail=None,
+        player_level: int = 0,
     ):
         super().__init__(bot, user_id)
         self.plot_index = plot_index
@@ -34,6 +35,7 @@ class BuildConstructionView(SettlementBaseView):
         self.researched: set = researched or set()
         self.plot_bonus_type = plot_bonus_type
         self.return_to = return_to_detail  # PlotDetailView to return to after build
+        self.player_level = player_level
         self._processing = False
 
         self.setup_select()
@@ -56,6 +58,15 @@ class BuildConstructionView(SettlementBaseView):
     # Embed
     # -------------------------------------------------------------------------
 
+    def _pending_construction_types(self) -> set[str]:
+        """Returns building types that already have a queued construction project."""
+        return {
+            proj["data"].get("building_type", "")
+            for proj in self.parent.projects
+            if proj.get("project_type") == "construction"
+            and proj.get("data", {}).get("building_type")
+        }
+
     def build_embed(self):
         discount_note = ""
         if self.plot_bonus_type == "gold_vein":
@@ -71,11 +82,12 @@ class BuildConstructionView(SettlementBaseView):
             ),
             color=discord.Color.blue(),
         )
-        embed.set_thumbnail(url=SETTLEMENT_HUB)
+        embed.set_thumbnail(url=SETTLEMENT_CONSTRUCTION)
         existing_types = {b.building_type for b in self.parent.settlement.buildings}
+        pending_types = self._pending_construction_types()
 
         for b_type, info in BUILDING_INFO.items():
-            if b_type in existing_types:
+            if b_type in existing_types or b_type in pending_types:
                 continue
             if not self._is_available(b_type):
                 continue
@@ -99,6 +111,11 @@ class BuildConstructionView(SettlementBaseView):
 
         return embed
 
+    # Buildings that require a minimum player level to construct.
+    _PLAYER_LEVEL_REQUIREMENTS: dict[str, int] = {
+        "hatchery": 50,
+    }
+
     def _is_available(self, b_type: str) -> bool:
         """True if the building type can currently be built (blueprint checks)."""
         if (
@@ -108,6 +125,9 @@ class BuildConstructionView(SettlementBaseView):
             or (b_type == "twin_shrine"     and not self.uber_prog.get("gemini_blueprint_unlocked"))
             or (b_type == "corruption_shrine" and not self.uber_prog.get("corruption_blueprint_unlocked"))
         ):
+            return False
+        min_level = self._PLAYER_LEVEL_REQUIREMENTS.get(b_type, 0)
+        if min_level and self.player_level < min_level:
             return False
         if b_type in RESEARCHABLE_BUILDINGS and b_type not in self.researched:
             return False
@@ -121,10 +141,11 @@ class BuildConstructionView(SettlementBaseView):
         self.clear_items()
 
         existing_types = {b.building_type for b in self.parent.settlement.buildings}
+        pending_types = self._pending_construction_types()
         options: list[SelectOption] = []
 
         for key, raw_cost in CONSTRUCTION_COSTS.items():
-            if key in existing_types:
+            if key in existing_types or key in pending_types:
                 continue
             if not self._is_available(key):
                 continue
@@ -197,7 +218,13 @@ class BuildConstructionView(SettlementBaseView):
         for ev in active_events:
             if ev["event_type"] == "ongoing":
                 ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
-                event_effects.update(ev_def.get("effects", {}))
+                ev_data = ev.get("data") or {}
+                for _k, _v in ev_def.get("effects", {}).items():
+                    if _v == "band":
+                        _v = ev_data.get("band", 0)
+                    elif _v == "neg_band":
+                        _v = -ev_data.get("band", 0)
+                    event_effects[_k] = _v
 
         dt_required = construction_dt_cost(b_type, event_effects)
 
@@ -211,14 +238,22 @@ class BuildConstructionView(SettlementBaseView):
         )
         await self.bot.database.users.modify_gold(self.user_id, -cost.get("gold", 0))
 
-        # Create the project
+        # Create the project — target_id=plot_index so each plot has its own row
+        # (upsert keys on (user, server, project_type, target_id), so passing
+        # plot_index prevents new queues from overwriting existing ones)
         await self.bot.database.settlement.upsert_project(
             user_id=self.user_id,
             server_id=self.parent.server_id,
             project_type="construction",
-            target_id=None,
+            target_id=self.plot_index,
             required_turns=dt_required,
             data={"building_type": b_type, "plot_index": self.plot_index},
+        )
+
+        # Refresh the parent dashboard's project cache so the grid and dropdown
+        # immediately show the "Under Construction" indicator without a Next Turn.
+        self.parent.projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.parent.server_id
         )
 
         # Show confirmation
@@ -231,7 +266,7 @@ class BuildConstructionView(SettlementBaseView):
             ),
             color=discord.Color.blue(),
         )
-        embed.set_thumbnail(url=SETTLEMENT_HUB)
+        embed.set_thumbnail(url=SETTLEMENT_CONSTRUCTION)
         await interaction.edit_original_response(embed=embed, view=discord.ui.View())
 
         import asyncio
@@ -243,6 +278,7 @@ class BuildConstructionView(SettlementBaseView):
         )
 
         if self.return_to is not None:
+            self.return_to.pending_construction = b_type
             self.return_to._build_buttons()
             await interaction.edit_original_response(
                 content=None, embed=self.return_to.build_embed(), view=self.return_to

@@ -351,12 +351,10 @@ class BlackjackView(BaseView):
         quit_btn.callback = self.quit_game
         self.add_item(quit_btn)
 
-        target_func = (
-            interaction.edit_original_response
-            if interaction
-            else self.original_interaction.edit_original_response
-        )
-        await target_func(embed=final_embed, view=self)
+        if interaction:
+            await interaction.response.edit_message(embed=final_embed, view=self)
+        else:
+            await self.original_interaction.edit_original_response(embed=final_embed, view=self)
 
     async def restart_game(self, interaction: Interaction):
         if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):

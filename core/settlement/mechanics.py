@@ -225,6 +225,7 @@ class SettlementMechanics:
         adj_output_mult: float = 0.0,
         mastery_converter_output_mult: float = 0.0,  # From Master Quarry / Seasoned Timber
         event_generator_bonus: float = 0.0,          # From active settlement events (e.g. resource_windfall)
+        event_converter_bonus: float = 0.0,          # From active settlement events (e.g. artisan_week)
     ) -> Dict[str, int]:
         """
         Calculates production for a specific building over time.
@@ -270,6 +271,7 @@ class SettlementMechanics:
             effectiveness += event_generator_bonus
         elif btype == "converter":
             effectiveness += adj_converter_mult
+            effectiveness += event_converter_bonus
 
         # Encampment meta building gives adjacent war camps a % speed boost
         if building_type == "war_camp" and adj_war_camp_rate:

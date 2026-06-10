@@ -1,12 +1,12 @@
 # core/settlement/views/dashboard.py
-import asyncio
 from datetime import datetime
 
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
-from core.images import SETTLEMENT_BUILDINGS, SETTLEMENT_MAID
+from core.images import MAID_AUTHOR, MAID_SPRITZ_PORTRAIT, SETTLEMENT_BUILDINGS
 from core.settlement.constants import (
     BUILDING_INFO,
     RESOURCE_DISPLAY_NAMES,
@@ -22,6 +22,141 @@ from core.settlement.views.town_hall import TownHallView
 
 from .base import SettlementBaseView
 
+# ---------------------------------------------------------------------------
+# Settlement tutorial — narrated by Head Maid Spritz
+# ---------------------------------------------------------------------------
+
+_SPRITZ_SCENES = [
+    {
+        "title": "Welcome to Your Settlement",
+        "text": (
+            "I'm Spritz — the settlement's Head Maid. "
+            "I oversee production, manage the ledgers, and chase down the administrators when the generators run dry.\n\n"
+            "Your **Settlement** is your ideology's permanent home base. "
+            "Found it once and it grows with you forever — buildings, workers, resources, and trade all flow from this hub.\n\n"
+            "I've prepared five pages of briefing material. "
+            "You'll want to read all of it. *No skipping.*"
+        ),
+        "color": 0xFFD6E8,
+    },
+    {
+        "title": "Zeal and Development Turns",
+        "text": (
+            "Settlement progress runs on **Development Turns** — each one costs **10 Zeal** to advance.\n\n"
+            "Zeal flows in from multiple sources:\n"
+            "- **Combat victories** — each win grants 10 Zeal\n"
+            "- **Quest completions** — 30 Zeal for 1★ contracts, 90 Zeal for 3★\n"
+            "- **Passive trickle** — your Town Hall generates Zeal over time; use **Gather Zeal** to collect it\n\n"
+            "Daily limits apply: gains halve beyond 600 Zeal earned today, and cap at 800.\n\n"
+            "Pressing **Next Turn** spends Zeal and simultaneously advances *all* active projects. "
+            "The more Turns you invest, the faster your settlement grows."
+        ),
+        "color": 0xFFB347,
+    },
+    {
+        "title": "Buildings and Workers",
+        "text": (
+            "Buildings fall into three broad roles:\n\n"
+            "🏭 **Generators** (Logging Camp, Quarry) produce Timber and Stone per turn — "
+            "output scales with workers assigned.\n\n"
+            "⚙️ **Converters** (Foundry, Sawmill, Reliquary) refine raw materials into finished goods "
+            "automatically, as long as they're staffed. Each tier unlocks a higher material grade.\n\n"
+            "🏪 **Special Buildings** offer services: the Apothecary heals, the Barracks trains fighters, "
+            "the Nursery grows new followers, and the Idlem Foundry produces Idlem for the Black Market tree.\n\n"
+            "Workers come from your ideology's follower count — assign them via each building's detail view. "
+            "More workers means more output, up to the building's cap."
+        ),
+        "color": 0x4A7C59,
+    },
+    {
+        "title": "The Black Market and Research",
+        "text": (
+            "The **Black Market** converts raw production into meaningful rewards.\n\n"
+            "Submit a resource bundle as an offer. It processes over several Development Turns "
+            "and returns curated loot — gear, runes, keys, and more. "
+            "As you invest **Idlem** into the Black Market's passive tree, deals become "
+            "cheaper, more valuable, and biased toward your preferred loot types.\n\n"
+            "**Research** uses 📋 Unidentified Blueprints (dropped from combat) to unlock "
+            "advanced buildings — the Idlem Foundry, Nursery, shrine variants, and more. "
+            "Check the Research panel to see what each blueprint unlocks and what it costs."
+        ),
+        "color": 0x4A235A,
+    },
+    {
+        "title": "Rare Materials and Plot Bonuses",
+        "text": (
+            "A few final details:\n\n"
+            "🔥 **Magma Core** · 🌿 **Life Root** · 👻 **Spirit Shard** — rare construction "
+            "materials dropped from combat. Certain buildings require them alongside standard resources.\n\n"
+            "📋 **Unidentified Blueprints** — dropped from combat; required for research. Do not sell them.\n\n"
+            "🔮 **Diviner's Rod** — use one from a plot's detail view to reroll that plot's terrain bonus. "
+            "Bonuses like *Gold Vein* reduce construction gold costs and *Ancient Foundation* discounts "
+            "timber and stone.\n\n"
+            "Note: advanced buildings such as the **Hatchery** require higher player levels "
+            "before they can be constructed. Plan your layout accordingly.\n\n"
+            "*That concludes your briefing. I'll be here if you need a refresher.*"
+        ),
+        "color": 0x1A2A4A,
+    },
+]
+
+
+class _MaidTutorialView(BaseView):
+    """Multi-page settlement tutorial narrated by Head Maid Spritz."""
+
+    def __init__(self, bot, parent):
+        super().__init__(bot, parent=parent)
+        self.index = 0
+        self._rebuild()
+
+    def build_embed(self) -> discord.Embed:
+        scene = _SPRITZ_SCENES[self.index]
+        embed = discord.Embed(
+            title=scene["title"],
+            description=scene["text"],
+            color=scene["color"],
+        )
+        embed.set_author(name="Head Maid Spritz", icon_url=MAID_AUTHOR)
+        # Thumbnail intentionally not set to MAID_AUTHOR (per request: MAID_AUTHOR is the author image)
+        embed.set_footer(text=f"Page {self.index + 1} of {len(_SPRITZ_SCENES)}")
+        return embed
+
+    def _rebuild(self):
+        self.clear_items()
+        last = len(_SPRITZ_SCENES) - 1
+
+        if self.index > 0:
+            prev = ui.Button(label="← Back", style=ButtonStyle.secondary, row=0)
+            prev.callback = self._on_prev
+            self.add_item(prev)
+
+        if self.index < last:
+            nxt = ui.Button(label="Next →", style=ButtonStyle.primary, row=0)
+            nxt.callback = self._on_next
+            self.add_item(nxt)
+        else:
+            close = ui.Button(label="Close", style=ButtonStyle.danger, row=0)
+            close.callback = self._on_close
+            self.add_item(close)
+
+    async def _on_prev(self, interaction: Interaction):
+        self.index -= 1
+        self._rebuild()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _on_next(self, interaction: Interaction):
+        self.index += 1
+        self._rebuild()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _on_close(self, interaction: Interaction):
+        self.stop()
+        await interaction.response.edit_message(
+            content="*Spritz curtsies and returns to her duties.*",
+            embed=None,
+            view=None,
+        )
+
 
 class SettlementDashboardView(SettlementBaseView):
     def __init__(
@@ -32,12 +167,19 @@ class SettlementDashboardView(SettlementBaseView):
         settlement,
         follower_count: int,
         plots: list | None = None,
+        player_name: str = "",
     ):
         super().__init__(bot, user_id)
         self.server_id = server_id
         self.settlement = settlement
         self.follower_count = follower_count
         self.plots: list[Plot] = plots or []
+        self.player_name = player_name
+        self.projects: list = []  # cached settlement_projects rows
+        self._cached_turns_data: dict = {}
+        self._cached_zeal_data: dict = {}
+        self._cached_active_events: list = []
+        self._cached_pending_deal: dict | None = None
         self._processing = False
         self._rebuild_ui()
 
@@ -45,6 +187,18 @@ class SettlementDashboardView(SettlementBaseView):
     # BuildConstructionView all call self.parent.update_grid()
     def update_grid(self):
         self._rebuild_ui()
+
+    def _pending_by_plot(self) -> dict[int, str]:
+        """Derives {plot_index: building_type} for all queued construction projects."""
+        result: dict[int, str] = {}
+        for proj in self.projects:
+            if proj.get("project_type") == "construction":
+                d = proj.get("data") or {}
+                pi = d.get("plot_index")
+                bt = d.get("building_type", "")
+                if pi:
+                    result[pi] = bt
+        return result
 
     # -------------------------------------------------------------------------
     # Embed
@@ -65,7 +219,33 @@ class SettlementDashboardView(SettlementBaseView):
             for b in self.settlement.buildings
             if b.plot_index is not None
         }
-        grid = render_grid(developed_set, building_by_plot)
+        # Update caches with any freshly-supplied data so child-view returns
+        # (which call build_embed with no args) always show the latest values.
+        if turns_data is not None:
+            self._cached_turns_data = turns_data
+        if zeal_data is not None:
+            self._cached_zeal_data = zeal_data
+        if active_events is not None:
+            self._cached_active_events = active_events
+        if pending_deal is not None:
+            self._cached_pending_deal = pending_deal
+
+        # Use supplied values, falling back to cached ones
+        turns_data = turns_data if turns_data is not None else self._cached_turns_data
+        zeal_data = zeal_data if zeal_data is not None else self._cached_zeal_data
+        active_events = (
+            active_events if active_events is not None else self._cached_active_events
+        )
+        pending_deal = (
+            pending_deal if pending_deal is not None else self._cached_pending_deal
+        )
+
+        # Merge caller-supplied projects into self.projects if provided, then
+        # rebuild the select dropdown so it reflects the current construction state.
+        if projects is not None:
+            self.projects = projects
+            self._rebuild_ui()
+        grid = render_grid(developed_set, building_by_plot, self._pending_by_plot())
 
         workers_used = sum(b.workers_assigned for b in self.settlement.buildings)
         meta_cap = get_meta_slots(self.settlement.town_hall_tier)
@@ -77,11 +257,17 @@ class SettlementDashboardView(SettlementBaseView):
         dt_available = zeal // ZEAL_TO_DT
         zeal_leftover = zeal % ZEAL_TO_DT
 
+        name_str = self.player_name or "Master"
+        welcome = (
+            f"Welcome back, **{name_str}**. It's Day **{total_turns}**, "
+            f"and here's the current status of your Settlement…"
+        )
         embed = discord.Embed(
-            title=f"🏘️ Settlement — Day {total_turns}",
-            description=grid,
+            title="🏘️ Settlement",
+            description=f"{welcome}\n{grid}",
             color=discord.Color.dark_green(),
         )
+        embed.set_author(name="Head Maid Spritz", icon_url=MAID_SPRITZ_PORTRAIT)
 
         # Core stats row
         embed.add_field(
@@ -118,7 +304,7 @@ class SettlementDashboardView(SettlementBaseView):
         # Zeal / DT economy
         embed.add_field(
             name="🔥 Zeal",
-            value=f"{zeal:,}  ({dt_available} DT + {zeal_leftover} leftover)",
+            value=f"{zeal:,}",
             inline=True,
         )
         embed.add_field(
@@ -128,17 +314,24 @@ class SettlementDashboardView(SettlementBaseView):
         )
         embed.add_field(name="​", value="​", inline=True)  # spacer
 
-        # Active projects
-        if projects:
+        # Active projects — always use self.projects (live cache) so returning from
+        # child views doesn't blank this section.
+        if self.projects:
             proj_lines = []
-            for p in projects[:5]:
-                bar = "█" * p["invested_turns"] + "░" * max(0, p["required_turns"] - p["invested_turns"])
+            for p in self.projects[:5]:
+                bar = "█" * p["invested_turns"] + "░" * max(
+                    0, p["required_turns"] - p["invested_turns"]
+                )
                 pct = int(p["invested_turns"] / max(1, p["required_turns"]) * 100)
                 label = p.get("data", {}).get("building_type", p["project_type"])
-                proj_lines.append(f"🔨 {label.replace('_',' ').title()} — {pct}% `{bar[:10]}`")
-            if len(projects) > 5:
-                proj_lines.append(f"…+{len(projects)-5} more")
-            embed.add_field(name="🏗️ Active Projects", value="\n".join(proj_lines), inline=False)
+                proj_lines.append(
+                    f"🔨 {label.replace('_',' ').title()} — {pct}% `{bar[:10]}`"
+                )
+            if len(self.projects) > 5:
+                proj_lines.append(f"…+{len(self.projects)-5} more")
+            embed.add_field(
+                name="🏗️ Active Projects", value="\n".join(proj_lines), inline=False
+            )
 
         # Active events
         if active_events:
@@ -146,12 +339,33 @@ class SettlementDashboardView(SettlementBaseView):
             for ev in active_events[:4]:
                 ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
                 name = ev_def.get("name", ev["event_key"])
+                desc = ev_def.get("description", "")
+                # Substitute banded values and target building into the description.
+                # Use a safe fallback dict so missing keys (e.g. old events from before
+                # the rework) render as "?" rather than leaving the raw placeholder.
+                ev_data_fmt = ev.get("data") or {}
+
+                class _Fmt(dict):
+                    def __missing__(self, key): return "?"
+
+                try:
+                    desc = desc.format_map(_Fmt(ev_data_fmt))
+                except Exception:
+                    pass
                 if ev["event_type"] == "upcoming":
-                    ev_lines.append(f"⚠️ {name} — in **{ev['turns_until']}** turn(s)")
+                    ev_lines.append(
+                        f"⚠️ **{name}** — arriving in **{ev['turns_until']}** turn(s)\n"
+                        f"-# {desc}"
+                    )
                 elif ev["event_type"] == "ongoing":
-                    ev_lines.append(f"✨ {name} — **{ev['turns_remaining']}** turn(s) left")
+                    ev_lines.append(
+                        f"✨ **{name}** — **{ev['turns_remaining']}** turn(s) remaining\n"
+                        f"-# {desc}"
+                    )
             if ev_lines:
-                embed.add_field(name="📅 Active Events", value="\n".join(ev_lines), inline=False)
+                embed.add_field(
+                    name="📅 Active Events", value="\n".join(ev_lines), inline=False
+                )
 
         # Pending Black Market deal
         if pending_deal:
@@ -169,7 +383,9 @@ class SettlementDashboardView(SettlementBaseView):
                     lines.append(f"✅ {p.get('label', 'Project')} completed!")
             if turn_summary.get("deal_completed"):
                 lines.append("🎁 **Black Market deal returned!** Check your inventory.")
-                for l in (turn_summary.get("deal_rewards") or {}).get("summary_lines", [])[:6]:
+                for l in (turn_summary.get("deal_rewards") or {}).get(
+                    "summary_lines", []
+                )[:6]:
                     lines.append(f"  {l}")
             if turn_summary.get("events_fired"):
                 for e in turn_summary["events_fired"]:
@@ -178,11 +394,22 @@ class SettlementDashboardView(SettlementBaseView):
                 for e in turn_summary["events_expired"]:
                     lines.append(f"⏹️ Event ended: {e}")
             if turn_summary.get("workers_from_nursery", 0) > 0:
-                lines.append(f"👶 Nursery produced {turn_summary['workers_from_nursery']} worker(s).")
+                lines.append(
+                    f"👶 Nursery produced {turn_summary['workers_from_nursery']} worker(s)."
+                )
             if turn_summary.get("idlem_from_foundry", 0) > 0:
-                lines.append(f"⚗️ Foundry produced {turn_summary['idlem_from_foundry']} Idlem.")
-            if turn_summary.get("passive_zeal_added", 0) > 0:
-                lines.append(f"🔥 +{turn_summary['passive_zeal_added']} passive Zeal added.")
+                lines.append(
+                    f"⚗️ Foundry produced {turn_summary['idlem_from_foundry']} Idlem."
+                )
+            dt_res = turn_summary.get("dt_resources") or {}
+            if dt_res:
+                res_parts = []
+                for k, v in dt_res.items():
+                    if v > 0:
+                        label = k.replace("_", " ").title()
+                        res_parts.append(f"+{v:,} {label}")
+                if res_parts:
+                    lines.append("🏭 Buildings produced: " + ", ".join(res_parts[:6]))
             if lines:
                 embed.add_field(
                     name=f"📜 Turn {total_turns} Summary",
@@ -206,12 +433,14 @@ class SettlementDashboardView(SettlementBaseView):
             if b.plot_index is not None
         }
         developed_set = {p.plot_index for p in self.plots if p.is_developed}
+        pending_map = self._pending_by_plot()
 
         # --- Row 0: plot select (all 20 plots) ---
         options: list[SelectOption] = []
         for plot_num in range(1, 21):
             is_dev = plot_num in developed_set
             b = building_by_plot.get(plot_num)
+            pending_bt = pending_map.get(plot_num)
 
             if not is_dev:
                 options.append(
@@ -220,6 +449,15 @@ class SettlementDashboardView(SettlementBaseView):
                         value=str(plot_num),
                         description="Develop to unlock a terrain bonus",
                         emoji="🔒",
+                    )
+                )
+            elif b is None and pending_bt:
+                options.append(
+                    SelectOption(
+                        label=f"Plot {plot_num:02d} — 🏗️ Under Construction",
+                        value=str(plot_num),
+                        description=f"Building: {pending_bt.replace('_', ' ').title()}",
+                        emoji="🏗️",
                     )
                 )
             elif b is None:
@@ -234,7 +472,9 @@ class SettlementDashboardView(SettlementBaseView):
             else:
                 # Determine whether this building type accepts any workers at all
                 if b.is_meta:
-                    _max_w = META_BUILDINGS.get(b.building_type, {}).get("max_workers", -1)
+                    _max_w = META_BUILDINGS.get(b.building_type, {}).get(
+                        "max_workers", -1
+                    )
                     _needs_workers = _max_w != 0
                 else:
                     _needs_workers = True
@@ -243,7 +483,9 @@ class SettlementDashboardView(SettlementBaseView):
                     status_emoji = "⚫"
                     worker_desc = "Special trading post"
                 elif not _needs_workers:
-                    status_emoji = "🔵"   # passive/always-on — distinct from active 🟢 / idle 🔴
+                    status_emoji = (
+                        "🔵"  # passive/always-on — distinct from active 🟢 / idle 🔴
+                    )
                     worker_desc = "Passive — always active"
                 elif b.workers_assigned > 0:
                     status_emoji = "🟢"
@@ -319,12 +561,12 @@ class SettlementDashboardView(SettlementBaseView):
         self.add_item(research_btn)
 
         guide_btn = ui.Button(
-            label="Guide",
+            label="Building List",
             style=ButtonStyle.secondary,
             emoji="📖",
             row=2,
         )
-        guide_btn.callback = self.show_guide
+        guide_btn.callback = self.show_building_list
         self.add_item(guide_btn)
 
         maid_btn = ui.Button(
@@ -371,6 +613,8 @@ class SettlementDashboardView(SettlementBaseView):
 
         from core.settlement.views.plot_detail import PlotDetailView
 
+        pending_construction = self._pending_by_plot().get(plot_num)
+
         view = PlotDetailView(
             bot=self.bot,
             user_id=self.user_id,
@@ -378,6 +622,7 @@ class SettlementDashboardView(SettlementBaseView):
             building=building,
             parent=self,
             adj_bonus=adj_bonus,
+            pending_construction=pending_construction,
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
@@ -385,22 +630,59 @@ class SettlementDashboardView(SettlementBaseView):
     # Button callbacks
     # -------------------------------------------------------------------------
 
-    async def show_guide(self, interaction: Interaction):
-        embed = discord.Embed(title="📖 Building Guide", color=discord.Color.blue())
-        for btype, info in BUILDING_INFO.items():
-            embed.add_field(
-                name=btype.replace("_", " ").title(),
-                value=info,
-                inline=False,
-            )
+    async def show_building_list(self, interaction: Interaction):
+        _LEGACY = {"celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine", "corruption_shrine"}
+        _REGULAR = [
+            ("🪵 Logging Camp",    "Generator · Timber · scales with tier & workers"),
+            ("🪨 Quarry",          "Generator · Stone · scales with tier & workers"),
+            ("🔥 Foundry",         "Converter · Ore → Bars · T1 Iron → T5 Idea"),
+            ("🌲 Sawmill",         "Converter · Logs → Planks · T1 Oak → T5 Idea"),
+            ("🦴 Reliquary",       "Converter · Bones → Essences · T1 Dehydrated → T5 Titanium"),
+            ("💰 Market",          "Generator · Gold · scales with tier & workers"),
+            ("⚔️ Barracks",        "Passive · +% Attack & Defence in combat"),
+            ("⛪ Temple",           "Passive · +% Propagate follower gain"),
+            ("💊 Apothecary",      "Passive · +Flat HP restored per potion use"),
+            ("🌑 Black Market",    "Special · Submit bundles for loot · invest Idlem to improve"),
+            ("🐾 Companion Ranch", "Generator · Companion XP · distributed on collect"),
+            ("🥚 Hatchery",        "Special · Incubates eggs for Hematurgy drops · Lv50"),
+            ("🏕️ War Camp",        "Generator · Combat Stamina · capped at 10"),
+            ("👶 Nursery",         "Project Building · Workers per DT · scales with tier"),
+            ("⚗️ Idlem Foundry",   "Project Building · Idlem per DT · powers BM passive tree"),
+            ("🔮 Uber Shrine",     "Passive · Houses all 5 shrine statues for sigil drops"),
+        ]
+        _META = [
+            ("🏠 Servant's Quarters", "Meta · +2% generator output per 10 workers to adjacent generators (cap +20%)"),
+            ("📦 Supply Depot",        "Meta · +15% converter effectiveness to adjacent converters"),
+            ("⛪ Grand Cathedral",      "Meta · Doubles worker cap for adjacent shrine buildings"),
+            ("🏯 Watchtower",           "Meta · Global +1%×tier worker cap on all regular buildings (no workers needed)"),
+            ("🏗️ Foreman's Post",       "Meta · +25% output to all adjacent buildings"),
+            ("🌸 Shrine Garden",        "Meta · +15% effectiveness to adjacent shrines"),
+            ("⛺ Encampment",           "Meta · +0.5 stamina/hr per 100 workers to adjacent War Camps"),
+            ("💊 Apothecary Annex",     "Meta · +4% flat heal per 100 workers to adjacent Apothecary"),
+        ]
+        regular_lines = "\n".join(f"**{n}** — {d}" for n, d in _REGULAR)
+        meta_lines    = "\n".join(f"**{n}** — {d}" for n, d in _META)
+        embed = discord.Embed(
+            title="📖 Building List",
+            color=discord.Color.blue(),
+        )
+        embed.add_field(name="Regular Buildings", value=regular_lines, inline=False)
+        embed.add_field(name="Meta Buildings", value=meta_lines, inline=False)
+        embed.set_footer(text="Select a building in the dashboard for full details.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def open_town_hall(self, interaction: Interaction):
         dc_count = await self.bot.database.users.get_development_contracts(self.user_id)
-        dc_crafted_today = await self.bot.database.users.get_dc_crafted_today(self.user_id)
+        dc_crafted_today = await self.bot.database.users.get_dc_crafted_today(
+            self.user_id
+        )
         view = TownHallView(
-            self.bot, self.user_id, self.settlement, self,
-            dc_count=dc_count, dc_crafted_today=dc_crafted_today,
+            self.bot,
+            self.user_id,
+            self.settlement,
+            self,
+            dc_count=dc_count,
+            dc_crafted_today=dc_crafted_today,
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
@@ -420,33 +702,40 @@ class SettlementDashboardView(SettlementBaseView):
 
         # 1. Raw inventory for converter limiting
         mining = await self.bot.database.skills.get_data(uid, sid, "mining")
-        wood   = await self.bot.database.skills.get_data(uid, sid, "woodcutting")
-        fish   = await self.bot.database.skills.get_data(uid, sid, "fishing")
+        wood = await self.bot.database.skills.get_data(uid, sid, "woodcutting")
+        fish = await self.bot.database.skills.get_data(uid, sid, "fishing")
 
         # Artisan Mastery refining bonuses (Synergy branch)
         mastery_row = await self.bot.database.skills.get_mastery(uid, sid)
         refining_bonus = 0.0
         if mastery_row:
             from core.skills.mastery import has_master_quarry, has_seasoned_timber
+
             if has_master_quarry(mastery_row):
                 refining_bonus += 0.10
             if has_seasoned_timber(mastery_row):
                 refining_bonus += 0.10
 
         raw_inv = {
-            "iron":              mining[3], "coal":          mining[4],
-            "gold":              mining[5], "platinum":      mining[6],
-            "idea":              mining[7],
-            "oak_logs":          wood[3],   "willow_logs":   wood[4],
-            "mahogany_logs":     wood[5],   "magic_logs":    wood[6],
-            "idea_logs":         wood[7],
-            "desiccated_bones":  fish[3],   "regular_bones": fish[4],
-            "sturdy_bones":      fish[5],   "reinforced_bones": fish[6],
-            "titanium_bones":    fish[7],
+            "iron": mining[3],
+            "coal": mining[4],
+            "gold": mining[5],
+            "platinum": mining[6],
+            "idea": mining[7],
+            "oak_logs": wood[3],
+            "willow_logs": wood[4],
+            "mahogany_logs": wood[5],
+            "magic_logs": wood[6],
+            "idea_logs": wood[7],
+            "desiccated_bones": fish[3],
+            "regular_bones": fish[4],
+            "sturdy_bones": fish[5],
+            "reinforced_bones": fish[6],
+            "titanium_bones": fish[7],
         }
 
         # 2. Time elapsed
-        now  = datetime.now()
+        now = datetime.now()
         last = datetime.fromisoformat(self.settlement.last_collection_time)
         hours = (now - last).total_seconds() / 3600
 
@@ -464,9 +753,24 @@ class SettlementDashboardView(SettlementBaseView):
         # 4. Active event production bonuses
         _active_evs = await self.bot.database.settlement.get_active_events(uid, sid)
         _event_gen_bonus = 0.0
+        _event_conv_bonus = 0.0
+        _event_market_gold_bonus = 0.0
         for _ev in _active_evs:
             _ev_def = SETTLEMENT_EVENTS.get(_ev.get("event_key", ""), {})
-            _event_gen_bonus += _ev_def.get("effects", {}).get("generator_bonus", 0.0)
+            _ev_data = _ev.get("data", {})
+            _effs = _ev_def.get("effects", {})
+
+            def _rb(v):
+                if v == "band": return _ev_data.get("band", 0.0)
+                if v == "neg_band": return -_ev_data.get("band", 0.0)
+                return v if isinstance(v, (int, float)) else 0.0
+
+            if "generator_bonus" in _effs:
+                _event_gen_bonus += _rb(_effs["generator_bonus"])
+            if "converter_bonus" in _effs:
+                _event_conv_bonus += _rb(_effs["converter_bonus"])
+            if "market_gold_bonus" in _effs:
+                _event_market_gold_bonus += _rb(_effs["market_gold_bonus"])
 
         # 5. Per-building production
         total_changes: dict[str, float] = {}
@@ -487,6 +791,7 @@ class SettlementDashboardView(SettlementBaseView):
                 adj_war_camp_rate=adj.get("war_camp_rate", 0.0),
                 mastery_converter_output_mult=refining_bonus,
                 event_generator_bonus=_event_gen_bonus,
+                event_converter_bonus=_event_conv_bonus,
             )
             for k, v in changes.items():
                 total_changes[k] = total_changes.get(k, 0) + v
@@ -508,20 +813,28 @@ class SettlementDashboardView(SettlementBaseView):
         cookie_xp = 0
         if "companion_cookie" in total_changes:
             cookie_xp = int(total_changes.pop("companion_cookie"))
-            display_changes["Companion XP"] = display_changes.pop("companion_cookie", cookie_xp)
+            display_changes["Companion XP"] = display_changes.pop(
+                "companion_cookie", cookie_xp
+            )
 
         # War Camp stamina
         war_camp_stamina = 0
         if "war_camp_stamina" in total_changes:
             # Cap at 10 and convert to int — war camp never exceeds the normal stamina cap
-            war_camp_stamina = min(10, int(float(total_changes.pop("war_camp_stamina"))))
+            war_camp_stamina = min(
+                10, int(float(total_changes.pop("war_camp_stamina")))
+            )
             display_changes.pop("war_camp_stamina", None)
 
-        # Market gold
+        # Market gold (apply event bonus/penalty after extraction)
         market_gold = 0
         if "market_gold" in total_changes:
             market_gold = int(total_changes.pop("market_gold"))
-            display_changes["Market Gold"] = display_changes.pop("market_gold", market_gold)
+            if _event_market_gold_bonus:
+                market_gold = max(0, int(market_gold * (1 + _event_market_gold_bonus)))
+            display_changes["Market Gold"] = display_changes.pop(
+                "market_gold", market_gold
+            )
 
         # 7. Commit to DB
         await self.bot.database.settlement.commit_production(uid, sid, total_changes)
@@ -570,7 +883,7 @@ class SettlementDashboardView(SettlementBaseView):
 
         # 8. Update local state
         self.settlement.timber += int(display_changes.get("timber", 0))
-        self.settlement.stone  += int(display_changes.get("stone", 0))
+        self.settlement.stone += int(display_changes.get("stone", 0))
         self.settlement.last_collection_time = now.isoformat()
 
         # 9. Rebuild UI and respond
@@ -619,6 +932,7 @@ class SettlementDashboardView(SettlementBaseView):
             zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
             zeal = zeal_data.get("settlement_zeal", 0)
             from core.settlement.constants import ZEAL_TO_DT
+
             if zeal < ZEAL_TO_DT:
                 await interaction.followup.send(
                     f"You need **{ZEAL_TO_DT} Zeal** to advance a turn. "
@@ -636,11 +950,19 @@ class SettlementDashboardView(SettlementBaseView):
             )
 
             # Reload fresh data
-            self.settlement = await self.bot.database.settlement.get_settlement(uid, sid)
-            self.plots = await self.bot.database.plots.get_plots(uid, sid)
+            self.settlement = await self.bot.database.settlement.get_settlement(
+                uid, sid
+            )
+            _plot_rows = await self.bot.database.plots.get_plots(uid, sid)
+            self.plots = [
+                Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
+                for r in _plot_rows
+            ]
             turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
             zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
-            active_events = await self.bot.database.settlement.get_active_events(uid, sid)
+            active_events = await self.bot.database.settlement.get_active_events(
+                uid, sid
+            )
             projects = await self.bot.database.settlement.get_projects(uid, sid)
             pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
 
@@ -671,31 +993,55 @@ class SettlementDashboardView(SettlementBaseView):
             turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
             pending = turns_data.get("pending_zeal", 0)
 
-            # Also add time-based passive generation since last turn
+            # Add time-based passive generation since last Zeal gather (tracked
+            # separately from resource collection so the two timers don't interfere).
             from core.settlement.turn_engine import passive_zeal_for_period
-            if self.settlement.last_collection_time:
+
+            gather_ts = (
+                self.settlement.last_zeal_gather_time
+                or self.settlement.last_collection_time
+            )
+            if gather_ts:
                 try:
-                    last = datetime.fromisoformat(self.settlement.last_collection_time)
+                    last = datetime.fromisoformat(gather_ts)
                     hours = (datetime.now() - last).total_seconds() / 3600
-                    extra = passive_zeal_for_period(hours, self.settlement.town_hall_tier)
+                    extra = passive_zeal_for_period(
+                        hours, self.settlement.town_hall_tier
+                    )
                     # Cap at 12h worth so passive doesn't pile up forever
-                    extra = min(extra, passive_zeal_for_period(12, self.settlement.town_hall_tier))
+                    extra = min(
+                        extra,
+                        passive_zeal_for_period(12, self.settlement.town_hall_tier),
+                    )
                     if extra > 0:
-                        await self.bot.database.settlement.add_pending_zeal(uid, sid, extra)
+                        await self.bot.database.settlement.add_pending_zeal(
+                            uid, sid, extra
+                        )
                 except Exception:
                     extra = 0
 
-            collected = await self.bot.database.settlement.collect_pending_zeal(uid, sid)
+            collected = await self.bot.database.settlement.collect_pending_zeal(
+                uid, sid
+            )
+
+            # Stamp the gather time NOW so repeated clicks don't re-add time-based Zeal
+            new_ts = await self.bot.database.settlement.update_zeal_gather_time(
+                uid, sid
+            )
+            self.settlement.last_zeal_gather_time = new_ts
 
             if collected <= 0:
                 await interaction.followup.send(
-                    "No passive Zeal has accumulated yet. Come back later!", ephemeral=True
+                    "No passive Zeal has accumulated yet. Come back later!",
+                    ephemeral=True,
                 )
                 return
 
             zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
             turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
-            active_events = await self.bot.database.settlement.get_active_events(uid, sid)
+            active_events = await self.bot.database.settlement.get_active_events(
+                uid, sid
+            )
             projects = await self.bot.database.settlement.get_projects(uid, sid)
             pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
 
@@ -717,28 +1063,11 @@ class SettlementDashboardView(SettlementBaseView):
             self._processing = False
 
     async def ask_the_maid(self, interaction: Interaction):
-        """Shows contextual help from The Maid NPC."""
-        embed = discord.Embed(
-            title="🎀 The Maid",
-            description=(
-                "Good day. Allow me to explain what's happening here.\n\n"
-                "**Development Turns** are your settlement's progress unit — each costs "
-                f"**{ZEAL_TO_DT} Zeal** to advance. Zeal comes from combat, quests, and "
-                "passive generation over time.\n\n"
-                "**Projects** queue construction, upgrades, and research to complete automatically "
-                "over several turns — simply click **Next Turn** to advance them.\n\n"
-                "**The Black Market** now accepts bundles of resources in exchange for "
-                "curated loot packages processed over Development Turns.\n\n"
-                "**The Nursery** and **Idlem Foundry** also produce resources per turn "
-                "when their projects are active.\n\n"
-                "Passive Zeal trickles in over time — use **Gather Zeal** to collect it. "
-                "You may also receive Zeal from events and milestones.\n\n"
-                "*Shall I prepare the next turn, or is there something else you need?*"
-            ),
-            color=discord.Color.from_rgb(255, 220, 180),
+        """Launches the multi-page settlement tutorial narrated by Head Maid Spritz."""
+        view = _MaidTutorialView(self.bot, parent=self)
+        await interaction.response.send_message(
+            embed=view.build_embed(), view=view, ephemeral=True
         )
-        embed.set_thumbnail(url=SETTLEMENT_MAID)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # -------------------------------------------------------------------------
     # Internal helpers

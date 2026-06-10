@@ -379,6 +379,7 @@ CREATE TABLE IF NOT EXISTS settlements (
     timber INTEGER DEFAULT 0,
     stone INTEGER DEFAULT 0,
     last_collection_time TEXT,
+    last_zeal_gather_time TEXT DEFAULT NULL,
     total_development_turns INTEGER NOT NULL DEFAULT 0,
     pending_zeal INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
@@ -851,6 +852,7 @@ CREATE TABLE IF NOT EXISTS bm_passive_tree (
 -- ALTER TABLE users ADD COLUMN last_zeal_reset TEXT DEFAULT NULL;
 -- ALTER TABLE settlements ADD COLUMN total_development_turns INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE settlements ADD COLUMN pending_zeal INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE settlements ADD COLUMN last_zeal_gather_time TEXT DEFAULT NULL;
 
 -- Alchemy Distillation System (new multi-step powerful potion passive crafting, Lost Ark Sage Elixir inspired):
 -- New table for in-progress 9-step distillations (created automatically via CREATE IF NOT EXISTS above for all DBs, including old ones on next startup).

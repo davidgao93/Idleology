@@ -25,9 +25,9 @@ class SettlementCog(commands.Cog, name="settlement"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        if existing_user["level"] < 20:
+        if existing_user["level"] < 10:
             await interaction.response.send_message(
-                "Settlements can only be founded by those who have proven themselves at **Level 20**.",
+                "Settlements can only be founded by those who have reached **Level 10**.",
                 ephemeral=True,
             )
             return
@@ -64,8 +64,13 @@ class SettlementCog(commands.Cog, name="settlement"):
                 Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
                 for r in plot_rows
             ]
+            player_name = (
+                existing_user.get("prestige_display_name")
+                or interaction.user.display_name
+            )
             view = SettlementDashboardView(
-                self.bot, user_id, server_id, settlement, total_followers, plots=plots
+                self.bot, user_id, server_id, settlement, total_followers,
+                plots=plots, player_name=player_name,
             )
             turns_data = await self.bot.database.settlement.get_turns_data(
                 user_id, server_id
@@ -122,6 +127,12 @@ class SettlementCog(commands.Cog, name="settlement"):
         hatchery_building = next(
             (b for b in settlement.buildings if b.building_type == "hatchery"), None
         )
+
+        if user_data["level"] < 50:
+            return await interaction.response.send_message(
+                "The **Hatchery** requires **Level 50** to access.",
+                ephemeral=True,
+            )
 
         if hatchery_building is None:
             return await interaction.response.send_message(

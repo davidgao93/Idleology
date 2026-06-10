@@ -9,7 +9,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.images import AMARA_PORTRAIT, QUEST_BOARD
+from core.images import AMARA_AUTHOR, QUEST_BOARD
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, TOKEN_SHOP_ITEMS
 from core.quests.mechanics import (
     BOARD_COOLDOWN_HOURS,
@@ -115,8 +115,12 @@ class QuestBoardView(BaseView):
             return self._build_empty_embed(tokens)
 
     def _build_board_embed(self, tokens: int) -> discord.Embed:
-        embed = discord.Embed(title="📋 Quest Board", color=_BOARD_COLOR)
-        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_PORTRAIT)
+        embed = discord.Embed(
+            title="The Quest Board",
+            description="There you are. The board's fresh — a few contracts worth risking your neck over. Choose wisely, adventurer.",
+            color=_BOARD_COLOR,
+        )
+        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
         embed.set_thumbnail(url=QUEST_BOARD)
 
         for slot_row in self.board:
@@ -169,8 +173,12 @@ class QuestBoardView(BaseView):
         return embed
 
     def _build_contracts_embed(self, tokens: int) -> discord.Embed:
-        embed = discord.Embed(title="📋 Quest Board — Active Contracts", color=_BOARD_COLOR)
-        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_PORTRAIT)
+        embed = discord.Embed(
+            title="Active Contracts",
+            description="Still breathing? Good. Here's what you've got on the fire right now. Don't let me down.",
+            color=_BOARD_COLOR,
+        )
+        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
         embed.set_thumbnail(url=QUEST_BOARD)
 
         active = [c for c in self.contracts if not c["turned_in"]]
@@ -226,11 +234,11 @@ class QuestBoardView(BaseView):
     def _build_empty_embed(self, tokens: int) -> discord.Embed:
         rem = self._cooldown_remaining()
         embed = discord.Embed(
-            title="📋 Quest Board — Empty",
-            description=f"The board has been cleared. Check back in **{_fmt_td(rem)}**.",
+            title="Board's Clear",
+            description=f"Cleaned the board out, did you? Come back in **{_fmt_td(rem)}** — I'll have fresh work for you then.",
             color=_BOARD_COLOR,
         )
-        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_PORTRAIT)
+        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
         embed.set_thumbnail(url=QUEST_BOARD)
         embed.set_footer(text=f"Quest Tokens: {tokens}")
         return embed

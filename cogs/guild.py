@@ -5,7 +5,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.character.tutorial import TutorialView
-from core.images import AMARA_PORTRAIT
+from core.images import AMARA_AUTHOR
 from core.character.views import RegistrationView, UnregisterView
 from core.images import GUILD_UNREGISTER
 
@@ -46,7 +46,8 @@ class Guild(commands.Cog, name="adventurer's guild"):
             ),
             color=0x3D2B1F,
         )
-        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_PORTRAIT)
+        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
+        embed.set_thumbnail(url=AMARA_PORTRAIT)
         embed.set_image(url=AMARA_PORTRAIT)
 
         view = RegistrationView(self.bot, user_id, name)

@@ -51,6 +51,10 @@ def process_heal(player: Player, monster=None) -> str:
         p["passive_type"]: p["passive_value"] for p in player.potion_passives
     }
 
+    potent = potion_passives_by_type.get("potent_brew", 0)
+    if potent:
+        heal_pct += potent / 100.0
+
     heal_amount = int((player.total_max_hp * heal_pct) + random.randint(1, 6))
 
     if player.apothecary_workers > 0:
@@ -119,7 +123,6 @@ def process_heal(player: Player, monster=None) -> str:
     # ------------------------------------------------------------------
     panacea = potion_passives_by_type.get("panacea", 0)
     if panacea:
-        import random
         if random.random() < (panacea / 100.0):
             player.alchemy_ailment_immunity_turns = max(
                 getattr(player, "alchemy_ailment_immunity_turns", 0), int(panacea / 20) + 1
@@ -170,10 +173,7 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_atk_boost_pct = max(getattr(player, "alchemy_atk_boost_pct", 0.0), quick / 100.0)
         msg += f"\n⚡ **Quickening Draught** — guaranteed next hit and speed boost!"
 
-    # Converted legacy (now using new keys, with similar but updated effects)
-    potent = potion_passives_by_type.get("potent_brew", 0)
     if potent:
-        heal_pct += potent / 100.0
         msg += f"\n🍺 **Potent Brew** — heal increased by additional {potent:.0f}% of max HP!"
 
     venom_inf = potion_passives_by_type.get("venomous_infusion", 0)
@@ -489,14 +489,6 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             f"({player.alchemy_linger_turns - 1} turn{'s' if player.alchemy_linger_turns - 1 != 1 else ''} left)"
         )
         player.alchemy_linger_turns -= 1
-
-    # Decrement distilled powerful passive turns on player turn
-    if getattr(player, "alchemy_shield_turns", 0) > 0:
-        player.alchemy_shield_turns -= 1
-        if player.alchemy_shield_turns <= 0:
-            player.alchemy_shield_hp = 0
-    if getattr(player, "alchemy_ailment_immunity_turns", 0) > 0:
-        player.alchemy_ailment_immunity_turns -= 1
 
     # --- Hematurgy: Haemorrhage bleed tick (before attack) ---
     if player.hematurgy_passives:

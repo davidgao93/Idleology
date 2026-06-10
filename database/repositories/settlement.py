@@ -12,7 +12,7 @@ class SettlementRepository:
 
     async def get_settlement(self, user_id: str, server_id: str) -> Settlement:
         cursor = await self.connection.execute(
-            "SELECT user_id, server_id, town_hall_tier, building_slots, timber, stone, last_collection_time FROM settlements WHERE user_id = ? AND server_id = ?",
+            "SELECT user_id, server_id, town_hall_tier, building_slots, timber, stone, last_collection_time, last_zeal_gather_time FROM settlements WHERE user_id = ? AND server_id = ?",
             (user_id, server_id),
         )
         row = await cursor.fetchone()
@@ -35,6 +35,7 @@ class SettlementRepository:
             timber=row[4],
             stone=row[5],
             last_collection_time=row[6],
+            last_zeal_gather_time=row[7],
         )
 
         b_cursor = await self.connection.execute(
@@ -97,6 +98,18 @@ class SettlementRepository:
             (current_time, user_id, server_id),
         )
         await self.connection.commit()
+
+    async def update_zeal_gather_time(self, user_id: str, server_id: str) -> str:
+        """Stamps last_zeal_gather_time to now; returns the ISO timestamp."""
+        from datetime import datetime
+
+        ts = datetime.now().isoformat()
+        await self.connection.execute(
+            "UPDATE settlements SET last_zeal_gather_time = ? WHERE user_id = ? AND server_id = ?",
+            (ts, user_id, server_id),
+        )
+        await self.connection.commit()
+        return ts
 
     async def commit_production(self, user_id: str, server_id: str, changes: dict):
         """
@@ -469,8 +482,8 @@ class SettlementRepository:
             pass
         return _default
 
-    async def add_zeal(self, user_id: str, amount: int) -> int:
-        """Adds Zeal; returns new total."""
+    async def add_zeal(self, user_id: str, amount: int) -> None:
+        """Adds Zeal to the user's settlement_zeal and zeal_earned_today totals."""
         try:
             await self.connection.execute(
                 "UPDATE users SET settlement_zeal = settlement_zeal + ?, "
@@ -478,13 +491,8 @@ class SettlementRepository:
                 (amount, amount, user_id),
             )
             await self.connection.commit()
-            cursor = await self.connection.execute(
-                "SELECT settlement_zeal FROM users WHERE user_id = ?", (user_id,)
-            )
-            row = await cursor.fetchone()
-            return row[0] if row else 0
         except Exception:
-            return 0
+            pass
 
     async def spend_zeal(self, user_id: str, amount: int) -> bool:
         """Deducts Zeal if sufficient; returns True on success."""

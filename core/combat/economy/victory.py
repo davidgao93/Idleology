@@ -440,7 +440,7 @@ async def apply_victory_rewards(
 
     # Settlement Zeal (10 per combat win, subject to daily cap)
     try:
-        from core.settlement.constants import ZEAL_PER_COMBAT
+        from core.settlement.constants import ZEAL_DAILY_HARD_CAP, ZEAL_DAILY_SOFT_CAP, ZEAL_PER_COMBAT
         from core.settlement.turn_engine import compute_zeal_gain
         await bot.database.settlement.reset_daily_zeal_if_needed(user_id)
         zeal_data = await bot.database.settlement.get_zeal_data(user_id)
@@ -448,6 +448,13 @@ async def apply_victory_rewards(
         actual_zeal = compute_zeal_gain(ZEAL_PER_COMBAT, earned_today)
         if actual_zeal > 0:
             await bot.database.settlement.add_zeal(user_id, actual_zeal)
+            if earned_today >= ZEAL_DAILY_HARD_CAP:
+                zeal_note = "🔥 Settlement Zeal: capped for today"
+            elif earned_today >= ZEAL_DAILY_SOFT_CAP:
+                zeal_note = f"🔥 +{actual_zeal} Settlement Zeal *(halved — soft cap)*"
+            else:
+                zeal_note = f"🔥 +{actual_zeal} Settlement Zeal"
+            reward_data["msgs"].append(zeal_note)
     except Exception:
         pass  # Zeal is non-critical; never break combat on its failure
 

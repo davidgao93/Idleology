@@ -38,24 +38,19 @@ RESOURCE_DISPLAY_NAMES = {
 
 # Unified building info (used by dashboard, construction, and detail views)
 BUILDING_INFO = {
-    "logging_camp": "Generates Timber over time.",
-    "quarry": "Generates Stone over time.",
-    "foundry": "Converts Ore into Ingots. Each tier unlocks the next ore type (T1→Iron, T2→Coal, T3→Gold, T4→Platinum, T5→Idea). All unlocked tiers are processed simultaneously; higher tiers convert at a slower rate.",
-    "sawmill": "Converts Logs into Planks. Each tier unlocks the next log type (T1→Oak, T2→Willow, T3→Mahogany, T4→Magic, T5→Idea). All unlocked tiers are processed simultaneously; higher tiers convert at a slower rate.",
-    "reliquary": "Converts Bones into Essence. Each tier unlocks the next bone type (T1→Desiccated, T2→Regular, T3→Sturdy, T4→Reinforced, T5→Titanium). All unlocked tiers are processed simultaneously; higher tiers convert at a slower rate.",
-    "market": "Generates Passive Gold.",
-    "barracks": "Passive: +1% Atk/Def per 100 Workers.",
-    "temple": "Passive: +5% Propagate follower gain per 100 Workers.",
-    "apothecary": "Passive: Increases Potion Healing (+20 flat HP per 100 Workers per potion use).",
-    "black_market": "Special: Trade various resources for mysterious caches.",
-    "companion_ranch": "Generator: Produces XP Cookies for pets.",
-    "hatchery": "Incubate monster eggs. Workers reduce incubation time (10% per 100 Workers).",
-    "celestial_shrine": "Passive: Increases chance to find Celestial Sigils from Aphrodite.",
-    "infernal_shrine": "Passive: Increases chance to find Infernal Sigils from Lucifer.",
-    "void_shrine":     "Passive: Increases chance to find Void Sigils from NEET.",
-    "twin_shrine": "Passive: Increases chance to find Gemini Sigils from the Gemini Twins.",
-    "corruption_shrine": "Passive: Increases chance to find bonus Corruption Sigils from Corrupted monsters.",
-    "war_camp": "Generates Combat Stamina over time. Collection is capped at **10 stamina** and never exceeds the normal maximum. (~10 per 24h at 100 workers; ~5h at 500 workers.)",
+    "logging_camp": "Generator: Produces **20 Timber/hr per 100 Workers** at T1, scaling with tier (×2 at T2, ×3 at T3, up to ×5 at T5). Raw timber feed for the Sawmill.",
+    "quarry": "Generator: Produces **20 Stone/hr per 100 Workers** at T1, scaling with tier (×2 at T2, up to ×5 at T5). Raw stone for construction and the Foundry.",
+    "foundry": "Converter: Processes ore into ingots. **100 conversions/hr per 100 Workers** at T1, scaling with tier. Tiers unlock ore grades: T1→Iron, T2→Coal, T3→Gold, T4→Platinum, T5→Idea. All unlocked tiers run simultaneously.",
+    "sawmill": "Converter: Processes logs into planks. **100 conversions/hr per 100 Workers** at T1, scaling with tier. Tiers unlock log grades: T1→Oak, T2→Willow, T3→Mahogany, T4→Magic, T5→Idea. All unlocked tiers run simultaneously.",
+    "reliquary": "Converter: Processes bones into essences. **100 conversions/hr per 100 Workers** at T1, scaling with tier. Tiers unlock bone grades: T1→Desiccated, T2→Regular, T3→Sturdy, T4→Reinforced, T5→Titanium. All unlocked tiers run simultaneously.",
+    "market": "Generator: Produces **5,000 Gold/hr per 100 Workers** at T1, scaling with tier (up to 25,000/hr at T5). Gold is collected alongside resources.",
+    "barracks": "Passive: Grants **+1% Attack and Defence per 100 Workers** (applied globally during combat). Scales with tier — higher tiers raise the worker cap, increasing the maximum bonus.",
+    "temple": "Passive: Grants **+5% Propagate follower gain per 100 Workers**. Scales with tier. Followers are required to staff all buildings, so this multiplies your workforce growth.",
+    "apothecary": "Passive: Each potion use heals an additional **+20 flat HP per 100 Workers**. Scales with tier. Stacks with all other healing bonuses.",
+    "black_market": "Special: Submit resource bundles as trade offers. Deals process over Development Turns and return curated loot. Invest Idlem into the passive tree to improve deal value, speed, and loot bias.",
+    "companion_ranch": "Generator: Produces **10 Companion XP/hr per 100 Workers** at T1, scaling with tier. XP is distributed across all active companions when you collect resources.",
+    "hatchery": "Special: Incubate monster eggs for Hematurgy blood drops. Workers reduce incubation time — **10% faster per 100 Workers**. Requires Level 50 to build.",
+    "war_camp": "Generator: Produces Combat Stamina passively. **~10 Stamina per 24h per 100 Workers** (does not scale with tier). Collected stamina is capped at 10 and never exceeds the normal maximum.",
 }
 
 # Construction costs (used by BuildConstructionView)
@@ -159,9 +154,9 @@ UPGRADE_MESSAGES = [
 # ---------------------------------------------------------------------------
 
 BUILDING_INFO.update({
-    "nursery": "Produces Workers over Development Turns. Each turn generates ~1–2 new workers for your workforce.",
-    "idlem_foundry": "Produces Idlem over Development Turns (~1–2 per turn). Idlem powers the Black Market passive tree.",
-    "uber_shrine": "Houses five shrines (Celestial, Infernal, Void, Twin, Corruption). Assign workers per shrine to boost sigil drop chances from each respective Uber boss.",
+    "nursery": "Project Building: Produces **~1–2 Workers per Development Turn**. Completed workers are added to your ideology's follower count. Higher tiers increase output per turn.",
+    "idlem_foundry": "Project Building: Produces **~1–2 Idlem per Development Turn**. Idlem is the currency for the Black Market passive tree — invest it to unlock better deal speeds, value, and loot biases.",
+    "uber_shrine": "Passive: Houses all five shrine statues (Celestial, Infernal, Void, Twin, Corruption) in one building. Allocate workers to each statue individually — each statue provides the same sigil drop boost as a standalone shrine. Higher tiers raise the total worker cap across all statues.",
 })
 
 CONSTRUCTION_COSTS.update({
@@ -188,8 +183,8 @@ ZEAL_TO_DT = 10            # 10 Zeal = 1 Development Turn
 ZEAL_DAILY_HARD_CAP = 800
 # Soft cap: after this much zeal earned today, gains are halved.
 ZEAL_DAILY_SOFT_CAP = 600
-# Passive zeal generated per hour per settlement (baseline; scales with TH tier).
-PASSIVE_ZEAL_PER_HOUR_BASE = 10   # 10/hr = 1 DT/hr at base
+# Passive zeal generated per hour per settlement (T1 = 5/hr, T7 ≈ 59/hr).
+PASSIVE_ZEAL_PER_HOUR_BASE = 5
 # Idlem produced per turn by the Idlem Foundry (before tier scaling).
 IDLEM_PER_TURN_BASE = 1
 # Workers produced per turn by the Nursery (before tier scaling).
@@ -467,26 +462,36 @@ BM_TREE_NODES: dict[str, dict] = {
 # ---------------------------------------------------------------------------
 # Settlement Events
 # ---------------------------------------------------------------------------
-# Each event: event_key → {name, type, description, trigger_turn (or 'recurring'),
-#   recurring_interval, duration_turns, effects, flavor_text}
+# Each event: event_key → {name, type, description, trigger_at, recurring_interval,
+#   effects, modifier_bands?, duration_bands?, requires_buildings?,
+#   targets_any_building?, targets_building_types?, advance_warning_turns?}
+#
+# Effects whose value is "band" are resolved at scheduling time by picking a
+# random entry from modifier_bands and storing the result in the event's data
+# JSON column.  "neg_band" means the band value is negated (penalty).
+# Duration is picked from duration_bands at scheduling time and stored as
+# data["duration"].
+# Crisis events store data["target_building"] and data["target_building_label"]
+# when targets_any_building or targets_building_types is set.
 SETTLEMENT_EVENTS: dict[str, dict] = {
-    # --- Opportunity events ---
+    # ── POSITIVE EVENTS ──────────────────────────────────────────────────────
+
     "merchant_caravan": {
         "name": "🐪 Merchant Caravan",
         "type": "ongoing",
-        "description": "A travelling caravan arrives offering excellent rates.",
-        "flavor": "Madame Vespera leans forward. 'Exceptional timing. My traders have overstocked.'",
-        "duration_turns": 5,
-        "effects": {"bm_value_bonus": 0.25},  # +25% BM offer value
-        "trigger_at": [15, 40, 80, 130, 190],  # cumulative turns
+        "description": "A merchant caravan is in town — Black Market offer values are {band_pct}% higher. Submit resource bundles now to get extra returns.",
+        "duration_bands": [4, 5, 6],
+        "effects": {"bm_value_bonus": "band"},
+        "modifier_bands": [0.15, 0.20, 0.25, 0.30, 0.35],
+        "requires_buildings": ["black_market"],
+        "trigger_at": [15, 40, 80, 130, 190],
         "recurring_interval": 50,
     },
     "inspiration_surge": {
         "name": "💡 Inspiration Surge",
         "type": "ongoing",
-        "description": "Your architects are inspired — construction DT costs halved.",
-        "flavor": "The Maid brings blueprints you barely remember drafting. 'You designed these in your sleep, it seems.'",
-        "duration_turns": 3,
+        "description": "Construction DT costs are halved. Queue up new builds or upgrades before this expires.",
+        "duration_bands": [2, 3, 4],
         "effects": {"construction_dt_halved": True},
         "trigger_at": [20, 60, 110, 170],
         "recurring_interval": 50,
@@ -494,41 +499,120 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
     "resource_windfall": {
         "name": "🌾 Resource Windfall",
         "type": "ongoing",
-        "description": "Your generators produce 50% more for the next few turns.",
-        "flavor": "'Something in the soil, perhaps,' the Maid muses. 'Or the stars. Either way, harvest while it lasts.'",
-        "duration_turns": 4,
-        "effects": {"generator_bonus": 0.50},
+        "description": "Favorable conditions boost all generator output by {band_pct}%. Your workers benefit automatically — no action needed.",
+        "duration_bands": [3, 4, 5],
+        "effects": {"generator_bonus": "band"},
+        "modifier_bands": [0.20, 0.30, 0.40, 0.50, 0.60],
+        "requires_buildings": ["logging_camp", "quarry", "market", "companion_ranch", "war_camp"],
         "trigger_at": [10, 35, 70, 120, 180],
         "recurring_interval": 45,
     },
     "zeal_rally": {
         "name": "🔥 Ideological Rally",
         "type": "instant",
-        "description": "Your followers erupt in fervor — gain 100 Zeal.",
-        "flavor": "Chants echo through the settlement. The Maid watches with approval.",
-        "duration_turns": 0,
-        "effects": {"grant_zeal": 100},
+        "description": "Your followers erupt in fervor — {band} Zeal granted immediately.",
+        "effects": {"grant_zeal": "band"},
+        "modifier_bands": [50, 75, 100, 125],
         "trigger_at": [5, 25, 55, 95, 145, 205],
         "recurring_interval": 60,
     },
     "worker_boom": {
         "name": "👶 Baby Boom",
         "type": "ongoing",
-        "description": "Population grows rapidly — Nursery output doubled for 5 turns.",
-        "flavor": "'An unusual number of cradles being built,' the Maid notes. 'Plan accordingly.'",
-        "duration_turns": 5,
-        "effects": {"nursery_mult": 2.0},
+        "description": "Population surges — Nursery produces {band}× output. Advance turns while it lasts to convert this into extra workers.",
+        "duration_bands": [4, 5, 6],
+        "effects": {"nursery_mult": "band"},
+        "modifier_bands": [1.5, 2.0, 2.5],
+        "requires_buildings": ["nursery"],
         "trigger_at": [30, 90, 160],
         "recurring_interval": 80,
     },
-    # --- Crisis events ---
+    "wandering_scholar": {
+        "name": "📚 Wandering Scholar",
+        "type": "instant",
+        "description": "A passing scholar leaves behind 1 Unidentified Blueprint. Open the Research panel to identify and apply it.",
+        "effects": {"grant_blueprints": 1},
+        "trigger_at": [18, 65, 130],
+        "recurring_interval": 70,
+    },
+    "idlem_surge": {
+        "name": "⚗️ Foundry Surge",
+        "type": "ongoing",
+        "description": "Ley line energy spikes — the Idlem Foundry runs at {band}× output. Spend Development Turns to stockpile Idlem for the Black Market tree.",
+        "duration_bands": [3, 4],
+        "effects": {"idlem_mult": "band"},
+        "modifier_bands": [1.5, 2.0],
+        "requires_buildings": ["idlem_foundry"],
+        "trigger_at": [45, 100, 175],
+        "recurring_interval": 70,
+    },
+    "artisan_week": {
+        "name": "⚙️ Artisan's Week",
+        "type": "ongoing",
+        "description": "Skilled craftspeople visit — converter buildings are {band_pct}% more efficient. Keep them stocked with raw materials.",
+        "duration_bands": [3, 4, 5],
+        "effects": {"converter_bonus": "band"},
+        "modifier_bands": [0.20, 0.30, 0.40],
+        "requires_buildings": ["foundry", "sawmill", "reliquary"],
+        "trigger_at": [28, 72, 135, 195],
+        "recurring_interval": 65,
+    },
+    "trade_boom": {
+        "name": "💰 Trade Boom",
+        "type": "ongoing",
+        "description": "Demand is high — Market gold output is {band_pct}% higher. Staff your Market fully to maximize returns.",
+        "duration_bands": [3, 4, 5],
+        "effects": {"market_gold_bonus": "band"},
+        "modifier_bands": [0.20, 0.30, 0.40, 0.50],
+        "requires_buildings": ["market"],
+        "trigger_at": [22, 58, 105, 162],
+        "recurring_interval": 55,
+    },
+
+    # ── NEGATIVE EVENTS ──────────────────────────────────────────────────────
+
+    "worker_fatigue": {
+        "name": "😴 Worker Fatigue",
+        "type": "ongoing",
+        "description": "Workers are exhausted — generator output is reduced by {band_pct}%. This will resolve on its own; no action required.",
+        "duration_bands": [3, 4, 5],
+        "effects": {"generator_bonus": "neg_band"},
+        "modifier_bands": [0.10, 0.15, 0.20, 0.25],
+        "requires_buildings": ["logging_camp", "quarry", "market", "companion_ranch", "war_camp"],
+        "trigger_at": [12, 38, 78, 128, 188],
+        "recurring_interval": 55,
+    },
+    "supply_disruption": {
+        "name": "📦 Supply Disruption",
+        "type": "ongoing",
+        "description": "Raw material shipments delayed — converter efficiency is reduced by {band_pct}%. No action required; this will resolve on its own.",
+        "duration_bands": [3, 4],
+        "effects": {"converter_bonus": "neg_band"},
+        "modifier_bands": [0.10, 0.15, 0.20, 0.25],
+        "requires_buildings": ["foundry", "sawmill", "reliquary"],
+        "trigger_at": [32, 82, 148],
+        "recurring_interval": 65,
+    },
+    "market_slump": {
+        "name": "📉 Market Slump",
+        "type": "ongoing",
+        "description": "Trade is slow — Market gold output is down {band_pct}%. Wait for it to pass.",
+        "duration_bands": [3, 4],
+        "effects": {"market_gold_bonus": "neg_band"},
+        "modifier_bands": [0.15, 0.25, 0.35],
+        "requires_buildings": ["market"],
+        "trigger_at": [42, 95, 165],
+        "recurring_interval": 70,
+    },
+
+    # ── CRISIS EVENTS ────────────────────────────────────────────────────────
+
     "bandit_raid": {
         "name": "⚔️ Bandit Raid",
         "type": "upcoming",
-        "description": "Raiders are spotted on the horizon — defend your settlement!",
-        "flavor": "'I suggest preparing your weapons,' the Maid says calmly, polishing silverware.",
-        "duration_turns": 0,
-        "effects": {"spawn_combat": "bandit_captain", "on_fail_disable": "market"},
+        "description": "Raiders are targeting your {target_building_label}. Defeat the Bandit Captain in /combat before the warning expires or the building will be disabled.",
+        "effects": {"spawn_combat": "bandit_captain", "on_fail_disable": "target_building"},
+        "targets_any_building": True,
         "trigger_at": [25, 75, 140, 220],
         "recurring_interval": 80,
         "advance_warning_turns": 3,
@@ -536,10 +620,9 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
     "plague_outbreak": {
         "name": "🦠 Plague Outbreak",
         "type": "upcoming",
-        "description": "Sickness spreads among workers — your Apothecary can contain it.",
-        "flavor": "'The healer's work is never done,' the Maid sighs, laying out potions.",
-        "duration_turns": 0,
-        "effects": {"spawn_combat": "plague_wraith", "on_fail": "lose_workers_20pct"},
+        "description": "Disease spreads through your workforce. Defeat the Plague Wraith in /combat before the warning expires or lose {band_pct}% of all workers.",
+        "effects": {"spawn_combat": "plague_wraith", "on_fail_lose_workers_pct": "band"},
+        "modifier_bands": [0.01, 0.03, 0.05, 0.07, 0.10],
         "trigger_at": [50, 120, 200],
         "recurring_interval": 90,
         "advance_warning_turns": 4,
@@ -547,34 +630,22 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
     "void_incursion": {
         "name": "🌑 Void Incursion",
         "type": "upcoming",
-        "description": "A void rift has opened near your settlement. Only void-touched warriors can close it.",
-        "flavor": "'The void does not knock,' the Maid says, drawing the curtains.",
-        "duration_turns": 0,
-        "effects": {"spawn_combat": "void_sentry", "on_fail_disable": "void_shrine"},
+        "description": "A void rift opens near your {target_building_label}. Defeat the Void Sentry in /combat before the warning expires or lose the building.",
+        "effects": {"spawn_combat": "void_sentry", "on_fail_disable": "target_building"},
+        "targets_building_types": ["uber_shrine", "void_shrine", "black_market", "companion_ranch", "reliquary"],
         "trigger_at": [100, 200],
         "recurring_interval": 120,
         "advance_warning_turns": 5,
     },
-    # --- Flavor / narrative ---
-    "wandering_scholar": {
-        "name": "📚 Wandering Scholar",
-        "type": "instant",
-        "description": "A scholar visits and shares wisdom — gain 3 Research Blueprints.",
-        "flavor": "'Knowledge freely given is doubly returned,' the Maid quotes, showing the visitor to the library.",
-        "duration_turns": 0,
-        "effects": {"grant_blueprints": 3},
-        "trigger_at": [18, 65, 130],
-        "recurring_interval": 70,
-    },
-    "idlem_surge": {
-        "name": "⚗️ Foundry Surge",
-        "type": "ongoing",
-        "description": "The Idlem Foundry runs at double capacity for 4 turns.",
-        "flavor": "'The ley lines are aligned,' the Maid explains. 'I wouldn't question it.'",
-        "duration_turns": 4,
-        "effects": {"idlem_mult": 2.0},
-        "trigger_at": [45, 100, 175],
-        "recurring_interval": 70,
+    "fire_hazard": {
+        "name": "🔥 Fire Hazard",
+        "type": "upcoming",
+        "description": "A fire breaks out near your {target_building_label}. Defeat the Ember Wraith in /combat before the warning expires or the building will be disabled.",
+        "effects": {"spawn_combat": "ember_wraith", "on_fail_disable": "target_building"},
+        "targets_building_types": ["logging_camp", "sawmill", "market", "apothecary", "barracks"],
+        "trigger_at": [35, 85, 150, 225],
+        "recurring_interval": 85,
+        "advance_warning_turns": 2,
     },
 }
 

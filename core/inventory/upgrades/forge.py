@@ -3,7 +3,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.combat.calc.calcs import fmt_weapon_passive
-from core.images import UPGRADE_FORGE
+from core.images import HARLAN_AUTHOR, UPGRADE_FORGE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.models import Weapon
@@ -31,10 +31,14 @@ class ForgeView(BaseUpgradeView):
 
         self.embed = discord.Embed(
             title=f"Forge {self.item.name}",
-            description=desc,
+            description=(
+                "Another blade that needs real work. Hand it over — I'll make it sing. "
+                "Costs are fair, results are better than fair."
+            ),
             color=discord.Color.green() if has_res else discord.Color.red(),
         )
-        self.embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_FORGE)
+        self.embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
+        self.embed.set_thumbnail(url=UPGRADE_FORGE)
 
         self.clear_items()
 
@@ -247,7 +251,8 @@ class ForgeView(BaseUpgradeView):
             ),
             color=discord.Color.gold() if successes > 0 else discord.Color.dark_grey(),
         )
-        result_embed.set_author(name="Master Smith Harlan", icon_url=UPGRADE_FORGE)
+        result_embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
+        result_embed.set_thumbnail(url=UPGRADE_FORGE)
 
         self.clear_items()
         self.add_back_button()

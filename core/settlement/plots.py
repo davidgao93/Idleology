@@ -4,15 +4,16 @@ definitions, and pure helper functions for the settlement grid system.
 
 Grid layout (5×5, corners excluded):
        col0   col1   col2   col3   col4
-  row0  DEAD   P01    P02    P03   DEAD
-  row1  P04    P05    P06    P07   P08
-  row2  P09    P10    TH     P11   P12
-  row3  P13    P14    P15    P16   P17
-  row4  DEAD   P18    P19    P20   DEAD
+  row0  DEAD   P12    P13    P14   DEAD
+  row1  P11    P02    P03    P04   P15
+  row2  P10    P01    TH     P05   P16
+  row3  P09    P08    P07    P06   P17
+  row4  DEAD   P20    P19    P18   DEAD
 
+Inner ring (P01–P08) surrounds the Town Hall clockwise starting left.
+Outer ring (P09–P20) runs clockwise from the bottom-left corner.
 Town Hall is fixed at (row=2, col=2) and is always treated as "developed"
-for adjacency-gate purposes.  Plots are numbered 1-20 in reading order
-skipping the TH cell and all four dead corners.
+for adjacency-gate purposes.
 """
 
 from __future__ import annotations
@@ -27,11 +28,13 @@ TH_POSITION: tuple[int, int] = (2, 2)
 DEAD_CORNERS: frozenset[tuple[int, int]] = frozenset({(0, 0), (0, 4), (4, 0), (4, 4)})
 
 PLOT_POSITIONS: dict[int, tuple[int, int]] = {
-    1:  (0, 1),  2:  (0, 2),  3:  (0, 3),
-    4:  (1, 0),  5:  (1, 1),  6:  (1, 2),  7:  (1, 3),  8:  (1, 4),
-    9:  (2, 0), 10:  (2, 1),             11:  (2, 3), 12:  (2, 4),
-   13:  (3, 0), 14:  (3, 1), 15:  (3, 2), 16:  (3, 3), 17:  (3, 4),
-   18:  (4, 1), 19:  (4, 2), 20:  (4, 3),
+    # Inner ring — clockwise from left of TH
+    1:  (2, 1),  2:  (1, 1),  3:  (1, 2),  4:  (1, 3),
+    5:  (2, 3),  6:  (3, 3),  7:  (3, 2),  8:  (3, 1),
+    # Outer ring — clockwise from bottom-left
+    9:  (3, 0), 10:  (2, 0), 11:  (1, 0), 12:  (0, 1),
+   13:  (0, 2), 14:  (0, 3), 15:  (1, 4), 16:  (2, 4),
+   17:  (3, 4), 18:  (4, 3), 19:  (4, 2), 20:  (4, 1),
 }
 
 # (row, col) → plot_index; 0 = Town Hall
@@ -365,7 +368,8 @@ def get_effective_max_workers(
 
 def render_grid(
     developed_indices: set[int],
-    building_by_plot: dict[int, str],   # plot_index → building_type
+    building_by_plot: dict[int, str],         # plot_index → building_type
+    pending_by_plot: dict[int, str] | None = None,  # plot_index → building_type (queued, not yet built)
 ) -> str:
     """
     Renders the 5×5 settlement grid in a monospace code block.
@@ -398,10 +402,16 @@ def render_grid(
                     bot_cells.append(f"P{idx:02d}")
                 else:
                     b_type = building_by_plot.get(idx)
+                    p_type = (pending_by_plot or {}).get(idx)
                     if b_type and b_type in BUILDING_CODES:
                         t, b = BUILDING_CODES[b_type]
                         top_cells.append(t)
                         bot_cells.append(b)
+                    elif p_type:
+                        # Under construction — top = CNS, bottom = target building code
+                        _, bot_code = BUILDING_CODES.get(p_type, ("???", "???"))
+                        top_cells.append("CNS")
+                        bot_cells.append(bot_code)
                     else:
                         top_cells.append("---")
                         bot_cells.append(f"P{idx:02d}")

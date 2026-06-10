@@ -7,7 +7,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.images import QUEST_SHOP
+from core.images import QUEST_SHOP, QUEST_SHOP_AUTHOR
 from core.quests.data import TOKEN_SHOP_ITEMS
 
 _SHOP_COLOR = 0xF0A500
@@ -33,14 +33,17 @@ class TokenShopView(BaseView):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="🛒 Quest Token Shop",
+            title="Quest Token Shop",
             description=(
-                "Spend your Quest Tokens on upgrades and utilities.\n\n"
+                "Oh good, you're here. Those tokens burning a hole in your pocket? "
+                "I've got just the thing to lighten the load — upgrades, caches, the usual. "
+                "Spend wisely.\n\n"
                 f"🎫 **Your Tokens: {self._tokens}**"
             ),
             color=_SHOP_COLOR,
         )
-        embed.set_author(name="Lira", icon_url=QUEST_SHOP)
+        embed.set_author(name="Lira", icon_url=QUEST_SHOP_AUTHOR)
+        embed.set_thumbnail(url=QUEST_SHOP)
         for item in self._visible_items():
             one_time = " *(One-time)*" if item.get("one_time") else ""
             selected = item["id"] == self._selected_item_id

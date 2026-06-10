@@ -3,7 +3,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
-from core.images import AMARA_PORTRAIT
+from core.images import AMARA_AUTHOR, AMARA_PORTRAIT
 
 _SCENES = [
     {
@@ -136,7 +136,8 @@ class TutorialView(BaseView):
             description=scene["text"],
             color=scene["color"],
         )
-        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_PORTRAIT)
+        embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
+        embed.set_thumbnail(url=AMARA_PORTRAIT)
         embed.set_image(url=scene["image"])
         embed.set_footer(text=f"Scene {self.index + 1} of {len(_SCENES)}")
         return embed
@@ -195,5 +196,6 @@ class TutorialView(BaseView):
                 description='*Amara waves you toward the doors.*\n"Good. Now go."',
                 color=0x3D2B1F,
             )
-            embed.set_author(name="Guildmaster Amara", icon_url=AMARA_PORTRAIT)
+            embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
+            embed.set_thumbnail(url=AMARA_PORTRAIT)
             await interaction.response.edit_message(embed=embed, view=None)

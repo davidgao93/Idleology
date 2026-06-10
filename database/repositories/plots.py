@@ -15,7 +15,8 @@ class PlotRepository:
     # ------------------------------------------------------------------
 
     # Plots orthogonally adjacent to the Town Hall (grid 2,2) — unlocked for free.
-    _TH_ADJACENT = (6, 10, 11, 15)
+    # New layout: P01=(2,1) left, P03=(1,2) above, P05=(2,3) right, P07=(3,2) below.
+    _TH_ADJACENT = (1, 3, 5, 7)
 
     async def ensure_plots(self, user_id: str, server_id: str) -> None:
         """Insert all 20 plot rows (undeveloped) if they don't already exist,
@@ -33,7 +34,7 @@ class PlotRepository:
             "UPDATE settlement_plots "
             "SET is_developed = 1, bonus_type = 'common_ground' "
             "WHERE user_id = ? AND server_id = ? "
-            "AND plot_index IN (6, 10, 11, 15) "
+            "AND plot_index IN (1, 3, 5, 7) "
             "AND is_developed = 0",
             (user_id, server_id),
         )

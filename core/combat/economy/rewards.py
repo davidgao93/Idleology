@@ -340,15 +340,17 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         if random.random() < BALANCE_FRAG_BASE_CHANCE + special_drop_chance:
             drops["balance_fragment"] = True
 
-    if player.level >= 50:
-        if random.random() < VOID_FRAG_BASE_CHANCE + special_drop_chance:
-            drops["void_frag"] = True
+    if player.level >= 10:
         for item in ("unidentified_blueprint", "diviners_rod"):
             if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
                 drops[item] = True
         for item in ("magma_core", "life_root", "spirit_shard"):
             if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
                 drops[item] = True
+
+    if player.level >= 50:
+        if random.random() < VOID_FRAG_BASE_CHANCE + special_drop_chance:
+            drops["void_frag"] = True
 
     if player.level >= 60:
         elemental_chance = SPECIAL_DROP_BASE_CHANCE + special_drop_chance
