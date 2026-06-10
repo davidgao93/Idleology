@@ -240,6 +240,21 @@ class ApexRepository(BaseRepository):
         )
         await self.connection.commit()
 
+    async def deduct_meta_shard_atomic(
+        self, user_id: str, server_id: str, shard_type: str, amount: int
+    ) -> bool:
+        """Deducts meta shards only if balance >= amount. Returns True on success."""
+        if shard_type not in _META_KEYS:
+            raise ValueError(f"Unknown meta shard type: {shard_type}")
+        await self.get_or_create_meta_shards(user_id, server_id)
+        cursor = await self.connection.execute(
+            f"UPDATE meta_shards SET {shard_type} = {shard_type} - ? "
+            f"WHERE user_id = ? AND server_id = ? AND {shard_type} >= ?",
+            (amount, user_id, server_id, amount),
+        )
+        await self.connection.commit()
+        return cursor.rowcount == 1
+
     async def transfer_meta_shard(
         self,
         from_uid: str,
@@ -249,9 +264,7 @@ class ApexRepository(BaseRepository):
         amount: int,
     ) -> bool:
         """Transfers meta shards between players. Returns False if insufficient."""
-        sender = await self.get_or_create_meta_shards(from_uid, server_id)
-        if sender.get(shard_type, 0) < amount:
+        if not await self.deduct_meta_shard_atomic(from_uid, server_id, shard_type, amount):
             return False
-        await self.modify_meta_shard(from_uid, server_id, shard_type, -amount)
         await self.modify_meta_shard(to_uid, server_id, shard_type, amount)
         return True

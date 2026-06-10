@@ -139,6 +139,7 @@ class TradeRootView(BaseView):
             SelectOption(label="Mining Mats", value="mining", emoji="⛏️"),
             SelectOption(label="Woodcutting Mats", value="wood", emoji="🪓"),
             SelectOption(label="Fishing Mats", value="fish", emoji="🎣"),
+            SelectOption(label="Meta Shards", value="meta", emoji="💠"),
         ]
 
         select = ui.Select(placeholder="Select Category...", options=options)
@@ -180,6 +181,14 @@ class TradeRootView(BaseView):
                 "Regular Bones",
                 "Sturdy Bones",
                 "Reinforced Bones",
+            ]
+        elif cat == "meta":
+            keys = [
+                "Sharpened Fang",
+                "Engorged Heart",
+                "Condensed Blood",
+                "Primal Essence",
+                "Soul Vessel",
             ]
 
         self.clear_items()
