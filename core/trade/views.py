@@ -328,9 +328,13 @@ class TradeRootView(BaseView):
                         content="❌ Funds changed. Trade failed.", embed=None, view=None
                     )
 
-                await TradeManager.transfer_gold(
+                ok = await TradeManager.transfer_gold(
                     self.bot, self.user_id, str(self.receiver.id), self.tx_amount
                 )
+                if not ok:
+                    return await interaction.edit_original_response(
+                        content="❌ Funds changed. Trade failed.", embed=None, view=None
+                    )
 
             elif self.tx_type == "resource":
                 bal = await TradeManager.get_resource_balance(
@@ -341,7 +345,7 @@ class TradeRootView(BaseView):
                         content="❌ Stock changed. Trade failed.", embed=None, view=None
                     )
 
-                await TradeManager.transfer_resource(
+                ok = await TradeManager.transfer_resource(
                     self.bot,
                     self.user_id,
                     str(self.receiver.id),
@@ -349,6 +353,10 @@ class TradeRootView(BaseView):
                     self.tx_item,
                     self.tx_amount,
                 )
+                if not ok:
+                    return await interaction.edit_original_response(
+                        content="❌ Stock changed. Trade failed.", embed=None, view=None
+                    )
 
             elif self.tx_type == "equipment":
                 # Check if still owned

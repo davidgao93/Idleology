@@ -50,6 +50,15 @@ class BaseView(ui.View):
         if self.message:
             try:
                 await self.message.edit(view=None)
-            except (discord.NotFound, discord.HTTPException, AttributeError, Exception):
+            except (discord.NotFound, discord.HTTPException, AttributeError):
                 pass
+            except Exception:
+                # Unexpected error during view cleanup; log but do not crash the task
+                try:
+                    self.bot.logger.error(
+                        f"BaseView on_timeout unexpected error while editing message for user {self.user_id}",
+                        exc_info=True,
+                    )
+                except Exception:
+                    pass  # Logging must never raise
         self.stop()

@@ -5,6 +5,7 @@ import urllib.request
 import discord
 from discord import ButtonStyle, app_commands, ui
 from discord.ext import commands
+from core.base_view import BaseView
 from core.images import PRESTIGE_HUB, PRESTIGE_HALL
 
 # ---------------------------------------------------------------------------
@@ -367,14 +368,10 @@ class PrestigeBuilder:
 # ---------------------------------------------------------------------------
 
 
-class PrestigeHubView(ui.View):
+class PrestigeHubView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.user_id = user_id
-        self.server_id = server_id
+        super().__init__(bot, user_id, server_id)
         self.active_tab = "overview"
-        self.message: discord.Message | None = None
 
         # Cached state, populated by refresh()
         self.gold = 0
@@ -485,20 +482,6 @@ class PrestigeHubView(ui.View):
         )
         flair_sel.callback = self._handle_flair_select
         self.add_item(flair_sel)
-
-    # --- Lifecycle ---
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
-
-    async def on_timeout(self) -> None:
-        try:
-            for child in self.children:
-                child.disabled = True
-            if self.message:
-                await self.message.edit(view=self)
-        except Exception:
-            pass
 
     # --- Tab navigation ---
 

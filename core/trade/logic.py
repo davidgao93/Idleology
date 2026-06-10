@@ -54,10 +54,8 @@ class TradeManager:
 
     @staticmethod
     async def transfer_gold(bot, sender_id: str, receiver_id: str, amount: int) -> bool:
-        sender_gold = await bot.database.users.get_gold(sender_id)
-        if sender_gold < amount:
+        if not await bot.database.users.deduct_gold_atomic(sender_id, amount):
             return False
-        await bot.database.users.modify_gold(sender_id, -amount)
         await bot.database.users.modify_gold(receiver_id, amount)
         return True
 
@@ -69,11 +67,12 @@ class TradeManager:
         server_id: str,
         resource_name: str,
         amount: int,
-    ):
+    ) -> bool:
         table, col = TradeManager.RESOURCE_MAP[resource_name]
 
         if table == "users":
-            await bot.database.users.modify_currency(sender_id, col, -amount)
+            if not await bot.database.users.deduct_currency_atomic(sender_id, col, amount):
+                return False
             await bot.database.users.modify_currency(receiver_id, col, amount)
         else:
             # Skill tables require server_id
@@ -83,6 +82,7 @@ class TradeManager:
             await bot.database.skills.update_single_resource(
                 receiver_id, server_id, table, col, amount
             )
+        return True
 
     @staticmethod
     async def transfer_equipment(

@@ -211,6 +211,15 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def deduct_gold_atomic(self, user_id: str, amount: int) -> bool:
+        """Deducts gold only if the current balance covers it. Returns True on success."""
+        cursor = await self.connection.execute(
+            "UPDATE users SET gold = gold - ? WHERE user_id = ? AND gold >= ?",
+            (amount, user_id, amount),
+        )
+        await self.connection.commit()
+        return cursor.rowcount == 1
+
     async def set_gold(self, user_id: str, amount: int) -> None:
         """Hard set gold amount (e.g. gambling resets)."""
         await self.connection.execute(
@@ -218,9 +227,17 @@ class UserRepository:
         )
         await self.connection.commit()
 
-    async def get_currency(self, user_id: str, column: str) -> int:
-        # Basic validation to prevent SQL injection
+    _CURRENCY_COLS: frozenset[str] = frozenset({
+        "dragon_key", "angel_key", "void_keys", "soul_cores", "void_frags",
+        "balance_fragment", "refinement_runes", "potential_runes", "imbue_runes",
+        "shatter_runes", "curios", "curios_purchased_today",
+        "celestial_stone", "void_crystal", "infernal_cinder",
+        "antique_tome", "pinnacle_key",
+    })
 
+    async def get_currency(self, user_id: str, column: str) -> int:
+        if column not in self._CURRENCY_COLS:
+            raise ValueError(f"get_currency: disallowed column {column!r}")
         rows = await self.connection.execute(
             f"SELECT {column} FROM users WHERE user_id = ?", (user_id,)
         )
@@ -232,18 +249,29 @@ class UserRepository:
     ) -> None:
         """
         Generic handler for keys, runes, and misc counters.
-        Allowed columns: dragon_key, angel_key, void_keys, soul_cores, void_frags,
-                         refinement_runes, potential_runes, imbue_runes, shatter_runes,
-                         curios, curios_purchased_today,
-                         celestial_stone, void_crystal, infernal_cinder,
-                         antique_tome, pinnacle_key
+        Only columns in _CURRENCY_COLS are accepted.
         """
-        # Could validate column names here to prevent SQL injection
+        if currency_column not in self._CURRENCY_COLS:
+            raise ValueError(f"modify_currency: disallowed column {currency_column!r}")
         await self.connection.execute(
             f"UPDATE users SET {currency_column} = {currency_column} + ? WHERE user_id = ?",
             (amount, user_id),
         )
         await self.connection.commit()
+
+    async def deduct_currency_atomic(
+        self, user_id: str, currency_column: str, amount: int
+    ) -> bool:
+        """Deducts a currency column only if balance >= amount. Returns True on success."""
+        if currency_column not in self._CURRENCY_COLS:
+            raise ValueError(f"deduct_currency_atomic: disallowed column {currency_column!r}")
+        cursor = await self.connection.execute(
+            f"UPDATE users SET {currency_column} = {currency_column} - ? "
+            f"WHERE user_id = ? AND {currency_column} >= ?",
+            (amount, user_id, amount),
+        )
+        await self.connection.commit()
+        return cursor.rowcount == 1
 
     # ---------------------------------------------------------
     # Timers & Cooldowns
