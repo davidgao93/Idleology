@@ -32,18 +32,18 @@ class SkillMechanics:
     # Gold cost to buy bait / forestry pass, per tool tier
     MINIGAME_ENTRY_COSTS = {
         "fishing": {
-            "desiccated": 1_000,
-            "regular": 5_000,
-            "sturdy": 15_000,
-            "reinforced": 30_000,
-            "titanium": 50_000,
+            "desiccated": 500,
+            "regular": 1_500,
+            "sturdy": 5_000,
+            "reinforced": 10_000,
+            "titanium": 30_000,
         },
         "forestry": {
-            "flimsy": 1_000,
-            "carved": 5_000,
-            "chopping": 15_000,
-            "magic": 30_000,
-            "felling": 50_000,
+            "flimsy": 500,
+            "carved": 1_500,
+            "chopping": 5_000,
+            "magic": 10_000,
+            "felling": 30_000,
         },
     }
 

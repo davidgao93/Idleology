@@ -7,6 +7,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
+from core.images import MASTERY_WOODCUTTING
 from core.skills.mechanics import SkillMechanics
 
 # Probability that any knot blocks the next swing.
@@ -40,6 +41,7 @@ class ForestryView(BaseView):
         self.session_momentum: int = 0
 
         self._cooldown_task: asyncio.Task | None = None
+        self._cooldown_start_time: float = 0.0
 
     # ------------------------------------------------------------------
     # Helpers
@@ -150,8 +152,7 @@ class ForestryView(BaseView):
             title = "🪓 Forestry — Ready"
 
         embed = discord.Embed(title=title, description=desc, color=color)
-        if self.user_data:
-            embed.set_thumbnail(url=self.user_data[7])
+        embed.set_thumbnail(url=MASTERY_WOODCUTTING)
         return embed
 
     def setup_ui(self):
@@ -207,6 +208,19 @@ class ForestryView(BaseView):
                 row=0,
             )
             self.add_item(waiting_btn)
+            # Block leaving during cooldown to prevent timer bypass exploit
+            cooldown_total = SkillMechanics.get_forestry_cooldown(tier)
+            elapsed = max(0.0, time.time() - self._cooldown_start_time)
+            remaining = max(0, int(cooldown_total - elapsed))
+            mins, secs = divmod(remaining, 60)
+            leave_btn = Button(
+                label=f"⏳ Area Clearing ({mins}m {secs:02d}s)",
+                style=ButtonStyle.secondary,
+                disabled=True,
+                row=0,
+            )
+            self.add_item(leave_btn)
+            return  # skip the normal pack_btn below
 
         elif self.state == "ready":
             can_afford = self.gold >= cost
@@ -326,6 +340,7 @@ class ForestryView(BaseView):
             if self.session_quality == "masterful":
                 self.last_yield["🌳 Old Growth"] = 1  # flavor label in result embed
 
+            self._cooldown_start_time = time.time()
             self.state = "cooldown"
             self.setup_ui()
             await self.refresh_data()

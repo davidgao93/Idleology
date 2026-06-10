@@ -96,33 +96,34 @@ class GatherView(BaseView):
             btn.callback = self._make_tab_callback(s)
             self.add_item(btn)
 
-        # --- ROW 1: ACTIVITY LAUNCH BUTTONS ---
-        fish_btn = Button(
-            label="Go Fishing",
-            emoji="🎣",
-            style=ButtonStyle.secondary,
-            row=1,
-        )
-        fish_btn.callback = self.go_fishing_callback
-        self.add_item(fish_btn)
-
-        chop_btn = Button(
-            label="Go Chopping",
-            emoji="🪓",
-            style=ButtonStyle.secondary,
-            row=1,
-        )
-        chop_btn.callback = self.go_chopping_callback
-        self.add_item(chop_btn)
-
-        delve_btn = Button(
-            label="Deep Delve",
-            emoji="⛏️",
-            style=ButtonStyle.secondary,
-            row=1,
-        )
-        delve_btn.callback = self.go_delve_callback
-        self.add_item(delve_btn)
+        # --- ROW 1: ACTIVITY LAUNCH BUTTON (tab-specific) ---
+        if self.current_skill == "mining":
+            delve_btn = Button(
+                label="Deep Delve",
+                emoji="⛏️",
+                style=ButtonStyle.secondary,
+                row=1,
+            )
+            delve_btn.callback = self.go_delve_callback
+            self.add_item(delve_btn)
+        elif self.current_skill == "fishing":
+            fish_btn = Button(
+                label="Go Fishing",
+                emoji="🎣",
+                style=ButtonStyle.secondary,
+                row=1,
+            )
+            fish_btn.callback = self.go_fishing_callback
+            self.add_item(fish_btn)
+        elif self.current_skill == "woodcutting":
+            chop_btn = Button(
+                label="Go Chopping",
+                emoji="🪓",
+                style=ButtonStyle.secondary,
+                row=1,
+            )
+            chop_btn.callback = self.go_chopping_callback
+            self.add_item(chop_btn)
 
         # --- ROW 2: ARTISAN MASTERY + ELEMENTAL RESONANCE ---
         mastery_btn = Button(
@@ -267,6 +268,7 @@ class GatherView(BaseView):
                 gate_line = f"\n⏳ **Familiarization:** {h}h {m}m remaining"
                 if self.fam_momentum > 0:
                     gate_line += f" *(−{self.fam_momentum} min from Momentum)*"
+                gate_line += "\n*Tip: Participating actively in the mini-game earns Momentum, which reduces your Familiarization time.*"
                 desc += gate_line
             elif self.fam_momentum > 0:
                 desc += f"\n✅ Gate lifted! *(Momentum banked: {self.fam_momentum} min)*"

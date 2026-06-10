@@ -57,65 +57,65 @@ RICH_REMNANT_GUARANTEED_AVG = 4.0
 
 MINING_TREE: Dict[str, Dict[str, Any]] = {
     # Yield (Deep Veins)
-    "enduring_veins": {"branch": "yield", "cost": 1, "desc": "+8% total ore yield from passive hourly mining ticks."},
-    "bountiful_veins": {"branch": "yield", "cost": 2, "desc": "+16% total ore yield from passive hourly mining ticks.", "requires": ["enduring_veins"]},
-    "motherlode": {"branch": "yield", "cost": 5, "desc": "+26% total ore yield from passive hourly mining ticks.", "requires": ["bountiful_veins"]},
-    "never_empty": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
+    "enduring_veins": {"branch": "yield", "cost": 1, "desc": "+8% ore yield from passive hourly ticks."},
+    "bountiful_veins": {"branch": "yield", "cost": 2, "desc": "+16% total ore yield from passive hourly ticks.", "requires": ["enduring_veins"]},
+    "motherlode": {"branch": "yield", "cost": 5, "desc": "+26% total ore yield from passive hourly ticks.", "requires": ["bountiful_veins"]},
+    "never_empty": {"branch": "yield", "cost": 4, "desc": "Each passive tick has a 12% chance to yield an extra 70% resources.", "requires_branch_pts": 9},
 
     # Quality (Vein Memory)
-    "ideal_seeker": {"branch": "quality", "cost": 1, "desc": "+20% yield to Idea Ore from passive hourly mining ticks."},
-    "crystallized_insight": {"branch": "quality", "cost": 2, "desc": "+38% Idea Ore yield from passive hourly ticks. Additionally, 6% chance to produce Idea Ore even when using a lower-tier pickaxe.", "requires": ["ideal_seeker"]},
-    "geode_cores": {"branch": "quality", "cost": 3, "desc": "Unlocks Geode Cores. Passive hourly mining ticks now have a 5.5% chance to produce 1-2 Geode Cores as remnants. **Rich Vein** events now have a 4% base chance (upgrades to 22% with the 5pt Worldcore Resonance node in this branch, or 3% with a 5pt Synergy capstone). On Rich trigger: 2.6× yield + guaranteed 3-5 Geode Cores."},
-    "worldcore_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Vein events now occur with 22% base chance per passive tick. On trigger, yield is multiplied by 2.6× and you are guaranteed 3-5 Geode Cores.", "requires": ["geode_cores"]},
+    "ideal_seeker": {"branch": "quality", "cost": 1, "desc": "+20% Idea Ore yield from passive hourly ticks."},
+    "crystallized_insight": {"branch": "quality", "cost": 2, "desc": "+38% total Idea Ore yield. Lower-tier pickaxes gain a 6% chance to produce Idea Ore.", "requires": ["ideal_seeker"]},
+    "geode_cores": {"branch": "quality", "cost": 3, "desc": "Unlocks Geode Core remnants: 5.5% drop chance per tick (1–2 each). Enables Rich Vein events (4% chance per tick): 2.6× yield plus 3–5 Geode Cores guaranteed."},
+    "worldcore_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Vein events now trigger at 22% per tick (up from 4%). On trigger: 2.6× yield and 3–5 Geode Cores guaranteed.", "requires": ["geode_cores"]},
 
     # Synergy (Stonebound Mastery)
     "tool_resonance": {"branch": "synergy", "cost": 1, "desc": "Tool upgrade costs reduced by 12%."},
-    "skilled_hands": {"branch": "synergy", "cost": 2, "desc": "Skiller procs on combat victory are 65% more likely (1.65\u00d7 multiplier) and grant 45% more resources (1.45\u00d7 multiplier)."},
-    "master_quarry": {"branch": "synergy", "cost": 3, "desc": "Global refining bonus: +10% more bars from any ore conversion."},
-    "living_mountain": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Ore yield from passive hourly mining ticks + small independent 3% Rich proc chance.", "requires": ["master_quarry"]},
-    "echo_first_vein": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: small chance for Meridian Golem treasure boss during combat.", "requires": ["living_mountain"]},
+    "skilled_hands": {"branch": "synergy", "cost": 2, "desc": "Skiller boot procs are 65% more likely and yield 45% more resources."},
+    "master_quarry": {"branch": "synergy", "cost": 3, "desc": "+10% output from all ore smelting."},
+    "living_mountain": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Ore yield from passive ticks. Also provides an independent 3% Rich Vein chance per tick.", "requires": ["master_quarry"]},
+    "echo_first_vein": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: the Meridian Golem treasure boss may appear during combat.", "requires": ["living_mountain"]},
 }
 
 FISHING_TREE: Dict[str, Dict[str, Any]] = {
     # Yield (Patient Waters) — symmetric
-    "patient_waters": {"branch": "yield", "cost": 1, "desc": "+8% total bone yield from passive hourly fishing ticks."},
-    "abundant_catch": {"branch": "yield", "cost": 2, "desc": "+16% total bone yield from passive hourly fishing ticks.", "requires": ["patient_waters"]},
-    "bountiful_haul": {"branch": "yield", "cost": 5, "desc": "+26% total bone yield from passive hourly fishing ticks.", "requires": ["abundant_catch"]},
+    "patient_waters": {"branch": "yield", "cost": 1, "desc": "+8% bone yield from passive hourly ticks."},
+    "abundant_catch": {"branch": "yield", "cost": 2, "desc": "+16% total bone yield from passive hourly ticks.", "requires": ["patient_waters"]},
+    "bountiful_haul": {"branch": "yield", "cost": 5, "desc": "+26% total bone yield from passive hourly ticks.", "requires": ["abundant_catch"]},
     "never_empty_nets": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
 
     # Quality (Abyssal Memory)
-    "tide_seeker": {"branch": "quality", "cost": 1, "desc": "+20% yield to Titanium Bones from passive hourly fishing ticks."},
-    "abyssal_memory": {"branch": "quality", "cost": 2, "desc": "+38% Titanium Bones yield from passive hourly ticks. Additionally, 6% chance to produce Titanium Bones even when using a lower-tier rod.", "requires": ["tide_seeker"]},
-    "tide_relics": {"branch": "quality", "cost": 3, "desc": "Unlocks Tide Relics. Passive hourly fishing ticks now have a 5.5% chance to produce 1-2 Tide Relics as remnants. **Rich Catch** events now have a 4% base chance (upgrades to 22% with the 5pt Deep Current Resonance node in this branch, or 3% with a 5pt Synergy capstone). On Rich trigger: 2.6× yield + guaranteed 3-5 Tide Relics."},
-    "deep_current_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Catch events now occur with 22% base chance per passive tick. On trigger, yield is multiplied by 2.6× and you are guaranteed 3-5 Tide Relics.", "requires": ["tide_relics"]},
+    "tide_seeker": {"branch": "quality", "cost": 1, "desc": "+20% Titanium Bones yield from passive hourly ticks."},
+    "abyssal_memory": {"branch": "quality", "cost": 2, "desc": "+38% total Titanium Bones yield. Lower-tier rods gain a 6% chance to produce Titanium Bones.", "requires": ["tide_seeker"]},
+    "tide_relics": {"branch": "quality", "cost": 3, "desc": "Unlocks Tide Relic remnants: 5.5% drop chance per tick (1–2 each). Enables Rich Catch events (4% chance per tick): 2.6× yield plus 3–5 Tide Relics guaranteed."},
+    "deep_current_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Catch events now trigger at 22% per tick (up from 4%). On trigger: 2.6× yield and 3–5 Tide Relics guaranteed.", "requires": ["tide_relics"]},
 
     # Synergy (Tidebound Mastery)
     "lighter_bait": {"branch": "synergy", "cost": 1, "desc": "Bait cost reduced by 12%."},
-    "favored_currents": {"branch": "synergy", "cost": 2, "desc": "Skiller procs on combat victory are 65% more likely (1.65\u00d7 multiplier) and grant 45% more resources (1.45\u00d7 multiplier)."},
-    "master_baiter": {"branch": "synergy", "cost": 3, "desc": "Permanent alchemy bonus: one-step better transmutation ratios."},
-    "old_ones_favor": {"branch": "synergy", "cost": 5, "desc": "+55% Titanium Bones yield from passive hourly fishing ticks + small independent 3% Rich proc chance.", "requires": ["master_baiter"]},
-    "lord_of_the_deep": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: chance for Drowned Leviathan treasure boss during combat.", "requires": ["old_ones_favor"]},
+    "favored_currents": {"branch": "synergy", "cost": 2, "desc": "Skiller boot procs are 65% more likely and yield 45% more resources."},
+    "master_baiter": {"branch": "synergy", "cost": 3, "desc": "Alchemy conversions use one step better transmutation ratios."},
+    "old_ones_favor": {"branch": "synergy", "cost": 5, "desc": "+55% Titanium Bones yield from passive ticks. Also provides an independent 3% Rich Catch chance per tick.", "requires": ["master_baiter"]},
+    "lord_of_the_deep": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: the Drowned Leviathan treasure boss may appear during combat.", "requires": ["old_ones_favor"]},
 }
 
 WOODCUTTING_TREE: Dict[str, Dict[str, Any]] = {
     # Yield (Strong Arm)
-    "strong_arm": {"branch": "yield", "cost": 1, "desc": "+8% total log yield from passive hourly woodcutting ticks."},
-    "mighty_swing": {"branch": "yield", "cost": 2, "desc": "+16% total log yield from passive hourly woodcutting ticks.", "requires": ["strong_arm"]},
-    "titanic_felling": {"branch": "yield", "cost": 5, "desc": "+26% total log yield from passive hourly woodcutting ticks.", "requires": ["mighty_swing"]},
+    "strong_arm": {"branch": "yield", "cost": 1, "desc": "+8% log yield from passive hourly ticks."},
+    "mighty_swing": {"branch": "yield", "cost": 2, "desc": "+16% total log yield from passive hourly ticks.", "requires": ["strong_arm"]},
+    "titanic_felling": {"branch": "yield", "cost": 5, "desc": "+26% total log yield from passive hourly ticks.", "requires": ["mighty_swing"]},
     "forest_bounty": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
 
     # Quality (Heartwood Memory)
-    "heartwood_seeker": {"branch": "quality", "cost": 1, "desc": "+20% yield to Idea Logs from passive hourly woodcutting ticks."},
-    "living_heartwood": {"branch": "quality", "cost": 2, "desc": "+38% Idea Logs yield from passive hourly ticks. Additionally, 6% chance to produce Idea Logs even when using a lower-tier axe.", "requires": ["heartwood_seeker"]},
-    "heartwood_shards": {"branch": "quality", "cost": 3, "desc": "Unlocks Heartwood Shards. Passive hourly woodcutting ticks now have a 5.5% chance to produce 1-2 Heartwood Shards as remnants. **Rich Felling** events now have a 4% base chance (upgrades to 22% with the 5pt Elder Resonance node in this branch, or 3% with a 5pt Synergy capstone). On Rich trigger: 2.6× yield + guaranteed 3-5 Heartwood Shards."},
-    "elder_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Felling events now occur with 22% base chance per passive tick. On trigger, yield is multiplied by 2.6× and you are guaranteed 3-5 Heartwood Shards.", "requires": ["heartwood_shards"]},
+    "heartwood_seeker": {"branch": "quality", "cost": 1, "desc": "+20% Idea Log yield from passive hourly ticks."},
+    "living_heartwood": {"branch": "quality", "cost": 2, "desc": "+38% total Idea Log yield. Lower-tier axes gain a 6% chance to produce Idea Logs.", "requires": ["heartwood_seeker"]},
+    "heartwood_shards": {"branch": "quality", "cost": 3, "desc": "Unlocks Heartwood Shard remnants: 5.5% drop chance per tick (1–2 each). Enables Rich Felling events (4% chance per tick): 2.6× yield plus 3–5 Heartwood Shards guaranteed."},
+    "elder_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Felling events now trigger at 22% per tick (up from 4%). On trigger: 2.6× yield and 3–5 Heartwood Shards guaranteed.", "requires": ["heartwood_shards"]},
 
     # Synergy (Rootbound Mastery)
     "foresters_eye": {"branch": "synergy", "cost": 1, "desc": "Forestry pass cost reduced by 12%."},
-    "skilled_forester": {"branch": "synergy", "cost": 2, "desc": "Skiller procs on combat victory are 65% more likely (1.65\u00d7 multiplier) and grant 45% more resources (1.45\u00d7 multiplier)."},
-    "seasoned_timber": {"branch": "synergy", "cost": 3, "desc": "Global refining bonus: +10% more planks from any wood conversion."},
-    "forest_remembers": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Logs yield from passive hourly woodcutting ticks + small independent 3% Rich proc chance.", "requires": ["seasoned_timber"]},
-    "elderheart": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: chance for Verdant Colossus treasure boss during combat.", "requires": ["forest_remembers"]},
+    "skilled_forester": {"branch": "synergy", "cost": 2, "desc": "Skiller boot procs are 65% more likely and yield 45% more resources."},
+    "seasoned_timber": {"branch": "synergy", "cost": 3, "desc": "+10% output from all wood conversion."},
+    "forest_remembers": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Log yield from passive ticks. Also provides an independent 3% Rich Felling chance per tick.", "requires": ["seasoned_timber"]},
+    "elderheart": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: the Verdant Colossus treasure boss may appear during combat.", "requires": ["forest_remembers"]},
 }
 
 ALL_TREES = {

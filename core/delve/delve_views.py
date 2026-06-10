@@ -169,7 +169,7 @@ class DelveView(BaseView):
             inline=False,
         )
 
-        loot = f"🎁 Curios: **{self.state.curios_found}**\n💎 Shards: **{self.state.shards_found}**"
+        loot = f"💎 Shards: **{self.state.shards_found}**"
         if self.state.ore_found:
             name_map = {
                 col: label
@@ -328,10 +328,6 @@ class DelveView(BaseView):
             embed.add_field(name="Lost Cargo", value=lost)
         else:
             # Success - Commit to DB
-            if self.state.curios_found > 0:
-                await self.bot.database.users.modify_currency(
-                    self.user_id, "curios", self.state.curios_found
-                )
             if self.state.shards_found > 0:
                 await self.bot.database.delve.modify_shards(
                     self.user_id, self.server_id, self.state.shards_found

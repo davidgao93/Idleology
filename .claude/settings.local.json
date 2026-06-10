@@ -135,7 +135,9 @@
       "Bash(python -m py_compile database/repositories/plots.py)",
       "Bash(python -m py_compile core/minigames/views.py)",
       "Bash(python -m py_compile core/settlement/views/construction.py)",
-      "Bash(python -m py_compile core/settlement/views/plot_detail.py)"
+      "Bash(python -m py_compile core/settlement/views/plot_detail.py)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\" -Recurse -Filter \"*mastery*\" -File)",
+      "Bash(cat > *)"
     ]
   }
 }

@@ -1,11 +1,19 @@
 import asyncio
+import random
+import time
 
 import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
+from core.images import MASTERY_FISHING
 from core.skills.mechanics import SkillMechanics
+
+ACCEL_WINDOW_MIN = 5
+ACCEL_WINDOW_MAX = 10
+ACCEL_REDUCTION_MIN = 25
+ACCEL_REDUCTION_MAX = 40
 
 # Seconds the player has to click Reel before the fish escapes.
 BITE_WINDOW = 60
@@ -40,6 +48,9 @@ class FishingView(BaseView):
 
         self._bite_task: asyncio.Task | None = None
         self._escape_task: asyncio.Task | None = None
+        self._accel_scheduler_task: asyncio.Task | None = None
+        self._bite_end_time: float = 0.0
+        self._accel_active: bool = False
 
     # ------------------------------------------------------------------
     # Helpers
@@ -58,6 +69,8 @@ class FishingView(BaseView):
             self._bite_task.cancel()
         if self._escape_task:
             self._escape_task.cancel()
+        if self._accel_scheduler_task:
+            self._accel_scheduler_task.cancel()
 
     async def refresh_data(self):
         self.skill_data = await self.bot.database.skills.get_data(
@@ -107,13 +120,17 @@ class FishingView(BaseView):
         elif self.state == "casting":
             focus = self._focus_bar()
             approach_label = "⚡ Aggressive" if self.approach == "aggressive" else "🎣 Steady"
+            if self._accel_active:
+                cast_line = "⚡ **A current is moving your line!** Click to reel early and accelerate the wait!"
+                color = 0xFF8C00
+            else:
+                cast_line = "🌊 Your line is in the water...\nYou'll be pinged when something bites."
+                color = 0x4A90D9
             desc = (
                 f"**Rod:** {tier.title()} Rod  ·  {approach_label}\n"
                 + (f"{focus}\n\n" if focus else "\n")
-                + "🌊 Your line is in the water...\n"
-                "You'll be pinged when something bites."
+                + cast_line
             )
-            color = 0x4A90D9
 
         elif self.state == "bite":
             focus = self._focus_bar()
@@ -160,8 +177,7 @@ class FishingView(BaseView):
         embed = discord.Embed(
             title=title_map[self.state], description=desc, color=color
         )
-        if self.user_data:
-            embed.set_thumbnail(url=self.user_data[7])
+        embed.set_thumbnail(url=MASTERY_FISHING)
         return embed
 
     def setup_ui(self):
@@ -191,14 +207,24 @@ class FishingView(BaseView):
             self.add_item(agg_btn)
 
         elif self.state == "casting":
-            waiting_btn = Button(
-                label="Waiting for bite...",
-                style=ButtonStyle.secondary,
-                emoji="🌊",
-                disabled=True,
-                row=0,
-            )
-            self.add_item(waiting_btn)
+            if self._accel_active:
+                accel_btn = Button(
+                    label="⚡ Reel Early!",
+                    style=ButtonStyle.success,
+                    emoji="🎣",
+                    row=0,
+                )
+                accel_btn.callback = self.accel_callback
+                self.add_item(accel_btn)
+            else:
+                waiting_btn = Button(
+                    label="Waiting for bite...",
+                    style=ButtonStyle.secondary,
+                    emoji="🌊",
+                    disabled=True,
+                    row=0,
+                )
+                self.add_item(waiting_btn)
 
         elif self.state == "bite":
             reel_btn = Button(
@@ -267,11 +293,19 @@ class FishingView(BaseView):
         )
 
         wait = SkillMechanics.get_fishing_wait(self.rod_tier)
-        self._bite_task = asyncio.create_task(self._wait_for_bite(wait))
+        self._bite_end_time = time.time() + wait
+        self._accel_active = False
+        self._bite_task = asyncio.create_task(self._wait_for_bite())
+        self._accel_scheduler_task = asyncio.create_task(self._accel_scheduler(wait))
 
-    async def _wait_for_bite(self, seconds: int):
+    async def _wait_for_bite(self):
         try:
-            await asyncio.sleep(seconds)
+            while time.time() < self._bite_end_time:
+                await asyncio.sleep(1.0)
+            # Cancel the accel scheduler since bite is ready
+            if self._accel_scheduler_task:
+                self._accel_scheduler_task.cancel()
+            self._accel_active = False
             self.state = "bite"
             self.setup_ui()
             await self.message.edit(
@@ -280,6 +314,47 @@ class FishingView(BaseView):
                 view=self,
             )
             self._escape_task = asyncio.create_task(self._fish_escape())
+        except asyncio.CancelledError:
+            pass
+
+    async def accel_callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        if not self._accel_active:
+            return
+        self._accel_active = False
+        reduction = random.randint(ACCEL_REDUCTION_MIN, ACCEL_REDUCTION_MAX)
+        self._bite_end_time = max(time.time() + 2.0, self._bite_end_time - reduction)
+        self.setup_ui()
+        await interaction.edit_original_response(content=None, embed=self.get_embed(), view=self)
+
+    async def _accel_scheduler(self, total_wait: int):
+        """Opens short acceleration windows during the bite wait phase."""
+        try:
+            first_delay = total_wait * random.uniform(0.30, 0.55)
+            await asyncio.sleep(first_delay)
+
+            while self.state == "casting":
+                self._accel_active = True
+                window_duration = random.randint(ACCEL_WINDOW_MIN, ACCEL_WINDOW_MAX)
+                self.setup_ui()
+                try:
+                    await self.message.edit(content=None, embed=self.get_embed(), view=self)
+                except Exception:
+                    pass
+
+                await asyncio.sleep(window_duration)
+
+                if self._accel_active:
+                    self._accel_active = False
+                    if self.state == "casting":
+                        self.setup_ui()
+                        try:
+                            await self.message.edit(content=None, embed=self.get_embed(), view=self)
+                        except Exception:
+                            pass
+
+                if self.state == "casting":
+                    await asyncio.sleep(random.uniform(30, 55))
         except asyncio.CancelledError:
             pass
 
