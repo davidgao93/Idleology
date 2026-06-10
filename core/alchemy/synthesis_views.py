@@ -104,6 +104,7 @@ class AlchemySynthesisHubView(BaseView):
         self.cosmic_dust = cosmic_dust
         self.all_queues = all_queues
         self.player_gold = player_gold
+        self._processing = False
 
         slot_count = AlchemyMechanics.get_disenchant_queue_slots(alchemy_level)
         active_slots = {q[0] for q in all_queues}
@@ -271,6 +272,10 @@ class AlchemySynthesisHubView(BaseView):
         self.stop()
 
     async def _on_collect(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         level = self.alchemy_level

@@ -201,9 +201,14 @@ class _LevelUpConfirmView(BaseView):
         super().__init__(bot, user_id, server_id)
         self.current_level = current_level
         self.cost = cost
+        self._processing = False
 
     @ui.button(label="Confirm", style=ButtonStyle.green, emoji="✅")
     async def confirm(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         current_stones = await self.bot.database.users.get_currency(
             self.user_id, "spirit_stones"
@@ -554,9 +559,14 @@ class _ClearConfirmView(BaseView):
         super().__init__(parent.bot, parent.user_id, parent.server_id)
         self._parent = parent
         self._slot = slot
+        self._processing = False
 
     @ui.button(label="Yes, clear it", style=ButtonStyle.danger, emoji="🗑️")
     async def confirm(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await self._parent.bot.database.alchemy.delete_passive(
             self._parent.user_id, self._slot
         )

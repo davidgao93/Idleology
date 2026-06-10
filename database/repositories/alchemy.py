@@ -3,10 +3,20 @@ import json
 
 import aiosqlite
 
+from database.base import BaseRepository
 
-class AlchemyRepository:
-    def __init__(self, connection: aiosqlite.Connection):
-        self.connection = connection
+# Safelists for dynamically-named identifiers (SQLite doesn't support parameterized
+# table/column names, so we validate against known-good values instead).
+_SKILL_TABLES = frozenset({"mining", "fishing", "woodcutting"})
+_SKILL_COLUMNS = frozenset({
+    "iron", "coal", "gold", "platinum", "idea",
+    "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
+    "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
+})
+_UBER_COLUMNS = frozenset({"capricious_carp", "blessed_bismuth", "sparkling_sprig"})
+
+
+class AlchemyRepository(BaseRepository):
 
     # ------------------------------------------------------------------
     # Alchemy Level
@@ -114,6 +124,8 @@ class AlchemyRepository:
         self, user_id: str, server_id: str, skill_type: str, col: str
     ) -> int:
         """Reads a single resource column from the relevant skill table."""
+        if skill_type not in _SKILL_TABLES or col not in _SKILL_COLUMNS:
+            raise ValueError(f"Invalid skill_type/col: {skill_type!r}/{col!r}")
         async with self.connection.execute(
             f"SELECT {col} FROM {skill_type} WHERE user_id = ? AND server_id = ?",
             (user_id, server_id),
@@ -132,6 +144,8 @@ class AlchemyRepository:
         dst_delta: int,
     ) -> None:
         """Atomically deduct src and credit dst in the skill table."""
+        if skill_type not in _SKILL_TABLES or src_col not in _SKILL_COLUMNS or dst_col not in _SKILL_COLUMNS:
+            raise ValueError(f"Invalid transmute identifiers: {skill_type!r}/{src_col!r}/{dst_col!r}")
         await self.connection.execute(
             f"UPDATE {skill_type} "
             f"SET {src_col} = {src_col} + ?, {dst_col} = {dst_col} + ? "
@@ -223,6 +237,8 @@ class AlchemyRepository:
 
     async def get_uber_material(self, user_id: str, server_id: str, col: str) -> int:
         """Reads a single uber material column from uber_progress."""
+        if col not in _UBER_COLUMNS:
+            raise ValueError(f"Invalid uber material column: {col!r}")
         async with self.connection.execute(
             f"SELECT {col} FROM uber_progress WHERE user_id = ? AND server_id = ?",
             (user_id, server_id),
@@ -234,6 +250,8 @@ class AlchemyRepository:
         self, user_id: str, server_id: str, col: str, amount: int
     ) -> None:
         """Deducts from an uber material column."""
+        if col not in _UBER_COLUMNS:
+            raise ValueError(f"Invalid uber material column: {col!r}")
         await self.connection.execute(
             f"UPDATE uber_progress SET {col} = {col} - ? WHERE user_id = ? AND server_id = ?",
             (amount, user_id, server_id),

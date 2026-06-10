@@ -592,7 +592,6 @@ class DistillationMechanics:
         """The initial 'three skills' / core effect choices presented at the start of distillation.
         Samples 3 from the full pool for replayability.
         """
-        import random
         keys = list(DistillationMechanics.POWERFUL_PASSIVES.keys())
         chosen_keys = random.sample(keys, min(3, len(keys)))
         choices = []
@@ -652,7 +651,6 @@ class DistillationMechanics:
         """Generate the 3 reagent options for this specific step, each with a pre-selected property/event from the pool.
         This allows showing the special properties in the UI before the user chooses.
         """
-        import random
         reagents = DistillationMechanics.REAGENTS
         pool = DistillationMechanics.EVENTS
         # Sample 3 (distinct if possible) with weight bias toward middle outcomes
@@ -724,8 +722,6 @@ class DistillationMechanics:
         Mutates session. The pre_chosen_event (from the UI) drives cost and the
         special resolution rules for the background outcome (nothing / inc/dec dur or power).
         """
-        import random
-
         reagents = DistillationMechanics.REAGENTS
         if not (0 <= choice_idx < len(reagents)):
             choice_idx = 0
@@ -848,8 +844,6 @@ class DistillationMechanics:
     @staticmethod
     def _roll_event(reagent: dict, current_mods: dict) -> Optional[dict]:
         """Pick a weighted event, biased by reagent and current state."""
-        import random
-
         events = DistillationMechanics.EVENTS
         weights = []
         for e in events:
@@ -876,8 +870,6 @@ class DistillationMechanics:
     @staticmethod
     def _roll_tier(event: Optional[dict], mods: dict) -> int:
         """Legacy tier roll (kept for any fallback paths). 0=nothing ... 3=a lot."""
-        import random
-
         lucky = bool(mods.get("lucky")) or (event and event.get("effect", {}).get("this_lucky"))
         unlucky = bool(mods.get("future_free_but_unlucky"))
 
@@ -905,8 +897,6 @@ class DistillationMechanics:
         Middle outcomes (small gains, occasional nothing) are favored.
         Decreases exist for variance and are modulated by the chosen property.
         """
-        import random
-
         eff = (event or {}).get("effect", {})
 
         # Forced nothing from property
@@ -965,8 +955,6 @@ class DistillationMechanics:
         Implements exactly the requested double-roll / re-roll / take-better (higher for gains,
         smaller loss for decreases) behavior for lucky / very_lucky / safe / force / do-nothing cases.
         """
-        import random
-
         eff = (event or {}).get("effect", {})
         axis = raw.get("axis")
         sign = raw.get("sign", 0)
