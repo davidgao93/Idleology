@@ -61,9 +61,9 @@ class SkillMechanics:
     # Key = the tier just purchased; gate controls when the NEXT upgrade is unlocked.
     # Only non-BiS tiers appear (BiS tiers don't gate another upgrade).
     FAMILIARIZATION_HOURS: dict = {
-        "mining": {"steel": 4, "gold": 6, "platinum": 10},
-        "woodcutting": {"carved": 4, "chopping": 6, "magic": 10},
-        "fishing": {"regular": 4, "sturdy": 6, "reinforced": 10},
+        "mining": {"steel": 24, "gold": 48, "platinum": 120},
+        "woodcutting": {"carved": 24, "chopping": 48, "magic": 120},
+        "fishing": {"regular": 24, "sturdy": 48, "reinforced": 120},
     }
 
     # Maximum momentum (minutes) a player can bank per skill across the whole path.

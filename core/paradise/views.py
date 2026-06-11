@@ -313,7 +313,7 @@ class ParadiseHubView(BaseView):
         self.add_item(passives_btn)
 
         exit_btn = ui.Button(
-            label="Exit", style=ButtonStyle.secondary, emoji="✖️", row=1
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
         )
         exit_btn.callback = self._exit_callback
         self.add_item(exit_btn)

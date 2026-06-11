@@ -13,7 +13,7 @@ class UberReturnView(BaseView):
         super().__init__(bot, user_id, server_id)
         self.player = player
 
-    @ui.button(label="↩ Return to Lobby", style=ButtonStyle.blurple)
+    @ui.button(label="↩ Return to Lobby", style=ButtonStyle.secondary)
     async def return_to_lobby(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         uber_data = await self.bot.database.uber.get_uber_progress(

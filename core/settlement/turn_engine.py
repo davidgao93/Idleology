@@ -238,7 +238,9 @@ async def process_next_turn(
         summary["dt_resources"]["market_gold"] = market_gold
     if war_camp_stamina > 0:
         await bot.database.users.add_stamina_capped(user_id, war_camp_stamina)
+        summary["dt_resources"]["war_camp_stamina"] = war_camp_stamina
     if companion_cookie > 0:
+        summary["dt_resources"]["companion_xp"] = companion_cookie
         try:
             active_rows = await bot.database.companions.get_active(user_id)
             if active_rows:

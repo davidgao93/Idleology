@@ -65,7 +65,8 @@ class SettlementCog(commands.Cog, name="settlement"):
                 for r in plot_rows
             ]
             player_name = (
-                existing_user.get("prestige_display_name")
+                existing_user["prestige_display_name"]
+                or existing_user["name"]
                 or interaction.user.display_name
             )
             view = SettlementDashboardView(

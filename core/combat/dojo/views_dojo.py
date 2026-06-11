@@ -233,7 +233,7 @@ class DummyConfigView(BaseView):
         btn_run.callback = self.run_sim
         self.add_item(btn_run)
 
-        btn_exit = ui.Button(label="Exit", style=ButtonStyle.danger, row=3)
+        btn_exit = ui.Button(label="Close", style=ButtonStyle.secondary, row=3)
         btn_exit.callback = self.close_view
         self.add_item(btn_exit)
 

@@ -591,7 +591,7 @@ class ConsumeView(BaseView):
     async def bulk_discard(self, interaction: Interaction, button: ui.Button):
         await interaction.response.send_modal(BulkDiscardModal(self))
 
-    @ui.button(label="Exit", style=ButtonStyle.secondary, row=2)
+    @ui.button(label="Close", style=ButtonStyle.secondary, row=2)
     async def exit(self, interaction: Interaction, button: ui.Button):
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()

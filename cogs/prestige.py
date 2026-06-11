@@ -423,7 +423,7 @@ class PrestigeHubView(BaseView):
             btn.callback = self._handle_tab
             self.add_item(btn)
 
-        close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=0)
+        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, row=0)
         close_btn.callback = self._handle_close
         self.add_item(close_btn)
 

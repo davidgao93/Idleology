@@ -47,7 +47,7 @@ class ProfileHubView(BaseView):
             self.add_item(btn)
 
         close_btn = ui.Button(
-            label="Close", emoji="✖️", style=ButtonStyle.danger, custom_id="close"
+            label="Close", emoji="✖️", style=ButtonStyle.secondary, custom_id="close"
         )
         close_btn.callback = self.handle_close
         self.add_item(close_btn)

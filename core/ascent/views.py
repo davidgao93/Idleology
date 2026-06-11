@@ -306,7 +306,7 @@ class AscentPinnacleListView(BaseView):
         self._update_buttons()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
-    @ui.button(label="Back", style=ButtonStyle.primary, row=0)
+    @ui.button(label="Back", style=ButtonStyle.secondary, row=0)
     async def back_btn(self, interaction: Interaction, button: ui.Button):
         self.stop()
         await interaction.response.edit_message(

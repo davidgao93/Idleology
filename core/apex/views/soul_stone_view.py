@@ -364,7 +364,7 @@ class SoulStoneView(BaseView):
         self._processing = False
         self.stop()
 
-    @discord.ui.button(label="Exit", style=ButtonStyle.danger, emoji="🚪", row=1)
+    @discord.ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
     async def exit_btn(self, interaction: Interaction, button: Button):
         await interaction.response.defer()
         self.bot.state_manager.clear_active(self.user_id)

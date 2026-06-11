@@ -137,7 +137,9 @@
       "Bash(python -m py_compile core/settlement/views/construction.py)",
       "Bash(python -m py_compile core/settlement/views/plot_detail.py)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\" -Recurse -Filter \"*mastery*\" -File)",
-      "Bash(cat > *)"
+      "Bash(cat > *)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget"
     ]
   }
 }

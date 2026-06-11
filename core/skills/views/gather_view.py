@@ -6,7 +6,7 @@ from discord.ui import Button
 
 from core.base_view import BaseView
 from core.combat.views.views_elemental import ElementalEncounterView
-from core.images import MASTERY_MINING, MASTERY_FISHING, MASTERY_WOODCUTTING
+from core.images import MASTERY_FISHING, MASTERY_MINING, MASTERY_WOODCUTTING
 from core.items.factory import load_player
 from core.skills.mastery import get_tool_cost_reduction
 from core.skills.mechanics import SkillMechanics
@@ -176,9 +176,9 @@ class GatherView(BaseView):
                 else:
                     up_btn = Button(
                         label=f"Upgrade {next_tier.title()}",
-                        style=ButtonStyle.success
-                        if can_afford
-                        else ButtonStyle.secondary,
+                        style=(
+                            ButtonStyle.success if can_afford else ButtonStyle.secondary
+                        ),
                         disabled=not can_afford,
                         emoji="⬆️",
                         row=3,
@@ -195,7 +195,7 @@ class GatherView(BaseView):
                 )
                 self.add_item(max_btn)
 
-        close_btn = Button(label="Close", style=ButtonStyle.danger, row=3)
+        close_btn = Button(label="Close", style=ButtonStyle.secondary, row=3)
         close_btn.callback = self.close_callback
         self.add_item(close_btn)
 
@@ -277,9 +277,7 @@ class GatherView(BaseView):
                 gate_line += "\n*Tip: Participating actively in the mini-game earns Momentum, which reduces your Familiarization time.*"
                 desc += gate_line
             elif self.fam_momentum > 0:
-                desc += (
-                    f"\n✅ Gate lifted! *(Momentum banked: {self.fam_momentum} min)*"
-                )
+                desc += "\n✅ You feel familiarized with the tool!*"
         else:
             desc += "\n\n**Tool is Max Level!**"
 

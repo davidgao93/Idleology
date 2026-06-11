@@ -144,7 +144,7 @@ class CompanionListView(BaseView):
         fusion_btn.callback = self.open_fusion
         self.add_item(fusion_btn)
 
-        close_btn = ui.Button(label="Close", style=ButtonStyle.danger, row=1)
+        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
         close_btn.callback = self.close_view
         self.add_item(close_btn)
 

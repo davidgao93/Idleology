@@ -146,7 +146,7 @@ class DoorPromptView(BaseView):
             )
         self.stop()
 
-    @discord.ui.button(label="Leave", style=ButtonStyle.secondary)
+    @discord.ui.button(label="Close", style=ButtonStyle.secondary)
     async def leave(self, interaction: Interaction, button: Button):
         await interaction.response.defer()
         self.stop()

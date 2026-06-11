@@ -135,7 +135,7 @@ class _MaidTutorialView(BaseView):
             nxt.callback = self._on_next
             self.add_item(nxt)
         else:
-            close = ui.Button(label="Close", style=ButtonStyle.danger, row=0)
+            close = ui.Button(label="Close", style=ButtonStyle.secondary, row=0)
             close.callback = self._on_close
             self.add_item(close)
 
@@ -404,17 +404,39 @@ class SettlementDashboardView(SettlementBaseView):
                 )
             dt_res = turn_summary.get("dt_resources") or {}
             if dt_res:
-                res_parts = []
+                _ICONS = {
+                    "timber": "🪵", "stone": "🪨",
+                    "market_gold": "💰",
+                    "iron": "⛏️", "coal": "⛏️", "gold": "⛏️", "platinum": "⛏️", "idea": "⛏️",
+                    "iron_bar": "🔧", "steel_bar": "🔧", "gold_bar": "🔧",
+                    "platinum_bar": "🔧", "idea_bar": "🔧",
+                    "oak_logs": "🌲", "willow_logs": "🌲", "mahogany_logs": "🌲",
+                    "magic_logs": "🌲", "idea_logs": "🌲",
+                    "oak_plank": "🪵", "willow_plank": "🪵", "mahogany_plank": "🪵",
+                    "magic_plank": "🪵", "idea_plank": "🪵",
+                    "desiccated_essence": "✨", "regular_essence": "✨",
+                    "sturdy_essence": "✨", "reinforced_essence": "✨", "titanium_essence": "✨",
+                    "war_camp_stamina": "⚔️", "companion_xp": "🐾",
+                }
+                _LABELS = {
+                    "market_gold": "Gold (Market)",
+                    "war_camp_stamina": "Stamina (War Camp)",
+                    "companion_xp": "Companion XP",
+                }
+                res_lines = []
                 for k, v in dt_res.items():
-                    if v > 0:
-                        label = k.replace("_", " ").title()
-                        res_parts.append(f"+{v:,} {label}")
-                if res_parts:
-                    lines.append("🏭 Buildings produced: " + ", ".join(res_parts[:6]))
+                    if v <= 0:
+                        continue
+                    icon = _ICONS.get(k, "📦")
+                    label = _LABELS.get(k) or RESOURCE_DISPLAY_NAMES.get(k, k.replace("_", " ").title())
+                    res_lines.append(f"{icon} +{v:,} {label}")
+                if res_lines:
+                    lines.append("🏭 **Buildings produced:**")
+                    lines.extend(res_lines[:10])
             if lines:
                 embed.add_field(
                     name=f"📜 Turn {total_turns} Summary",
-                    value="\n".join(lines[:10]),
+                    value="\n".join(lines[:15]),
                     inline=False,
                 )
 
@@ -582,7 +604,7 @@ class SettlementDashboardView(SettlementBaseView):
         # --- Row 3: close ---
         close_btn = ui.Button(
             label="Close",
-            style=ButtonStyle.danger,
+            style=ButtonStyle.secondary,
             row=3,
         )
         close_btn.callback = self.close_view

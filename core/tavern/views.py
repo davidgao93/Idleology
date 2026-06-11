@@ -101,7 +101,7 @@ class ShopView(BaseView):
             )
         await self.process_potion_buy(interaction, qty)
 
-    @ui.button(label="Leave", style=ButtonStyle.danger)
+    @ui.button(label="Close", style=ButtonStyle.secondary)
     async def leave(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         await interaction.delete_original_response()

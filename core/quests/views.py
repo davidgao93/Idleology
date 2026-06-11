@@ -308,7 +308,7 @@ class QuestBoardView(BaseView):
         self.add_item(shop_btn)
 
         # Close
-        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.danger, row=2)
+        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.secondary, row=2)
         close_btn.callback = self._on_close
         self.add_item(close_btn)
 
@@ -352,7 +352,7 @@ class QuestBoardView(BaseView):
         self.add_item(shop_btn)
 
         # Close
-        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.danger, row=3)
+        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.secondary, row=3)
         close_btn.callback = self._on_close
         self.add_item(close_btn)
 
@@ -366,7 +366,7 @@ class QuestBoardView(BaseView):
         shop_btn.callback = self._on_open_shop
         self.add_item(shop_btn)
 
-        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.danger, row=1)
+        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
         close_btn.callback = self._on_close
         self.add_item(close_btn)
 

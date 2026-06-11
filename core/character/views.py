@@ -437,7 +437,7 @@ class StatInvestView(BaseView):
         self.add_item(rune_btn)
 
         done_btn = discord.ui.Button(
-            label="Done", style=discord.ButtonStyle.danger, row=1
+            label="Done", style=discord.ButtonStyle.secondary, row=1
         )
         done_btn.callback = self._done
         self.add_item(done_btn)

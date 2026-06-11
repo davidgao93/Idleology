@@ -57,7 +57,7 @@ class _ElementalCompletionView(BaseView):
         )
         new_view.message = await interaction.original_response()
 
-    @discord.ui.button(label="Exit", style=ButtonStyle.secondary, emoji="✖️")
+    @discord.ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
     async def exit(self, interaction: Interaction, button: discord.ui.Button):
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
