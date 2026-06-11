@@ -4,6 +4,13 @@ config.json
 prompt.txt
 logs
 _upload_ready
+# Ignore all markdown files except the main README
+*.md
+!README.md
+
+partners.txt
+docs
+.claude
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
