@@ -17,11 +17,21 @@ apply_damage_to_monster(player, monster, dmg, log)      # final application to m
 
 from __future__ import annotations
 
+import math
 import random
 
 from core.models import Monster, Player
 
 _DMG_VARIANCE = (0.85, 1.15)
+
+
+def _mid_level_scalar(level: int) -> float:
+    """Smooth damage reduction for monster levels 30–60.
+    Peaks at -20% around level 45 via a sine curve; tapers cleanly to 0 at the edges."""
+    if level < 30 or level > 60:
+        return 1.0
+    t = (level - 30) / 30.0
+    return 1.0 - 0.20 * math.sin(math.pi * t)
 
 
 # ---------------------------------------------------------------------------
@@ -43,7 +53,7 @@ def calculate_damage_taken(player: Player, monster: Monster) -> int:
     per hit, floored at 1.  Cap starts at 1 (levels 1–3) and rises by +1 per level,
     reaching the uncapped formula at level 50."""
     p_def = max(player.get_total_defence(), 1)
-    base_raw = monster.level * 1.5
+    base_raw = monster.level * 1.5 * _mid_level_scalar(monster.level)
     surplus = (monster.effective_attack - p_def) / p_def
     surplus = max(-0.95, surplus)
     surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]

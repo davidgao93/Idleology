@@ -422,6 +422,11 @@ class CombatView(BaseView):
 
     @ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️")
     async def attack_btn(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         # 1. Player Turn
         p_log = engine.process_player_turn(self.player, self.monster)
         self.combat_logger.log_player_turn(p_log, self.monster)
@@ -440,10 +445,20 @@ class CombatView(BaseView):
             await asyncio.sleep(3)
             await self.handle_end_state(interaction.message, interaction)
         else:
+            # Only release the guard when the fight is still ongoing.
+            # If combat is over, handle_end_state (called inside check_combat_state)
+            # stops the view, so holding the guard until then prevents double-rewards.
+            if self.player.current_hp > 0 and self.monster.hp > 0:
+                self._processing = False
             await self.check_combat_state(interaction)
 
     @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
     async def heal_btn(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         h_log = engine.process_heal(self.player, self.monster)
         self.logs = {"Heal": h_log}
 
@@ -452,6 +467,8 @@ class CombatView(BaseView):
             m_log = self._do_monster_turn(context_note="(retaliation to heal/potion)")
             self.logs[self.monster.name] = m_log
 
+        if self.player.current_hp > 0 and self.monster.hp > 0:
+            self._processing = False
         await self.check_combat_state(interaction)
 
     @ui.button(label="Free Yourself", style=ButtonStyle.secondary, emoji="🌿", row=1)
@@ -482,7 +499,8 @@ class CombatView(BaseView):
             )
             self.logs[self.monster.name] = m_log
 
-        self._processing = False
+        if self.player.current_hp > 0 and self.monster.hp > 0:
+            self._processing = False
         await self.check_combat_state(interaction)
 
     @ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
@@ -490,6 +508,11 @@ class CombatView(BaseView):
         # Simple Auto: Process turns in a loop.
         # For bosses: run all the way through without HP protection.
         # For regular enemies: pause at < 20% HP.
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         await interaction.response.defer()
 
         hp_threshold = self.player.total_max_hp * 0.2
@@ -536,6 +559,7 @@ class CombatView(BaseView):
                     f"<@{self.user_id}> ⚠️ Low HP Protection triggered — auto paused!",
                     delete_after=15,
                 )
+                self._processing = False
                 break
 
             # Handle end state (victory, defeat, or phase transition)
@@ -573,6 +597,11 @@ class CombatView(BaseView):
             return await interaction.response.send_message(
                 "This unlocks at Level 20!", ephemeral=True
             )
+
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
 
         await interaction.response.defer()
         turns_processed = 0
@@ -616,6 +645,8 @@ class CombatView(BaseView):
                     f"<@{self.user_id}> ⚠️ Low HP Protection triggered — auto paused!",
                     delete_after=15,
                 )
+            if self.player.current_hp > 0 and self.monster.hp > 0:
+                self._processing = False
             await self.check_combat_state(interaction)
 
     async def check_combat_state(self, interaction: Interaction):

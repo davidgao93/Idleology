@@ -5,11 +5,35 @@ Provides:
   create_victory_embed — Builds the post-combat victory embed with loot summary.
 """
 
+import json
+import os
 from typing import Any, Dict, Optional
 
 import discord
 
 from core.images import COMBAT_VICTORY
+
+_EXP_TABLE: dict = {}
+
+
+def _load_exp_table() -> dict:
+    global _EXP_TABLE
+    if not _EXP_TABLE:
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "exp.json")
+        with open(path, encoding="utf-8") as f:
+            _EXP_TABLE = json.load(f)["levels"]
+    return _EXP_TABLE
+
+
+def _exp_progress_str(level: int, exp: int) -> str:
+    if level >= 100:
+        return "MAX"
+    table = _load_exp_table()
+    needed = table.get(str(level), 0)
+    if needed <= 0:
+        return ""
+    pct = min(99.9, exp / needed * 100)
+    return f"{pct:.1f}% to Lv.{level + 1}"
 from core.items.models import _PART_SLOT_LABELS
 from core.models import Monster, Player
 
@@ -47,8 +71,12 @@ def create_victory_embed(
     if rewards.get("msgs"):
         embed.add_field(name="Bonus", value="\n".join(rewards["msgs"]), inline=False)
 
+    _xp_progress = _exp_progress_str(player.level, player.exp)
+    _xp_suffix = f"\n*{_xp_progress}*" if _xp_progress else ""
     embed.add_field(
-        name="📚 Experience", value=f"{rewards.get('xp', 0):,} XP", inline=True
+        name="📚 Experience",
+        value=f"+{rewards.get('xp', 0):,} XP{_xp_suffix}",
+        inline=True,
     )
     embed.add_field(name="💰 Gold", value=f"{rewards.get('gold', 0):,} GP", inline=True)
 

@@ -4,6 +4,8 @@ Stateless embed builders for the profile hub. All methods are pure async functio
 that take (bot, user_id, server_id) and return a discord.Embed.
 """
 
+import json
+import os
 from datetime import datetime, timedelta, timezone
 
 import discord
@@ -52,7 +54,20 @@ class ProfileBuilder:
         embed.add_field(
             name="Level", value=f"{user[4]} (Ascension {user[15]})", inline=True
         )
-        embed.add_field(name="Experience", value=f"{user[5]:,}", inline=True)
+        _lvl, _exp = user[4], user[5]
+        try:
+            _exp_path = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "exp.json")
+            with open(_exp_path, encoding="utf-8") as _f:
+                _exp_table = json.load(_f)["levels"]
+            _needed = _exp_table.get(str(_lvl), 0)
+            if _lvl >= 100 or _needed <= 0:
+                _exp_str = f"{_exp:,} *(MAX)*"
+            else:
+                _pct = min(99.9, _exp / _needed * 100)
+                _exp_str = f"{_exp:,} / {_needed:,}\n*({_pct:.1f}% to Lv.{_lvl + 1})*"
+        except Exception:
+            _exp_str = f"{_exp:,}"
+        embed.add_field(name="Experience", value=_exp_str, inline=True)
 
         embed.add_field(name="Ideology", value=f"{user[8]}", inline=True)
         embed.add_field(name="Followers", value=f"{followers:,}", inline=True)

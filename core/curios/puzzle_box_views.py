@@ -118,6 +118,7 @@ class PuzzleBoxView(BaseView):
             )
         if self.claimed:
             return
+        self.claimed = True  # Set before defer to prevent concurrent double-claims
 
         await interaction.response.defer()
         await self._do_claim()

@@ -480,8 +480,10 @@ async def apply_victory_rewards(
     except Exception as e:
         print(f"[Quest tick error in victory]: {e}")
 
-    # Settlement Zeal (10 per combat win, subject to daily cap)
+    # Settlement Zeal (10 per combat win, subject to daily cap; requires level 10)
     try:
+        if player.level < 10:
+            return reward_data
         from core.settlement.constants import (
             ZEAL_DAILY_HARD_CAP,
             ZEAL_DAILY_SOFT_CAP,

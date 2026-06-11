@@ -56,6 +56,7 @@ class CurioView(BaseView):
         self.curio_count = curio_count
         self.puzzle_box_count = puzzle_box_count
         self.message = None
+        self._processing = False
         self._build_buttons()
 
     def _build_buttons(self):
@@ -137,6 +138,11 @@ class CurioView(BaseView):
         await super().on_timeout()
 
     async def _process_open(self, interaction: Interaction, amount: int):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         await interaction.response.defer()
         result = await CurioManager.process_open(
             self.bot, self.user_id, self.server_id, amount
@@ -168,6 +174,7 @@ class CurioView(BaseView):
         embed.set_footer(text=f"Remaining Curios: {self.curio_count}")
 
         self._build_buttons()
+        self._processing = False
         if self.curio_count == 0:
             embed.add_field(
                 name="Empty!", value="You have no curios left.", inline=False
