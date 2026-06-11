@@ -8,7 +8,6 @@ from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
 from core.images import MAID_AUTHOR, MAID_SPRITZ_PORTRAIT, SETTLEMENT_BUILDINGS
 from core.settlement.constants import (
-    BUILDING_INFO,
     RESOURCE_DISPLAY_NAMES,
     SETTLEMENT_EVENTS,
     ZEAL_TO_DT,
@@ -319,13 +318,12 @@ class SettlementDashboardView(SettlementBaseView):
         if self.projects:
             proj_lines = []
             for p in self.projects[:5]:
-                bar = "█" * p["invested_turns"] + "░" * max(
-                    0, p["required_turns"] - p["invested_turns"]
-                )
                 pct = int(p["invested_turns"] / max(1, p["required_turns"]) * 100)
+                filled = int(10 * p["invested_turns"] / max(1, p["required_turns"]))
+                bar = "█" * filled + "░" * (10 - filled)
                 label = p.get("data", {}).get("building_type", p["project_type"])
                 proj_lines.append(
-                    f"🔨 {label.replace('_', ' ').title()} — {pct}% `{bar[:10]}`"
+                    f"🔨 {label.replace('_', ' ').title()} — {pct}% `{bar}`"
                 )
             if len(self.projects) > 5:
                 proj_lines.append(f"…+{len(self.projects) - 5} more")
@@ -391,6 +389,9 @@ class SettlementDashboardView(SettlementBaseView):
             if turn_summary.get("events_fired"):
                 for e in turn_summary["events_fired"]:
                     lines.append(f"🎉 Event: {e}")
+            if turn_summary.get("crisis_events_fired"):
+                for e in turn_summary["crisis_events_fired"]:
+                    lines.append(f"⚠️ Crisis incoming: {e} — use **Confront** to fight it off!")
             if turn_summary.get("events_expired"):
                 for e in turn_summary["events_expired"]:
                     lines.append(f"⏹️ Event ended: {e}")
@@ -405,18 +406,36 @@ class SettlementDashboardView(SettlementBaseView):
             dt_res = turn_summary.get("dt_resources") or {}
             if dt_res:
                 _ICONS = {
-                    "timber": "🪵", "stone": "🪨",
+                    "timber": "🪵",
+                    "stone": "🪨",
                     "market_gold": "💰",
-                    "iron": "⛏️", "coal": "⛏️", "gold": "⛏️", "platinum": "⛏️", "idea": "⛏️",
-                    "iron_bar": "🔧", "steel_bar": "🔧", "gold_bar": "🔧",
-                    "platinum_bar": "🔧", "idea_bar": "🔧",
-                    "oak_logs": "🌲", "willow_logs": "🌲", "mahogany_logs": "🌲",
-                    "magic_logs": "🌲", "idea_logs": "🌲",
-                    "oak_plank": "🪵", "willow_plank": "🪵", "mahogany_plank": "🪵",
-                    "magic_plank": "🪵", "idea_plank": "🪵",
-                    "desiccated_essence": "✨", "regular_essence": "✨",
-                    "sturdy_essence": "✨", "reinforced_essence": "✨", "titanium_essence": "✨",
-                    "war_camp_stamina": "⚔️", "companion_xp": "🐾",
+                    "iron": "⛏️",
+                    "coal": "⛏️",
+                    "gold": "⛏️",
+                    "platinum": "⛏️",
+                    "idea": "⛏️",
+                    "iron_bar": "🔧",
+                    "steel_bar": "🔧",
+                    "gold_bar": "🔧",
+                    "platinum_bar": "🔧",
+                    "idea_bar": "🔧",
+                    "oak_logs": "🌲",
+                    "willow_logs": "🌲",
+                    "mahogany_logs": "🌲",
+                    "magic_logs": "🌲",
+                    "idea_logs": "🌲",
+                    "oak_plank": "🪵",
+                    "willow_plank": "🪵",
+                    "mahogany_plank": "🪵",
+                    "magic_plank": "🪵",
+                    "idea_plank": "🪵",
+                    "desiccated_essence": "✨",
+                    "regular_essence": "✨",
+                    "sturdy_essence": "✨",
+                    "reinforced_essence": "✨",
+                    "titanium_essence": "✨",
+                    "war_camp_stamina": "⚔️",
+                    "companion_xp": "🐾",
                 }
                 _LABELS = {
                     "market_gold": "Gold (Market)",
@@ -428,7 +447,9 @@ class SettlementDashboardView(SettlementBaseView):
                     if v <= 0:
                         continue
                     icon = _ICONS.get(k, "📦")
-                    label = _LABELS.get(k) or RESOURCE_DISPLAY_NAMES.get(k, k.replace("_", " ").title())
+                    label = _LABELS.get(k) or RESOURCE_DISPLAY_NAMES.get(
+                        k, k.replace("_", " ").title()
+                    )
                     res_lines.append(f"{icon} +{v:,} {label}")
                 if res_lines:
                     lines.append("🏭 **Buildings produced:**")
@@ -502,7 +523,10 @@ class SettlementDashboardView(SettlementBaseView):
                 else:
                     _needs_workers = True
 
-                if b.building_type == "black_market":
+                if b.is_disabled:
+                    status_emoji = "🚧"
+                    worker_desc = "DISABLED — needs repair"
+                elif b.building_type == "black_market":
                     status_emoji = "⚫"
                     worker_desc = "Special trading post"
                 elif not _needs_workers:
@@ -546,6 +570,36 @@ class SettlementDashboardView(SettlementBaseView):
         next_turn_btn.callback = self.on_next_turn
         self.add_item(next_turn_btn)
 
+        # Crisis confront button — appears when a spawn_combat event is upcoming.
+        confront_event = next(
+            (
+                ev
+                for ev in self._cached_active_events
+                if SETTLEMENT_EVENTS.get(ev["event_key"], {})
+                .get("effects", {})
+                .get("spawn_combat")
+                and ev["event_type"] == "upcoming"
+            ),
+            None,
+        )
+        if confront_event:
+            ev_def = SETTLEMENT_EVENTS.get(confront_event["event_key"], {})
+            enemy_name = (
+                ev_def.get("effects", {})
+                .get("spawn_combat", "enemy")
+                .replace("_", " ")
+                .title()
+            )
+            confront_btn = ui.Button(
+                label=f"⚔️ Confront {enemy_name}",
+                style=ButtonStyle.danger,
+                row=1,
+            )
+            confront_btn.callback = lambda i, ev=confront_event: self._on_confront(
+                i, ev
+            )
+            self.add_item(confront_btn)
+
         gather_zeal_btn = ui.Button(
             label="Gather Zeal",
             style=ButtonStyle.blurple,
@@ -583,29 +637,39 @@ class SettlementDashboardView(SettlementBaseView):
         research_btn.callback = self.open_research
         self.add_item(research_btn)
 
+        # --- Row 3: help / info buttons ---
         guide_btn = ui.Button(
             label="Building List",
             style=ButtonStyle.secondary,
             emoji="📖",
-            row=2,
+            row=3,
         )
         guide_btn.callback = self.show_building_list
         self.add_item(guide_btn)
 
+        meta_btn = ui.Button(
+            label="Meta Buildings",
+            style=ButtonStyle.secondary,
+            emoji="⚙️",
+            row=3,
+        )
+        meta_btn.callback = self.show_meta_buildings
+        self.add_item(meta_btn)
+
         maid_btn = ui.Button(
-            label="Ask the Maid",
+            label="Ask Spritz",
             style=ButtonStyle.secondary,
             emoji="🎀",
-            row=2,
+            row=3,
         )
         maid_btn.callback = self.ask_the_maid
         self.add_item(maid_btn)
 
-        # --- Row 3: close ---
+        # --- Row 4: close ---
         close_btn = ui.Button(
             label="Close",
             style=ButtonStyle.secondary,
-            row=3,
+            row=4,
         )
         close_btn.callback = self.close_view
         self.add_item(close_btn)
@@ -654,13 +718,6 @@ class SettlementDashboardView(SettlementBaseView):
     # -------------------------------------------------------------------------
 
     async def show_building_list(self, interaction: Interaction):
-        _LEGACY = {
-            "celestial_shrine",
-            "infernal_shrine",
-            "void_shrine",
-            "twin_shrine",
-            "corruption_shrine",
-        }
         _REGULAR = [
             ("🪵 Logging Camp", "Generator · Timber · scales with tier & workers"),
             ("🪨 Quarry", "Generator · Stone · scales with tier & workers"),
@@ -668,7 +725,7 @@ class SettlementDashboardView(SettlementBaseView):
             ("🌲 Sawmill", "Converter · Logs → Planks · T1 Oak → T5 Idea"),
             (
                 "🦴 Reliquary",
-                "Converter · Bones → Essences · T1 Dehydrated → T5 Titanium",
+                "Converter · Bones → Essences · T1 Desiccated → T5 Titanium",
             ),
             ("💰 Market", "Generator · Gold · scales with tier & workers"),
             ("⚔️ Barracks", "Passive · +% Attack & Defence in combat"),
@@ -688,43 +745,46 @@ class SettlementDashboardView(SettlementBaseView):
             ),
             ("🔮 Uber Shrine", "Passive · Houses all 5 shrine statues for sigil drops"),
         ]
+        regular_lines = "\n".join(f"**{n}** — {d}" for n, d in _REGULAR)
+        embed = discord.Embed(
+            title="📖 Regular Buildings",
+            description=regular_lines,
+            color=discord.Color.blue(),
+        )
+        embed.set_footer(text="Select a building in the dashboard for full details.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    async def show_meta_buildings(self, interaction: Interaction):
         _META = [
             (
                 "🏠 Servant's Quarters",
-                "Meta · +2% generator output per 10 workers to adjacent generators (cap +20%)",
+                "+2% generator output per 10 workers to adjacent generators (cap +20%)",
             ),
-            (
-                "📦 Supply Depot",
-                "Meta · +15% converter effectiveness to adjacent converters",
-            ),
-            (
-                "⛪ Grand Cathedral",
-                "Meta · Doubles worker cap for adjacent shrine buildings",
-            ),
+            ("📦 Supply Depot", "+15% converter effectiveness to adjacent converters"),
+            ("⛪ Grand Cathedral", "Doubles worker cap for adjacent shrine buildings"),
             (
                 "🏯 Watchtower",
-                "Meta · Global +1%×tier worker cap on all regular buildings (no workers needed)",
+                "Global +1%×tier worker cap on all regular buildings (no workers needed)",
             ),
-            ("🏗️ Foreman's Post", "Meta · +25% output to all adjacent buildings"),
-            ("🌸 Shrine Garden", "Meta · +15% effectiveness to adjacent shrines"),
-            (
-                "⛺ Encampment",
-                "Meta · +0.5 stamina/hr per 100 workers to adjacent War Camps",
-            ),
+            ("🏗️ Foreman's Post", "+25% output to all adjacent buildings"),
+            ("🌸 Shrine Garden", "+15% effectiveness to adjacent shrine buildings"),
+            ("⛺ Encampment", "+0.5 stamina/hr per 100 workers to adjacent War Camps"),
             (
                 "💊 Apothecary Annex",
-                "Meta · +4% flat heal per 100 workers to adjacent Apothecary",
+                "+4% flat heal per 100 workers to adjacent Apothecary",
             ),
         ]
-        regular_lines = "\n".join(f"**{n}** — {d}" for n, d in _REGULAR)
-        meta_lines = "\n".join(f"**{n}** — {d}" for n, d in _META)
+        lines = "\n".join(f"**{n}** — {d}" for n, d in _META)
         embed = discord.Embed(
-            title="📖 Building List",
-            color=discord.Color.blue(),
+            title="⚙️ Meta Buildings",
+            description=(
+                "Meta buildings provide powerful adjacency bonuses to neighbouring plots. "
+                "Each requires full staffing to activate (Watchtower is always-on).\n\n"
+                + lines
+            ),
+            color=discord.Color.blurple(),
         )
-        embed.add_field(name="Regular Buildings", value=regular_lines, inline=False)
-        embed.add_field(name="Meta Buildings", value=meta_lines, inline=False)
-        embed.set_footer(text="Select a building in the dashboard for full details.")
+        embed.set_footer(text="Build meta buildings from any empty developed plot.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def open_town_hall(self, interaction: Interaction):
@@ -833,6 +893,8 @@ class SettlementDashboardView(SettlementBaseView):
         # 5. Per-building production
         total_changes: dict[str, float] = {}
         for b in self.settlement.buildings:
+            if b.is_disabled:
+                continue  # disabled buildings produce nothing until repaired
             plot = plot_by_idx.get(b.plot_index) if b.plot_index is not None else None
             plot_bonus = plot.bonus_type if plot else None
             adj = adj_bonuses.get(b.plot_index, {}) if b.plot_index is not None else {}
@@ -1125,6 +1187,125 @@ class SettlementDashboardView(SettlementBaseView):
         await interaction.response.send_message(
             embed=view.build_embed(), view=view, ephemeral=True
         )
+
+    # -------------------------------------------------------------------------
+    # Crisis encounter
+    # -------------------------------------------------------------------------
+
+    async def _on_confront(self, interaction: Interaction, event: dict) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        try:
+            from core.settlement.constants import SETTLEMENT_EVENTS
+            from core.settlement.encounter import (
+                get_repair_cost,
+                run_settlement_encounter,
+            )
+
+            uid, sid = self.user_id, self.server_id
+            ev_def = SETTLEMENT_EVENTS.get(event["event_key"], {})
+            enemy_name = (
+                ev_def.get("effects", {})
+                .get("spawn_combat", "enemy")
+                .replace("_", " ")
+                .title()
+            )
+            target_building_type = (event.get("data") or {}).get("target_building")
+
+            user_row = await self.bot.database.users.get(uid, sid)
+            result = await run_settlement_encounter(
+                self.bot, uid, sid, user_row["level"]
+            )
+
+            # Remove the crisis event regardless of outcome.
+            await self.bot.database.settlement.remove_events_by_key(
+                uid, sid, event["event_key"]
+            )
+
+            # Reload state.
+            self.settlement = await self.bot.database.settlement.get_settlement(
+                uid, sid
+            )
+            active_events = await self.bot.database.settlement.get_active_events(
+                uid, sid
+            )
+            projects = await self.bot.database.settlement.get_projects(uid, sid)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
+            turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
+            pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
+
+            self._rebuild_ui()
+            embed = self.build_embed(
+                active_events=active_events,
+                projects=projects,
+                zeal_data=zeal_data,
+                turns_data=turns_data,
+                pending_deal=pending_deal,
+            )
+
+            if result.player_won:
+                xp = result.reward_data.get("xp", 0)
+                gold = result.reward_data.get("gold", 0)
+                lines = [
+                    f"You defeated the **{enemy_name}** in **{result.rounds}** round(s)!"
+                ]
+                if gold:
+                    lines.append(f"💰 +{gold:,} gold")
+                if xp:
+                    lines.append(f"✨ +{xp:,} XP")
+                lines.append("🔥 +50 Zeal (settlement defence bonus)")
+                for msg in result.reward_lines[:5]:
+                    lines.append(msg)
+                embed.add_field(
+                    name=f"⚔️ Crisis Resolved — {enemy_name} Defeated!",
+                    value="\n".join(lines),
+                    inline=False,
+                )
+                embed.color = discord.Color.green()
+            else:
+                lines = [
+                    f"The **{enemy_name}** overwhelmed you after **{result.rounds}** round(s)."
+                ]
+                if result.gold_loss:
+                    lines.append(f"💰 Lost **{result.gold_loss:,}** gold in the raid.")
+                if target_building_type:
+                    building = await self.bot.database.settlement.get_building_by_type(
+                        uid, sid, target_building_type
+                    )
+                    if building:
+                        await self.bot.database.settlement.disable_building(building.id)
+                        repair = get_repair_cost(building.tier)
+                        b_label = target_building_type.replace("_", " ").title()
+                        lines.append(
+                            f"🏚️ **{b_label}** has been disabled. "
+                            f"Repair it from the plot view for **{repair:,} gold**."
+                        )
+                        # Refresh settlement to reflect disabled state.
+                        self.settlement = (
+                            await self.bot.database.settlement.get_settlement(uid, sid)
+                        )
+                        self._rebuild_ui()
+                        embed = self.build_embed(
+                            active_events=active_events,
+                            projects=projects,
+                            zeal_data=zeal_data,
+                            turns_data=turns_data,
+                            pending_deal=pending_deal,
+                        )
+                embed.add_field(
+                    name=f"💀 Crisis Failed — {enemy_name} Prevailed",
+                    value="\n".join(lines),
+                    inline=False,
+                )
+                embed.color = discord.Color.red()
+
+            await interaction.edit_original_response(embed=embed, view=self)
+        finally:
+            self._processing = False
 
     # -------------------------------------------------------------------------
     # Internal helpers

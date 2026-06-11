@@ -16,7 +16,7 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
-from core.images import SETTLEMENT_BUILDINGS, SETTLEMENT_HUB
+from core.images import SETTLEMENT_BUILDINGS, SETTLEMENT_CONSTRUCTION, SETTLEMENT_HUB
 from core.settlement.constants import (
     BUILD_MESSAGES,
     BUILDING_INFO,
@@ -27,11 +27,13 @@ from core.settlement.mechanics import SettlementMechanics
 from core.settlement.models import Building, Plot, Settlement
 from core.settlement.plots import (
     META_BUILDINGS,
+    PLOT_BONUS_AFFECTED,
     PLOT_BONUS_TABLE,
     SHRINE_BUILDING_TYPES,
     get_effective_max_workers,
     roll_plot_bonus,
 )
+from core.settlement.encounter import get_repair_cost
 from core.settlement.views.research import RESEARCHABLE_BUILDINGS
 
 from .base import SettlementBaseView
@@ -340,11 +342,30 @@ def _compute_dc_cost(plots: list) -> int:
 
 
 class PlotWorkerModal(ui.Modal, title="Manage Workforce"):
-    count = ui.TextInput(label="Number of Workers", min_length=1, max_length=4)
-
     def __init__(self, parent_view: "PlotDetailView"):
         super().__init__()
         self.parent_view = parent_view
+
+        pv = parent_view
+        b = pv.building
+        adj = pv.adj_bonus or {}
+        max_w = get_effective_max_workers(
+            building_type=b.building_type,
+            tier=b.tier,
+            plot_bonus_type=pv.plot.bonus_type if pv.plot else None,
+            adj_shrine_cap_x2=adj.get("shrine_cap_x2", False),
+            has_watchtower=adj.get("has_watchtower", False),
+        )
+        total_assigned = sum(bld.workers_assigned for bld in pv.parent.settlement.buildings)
+        free = pv.parent.follower_count - (total_assigned - b.workers_assigned)
+
+        self.count = ui.TextInput(
+            label=f"Workers (0–{max_w:,} cap, {free:,} available)",
+            placeholder=f"Currently {b.workers_assigned:,} assigned — enter new amount",
+            min_length=1,
+            max_length=6,
+        )
+        self.add_item(self.count)
 
     async def on_submit(self, interaction: Interaction):
         try:
@@ -475,12 +496,15 @@ class PlotDetailView(SettlementBaseView):
     def build_embed(self) -> discord.Embed:
         p = self.plot
         bonus_data = PLOT_BONUS_TABLE.get(p.bonus_type or "", {})
-        bonus_label = (
-            f"{bonus_data.get('emoji', '')} **{bonus_data['label']}**\n"
-            f"{bonus_data['description']}"
-            if p.is_developed and p.bonus_type
-            else ""
-        )
+        if p.is_developed and p.bonus_type:
+            _affected = PLOT_BONUS_AFFECTED.get(p.bonus_type, "")
+            bonus_label = (
+                f"{bonus_data.get('emoji', '')} **{bonus_data['label']}**\n"
+                f"{bonus_data['description']}"
+                + (f"\n-# Affects: {_affected}" if _affected and _affected != "None" else "")
+            )
+        else:
+            bonus_label = ""
 
         if not p.is_developed:
             embed = discord.Embed(
@@ -497,6 +521,7 @@ class PlotDetailView(SettlementBaseView):
                 title=f"📍 Plot {p.plot_index} — 🏗️ Under Construction",
                 color=discord.Color.orange(),
             )
+            embed.set_thumbnail(url=SETTLEMENT_CONSTRUCTION)
             embed.description = (
                 (f"**Terrain Bonus:** {bonus_label}\n\n" if bonus_label else "")
                 + f"**{b_name}** is queued for construction here.\n\n"
@@ -524,11 +549,14 @@ class PlotDetailView(SettlementBaseView):
             tier_str = f"T{b.tier}/5" if not b.is_meta else "Meta"
             embed = discord.Embed(
                 title=f"📍 Plot {p.plot_index} — {b.name}",
-                color=discord.Color.gold(),
+                color=discord.Color.red() if b.is_disabled else discord.Color.gold(),
             )
             desc = (
                 f"**Type:** {tier_str}\n**Workers:** {b.workers_assigned:,}/{max_w:,}"
             )
+            if b.is_disabled:
+                repair_cost = get_repair_cost(b.tier)
+                desc += f"\n\n🚧 **DISABLED** — damaged by a crisis event.\nRepair cost: **{repair_cost:,} gold**"
             if bonus_label:
                 desc += f"\n\n**Terrain Bonus:** {bonus_label}"
             _b_cat = b_data.get("type", "")
@@ -593,7 +621,7 @@ class PlotDetailView(SettlementBaseView):
         if p.is_developed:
             self._add_diviners_rod_button()
 
-        back = ui.Button(label="Back", style=ButtonStyle.secondary, row=4)
+        back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
         back.callback = self._go_back
         self.add_item(back)
 
@@ -668,14 +696,14 @@ class PlotDetailView(SettlementBaseView):
             btn_hatch.callback = self._open_hatchery
             self.add_item(btn_hatch)
 
-        # Workers button (all buildings that accept workers)
+        # Workers button (all buildings that accept workers) — row 0
         needs_workers = (
             not b.is_meta
             or META_BUILDINGS.get(b.building_type, {}).get("max_workers", 0) > 0
         )
         if needs_workers:
             btn_workers = ui.Button(
-                label=f"Manage Workers ({b.workers_assigned:,} assigned)",
+                label="Manage",
                 style=ButtonStyle.primary,
                 emoji="👥",
                 row=0,
@@ -684,23 +712,34 @@ class PlotDetailView(SettlementBaseView):
             self.add_item(btn_workers)
 
         if not b.is_meta:
-            # Upgrade button
+            # Upgrade button — row 0 alongside Manage
             if b.tier < 5:
                 btn_up = ui.Button(
                     label=f"Upgrade to T{b.tier + 1}",
                     style=ButtonStyle.success,
                     emoji="⬆️",
-                    row=1,
+                    row=0,
                 )
                 btn_up.callback = self._upgrade_building
                 self.add_item(btn_up)
 
-        # Demolish button
+        if b.is_disabled:
+            repair_cost = get_repair_cost(b.tier)
+            btn_repair = ui.Button(
+                label=f"Repair ({repair_cost:,}g)",
+                style=ButtonStyle.success,
+                emoji="🔧",
+                row=0,
+            )
+            btn_repair.callback = self._repair_building
+            self.add_item(btn_repair)
+
+        # Demolish button — row 1
         btn_demo = ui.Button(
             label="Demolish",
             style=ButtonStyle.danger,
             emoji="💥",
-            row=2,
+            row=1,
         )
         btn_demo.callback = self._demolish_confirm
         self.add_item(btn_demo)
@@ -923,6 +962,39 @@ class PlotDetailView(SettlementBaseView):
         self._build_buttons()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
+    async def _repair_building(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
+        b = self.building
+        repair_cost = get_repair_cost(b.tier)
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < repair_cost:
+            self._processing = False
+            return await interaction.response.send_message(
+                f"You need **{repair_cost:,} gold** to repair this building (you have **{gold:,}**).",
+                ephemeral=True,
+            )
+
+        await interaction.response.defer()
+        await self.bot.database.users.modify_gold(self.user_id, -repair_cost)
+        await self.bot.database.settlement.repair_building(b.id)
+
+        self.parent.settlement = await self.bot.database.settlement.get_settlement(
+            self.user_id, self.parent.server_id
+        )
+        self.building = next(
+            (x for x in self.parent.settlement.buildings if x.id == b.id), self.building
+        )
+        self._processing = False
+        self._build_buttons()
+        embed = self.build_embed()
+        embed.title = f"📍 Plot {self.plot.plot_index} — 🔧 {b.name} Repaired!"
+        embed.color = discord.Color.green()
+        await interaction.edit_original_response(embed=embed, view=self)
+
     async def _demolish_confirm(self, interaction: Interaction):
         view = _DemolishConfirmView(self.bot, self.user_id, self)
         embed = discord.Embed(
@@ -944,7 +1016,7 @@ class PlotDetailView(SettlementBaseView):
             label="Use Diviner's Rod",
             style=ButtonStyle.secondary,
             emoji="🔮",
-            row=3,
+            row=1,
         )
         btn.callback = self._use_diviners_rod
         self.add_item(btn)

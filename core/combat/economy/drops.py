@@ -389,6 +389,11 @@ async def apply_boss_sigil_drops(
         _, building_workers = await bot.database.settlement.get_building_details(
             user_id, server_id, building_key
         )
+        if building_workers == 0:
+            _, uber_workers = await bot.database.settlement.get_building_details(
+                user_id, server_id, "uber_shrine"
+            )
+            building_workers = uber_workers // 5
         shrine_eff = 1.0
         if player is not None:
             shrine_eff = getattr(player, "shrine_effectiveness", {}).get(
@@ -435,6 +440,11 @@ async def apply_corrupted_monster_drops(
     _, corruption_workers = await bot.database.settlement.get_building_details(
         user_id, server_id, "corruption_shrine"
     )
+    if corruption_workers == 0:
+        _, uber_workers = await bot.database.settlement.get_building_details(
+            user_id, server_id, "uber_shrine"
+        )
+        corruption_workers = uber_workers // 5
     if corruption_workers > 0:
         shrine_eff = 1.0
         if player is not None:

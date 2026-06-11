@@ -370,8 +370,13 @@ class ResearchView(SettlementBaseView):
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _on_back(self, interaction: Interaction) -> None:
+        await interaction.response.defer()
+        # Reload projects so the dashboard's Active Projects field is current.
+        self.parent.projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.server_id
+        )
         self.parent._rebuild_ui()
-        await interaction.response.edit_message(
+        await interaction.edit_original_response(
             embed=self.parent.build_embed(), view=self.parent
         )
         self.stop()

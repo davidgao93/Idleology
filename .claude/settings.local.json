@@ -139,7 +139,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\" -Recurse -Filter \"*mastery*\" -File)",
       "Bash(cat > *)",
       "mcp__visualize__read_me",
-      "mcp__visualize__show_widget"
+      "mcp__visualize__show_widget",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yugao\\\\Idleology\" -Recurse -Directory -Name)",
+      "Bash(Select-Object -First 20)"
     ]
   }
 }

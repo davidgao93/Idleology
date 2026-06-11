@@ -124,8 +124,9 @@ async def _apply_companion_drops(
             )
             tame_embed.set_footer(text="A Boss Companion has joined your roster.")
 
-            await message.edit(embed=tame_embed, view=None)
-            await asyncio.sleep(5)
+            if message is not None:
+                await message.edit(embed=tame_embed, view=None)
+                await asyncio.sleep(5)
 
             reward_data["msgs"].append(
                 f"👑 **LEGENDARY:** {pet_name} joined your roster!"

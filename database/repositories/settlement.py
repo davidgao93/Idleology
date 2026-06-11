@@ -10,6 +10,16 @@ class SettlementRepository:
     def __init__(self, connection: aiosqlite.Connection):
         self.connection = connection
 
+    async def migrate_buildings_schema(self) -> None:
+        """Add new columns to the buildings table for existing databases."""
+        try:
+            await self.connection.execute(
+                "ALTER TABLE buildings ADD COLUMN is_disabled INTEGER NOT NULL DEFAULT 0"
+            )
+            await self.connection.commit()
+        except Exception:
+            pass  # column already exists
+
     async def get_settlement(self, user_id: str, server_id: str) -> Settlement:
         cursor = await self.connection.execute(
             "SELECT user_id, server_id, town_hall_tier, building_slots, timber, stone, last_collection_time, last_zeal_gather_time FROM settlements WHERE user_id = ? AND server_id = ?",
@@ -40,7 +50,7 @@ class SettlementRepository:
 
         b_cursor = await self.connection.execute(
             "SELECT id, user_id, server_id, building_type, tier, slot_index, "
-            "workers_assigned, plot_index, is_meta "
+            "workers_assigned, plot_index, is_meta, COALESCE(is_disabled, 0) "
             "FROM buildings WHERE user_id = ? AND server_id = ? "
             "ORDER BY COALESCE(plot_index, slot_index) ASC",
             (user_id, server_id),
@@ -57,6 +67,7 @@ class SettlementRepository:
                 workers_assigned=r[6],
                 plot_index=r[7],
                 is_meta=bool(r[8]),
+                is_disabled=bool(r[9]),
             )
             for r in b_rows
         ]
@@ -86,6 +97,41 @@ class SettlementRepository:
             (count, building_id),
         )
         await self.connection.commit()
+
+    async def disable_building(self, building_id: int) -> None:
+        await self.connection.execute(
+            "UPDATE buildings SET is_disabled = 1 WHERE id = ?",
+            (building_id,),
+        )
+        await self.connection.commit()
+
+    async def repair_building(self, building_id: int) -> None:
+        await self.connection.execute(
+            "UPDATE buildings SET is_disabled = 0 WHERE id = ?",
+            (building_id,),
+        )
+        await self.connection.commit()
+
+    async def get_building_by_type(
+        self, user_id: str, server_id: str, building_type: str
+    ):
+        """Returns the first building row matching building_type, or None."""
+        from core.settlement.models import Building
+
+        cursor = await self.connection.execute(
+            "SELECT id, user_id, server_id, building_type, tier, slot_index, "
+            "workers_assigned, plot_index, is_meta, COALESCE(is_disabled, 0) "
+            "FROM buildings WHERE user_id = ? AND server_id = ? AND building_type = ? LIMIT 1",
+            (user_id, server_id, building_type),
+        )
+        r = await cursor.fetchone()
+        if not r:
+            return None
+        return Building(
+            id=r[0], user_id=r[1], server_id=r[2], building_type=r[3],
+            tier=r[4], slot_index=r[5], workers_assigned=r[6],
+            plot_index=r[7], is_meta=bool(r[8]), is_disabled=bool(r[9]),
+        )
 
     async def update_collection_timer(self, user_id: str, server_id: str):
         """Updates collection timer using Python time for consistency."""
@@ -239,7 +285,7 @@ class SettlementRepository:
         try:
             b_cursor = await self.connection.execute(
                 "SELECT id, user_id, server_id, building_type, tier, slot_index, "
-                "workers_assigned, plot_index, is_meta "
+                "workers_assigned, plot_index, is_meta, COALESCE(is_disabled, 0) "
                 "FROM buildings WHERE user_id = ? AND server_id = ?",
                 (user_id, server_id),
             )
@@ -254,6 +300,7 @@ class SettlementRepository:
                     workers_assigned=r[6],
                     plot_index=r[7],
                     is_meta=bool(r[8]),
+                    is_disabled=bool(r[9]),
                 )
                 for r in await b_cursor.fetchall()
             ]
@@ -311,6 +358,20 @@ class SettlementRepository:
                     eff += sacred_ground_val
                 eff += adj_bonuses.get(b.plot_index, {}).get("shrine_boost", 0.0)
                 shrine_effectiveness[b.building_type] = eff
+
+        # Uber Shrine consolidates all five individual shrines. Expose its
+        # effectiveness under each individual shrine key so drop-rate lookups
+        # that query by shrine type work for both old and new owners.
+        if "uber_shrine" in shrine_effectiveness:
+            uber_eff = shrine_effectiveness["uber_shrine"]
+            for _key in (
+                "celestial_shrine",
+                "infernal_shrine",
+                "void_shrine",
+                "twin_shrine",
+                "corruption_shrine",
+            ):
+                shrine_effectiveness.setdefault(_key, uber_eff)
 
         return {
             "apothecary_boost_pct": apothecary_boost_pct,

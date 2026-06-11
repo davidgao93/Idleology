@@ -82,6 +82,9 @@ BUILDING_CODES: dict[str, tuple[str, str]] = {
     "twin_shrine": ("TWN", "SHR"),
     "corruption_shrine": ("COR", "SHR"),
     "war_camp": ("WAR", "CMP"),
+    "nursery": ("NUR", "SRY"),
+    "idlem_foundry": ("IDL", "FDY"),
+    "uber_shrine": ("UBR", "SHR"),
     # Meta buildings
     "servants_quarters": ("SRV", "QTR"),
     "grand_cathedral": ("GRD", "CTH"),
@@ -113,6 +116,9 @@ BUILDING_EMOJIS: dict[str, str] = {
     "twin_shrine": "♊",
     "corruption_shrine": "☠️",
     "war_camp": "⚔️",
+    "nursery": "👶",
+    "idlem_foundry": "🏭",
+    "uber_shrine": "🏛️",
     # Meta buildings
     "servants_quarters": "🏠",
     "grand_cathedral": "🕍",
@@ -212,6 +218,20 @@ PLOT_BONUS_TABLE: dict[str, dict] = {
         "applies_to": "none",
         "value": 0.0,
     },
+}
+
+# Human-readable list of buildings affected by each plot bonus type.
+PLOT_BONUS_AFFECTED: dict[str, str] = {
+    "fertile_ground": "Logging Camp, Quarry, Market, War Camp",
+    "rich_seam": "Foundry, Sawmill, Reliquary",
+    "sacred_ground": "Celestial, Infernal, Void, Twin & Corruption Shrines, Temple, Uber Shrine",
+    "gold_vein": "All buildings (construction cost only)",
+    "bedrock": "All buildings (worker cap)",
+    "trade_route": "Market, War Camp",
+    "ancient_foundation": "All buildings (material cost only)",
+    "ley_line": "Adjacent meta-buildings (amplifies their bonuses)",
+    "expedition_camp": "Settlement-wide (passive Development Contract)",
+    "common_ground": "None",
 }
 
 # Weighted pool for bonus rolls

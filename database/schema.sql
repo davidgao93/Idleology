@@ -395,6 +395,7 @@ CREATE TABLE IF NOT EXISTS buildings (
     workers_assigned INTEGER DEFAULT 0,
     plot_index INTEGER DEFAULT NULL,  -- which settlement plot this building occupies (1-20)
     is_meta INTEGER NOT NULL DEFAULT 0,  -- 1 = meta building (no tier, doesn't count toward slot cap)
+    is_disabled INTEGER NOT NULL DEFAULT 0,  -- 1 = disabled by crisis event; requires repair
     UNIQUE(user_id, server_id, slot_index)
 );
 

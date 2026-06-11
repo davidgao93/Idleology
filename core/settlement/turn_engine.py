@@ -127,6 +127,7 @@ async def process_next_turn(
         "deal_completed": None,
         "deal_rewards": None,
         "events_fired": [],
+        "crisis_events_fired": [],
         "events_expired": [],
         "passive_zeal_added": 0,
         "workers_from_nursery": 0,
@@ -208,7 +209,11 @@ async def process_next_turn(
                 data=ev_data if ev_data else None,
             )
         await bot.database.settlement.remove_event(ev["id"])
-        summary["events_fired"].append(ev_def.get("name", ev["event_key"]))
+        ev_name = ev_def.get("name", ev["event_key"])
+        if ev_def.get("effects", {}).get("spawn_combat"):
+            summary["crisis_events_fired"].append(ev_name)
+        else:
+            summary["events_fired"].append(ev_name)
 
     # 5. Increment total turns
     await bot.database.settlement.increment_turns(user_id, server_id)
@@ -420,13 +425,12 @@ async def _complete_project(
         try:
             user_row = await bot.database.users.get(user_id, server_id)
             if user_row:
-                ideology_name = (
-                    user_row["ideology"] if isinstance(user_row, dict) else user_row[8]
-                )
-                current = await bot.database.social.get_follower_count(ideology_name)
-                await bot.database.social.update_followers(
-                    ideology_name, current + workers
-                )
+                ideology_name = user_row["ideology"]
+                if ideology_name:
+                    current = await bot.database.social.get_follower_count(ideology_name)
+                    await bot.database.social.update_followers(
+                        ideology_name, current + workers
+                    )
         except Exception:
             pass
         return {"label": "Nursery produced workers", "workers": workers}
@@ -467,6 +471,16 @@ async def _apply_event_effects(
         await bot.database.users.modify_currency(
             user_id, "unidentified_blueprint", int(val)
         )
+
+    if "on_fail_disable" in effects:
+        # Crisis event warning expired without player intervention — disable target building.
+        target_type = ev_data.get("target_building")
+        if target_type:
+            building = await bot.database.settlement.get_building_by_type(
+                user_id, server_id, target_type
+            )
+            if building and not building.is_disabled:
+                await bot.database.settlement.disable_building(building.id)
 
 
 async def _check_schedule_events(

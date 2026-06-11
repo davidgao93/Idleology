@@ -47,6 +47,8 @@ COLUMN_ADDITIONS = [
     # settlements table (development turns / zeal)
     ("settlements", "total_development_turns", "INTEGER NOT NULL DEFAULT 0"),
     ("settlements", "pending_zeal", "INTEGER NOT NULL DEFAULT 0"),
+    # buildings table (crisis event disable/repair system)
+    ("buildings", "is_disabled", "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 
