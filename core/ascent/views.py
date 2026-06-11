@@ -499,9 +499,8 @@ class AscentView(BaseView):
             self.pinnacle_log.append(f"**Floor {floor}:** {label}")
             pinnacle_gained = label
 
-        # Soulreap: restore HP to full after every floor clear
-        if self.player.get_weapon_infernal() == "soulreap":
-            self.player.current_hp = self.player.total_max_hp
+        from core.combat.turns.boundary import fire_on_victory_effects
+        fire_on_victory_effects(self.player)
 
         # Skiller boot passive
         skiller_msg = await DropManager.proc_skiller(
@@ -545,19 +544,12 @@ class AscentView(BaseView):
         await self._next_floor(interaction, message)
 
     async def _next_floor(self, interaction, message):
+        from core.combat.turns.boundary import reset_combat_transients
+
         self.current_floor += 1
         self.player.reset_combat_bonus()
         self.player.combat_ward = self.player.get_combat_ward_value()
-        self.player.is_invulnerable_this_combat = False
-        self.player.voracious_stacks = 0
-        self.player.cursed_precision_active = False
-        self.player.gaze_stacks = 0
-        self.player.hunger_stacks = 0
-        self.player.celestial_vow_used = False
-        _je.reset_jewel_transients(self.player)
-        from core.hematurgy.engine import reset_hematurgy_transients
-
-        reset_hematurgy_transients(self.player)
+        reset_combat_transients(self.player)
 
         m_level = AscentMechanics.calculate_floor_monster_level(self.current_floor)
         n_mods, b_mods = AscentMechanics.get_floor_modifier_counts(self.current_floor)

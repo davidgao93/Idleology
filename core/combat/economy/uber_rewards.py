@@ -22,6 +22,7 @@ from core.combat.economy.config import (
 )
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
+from core.combat.turns.boundary import fire_on_victory_effects
 from core.combat.views.views_lucifer import InfernalContractView
 from core.images import (
     VICTORY_CELESTIAL,
@@ -172,8 +173,8 @@ async def _uber_finalize_rewards(view, reward_data: dict) -> None:
     reward_data["xp"] = exp_changes["xp_added"]
     reward_data["msgs"].extend(exp_changes["msgs"])
     await view.bot.database.users.modify_gold(view.user_id, reward_data["gold"])
-    if view.player.get_weapon_infernal() == "soulreap":
-        view.player.current_hp = view.player.total_max_hp
+    soulreap_msgs = fire_on_victory_effects(view.player)
+    reward_data["msgs"].extend(soulreap_msgs)
     await view.bot.database.users.update_from_player_object(view.player)
     await _je.save_jewel_state(view.bot, view.user_id, view.player)
 

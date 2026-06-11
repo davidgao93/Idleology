@@ -90,7 +90,7 @@ class CombatState:
     )
     hema_fevered_count: int = 0  # Fevered Strike: potions consumed this fight
     hema_predators_mark: bool = False  # Predator's Mark active on monster
-    hema_tenacity_triggered: bool = False  # Tenacity one-shot flag
+    hema_defiance_triggered: bool = False  # Defiance one-shot flag
     hema_hp_lost_combat: int = 0  # Soul Fracture: HP lost during this combat only
     hema_blade_count: int = 0  # Spectral Waltz blade count
     hema_puncture_bleed: int = 0  # Puncture accumulated crit-bleed pool

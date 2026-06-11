@@ -547,16 +547,9 @@ class CodexRunView(BaseView):
         else:
             self._restore_wave_baseline()
 
-        self.player.voracious_stacks = 0
-        self.player.cursed_precision_active = False
-        self.player.gaze_stacks = 0
-        self.player.hunger_stacks = 0
-        self.player.is_invulnerable_this_combat = False
-        self.player.celestial_vow_used = False
-        _je.reset_jewel_transients(self.player)
-        from core.hematurgy.engine import reset_hematurgy_transients
+        from core.combat.turns.boundary import reset_combat_transients
 
-        reset_hematurgy_transients(self.player)
+        reset_combat_transients(self.player)
 
         self.combat_logger.log_combat_end(self.player, self.monster, "victory")
 
@@ -591,8 +584,8 @@ class CodexRunView(BaseView):
 
         self.waves_cleared_this_run += 1
 
-        if self.player.get_weapon_infernal() == "soulreap":
-            self.player.current_hp = self.player.total_max_hp
+        from core.combat.turns.boundary import fire_on_victory_effects
+        fire_on_victory_effects(self.player)
 
         if self.wave_num in (3, 6):
             await self._enter_respite(interaction, message)

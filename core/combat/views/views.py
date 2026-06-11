@@ -23,6 +23,7 @@ from core.combat.economy.config import (
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.victory import apply_victory_rewards
 from core.combat.mobgen.gen_mob import generate_boss
+from core.combat.turns.boundary import fire_on_victory_effects, reset_for_phase_transition
 from core.combat.turns import engine
 from core.combat.views.views_lucifer import LuciferChoiceView
 from core.combat.views.views_prestige_boss import PrestigeBossHarvestView
@@ -722,8 +723,7 @@ class CombatView(BaseView):
             self.current_phase_index += 1
             next_phase_data = self.combat_phases[self.current_phase_index]
 
-            self.player.reset_combat_bonus()
-            self.player.is_invulnerable_this_combat = False
+            reset_for_phase_transition(self.player)
 
             self.monster = await generate_boss(
                 self.player, self.monster, next_phase_data, self.current_phase_index
@@ -874,9 +874,7 @@ class CombatView(BaseView):
             self.stop()
             return  # Harvest view takes over the interaction
 
-        # Soulreap: restore HP to full after every successful encounter
-        if self.player.get_weapon_infernal() == "soulreap":
-            self.player.current_hp = self.player.total_max_hp
+        fire_on_victory_effects(self.player)
 
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)

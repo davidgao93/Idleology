@@ -183,8 +183,8 @@ class CombatLogger:
                     lines.append(f"[HEMA-STATE] {label}: {val}")
             if getattr(cs, "hema_predators_mark", False):
                 lines.append("[HEMA-STATE] Predator's Mark: ACTIVE")
-            if getattr(cs, "hema_tenacity_triggered", False):
-                lines.append("[HEMA-STATE] Tenacity: TRIGGERED")
+            if getattr(cs, "hema_defiance_triggered", False):
+                lines.append("[HEMA-STATE] Defiance: TRIGGERED")
             if getattr(cs, "hema_ward_inoculation", False):
                 lines.append("[HEMA-STATE] Ward Inoculation: ACTIVE")
 

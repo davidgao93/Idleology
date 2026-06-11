@@ -129,7 +129,7 @@ def reset_hematurgy_transients(player: Player) -> None:
     cs.hema_phantom_stacks = 0
     cs.hema_fevered_count = 0
     cs.hema_predators_mark = False
-    cs.hema_tenacity_triggered = False
+    cs.hema_defiance_triggered = False
     cs.hema_hp_lost_combat = 0
     cs.hema_blade_count = 0
     cs.hema_puncture_bleed = 0
@@ -466,21 +466,21 @@ def on_monster_turn_end(
         player.cs.hema_hp_lost_combat += hp_damage
 
     # --- Tenacity: one-shot trigger when HP drops below 40% ---
-    tier_ten = get_h(player, "tenacity")
+    tier_ten = get_h(player, "defiance")
     if (
         tier_ten is not None
-        and not player.cs.hema_tenacity_triggered
+        and not player.cs.hema_defiance_triggered
         and player.current_hp > 0
         and player.current_hp < (player.total_max_hp * 0.40)
     ):
-        player.cs.hema_tenacity_triggered = True
-        pct = _tv("tenacity", tier_ten)
+        player.cs.hema_defiance_triggered = True
+        pct = _tv("defiance", tier_ten)
         atk_bonus = int(player.flat_atk * pct)
         def_bonus = int(player.flat_def * pct)
         player.bonus_atk += atk_bonus
         player.bonus_def += def_bonus
         log.append(
-            f"💪 **Tenacity** ignites! HP below 40% — "
+            f"💪 **Defiance** ignites! HP below 40% — "
             f"+{atk_bonus} ATK and +{def_bonus} DEF for this fight!"
         )
 
@@ -512,15 +512,15 @@ def on_monster_turn_end(
 
 
 def on_kill(player: Player, log: list[str]) -> None:
-    """Called when a monster dies. Bloodthirst HP restore + Haemorrhage kill burst."""
-    tier_bt = get_h(player, "bloodthirst")
+    """Called when a monster dies. Crimson Feast HP restore + Haemorrhage kill burst."""
+    tier_bt = get_h(player, "crimson_feast")
     if tier_bt is not None:
-        heal = int(player.total_max_hp * _tv("bloodthirst", tier_bt))
+        heal = int(player.total_max_hp * _tv("crimson_feast", tier_bt))
         if heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
             log.append(
-                f"🩸 **Bloodthirst** — kill restores **{heal}** HP "
-                f"({int(_tv('bloodthirst', tier_bt) * 100)}% Max HP)!"
+                f"🩸 **Crimson Feast** — kill restores **{heal}** HP "
+                f"({int(_tv('crimson_feast', tier_bt) * 100)}% Max HP)!"
             )
 
     if get_h(player, "haemorrhage") is not None and player.cs.hema_bleed_total > 0:

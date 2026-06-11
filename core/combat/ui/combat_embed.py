@@ -134,8 +134,8 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         if "spectral_waltz" in hp and cs.hema_blade_count > 0:
             lines.append(f"👻 Spectral Blades  ×{cs.hema_blade_count}")
 
-        if "tenacity" in hp and cs.hema_tenacity_triggered:
-            lines.append("💪 Tenacity  ACTIVE")
+        if "defiance" in hp and cs.hema_defiance_triggered:
+            lines.append("💪 Defiance  ACTIVE")
 
         if "puncture" in hp and cs.hema_puncture_bleed > 0:
             lines.append(f"💉 Puncture Pool  {cs.hema_puncture_bleed:,}")
