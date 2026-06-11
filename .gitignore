@@ -9,8 +9,11 @@ _upload_ready
 !README.md
 
 partners.txt
-docs
-.claude
+docs/
+.claude/
+tests/
+tools/
+scripts/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
