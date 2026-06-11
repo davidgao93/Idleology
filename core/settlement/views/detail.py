@@ -12,6 +12,7 @@ from core.settlement.constants import (
     UPGRADE_MESSAGES,
 )
 from core.settlement.mechanics import SettlementMechanics
+from core.settlement.turn_engine import upgrade_dt_cost
 
 from .base import SettlementBaseView
 
@@ -161,9 +162,11 @@ class BuildingDetailView(SettlementBaseView):
             embed.add_field(name="Function", value=info, inline=False)
 
         # Upgrade Cost Preview
-        next_cost = self._get_upgrade_cost(self.building.tier + 1)
+        next_tier = self.building.tier + 1
+        next_cost = self._get_upgrade_cost(next_tier)
         if self.building.tier < 5:
-            cost_str = f"🪵 {next_cost.get('timber'):,} | 🪨 {next_cost.get('stone'):,} | 💰 {next_cost.get('gold'):,}"
+            dt = upgrade_dt_cost(self.building.building_type, next_tier)
+            cost_str = f"🪵 {next_cost.get('timber'):,} | 🪨 {next_cost.get('stone'):,} | 💰 {next_cost.get('gold'):,} | ⏱️ {dt} DT(s)"
             if "special_name" in next_cost:
                 cost_str += (
                     f" | ✨ {next_cost['special_name']} x{next_cost['special_qty']}"
@@ -391,50 +394,8 @@ class BuildingDetailView(SettlementBaseView):
                 )
 
         await interaction.response.defer()
-        for item in self.children:
-            item.disabled = True
-        await interaction.edit_original_response(view=self)
 
-        # Deduct special material after defer
-        if "special_key" in costs:
-            col = costs["special_key"]
-            req = costs["special_qty"]
-            await self.bot.database.users.modify_currency(self.user_id, col, -req)
-
-        # === EMBED-BASED UPGRADE ANIMATION ===
-        import asyncio
-        import random
-
-        chosen_messages = random.choices(
-            population=[msg for msg, _ in UPGRADE_MESSAGES],
-            weights=[w for _, w in UPGRADE_MESSAGES],
-            k=3,
-        )
-
-        progress_embed = discord.Embed(
-            title="⬆️ Upgrade in Progress",
-            color=discord.Color.orange(),
-        )
-        thumb = self.THUMBNAILS.get(self.building.building_type)
-        if thumb:
-            progress_embed.set_thumbnail(url=thumb)
-
-        for i, msg in enumerate(chosen_messages, 1):
-            progress_embed.description = f"**Step {i}/3:** {msg}"
-            await interaction.edit_original_response(embed=progress_embed)
-            if i < 3:
-                await asyncio.sleep(2)
-
-        # Final completion
-        progress_embed.title = "✅ Upgrade Complete"
-        progress_embed.description = (
-            "**Upgrade complete!** The building has been strengthened."
-        )
-        progress_embed.color = discord.Color.green()
-        await interaction.edit_original_response(embed=progress_embed)
-        await asyncio.sleep(1.5)
-
-        # === Actual upgrade logic ===
+        # Deduct resources immediately
         changes = {
             "timber": -costs["timber"],
             "stone": -costs["stone"],
@@ -443,22 +404,48 @@ class BuildingDetailView(SettlementBaseView):
             self.user_id, self.parent.server_id, changes
         )
         await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
-
-        if self.building.building_type == "town_hall":
-            await self.bot.database.settlement.expand_building_slots(
-                self.user_id, self.parent.server_id
+        if "special_key" in costs:
+            await self.bot.database.users.modify_currency(
+                self.user_id, costs["special_key"], -costs["special_qty"]
             )
-            self.parent.settlement.building_slots += 1
 
-        await self.bot.database.settlement.upgrade_building_tier(self.building.id)
+        # Queue upgrade project
+        dt_cost = upgrade_dt_cost(self.building.building_type, target_tier)
+        await self.bot.database.settlement.upsert_project(
+            user_id=self.user_id,
+            server_id=self.parent.server_id,
+            project_type="upgrade",
+            target_id=self.building.id,
+            required_turns=dt_cost,
+            data={"building_type": self.building.building_type},
+        )
 
-        self.building.tier += 1
+        # Refresh parent projects cache
+        self.parent.projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.parent.server_id
+        )
+
         self.parent.settlement.timber -= costs["timber"]
         self.parent.settlement.stone -= costs["stone"]
 
+        thumb = self.THUMBNAILS.get(self.building.building_type)
+        queued_embed = discord.Embed(
+            title="⏳ Upgrade Queued",
+            description=(
+                f"**{self.building.name}** upgrade to Tier {target_tier} has been queued.\n\n"
+                f"Resources deducted. The upgrade will complete after **{dt_cost} Development Turn(s)**.\n"
+                f"Use **Next Turn** on your settlement dashboard to process it."
+            ),
+            color=discord.Color.orange(),
+        )
+        if thumb:
+            queued_embed.set_thumbnail(url=thumb)
+
         self._processing = False
-        self.setup_ui()
-        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+        await interaction.edit_original_response(
+            embed=queued_embed, view=self.parent
+        )
+        self.stop()
 
     async def open_hatchery(self, interaction: Interaction):
         await interaction.response.defer()

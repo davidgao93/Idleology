@@ -93,7 +93,7 @@ def upgrade_dt_cost(building_type: str, target_tier: int) -> int:
     per_tier = PROJECT_UPGRADE_DT_PER_TIER.get(
         building_type, PROJECT_UPGRADE_DT_PER_TIER["default"]
     )
-    return per_tier * target_tier
+    return per_tier * (target_tier - 1)
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +131,7 @@ async def process_next_turn(
         "events_expired": [],
         "passive_zeal_added": 0,
         "workers_from_nursery": 0,
+        "nursery_ideology": "",
         "idlem_from_foundry": 0,
         "dt_resources": {},
     }
@@ -159,6 +160,8 @@ async def process_next_turn(
         )
         if proj["project_type"] == "nursery":
             summary["workers_from_nursery"] += result.get("workers", 0)
+            if result.get("ideology"):
+                summary["nursery_ideology"] = result["ideology"]
         elif proj["project_type"] == "foundry_idlem":
             summary["idlem_from_foundry"] += result.get("idlem", 0)
 
@@ -224,8 +227,9 @@ async def process_next_turn(
     await _check_schedule_events(bot, user_id, server_id, new_total)
 
     # 7. Passive Zeal per DT (mirrors hourly rate: T1=5, T7≈59)
+    # Credited directly to settlement_zeal so it doesn't inflate the Gather Zeal bucket.
     passive_zeal = max(1, PASSIVE_ZEAL_PER_HOUR_BASE + (town_hall_tier - 1) * 9)
-    await bot.database.settlement.add_pending_zeal(user_id, server_id, passive_zeal)
+    await bot.database.settlement.add_zeal(user_id, passive_zeal)
     summary["passive_zeal_added"] = passive_zeal
 
     # 8. DT-based resource production (generators + converters at 5× hourly rate)
@@ -236,8 +240,9 @@ async def process_next_turn(
         companion_cookie,
     ) = await _calculate_dt_production(bot, user_id, server_id)
     if dt_changes:
-        await bot.database.settlement.commit_production(user_id, server_id, dt_changes)
+        # Snapshot resources BEFORE commit_production pops "timber"/"stone" from the dict.
         summary["dt_resources"] = {k: v for k, v in dt_changes.items() if v > 0}
+        await bot.database.settlement.commit_production(user_id, server_id, dt_changes)
     if market_gold > 0:
         await bot.database.users.modify_gold(user_id, market_gold)
         summary["dt_resources"]["market_gold"] = market_gold
@@ -403,10 +408,12 @@ async def _complete_project(
 
     elif ptype == "upgrade":
         building_id = proj.get("target_id")
+        building_type = data.get("building_type", "building")
         if building_id:
             await bot.database.settlement.upgrade_building_tier(building_id)
-        label = data.get("building_type", "building")
-        return {"label": f"Upgraded {label.replace('_', ' ').title()}"}
+            if building_type == "town_hall":
+                await bot.database.settlement.expand_building_slots(user_id, server_id)
+        return {"label": f"Upgraded {building_type.replace('_', ' ').title()}"}
 
     elif ptype == "research":
         building_type = data.get("building_type", "")
@@ -421,19 +428,27 @@ async def _complete_project(
             data.get("workers_per_turn", WORKERS_PER_TURN_BASE)
             * _ev.get("nursery_mult", 1.0)
         )
-        # Worker production increments ideology follower count
+        ideology_name = ""
         try:
             user_row = await bot.database.users.get(user_id, server_id)
             if user_row:
-                ideology_name = user_row["ideology"]
+                ideology_name = user_row["ideology"] or ""
                 if ideology_name:
-                    current = await bot.database.social.get_follower_count(ideology_name)
-                    await bot.database.social.update_followers(
-                        ideology_name, current + workers
+                    await bot.database.social.increment_followers(
+                        ideology_name, workers, server_id=server_id, user_id=user_id
                     )
         except Exception:
             pass
-        return {"label": "Nursery produced workers", "workers": workers}
+        return {"label": "Nursery produced workers", "workers": workers, "ideology": ideology_name}
+
+    elif ptype == "plot_develop":
+        plot_index = data.get("plot_index")
+        bonus_type = data.get("bonus_type")
+        if plot_index is not None and bonus_type:
+            await bot.database.plots.develop_plot(
+                user_id, server_id, plot_index, bonus_type
+            )
+        return {"label": f"Plot {plot_index} Excavated"}
 
     elif ptype == "foundry_idlem":
         base_idlem = data.get("idlem_per_turn", IDLEM_PER_TURN_BASE) * _ev.get(

@@ -10,6 +10,7 @@ from core.images import MAID_AUTHOR, MAID_SPRITZ_PORTRAIT, SETTLEMENT_BUILDINGS
 from core.settlement.constants import (
     RESOURCE_DISPLAY_NAMES,
     SETTLEMENT_EVENTS,
+    ZEAL_GATHER_CAP,
     ZEAL_TO_DT,
 )
 from core.settlement.mechanics import SettlementMechanics
@@ -179,6 +180,7 @@ class SettlementDashboardView(SettlementBaseView):
         self._cached_zeal_data: dict = {}
         self._cached_active_events: list = []
         self._cached_pending_deal: dict | None = None
+        self._cached_pending_zeal: int = 0
         self._processing = False
         self._rebuild_ui()
 
@@ -188,15 +190,21 @@ class SettlementDashboardView(SettlementBaseView):
         self._rebuild_ui()
 
     def _pending_by_plot(self) -> dict[int, str]:
-        """Derives {plot_index: building_type} for all queued construction projects."""
+        """Derives {plot_index: building_type} for construction projects,
+        and {plot_index: '__excavating__'} for pending plot_develop projects."""
         result: dict[int, str] = {}
         for proj in self.projects:
-            if proj.get("project_type") == "construction":
-                d = proj.get("data") or {}
+            ptype = proj.get("project_type")
+            d = proj.get("data") or {}
+            if ptype == "construction":
                 pi = d.get("plot_index")
                 bt = d.get("building_type", "")
                 if pi:
                     result[pi] = bt
+            elif ptype == "plot_develop":
+                pi = d.get("plot_index")
+                if pi:
+                    result[pi] = "__excavating__"
         return result
 
     # -------------------------------------------------------------------------
@@ -222,6 +230,7 @@ class SettlementDashboardView(SettlementBaseView):
         # (which call build_embed with no args) always show the latest values.
         if turns_data is not None:
             self._cached_turns_data = turns_data
+            self._cached_pending_zeal = turns_data.get("pending_zeal", 0)
         if zeal_data is not None:
             self._cached_zeal_data = zeal_data
         if active_events is not None:
@@ -321,7 +330,8 @@ class SettlementDashboardView(SettlementBaseView):
                 pct = int(p["invested_turns"] / max(1, p["required_turns"]) * 100)
                 filled = int(10 * p["invested_turns"] / max(1, p["required_turns"]))
                 bar = "█" * filled + "░" * (10 - filled)
-                label = p.get("data", {}).get("building_type", p["project_type"])
+                _pdata = p.get("data", {})
+                label = _pdata.get("display_label") or _pdata.get("building_type") or p["project_type"]
                 proj_lines.append(
                     f"🔨 {label.replace('_', ' ').title()} — {pct}% `{bar}`"
                 )
@@ -396,9 +406,15 @@ class SettlementDashboardView(SettlementBaseView):
                 for e in turn_summary["events_expired"]:
                     lines.append(f"⏹️ Event ended: {e}")
             if turn_summary.get("workers_from_nursery", 0) > 0:
-                lines.append(
-                    f"👶 Nursery produced {turn_summary['workers_from_nursery']} worker(s)."
-                )
+                ideology = turn_summary.get("nursery_ideology", "")
+                if ideology:
+                    lines.append(
+                        f"👶 Nursery produced {turn_summary['workers_from_nursery']} worker(s) → added to **{ideology}** Workforce."
+                    )
+                else:
+                    lines.append(
+                        f"👶 Nursery produced {turn_summary['workers_from_nursery']} worker(s)."
+                    )
             if turn_summary.get("idlem_from_foundry", 0) > 0:
                 lines.append(
                     f"⚗️ Foundry produced {turn_summary['idlem_from_foundry']} Idlem."
@@ -486,7 +502,16 @@ class SettlementDashboardView(SettlementBaseView):
             b = building_by_plot.get(plot_num)
             pending_bt = pending_map.get(plot_num)
 
-            if not is_dev:
+            if not is_dev and pending_bt == "__excavating__":
+                options.append(
+                    SelectOption(
+                        label=f"Plot {plot_num:02d} — ⛏️ Excavation in Progress",
+                        value=str(plot_num),
+                        description="Excavation queued — use Next Turn to complete",
+                        emoji="⛏️",
+                    )
+                )
+            elif not is_dev:
                 options.append(
                     SelectOption(
                         label=f"Plot {plot_num:02d} — Undeveloped",
@@ -495,7 +520,7 @@ class SettlementDashboardView(SettlementBaseView):
                         emoji="🔒",
                     )
                 )
-            elif b is None and pending_bt:
+            elif b is None and pending_bt and pending_bt != "__excavating__":
                 options.append(
                     SelectOption(
                         label=f"Plot {plot_num:02d} — 🏗️ Under Construction",
@@ -562,7 +587,7 @@ class SettlementDashboardView(SettlementBaseView):
 
         # --- Row 1: primary actions ---
         next_turn_btn = ui.Button(
-            label="Next Turn ▶",
+            label="Next",
             style=ButtonStyle.success,
             emoji="⏭️",
             row=1,
@@ -600,8 +625,9 @@ class SettlementDashboardView(SettlementBaseView):
             )
             self.add_item(confront_btn)
 
+        _pz = min(self._cached_pending_zeal, ZEAL_GATHER_CAP)
         gather_zeal_btn = ui.Button(
-            label="Gather Zeal",
+            label=f"Gather Zeal ({_pz}/{ZEAL_GATHER_CAP})" if _pz > 0 else f"Gather Zeal (cap {ZEAL_GATHER_CAP})",
             style=ButtonStyle.blurple,
             emoji="🔥",
             row=1,
@@ -609,8 +635,14 @@ class SettlementDashboardView(SettlementBaseView):
         gather_zeal_btn.callback = self.on_gather_zeal
         self.add_item(gather_zeal_btn)
 
+        try:
+            _last_col = datetime.fromisoformat(self.settlement.last_collection_time)
+            _col_hours = (datetime.now() - _last_col).total_seconds() / 3600
+            _col_label = f"Collect ({_col_hours:.1f}h)"
+        except Exception:
+            _col_label = "Collect"
         collect_btn = ui.Button(
-            label="Collect",
+            label=_col_label,
             style=ButtonStyle.primary,
             emoji="🚜",
             row=1,
@@ -1127,11 +1159,6 @@ class SettlementDashboardView(SettlementBaseView):
                     extra = passive_zeal_for_period(
                         hours, self.settlement.town_hall_tier
                     )
-                    # Cap at 12h worth so passive doesn't pile up forever
-                    extra = min(
-                        extra,
-                        passive_zeal_for_period(12, self.settlement.town_hall_tier),
-                    )
                     if extra > 0:
                         await self.bot.database.settlement.add_pending_zeal(
                             uid, sid, extra
@@ -1139,8 +1166,10 @@ class SettlementDashboardView(SettlementBaseView):
                 except Exception:
                     extra = 0
 
-            collected = await self.bot.database.settlement.collect_pending_zeal(
-                uid, sid
+            # Collect up to ZEAL_GATHER_CAP from pending; passive Zeal doesn't count against
+            # the daily earned cap, so we use the capped variant directly.
+            collected = await self.bot.database.settlement.collect_capped_pending_zeal(
+                uid, sid, ZEAL_GATHER_CAP
             )
 
             # Stamp the gather time NOW so repeated clicks don't re-add time-based Zeal
@@ -1201,12 +1230,16 @@ class SettlementDashboardView(SettlementBaseView):
 
         try:
             from core.settlement.constants import SETTLEMENT_EVENTS
-            from core.settlement.encounter import (
-                get_repair_cost,
-                run_settlement_encounter,
-            )
+            from core.settlement.encounter import get_repair_cost
 
             uid, sid = self.user_id, self.server_id
+
+            if self.bot.state_manager.is_active(uid):
+                await interaction.followup.send(
+                    "You're already in another activity. Finish it first.", ephemeral=True
+                )
+                return
+
             ev_def = SETTLEMENT_EVENTS.get(event["event_key"], {})
             enemy_name = (
                 ev_def.get("effects", {})
@@ -1216,94 +1249,78 @@ class SettlementDashboardView(SettlementBaseView):
             )
             target_building_type = (event.get("data") or {}).get("target_building")
 
+            # Load the player and generate a real encounter monster.
+            from core.items.factory import load_player
+            from core.models import Monster
+            from core.combat.mobgen.gen_mob import generate_encounter
+            from core.combat.turns import engine
+            from core.combat.turns.boundary import reset_combat_transients
+            from core.combat import ui as combat_ui
+            from core.combat import jewel_engine as _je
+            from core.combat.views.views import CombatView
+
             user_row = await self.bot.database.users.get(uid, sid)
-            result = await run_settlement_encounter(
-                self.bot, uid, sid, user_row["level"]
+            player = await load_player(uid, user_row, self.bot.database)
+
+            # Generate a normal encounter (same path as /combat for a regular fight).
+            base_monster = Monster(
+                name="",
+                level=0,
+                hp=0,
+                max_hp=0,
+                xp=0,
+                attack=0,
+                defence=0,
+                modifiers=[],
+                image="",
+                flavor="",
+            )
+            monster = await generate_encounter(player, base_monster, is_treasure=False)
+
+            # Apply start-of-combat state (same as _execute_combat in the cog).
+            monster.reset_combat_bonuses()
+            engine.apply_stat_effects(player, monster)
+            start_logs = engine.apply_combat_start_passives(player, monster)
+            _je.reset_jewel_charges(player)
+
+            # Build the initial embed.
+            embed = combat_ui.create_combat_embed(
+                player, monster, start_logs,
+                title_override=f"⚔️ Crisis: {enemy_name}",
             )
 
-            # Remove the crisis event regardless of outcome.
-            await self.bot.database.settlement.remove_events_by_key(
-                uid, sid, event["event_key"]
-            )
-
-            # Reload state.
-            self.settlement = await self.bot.database.settlement.get_settlement(
-                uid, sid
-            )
-            active_events = await self.bot.database.settlement.get_active_events(
-                uid, sid
-            )
-            projects = await self.bot.database.settlement.get_projects(uid, sid)
-            zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
-            turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
-            pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
-
-            self._rebuild_ui()
-            embed = self.build_embed(
-                active_events=active_events,
-                projects=projects,
-                zeal_data=zeal_data,
-                turns_data=turns_data,
-                pending_deal=pending_deal,
-            )
-
-            if result.player_won:
-                xp = result.reward_data.get("xp", 0)
-                gold = result.reward_data.get("gold", 0)
-                lines = [
-                    f"You defeated the **{enemy_name}** in **{result.rounds}** round(s)!"
-                ]
-                if gold:
-                    lines.append(f"💰 +{gold:,} gold")
-                if xp:
-                    lines.append(f"✨ +{xp:,} XP")
-                lines.append("🔥 +50 Zeal (settlement defence bonus)")
-                for msg in result.reward_lines[:5]:
-                    lines.append(msg)
-                embed.add_field(
-                    name=f"⚔️ Crisis Resolved — {enemy_name} Defeated!",
-                    value="\n".join(lines),
-                    inline=False,
+            # Crisis callback — fires when the CombatView reaches a terminal state.
+            async def _crisis_end(won: bool) -> None:
+                await self.bot.database.settlement.remove_events_by_key(
+                    uid, sid, event["event_key"]
                 )
-                embed.color = discord.Color.green()
-            else:
-                lines = [
-                    f"The **{enemy_name}** overwhelmed you after **{result.rounds}** round(s)."
-                ]
-                if result.gold_loss:
-                    lines.append(f"💰 Lost **{result.gold_loss:,}** gold in the raid.")
-                if target_building_type:
-                    building = await self.bot.database.settlement.get_building_by_type(
-                        uid, sid, target_building_type
-                    )
-                    if building:
-                        await self.bot.database.settlement.disable_building(building.id)
-                        repair = get_repair_cost(building.tier)
-                        b_label = target_building_type.replace("_", " ").title()
-                        lines.append(
-                            f"🏚️ **{b_label}** has been disabled. "
-                            f"Repair it from the plot view for **{repair:,} gold**."
+                if won:
+                    await self.bot.database.settlement.add_zeal(uid, 50)
+                else:
+                    if target_building_type:
+                        b = await self.bot.database.settlement.get_building_by_type(
+                            uid, sid, target_building_type
                         )
-                        # Refresh settlement to reflect disabled state.
-                        self.settlement = (
-                            await self.bot.database.settlement.get_settlement(uid, sid)
-                        )
-                        self._rebuild_ui()
-                        embed = self.build_embed(
-                            active_events=active_events,
-                            projects=projects,
-                            zeal_data=zeal_data,
-                            turns_data=turns_data,
-                            pending_deal=pending_deal,
-                        )
-                embed.add_field(
-                    name=f"💀 Crisis Failed — {enemy_name} Prevailed",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-                embed.color = discord.Color.red()
+                        if b:
+                            await self.bot.database.settlement.disable_building(b.id)
 
-            await interaction.edit_original_response(embed=embed, view=self)
+            self.bot.state_manager.set_active(uid, "combat")
+            reset_combat_transients(player)
+
+            view = CombatView(
+                self.bot,
+                uid,
+                sid,
+                player,
+                monster,
+                start_logs,
+                combat_phases=[None],
+                crisis_callback=_crisis_end,
+            )
+
+            msg = await interaction.followup.send(embed=embed, view=view)
+            view.message = msg
+
         finally:
             self._processing = False
 

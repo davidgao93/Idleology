@@ -44,6 +44,29 @@ class SocialRepository:
         )
         await self.connection.commit()
 
+    async def increment_followers(
+        self, ideology_name: str, amount: int, server_id: str = "", user_id: str = ""
+    ) -> None:
+        """Atomically increments the follower count for an ideology.
+        If no matching row exists (e.g. ideology created before followers column),
+        inserts one so the count is never silently lost."""
+        where = (
+            "WHERE name = ? AND server_id = ?" if server_id else "WHERE name = ?"
+        )
+        params_upd = (amount, ideology_name, server_id) if server_id else (amount, ideology_name)
+        cursor = await self.connection.execute(
+            f"UPDATE ideologies SET followers = followers + ? {where}",
+            params_upd,
+        )
+        if cursor.rowcount == 0 and ideology_name:
+            # Row doesn't exist yet — insert it
+            await self.connection.execute(
+                "INSERT OR IGNORE INTO ideologies (user_id, server_id, name, followers) "
+                "VALUES (?, ?, ?, ?)",
+                (user_id or "system", server_id or "", ideology_name, amount),
+            )
+        await self.connection.commit()
+
     async def get_ideology_leaderboard(self, limit: int = 10):
         rows = await self.connection.execute(
             "SELECT name, followers FROM ideologies ORDER BY followers DESC LIMIT ?",

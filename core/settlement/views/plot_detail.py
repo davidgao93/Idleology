@@ -34,6 +34,7 @@ from core.settlement.plots import (
     roll_plot_bonus,
 )
 from core.settlement.encounter import get_repair_cost
+from core.settlement.turn_engine import upgrade_dt_cost  # noqa: F401 — used for DT display
 from core.settlement.views.research import RESEARCHABLE_BUILDINGS
 
 from .base import SettlementBaseView
@@ -325,18 +326,28 @@ _FREE_PLOT_INDICES: frozenset[int] = frozenset({1, 3, 5, 7})
 _FREE_PLOTS_RECOVERED: int = sum(range(1, len(_FREE_PLOT_INDICES) + 1))  # 10
 
 
-def _compute_dc_cost(plots: list) -> int:
+def _compute_dc_cost(plots: list, projects: list | None = None) -> int:
     """
     DC cost to develop the next undeveloped plot.
 
     Base: total_developed + 1  (free TH-adjacent plots count, raising the floor).
     Recovery: +1 on each of the first _FREE_PLOTS_RECOVERED paid unlocks so the
     full 16-plot curve totals 210 DCs, identical to the original 20-plot curve.
+    Pending excavation projects count as already committed toward the cost curve.
     """
     total_developed = sum(1 for p in plots if p.is_developed)
     paid_developed = sum(
         1 for p in plots if p.is_developed and p.plot_index not in _FREE_PLOT_INDICES
     )
+    # Count in-progress excavations so queuing multiple excavations ratchets cost up
+    if projects:
+        for proj in projects:
+            if proj.get("project_type") == "plot_develop":
+                pi = (proj.get("data") or {}).get("plot_index")
+                if pi is not None:
+                    total_developed += 1
+                    if pi not in _FREE_PLOT_INDICES:
+                        paid_developed += 1
     extra = 1 if paid_developed < _FREE_PLOTS_RECOVERED else 0
     return total_developed + 1 + extra
 
@@ -506,7 +517,18 @@ class PlotDetailView(SettlementBaseView):
         else:
             bonus_label = ""
 
-        if not p.is_developed:
+        if not p.is_developed and self.pending_construction == "__excavating__":
+            embed = discord.Embed(
+                title=f"📍 Plot {p.plot_index} — ⛏️ Excavation in Progress",
+                color=discord.Color.orange(),
+            )
+            embed.set_thumbnail(url=SETTLEMENT_CONSTRUCTION)
+            embed.description = (
+                "This plot is being excavated.\n\n"
+                "Click **Next Turn** on the dashboard to advance the project.\n"
+                "Once complete, a terrain bonus will be revealed and you can build here."
+            )
+        elif not p.is_developed:
             embed = discord.Embed(
                 title=f"📍 Plot {p.plot_index} — Undeveloped",
                 color=discord.Color.dark_grey(),
@@ -601,7 +623,15 @@ class PlotDetailView(SettlementBaseView):
         self.clear_items()
         p = self.plot
 
-        if not p.is_developed:
+        if not p.is_developed and self.pending_construction == "__excavating__":
+            btn = ui.Button(
+                label="⛏️ Excavation in Progress",
+                style=ButtonStyle.secondary,
+                disabled=True,
+                row=0,
+            )
+            self.add_item(btn)
+        elif not p.is_developed:
             self._add_develop_button()
         elif self.building is None and self.pending_construction:
             # Show an inert indicator — no build actions while construction is queued
@@ -626,7 +656,7 @@ class PlotDetailView(SettlementBaseView):
         self.add_item(back)
 
     def _add_develop_button(self):
-        dc_cost = _compute_dc_cost(self.parent.plots)
+        dc_cost = _compute_dc_cost(self.parent.plots, self.parent.projects)
         btn = ui.Button(
             label=f"Develop Plot ({dc_cost} Development Contract{'s' if dc_cost != 1 else ''})",
             style=ButtonStyle.success,
@@ -781,8 +811,7 @@ class PlotDetailView(SettlementBaseView):
             return
         self._processing = True
 
-        developed_set = {pl.plot_index for pl in self.parent.plots if pl.is_developed}
-        dc_cost = _compute_dc_cost(self.parent.plots)
+        dc_cost = _compute_dc_cost(self.parent.plots, self.parent.projects)
 
         dcs = await self.bot.database.users.get_development_contracts(self.user_id)
         if dcs < dc_cost:
@@ -794,51 +823,67 @@ class PlotDetailView(SettlementBaseView):
 
         await interaction.response.defer()
 
-        # Deduct DCs and mark plot developed with a rolled bonus
+        # Roll bonus type and deduct DCs immediately
         bonus_type = roll_plot_bonus()
         await self.bot.database.users.modify_development_contracts(
             self.user_id, -dc_cost
         )
-        await self.bot.database.plots.develop_plot(
-            self.user_id, self.parent.server_id, self.plot.plot_index, bonus_type
+
+        # DT cost: 5 for first paid plot, +1 for each subsequent (including pending)
+        paid_developed = sum(
+            1
+            for p in self.parent.plots
+            if p.is_developed and p.plot_index not in _FREE_PLOT_INDICES
+        )
+        paid_pending = sum(
+            1
+            for proj in self.parent.projects
+            if proj.get("project_type") == "plot_develop"
+            and (proj.get("data") or {}).get("plot_index") not in _FREE_PLOT_INDICES
+        )
+        dt_cost = 5 + paid_developed + paid_pending
+
+        await self.bot.database.settlement.upsert_project(
+            user_id=self.user_id,
+            server_id=self.parent.server_id,
+            project_type="plot_develop",
+            target_id=self.plot.plot_index,
+            required_turns=dt_cost,
+            data={
+                "plot_index": self.plot.plot_index,
+                "bonus_type": bonus_type,
+                "display_label": f"Plot {self.plot.plot_index} Excavation",
+            },
         )
 
-        # Check milestone: all 20 plots developed → award Settlement Deed
-        new_developed = len(developed_set) + 1
-        if new_developed == 20:
-            await self.bot.database.users.modify_currency(
-                self.user_id, "settlement_deed", 1
-            )
-            await interaction.followup.send(
-                "🏆 **All 20 plots developed!** You have been awarded a **Settlement Deed**!",
-                ephemeral=True,
-            )
-
-        # Refresh local state
-        plot_rows = await self.bot.database.plots.get_plots(
+        # Refresh parent projects cache so grid + select menu update immediately
+        self.parent.projects = await self.bot.database.settlement.get_projects(
             self.user_id, self.parent.server_id
         )
-        from core.settlement.models import Plot as PlotModel
+        self.parent._rebuild_ui()
 
-        self.parent.plots = [
-            PlotModel(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
-            for r in plot_rows
-        ]
-
-        # Update self.plot
-        self.plot = next(
-            (p for p in self.parent.plots if p.plot_index == self.plot.plot_index),
-            self.plot,
+        queued_embed = discord.Embed(
+            title="⛏️ Excavation Queued",
+            description=(
+                f"**Plot {self.plot.plot_index}** excavation has been queued.\n\n"
+                f"Development Contracts deducted. The plot will be ready after "
+                f"**{dt_cost} Development Turn(s)**.\n"
+                f"Use **Next Turn** on your settlement dashboard to process it."
+            ),
+            color=discord.Color.orange(),
+        )
+        queued_embed.set_thumbnail(url=SETTLEMENT_CONSTRUCTION)
+        await interaction.edit_original_response(
+            content=None, embed=queued_embed, view=discord.ui.View()
         )
 
-        bonus_data = PLOT_BONUS_TABLE.get(bonus_type, {})
-        bonus_emoji = bonus_data.get("emoji", "")
-        bonus_label = bonus_data.get("label", bonus_type)
+        await asyncio.sleep(3)
+
         self._processing = False
-        self._build_buttons()
-        embed = self.build_embed()
-        embed.title = f"📍 Plot {self.plot.plot_index} — ✅ Developed!"
-        await interaction.edit_original_response(content=None, embed=embed, view=self)
+        await interaction.edit_original_response(
+            embed=self.parent.build_embed(), view=self.parent
+        )
+        self.stop()
 
     # ------------------------------------------------------------------
     # Callbacks — build regular building

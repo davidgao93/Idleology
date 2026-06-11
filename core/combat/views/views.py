@@ -283,6 +283,7 @@ class CombatView(BaseView):
         rematch_callback=None,
         hard_mode: int = 0,
         combat_streak: int = 0,
+        crisis_callback=None,
     ):
         super().__init__(bot, user_id, server_id)
         self.bot = bot
@@ -293,6 +294,7 @@ class CombatView(BaseView):
         self.logs = initial_logs or {}
         self.post_combat_view = post_combat_view
         self.rematch_callback = rematch_callback
+        self.crisis_callback = crisis_callback
         self.hard_mode = (
             hard_mode  # int: 0=off, 1=hard, 2=extreme, 3=nightmarish, 4=delirious
         )
@@ -715,6 +717,11 @@ class CombatView(BaseView):
             self.bot.state_manager.clear_active(self.user_id)
             await self.bot.database.users.update_from_player_object(self.player)
             await _je.save_jewel_state(self.bot, self.user_id, self.player)
+            if self.crisis_callback:
+                try:
+                    await self.crisis_callback(False)
+                except Exception:
+                    pass
             self.stop()
             return
 
@@ -875,6 +882,12 @@ class CombatView(BaseView):
             return  # Harvest view takes over the interaction
 
         fire_on_victory_effects(self.player)
+
+        if self.crisis_callback:
+            try:
+                await self.crisis_callback(True)
+            except Exception:
+                pass
 
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)

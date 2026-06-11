@@ -836,15 +836,43 @@ class ProfileBuilder:
             settlement = await bot.database.settlement.get_settlement(
                 user_id, server_id
             )
-            if settlement and settlement.last_collection_time:
+            if settlement:
+                if settlement.last_collection_time:
+                    try:
+                        s_last = datetime.fromisoformat(settlement.last_collection_time)
+                        blocks = max(
+                            0, int((datetime.now() - s_last).total_seconds() // 3600)
+                        )
+                        horizon_lines.append(
+                            f"🏭 **Settlement** — {blocks} block(s) of production completed"
+                        )
+                    except Exception:
+                        pass
+                # Zeal gather status
                 try:
-                    s_last = datetime.fromisoformat(settlement.last_collection_time)
-                    blocks = max(
-                        0, int((datetime.now() - s_last).total_seconds() // 3600)
+                    from core.settlement.constants import (
+                        PASSIVE_ZEAL_PER_HOUR_BASE,
+                        ZEAL_GATHER_CAP,
                     )
-                    horizon_lines.append(
-                        f"🏭 **Settlement** — {blocks} block(s) of production completed"
+                    from core.settlement.turn_engine import passive_zeal_for_period
+
+                    turns_data = await bot.database.settlement.get_turns_data(
+                        user_id, server_id
                     )
+                    pending_zeal = turns_data.get("pending_zeal", 0)
+                    tier = settlement.town_hall_tier
+                    rate = PASSIVE_ZEAL_PER_HOUR_BASE + (tier - 1) * 9
+                    # Hours until the cap accumulates from current pending
+                    hours_to_cap = max(0.0, (ZEAL_GATHER_CAP - pending_zeal) / rate)
+                    available = min(pending_zeal, ZEAL_GATHER_CAP)
+                    if available >= ZEAL_GATHER_CAP:
+                        zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — ready to collect!"
+                    elif hours_to_cap < 1.0:
+                        zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — cap in <1h"
+                    else:
+                        h = int(hours_to_cap)
+                        zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — cap in ~{h}h"
+                    horizon_lines.append(f"🔥 **Gather Zeal** — {zeal_str}")
                 except Exception:
                     pass
 

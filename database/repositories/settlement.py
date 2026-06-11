@@ -535,6 +535,47 @@ class SettlementRepository:
         except Exception:
             return 0
 
+    async def spend_pending_zeal(self, user_id: str, server_id: str, amount: int) -> None:
+        """Deducts *amount* from pending_zeal (floors at 0). Does NOT credit settlement_zeal."""
+        await self.connection.execute(
+            "UPDATE settlements SET pending_zeal = MAX(0, pending_zeal - ?) "
+            "WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def collect_capped_pending_zeal(
+        self, user_id: str, server_id: str, cap: int
+    ) -> int:
+        """
+        Collects up to *cap* from pending_zeal into settlement_zeal.
+        Returns the amount actually collected.
+        Does NOT update zeal_earned_today (passive income, not active gain).
+        """
+        try:
+            cursor = await self.connection.execute(
+                "SELECT pending_zeal FROM settlements WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
+            )
+            row = await cursor.fetchone()
+            pending = (row[0] or 0) if row else 0
+            amount = min(pending, cap)
+            if amount <= 0:
+                return 0
+            await self.connection.execute(
+                "UPDATE settlements SET pending_zeal = pending_zeal - ? "
+                "WHERE user_id = ? AND server_id = ?",
+                (amount, user_id, server_id),
+            )
+            await self.connection.execute(
+                "UPDATE users SET settlement_zeal = settlement_zeal + ? WHERE user_id = ?",
+                (amount, user_id),
+            )
+            await self.connection.commit()
+            return amount
+        except Exception:
+            return 0
+
     # ------------------------------------------------------------------
     # Zeal & Idlem on users table
     # ------------------------------------------------------------------

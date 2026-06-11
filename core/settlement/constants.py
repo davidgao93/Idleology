@@ -198,6 +198,8 @@ ZEAL_DAILY_HARD_CAP = 800
 ZEAL_DAILY_SOFT_CAP = 600
 # Passive zeal generated per hour per settlement (T1 = 5/hr, T7 ≈ 59/hr).
 PASSIVE_ZEAL_PER_HOUR_BASE = 5
+# Maximum Zeal collectible in a single Gather Zeal action.
+ZEAL_GATHER_CAP = 400
 # Idlem produced per turn by the Idlem Foundry (before tier scaling).
 IDLEM_PER_TURN_BASE = 1
 # Workers produced per turn by the Nursery (before tier scaling).
@@ -225,10 +227,10 @@ PROJECT_CONSTRUCTION_DT = {
 
 # Extra DT cost per tier level for upgrades (applied on top of resource cost).
 PROJECT_UPGRADE_DT_PER_TIER = {
-    "default": 8,  # T1→T2 = 8 DTs, T2→T3 = 16, etc.
-    "uber_shrine": 20,
-    "black_market": 15,
-    "town_hall": 20,
+    "default": 5,  # T1→T2 = 5 DTs, T2→T3 = 10, T3→T4 = 15, T4→T5 = 20
+    "uber_shrine": 5,
+    "black_market": 5,
+    "town_hall": 5,  # T5→T6 = 25, T6→T7 = 30 (continuing 5× trend)
 }
 
 # ---------------------------------------------------------------------------
@@ -630,7 +632,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
     "bandit_raid": {
         "name": "⚔️ Bandit Raid",
         "type": "upcoming",
-        "description": "Raiders are targeting your {target_building_label}. Defeat the Bandit Captain in /combat before the warning expires or the building will be disabled.",
+        "description": "Raiders are targeting your {target_building_label}. Use the **Confront** button on your settlement dashboard to repel them, or the building will be disabled.",
         "effects": {
             "spawn_combat": "bandit_captain",
             "on_fail_disable": "target_building",
@@ -643,7 +645,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
     "plague_outbreak": {
         "name": "🦠 Plague Outbreak",
         "type": "upcoming",
-        "description": "Disease spreads through your workforce. Defeat the Plague Wraith in /combat before the warning expires or lose {band_pct}% of all workers.",
+        "description": "Disease spreads through your workforce. Use the **Confront** button on your settlement dashboard to purge it, or lose {band_pct}% of all workers.",
         "effects": {
             "spawn_combat": "plague_wraith",
             "on_fail_lose_workers_pct": "band",
@@ -656,7 +658,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
     "void_incursion": {
         "name": "🌑 Void Incursion",
         "type": "upcoming",
-        "description": "A void rift opens near your {target_building_label}. Defeat the Void Sentry in /combat before the warning expires or lose the building.",
+        "description": "A void rift opens near your {target_building_label}. Use the **Confront** button on your settlement dashboard to seal it, or the building will be lost.",
         "effects": {
             "spawn_combat": "void_sentry",
             "on_fail_disable": "target_building",
@@ -675,7 +677,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
     "fire_hazard": {
         "name": "🔥 Fire Hazard",
         "type": "upcoming",
-        "description": "A fire breaks out near your {target_building_label}. Defeat the Ember Wraith in /combat before the warning expires or the building will be disabled.",
+        "description": "A fire breaks out near your {target_building_label}. Use the **Confront** button on your settlement dashboard to extinguish it, or the building will be disabled.",
         "effects": {
             "spawn_combat": "ember_wraith",
             "on_fail_disable": "target_building",
