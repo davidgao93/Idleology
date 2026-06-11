@@ -501,24 +501,18 @@ class QuestBoardView(BaseView):
             self._processing = False
 
     # ------------------------------------------------------------------
-    # Abandon (called by _AbandonSelect)
+    # Abandon (called by _AbandonConfirmView after user confirms)
     # ------------------------------------------------------------------
 
-    async def handle_abandon(self, interaction: Interaction, slot: int) -> None:
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-        await interaction.response.defer()
-
-        try:
-            await self.bot.database.quests.abandon_contract(
-                self.user_id, self.server_id, slot
-            )
-            await self.refresh(interaction)
-            await self._check_for_fresh_board_ready(interaction)
-        finally:
-            self._processing = False
+    async def execute_abandon(self, slot: int) -> None:
+        """Performs the abandon and refreshes the main message. Called from the confirm view."""
+        await self.bot.database.quests.abandon_contract(self.user_id, self.server_id, slot)
+        await self.load()
+        active = [c for c in self.contracts if not c["turned_in"]]
+        if not active and not self._is_on_cooldown():
+            await self._roll_fresh_board()
+        self._build_view_components()
+        await self.message.edit(embed=self.build_embed(), view=self)
 
     async def _check_for_fresh_board_ready(self, interaction: Interaction) -> None:
         """If all contracts are done/abandoned and cooldown expired, reload board."""
@@ -575,29 +569,45 @@ class QuestBoardView(BaseView):
     async def handle_horizon_select(
         self, interaction: Interaction, path_id: str
     ) -> None:
-        if self._processing:
+        """Entry point from _HorizonSelect. Shows a confirmation if switching an active path."""
+        path_def = HORIZON_PATHS.get(path_id)
+        if not path_def:
             await interaction.response.defer()
             return
-        self._processing = True
-        await interaction.response.defer()
-
-        try:
-            path_def = HORIZON_PATHS.get(path_id)
-            if not path_def:
-                return
-            if self._player_level < path_def["level_required"]:
-                await interaction.followup.send(
-                    f"You need to be level {path_def['level_required']} for this path.",
-                    ephemeral=True,
-                )
-                return
-
-            await self.bot.database.quests.set_horizon(
-                self.user_id, self.server_id, path_id, path_def["goal"]
+        if self._player_level < path_def["level_required"]:
+            await interaction.response.send_message(
+                f"You need to be level {path_def['level_required']} for this path.",
+                ephemeral=True,
             )
-            await self.refresh(interaction)
-        finally:
-            self._processing = False
+            return
+
+        current = self.horizon
+        switching_active = (
+            current is not None
+            and not current.get("turned_in")
+            and not current.get("completed")
+            and current.get("path_id") != path_id
+            and current.get("progress", 0) > 0
+        )
+        if switching_active:
+            confirm = _HorizonSwitchConfirmView(self.bot, self, path_id, path_def["name"])
+            await interaction.response.send_message(
+                f"Switch to **{path_def['name']}**? Your progress on the current path will be lost.",
+                view=confirm,
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.defer()
+            await self.execute_horizon_select(path_id, path_def)
+
+    async def execute_horizon_select(self, path_id: str, path_def: dict) -> None:
+        """Writes the horizon selection and refreshes the main message."""
+        await self.bot.database.quests.set_horizon(
+            self.user_id, self.server_id, path_id, path_def["goal"]
+        )
+        await self.load()
+        self._build_view_components()
+        await self.message.edit(embed=self.build_embed(), view=self)
 
     # ------------------------------------------------------------------
     # Shop / Close
@@ -653,6 +663,7 @@ class _ClaimButton(discord.ui.Button):
 
 class _AbandonSelect(discord.ui.Select):
     def __init__(self, incomplete_contracts: list, row: int):
+        self._contracts = incomplete_contracts
         options = []
         for c in incomplete_contracts:
             quest_def = next(
@@ -673,7 +684,74 @@ class _AbandonSelect(discord.ui.Select):
 
     async def callback(self, interaction: Interaction) -> None:
         slot = int(self.values[0])
-        await self.view.handle_abandon(interaction, slot)
+        contract = next((c for c in self._contracts if c["slot"] == slot), None)
+        quest_def = next(
+            (q for q in DAILY_QUESTS if q["id"] == contract["quest_id"]), None
+        ) if contract else None
+        quest_label = quest_def["label"] if quest_def else f"Slot {slot}"
+        confirm = _AbandonConfirmView(self.view.bot, self.view, slot, quest_label)
+        await interaction.response.send_message(
+            f"Walk away from **{quest_label}** (Slot {slot})? Your progress will be lost.",
+            view=confirm,
+            ephemeral=True,
+        )
+
+
+class _AbandonConfirmView(BaseView):
+    """Ephemeral confirmation before abandoning a contract."""
+
+    def __init__(self, bot, parent: QuestBoardView, slot: int, quest_label: str):
+        super().__init__(bot, parent=parent)
+        self.main_view = parent
+        self.slot = slot
+        self.quest_label = quest_label
+        self._done = False
+
+    @ui.button(label="Abandon", style=ButtonStyle.danger)
+    async def confirm_btn(self, interaction: Interaction, button: ui.Button):
+        if self._done:
+            await interaction.response.defer()
+            return
+        self._done = True
+        await interaction.response.edit_message(
+            content=f"Contract **{self.quest_label}** abandoned.", view=None
+        )
+        await self.main_view.execute_abandon(self.slot)
+        self.stop()
+
+    @ui.button(label="Cancel", style=ButtonStyle.secondary)
+    async def cancel_btn(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.edit_message(content="Cancelled.", view=None)
+        self.stop()
+
+
+class _HorizonSwitchConfirmView(BaseView):
+    """Ephemeral confirmation before switching an in-progress Horizon path."""
+
+    def __init__(self, bot, parent: QuestBoardView, path_id: str, path_name: str):
+        super().__init__(bot, parent=parent)
+        self.main_view = parent
+        self.path_id = path_id
+        self.path_name = path_name
+        self._done = False
+
+    @ui.button(label="Switch Path", style=ButtonStyle.danger)
+    async def confirm_btn(self, interaction: Interaction, button: ui.Button):
+        if self._done:
+            await interaction.response.defer()
+            return
+        self._done = True
+        await interaction.response.edit_message(
+            content=f"Switched to **{self.path_name}**.", view=None
+        )
+        path_def = HORIZON_PATHS.get(self.path_id)
+        await self.main_view.execute_horizon_select(self.path_id, path_def)
+        self.stop()
+
+    @ui.button(label="Cancel", style=ButtonStyle.secondary)
+    async def cancel_btn(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.edit_message(content="Cancelled.", view=None)
+        self.stop()
 
 
 class _HorizonSelect(discord.ui.Select):

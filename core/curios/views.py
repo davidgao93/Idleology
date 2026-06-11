@@ -128,15 +128,6 @@ class CurioView(BaseView):
         embed.set_thumbnail(url=_UNOPENED_IMAGE)
         return embed
 
-    async def on_timeout(self):
-        try:
-            for child in self.children:
-                child.disabled = True
-            await self.message.edit(view=self)
-        except Exception:
-            pass
-        await super().on_timeout()
-
     async def _process_open(self, interaction: Interaction, amount: int):
         if self._processing:
             await interaction.response.defer()
@@ -174,7 +165,6 @@ class CurioView(BaseView):
         embed.set_footer(text=f"Remaining Curios: {self.curio_count}")
 
         self._build_buttons()
-        self._processing = False
         if self.curio_count == 0:
             embed.add_field(
                 name="Empty!", value="You have no curios left.", inline=False
@@ -184,6 +174,7 @@ class CurioView(BaseView):
             self.bot.state_manager.clear_active(self.user_id)
             self.stop()
         else:
+            self._processing = False
             await interaction.edit_original_response(embed=embed, view=self)
 
     async def _open_custom_modal(self, interaction: Interaction):
@@ -196,6 +187,10 @@ class CurioView(BaseView):
         await self._process_open_after_modal(interaction, modal.chosen_amount)
 
     async def _process_open_after_modal(self, interaction: Interaction, amount: int):
+        if self._processing:
+            return
+        self._processing = True
+
         result = await CurioManager.process_open(
             self.bot, self.user_id, self.server_id, amount
         )
@@ -234,6 +229,7 @@ class CurioView(BaseView):
             self.bot.state_manager.clear_active(self.user_id)
             self.stop()
         else:
+            self._processing = False
             await interaction.edit_original_response(embed=embed, view=self)
 
     async def _open_puzzle_box(self, interaction: Interaction):

@@ -22,7 +22,7 @@ import random
 
 from core.models import Monster, Player
 
-_DMG_VARIANCE = (0.85, 1.15)
+_DMG_VARIANCE = (0.65, 1.35)
 
 
 def _mid_level_scalar(level: int) -> float:
@@ -58,7 +58,9 @@ def calculate_damage_taken(player: Player, monster: Monster) -> int:
     surplus = max(-0.95, surplus)
     surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
     raw = base_raw * (1.0 + surplus * surplus_mult)
-    dmg = max(1, int(raw * random.uniform(*_DMG_VARIANCE)))
+    raw_min = max(1, int(raw * _DMG_VARIANCE[0]))
+    raw_max = max(raw_min, int(raw * _DMG_VARIANCE[1]))
+    dmg = random.randint(raw_min, raw_max)
 
     # Rookie damage shield: levels 1–3 cap at 1; each level above 3 raises by 1.
     # Removed entirely at level 50 where the normal formula takes over.
@@ -91,17 +93,16 @@ def roll_monster_damage(
     if monster.has_modifier("Onslaught"):
         m_atk = int(m_atk * (1 + monster.onslaught_bonus_atk))
     p_def = max(player.get_total_defence(), 1)
-    base_raw = 5 + monster.level * 1.5
     surplus = max(-0.95, (m_atk - p_def) / p_def)
     surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
     dmg = calculate_damage_taken(player, monster)
 
-    diff_note = f" surplus_mult=×{surplus_mult}" if monster.difficulty_level > 0 else ""
-    post_surplus = base_raw * (1.0 + surplus * surplus_mult)
-    var_low = int(post_surplus * 0.85)
-    var_high = int(post_surplus * 1.15)
+    base_raw_display = monster.level * 1.5 * _mid_level_scalar(monster.level)
+    post_surplus = base_raw_display * (1.0 + surplus * surplus_mult)
+    var_low = max(1, int(post_surplus * _DMG_VARIANCE[0]))
+    var_high = max(var_low, int(post_surplus * _DMG_VARIANCE[1]))
     calc_notes: list[str] = [
-        f"m_atk={m_atk} p_def={p_def} base_raw={base_raw:.0f} surplus={surplus:+.3f}×{surplus_mult:.1f} → post_surplus={post_surplus:.0f} variance[0.85–1.15] range[{var_low}–{var_high}] rolled={dmg}"
+        f"m_atk={m_atk} p_def={p_def} base_raw={base_raw_display:.0f} surplus={surplus:+.3f}×{surplus_mult:.1f} → post_surplus={post_surplus:.0f} variance[{_DMG_VARIANCE[0]:.2f}–{_DMG_VARIANCE[1]:.2f}] range[{var_low}–{var_high}] rolled={dmg}"
     ]
 
     # =====================================================================

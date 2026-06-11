@@ -56,7 +56,9 @@ class ProfileBuilder:
         )
         _lvl, _exp = user[4], user[5]
         try:
-            _exp_path = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "exp.json")
+            _exp_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "assets", "exp.json"
+            )
             with open(_exp_path, encoding="utf-8") as _f:
                 _exp_table = json.load(_f)["levels"]
             _needed = _exp_table.get(str(_lvl), 0)
@@ -963,14 +965,10 @@ class ProfileBuilder:
                 if remaining > 0:
                     gh, gr = divmod(remaining // 60, 60)
                     line = f"{emo} **{label}** — Familiarizing: **{gh}h {gr:02d}m**"
-                    if mom:
-                        line += f" *(Momentum: −{mom} min applied)*"
                     gathering_lines.append(line)
                 elif fam_end:
                     # Gate recently lifted but momentum still banked
-                    line = f"{emo} **{label}** — ✅ Gate lifted"
-                    if mom:
-                        line += f" *(+{mom} min Momentum available for next gate)*"
+                    line = f"{emo} **{label}** — ✅ Tool tier familiarized"
                     gathering_lines.append(line)
 
             if gathering_lines:

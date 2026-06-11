@@ -12,6 +12,7 @@ from core.images import (
     CHECKIN,
     POTION_SHOP,
     POTION_SHOP_AUTHOR,
+    QUEST_SHOP_AUTHOR,
     TAVERN_CASINO,
     TAVERN_GAMES,
     TAVERN_KEEPER,
@@ -32,6 +33,8 @@ def _build_checkin_embed(
         title="📅 Daily Check-in Track",
         color=0x7289DA,
     )
+    embed.set_author(name="Lira", icon_url=QUEST_SHOP_AUTHOR)
+    embed.set_thumbnail(url=CHECKIN)
 
     # Build two rows of 7 days — spaces between cells for readability
     cells: list[str] = []
@@ -72,6 +75,11 @@ def _build_checkin_embed(
             value=f"Day {next_day} — {label}",
             inline=True,
         )
+        embed.add_field(
+            name="Lira",
+            value="You're right on time! I've got something set aside for you — come pick it up.",
+            inline=False,
+        )
     else:
         if remaining:
             total_secs = int(remaining.total_seconds())
@@ -82,6 +90,11 @@ def _build_checkin_embed(
                 value=f"**{h}h {m}m**",
                 inline=True,
             )
+        embed.add_field(
+            name="Lira",
+            value="Already claimed today's parcel? Good on you. Come back a little later — I'll have the next one ready.",
+            inline=False,
+        )
 
     return embed
 
@@ -215,7 +228,7 @@ class Tavern(commands.Cog, name="tavern"):
                 description=f"You need to wait {remaining_str} before resting for free again.",
                 color=0xFFCC00,
             )
-            embed.set_image(url=BAR_MAID)
+            embed.set_thumbnail(url=BAR_MAID)
 
             if gold >= cost:
                 if auto_pay:
@@ -237,7 +250,6 @@ class Tavern(commands.Cog, name="tavern"):
                     # Normal paid rest prompt
                     self.bot.state_manager.set_active(user_id, "rest")
                     embed.set_author(name="Gilda", icon_url=BAR_MAID_AUTHOR)
-                    embed.set_thumbnail(url=TAVERN_KEEPER)
                     embed.add_field(
                         name="Gilda",
                         value=f"I have an extra room available for **{cost} gold**. Clean sheets and no questions asked.",
@@ -247,7 +259,6 @@ class Tavern(commands.Cog, name="tavern"):
                     view.message = await interaction.original_response()
             else:
                 embed.set_author(name="Gilda", icon_url=BAR_MAID_AUTHOR)
-                embed.set_thumbnail(url=TAVERN_KEEPER)
                 embed.add_field(
                     name="Gilda",
                     value=f"I have a room for **{cost} gold**, but you can't afford it. Come back when you're not so broke.",
@@ -358,6 +369,11 @@ class Tavern(commands.Cog, name="tavern"):
             embed.add_field(
                 name=f"Day {next_day} Reward",
                 value="\n".join(rewards) if rewards else "No rewards this day.",
+                inline=False,
+            )
+            embed.add_field(
+                name="Lira",
+                value="There you go — all packed up just for you. See you again tomorrow!",
                 inline=False,
             )
             embed.color = 0x00CC77
