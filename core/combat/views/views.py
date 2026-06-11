@@ -883,15 +883,19 @@ class CombatView(BaseView):
 
         fire_on_victory_effects(self.player)
 
+        # Save player state and clear combat lock before any callback so the
+        # callback can freely set a new active state (e.g. returning to settlement).
+        self.bot.state_manager.clear_active(self.user_id)
+        await self.bot.database.users.update_from_player_object(self.player)
+        await _je.save_jewel_state(self.bot, self.user_id, self.player)
+
         if self.crisis_callback:
             try:
                 await self.crisis_callback(True)
             except Exception:
                 pass
-
-        self.bot.state_manager.clear_active(self.user_id)
-        await self.bot.database.users.update_from_player_object(self.player)
-        await _je.save_jewel_state(self.bot, self.user_id, self.player)
+            self.stop()
+            return  # Caller handles the view transition; skip normal post-combat UI
 
         # Build post-combat view (Fight Again button or stamina cooldown field)
         stamina_data = await self.bot.database.users.get_stamina(self.user_id)

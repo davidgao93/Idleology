@@ -1229,12 +1229,11 @@ class SettlementDashboardView(SettlementBaseView):
         await interaction.response.defer()
 
         try:
-            from core.settlement.constants import SETTLEMENT_EVENTS
-            from core.settlement.encounter import get_repair_cost
-
             uid, sid = self.user_id, self.server_id
 
-            if self.bot.state_manager.is_active(uid):
+            # Allow transition from settlement state; block any other active state.
+            current_op = self.bot.state_manager.active_operations.get(uid, (None, 0))[0]
+            if current_op and current_op != "settlement":
                 await interaction.followup.send(
                     "You're already in another activity. Finish it first.", ephemeral=True
                 )
@@ -1249,7 +1248,6 @@ class SettlementDashboardView(SettlementBaseView):
             )
             target_building_type = (event.get("data") or {}).get("target_building")
 
-            # Load the player and generate a real encounter monster.
             from core.items.factory import load_player
             from core.models import Monster
             from core.combat.mobgen.gen_mob import generate_encounter
@@ -1262,35 +1260,27 @@ class SettlementDashboardView(SettlementBaseView):
             user_row = await self.bot.database.users.get(uid, sid)
             player = await load_player(uid, user_row, self.bot.database)
 
-            # Generate a normal encounter (same path as /combat for a regular fight).
             base_monster = Monster(
-                name="",
-                level=0,
-                hp=0,
-                max_hp=0,
-                xp=0,
-                attack=0,
-                defence=0,
-                modifiers=[],
-                image="",
-                flavor="",
+                name="", level=0, hp=0, max_hp=0, xp=0,
+                attack=0, defence=0, modifiers=[], image="", flavor="",
             )
             monster = await generate_encounter(player, base_monster, is_treasure=False)
 
-            # Apply start-of-combat state (same as _execute_combat in the cog).
             monster.reset_combat_bonuses()
             engine.apply_stat_effects(player, monster)
             start_logs = engine.apply_combat_start_passives(player, monster)
             _je.reset_jewel_charges(player)
+            reset_combat_transients(player)
 
-            # Build the initial embed.
-            embed = combat_ui.create_combat_embed(
+            combat_embed = combat_ui.create_combat_embed(
                 player, monster, start_logs,
                 title_override=f"⚔️ Crisis: {enemy_name}",
             )
 
-            # Crisis callback — fires when the CombatView reaches a terminal state.
+            # Callback fires when CombatView reaches a terminal state.
+            # By the time it runs, CombatView has already called clear_active.
             async def _crisis_end(won: bool) -> None:
+                # Settle win/lose effects
                 await self.bot.database.settlement.remove_events_by_key(
                     uid, sid, event["event_key"]
                 )
@@ -1304,25 +1294,42 @@ class SettlementDashboardView(SettlementBaseView):
                         if b:
                             await self.bot.database.settlement.disable_building(b.id)
 
+                # Reload settlement state and transition the message back to the dashboard.
+                self.settlement = await self.bot.database.settlement.get_settlement(uid, sid)
+                _plot_rows = await self.bot.database.plots.get_plots(uid, sid)
+                self.plots = [
+                    Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
+                    for r in _plot_rows
+                ]
+                self.projects = await self.bot.database.settlement.get_projects(uid, sid)
+                self._cached_active_events = (
+                    await self.bot.database.settlement.get_active_events(uid, sid)
+                )
+                self._rebuild_ui()
+                self._processing = False
+                self.bot.state_manager.set_active(uid, "settlement")
+                if self.message:
+                    try:
+                        await self.message.edit(embed=self.build_embed(), view=self)
+                    except Exception:
+                        pass
+
+            # Switch active state: settlement → combat
             self.bot.state_manager.set_active(uid, "combat")
-            reset_combat_transients(player)
 
             view = CombatView(
-                self.bot,
-                uid,
-                sid,
-                player,
-                monster,
-                start_logs,
+                self.bot, uid, sid, player, monster, start_logs,
                 combat_phases=[None],
                 crisis_callback=_crisis_end,
             )
 
-            msg = await interaction.followup.send(embed=embed, view=view)
-            view.message = msg
+            # Transition the settlement message into the combat view (same message).
+            await interaction.edit_original_response(embed=combat_embed, view=view)
+            view.message = self.message
 
-        finally:
+        except Exception:
             self._processing = False
+            raise
 
     # -------------------------------------------------------------------------
     # Internal helpers
