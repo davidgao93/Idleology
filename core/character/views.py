@@ -103,11 +103,15 @@ class RegistrationView(BaseView):
         async def _switch_cb(i: Interaction):
             await self.process_gender(i, other_gender)
 
-        switch_btn = Button(label=other_label, emoji=other_emoji, style=ButtonStyle.secondary, row=1)
+        switch_btn = Button(
+            label=other_label, emoji=other_emoji, style=ButtonStyle.secondary, row=1
+        )
         switch_btn.callback = _switch_cb
         self.add_item(switch_btn)
 
-        confirm_btn = Button(label="Confirm Appearance", style=ButtonStyle.success, row=1)
+        confirm_btn = Button(
+            label="Confirm Appearance", style=ButtonStyle.success, row=1
+        )
         confirm_btn.callback = self.on_confirm_appearance
         self.add_item(confirm_btn)
 
@@ -357,10 +361,10 @@ class StatInvestView(BaseView):
     """
 
     _STAT_MAP = [
-        ("atk",  "⚔️ Attack",      "atk"),
-        ("def",  "🛡️ Defence",     "def"),
-        ("hp",   "❤️ Max HP",      "hp"),
-        ("gold", "💰 Gold Find",   "gold"),
+        ("atk", "⚔️ Attack", "atk"),
+        ("def", "🛡️ Defence", "def"),
+        ("hp", "❤️ Max HP", "hp"),
+        ("gold", "💰 Gold Find", "gold"),
     ]
 
     def __init__(self, bot, user_id: str, server_id: str, data):
@@ -377,7 +381,7 @@ class StatInvestView(BaseView):
     def _rebuild(self):
         self.clear_items()
         points = self._data["passive_points"]
-        runes  = self._data.get("rune_of_regret", 0) or 0
+        runes = self._data.get("rune_of_regret", 0) or 0
 
         if self._refund_mode:
             # ── Refund-selection mode ──────────────────────────────────
@@ -422,7 +426,8 @@ class StatInvestView(BaseView):
         rune_btn = discord.ui.Button(
             label=f"🔮 Rune of Regret ({runes})",
             style=discord.ButtonStyle.secondary,
-            disabled=runes <= 0 or not any(
+            disabled=runes <= 0
+            or not any(
                 (self._data.get(f"stat_invest_{dk}", 0) or 0) > 0
                 for dk, _, __ in self._STAT_MAP
             ),
@@ -442,7 +447,7 @@ class StatInvestView(BaseView):
     # ------------------------------------------------------------------
 
     def build_embed(self) -> discord.Embed:
-        pts   = self._data["passive_points"]
+        pts = self._data["passive_points"]
         runes = self._data.get("rune_of_regret", 0) or 0
 
         desc = (
@@ -452,7 +457,9 @@ class StatInvestView(BaseView):
             "Use a **Rune of Regret** to reclaim 1 point from any stat."
         )
         if self._refund_mode:
-            desc = f"**Runes of Regret:** {runes}\n\nSelect a stat to remove 1 point from."
+            desc = (
+                f"**Runes of Regret:** {runes}\n\nSelect a stat to remove 1 point from."
+            )
 
         embed = discord.Embed(
             title="📊 Stat Allocation",
@@ -488,9 +495,9 @@ class StatInvestView(BaseView):
             ok = await self.bot.database.users.invest_stat_point(
                 self.user_id, self.server_id, db_key
             )
-            self._data = dict(await self.bot.database.users.get(
-                self.user_id, self.server_id
-            ))
+            self._data = dict(
+                await self.bot.database.users.get(self.user_id, self.server_id)
+            )
             if not ok:
                 await interaction.followup.send(
                     "No passive points available!", ephemeral=True
@@ -524,11 +531,17 @@ class StatInvestView(BaseView):
         ok = await self.bot.database.users.refund_stat_point(
             self.user_id, self.server_id, db_key
         )
-        self._data = dict(await self.bot.database.users.get(self.user_id, self.server_id))
+        self._data = dict(
+            await self.bot.database.users.get(self.user_id, self.server_id)
+        )
         self._refund_mode = False
         self._rebuild()
 
-        msg = "Refund successful!" if ok else "Refund failed — not enough invested or no Rune available."
+        msg = (
+            "Refund successful!"
+            if ok
+            else "Refund failed — not enough invested or no Rune available."
+        )
         await interaction.followup.send(msg, ephemeral=True)
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
         self._processing = False

@@ -16,7 +16,11 @@ import json
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.alchemy.mechanics import DistillationMechanics, get_passive_name_emoji, get_passive_info
+from core.alchemy.mechanics import (
+    DistillationMechanics,
+    get_passive_name_emoji,
+    get_passive_info,
+)
 from core.base_view import BaseView
 from core.images import ALCHEMY_HUB
 
@@ -33,7 +37,9 @@ class PotionDistillationView(BaseView):
     The main interactive 9-step distillation view.
     """
 
-    def __init__(self, bot, user_id: str, server_id: str, alchemy_level: int, cosmic_dust: int):
+    def __init__(
+        self, bot, user_id: str, server_id: str, alchemy_level: int, cosmic_dust: int
+    ):
         super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
         self.cosmic_dust = cosmic_dust
@@ -43,7 +49,9 @@ class PotionDistillationView(BaseView):
 
     async def _ensure_session(self):
         # Always load latest from DB to ensure persistence across steps (e.g. base choice)
-        row = await self.bot.database.alchemy.get_distillation(self.user_id, self.server_id)
+        row = await self.bot.database.alchemy.get_distillation(
+            self.user_id, self.server_id
+        )
         if row:
             self.session = row["data"] or {}
             self.session["step"] = row.get("step", 0)
@@ -70,7 +78,9 @@ class PotionDistillationView(BaseView):
         )
 
     async def _clear_session(self):
-        await self.bot.database.alchemy.delete_distillation(self.user_id, self.server_id)
+        await self.bot.database.alchemy.delete_distillation(
+            self.user_id, self.server_id
+        )
         self.session = {}
         self.bot.state_manager.clear_active(self.user_id)
 
@@ -81,7 +91,9 @@ class PotionDistillationView(BaseView):
         dur = s.get("duration_mod", 0.0)
         val = s.get("value_mod", 0.0)
 
-        embed = discord.Embed(title="🧪 Potion Distillation", color=discord.Color.purple())
+        embed = discord.Embed(
+            title="🧪 Potion Distillation", color=discord.Color.purple()
+        )
         embed.set_thumbnail(url=ALCHEMY_HUB)
 
         # ------------------------------------------------------------------
@@ -108,7 +120,9 @@ class PotionDistillationView(BaseView):
         # REAGENT STEP
         # ------------------------------------------------------------------
         base_info = DistillationMechanics.POWERFUL_PASSIVES.get(base, {})
-        display_step = max(1, step)  # after base choice we are on reagent step 1 even if internal counter is still 0
+        display_step = max(
+            1, step
+        )  # after base choice we are on reagent step 1 even if internal counter is still 0
 
         # Show the *actual* passive with current projected values (instead of raw +0.0 / +0.9 accumulators).
         # The numbers in the passive text reflect the current Duration/Value Power.
@@ -116,7 +130,9 @@ class PotionDistillationView(BaseView):
         safe_dust = max(0, self.cosmic_dust)
         projected_val = max(5.0, 5.0 + val)
         projected_dur = max(1.0, 1.0 + dur)
-        passive_preview = DistillationMechanics.format_distilled_passive(base, projected_val, projected_dur)
+        passive_preview = DistillationMechanics.format_distilled_passive(
+            base, projected_val, projected_dur
+        )
 
         embed.description = (
             f"**Step {display_step} / {DistillationMechanics.STEPS}**\n"
@@ -124,7 +140,7 @@ class PotionDistillationView(BaseView):
             f"{passive_preview}\n\n"
             f"**Cosmic Dust:** ✨ {safe_dust:,}\n"
             f"**Value Power:** __+{val:.1f}__   **Duration Power:** __+{dur:.1f}__\n\n"
-            "Choose a reagent below. The special properties for this step are listed under \"Reagent Properties (this step)\". "
+            'Choose a reagent below. The special properties for this step are listed under "Reagent Properties (this step)". '
             "Button labels preview the dust cost and resulting balance."
         )
 
@@ -158,13 +174,15 @@ class PotionDistillationView(BaseView):
             if mods.get("all_future_free"):
                 mod_lines.append("✨ **All future steps cost no dust**")
             if mod_lines:
-                embed.add_field(name="Active Effects", value="\n".join(mod_lines), inline=False)
+                embed.add_field(
+                    name="Active Effects", value="\n".join(mod_lines), inline=False
+                )
 
         # History
         history = s.get("history", [])[-4:]
         if history:
             h = "\n".join(
-                f"• Step {h['step']}: {h.get('reagent','?')} → {h.get('gain','?')}"
+                f"• Step {h['step']}: {h.get('reagent', '?')} → {h.get('gain', '?')}"
                 for h in history
             )
             embed.add_field(name="Recent Steps", value=h, inline=False)
@@ -205,8 +223,15 @@ class PotionDistillationView(BaseView):
                 after = max(0, current - cost)
                 cost_part = f"(-{cost}✨) " if cost > 0 else "(free) "
                 label = f"{ch['emoji']} {ch['name']} {cost_part}({current}->{after})"
-                style = (ButtonStyle.secondary if ch["key"] == "blue" else
-                         (ButtonStyle.success if ch["key"] == "green" else ButtonStyle.danger))
+                style = (
+                    ButtonStyle.secondary
+                    if ch["key"] == "blue"
+                    else (
+                        ButtonStyle.success
+                        if ch["key"] == "green"
+                        else ButtonStyle.danger
+                    )
+                )
                 # Disable choices the player literally cannot afford (prevents negative dust).
                 # Properties that set cost_mult=0 or free_next will correctly produce cost=0 and stay enabled.
                 can_afford = (cost <= 0) or (cost <= current)
@@ -220,7 +245,9 @@ class PotionDistillationView(BaseView):
                 self.add_item(btn)
 
         # Always offer abandon
-        abandon = ui.Button(label="Abandon Distillation", style=ButtonStyle.danger, emoji="🗑️", row=2)
+        abandon = ui.Button(
+            label="Abandon Distillation", style=ButtonStyle.danger, emoji="🗑️", row=2
+        )
         abandon.callback = self._on_abandon
         self.add_item(abandon)
 
@@ -262,7 +289,9 @@ class PotionDistillationView(BaseView):
                 self.session["base_type"] = cores[idx]["key"]
             else:
                 # Fallback (should never happen)
-                self.session["base_type"] = list(DistillationMechanics.POWERFUL_PASSIVES.keys())[0]
+                self.session["base_type"] = list(
+                    DistillationMechanics.POWERFUL_PASSIVES.keys()
+                )[0]
 
             self.session["step"] = 0  # will become 1 on first reagent apply
 
@@ -278,6 +307,7 @@ class PotionDistillationView(BaseView):
             self._setup_current_buttons()
             self._processing = False
             await interaction.edit_original_response(embed=embed, view=self)
+
         return cb
 
     def _make_reagent_callback(self, idx: int):
@@ -294,9 +324,13 @@ class PotionDistillationView(BaseView):
 
             # Get the *exact* property set that was shown for this step (guarantees button <-> effect match)
             try:
-                opts = DistillationMechanics.get_prepared_reagent_options(s, current_step)
+                opts = DistillationMechanics.get_prepared_reagent_options(
+                    s, current_step
+                )
             except Exception:
-                opts = DistillationMechanics.get_reagent_options_for_step(s, current_step)
+                opts = DistillationMechanics.get_reagent_options_for_step(
+                    s, current_step
+                )
 
             chosen_event = None
             preview_cost = 0
@@ -305,7 +339,9 @@ class PotionDistillationView(BaseView):
                 preview_cost = opts[idx].get("effective_cost", 0)
 
             # Apply using the property the user actually selected
-            result = DistillationMechanics.apply_step(s, idx, pre_chosen_event=chosen_event)
+            result = DistillationMechanics.apply_step(
+                s, idx, pre_chosen_event=chosen_event
+            )
 
             # Dust guardrail: never let cost push us negative. Charge only what we have.
             # result["cost"] may already be adjusted by refunds etc.
@@ -313,7 +349,9 @@ class PotionDistillationView(BaseView):
             if cost > 0:
                 actual = min(cost, max(0, self.cosmic_dust))
                 if actual > 0:
-                    await self.bot.database.alchemy.modify_cosmic_dust(self.user_id, -actual)
+                    await self.bot.database.alchemy.modify_cosmic_dust(
+                        self.user_id, -actual
+                    )
                     self.cosmic_dust = max(0, self.cosmic_dust - actual)
 
             await self._save_session()
@@ -341,12 +379,16 @@ class PotionDistillationView(BaseView):
 
         return cb
 
-    async def _finalize_and_show_result(self, interaction: Interaction, previous_embed: discord.Embed):
+    async def _finalize_and_show_result(
+        self, interaction: Interaction, previous_embed: discord.Embed
+    ):
         s = self.session
         base_type, final_val, final_dur = DistillationMechanics.finalize(s)
 
         name, emoji = get_passive_name_emoji(base_type)
-        final_desc = DistillationMechanics.format_distilled_passive(base_type, final_val, final_dur)
+        final_desc = DistillationMechanics.format_distilled_passive(
+            base_type, final_val, final_dur
+        )
 
         # Put into first empty slot, or slot 1 if all full (MVP behavior).
         # A later phase can add explicit slot selection UI after finalize.
@@ -354,7 +396,9 @@ class PotionDistillationView(BaseView):
         occupied = {p["slot"] for p in passives}
         slot_count = 5  # current max
         slot = next((s for s in range(1, slot_count + 1) if s not in occupied), 1)
-        await self.bot.database.alchemy.set_passive(self.user_id, slot, base_type, final_val)
+        await self.bot.database.alchemy.set_passive(
+            self.user_id, slot, base_type, final_val
+        )
         # We store the distilled duration in a simple way for now (the combat code will need
         # to be taught to read duration for these new types; see later todos).
 
@@ -376,6 +420,7 @@ class PotionDistillationView(BaseView):
 
         # Return to a fresh hub so the player sees their new passive
         from core.alchemy.views import _hub_from_db
+
         hub = await _hub_from_db(self.bot, self.user_id, self.server_id)
         hub_embed = hub.build_embed()
         hub_embed.title = "⚗️ Alchemy"
@@ -401,6 +446,7 @@ class PotionDistillationView(BaseView):
         self._processing = False
 
         from core.alchemy.views import _hub_from_db
+
         view = await _hub_from_db(self.bot, self.user_id, self.server_id)
         embed = view.build_embed()
         embed.title = "🗑️ Distillation Abandoned"
@@ -417,7 +463,9 @@ class PotionDistillationView(BaseView):
 
 
 # Convenience launcher (similar to _build_synthesis_hub)
-async def start_distillation(bot, user_id: str, server_id: str, interaction: Interaction):
+async def start_distillation(
+    bot, user_id: str, server_id: str, interaction: Interaction
+):
     level, dust = await _get_alchemy_context(bot, user_id, server_id)
     view = PotionDistillationView(bot, user_id, server_id, level, dust)
     await view.start(interaction)

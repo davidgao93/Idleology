@@ -51,15 +51,21 @@ class Maw(commands.Cog, name="maw"):
 
         # Load records
         record = await self.bot.database.maw.get_record(user_id, cycle_id)
-        pending_record = await self.bot.database.maw.get_record(user_id, pending_cycle_id)
+        pending_record = await self.bot.database.maw.get_record(
+            user_id, pending_cycle_id
+        )
         if pending_record and pending_record["rewards_collected"]:
             pending_record = None
 
         # The "display cycle" is the one whose stats appear in the embed description:
         # the ended cycle during collection window, or the active cycle otherwise.
         display_cycle_id = pending_cycle_id if in_collection else cycle_id
-        participant_count = await self.bot.database.maw.count_participants(display_cycle_id)
-        total_cycle_damage = await self.bot.database.maw.get_cycle_total_damage(display_cycle_id)
+        participant_count = await self.bot.database.maw.count_participants(
+            display_cycle_id
+        )
+        total_cycle_damage = await self.bot.database.maw.get_cycle_total_damage(
+            display_cycle_id
+        )
 
         # Separate totals for the pending-rewards preview section.
         # During collection window they're the same as the display cycle; otherwise

@@ -117,7 +117,7 @@ def roll_monster_damage(
         stacks = min(3, int(hp_lost / 0.25))
         if stacks > 0:
             monster.damage_increased_pct += enrage_pct * stacks
-            calc_notes.append(f"enraged+{enrage_pct*stacks:.2f}(stacks={stacks})")
+            calc_notes.append(f"enraged+{enrage_pct * stacks:.2f}(stacks={stacks})")
 
     if monster.has_modifier("Savage"):
         monster.damage_increased_pct += monster.get_modifier_value("Savage")
@@ -143,7 +143,7 @@ def roll_monster_damage(
     zone_boost = getattr(monster, "zone_dmg_boost", 0.0)
     if zone_boost > 0:
         monster.damage_increased_pct += zone_boost
-        calc_notes.append(f"zone_scorched+{int(zone_boost*100)}%")
+        calc_notes.append(f"zone_scorched+{int(zone_boost * 100)}%")
 
     # "More/Less" layer (applied after increased pool)
     if monster.has_modifier("Inevitable"):
@@ -165,11 +165,11 @@ def roll_monster_damage(
     if monster.difficulty_level > 0:
         diff_crit = _DIFFICULTY_CRIT_CHANCE[monster.difficulty_level]
         base_crit_chance += diff_crit
-        calc_notes.append(f"difficulty_crit+{diff_crit*100:.0f}%")
+        calc_notes.append(f"difficulty_crit+{diff_crit * 100:.0f}%")
     crit_roll = random.random()
     is_monster_crit = crit_roll < base_crit_chance
     calc_notes.append(
-        f"mon_crit: {base_crit_chance*100:.1f}% roll={crit_roll:.4f} → {'CRIT' if is_monster_crit else 'no crit'}"
+        f"mon_crit: {base_crit_chance * 100:.1f}% roll={crit_roll:.4f} → {'CRIT' if is_monster_crit else 'no crit'}"
     )
     if is_monster_crit:
         crit_mult = (
@@ -193,7 +193,7 @@ def roll_monster_damage(
         inc_sources = []
         if monster.has_modifier("Savage"):
             inc_sources.append(
-                f"Savage+{monster.get_modifier_value('Savage')*100:.0f}%"
+                f"Savage+{monster.get_modifier_value('Savage') * 100:.0f}%"
             )
         if monster.has_modifier("Enraged"):
             enrage_val = monster.get_modifier_value("Enraged")
@@ -201,19 +201,19 @@ def roll_monster_damage(
             enrage_stacks = min(3, int(hp_lost / 0.25))
             if enrage_stacks > 0:
                 inc_sources.append(
-                    f"Enraged+{enrage_val*enrage_stacks*100:.0f}% ({enrage_stacks} stacks)"
+                    f"Enraged+{enrage_val * enrage_stacks * 100:.0f}% ({enrage_stacks} stacks)"
                 )
         if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
             wr_val = monster.wrathful_stacks * monster.get_modifier_value(
                 "Wrathful Retaliation"
             )
             inc_sources.append(
-                f"Wrathful+{wr_val*100:.0f}% ({monster.wrathful_stacks} stacks)"
+                f"Wrathful+{wr_val * 100:.0f}% ({monster.wrathful_stacks} stacks)"
             )
         if monster.undying_atk_boost_turns > 0:
             inc_sources.append("Undying+100%")
         if getattr(monster, "zone_dmg_boost", 0.0) > 0:
-            inc_sources.append(f"Zone+{int(monster.zone_dmg_boost*100)}%")
+            inc_sources.append(f"Zone+{int(monster.zone_dmg_boost * 100)}%")
         if monster.has_modifier("Overwhelming"):
             inc_sources.append("Overwhelming+100%")
         if monster.has_modifier("Hell's Fury"):
@@ -264,7 +264,7 @@ def roll_monster_damage(
         calc.append(
             "  dmg_roll: "
             + " → ".join(calc_notes)
-            + f" | pre_pdr={pre_pdr} base={dmg} minions={minions} total={dmg+minions}"
+            + f" | pre_pdr={pre_pdr} base={dmg} minions={minions} total={dmg + minions}"
         )
 
     return dmg + minions, pre_pdr, dmg, minions
@@ -364,8 +364,8 @@ def calc_crit_damage(
     cat_bonus = _je.apply_cataclysm_crit_bonus(player)
     if cat_bonus > 0:
         base_dmg = int(base_dmg * (1 + cat_bonus))
-        calc_dmg_notes.append(f"cataclysm_jewel×{1+cat_bonus:.3f}={base_dmg}")
-        log.append(f"💥 **Cataclysm** detonates! (×{1+cat_bonus:.2f} crit damage)")
+        calc_dmg_notes.append(f"cataclysm_jewel×{1 + cat_bonus:.3f}={base_dmg}")
+        log.append(f"💥 **Cataclysm** detonates! (×{1 + cat_bonus:.2f} crit damage)")
 
     # --- Hematurgy: Chain Reaction and Executioner's Rite crit damage bonuses ---
     if player.hematurgy_passives:
@@ -377,11 +377,13 @@ def calc_crit_damage(
         cr_bonus = get_chain_reaction_crit_bonus(player)
         if cr_bonus > 0:
             base_dmg = int(base_dmg * (1 + cr_bonus))
-            calc_dmg_notes.append(f"chain_reaction×{1+cr_bonus:.3f}={base_dmg}")
+            calc_dmg_notes.append(f"chain_reaction×{1 + cr_bonus:.3f}={base_dmg}")
         er_crit = get_executioners_rite_bonus(player, monster)
         if er_crit > 0:
             base_dmg = int(base_dmg * (1 + er_crit))
-            calc_dmg_notes.append(f"executioners_rite_crit×{1+er_crit:.3f}={base_dmg}")
+            calc_dmg_notes.append(
+                f"executioners_rite_crit×{1 + er_crit:.3f}={base_dmg}"
+            )
 
     damage = int(base_dmg * attack_multiplier)
     calc_dmg_notes.append(f"×mult={attack_multiplier:.4f}={damage}")
@@ -499,7 +501,7 @@ def calc_hit_damage(
     if floor_pct > 0:
         base_min = max(1, int(base_max * floor_pct))
         floor_note = (
-            f" floor_min={base_min}({'+'.join(floor_parts)}={int(floor_pct*100)}%)"
+            f" floor_min={base_min}({'+'.join(floor_parts)}={int(floor_pct * 100)}%)"
         )
 
     rolled = random.randint(min(base_min, base_max), base_max)
@@ -529,7 +531,7 @@ def calc_hit_damage(
     echo_note = f" +echo={echo_damage}" if echo_damage else ""
     calc.append(
         f"  hit_dmg: range=[{base_min}–{base_max}]{burn_note}{floor_note} "
-        f"rolled={rolled} ×mult={attack_multiplier:.4f}={int(rolled*attack_multiplier)}"
+        f"rolled={rolled} ×mult={attack_multiplier:.4f}={int(rolled * attack_multiplier)}"
         f"{echo_note}{lucifer_note} = {damage}"
     )
 

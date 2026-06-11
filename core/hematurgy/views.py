@@ -14,24 +14,44 @@ from core.hematurgy.mechanics import (
 )
 
 _SLOT_ORDER = [
-    "head", "torso", "right_arm", "left_arm",
-    "right_leg", "left_leg", "cheeks", "organs",
+    "head",
+    "torso",
+    "right_arm",
+    "left_arm",
+    "right_leg",
+    "left_leg",
+    "cheeks",
+    "organs",
 ]
 
 _SLOT_LABELS = {
-    "head": "Head", "torso": "Torso",
-    "right_arm": "Right Arm", "left_arm": "Left Arm",
-    "right_leg": "Right Leg", "left_leg": "Left Leg",
-    "cheeks": "Cheeks", "organs": "Organs",
+    "head": "Head",
+    "torso": "Torso",
+    "right_arm": "Right Arm",
+    "left_arm": "Left Arm",
+    "right_leg": "Right Leg",
+    "left_leg": "Left Leg",
+    "cheeks": "Cheeks",
+    "organs": "Organs",
 }
 
 _SLOT_EMOJI = {
-    "head": "💀", "torso": "🫁", "right_arm": "💪", "left_arm": "🤜",
-    "right_leg": "🦵", "left_leg": "🦿", "cheeks": "🍑", "organs": "🫀",
+    "head": "💀",
+    "torso": "🫁",
+    "right_arm": "💪",
+    "left_arm": "🤜",
+    "right_leg": "🦵",
+    "left_leg": "🦿",
+    "cheeks": "🍑",
+    "organs": "🫀",
 }
 
 _BLOOD_EMOJI = {"primordial": "🩸", "evolutionary": "🧬", "mutative": "☣️"}
-_BLOOD_NAMES = {"primordial": "Primordial", "evolutionary": "Evolutionary", "mutative": "Mutative"}
+_BLOOD_NAMES = {
+    "primordial": "Primordial",
+    "evolutionary": "Evolutionary",
+    "mutative": "Mutative",
+}
 
 
 def _tier_badge(tier: int) -> str:
@@ -79,6 +99,7 @@ def _build_hematurgy_embed(passives: dict, blood: dict) -> discord.Embed:
 # Transmute Modal
 # ---------------------------------------------------------------------------
 
+
 class TransmuteModal(ui.Modal, title="Transmute Blood (3:1)"):
     amount_input = ui.TextInput(
         label="Amount to convert (multiples of 3)",
@@ -112,10 +133,16 @@ class TransmuteModal(ui.Modal, title="Transmute Blood (3:1)"):
             )
 
         gained = amount // TRANSMUTE_RATIO
-        await self.parent.bot.database.hematurgy.modify_blood(self.parent.user_id, self.source, -amount)
-        await self.parent.bot.database.hematurgy.modify_blood(self.parent.user_id, self.target, gained)
+        await self.parent.bot.database.hematurgy.modify_blood(
+            self.parent.user_id, self.source, -amount
+        )
+        await self.parent.bot.database.hematurgy.modify_blood(
+            self.parent.user_id, self.target, gained
+        )
 
-        self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(self.parent.user_id)
+        self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(
+            self.parent.user_id
+        )
         await interaction.response.edit_message(
             embed=_build_hematurgy_embed(self.parent.passives, self.parent.blood),
             view=self.parent,
@@ -126,13 +153,21 @@ class TransmuteModal(ui.Modal, title="Transmute Blood (3:1)"):
 # Transmute source/target selects
 # ---------------------------------------------------------------------------
 
+
 class TransmuteSourceSelect(ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label=f"{_BLOOD_NAMES[t]} Blood", value=t, emoji=_BLOOD_EMOJI[t])
+            discord.SelectOption(
+                label=f"{_BLOOD_NAMES[t]} Blood", value=t, emoji=_BLOOD_EMOJI[t]
+            )
             for t in ("primordial", "evolutionary", "mutative")
         ]
-        super().__init__(placeholder="Source blood type...", options=options, min_values=1, max_values=1)
+        super().__init__(
+            placeholder="Source blood type...",
+            options=options,
+            min_values=1,
+            max_values=1,
+        )
 
     async def callback(self, interaction: Interaction):
         source = self.values[0]
@@ -148,11 +183,18 @@ class TransmuteTargetSelect(ui.Select):
     def __init__(self, source: str):
         self.source = source
         options = [
-            discord.SelectOption(label=f"{_BLOOD_NAMES[t]} Blood", value=t, emoji=_BLOOD_EMOJI[t])
+            discord.SelectOption(
+                label=f"{_BLOOD_NAMES[t]} Blood", value=t, emoji=_BLOOD_EMOJI[t]
+            )
             for t in ("primordial", "evolutionary", "mutative")
             if t != source
         ]
-        super().__init__(placeholder="Target blood type...", options=options, min_values=1, max_values=1)
+        super().__init__(
+            placeholder="Target blood type...",
+            options=options,
+            min_values=1,
+            max_values=1,
+        )
 
     async def callback(self, interaction: Interaction):
         target = self.values[0]
@@ -180,6 +222,7 @@ class TransmuteTargetView(BaseView):
 # Mutation confirmation view
 # ---------------------------------------------------------------------------
 
+
 class MutateConfirmView(BaseView):
     """Warns the player of all possible mutation outcomes before executing."""
 
@@ -202,7 +245,8 @@ class MutateConfirmView(BaseView):
         footer_note = (
             f"\n\n⚠️ At T{MAX_TIER} maximum — **Upgrade** has no effect. "
             f"Only downgrade, delete, or transformation are meaningful."
-            if at_max else ""
+            if at_max
+            else ""
         )
 
         embed = discord.Embed(
@@ -239,6 +283,7 @@ class MutateConfirmView(BaseView):
 # Slot Detail View
 # ---------------------------------------------------------------------------
 
+
 class SlotDetailView(BaseView):
     def __init__(self, parent: "HematurgyView", slot_type: str):
         super().__init__(parent.bot, parent=parent)
@@ -271,7 +316,7 @@ class SlotDetailView(BaseView):
                 cost = UPGRADE_COSTS[tier + 1]
                 can_upgrade = blood.get("evolutionary", 0) >= cost
                 btn_upgrade = ui.Button(
-                    label=f"Upgrade T{tier}→T{tier+1} ({cost:,} 🧬)",
+                    label=f"Upgrade T{tier}→T{tier + 1} ({cost:,} 🧬)",
                     style=ButtonStyle.primary,
                     disabled=not can_upgrade,
                 )
@@ -373,20 +418,35 @@ class SlotDetailView(BaseView):
         cost = SLOT_UNLOCK_COSTS[self.slot_type]
         blood = await self.parent.bot.database.hematurgy.get_blood(self.parent.user_id)
         if blood["primordial"] < cost:
-            return await interaction.followup.send("Insufficient Primordial blood.", ephemeral=True)
+            return await interaction.followup.send(
+                "Insufficient Primordial blood.", ephemeral=True
+            )
 
-        owned = await self.parent.bot.database.hematurgy.get_unlocked_passive_ids(self.parent.user_id)
+        owned = await self.parent.bot.database.hematurgy.get_unlocked_passive_ids(
+            self.parent.user_id
+        )
         passive_id = HematurgyMechanics.get_random_main_passive(owned)
         if passive_id is None:
             return await interaction.followup.send(
-                "All main passives are already unlocked across your slots!", ephemeral=True
+                "All main passives are already unlocked across your slots!",
+                ephemeral=True,
             )
 
-        await self.parent.bot.database.hematurgy.modify_blood(self.parent.user_id, "primordial", -cost)
-        await self.parent.bot.database.hematurgy.set_passive(self.parent.user_id, self.slot_type, passive_id)
+        await self.parent.bot.database.hematurgy.modify_blood(
+            self.parent.user_id, "primordial", -cost
+        )
+        await self.parent.bot.database.hematurgy.set_passive(
+            self.parent.user_id, self.slot_type, passive_id
+        )
 
-        self.parent.passives = await self.parent.bot.database.hematurgy.get_all_passives(self.parent.user_id)
-        self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(self.parent.user_id)
+        self.parent.passives = (
+            await self.parent.bot.database.hematurgy.get_all_passives(
+                self.parent.user_id
+            )
+        )
+        self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(
+            self.parent.user_id
+        )
         self._processing = False
         self._build_buttons()
 
@@ -411,13 +471,25 @@ class SlotDetailView(BaseView):
         cost = UPGRADE_COSTS[passive["tier"] + 1]
         blood = await self.parent.bot.database.hematurgy.get_blood(self.parent.user_id)
         if blood["evolutionary"] < cost:
-            return await interaction.followup.send("Insufficient Evolutionary blood.", ephemeral=True)
+            return await interaction.followup.send(
+                "Insufficient Evolutionary blood.", ephemeral=True
+            )
 
-        await self.parent.bot.database.hematurgy.modify_blood(self.parent.user_id, "evolutionary", -cost)
-        new_tier = await self.parent.bot.database.hematurgy.upgrade_passive(self.parent.user_id, self.slot_type)
+        await self.parent.bot.database.hematurgy.modify_blood(
+            self.parent.user_id, "evolutionary", -cost
+        )
+        new_tier = await self.parent.bot.database.hematurgy.upgrade_passive(
+            self.parent.user_id, self.slot_type
+        )
 
-        self.parent.passives = await self.parent.bot.database.hematurgy.get_all_passives(self.parent.user_id)
-        self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(self.parent.user_id)
+        self.parent.passives = (
+            await self.parent.bot.database.hematurgy.get_all_passives(
+                self.parent.user_id
+            )
+        )
+        self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(
+            self.parent.user_id
+        )
         self._processing = False
         self._build_buttons()
 
@@ -455,7 +527,9 @@ class SlotDetailView(BaseView):
 
         blood = await self.parent.bot.database.hematurgy.get_blood(self.parent.user_id)
         if blood["mutative"] < MUTATIVE_COST:
-            return await interaction.followup.send("Insufficient Mutative blood.", ephemeral=True)
+            return await interaction.followup.send(
+                "Insufficient Mutative blood.", ephemeral=True
+            )
 
         await self.parent.bot.database.hematurgy.modify_blood(
             self.parent.user_id, "mutative", -MUTATIVE_COST
@@ -476,7 +550,9 @@ class SlotDetailView(BaseView):
                 await self.parent.bot.database.hematurgy.delete_passive(
                     self.parent.user_id, self.slot_type
                 )
-                footer = "☣️ Mutation: the passive degraded past its limit and was destroyed."
+                footer = (
+                    "☣️ Mutation: the passive degraded past its limit and was destroyed."
+                )
             else:
                 new_tier = current_tier - 1
                 await self.parent.bot.database.hematurgy.set_passive(
@@ -506,7 +582,9 @@ class SlotDetailView(BaseView):
                 await self.parent.bot.database.hematurgy.delete_passive(
                     self.parent.user_id, self.slot_type
                 )
-                footer = "☣️ Mutation: no new forms available — the passive was dissolved."
+                footer = (
+                    "☣️ Mutation: no new forms available — the passive was dissolved."
+                )
             else:
                 await self.parent.bot.database.hematurgy.set_passive(
                     self.parent.user_id, self.slot_type, new_id, 1
@@ -514,8 +592,10 @@ class SlotDetailView(BaseView):
                 name = HematurgyMechanics.passive_display_name(new_id)
                 footer = f"☣️ Mutation: the passive transformed into {name}!"
 
-        self.parent.passives = await self.parent.bot.database.hematurgy.get_all_passives(
-            self.parent.user_id
+        self.parent.passives = (
+            await self.parent.bot.database.hematurgy.get_all_passives(
+                self.parent.user_id
+            )
         )
         self.parent.blood = await self.parent.bot.database.hematurgy.get_blood(
             self.parent.user_id
@@ -537,6 +617,7 @@ class SlotDetailView(BaseView):
 # Slot Select
 # ---------------------------------------------------------------------------
 
+
 class SlotSelect(ui.Select):
     def __init__(self, passives: dict):
         options = []
@@ -550,18 +631,27 @@ class SlotSelect(ui.Select):
             else:
                 cost = SLOT_UNLOCK_COSTS[slot]
                 desc = f"No passive — Unlock: {cost:,} Primordial"
-            options.append(discord.SelectOption(label=label, description=desc[:100], value=slot, emoji=emoji))
-        super().__init__(placeholder="Inspect a slot...", options=options, min_values=1, max_values=1)
+            options.append(
+                discord.SelectOption(
+                    label=label, description=desc[:100], value=slot, emoji=emoji
+                )
+            )
+        super().__init__(
+            placeholder="Inspect a slot...", options=options, min_values=1, max_values=1
+        )
 
     async def callback(self, interaction: Interaction):
         slot_type = self.values[0]
         detail_view = SlotDetailView(self.view, slot_type)
-        await interaction.response.edit_message(embed=detail_view.build_embed(), view=detail_view)
+        await interaction.response.edit_message(
+            embed=detail_view.build_embed(), view=detail_view
+        )
 
 
 # ---------------------------------------------------------------------------
 # Main Hematurgy View
 # ---------------------------------------------------------------------------
+
 
 class HematurgyView(BaseView):
     """
@@ -612,11 +702,14 @@ class HematurgyView(BaseView):
             await interaction.response.defer()
             from core.items.factory import load_player
             from core.consume.views import ConsumeView
+
             user_data = await self.bot.database.users.get(
                 self.user_id, str(interaction.guild_id)
             )
             player = await load_player(self.user_id, user_data, self.bot.database)
-            inventory = await self.bot.database.monster_parts.get_inventory(self.user_id)
+            inventory = await self.bot.database.monster_parts.get_inventory(
+                self.user_id
+            )
             eggs = await self.bot.database.eggs.get_eggs(self.user_id)
             cview = ConsumeView(player, inventory, self.bot, eggs=eggs)
             await interaction.edit_original_response(

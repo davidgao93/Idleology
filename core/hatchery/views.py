@@ -8,14 +8,18 @@ from discord import ButtonStyle, Interaction, ui
 from core.base_view import BaseView
 from core.hatchery.mechanics import HatcheryMechanics
 
-_EGG_TIER_EMOJI  = {"normal": "🥚", "rare": "🪺", "giga": "🐲"}
-_EGG_TIER_LABEL  = {"normal": "Normal Egg", "rare": "Rare Egg", "giga": "Giga Egg"}
-_BLOOD_NAMES     = {"primordial": "Primordial 🩸", "evolutionary": "Evolutionary 🧬", "mutative": "Mutative ☣️"}
+_EGG_TIER_EMOJI = {"normal": "🥚", "rare": "🪺", "giga": "🐲"}
+_EGG_TIER_LABEL = {"normal": "Normal Egg", "rare": "Rare Egg", "giga": "Giga Egg"}
+_BLOOD_NAMES = {
+    "primordial": "Primordial 🩸",
+    "evolutionary": "Evolutionary 🧬",
+    "mutative": "Mutative ☣️",
+}
 
 
 def _fmt_duration(seconds: int) -> str:
     h, rem = divmod(int(seconds), 3600)
-    m, s   = divmod(rem, 60)
+    m, s = divmod(rem, 60)
     if h:
         return f"{h}h {m}m {s}s"
     if m:
@@ -31,20 +35,25 @@ def _remaining_seconds(start_time_iso: str, duration_seconds: int) -> float:
 
 class EggQueueSelect(ui.Select):
     """Lets the player pick an egg from inventory to start incubating."""
+
     def __init__(self, eggs: list):
         options = []
         for egg in eggs[:25]:
-            tier  = egg[1]
+            tier = egg[1]
             emoji = _EGG_TIER_EMOJI.get(tier, "🥚")
             label = f"{_EGG_TIER_LABEL.get(tier, tier)} — lvl {egg[2]} {egg[3]}"
-            options.append(discord.SelectOption(label=label[:100], value=str(egg[0]), emoji=emoji))
+            options.append(
+                discord.SelectOption(label=label[:100], value=str(egg[0]), emoji=emoji)
+            )
         super().__init__(placeholder="Choose an egg to incubate...", options=options)
         self.eggs_by_id = {str(e[0]): e for e in eggs}
 
     async def callback(self, interaction: Interaction):
         egg = self.eggs_by_id.get(self.values[0])
         if not egg:
-            return await interaction.response.send_message("Egg not found.", ephemeral=True)
+            return await interaction.response.send_message(
+                "Egg not found.", ephemeral=True
+            )
         await interaction.response.defer()
         await self.view._start_incubation(interaction, egg)
 
@@ -59,18 +68,20 @@ class HatcheryView(BaseView):
 
     def __init__(self, bot, user_id: str, server_id: str, building, parent_view=None):
         super().__init__(bot, user_id, server_id)
-        self.building    = building      # settlement Building dataclass
-        self.parent_view = parent_view   # BuildingDetailView, or None if standalone
-        self._incubation  = None         # cached incubation dict
-        self._eggs        = []           # cached egg inventory
+        self.building = building  # settlement Building dataclass
+        self.parent_view = parent_view  # BuildingDetailView, or None if standalone
+        self._incubation = None  # cached incubation dict
+        self._eggs = []  # cached egg inventory
 
     # ------------------------------------------------------------------ #
     #  Data helpers
     # ------------------------------------------------------------------ #
 
     async def _load(self):
-        self._incubation = await self.bot.database.eggs.get_incubation(self.user_id, self.server_id)
-        self._eggs       = await self.bot.database.eggs.get_eggs(self.user_id)
+        self._incubation = await self.bot.database.eggs.get_incubation(
+            self.user_id, self.server_id
+        )
+        self._eggs = await self.bot.database.eggs.get_eggs(self.user_id)
 
     # ------------------------------------------------------------------ #
     #  Embed builder
@@ -78,6 +89,7 @@ class HatcheryView(BaseView):
 
     def build_embed(self) -> discord.Embed:
         from core.settlement.mechanics import SettlementMechanics
+
         max_w = SettlementMechanics.get_max_workers(self.building.tier)
         workers = self.building.workers_assigned
 
@@ -94,16 +106,23 @@ class HatcheryView(BaseView):
         egg_counts = {}
         for e in self._eggs:
             egg_counts[e[1]] = egg_counts.get(e[1], 0) + 1
-        egg_summary = "  ".join(
-            f"{_EGG_TIER_EMOJI[t]} {egg_counts[t]}"
-            for t in ("normal", "rare", "giga")
-            if egg_counts.get(t, 0) > 0
-        ) or "No eggs"
-        embed.add_field(name="Egg Inventory", value=f"{egg_summary} ({len(self._eggs)}/20)", inline=True)
+        egg_summary = (
+            "  ".join(
+                f"{_EGG_TIER_EMOJI[t]} {egg_counts[t]}"
+                for t in ("normal", "rare", "giga")
+                if egg_counts.get(t, 0) > 0
+            )
+            or "No eggs"
+        )
+        embed.add_field(
+            name="Egg Inventory",
+            value=f"{egg_summary} ({len(self._eggs)}/20)",
+            inline=True,
+        )
 
         if self._incubation:
-            inc   = self._incubation
-            rem   = _remaining_seconds(inc["start_time"], inc["duration_seconds"])
+            inc = self._incubation
+            rem = _remaining_seconds(inc["start_time"], inc["duration_seconds"])
             emoji = _EGG_TIER_EMOJI.get(inc["egg_tier"], "🥚")
             label = _EGG_TIER_LABEL.get(inc["egg_tier"], inc["egg_tier"])
             if rem > 0:
@@ -137,20 +156,36 @@ class HatcheryView(BaseView):
         # Queue egg button (only when no active incubation and eggs exist)
         if self._incubation is None:
             if self._eggs:
-                btn_queue = ui.Button(label="Queue Egg", style=ButtonStyle.success, emoji="🥚", row=0)
+                btn_queue = ui.Button(
+                    label="Queue Egg", style=ButtonStyle.success, emoji="🥚", row=0
+                )
                 btn_queue.callback = self._open_egg_select
                 self.add_item(btn_queue)
             else:
-                btn_none = ui.Button(label="No Eggs in Inventory", style=ButtonStyle.secondary, disabled=True, row=0)
+                btn_none = ui.Button(
+                    label="No Eggs in Inventory",
+                    style=ButtonStyle.secondary,
+                    disabled=True,
+                    row=0,
+                )
                 self.add_item(btn_none)
         else:
-            rem = _remaining_seconds(self._incubation["start_time"], self._incubation["duration_seconds"])
+            rem = _remaining_seconds(
+                self._incubation["start_time"], self._incubation["duration_seconds"]
+            )
             if rem <= 0:
-                btn_release = ui.Button(label="Release", style=ButtonStyle.danger, emoji="🐉", row=0)
+                btn_release = ui.Button(
+                    label="Release", style=ButtonStyle.danger, emoji="🐉", row=0
+                )
                 btn_release.callback = self._release
                 self.add_item(btn_release)
             else:
-                btn_wait = ui.Button(label="Incubating...", style=ButtonStyle.secondary, disabled=True, row=0)
+                btn_wait = ui.Button(
+                    label="Incubating...",
+                    style=ButtonStyle.secondary,
+                    disabled=True,
+                    row=0,
+                )
                 self.add_item(btn_wait)
 
         # Show Back only when opened from the settlement view
@@ -185,19 +220,26 @@ class HatcheryView(BaseView):
     async def _start_incubation(self, interaction: Interaction, egg: tuple):
         """Called by EggQueueSelect.callback."""
         egg_id, egg_tier, monster_level, monster_name = egg[0], egg[1], egg[2], egg[3]
-        workers  = self.building.workers_assigned
+        workers = self.building.workers_assigned
         duration = HatcheryMechanics.incubation_seconds(egg_tier, workers)
 
         await self.bot.database.eggs.start_incubation(
-            self.user_id, self.server_id,
-            egg_id, egg_tier, monster_level, monster_name, duration,
+            self.user_id,
+            self.server_id,
+            egg_id,
+            egg_tier,
+            monster_level,
+            monster_name,
+            duration,
         )
         await self.bot.database.eggs.delete_egg(egg_id)
 
         await self._load()
         self._rebuild_buttons()
         embed = self.build_embed()
-        embed.set_footer(text=f"Incubation started! Estimated: {_fmt_duration(duration)}")
+        embed.set_footer(
+            text=f"Incubation started! Estimated: {_fmt_duration(duration)}"
+        )
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _release(self, interaction: Interaction):
@@ -209,7 +251,8 @@ class HatcheryView(BaseView):
         rem = _remaining_seconds(inc["start_time"], inc["duration_seconds"])
         if rem > 0:
             return await interaction.followup.send(
-                f"Incubation not yet complete ({_fmt_duration(rem)} remaining).", ephemeral=True
+                f"Incubation not yet complete ({_fmt_duration(rem)} remaining).",
+                ephemeral=True,
             )
 
         await self.bot.database.eggs.queue_incubated_encounter(
@@ -220,7 +263,9 @@ class HatcheryView(BaseView):
         await self._load()
         self._rebuild_buttons()
         embed = self.build_embed()
-        embed.set_footer(text="The creature has been released. It will appear in your next /combat encounter.")
+        embed.set_footer(
+            text="The creature has been released. It will appear in your next /combat encounter."
+        )
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _back(self, interaction: Interaction):

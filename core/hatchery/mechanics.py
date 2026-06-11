@@ -1,7 +1,7 @@
 _BASE_SECONDS = {
-    "normal": 2 * 3600,   # 2 hours
-    "rare":   4 * 3600,   # 4 hours
-    "giga":   8 * 3600,   # 8 hours
+    "normal": 2 * 3600,  # 2 hours
+    "rare": 4 * 3600,  # 4 hours
+    "giga": 8 * 3600,  # 8 hours
 }
 
 # Blood drops per egg tier (multiplier × monster_level)
@@ -9,7 +9,6 @@ EGG_BLOOD_MULTIPLIER = {"normal": 1, "rare": 2, "giga": 10}
 
 
 class HatcheryMechanics:
-
     @staticmethod
     def incubation_seconds(egg_tier: str, workers: int) -> int:
         """Returns actual incubation duration in seconds after applying worker reduction."""

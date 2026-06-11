@@ -17,9 +17,9 @@ from typing import Optional
 
 @dataclass
 class SoulStoneSlot:
-    passive: Optional[str]    # e.g. "burning", "hearty"
-    tier: Optional[int]       # 1–5
-    category: Optional[str]   # "offensive" | "defensive" | "mixed" | "utility"
+    passive: Optional[str]  # e.g. "burning", "hearty"
+    tier: Optional[int]  # 1–5
+    category: Optional[str]  # "offensive" | "defensive" | "mixed" | "utility"
 
     @property
     def is_empty(self) -> bool:
@@ -30,9 +30,15 @@ class SoulStoneSlot:
 class SoulStone:
     user_id: str
     server_id: str
-    slot_1: SoulStoneSlot = field(default_factory=lambda: SoulStoneSlot(None, None, None))
-    slot_2: SoulStoneSlot = field(default_factory=lambda: SoulStoneSlot(None, None, None))
-    slot_3: SoulStoneSlot = field(default_factory=lambda: SoulStoneSlot(None, None, None))
+    slot_1: SoulStoneSlot = field(
+        default_factory=lambda: SoulStoneSlot(None, None, None)
+    )
+    slot_2: SoulStoneSlot = field(
+        default_factory=lambda: SoulStoneSlot(None, None, None)
+    )
+    slot_3: SoulStoneSlot = field(
+        default_factory=lambda: SoulStoneSlot(None, None, None)
+    )
 
     @property
     def slots(self) -> list[SoulStoneSlot]:
@@ -49,11 +55,7 @@ class SoulStone:
     @property
     def active_passives(self) -> list[tuple[str, int, str]]:
         """Returns list of (passive, tier, category) for all filled slots."""
-        return [
-            (s.passive, s.tier, s.category)
-            for s in self.slots
-            if not s.is_empty
-        ]
+        return [(s.passive, s.tier, s.category) for s in self.slots if not s.is_empty]
 
     def get_passive_tier(self, passive_key: str) -> int | None:
         """Returns the tier of the given passive if it exists in any slot, else None."""
@@ -72,6 +74,7 @@ class SoulStone:
         if not categories:
             return None
         from collections import Counter
+
         counts = Counter(categories)
         # Find the category with the highest count (at least 2)
         best_cat, best_count = counts.most_common(1)[0]
@@ -124,7 +127,9 @@ class ApexHuntProfile:
     def shattered_realm_unlocked(self) -> bool:
         """True when the player has at least 1 win in each of the 5 non-shattered zones."""
         non_shattered = ("ashen", "storm", "citadel", "grove", "vault")
-        return all(self.zone_stats.get(z, {}).get("wins", 0) >= 1 for z in non_shattered)
+        return all(
+            self.zone_stats.get(z, {}).get("wins", 0) >= 1 for z in non_shattered
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +144,7 @@ def soul_stone_from_db(row: dict) -> SoulStone:
             tier=row.get(f"slot_{n}_tier"),
             category=row.get(f"slot_{n}_category"),
         )
+
     return SoulStone(
         user_id=row["user_id"],
         server_id=row["server_id"],

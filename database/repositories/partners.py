@@ -26,7 +26,6 @@ _VALID_SKILL_COLS = frozenset(
 
 
 class PartnerRepository(BaseRepository):
-
     # ------------------------------------------------------------------
     # Items row  (guild_tickets, pity, shards)
     # ------------------------------------------------------------------

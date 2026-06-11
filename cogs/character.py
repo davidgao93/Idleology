@@ -202,9 +202,7 @@ class Character(commands.Cog, name="character"):
         # No pending packages — show passive-point allocation as normal.
         self.bot.state_manager.set_active(user_id, "allocate_stats")
         view = StatInvestView(self.bot, user_id, server_id, data)
-        await interaction.response.send_message(
-            embed=view.build_embed(), view=view
-        )
+        await interaction.response.send_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
 
     """

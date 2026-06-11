@@ -38,6 +38,7 @@ def add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
     # Hematurgy hook: may redirect to damage buffer (Ward Inoculation) or heal (Vital Resonance)
     if player.hematurgy_passives:
         from core.hematurgy.engine import on_ward_gained
+
         amount = on_ward_gained(player, amount, log)
 
     if amount <= 0:

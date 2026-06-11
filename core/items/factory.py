@@ -285,7 +285,9 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
 
     # Settlement adjacency bonuses (Apothecary Annex + Shrine Garden / Sacred Ground)
     try:
-        combat_bonuses = await database.settlement.get_combat_bonuses(user_id, server_id)
+        combat_bonuses = await database.settlement.get_combat_bonuses(
+            user_id, server_id
+        )
         player.apothecary_boost_pct = combat_bonuses["apothecary_boost_pct"]
         player.shrine_effectiveness = combat_bonuses["shrine_effectiveness"]
     except Exception:
@@ -388,6 +390,7 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     try:
         ss_row = await database.apex.get_or_create_soul_stone(user_id, server_id)
         from core.apex.models import soul_stone_from_db
+
         player.soul_stone = soul_stone_from_db(ss_row)
     except Exception:
         player.soul_stone = None

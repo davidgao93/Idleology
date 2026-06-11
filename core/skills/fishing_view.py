@@ -41,7 +41,7 @@ class FishingView(BaseView):
         self.last_yield: dict[str, int] = {}
 
         # Session depth: approach choice + Focus streak
-        self.approach: str = "steady"   # "steady" | "aggressive"
+        self.approach: str = "steady"  # "steady" | "aggressive"
         self.focus_streak: int = 0
         self.session_quality: str = "none"
         self.session_momentum: int = 0
@@ -97,7 +97,11 @@ class FishingView(BaseView):
         label = labels.get(self.session_quality)
         if not label:
             return ""
-        mom_txt = f"  (+{self.session_momentum} min Momentum)" if self.session_momentum else ""
+        mom_txt = (
+            f"  (+{self.session_momentum} min Momentum)"
+            if self.session_momentum
+            else ""
+        )
         return f"\n**Session Quality:** {label}{mom_txt}"
 
     # ------------------------------------------------------------------
@@ -119,7 +123,9 @@ class FishingView(BaseView):
 
         elif self.state == "casting":
             focus = self._focus_bar()
-            approach_label = "⚡ Aggressive" if self.approach == "aggressive" else "🎣 Steady"
+            approach_label = (
+                "⚡ Aggressive" if self.approach == "aggressive" else "🎣 Steady"
+            )
             if self._accel_active:
                 cast_line = "⚡ **A current is moving your line!** Click to reel early and accelerate the wait!"
                 color = 0xFF8C00
@@ -137,13 +143,16 @@ class FishingView(BaseView):
             desc = (
                 "🐟 **A fish is on the line!**\n\n"
                 f"Reel it in before it escapes!\n"
-                f"*You have {BITE_WINDOW} seconds.*"
-                + (f"\n\n{focus}" if focus else "")
+                f"*You have {BITE_WINDOW} seconds.*" + (f"\n\n{focus}" if focus else "")
             )
             color = 0xFF8C00
 
         elif self.state == "escaped":
-            penalty = " (streak reduced)" if self.approach == "aggressive" and self.focus_streak > 0 else ""
+            penalty = (
+                " (streak reduced)"
+                if self.approach == "aggressive" and self.focus_streak > 0
+                else ""
+            )
             desc = (
                 f"💨 The fish slipped the hook...{penalty}\n\n"
                 "Cast again to try your luck."
@@ -269,6 +278,7 @@ class FishingView(BaseView):
     def _make_cast_callback(self, approach: str):
         async def callback(interaction: Interaction):
             await self._cast(interaction, approach)
+
         return callback
 
     async def _cast(self, interaction: Interaction, approach: str):
@@ -325,7 +335,9 @@ class FishingView(BaseView):
         reduction = random.randint(ACCEL_REDUCTION_MIN, ACCEL_REDUCTION_MAX)
         self._bite_end_time = max(time.time() + 2.0, self._bite_end_time - reduction)
         self.setup_ui()
-        await interaction.edit_original_response(content=None, embed=self.get_embed(), view=self)
+        await interaction.edit_original_response(
+            content=None, embed=self.get_embed(), view=self
+        )
 
     async def _accel_scheduler(self, total_wait: int):
         """Opens short acceleration windows during the bite wait phase."""
@@ -338,7 +350,9 @@ class FishingView(BaseView):
                 window_duration = random.randint(ACCEL_WINDOW_MIN, ACCEL_WINDOW_MAX)
                 self.setup_ui()
                 try:
-                    await self.message.edit(content=None, embed=self.get_embed(), view=self)
+                    await self.message.edit(
+                        content=None, embed=self.get_embed(), view=self
+                    )
                 except Exception:
                     pass
 
@@ -349,7 +363,9 @@ class FishingView(BaseView):
                     if self.state == "casting":
                         self.setup_ui()
                         try:
-                            await self.message.edit(content=None, embed=self.get_embed(), view=self)
+                            await self.message.edit(
+                                content=None, embed=self.get_embed(), view=self
+                            )
                         except Exception:
                             pass
 
@@ -392,20 +408,27 @@ class FishingView(BaseView):
         if self.approach == "aggressive":
             # +15% bonus for aggressive approach on top of quality
             yield_dict = {k: max(1, int(v * 1.15)) for k, v in yield_dict.items()}
-        yield_dict = SkillMechanics.apply_quality_to_yield(yield_dict, self.session_quality)
+        yield_dict = SkillMechanics.apply_quality_to_yield(
+            yield_dict, self.session_quality
+        )
 
         await self.bot.database.skills.update_batch(
             self.user_id, self.server_id, "fishing", yield_dict
         )
 
         # Bank momentum if quality earned any
-        self.session_momentum = SkillMechanics.get_momentum_minutes(self.session_quality)
+        self.session_momentum = SkillMechanics.get_momentum_minutes(
+            self.session_quality
+        )
         if self.session_momentum > 0:
             try:
                 max_mom = SkillMechanics.MAX_MOMENTUM_MINUTES.get("fishing", 300)
                 await self.bot.database.skills.add_session_momentum(
-                    self.user_id, self.server_id, "fishing",
-                    self.session_momentum, max_mom,
+                    self.user_id,
+                    self.server_id,
+                    "fishing",
+                    self.session_momentum,
+                    max_mom,
                 )
             except Exception:
                 pass
@@ -454,7 +477,11 @@ class FishingView(BaseView):
         if self.parent_gather_view:
             summary = ""
             if self.session_quality != "none":
-                labels = {"good": "🌟 Good", "great": "⭐ Great", "masterful": "✨ Masterful"}
+                labels = {
+                    "good": "🌟 Good",
+                    "great": "⭐ Great",
+                    "masterful": "✨ Masterful",
+                }
                 summary = f"**Last Fishing Session:** {labels[self.session_quality]}"
                 if self.session_momentum:
                     summary += f" — +{self.session_momentum} min Momentum banked."

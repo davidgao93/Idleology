@@ -1,6 +1,7 @@
 """
 database/repositories/quests.py — Quest Board, Contracts, Horizon, and Check-in data layer.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -9,7 +10,6 @@ from database.base import BaseRepository
 
 
 class QuestsRepository(BaseRepository):
-
     async def create_tables(self) -> None:
         """Ensure all quest tables exist."""
         await self.connection.execute(
@@ -151,8 +151,11 @@ class QuestsRepository(BaseRepository):
     async def set_meta_field(self, user_id: str, field: str, value) -> None:
         """Generic field setter for quest_meta boolean/integer fields."""
         allowed = {
-            "veteran_unlocked", "extra_slot_unlocked", "horizon_boost_uses",
-            "enrichment_unlocked", "prospector_unlocked",
+            "veteran_unlocked",
+            "extra_slot_unlocked",
+            "horizon_boost_uses",
+            "enrichment_unlocked",
+            "prospector_unlocked",
         }
         if field not in allowed:
             raise ValueError(f"Invalid meta field: {field}")
@@ -203,7 +206,9 @@ class QuestsRepository(BaseRepository):
         )
         await self.connection.commit()
 
-    async def mark_free_reroll_used(self, user_id: str, server_id: str, slot: int) -> None:
+    async def mark_free_reroll_used(
+        self, user_id: str, server_id: str, slot: int
+    ) -> None:
         await self.connection.execute(
             "UPDATE quest_board SET free_reroll_used = 1 WHERE user_id = ? AND server_id = ? AND slot = ?",
             (user_id, server_id, slot),
@@ -259,7 +264,10 @@ class QuestsRepository(BaseRepository):
         for row in board:
             # Determine goal from the quest data
             from core.quests.data import DAILY_QUESTS, get_damage_goals
-            quest_def = next((q for q in DAILY_QUESTS if q["id"] == row["quest_id"]), None)
+
+            quest_def = next(
+                (q for q in DAILY_QUESTS if q["id"] == row["quest_id"]), None
+            )
             if quest_def is None:
                 continue
             if quest_def["goals"] == "banded":
@@ -274,7 +282,15 @@ class QuestsRepository(BaseRepository):
                 """INSERT OR REPLACE INTO quest_contracts
                    (user_id, server_id, slot, quest_id, tier, progress, goal, locked_at, completed, turned_in)
                    VALUES (?, ?, ?, ?, ?, 0, ?, ?, 0, 0)""",
-                (user_id, server_id, row["slot"], row["quest_id"], row["tier"], goal, now),
+                (
+                    user_id,
+                    server_id,
+                    row["slot"],
+                    row["quest_id"],
+                    row["tier"],
+                    goal,
+                    now,
+                ),
             )
         await self.connection.commit()
 
@@ -317,16 +333,18 @@ class QuestsRepository(BaseRepository):
                 "WHERE user_id = ? AND server_id = ? AND slot = ?",
                 (new_progress, completed, user_id, server_id, slot),
             )
-            updated.append({
-                "slot": slot,
-                "quest_id": r[1],
-                "tier": r[2],
-                "progress": new_progress,
-                "goal": r[4],
-                "locked_at": r[5],
-                "completed": completed,
-                "turned_in": r[7],
-            })
+            updated.append(
+                {
+                    "slot": slot,
+                    "quest_id": r[1],
+                    "tier": r[2],
+                    "progress": new_progress,
+                    "goal": r[4],
+                    "locked_at": r[5],
+                    "completed": completed,
+                    "turned_in": r[7],
+                }
+            )
         if updated:
             await self.connection.commit()
         return updated
@@ -345,7 +363,9 @@ class QuestsRepository(BaseRepository):
         )
         await self.connection.commit()
 
-    async def restore_free_reroll(self, user_id: str, server_id: str, slot: int) -> None:
+    async def restore_free_reroll(
+        self, user_id: str, server_id: str, slot: int
+    ) -> None:
         """Restores the free reroll on a contract slot (for shop use)."""
         await self.connection.execute(
             "UPDATE quest_board SET free_reroll_used = 0 WHERE user_id = ? AND server_id = ? AND slot = ?",

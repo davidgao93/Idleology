@@ -156,113 +156,198 @@ ZONE_DEFS: dict[str, ZoneDef] = {
 class ApexMonsterDef:
     name: str
     zone_key: str
-    flavor: str          # monster.flavor text for combat log
-    modifiers: list      # list of modifier name strings (applied at build time)
-    image: str = ""      # URL or asset key
+    flavor: str  # monster.flavor text for combat log
+    modifiers: list  # list of modifier name strings (applied at build time)
+    image: str = ""  # URL or asset key
 
 
 APEX_POOL: list[ApexMonsterDef] = [
     # ----- Ashen Wastes (pyre) -----
-    ApexMonsterDef("Cinderborn Drake", "ashen",
-                   "breathes scorching flame",
-                   ["Flashfire", "Savage", "Enraged"]),
-    ApexMonsterDef("Ember Tyrant", "ashen",
-                   "bellows a volcanic roar",
-                   ["Flashfire", "Lethal", "Overwhelming"]),
-    ApexMonsterDef("Ashfall Colossus", "ashen",
-                   "shakes the earth with blazing fists",
-                   ["Flashfire", "Ironclad", "Titanic"]),
-    ApexMonsterDef("Magma Hydra", "ashen",
-                   "strikes with molten heads",
-                   ["Flashfire", "Mending", "Multistrike"]),
-    ApexMonsterDef("Pyroclast Specter", "ashen",
-                   "surges through waves of fire",
-                   ["Flashfire", "Spectral", "Venomous"]),
-
+    ApexMonsterDef(
+        "Cinderborn Drake",
+        "ashen",
+        "breathes scorching flame",
+        ["Flashfire", "Savage", "Enraged"],
+    ),
+    ApexMonsterDef(
+        "Ember Tyrant",
+        "ashen",
+        "bellows a volcanic roar",
+        ["Flashfire", "Lethal", "Overwhelming"],
+    ),
+    ApexMonsterDef(
+        "Ashfall Colossus",
+        "ashen",
+        "shakes the earth with blazing fists",
+        ["Flashfire", "Ironclad", "Titanic"],
+    ),
+    ApexMonsterDef(
+        "Magma Hydra",
+        "ashen",
+        "strikes with molten heads",
+        ["Flashfire", "Mending", "Multistrike"],
+    ),
+    ApexMonsterDef(
+        "Pyroclast Specter",
+        "ashen",
+        "surges through waves of fire",
+        ["Flashfire", "Spectral", "Venomous"],
+    ),
     # ----- Storm Reach (tempest) -----
-    ApexMonsterDef("Stormcaller Wyrm", "storm",
-                   "crackles with electric fury",
-                   ["Keen", "Lethal", "Savage"]),
-    ApexMonsterDef("Tempest Sovereign", "storm",
-                   "commands the winds to strike",
-                   ["Devastating", "Keen", "Blinding"]),
-    ApexMonsterDef("Cyclone Revenant", "storm",
-                   "spins in a vortex of lightning",
-                   ["Multistrike", "Keen", "Lethal"]),
-    ApexMonsterDef("Thunder Behemoth", "storm",
-                   "stomps with crackling force",
-                   ["Overwhelming", "Lethal", "Ironclad"]),
-    ApexMonsterDef("Voltaic Shade", "storm",
-                   "phases through lightning",
-                   ["Spectral", "Keen", "Venomous"]),
-
+    ApexMonsterDef(
+        "Stormcaller Wyrm",
+        "storm",
+        "crackles with electric fury",
+        ["Keen", "Lethal", "Savage"],
+    ),
+    ApexMonsterDef(
+        "Tempest Sovereign",
+        "storm",
+        "commands the winds to strike",
+        ["Devastating", "Keen", "Blinding"],
+    ),
+    ApexMonsterDef(
+        "Cyclone Revenant",
+        "storm",
+        "spins in a vortex of lightning",
+        ["Multistrike", "Keen", "Lethal"],
+    ),
+    ApexMonsterDef(
+        "Thunder Behemoth",
+        "storm",
+        "stomps with crackling force",
+        ["Overwhelming", "Lethal", "Ironclad"],
+    ),
+    ApexMonsterDef(
+        "Voltaic Shade",
+        "storm",
+        "phases through lightning",
+        ["Spectral", "Keen", "Venomous"],
+    ),
     # ----- Iron Citadel (bulwark) -----
-    ApexMonsterDef("Siege Master", "citadel",
-                   "marches with impenetrable armour",
-                   ["Ironclad", "Stalwart", "Crushing"]),
-    ApexMonsterDef("Iron Golem Lord", "citadel",
-                   "pummels with titanium fists",
-                   ["Ironclad", "Titanic", "Devastating"]),
-    ApexMonsterDef("Warden of Iron", "citadel",
-                   "deflects all but the mightiest blows",
-                   ["Ironclad", "Stalwart", "Savage"]),
-    ApexMonsterDef("Fortress Colossus", "citadel",
-                   "absorbs your strikes with layered plate",
-                   ["Ironclad", "Mending", "Ironclad"]),
-    ApexMonsterDef("Bastion Wraith", "citadel",
-                   "warps through impenetrable steel",
-                   ["Stalwart", "Spectral", "Crushing"]),
-
+    ApexMonsterDef(
+        "Siege Master",
+        "citadel",
+        "marches with impenetrable armour",
+        ["Ironclad", "Stalwart", "Crushing"],
+    ),
+    ApexMonsterDef(
+        "Iron Golem Lord",
+        "citadel",
+        "pummels with titanium fists",
+        ["Ironclad", "Titanic", "Devastating"],
+    ),
+    ApexMonsterDef(
+        "Warden of Iron",
+        "citadel",
+        "deflects all but the mightiest blows",
+        ["Ironclad", "Stalwart", "Savage"],
+    ),
+    ApexMonsterDef(
+        "Fortress Colossus",
+        "citadel",
+        "absorbs your strikes with layered plate",
+        ["Ironclad", "Mending", "Ironclad"],
+    ),
+    ApexMonsterDef(
+        "Bastion Wraith",
+        "citadel",
+        "warps through impenetrable steel",
+        ["Stalwart", "Spectral", "Crushing"],
+    ),
     # ----- Eternal Grove (verdant) -----
-    ApexMonsterDef("Grove Ancient", "grove",
-                   "channels the forest's endless vitality",
-                   ["Mending", "Vampiric", "Thorned"]),
-    ApexMonsterDef("Thornweald Titan", "grove",
-                   "lashes with living vines",
-                   ["Thorned", "Mending", "Venomous"]),
-    ApexMonsterDef("Verdant Devourer", "grove",
-                   "consumes your life force",
-                   ["Vampiric", "Hemorrhage", "Mending"]),
-    ApexMonsterDef("Living Canopy", "grove",
-                   "rains life-draining spores",
-                   ["Mending", "Parching", "Vampiric"]),
-    ApexMonsterDef("Root Sovereign", "grove",
-                   "binds you with ancient roots",
-                   ["Mending", "Enraged", "Thorned"]),
-
+    ApexMonsterDef(
+        "Grove Ancient",
+        "grove",
+        "channels the forest's endless vitality",
+        ["Mending", "Vampiric", "Thorned"],
+    ),
+    ApexMonsterDef(
+        "Thornweald Titan",
+        "grove",
+        "lashes with living vines",
+        ["Thorned", "Mending", "Venomous"],
+    ),
+    ApexMonsterDef(
+        "Verdant Devourer",
+        "grove",
+        "consumes your life force",
+        ["Vampiric", "Hemorrhage", "Mending"],
+    ),
+    ApexMonsterDef(
+        "Living Canopy",
+        "grove",
+        "rains life-draining spores",
+        ["Mending", "Parching", "Vampiric"],
+    ),
+    ApexMonsterDef(
+        "Root Sovereign",
+        "grove",
+        "binds you with ancient roots",
+        ["Mending", "Enraged", "Thorned"],
+    ),
     # ----- Golden Vault (fortune) -----
-    ApexMonsterDef("Vault Sentinel", "vault",
-                   "guards untold wealth with deadly precision",
-                   ["Lethal", "Savage", "Keen"]),
-    ApexMonsterDef("Gilded Predator", "vault",
-                   "hunts with razor instinct",
-                   ["Lethal", "Blinding", "Devastating"]),
-    ApexMonsterDef("Fortune's Reaper", "vault",
-                   "claims bounty with every strike",
-                   ["Lethal", "Multistrike", "Keen"]),
-    ApexMonsterDef("Greed Incarnate", "vault",
-                   "feeds on your accumulated power",
-                   ["Vampiric", "Lethal", "Savage"]),
-    ApexMonsterDef("Vault Phantom", "vault",
-                   "phases through defences with gilded blades",
-                   ["Spectral", "Lethal", "Savage"]),
-
+    ApexMonsterDef(
+        "Vault Sentinel",
+        "vault",
+        "guards untold wealth with deadly precision",
+        ["Lethal", "Savage", "Keen"],
+    ),
+    ApexMonsterDef(
+        "Gilded Predator",
+        "vault",
+        "hunts with razor instinct",
+        ["Lethal", "Blinding", "Devastating"],
+    ),
+    ApexMonsterDef(
+        "Fortune's Reaper",
+        "vault",
+        "claims bounty with every strike",
+        ["Lethal", "Multistrike", "Keen"],
+    ),
+    ApexMonsterDef(
+        "Greed Incarnate",
+        "vault",
+        "feeds on your accumulated power",
+        ["Vampiric", "Lethal", "Savage"],
+    ),
+    ApexMonsterDef(
+        "Vault Phantom",
+        "vault",
+        "phases through defences with gilded blades",
+        ["Spectral", "Lethal", "Savage"],
+    ),
     # ----- Shattered Realm (rift) -----
-    ApexMonsterDef("Reality Shredder", "shattered",
-                   "tears apart the fabric of combat",
-                   ["Spectral", "Devastating", "Lethal"]),
-    ApexMonsterDef("Void Fracture", "shattered",
-                   "bends causality to its will",
-                   ["Spectral", "Nullifying", "Savage"]),
-    ApexMonsterDef("Entropy Engine", "shattered",
-                   "accelerates entropy around you",
-                   ["Temporal Collapse", "Spectral", "Lethal"]),
-    ApexMonsterDef("Nexus Abomination", "shattered",
-                   "converges all realities into a killing blow",
-                   ["Multistrike", "Devastating", "Spectral"]),
-    ApexMonsterDef("Rift Leviathan", "shattered",
-                   "swallows you in cascading reality breaks",
-                   ["Overwhelming", "Spectral", "Devastating"]),
+    ApexMonsterDef(
+        "Reality Shredder",
+        "shattered",
+        "tears apart the fabric of combat",
+        ["Spectral", "Devastating", "Lethal"],
+    ),
+    ApexMonsterDef(
+        "Void Fracture",
+        "shattered",
+        "bends causality to its will",
+        ["Spectral", "Nullifying", "Savage"],
+    ),
+    ApexMonsterDef(
+        "Entropy Engine",
+        "shattered",
+        "accelerates entropy around you",
+        ["Temporal Collapse", "Spectral", "Lethal"],
+    ),
+    ApexMonsterDef(
+        "Nexus Abomination",
+        "shattered",
+        "converges all realities into a killing blow",
+        ["Multistrike", "Devastating", "Spectral"],
+    ),
+    ApexMonsterDef(
+        "Rift Leviathan",
+        "shattered",
+        "swallows you in cascading reality breaks",
+        ["Overwhelming", "Spectral", "Devastating"],
+    ),
 ]
 
 # Build lookup by zone
@@ -383,14 +468,20 @@ PASSIVE_CATEGORY_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 RESONANCE_TABLE: dict[str, tuple[str, str]] = {
-    "offensive_2": ("Vulcan's Rage",        "+10% ATK (final multiplier)"),
-    "offensive_3": ("Vulcan's Fury",         "+25% ATK (final multiplier)"),
-    "defensive_2": ("Athena's Stratagem",    "+8% DEF (final multiplier)"),
+    "offensive_2": ("Vulcan's Rage", "+10% ATK (final multiplier)"),
+    "offensive_3": ("Vulcan's Fury", "+25% ATK (final multiplier)"),
+    "defensive_2": ("Athena's Stratagem", "+8% DEF (final multiplier)"),
     "defensive_3": ("Athena's Grand Design", "+15% DEF (final multiplier)"),
-    "mixed_2":     ("Tyr's Ruling",          "Sum ATK+DEF +5%, redistributed equally at combat start"),
-    "mixed_3":     ("Tyr's Adjudication",    "Sum ATK+DEF +20%, redistributed equally at combat start"),
-    "utility_2":   ("Midas's Wisdom",        "+20% XP (additive)"),
-    "utility_3":   ("Midas's Blessing",      "+20% Gold (additive)"),
+    "mixed_2": (
+        "Tyr's Ruling",
+        "Sum ATK+DEF +5%, redistributed equally at combat start",
+    ),
+    "mixed_3": (
+        "Tyr's Adjudication",
+        "Sum ATK+DEF +20%, redistributed equally at combat start",
+    ),
+    "utility_2": ("Midas's Wisdom", "+20% XP (additive)"),
+    "utility_3": ("Midas's Blessing", "+20% Gold (additive)"),
 }
 
 # ---------------------------------------------------------------------------
@@ -440,17 +531,15 @@ META_SHARD_DROP_CHANCES: dict[str, float] = {
 
 SOUL_STONE_TIER_VALUES: dict[str, list] = {
     # --- Armor passives (1 → 5 tiers) ---
-    "impregnable":      [2,   4,   6,   8,   10],    # flat % PDR added
-    "piety":            [120, 240, 360, 480, 600],   # % bonus damage on 10% chance
-    "transcendence":    [4,   8,   12,  16,  20],    # % of (ATK+DEF) added as bonus ATK
-    "treasure hunter":  [0.6, 1.2, 1.8, 2.4, 3.0],  # flat special-rarity bonus
-    "unlimited wealth": [40,  80,  120, 160, 200],   # % rarity bonus on 20% proc
-    "alchemist":        [6,   12,  18,  24,  30],    # % not-consume chance on potion use
-
+    "impregnable": [2, 4, 6, 8, 10],  # flat % PDR added
+    "piety": [120, 240, 360, 480, 600],  # % bonus damage on 10% chance
+    "transcendence": [4, 8, 12, 16, 20],  # % of (ATK+DEF) added as bonus ATK
+    "treasure hunter": [0.6, 1.2, 1.8, 2.4, 3.0],  # flat special-rarity bonus
+    "unlimited wealth": [40, 80, 120, 160, 200],  # % rarity bonus on 20% proc
+    "alchemist": [6, 12, 18, 24, 30],  # % not-consume chance on potion use
     # --- Boot passives (6 gear tiers → 5 soul stone tiers, max_value / 5) ---
-    "speedster": [72,  144, 216, 288, 360],  # seconds of combat cooldown reduction
-    "skiller":   [6,   12,  18,  24,  30],   # % proc chance for skill-mat drop
-
+    "speedster": [72, 144, 216, 288, 360],  # seconds of combat cooldown reduction
+    "skiller": [6, 12, 18, 24, 30],  # % proc chance for skill-mat drop
     # Accessories use a 2:1 tier mapping (soul stone T × 2 = effective passive_lvl)
     # and are handled inline in the engine — no explicit table entry needed.
 }
@@ -458,8 +547,14 @@ SOUL_STONE_TIER_VALUES: dict[str, list] = {
 META_SHARD_DISPLAY: dict[str, tuple[str, str]] = {
     "sharpened_fang": ("🦷 Sharpened Fang", "Lucky extraction chance (25% → ~44%)"),
     "engorged_heart": ("❤️ Engorged Heart", "Lucky upgrade chance (better odds)"),
-    "condensed_blood": ("🩸 Condensed Blood", "Prevents tier downgrade on failed upgrade"),
-    "primal_essence": ("✨ Primal Essence", "Counts extracted passives as +1 (improves extraction chance)"),
+    "condensed_blood": (
+        "🩸 Condensed Blood",
+        "Prevents tier downgrade on failed upgrade",
+    ),
+    "primal_essence": (
+        "✨ Primal Essence",
+        "Counts extracted passives as +1 (improves extraction chance)",
+    ),
     "soul_vessel": ("🏺 Soul Vessel", "Extract a passive without destroying the item"),
 }
 

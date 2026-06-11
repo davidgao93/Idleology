@@ -2,7 +2,6 @@ from database.base import BaseRepository
 
 
 class AscensionRepository(BaseRepository):
-
     async def get_highest_floor(self, user_id: str) -> int:
         cursor = await self.connection.execute(
             "SELECT highest_ascension_floor FROM users WHERE user_id = ?",

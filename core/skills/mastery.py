@@ -24,11 +24,23 @@ Branch = Literal["yield", "quality", "synergy"]
 # =========================================================
 TOOL_POINT_RATES = {
     # mining
-    "iron": 0.6, "steel": 0.9, "gold": 1.2, "platinum": 1.5, "ideal": 1.8,
+    "iron": 0.6,
+    "steel": 0.9,
+    "gold": 1.2,
+    "platinum": 1.5,
+    "ideal": 1.8,
     # fishing
-    "desiccated": 0.6, "regular": 0.9, "sturdy": 1.2, "reinforced": 1.5, "titanium": 1.8,
+    "desiccated": 0.6,
+    "regular": 0.9,
+    "sturdy": 1.2,
+    "reinforced": 1.5,
+    "titanium": 1.8,
     # woodcutting
-    "flimsy": 0.6, "carved": 0.9, "chopping": 1.2, "magic": 1.5, "felling": 1.8,
+    "flimsy": 0.6,
+    "carved": 0.9,
+    "chopping": 1.2,
+    "magic": 1.5,
+    "felling": 1.8,
 }
 
 DAILY_POINTS_AT_BIS = 1.8
@@ -57,65 +69,236 @@ RICH_REMNANT_GUARANTEED_AVG = 4.0
 
 MINING_TREE: Dict[str, Dict[str, Any]] = {
     # Yield (Deep Veins)
-    "enduring_veins": {"branch": "yield", "cost": 1, "desc": "+8% ore yield from passive hourly ticks."},
-    "bountiful_veins": {"branch": "yield", "cost": 2, "desc": "+16% total ore yield from passive hourly ticks.", "requires": ["enduring_veins"]},
-    "motherlode": {"branch": "yield", "cost": 5, "desc": "+26% total ore yield from passive hourly ticks.", "requires": ["bountiful_veins"]},
-    "never_empty": {"branch": "yield", "cost": 4, "desc": "Each passive tick has a 12% chance to yield an extra 70% resources.", "requires_branch_pts": 9},
-
+    "enduring_veins": {
+        "branch": "yield",
+        "cost": 1,
+        "desc": "+8% ore yield from passive hourly ticks.",
+    },
+    "bountiful_veins": {
+        "branch": "yield",
+        "cost": 2,
+        "desc": "+16% total ore yield from passive hourly ticks.",
+        "requires": ["enduring_veins"],
+    },
+    "motherlode": {
+        "branch": "yield",
+        "cost": 5,
+        "desc": "+26% total ore yield from passive hourly ticks.",
+        "requires": ["bountiful_veins"],
+    },
+    "never_empty": {
+        "branch": "yield",
+        "cost": 4,
+        "desc": "Each passive tick has a 12% chance to yield an extra 70% resources.",
+        "requires_branch_pts": 9,
+    },
     # Quality (Vein Memory)
-    "ideal_seeker": {"branch": "quality", "cost": 1, "desc": "+20% Idea Ore yield from passive hourly ticks."},
-    "crystallized_insight": {"branch": "quality", "cost": 2, "desc": "+38% total Idea Ore yield. Lower-tier pickaxes gain a 6% chance to produce Idea Ore.", "requires": ["ideal_seeker"]},
-    "geode_cores": {"branch": "quality", "cost": 3, "desc": "Unlocks Geode Core remnants: 5.5% drop chance per tick (1–2 each). Enables Rich Vein events (4% chance per tick): 2.6× yield plus 3–5 Geode Cores guaranteed."},
-    "worldcore_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Vein events now trigger at 22% per tick (up from 4%). On trigger: 2.6× yield and 3–5 Geode Cores guaranteed.", "requires": ["geode_cores"]},
-
+    "ideal_seeker": {
+        "branch": "quality",
+        "cost": 1,
+        "desc": "+20% Idea Ore yield from passive hourly ticks.",
+    },
+    "crystallized_insight": {
+        "branch": "quality",
+        "cost": 2,
+        "desc": "+38% total Idea Ore yield. Lower-tier pickaxes gain a 6% chance to produce Idea Ore.",
+        "requires": ["ideal_seeker"],
+    },
+    "geode_cores": {
+        "branch": "quality",
+        "cost": 3,
+        "desc": "Unlocks Geode Core remnants: 5.5% drop chance per tick (1–2 each). Enables Rich Vein events (4% chance per tick): 2.6× yield plus 3–5 Geode Cores guaranteed.",
+    },
+    "worldcore_resonance": {
+        "branch": "quality",
+        "cost": 5,
+        "desc": "Rich Vein events now trigger at 22% per tick (up from 4%). On trigger: 2.6× yield and 3–5 Geode Cores guaranteed.",
+        "requires": ["geode_cores"],
+    },
     # Synergy (Stonebound Mastery)
-    "tool_resonance": {"branch": "synergy", "cost": 1, "desc": "Tool upgrade costs reduced by 12%."},
-    "skilled_hands": {"branch": "synergy", "cost": 2, "desc": "Skiller boot procs are 65% more likely and yield 45% more resources."},
-    "master_quarry": {"branch": "synergy", "cost": 3, "desc": "+10% output from all ore smelting."},
-    "living_mountain": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Ore yield from passive ticks. Also provides an independent 3% Rich Vein chance per tick.", "requires": ["master_quarry"]},
-    "echo_first_vein": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: the Meridian Golem treasure boss may appear during combat.", "requires": ["living_mountain"]},
+    "tool_resonance": {
+        "branch": "synergy",
+        "cost": 1,
+        "desc": "Tool upgrade costs reduced by 12%.",
+    },
+    "skilled_hands": {
+        "branch": "synergy",
+        "cost": 2,
+        "desc": "Skiller boot procs are 65% more likely and yield 45% more resources.",
+    },
+    "master_quarry": {
+        "branch": "synergy",
+        "cost": 3,
+        "desc": "+10% output from all ore smelting.",
+    },
+    "living_mountain": {
+        "branch": "synergy",
+        "cost": 5,
+        "desc": "+55% Idea Ore yield from passive ticks. Also provides an independent 3% Rich Vein chance per tick.",
+        "requires": ["master_quarry"],
+    },
+    "echo_first_vein": {
+        "branch": "synergy",
+        "cost": 8,
+        "desc": "Prestige Capstone: the Meridian Golem treasure boss may appear during combat.",
+        "requires": ["living_mountain"],
+    },
 }
 
 FISHING_TREE: Dict[str, Dict[str, Any]] = {
     # Yield (Patient Waters) — symmetric
-    "patient_waters": {"branch": "yield", "cost": 1, "desc": "+8% bone yield from passive hourly ticks."},
-    "abundant_catch": {"branch": "yield", "cost": 2, "desc": "+16% total bone yield from passive hourly ticks.", "requires": ["patient_waters"]},
-    "bountiful_haul": {"branch": "yield", "cost": 5, "desc": "+26% total bone yield from passive hourly ticks.", "requires": ["abundant_catch"]},
-    "never_empty_nets": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
-
+    "patient_waters": {
+        "branch": "yield",
+        "cost": 1,
+        "desc": "+8% bone yield from passive hourly ticks.",
+    },
+    "abundant_catch": {
+        "branch": "yield",
+        "cost": 2,
+        "desc": "+16% total bone yield from passive hourly ticks.",
+        "requires": ["patient_waters"],
+    },
+    "bountiful_haul": {
+        "branch": "yield",
+        "cost": 5,
+        "desc": "+26% total bone yield from passive hourly ticks.",
+        "requires": ["abundant_catch"],
+    },
+    "never_empty_nets": {
+        "branch": "yield",
+        "cost": 4,
+        "desc": "12% chance per passive tick for +70% extra resources that tick.",
+        "requires_branch_pts": 9,
+    },
     # Quality (Abyssal Memory)
-    "tide_seeker": {"branch": "quality", "cost": 1, "desc": "+20% Titanium Bones yield from passive hourly ticks."},
-    "abyssal_memory": {"branch": "quality", "cost": 2, "desc": "+38% total Titanium Bones yield. Lower-tier rods gain a 6% chance to produce Titanium Bones.", "requires": ["tide_seeker"]},
-    "tide_relics": {"branch": "quality", "cost": 3, "desc": "Unlocks Tide Relic remnants: 5.5% drop chance per tick (1–2 each). Enables Rich Catch events (4% chance per tick): 2.6× yield plus 3–5 Tide Relics guaranteed."},
-    "deep_current_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Catch events now trigger at 22% per tick (up from 4%). On trigger: 2.6× yield and 3–5 Tide Relics guaranteed.", "requires": ["tide_relics"]},
-
+    "tide_seeker": {
+        "branch": "quality",
+        "cost": 1,
+        "desc": "+20% Titanium Bones yield from passive hourly ticks.",
+    },
+    "abyssal_memory": {
+        "branch": "quality",
+        "cost": 2,
+        "desc": "+38% total Titanium Bones yield. Lower-tier rods gain a 6% chance to produce Titanium Bones.",
+        "requires": ["tide_seeker"],
+    },
+    "tide_relics": {
+        "branch": "quality",
+        "cost": 3,
+        "desc": "Unlocks Tide Relic remnants: 5.5% drop chance per tick (1–2 each). Enables Rich Catch events (4% chance per tick): 2.6× yield plus 3–5 Tide Relics guaranteed.",
+    },
+    "deep_current_resonance": {
+        "branch": "quality",
+        "cost": 5,
+        "desc": "Rich Catch events now trigger at 22% per tick (up from 4%). On trigger: 2.6× yield and 3–5 Tide Relics guaranteed.",
+        "requires": ["tide_relics"],
+    },
     # Synergy (Tidebound Mastery)
-    "lighter_bait": {"branch": "synergy", "cost": 1, "desc": "Bait cost reduced by 12%."},
-    "favored_currents": {"branch": "synergy", "cost": 2, "desc": "Skiller boot procs are 65% more likely and yield 45% more resources."},
-    "master_baiter": {"branch": "synergy", "cost": 3, "desc": "Alchemy conversions use one step better transmutation ratios."},
-    "old_ones_favor": {"branch": "synergy", "cost": 5, "desc": "+55% Titanium Bones yield from passive ticks. Also provides an independent 3% Rich Catch chance per tick.", "requires": ["master_baiter"]},
-    "lord_of_the_deep": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: the Drowned Leviathan treasure boss may appear during combat.", "requires": ["old_ones_favor"]},
+    "lighter_bait": {
+        "branch": "synergy",
+        "cost": 1,
+        "desc": "Bait cost reduced by 12%.",
+    },
+    "favored_currents": {
+        "branch": "synergy",
+        "cost": 2,
+        "desc": "Skiller boot procs are 65% more likely and yield 45% more resources.",
+    },
+    "master_baiter": {
+        "branch": "synergy",
+        "cost": 3,
+        "desc": "Alchemy conversions use one step better transmutation ratios.",
+    },
+    "old_ones_favor": {
+        "branch": "synergy",
+        "cost": 5,
+        "desc": "+55% Titanium Bones yield from passive ticks. Also provides an independent 3% Rich Catch chance per tick.",
+        "requires": ["master_baiter"],
+    },
+    "lord_of_the_deep": {
+        "branch": "synergy",
+        "cost": 8,
+        "desc": "Prestige Capstone: the Drowned Leviathan treasure boss may appear during combat.",
+        "requires": ["old_ones_favor"],
+    },
 }
 
 WOODCUTTING_TREE: Dict[str, Dict[str, Any]] = {
     # Yield (Strong Arm)
-    "strong_arm": {"branch": "yield", "cost": 1, "desc": "+8% log yield from passive hourly ticks."},
-    "mighty_swing": {"branch": "yield", "cost": 2, "desc": "+16% total log yield from passive hourly ticks.", "requires": ["strong_arm"]},
-    "titanic_felling": {"branch": "yield", "cost": 5, "desc": "+26% total log yield from passive hourly ticks.", "requires": ["mighty_swing"]},
-    "forest_bounty": {"branch": "yield", "cost": 4, "desc": "12% chance per passive tick for +70% extra resources that tick.", "requires_branch_pts": 9},
-
+    "strong_arm": {
+        "branch": "yield",
+        "cost": 1,
+        "desc": "+8% log yield from passive hourly ticks.",
+    },
+    "mighty_swing": {
+        "branch": "yield",
+        "cost": 2,
+        "desc": "+16% total log yield from passive hourly ticks.",
+        "requires": ["strong_arm"],
+    },
+    "titanic_felling": {
+        "branch": "yield",
+        "cost": 5,
+        "desc": "+26% total log yield from passive hourly ticks.",
+        "requires": ["mighty_swing"],
+    },
+    "forest_bounty": {
+        "branch": "yield",
+        "cost": 4,
+        "desc": "12% chance per passive tick for +70% extra resources that tick.",
+        "requires_branch_pts": 9,
+    },
     # Quality (Heartwood Memory)
-    "heartwood_seeker": {"branch": "quality", "cost": 1, "desc": "+20% Idea Log yield from passive hourly ticks."},
-    "living_heartwood": {"branch": "quality", "cost": 2, "desc": "+38% total Idea Log yield. Lower-tier axes gain a 6% chance to produce Idea Logs.", "requires": ["heartwood_seeker"]},
-    "heartwood_shards": {"branch": "quality", "cost": 3, "desc": "Unlocks Heartwood Shard remnants: 5.5% drop chance per tick (1–2 each). Enables Rich Felling events (4% chance per tick): 2.6× yield plus 3–5 Heartwood Shards guaranteed."},
-    "elder_resonance": {"branch": "quality", "cost": 5, "desc": "Rich Felling events now trigger at 22% per tick (up from 4%). On trigger: 2.6× yield and 3–5 Heartwood Shards guaranteed.", "requires": ["heartwood_shards"]},
-
+    "heartwood_seeker": {
+        "branch": "quality",
+        "cost": 1,
+        "desc": "+20% Idea Log yield from passive hourly ticks.",
+    },
+    "living_heartwood": {
+        "branch": "quality",
+        "cost": 2,
+        "desc": "+38% total Idea Log yield. Lower-tier axes gain a 6% chance to produce Idea Logs.",
+        "requires": ["heartwood_seeker"],
+    },
+    "heartwood_shards": {
+        "branch": "quality",
+        "cost": 3,
+        "desc": "Unlocks Heartwood Shard remnants: 5.5% drop chance per tick (1–2 each). Enables Rich Felling events (4% chance per tick): 2.6× yield plus 3–5 Heartwood Shards guaranteed.",
+    },
+    "elder_resonance": {
+        "branch": "quality",
+        "cost": 5,
+        "desc": "Rich Felling events now trigger at 22% per tick (up from 4%). On trigger: 2.6× yield and 3–5 Heartwood Shards guaranteed.",
+        "requires": ["heartwood_shards"],
+    },
     # Synergy (Rootbound Mastery)
-    "foresters_eye": {"branch": "synergy", "cost": 1, "desc": "Forestry pass cost reduced by 12%."},
-    "skilled_forester": {"branch": "synergy", "cost": 2, "desc": "Skiller boot procs are 65% more likely and yield 45% more resources."},
-    "seasoned_timber": {"branch": "synergy", "cost": 3, "desc": "+10% output from all wood conversion."},
-    "forest_remembers": {"branch": "synergy", "cost": 5, "desc": "+55% Idea Log yield from passive ticks. Also provides an independent 3% Rich Felling chance per tick.", "requires": ["seasoned_timber"]},
-    "elderheart": {"branch": "synergy", "cost": 8, "desc": "Prestige Capstone: the Verdant Colossus treasure boss may appear during combat.", "requires": ["forest_remembers"]},
+    "foresters_eye": {
+        "branch": "synergy",
+        "cost": 1,
+        "desc": "Forestry pass cost reduced by 12%.",
+    },
+    "skilled_forester": {
+        "branch": "synergy",
+        "cost": 2,
+        "desc": "Skiller boot procs are 65% more likely and yield 45% more resources.",
+    },
+    "seasoned_timber": {
+        "branch": "synergy",
+        "cost": 3,
+        "desc": "+10% output from all wood conversion.",
+    },
+    "forest_remembers": {
+        "branch": "synergy",
+        "cost": 5,
+        "desc": "+55% Idea Log yield from passive ticks. Also provides an independent 3% Rich Felling chance per tick.",
+        "requires": ["seasoned_timber"],
+    },
+    "elderheart": {
+        "branch": "synergy",
+        "cost": 8,
+        "desc": "Prestige Capstone: the Verdant Colossus treasure boss may appear during combat.",
+        "requires": ["forest_remembers"],
+    },
 }
 
 ALL_TREES = {
@@ -150,7 +333,11 @@ NATURE_ATTUNEMENT_TREE: Dict[str, Dict[str, Any]] = {
     },
 }
 
-NATURE_ATTUNEMENT_NODE_ORDER = ["elemental_resonance_plus", "druidic_ritual", "groves_reckoning"]  # for display only
+NATURE_ATTUNEMENT_NODE_ORDER = [
+    "elemental_resonance_plus",
+    "druidic_ritual",
+    "groves_reckoning",
+]  # for display only
 
 # =========================================================
 # Post-Max Infinite Scaling — Mastery Insight
@@ -163,17 +350,21 @@ INSIGHT_CONVERSION_RATE = 5  # excess points per insight
 # Gentle caps / scaling chosen for long-term play (no combat power)
 MAX_INSIGHT_EFFECT = 100  # soft display cap; math continues linearly if desired
 
+
 def get_insight_global_yield_bonus(insight: int) -> float:
     """+0.2% global gathering yield per insight (very gentle)."""
     return min(insight * 0.002, MAX_INSIGHT_EFFECT * 0.002)
+
 
 def get_insight_remnant_bonus(insight: int) -> float:
     """+0.5% extra remnant chance on prestige boss harvests per insight."""
     return min(insight * 0.005, MAX_INSIGHT_EFFECT * 0.005)
 
+
 def get_insight_rune_bonus(insight: int) -> float:
     """+0.25% additional Rune of Nature drop chance from Elemental of Elements per insight."""
     return min(insight * 0.0025, MAX_INSIGHT_EFFECT * 0.0025)
+
 
 # =========================================================
 # Branch node unlock order (sequential)
@@ -184,18 +375,56 @@ def get_insight_rune_bonus(insight: int) -> float:
 BRANCH_NODE_ORDERS = {
     "mining": {
         "yield": ["enduring_veins", "bountiful_veins", "motherlode", "never_empty"],
-        "quality": ["ideal_seeker", "crystallized_insight", "geode_cores", "worldcore_resonance"],
-        "synergy": ["tool_resonance", "skilled_hands", "master_quarry", "living_mountain", "echo_first_vein"],
+        "quality": [
+            "ideal_seeker",
+            "crystallized_insight",
+            "geode_cores",
+            "worldcore_resonance",
+        ],
+        "synergy": [
+            "tool_resonance",
+            "skilled_hands",
+            "master_quarry",
+            "living_mountain",
+            "echo_first_vein",
+        ],
     },
     "fishing": {
-        "yield": ["patient_waters", "abundant_catch", "bountiful_haul", "never_empty_nets"],
-        "quality": ["tide_seeker", "abyssal_memory", "tide_relics", "deep_current_resonance"],
-        "synergy": ["lighter_bait", "favored_currents", "master_baiter", "old_ones_favor", "lord_of_the_deep"],
+        "yield": [
+            "patient_waters",
+            "abundant_catch",
+            "bountiful_haul",
+            "never_empty_nets",
+        ],
+        "quality": [
+            "tide_seeker",
+            "abyssal_memory",
+            "tide_relics",
+            "deep_current_resonance",
+        ],
+        "synergy": [
+            "lighter_bait",
+            "favored_currents",
+            "master_baiter",
+            "old_ones_favor",
+            "lord_of_the_deep",
+        ],
     },
     "woodcutting": {
         "yield": ["strong_arm", "mighty_swing", "titanic_felling", "forest_bounty"],
-        "quality": ["heartwood_seeker", "living_heartwood", "heartwood_shards", "elder_resonance"],
-        "synergy": ["foresters_eye", "skilled_forester", "seasoned_timber", "forest_remembers", "elderheart"],
+        "quality": [
+            "heartwood_seeker",
+            "living_heartwood",
+            "heartwood_shards",
+            "elder_resonance",
+        ],
+        "synergy": [
+            "foresters_eye",
+            "skilled_forester",
+            "seasoned_timber",
+            "forest_remembers",
+            "elderheart",
+        ],
     },
 }
 
@@ -249,16 +478,22 @@ NODE_LABELS = {
 # Core Helpers
 # =========================================================
 
+
 def get_tree(skill: SkillType) -> Dict[str, Dict[str, Any]]:
     return ALL_TREES[skill]
+
 
 def get_node(skill: SkillType, node_key: str) -> Dict[str, Any] | None:
     return ALL_TREES[skill].get(node_key)
 
+
 def get_branch_nodes(skill: SkillType, branch: Branch) -> List[str]:
     return [k for k, v in ALL_TREES[skill].items() if v["branch"] == branch]
 
-def calculate_branch_points_spent(alloc: Dict[str, List[str]], branch: Branch, skill: SkillType) -> int:
+
+def calculate_branch_points_spent(
+    alloc: Dict[str, List[str]], branch: Branch, skill: SkillType
+) -> int:
     """Sum costs of purchased nodes in one branch."""
     tree = ALL_TREES[skill]
     total = 0
@@ -266,6 +501,7 @@ def calculate_branch_points_spent(alloc: Dict[str, List[str]], branch: Branch, s
         if node in tree and tree[node]["branch"] == branch:
             total += tree[node]["cost"]
     return total
+
 
 def get_total_points_spent(alloc: Dict[str, List[str]], skill: SkillType) -> int:
     tree = ALL_TREES[skill]
@@ -276,7 +512,10 @@ def get_total_points_spent(alloc: Dict[str, List[str]], skill: SkillType) -> int
                 total += tree[node]["cost"]
     return total
 
-def can_purchase_node(skill: SkillType, node_key: str, alloc: Dict[str, List[str]], current_points: int) -> Tuple[bool, str]:
+
+def can_purchase_node(
+    skill: SkillType, node_key: str, alloc: Dict[str, List[str]], current_points: int
+) -> Tuple[bool, str]:
     """Validation for a purchase attempt. Returns (ok, reason_if_not)."""
     tree = ALL_TREES[skill]
     node = tree.get(node_key)
@@ -305,9 +544,14 @@ def can_purchase_node(skill: SkillType, node_key: str, alloc: Dict[str, List[str
 
     return True, ""
 
+
 def apply_purchase(skill: SkillType, node_key: str, alloc_json: str) -> str:
     """Return new alloc JSON after adding the node (assumes validation passed)."""
-    alloc = json.loads(alloc_json) if alloc_json else {"yield": [], "quality": [], "synergy": []}
+    alloc = (
+        json.loads(alloc_json)
+        if alloc_json
+        else {"yield": [], "quality": [], "synergy": []}
+    )
     node = ALL_TREES[skill][node_key]
     branch = node["branch"]
     if branch not in alloc:
@@ -316,9 +560,11 @@ def apply_purchase(skill: SkillType, node_key: str, alloc_json: str) -> str:
         alloc[branch].append(node_key)
     return json.dumps(alloc, separators=(",", ":"))
 
+
 # =========================================================
 # Yield & Rich Event Modifiers (core integration)
 # =========================================================
+
 
 def _get_unlocked_nodes_from_alloc(alloc: dict, branch: str) -> list[str]:
     """Helper that works with both old list format and new rich dict format."""
@@ -348,6 +594,7 @@ def get_yield_multiplier(skill: SkillType, mastery_row: dict) -> float:
     mult += get_insight_global_yield_bonus(insight)
     return mult
 
+
 def get_signature_resource_bonus(skill: SkillType, mastery_row: dict) -> float:
     """Quality branch signature bonuses (+20/38%) + Synergy 5pt capstone (+55% from passive hourly ticks per Living Mountain / Old One's Favor / Forest Remembers)."""
     alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
@@ -372,6 +619,7 @@ def get_signature_resource_bonus(skill: SkillType, mastery_row: dict) -> float:
 
     return bonus
 
+
 def get_below_tier_chance(skill: SkillType, mastery_row: dict) -> float:
     """6% chance from Quality tier-2 nodes."""
     alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
@@ -379,6 +627,7 @@ def get_below_tier_chance(skill: SkillType, mastery_row: dict) -> float:
         if node in ("crystallized_insight", "abyssal_memory", "living_heartwood"):
             return 0.06
     return 0.0
+
 
 def get_rich_event_chance(skill: SkillType, mastery_row: dict) -> float:
     """Base Rich proc chance per passive tick.
@@ -395,7 +644,11 @@ def get_rich_event_chance(skill: SkillType, mastery_row: dict) -> float:
 
     base = 0.0
 
-    resonance_nodes = ("worldcore_resonance", "deep_current_resonance", "elder_resonance")
+    resonance_nodes = (
+        "worldcore_resonance",
+        "deep_current_resonance",
+        "elder_resonance",
+    )
     if any(n in quality_nodes for n in resonance_nodes):
         base = 0.22
     else:
@@ -417,6 +670,7 @@ def roll_rich_event(skill: SkillType, mastery_row: dict) -> bool:
     """Should this passive tick trigger a Rich event?"""
     chance = get_rich_event_chance(skill, mastery_row)
     return random.random() < chance if chance > 0 else False
+
 
 def roll_remnant_generation(skill: SkillType, mastery_row: dict, is_rich: bool) -> int:
     """
@@ -445,32 +699,45 @@ def roll_remnant_generation(skill: SkillType, mastery_row: dict, is_rich: bool) 
         return random.randint(1, 2)
     return 0
 
+
 def get_remnant_column(skill: SkillType) -> str:
-    return {"mining": "geode_cores", "fishing": "tide_relics", "woodcutting": "heartwood_shards"}[skill]
+    return {
+        "mining": "geode_cores",
+        "fishing": "tide_relics",
+        "woodcutting": "heartwood_shards",
+    }[skill]
+
 
 # =========================================================
 # Synergy helpers (called from settlement, alchemy, dispatch, drops)
 # =========================================================
 
+
 def has_master_quarry(mastery_row: dict) -> bool:
     alloc = json.loads(mastery_row.get("mining_alloc", "{}") or "{}")
     return "master_quarry" in alloc.get("synergy", [])
+
 
 def has_seasoned_timber(mastery_row: dict) -> bool:
     alloc = json.loads(mastery_row.get("woodcutting_alloc", "{}") or "{}")
     return "seasoned_timber" in alloc.get("synergy", [])
 
+
 def has_master_baiter(mastery_row: dict) -> bool:
     alloc = json.loads(mastery_row.get("fishing_alloc", "{}") or "{}")
     return "master_baiter" in alloc.get("synergy", [])
+
 
 def get_skiller_bonus(mastery_row: dict, skill: SkillType) -> Tuple[float, float]:
     """Returns (proc_chance_mult, yield_mult) for Skiller boots. 1.65x chance, 1.45x yield if owned."""
     alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
     synergy = alloc.get("synergy", [])
-    if any(n in synergy for n in ("skilled_hands", "favored_currents", "skilled_forester")):
+    if any(
+        n in synergy for n in ("skilled_hands", "favored_currents", "skilled_forester")
+    ):
         return 1.65, 1.45
     return 1.0, 1.0
+
 
 def get_tool_cost_reduction(mastery_row: dict, skill: SkillType) -> float:
     """12% reduction if the 1pt synergy node owned."""
@@ -484,16 +751,22 @@ def get_tool_cost_reduction(mastery_row: dict, skill: SkillType) -> float:
         return 0.12
     return 0.0
 
+
 # =========================================================
 # Point accrual + catch-up (called from hourly task in cogs/skills)
 # =========================================================
 
+
 def get_points_for_tool(tool_tier: str) -> float:
     return TOOL_POINT_RATES.get(tool_tier, 0.6)
 
-def compute_catchup_points(last_claim_iso: str | None, tool_tier: str, now_iso: str) -> int:
+
+def compute_catchup_points(
+    last_claim_iso: str | None, tool_tier: str, now_iso: str
+) -> int:
     """Return integer points to award (capped at 24h worth)."""
     from datetime import datetime, timezone
+
     rate = get_points_for_tool(tool_tier)
     if not last_claim_iso:
         return int(rate)  # first claim, give 1 day worth floored
@@ -509,9 +782,11 @@ def compute_catchup_points(last_claim_iso: str | None, tool_tier: str, now_iso: 
     raw = hours * (rate / 24.0)
     return max(0, int(raw))
 
+
 # =========================================================
 # Cross-skill helpers (kept for any external callers; real gate logic lives below)
 # =========================================================
+
 
 def get_total_mastery_invested(all_mastery_rows: Dict[str, dict]) -> int:
     total = 0
@@ -530,6 +805,7 @@ def get_total_mastery_invested(all_mastery_rows: Dict[str, dict]) -> int:
 # Old flat list format is still read for compatibility.
 # =========================================================
 
+
 def _normalize_alloc(alloc: dict) -> dict:
     """
     Convert alloc data (old or new) into the canonical rich format:
@@ -540,9 +816,11 @@ def _normalize_alloc(alloc: dict) -> dict:
     we have access to the skill (and therefore the correct node order).
     """
     if not alloc:
-        return {"yield": {"invested": 0, "unlocked": []},
-                "quality": {"invested": 0, "unlocked": []},
-                "synergy": {"invested": 0, "unlocked": []}}
+        return {
+            "yield": {"invested": 0, "unlocked": []},
+            "quality": {"invested": 0, "unlocked": []},
+            "synergy": {"invested": 0, "unlocked": []},
+        }
 
     normalized = {}
     for branch in ("yield", "quality", "synergy"):
@@ -550,11 +828,14 @@ def _normalize_alloc(alloc: dict) -> dict:
         if isinstance(val, dict):
             normalized[branch] = {
                 "invested": int(val.get("invested", 0)),
-                "unlocked": list(val.get("unlocked", []))
+                "unlocked": list(val.get("unlocked", [])),
             }
         else:
             # old format: list of unlocked node keys
-            normalized[branch] = {"invested": 0, "unlocked": list(val) if isinstance(val, (list, tuple)) else []}
+            normalized[branch] = {
+                "invested": 0,
+                "unlocked": list(val) if isinstance(val, (list, tuple)) else [],
+            }
     return normalized
 
 
@@ -609,7 +890,9 @@ def get_branch_progress(skill: SkillType, branch: Branch, alloc: dict) -> dict:
         cumulative += node_cost
 
         required_for_this_node = cumulative
-        effectively_unlocked = (node_key in unlocked) or (invested >= required_for_this_node)
+        effectively_unlocked = (node_key in unlocked) or (
+            invested >= required_for_this_node
+        )
 
         if not effectively_unlocked:
             next_node = node_key
@@ -659,7 +942,13 @@ def get_branch_progress(skill: SkillType, branch: Branch, alloc: dict) -> dict:
     }
 
 
-def invest_in_branch(skill: SkillType, branch: Branch, alloc_json: str, points_available: int, amount: int = 1) -> tuple[str, int, str | None]:
+def invest_in_branch(
+    skill: SkillType,
+    branch: Branch,
+    alloc_json: str,
+    points_available: int,
+    amount: int = 1,
+) -> tuple[str, int, str | None]:
     """
     Invest up to `amount` points into the given branch.
     Returns (new_alloc_json, points_actually_spent, newly_unlocked_node_or_None)
@@ -685,7 +974,9 @@ def invest_in_branch(skill: SkillType, branch: Branch, alloc_json: str, points_a
         progress = get_branch_progress(skill, branch, alloc)
 
         # Allow investment even after all nodes are unlocked (for the new +10 bonus points)
-        if progress.get("complete") and progress.get("bonus_invested", 0) >= progress.get("bonus_max", 10):
+        if progress.get("complete") and progress.get(
+            "bonus_invested", 0
+        ) >= progress.get("bonus_max", 10):
             break
 
         # Spend 1 point
@@ -726,6 +1017,7 @@ def invest_in_branch(skill: SkillType, branch: Branch, alloc_json: str, points_a
 # These functions return the *additional* percentage from extra investment
 # beyond the normal node costs (capped at +10 points).
 # =========================================================
+
 
 def _get_bonus_points(skill: SkillType, branch: Branch, mastery_row: dict) -> int:
     """How many bonus points (0-10) the player has invested in this branch."""
@@ -780,6 +1072,7 @@ def get_never_empty_proc_chance(skill: SkillType, mastery_row: dict) -> float:
 # Nature's Attunement Gate + Investment + Bonus Getters
 # =========================================================
 
+
 def get_total_invested_for_skill(skill: SkillType, mastery_row: dict | None) -> int:
     """Total points ever spent in one skill (main nodes + all bonus investment)."""
     if not mastery_row:
@@ -822,7 +1115,9 @@ def get_attunement_progress(alloc_json: str) -> dict:
     return result
 
 
-def invest_in_attunement(current_alloc_json: str, points_available: int, node_key: str, amount: int = 1) -> tuple[str, int, bool]:
+def invest_in_attunement(
+    current_alloc_json: str, points_available: int, node_key: str, amount: int = 1
+) -> tuple[str, int, bool]:
     """
     Freely invest `amount` points into one attunement node (max 5 per node).
     Returns (new_alloc_json, points_actually_spent, node_now_maxed).
@@ -880,20 +1175,24 @@ def get_total_insight_bonuses(mastery_row: dict) -> dict:
         "rune": get_insight_rune_bonus(insight),
     }
 
+
 # Future: get_rune_drop_rate_modifier etc.
 
 # =========================================================
 # Small UI helpers (for MasteryView)
 # =========================================================
 
+
 def get_branch_display_name(branch: Branch) -> str:
     return {"yield": "Yield", "quality": "Quality", "synergy": "Synergy"}[branch]
+
 
 def format_node_for_select(skill: SkillType, node_key: str) -> str:
     node = ALL_TREES[skill][node_key]
     label = NODE_LABELS.get(node_key, node_key)
     cost = node["cost"]
     return f"{label} ({cost} pt) — {node['desc'][:60]}..."
+
 
 def get_all_node_keys(skill: SkillType) -> List[str]:
     return list(ALL_TREES[skill].keys())
@@ -906,7 +1205,9 @@ def get_branch_total_cost(skill: SkillType, branch: Branch) -> int:
     return sum(tree.get(node, {}).get("cost", 0) for node in order)
 
 
-def _get_cumulative_cost_to_unlock_node(skill: SkillType, branch: Branch, target_node: str) -> int:
+def _get_cumulative_cost_to_unlock_node(
+    skill: SkillType, branch: Branch, target_node: str
+) -> int:
     """Return the total points that must be invested in the branch to unlock up to (and including) target_node."""
     tree = ALL_TREES[skill]
     order = BRANCH_NODE_ORDERS.get(skill, {}).get(branch, [])

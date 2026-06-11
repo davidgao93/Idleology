@@ -157,7 +157,10 @@ class ElementalEncounterView(BaseView):
 
         try:
             from core.quests.mechanics import tick_quest_progress
-            await tick_quest_progress(self.bot, self.user_id, self.server_id, "elemental_defeat")
+
+            await tick_quest_progress(
+                self.bot, self.user_id, self.server_id, "elemental_defeat"
+            )
         except Exception as e:
             print(f"[Quest tick error in elemental]: {e}")
 
@@ -208,7 +211,9 @@ class ElementalEncounterView(BaseView):
             return True
         return False
 
-    def _build_completion_embed(self, rewards: dict, rune_gained: bool = False) -> discord.Embed:
+    def _build_completion_embed(
+        self, rewards: dict, rune_gained: bool = False
+    ) -> discord.Embed:
         multiplier = self.total_damage // 1000
         embed = discord.Embed(
             title="⚗️ Elemental of Elements — Complete!",

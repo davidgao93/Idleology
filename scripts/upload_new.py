@@ -43,6 +43,7 @@ UPLOAD_DELAY = 1.2  # seconds between messages
 
 # ── Discord upload ─────────────────────────────────────────────────────────────
 
+
 async def upload_batch(
     session: aiohttp.ClientSession, token: str, filepaths: list[Path]
 ) -> list[tuple[str, str]]:
@@ -75,6 +76,7 @@ async def upload_batch(
 
 # ── log helpers ───────────────────────────────────────────────────────────────
 
+
 def append_log(fname: str, cdn_url: str):
     with LOG_FILE.open("a", encoding="utf-8") as fh:
         fh.write(f"{fname}  |  {cdn_url}\n")
@@ -92,6 +94,7 @@ def already_logged(fname: str) -> bool:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 async def main(dry_run: bool):
     load_dotenv(ROOT / ".env")
     token = os.getenv("TOKEN")
@@ -102,7 +105,8 @@ async def main(dry_run: bool):
         sys.exit(f"ERROR: Upload folder not found: {UPLOAD_DIR}")
 
     files = sorted(
-        p for p in UPLOAD_DIR.iterdir()
+        p
+        for p in UPLOAD_DIR.iterdir()
         if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS
     )
 
@@ -114,7 +118,9 @@ async def main(dry_run: bool):
     pending = [f for f in files if not already_logged(f.name)]
     skipped = len(files) - len(pending)
 
-    print(f"Found {len(files)} image(s): {len(pending)} to upload, {skipped} already logged.\n")
+    print(
+        f"Found {len(files)} image(s): {len(pending)} to upload, {skipped} already logged.\n"
+    )
 
     if dry_run:
         for f in files:
@@ -131,13 +137,17 @@ async def main(dry_run: bool):
     DONE_DIR.mkdir(exist_ok=True)
 
     # Split into batches of up to BATCH_SIZE.
-    batches = [pending[i:i + BATCH_SIZE] for i in range(0, len(pending), BATCH_SIZE)]
+    batches = [pending[i : i + BATCH_SIZE] for i in range(0, len(pending), BATCH_SIZE)]
     total_batches = len(batches)
 
     async with aiohttp.ClientSession() as session:
         for b_idx, batch in enumerate(batches):
             names = ", ".join(f.name for f in batch)
-            print(f"  [msg {b_idx+1}/{total_batches}] Uploading {len(batch)} file(s): {names} ... ", end="", flush=True)
+            print(
+                f"  [msg {b_idx + 1}/{total_batches}] Uploading {len(batch)} file(s): {names} ... ",
+                end="",
+                flush=True,
+            )
             try:
                 results = await upload_batch(session, token, batch)
                 for fname, cdn_url in results:

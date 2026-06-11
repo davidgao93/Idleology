@@ -69,8 +69,13 @@ class SettlementCog(commands.Cog, name="settlement"):
                 or interaction.user.display_name
             )
             view = SettlementDashboardView(
-                self.bot, user_id, server_id, settlement, total_followers,
-                plots=plots, player_name=player_name,
+                self.bot,
+                user_id,
+                server_id,
+                settlement,
+                total_followers,
+                plots=plots,
+                player_name=player_name,
             )
             turns_data = await self.bot.database.settlement.get_turns_data(
                 user_id, server_id

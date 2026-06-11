@@ -56,7 +56,9 @@ class MawView(BaseView):
     def _build_buttons(self):
         self.clear_items()
 
-        has_pending = self.pending_record and not self.pending_record["rewards_collected"]
+        has_pending = (
+            self.pending_record and not self.pending_record["rewards_collected"]
+        )
         cycle_active = mechanics.is_cycle_active(self.cycle_id, self.now_ts)
 
         # Collect Rewards — only during collection window
@@ -71,7 +73,9 @@ class MawView(BaseView):
         if cycle_active:
             last_fight_ts = self.record.get("last_fight_ts") if self.record else None
             fights_done = self.record.get("fights_this_cycle", 0) if self.record else 0
-            can_fight = mechanics.fight_available(last_fight_ts, fights_done, self.now_ts)
+            can_fight = mechanics.fight_available(
+                last_fight_ts, fights_done, self.now_ts
+            )
             fights_left = max(0, mechanics.MAX_FIGHTS_PER_CYCLE - fights_done)
 
             if fights_done >= mechanics.MAX_FIGHTS_PER_CYCLE:
@@ -160,7 +164,9 @@ class MawView(BaseView):
         )
         self._processing = False
         self.stop()
-        await interaction.edit_original_response(embed=encounter.build_embed(), view=encounter)
+        await interaction.edit_original_response(
+            embed=encounter.build_embed(), view=encounter
+        )
         encounter.message = await interaction.original_response()
 
     # ------------------------------------------------------------------
@@ -175,8 +181,12 @@ class MawView(BaseView):
         await interaction.response.defer()
 
         # Fetch final cycle totals at collection time (stable after cycle ends)
-        total_damage = await self.bot.database.maw.get_cycle_total_damage(self.prev_cycle_id)
-        participant_count = await self.bot.database.maw.count_participants(self.prev_cycle_id)
+        total_damage = await self.bot.database.maw.get_cycle_total_damage(
+            self.prev_cycle_id
+        )
+        participant_count = await self.bot.database.maw.count_participants(
+            self.prev_cycle_id
+        )
         top3 = await self.bot.database.maw.get_top_n(self.prev_cycle_id, 3)
         is_top3 = self.user_id in top3
 
@@ -185,10 +195,14 @@ class MawView(BaseView):
             player_damage, total_damage, participant_count, is_top3
         )
 
-        await self.bot.database.maw.mark_rewards_collected(self.user_id, self.prev_cycle_id)
+        await self.bot.database.maw.mark_rewards_collected(
+            self.user_id, self.prev_cycle_id
+        )
 
         if curios > 0:
-            await self.bot.database.users.modify_currency(self.user_id, "curios", curios)
+            await self.bot.database.users.modify_currency(
+                self.user_id, "curios", curios
+            )
         if guild_tickets > 0:
             await self.bot.database.partners.add_tickets(self.user_id, guild_tickets)
         if puzzle_box:
@@ -199,7 +213,9 @@ class MawView(BaseView):
         self.pending_record["rewards_collected"] = 1
 
         reward_parts = [f"**{curios} Curio{'s' if curios != 1 else ''}**"]
-        reward_parts.append(f"**{guild_tickets} Guild Ticket{'s' if guild_tickets != 1 else ''}**")
+        reward_parts.append(
+            f"**{guild_tickets} Guild Ticket{'s' if guild_tickets != 1 else ''}**"
+        )
         if puzzle_box:
             reward_parts.append("**Curio Puzzle Box** 🏆 *(Top 3!)*")
         reward_msg = "Collected: " + ", ".join(reward_parts) + "!"

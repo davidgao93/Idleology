@@ -102,8 +102,8 @@ SPECIAL_DROP_BASE_CHANCE: float = 0.01
 
 # Drop-specific base rates that differ from the generic baseline.
 SPIRIT_STONE_BASE_CHANCE: float = 0.01
-SOUL_CORE_BASE_CHANCE: float = 0.05   # +2% from 0.03
-VOID_FRAG_BASE_CHANCE: float = 0.04   # +2% from 0.02
+SOUL_CORE_BASE_CHANCE: float = 0.05  # +2% from 0.03
+VOID_FRAG_BASE_CHANCE: float = 0.04  # +2% from 0.02
 
 # Boss key drop rates (each raised +2% from the generic SPECIAL_DROP_BASE_CHANCE baseline).
 DRACONIC_KEY_BASE_CHANCE: float = 0.03
@@ -153,8 +153,8 @@ STAT_INVEST_GOLD_PER_POINT: float = 0.001
 # Gear item drop thresholds
 # ---------------------------------------------------------------------------
 
-GEAR_DROP_BASE_CHANCE: float = 10.0      # % floor for any rarity
-GEAR_DROP_MAX_BONUS: float = 20.0        # % maximum bonus achievable via rarity
+GEAR_DROP_BASE_CHANCE: float = 10.0  # % floor for any rarity
+GEAR_DROP_MAX_BONUS: float = 20.0  # % maximum bonus achievable via rarity
 GEAR_DROP_SCALING_CONSTANT: float = 1000.0  # rarity value at which bonus = half max
 
 # ---------------------------------------------------------------------------

@@ -95,7 +95,7 @@ class CodexTomsView(BaseView):
                 upgrade_cost = TOME_UPGRADE_COSTS[tome.tier] if tome.tier < 5 else 0
                 upgrade_gold = TOME_GOLD_COSTS[tome.tier] if tome.tier < 5 else 0
                 upgrade_btn = ui.Button(
-                    label=f"Upgrade T{tome.tier}→T{tome.tier+1} ({upgrade_cost}🔷 + {upgrade_gold // 1_000_000}m💰)",
+                    label=f"Upgrade T{tome.tier}→T{tome.tier + 1} ({upgrade_cost}🔷 + {upgrade_gold // 1_000_000}m💰)",
                     style=ButtonStyle.primary,
                     disabled=not can_upgrade,
                     row=2,
@@ -213,7 +213,8 @@ class CodexTomsView(BaseView):
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < gold_cost:
             await interaction.followup.send(
-                f"You need **{gold_cost:,} gold** to upgrade this Tome tier.", ephemeral=True
+                f"You need **{gold_cost:,} gold** to upgrade this Tome tier.",
+                ephemeral=True,
             )
             return
         ok, new_val = await self.bot.database.codex.upgrade_tome(
@@ -248,7 +249,8 @@ class CodexTomsView(BaseView):
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < gold_cost:
             await interaction.followup.send(
-                f"You need **{gold_cost:,} gold** to reroll a Tome value.", ephemeral=True
+                f"You need **{gold_cost:,} gold** to reroll a Tome value.",
+                ephemeral=True,
             )
             return
         ok, _ = await self.bot.database.codex.reroll_tome_value(

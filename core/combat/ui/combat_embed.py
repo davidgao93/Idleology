@@ -127,6 +127,7 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
 
         if "flash_frost" in hp and cs.hema_frost_misses > 0:
             from core.hematurgy.mechanics import tier_val as _hema_tv
+
             threshold = int(_hema_tv("flash_frost", hp["flash_frost"]))
             lines.append(f"❄️ Flash Frost  {cs.hema_frost_misses}/{threshold}")
 
@@ -153,7 +154,9 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
     if monster.has_modifier("Hemorrhage") and monster.bleed_stacks > 0:
         v = monster.get_modifier_value("Hemorrhage")
         bleed_per_turn = int(player.total_max_hp * v * monster.bleed_stacks)
-        lines.append(f"🩸 Hemorrhage  {monster.bleed_stacks} stacks  ({bleed_per_turn:,}/turn)")
+        lines.append(
+            f"🩸 Hemorrhage  {monster.bleed_stacks} stacks  ({bleed_per_turn:,}/turn)"
+        )
 
     if monster.has_modifier("Pressure Surge") and monster.pressure_stacks > 0:
         lines.append(f"⚡ Pressure  {monster.pressure_stacks}/10")
@@ -168,7 +171,11 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
     if monster.has_modifier("Temporal Collapse") and monster.temporal_window_damage > 0:
         lines.append(f"⏳ Temporal  {monster.temporal_window_damage:,} pending")
 
-    if monster.has_modifier("Death Rattle") and monster.death_rattle_triggered and monster.death_rattle_countdown > 0:
+    if (
+        monster.has_modifier("Death Rattle")
+        and monster.death_rattle_triggered
+        and monster.death_rattle_countdown > 0
+    ):
         lines.append(f"☠️ Death Rattle  {monster.death_rattle_countdown} turns")
 
     if monster.has_modifier("Undying Resolve") and monster.undying_immune_turns > 0:
@@ -242,7 +249,9 @@ def create_combat_embed(
         inline=True,
     )
 
-    embed.add_field(name="⚙️ Status", value=build_status_text(player, monster), inline=False)
+    embed.add_field(
+        name="⚙️ Status", value=build_status_text(player, monster), inline=False
+    )
 
     afflictions = build_afflictions_text(player, monster)
     if afflictions:

@@ -341,9 +341,7 @@ class CompanionDetailView(BaseView):
         )
 
         if not success:
-            cap_str = (
-                "1 slot (Level 40), 2 slots (Level 80), 3 slots (Ascension 20+)"
-            )
+            cap_str = "1 slot (Level 40), 2 slots (Level 80), 3 slots (Ascension 20+)"
             return await interaction.response.send_message(
                 f"You've reached your companion slot cap!\n{cap_str}", ephemeral=True
             )

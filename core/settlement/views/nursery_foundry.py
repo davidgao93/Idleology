@@ -4,6 +4,7 @@ Detail views for the Nursery and Idlem Foundry buildings.
 Both produce their output through Development Turns (Next Turn button).
 Each "activation" queues a single-turn project that produces output on completion.
 """
+
 from __future__ import annotations
 
 import discord
@@ -73,7 +74,9 @@ class NurseryView(SettlementBaseView):
             ),
             color=discord.Color.green(),
         )
-        embed.set_thumbnail(url=SETTLEMENT_BUILDINGS.get("nursery", SETTLEMENT_BUILDINGS["town_hall"]))
+        embed.set_thumbnail(
+            url=SETTLEMENT_BUILDINGS.get("nursery", SETTLEMENT_BUILDINGS["town_hall"])
+        )
 
         if projects:
             nursery_proj = [p for p in projects if p["project_type"] == "nursery"]
@@ -111,7 +114,9 @@ class NurseryView(SettlementBaseView):
                 data={"workers_per_turn": workers_this_turn},
             )
 
-            projects = await self.bot.database.settlement.get_projects(self.user_id, self.server_id)
+            projects = await self.bot.database.settlement.get_projects(
+                self.user_id, self.server_id
+            )
             embed = self.build_embed(projects=projects)
             embed.add_field(
                 name="✅ Queued",
@@ -171,9 +176,13 @@ class IdlemFoundryView(SettlementBaseView):
         """Base Idlem per turn (1–2 range, scaled by tier). Variance applied on completion."""
         tier = self.building.tier
         base = IDLEM_PER_TURN_BASE
-        return base * tier  # stored as base; actual grant has +0/+1 variance on completion
+        return (
+            base * tier
+        )  # stored as base; actual grant has +0/+1 variance on completion
 
-    def build_embed(self, projects: list | None = None, idlem: int = 0) -> discord.Embed:
+    def build_embed(
+        self, projects: list | None = None, idlem: int = 0
+    ) -> discord.Embed:
         embed = discord.Embed(
             title="⚗️ Idlem Foundry",
             description=(
@@ -186,7 +195,11 @@ class IdlemFoundryView(SettlementBaseView):
             ),
             color=discord.Color.purple(),
         )
-        embed.set_thumbnail(url=SETTLEMENT_BUILDINGS.get("idlem_foundry", SETTLEMENT_BUILDINGS["foundry"]))
+        embed.set_thumbnail(
+            url=SETTLEMENT_BUILDINGS.get(
+                "idlem_foundry", SETTLEMENT_BUILDINGS["foundry"]
+            )
+        )
 
         if projects:
             foundry_proj = [p for p in projects if p["project_type"] == "foundry_idlem"]
@@ -225,7 +238,9 @@ class IdlemFoundryView(SettlementBaseView):
             )
 
             zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
-            projects = await self.bot.database.settlement.get_projects(self.user_id, self.server_id)
+            projects = await self.bot.database.settlement.get_projects(
+                self.user_id, self.server_id
+            )
             embed = self.build_embed(projects=projects, idlem=zeal_data.get("idlem", 0))
             embed.add_field(
                 name="✅ Queued",

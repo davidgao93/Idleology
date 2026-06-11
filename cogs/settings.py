@@ -28,7 +28,13 @@ class Settings(commands.Cog, name="settings"):
         player_level = existing_user[4]  # level column index
 
         view = SettingsView(
-            self.bot, user_id, doors_status, exp_protection, auto_rest_pay, difficulty, player_level
+            self.bot,
+            user_id,
+            doors_status,
+            exp_protection,
+            auto_rest_pay,
+            difficulty,
+            player_level,
         )
         await interaction.response.send_message(
             embed=view.build_embed(), view=view, ephemeral=False

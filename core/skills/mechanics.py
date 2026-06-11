@@ -1,4 +1,4 @@
-﻿import random
+import random
 from typing import Dict, List, Optional, Tuple
 
 from core.images import TOOL_AXE, TOOL_PICKAXE, TOOL_ROD
@@ -8,7 +8,6 @@ from core.skills import mastery as Mastery
 
 
 class SkillMechanics:
-
     # --- Minigame Config ---
 
     # Fishing: (min_wait_seconds, max_wait_seconds) per rod tier
@@ -69,13 +68,20 @@ class SkillMechanics:
 
     # Maximum momentum (minutes) a player can bank per skill across the whole path.
     # 25% of total gate hours → 25% * (4+6+10) * 60 = 300 min per skill.
-    MAX_MOMENTUM_MINUTES: dict = {skill: 300 for skill in ("mining", "woodcutting", "fishing")}
+    MAX_MOMENTUM_MINUTES: dict = {
+        skill: 300 for skill in ("mining", "woodcutting", "fishing")
+    }
 
     # Momentum (minutes toward next gate) earned per session quality tier.
     MOMENTUM_MINUTES: dict = {"none": 0, "good": 10, "great": 15, "masterful": 22}
 
     # Yield multiplier applied on top of base yield for quality sessions.
-    QUALITY_YIELD_BONUS: dict = {"none": 1.0, "good": 1.05, "great": 1.10, "masterful": 1.15}
+    QUALITY_YIELD_BONUS: dict = {
+        "none": 1.0,
+        "good": 1.05,
+        "great": 1.10,
+        "masterful": 1.15,
+    }
 
     # Forestry: max seconds between swings to count as "in rhythm".
     FORESTRY_RHYTHM_WINDOW: int = 45
@@ -189,51 +195,6 @@ class SkillMechanics:
         except ValueError:
             pass
         return None
-
-    @staticmethod
-    def get_upgrade_cost(skill: str, current_tier: str) -> Optional[Dict[str, int]]:
-        """
-        Returns a dictionary of costs.
-        Keys: 'resource_1', 'resource_2', 'resource_3', 'resource_4', 'gold'
-        """
-        # Define costs tuple: (res1, res2, res3, res4, gold)
-        # Mapping matches the DB columns index logic in the repository
-
-        costs_map = {}
-
-        if skill == "mining":
-            costs_map = {
-                "iron": (100, 0, 0, 0, 1000),
-                "steel": (200, 100, 0, 0, 5000),
-                "gold": (300, 200, 100, 0, 10000),
-                "platinum": (600, 400, 200, 100, 100000),
-            }
-        elif skill == "woodcutting":
-            costs_map = {
-                "flimsy": (100, 0, 0, 0, 1000),
-                "carved": (200, 100, 0, 0, 5000),
-                "chopping": (300, 200, 100, 0, 10000),
-                "magic": (600, 400, 200, 100, 100000),
-            }
-        elif skill == "fishing":
-            costs_map = {
-                "desiccated": (100, 0, 0, 0, 1000),
-                "regular": (200, 100, 0, 0, 5000),
-                "sturdy": (300, 200, 100, 0, 10000),
-                "reinforced": (600, 400, 200, 100, 50000),
-            }
-
-        cost_tuple = costs_map.get(current_tier)
-        if not cost_tuple:
-            return None
-
-        return {
-            "res_1": cost_tuple[0],
-            "res_2": cost_tuple[1],
-            "res_3": cost_tuple[2],
-            "res_4": cost_tuple[3],
-            "gold": cost_tuple[4],
-        }
 
     @staticmethod
     def calculate_yield(skill_type: str, tool_tier: str) -> Dict[str, int]:
@@ -368,6 +329,7 @@ class SkillMechanics:
         if not end_iso:
             return 0
         from datetime import datetime, timezone
+
         try:
             end = datetime.fromisoformat(end_iso)
             if end.tzinfo is None:
@@ -439,7 +401,9 @@ class SkillMechanics:
         return {k: max(1, int(v * mult)) for k, v in yield_dict.items() if v > 0}
 
     @staticmethod
-    def get_upgrade_cost(skill: str, current_tier: str, reduction: float = 0.0) -> dict | None:
+    def get_upgrade_cost(
+        skill: str, current_tier: str, reduction: float = 0.0
+    ) -> dict | None:
         """Returns upgrade costs (dict with res_1..4 + gold) with optional reduction (0.0-0.12) from synergy 1pt nodes."""
         base_costs = {
             "mining": {

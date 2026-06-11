@@ -441,7 +441,9 @@ async def apply_corrupted_monster_drops(
             shrine_eff = getattr(player, "shrine_effectiveness", {}).get(
                 "corruption_shrine", 1.0
             )
-        if random.random() < (corruption_workers * SIGIL_WORKER_MULTIPLIER * shrine_eff):
+        if random.random() < (
+            corruption_workers * SIGIL_WORKER_MULTIPLIER * shrine_eff
+        ):
             await bot.database.uber.increment_corruption_sigils(user_id, server_id, 1)
             reward_data["special"].append("☠️ Sigil of Corruption")
 

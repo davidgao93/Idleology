@@ -145,10 +145,14 @@ class Skills(commands.Cog, name="skills"):
                 last_claim = mrow.get("last_point_claim")
                 pts = compute_catchup_points(last_claim, tool_tier, now_iso)
                 if pts > 0:
-                    await self.bot.database.skills.add_mastery_points(user_id, server_id, skill, pts)
+                    await self.bot.database.skills.add_mastery_points(
+                        user_id, server_id, skill, pts
+                    )
 
                 # --- 2. Yield (with mastery multipliers) ---
-                resources = SkillMechanics.calculate_yield_with_mastery(skill, tool_tier, mrow)
+                resources = SkillMechanics.calculate_yield_with_mastery(
+                    skill, tool_tier, mrow
+                )
 
                 # Below-tier signature resource chance (from 2pt Quality nodes)
                 below_tier_chance = get_below_tier_chance(skill, mrow)
@@ -181,7 +185,9 @@ class Skills(commands.Cog, name="skills"):
                 never_empty_chance = get_never_empty_proc_chance(skill, mrow)
                 if never_empty_chance > 0 and random.random() < never_empty_chance:
                     for k in resources:
-                        resources[k] = int(resources[k] * 1.70)  # +70% extra resources this tick
+                        resources[k] = int(
+                            resources[k] * 1.70
+                        )  # +70% extra resources this tick
 
                 # --- Triple tick consumption (prestige boss reward) ---
                 # If the player has remaining tripled ticks for this skill, this hour's
@@ -191,7 +197,9 @@ class Skills(commands.Cog, name="skills"):
                 if remaining_ticks > 0:
                     for k in resources:
                         resources[k] = int(resources[k] * 3)
-                    await self.bot.database.skills.consume_tripled_tick(user_id, server_id, skill)
+                    await self.bot.database.skills.consume_tripled_tick(
+                        user_id, server_id, skill
+                    )
 
                 # Write resources
                 await self.bot.database.skills.update_batch(
@@ -200,13 +208,19 @@ class Skills(commands.Cog, name="skills"):
 
                 # Update last claim (always advance so next hour is normal 1/24 rate)
                 # All SQL must live in the repository layer (AGENTS.md rule)
-                await self.bot.database.skills.update_last_mastery_claim(user_id, server_id, now_iso)
+                await self.bot.database.skills.update_last_mastery_claim(
+                    user_id, server_id, now_iso
+                )
 
                 # --- Post-max Mastery Insight conversion (only when everything including Nature's Attunement is fully purchased) ---
                 # We check on every skill tick for the user; the repo method is safe and cheap.
-                mrow_for_insight = await self.bot.database.skills.get_mastery(user_id, server_id)
+                mrow_for_insight = await self.bot.database.skills.get_mastery(
+                    user_id, server_id
+                )
                 if has_nature_attunement_unlocked(mrow_for_insight):
-                    att = get_attunement_progress(mrow_for_insight.get("attunement_alloc", "{}"))
+                    att = get_attunement_progress(
+                        mrow_for_insight.get("attunement_alloc", "{}")
+                    )
                     if att.get("complete"):
                         await self.bot.database.skills.convert_excess_to_insight(
                             user_id, server_id, INSIGHT_CONVERSION_RATE

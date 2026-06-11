@@ -56,6 +56,7 @@ print(f"core/images.py          — {n} URL(s) replaced")
 # 2. assets/monsters.csv  (column: url)
 # ---------------------------------------------------------------------------
 
+
 def rewrite_csv(path: Path, url_columns: list[str]) -> int:
     """Rewrite URL columns in a CSV file in-place. Returns total replacements."""
     text = path.read_text(encoding="utf-8-sig")
@@ -107,7 +108,9 @@ for path in targets:
     text = path.read_text(encoding="utf-8")
     hits = re.findall(r"https?://i\.imgur\.com/\S+", text)
     if hits:
-        print(f"  WARN: {path.relative_to(ROOT)} still contains {len(hits)} imgur URL(s):")
+        print(
+            f"  WARN: {path.relative_to(ROOT)} still contains {len(hits)} imgur URL(s):"
+        )
         for h in hits[:5]:
             print(f"    {h}")
         all_clean = False

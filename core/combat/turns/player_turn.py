@@ -71,9 +71,12 @@ def process_heal(player: Player, monster=None) -> str:
         _ss_alchemist = player.get_soul_stone_passive("alchemist")
         if _ss_alchemist:
             from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
+
             _save_pct = _SST["alchemist"][_ss_alchemist - 1] / 100
             alchemist_saved = random.random() < _save_pct
-            _alchemist_label = f"⚗️ **Soul Alchemist T{_ss_alchemist}** preserved your potion!\n"
+            _alchemist_label = (
+                f"⚗️ **Soul Alchemist T{_ss_alchemist}** preserved your potion!\n"
+            )
         else:
             alchemist_saved = False
             _alchemist_label = ""
@@ -87,10 +90,11 @@ def process_heal(player: Player, monster=None) -> str:
             v = monster.get_modifier_value("Frenzied Hunger")
             monster.bonus_attack_pct += v
             monster.potion_uses_tracked += 1
-            msg_prefix += f"😤 **Frenzied Hunger** — the monster grows stronger! (+{int(v*100)}% ATK)\n"
+            msg_prefix += f"😤 **Frenzied Hunger** — the monster grows stronger! (+{int(v * 100)}% ATK)\n"
 
     if not alchemist_saved and player.hematurgy_passives:
         from core.hematurgy.engine import on_potion_used
+
         _fevered_log: list[str] = []
         on_potion_used(player, _fevered_log)
         if _fevered_log:
@@ -125,11 +129,17 @@ def process_heal(player: Player, monster=None) -> str:
     if panacea:
         if random.random() < (panacea / 100.0):
             player.alchemy_ailment_immunity_turns = max(
-                getattr(player, "alchemy_ailment_immunity_turns", 0), int(panacea / 20) + 1
+                getattr(player, "alchemy_ailment_immunity_turns", 0),
+                int(panacea / 20) + 1,
             )
             if getattr(player.cs, "is_snared", False):
                 player.cs.is_snared = False
-            for attr in ("hema_momentum_stacks", "hema_bleed_total", "hema_chain_stacks", "hema_puncture_bleed"):
+            for attr in (
+                "hema_momentum_stacks",
+                "hema_bleed_total",
+                "hema_chain_stacks",
+                "hema_puncture_bleed",
+            ):
                 if hasattr(player.cs, attr):
                     setattr(player.cs, attr, 0)
             msg += (
@@ -142,7 +152,9 @@ def process_heal(player: Player, monster=None) -> str:
     eclipse = potion_passives_by_type.get("eclipse_strike", 0)
     if eclipse:
         strikes = max(1, int(eclipse / 40))
-        player.alchemy_eclipse_strikes = getattr(player, "alchemy_eclipse_strikes", 0) + strikes
+        player.alchemy_eclipse_strikes = (
+            getattr(player, "alchemy_eclipse_strikes", 0) + strikes
+        )
         player.alchemy_eclipse_bonus = max(
             getattr(player, "alchemy_eclipse_bonus", 0.0), eclipse / 100.0
         )
@@ -155,7 +167,9 @@ def process_heal(player: Player, monster=None) -> str:
     if aegis:
         shield = int(player.total_max_hp * (aegis / 100.0))
         player.alchemy_shield_hp = getattr(player, "alchemy_shield_hp", 0) + shield
-        player.alchemy_shield_turns = max(getattr(player, "alchemy_shield_turns", 0), int(aegis / 15) + 1)
+        player.alchemy_shield_turns = max(
+            getattr(player, "alchemy_shield_turns", 0), int(aegis / 15) + 1
+        )
         msg += (
             f"\n🛡️ **Astral Aegis** — you gain a **{shield}** HP shield for "
             f"**{player.alchemy_shield_turns}** turns (absorbs lethal blows)!"
@@ -163,14 +177,20 @@ def process_heal(player: Player, monster=None) -> str:
 
     blood = potion_passives_by_type.get("blood_pact", 0)
     if blood:
-        player.alchemy_blood_pact_leech = max(getattr(player, "alchemy_blood_pact_leech", 0.0), blood / 100.0)
-        player.alchemy_blood_pact_hits = max(getattr(player, "alchemy_blood_pact_hits", 0), 3)
+        player.alchemy_blood_pact_leech = max(
+            getattr(player, "alchemy_blood_pact_leech", 0.0), blood / 100.0
+        )
+        player.alchemy_blood_pact_hits = max(
+            getattr(player, "alchemy_blood_pact_hits", 0), 3
+        )
         msg += f"\n🩸 **Blood Pact** — your attacks will leech for the next few hits!"
 
     quick = potion_passives_by_type.get("quickening_draught", 0)
     if quick:
         player.alchemy_guaranteed_hit = True
-        player.alchemy_atk_boost_pct = max(getattr(player, "alchemy_atk_boost_pct", 0.0), quick / 100.0)
+        player.alchemy_atk_boost_pct = max(
+            getattr(player, "alchemy_atk_boost_pct", 0.0), quick / 100.0
+        )
         msg += f"\n⚡ **Quickening Draught** — guaranteed next hit and speed boost!"
 
     if potent:
@@ -184,14 +204,18 @@ def process_heal(player: Player, monster=None) -> str:
 
     battle = potion_passives_by_type.get("battle_draft", 0)
     if battle:
-        player.alchemy_atk_boost_pct = max(getattr(player, "alchemy_atk_boost_pct", 0.0), battle / 100.0)
+        player.alchemy_atk_boost_pct = max(
+            getattr(player, "alchemy_atk_boost_pct", 0.0), battle / 100.0
+        )
         msg += f"\n💪 **Battle Draft** — +{battle:.0f}% ATK on next attacks!"
 
     ironclad = potion_passives_by_type.get("ironclad_elixir", 0)
     if ironclad:
         player.alchemy_def_boost_pct = ironclad / 100.0
         player.alchemy_def_boost_turns = 3
-        msg += f"\n🛡️ **Ironclad Elixir** — +{ironclad:.0f}% DEF for several monster turns!"
+        msg += (
+            f"\n🛡️ **Ironclad Elixir** — +{ironclad:.0f}% DEF for several monster turns!"
+        )
 
     ward_s = potion_passives_by_type.get("ward_surge", 0)
     if ward_s:
@@ -212,7 +236,9 @@ def process_heal(player: Player, monster=None) -> str:
     if numbing:
         player.alchemy_dmg_reduction_pct = numbing / 100.0
         player.alchemy_dmg_reduction_turns = 1
-        msg += f"\n🩹 **Numbing Tonic** — -{numbing:.0f}% damage from next monster attack!"
+        msg += (
+            f"\n🩹 **Numbing Tonic** — -{numbing:.0f}% damage from next monster attack!"
+        )
 
     sustained = potion_passives_by_type.get("sustained_remedy", 0)
     if sustained:
@@ -534,7 +560,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         is_crit = True
         if player.alchemy_eclipse_bonus > 0:
             attack_multiplier += player.alchemy_eclipse_bonus
-            calc.append(f"  eclipse_strike: +{player.alchemy_eclipse_bonus:.2f} mult + guaranteed crit")
+            calc.append(
+                f"  eclipse_strike: +{player.alchemy_eclipse_bonus:.2f} mult + guaranteed crit"
+            )
         player.alchemy_eclipse_strikes -= 1
         if player.alchemy_eclipse_strikes <= 0:
             player.alchemy_eclipse_bonus = 0.0
@@ -557,11 +585,17 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             calc.append(f"  soul_piety_T{_ss_piety}: atk_mult +{_piety_bonus:.2f}")
 
     if is_crit:
-        raw_damage = calc_crit_damage(player, monster, attack_multiplier, log, calc, clog=clog)
+        raw_damage = calc_crit_damage(
+            player, monster, attack_multiplier, log, calc, clog=clog
+        )
     elif is_hit:
-        raw_damage = calc_hit_damage(player, monster, attack_multiplier, log, calc, clog=clog)
+        raw_damage = calc_hit_damage(
+            player, monster, attack_multiplier, log, calc, clog=clog
+        )
     else:
-        raw_damage = calc_miss_damage(player, monster, attack_multiplier, log, calc, clog=clog)
+        raw_damage = calc_miss_damage(
+            player, monster, attack_multiplier, log, calc, clog=clog
+        )
 
     # Monster DR — capture in compact (explains why damage was reduced)
     start = len(log)

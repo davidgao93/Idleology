@@ -108,26 +108,40 @@ _VOID_PASSIVE_DESC: dict[str, str] = {
 
 _ACCESSORY_PASSIVE_FUNCS: dict = {
     "obliterate": lambda l: f"On hit: {l * 4}% chance to deal 100% increased damage",
-    "absorb": lambda l: f"Combat start: {l * 10}% chance to steal 10% of Monster ATK & DEF as bonus ATK & DEF",
+    "absorb": lambda l: (
+        f"Combat start: {l * 10}% chance to steal 10% of Monster ATK & DEF as bonus ATK & DEF"
+    ),
     "prosper": lambda l: f"On victory: {l * 10}% chance for 100% increased Gold",
     "infinite wisdom": lambda l: f"On victory: {l * 5}% chance for 100% increased XP",
-    "lucky strikes": lambda l: f"Turn start: {l * 10}% chance for Hit chance to be lucky",
+    "lucky strikes": lambda l: (
+        f"Turn start: {l * 10}% chance for Hit chance to be lucky"
+    ),
 }
 
 _GLOVE_PASSIVE_FUNCS: dict = {
-    "ward-touched": lambda l: f"On hit: Gain {l*25} Ward on non-crits",
-    "ward-fused": lambda l: f"On crit: Gain {l*50} Ward",
-    "instability": lambda l: f"On hit: Damage dealt is decreased by 50% or increased by {150 + l * 10}%",
-    "deftness": lambda l: f"On crit: Crit damage is increased by at least {l * 5}% of max",
-    "adroit": lambda l: f"On hit: Hit damage is increased by at least {l * 2}% of ATK on non-crits",
+    "ward-touched": lambda l: f"On hit: Gain {l * 25} Ward on non-crits",
+    "ward-fused": lambda l: f"On crit: Gain {l * 50} Ward",
+    "instability": lambda l: (
+        f"On hit: Damage dealt is decreased by 50% or increased by {150 + l * 10}%"
+    ),
+    "deftness": lambda l: (
+        f"On crit: Crit damage is increased by at least {l * 5}% of max"
+    ),
+    "adroit": lambda l: (
+        f"On hit: Hit damage is increased by at least {l * 2}% of ATK on non-crits"
+    ),
     "equilibrium": lambda l: f"On victory: Gain {l * 5}% of Dmg dealt as XP",
     "plundering": lambda l: f"On victory: Gain {l * 10}% of Dmg dealt as Gold",
 }
 
 _BOOT_PASSIVE_FUNCS: dict = {
     "speedster": lambda l: f"On equip: Combat cooldown reduced by {l}m",
-    "skiller": lambda l: f"On victory: {l * 5}% chance to find extra gathering materials",
-    "treasure-tracker": lambda l: f"On equip: {l * 0.5:.1f}% added chance to encounter a Treasure Monster",
+    "skiller": lambda l: (
+        f"On victory: {l * 5}% chance to find extra gathering materials"
+    ),
+    "treasure-tracker": lambda l: (
+        f"On equip: {l * 0.5:.1f}% added chance to encounter a Treasure Monster"
+    ),
     "hearty": lambda l: f"On equip: Increase Max HP by {l * 5}%",
     "cleric": lambda l: f"During combat: Potion healing is increased by {l * 10}%",
     "thrill-seeker": lambda l: f"On victory: +{l * 0.5:.1f}% Special Rarity",
@@ -136,9 +150,15 @@ _BOOT_PASSIVE_FUNCS: dict = {
 _HELMET_PASSIVE_FUNCS: dict = {
     "juggernaut": lambda l: f"Combat start: Gain {l * 4}% of total DEF as bonus ATK",
     "insight": lambda l: f"On equip: Crit Dmg Multiplier +{l * 0.1:.1f}×",
-    "volatile": lambda l: f"During combat: Deal {l * 100}% of Max HP as Dmg on ward break",
-    "divine": lambda l: f"During combat: Converts {l * 100}% of Potion Overheal to Ward",
-    "frenzy": lambda l: f"During combat: {l * 0.5:.1f}% increased damage per 1% missing HP",
+    "volatile": lambda l: (
+        f"During combat: Deal {l * 100}% of Max HP as Dmg on ward break"
+    ),
+    "divine": lambda l: (
+        f"During combat: Converts {l * 100}% of Potion Overheal to Ward"
+    ),
+    "frenzy": lambda l: (
+        f"During combat: {l * 0.5:.1f}% increased damage per 1% missing HP"
+    ),
     "leeching": lambda l: f"During combat: Heal {l * 0.2:.2f}% of damage dealt",
     "thorns": lambda l: f"On block: Reflect {l * 100}% of blocked damage",
     "ghosted": lambda l: f"On dodge: Gain {l * 10} Ward",
@@ -253,24 +273,62 @@ _HEMATURGY_PASSIVE_NAMES: dict[str, str] = {
 }
 
 _HEMATURGY_SHORT_FUNCS: dict = {
-    "reverberation": lambda t: f"Echoing hits have {[40,50,60,70,80][t-1]}% to retrigger",
-    "soothing_venom": lambda t: f"{[2,4,6,8,10][t-1]}% of poison dmg leeched as hp",
-    "iron_momentum": lambda t: f"+{[3,5,7,9,11][t-1]}% ATK per consecutive hit (max 5; resets on miss)",
-    "serrated": lambda t: f"−{[5,10,15,20,25][t-1]} monster ATK per hit (crits: ×2)",
-    "haemorrhage": lambda t: f"Hits add {[2,3,4,5,6][t-1]}% ATK to bleed pool; pool ticks 10%/round",
-    "vital_resonance": lambda t: f"{[10,15,20,25,30][t-1]}% of ward gained simultaneously heals HP",
-    "executioners_rite": lambda t: f"+{[10,15,20,25,30][t-1]}% ATK & crit-dmg while monster HP < 30%",
-    "bloodthirst": lambda t: f"On kill: restore {[10,15,20,25,30][t-1]}% Max HP",
-    "phantom_reflex": lambda t: f"On miss: +{[10,15,20,25,30][t-1]}% evasion, lose ",
-    "chain_reaction": lambda t: f"+{[8,12,16,20,24][t-1]}% crit-dmg per consecutive crit (max 5)",
-    "regenerative_tissue": lambda t: f"Heal {[2,3,4,5,6][t-1]}% Max HP after any zero-damage round",
-    "fevered_strike": lambda t: f"+{[5,8,11,14,17][t-1]}% ATK per potion consumed this fight",
-    "predators_mark": lambda t: f"Crits mark target; next hit deals +{[15,20,25,30,35][t-1]}% bonus dmg",
-    "counterforce": lambda t: f"{[5,8,11,14,17][t-1]}% of total DEF added as flat ATK",
-    "tenacity": lambda t: f"HP < 40% trigger: +{[10,15,20,25,30][t-1]}% ATK & DEF for this fight",
-    "spectral_waltz": lambda t: f"+1 blade/hit (max {[5,6,7,8,10][t-1]}); crits release all at {[5,5,6,7,8][t-1]}% ATK each",
-    "puncture": lambda t: f"Crits build {[5,8,11,14,17][t-1]}% crit-dmg as bleed; 50% bursts on miss",
-    "flash_frost": lambda t: f"After {[15,13,11,9,7][t-1]} consecutive misses: freeze monster 1 round",
-    "ward_inoculation": lambda t: f"Start: ward→DEF + Max HP doubled; ward gained deals {[60,70,80,90,100][t-1]}% as dmg",
-    "soul_fracture": lambda t: f"+{[3,5,7,9,11][t-1]}% ATK per 10% Max HP lost this combat",
+    "reverberation": lambda t: (
+        f"Echoing hits have {[40, 50, 60, 70, 80][t - 1]}% to retrigger"
+    ),
+    "soothing_venom": lambda t: (
+        f"{[2, 4, 6, 8, 10][t - 1]}% of poison dmg leeched as hp"
+    ),
+    "iron_momentum": lambda t: (
+        f"+{[3, 5, 7, 9, 11][t - 1]}% ATK per consecutive hit (max 5; resets on miss)"
+    ),
+    "serrated": lambda t: (
+        f"−{[5, 10, 15, 20, 25][t - 1]} monster ATK per hit (crits: ×2)"
+    ),
+    "haemorrhage": lambda t: (
+        f"Hits add {[2, 3, 4, 5, 6][t - 1]}% ATK to bleed pool; pool ticks 10%/round"
+    ),
+    "vital_resonance": lambda t: (
+        f"{[10, 15, 20, 25, 30][t - 1]}% of ward gained simultaneously heals HP"
+    ),
+    "executioners_rite": lambda t: (
+        f"+{[10, 15, 20, 25, 30][t - 1]}% ATK & crit-dmg while monster HP < 30%"
+    ),
+    "bloodthirst": lambda t: f"On kill: restore {[10, 15, 20, 25, 30][t - 1]}% Max HP",
+    "phantom_reflex": lambda t: (
+        f"On miss: +{[10, 15, 20, 25, 30][t - 1]}% evasion, lose "
+    ),
+    "chain_reaction": lambda t: (
+        f"+{[8, 12, 16, 20, 24][t - 1]}% crit-dmg per consecutive crit (max 5)"
+    ),
+    "regenerative_tissue": lambda t: (
+        f"Heal {[2, 3, 4, 5, 6][t - 1]}% Max HP after any zero-damage round"
+    ),
+    "fevered_strike": lambda t: (
+        f"+{[5, 8, 11, 14, 17][t - 1]}% ATK per potion consumed this fight"
+    ),
+    "predators_mark": lambda t: (
+        f"Crits mark target; next hit deals +{[15, 20, 25, 30, 35][t - 1]}% bonus dmg"
+    ),
+    "counterforce": lambda t: (
+        f"{[5, 8, 11, 14, 17][t - 1]}% of total DEF added as flat ATK"
+    ),
+    "tenacity": lambda t: (
+        f"HP < 40% trigger: +{[10, 15, 20, 25, 30][t - 1]}% ATK & DEF for this fight"
+    ),
+    "spectral_waltz": lambda t: (
+        f"+1 blade/hit (max {[5, 6, 7, 8, 10][t - 1]}); crits release all at {[5, 5, 6, 7, 8][t - 1]}% ATK each"
+    ),
+    "puncture": lambda t: (
+        f"Crits build {[5, 8, 11, 14, 17][t - 1]}% crit-dmg as bleed; 50% bursts on miss"
+    ),
+    "flash_frost": lambda t: (
+        f"After {[15, 13, 11, 9, 7][t - 1]} consecutive misses: freeze monster 1 round"
+    ),
+    "ward_inoculation": lambda t: (
+        f"Start: ward→DEF + Max HP doubled; ward gained deals {[60, 70, 80, 90, 100][t - 1]}% as dmg"
+    ),
+    "soul_fracture": lambda t: (
+        f"+{[3, 5, 7, 9, 11][t - 1]}% ATK per 10% Max HP lost this combat"
+    ),
 }

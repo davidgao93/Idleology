@@ -62,8 +62,12 @@ class Apex(commands.Cog, name="apex"):
 
         embed = _build_lobby_embed(player_name, profile, charges, secs_to_next)
         view = ApexLobbyView(
-            self.bot, user_id, server_id,
-            player_name, profile, charges,
+            self.bot,
+            user_id,
+            server_id,
+            player_name,
+            profile,
+            charges,
         )
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
@@ -93,14 +97,27 @@ class Apex(commands.Cog, name="apex"):
             )
 
         from core.items.factory import load_player
-        from core.apex.models import soul_stone_from_db, shards_from_db, meta_shards_from_db
-        from core.apex.views.soul_stone_view import SoulStoneView, _build_soul_stone_embed
+        from core.apex.models import (
+            soul_stone_from_db,
+            shards_from_db,
+            meta_shards_from_db,
+        )
+        from core.apex.views.soul_stone_view import (
+            SoulStoneView,
+            _build_soul_stone_embed,
+        )
 
         player = await load_player(user_id, existing_user, self.bot.database)
 
-        ss_row = await self.bot.database.apex.get_or_create_soul_stone(user_id, server_id)
-        shards_row = await self.bot.database.apex.get_or_create_shards(user_id, server_id)
-        meta_row = await self.bot.database.apex.get_or_create_meta_shards(user_id, server_id)
+        ss_row = await self.bot.database.apex.get_or_create_soul_stone(
+            user_id, server_id
+        )
+        shards_row = await self.bot.database.apex.get_or_create_shards(
+            user_id, server_id
+        )
+        meta_row = await self.bot.database.apex.get_or_create_meta_shards(
+            user_id, server_id
+        )
         soul_stone = soul_stone_from_db(ss_row)
         shards = shards_from_db(shards_row)
         meta = meta_shards_from_db(meta_row)
@@ -111,7 +128,6 @@ class Apex(commands.Cog, name="apex"):
         view = SoulStoneView(self.bot, user_id, server_id, player)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
-
 
 
 async def setup(bot):

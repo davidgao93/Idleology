@@ -1,6 +1,7 @@
 """
 core/quests/shop_views.py — Token Shop UI for Quest Board.
 """
+
 from __future__ import annotations
 
 import discord
@@ -120,10 +121,13 @@ class TokenShopView(BaseView):
                     return
 
             # Spend tokens
-            ok = await self.bot.database.quests.spend_tokens(self.user_id, item_def["cost"])
+            ok = await self.bot.database.quests.spend_tokens(
+                self.user_id, item_def["cost"]
+            )
             if not ok:
                 await interaction.followup.send(
-                    f"Not enough Quest Tokens (need {item_def['cost']}).", ephemeral=True
+                    f"Not enough Quest Tokens (need {item_def['cost']}).",
+                    ephemeral=True,
                 )
                 return
 
@@ -144,6 +148,7 @@ class TokenShopView(BaseView):
 
     async def _apply_item(self, item_def: dict, meta: dict) -> str:
         import random as _random
+
         item_id = item_def["id"]
 
         # ── Consumables ──────────────────────────────────────────────────────
@@ -153,15 +158,21 @@ class TokenShopView(BaseView):
 
         elif item_id == "equip_cache":
             from core.combat.economy.loot import (
-                generate_accessory, generate_armor, generate_boot,
-                generate_glove, generate_helmet, generate_weapon,
+                generate_accessory,
+                generate_armor,
+                generate_boot,
+                generate_glove,
+                generate_helmet,
+                generate_weapon,
             )
+
             user_row = await self.bot.database.users.get(self.user_id, self.server_id)
             level = user_row["level"] if user_row else 1
             ilvl = min(level, 100)
             slot = _random.choices(
                 ["weapon", "armor", "accessory", "glove", "boot", "helmet"],
-                weights=[35, 10, 25, 10, 10, 10], k=1
+                weights=[35, 10, 25, 10, 10, 10],
+                k=1,
             )[0]
             if slot == "weapon":
                 item = await generate_weapon(self.user_id, ilvl, False)
@@ -190,8 +201,11 @@ class TokenShopView(BaseView):
             for _ in range(qty):
                 rtype = _random.choice(rune_pool)
                 await self.bot.database.users.modify_currency(self.user_id, rtype, 1)
-                received.append(rtype.replace("_runes", "").replace("_", " ").title() + " Rune")
+                received.append(
+                    rtype.replace("_runes", "").replace("_", " ").title() + " Rune"
+                )
             from collections import Counter
+
             tally = Counter(received)
             return "💎 Rune Cache: " + ", ".join(f"{v}× {k}" for k, v in tally.items())
 
@@ -204,12 +218,15 @@ class TokenShopView(BaseView):
                 await self.bot.database.users.modify_currency(self.user_id, ktype, 1)
                 received.append(ktype.replace("_", " ").title())
             from collections import Counter
+
             tally = Counter(received)
             return "🗝️ Key Cache: " + ", ".join(f"{v}× {k}" for k, v in tally.items())
 
         # ── Utility ──────────────────────────────────────────────────────────
         elif item_id == "board_reset":
-            await self.bot.database.quests.reset_board_cooldown(self.user_id, self.server_id)
+            await self.bot.database.quests.reset_board_cooldown(
+                self.user_id, self.server_id
+            )
             return "Board cooldown cleared!"
 
         elif item_id == "horizon_boost":
@@ -221,19 +238,29 @@ class TokenShopView(BaseView):
 
         # ── Permanent Upgrades ───────────────────────────────────────────────
         elif item_id == "enrichment":
-            await self.bot.database.quests.set_meta_field(self.user_id, "enrichment_unlocked", 1)
-            return "Enrichment unlocked! Quest gold rewards permanently increased by 50%."
+            await self.bot.database.quests.set_meta_field(
+                self.user_id, "enrichment_unlocked", 1
+            )
+            return (
+                "Enrichment unlocked! Quest gold rewards permanently increased by 50%."
+            )
 
         elif item_id == "prospector_license":
-            await self.bot.database.quests.set_meta_field(self.user_id, "prospector_unlocked", 1)
+            await self.bot.database.quests.set_meta_field(
+                self.user_id, "prospector_unlocked", 1
+            )
             return "Prospector's License unlocked! Gathering cache granted on every quest turn-in."
 
         elif item_id == "quest_veteran":
-            await self.bot.database.quests.set_meta_field(self.user_id, "veteran_unlocked", 1)
+            await self.bot.database.quests.set_meta_field(
+                self.user_id, "veteran_unlocked", 1
+            )
             return "Quest Veteran unlocked! +1 bonus token on every completion."
 
         elif item_id == "extra_slot":
-            await self.bot.database.quests.set_meta_field(self.user_id, "extra_slot_unlocked", 1)
+            await self.bot.database.quests.set_meta_field(
+                self.user_id, "extra_slot_unlocked", 1
+            )
             return "Contract Extension unlocked! 4th slot available."
 
         return "Purchase applied."
@@ -241,6 +268,7 @@ class TokenShopView(BaseView):
     async def _on_back(self, interaction: Interaction) -> None:
         await interaction.response.defer()
         from core.quests.views import QuestBoardView
+
         board_view = QuestBoardView(self.bot, self.user_id, self.server_id)
         await board_view.load()
         board_view._build_view_components()

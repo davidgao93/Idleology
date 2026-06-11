@@ -8,7 +8,9 @@ from core.skills.mechanics import SkillMechanics
 
 
 class DelveEntryView(BaseView):
-    def __init__(self, bot, user_id, server_id, cost, start_callback, *, parent_gather_view=None):
+    def __init__(
+        self, bot, user_id, server_id, cost, start_callback, *, parent_gather_view=None
+    ):
         super().__init__(bot, user_id, server_id, timeout=600)
         self.cost = cost
         self.start_callback = start_callback
@@ -57,7 +59,16 @@ class DelveEntryView(BaseView):
 
 
 class DelveView(BaseView):
-    def __init__(self, bot, user_id, server_id, state: DelveState, stats: dict, *, parent_gather_view=None):
+    def __init__(
+        self,
+        bot,
+        user_id,
+        server_id,
+        state: DelveState,
+        stats: dict,
+        *,
+        parent_gather_view=None,
+    ):
         super().__init__(bot, user_id, server_id, timeout=600)
         self.state = state
         self.stats = stats
@@ -385,7 +396,11 @@ class DelveView(BaseView):
             )
             momentum = SkillMechanics.get_momentum_minutes(quality)
             if quality != "none":
-                quality_labels = {"good": "🌟 Good", "great": "⭐ Great", "masterful": "✨ Masterful"}
+                quality_labels = {
+                    "good": "🌟 Good",
+                    "great": "⭐ Great",
+                    "masterful": "✨ Masterful",
+                }
                 quality_txt = quality_labels[quality]
                 if momentum:
                     quality_txt += f" — +{momentum} min Momentum"
@@ -470,7 +485,11 @@ class DelveView(BaseView):
         )
 
         new_view = DelveView(
-            self.bot, self.user_id, self.server_id, new_state, stats,
+            self.bot,
+            self.user_id,
+            self.server_id,
+            new_state,
+            stats,
             parent_gather_view=self.parent_gather_view,
         )
         embed = new_view.build_embed("Systems re-initialized. Permit renewed.")
@@ -506,17 +525,17 @@ class DelveUpgradeView(BaseView):
         self.children[0].disabled = shards < fuel_cost or self.stats["fuel_lvl"] >= 10
 
         struct_cost = DelveMechanics.get_upgrade_cost(self.stats["struct_lvl"])
-        self.children[1].label = (
-            f"Struct Lvl {self.stats['struct_lvl']} ({struct_cost} 💎)"
-        )
+        self.children[
+            1
+        ].label = f"Struct Lvl {self.stats['struct_lvl']} ({struct_cost} 💎)"
         self.children[1].disabled = (
             shards < struct_cost or self.stats["struct_lvl"] >= 10
         )
 
         sensor_cost = DelveMechanics.get_upgrade_cost(self.stats["sensor_lvl"])
-        self.children[2].label = (
-            f"Sensor Lvl {self.stats['sensor_lvl']} ({sensor_cost} 💎)"
-        )
+        self.children[
+            2
+        ].label = f"Sensor Lvl {self.stats['sensor_lvl']} ({sensor_cost} 💎)"
         self.children[2].disabled = (
             shards < sensor_cost or self.stats["sensor_lvl"] >= 8
         )

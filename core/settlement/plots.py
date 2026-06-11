@@ -29,12 +29,27 @@ DEAD_CORNERS: frozenset[tuple[int, int]] = frozenset({(0, 0), (0, 4), (4, 0), (4
 
 PLOT_POSITIONS: dict[int, tuple[int, int]] = {
     # Inner ring — clockwise from left of TH
-    1:  (2, 1),  2:  (1, 1),  3:  (1, 2),  4:  (1, 3),
-    5:  (2, 3),  6:  (3, 3),  7:  (3, 2),  8:  (3, 1),
+    1: (2, 1),
+    2: (1, 1),
+    3: (1, 2),
+    4: (1, 3),
+    5: (2, 3),
+    6: (3, 3),
+    7: (3, 2),
+    8: (3, 1),
     # Outer ring — clockwise from bottom-left
-    9:  (3, 0), 10:  (2, 0), 11:  (1, 0), 12:  (0, 1),
-   13:  (0, 2), 14:  (0, 3), 15:  (1, 4), 16:  (2, 4),
-   17:  (3, 4), 18:  (4, 3), 19:  (4, 2), 20:  (4, 1),
+    9: (3, 0),
+    10: (2, 0),
+    11: (1, 0),
+    12: (0, 1),
+    13: (0, 2),
+    14: (0, 3),
+    15: (1, 4),
+    16: (2, 4),
+    17: (3, 4),
+    18: (4, 3),
+    19: (4, 2),
+    20: (4, 1),
 }
 
 # (row, col) → plot_index; 0 = Town Hall
@@ -49,71 +64,78 @@ POSITION_TO_PLOT[TH_POSITION] = 0
 # ---------------------------------------------------------------------------
 
 BUILDING_CODES: dict[str, tuple[str, str]] = {
-    "logging_camp":      ("LOG", "CMP"),
-    "quarry":            ("QUA", "RRY"),
-    "foundry":           ("FOU", "NDY"),
-    "sawmill":           ("SAW", "MIL"),
-    "reliquary":         ("REL", "QRY"),
-    "market":            ("MAR", "KET"),
-    "barracks":          ("BAR", "RCK"),
-    "temple":            ("TEM", "PLE"),
-    "apothecary":        ("APO", "ECY"),
-    "black_market":      ("BLK", "MKT"),
-    "companion_ranch":   ("COM", "RCH"),
-    "hatchery":          ("HAT", "CHR"),
-    "celestial_shrine":  ("CEL", "SHR"),
-    "infernal_shrine":   ("INF", "SHR"),
-    "void_shrine":       ("VOI", "SHR"),
-    "twin_shrine":       ("TWN", "SHR"),
+    "logging_camp": ("LOG", "CMP"),
+    "quarry": ("QUA", "RRY"),
+    "foundry": ("FOU", "NDY"),
+    "sawmill": ("SAW", "MIL"),
+    "reliquary": ("REL", "QRY"),
+    "market": ("MAR", "KET"),
+    "barracks": ("BAR", "RCK"),
+    "temple": ("TEM", "PLE"),
+    "apothecary": ("APO", "ECY"),
+    "black_market": ("BLK", "MKT"),
+    "companion_ranch": ("COM", "RCH"),
+    "hatchery": ("HAT", "CHR"),
+    "celestial_shrine": ("CEL", "SHR"),
+    "infernal_shrine": ("INF", "SHR"),
+    "void_shrine": ("VOI", "SHR"),
+    "twin_shrine": ("TWN", "SHR"),
     "corruption_shrine": ("COR", "SHR"),
-    "war_camp":          ("WAR", "CMP"),
+    "war_camp": ("WAR", "CMP"),
     # Meta buildings
     "servants_quarters": ("SRV", "QTR"),
-    "grand_cathedral":   ("GRD", "CTH"),
-    "supply_depot":      ("SUP", "DPT"),
-    "watchtower":        ("WAT", "TWR"),
-    "foremans_post":     ("FOR", "PST"),
-    "shrine_garden":     ("SHR", "GDN"),
-    "encampment":        ("ENC", "AMP"),
-    "apothecary_annex":  ("APO", "ANX"),
+    "grand_cathedral": ("GRD", "CTH"),
+    "supply_depot": ("SUP", "DPT"),
+    "watchtower": ("WAT", "TWR"),
+    "foremans_post": ("FOR", "PST"),
+    "shrine_garden": ("SHR", "GDN"),
+    "encampment": ("ENC", "AMP"),
+    "apothecary_annex": ("APO", "ANX"),
 }
 
 # 1:1 emoji mapping — used in the dashboard legend
 BUILDING_EMOJIS: dict[str, str] = {
-    "logging_camp":      "🪵",
-    "quarry":            "🪨",
-    "foundry":           "⚒️",
-    "sawmill":           "🪚",
-    "reliquary":         "🏺",
-    "market":            "💰",
-    "barracks":          "🛡️",
-    "temple":            "⛪",
-    "apothecary":        "⚗️",
-    "black_market":      "🕵️",
-    "companion_ranch":   "🐾",
-    "hatchery":          "🐣",
-    "celestial_shrine":  "✨",
-    "infernal_shrine":   "🌋",
-    "void_shrine":       "🔮",
-    "twin_shrine":       "♊",
+    "logging_camp": "🪵",
+    "quarry": "🪨",
+    "foundry": "⚒️",
+    "sawmill": "🪚",
+    "reliquary": "🏺",
+    "market": "💰",
+    "barracks": "🛡️",
+    "temple": "⛪",
+    "apothecary": "⚗️",
+    "black_market": "🕵️",
+    "companion_ranch": "🐾",
+    "hatchery": "🐣",
+    "celestial_shrine": "✨",
+    "infernal_shrine": "🌋",
+    "void_shrine": "🔮",
+    "twin_shrine": "♊",
     "corruption_shrine": "☠️",
-    "war_camp":          "⚔️",
+    "war_camp": "⚔️",
     # Meta buildings
     "servants_quarters": "🏠",
-    "grand_cathedral":   "🕍",
-    "supply_depot":      "📦",
-    "watchtower":        "🗼",
-    "foremans_post":     "📋",
-    "shrine_garden":     "🌺",
-    "encampment":        "🏕️",
-    "apothecary_annex":  "💊",
+    "grand_cathedral": "🕍",
+    "supply_depot": "📦",
+    "watchtower": "🗼",
+    "foremans_post": "📋",
+    "shrine_garden": "🌺",
+    "encampment": "🏕️",
+    "apothecary_annex": "💊",
 }
 
 # Building types considered "shrines" for Grand Cathedral and Sacred Ground
-SHRINE_BUILDING_TYPES: frozenset[str] = frozenset({
-    "celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine",
-    "corruption_shrine", "uber_shrine", "temple",
-})
+SHRINE_BUILDING_TYPES: frozenset[str] = frozenset(
+    {
+        "celestial_shrine",
+        "infernal_shrine",
+        "void_shrine",
+        "twin_shrine",
+        "corruption_shrine",
+        "uber_shrine",
+        "temple",
+    }
+)
 
 # ---------------------------------------------------------------------------
 # Plot bonus table
@@ -194,16 +216,16 @@ PLOT_BONUS_TABLE: dict[str, dict] = {
 
 # Weighted pool for bonus rolls
 _BONUS_POOL: list[str] = (
-    ["common_ground"]      * 30 +
-    ["fertile_ground"]     * 12 +
-    ["rich_seam"]          * 12 +
-    ["bedrock"]            * 12 +
-    ["gold_vein"]          *  8 +
-    ["ancient_foundation"] *  8 +
-    ["trade_route"]        *  5 +
-    ["sacred_ground"]      *  5 +
-    ["ley_line"]           *  5 +
-    ["expedition_camp"]    *  3
+    ["common_ground"] * 30
+    + ["fertile_ground"] * 12
+    + ["rich_seam"] * 12
+    + ["bedrock"] * 12
+    + ["gold_vein"] * 8
+    + ["ancient_foundation"] * 8
+    + ["trade_route"] * 5
+    + ["sacred_ground"] * 5
+    + ["ley_line"] * 5
+    + ["expedition_camp"] * 3
 )
 
 # ---------------------------------------------------------------------------
@@ -237,9 +259,7 @@ META_BUILDINGS: dict[str, dict] = {
         "emoji": "📦",
         "cost": {"gold": 25_000, "timber": 1_000, "stone": 1_000},
         "max_workers": 100,
-        "description": (
-            "Adjacent converter buildings are 15% more effective."
-        ),
+        "description": ("Adjacent converter buildings are 15% more effective."),
         "effect": "converter_boost",
     },
     "watchtower": {
@@ -368,8 +388,9 @@ def get_effective_max_workers(
 
 def render_grid(
     developed_indices: set[int],
-    building_by_plot: dict[int, str],         # plot_index → building_type
-    pending_by_plot: dict[int, str] | None = None,  # plot_index → building_type (queued, not yet built)
+    building_by_plot: dict[int, str],  # plot_index → building_type
+    pending_by_plot: dict[int, str]
+    | None = None,  # plot_index → building_type (queued, not yet built)
 ) -> str:
     """
     Renders the 5×5 settlement grid in a monospace code block.
@@ -415,10 +436,12 @@ def render_grid(
                     else:
                         top_cells.append("---")
                         bot_cells.append(f"P{idx:02d}")
-        line_pairs.append((
-            "│" + "│".join(top_cells) + "│",
-            "│" + "│".join(bot_cells) + "│",
-        ))
+        line_pairs.append(
+            (
+                "│" + "│".join(top_cells) + "│",
+                "│" + "│".join(bot_cells) + "│",
+            )
+        )
 
     top = "┌───┬───┬───┬───┬───┐"
     sep = "├───┼───┼───┼───┼───┤"

@@ -121,6 +121,7 @@ class BuildingDetailView(SettlementBaseView):
                 self.building.tier,
                 self.building.workers_assigned,
             )
+
             def _rname(key: str) -> str:
                 return RESOURCE_DISPLAY_NAMES.get(key, key.replace("_", " ").title())
 
@@ -462,6 +463,7 @@ class BuildingDetailView(SettlementBaseView):
     async def open_hatchery(self, interaction: Interaction):
         await interaction.response.defer()
         from core.hatchery.views import HatcheryView
+
         hview = HatcheryView(
             self.bot,
             self.user_id,
@@ -476,29 +478,41 @@ class BuildingDetailView(SettlementBaseView):
     async def open_nursery(self, interaction: Interaction):
         await interaction.response.defer()
         from core.settlement.views.nursery_foundry import NurseryView
+
         view = NurseryView(
             self.bot, self.user_id, self.parent.server_id, self.building, self.parent
         )
-        projects = await self.bot.database.settlement.get_projects(self.user_id, self.parent.server_id)
-        await interaction.edit_original_response(embed=view.build_embed(projects=projects), view=view)
+        projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.parent.server_id
+        )
+        await interaction.edit_original_response(
+            embed=view.build_embed(projects=projects), view=view
+        )
 
     async def open_idlem_foundry(self, interaction: Interaction):
         await interaction.response.defer()
         from core.settlement.views.nursery_foundry import IdlemFoundryView
+
         zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
         view = IdlemFoundryView(
             self.bot, self.user_id, self.parent.server_id, self.building, self.parent
         )
-        projects = await self.bot.database.settlement.get_projects(self.user_id, self.parent.server_id)
+        projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.parent.server_id
+        )
         await interaction.edit_original_response(
-            embed=view.build_embed(projects=projects, idlem=zeal_data.get("idlem", 0)), view=view
+            embed=view.build_embed(projects=projects, idlem=zeal_data.get("idlem", 0)),
+            view=view,
         )
 
     async def open_black_market(self, interaction: Interaction):
         await interaction.response.defer()
         from core.settlement.views.black_market import BlackMarketView
+
         view = BlackMarketView(self.bot, self.user_id, self.parent, self.building)
-        pending = await self.bot.database.settlement.get_pending_deal(self.user_id, self.parent.server_id)
+        pending = await self.bot.database.settlement.get_pending_deal(
+            self.user_id, self.parent.server_id
+        )
         zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
         await interaction.edit_original_response(
             embed=view.build_embed(pending_deal=pending, zeal_data=zeal_data), view=view

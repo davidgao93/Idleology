@@ -16,7 +16,12 @@ import discord
 
 from core.apex.data import ZONE_DEFS
 from core.apex.mechanics import ApexMechanics
-from core.apex.models import profile_from_db, shards_from_db, meta_shards_from_db, soul_stone_from_db
+from core.apex.models import (
+    profile_from_db,
+    shards_from_db,
+    meta_shards_from_db,
+    soul_stone_from_db,
+)
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.economy.config import XP_LOSS_ON_DEFEAT
@@ -53,7 +58,9 @@ class ApexCombatView(CombatView):
             initial_logs,
         )
         self.zone_key = zone_key
-        self._return_view_factory = return_view_factory  # callable() → view to show after
+        self._return_view_factory = (
+            return_view_factory  # callable() → view to show after
+        )
 
     # ------------------------------------------------------------------
     # Override handle_end_state for apex-specific routing
@@ -82,8 +89,13 @@ class ApexCombatView(CombatView):
                 self.user_id, self.server_id, "soul_fragments", frags
             )
 
-            reward_data = {"xp": 0, "gold": 0, "msgs": [], "items": [],
-                           "soul_fragments": frags}
+            reward_data = {
+                "xp": 0,
+                "gold": 0,
+                "msgs": [],
+                "items": [],
+                "soul_fragments": frags,
+            }
 
             embed = combat_ui.create_defeat_embed(
                 self.player, self.monster, xp_loss, killing_blow=self.killing_blow
@@ -123,7 +135,10 @@ class ApexCombatView(CombatView):
         await self.bot.database.apex.modify_shard(
             self.user_id, self.server_id, shard_type, shard_amount
         )
-        reward_data["apex_shards"] = {"shard_type": shard_type, "shard_amount": shard_amount}
+        reward_data["apex_shards"] = {
+            "shard_type": shard_type,
+            "shard_amount": shard_amount,
+        }
 
         # Meta shard drops
         meta_gained = {}
@@ -142,7 +157,10 @@ class ApexCombatView(CombatView):
 
         try:
             from core.quests.mechanics import tick_quest_progress
-            await tick_quest_progress(self.bot, self.user_id, self.server_id, "apex_complete")
+
+            await tick_quest_progress(
+                self.bot, self.user_id, self.server_id, "apex_complete"
+            )
         except Exception as e:
             print(f"[Quest tick error in apex]: {e}")
 
@@ -173,8 +191,11 @@ class ApexCombatView(CombatView):
         # Post-victory view lets the player challenge again or return to lobby.
         # State is NOT cleared here — _PostApexView owns cleanup on action/timeout.
         post_view = _PostApexView(
-            self.bot, self.user_id, self.server_id,
-            self.player.name, self.zone_key,
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player.name,
+            self.zone_key,
         )
         await message.edit(embed=embed, view=post_view)
         post_view.message = message
@@ -203,14 +224,20 @@ class _PostApexView(BaseView):
     BaseView.on_timeout handles clear_active + button removal automatically.
     """
 
-    def __init__(self, bot, user_id: str, server_id: str, player_name: str, zone_key: str):
+    def __init__(
+        self, bot, user_id: str, server_id: str, player_name: str, zone_key: str
+    ):
         super().__init__(bot, user_id, server_id)
         self.player_name = player_name
         self.zone_key = zone_key
         self._processing = False
 
-    @discord.ui.button(label="Challenge Again", style=discord.ButtonStyle.danger, emoji="⚔️", row=0)
-    async def challenge_again(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(
+        label="Challenge Again", style=discord.ButtonStyle.danger, emoji="⚔️", row=0
+    )
+    async def challenge_again(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         if self._processing:
             await interaction.response.defer()
             return
@@ -266,25 +293,39 @@ class _PostApexView(BaseView):
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)
         if zone_log:
-            start_logs = {f"🌐 Zone — {ZONE_DEFS[self.zone_key].modifier_name}": zone_log, **start_logs}
+            start_logs = {
+                f"🌐 Zone — {ZONE_DEFS[self.zone_key].modifier_name}": zone_log,
+                **start_logs,
+            }
 
         zone = ZONE_DEFS[self.zone_key]
         embed = combat_ui.create_combat_embed(
-            player, monster, start_logs,
+            player,
+            monster,
+            start_logs,
             title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
         )
 
         view = ApexCombatView(
-            self.bot, self.user_id, self.server_id,
-            player, monster, self.zone_key, start_logs,
+            self.bot,
+            self.user_id,
+            self.server_id,
+            player,
+            monster,
+            self.zone_key,
+            start_logs,
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
         view.message = await interaction.original_response()
         self.stop()
 
-    @discord.ui.button(label="Return to Lobby", style=discord.ButtonStyle.secondary, emoji="🏹", row=0)
-    async def return_to_lobby(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(
+        label="Return to Lobby", style=discord.ButtonStyle.secondary, emoji="🏹", row=0
+    )
+    async def return_to_lobby(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         if self._processing:
             await interaction.response.defer()
             return
@@ -307,8 +348,12 @@ class _PostApexView(BaseView):
 
         secs = ApexMechanics.seconds_until_next_charge(profile)
         lobby_view = ApexLobbyView(
-            self.bot, self.user_id, self.server_id,
-            self.player_name, profile, charges,
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player_name,
+            profile,
+            charges,
         )
         lobby_embed = _build_lobby_embed(self.player_name, profile, charges, secs)
         await interaction.edit_original_response(embed=lobby_embed, view=lobby_view)

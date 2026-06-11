@@ -61,33 +61,51 @@ class UserRepository:
         await self.connection.execute(
             "DELETE FROM users WHERE user_id=? AND server_id=?", us
         )
-        await self.connection.execute(
-            "DELETE FROM ideologies WHERE user_id=?", u
-        )
+        await self.connection.execute("DELETE FROM ideologies WHERE user_id=?", u)
 
         # ── Best-effort cleanup: tables keyed by user_id only ──────────────
         _by_user = [
-            "items", "accessories", "armor", "gloves", "boots", "helmets",
+            "items",
+            "accessories",
+            "armor",
+            "gloves",
+            "boots",
+            "helmets",
             "companions",
-            "monster_parts", "monster_parts_equipped",
-            "monster_eggs", "incubated_encounters",
-            "mining", "fishing", "woodcutting",
-            "journey_milestones", "ascension_unlocks",
-            "codex_progress", "codex_tomes",
-            "alchemy_data", "potion_passives",
-            "synthesis_queue", "synthesis_queue_2", "synthesis_queue_3",
-            "duel_stats", "player_essences",
-            "user_partners", "user_partner_items", "user_partner_shards",
+            "monster_parts",
+            "monster_parts_equipped",
+            "monster_eggs",
+            "incubated_encounters",
+            "mining",
+            "fishing",
+            "woodcutting",
+            "journey_milestones",
+            "ascension_unlocks",
+            "codex_progress",
+            "codex_tomes",
+            "alchemy_data",
+            "potion_passives",
+            "synthesis_queue",
+            "synthesis_queue_2",
+            "synthesis_queue_3",
+            "duel_stats",
+            "player_essences",
+            "user_partners",
+            "user_partner_items",
+            "user_partner_shards",
             "paradise_jewel_data",
-            "hematurgy_passives", "hematurgy_blood",
-            "prestige_owned", "maw_participants",
-            "quest_board", "quest_contracts", "quest_horizon", "quest_meta",
+            "hematurgy_passives",
+            "hematurgy_blood",
+            "prestige_owned",
+            "maw_participants",
+            "quest_board",
+            "quest_contracts",
+            "quest_horizon",
+            "quest_meta",
         ]
         for table in _by_user:
             try:
-                await self.connection.execute(
-                    f"DELETE FROM {table} WHERE user_id=?", u
-                )
+                await self.connection.execute(f"DELETE FROM {table} WHERE user_id=?", u)
             except Exception as e:
                 print(f"[unregister] skipped {table}: {e}")
 
@@ -96,11 +114,17 @@ class UserRepository:
             "gathering_mastery",
             "hatchery_incubation",
             "delve_progress",
-            "slayer_profiles", "slayer_emblems",
+            "slayer_profiles",
+            "slayer_emblems",
             "uber_progress",
-            "settlements", "buildings", "settlement_plots", "settlement_research",
+            "settlements",
+            "buildings",
+            "settlement_plots",
+            "settlement_research",
             "apex_hunt_profiles",
-            "soul_stones", "soul_shards", "meta_shards",
+            "soul_stones",
+            "soul_shards",
+            "meta_shards",
             "boss_party_dispatch",
         ]
         for table in _by_user_server:
@@ -247,7 +271,9 @@ class UserRepository:
         Only columns in _CURRENCY_COLS are accepted.
         """
         if not self._COLUMN_RE.match(currency_column):
-            raise ValueError(f"modify_currency: invalid column name {currency_column!r}")
+            raise ValueError(
+                f"modify_currency: invalid column name {currency_column!r}"
+            )
         await self.connection.execute(
             f"UPDATE users SET {currency_column} = {currency_column} + ? WHERE user_id = ?",
             (amount, user_id),
@@ -259,7 +285,9 @@ class UserRepository:
     ) -> bool:
         """Deducts a currency column only if balance >= amount. Returns True on success."""
         if not self._COLUMN_RE.match(currency_column):
-            raise ValueError(f"deduct_currency_atomic: invalid column name {currency_column!r}")
+            raise ValueError(
+                f"deduct_currency_atomic: invalid column name {currency_column!r}"
+            )
         cursor = await self.connection.execute(
             f"UPDATE users SET {currency_column} = {currency_column} - ? "
             f"WHERE user_id = ? AND {currency_column} >= ?",
@@ -372,6 +400,7 @@ class UserRepository:
     async def get_dc_crafted_today(self, user_id: str) -> int:
         """Returns how many DCs have been crafted today; auto-resets on a new calendar day."""
         from datetime import date
+
         today = date.today().isoformat()
         async with self.connection.execute(
             "SELECT dc_crafted_today, last_dc_craft_date FROM users WHERE user_id = ?",
@@ -386,6 +415,7 @@ class UserRepository:
     async def add_dc_crafted_today(self, user_id: str, qty: int) -> None:
         """Increments dc_crafted_today; resets the counter automatically on a new day."""
         from datetime import date
+
         today = date.today().isoformat()
         await self.connection.execute(
             """
@@ -476,7 +506,9 @@ class UserRepository:
                 should_grant = True
             else:
                 try:
-                    elapsed = (now - datetime.fromisoformat(last_regen_str)).total_seconds()
+                    elapsed = (
+                        now - datetime.fromisoformat(last_regen_str)
+                    ).total_seconds()
                     if elapsed >= 3600:
                         should_grant = True
                 except ValueError:
@@ -593,7 +625,8 @@ class UserRepository:
     async def set_difficulty(self, user_id: str, level: int) -> None:
         """Persists the difficulty level (0–4)."""
         await self.connection.execute(
-            "UPDATE users SET hard_mode = ? WHERE user_id = ?", (max(0, min(4, level)), user_id)
+            "UPDATE users SET hard_mode = ? WHERE user_id = ?",
+            (max(0, min(4, level)), user_id),
         )
         await self.connection.commit()
 
@@ -723,7 +756,9 @@ class UserRepository:
             return json.loads(row[0])
         return None
 
-    async def set_pending_packages(self, user_id: str, server_id: str, packages) -> None:
+    async def set_pending_packages(
+        self, user_id: str, server_id: str, packages
+    ) -> None:
         import json
 
         val = json.dumps(packages) if packages else None

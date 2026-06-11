@@ -229,8 +229,10 @@ def step_seed_plots(conn: sqlite3.Connection) -> None:
 def step_alter_users_dc_limit(conn: sqlite3.Connection) -> None:
     print("\n[7] Adding DC daily-limit columns to 'users' …")
     existing = _columns(conn, "users")
-    _add_column(conn, "users", "dc_crafted_today",   "INTEGER NOT NULL DEFAULT 0", existing)
-    _add_column(conn, "users", "last_dc_craft_date",  "TEXT DEFAULT NULL",         existing)
+    _add_column(
+        conn, "users", "dc_crafted_today", "INTEGER NOT NULL DEFAULT 0", existing
+    )
+    _add_column(conn, "users", "last_dc_craft_date", "TEXT DEFAULT NULL", existing)
 
 
 # ---------------------------------------------------------------------------

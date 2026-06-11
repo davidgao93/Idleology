@@ -107,6 +107,7 @@ class PotentialView(BaseUpgradeView):
             )
             try:
                 from core.quests.mechanics import tick_quest_progress
+
                 await tick_quest_progress(
                     self.bot, self.user_id, str(interaction.guild_id), "rune_potential"
                 )

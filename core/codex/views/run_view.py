@@ -137,9 +137,15 @@ class CodexRunView(BaseView):
         self.chapters_cleared = 0
         self.waves_cleared_this_run = 0
         self.deaths = 0
-        self.chapter_start_xp = 0    # XP total at the start of the current chapter (for rollback)
-        self.chapter_start_gold = 0  # Gold total at the start of the current chapter (for rollback)
-        self.cleared_chapter_indices: set[int] = set()  # which chapter positions were cleared
+        self.chapter_start_xp = (
+            0  # XP total at the start of the current chapter (for rollback)
+        )
+        self.chapter_start_gold = (
+            0  # Gold total at the start of the current chapter (for rollback)
+        )
+        self.cleared_chapter_indices: set[int] = (
+            set()
+        )  # which chapter positions were cleared
         self.page_drops: list[int] = []  # chapter ids where a page dropped
 
         # XP/gold accumulation across the run
@@ -213,14 +219,30 @@ class CodexRunView(BaseView):
         self.player.bonus_crit = self.chapter_wave_baseline["bonus_crit"]
         self.player.bonus_max_hp = self.chapter_wave_baseline.get("bonus_max_hp", 0)
         self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
-        self.player.atk_multiplier = self.chapter_wave_baseline.get("atk_multiplier", 1.0)
-        self.player.def_multiplier = self.chapter_wave_baseline.get("def_multiplier", 1.0)
-        self.player.crit_multiplier = self.chapter_wave_baseline.get("crit_multiplier", 1.0)
-        self.player.chapter_hit_penalty = self.chapter_wave_baseline.get("chapter_hit_penalty", 0)
-        self.player.chapter_pdr_reduction = self.chapter_wave_baseline.get("chapter_pdr_reduction", 0.0)
-        self.player.chapter_ward_gen_mult = self.chapter_wave_baseline.get("chapter_ward_gen_mult", 1.0)
-        self.player.chapter_crit_dmg_reduction = self.chapter_wave_baseline.get("chapter_crit_dmg_reduction", 0.0)
-        self.player.chapter_hp_entry_pct = self.chapter_wave_baseline.get("chapter_hp_entry_pct", 0.0)
+        self.player.atk_multiplier = self.chapter_wave_baseline.get(
+            "atk_multiplier", 1.0
+        )
+        self.player.def_multiplier = self.chapter_wave_baseline.get(
+            "def_multiplier", 1.0
+        )
+        self.player.crit_multiplier = self.chapter_wave_baseline.get(
+            "crit_multiplier", 1.0
+        )
+        self.player.chapter_hit_penalty = self.chapter_wave_baseline.get(
+            "chapter_hit_penalty", 0
+        )
+        self.player.chapter_pdr_reduction = self.chapter_wave_baseline.get(
+            "chapter_pdr_reduction", 0.0
+        )
+        self.player.chapter_ward_gen_mult = self.chapter_wave_baseline.get(
+            "chapter_ward_gen_mult", 1.0
+        )
+        self.player.chapter_crit_dmg_reduction = self.chapter_wave_baseline.get(
+            "chapter_crit_dmg_reduction", 0.0
+        )
+        self.player.chapter_hp_entry_pct = self.chapter_wave_baseline.get(
+            "chapter_hp_entry_pct", 0.0
+        )
         # Re-apply HP entry cap each wave (bonus_max_hp already restored above so total_max_hp is correct)
         if self.player.chapter_hp_entry_pct > 0:
             cap = int(self.player.total_max_hp * (1 - self.player.chapter_hp_entry_pct))
@@ -319,11 +341,19 @@ class CodexRunView(BaseView):
 
         # Hit chance — mirrors profile_ui logic
         _HIT_BASE_PCT = 60
-        hit_pct = int(p.equipped_weapon.hit_chance * 100) if p.equipped_weapon else _HIT_BASE_PCT
+        hit_pct = (
+            int(p.equipped_weapon.hit_chance * 100)
+            if p.equipped_weapon
+            else _HIT_BASE_PCT
+        )
         hit_ascension = p.get_ascension_bonuses()["hit"] if p.ascension_unlocks else 0
         hit_deadeye = 0
         if p.equipped_weapon:
-            for _passive in (p.equipped_weapon.passive, p.equipped_weapon.p_passive, p.equipped_weapon.u_passive):
+            for _passive in (
+                p.equipped_weapon.passive,
+                p.equipped_weapon.p_passive,
+                p.equipped_weapon.u_passive,
+            ):
                 if _passive and "deadeye" in _passive.lower():
                     try:
                         hit_deadeye += int(_passive.lower().split("_")[-1]) * 4
@@ -331,7 +361,14 @@ class CodexRunView(BaseView):
                         pass
         hit_companion = p._get_companion_bonus("hit")
         hit_emblem = p.get_emblem_bonus("accuracy") * 2
-        hit_total = hit_pct + hit_ascension + hit_deadeye + hit_companion + hit_emblem - p.chapter_hit_penalty
+        hit_total = (
+            hit_pct
+            + hit_ascension
+            + hit_deadeye
+            + hit_companion
+            + hit_emblem
+            - p.chapter_hit_penalty
+        )
         # NEET glove corrupted essence forces accuracy to 0 in combat
         if p.get_glove_corrupted_essence() == "neet":
             hit_total = 0
@@ -342,7 +379,7 @@ class CodexRunView(BaseView):
         # Crit multiplier — reduced by chapter dullness modifier if active
         crit_multi = p.get_weapon_crit_multi()
         if p.chapter_crit_dmg_reduction > 0:
-            crit_multi *= (1 - p.chapter_crit_dmg_reduction)
+            crit_multi *= 1 - p.chapter_crit_dmg_reduction
 
         block = p.get_total_block()
         evasion = p.get_total_evasion()
@@ -432,7 +469,9 @@ class CodexRunView(BaseView):
     ) -> discord.Embed:
         is_perfect = self.deaths == 0 and self.chapters_cleared == 5
         if is_perfect:
-            description = "✨ **Perfect Codex Clear!** All 5 chapters without a single death."
+            description = (
+                "✨ **Perfect Codex Clear!** All 5 chapters without a single death."
+            )
         elif self.chapters_cleared == 5:
             description = "All 5 chapters cleared!"
         else:
@@ -673,7 +712,10 @@ class CodexRunView(BaseView):
 
         try:
             from core.quests.mechanics import tick_quest_progress
-            await tick_quest_progress(self.bot, self.user_id, getattr(self, "server_id", ""), "codex_complete")
+
+            await tick_quest_progress(
+                self.bot, self.user_id, getattr(self, "server_id", ""), "codex_complete"
+            )
         except Exception as e:
             print(f"[Quest tick error in codex]: {e}")
 

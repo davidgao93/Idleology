@@ -53,7 +53,9 @@ class Delve(commands.Cog):
                 async def start_game(inter: Interaction):
                     state = DelveState(
                         max_fuel=DelveMechanics.get_max_fuel(delve_stats["fuel_lvl"]),
-                        current_fuel=DelveMechanics.get_max_fuel(delve_stats["fuel_lvl"]),
+                        current_fuel=DelveMechanics.get_max_fuel(
+                            delve_stats["fuel_lvl"]
+                        ),
                         pickaxe_tier=pickaxe,
                     )
                     view = DelveView(self.bot, user_id, server_id, state, delve_stats)
@@ -73,9 +75,13 @@ class Delve(commands.Cog):
                     "Extract before the mines consume you."
                 )
                 entry_embed.set_thumbnail(url=DELVE_HUB)
-                return entry_embed, DelveEntryView(self.bot, user_id, server_id, entry_cost, start_game)
+                return entry_embed, DelveEntryView(
+                    self.bot, user_id, server_id, entry_cost, start_game
+                )
 
-            gate = TutorialGateView(self.bot, user_id, server_id, "delve", build_main=_build_entry)
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "delve", build_main=_build_entry
+            )
             await interaction.response.send_message(embed=gate.build_embed(), view=gate)
             gate.message = await interaction.original_response()
             return

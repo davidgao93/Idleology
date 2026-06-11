@@ -72,12 +72,14 @@ class UpgradeView(BaseView):
             cost_str = f"{cost.get('matching', 0)}x {shard_type.title()}"
             if cost.get("rift", 0) > 0:
                 cost_str += f" + {cost['rift']}x Rift"
-            options.append(discord.SelectOption(
-                label=f"Slot {slot_num}: {passive_display} T{slot.tier}",
-                value=str(slot_num),
-                description=f"Cost: {cost_str} → T{slot.tier + 1}",
-                emoji="⬆️",
-            ))
+            options.append(
+                discord.SelectOption(
+                    label=f"Slot {slot_num}: {passive_display} T{slot.tier}",
+                    value=str(slot_num),
+                    description=f"Cost: {cost_str} → T{slot.tier + 1}",
+                    emoji="⬆️",
+                )
+            )
 
         if not options:
             return
@@ -204,7 +206,9 @@ class UpgradeView(BaseView):
         ]
         if down > 0:
             outcome_lines.append(f"⬇️ Downgrade (T{max(1, slot.tier - 1)}): **{down}%**")
-        embed.add_field(name="📊 Outcomes", value="\n".join(outcome_lines), inline=False)
+        embed.add_field(
+            name="📊 Outcomes", value="\n".join(outcome_lines), inline=False
+        )
 
         # Active meta shards (reflect current toggle state)
         if heart:
@@ -286,7 +290,9 @@ class UpgradeView(BaseView):
 
         elif outcome == "stay":
             result_title = "⏺️ Upgrade Failed — No Change"
-            result_desc = f"**{passive_display}** remains at **T{slot.tier}**. No regression."
+            result_desc = (
+                f"**{passive_display}** remains at **T{slot.tier}**. No regression."
+            )
             color = 0xFFAA00
 
         else:  # downgrade
@@ -331,8 +337,15 @@ class UpgradeView(BaseView):
         """Rebuilds and transitions back to the SoulStoneView with fresh DB data."""
         await interaction.response.defer()
 
-        from core.apex.models import soul_stone_from_db, shards_from_db, meta_shards_from_db
-        from core.apex.views.soul_stone_view import SoulStoneView, _build_soul_stone_embed
+        from core.apex.models import (
+            soul_stone_from_db,
+            shards_from_db,
+            meta_shards_from_db,
+        )
+        from core.apex.views.soul_stone_view import (
+            SoulStoneView,
+            _build_soul_stone_embed,
+        )
 
         ss_row = await self.bot.database.apex.get_or_create_soul_stone(
             self.user_id, self.server_id
@@ -378,7 +391,9 @@ class UpgradeView(BaseView):
             cost = UPGRADE_COSTS.get(slot.tier, {})
             matching_cost = cost.get("matching", 0)
             rift_cost = cost.get("rift", 0)
-            suc, stay, down = ApexMechanics.upgrade_outcomes_display(slot.tier, heart, blood)
+            suc, stay, down = ApexMechanics.upgrade_outcomes_display(
+                slot.tier, heart, blood
+            )
 
             cost_str = f"{matching_cost}x {shard_type.title()}"
             if rift_cost > 0:

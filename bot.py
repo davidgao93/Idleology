@@ -436,9 +436,9 @@ class DiscordBot(commands.Bot):
 class StateManager:
     def __init__(self, logger, timeout_minutes=10):
         self.logger = logger
-        self.active_operations: Dict[str, Tuple[str, float]] = (
-            {}
-        )  # user_id: (operation, timestamp)
+        self.active_operations: Dict[
+            str, Tuple[str, float]
+        ] = {}  # user_id: (operation, timestamp)
         self.timeout_seconds = timeout_minutes * 60
 
     def set_active(self, user_id: str, operation: str):

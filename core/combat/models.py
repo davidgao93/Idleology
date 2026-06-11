@@ -80,28 +80,46 @@ class CombatState:
     jewel_acrimony_dot: int = 0
     jewel_acrimony_dot_dmg: int = 0
     # Hematurgy passive transients
-    hema_momentum_stacks: int = 0       # Iron Momentum ATK stacks (max 5), resets on miss
-    hema_bleed_total: int = 0           # Haemorrhage accumulated bleed pool
-    hema_chain_stacks: int = 0          # Chain Reaction crit-dmg stacks (max 5), resets on non-crit
-    hema_phantom_stacks: int = 0        # Phantom Reflex evasion stacks (max 2), consumed by hits
-    hema_fevered_count: int = 0         # Fevered Strike: potions consumed this fight
-    hema_predators_mark: bool = False   # Predator's Mark active on monster
+    hema_momentum_stacks: int = 0  # Iron Momentum ATK stacks (max 5), resets on miss
+    hema_bleed_total: int = 0  # Haemorrhage accumulated bleed pool
+    hema_chain_stacks: int = (
+        0  # Chain Reaction crit-dmg stacks (max 5), resets on non-crit
+    )
+    hema_phantom_stacks: int = (
+        0  # Phantom Reflex evasion stacks (max 2), consumed by hits
+    )
+    hema_fevered_count: int = 0  # Fevered Strike: potions consumed this fight
+    hema_predators_mark: bool = False  # Predator's Mark active on monster
     hema_tenacity_triggered: bool = False  # Tenacity one-shot flag
-    hema_hp_lost_combat: int = 0        # Soul Fracture: HP lost during this combat only
-    hema_blade_count: int = 0           # Spectral Waltz blade count
-    hema_puncture_bleed: int = 0        # Puncture accumulated crit-bleed pool
-    hema_frost_misses: int = 0          # Flash Frost consecutive miss counter
-    hema_ward_inoculation: bool = False # Ward Inoculation active (no ward regen, ward→damage)
-    hema_ward_dmg_buffer: int = 0       # Ward Inoculation: accumulated ward→damage pending apply
-    hema_serrated_total: int = 0        # Serrated: cumulative ATK drained from monster this fight
+    hema_hp_lost_combat: int = 0  # Soul Fracture: HP lost during this combat only
+    hema_blade_count: int = 0  # Spectral Waltz blade count
+    hema_puncture_bleed: int = 0  # Puncture accumulated crit-bleed pool
+    hema_frost_misses: int = 0  # Flash Frost consecutive miss counter
+    hema_ward_inoculation: bool = (
+        False  # Ward Inoculation active (no ward regen, ward→damage)
+    )
+    hema_ward_dmg_buffer: int = (
+        0  # Ward Inoculation: accumulated ward→damage pending apply
+    )
+    hema_serrated_total: int = (
+        0  # Serrated: cumulative ATK drained from monster this fight
+    )
     # Codex chapter-level penalties (persist across all 7 waves of a chapter)
-    chapter_hit_penalty: int = 0          # flat subtraction from acc_bonus in hit rolls
-    chapter_pdr_reduction: float = 0.0   # multiplicative PDR reduction (0.30 = 30% less PDR)
-    chapter_ward_gen_mult: float = 1.0   # multiplier on all ward generation (1.0 = no reduction)
-    chapter_crit_dmg_reduction: float = 0.0  # multiplier reduction on player crit damage
-    chapter_hp_entry_pct: float = 0.0    # fraction of max HP the player may not exceed on wave entry
+    chapter_hit_penalty: int = 0  # flat subtraction from acc_bonus in hit rolls
+    chapter_pdr_reduction: float = (
+        0.0  # multiplicative PDR reduction (0.30 = 30% less PDR)
+    )
+    chapter_ward_gen_mult: float = (
+        1.0  # multiplier on all ward generation (1.0 = no reduction)
+    )
+    chapter_crit_dmg_reduction: float = (
+        0.0  # multiplier reduction on player crit damage
+    )
+    chapter_hp_entry_pct: float = (
+        0.0  # fraction of max HP the player may not exceed on wave entry
+    )
     # Apex zone state (set at combat start by ApexMechanics.apply_zone_modifier)
-    apex_zone: Optional[str] = None      # active zone key, or None for normal combat
+    apex_zone: Optional[str] = None  # active zone key, or None for normal combat
     # Prestige gathering boss (Artisan Mastery) transient
     is_snared: bool = False  # Verdant Colossus snare effect
 
@@ -167,10 +185,10 @@ class Monster:
     ward: int = 0
 
     # --- Apex zone fields ---
-    is_apex: bool = False                # True for apex hunt encounters
-    apex_zone: Optional[str] = None     # active zone key
-    zone_dr: float = 0.0                # siege_grounds extra DR against player hits
-    zone_dmg_boost: float = 0.0         # scorched extra multiplier on monster damage
+    is_apex: bool = False  # True for apex hunt encounters
+    apex_zone: Optional[str] = None  # active zone key
+    zone_dr: float = 0.0  # siege_grounds extra DR against player hits
+    zone_dmg_boost: float = 0.0  # scorched extra multiplier on monster damage
 
     # --- New modifier transient state ---
     # Flashfire: charges accumulate each monster turn; at 8 → true damage burst
@@ -196,7 +214,7 @@ class Monster:
     # Colossus Protocol: triggers once at <50% HP; negates first hit per turn
     colossus_active: bool = False
     colossus_hit_negated: bool = False  # reset each monster turn
-    colossus_dr: float = 0.0           # flat damage reduction applied to player hits
+    colossus_dr: float = 0.0  # flat damage reduction applied to player hits
     # Temporal Collapse: accumulates player damage over 6-turn window; burst true dmg
     temporal_window_damage: int = 0
     # Undying Resolve: triggers once on first death; immune + ATK burst for 2 turns
@@ -415,8 +433,10 @@ class Player:
     # Settlement buffs
     apothecary_workers: int = 0
     barracks_workers: int = 0
-    apothecary_boost_pct: float = 0.0            # from adjacent Apothecary Annex
-    shrine_effectiveness: dict = field(default_factory=dict)  # btype → drop-rate multiplier
+    apothecary_boost_pct: float = 0.0  # from adjacent Apothecary Annex
+    shrine_effectiveness: dict = field(
+        default_factory=dict
+    )  # btype → drop-rate multiplier
 
     # Slayer
     slayer_emblem: dict = field(default_factory=dict)
@@ -1112,6 +1132,7 @@ class Player:
         # Layer 6: Soul Stone Vulcan Resonance (offensive_2 / offensive_3)
         if self.soul_stone:
             from core.apex.mechanics import ApexMechanics
+
             res = ApexMechanics.get_resonance_multipliers(self.soul_stone)
             if res["atk_mult"] != 1.0:
                 total = int(total * res["atk_mult"])
@@ -1154,6 +1175,7 @@ class Player:
         # Layer 6: Soul Stone Athena Resonance (defensive_2 / defensive_3)
         if self.soul_stone:
             from core.apex.mechanics import ApexMechanics
+
             res = ApexMechanics.get_resonance_multipliers(self.soul_stone)
             if res["def_mult"] != 1.0:
                 total = int(total * res["def_mult"])
@@ -1205,9 +1227,8 @@ class Player:
 
         # Hard cap: 90% with Impregnable armor passive OR soul stone impregnable, otherwise 80%
         has_impregnable = (
-            (self.equipped_armor and self.equipped_armor.passive == "Impregnable")
-            or bool(ss_impregnable)
-        )
+            self.equipped_armor and self.equipped_armor.passive == "Impregnable"
+        ) or bool(ss_impregnable)
         cap = 90 if has_impregnable else 80
         return max(0, total), cap
 

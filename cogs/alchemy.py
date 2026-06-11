@@ -45,7 +45,13 @@ class Alchemy(commands.Cog, name="alchemy"):
 
         async def _build():
             view = AlchemyHubView(
-                self.bot, user_id, server_id, alchemy_level, passives, gold, spirit_stones
+                self.bot,
+                user_id,
+                server_id,
+                alchemy_level,
+                passives,
+                gold,
+                spirit_stones,
             )
             embed = view.build_embed()
             if welcome_msg:

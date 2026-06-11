@@ -325,10 +325,10 @@ class SettlementDashboardView(SettlementBaseView):
                 pct = int(p["invested_turns"] / max(1, p["required_turns"]) * 100)
                 label = p.get("data", {}).get("building_type", p["project_type"])
                 proj_lines.append(
-                    f"🔨 {label.replace('_',' ').title()} — {pct}% `{bar[:10]}`"
+                    f"🔨 {label.replace('_', ' ').title()} — {pct}% `{bar[:10]}`"
                 )
             if len(self.projects) > 5:
-                proj_lines.append(f"…+{len(self.projects)-5} more")
+                proj_lines.append(f"…+{len(self.projects) - 5} more")
             embed.add_field(
                 name="🏗️ Active Projects", value="\n".join(proj_lines), inline=False
             )
@@ -346,7 +346,8 @@ class SettlementDashboardView(SettlementBaseView):
                 ev_data_fmt = ev.get("data") or {}
 
                 class _Fmt(dict):
-                    def __missing__(self, key): return "?"
+                    def __missing__(self, key):
+                        return "?"
 
                 try:
                     desc = desc.format_map(_Fmt(ev_data_fmt))
@@ -631,37 +632,70 @@ class SettlementDashboardView(SettlementBaseView):
     # -------------------------------------------------------------------------
 
     async def show_building_list(self, interaction: Interaction):
-        _LEGACY = {"celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine", "corruption_shrine"}
+        _LEGACY = {
+            "celestial_shrine",
+            "infernal_shrine",
+            "void_shrine",
+            "twin_shrine",
+            "corruption_shrine",
+        }
         _REGULAR = [
-            ("🪵 Logging Camp",    "Generator · Timber · scales with tier & workers"),
-            ("🪨 Quarry",          "Generator · Stone · scales with tier & workers"),
-            ("🔥 Foundry",         "Converter · Ore → Bars · T1 Iron → T5 Idea"),
-            ("🌲 Sawmill",         "Converter · Logs → Planks · T1 Oak → T5 Idea"),
-            ("🦴 Reliquary",       "Converter · Bones → Essences · T1 Dehydrated → T5 Titanium"),
-            ("💰 Market",          "Generator · Gold · scales with tier & workers"),
-            ("⚔️ Barracks",        "Passive · +% Attack & Defence in combat"),
-            ("⛪ Temple",           "Passive · +% Propagate follower gain"),
-            ("💊 Apothecary",      "Passive · +Flat HP restored per potion use"),
-            ("🌑 Black Market",    "Special · Submit bundles for loot · invest Idlem to improve"),
+            ("🪵 Logging Camp", "Generator · Timber · scales with tier & workers"),
+            ("🪨 Quarry", "Generator · Stone · scales with tier & workers"),
+            ("🔥 Foundry", "Converter · Ore → Bars · T1 Iron → T5 Idea"),
+            ("🌲 Sawmill", "Converter · Logs → Planks · T1 Oak → T5 Idea"),
+            (
+                "🦴 Reliquary",
+                "Converter · Bones → Essences · T1 Dehydrated → T5 Titanium",
+            ),
+            ("💰 Market", "Generator · Gold · scales with tier & workers"),
+            ("⚔️ Barracks", "Passive · +% Attack & Defence in combat"),
+            ("⛪ Temple", "Passive · +% Propagate follower gain"),
+            ("💊 Apothecary", "Passive · +Flat HP restored per potion use"),
+            (
+                "🌑 Black Market",
+                "Special · Submit bundles for loot · invest Idlem to improve",
+            ),
             ("🐾 Companion Ranch", "Generator · Companion XP · distributed on collect"),
-            ("🥚 Hatchery",        "Special · Incubates eggs for Hematurgy drops · Lv50"),
-            ("🏕️ War Camp",        "Generator · Combat Stamina · capped at 10"),
-            ("👶 Nursery",         "Project Building · Workers per DT · scales with tier"),
-            ("⚗️ Idlem Foundry",   "Project Building · Idlem per DT · powers BM passive tree"),
-            ("🔮 Uber Shrine",     "Passive · Houses all 5 shrine statues for sigil drops"),
+            ("🥚 Hatchery", "Special · Incubates eggs for Hematurgy drops · Lv50"),
+            ("🏕️ War Camp", "Generator · Combat Stamina · capped at 10"),
+            ("👶 Nursery", "Project Building · Workers per DT · scales with tier"),
+            (
+                "⚗️ Idlem Foundry",
+                "Project Building · Idlem per DT · powers BM passive tree",
+            ),
+            ("🔮 Uber Shrine", "Passive · Houses all 5 shrine statues for sigil drops"),
         ]
         _META = [
-            ("🏠 Servant's Quarters", "Meta · +2% generator output per 10 workers to adjacent generators (cap +20%)"),
-            ("📦 Supply Depot",        "Meta · +15% converter effectiveness to adjacent converters"),
-            ("⛪ Grand Cathedral",      "Meta · Doubles worker cap for adjacent shrine buildings"),
-            ("🏯 Watchtower",           "Meta · Global +1%×tier worker cap on all regular buildings (no workers needed)"),
-            ("🏗️ Foreman's Post",       "Meta · +25% output to all adjacent buildings"),
-            ("🌸 Shrine Garden",        "Meta · +15% effectiveness to adjacent shrines"),
-            ("⛺ Encampment",           "Meta · +0.5 stamina/hr per 100 workers to adjacent War Camps"),
-            ("💊 Apothecary Annex",     "Meta · +4% flat heal per 100 workers to adjacent Apothecary"),
+            (
+                "🏠 Servant's Quarters",
+                "Meta · +2% generator output per 10 workers to adjacent generators (cap +20%)",
+            ),
+            (
+                "📦 Supply Depot",
+                "Meta · +15% converter effectiveness to adjacent converters",
+            ),
+            (
+                "⛪ Grand Cathedral",
+                "Meta · Doubles worker cap for adjacent shrine buildings",
+            ),
+            (
+                "🏯 Watchtower",
+                "Meta · Global +1%×tier worker cap on all regular buildings (no workers needed)",
+            ),
+            ("🏗️ Foreman's Post", "Meta · +25% output to all adjacent buildings"),
+            ("🌸 Shrine Garden", "Meta · +15% effectiveness to adjacent shrines"),
+            (
+                "⛺ Encampment",
+                "Meta · +0.5 stamina/hr per 100 workers to adjacent War Camps",
+            ),
+            (
+                "💊 Apothecary Annex",
+                "Meta · +4% flat heal per 100 workers to adjacent Apothecary",
+            ),
         ]
         regular_lines = "\n".join(f"**{n}** — {d}" for n, d in _REGULAR)
-        meta_lines    = "\n".join(f"**{n}** — {d}" for n, d in _META)
+        meta_lines = "\n".join(f"**{n}** — {d}" for n, d in _META)
         embed = discord.Embed(
             title="📖 Building List",
             color=discord.Color.blue(),
@@ -761,8 +795,10 @@ class SettlementDashboardView(SettlementBaseView):
             _effs = _ev_def.get("effects", {})
 
             def _rb(v):
-                if v == "band": return _ev_data.get("band", 0.0)
-                if v == "neg_band": return -_ev_data.get("band", 0.0)
+                if v == "band":
+                    return _ev_data.get("band", 0.0)
+                if v == "neg_band":
+                    return -_ev_data.get("band", 0.0)
                 return v if isinstance(v, (int, float)) else 0.0
 
             if "generator_bonus" in _effs:
@@ -895,8 +931,7 @@ class SettlementDashboardView(SettlementBaseView):
         embed.add_field(
             name="Last Collection",
             value=(
-                f"⏱️ Time since last collection: {hours:.2f}h\n\n"
-                f"📦 Yield:\n{formatted}"
+                f"⏱️ Time since last collection: {hours:.2f}h\n\n📦 Yield:\n{formatted}"
             ),
             inline=False,
         )

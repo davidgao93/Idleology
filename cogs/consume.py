@@ -57,6 +57,7 @@ class Consume(commands.Cog, name="consume"):
         blood = await self.bot.database.hematurgy.get_blood(user_id)
 
         from core.hematurgy.views import HematurgyView, _build_hematurgy_embed
+
         view = HematurgyView(
             self.bot, passives, blood, user_id=user_id, server_id=server_id
         )

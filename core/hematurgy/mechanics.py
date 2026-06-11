@@ -326,7 +326,6 @@ _MUTATIVE_WEIGHTS = [50, 20, 15, 15]
 
 
 class HematurgyMechanics:
-
     @staticmethod
     def roll_mutative_outcome() -> str:
         return random.choices(_MUTATIVE_OUTCOMES, weights=_MUTATIVE_WEIGHTS, k=1)[0]

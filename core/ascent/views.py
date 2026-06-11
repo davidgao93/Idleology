@@ -534,7 +534,10 @@ class AscentView(BaseView):
 
         try:
             from core.quests.mechanics import tick_quest_progress
-            await tick_quest_progress(self.bot, self.user_id, self.server_id, "ascent_floor")
+
+            await tick_quest_progress(
+                self.bot, self.user_id, self.server_id, "ascent_floor"
+            )
         except Exception as e:
             print(f"[Quest tick error in ascent]: {e}")
 

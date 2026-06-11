@@ -1,6 +1,7 @@
 """
 core/quests/views.py — Quest Board UI: pre-contract board, active contracts, horizon path.
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -53,9 +54,15 @@ class QuestBoardView(BaseView):
     async def load(self) -> None:
         """Load all quest state from DB."""
         self.meta = await self.bot.database.quests.get_meta(self.user_id)
-        self.board = await self.bot.database.quests.get_board(self.user_id, self.server_id)
-        self.contracts = await self.bot.database.quests.get_contracts(self.user_id, self.server_id)
-        self.horizon = await self.bot.database.quests.get_horizon(self.user_id, self.server_id)
+        self.board = await self.bot.database.quests.get_board(
+            self.user_id, self.server_id
+        )
+        self.contracts = await self.bot.database.quests.get_contracts(
+            self.user_id, self.server_id
+        )
+        self.horizon = await self.bot.database.quests.get_horizon(
+            self.user_id, self.server_id
+        )
 
         user_row = await self.bot.database.users.get(self.user_id, self.server_id)
         self._player_level = user_row["level"] if user_row else 1
@@ -90,7 +97,9 @@ class QuestBoardView(BaseView):
             await self.bot.database.quests.set_board_slot(
                 self.user_id, self.server_id, i, quest_id, tier
             )
-        self.board = await self.bot.database.quests.get_board(self.user_id, self.server_id)
+        self.board = await self.bot.database.quests.get_board(
+            self.user_id, self.server_id
+        )
 
     def _get_state(self) -> str:
         """Determine view state: 'board', 'contracts', or 'empty'."""
@@ -212,7 +221,11 @@ class QuestBoardView(BaseView):
             if path_def:
                 progress = self.horizon["progress"]
                 goal = self.horizon["goal"]
-                h_status = "✅ Complete — Claim your reward!" if self.horizon["completed"] else "In Progress"
+                h_status = (
+                    "✅ Complete — Claim your reward!"
+                    if self.horizon["completed"]
+                    else "In Progress"
+                )
                 embed.add_field(
                     name=f"🌀 Horizon Path — {path_def['name']}",
                     value=(
@@ -270,7 +283,9 @@ class QuestBoardView(BaseView):
                 style = ButtonStyle.secondary
                 disabled = tokens < 1
 
-            btn = _RerollButton(slot=slot, label=label, style=style, disabled=disabled, row=0)
+            btn = _RerollButton(
+                slot=slot, label=label, style=style, disabled=disabled, row=0
+            )
             self.add_item(btn)
 
         # Horizon path select
@@ -286,7 +301,9 @@ class QuestBoardView(BaseView):
         self.add_item(take_btn)
 
         # Quest Shop
-        shop_btn = discord.ui.Button(label="Quest Shop", style=ButtonStyle.secondary, row=2)
+        shop_btn = discord.ui.Button(
+            label="Quest Shop", style=ButtonStyle.secondary, row=2
+        )
         shop_btn.callback = self._on_open_shop
         self.add_item(shop_btn)
 
@@ -316,9 +333,7 @@ class QuestBoardView(BaseView):
 
         # Claim Horizon (row 3)
         horizon_complete = (
-            self.horizon
-            and self.horizon["completed"]
-            and not self.horizon["turned_in"]
+            self.horizon and self.horizon["completed"] and not self.horizon["turned_in"]
         )
         h_btn = discord.ui.Button(
             label="Claim Horizon",
@@ -330,7 +345,9 @@ class QuestBoardView(BaseView):
         self.add_item(h_btn)
 
         # Quest Shop
-        shop_btn = discord.ui.Button(label="Quest Shop", style=ButtonStyle.secondary, row=3)
+        shop_btn = discord.ui.Button(
+            label="Quest Shop", style=ButtonStyle.secondary, row=3
+        )
         shop_btn.callback = self._on_open_shop
         self.add_item(shop_btn)
 
@@ -343,7 +360,9 @@ class QuestBoardView(BaseView):
         # Allow horizon path selection even while waiting for the board to reset
         self.add_item(_HorizonSelect(self._player_level, self.horizon, row=0))
 
-        shop_btn = discord.ui.Button(label="Quest Shop", style=ButtonStyle.secondary, row=1)
+        shop_btn = discord.ui.Button(
+            label="Quest Shop", style=ButtonStyle.secondary, row=1
+        )
         shop_btn.callback = self._on_open_shop
         self.add_item(shop_btn)
 
@@ -461,7 +480,9 @@ class QuestBoardView(BaseView):
                 self.bot, self.user_id, self.server_id, slot
             )
             if not msgs:
-                await interaction.followup.send("That contract isn't ready to claim.", ephemeral=True)
+                await interaction.followup.send(
+                    "That contract isn't ready to claim.", ephemeral=True
+                )
                 return
 
             await self.load()
@@ -491,7 +512,9 @@ class QuestBoardView(BaseView):
         await interaction.response.defer()
 
         try:
-            await self.bot.database.quests.abandon_contract(self.user_id, self.server_id, slot)
+            await self.bot.database.quests.abandon_contract(
+                self.user_id, self.server_id, slot
+            )
             await self.refresh(interaction)
             await self._check_for_fresh_board_ready(interaction)
         finally:
@@ -504,7 +527,9 @@ class QuestBoardView(BaseView):
         if not active and not self._is_on_cooldown():
             await self._roll_fresh_board()
             self._build_view_components()
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
 
     # ------------------------------------------------------------------
     # Claim Horizon
@@ -521,17 +546,24 @@ class QuestBoardView(BaseView):
             user_row = await self.bot.database.users.get(self.user_id, self.server_id)
             # Build a minimal player-like object if needed by grant_horizon_reward
             from core.items.factory import load_player
+
             player = await load_player(self.user_id, user_row, self.bot.database)
 
-            msgs = await grant_horizon_reward(self.bot, self.user_id, self.server_id, player)
+            msgs = await grant_horizon_reward(
+                self.bot, self.user_id, self.server_id, player
+            )
             if not msgs:
-                await interaction.followup.send("Horizon quest isn't ready to claim.", ephemeral=True)
+                await interaction.followup.send(
+                    "Horizon quest isn't ready to claim.", ephemeral=True
+                )
                 return
 
             await self.load()
             self._build_view_components()
             embed = self.build_embed()
-            embed.add_field(name="🌀 Horizon Reward Claimed!", value="\n".join(msgs), inline=False)
+            embed.add_field(
+                name="🌀 Horizon Reward Claimed!", value="\n".join(msgs), inline=False
+            )
             await interaction.edit_original_response(embed=embed, view=self)
         finally:
             self._processing = False
@@ -540,7 +572,9 @@ class QuestBoardView(BaseView):
     # Horizon path selected (called by _HorizonSelect)
     # ------------------------------------------------------------------
 
-    async def handle_horizon_select(self, interaction: Interaction, path_id: str) -> None:
+    async def handle_horizon_select(
+        self, interaction: Interaction, path_id: str
+    ) -> None:
         if self._processing:
             await interaction.response.defer()
             return
@@ -572,8 +606,11 @@ class QuestBoardView(BaseView):
     async def _on_open_shop(self, interaction: Interaction) -> None:
         await interaction.response.defer()
         from core.quests.shop_views import TokenShopView
+
         tokens = self.meta.get("tokens", 0)
-        shop = TokenShopView(self.bot, parent=self, tokens=tokens, player_level=self._player_level)
+        shop = TokenShopView(
+            self.bot, parent=self, tokens=tokens, player_level=self._player_level
+        )
         embed = shop.build_embed()
         await interaction.edit_original_response(embed=embed, view=shop)
 
@@ -590,7 +627,9 @@ class QuestBoardView(BaseView):
 
 
 class _RerollButton(discord.ui.Button):
-    def __init__(self, slot: int, label: str, style: ButtonStyle, disabled: bool, row: int):
+    def __init__(
+        self, slot: int, label: str, style: ButtonStyle, disabled: bool, row: int
+    ):
         super().__init__(label=label, style=style, disabled=disabled, row=row)
         self.slot = slot
 
@@ -616,7 +655,9 @@ class _AbandonSelect(discord.ui.Select):
     def __init__(self, incomplete_contracts: list, row: int):
         options = []
         for c in incomplete_contracts:
-            quest_def = next((q for q in DAILY_QUESTS if q["id"] == c["quest_id"]), None)
+            quest_def = next(
+                (q for q in DAILY_QUESTS if q["id"] == c["quest_id"]), None
+            )
             label = quest_def["label"] if quest_def else c["quest_id"]
             options.append(
                 discord.SelectOption(
@@ -638,7 +679,9 @@ class _AbandonSelect(discord.ui.Select):
 class _HorizonSelect(discord.ui.Select):
     def __init__(self, player_level: int, current_horizon, row: int):
         options = []
-        sorted_paths = sorted(HORIZON_PATHS.items(), key=lambda x: x[1]["level_required"])
+        sorted_paths = sorted(
+            HORIZON_PATHS.items(), key=lambda x: x[1]["level_required"]
+        )
         for path_id, path_def in sorted_paths:
             label = path_def["name"][:50]
             desc = f"Lv.{path_def['level_required']} req  |  {path_def['token_reward']} tokens"
@@ -647,7 +690,10 @@ class _HorizonSelect(discord.ui.Select):
                     label=label,
                     value=path_id,
                     description=desc,
-                    default=(current_horizon is not None and current_horizon.get("path_id") == path_id),
+                    default=(
+                        current_horizon is not None
+                        and current_horizon.get("path_id") == path_id
+                    ),
                 )
             )
         super().__init__(

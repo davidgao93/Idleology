@@ -8,7 +8,6 @@ from core.models import Companion, Weapon
 
 
 class CompanionMechanics:
-
     # --- CONSTANTS ---
     PASSIVE_TYPES = ["atk", "def", "hit", "crit", "ward", "rarity", "fdr", "pdr"]
     RARE_PASSIVE_TYPES = ["s_rarity"]  # Special Rarity is rarer

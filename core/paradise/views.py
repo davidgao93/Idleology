@@ -35,7 +35,9 @@ async def _reload_hub(bot, user_id: str, server_id: str) -> "ParadiseHubView":
     return ParadiseHubView(bot, user_id, server_id, data, jewel_count, dust)
 
 
-async def _fetch_passives_data(bot, user_id: str, server_id: str) -> tuple[dict, int, int]:
+async def _fetch_passives_data(
+    bot, user_id: str, server_id: str
+) -> tuple[dict, int, int]:
     data = await bot.database.paradise.get(user_id)
     uber = await bot.database.uber.get_uber_progress(user_id, server_id)
     jewel_count = uber.get("paradise_jewels", 0)
@@ -68,7 +70,11 @@ def _skill_card_lines(data: dict, skill_key: str) -> list[str]:
     if mastery > 0:
         level_display += f" (+{mastery} Mastery → Lv {eff_level} effective)"
     next_combats = M.combats_to_next_level(natural_level)
-    level_display += f"  *(~{next_combats:.0f} combats to next level)*" if next_combats else "  *(MAX)*"
+    level_display += (
+        f"  *(~{next_combats:.0f} combats to next level)*"
+        if next_combats
+        else "  *(MAX)*"
+    )
 
     return [
         f"{defn.emoji} **{defn.name}** — {level_display}",
@@ -79,7 +85,9 @@ def _skill_card_lines(data: dict, skill_key: str) -> list[str]:
 
 
 def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
-    embed = discord.Embed(title="💎 Jewel of Paradise", color=discord.Color.from_str("#b967ff"))
+    embed = discord.Embed(
+        title="💎 Jewel of Paradise", color=discord.Color.from_str("#b967ff")
+    )
 
     obtained = data.get("total_jewels_obtained", 0)
     consumed = data.get("total_jewels_consumed", 0)
@@ -94,10 +102,18 @@ def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
 
     if equipped and equipped in SKILL_JEWELS:
         embed.set_thumbnail(url=SKILL_IMAGES.get(equipped, SKILL_UNCUT))
-        embed.add_field(name="⚔️ Equipped Skill", value="\n".join(_skill_card_lines(data, equipped)), inline=False)
+        embed.add_field(
+            name="⚔️ Equipped Skill",
+            value="\n".join(_skill_card_lines(data, equipped)),
+            inline=False,
+        )
     elif unlocked:
         embed.set_thumbnail(url=SKILL_UNCUT)
-        embed.add_field(name="⚔️ Equipped Skill", value="*No skill equipped — use Manage Skills to select one.*", inline=False)
+        embed.add_field(
+            name="⚔️ Equipped Skill",
+            value="*No skill equipped — use Manage Skills to select one.*",
+            inline=False,
+        )
     else:
         embed.set_thumbnail(url=SKILL_UNCUT)
         embed.add_field(
@@ -115,13 +131,19 @@ def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
             lvl = data["skill_levels"].get(sk, 1)
             marker = " ◀" if sk == equipped else ""
             rows.append(f"{defn.emoji} **{defn.name}** Lv {lvl}{marker}")
-        embed.add_field(name=f"📖 Unlocked Skills ({len(unlocked)}/{len(SKILL_JEWELS)})", value="\n".join(rows), inline=True)
+        embed.add_field(
+            name=f"📖 Unlocked Skills ({len(unlocked)}/{len(SKILL_JEWELS)})",
+            value="\n".join(rows),
+            inline=True,
+        )
 
     slot_count = M.get_passive_slot_count(data)
     passive_slots = data.get("passive_slots", [])
     if slot_count > 0:
         lines = [
-            f"**[{i+1}]** {M.format_passive_slot(passive_slots[i])}" if i < len(passive_slots) else f"**[{i+1}]** *Empty*"
+            f"**[{i + 1}]** {M.format_passive_slot(passive_slots[i])}"
+            if i < len(passive_slots)
+            else f"**[{i + 1}]** *Empty*"
             for i in range(slot_count)
         ]
         embed.add_field(name="🔮 Passive Slots", value="\n".join(lines), inline=True)
@@ -145,13 +167,19 @@ def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
 
 
 def _build_manage_skills_embed(data: dict) -> discord.Embed:
-    embed = discord.Embed(title="⚔️ Manage Skills", color=discord.Color.from_str("#b967ff"))
+    embed = discord.Embed(
+        title="⚔️ Manage Skills", color=discord.Color.from_str("#b967ff")
+    )
     equipped = data.get("equipped_skill")
     unlocked = data.get("unlocked_skills", [])
 
     if equipped and equipped in SKILL_JEWELS:
         embed.set_thumbnail(url=SKILL_IMAGES.get(equipped, SKILL_UNCUT))
-        embed.add_field(name="Equipped Skill", value="\n".join(_skill_card_lines(data, equipped)), inline=False)
+        embed.add_field(
+            name="Equipped Skill",
+            value="\n".join(_skill_card_lines(data, equipped)),
+            inline=False,
+        )
     else:
         embed.set_thumbnail(url=SKILL_UNCUT)
         embed.add_field(
@@ -176,7 +204,9 @@ def _build_manage_skills_embed(data: dict) -> discord.Embed:
         )
         embed.description = "Select a skill below to equip it."
     else:
-        embed.description = "No skills unlocked yet. Cut a Jewel to unlock your first skill."
+        embed.description = (
+            "No skills unlocked yet. Cut a Jewel to unlock your first skill."
+        )
 
     return embed
 
@@ -197,9 +227,9 @@ def _build_manage_passives_embed(data: dict, dust: int) -> discord.Embed:
         for i in range(slot_count):
             if i < len(passive_slots):
                 desc = M.format_passive_description(passive_slots[i])
-                lines.append(f"**Slot {i+1}:** {desc}")
+                lines.append(f"**Slot {i + 1}:** {desc}")
             else:
-                lines.append(f"**Slot {i+1}:** *Empty*")
+                lines.append(f"**Slot {i + 1}:** *Empty*")
     else:
         lines.append("*No passive slots unlocked yet.*")
 
@@ -209,16 +239,22 @@ def _build_manage_passives_embed(data: dict, dust: int) -> discord.Embed:
     needed_next = M.jewels_to_next_slot(data)
     if needed_next and slot_count < 5:
         thres = PASSIVE_SLOT_THRESHOLDS[slot_count]
-        embed.set_footer(text=f"Passive Slot {slot_count + 1}: {invested}/{thres} jewels invested")
+        embed.set_footer(
+            text=f"Passive Slot {slot_count + 1}: {invested}/{thres} jewels invested"
+        )
     else:
         embed.set_footer(text="All 5 passive slots unlocked")
     return embed
 
 
-def _build_reroll_embed(data: dict, slot_idx: int, dust: int, result_msg: str = "") -> discord.Embed:
+def _build_reroll_embed(
+    data: dict, slot_idx: int, dust: int, result_msg: str = ""
+) -> discord.Embed:
     slots = data.get("passive_slots", [])
     slot = slots[slot_idx] if slot_idx < len(slots) else None
-    embed = discord.Embed(title=f"🎲 Reroll Slot {slot_idx + 1}", color=discord.Color.blurple())
+    embed = discord.Embed(
+        title=f"🎲 Reroll Slot {slot_idx + 1}", color=discord.Color.blurple()
+    )
 
     lines = [f"**Cosmic Dust:** ✨ {dust:,}", ""]
 
@@ -226,12 +262,18 @@ def _build_reroll_embed(data: dict, slot_idx: int, dust: int, result_msg: str = 
         lines.append(f"**Current:** {M.format_passive_description(slot)}")
         lines.append("")
         defn = PASSIVES.get(slot["type"])
-        lines.append(f"**Reroll Type** ({DUST_REROLL_TYPE:,} dust) — rolls a new random passive type and value.")
+        lines.append(
+            f"**Reroll Type** ({DUST_REROLL_TYPE:,} dust) — rolls a new random passive type and value."
+        )
         if defn:
             range_str = f"{defn.min_value:.1f}–{defn.max_value:.1f}{'%' if defn.is_percent else ''}"
-            lines.append(f"**Reroll Value** ({DUST_REROLL_VALUE:,} dust) — keeps **{defn.name}**, new value in range {range_str}.")
+            lines.append(
+                f"**Reroll Value** ({DUST_REROLL_VALUE:,} dust) — keeps **{defn.name}**, new value in range {range_str}."
+            )
         else:
-            lines.append(f"**Reroll Value** ({DUST_REROLL_VALUE:,} dust) — re-rolls current value.")
+            lines.append(
+                f"**Reroll Value** ({DUST_REROLL_VALUE:,} dust) — re-rolls current value."
+            )
     else:
         lines.append("*Empty slot — no passive to reroll.*")
 
@@ -258,15 +300,21 @@ class ParadiseHubView(BaseView):
     def _build_buttons(self) -> None:
         self.clear_items()
 
-        skills_btn = ui.Button(label="Manage Skills", style=ButtonStyle.blurple, emoji="⚔️", row=0)
+        skills_btn = ui.Button(
+            label="Manage Skills", style=ButtonStyle.blurple, emoji="⚔️", row=0
+        )
         skills_btn.callback = self._manage_skills_callback
         self.add_item(skills_btn)
 
-        passives_btn = ui.Button(label="Manage Passives", style=ButtonStyle.blurple, emoji="🔮", row=0)
+        passives_btn = ui.Button(
+            label="Manage Passives", style=ButtonStyle.blurple, emoji="🔮", row=0
+        )
         passives_btn.callback = self._manage_passives_callback
         self.add_item(passives_btn)
 
-        exit_btn = ui.Button(label="Exit", style=ButtonStyle.secondary, emoji="✖️", row=1)
+        exit_btn = ui.Button(
+            label="Exit", style=ButtonStyle.secondary, emoji="✖️", row=1
+        )
         exit_btn.callback = self._exit_callback
         self.add_item(exit_btn)
 
@@ -281,13 +329,28 @@ class ParadiseHubView(BaseView):
 
     async def _manage_skills_callback(self, interaction: Interaction) -> None:
         await interaction.response.defer()
-        view = _ManageSkillsView(self.bot, self.user_id, self.server_id, self.data, self.jewel_count, self.message)
+        view = _ManageSkillsView(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.data,
+            self.jewel_count,
+            self.message,
+        )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
         self.stop()
 
     async def _manage_passives_callback(self, interaction: Interaction) -> None:
         await interaction.response.defer()
-        view = _ManagePassivesView(self.bot, self.user_id, self.server_id, self.data, self.jewel_count, self.dust, self.message)
+        view = _ManagePassivesView(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.data,
+            self.jewel_count,
+            self.dust,
+            self.message,
+        )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
         self.stop()
 
@@ -324,16 +387,26 @@ class _ManageSkillsView(BaseView):
                 for sk in unlocked
                 if sk in SKILL_JEWELS
             ]
-            select = ui.Select(placeholder="Equip a skill…", options=options[:25], min_values=1, max_values=1, row=0)
+            select = ui.Select(
+                placeholder="Equip a skill…",
+                options=options[:25],
+                min_values=1,
+                max_values=1,
+                row=0,
+            )
             select.callback = self._on_skill_select
             self.add_item(select)
 
         if remaining and self.jewel_count > 0:
-            cut_btn = ui.Button(label="Cut Jewel", style=ButtonStyle.success, emoji="💎", row=1)
+            cut_btn = ui.Button(
+                label="Cut Jewel", style=ButtonStyle.success, emoji="💎", row=1
+            )
             cut_btn.callback = self._cut_jewel_callback
             self.add_item(cut_btn)
 
-        back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="◀️", row=1)
+        back_btn = ui.Button(
+            label="Back", style=ButtonStyle.secondary, emoji="◀️", row=1
+        )
         back_btn.callback = self._back_callback
         self.add_item(back_btn)
 
@@ -360,8 +433,20 @@ class _ManageSkillsView(BaseView):
         remaining = [sk for sk in SKILL_JEWELS if sk not in unlocked]
         if not remaining:
             return
-        view = _SkillPickView(self.bot, self.user_id, self.server_id, self.data, remaining, self.jewel_count, self.message)
-        embed = discord.Embed(title="📖 Unlock a Skill", description="Select a skill jewel to permanently unlock.", color=discord.Color.green())
+        view = _SkillPickView(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.data,
+            remaining,
+            self.jewel_count,
+            self.message,
+        )
+        embed = discord.Embed(
+            title="📖 Unlock a Skill",
+            description="Select a skill jewel to permanently unlock.",
+            color=discord.Color.green(),
+        )
         await interaction.edit_original_response(embed=embed, view=view)
         self.stop()
 
@@ -379,7 +464,9 @@ class _ManageSkillsView(BaseView):
 
 
 class _SkillPickView(BaseView):
-    def __init__(self, bot, user_id, server_id, data, remaining_skills, jewel_count, message):
+    def __init__(
+        self, bot, user_id, server_id, data, remaining_skills, jewel_count, message
+    ):
         super().__init__(bot, user_id, server_id, timeout=120)
         self.data = data
         self.jewel_count = jewel_count
@@ -396,7 +483,13 @@ class _SkillPickView(BaseView):
             for sk in remaining_skills
             if sk in SKILL_JEWELS
         ]
-        select = ui.Select(placeholder="Choose a skill to unlock…", options=options[:25], min_values=1, max_values=1, row=0)
+        select = ui.Select(
+            placeholder="Choose a skill to unlock…",
+            options=options[:25],
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
         select.callback = self._on_select
         self.add_item(select)
 
@@ -416,7 +509,9 @@ class _SkillPickView(BaseView):
             await interaction.followup.send(f"❌ {err}", ephemeral=True)
             await self._back_to_skills(interaction)
             return
-        await self.bot.database.uber.increment_paradise_jewels(self.user_id, self.server_id, -1)
+        await self.bot.database.uber.increment_paradise_jewels(
+            self.user_id, self.server_id, -1
+        )
         await self.bot.database.paradise.save(self.user_id, self.data)
         defn = SKILL_JEWELS[skill_key]
         result_embed = discord.Embed(
@@ -434,8 +529,12 @@ class _SkillPickView(BaseView):
         await self._back_to_skills(interaction)
 
     async def _back_to_skills(self, interaction: Interaction) -> None:
-        data, jewel_count = await _fetch_skills_data(self.bot, self.user_id, self.server_id)
-        view = _ManageSkillsView(self.bot, self.user_id, self.server_id, data, jewel_count, self.message)
+        data, jewel_count = await _fetch_skills_data(
+            self.bot, self.user_id, self.server_id
+        )
+        view = _ManageSkillsView(
+            self.bot, self.user_id, self.server_id, data, jewel_count, self.message
+        )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
         self.stop()
 
@@ -462,18 +561,36 @@ class _ManagePassivesView(BaseView):
         if slot_count > 0:
             options = []
             for i in range(slot_count):
-                label = M.format_passive_slot(passive_slots[i]) if i < len(passive_slots) else f"Slot {i+1} (Empty)"
-                options.append(discord.SelectOption(label=f"Slot {i+1}: {label}"[:100], value=str(i)))
-            select = ui.Select(placeholder="Choose a passive slot to reroll…", options=options[:25], min_values=1, max_values=1, row=0)
+                label = (
+                    M.format_passive_slot(passive_slots[i])
+                    if i < len(passive_slots)
+                    else f"Slot {i + 1} (Empty)"
+                )
+                options.append(
+                    discord.SelectOption(
+                        label=f"Slot {i + 1}: {label}"[:100], value=str(i)
+                    )
+                )
+            select = ui.Select(
+                placeholder="Choose a passive slot to reroll…",
+                options=options[:25],
+                min_values=1,
+                max_values=1,
+                row=0,
+            )
             select.callback = self._on_slot_select
             self.add_item(select)
 
         if slot_count < 5 and self.jewel_count > 0:
-            cut_btn = ui.Button(label="Cut Jewel", style=ButtonStyle.success, emoji="💎", row=1)
+            cut_btn = ui.Button(
+                label="Cut Jewel", style=ButtonStyle.success, emoji="💎", row=1
+            )
             cut_btn.callback = self._cut_jewel_callback
             self.add_item(cut_btn)
 
-        back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="◀️", row=1)
+        back_btn = ui.Button(
+            label="Back", style=ButtonStyle.secondary, emoji="◀️", row=1
+        )
         back_btn.callback = self._back_callback
         self.add_item(back_btn)
 
@@ -484,7 +601,14 @@ class _ManagePassivesView(BaseView):
         await interaction.response.defer()
         slot_idx = int(interaction.data["values"][0])
         view = _RerollActionView(
-            self.bot, self.user_id, self.server_id, self.data, slot_idx, self.jewel_count, self.dust, self.message
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.data,
+            slot_idx,
+            self.jewel_count,
+            self.dust,
+            self.message,
         )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
         self.stop()
@@ -513,7 +637,9 @@ class _PassiveInvestModal(ui.Modal):
         self.parent_view = parent_view
         invested = parent_view.data.get("passive_jewels_invested", 0)
         slots_remaining = 5 - M.get_passive_slot_count(parent_view.data)
-        total_to_max = max(0, PASSIVE_SLOT_THRESHOLDS[-1] - invested) if slots_remaining > 0 else 0
+        total_to_max = (
+            max(0, PASSIVE_SLOT_THRESHOLDS[-1] - invested) if slots_remaining > 0 else 0
+        )
         max_invest = min(parent_view.jewel_count, total_to_max)
         self.amount_input = ui.TextInput(
             label="Number of jewels to invest",
@@ -527,7 +653,9 @@ class _PassiveInvestModal(ui.Modal):
         try:
             amount = int(self.amount_input.value)
         except ValueError:
-            await interaction.response.send_message("Please enter a valid whole number.", ephemeral=True)
+            await interaction.response.send_message(
+                "Please enter a valid whole number.", ephemeral=True
+            )
             return
 
         pv = self.parent_view
@@ -535,10 +663,15 @@ class _PassiveInvestModal(ui.Modal):
         total_to_max = max(0, PASSIVE_SLOT_THRESHOLDS[-1] - invested_so_far)
 
         if amount <= 0:
-            await interaction.response.send_message("Amount must be at least 1.", ephemeral=True)
+            await interaction.response.send_message(
+                "Amount must be at least 1.", ephemeral=True
+            )
             return
         if amount > pv.jewel_count:
-            await interaction.response.send_message(f"You only have **{pv.jewel_count}** jewel(s) available.", ephemeral=True)
+            await interaction.response.send_message(
+                f"You only have **{pv.jewel_count}** jewel(s) available.",
+                ephemeral=True,
+            )
             return
         if amount > total_to_max:
             amount = total_to_max
@@ -558,7 +691,9 @@ class _PassiveInvestModal(ui.Modal):
                 any_slot_unlocked = True
 
         if invested > 0:
-            await pv.bot.database.uber.increment_paradise_jewels(pv.user_id, pv.server_id, -invested)
+            await pv.bot.database.uber.increment_paradise_jewels(
+                pv.user_id, pv.server_id, -invested
+            )
             await pv.bot.database.paradise.save(pv.user_id, pv.data)
 
         if invested == 0:
@@ -571,14 +706,24 @@ class _PassiveInvestModal(ui.Modal):
             result_title = "💎 Jewels Invested"
             result_desc = f"Invested **{invested}** jewel(s). {last_msg}"
 
-        result_embed = discord.Embed(title=result_title, description=result_desc, color=discord.Color.from_str("#b967ff"))
+        result_embed = discord.Embed(
+            title=result_title,
+            description=result_desc,
+            color=discord.Color.from_str("#b967ff"),
+        )
         result_embed.set_thumbnail(url=SKILL_UNCUT)
         await interaction.edit_original_response(embed=result_embed, view=None)
         await asyncio.sleep(3)
 
-        data, jewel_count, dust = await _fetch_passives_data(pv.bot, pv.user_id, pv.server_id)
-        new_view = _ManagePassivesView(pv.bot, pv.user_id, pv.server_id, data, jewel_count, dust, pv.message)
-        await interaction.edit_original_response(embed=new_view.build_embed(), view=new_view)
+        data, jewel_count, dust = await _fetch_passives_data(
+            pv.bot, pv.user_id, pv.server_id
+        )
+        new_view = _ManagePassivesView(
+            pv.bot, pv.user_id, pv.server_id, data, jewel_count, dust, pv.message
+        )
+        await interaction.edit_original_response(
+            embed=new_view.build_embed(), view=new_view
+        )
         pv.stop()
 
 
@@ -588,7 +733,9 @@ class _PassiveInvestModal(ui.Modal):
 
 
 class _RerollActionView(BaseView):
-    def __init__(self, bot, user_id, server_id, data, slot_idx, jewel_count, dust, message):
+    def __init__(
+        self, bot, user_id, server_id, data, slot_idx, jewel_count, dust, message
+    ):
         super().__init__(bot, user_id, server_id, timeout=120)
         self.data = data
         self.slot_idx = slot_idx
@@ -604,20 +751,36 @@ class _RerollActionView(BaseView):
         can_type = self.dust >= DUST_REROLL_TYPE
         can_value = self.dust >= DUST_REROLL_VALUE
 
-        type_btn = ui.Button(label=f"Reroll Type ({DUST_REROLL_TYPE:,} dust)", style=ButtonStyle.blurple, emoji="🔀", disabled=not can_type, row=0)
+        type_btn = ui.Button(
+            label=f"Reroll Type ({DUST_REROLL_TYPE:,} dust)",
+            style=ButtonStyle.blurple,
+            emoji="🔀",
+            disabled=not can_type,
+            row=0,
+        )
         type_btn.callback = self._reroll_type_callback
         self.add_item(type_btn)
 
-        val_btn = ui.Button(label=f"Reroll Value ({DUST_REROLL_VALUE:,} dust)", style=ButtonStyle.secondary, emoji="🎯", disabled=not can_value, row=0)
+        val_btn = ui.Button(
+            label=f"Reroll Value ({DUST_REROLL_VALUE:,} dust)",
+            style=ButtonStyle.secondary,
+            emoji="🎯",
+            disabled=not can_value,
+            row=0,
+        )
         val_btn.callback = self._reroll_value_callback
         self.add_item(val_btn)
 
-        back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="◀️", row=1)
+        back_btn = ui.Button(
+            label="Back", style=ButtonStyle.secondary, emoji="◀️", row=1
+        )
         back_btn.callback = self._on_back
         self.add_item(back_btn)
 
     def build_embed(self) -> discord.Embed:
-        return _build_reroll_embed(self.data, self.slot_idx, self.dust, self._result_msg)
+        return _build_reroll_embed(
+            self.data, self.slot_idx, self.dust, self._result_msg
+        )
 
     async def _reroll_type_callback(self, interaction: Interaction) -> None:
         if self._processing:
@@ -629,7 +792,9 @@ class _RerollActionView(BaseView):
         if not success:
             self._result_msg = f"❌ {msg}"
             self._processing = False
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
             return
         await self.bot.database.alchemy.modify_cosmic_dust(self.user_id, -cost)
         await self.bot.database.paradise.save(self.user_id, self.data)
@@ -649,7 +814,9 @@ class _RerollActionView(BaseView):
         if not success:
             self._result_msg = f"❌ {msg}"
             self._processing = False
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
             return
         await self.bot.database.alchemy.modify_cosmic_dust(self.user_id, -cost)
         await self.bot.database.paradise.save(self.user_id, self.data)
@@ -661,7 +828,17 @@ class _RerollActionView(BaseView):
 
     async def _on_back(self, interaction: Interaction) -> None:
         await interaction.response.defer()
-        data, jewel_count, dust = await _fetch_passives_data(self.bot, self.user_id, self.server_id)
-        view = _ManagePassivesView(self.bot, self.user_id, self.server_id, data, jewel_count, dust, self.message)
+        data, jewel_count, dust = await _fetch_passives_data(
+            self.bot, self.user_id, self.server_id
+        )
+        view = _ManagePassivesView(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            data,
+            jewel_count,
+            dust,
+            self.message,
+        )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
         self.stop()

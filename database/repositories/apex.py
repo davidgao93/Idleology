@@ -15,12 +15,25 @@ from database.base import BaseRepository
 
 
 _ZONE_KEYS = ("ashen", "storm", "citadel", "grove", "vault", "shattered")
-_SHARD_KEYS = ("pyre", "tempest", "bulwark", "verdant", "fortune", "rift", "soul_fragments")
-_META_KEYS = ("sharpened_fang", "engorged_heart", "condensed_blood", "primal_essence", "soul_vessel")
+_SHARD_KEYS = (
+    "pyre",
+    "tempest",
+    "bulwark",
+    "verdant",
+    "fortune",
+    "rift",
+    "soul_fragments",
+)
+_META_KEYS = (
+    "sharpened_fang",
+    "engorged_heart",
+    "condensed_blood",
+    "primal_essence",
+    "soul_vessel",
+)
 
 
 class ApexRepository(BaseRepository):
-
     # ------------------------------------------------------------------
     # Hunt Profile
     # ------------------------------------------------------------------
@@ -42,8 +55,10 @@ class ApexRepository(BaseRepository):
         )
         await self.connection.commit()
         return {
-            "user_id": user_id, "server_id": server_id,
-            "hunt_charges": 3, "last_charge_time": None,
+            "user_id": user_id,
+            "server_id": server_id,
+            "hunt_charges": 3,
+            "last_charge_time": None,
             **{f"{z}_wins": 0 for z in _ZONE_KEYS},
             **{f"{z}_losses": 0 for z in _ZONE_KEYS},
         }
@@ -52,7 +67,11 @@ class ApexRepository(BaseRepository):
         """Decrements hunt_charges by 1 and records the current timestamp if not already set."""
         profile = await self.get_or_create_profile(user_id, server_id)
         new_charges = max(0, profile["hunt_charges"] - 1)
-        now_ts = time.time() if profile["last_charge_time"] is None else profile["last_charge_time"]
+        now_ts = (
+            time.time()
+            if profile["last_charge_time"] is None
+            else profile["last_charge_time"]
+        )
         await self.connection.execute(
             "UPDATE apex_hunt_profiles SET hunt_charges = ?, last_charge_time = ? "
             "WHERE user_id = ? AND server_id = ?",
@@ -108,10 +127,17 @@ class ApexRepository(BaseRepository):
         )
         await self.connection.commit()
         return {
-            "user_id": user_id, "server_id": server_id,
-            "slot_1_passive": None, "slot_1_tier": None, "slot_1_category": None,
-            "slot_2_passive": None, "slot_2_tier": None, "slot_2_category": None,
-            "slot_3_passive": None, "slot_3_tier": None, "slot_3_category": None,
+            "user_id": user_id,
+            "server_id": server_id,
+            "slot_1_passive": None,
+            "slot_1_tier": None,
+            "slot_1_category": None,
+            "slot_2_passive": None,
+            "slot_2_tier": None,
+            "slot_2_category": None,
+            "slot_3_passive": None,
+            "slot_3_tier": None,
+            "slot_3_category": None,
         }
 
     async def set_slot(
@@ -170,8 +196,11 @@ class ApexRepository(BaseRepository):
             (user_id, server_id),
         )
         await self.connection.commit()
-        return {"user_id": user_id, "server_id": server_id,
-                **{k: 0 for k in _SHARD_KEYS}}
+        return {
+            "user_id": user_id,
+            "server_id": server_id,
+            **{k: 0 for k in _SHARD_KEYS},
+        }
 
     async def modify_shard(
         self, user_id: str, server_id: str, shard_type: str, delta: int
@@ -224,8 +253,11 @@ class ApexRepository(BaseRepository):
             (user_id, server_id),
         )
         await self.connection.commit()
-        return {"user_id": user_id, "server_id": server_id,
-                **{k: 0 for k in _META_KEYS}}
+        return {
+            "user_id": user_id,
+            "server_id": server_id,
+            **{k: 0 for k in _META_KEYS},
+        }
 
     async def modify_meta_shard(
         self, user_id: str, server_id: str, shard_type: str, delta: int
@@ -264,7 +296,9 @@ class ApexRepository(BaseRepository):
         amount: int,
     ) -> bool:
         """Transfers meta shards between players. Returns False if insufficient."""
-        if not await self.deduct_meta_shard_atomic(from_uid, server_id, shard_type, amount):
+        if not await self.deduct_meta_shard_atomic(
+            from_uid, server_id, shard_type, amount
+        ):
             return False
         await self.modify_meta_shard(to_uid, server_id, shard_type, amount)
         return True

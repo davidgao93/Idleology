@@ -206,6 +206,7 @@ async def _uber_setup(view, message) -> dict | None:
     # The slay_* quests are for the normal multi-phase boss encounters.
     try:
         from core.quests.mechanics import tick_quest_progress
+
         quest_msgs = []
 
         quest_msgs += await tick_quest_progress(

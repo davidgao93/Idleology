@@ -7,6 +7,7 @@ Pure functions for the Settlement Turns Economy:
   - Black Market value calculation, turn cost, reward rolling
   - Event checking and trigger logic
 """
+
 from __future__ import annotations
 
 import math
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Zeal economy
 # ---------------------------------------------------------------------------
+
 
 def compute_zeal_gain(base: int, earned_today: int) -> int:
     """
@@ -79,6 +81,7 @@ def passive_zeal_for_period(hours: float, town_hall_tier: int) -> int:
 # Project DT costs
 # ---------------------------------------------------------------------------
 
+
 def construction_dt_cost(building_type: str, event_effects: dict | None = None) -> int:
     base = PROJECT_CONSTRUCTION_DT.get(building_type, 12)
     if event_effects and event_effects.get("construction_dt_halved"):
@@ -96,6 +99,7 @@ def upgrade_dt_cost(building_type: str, target_tier: int) -> int:
 # ---------------------------------------------------------------------------
 # Next Turn processor
 # ---------------------------------------------------------------------------
+
 
 async def process_next_turn(
     bot,
@@ -146,10 +150,12 @@ async def process_next_turn(
     for proj in completed:
         result = await _complete_project(bot, user_id, server_id, proj, event_effects)
         await bot.database.settlement.delete_project(proj["id"])
-        summary["projects_completed"].append({
-            "type": proj["project_type"],
-            "label": result.get("label", proj["project_type"]),
-        })
+        summary["projects_completed"].append(
+            {
+                "type": proj["project_type"],
+                "label": result.get("label", proj["project_type"]),
+            }
+        )
         if proj["project_type"] == "nursery":
             summary["workers_from_nursery"] += result.get("workers", 0)
         elif proj["project_type"] == "foundry_idlem":
@@ -163,9 +169,13 @@ async def process_next_turn(
             # Deal complete — roll rewards
             user_row = await bot.database.users.get(user_id, server_id)
             player_level = user_row["level"] if user_row else 1
-            deal_tree_nodes = await bot.database.settlement.get_bm_tree(user_id, server_id)
+            deal_tree_nodes = await bot.database.settlement.get_bm_tree(
+                user_id, server_id
+            )
             rewards = roll_bm_rewards(
-                deal["total_value"], deal["active_biases"], player_level,
+                deal["total_value"],
+                deal["active_biases"],
+                player_level,
                 tree_nodes=deal_tree_nodes,
             )
             await _grant_bm_rewards(bot, user_id, server_id, rewards)
@@ -177,7 +187,9 @@ async def process_next_turn(
     newly_fired, expired = await bot.database.settlement.tick_events(user_id, server_id)
     for ev in expired:
         await bot.database.settlement.remove_event(ev["id"])
-        summary["events_expired"].append(SETTLEMENT_EVENTS.get(ev["event_key"], {}).get("name", ev["event_key"]))
+        summary["events_expired"].append(
+            SETTLEMENT_EVENTS.get(ev["event_key"], {}).get("name", ev["event_key"])
+        )
 
     for ev in newly_fired:
         ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
@@ -187,8 +199,12 @@ async def process_next_turn(
         dur = ev_data.get("duration", ev_def.get("duration_turns", 0))
         if dur > 0:
             await bot.database.settlement.add_event(
-                user_id, server_id, ev["event_key"], "ongoing",
-                turns_until=0, turns_remaining=dur,
+                user_id,
+                server_id,
+                ev["event_key"],
+                "ongoing",
+                turns_until=0,
+                turns_remaining=dur,
                 data=ev_data if ev_data else None,
             )
         await bot.database.settlement.remove_event(ev["id"])
@@ -208,8 +224,12 @@ async def process_next_turn(
     summary["passive_zeal_added"] = passive_zeal
 
     # 8. DT-based resource production (generators + converters at 5× hourly rate)
-    dt_changes, market_gold, war_camp_stamina, companion_cookie = \
-        await _calculate_dt_production(bot, user_id, server_id)
+    (
+        dt_changes,
+        market_gold,
+        war_camp_stamina,
+        companion_cookie,
+    ) = await _calculate_dt_production(bot, user_id, server_id)
     if dt_changes:
         await bot.database.settlement.commit_production(user_id, server_id, dt_changes)
         summary["dt_resources"] = {k: v for k, v in dt_changes.items() if v > 0}
@@ -224,6 +244,7 @@ async def process_next_turn(
             if active_rows:
                 xp_per = companion_cookie // len(active_rows)
                 from core.companions.mechanics import CompanionMechanics
+
                 for row in active_rows:
                     comp_id, cur_lvl, cur_exp = row[0], row[5], row[6]
                     cur_exp += xp_per
@@ -234,7 +255,9 @@ async def process_next_turn(
                             cur_lvl += 1
                         else:
                             break
-                    await bot.database.companions.update_stats(comp_id, cur_lvl, cur_exp)
+                    await bot.database.companions.update_stats(
+                        comp_id, cur_lvl, cur_exp
+                    )
         except Exception:
             pass
 
@@ -259,16 +282,25 @@ async def _calculate_dt_production(
 
     # Fetch raw inventories for converters
     try:
-        mining     = await bot.database.skills.get_data(user_id, server_id, "mining")
-        wood       = await bot.database.skills.get_data(user_id, server_id, "woodcutting")
-        fish       = await bot.database.skills.get_data(user_id, server_id, "fishing")
+        mining = await bot.database.skills.get_data(user_id, server_id, "mining")
+        wood = await bot.database.skills.get_data(user_id, server_id, "woodcutting")
+        fish = await bot.database.skills.get_data(user_id, server_id, "fishing")
         raw_inv = {
-            "iron": mining[3], "coal": mining[4], "gold": mining[5],
-            "platinum": mining[6], "idea": mining[7],
-            "oak_logs": wood[3], "willow_logs": wood[4],
-            "mahogany_logs": wood[5], "magic_logs": wood[6], "idea_logs": wood[7],
-            "desiccated_bones": fish[3], "regular_bones": fish[4],
-            "sturdy_bones": fish[5], "reinforced_bones": fish[6], "titanium_bones": fish[7],
+            "iron": mining[3],
+            "coal": mining[4],
+            "gold": mining[5],
+            "platinum": mining[6],
+            "idea": mining[7],
+            "oak_logs": wood[3],
+            "willow_logs": wood[4],
+            "mahogany_logs": wood[5],
+            "magic_logs": wood[6],
+            "idea_logs": wood[7],
+            "desiccated_bones": fish[3],
+            "regular_bones": fish[4],
+            "sturdy_bones": fish[5],
+            "reinforced_bones": fish[6],
+            "titanium_bones": fish[7],
         }
     except Exception:
         raw_inv = {}
@@ -285,9 +317,21 @@ async def _calculate_dt_production(
         _ev_def = SETTLEMENT_EVENTS.get(_ev.get("event_key", ""), {})
         _ev_data = _ev.get("data", {})
         _effs = _ev_def.get("effects", {})
-        _dt_gen_bonus += _resolve_band(_effs.get("generator_bonus", 0.0), _ev_data) if "generator_bonus" in _effs else 0.0
-        _dt_conv_bonus += _resolve_band(_effs.get("converter_bonus", 0.0), _ev_data) if "converter_bonus" in _effs else 0.0
-        _dt_market_gold_bonus += _resolve_band(_effs.get("market_gold_bonus", 0.0), _ev_data) if "market_gold_bonus" in _effs else 0.0
+        _dt_gen_bonus += (
+            _resolve_band(_effs.get("generator_bonus", 0.0), _ev_data)
+            if "generator_bonus" in _effs
+            else 0.0
+        )
+        _dt_conv_bonus += (
+            _resolve_band(_effs.get("converter_bonus", 0.0), _ev_data)
+            if "converter_bonus" in _effs
+            else 0.0
+        )
+        _dt_market_gold_bonus += (
+            _resolve_band(_effs.get("market_gold_bonus", 0.0), _ev_data)
+            if "market_gold_bonus" in _effs
+            else 0.0
+        )
 
     total_changes: dict = {}
     market_gold = 0
@@ -306,7 +350,9 @@ async def _calculate_dt_production(
             tier=b.tier,
             workers=b.workers_assigned,
             hours_elapsed=_DT_HOURS,
-            raw_inventory=dict(raw_inv),  # pass a copy so converter deductions don't bleed
+            raw_inventory=dict(
+                raw_inv
+            ),  # pass a copy so converter deductions don't bleed
             event_generator_bonus=_dt_gen_bonus,
             event_converter_bonus=_dt_conv_bonus,
         )
@@ -358,25 +404,35 @@ async def _complete_project(
     elif ptype == "research":
         building_type = data.get("building_type", "")
         if building_type:
-            await bot.database.settlement.complete_research(user_id, server_id, building_type)
+            await bot.database.settlement.complete_research(
+                user_id, server_id, building_type
+            )
         return {"label": f"Researched {building_type.replace('_', ' ').title()}"}
 
     elif ptype == "nursery":
-        workers = int(data.get("workers_per_turn", WORKERS_PER_TURN_BASE)
-                      * _ev.get("nursery_mult", 1.0))
+        workers = int(
+            data.get("workers_per_turn", WORKERS_PER_TURN_BASE)
+            * _ev.get("nursery_mult", 1.0)
+        )
         # Worker production increments ideology follower count
         try:
             user_row = await bot.database.users.get(user_id, server_id)
             if user_row:
-                ideology_name = user_row["ideology"] if isinstance(user_row, dict) else user_row[8]
+                ideology_name = (
+                    user_row["ideology"] if isinstance(user_row, dict) else user_row[8]
+                )
                 current = await bot.database.social.get_follower_count(ideology_name)
-                await bot.database.social.update_followers(ideology_name, current + workers)
+                await bot.database.social.update_followers(
+                    ideology_name, current + workers
+                )
         except Exception:
             pass
         return {"label": "Nursery produced workers", "workers": workers}
 
     elif ptype == "foundry_idlem":
-        base_idlem = data.get("idlem_per_turn", IDLEM_PER_TURN_BASE) * _ev.get("idlem_mult", 1.0)
+        base_idlem = data.get("idlem_per_turn", IDLEM_PER_TURN_BASE) * _ev.get(
+            "idlem_mult", 1.0
+        )
         # Design: 1-2 Idlem per turn with variance
         idlem = int(base_idlem) + random.randint(0, 1)
         await bot.database.settlement.add_idlem(user_id, idlem)
@@ -406,10 +462,14 @@ async def _apply_event_effects(
 
     if "grant_blueprints" in effects:
         val = _resolve_band(effects["grant_blueprints"], ev_data)
-        await bot.database.users.modify_currency(user_id, "unidentified_blueprint", int(val))
+        await bot.database.users.modify_currency(
+            user_id, "unidentified_blueprint", int(val)
+        )
 
 
-async def _check_schedule_events(bot, user_id: str, server_id: str, total_turns: int) -> None:
+async def _check_schedule_events(
+    bot, user_id: str, server_id: str, total_turns: int
+) -> None:
     """Schedules upcoming events that are due based on total turns."""
     existing = await bot.database.settlement.get_active_events(user_id, server_id)
     existing_keys = {ev["event_key"] for ev in existing}
@@ -487,13 +547,23 @@ async def _check_schedule_events(bot, user_id: str, server_id: str, total_turns:
 
         if etype == "upcoming" and warning > 0:
             await bot.database.settlement.add_event(
-                user_id, server_id, key, "upcoming",
-                turns_until=warning, turns_remaining=0, data=data_arg,
+                user_id,
+                server_id,
+                key,
+                "upcoming",
+                turns_until=warning,
+                turns_remaining=0,
+                data=data_arg,
             )
         elif etype == "ongoing":
             await bot.database.settlement.add_event(
-                user_id, server_id, key, "ongoing",
-                turns_until=0, turns_remaining=duration, data=data_arg,
+                user_id,
+                server_id,
+                key,
+                "ongoing",
+                turns_until=0,
+                turns_remaining=duration,
+                data=data_arg,
             )
         elif etype == "instant":
             await _apply_event_effects(bot, user_id, server_id, ev_def, ev_data)
@@ -502,6 +572,7 @@ async def _check_schedule_events(bot, user_id: str, server_id: str, total_turns:
 # ---------------------------------------------------------------------------
 # Black Market — value calculation + processing turns
 # ---------------------------------------------------------------------------
+
 
 def calculate_offer_value(
     offer: dict,
@@ -546,7 +617,7 @@ def compute_processing_turns(
     eff_reductions = {"efficiency_1": 0.10, "efficiency_2": 0.20, "efficiency_3": 0.35}
     for key, red in eff_reductions.items():
         if key in tree_nodes:
-            raw *= (1.0 - red)
+            raw *= 1.0 - red
 
     turns = max(1, int(raw))
 
@@ -560,6 +631,7 @@ def compute_processing_turns(
 # ---------------------------------------------------------------------------
 # Black Market — reward rolling
 # ---------------------------------------------------------------------------
+
 
 def roll_bm_rewards(
     value: int,
@@ -615,31 +687,62 @@ def roll_bm_rewards(
             result["gold"] += g
 
         elif cat == "rune":
-            rune_pool = ["refinement_runes", "potential_runes", "shatter_runes", "imbue_runes"]
+            rune_pool = [
+                "refinement_runes",
+                "potential_runes",
+                "shatter_runes",
+                "imbue_runes",
+            ]
             rune_weights = [40, 40, 30, 10]
             chosen = random.choices(rune_pool, weights=rune_weights, k=1)[0]
-            qty = random.randint(1, 5) if chosen != "imbue_runes" else random.randint(1, 2)
+            qty = (
+                random.randint(1, 5)
+                if chosen != "imbue_runes"
+                else random.randint(1, 2)
+            )
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + qty
 
         elif cat == "boss_key":
-            key_pool = ["dragon_key", "angel_key", "soul_cores", "balance_fragment", "void_frags"]
+            key_pool = [
+                "dragon_key",
+                "angel_key",
+                "soul_cores",
+                "balance_fragment",
+                "void_frags",
+            ]
             chosen = random.choice(key_pool)
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + 1
 
         elif cat == "gathering":
             mat_pool = [
-                ("iron", 100), ("coal", 80), ("gold", 60), ("platinum", 40),
-                ("oak_logs", 100), ("willow_logs", 80), ("mahogany_logs", 60),
-                ("desiccated_bones", 100), ("regular_bones", 80), ("sturdy_bones", 60),
+                ("iron", 100),
+                ("coal", 80),
+                ("gold", 60),
+                ("platinum", 40),
+                ("oak_logs", 100),
+                ("willow_logs", 80),
+                ("mahogany_logs", 60),
+                ("desiccated_bones", 100),
+                ("regular_bones", 80),
+                ("sturdy_bones", 60),
             ]
             chosen, qty_base = random.choice(mat_pool)
             qty = random.randint(qty_base // 2, qty_base)
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + qty
 
         elif cat == "essence":
-            ess_pool = ["power", "protection", "insight", "evasion", "blocking", "deftness"]
+            ess_pool = [
+                "power",
+                "protection",
+                "insight",
+                "evasion",
+                "blocking",
+                "deftness",
+            ]
             chosen = random.choice(ess_pool)
-            result["currencies"][f"essence_{chosen}"] = result["currencies"].get(f"essence_{chosen}", 0) + random.randint(1, 3)
+            result["currencies"][f"essence_{chosen}"] = result["currencies"].get(
+                f"essence_{chosen}", 0
+            ) + random.randint(1, 3)
 
         elif cat == "gear":
             result["items"].append({"type": "random", "level": min(player_level, 100)})
@@ -647,7 +750,9 @@ def roll_bm_rewards(
         elif cat == "settler_mat":
             mat_pool = ["magma_core", "life_root", "spirit_shard"]
             chosen = random.choice(mat_pool)
-            result["currencies"][chosen] = result["currencies"].get(chosen, 0) + random.randint(1, 2)
+            result["currencies"][chosen] = result["currencies"].get(
+                chosen, 0
+            ) + random.randint(1, 2)
 
         elif cat == "egg":
             result["eggs"] += 1
@@ -664,7 +769,9 @@ def roll_bm_rewards(
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + 1
 
         elif cat == "guild_ticket":
-            result["currencies"]["guild_ticket"] = result["currencies"].get("guild_ticket", 0) + random.randint(1, 2)
+            result["currencies"]["guild_ticket"] = result["currencies"].get(
+                "guild_ticket", 0
+            ) + random.randint(1, 2)
 
     # Base rolls
     for _ in range(base_rolls):
@@ -698,7 +805,7 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
 
     for cur, qty in rewards.get("currencies", {}).items():
         if cur.startswith("essence_"):
-            ess_type = cur[len("essence_"):]
+            ess_type = cur[len("essence_") :]
             for _ in range(qty):
                 await bot.database.essences.add(user_id, ess_type)
         elif cur in ("guild_ticket",):
@@ -712,13 +819,19 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
     for item_spec in rewards.get("items", []):
         try:
             from core.combat.economy.loot import (
-                generate_accessory, generate_armor, generate_boot,
-                generate_glove, generate_helmet, generate_weapon,
+                generate_accessory,
+                generate_armor,
+                generate_boot,
+                generate_glove,
+                generate_helmet,
+                generate_weapon,
             )
             import random as _rnd
+
             slot = _rnd.choices(
                 ["weapon", "armor", "accessory", "glove", "boot", "helmet"],
-                weights=[35, 10, 25, 10, 10, 10], k=1
+                weights=[35, 10, 25, 10, 10, 10],
+                k=1,
             )[0]
             ilvl = item_spec.get("level", 1)
             if slot == "weapon":
@@ -751,8 +864,11 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
     for _ in range(rewards.get("consume_parts", 0)):
         try:
             import random as _rnd
+
             slots = ["head", "torso", "right_arm", "left_arm", "right_leg", "left_leg"]
             slot = _rnd.choice(slots)
-            await bot.database.monster_parts.add_part(user_id, slot, "Unknown Creature", 1, 50)
+            await bot.database.monster_parts.add_part(
+                user_id, slot, "Unknown Creature", 1, 50
+            )
         except Exception:
             pass

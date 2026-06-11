@@ -68,7 +68,7 @@ class InventoryListView(BaseView):
 
         for i, item in enumerate(current_batch):
             btn = Button(
-                label=f"{i+1}",
+                label=f"{i + 1}",
                 style=ButtonStyle.primary,
                 custom_id=f"select_{i}",
                 row=0,

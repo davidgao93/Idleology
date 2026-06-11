@@ -9,7 +9,9 @@ class Quests(commands.Cog, name="quests"):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="quests", description="View your quest board and horizon path.")
+    @app_commands.command(
+        name="quests", description="View your quest board and horizon path."
+    )
     async def quests(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)

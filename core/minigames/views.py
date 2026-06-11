@@ -58,7 +58,9 @@ class RouletteNumberModal(Modal, title="Bet on a Number"):
             self.parent_view.user_id, interaction.guild.id
         )
         if user_data[6] < self.parent_view.bet_amount:
-            await interaction.response.send_message("Insufficient funds!", ephemeral=True)
+            await interaction.response.send_message(
+                "Insufficient funds!", ephemeral=True
+            )
             return
         await self.parent_view.bot.database.users.modify_gold(
             self.parent_view.user_id, -self.parent_view.bet_amount
@@ -120,9 +122,13 @@ class RouletteView(BaseView):
             if net_win > 0:
                 try:
                     from core.quests.mechanics import tick_quest_progress
+
                     await tick_quest_progress(
-                        self.bot, self.user_id, str(interaction.guild_id),
-                        "casino_win", value=net_win,
+                        self.bot,
+                        self.user_id,
+                        str(interaction.guild_id),
+                        "casino_win",
+                        value=net_win,
                     )
                 except Exception:
                     pass
@@ -322,6 +328,7 @@ class BlackjackView(BaseView):
             if net_win > 0:
                 try:
                     from core.quests.mechanics import tick_quest_progress
+
                     guild_id = str(interaction.guild_id) if interaction else ""
                     await tick_quest_progress(
                         self.bot, self.user_id, guild_id, "casino_win", value=net_win
@@ -364,7 +371,9 @@ class BlackjackView(BaseView):
         if interaction:
             await interaction.response.edit_message(embed=final_embed, view=self)
         else:
-            await self.original_interaction.edit_original_response(embed=final_embed, view=self)
+            await self.original_interaction.edit_original_response(
+                embed=final_embed, view=self
+            )
 
     async def restart_game(self, interaction: Interaction):
         if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
@@ -546,7 +555,9 @@ class CrashView(BaseView):
             self.is_running = False
             if not self.cashed_out:
                 try:
-                    await self.bot.database.users.modify_gold(self.user_id, self.bet_amount)
+                    await self.bot.database.users.modify_gold(
+                        self.user_id, self.bet_amount
+                    )
                 except Exception:
                     pass
 
@@ -589,8 +600,13 @@ class CrashView(BaseView):
         if net_win > 0:
             try:
                 from core.quests.mechanics import tick_quest_progress
+
                 await tick_quest_progress(
-                    self.bot, self.user_id, str(interaction.guild_id), "casino_win", value=net_win
+                    self.bot,
+                    self.user_id,
+                    str(interaction.guild_id),
+                    "casino_win",
+                    value=net_win,
                 )
             except Exception:
                 pass
@@ -748,7 +764,9 @@ class HorseRaceView(BaseView):
             except Exception:
                 # Message was deleted mid-race — refund the bet
                 try:
-                    await self.bot.database.users.modify_gold(self.user_id, self.bet_amount)
+                    await self.bot.database.users.modify_gold(
+                        self.user_id, self.bet_amount
+                    )
                 except Exception:
                     pass
                 self.bot.state_manager.clear_active(self.user_id)
@@ -771,9 +789,13 @@ class HorseRaceView(BaseView):
             if net_win > 0:
                 try:
                     from core.quests.mechanics import tick_quest_progress
+
                     await tick_quest_progress(
-                        self.bot, self.user_id, str(self.original_interaction.guild_id),
-                        "casino_win", value=net_win,
+                        self.bot,
+                        self.user_id,
+                        str(self.original_interaction.guild_id),
+                        "casino_win",
+                        value=net_win,
                     )
                 except Exception:
                     pass

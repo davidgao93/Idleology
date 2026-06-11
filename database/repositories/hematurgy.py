@@ -2,7 +2,6 @@ from database.base import BaseRepository
 
 
 class HematurgyRepository(BaseRepository):
-
     async def get_blood(self, user_id: str) -> dict:
         """Returns {primordial, evolutionary, mutative} for the user, creating a row if absent."""
         cursor = await self.connection.execute(
@@ -24,7 +23,11 @@ class HematurgyRepository(BaseRepository):
         await self.connection.execute(
             "INSERT OR IGNORE INTO hematurgy_blood (user_id) VALUES (?)", (user_id,)
         )
-        col = {"primordial": "primordial", "evolutionary": "evolutionary", "mutative": "mutative"}.get(blood_type)
+        col = {
+            "primordial": "primordial",
+            "evolutionary": "evolutionary",
+            "mutative": "mutative",
+        }.get(blood_type)
         if col is None:
             raise ValueError(f"Unknown blood type: {blood_type}")
         await self.connection.execute(
@@ -53,7 +56,9 @@ class HematurgyRepository(BaseRepository):
         rows = await cursor.fetchall()
         return {r[0]: {"passive_id": r[1], "tier": r[2]} for r in rows}
 
-    async def set_passive(self, user_id: str, slot_type: str, passive_id: str, tier: int = 1) -> None:
+    async def set_passive(
+        self, user_id: str, slot_type: str, passive_id: str, tier: int = 1
+    ) -> None:
         """Upserts a hematurgy passive for a slot."""
         await self.connection.execute(
             """INSERT INTO hematurgy_passives (user_id, slot_type, passive_id, tier)

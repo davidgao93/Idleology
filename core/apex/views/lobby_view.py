@@ -97,7 +97,7 @@ def _build_lobby_embed(
     embed.set_thumbnail(url=APEX_HUB)
     embed.set_footer(
         text="Apex Hunts consume 1 charge per attempt. "
-             "Charges regenerate 1 per 8 hours (max 3)."
+        "Charges regenerate 1 per 8 hours (max 3)."
     )
     return embed
 
@@ -132,7 +132,7 @@ def _build_zone_confirm_embed(
     embed.set_thumbnail(url=APEX_HUB)
     embed.set_footer(
         text="On victory: item shards + chance at meta shards. "
-             "On defeat: 1–3 soul fragments consolation."
+        "On defeat: 1–3 soul fragments consolation."
     )
     return embed
 
@@ -354,7 +354,10 @@ class ApexLobbyView(BaseView):
 
         # Prepend zone modifier log if present
         if zone_log:
-            start_logs = {f"🌐 Zone — {ZONE_DEFS[zone_key].modifier_name}": zone_log, **start_logs}
+            start_logs = {
+                f"🌐 Zone — {ZONE_DEFS[zone_key].modifier_name}": zone_log,
+                **start_logs,
+            }
 
         # Build initial combat embed
         from core.combat import jewel_engine as _je
@@ -366,7 +369,9 @@ class ApexLobbyView(BaseView):
         _je.reset_jewel_charges(player)
         zone = ZONE_DEFS[zone_key]
         embed = combat_ui.create_combat_embed(
-            player, monster, start_logs,
+            player,
+            monster,
+            start_logs,
             title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
         )
 
@@ -416,7 +421,10 @@ class ApexLobbyView(BaseView):
             return
         await interaction.response.defer()
 
-        from core.apex.views.soul_stone_view import SoulStoneView, _build_soul_stone_embed
+        from core.apex.views.soul_stone_view import (
+            SoulStoneView,
+            _build_soul_stone_embed,
+        )
         from core.items.factory import load_player
 
         # Load full player (ImprintView needs equipped gear access)
@@ -424,7 +432,9 @@ class ApexLobbyView(BaseView):
         player = await load_player(self.user_id, user_row, self.bot.database)
 
         view = SoulStoneView(
-            self.bot, self.user_id, self.server_id,
+            self.bot,
+            self.user_id,
+            self.server_id,
             player,
         )
 

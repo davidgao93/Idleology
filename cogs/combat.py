@@ -99,7 +99,11 @@ class CombatTutorialView(BaseView):
         # Health check
         if player.current_hp < (player.total_max_hp * 0.25):
             view = LowHealthWarningView(
-                self.bot, user_id, server_id, existing_user, player,
+                self.bot,
+                user_id,
+                server_id,
+                existing_user,
+                player,
                 self._cog._execute_combat,
             )
             await interaction.response.edit_message(embed=view.build_embed(), view=view)
@@ -109,7 +113,9 @@ class CombatTutorialView(BaseView):
 
         await interaction.response.defer()
         self.stop()
-        await self._cog._execute_combat(interaction, user_id, server_id, existing_user, player)
+        await self._cog._execute_combat(
+            interaction, user_id, server_id, existing_user, player
+        )
 
 
 class DoorPromptView(BaseView):

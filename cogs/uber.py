@@ -21,7 +21,8 @@ class Uber(commands.Cog, name="uber"):
             return
         if existing_user["level"] < 20:
             return await interaction.response.send_message(
-                "You must be **Level 20** to access the Uber Encounters.", ephemeral=True
+                "You must be **Level 20** to access the Uber Encounters.",
+                ephemeral=True,
             )
         self.bot.state_manager.set_active(user_id, "uber_boss")
         player = await load_player(user_id, existing_user, self.bot.database)

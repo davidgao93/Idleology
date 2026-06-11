@@ -202,7 +202,9 @@ class InfernalContractView(BaseView):
         embed.set_thumbnail(url=BOSS_LUCIFER)
         embed.set_footer(text="There is no going back.")
         self.bot.state_manager.clear_active(self.user_id)
-        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
+        return_view = UberReturnView(
+            self.bot, self.user_id, self.server_id, self.player
+        )
         await interaction.edit_original_response(embed=embed, view=return_view)
         self.stop()
 
@@ -216,6 +218,8 @@ class InfernalContractView(BaseView):
         )
         embed.set_thumbnail(url=BOSS_LUCIFER)
         self.bot.state_manager.clear_active(self.user_id)
-        return_view = UberReturnView(self.bot, self.user_id, self.server_id, self.player)
+        return_view = UberReturnView(
+            self.bot, self.user_id, self.server_id, self.player
+        )
         await interaction.edit_original_response(embed=embed, view=return_view)
         self.stop()

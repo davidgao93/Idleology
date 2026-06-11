@@ -33,7 +33,6 @@ MAX_CHARGES: int = 3
 
 
 class ApexMechanics:
-
     # ------------------------------------------------------------------
     # Charge management
     # ------------------------------------------------------------------
@@ -344,7 +343,13 @@ class ApexMechanics:
         Returns a dict of resonance combat multipliers.
         Keys: 'atk_mult', 'def_mult', 'xp_bonus_pct', 'gold_bonus_pct', 'tyr_pct'
         """
-        result = {"atk_mult": 1.0, "def_mult": 1.0, "xp_bonus_pct": 0.0, "gold_bonus_pct": 0.0, "tyr_pct": 0.0}
+        result = {
+            "atk_mult": 1.0,
+            "def_mult": 1.0,
+            "xp_bonus_pct": 0.0,
+            "gold_bonus_pct": 0.0,
+            "tyr_pct": 0.0,
+        }
         key = soul_stone.resonance_key if soul_stone else None
         if not key:
             return result
@@ -394,7 +399,11 @@ class ApexMechanics:
                 base = passive_str.rsplit("_", 1)[0]
             else:
                 base = passive_str
-            key = base.lower() if base.lower() in PASSIVE_SHARD_MAP else passive_str.lower()
+            key = (
+                base.lower()
+                if base.lower() in PASSIVE_SHARD_MAP
+                else passive_str.lower()
+            )
             if key in PASSIVE_SHARD_MAP and key not in candidates:
                 candidates.append(key)
 

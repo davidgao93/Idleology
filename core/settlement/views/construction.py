@@ -51,7 +51,7 @@ class BuildConstructionView(SettlementBaseView):
             c["gold"] = int(c.get("gold", 0) * 0.65)
         if self.plot_bonus_type == "ancient_foundation":
             c["timber"] = int(c.get("timber", 0) * 0.70)
-            c["stone"]  = int(c.get("stone",  0) * 0.70)
+            c["stone"] = int(c.get("stone", 0) * 0.70)
         return c
 
     # -------------------------------------------------------------------------
@@ -72,7 +72,9 @@ class BuildConstructionView(SettlementBaseView):
         if self.plot_bonus_type == "gold_vein":
             discount_note = "\n💛 **Gold Vein:** Construction gold cost reduced by 35%."
         elif self.plot_bonus_type == "ancient_foundation":
-            discount_note = "\n🏺 **Ancient Foundation:** Timber & Stone cost reduced by 30%."
+            discount_note = (
+                "\n🏺 **Ancient Foundation:** Timber & Stone cost reduced by 30%."
+            )
 
         embed = discord.Embed(
             title="🏗️ Construction Site",
@@ -119,11 +121,26 @@ class BuildConstructionView(SettlementBaseView):
     def _is_available(self, b_type: str) -> bool:
         """True if the building type can currently be built (blueprint checks)."""
         if (
-            (b_type == "celestial_shrine"  and not self.uber_prog.get("celestial_blueprint_unlocked"))
-            or (b_type == "infernal_shrine" and not self.uber_prog.get("infernal_blueprint_unlocked"))
-            or (b_type == "void_shrine"     and not self.uber_prog.get("void_blueprint_unlocked"))
-            or (b_type == "twin_shrine"     and not self.uber_prog.get("gemini_blueprint_unlocked"))
-            or (b_type == "corruption_shrine" and not self.uber_prog.get("corruption_blueprint_unlocked"))
+            (
+                b_type == "celestial_shrine"
+                and not self.uber_prog.get("celestial_blueprint_unlocked")
+            )
+            or (
+                b_type == "infernal_shrine"
+                and not self.uber_prog.get("infernal_blueprint_unlocked")
+            )
+            or (
+                b_type == "void_shrine"
+                and not self.uber_prog.get("void_blueprint_unlocked")
+            )
+            or (
+                b_type == "twin_shrine"
+                and not self.uber_prog.get("gemini_blueprint_unlocked")
+            )
+            or (
+                b_type == "corruption_shrine"
+                and not self.uber_prog.get("corruption_blueprint_unlocked")
+            )
         ):
             return False
         min_level = self._PLAYER_LEVEL_REQUIREMENTS.get(b_type, 0)
@@ -192,14 +209,14 @@ class BuildConstructionView(SettlementBaseView):
         cost = self._apply_discounts(raw_cost)
 
         # Resource check
-        u_gold   = await self.bot.database.users.get_gold(self.user_id)
+        u_gold = await self.bot.database.users.get_gold(self.user_id)
         u_timber = self.parent.settlement.timber
-        u_stone  = self.parent.settlement.stone
+        u_stone = self.parent.settlement.stone
 
         if (
-            u_gold   < cost.get("gold",   0)
+            u_gold < cost.get("gold", 0)
             or u_timber < cost.get("timber", 0)
-            or u_stone  < cost.get("stone",  0)
+            or u_stone < cost.get("stone", 0)
         ):
             self._processing = False
             return await interaction.response.send_message(
@@ -215,6 +232,7 @@ class BuildConstructionView(SettlementBaseView):
         )
         event_effects: dict = {}
         from core.settlement.constants import SETTLEMENT_EVENTS
+
         for ev in active_events:
             if ev["event_type"] == "ongoing":
                 ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
@@ -231,7 +249,7 @@ class BuildConstructionView(SettlementBaseView):
         # Deduct resources immediately (reserved for the project)
         changes = {
             "timber": -cost.get("timber", 0),
-            "stone":  -cost.get("stone",  0),
+            "stone": -cost.get("stone", 0),
         }
         await self.bot.database.settlement.commit_production(
             self.user_id, self.parent.server_id, changes
@@ -270,6 +288,7 @@ class BuildConstructionView(SettlementBaseView):
         await interaction.edit_original_response(embed=embed, view=discord.ui.View())
 
         import asyncio
+
         await asyncio.sleep(2)
 
         # Return to plot detail or dashboard

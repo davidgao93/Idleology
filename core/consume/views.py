@@ -193,7 +193,11 @@ class EquipConfirmView(BaseView):
     async def _do_equip(self):
         slot = self.part.slot_type
         await self.parent.bot.database.monster_parts.equip_and_remove_part(
-            self.parent.user_id, self.part.id, slot, self.part.hp_value, self.part.monster_name
+            self.parent.user_id,
+            self.part.id,
+            slot,
+            self.part.hp_value,
+            self.part.monster_name,
         )
         self.parent.player.equipped_parts[slot] = {
             "hp": self.part.hp_value,
@@ -243,7 +247,11 @@ class PartDetailView(BaseView):
             # Slot empty — equip immediately
             await interaction.response.defer()
             await self.parent.bot.database.monster_parts.equip_and_remove_part(
-                self.parent.user_id, self.part.id, slot, self.part.hp_value, self.part.monster_name
+                self.parent.user_id,
+                self.part.id,
+                slot,
+                self.part.hp_value,
+                self.part.monster_name,
             )
             self.parent.player.equipped_parts[slot] = {
                 "hp": self.part.hp_value,
@@ -378,7 +386,9 @@ class RecycleView(BaseView):
 class RecycleConfirmView(BaseView):
     """Previews the recycle result; Confirm destroys the 3 parts and adds the new one."""
 
-    def __init__(self, recycle_view: "RecycleView", selected: list[MonsterPart], new_hp: int):
+    def __init__(
+        self, recycle_view: "RecycleView", selected: list[MonsterPart], new_hp: int
+    ):
         super().__init__(bot=recycle_view.bot, parent=recycle_view)
         self.consume_view: "ConsumeView" = recycle_view.parent
         self.recycle_view = recycle_view
@@ -405,8 +415,10 @@ class RecycleConfirmView(BaseView):
             self.consume_view.user_id, slot, name, avg_ilvl, self.new_hp
         )
 
-        self.consume_view.inventory = await self.bot.database.monster_parts.get_inventory(
-            self.consume_view.user_id
+        self.consume_view.inventory = (
+            await self.bot.database.monster_parts.get_inventory(
+                self.consume_view.user_id
+            )
         )
         self.consume_view.inventory_parts = [
             create_monster_part(r) for r in self.consume_view.inventory
@@ -416,7 +428,9 @@ class RecycleConfirmView(BaseView):
         slot_label = _SLOT_LABELS.get(slot, slot)
         slot_emoji = _SLOT_EMOJI.get(slot, "🫀")
         embed = _build_main_embed(self.consume_view.player, self.consume_view.inventory)
-        embed.set_footer(text=f"Recycled into {slot_emoji} {slot_label} — +{self.new_hp:,} Max HP!")
+        embed.set_footer(
+            text=f"Recycled into {slot_emoji} {slot_label} — +{self.new_hp:,} Max HP!"
+        )
         await interaction.edit_original_response(embed=embed, view=self.consume_view)
         self.stop()
 
@@ -439,27 +453,38 @@ class EggSelect(ui.Select):
             options.append(
                 discord.SelectOption(label=label[:100], value=str(egg[0]), emoji=emoji)
             )
-        super().__init__(placeholder="Select an egg to consume...", options=options, min_values=1, max_values=1)
+        super().__init__(
+            placeholder="Select an egg to consume...",
+            options=options,
+            min_values=1,
+            max_values=1,
+        )
         self.eggs_by_id = {str(e[0]): e for e in eggs}
 
     async def callback(self, interaction: Interaction):
         egg = self.eggs_by_id.get(self.values[0])
         if not egg:
-            return await interaction.response.send_message("Egg not found.", ephemeral=True)
+            return await interaction.response.send_message(
+                "Egg not found.", ephemeral=True
+            )
 
         tier = egg[1]
         lo, hi = _EGG_PASSIVE_POINTS[tier]
         points = random.randint(lo, hi)
 
         await self.view.bot.database.eggs.delete_egg(egg[0])
-        await self.view.bot.database.users.modify_currency(self.view.user_id, "passive_points", points)
+        await self.view.bot.database.users.modify_currency(
+            self.view.user_id, "passive_points", points
+        )
 
         # Refresh local egg list
         self.view.eggs = await self.view.bot.database.eggs.get_eggs(self.view.user_id)
         self.view._rebuild_select()
 
         embed = _build_egg_consume_embed(self.view.eggs)
-        embed.set_footer(text=f"You consumed the egg and gained {points} passive point{'s' if points != 1 else ''}!")
+        embed.set_footer(
+            text=f"You consumed the egg and gained {points} passive point{'s' if points != 1 else ''}!"
+        )
         await interaction.response.edit_message(embed=embed, view=self.view)
 
 
@@ -534,6 +559,7 @@ class ConsumeView(BaseView):
         passives = await self.bot.database.hematurgy.get_all_passives(self.user_id)
         blood = await self.bot.database.hematurgy.get_blood(self.user_id)
         from core.hematurgy.views import HematurgyView, _build_hematurgy_embed
+
         hview = HematurgyView(self.bot, passives, blood, parent=self)
         embed = _build_hematurgy_embed(passives, blood)
         await interaction.edit_original_response(embed=embed, view=hview)
@@ -543,7 +569,9 @@ class ConsumeView(BaseView):
         await interaction.response.defer()
         eggs = await self.bot.database.eggs.get_eggs(self.user_id)
         if not eggs:
-            return await interaction.followup.send("You have no monster eggs to consume.", ephemeral=True)
+            return await interaction.followup.send(
+                "You have no monster eggs to consume.", ephemeral=True
+            )
         egg_view = EggConsumeView(self.bot, self, eggs)
         embed = _build_egg_consume_embed(eggs)
         await interaction.edit_original_response(embed=embed, view=egg_view)
@@ -552,7 +580,8 @@ class ConsumeView(BaseView):
     async def recycle(self, interaction: Interaction, button: ui.Button):
         if len(self.inventory_parts) < 3:
             return await interaction.response.send_message(
-                "You need at least **3 parts** in your inventory to recycle.", ephemeral=True
+                "You need at least **3 parts** in your inventory to recycle.",
+                ephemeral=True,
             )
         recycle_view = RecycleView(self)
         embed = _build_recycle_select_embed(len(self.inventory))

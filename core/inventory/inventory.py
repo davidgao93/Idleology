@@ -318,7 +318,9 @@ def _essence_fields(embed, item):
         slot_key = (
             "glove"
             if isinstance(item, Glove)
-            else "boot" if isinstance(item, Boot) else "helmet"
+            else "boot"
+            if isinstance(item, Boot)
+            else "helmet"
         )
         lines.append(
             f"**Corrupted:** {c_emoji} {c_name}\n   ↳ {_get_essence_brief(corrupted, slot_key)}"

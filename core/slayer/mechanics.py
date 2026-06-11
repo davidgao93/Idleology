@@ -48,9 +48,9 @@ BOSS_TASK_PREFIX = "BOSS:"
 # used to match monsters in combat; ``name`` is the display name shown to the player.
 BOSS_TASK_CATALOG = [
     {"key": "aphrodite", "name": "Aphrodite", "min_level": 20},
-    {"key": "lucifer",   "name": "Lucifer",   "min_level": 30},
-    {"key": "gemini",    "name": "Gemini",    "min_level": 40},
-    {"key": "NEET",      "name": "NEET",      "min_level": 50},
+    {"key": "lucifer", "name": "Lucifer", "min_level": 30},
+    {"key": "gemini", "name": "Gemini", "min_level": 40},
+    {"key": "NEET", "name": "NEET", "min_level": 50},
 ]
 
 # Slayer XP awarded per boss kill (10× normal kill XP of 500).

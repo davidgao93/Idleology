@@ -8,16 +8,29 @@ from database.base import BaseRepository
 # Safelists for dynamically-named identifiers (SQLite doesn't support parameterized
 # table/column names, so we validate against known-good values instead).
 _SKILL_TABLES = frozenset({"mining", "fishing", "woodcutting"})
-_SKILL_COLUMNS = frozenset({
-    "iron", "coal", "gold", "platinum", "idea",
-    "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
-    "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
-})
+_SKILL_COLUMNS = frozenset(
+    {
+        "iron",
+        "coal",
+        "gold",
+        "platinum",
+        "idea",
+        "desiccated_bones",
+        "regular_bones",
+        "sturdy_bones",
+        "reinforced_bones",
+        "titanium_bones",
+        "oak_logs",
+        "willow_logs",
+        "mahogany_logs",
+        "magic_logs",
+        "idea_logs",
+    }
+)
 _UBER_COLUMNS = frozenset({"capricious_carp", "blessed_bismuth", "sparkling_sprig"})
 
 
 class AlchemyRepository(BaseRepository):
-
     # ------------------------------------------------------------------
     # Alchemy Level
     # ------------------------------------------------------------------
@@ -144,8 +157,14 @@ class AlchemyRepository(BaseRepository):
         dst_delta: int,
     ) -> None:
         """Atomically deduct src and credit dst in the skill table."""
-        if skill_type not in _SKILL_TABLES or src_col not in _SKILL_COLUMNS or dst_col not in _SKILL_COLUMNS:
-            raise ValueError(f"Invalid transmute identifiers: {skill_type!r}/{src_col!r}/{dst_col!r}")
+        if (
+            skill_type not in _SKILL_TABLES
+            or src_col not in _SKILL_COLUMNS
+            or dst_col not in _SKILL_COLUMNS
+        ):
+            raise ValueError(
+                f"Invalid transmute identifiers: {skill_type!r}/{src_col!r}/{dst_col!r}"
+            )
         await self.connection.execute(
             f"UPDATE {skill_type} "
             f"SET {src_col} = {src_col} + ?, {dst_col} = {dst_col} + ? "
@@ -284,7 +303,9 @@ class AlchemyRepository(BaseRepository):
     # Session is stored as JSON in the `data` column for flexibility.
     # ------------------------------------------------------------------
 
-    async def get_distillation(self, user_id: str, server_id: str) -> Optional[Dict[str, Any]]:
+    async def get_distillation(
+        self, user_id: str, server_id: str
+    ) -> Optional[Dict[str, Any]]:
         """Returns the active distillation session or None.
         The returned dict has keys: step, data (already parsed JSON dict), started_at.
         """
@@ -301,7 +322,9 @@ class AlchemyRepository(BaseRepository):
             "started_at": row[2],
         }
 
-    async def upsert_distillation(self, user_id: str, server_id: str, step: int, data: Dict[str, Any]) -> None:
+    async def upsert_distillation(
+        self, user_id: str, server_id: str, step: int, data: Dict[str, Any]
+    ) -> None:
         """Create or update the distillation session for this user/server."""
         data_json = json.dumps(data)
         await self.connection.execute(

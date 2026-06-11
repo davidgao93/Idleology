@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 
 
 class SettlementMechanics:
-
     # --- CONSTANTS ---
     MAX_TIER = 5
 
@@ -122,7 +121,9 @@ class SettlementMechanics:
         }
         Only plots that have a building in *buildings* appear in the result.
         """
-        plot_by_idx: dict[int, Plot] = {p.plot_index: p for p in plots if p.is_developed}
+        plot_by_idx: dict[int, Plot] = {
+            p.plot_index: p for p in plots if p.is_developed
+        }
 
         # Global effect: Watchtower (no workers needed, applies settlement-wide)
         has_watchtower = any(
@@ -137,12 +138,12 @@ class SettlementMechanics:
         for b in buildings:
             if b.plot_index is not None:
                 result[b.plot_index] = {
-                    "production_mult":  0.0,
-                    "converter_mult":   0.0,
-                    "war_camp_rate":    0.0,
-                    "shrine_cap_x2":    False,
-                    "has_watchtower":   has_watchtower and not b.is_meta,
-                    "shrine_boost":     0.0,
+                    "production_mult": 0.0,
+                    "converter_mult": 0.0,
+                    "war_camp_rate": 0.0,
+                    "shrine_cap_x2": False,
+                    "has_watchtower": has_watchtower and not b.is_meta,
+                    "shrine_boost": 0.0,
                     "apothecary_boost": 0.0,
                 }
 
@@ -159,7 +160,9 @@ class SettlementMechanics:
             # Watchtower is passive (no workers required);
             # all others must be fully staffed to activate.
             if meta_b.building_type != "watchtower":
-                _required = META_BUILDINGS.get(meta_b.building_type, {}).get("max_workers", 100)
+                _required = META_BUILDINGS.get(meta_b.building_type, {}).get(
+                    "max_workers", 100
+                )
                 if meta_b.workers_assigned < _required:
                     continue
 
@@ -201,7 +204,7 @@ class SettlementMechanics:
                 elif meta_type == "foremans_post":
                     # Boosts all adjacent buildings' output
                     result[adj_idx]["production_mult"] += 0.25 * ley_amp
-                    result[adj_idx]["converter_mult"]  += 0.25 * ley_amp
+                    result[adj_idx]["converter_mult"] += 0.25 * ley_amp
 
                 elif meta_type == "apothecary_annex":
                     # +0.04% healing per worker here (0.0004 per worker in decimal)
@@ -224,8 +227,8 @@ class SettlementMechanics:
         adj_war_camp_rate: float = 0.0,
         adj_output_mult: float = 0.0,
         mastery_converter_output_mult: float = 0.0,  # From Master Quarry / Seasoned Timber
-        event_generator_bonus: float = 0.0,          # From active settlement events (e.g. resource_windfall)
-        event_converter_bonus: float = 0.0,          # From active settlement events (e.g. artisan_week)
+        event_generator_bonus: float = 0.0,  # From active settlement events (e.g. resource_windfall)
+        event_converter_bonus: float = 0.0,  # From active settlement events (e.g. artisan_week)
     ) -> Dict[str, int]:
         """
         Calculates production for a specific building over time.
@@ -321,7 +324,9 @@ class SettlementMechanics:
                 if amount_to_convert > 0:
                     output_amount = amount_to_convert
                     if mastery_converter_output_mult > 0:
-                        output_amount = int(amount_to_convert * (1.0 + mastery_converter_output_mult))
+                        output_amount = int(
+                            amount_to_convert * (1.0 + mastery_converter_output_mult)
+                        )
 
                     changes[raw_key] = changes.get(raw_key, 0) - amount_to_convert
                     changes[refined_key] = changes.get(refined_key, 0) + output_amount

@@ -136,8 +136,14 @@ class Ideology(commands.Cog, name="ideology"):
             color=0x9B59B6,
         )
         embed.set_thumbnail(url=PROPAGATE)
-        embed.add_field(name="New Followers", value=f"+**{follower_increase}**{bonus_msg}", inline=True)
-        embed.add_field(name="Total Followers", value=f"**{new_followers_count:,}**", inline=True)
+        embed.add_field(
+            name="New Followers",
+            value=f"+**{follower_increase}**{bonus_msg}",
+            inline=True,
+        )
+        embed.add_field(
+            name="Total Followers", value=f"**{new_followers_count:,}**", inline=True
+        )
         await interaction.response.send_message(embed=embed)
 
 

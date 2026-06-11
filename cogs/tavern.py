@@ -11,7 +11,6 @@ from core.images import (
     CASINO_AUTHOR,
     CHECKIN,
     POTION_SHOP,
-    POTION_SHOP,
     POTION_SHOP_AUTHOR,
     TAVERN_CASINO,
     TAVERN_GAMES,

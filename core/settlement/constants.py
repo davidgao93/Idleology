@@ -66,8 +66,8 @@ CONSTRUCTION_COSTS = {
     "apothecary": {"gold": 25000, "timber": 2000, "stone": 2000},
     "black_market": {"gold": 50000, "timber": 50000, "stone": 50000},
     "companion_ranch": {"gold": 30000, "timber": 30000, "stone": 30000},
-    "hatchery":        {"gold": 30000, "timber": 30000, "stone": 30000},
-    "war_camp":        {"gold": 20000, "timber": 1500, "stone": 1500},
+    "hatchery": {"gold": 30000, "timber": 30000, "stone": 30000},
+    "war_camp": {"gold": 20000, "timber": 1500, "stone": 1500},
     "celestial_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
     "infernal_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
     "void_shrine": {"gold": 10000000, "timber": 100000, "stone": 100000},
@@ -88,8 +88,8 @@ SPECIAL_MAP = {
     "town_hall": "spirit_shard",
     "apothecary": "life_root",
     "companion_ranch": "life_root",
-    "hatchery":        "life_root",
-    "war_camp":        "magma_core",
+    "hatchery": "life_root",
+    "war_camp": "magma_core",
     "celestial_shrine": "celestial_stone",
     "infernal_shrine": "infernal_cinder",
     "void_shrine": "void_crystal",
@@ -109,7 +109,14 @@ ITEM_NAMES = {
 }
 
 # Legacy individual shrine types (kept for DB backward-compat; new builds use uber_shrine)
-UBER_BUILDINGS = {"celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine", "corruption_shrine", "uber_shrine"}
+UBER_BUILDINGS = {
+    "celestial_shrine",
+    "infernal_shrine",
+    "void_shrine",
+    "twin_shrine",
+    "corruption_shrine",
+    "uber_shrine",
+}
 
 # Black Market bulk trade configuration
 BLACK_MARKET_TRADES = {
@@ -153,23 +160,29 @@ UPGRADE_MESSAGES = [
 # New Buildings — Nursery + Idlem Foundry + Uber Shrine
 # ---------------------------------------------------------------------------
 
-BUILDING_INFO.update({
-    "nursery": "Project Building: Produces **~1–2 Workers per Development Turn**. Completed workers are added to your ideology's follower count. Higher tiers increase output per turn.",
-    "idlem_foundry": "Project Building: Produces **~1–2 Idlem per Development Turn**. Idlem is the currency for the Black Market passive tree — invest it to unlock better deal speeds, value, and loot biases.",
-    "uber_shrine": "Passive: Houses all five shrine statues (Celestial, Infernal, Void, Twin, Corruption) in one building. Allocate workers to each statue individually — each statue provides the same sigil drop boost as a standalone shrine. Higher tiers raise the total worker cap across all statues.",
-})
+BUILDING_INFO.update(
+    {
+        "nursery": "Project Building: Produces **~1–2 Workers per Development Turn**. Completed workers are added to your ideology's follower count. Higher tiers increase output per turn.",
+        "idlem_foundry": "Project Building: Produces **~1–2 Idlem per Development Turn**. Idlem is the currency for the Black Market passive tree — invest it to unlock better deal speeds, value, and loot biases.",
+        "uber_shrine": "Passive: Houses all five shrine statues (Celestial, Infernal, Void, Twin, Corruption) in one building. Allocate workers to each statue individually — each statue provides the same sigil drop boost as a standalone shrine. Higher tiers raise the total worker cap across all statues.",
+    }
+)
 
-CONSTRUCTION_COSTS.update({
-    "nursery": {"gold": 25000, "timber": 2000, "stone": 2000},
-    "idlem_foundry": {"gold": 50000, "timber": 5000, "stone": 5000},
-    "uber_shrine": {"gold": 10_000_000, "timber": 100_000, "stone": 100_000},
-})
+CONSTRUCTION_COSTS.update(
+    {
+        "nursery": {"gold": 25000, "timber": 2000, "stone": 2000},
+        "idlem_foundry": {"gold": 50000, "timber": 5000, "stone": 5000},
+        "uber_shrine": {"gold": 10_000_000, "timber": 100_000, "stone": 100_000},
+    }
+)
 
-SPECIAL_MAP.update({
-    "nursery": "life_root",
-    "idlem_foundry": "spirit_shard",
-    "uber_shrine": "celestial_stone",  # uses all 5 types for T3+; handled in upgrade logic
-})
+SPECIAL_MAP.update(
+    {
+        "nursery": "life_root",
+        "idlem_foundry": "spirit_shard",
+        "uber_shrine": "celestial_stone",  # uses all 5 types for T3+; handled in upgrade logic
+    }
+)
 
 # ---------------------------------------------------------------------------
 # Development Turns / Zeal economy
@@ -178,7 +191,7 @@ SPECIAL_MAP.update({
 # Zeal earned per combat win (first ZEAL_DAILY_HARD_CAP zeal, then diminishing returns).
 ZEAL_PER_COMBAT = 10
 # Conversions
-ZEAL_TO_DT = 10            # 10 Zeal = 1 Development Turn
+ZEAL_TO_DT = 10  # 10 Zeal = 1 Development Turn
 # Daily hard cap on total zeal earned (800 = ~80 DTs per day from active play).
 ZEAL_DAILY_HARD_CAP = 800
 # Soft cap: after this much zeal earned today, gains are halved.
@@ -212,7 +225,7 @@ PROJECT_CONSTRUCTION_DT = {
 
 # Extra DT cost per tier level for upgrades (applied on top of resource cost).
 PROJECT_UPGRADE_DT_PER_TIER = {
-    "default": 8,        # T1→T2 = 8 DTs, T2→T3 = 16, etc.
+    "default": 8,  # T1→T2 = 8 DTs, T2→T3 = 16, etc.
     "uber_shrine": 20,
     "black_market": 15,
     "town_hall": 20,
@@ -308,7 +321,7 @@ BM_ITEM_VALUES: dict[str, int] = {
 
 # Processing turn formula: turns = BM_TURNS_BASE + (value / BM_TURNS_PER_VALUE)
 BM_TURNS_BASE = 5
-BM_TURNS_PER_VALUE = 10_000   # every 10k value ≈ +1 turn
+BM_TURNS_PER_VALUE = 10_000  # every 10k value ≈ +1 turn
 
 # ---------------------------------------------------------------------------
 # Black Market — base loot table
@@ -316,18 +329,18 @@ BM_TURNS_PER_VALUE = 10_000   # every 10k value ≈ +1 turn
 # Each entry: (category_key, weight)
 # When a base roll fires, pick a category; then roll quantity from sub-table.
 BM_BASE_LOOT_WEIGHTS: list[tuple[str, int]] = [
-    ("gold",       25),
-    ("rune",       12),
-    ("boss_key",   15),
-    ("gathering",  10),
-    ("essence",     8),
-    ("gear",        8),
+    ("gold", 25),
+    ("rune", 12),
+    ("boss_key", 15),
+    ("gathering", 10),
+    ("essence", 8),
+    ("gear", 8),
     ("settler_mat", 5),
-    ("egg",         4),
-    ("guild_ticket",4),
-    ("consume",     3),
-    ("curio",       3),
-    ("high_end",    3),
+    ("egg", 4),
+    ("guild_ticket", 4),
+    ("consume", 3),
+    ("curio", 3),
+    ("high_end", 3),
 ]
 
 # Rolls = floor(value / BM_ROLLS_PER_VALUE) (min 1)
@@ -475,7 +488,6 @@ BM_TREE_NODES: dict[str, dict] = {
 # when targets_any_building or targets_building_types is set.
 SETTLEMENT_EVENTS: dict[str, dict] = {
     # ── POSITIVE EVENTS ──────────────────────────────────────────────────────
-
     "merchant_caravan": {
         "name": "🐪 Merchant Caravan",
         "type": "ongoing",
@@ -503,7 +515,13 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "duration_bands": [3, 4, 5],
         "effects": {"generator_bonus": "band"},
         "modifier_bands": [0.20, 0.30, 0.40, 0.50, 0.60],
-        "requires_buildings": ["logging_camp", "quarry", "market", "companion_ranch", "war_camp"],
+        "requires_buildings": [
+            "logging_camp",
+            "quarry",
+            "market",
+            "companion_ranch",
+            "war_camp",
+        ],
         "trigger_at": [10, 35, 70, 120, 180],
         "recurring_interval": 45,
     },
@@ -568,9 +586,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "trigger_at": [22, 58, 105, 162],
         "recurring_interval": 55,
     },
-
     # ── NEGATIVE EVENTS ──────────────────────────────────────────────────────
-
     "worker_fatigue": {
         "name": "😴 Worker Fatigue",
         "type": "ongoing",
@@ -578,7 +594,13 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "duration_bands": [3, 4, 5],
         "effects": {"generator_bonus": "neg_band"},
         "modifier_bands": [0.10, 0.15, 0.20, 0.25],
-        "requires_buildings": ["logging_camp", "quarry", "market", "companion_ranch", "war_camp"],
+        "requires_buildings": [
+            "logging_camp",
+            "quarry",
+            "market",
+            "companion_ranch",
+            "war_camp",
+        ],
         "trigger_at": [12, 38, 78, 128, 188],
         "recurring_interval": 55,
     },
@@ -604,14 +626,15 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "trigger_at": [42, 95, 165],
         "recurring_interval": 70,
     },
-
     # ── CRISIS EVENTS ────────────────────────────────────────────────────────
-
     "bandit_raid": {
         "name": "⚔️ Bandit Raid",
         "type": "upcoming",
         "description": "Raiders are targeting your {target_building_label}. Defeat the Bandit Captain in /combat before the warning expires or the building will be disabled.",
-        "effects": {"spawn_combat": "bandit_captain", "on_fail_disable": "target_building"},
+        "effects": {
+            "spawn_combat": "bandit_captain",
+            "on_fail_disable": "target_building",
+        },
         "targets_any_building": True,
         "trigger_at": [25, 75, 140, 220],
         "recurring_interval": 80,
@@ -621,7 +644,10 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "name": "🦠 Plague Outbreak",
         "type": "upcoming",
         "description": "Disease spreads through your workforce. Defeat the Plague Wraith in /combat before the warning expires or lose {band_pct}% of all workers.",
-        "effects": {"spawn_combat": "plague_wraith", "on_fail_lose_workers_pct": "band"},
+        "effects": {
+            "spawn_combat": "plague_wraith",
+            "on_fail_lose_workers_pct": "band",
+        },
         "modifier_bands": [0.01, 0.03, 0.05, 0.07, 0.10],
         "trigger_at": [50, 120, 200],
         "recurring_interval": 90,
@@ -631,8 +657,17 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "name": "🌑 Void Incursion",
         "type": "upcoming",
         "description": "A void rift opens near your {target_building_label}. Defeat the Void Sentry in /combat before the warning expires or lose the building.",
-        "effects": {"spawn_combat": "void_sentry", "on_fail_disable": "target_building"},
-        "targets_building_types": ["uber_shrine", "void_shrine", "black_market", "companion_ranch", "reliquary"],
+        "effects": {
+            "spawn_combat": "void_sentry",
+            "on_fail_disable": "target_building",
+        },
+        "targets_building_types": [
+            "uber_shrine",
+            "void_shrine",
+            "black_market",
+            "companion_ranch",
+            "reliquary",
+        ],
         "trigger_at": [100, 200],
         "recurring_interval": 120,
         "advance_warning_turns": 5,
@@ -641,8 +676,17 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "name": "🔥 Fire Hazard",
         "type": "upcoming",
         "description": "A fire breaks out near your {target_building_label}. Defeat the Ember Wraith in /combat before the warning expires or the building will be disabled.",
-        "effects": {"spawn_combat": "ember_wraith", "on_fail_disable": "target_building"},
-        "targets_building_types": ["logging_camp", "sawmill", "market", "apothecary", "barracks"],
+        "effects": {
+            "spawn_combat": "ember_wraith",
+            "on_fail_disable": "target_building",
+        },
+        "targets_building_types": [
+            "logging_camp",
+            "sawmill",
+            "market",
+            "apothecary",
+            "barracks",
+        ],
         "trigger_at": [35, 85, 150, 225],
         "recurring_interval": 85,
         "advance_warning_turns": 2,
@@ -655,46 +699,46 @@ RAID_DISABLE_BUILDINGS = {"market", "void_shrine", "logging_camp", "apothecary"}
 # Resources that can be offered to the Black Market (displayed in offering UI)
 BM_OFFERABLE_RESOURCES: list[tuple[str, str]] = [
     # (resource_key, display_label)
-    ("timber",          "🪵 Timber"),
-    ("stone",           "🪨 Stone"),
-    ("iron",            "⛏️ Iron Ore"),
-    ("coal",            "🪨 Coal"),
-    ("gold",            "🏅 Gold Ore"),
-    ("platinum",        "💿 Platinum Ore"),
-    ("idea",            "💡 Idea Ore"),
-    ("iron_bar",        "🔧 Iron Bars"),
-    ("steel_bar",       "🔧 Steel Bars"),
-    ("gold_bar",        "🔧 Gold Bars"),
-    ("platinum_bar",    "🔧 Platinum Bars"),
-    ("idea_bar",        "🔧 Idea Bars"),
-    ("oak_logs",        "🌲 Oak Logs"),
-    ("willow_logs",     "🌲 Willow Logs"),
-    ("mahogany_logs",   "🌲 Mahogany Logs"),
-    ("magic_logs",      "🌲 Magic Logs"),
-    ("idea_logs",       "🌲 Idea Logs"),
-    ("oak_plank",       "🪵 Oak Planks"),
-    ("willow_plank",    "🪵 Willow Planks"),
-    ("mahogany_plank",  "🪵 Mahogany Planks"),
-    ("magic_plank",     "🪵 Magic Planks"),
-    ("idea_plank",      "🪵 Idea Planks"),
-    ("desiccated_bones","🦴 Desiccated Bones"),
-    ("regular_bones",   "🦴 Regular Bones"),
-    ("sturdy_bones",    "🦴 Sturdy Bones"),
-    ("reinforced_bones","🦴 Reinforced Bones"),
-    ("titanium_bones",  "🦴 Titanium Bones"),
-    ("refinement_runes","🔮 Refinement Runes"),
+    ("timber", "🪵 Timber"),
+    ("stone", "🪨 Stone"),
+    ("iron", "⛏️ Iron Ore"),
+    ("coal", "🪨 Coal"),
+    ("gold", "🏅 Gold Ore"),
+    ("platinum", "💿 Platinum Ore"),
+    ("idea", "💡 Idea Ore"),
+    ("iron_bar", "🔧 Iron Bars"),
+    ("steel_bar", "🔧 Steel Bars"),
+    ("gold_bar", "🔧 Gold Bars"),
+    ("platinum_bar", "🔧 Platinum Bars"),
+    ("idea_bar", "🔧 Idea Bars"),
+    ("oak_logs", "🌲 Oak Logs"),
+    ("willow_logs", "🌲 Willow Logs"),
+    ("mahogany_logs", "🌲 Mahogany Logs"),
+    ("magic_logs", "🌲 Magic Logs"),
+    ("idea_logs", "🌲 Idea Logs"),
+    ("oak_plank", "🪵 Oak Planks"),
+    ("willow_plank", "🪵 Willow Planks"),
+    ("mahogany_plank", "🪵 Mahogany Planks"),
+    ("magic_plank", "🪵 Magic Planks"),
+    ("idea_plank", "🪵 Idea Planks"),
+    ("desiccated_bones", "🦴 Desiccated Bones"),
+    ("regular_bones", "🦴 Regular Bones"),
+    ("sturdy_bones", "🦴 Sturdy Bones"),
+    ("reinforced_bones", "🦴 Reinforced Bones"),
+    ("titanium_bones", "🦴 Titanium Bones"),
+    ("refinement_runes", "🔮 Refinement Runes"),
     ("potential_runes", "🔮 Potential Runes"),
-    ("shatter_runes",   "🔮 Shatter Runes"),
-    ("imbue_runes",     "🔮 Imbuing Runes"),
-    ("dragon_key",      "🗝️ Draconic Keys"),
-    ("angel_key",       "🗝️ Angelic Keys"),
-    ("soul_cores",      "💠 Soul Cores"),
-    ("balance_fragment","⚖️ Fragments of Balance"),
-    ("void_frags",      "🌑 Void Fragments"),
-    ("magma_core",      "🔥 Magma Cores"),
-    ("life_root",       "🌿 Life Roots"),
-    ("spirit_shard",    "🌟 Spirit Shards"),
-    ("curios",          "📦 Curios"),
+    ("shatter_runes", "🔮 Shatter Runes"),
+    ("imbue_runes", "🔮 Imbuing Runes"),
+    ("dragon_key", "🗝️ Draconic Keys"),
+    ("angel_key", "🗝️ Angelic Keys"),
+    ("soul_cores", "💠 Soul Cores"),
+    ("balance_fragment", "⚖️ Fragments of Balance"),
+    ("void_frags", "🌑 Void Fragments"),
+    ("magma_core", "🔥 Magma Cores"),
+    ("life_root", "🌿 Life Roots"),
+    ("spirit_shard", "🌟 Spirit Shards"),
+    ("curios", "📦 Curios"),
     ("unidentified_blueprint", "📋 Blueprints"),
-    ("spirit_stones",   "🔮 Spirit Stones"),
+    ("spirit_stones", "🔮 Spirit Stones"),
 ]

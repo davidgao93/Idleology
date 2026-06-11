@@ -137,20 +137,30 @@ class MawEncounterView(BaseView):
 
         # Fetch updated state for lobby reconstruction
         record = await self.bot.database.maw.get_record(self.user_id, self.cycle_id)
-        total_cycle_damage = await self.bot.database.maw.get_cycle_total_damage(self.cycle_id)
-        participant_count = await self.bot.database.maw.count_participants(self.cycle_id)
+        total_cycle_damage = await self.bot.database.maw.get_cycle_total_damage(
+            self.cycle_id
+        )
+        participant_count = await self.bot.database.maw.count_participants(
+            self.cycle_id
+        )
 
         # Check for pending rewards from the previous cycle
         prev_cycle_id = mechanics.get_previous_cycle_id(self.cycle_id)
-        pending_record = await self.bot.database.maw.get_record(self.user_id, prev_cycle_id)
+        pending_record = await self.bot.database.maw.get_record(
+            self.user_id, prev_cycle_id
+        )
         if pending_record and pending_record["rewards_collected"]:
             pending_record = None
 
         pending_total = 0
         pending_participants = 0
         if pending_record:
-            pending_total = await self.bot.database.maw.get_cycle_total_damage(prev_cycle_id)
-            pending_participants = await self.bot.database.maw.count_participants(prev_cycle_id)
+            pending_total = await self.bot.database.maw.get_cycle_total_damage(
+                prev_cycle_id
+            )
+            pending_participants = await self.bot.database.maw.count_participants(
+                prev_cycle_id
+            )
 
         self.clear_items()
         self.stop()
@@ -176,7 +186,9 @@ class MawEncounterView(BaseView):
         await message.edit(embed=embed, view=view)
         view.message = message
 
-    def _build_completion_embed(self, record: dict | None, total_cycle_damage: int) -> discord.Embed:
+    def _build_completion_embed(
+        self, record: dict | None, total_cycle_damage: int
+    ) -> discord.Embed:
         cycle_total = record["damage_dealt"] if record else self.total_damage
         pct = mechanics.contribution_pct(cycle_total, total_cycle_damage)
         fights_done = record["fights_this_cycle"] if record else 0

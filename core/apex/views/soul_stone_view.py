@@ -75,19 +75,25 @@ def _resonance_hint_text(soul_stone: SoulStone) -> str | None:
 
     elif len(filled) == 2:
         # No resonance with 2 slots means they hold two different categories.
-        lines.append("**1 slot remaining** — add a matching category to unlock a resonance:")
+        lines.append(
+            "**1 slot remaining** — add a matching category to unlock a resonance:"
+        )
         for cat in cat_counts:
             em = _CAT_EMOJI.get(cat, "✨")
             t2 = RESONANCE_TABLE.get(f"{cat}_2")
             if t2:
                 lines.append(f"  {em} Add **{cat.title()}** → **{t2[0]}** — *{t2[1]}*")
         lines.append("")
-        lines.append("*T3 resonance is no longer reachable — it requires all 3 slots to match.*")
+        lines.append(
+            "*T3 resonance is no longer reachable — it requires all 3 slots to match.*"
+        )
 
     elif len(filled) == 3:
         # All slots filled with three different categories — no resonance possible.
         lines.append("All 3 slots are filled but no category has a majority.")
-        lines.append("Clear a slot and replace it so at least 2 slots share a category.")
+        lines.append(
+            "Clear a slot and replace it so at least 2 slots share a category."
+        )
 
     return "\n".join(lines) if lines else None
 
@@ -150,8 +156,12 @@ def _build_soul_stone_embed(
     # --- Shard inventory ---
     shard_parts = []
     _SHARD_EMOJIS = {
-        "pyre": "🔥", "tempest": "⚡", "bulwark": "🏰",
-        "verdant": "🌿", "fortune": "💰", "rift": "🌀",
+        "pyre": "🔥",
+        "tempest": "⚡",
+        "bulwark": "🏰",
+        "verdant": "🌿",
+        "fortune": "💰",
+        "rift": "🌀",
     }
     for key, emoji in _SHARD_EMOJIS.items():
         count = shards.get(key)
@@ -165,10 +175,13 @@ def _build_soul_stone_embed(
 
     # --- Meta shards ---
     from core.apex.data import META_SHARD_DISPLAY
+
     meta_parts = []
     for key, (display, _) in META_SHARD_DISPLAY.items():
         count = meta.get(key)
-        meta_parts.append(f"{display.split(' ', 1)[0]} {key.replace('_', ' ').title()}: **{count}**")
+        meta_parts.append(
+            f"{display.split(' ', 1)[0]} {key.replace('_', ' ').title()}: **{count}**"
+        )
     embed.add_field(
         name="🔮 Meta Shards",
         value="\n".join(meta_parts),
@@ -176,7 +189,9 @@ def _build_soul_stone_embed(
     )
 
     embed.set_thumbnail(url=APEX_SOUL_STONE)
-    embed.set_footer(text="Imprint: extract passive from gear | Upgrade: improve a slot's tier")
+    embed.set_footer(
+        text="Imprint: extract passive from gear | Upgrade: improve a slot's tier"
+    )
     return embed
 
 
@@ -216,8 +231,13 @@ class SoulStoneView(BaseView):
         from core.apex.views.imprint_view import ImprintView
 
         view = ImprintView(
-            self.bot, self.user_id, self.server_id,
-            self.player, soul_stone, shards, meta,
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            soul_stone,
+            shards,
+            meta,
         )
         embed = await view.build_embed()
         await interaction.edit_original_response(embed=embed, view=view)
@@ -247,8 +267,13 @@ class SoulStoneView(BaseView):
         from core.apex.views.upgrade_view import UpgradeView
 
         view = UpgradeView(
-            self.bot, self.user_id, self.server_id,
-            self.player, soul_stone, shards, meta,
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            soul_stone,
+            shards,
+            meta,
         )
         embed = view.build_embed()
         await interaction.edit_original_response(embed=embed, view=view)
@@ -326,8 +351,12 @@ class SoulStoneView(BaseView):
 
         secs = ApexMechanics.seconds_until_next_charge(profile)
         lobby_view = ApexLobbyView(
-            self.bot, self.user_id, self.server_id,
-            self.player.name, profile, charges,
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player.name,
+            profile,
+            charges,
         )
         lobby_embed = _build_lobby_embed(self.player.name, profile, charges, secs)
         await interaction.edit_original_response(embed=lobby_embed, view=lobby_view)
@@ -377,7 +406,12 @@ class _ClearSlotView(BaseView):
             await self.bot.database.apex.clear_slot(
                 self.user_id, self.server_id, slot_num
             )
-            passive_display = self.soul_stone.slots[slot_num - 1].passive.replace("-", " ").replace("_", " ").title()
+            passive_display = (
+                self.soul_stone.slots[slot_num - 1]
+                .passive.replace("-", " ")
+                .replace("_", " ")
+                .title()
+            )
 
             # Show result briefly, then offer to go back
             self.clear_items()
@@ -397,7 +431,11 @@ class _ClearSlotView(BaseView):
 
     async def _return_to_soul_stone(self, interaction: Interaction):
         await interaction.response.defer()
-        from core.apex.models import soul_stone_from_db, shards_from_db, meta_shards_from_db
+        from core.apex.models import (
+            soul_stone_from_db,
+            shards_from_db,
+            meta_shards_from_db,
+        )
 
         ss_row = await self.bot.database.apex.get_or_create_soul_stone(
             self.user_id, self.server_id

@@ -20,7 +20,11 @@ from core.partners.mechanics import (
     get_skill_effect_text,
     reroll_skill,
 )
-from core.partners.resources import _rarity_colour, _sig_display_name, _skill_display_name
+from core.partners.resources import (
+    _rarity_colour,
+    _sig_display_name,
+    _skill_display_name,
+)
 from core.partners.ui import _build_partner_embed
 from core.partners.views._helpers import PartnerBaseView, _apply_dispatch_rewards
 
@@ -71,7 +75,9 @@ class PartnerSkillsView(PartnerBaseView):
             REROLL_COMBAT_COST if self.mode == "combat" else REROLL_DISPATCH_COST
         )
 
-        header = f"**{shards}** {self.mode} shards  |  Reroll costs **{reroll_cost}** shards"
+        header = (
+            f"**{shards}** {self.mode} shards  |  Reroll costs **{reroll_cost}** shards"
+        )
         if p.rarity >= 6:
             char_shards = self.items.get("char_shards", 0)
             header += f"  |  🔷 **{char_shards}** char shards"
@@ -104,7 +110,9 @@ class PartnerSkillsView(PartnerBaseView):
             if self.mode == "combat" and p.sig_combat_key:
                 sig_lvl = p.sig_combat_lvl
                 sig_cost = get_sig_upgrade_cost(sig_lvl)
-                cost_str = f" | Upgrade: **{sig_cost}** 🔷" if sig_cost else " | **MAX**"
+                cost_str = (
+                    f" | Upgrade: **{sig_cost}** 🔷" if sig_cost else " | **MAX**"
+                )
                 if sig_lvl > 0:
                     lines.append(
                         f"`SIG` **{_sig_display_name(p.sig_combat_key)}** Lv.{sig_lvl}/{MAX_SIG_LEVEL} — "
@@ -117,7 +125,9 @@ class PartnerSkillsView(PartnerBaseView):
             elif self.mode == "dispatch" and p.sig_dispatch_key:
                 sig_lvl = p.sig_dispatch_lvl
                 sig_cost = get_sig_upgrade_cost(sig_lvl)
-                cost_str = f" | Upgrade: **{sig_cost}** 🔷" if sig_cost else " | **MAX**"
+                cost_str = (
+                    f" | Upgrade: **{sig_cost}** 🔷" if sig_cost else " | **MAX**"
+                )
                 if sig_lvl > 0:
                     lines.append(
                         f"`SIG` **{_sig_display_name(p.sig_dispatch_key)}** Lv.{sig_lvl}/{MAX_SIG_LEVEL} — "
@@ -170,9 +180,7 @@ class PartnerSkillsView(PartnerBaseView):
             )
             if sig_key and sig_lvl < MAX_SIG_LEVEL:
                 sig_cost = get_sig_upgrade_cost(sig_lvl)
-                label = (
-                    f"{'Unlock' if sig_lvl == 0 else 'Upgrade'} SIG ({sig_cost} 🔷)"
-                )
+                label = f"{'Unlock' if sig_lvl == 0 else 'Upgrade'} SIG ({sig_cost} 🔷)"
                 sig_btn = ui.Button(label=label, style=ButtonStyle.blurple, row=0)
                 sig_btn.callback = self._make_sig_upgrade(sig_lvl)
                 self.add_item(sig_btn)

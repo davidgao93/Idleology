@@ -41,6 +41,7 @@ IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
 # ── URL helpers ───────────────────────────────────────────────────────────────
 
+
 def filename_from_url(url: str) -> str:
     return Path(urlparse(url).path).name
 
@@ -73,10 +74,12 @@ def format_expiry(url: str) -> str:
     if exp is None:
         return "unknown"
     import datetime
+
     return datetime.datetime.utcfromtimestamp(exp).strftime("%Y-%m-%d")
 
 
 # ── Module inspection ─────────────────────────────────────────────────────────
+
 
 def load_images_module():
     spec = importlib.util.spec_from_file_location("images", IMAGES_PY)
@@ -102,6 +105,7 @@ def collect_urls(mod) -> list[tuple[str, str]]:
 
 # ── Local file search ─────────────────────────────────────────────────────────
 
+
 def build_local_index(images_dir: Path) -> dict[str, Path]:
     """Return {filename: first matching path} for all files under images_dir."""
     index: dict[str, Path] = {}
@@ -113,7 +117,10 @@ def build_local_index(images_dir: Path) -> dict[str, Path]:
 
 # ── Discord upload ─────────────────────────────────────────────────────────────
 
-async def upload_file(session: aiohttp.ClientSession, token: str, filepath: Path) -> str:
+
+async def upload_file(
+    session: aiohttp.ClientSession, token: str, filepath: Path
+) -> str:
     url = f"{DISCORD_API}/channels/{CHANNEL_ID}/messages"
     headers = {"Authorization": f"Bot {token}"}
     fname = filepath.name
@@ -136,6 +143,7 @@ async def upload_file(session: aiohttp.ClientSession, token: str, filepath: Path
 
 # ── images.py patching ────────────────────────────────────────────────────────
 
+
 def patch_images_py(old_url: str, new_url: str) -> int:
     """Replace all occurrences of old_url with new_url in images.py. Returns count replaced."""
     text = IMAGES_PY.read_text(encoding="utf-8")
@@ -149,11 +157,14 @@ def patch_images_py(old_url: str, new_url: str) -> int:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 async def main(execute: bool):
     load_dotenv(ROOT / ".env")
     token = os.getenv("TOKEN")
     if not execute:
-        print("DRY-RUN mode. Pass --execute to actually re-upload and patch images.py.\n")
+        print(
+            "DRY-RUN mode. Pass --execute to actually re-upload and patch images.py.\n"
+        )
     elif not token:
         sys.exit("ERROR: TOKEN not found in .env")
 
@@ -173,7 +184,9 @@ async def main(execute: bool):
 
     total = len(all_entries)
     expired = len(expired_entries)
-    print(f"Scanned {total} URL entries. {expired} expired (or expiring within 30 days).\n")
+    print(
+        f"Scanned {total} URL entries. {expired} expired (or expiring within 30 days).\n"
+    )
 
     if expired == 0:
         print("Nothing to reseed.")
@@ -219,9 +232,15 @@ async def main(execute: bool):
             # Already uploaded this URL in an earlier dedup pass?
             if seen_urls.get(old_url):
                 new_url = seen_urls[old_url]
-                print(f"  [{i+1}/{len(uploadable)}] {fname}  (reusing earlier upload)")
+                print(
+                    f"  [{i + 1}/{len(uploadable)}] {fname}  (reusing earlier upload)"
+                )
             else:
-                print(f"  [{i+1}/{len(uploadable)}] Uploading {fname} ... ", end="", flush=True)
+                print(
+                    f"  [{i + 1}/{len(uploadable)}] Uploading {fname} ... ",
+                    end="",
+                    flush=True,
+                )
                 try:
                     new_url = await upload_file(session, token, local_path)
                     seen_urls[old_url] = new_url

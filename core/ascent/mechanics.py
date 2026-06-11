@@ -28,7 +28,6 @@ PINNACLE_REWARDS: dict[int, dict] = {
 
 
 class AscentMechanics:
-
     @staticmethod
     def calculate_floor_monster_level(floor: int) -> int:
         return BASE_LEVEL + (floor - 1) * LEVEL_PER_FLOOR

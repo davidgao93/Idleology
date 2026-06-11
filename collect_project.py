@@ -9,26 +9,26 @@ DEST_DIR = SOURCE_DIR / DEST_DIR_NAME
 
 # Directories to completely ignore
 IGNORE_DIRS = {
-    ".git", 
-    "__pycache__", 
-    "venv", 
-    "env", 
-    ".idea", 
-    ".vscode", 
+    ".git",
+    "__pycache__",
+    "venv",
+    "env",
+    ".idea",
+    ".vscode",
     "assets",
     "tests",
     ".pytest_cache",
     "database/backups",
-    DEST_DIR_NAME  # Don't copy the output folder into itself
+    DEST_DIR_NAME,  # Don't copy the output folder into itself
 }
 
 # Specific files to ignore
 IGNORE_FILES = {
-    "collect_project.py", # Don't copy this script
-    ".env",               # Security: Don't upload tokens
-    "discord.log",        # Logs are local only
-    ".DS_Store",          # Mac junk
-    "Thumbs.db",          # Windows junk
+    "collect_project.py",  # Don't copy this script
+    ".env",  # Security: Don't upload tokens
+    "discord.log",  # Logs are local only
+    ".DS_Store",  # Mac junk
+    "Thumbs.db",  # Windows junk
     "run_app.bat",
     "requirements.txt",
     "icon.png",
@@ -40,12 +40,13 @@ IGNORE_FILES = {
     "config_test.json",
     "conftest.py",
     "tests.py",
-    "prompt.txt"
+    "prompt.txt",
 }
 
 # If you want to include the database, remove "database.db" from this list.
 # Usually, you exclude the binary DB file when uploading code changes.
-IGNORE_FILES.add("database.db") 
+IGNORE_FILES.add("database.db")
+
 
 def build_flat_name(src_path: Path) -> str:
     """
@@ -61,6 +62,7 @@ def build_flat_name(src_path: Path) -> str:
     else:
         return rel.name
 
+
 def main():
     print(f"📦 Starting collection from: {SOURCE_DIR}")
     print(f"🎯 Destination: {DEST_DIR}")
@@ -71,7 +73,9 @@ def main():
         try:
             shutil.rmtree(DEST_DIR)
         except PermissionError:
-            print("❌ Error: Close any files open in the '_upload_ready' folder and try again.")
+            print(
+                "❌ Error: Close any files open in the '_upload_ready' folder and try again."
+            )
             return
 
     DEST_DIR.mkdir(parents=True, exist_ok=True)
@@ -83,7 +87,7 @@ def main():
     for root, dirs, files in os.walk(SOURCE_DIR):
         # Filter directories in-place to prevent walking into ignored folders
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
-        
+
         for file in files:
             if file in IGNORE_FILES:
                 continue
@@ -107,10 +111,7 @@ def main():
             copied_count += 1
             copied_files.append((src_file, dst_file))  # NEW: remember src & dst
 
-            print(
-                f"   📄 Copied: {src_file.relative_to(SOURCE_DIR)} "
-                f"-> {flat_name}"
-            )
+            print(f"   📄 Copied: {src_file.relative_to(SOURCE_DIR)} -> {flat_name}")
 
     # 3. Build combined file for LLM consumption  # NEW
     if copied_files:
@@ -133,9 +134,7 @@ def main():
                     f"FLATTENED_NAME: {dst_file.name}\n"
                     "---------- FILE CONTENT ----------\n\n"
                 )
-                footer = (
-                    "\n---------- FILE END ------------\n\n"
-                )
+                footer = "\n---------- FILE END ------------\n\n"
 
                 combined.write(header)
                 try:
@@ -155,6 +154,7 @@ def main():
     print("-" * 40)
     print(f"✅ Success! Copied {copied_count} files.")
     print(f"📂 Your files are ready in: {DEST_DIR}")
+
 
 if __name__ == "__main__":
     main()

@@ -198,8 +198,12 @@ class ResearchView(SettlementBaseView):
             )
             emoji = _BUILDING_EMOJIS.get(b_type, "🔬")
             research_proj = next(
-                (p for p in self._research_projects if p["project_type"] == "research"
-                 and p.get("data", {}).get("building_type") == b_type),
+                (
+                    p
+                    for p in self._research_projects
+                    if p["project_type"] == "research"
+                    and p.get("data", {}).get("building_type") == b_type
+                ),
                 None,
             )
             if research_proj:
@@ -320,18 +324,31 @@ class ResearchView(SettlementBaseView):
         b_type, start_str = active
 
         # Research only completes via Development Turns.
-        projects = await self.bot.database.settlement.get_projects(self.user_id, self.server_id)
+        projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.server_id
+        )
         research_proj = next(
-            (p for p in projects if p["project_type"] == "research"
-             and p.get("data", {}).get("building_type") == b_type),
+            (
+                p
+                for p in projects
+                if p["project_type"] == "research"
+                and p.get("data", {}).get("building_type") == b_type
+            ),
             None,
         )
-        dt_done = research_proj and research_proj["invested_turns"] >= research_proj["required_turns"]
+        dt_done = (
+            research_proj
+            and research_proj["invested_turns"] >= research_proj["required_turns"]
+        )
         if dt_done:
             await self.bot.database.settlement.delete_project(research_proj["id"])
 
         if not dt_done:
-            dt_needed = (research_proj["required_turns"] - research_proj["invested_turns"]) if research_proj else "?"
+            dt_needed = (
+                (research_proj["required_turns"] - research_proj["invested_turns"])
+                if research_proj
+                else "?"
+            )
             await interaction.response.send_message(
                 f"Research isn't done yet.\n"
                 f"⏭️ Advance **{dt_needed}** more Development Turn(s) via **Next Turn**.",

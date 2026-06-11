@@ -88,7 +88,11 @@ class ForestryView(BaseView):
         label = labels.get(self.session_quality)
         if not label:
             return ""
-        mom_txt = f"  (+{self.session_momentum} min Momentum)" if self.session_momentum else ""
+        mom_txt = (
+            f"  (+{self.session_momentum} min Momentum)"
+            if self.session_momentum
+            else ""
+        )
         return f"\n**Session Quality:** {label}{mom_txt}"
 
     # ------------------------------------------------------------------
@@ -111,9 +115,13 @@ class ForestryView(BaseView):
 
         elif self.state == "chopping":
             if self.knot_state == "knot":
-                knot_line = "\n\n⚠️ **A gnarled knot is blocking your swing!** Clear it first."
+                knot_line = (
+                    "\n\n⚠️ **A gnarled knot is blocking your swing!** Clear it first."
+                )
             elif self.knot_state == "tight_knot_pry":
-                knot_line = "\n\n🪝 **Tough knot jammed in the wood!** Pry it loose first."
+                knot_line = (
+                    "\n\n🪝 **Tough knot jammed in the wood!** Pry it loose first."
+                )
             elif self.knot_state == "tight_knot_clear":
                 knot_line = "\n\n⚠️ **Knot loosened — now clear it away!**"
             else:
@@ -276,7 +284,11 @@ class ForestryView(BaseView):
 
         # Rhythm check: timely if within FORESTRY_RHYTHM_WINDOW seconds of last action
         now = time.time()
-        ref = self.last_swing_time if self.last_swing_time is not None else self.enter_time
+        ref = (
+            self.last_swing_time
+            if self.last_swing_time is not None
+            else self.enter_time
+        )
         if ref is not None and (now - ref) <= SkillMechanics.FORESTRY_RHYTHM_WINDOW:
             self.rhythm_hits += 1
         self.total_swings += 1
@@ -291,20 +303,29 @@ class ForestryView(BaseView):
             )
 
             yield_dict = SkillMechanics.calculate_yield("woodcutting", self.axe_tier)
-            yield_dict = SkillMechanics.apply_quality_to_yield(yield_dict, self.session_quality)
+            yield_dict = SkillMechanics.apply_quality_to_yield(
+                yield_dict, self.session_quality
+            )
 
             await self.bot.database.skills.update_batch(
                 self.user_id, self.server_id, "woodcutting", yield_dict
             )
 
             # Bank momentum
-            self.session_momentum = SkillMechanics.get_momentum_minutes(self.session_quality)
+            self.session_momentum = SkillMechanics.get_momentum_minutes(
+                self.session_quality
+            )
             if self.session_momentum > 0:
                 try:
-                    max_mom = SkillMechanics.MAX_MOMENTUM_MINUTES.get("woodcutting", 300)
+                    max_mom = SkillMechanics.MAX_MOMENTUM_MINUTES.get(
+                        "woodcutting", 300
+                    )
                     await self.bot.database.skills.add_session_momentum(
-                        self.user_id, self.server_id, "woodcutting",
-                        self.session_momentum, max_mom,
+                        self.user_id,
+                        self.server_id,
+                        "woodcutting",
+                        self.session_momentum,
+                        max_mom,
                     )
                 except Exception:
                     pass
@@ -353,9 +374,9 @@ class ForestryView(BaseView):
         # Random knot check before the next swing.
         if random.random() < KNOT_CHANCE:
             if random.random() < TIGHT_KNOT_FRACTION:
-                self.knot_state = "tight_knot_pry"   # 2-click: Pry then Clear
+                self.knot_state = "tight_knot_pry"  # 2-click: Pry then Clear
             else:
-                self.knot_state = "knot"              # 1-click: Clear
+                self.knot_state = "knot"  # 1-click: Clear
         else:
             self.knot_state = None
         self.setup_ui()
@@ -392,7 +413,11 @@ class ForestryView(BaseView):
         if self.parent_gather_view:
             summary = ""
             if self.session_quality != "none":
-                labels = {"good": "🌟 Good", "great": "⭐ Great", "masterful": "✨ Masterful"}
+                labels = {
+                    "good": "🌟 Good",
+                    "great": "⭐ Great",
+                    "masterful": "✨ Masterful",
+                }
                 summary = f"**Last Chopping Session:** {labels[self.session_quality]}"
                 if self.session_momentum:
                     summary += f" — +{self.session_momentum} min Momentum banked."

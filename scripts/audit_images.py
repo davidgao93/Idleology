@@ -26,6 +26,7 @@ IMAGES_DIR = ROOT / "assets" / "images"
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+
 def load_images_module():
     spec = importlib.util.spec_from_file_location("images", IMAGES_PY)
     mod = importlib.util.module_from_spec(spec)
@@ -69,6 +70,7 @@ def iter_image_entries(mod) -> list[tuple[str, str]]:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main():
     if not IMAGES_PY.exists():
         sys.exit(f"ERROR: {IMAGES_PY} not found.")
@@ -101,7 +103,7 @@ def main():
         color = "" if status == "OK" else "  <-- NOT FOUND LOCALLY"
         print(f"  {status:<8} {label:<45}  {rel}{color}")
 
-    print(f"\n{'-'*70}")
+    print(f"\n{'-' * 70}")
     print(f"  OK:      {ok}")
     print(f"  MISSING: {len(missing)}")
 

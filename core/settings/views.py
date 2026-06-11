@@ -11,9 +11,7 @@ _DIFFICULTY_NAMES = ["Off", "Hard", "Extreme", "Nightmarish", "Delirious"]
 _DIFFICULTY_EMOJIS = ["⬜", "☠️", "💀", "👁️", "🌀"]
 
 _DIFFICULTY_DESCRIPTIONS = {
-    0: (
-        "Standard encounters — no penalties or bonuses."
-    ),
+    0: ("Standard encounters — no penalties or bonuses."),
     1: (
         "**☠️ Hard** — Monster ATK & DEF ×2, +15% hit & crit chance, ×1.2 surge multiplier. "
         "Corrupted rate +2%. Victories grant **+50% EXP & Gold**. "
@@ -121,14 +119,20 @@ class SettingsView(BaseView):
 
             async def _difficulty_callback(interaction: Interaction, s=select):
                 self.difficulty = int(s.values[0])
-                await self.bot.database.users.set_difficulty(self.user_id, self.difficulty)
+                await self.bot.database.users.set_difficulty(
+                    self.user_id, self.difficulty
+                )
                 self.rebuild_buttons()
-                await interaction.response.edit_message(embed=self.build_embed(), view=self)
+                await interaction.response.edit_message(
+                    embed=self.build_embed(), view=self
+                )
 
             select.callback = _difficulty_callback
             self.add_item(select)
 
-        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=4)
+        close_btn = ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=4
+        )
         close_btn.callback = self._close
         self.add_item(close_btn)
 
@@ -147,7 +151,11 @@ class SettingsView(BaseView):
             "**💰 Auto-Pay for Rest** — {rest}\n"
             "When enabled, using `/rest` while on cooldown will automatically pay the gold cost "
             "to instantly rest (if you have enough gold), skipping the confirmation prompt."
-        ).format(doors=doors_str, exp=exp_str, rest=("🟢 ENABLED" if self.auto_rest_pay else "🔴 DISABLED"))
+        ).format(
+            doors=doors_str,
+            exp=exp_str,
+            rest=("🟢 ENABLED" if self.auto_rest_pay else "🔴 DISABLED"),
+        )
 
         if self.player_level >= 100:
             diff_name = f"{_DIFFICULTY_EMOJIS[self.difficulty]} {_DIFFICULTY_NAMES[self.difficulty]}"

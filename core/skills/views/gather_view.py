@@ -53,14 +53,17 @@ class GatherView(BaseView):
             self.user_id, self.server_id
         )
         # Familiarization gate for the current tool tier
-        self.fam_end_iso, self.fam_momentum = (
-            await self.bot.database.skills.get_familiarization_state(
-                self.user_id, self.server_id, self.current_skill
-            )
+        (
+            self.fam_end_iso,
+            self.fam_momentum,
+        ) = await self.bot.database.skills.get_familiarization_state(
+            self.user_id, self.server_id, self.current_skill
         )
         self.setup_ui()
 
-    async def refresh_and_resume(self, interaction: Interaction, session_summary: str = ""):
+    async def refresh_and_resume(
+        self, interaction: Interaction, session_summary: str = ""
+    ):
         """Called by child activity views when the player returns to the hub."""
         self._processing = False
         await self.refresh_state()
@@ -173,7 +176,9 @@ class GatherView(BaseView):
                 else:
                     up_btn = Button(
                         label=f"Upgrade {next_tier.title()}",
-                        style=ButtonStyle.success if can_afford else ButtonStyle.secondary,
+                        style=ButtonStyle.success
+                        if can_afford
+                        else ButtonStyle.secondary,
                         disabled=not can_afford,
                         emoji="⬆️",
                         row=3,
@@ -197,6 +202,7 @@ class GatherView(BaseView):
     def _make_tab_callback(self, skill: str):
         async def callback(interaction: Interaction):
             await self.switch_tab(interaction, skill)
+
         return callback
 
     async def switch_tab(self, interaction: Interaction, skill: str):
@@ -271,7 +277,9 @@ class GatherView(BaseView):
                 gate_line += "\n*Tip: Participating actively in the mini-game earns Momentum, which reduces your Familiarization time.*"
                 desc += gate_line
             elif self.fam_momentum > 0:
-                desc += f"\n✅ Gate lifted! *(Momentum banked: {self.fam_momentum} min)*"
+                desc += (
+                    f"\n✅ Gate lifted! *(Momentum banked: {self.fam_momentum} min)*"
+                )
         else:
             desc += "\n\n**Tool is Max Level!**"
 
@@ -361,7 +369,9 @@ class GatherView(BaseView):
         )
 
         # Start familiarization gate for the new tier
-        fam_hours = SkillMechanics.get_familiarization_hours(self.current_skill, next_tier)
+        fam_hours = SkillMechanics.get_familiarization_hours(
+            self.current_skill, next_tier
+        )
         if fam_hours > 0:
             end = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
                 hours=fam_hours
@@ -457,7 +467,11 @@ class GatherView(BaseView):
                 pickaxe_tier=pickaxe,
             )
             view = DelveView(
-                self.bot, self.user_id, self.server_id, state, delve_stats,
+                self.bot,
+                self.user_id,
+                self.server_id,
+                state,
+                delve_stats,
                 parent_gather_view=gather_parent,
             )
             embed = view.build_embed("Systems online. Permit verified.")
@@ -476,7 +490,11 @@ class GatherView(BaseView):
         entry_embed.set_thumbnail(url=DELVE_HUB)
 
         entry_view = DelveEntryView(
-            self.bot, self.user_id, self.server_id, entry_cost, start_delve,
+            self.bot,
+            self.user_id,
+            self.server_id,
+            entry_cost,
+            start_delve,
             parent_gather_view=gather_parent,
         )
         await interaction.edit_original_response(embed=entry_embed, view=entry_view)

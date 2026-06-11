@@ -264,15 +264,21 @@ class SkillRepository:
         Returns (mining_res, wood_res, fish_res) as (raw, refined) tuples.
         """
         mining_res = await self.get_multi_resource(
-            user_id, server_id, "mining",
+            user_id,
+            server_id,
+            "mining",
             [cols["ore"]["raw_col"], cols["ore"]["ref_col"]],
         )
         wood_res = await self.get_multi_resource(
-            user_id, server_id, "woodcutting",
+            user_id,
+            server_id,
+            "woodcutting",
             [cols["log"]["raw_col"], cols["log"]["ref_col"]],
         )
         fish_res = await self.get_multi_resource(
-            user_id, server_id, "fishing",
+            user_id,
+            server_id,
+            "fishing",
             [cols["bone"]["raw_col"], cols["bone"]["ref_col"]],
         )
         return mining_res, wood_res, fish_res
@@ -291,9 +297,13 @@ class SkillRepository:
         to_take_raw = min(raw_held, cost)
         to_take_ref = cost - to_take_raw
         if to_take_raw > 0:
-            await self.deduct_resource_atomic(user_id, server_id, table, raw_col, to_take_raw)
+            await self.deduct_resource_atomic(
+                user_id, server_id, table, raw_col, to_take_raw
+            )
         if to_take_ref > 0:
-            await self.deduct_resource_atomic(user_id, server_id, table, ref_col, to_take_ref)
+            await self.deduct_resource_atomic(
+                user_id, server_id, table, ref_col, to_take_ref
+            )
 
     async def charge_entry_cost(self, user_id: str, gold_amount: int) -> None:
         """Deducts gold from a user for a minigame entry cost (bait / forestry pass)."""
@@ -330,14 +340,33 @@ class SkillRepository:
         ) as cursor:
             row = await cursor.fetchone()
         if row:
-            cols = [d[0] for d in cursor.description] if hasattr(cursor, "description") else []
+            cols = (
+                [d[0] for d in cursor.description]
+                if hasattr(cursor, "description")
+                else []
+            )
             # Fallback column names if description not available in aiosqlite cursor
             if not cols:
-                cols = ["user_id","server_id","mining_points","fishing_points","woodcutting_points",
-                        "mining_alloc","fishing_alloc","woodcutting_alloc","last_point_claim",
-                        "geode_cores","tide_relics","heartwood_shards",
-                        "mining_tripled_ticks","fishing_tripled_ticks","woodcutting_tripled_ticks",
-                        "total_mastery_invested","attunement_alloc","mastery_insight"]
+                cols = [
+                    "user_id",
+                    "server_id",
+                    "mining_points",
+                    "fishing_points",
+                    "woodcutting_points",
+                    "mining_alloc",
+                    "fishing_alloc",
+                    "woodcutting_alloc",
+                    "last_point_claim",
+                    "geode_cores",
+                    "tide_relics",
+                    "heartwood_shards",
+                    "mining_tripled_ticks",
+                    "fishing_tripled_ticks",
+                    "woodcutting_tripled_ticks",
+                    "total_mastery_invested",
+                    "attunement_alloc",
+                    "mastery_insight",
+                ]
             return dict(zip(cols, row))
         # Create default row
         await self.connection.execute(
@@ -346,16 +375,27 @@ class SkillRepository:
         )
         await self.connection.commit()
         return {
-            "user_id": user_id, "server_id": server_id,
-            "mining_points": 0, "fishing_points": 0, "woodcutting_points": 0,
-            "mining_alloc": "{}", "fishing_alloc": "{}", "woodcutting_alloc": "{}",
+            "user_id": user_id,
+            "server_id": server_id,
+            "mining_points": 0,
+            "fishing_points": 0,
+            "woodcutting_points": 0,
+            "mining_alloc": "{}",
+            "fishing_alloc": "{}",
+            "woodcutting_alloc": "{}",
             "last_point_claim": None,
-            "geode_cores": 0, "tide_relics": 0, "heartwood_shards": 0,
-            "mining_tripled_ticks": 0, "fishing_tripled_ticks": 0, "woodcutting_tripled_ticks": 0,
+            "geode_cores": 0,
+            "tide_relics": 0,
+            "heartwood_shards": 0,
+            "mining_tripled_ticks": 0,
+            "fishing_tripled_ticks": 0,
+            "woodcutting_tripled_ticks": 0,
             "total_mastery_invested": 0,
         }
 
-    async def add_mastery_points(self, user_id: str, server_id: str, skill: str, amount: int) -> None:
+    async def add_mastery_points(
+        self, user_id: str, server_id: str, skill: str, amount: int
+    ) -> None:
         """Add points to one skill (called from hourly task)."""
         col = f"{skill}_points"
         await self.connection.execute(
@@ -364,7 +404,14 @@ class SkillRepository:
         )
         await self.connection.commit()
 
-    async def update_mastery_alloc(self, user_id: str, server_id: str, skill: str, alloc_json: str, total_invested: int) -> None:
+    async def update_mastery_alloc(
+        self,
+        user_id: str,
+        server_id: str,
+        skill: str,
+        alloc_json: str,
+        total_invested: int,
+    ) -> None:
         """Atomic purchase: write new alloc JSON and update total."""
         col = f"{skill}_alloc"
         await self.connection.execute(
@@ -373,7 +420,9 @@ class SkillRepository:
         )
         await self.connection.commit()
 
-    async def modify_remnants(self, user_id: str, server_id: str, changes: dict) -> bool:
+    async def modify_remnants(
+        self, user_id: str, server_id: str, changes: dict
+    ) -> bool:
         """Add/sub remnants (positive or negative). Returns False if any would go negative."""
         sets = []
         vals = []
@@ -422,7 +471,9 @@ class SkillRepository:
             row = await cursor.fetchone()
         return row[0] if row else 0
 
-    async def respec_mastery(self, user_id: str, server_id: str, skill: str, refund_points: int) -> None:
+    async def respec_mastery(
+        self, user_id: str, server_id: str, skill: str, refund_points: int
+    ) -> None:
         """Full reset of one skill's alloc and refund its points. Caller already spent the rune."""
         col = f"{skill}_alloc"
         points_col = f"{skill}_points"
@@ -432,7 +483,9 @@ class SkillRepository:
         )
         await self.connection.commit()
 
-    async def add_tripled_ticks(self, user_id: str, server_id: str, skill: str, amount: int) -> None:
+    async def add_tripled_ticks(
+        self, user_id: str, server_id: str, skill: str, amount: int
+    ) -> None:
         """Award tripled passive tick buffs from defeating a prestige gathering boss."""
         if amount <= 0:
             return
@@ -443,7 +496,9 @@ class SkillRepository:
         )
         await self.connection.commit()
 
-    async def consume_tripled_tick(self, user_id: str, server_id: str, skill: str) -> None:
+    async def consume_tripled_tick(
+        self, user_id: str, server_id: str, skill: str
+    ) -> None:
         """Decrement the tripled tick counter by 1 for this skill (clamped at 0).
         Called from the hourly regeneration task when a player consumes one of their
         prestige-boss-granted triple-yield ticks.
@@ -457,7 +512,9 @@ class SkillRepository:
         )
         await self.connection.commit()
 
-    async def update_last_mastery_claim(self, user_id: str, server_id: str, timestamp: str) -> None:
+    async def update_last_mastery_claim(
+        self, user_id: str, server_id: str, timestamp: str
+    ) -> None:
         """Update the last_point_claim timestamp for catch-up calculations. Called from the hourly task."""
         await self.connection.execute(
             "UPDATE gathering_mastery SET last_point_claim=? WHERE user_id=? AND server_id=?",
@@ -465,7 +522,9 @@ class SkillRepository:
         )
         await self.connection.commit()
 
-    async def deduct_mastery_points(self, user_id: str, server_id: str, skill: str, amount: int) -> None:
+    async def deduct_mastery_points(
+        self, user_id: str, server_id: str, skill: str, amount: int
+    ) -> None:
         """Deduct points from a skill's mastery pool (used on node purchase)."""
         if amount <= 0:
             return
@@ -480,7 +539,9 @@ class SkillRepository:
     # Nature's Attunement (cross-skill tree) + Mastery Insight
     # =========================================================
 
-    async def update_attunement_alloc(self, user_id: str, server_id: str, alloc_json: str) -> None:
+    async def update_attunement_alloc(
+        self, user_id: str, server_id: str, alloc_json: str
+    ) -> None:
         """Write the attunement allocation JSON (free node investment, not per-skill branches)."""
         await self.connection.execute(
             "UPDATE gathering_mastery SET attunement_alloc=? WHERE user_id=? AND server_id=?",
@@ -488,7 +549,9 @@ class SkillRepository:
         )
         await self.connection.commit()
 
-    async def add_mastery_insight(self, user_id: str, server_id: str, amount: int) -> None:
+    async def add_mastery_insight(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Award Mastery Insight from post-max excess point conversion."""
         if amount <= 0:
             return
@@ -569,7 +632,9 @@ class SkillRepository:
         except Exception:
             pass
 
-    async def convert_excess_to_insight(self, user_id: str, server_id: str, conversion_rate: int = 5) -> int:
+    async def convert_excess_to_insight(
+        self, user_id: str, server_id: str, conversion_rate: int = 5
+    ) -> int:
         """
         If the player has fully maxed all trees + Nature's Attunement, convert as many
         full sets of `conversion_rate` unspent points (summed across the three skills)
@@ -588,7 +653,12 @@ class SkillRepository:
         if not row:
             return 0
 
-        m_pts, f_pts, w_pts, current_insight = (row[0] or 0, row[1] or 0, row[2] or 0, row[3] or 0)
+        m_pts, f_pts, w_pts, current_insight = (
+            row[0] or 0,
+            row[1] or 0,
+            row[2] or 0,
+            row[3] or 0,
+        )
         total_points = m_pts + f_pts + w_pts
         if total_points < conversion_rate:
             return 0
@@ -611,7 +681,14 @@ class SkillRepository:
                SET mining_points = ?, fishing_points = ?, woodcutting_points = ?,
                    mastery_insight = mastery_insight + ?
                WHERE user_id=? AND server_id=?""",
-            (new_mining, new_fishing, new_woodcutting, insight_gain, user_id, server_id),
+            (
+                new_mining,
+                new_fishing,
+                new_woodcutting,
+                insight_gain,
+                user_id,
+                server_id,
+            ),
         )
         await self.connection.commit()
         return insight_gain

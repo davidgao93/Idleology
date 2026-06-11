@@ -66,7 +66,9 @@ BASE_RANGES = {
 }
 
 
-def _build_unlocked_for_invested(skill: str, invested_per_branch: Dict[str, int]) -> Dict[str, list]:
+def _build_unlocked_for_invested(
+    skill: str, invested_per_branch: Dict[str, int]
+) -> Dict[str, list]:
     """Given invested points per branch, return the list of nodes that would be unlocked (cumulative)."""
     order_map = BRANCH_NODE_ORDERS.get(skill, {})
     tree = ALL_TREES[skill]
@@ -86,12 +88,21 @@ def _build_unlocked_for_invested(skill: str, invested_per_branch: Dict[str, int]
     return result
 
 
-def make_row(mining: Dict[str, int], fishing: Dict[str, int], wood: Dict[str, int], insight: int = 0) -> dict:
+def make_row(
+    mining: Dict[str, int],
+    fishing: Dict[str, int],
+    wood: Dict[str, int],
+    insight: int = 0,
+) -> dict:
     """Create a mastery row dict with correct 'invested' + 'unlocked' lists derived from the points."""
+
     def alloc(skill: str, d: Dict[str, int]) -> str:
         unlocked_map = _build_unlocked_for_invested(skill, d)
         return json.dumps(
-            {b: {"invested": p, "unlocked": unlocked_map.get(b, [])} for b, p in d.items()},
+            {
+                b: {"invested": p, "unlocked": unlocked_map.get(b, [])}
+                for b, p in d.items()
+            },
             separators=(",", ":"),
         )
 
@@ -111,7 +122,11 @@ def base_yield(skill: str, tier: str) -> Dict[str, int]:
         # Only resources available at this tier or lower are present; for BiS we always have all
         # The original samples random.randint only for those the tier can produce.
         # For simplicity in expectation sim we always roll the BiS range when the resource exists for the tier.
-        if tier in ("ideal", "titanium", "felling") or res in ("idea", "titanium_bones", "idea_logs"):
+        if tier in ("ideal", "titanium", "felling") or res in (
+            "idea",
+            "titanium_bones",
+            "idea_logs",
+        ):
             out[res] = random.randint(lo, hi)
         # For lower resources the ranges are higher at BiS; we include them all for total realism.
         # (The mapping above already encodes the BiS numbers.)
@@ -127,7 +142,9 @@ def tick(skill: str, row: dict, tier: str) -> Dict[str, float]:
     """One passive tick with full mastery (now including the wired +55% synergy sig bonus)."""
     base = base_yield(skill, tier)
     y = get_yield_multiplier(skill, row)
-    s = get_signature_resource_bonus(skill, row)  # now correctly includes Living Mountain +55% (hourly ticks)
+    s = get_signature_resource_bonus(
+        skill, row
+    )  # now correctly includes Living Mountain +55% (hourly ticks)
     sig = SIGNATURE[skill]
 
     # Apply global yield first (to everything)
@@ -179,8 +196,12 @@ def simulate_days(row: dict, days: int = DAYS) -> Dict[str, float]:
 def main():
     print("=" * 78)
     print("ARTISAN MASTERY — IDEA ORE / SIGNATURE RESOURCE VERIFICATION")
-    print(f"Monte Carlo: {DAYS} days x {TICKS_PER_DAY} ticks, BiS tools (ideal / titanium / felling)")
-    print("All multipliers from live core/skills/mastery.py getters (Yield + Quality + Synergy sig)")
+    print(
+        f"Monte Carlo: {DAYS} days x {TICKS_PER_DAY} ticks, BiS tools (ideal / titanium / felling)"
+    )
+    print(
+        "All multipliers from live core/skills/mastery.py getters (Yield + Quality + Synergy sig)"
+    )
     print("=" * 78)
 
     profiles = {
@@ -216,7 +237,9 @@ def main():
 
         print(f"\n{name}:")
         print(f"  Mining total resources / day : {out['mining']:7.1f}")
-        print(f"    +-- Idea Ore (signature)    : {out['mining_idea']:7.1f}   (the 55% node target)")
+        print(
+            f"    +-- Idea Ore (signature)    : {out['mining_idea']:7.1f}   (the 55% node target)"
+        )
         print(f"  Fishing total / day          : {out['fishing']:7.1f}")
         print(f"    +-- Titanium Bones         : {out['fishing_titanium_bones']:7.1f}")
         print(f"  Woodcutting total / day      : {out['woodcutting']:7.1f}")
@@ -229,16 +252,30 @@ def main():
             s = get_signature_resource_bonus("mining", row)
             print(f"  [debug] Effective multipliers applied to Mining (BiS base):")
             print(f"          Yield branch (global) : {y:.3f}×")
-            print(f"          Signature (Idea)      : {s:.3f}×   <--- includes Living Mountain +55% when present")
-            print(f"          Combined on Idea      : {y * s:.3f}× before Rich/NE procs")
+            print(
+                f"          Signature (Idea)      : {s:.3f}×   <--- includes Living Mountain +55% when present"
+            )
+            print(
+                f"          Combined on Idea      : {y * s:.3f}× before Rich/NE procs"
+            )
 
     print("\n" + "=" * 78)
     print("INTERPRETATION (Living Mountain / equivalent 5pt Synergy nodes):")
-    print("  - Quality branch alone (Ideal Seeker + Crystallized Insight) = +38% Idea Ore from passive hourly ticks")
-    print("  - Adding Living Mountain (synergy) = +55% Idea Ore yield from passive hourly mining ticks")
-    print("    (total signature multiplier on Idea = 1.93× when both Quality + Synergy 5pt are taken)")
-    print("  - The sim now correctly includes the +55% because get_signature_resource_bonus checks synergy nodes.")
-    print("  - Previously this +55% was completely ignored (only Quality 38% existed in the getter).")
+    print(
+        "  - Quality branch alone (Ideal Seeker + Crystallized Insight) = +38% Idea Ore from passive hourly ticks"
+    )
+    print(
+        "  - Adding Living Mountain (synergy) = +55% Idea Ore yield from passive hourly mining ticks"
+    )
+    print(
+        "    (total signature multiplier on Idea = 1.93× when both Quality + Synergy 5pt are taken)"
+    )
+    print(
+        "  - The sim now correctly includes the +55% because get_signature_resource_bonus checks synergy nodes."
+    )
+    print(
+        "  - Previously this +55% was completely ignored (only Quality 38% existed in the getter)."
+    )
     print("=" * 78)
 
 

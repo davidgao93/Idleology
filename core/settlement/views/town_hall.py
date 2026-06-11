@@ -10,9 +10,9 @@ from core.settlement.plots import get_meta_slots
 from .base import SettlementBaseView
 
 # Cost per Development Contract
-_DC_GOLD   = 5_000
-_DC_TIMBER =   500
-_DC_STONE  =   500
+_DC_GOLD = 5_000
+_DC_TIMBER = 500
+_DC_STONE = 500
 
 
 _DC_DAILY_CAP = 10
@@ -60,17 +60,13 @@ class DCCraftModal(ui.Modal, title="Craft Development Contracts"):
                 ephemeral=True,
             )
 
-        cost_gold   = qty * _DC_GOLD
+        cost_gold = qty * _DC_GOLD
         cost_timber = qty * _DC_TIMBER
-        cost_stone  = qty * _DC_STONE
+        cost_stone = qty * _DC_STONE
 
         gold = await pv.bot.database.users.get_gold(pv.user_id)
-        stl  = pv.settlement
-        if (
-            gold          < cost_gold
-            or stl.timber < cost_timber
-            or stl.stone  < cost_stone
-        ):
+        stl = pv.settlement
+        if gold < cost_gold or stl.timber < cost_timber or stl.stone < cost_stone:
             return await interaction.response.send_message(
                 f"Insufficient resources!\n"
                 f"Need: 💰 {cost_gold:,}g | 🪵 {cost_timber:,} | 🪨 {cost_stone:,}\n"
@@ -88,10 +84,10 @@ class DCCraftModal(ui.Modal, title="Craft Development Contracts"):
         await pv.bot.database.users.add_dc_crafted_today(pv.user_id, qty)
 
         # Update local state
-        pv.settlement.timber  -= cost_timber
-        pv.settlement.stone   -= cost_stone
-        pv.dc_count           += qty
-        pv.dc_crafted_today   += qty
+        pv.settlement.timber -= cost_timber
+        pv.settlement.stone -= cost_stone
+        pv.dc_count += qty
+        pv.dc_crafted_today += qty
 
         embed = pv.build_embed()
         embed.title = (
@@ -121,9 +117,9 @@ class TownHallView(SettlementBaseView):
         self.setup_ui()
 
     def build_embed(self):
-        tier       = self.settlement.town_hall_tier
-        meta_cap   = get_meta_slots(tier)
-        meta_used  = sum(1 for b in self.settlement.buildings if b.is_meta)
+        tier = self.settlement.town_hall_tier
+        meta_cap = get_meta_slots(tier)
+        meta_used = sum(1 for b in self.settlement.buildings if b.is_meta)
 
         desc = (
             f"**Level:** {tier}/7\n"
@@ -141,7 +137,9 @@ class TownHallView(SettlementBaseView):
         # DC crafting info — compute time until next midnight reset
         remaining_today = max(0, _DC_DAILY_CAP - self.dc_crafted_today)
         now = datetime.now()
-        next_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        next_midnight = now.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ) + timedelta(days=1)
         secs_left = int((next_midnight - now).total_seconds())
         h, _r = divmod(secs_left, 3600)
         m, s = divmod(_r, 60)
@@ -229,7 +227,7 @@ class TownHallView(SettlementBaseView):
 
         if (
             self.settlement.timber < costs["timber"]
-            or self.settlement.stone  < costs["stone"]
+            or self.settlement.stone < costs["stone"]
         ):
             self._processing = False
             return await interaction.response.send_message(
@@ -268,7 +266,7 @@ class TownHallView(SettlementBaseView):
 
         changes = {
             "timber": -costs["timber"],
-            "stone":  -costs["stone"],
+            "stone": -costs["stone"],
         }
         await self.bot.database.settlement.commit_production(
             self.user_id, self.parent.server_id, changes
@@ -279,8 +277,8 @@ class TownHallView(SettlementBaseView):
         )
 
         self.settlement.town_hall_tier += 1
-        self.settlement.timber         -= costs["timber"]
-        self.settlement.stone          -= costs["stone"]
+        self.settlement.timber -= costs["timber"]
+        self.settlement.stone -= costs["stone"]
         self._processing = False
         self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)

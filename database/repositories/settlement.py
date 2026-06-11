@@ -245,9 +245,15 @@ class SettlementRepository:
             )
             buildings = [
                 Building(
-                    id=r[0], user_id=r[1], server_id=r[2], building_type=r[3],
-                    tier=r[4], slot_index=r[5], workers_assigned=r[6],
-                    plot_index=r[7], is_meta=bool(r[8]),
+                    id=r[0],
+                    user_id=r[1],
+                    server_id=r[2],
+                    building_type=r[3],
+                    tier=r[4],
+                    slot_index=r[5],
+                    workers_assigned=r[6],
+                    plot_index=r[7],
+                    is_meta=bool(r[8]),
                 )
                 for r in await b_cursor.fetchall()
             ]
@@ -280,16 +286,22 @@ class SettlementRepository:
         apothecary_boost_pct = 0.0
         for b in buildings:
             if b.building_type == "apothecary" and b.plot_index is not None:
-                apothecary_boost_pct = (
-                    adj_bonuses.get(b.plot_index, {}).get("apothecary_boost", 0.0)
+                apothecary_boost_pct = adj_bonuses.get(b.plot_index, {}).get(
+                    "apothecary_boost", 0.0
                 )
                 break
 
         # --- Shrine effectiveness (sigil shrines only; temple is excluded) ---
-        _SIGIL_SHRINES = frozenset({
-            "celestial_shrine", "infernal_shrine", "void_shrine", "twin_shrine",
-            "corruption_shrine", "uber_shrine",
-        })
+        _SIGIL_SHRINES = frozenset(
+            {
+                "celestial_shrine",
+                "infernal_shrine",
+                "void_shrine",
+                "twin_shrine",
+                "corruption_shrine",
+                "uber_shrine",
+            }
+        )
         sacred_ground_val = PLOT_BONUS_TABLE.get("sacred_ground", {}).get("value", 0.20)
         shrine_effectiveness: dict[str, float] = {}
         for b in buildings:
@@ -406,12 +418,17 @@ class SettlementRepository:
             )
             row = await cursor.fetchone()
             if row:
-                return {"total_development_turns": row[0] or 0, "pending_zeal": row[1] or 0}
+                return {
+                    "total_development_turns": row[0] or 0,
+                    "pending_zeal": row[1] or 0,
+                }
         except Exception:
             pass
         return _default
 
-    async def increment_turns(self, user_id: str, server_id: str, amount: int = 1) -> None:
+    async def increment_turns(
+        self, user_id: str, server_id: str, amount: int = 1
+    ) -> None:
         try:
             await self.connection.execute(
                 "UPDATE settlements SET total_development_turns = total_development_turns + ? "
@@ -463,7 +480,12 @@ class SettlementRepository:
 
     async def get_zeal_data(self, user_id: str) -> dict:
         """Returns {settlement_zeal, idlem, zeal_earned_today, last_zeal_reset}."""
-        _default = {"settlement_zeal": 0, "idlem": 0, "zeal_earned_today": 0, "last_zeal_reset": None}
+        _default = {
+            "settlement_zeal": 0,
+            "idlem": 0,
+            "zeal_earned_today": 0,
+            "last_zeal_reset": None,
+        }
         try:
             cursor = await self.connection.execute(
                 "SELECT settlement_zeal, idlem, zeal_earned_today, last_zeal_reset "
@@ -510,6 +532,7 @@ class SettlementRepository:
     async def reset_daily_zeal_if_needed(self, user_id: str) -> None:
         """Resets zeal_earned_today if a new UTC day has started."""
         from datetime import datetime, timezone
+
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         try:
             cursor = await self.connection.execute(
@@ -545,7 +568,8 @@ class SettlementRepository:
             if not row or (row[0] or 0) < amount:
                 return False
             await self.connection.execute(
-                "UPDATE users SET idlem = idlem - ? WHERE user_id = ?", (amount, user_id)
+                "UPDATE users SET idlem = idlem - ? WHERE user_id = ?",
+                (amount, user_id),
             )
             await self.connection.commit()
             return True
@@ -566,8 +590,11 @@ class SettlementRepository:
         rows = await cursor.fetchall()
         return [
             {
-                "id": r[0], "project_type": r[1], "target_id": r[2],
-                "required_turns": r[3], "invested_turns": r[4],
+                "id": r[0],
+                "project_type": r[1],
+                "target_id": r[2],
+                "required_turns": r[3],
+                "invested_turns": r[4],
                 "data": json.loads(r[5]) if r[5] else {},
             }
             for r in rows
@@ -618,11 +645,16 @@ class SettlementRepository:
                 "INSERT INTO settlement_projects "
                 "(user_id, server_id, project_type, target_id, required_turns, invested_turns, data) "
                 "VALUES (?, ?, ?, ?, ?, 0, ?)",
-                (user_id, server_id, project_type, target_id, required_turns, data_json),
+                (
+                    user_id,
+                    server_id,
+                    project_type,
+                    target_id,
+                    required_turns,
+                    data_json,
+                ),
             )
-            cursor2 = await self.connection.execute(
-                "SELECT last_insert_rowid()"
-            )
+            cursor2 = await self.connection.execute("SELECT last_insert_rowid()")
             r = await cursor2.fetchone()
             row_id = r[0] if r else -1
 
@@ -646,8 +678,11 @@ class SettlementRepository:
         rows = await cursor.fetchall()
         return [
             {
-                "id": r[0], "project_type": r[1], "target_id": r[2],
-                "required_turns": r[3], "invested_turns": r[4],
+                "id": r[0],
+                "project_type": r[1],
+                "target_id": r[2],
+                "required_turns": r[3],
+                "invested_turns": r[4],
                 "data": json.loads(r[5]) if r[5] else {},
             }
             for r in rows
@@ -702,9 +737,13 @@ class SettlementRepository:
                    active_biases = excluded.active_biases,
                    created_turn = excluded.created_turn""",
             (
-                user_id, server_id,
-                json.dumps(offer_data), total_value, turns_required,
-                json.dumps(active_biases), current_turn,
+                user_id,
+                server_id,
+                json.dumps(offer_data),
+                total_value,
+                turns_required,
+                json.dumps(active_biases),
+                current_turn,
             ),
         )
         await self.connection.commit()
@@ -740,8 +779,11 @@ class SettlementRepository:
         rows = await cursor.fetchall()
         return [
             {
-                "id": r[0], "event_key": r[1], "event_type": r[2],
-                "turns_until": r[3], "turns_remaining": r[4],
+                "id": r[0],
+                "event_key": r[1],
+                "event_type": r[2],
+                "turns_until": r[3],
+                "turns_remaining": r[4],
                 "data": json.loads(r[5]) if r[5] else {},
             }
             for r in rows
@@ -761,12 +803,21 @@ class SettlementRepository:
             """INSERT INTO settlement_active_events
                (user_id, server_id, event_key, event_type, turns_until, turns_remaining, data)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (user_id, server_id, event_key, event_type, turns_until, turns_remaining,
-             json.dumps(data or {})),
+            (
+                user_id,
+                server_id,
+                event_key,
+                event_type,
+                turns_until,
+                turns_remaining,
+                json.dumps(data or {}),
+            ),
         )
         await self.connection.commit()
 
-    async def tick_events(self, user_id: str, server_id: str) -> tuple[list[dict], list[dict]]:
+    async def tick_events(
+        self, user_id: str, server_id: str
+    ) -> tuple[list[dict], list[dict]]:
         """
         Advances all events by one turn.
         Returns (newly_fired, expired) where:
@@ -804,7 +855,9 @@ class SettlementRepository:
         )
         await self.connection.commit()
 
-    async def remove_events_by_key(self, user_id: str, server_id: str, event_key: str) -> None:
+    async def remove_events_by_key(
+        self, user_id: str, server_id: str, event_key: str
+    ) -> None:
         await self.connection.execute(
             "DELETE FROM settlement_active_events WHERE user_id = ? AND server_id = ? AND event_key = ?",
             (user_id, server_id, event_key),
@@ -824,7 +877,9 @@ class SettlementRepository:
         rows = await cursor.fetchall()
         return {r[0]: r[1] for r in rows}
 
-    async def set_bm_node(self, user_id: str, server_id: str, node_key: str, level: int) -> None:
+    async def set_bm_node(
+        self, user_id: str, server_id: str, node_key: str, level: int
+    ) -> None:
         await self.connection.execute(
             """INSERT INTO bm_passive_tree (user_id, server_id, node_key, level)
                VALUES (?, ?, ?, ?)

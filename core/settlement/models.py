@@ -24,16 +24,17 @@ class Building:
     server_id: str
     building_type: str
     tier: int
-    slot_index: int          # legacy column — kept for DB compat
+    slot_index: int  # legacy column — kept for DB compat
     workers_assigned: int
-    plot_index: Optional[int] = None   # which grid plot this building sits on
-    is_meta: bool = False              # True = meta building (no tiers, no slot cost)
+    plot_index: Optional[int] = None  # which grid plot this building sits on
+    is_meta: bool = False  # True = meta building (no tiers, no slot cost)
 
     @property
     def name(self) -> str:
         if self.is_meta:
             # Avoid a circular import at class-definition time by importing lazily
             from core.settlement.plots import META_BUILDINGS
+
             meta = META_BUILDINGS.get(self.building_type)
             if meta:
                 return meta["label"]

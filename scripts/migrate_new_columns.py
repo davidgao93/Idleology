@@ -70,7 +70,9 @@ def migrate(db_path: str) -> None:
                 (table,),
             )
             if not cursor.fetchone():
-                print("  ! Table does not exist — skipping (full table will come from schema.sql).")
+                print(
+                    "  ! Table does not exist — skipping (full table will come from schema.sql)."
+                )
                 existing_cols = set()
                 continue
 

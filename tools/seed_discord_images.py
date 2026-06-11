@@ -30,21 +30,26 @@ from dotenv import load_dotenv
 # ---------------------------------------------------------------------------
 
 ROOT = Path(__file__).resolve().parent.parent
-URL_MAP      = ROOT / "assets" / "images" / "url_map.json"
-CDN_MAP_OUT  = ROOT / "assets" / "images" / "discord_url_map.json"
+URL_MAP = ROOT / "assets" / "images" / "url_map.json"
+CDN_MAP_OUT = ROOT / "assets" / "images" / "discord_url_map.json"
 
-ASSET_GUILD_ID   = 699690514051629086
+ASSET_GUILD_ID = 699690514051629086
 ASSET_CHANNEL_ID = 1334637411363323996
 
-BATCH_SIZE = 10          # Discord max attachments per message
-BATCH_DELAY = 1.2        # seconds between batches (rate-limit headroom)
+BATCH_SIZE = 10  # Discord max attachments per message
+BATCH_DELAY = 1.2  # seconds between batches (rate-limit headroom)
 
 # ---------------------------------------------------------------------------
 # Load env
 # ---------------------------------------------------------------------------
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--limit", type=int, default=0, help="Only upload this many files (0 = all). Useful for testing.")
+parser.add_argument(
+    "--limit",
+    type=int,
+    default=0,
+    help="Only upload this many files (0 = all). Useful for testing.",
+)
 args = parser.parse_args()
 
 load_dotenv(ROOT / ".env")
@@ -89,7 +94,9 @@ if CDN_MAP_OUT.exists():
     existing_cdn = json.loads(CDN_MAP_OUT.read_text(encoding="utf-8"))
     already_done = sum(1 for u in work if u[0] in existing_cdn)
     if already_done:
-        print(f"Resuming: {already_done} URLs already in discord_url_map.json, skipping those.")
+        print(
+            f"Resuming: {already_done} URLs already in discord_url_map.json, skipping those."
+        )
         work = [(u, p) for u, p in work if u not in existing_cdn]
         print(f"Remaining to upload: {len(work)}\n")
 
@@ -131,7 +138,9 @@ class UploaderClient(discord.Client):
             files = []
             for imgur_url, local_path in batch:
                 try:
-                    files.append(discord.File(str(local_path), filename=local_path.name))
+                    files.append(
+                        discord.File(str(local_path), filename=local_path.name)
+                    )
                 except Exception as e:
                     print(f"  WARN: could not open {local_path.name}: {e}")
 
@@ -162,7 +171,9 @@ class UploaderClient(discord.Client):
             # Save progress after every batch so a crash doesn't lose work
             CDN_MAP_OUT.write_text(json.dumps(cdn_map, indent=2), encoding="utf-8")
 
-            print(f"  Batch {batch_idx:>4}/{total_batches}  ({uploaded} uploaded so far)")
+            print(
+                f"  Batch {batch_idx:>4}/{total_batches}  ({uploaded} uploaded so far)"
+            )
             await asyncio.sleep(BATCH_DELAY)
 
         # Final save

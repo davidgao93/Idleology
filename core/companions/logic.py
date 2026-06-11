@@ -47,7 +47,6 @@ class CompanionLogic:
         generated_gear_count = 0
 
         for loot_type, amount in results["items"]:
-
             # --- GOLD ---
             if loot_type == "Gold":
                 await bot.database.users.modify_gold(user_id, amount)

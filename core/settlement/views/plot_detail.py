@@ -7,6 +7,7 @@ Handles three states:
   • Developed + empty → offer to build regular or meta building
   • Developed + occupied → offer to manage the existing building
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -40,9 +41,9 @@ from .base import SettlementBaseView
 # ---------------------------------------------------------------------------
 
 _OUTPUT_DISPLAY: dict[str, tuple[str, str]] = {
-    "timber":           ("🪵", "Timber"),
-    "stone":            ("🪨", "Stone"),
-    "market_gold":      ("💰", "Gold"),
+    "timber": ("🪵", "Timber"),
+    "stone": ("🪨", "Stone"),
+    "market_gold": ("💰", "Gold"),
     "companion_cookie": ("🐾", "Companion XP"),
     "war_camp_stamina": ("⚔️", "Combat Stamina"),
 }
@@ -171,8 +172,12 @@ def _append_converter(embed, b, b_data: dict, plot_bonus_type, adj: dict) -> Non
     lines = []
     for raw_key, refined_key, base_hr in rates:
         adjusted = int(base_hr * eff)
-        raw_name = RESOURCE_DISPLAY_NAMES.get(raw_key, raw_key.replace("_", " ").title())
-        ref_name = RESOURCE_DISPLAY_NAMES.get(refined_key, refined_key.replace("_", " ").title())
+        raw_name = RESOURCE_DISPLAY_NAMES.get(
+            raw_key, raw_key.replace("_", " ").title()
+        )
+        ref_name = RESOURCE_DISPLAY_NAMES.get(
+            refined_key, refined_key.replace("_", " ").title()
+        )
         lines.append(f"• {raw_name} → {ref_name}: ~**{adjusted:,}**/hr")
 
     if eff > 1.0:
@@ -240,8 +245,8 @@ def _append_passive_effect(
         if shrine_boost > 0:
             shrine_eff += shrine_boost
             bonus_sources.append(f"Shrine Garden +{shrine_boost:.0%}")
-        bonus_chance = workers * 0.05 * shrine_eff   # expressed as %
-        cap_chance   = b.tier * 100 * 0.05 * shrine_eff
+        bonus_chance = workers * 0.05 * shrine_eff  # expressed as %
+        cap_chance = b.tier * 100 * 0.05 * shrine_eff
         value = (
             f"**50%** base sigil drop + **{bonus_chance:.2f}%** bonus second drop "
             f"(cap ≈ {cap_chance:.2f}% at T{b.tier})"
@@ -328,8 +333,7 @@ def _compute_dc_cost(plots: list) -> int:
     """
     total_developed = sum(1 for p in plots if p.is_developed)
     paid_developed = sum(
-        1 for p in plots
-        if p.is_developed and p.plot_index not in _FREE_PLOT_INDICES
+        1 for p in plots if p.is_developed and p.plot_index not in _FREE_PLOT_INDICES
     )
     extra = 1 if paid_developed < _FREE_PLOTS_RECOVERED else 0
     return total_developed + 1 + extra
@@ -362,7 +366,8 @@ class PlotWorkerModal(ui.Modal, title="Manage Workforce"):
 
             if val > max_w:
                 return await interaction.response.send_message(
-                    f"This building can only hold **{max_w:,}** workers.", ephemeral=True
+                    f"This building can only hold **{max_w:,}** workers.",
+                    ephemeral=True,
                 )
 
             # Total settlement workforce check
@@ -398,9 +403,7 @@ class PlotWorkerModal(ui.Modal, title="Manage Workforce"):
             # Rebuild buttons so the worker count label is current
             pv._build_buttons()
 
-            await interaction.response.edit_message(
-                embed=pv.build_embed(), view=pv
-            )
+            await interaction.response.edit_message(embed=pv.build_embed(), view=pv)
         except ValueError:
             await interaction.response.send_message("Invalid number.", ephemeral=True)
 
@@ -439,7 +442,7 @@ class PlotDetailView(SettlementBaseView):
         super().__init__(bot, user_id)
         self.plot = plot
         self.building = building
-        self.parent = parent      # SettlementDashboardView
+        self.parent = parent  # SettlementDashboardView
         # server_id is a static guild ID — store it directly so BaseView's
         # assignment in __init__ is overridden cleanly (no property needed).
         self.server_id = parent.server_id
@@ -505,9 +508,8 @@ class PlotDetailView(SettlementBaseView):
                 color=discord.Color.green(),
             )
             embed.description = (
-                (f"**Terrain Bonus:** {bonus_label}\n\n" if bonus_label else "")
-                + "This plot is ready for construction."
-            )
+                f"**Terrain Bonus:** {bonus_label}\n\n" if bonus_label else ""
+            ) + "This plot is ready for construction."
         else:
             b = self.building
             b_data = SettlementMechanics.BUILDINGS.get(b.building_type, {})
@@ -525,8 +527,7 @@ class PlotDetailView(SettlementBaseView):
                 color=discord.Color.gold(),
             )
             desc = (
-                f"**Type:** {tier_str}\n"
-                f"**Workers:** {b.workers_assigned:,}/{max_w:,}"
+                f"**Type:** {tier_str}\n**Workers:** {b.workers_assigned:,}/{max_w:,}"
             )
             if bonus_label:
                 desc += f"\n\n**Terrain Bonus:** {bonus_label}"
@@ -536,7 +537,9 @@ class PlotDetailView(SettlementBaseView):
             elif _b_cat == "converter" and adj.get("converter_mult"):
                 desc += f"\n🔗 **Adjacency Bonus:** +{adj['converter_mult']:.0%} effectiveness"
             if adj.get("shrine_boost"):
-                desc += f"\n🌺 **Shrine Garden:** +{adj['shrine_boost']:.0%} effectiveness"
+                desc += (
+                    f"\n🌺 **Shrine Garden:** +{adj['shrine_boost']:.0%} effectiveness"
+                )
             embed.description = desc
 
             # Description + quantitative output / effect
@@ -618,6 +621,7 @@ class PlotDetailView(SettlementBaseView):
         # Meta building button — only if slots available
         th_tier = self.parent.settlement.town_hall_tier
         from core.settlement.plots import get_meta_slots
+
         meta_cap = get_meta_slots(th_tier)
         meta_used = sum(1 for b in self.parent.settlement.buildings if b.is_meta)
         meta_available = meta_used < meta_cap
@@ -726,9 +730,7 @@ class PlotDetailView(SettlementBaseView):
         )
         await hview._load()
         hview._rebuild_buttons()
-        await interaction.edit_original_response(
-            embed=hview.build_embed(), view=hview
-        )
+        await interaction.edit_original_response(embed=hview.build_embed(), view=hview)
 
     # ------------------------------------------------------------------
     # Callbacks — develop
@@ -778,6 +780,7 @@ class PlotDetailView(SettlementBaseView):
             self.user_id, self.parent.server_id
         )
         from core.settlement.models import Plot as PlotModel
+
         self.parent.plots = [
             PlotModel(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
             for r in plot_rows
@@ -806,8 +809,12 @@ class PlotDetailView(SettlementBaseView):
         from core.settlement.views.construction import BuildConstructionView
 
         uber_prog, researched, user_data = await asyncio.gather(
-            self.bot.database.uber.get_uber_progress(self.user_id, self.parent.server_id),
-            self.bot.database.settlement.get_researched(self.user_id, self.parent.server_id),
+            self.bot.database.uber.get_uber_progress(
+                self.user_id, self.parent.server_id
+            ),
+            self.bot.database.settlement.get_researched(
+                self.user_id, self.parent.server_id
+            ),
             self.bot.database.users.get(self.user_id, self.parent.server_id),
         )
         view = BuildConstructionView(
@@ -883,7 +890,8 @@ class PlotDetailView(SettlementBaseView):
             if owned < cost["special_qty"]:
                 self._processing = False
                 return await interaction.response.send_message(
-                    f"Need {cost['special_qty']}× {cost['special_name']}!", ephemeral=True
+                    f"Need {cost['special_qty']}× {cost['special_name']}!",
+                    ephemeral=True,
                 )
 
         await interaction.response.defer()
@@ -891,7 +899,7 @@ class PlotDetailView(SettlementBaseView):
         # Consume resources
         changes = {
             "timber": -cost.get("timber", 0),
-            "stone":  -cost.get("stone", 0),
+            "stone": -cost.get("stone", 0),
         }
         await self.bot.database.settlement.commit_production(
             self.user_id, self.parent.server_id, changes
@@ -969,6 +977,7 @@ class PlotDetailView(SettlementBaseView):
             self.user_id, self.parent.server_id
         )
         from core.settlement.models import Plot as PlotModel
+
         self.parent.plots = [
             PlotModel(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
             for r in plot_rows
@@ -1022,15 +1031,19 @@ class _DemolishConfirmView(SettlementBaseView):
         b = self.origin.building
         await self.bot.database.settlement.demolish_building(b.id)
 
-        self.origin.parent.settlement = await self.bot.database.settlement.get_settlement(
-            self.origin.user_id, self.origin.parent.server_id
+        self.origin.parent.settlement = (
+            await self.bot.database.settlement.get_settlement(
+                self.origin.user_id, self.origin.parent.server_id
+            )
         )
         self.origin.building = None
         self.origin._build_buttons()
 
         embed = self.origin.build_embed()
         embed.title = f"📍 Plot {self.origin.plot.plot_index} — ✅ {b.name} Demolished"
-        await interaction.response.edit_message(content=None, embed=embed, view=self.origin)
+        await interaction.response.edit_message(
+            content=None, embed=embed, view=self.origin
+        )
         self.stop()
 
     async def _cancel(self, interaction: Interaction):
@@ -1048,7 +1061,9 @@ class _DemolishConfirmView(SettlementBaseView):
 
 
 class MetaBuildingConstructionView(SettlementBaseView):
-    def __init__(self, bot, user_id: str, plot_index: int, parent_view, return_to_detail):
+    def __init__(
+        self, bot, user_id: str, plot_index: int, parent_view, return_to_detail
+    ):
         super().__init__(bot, user_id)
         self.plot_index = plot_index
         self.parent = parent_view
@@ -1065,7 +1080,9 @@ class MetaBuildingConstructionView(SettlementBaseView):
             ),
             color=discord.Color.blurple(),
         )
-        existing_types = {b.building_type for b in self.parent.settlement.buildings if b.is_meta}
+        existing_types = {
+            b.building_type for b in self.parent.settlement.buildings if b.is_meta
+        }
         pending_types = self._pending_meta_types()
         for key, data in META_BUILDINGS.items():
             cost = data["cost"]
@@ -1098,7 +1115,9 @@ class MetaBuildingConstructionView(SettlementBaseView):
 
     def _build_select(self):
         self.clear_items()
-        existing_types = {b.building_type for b in self.parent.settlement.buildings if b.is_meta}
+        existing_types = {
+            b.building_type for b in self.parent.settlement.buildings if b.is_meta
+        }
         pending_types = self._pending_meta_types()
         options = []
         for key, data in META_BUILDINGS.items():
@@ -1166,7 +1185,9 @@ class MetaBuildingConstructionView(SettlementBaseView):
         await interaction.response.defer()
 
         # Short construction animation — strip select immediately so it can't be re-clicked
-        prog = discord.Embed(title="⚙️ Construction in Progress", color=discord.Color.orange())
+        prog = discord.Embed(
+            title="⚙️ Construction in Progress", color=discord.Color.orange()
+        )
         prog.description = "Laying the foundations for the new meta building..."
         await interaction.edit_original_response(embed=prog, view=discord.ui.View())
         await asyncio.sleep(2)
@@ -1174,7 +1195,7 @@ class MetaBuildingConstructionView(SettlementBaseView):
         # Deduct resources
         changes = {
             "timber": -cost.get("timber", 0),
-            "stone":  -cost.get("stone", 0),
+            "stone": -cost.get("stone", 0),
         }
         await self.bot.database.settlement.commit_production(
             self.user_id, self.parent.server_id, changes
@@ -1195,7 +1216,11 @@ class MetaBuildingConstructionView(SettlementBaseView):
             self.user_id, self.parent.server_id
         )
         new_building = next(
-            (b for b in self.parent.settlement.buildings if b.plot_index == self.plot_index),
+            (
+                b
+                for b in self.parent.settlement.buildings
+                if b.plot_index == self.plot_index
+            ),
             None,
         )
         self.return_to.building = new_building

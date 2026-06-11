@@ -41,7 +41,10 @@ async def _grant_level_1(bot, user_id: str, server_id: str) -> list:
         base_rarity=2,
     )
     await bot.database.equipment.create_weapon(starter)
-    return ["⚔️ **Adventurer's Blade** (starter weapon added to inventory)", "🧪 **+20 Potions**"]
+    return [
+        "⚔️ **Adventurer's Blade** (starter weapon added to inventory)",
+        "🧪 **+20 Potions**",
+    ]
 
 
 async def _grant_level_10(bot, user_id: str, server_id: str) -> list:

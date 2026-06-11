@@ -46,13 +46,17 @@ class AlchemyMechanics:
         return 2  # level 1-2
 
     @staticmethod
-    def get_effective_upgrade_ratio(alchemy_level: int, has_master_baiter: bool = False) -> int:
+    def get_effective_upgrade_ratio(
+        alchemy_level: int, has_master_baiter: bool = False
+    ) -> int:
         """Master Baiter (permanent) gives one-step better upgrade ratios."""
         effective = alchemy_level + 1 if has_master_baiter else alchemy_level
         return AlchemyMechanics.get_upgrade_ratio(effective)
 
     @staticmethod
-    def get_effective_downgrade_ratio(alchemy_level: int, has_master_baiter: bool = False) -> int:
+    def get_effective_downgrade_ratio(
+        alchemy_level: int, has_master_baiter: bool = False
+    ) -> int:
         """Master Baiter (permanent) gives one-step better downgrade ratios."""
         effective = alchemy_level + 1 if has_master_baiter else alchemy_level
         return AlchemyMechanics.get_downgrade_ratio(effective)
@@ -118,7 +122,9 @@ class AlchemyMechanics:
         """
         pinfo = DistillationMechanics.POWERFUL_PASSIVES.get(passive_type)
         if pinfo:
-            return f"{pinfo['desc'].format(value=passive_value, duration=2)} (distilled)"
+            return (
+                f"{pinfo['desc'].format(value=passive_value, duration=2)} (distilled)"
+            )
 
         # Fallback for any remaining legacy passives in DB
         return f"{passive_type.replace('_', ' ').title()}: {passive_value}"
@@ -286,7 +292,7 @@ class AlchemyMechanics:
         info = DistillationMechanics.POWERFUL_PASSIVES.get(passive_type)
         if info:
             return f"{info['emoji']} **{info['name']}** (powerful distilled)"
-        return passive_type.replace('_', ' ').title()
+        return passive_type.replace("_", " ").title()
 
 
 # =============================================================================
@@ -302,6 +308,7 @@ class AlchemyMechanics:
 # Legacy simple passives and the old roll system have been completely removed.
 # All potion passives are now obtained exclusively via the Distillation system.
 # =============================================================================
+
 
 class DistillationMechanics:
     """Pure mechanics for the 9-step distillation mini-game.
@@ -415,7 +422,6 @@ class DistillationMechanics:
             "duration_max": 4.0,
             "category": "utility",
         },
-
         # Converted legacy passives (reworded to match passive_data.py style, no overlap with above)
         "potent_brew": {
             "name": "Potent Brew",
@@ -518,56 +524,163 @@ class DistillationMechanics:
     # ------------------------------------------------------------------
     EVENTS = [
         # ==================== COMMON / MIDDLE (high weight 10-18) ====================
-        {"id": "no_cost", "name": "Stabilized Flow", "desc": "This step costs **no Cosmic Dust**.",
-         "weight": 15, "effect": {"cost_mult": 0.0}},
-        {"id": "this_lucky", "name": "Perfect Alignment", "desc": "This step's result is **lucky**.",
-         "weight": 16, "effect": {"this_lucky": True}},
-        {"id": "guaranteed_duration", "name": "Time-Infused", "desc": "This step is **guaranteed to affect duration**.",
-         "weight": 12, "effect": {"force": "duration"}},
-        {"id": "guaranteed_value", "name": "Potency-Infused", "desc": "This step is **guaranteed to affect power**.",
-         "weight": 12, "effect": {"force": "value"}},
-        {"id": "small_boost", "name": "Gentle Bloom", "desc": "Guarantees at least a **good** tier gain this step.",
-         "weight": 10, "effect": {"min_tier": "good"}},
-        {"id": "free_next", "name": "Lingering Essence", "desc": "The **next step costs no dust**.",
-         "weight": 13, "effect": {"free_next_steps": 1}},
-        {"id": "half_cost", "name": "Efficient Mixture", "desc": "This step costs **half the usual dust**.",
-         "weight": 11, "effect": {"cost_mult": 0.5}},
-        {"id": "guaranteed_improvement", "name": "Fated Catalyst", "desc": "This step is **guaranteed to improve** either duration or power.",
-         "weight": 10, "effect": {"guarantee_improvement": True}},
-
+        {
+            "id": "no_cost",
+            "name": "Stabilized Flow",
+            "desc": "This step costs **no Cosmic Dust**.",
+            "weight": 15,
+            "effect": {"cost_mult": 0.0},
+        },
+        {
+            "id": "this_lucky",
+            "name": "Perfect Alignment",
+            "desc": "This step's result is **lucky**.",
+            "weight": 16,
+            "effect": {"this_lucky": True},
+        },
+        {
+            "id": "guaranteed_duration",
+            "name": "Time-Infused",
+            "desc": "This step is **guaranteed to affect duration**.",
+            "weight": 12,
+            "effect": {"force": "duration"},
+        },
+        {
+            "id": "guaranteed_value",
+            "name": "Potency-Infused",
+            "desc": "This step is **guaranteed to affect power**.",
+            "weight": 12,
+            "effect": {"force": "value"},
+        },
+        {
+            "id": "small_boost",
+            "name": "Gentle Bloom",
+            "desc": "Guarantees at least a **good** tier gain this step.",
+            "weight": 10,
+            "effect": {"min_tier": "good"},
+        },
+        {
+            "id": "free_next",
+            "name": "Lingering Essence",
+            "desc": "The **next step costs no dust**.",
+            "weight": 13,
+            "effect": {"free_next_steps": 1},
+        },
+        {
+            "id": "half_cost",
+            "name": "Efficient Mixture",
+            "desc": "This step costs **half the usual dust**.",
+            "weight": 11,
+            "effect": {"cost_mult": 0.5},
+        },
+        {
+            "id": "guaranteed_improvement",
+            "name": "Fated Catalyst",
+            "desc": "This step is **guaranteed to improve** either duration or power.",
+            "weight": 10,
+            "effect": {"guarantee_improvement": True},
+        },
         # ==================== UNCOMMON (weight 5-9) ====================
-        {"id": "double_lucky", "name": "Volatile Surge", "desc": "Dust cost is **doubled** this step, but the result is **slightly lucky**.",
-         "weight": 7, "effect": {"cost_mult": 2.0, "lucky": True}},
-        {"id": "free_next_two", "name": "Resonant Echo", "desc": "The **next 2 steps cost no dust**.",
-         "weight": 6, "effect": {"free_next_steps": 2}},
-        {"id": "refund_on_gain", "name": "Fortunate Residue", "desc": "If this step produces any gain, the dust spent is refunded.",
-         "weight": 8, "effect": {"refund_on_gain": True}},
-        {"id": "unlucky", "name": "Misaligned Reagents", "desc": "This step is **unlucky** (worse outcomes).",
-         "weight": 6, "effect": {"unlucky": True}},
-        {"id": "double_cost", "name": "Demanding Essence", "desc": "This step costs **double dust**.",
-         "weight": 7, "effect": {"cost_mult": 2.0}},
-        {"id": "cheaper_future", "name": "Economies of Scale", "desc": "All **future steps cost 25% less** dust.",
-         "weight": 5, "effect": {"future_cost_mult": 0.75}},
-
+        {
+            "id": "double_lucky",
+            "name": "Volatile Surge",
+            "desc": "Dust cost is **doubled** this step, but the result is **slightly lucky**.",
+            "weight": 7,
+            "effect": {"cost_mult": 2.0, "lucky": True},
+        },
+        {
+            "id": "free_next_two",
+            "name": "Resonant Echo",
+            "desc": "The **next 2 steps cost no dust**.",
+            "weight": 6,
+            "effect": {"free_next_steps": 2},
+        },
+        {
+            "id": "refund_on_gain",
+            "name": "Fortunate Residue",
+            "desc": "If this step produces any gain, the dust spent is refunded.",
+            "weight": 8,
+            "effect": {"refund_on_gain": True},
+        },
+        {
+            "id": "unlucky",
+            "name": "Misaligned Reagents",
+            "desc": "This step is **unlucky** (worse outcomes).",
+            "weight": 6,
+            "effect": {"unlucky": True},
+        },
+        {
+            "id": "double_cost",
+            "name": "Demanding Essence",
+            "desc": "This step costs **double dust**.",
+            "weight": 7,
+            "effect": {"cost_mult": 2.0},
+        },
+        {
+            "id": "cheaper_future",
+            "name": "Economies of Scale",
+            "desc": "All **future steps cost 25% less** dust.",
+            "weight": 5,
+            "effect": {"future_cost_mult": 0.75},
+        },
         # ==================== RARE / POWERFUL (weight 2-5) ====================
-        {"id": "very_lucky", "name": "Astral Convergence", "desc": "This step will be **very lucky**.",
-         "weight": 4, "effect": {"very_lucky": True}},
-        {"id": "safe_step", "name": "Warded Catalyst", "desc": "This step will **not decrease** the passive's duration or power.",
-         "weight": 5, "effect": {"safe": True}},
-        {"id": "free_next_three", "name": "Harmonic Cascade", "desc": "The **next 3 steps cost no dust**.",
-         "weight": 3, "effect": {"free_next_steps": 3}},
-        {"id": "big_swing", "name": "Chaotic Catalyst", "desc": "Bigger swings: higher chance of large gains *or* noticeable losses.",
-         "weight": 3, "effect": {"big_swing": True}},
-        {"id": "next_free_lucky", "name": "Serendipitous Flow", "desc": "The next step is **free and lucky**.",
-         "weight": 4, "effect": {"free_next_steps": 1, "next_lucky": True}},
-
+        {
+            "id": "very_lucky",
+            "name": "Astral Convergence",
+            "desc": "This step will be **very lucky**.",
+            "weight": 4,
+            "effect": {"very_lucky": True},
+        },
+        {
+            "id": "safe_step",
+            "name": "Warded Catalyst",
+            "desc": "This step will **not decrease** the passive's duration or power.",
+            "weight": 5,
+            "effect": {"safe": True},
+        },
+        {
+            "id": "free_next_three",
+            "name": "Harmonic Cascade",
+            "desc": "The **next 3 steps cost no dust**.",
+            "weight": 3,
+            "effect": {"free_next_steps": 3},
+        },
+        {
+            "id": "big_swing",
+            "name": "Chaotic Catalyst",
+            "desc": "Bigger swings: higher chance of large gains *or* noticeable losses.",
+            "weight": 3,
+            "effect": {"big_swing": True},
+        },
+        {
+            "id": "next_free_lucky",
+            "name": "Serendipitous Flow",
+            "desc": "The next step is **free and lucky**.",
+            "weight": 4,
+            "effect": {"free_next_steps": 1, "next_lucky": True},
+        },
         # ==================== VERY RARE / VERY POWERFUL (weight 1-2) ====================
-        {"id": "all_future_free", "name": "Eternal Flow", "desc": "**All future steps have no dust cost.**",
-         "weight": 1, "effect": {"all_future_free": True}},
-        {"id": "double_gain", "name": "Amplified Resonance", "desc": "Any gain this step is **doubled** in magnitude.",
-         "weight": 2, "effect": {"double_gain": True}},
-        {"id": "nothing", "name": "Dud Reagent", "desc": "This step produces **no improvement**.",
-         "weight": 4, "effect": {"force_nothing": True}},
+        {
+            "id": "all_future_free",
+            "name": "Eternal Flow",
+            "desc": "**All future steps have no dust cost.**",
+            "weight": 1,
+            "effect": {"all_future_free": True},
+        },
+        {
+            "id": "double_gain",
+            "name": "Amplified Resonance",
+            "desc": "Any gain this step is **doubled** in magnitude.",
+            "weight": 2,
+            "effect": {"double_gain": True},
+        },
+        {
+            "id": "nothing",
+            "name": "Dud Reagent",
+            "desc": "This step produces **no improvement**.",
+            "weight": 4,
+            "effect": {"force_nothing": True},
+        },
     ]
 
     # Tier names for display
@@ -578,11 +691,11 @@ class DistillationMechanics:
         """Create a fresh distillation session state (step 0 = choosing base)."""
         return {
             "step": 0,
-            "base_type": None,           # chosen on first real step or entry
-            "duration_mod": 0.0,         # accumulated multiplier / additive bonus
+            "base_type": None,  # chosen on first real step or entry
+            "duration_mod": 0.0,  # accumulated multiplier / additive bonus
             "value_mod": 0.0,
-            "active_modifiers": {},      # e.g. {"free_next_steps": 2, "lucky": True, "future_unlucky": True, ...}
-            "history": [],               # list of {"step": n, "reagent": "...", "event": "...", "gain": "..."}
+            "active_modifiers": {},  # e.g. {"free_next_steps": 2, "lucky": True, "future_unlucky": True, ...}
+            "history": [],  # list of {"step": n, "reagent": "...", "event": "...", "gain": "..."}
             "dust_spent": 0,
             "alchemy_level": alchemy_level,
         }
@@ -597,12 +710,16 @@ class DistillationMechanics:
         choices = []
         for key in chosen_keys:
             info = DistillationMechanics.POWERFUL_PASSIVES[key]
-            choices.append({
-                "key": key,
-                "name": info["name"],
-                "emoji": info["emoji"],
-                "desc": get_passive_list_desc(key),  # clean ranged version for the choice embed
-            })
+            choices.append(
+                {
+                    "key": key,
+                    "name": info["name"],
+                    "emoji": info["emoji"],
+                    "desc": get_passive_list_desc(
+                        key
+                    ),  # clean ranged version for the choice embed
+                }
+            )
         return choices
 
     @staticmethod
@@ -631,7 +748,9 @@ class DistillationMechanics:
         base_cost = 6 + step * 2  # gentle ramp; events override
         options = []
         for r in DistillationMechanics.REAGENTS:
-            cost = int(base_cost * r.get("base_cost", 10) / 10)  # use the per-reagent base as relative
+            cost = int(
+                base_cost * r.get("base_cost", 10) / 10
+            )  # use the per-reagent base as relative
             # Apply active modifiers (free steps, etc.)
             mult = 1.0
             if session.get("active_modifiers", {}).get("free_next_steps", 0) > 0:
@@ -639,11 +758,13 @@ class DistillationMechanics:
             if session.get("active_modifiers", {}).get("future_free_but_unlucky"):
                 mult = 0.0
             effective_cost = max(0, int(cost * mult))
-            options.append({
-                **r,
-                "effective_cost": effective_cost,
-                "step": step,
-            })
+            options.append(
+                {
+                    **r,
+                    "effective_cost": effective_cost,
+                    "step": step,
+                }
+            )
         return options
 
     @staticmethod
@@ -666,7 +787,9 @@ class DistillationMechanics:
                 chosen_events.append(pick)
                 temp.remove(pick)
         else:
-            chosen_events = random.choices(pool, k=3, weights=[e.get("weight",10) for e in pool])
+            chosen_events = random.choices(
+                pool, k=3, weights=[e.get("weight", 10) for e in pool]
+            )
         random.shuffle(chosen_events)  # assign to the 3 reagents
         options = []
         base = 6 + step * 2
@@ -686,12 +809,14 @@ class DistillationMechanics:
                 cm *= mods["future_cost_mult"]
             rel = r.get("base_cost", 10) / 10.0
             eff_cost = max(0, int(base * rel * cm * mult))
-            options.append({
-                **r,
-                "effective_cost": eff_cost,
-                "event": event,
-                "property_desc": event.get("desc", "Standard step."),
-            })
+            options.append(
+                {
+                    **r,
+                    "effective_cost": eff_cost,
+                    "event": event,
+                    "property_desc": event.get("desc", "Standard step."),
+                }
+            )
         return options
 
     @staticmethod
@@ -716,7 +841,9 @@ class DistillationMechanics:
         return DistillationMechanics.get_reagent_options_for_step(session, step)
 
     @staticmethod
-    def apply_step(session: dict, choice_idx: int, pre_chosen_event: dict = None) -> dict:
+    def apply_step(
+        session: dict, choice_idx: int, pre_chosen_event: dict = None
+    ) -> dict:
         """
         Apply one reagent choice (the property shown for that colored reagent).
         Mutates session. The pre_chosen_event (from the UI) drives cost and the
@@ -765,7 +892,9 @@ class DistillationMechanics:
 
         # --- Background resolution (nothing / duration|value +inc or -dec), property-aware ---
         raw = DistillationMechanics._roll_raw_outcome(mods, event)
-        resolved = DistillationMechanics._apply_property_resolution(raw, event, mods, session.get("alchemy_level", 1))
+        resolved = DistillationMechanics._apply_property_resolution(
+            raw, event, mods, session.get("alchemy_level", 1)
+        )
 
         axis = resolved.get("axis")
         delta = resolved.get("delta", 0.0)
@@ -797,7 +926,9 @@ class DistillationMechanics:
                 # one-shot; the resolution already used it
                 pass
             if "free_next_steps" in eff:
-                mods["free_next_steps"] = max(mods.get("free_next_steps", 0), eff["free_next_steps"])
+                mods["free_next_steps"] = max(
+                    mods.get("free_next_steps", 0), eff["free_next_steps"]
+                )
             if eff.get("future_free_but_unlucky"):
                 mods["future_free_but_unlucky"] = True
             if eff.get("all_future_free"):
@@ -849,11 +980,22 @@ class DistillationMechanics:
         for e in events:
             w = e["weight"]
             # Simple bias: red likes dramatic events, green likes safe/positive
-            if reagent["key"] == "red" and e["id"] in ("double_lucky", "future_unlucky_free", "guaranteed_duration"):
+            if reagent["key"] == "red" and e["id"] in (
+                "double_lucky",
+                "future_unlucky_free",
+                "guaranteed_duration",
+            ):
                 w *= 1.6
-            if reagent["key"] == "green" and e["id"] in ("no_cost", "small_boost", "this_lucky"):
+            if reagent["key"] == "green" and e["id"] in (
+                "no_cost",
+                "small_boost",
+                "this_lucky",
+            ):
                 w *= 1.4
-            if current_mods.get("future_free_but_unlucky") and e["id"] in ("no_cost", "free_next"):
+            if current_mods.get("future_free_but_unlucky") and e["id"] in (
+                "no_cost",
+                "free_next",
+            ):
                 w *= 0.3  # less likely to get more free when already in the bargain
             weights.append(w)
 
@@ -870,13 +1012,17 @@ class DistillationMechanics:
     @staticmethod
     def _roll_tier(event: Optional[dict], mods: dict) -> int:
         """Legacy tier roll (kept for any fallback paths). 0=nothing ... 3=a lot."""
-        lucky = bool(mods.get("lucky")) or (event and event.get("effect", {}).get("this_lucky"))
+        lucky = bool(mods.get("lucky")) or (
+            event and event.get("effect", {}).get("this_lucky")
+        )
         unlucky = bool(mods.get("future_free_but_unlucky"))
 
         if event and event.get("effect", {}).get("force_nothing"):
             return 0
         if event and "min_tier" in event.get("effect", {}):
-            min_t = {"nothing": 0, "little": 1, "good": 2, "a lot": 3}.get(event["effect"]["min_tier"], 1)
+            min_t = {"nothing": 0, "little": 1, "good": 2, "a lot": 3}.get(
+                event["effect"]["min_tier"], 1
+            )
             return max(min_t, 2 if lucky else 1)
 
         if lucky:
@@ -910,7 +1056,15 @@ class DistillationMechanics:
         # nothing 22%, small-positive 30%, medium-pos 18%, big-pos 8%,
         # small-neg 12%, med-neg 7%, big-neg 3%  (tuned for "middle" feel)
         cat = random.choices(
-            ["nothing", "inc_small", "inc_good", "inc_big", "dec_small", "dec_med", "dec_big"],
+            [
+                "nothing",
+                "inc_small",
+                "inc_good",
+                "inc_big",
+                "dec_small",
+                "dec_med",
+                "dec_big",
+            ],
             weights=[22, 30, 18, 8, 12, 7, 3],
         )[0]
 
@@ -950,7 +1104,9 @@ class DistillationMechanics:
         return round(base * mult, 1)
 
     @staticmethod
-    def _apply_property_resolution(raw: dict, event: Optional[dict], mods: dict, alchemy_level: int) -> dict:
+    def _apply_property_resolution(
+        raw: dict, event: Optional[dict], mods: dict, alchemy_level: int
+    ) -> dict:
         """Take the raw background outcome and apply the rules from the chosen reagent property.
         Implements exactly the requested double-roll / re-roll / take-better (higher for gains,
         smaller loss for decreases) behavior for lucky / very_lucky / safe / force / do-nothing cases.
@@ -981,7 +1137,9 @@ class DistillationMechanics:
         if eff.get("safe"):
             if sign < 0 or axis is None:
                 # turn it into a small positive on a random (or forced) axis
-                axis = eff.get("force") or ("duration" if random.random() < 0.5 else "value")
+                axis = eff.get("force") or (
+                    "duration" if random.random() < 0.5 else "value"
+                )
                 sign = 1
                 tier = 1
                 delta = DistillationMechanics._delta_for(1, axis, alchemy_level)
@@ -992,8 +1150,8 @@ class DistillationMechanics:
 
         if is_very or is_slight:
             # First, what did the raw roll give us?
-            was_good = (axis is not None and sign > 0)
-            was_bad = (axis is None or sign < 0)
+            was_good = axis is not None and sign > 0
+            was_bad = axis is None or sign < 0
 
             if is_very and was_bad:
                 # Very lucky: re-roll once hoping for a better (increase) outcome
@@ -1003,7 +1161,11 @@ class DistillationMechanics:
                     axis = roll2["axis"]
                     sign = 1
                     tier = roll2["tier"]
-                    delta = roll2["raw_delta"] if roll2["raw_delta"] > 0 else DistillationMechanics._delta_for(tier, axis, alchemy_level)
+                    delta = (
+                        roll2["raw_delta"]
+                        if roll2["raw_delta"] > 0
+                        else DistillationMechanics._delta_for(tier, axis, alchemy_level)
+                    )
                     was_good = True
                     was_bad = False
                 else:
@@ -1015,9 +1177,15 @@ class DistillationMechanics:
                     tier = chosen.get("tier", 0)
                     # if still a decrease, double-roll the decrease and take the *better* (smaller loss)
                     if axis and sign < 0:
-                        d1 = DistillationMechanics._delta_for(max(1, tier), axis, alchemy_level)
-                        d2 = DistillationMechanics._delta_for(max(1, tier), axis, alchemy_level)
-                        best_loss = min(d1, d2)  # smaller number = less bad for the player
+                        d1 = DistillationMechanics._delta_for(
+                            max(1, tier), axis, alchemy_level
+                        )
+                        d2 = DistillationMechanics._delta_for(
+                            max(1, tier), axis, alchemy_level
+                        )
+                        best_loss = min(
+                            d1, d2
+                        )  # smaller number = less bad for the player
                         delta = -best_loss
                     else:
                         delta = chosen.get("raw_delta", 0.0)
@@ -1074,7 +1242,9 @@ class DistillationMechanics:
         In a richer version this could return a full dataclass.
         """
         base = session.get("base_type") or "panacea"
-        info = DistillationMechanics.POWERFUL_PASSIVES.get(base, list(DistillationMechanics.POWERFUL_PASSIVES.values())[0])
+        info = DistillationMechanics.POWERFUL_PASSIVES.get(
+            base, list(DistillationMechanics.POWERFUL_PASSIVES.values())[0]
+        )
 
         # Combine the two accumulators into the two axes the passive cares about
         dur = max(1.0, 1.0 + session.get("duration_mod", 0.0))
@@ -1087,7 +1257,9 @@ class DistillationMechanics:
         return base, round(val, 1), round(dur, 1)
 
     @staticmethod
-    def format_distilled_passive(passive_type: str, value: float, duration: float) -> str:
+    def format_distilled_passive(
+        passive_type: str, value: float, duration: float
+    ) -> str:
         info = DistillationMechanics.POWERFUL_PASSIVES.get(passive_type)
         if not info:
             return f"{passive_type} (value {value}, duration {duration})"
@@ -1098,6 +1270,7 @@ class DistillationMechanics:
 # Unified passive info helpers (for UI display across old + new system)
 # ------------------------------------------------------------------
 
+
 def get_passive_info(passive_type: str) -> dict:
     """Return the info dict for a passive_type, checking powerful distilled first.
     Safe fallback for any remaining legacy passives in DB (the old PASSIVES dict
@@ -1107,7 +1280,7 @@ def get_passive_info(passive_type: str) -> dict:
     if info:
         return info
     # Safe fallback: show a reasonable name for old data
-    return {"name": passive_type.replace('_', ' ').title(), "emoji": "⚗️"}
+    return {"name": passive_type.replace("_", " ").title(), "emoji": "⚗️"}
 
 
 def get_passive_name_emoji(passive_type: str) -> tuple[str, str]:
@@ -1142,7 +1315,9 @@ def get_passive_list_desc(passive_type: str) -> str:
         dmin = info.get("duration_min", 0)
         dmax = info.get("duration_max", dmin)
         dur_range = f"{int(dmin)}-{int(dmax)}"
-        desc = desc.replace("{duration:.0f}", dur_range).replace("{duration}", dur_range)
+        desc = desc.replace("{duration:.0f}", dur_range).replace(
+            "{duration}", dur_range
+        )
 
     # The desc templates now start with "On potion use:" (or similar) per passive_data.py style.
     # No need to force prefix if already present.

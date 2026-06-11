@@ -25,7 +25,7 @@ def _gen_packages(base_atk: int = 0, base_def: int = 0, base_hp: int = 0) -> lis
     raw_deficits = {
         "atk": max(0.0, ref - base_atk),
         "def": max(0.0, ref - base_def),
-        "hp":  max(0.0, (ref + 10) - base_hp),
+        "hp": max(0.0, (ref + 10) - base_hp),
     }
     # Only the portion that exceeds the tolerance drives the bias.
     deficits = {k: max(0.0, v - tolerance) for k, v in raw_deficits.items()}

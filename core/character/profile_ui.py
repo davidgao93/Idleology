@@ -734,9 +734,12 @@ class ProfileBuilder:
         board_cooldown_str = "Ready!"
         try:
             from core.quests.mechanics import get_board_cooldown_remaining
+
             all_contracts = await bot.database.quests.get_contracts(user_id, server_id)
             if all_contracts:
-                latest = max(all_contracts, key=lambda c: c.get("locked_at", ""), default=None)
+                latest = max(
+                    all_contracts, key=lambda c: c.get("locked_at", ""), default=None
+                )
                 if latest and latest.get("locked_at"):
                     rem = get_board_cooldown_remaining(latest["locked_at"])
                     if rem.total_seconds() > 0:
@@ -751,7 +754,9 @@ class ProfileBuilder:
             f"📋 **Quest Board** — {board_cooldown_str}",
         ]
         if player_level >= 10:
-            daily_lines.insert(0, f"🛖 **/checkin** — {_fmt_hms(checkin_last, timedelta(hours=18))}")
+            daily_lines.insert(
+                0, f"🛖 **/checkin** — {_fmt_hms(checkin_last, timedelta(hours=18))}"
+            )
 
         from core.maw.mechanics import (
             MAX_FIGHTS_PER_CYCLE,
@@ -775,7 +780,9 @@ class ProfileBuilder:
                     if fights_done >= MAX_FIGHTS_PER_CYCLE:
                         fight_str = f"All fights used (0/{MAX_FIGHTS_PER_CYCLE} left)"
                     elif fight_available(last_fight_ts, fights_done, now_ts):
-                        fight_str = f"Ready! ({fights_left}/{MAX_FIGHTS_PER_CYCLE} left)"
+                        fight_str = (
+                            f"Ready! ({fights_left}/{MAX_FIGHTS_PER_CYCLE} left)"
+                        )
                     else:
                         fight_str = (
                             f"{_secs_to_hms(fight_remaining_seconds(last_fight_ts, now_ts))}"
@@ -809,11 +816,15 @@ class ProfileBuilder:
         horizon_lines = []
 
         if player_level >= 10:
-            settlement = await bot.database.settlement.get_settlement(user_id, server_id)
+            settlement = await bot.database.settlement.get_settlement(
+                user_id, server_id
+            )
             if settlement and settlement.last_collection_time:
                 try:
                     s_last = datetime.fromisoformat(settlement.last_collection_time)
-                    blocks = max(0, int((datetime.now() - s_last).total_seconds() // 3600))
+                    blocks = max(
+                        0, int((datetime.now() - s_last).total_seconds() // 3600)
+                    )
                     horizon_lines.append(
                         f"🏭 **Settlement** — {blocks} block(s) of production completed"
                     )
@@ -825,7 +836,9 @@ class ProfileBuilder:
             if not active_comps:
                 horizon_lines.append("🐾 **Companions** — No companions deployed")
             else:
-                c_time_str = await bot.database.users.get_companion_collect_time(user_id)
+                c_time_str = await bot.database.users.get_companion_collect_time(
+                    user_id
+                )
                 if c_time_str:
                     try:
                         c_diff = (
@@ -920,8 +933,8 @@ class ProfileBuilder:
             from core.skills.mechanics import SkillMechanics
 
             _skill_cfg = {
-                "mining":      ("⛏️", "Mining"),
-                "fishing":     ("🎣", "Fishing"),
+                "mining": ("⛏️", "Mining"),
+                "fishing": ("🎣", "Fishing"),
                 "woodcutting": ("🪓", "Woodcutting"),
             }
             gathering_lines: list[str] = []
@@ -929,7 +942,9 @@ class ProfileBuilder:
                 fam_end, mom = await bot.database.skills.get_familiarization_state(
                     user_id, server_id, sk
                 )
-                remaining = SkillMechanics.get_familiarization_remaining_seconds(fam_end, mom)
+                remaining = SkillMechanics.get_familiarization_remaining_seconds(
+                    fam_end, mom
+                )
                 if remaining > 0:
                     gh, gr = divmod(remaining // 60, 60)
                     line = f"{emo} **{label}** — Familiarizing: **{gh}h {gr:02d}m**"
@@ -1048,7 +1063,9 @@ class ProfileBuilder:
             f"🐟 **Tide Relics:** {tide_relics:,}\n"
             f"🪵 **Heartwood Shards:** {heartwood_shards:,}"
         )
-        embed.add_field(name="🌿 Artisan Mastery (Remnants)", value=mastery_value, inline=False)
+        embed.add_field(
+            name="🌿 Artisan Mastery (Remnants)", value=mastery_value, inline=False
+        )
 
         return embed
 

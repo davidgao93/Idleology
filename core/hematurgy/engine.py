@@ -134,7 +134,7 @@ def reset_hematurgy_transients(player: Player) -> None:
     cs.hema_blade_count = 0
     cs.hema_puncture_bleed = 0
     cs.hema_frost_misses = 0
-    cs.hema_ward_inoculation = False   # re-applied by apply_hematurgy_start each fight
+    cs.hema_ward_inoculation = False  # re-applied by apply_hematurgy_start each fight
     cs.hema_ward_dmg_buffer = 0
     cs.hema_serrated_total = 0
     # Clear any freeze flag left on the monster (defensive — uses dynamic attr)

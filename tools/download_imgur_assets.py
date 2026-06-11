@@ -45,31 +45,31 @@ HEADERS = {
 
 # Maps constant name prefix → subfolder under assets/images/ui/
 _PREFIX_TO_FOLDER = {
-    "COMBAT_":     "ui/combat",
-    "BOSS_":       "ui/bosses",
-    "MONSTER_":    "ui/bosses",
-    "VICTORY_":    "ui/bosses",
-    "INVENTORY_":  "ui/inventory",
-    "SLOT_":       "ui/inventory",
-    "UPGRADE_":    "ui/inventory",
-    "CURIO_":      "ui/curios",
-    "ALCHEMY_":    "ui/alchemy",
-    "ASCENT_":     "ui/ascent",
-    "CODEX_":      "ui/codex",
-    "CONSUME_":    "ui/consume",
+    "COMBAT_": "ui/combat",
+    "BOSS_": "ui/bosses",
+    "MONSTER_": "ui/bosses",
+    "VICTORY_": "ui/bosses",
+    "INVENTORY_": "ui/inventory",
+    "SLOT_": "ui/inventory",
+    "UPGRADE_": "ui/inventory",
+    "CURIO_": "ui/curios",
+    "ALCHEMY_": "ui/alchemy",
+    "ASCENT_": "ui/ascent",
+    "CODEX_": "ui/codex",
+    "CONSUME_": "ui/consume",
     "COMPANIONS_": "ui/companions",
-    "DELVE_":      "ui/delve",
-    "DUELS_":      "ui/duels",
-    "EVENT_":      "ui/events",
-    "ENCOUNTER_":  "ui/encounters",
-    "MAW_":        "ui/maw",
-    "PARTNERS_":   "ui/partners",
-    "GACHA_":      "ui/partners",
+    "DELVE_": "ui/delve",
+    "DUELS_": "ui/duels",
+    "EVENT_": "ui/events",
+    "ENCOUNTER_": "ui/encounters",
+    "MAW_": "ui/maw",
+    "PARTNERS_": "ui/partners",
+    "GACHA_": "ui/partners",
     "SETTLEMENT_": "ui/settlement",
-    "SLAYER_":     "ui/slayer",
-    "TAVERN_":     "ui/general",
-    "DEFAULT_":    "ui/general",
-    "TOOL_":       "ui/skills",
+    "SLAYER_": "ui/slayer",
+    "TAVERN_": "ui/general",
+    "DEFAULT_": "ui/general",
+    "TOOL_": "ui/skills",
 }
 
 
@@ -97,13 +97,16 @@ def _slug(text: str) -> str:
 # Source 1: core/images.py  (scalar constants + SETTLEMENT_BUILDINGS dict)
 # ---------------------------------------------------------------------------
 
+
 def collect_images_py() -> dict[str, Path]:
     """Returns {url: dest_path} for everything declared in core/images.py."""
     source = IMAGES_PY.read_text(encoding="utf-8")
     entries: dict[str, Path] = {}
 
     # Scalar constants: NAME = "https://..."
-    for m in re.finditer(r'^([A-Z_0-9]+)\s*=\s*"(https://i\.imgur\.com/[^"]+)"', source, re.MULTILINE):
+    for m in re.finditer(
+        r'^([A-Z_0-9]+)\s*=\s*"(https://i\.imgur\.com/[^"]+)"', source, re.MULTILINE
+    ):
         name, url = m.group(1), m.group(2)
         folder = _folder_for_const(name)
         filename = name.lower() + _ext(url)
@@ -112,7 +115,9 @@ def collect_images_py() -> dict[str, Path]:
     # SETTLEMENT_BUILDINGS dict values: "key": "https://..."
     dict_block_m = re.search(r"SETTLEMENT_BUILDINGS\s*=\s*\{(.+?)\}", source, re.DOTALL)
     if dict_block_m:
-        for m in re.finditer(r'"([^"]+)"\s*:\s*"(https://i\.imgur\.com/[^"]+)"', dict_block_m.group(1)):
+        for m in re.finditer(
+            r'"([^"]+)"\s*:\s*"(https://i\.imgur\.com/[^"]+)"', dict_block_m.group(1)
+        ):
             key, url = m.group(1), m.group(2)
             filename = key + _ext(url)
             dest = OUT_ROOT / "ui/settlement" / filename
@@ -126,6 +131,7 @@ def collect_images_py() -> dict[str, Path]:
 # ---------------------------------------------------------------------------
 # Source 2: monsters.csv
 # ---------------------------------------------------------------------------
+
 
 def collect_monsters() -> dict[str, Path]:
     entries: dict[str, Path] = {}
@@ -143,6 +149,7 @@ def collect_monsters() -> dict[str, Path]:
 # ---------------------------------------------------------------------------
 # Source 3: partners.csv  (image_url + affinity_image_url)
 # ---------------------------------------------------------------------------
+
 
 def collect_partners() -> dict[str, Path]:
     entries: dict[str, Path] = {}
@@ -162,6 +169,7 @@ def collect_partners() -> dict[str, Path]:
 # Source 4: curios.csv
 # ---------------------------------------------------------------------------
 
+
 def collect_curios() -> dict[str, Path]:
     entries: dict[str, Path] = {}
     with open(CURIOS_CSV, encoding="utf-8", newline="") as f:
@@ -178,6 +186,7 @@ def collect_curios() -> dict[str, Path]:
 # ---------------------------------------------------------------------------
 # Download
 # ---------------------------------------------------------------------------
+
 
 def download(url: str, dest: Path) -> bool:
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -198,6 +207,7 @@ def download(url: str, dest: Path) -> bool:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     # Collect all sources

@@ -112,15 +112,19 @@ class CombatLogger:
             f"[START] Monster: HP {monster.hp}/{monster.max_hp} | "
             f"Atk {m_atk} | Def {m_def} | "
             f"Mods: {', '.join(monster.display_modifiers) or 'None'}"
-            + (f" | {['','HARD','EXTREME','NIGHTMARISH','DELIRIOUS'][monster.difficulty_level]} MODE" if monster.difficulty_level > 0 else "")
+            + (
+                f" | {['', 'HARD', 'EXTREME', 'NIGHTMARISH', 'DELIRIOUS'][monster.difficulty_level]} MODE"
+                if monster.difficulty_level > 0
+                else ""
+            )
         )
         self._w(
-            f"[CALC]  Player hit:   base={_HIT_BASE*100:.0f}% + ({p_atk}-{m_def})/{m_def if m_def else 1} × {_HIT_SENSITIVITY*100:.0f}% "
-            f"= {p_hit_base*100:.1f}%{f' +asc={asc_hit}%' if asc_hit else ''} → capped={p_hit*100:.1f}%"
+            f"[CALC]  Player hit:   base={_HIT_BASE * 100:.0f}% + ({p_atk}-{m_def})/{m_def if m_def else 1} × {_HIT_SENSITIVITY * 100:.0f}% "
+            f"= {p_hit_base * 100:.1f}%{f' +asc={asc_hit}%' if asc_hit else ''} → capped={p_hit * 100:.1f}%"
         )
         self._w(
-            f"[CALC]  Monster hit:  base={_MON_HIT_BASE*100:.0f}% + ({m_atk}-{p_def})/{m_atk if m_atk else 1} × {_MON_HIT_SENSITIVITY*100:.0f}% "
-            f"= {m_hit_base*100:.1f}% → capped={m_hit*100:.1f}%"
+            f"[CALC]  Monster hit:  base={_MON_HIT_BASE * 100:.0f}% + ({m_atk}-{p_def})/{m_atk if m_atk else 1} × {_MON_HIT_SENSITIVITY * 100:.0f}% "
+            f"= {m_hit_base * 100:.1f}% → capped={m_hit * 100:.1f}%"
         )
         self._w(
             f"[CALC]  Eff crit:     {eff_crit:.1f}%  "
@@ -145,18 +149,14 @@ class CombatLogger:
                 lines.append(f"[JEWEL-{skill_key.upper()}] charges={charges}")
             if getattr(player, "jewel_cataclysm_primed", False):
                 bonus_pct = getattr(player, "jewel_cataclysm_bonus_multi", 0.0) * 100
-                lines.append(
-                    f"[JEWEL-CATACLYSM] PRIMED  +{bonus_pct:.0f}% crit multi"
-                )
+                lines.append(f"[JEWEL-CATACLYSM] PRIMED  +{bonus_pct:.0f}% crit multi")
             if getattr(player, "jewel_onslaught_primed", False):
                 bonus_pct = getattr(player, "jewel_onslaught_bonus_pct", 0.0)
                 lines.append(f"[JEWEL-ONSLAUGHT] PRIMED  +{bonus_pct:.0f}% ATK")
             dot = getattr(player, "jewel_acrimony_dot", 0)
             if dot > 0:
                 dot_dmg = getattr(player, "jewel_acrimony_dot_dmg", 0)
-                lines.append(
-                    f"[JEWEL-ACRIMONY] DoT  {dot} turns left  {dot_dmg}/turn"
-                )
+                lines.append(f"[JEWEL-ACRIMONY] DoT  {dot} turns left  {dot_dmg}/turn")
             wf = getattr(player, "jewel_wardforge_bonus_dmg", 0)
             if wf:
                 lines.append(f"[JEWEL-WARDFORGE] pending bonus_dmg={wf}")
@@ -166,16 +166,16 @@ class CombatLogger:
         if cs is not None and getattr(player, "hematurgy_passives", None):
             _HEMA_FIELDS = [
                 ("hema_momentum_stacks", "Iron Momentum stacks"),
-                ("hema_chain_stacks",    "Chain Reaction stacks"),
-                ("hema_phantom_stacks",  "Phantom Reflex stacks"),
-                ("hema_blade_count",     "Spectral Waltz blades"),
-                ("hema_bleed_total",     "Haemorrhage pool"),
-                ("hema_puncture_bleed",  "Puncture pool"),
-                ("hema_frost_misses",    "Flash Frost misses"),
-                ("hema_hp_lost_combat",  "Soul Fracture HP lost"),
+                ("hema_chain_stacks", "Chain Reaction stacks"),
+                ("hema_phantom_stacks", "Phantom Reflex stacks"),
+                ("hema_blade_count", "Spectral Waltz blades"),
+                ("hema_bleed_total", "Haemorrhage pool"),
+                ("hema_puncture_bleed", "Puncture pool"),
+                ("hema_frost_misses", "Flash Frost misses"),
+                ("hema_hp_lost_combat", "Soul Fracture HP lost"),
                 ("hema_ward_dmg_buffer", "Ward Inoculation buffer"),
-                ("hema_fevered_count",   "Fevered Strike potions"),
-                ("hema_serrated_total",  "Serrated ATK reduced"),
+                ("hema_fevered_count", "Fevered Strike potions"),
+                ("hema_serrated_total", "Serrated ATK reduced"),
             ]
             for attr, label in _HEMA_FIELDS:
                 val = getattr(cs, attr, 0)
@@ -257,7 +257,9 @@ class CombatLogger:
         self._w(
             f"[XP/GOLD]   XP: {reward_data.get('xp', 0):,} | Gold: {reward_data.get('gold', 0):,}"
         )
-        self._w(f"[PLAYER]    Rarity: {rarity}% | Special Drop Bonus: {special_bonus:.2f}%")
+        self._w(
+            f"[PLAYER]    Rarity: {rarity}% | Special Drop Bonus: {special_bonus:.2f}%"
+        )
 
         # Gear drop roll
         gear_roll = rolls.get("gear_roll")
@@ -418,11 +420,11 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     if monster.has_modifier("Savage"):
         monster.damage_increased_pct += monster.get_modifier_value("Savage")
     if monster.has_modifier("Hell's Fury"):
-        monster.damage_increased_pct += 2.0   # +200% increased
+        monster.damage_increased_pct += 2.0  # +200% increased
     if monster.has_modifier("Overwhelming"):
-        monster.damage_increased_pct += 1.0   # +100% increased
+        monster.damage_increased_pct += 1.0  # +100% increased
     if monster.has_modifier("Spectral"):
-        monster.damage_increased_pct += 1.0   # on proc for max hit we assume it procs
+        monster.damage_increased_pct += 1.0  # on proc for max hit we assume it procs
 
     if monster.has_modifier("Inevitable"):
         monster.damage_more_mult = monster.get_modifier_value("Inevitable")
@@ -442,7 +444,8 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     _DIFF_NAMES_LOG = ["", "HARD", "EXTREME", "NIGHTMARISH", "DELIRIOUS"]
     hard_note = (
         f" [{_DIFF_NAMES_LOG[monster.difficulty_level]} MODE ×{_surplus_mult} surplus]"
-        if monster.difficulty_level > 0 else ""
+        if monster.difficulty_level > 0
+        else ""
     )
 
     log.info(f"--- COMBAT DEBUG: {player.name} VS {monster.name} ---")
@@ -458,5 +461,7 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     log.info(
         f"FORMULA: base_raw={_base_raw:.1f} surplus={_surplus:+.3f} ×{_surplus_mult:.1f} → post_surplus={raw_base:.1f} (variance max uses ×1.15 for theoretical)"
     )
-    log.info(f"THEORETICAL MAX HIT -> Player: ~{p_max_dmg} | Monster: ~{m_max_dmg}{hard_note}")
+    log.info(
+        f"THEORETICAL MAX HIT -> Player: ~{p_max_dmg} | Monster: ~{m_max_dmg}{hard_note}"
+    )
     log.info("--------------------------------------------------")

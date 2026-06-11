@@ -46,27 +46,68 @@ _COMBAT_EXP_MAX = 2000
 # ---------------------------------------------------------------------------
 
 _MINING_YIELDS: Dict[str, Dict[str, tuple]] = {
-    "iron":     {"iron": (150, 400)},
-    "steel":    {"iron": (200, 450), "coal": (100, 250)},
-    "gold":     {"iron": (200, 450), "coal": (150, 300), "gold": (100, 250)},
-    "platinum": {"iron": (200, 450), "coal": (150, 300), "gold": (120, 270), "platinum": (80, 200)},
-    "ideal":    {"iron": (200, 450), "coal": (150, 300), "gold": (120, 270), "platinum": (80, 200), "idea": (50, 150)},
+    "iron": {"iron": (150, 400)},
+    "steel": {"iron": (200, 450), "coal": (100, 250)},
+    "gold": {"iron": (200, 450), "coal": (150, 300), "gold": (100, 250)},
+    "platinum": {
+        "iron": (200, 450),
+        "coal": (150, 300),
+        "gold": (120, 270),
+        "platinum": (80, 200),
+    },
+    "ideal": {
+        "iron": (200, 450),
+        "coal": (150, 300),
+        "gold": (120, 270),
+        "platinum": (80, 200),
+        "idea": (50, 150),
+    },
 }
 
 _FISHING_YIELDS: Dict[str, Dict[str, tuple]] = {
     "desiccated": {"desiccated_bones": (150, 400)},
-    "regular":    {"desiccated_bones": (200, 450), "regular_bones": (100, 250)},
-    "sturdy":     {"desiccated_bones": (200, 450), "regular_bones": (150, 300), "sturdy_bones": (100, 250)},
-    "reinforced": {"desiccated_bones": (200, 450), "regular_bones": (150, 300), "sturdy_bones": (120, 270), "reinforced_bones": (80, 200)},
-    "titanium":   {"desiccated_bones": (200, 450), "regular_bones": (150, 300), "sturdy_bones": (120, 270), "reinforced_bones": (80, 200), "titanium_bones": (50, 150)},
+    "regular": {"desiccated_bones": (200, 450), "regular_bones": (100, 250)},
+    "sturdy": {
+        "desiccated_bones": (200, 450),
+        "regular_bones": (150, 300),
+        "sturdy_bones": (100, 250),
+    },
+    "reinforced": {
+        "desiccated_bones": (200, 450),
+        "regular_bones": (150, 300),
+        "sturdy_bones": (120, 270),
+        "reinforced_bones": (80, 200),
+    },
+    "titanium": {
+        "desiccated_bones": (200, 450),
+        "regular_bones": (150, 300),
+        "sturdy_bones": (120, 270),
+        "reinforced_bones": (80, 200),
+        "titanium_bones": (50, 150),
+    },
 }
 
 _WOODCUTTING_YIELDS: Dict[str, Dict[str, tuple]] = {
-    "flimsy":    {"oak_logs": (150, 400)},
-    "carved":    {"oak_logs": (200, 450), "willow_logs": (100, 250)},
-    "chopping":  {"oak_logs": (200, 450), "willow_logs": (150, 300), "mahogany_logs": (100, 250)},
-    "magic":     {"oak_logs": (200, 450), "willow_logs": (150, 300), "mahogany_logs": (120, 270), "magic_logs": (80, 200)},
-    "felling":   {"oak_logs": (200, 450), "willow_logs": (150, 300), "mahogany_logs": (120, 270), "magic_logs": (80, 200), "idea_logs": (50, 150)},
+    "flimsy": {"oak_logs": (150, 400)},
+    "carved": {"oak_logs": (200, 450), "willow_logs": (100, 250)},
+    "chopping": {
+        "oak_logs": (200, 450),
+        "willow_logs": (150, 300),
+        "mahogany_logs": (100, 250),
+    },
+    "magic": {
+        "oak_logs": (200, 450),
+        "willow_logs": (150, 300),
+        "mahogany_logs": (120, 270),
+        "magic_logs": (80, 200),
+    },
+    "felling": {
+        "oak_logs": (200, 450),
+        "willow_logs": (150, 300),
+        "mahogany_logs": (120, 270),
+        "magic_logs": (80, 200),
+        "idea_logs": (50, 150),
+    },
 }
 
 _GATHERING_YIELD_MAP: Dict[str, Dict[str, Dict[str, tuple]]] = {

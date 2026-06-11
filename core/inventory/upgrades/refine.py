@@ -98,6 +98,7 @@ class RefineView(BaseUpgradeView):
             self.item.refines_remaining += 1
             try:
                 from core.quests.mechanics import tick_quest_progress
+
                 await tick_quest_progress(
                     self.bot, self.user_id, str(interaction.guild_id), "rune_refinement"
                 )
@@ -521,9 +522,13 @@ class RefineView(BaseUpgradeView):
         if runes_used > 0:
             try:
                 from core.quests.mechanics import tick_quest_progress
+
                 await tick_quest_progress(
-                    self.bot, self.user_id, str(interaction.guild_id),
-                    "rune_refinement", value=runes_used,
+                    self.bot,
+                    self.user_id,
+                    str(interaction.guild_id),
+                    "rune_refinement",
+                    value=runes_used,
                 )
             except Exception:
                 pass

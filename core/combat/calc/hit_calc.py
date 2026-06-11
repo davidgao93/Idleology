@@ -191,9 +191,7 @@ def build_attack_multiplier(
     if add_pool_bonus != 0:
         pool_factor = 1 + add_pool_bonus
         mult *= pool_factor
-        calc_sources.append(
-            f"add_pool[{'+'.join(add_pool_parts)}]×{pool_factor:.3f}"
-        )
+        calc_sources.append(f"add_pool[{'+'.join(add_pool_parts)}]×{pool_factor:.3f}")
 
     if player.alchemy_atk_boost_pct > 0:
         factor = 1 + player.alchemy_atk_boost_pct
@@ -216,25 +214,25 @@ def build_attack_multiplier(
         im_f = get_iron_momentum_factor(player)
         if im_f > 0:
             mult *= 1 + im_f
-            calc_sources.append(f"iron_momentum×{1+im_f:.3f}")
+            calc_sources.append(f"iron_momentum×{1 + im_f:.3f}")
 
         er_f = get_executioners_rite_bonus(player, monster)
         if er_f > 0:
             mult *= 1 + er_f
-            calc_sources.append(f"executioners_rite×{1+er_f:.3f}")
+            calc_sources.append(f"executioners_rite×{1 + er_f:.3f}")
             log.append(
-                f"⚔️ **Executioner's Rite** — monster below 30% HP! +{int(er_f*100)}% ATK!"
+                f"⚔️ **Executioner's Rite** — monster below 30% HP! +{int(er_f * 100)}% ATK!"
             )
 
         sf_f = get_soul_fracture_factor(player)
         if sf_f > 0:
             mult *= 1 + sf_f
-            calc_sources.append(f"soul_fracture×{1+sf_f:.3f}")
+            calc_sources.append(f"soul_fracture×{1 + sf_f:.3f}")
 
         cf_f = get_counterforce_factor(player)
         if cf_f > 0:
             mult *= 1 + cf_f
-            calc_sources.append(f"counterforce×{1+cf_f:.3f}")
+            calc_sources.append(f"counterforce×{1 + cf_f:.3f}")
 
     src_str = " × ".join(calc_sources) if calc_sources else "none"
     calc.append(
@@ -313,8 +311,8 @@ def resolve_hit(
 
     outcome = "HIT" if is_hit else "MISS"
     calc.append(
-        f"  hit: chance={hit_chance*100:.1f}%{blinding_note} → threshold={miss_threshold} | "
-        f"roll={attack_roll}{lucky_note}{jinxed_note}+acc={acc_bonus}={attack_roll+acc_bonus}"
+        f"  hit: chance={hit_chance * 100:.1f}%{blinding_note} → threshold={miss_threshold} | "
+        f"roll={attack_roll}{lucky_note}{jinxed_note}+acc={acc_bonus}={attack_roll + acc_bonus}"
         f"{bottled_note} → {outcome}"
     )
     return is_hit, attack_multiplier

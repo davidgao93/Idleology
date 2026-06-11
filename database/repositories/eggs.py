@@ -6,7 +6,6 @@ _EGG_CAP = 20
 
 
 class EggsRepository(BaseRepository):
-
     # ------------------------------------------------------------------ #
     #  Monster Egg Inventory
     # ------------------------------------------------------------------ #
@@ -97,7 +96,16 @@ class EggsRepository(BaseRepository):
             """INSERT INTO hatchery_incubation
                (user_id, server_id, egg_id, egg_tier, monster_level, monster_name, start_time, duration_seconds)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (user_id, server_id, egg_id, egg_tier, monster_level, monster_name, start_time, duration_seconds),
+            (
+                user_id,
+                server_id,
+                egg_id,
+                egg_tier,
+                monster_level,
+                monster_name,
+                start_time,
+                duration_seconds,
+            ),
         )
         await self.connection.commit()
 

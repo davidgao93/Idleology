@@ -29,7 +29,7 @@ class MawRepository:
             return None
         return {
             "signup_timestamp": row[0],
-            "last_fight_ts": row[1],   # last_damage_check repurposed; 0 = never fought
+            "last_fight_ts": row[1],  # last_damage_check repurposed; 0 = never fought
             "damage_dealt": row[2],
             "rewards_collected": row[3],
             "fights_this_cycle": row[4],

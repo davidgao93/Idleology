@@ -29,6 +29,7 @@ BASE_GUILD_TICKETS = 10
 # Cycle timing helpers
 # ---------------------------------------------------------------------------
 
+
 def get_current_cycle_id(now: datetime) -> int:
     """Returns the Unix timestamp of the most recent Sunday 12:00 UTC cycle start."""
     now_utc = (
@@ -68,7 +69,10 @@ def is_collection_window(cycle_id: int, now_ts: int) -> bool:
 # Fight availability
 # ---------------------------------------------------------------------------
 
-def fight_available(last_fight_ts: int | None, fights_this_cycle: int, now_ts: int) -> bool:
+
+def fight_available(
+    last_fight_ts: int | None, fights_this_cycle: int, now_ts: int
+) -> bool:
     """True if the player can start a new fight right now."""
     if fights_this_cycle >= MAX_FIGHTS_PER_CYCLE:
         return False
@@ -87,6 +91,7 @@ def fight_remaining_seconds(last_fight_ts: int, now_ts: int) -> int:
 # ---------------------------------------------------------------------------
 # Reward calculation
 # ---------------------------------------------------------------------------
+
 
 def calculate_pool_size(participant_count: int) -> int:
     """Pool grows by 1 curio per additional participant: 10 + 11 + 12 + …"""

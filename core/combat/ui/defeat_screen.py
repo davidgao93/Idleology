@@ -39,8 +39,7 @@ def create_defeat_embed(
         f"The {monster.name} deals a fatal blow{killing_blow_str}!\n"
         f"{player.name} has been defeated after dealing {total_damage_dealt:,} damage.\n"
         f"The {monster.name} leaves with {monster.hp:,} health remaining.\n"
-        f"Death 💀 takes away {lost_xp:,} XP from your essence..."
-        + description_extra
+        f"Death 💀 takes away {lost_xp:,} XP from your essence..." + description_extra
     )
 
     is_uber = getattr(monster, "is_uber", False)

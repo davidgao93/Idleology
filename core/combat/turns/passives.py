@@ -45,6 +45,7 @@ def compute_def_as_atk_bonus(player: Player) -> tuple[int, list[str]]:
     bonus = int(flat_def * total_pct / 100)
     return bonus, parts
 
+
 # ---------------------------------------------------------------------------
 # Monster Stat Effects
 # Applied once at combat start via apply_stat_effects().
@@ -341,7 +342,9 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
     if player.get_accessory_void_passive() == "unravelling":
         def_strip_pct += 0.20
         def_strip_parts.append("⬛ **Unravelling** (20%)")
-        logs["Void Passive"] = logs.get("Void Passive", "")  # ensure key exists for later merge
+        logs["Void Passive"] = logs.get(
+            "Void Passive", ""
+        )  # ensure key exists for later merge
 
     if def_strip_pct > 0 and monster.effective_defence > 0:
         flat = int(monster.effective_defence * def_strip_pct)
@@ -377,6 +380,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
     # --- Hematurgy: Ward Inoculation start effect (runs last, after ward is settled) ---
     if player.hematurgy_passives:
         from core.hematurgy.engine import apply_hematurgy_start
+
         hema_log: list[str] = []
         apply_hematurgy_start(player, monster, hema_log)
         if hema_log:
@@ -422,7 +426,9 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
         bonus = int(player.flat_def * pct / 100)
         if bonus > 0:
             player.bonus_atk += bonus
-            log.append(f"🪖 **Soul Juggernaut T{ss_juggernaut}** — ⚔️ +**{bonus}** ATK ({int(pct)}% of DEF)")
+            log.append(
+                f"🪖 **Soul Juggernaut T{ss_juggernaut}** — ⚔️ +**{bonus}** ATK ({int(pct)}% of DEF)"
+            )
 
     # Unlimited Wealth (soul stone): 20% chance for T1=+40% → T5=+200% rarity
     ss_unlimited = player.get_soul_stone_passive("unlimited wealth")
@@ -452,9 +458,7 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
                 amount = max(1, int(total * 0.10))
                 player.bonus_atk += amount
                 player.bonus_def += amount
-                log.append(
-                    f"🌀 **Soul Absorb T{ss_absorb}** — ⚔️/🛡️ +**{amount}** each."
-                )
+                log.append(f"🌀 **Soul Absorb T{ss_absorb}** — ⚔️/🛡️ +**{amount}** each.")
 
     # Treasure Hunter (soul stone): T1=+0.6 → T5=+3.0 special rarity
     ss_treasure = player.get_soul_stone_passive("treasure hunter")
@@ -486,7 +490,7 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
                 player.bonus_def += def_bonus
             res_name = "Tyr's Adjudication" if tyr_pct >= 0.20 else "Tyr's Ruling"
             log.append(
-                f"⚖️ **{res_name}** — ATK+DEF combined +{int(tyr_pct*100)}%, redistributed equally!"
+                f"⚖️ **{res_name}** — ATK+DEF combined +{int(tyr_pct * 100)}%, redistributed equally!"
             )
 
     return log

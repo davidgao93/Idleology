@@ -16,7 +16,6 @@ _SLOT_RARITY_TIER = {
 
 
 class MonsterPartsRepository(BaseRepository):
-
     async def get_inventory(self, user_id: str) -> list:
         cursor = await self.connection.execute(
             "SELECT id, user_id, slot_type, monster_name, ilvl, hp_value "

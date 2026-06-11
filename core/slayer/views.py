@@ -53,7 +53,7 @@ class SlayerDashboardView(BaseView):
             req = self.profile["active_task_amount"]
             species = self.profile["active_task_species"]
             if species.startswith(BOSS_TASK_PREFIX):
-                boss_name = species[len(BOSS_TASK_PREFIX):].capitalize()
+                boss_name = species[len(BOSS_TASK_PREFIX) :].capitalize()
                 task_line = f"Hunt **{req}× {boss_name}** *(Boss Task)*"
             else:
                 task_line = f"Slay **{req} {species}**"

@@ -26,11 +26,11 @@ from dotenv import load_dotenv
 # Config
 # ---------------------------------------------------------------------------
 
-ROOT             = Path(__file__).resolve().parent.parent
-IMAGE_DIR        = ROOT / "assets" / "images" / "corrupted_monsters"
-CDN_MAP_OUT      = ROOT / "assets" / "images" / "discord_url_map.json"
+ROOT = Path(__file__).resolve().parent.parent
+IMAGE_DIR = ROOT / "assets" / "images" / "corrupted_monsters"
+CDN_MAP_OUT = ROOT / "assets" / "images" / "discord_url_map.json"
 ASSET_CHANNEL_ID = 1334637411363323996
-BATCH_DELAY      = 1.2  # seconds between batches (rate-limit headroom)
+BATCH_DELAY = 1.2  # seconds between batches (rate-limit headroom)
 
 # ---------------------------------------------------------------------------
 # Load env
@@ -81,7 +81,7 @@ if not images:
 # Discord client
 # ---------------------------------------------------------------------------
 
-results: dict[str, str] = {}   # stem → cdn_url
+results: dict[str, str] = {}  # stem → cdn_url
 
 
 def _make_const_name(stem: str) -> str:
@@ -90,7 +90,9 @@ def _make_const_name(stem: str) -> str:
 
 
 def _print_constants(cdn: dict[str, str]) -> None:
-    print("# ── CORRUPTED MONSTERS ──────────────────────────────────────────────────────")
+    print(
+        "# ── CORRUPTED MONSTERS ──────────────────────────────────────────────────────"
+    )
     print("CORRUPTED_MONSTERS = {")
     for img in sorted(IMAGE_DIR.glob("*.jpg")) + sorted(IMAGE_DIR.glob("*.png")):
         key = f"corrupted:{img.stem}"

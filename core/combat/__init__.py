@@ -8,10 +8,12 @@
 def __getattr__(name: str):
     if name == "jewel_engine":
         from core.combat.turns import jewel_engine
+
         globals()["jewel_engine"] = jewel_engine  # cache for subsequent accesses
         return jewel_engine
     if name == "rewards":
         from core.combat.economy import rewards
+
         globals()["rewards"] = rewards
         return rewards
     raise AttributeError(f"module 'core.combat' has no attribute {name!r}")

@@ -90,10 +90,17 @@ class ImprintView(BaseView):
             if not passives:
                 continue  # no max-rank passives — skip this item entirely
             # passive_count for extraction chance = ALL non-empty passives (investment measure)
-            all_passive_attrs = ("passive", "p_passive", "u_passive", "infernal_passive",
-                                 "celestial_passive", "void_passive")
+            all_passive_attrs = (
+                "passive",
+                "p_passive",
+                "u_passive",
+                "infernal_passive",
+                "celestial_passive",
+                "void_passive",
+            )
             passive_count = sum(
-                1 for attr in all_passive_attrs
+                1
+                for attr in all_passive_attrs
                 if getattr(item, attr, None) not in (None, "", "none")
             )
             has_corrupted = bool(
@@ -103,14 +110,16 @@ class ImprintView(BaseView):
             for p in passives:
                 if p in already_imprinted:
                     continue  # already imprinted — not eligible
-                candidates.append({
-                    "passive": p,
-                    "item_type": item_type,
-                    "item": item,
-                    "item_name": getattr(item, "name", item_type),
-                    "passive_count": passive_count,
-                    "has_corrupted": has_corrupted,
-                })
+                candidates.append(
+                    {
+                        "passive": p,
+                        "item_type": item_type,
+                        "item": item,
+                        "item_name": getattr(item, "name", item_type),
+                        "passive_count": passive_count,
+                        "has_corrupted": has_corrupted,
+                    }
+                )
         return candidates
 
     # ------------------------------------------------------------------
@@ -135,12 +144,14 @@ class ImprintView(BaseView):
             item = c["item"]
             item_level = getattr(item, "level", "?")
             item_name = c.get("item_name") or c["item_type"]
-            options.append(discord.SelectOption(
-                label=f"{c['item_type']}: {item_name[:40]}",
-                value=key,
-                description=f"Extract: {passive_display} (Lv.{item_level})",
-                emoji="💎",
-            ))
+            options.append(
+                discord.SelectOption(
+                    label=f"{c['item_type']}: {item_name[:40]}",
+                    value=key,
+                    description=f"Extract: {passive_display} (Lv.{item_level})",
+                    emoji="💎",
+                )
+            )
 
         if not options:
             return
@@ -233,7 +244,9 @@ class ImprintView(BaseView):
             self.add_item(vessel_btn)
 
     def _build_confirm_embed(self) -> discord.Embed:
-        passive_display = self._selected_passive.replace("-", " ").replace("_", " ").title()
+        passive_display = (
+            self._selected_passive.replace("-", " ").replace("_", " ").title()
+        )
         primal_count = self.meta.primal_essence if self._use_primal else 0
         fang = self._use_fang
         vessel = self._use_vessel
@@ -268,6 +281,7 @@ class ImprintView(BaseView):
 
         # Full item stats
         from core.inventory.inventory import InventoryUI
+
         item_level = getattr(self._selected_item, "level", "?")
         stats_str = InventoryUI._build_equipped_stats(self._selected_item)
         embed.add_field(
@@ -279,14 +293,18 @@ class ImprintView(BaseView):
         # Extraction chance
         chance_lines = [f"Base: **{base_chance * 100:.1f}%**"]
         if fang:
-            chance_lines.append(f"With Sharpened Fang: **{lucky_chance * 100:.1f}%** *(lucky roll)*")
+            chance_lines.append(
+                f"With Sharpened Fang: **{lucky_chance * 100:.1f}%** *(lucky roll)*"
+            )
         detail_parts = [f"{self._selected_passive_count} passives"]
         if self._selected_has_corrupted:
             detail_parts.append("corrupted essence")
         if self._use_primal and self.meta.primal_essence:
             detail_parts.append(f"{self.meta.primal_essence}x Primal Essence")
         chance_lines.append(f"*Based on: {', '.join(detail_parts)}*")
-        embed.add_field(name="📊 Extraction Chance", value="\n".join(chance_lines), inline=False)
+        embed.add_field(
+            name="📊 Extraction Chance", value="\n".join(chance_lines), inline=False
+        )
 
         embed.add_field(name="🔮 Shard Type", value=shard_type.title(), inline=True)
         embed.add_field(name="⚡ Category", value=cat.capitalize(), inline=True)
@@ -294,13 +312,17 @@ class ImprintView(BaseView):
 
         destruction_note = (
             "🏺 **Soul Vessel active** — the item is preserved regardless of outcome."
-            if vessel else
-            "⚠️ **The item will be destroyed** on the extraction attempt."
+            if vessel
+            else "⚠️ **The item will be destroyed** on the extraction attempt."
         )
         embed.add_field(name="⚠️ Warning", value=destruction_note, inline=False)
 
         # Active meta shard hints
-        if self.meta.sharpened_fang or self.meta.primal_essence or self.meta.soul_vessel:
+        if (
+            self.meta.sharpened_fang
+            or self.meta.primal_essence
+            or self.meta.soul_vessel
+        ):
             meta_hint = "Toggle meta shards below to adjust how they're applied."
             embed.set_footer(text=meta_hint)
 
@@ -310,19 +332,25 @@ class ImprintView(BaseView):
         await interaction.response.defer()
         self._use_fang = not self._use_fang
         self._build_confirm_buttons()
-        await interaction.edit_original_response(embed=self._build_confirm_embed(), view=self)
+        await interaction.edit_original_response(
+            embed=self._build_confirm_embed(), view=self
+        )
 
     async def _toggle_primal(self, interaction: Interaction):
         await interaction.response.defer()
         self._use_primal = not self._use_primal
         self._build_confirm_buttons()
-        await interaction.edit_original_response(embed=self._build_confirm_embed(), view=self)
+        await interaction.edit_original_response(
+            embed=self._build_confirm_embed(), view=self
+        )
 
     async def _toggle_vessel(self, interaction: Interaction):
         await interaction.response.defer()
         self._use_vessel = not self._use_vessel
         self._build_confirm_buttons()
-        await interaction.edit_original_response(embed=self._build_confirm_embed(), view=self)
+        await interaction.edit_original_response(
+            embed=self._build_confirm_embed(), view=self
+        )
 
     async def _back_to_select(self, interaction: Interaction):
         """Returns from confirm back to the passive selection dropdown."""
@@ -352,7 +380,9 @@ class ImprintView(BaseView):
         first_empty = self.soul_stone.first_empty_slot
         if first_empty is None:
             await interaction.edit_original_response(
-                content="No empty slots available. Clear a slot first.", embed=None, view=None
+                content="No empty slots available. Clear a slot first.",
+                embed=None,
+                view=None,
             )
             self.stop()
             return
@@ -404,14 +434,22 @@ class ImprintView(BaseView):
             result_title = "✅ Extraction Successful!"
             result_desc = (
                 f"**{passive_display}** (T1) has been imprinted into Slot {first_empty}!\n"
-                + ("🏺 Soul Vessel preserved the item." if vessel else "⚠️ The item was destroyed.")
+                + (
+                    "🏺 Soul Vessel preserved the item."
+                    if vessel
+                    else "⚠️ The item was destroyed."
+                )
             )
             color = 0x00CC44
         else:
             result_title = "❌ Extraction Failed"
             result_desc = (
                 f"The passive could not be extracted.\n"
-                + ("🏺 Soul Vessel preserved the item." if vessel else "⚠️ The item was destroyed.")
+                + (
+                    "🏺 Soul Vessel preserved the item."
+                    if vessel
+                    else "⚠️ The item was destroyed."
+                )
                 + f"\n*(Base chance was {base_chance * 100:.1f}%)*"
             )
             color = 0xCC0000
@@ -439,8 +477,12 @@ class ImprintView(BaseView):
         if not item_id:
             return
         _type_map = {
-            "Weapon": "weapon", "Armor": "armor", "Accessory": "accessory",
-            "Glove": "glove", "Boot": "boot", "Helmet": "helmet",
+            "Weapon": "weapon",
+            "Armor": "armor",
+            "Accessory": "accessory",
+            "Glove": "glove",
+            "Boot": "boot",
+            "Helmet": "helmet",
         }
         item_type = _type_map.get(type(item).__name__)
         if item_type:
@@ -458,8 +500,15 @@ class ImprintView(BaseView):
         await interaction.response.defer()
 
         from core.items.factory import load_player
-        from core.apex.models import soul_stone_from_db, shards_from_db, meta_shards_from_db
-        from core.apex.views.soul_stone_view import SoulStoneView, _build_soul_stone_embed
+        from core.apex.models import (
+            soul_stone_from_db,
+            shards_from_db,
+            meta_shards_from_db,
+        )
+        from core.apex.views.soul_stone_view import (
+            SoulStoneView,
+            _build_soul_stone_embed,
+        )
 
         # Reload player to reflect any item destruction that occurred
         user_row = await self.bot.database.users.get(self.user_id, self.server_id)
@@ -524,9 +573,15 @@ class ImprintView(BaseView):
             if slot.is_empty:
                 slot_lines.append(f"**Slot {i}:** *(empty — available for imprint)*")
             else:
-                passive_display = slot.passive.replace("-", " ").replace("_", " ").title()
-                slot_lines.append(f"**Slot {i}:** {passive_display} T{slot.tier} *(occupied)*")
-        embed.add_field(name="💎 Current Slots", value="\n".join(slot_lines), inline=False)
+                passive_display = (
+                    slot.passive.replace("-", " ").replace("_", " ").title()
+                )
+                slot_lines.append(
+                    f"**Slot {i}:** {passive_display} T{slot.tier} *(occupied)*"
+                )
+        embed.add_field(
+            name="💎 Current Slots", value="\n".join(slot_lines), inline=False
+        )
 
         # Active meta shard summary
         meta_parts = []

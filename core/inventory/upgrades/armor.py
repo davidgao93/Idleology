@@ -30,7 +30,9 @@ class TemperView(BaseUpgradeView):
             )
 
         uid, gid = self.user_id, str(interaction.guild.id)
-        has_res, cost_lines, self.inventory_snapshot = await self._check_triad_costs(costs, uid, gid)
+        has_res, cost_lines, self.inventory_snapshot = await self._check_triad_costs(
+            costs, uid, gid
+        )
         self.costs = costs
         desc = f"**Temper Cost:**\n{cost_lines}"
 
@@ -106,6 +108,7 @@ class TemperView(BaseUpgradeView):
             )
             try:
                 from core.quests.mechanics import tick_quest_progress
+
                 await tick_quest_progress(
                     self.bot, self.user_id, str(interaction.guild_id), "rune_potential"
                 )
@@ -130,9 +133,33 @@ class TemperView(BaseUpgradeView):
             self.inventory_snapshot, uid, gid
         )
 
-        await self._deduct_smart("mining", ore["raw_col"], ore["ref_col"], live_ore[0], self.costs["ore_qty"], uid, gid)
-        await self._deduct_smart("woodcutting", log["raw_col"], log["ref_col"], live_log[0], self.costs["log_qty"], uid, gid)
-        await self._deduct_smart("fishing", bone["raw_col"], bone["ref_col"], live_bone[0], self.costs["bone_qty"], uid, gid)
+        await self._deduct_smart(
+            "mining",
+            ore["raw_col"],
+            ore["ref_col"],
+            live_ore[0],
+            self.costs["ore_qty"],
+            uid,
+            gid,
+        )
+        await self._deduct_smart(
+            "woodcutting",
+            log["raw_col"],
+            log["ref_col"],
+            live_log[0],
+            self.costs["log_qty"],
+            uid,
+            gid,
+        )
+        await self._deduct_smart(
+            "fishing",
+            bone["raw_col"],
+            bone["ref_col"],
+            live_bone[0],
+            self.costs["bone_qty"],
+            uid,
+            gid,
+        )
 
         await self.bot.database.users.modify_gold(uid, -self.costs["gold"])
 
@@ -370,6 +397,7 @@ class ReinforceView(BaseUpgradeView):
             self.item.reinforces_remaining += 1
             try:
                 from core.quests.mechanics import tick_quest_progress
+
                 await tick_quest_progress(
                     self.bot, self.user_id, str(interaction.guild_id), "rune_shatter"
                 )
@@ -390,7 +418,9 @@ class ReinforceView(BaseUpgradeView):
 
         try:
             for mat in materials:
-                success = await self.bot.database.skills.deduct_resource_atomic(uid, sid, mat["table"], mat["column"], mat["qty"])
+                success = await self.bot.database.skills.deduct_resource_atomic(
+                    uid, sid, mat["table"], mat["column"], mat["qty"]
+                )
                 if not success:
                     return await interaction.followup.send(
                         f"Insufficient {mat['name']}!", ephemeral=True

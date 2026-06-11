@@ -265,7 +265,6 @@ class MonumentModal(discord.ui.Modal, title="Set Monument Quote"):
 
 
 class PrestigeBuilder:
-
     @staticmethod
     async def build_overview(bot, user_id: str, server_id: str) -> discord.Embed:
         user = await bot.database.users.get(user_id, server_id)

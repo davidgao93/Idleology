@@ -187,7 +187,6 @@ def compute_essence_stat_bonus(item) -> dict:
     }
 
     for _, essence_type, value in get_essence_slots(item):
-
         if essence_type == "power":
             if getattr(item, "attack", None) is not None:
                 # Glove / Boot — exactly one of ATK/DEF/WARD is non-zero (the main stat)

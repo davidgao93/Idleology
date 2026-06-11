@@ -37,15 +37,23 @@ from core.slayer.mechanics import SLAYER_PASSIVE_DEFS, SLAYER_PASSIVE_NAMES
 # Monster modifier detail view — paginates Common vs Rare & Boss
 # ---------------------------------------------------------------------------
 
+
 class ModDetailsMonsterView(BaseView):
     """
     Direct category selection view.
     Every section is directly accessible via its own button — no Previous/Next needed.
     """
 
-    def __init__(self, bot, user_id: str,
-                 common_part1: list, common_part2: list,
-                 rare_tiered_lines: list, rare_flat_lines: list, boss_lines: list):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        common_part1: list,
+        common_part2: list,
+        rare_tiered_lines: list,
+        rare_flat_lines: list,
+        boss_lines: list,
+    ):
         super().__init__(bot, user_id)
         self.categories = {
             "common1": ("🔵 Common Tiered — Part 1", common_part1),
@@ -70,7 +78,11 @@ class ModDetailsMonsterView(BaseView):
         }
 
         for key, (full_title, _) in self.categories.items():
-            style = ButtonStyle.primary if key == self.current_category else ButtonStyle.secondary
+            style = (
+                ButtonStyle.primary
+                if key == self.current_category
+                else ButtonStyle.secondary
+            )
             btn = ui.Button(label=button_labels[key], style=style, row=0)
             btn.callback = self._make_category_callback(key)
             self.add_item(btn)
@@ -80,6 +92,7 @@ class ModDetailsMonsterView(BaseView):
             self.current_category = category_key
             self._rebuild_buttons()
             await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
         return callback
 
     def build_embed(self) -> discord.Embed:
@@ -93,15 +106,15 @@ class ModDetailsMonsterView(BaseView):
 
         if lines:
             field_value = "\n".join(lines)
-            embed.add_field(
-                name="Modifiers",
-                value=field_value,
-                inline=False
-            )
+            embed.add_field(name="Modifiers", value=field_value, inline=False)
         else:
-            embed.add_field(name="No modifiers", value="This category is empty.", inline=False)
+            embed.add_field(
+                name="No modifiers", value="This category is empty.", inline=False
+            )
 
-        embed.set_footer(text="Click any button above to jump directly to that section.")
+        embed.set_footer(
+            text="Click any button above to jump directly to that section."
+        )
         return embed
 
 
@@ -262,15 +275,17 @@ class General(commands.Cog, name="general"):
             rare_flat_lines = [
                 f"**{n}**: {_flat_desc(n)}" for n in sorted(RARE_FLAT_MOD_NAMES)
             ]
-            boss_lines = [
-                f"**{n}**: {_flat_desc(n)}" for n in sorted(BOSS_MOD_NAMES)
-            ]
+            boss_lines = [f"**{n}**: {_flat_desc(n)}" for n in sorted(BOSS_MOD_NAMES)]
 
             user_id = str(interaction.user.id)
             view = ModDetailsMonsterView(
-                self.bot, user_id,
-                common_part1, common_part2,
-                rare_tiered_lines, rare_flat_lines, boss_lines
+                self.bot,
+                user_id,
+                common_part1,
+                common_part2,
+                rare_tiered_lines,
+                rare_flat_lines,
+                boss_lines,
             )
             await interaction.response.send_message(
                 embed=view.build_embed(), view=view, ephemeral=True
@@ -335,8 +350,12 @@ class General(commands.Cog, name="general"):
                 "WARD (+% HP as Ward)": lambda t: f"+{t * 5}% HP as Ward",
                 "RARITY (+% Rarity)": lambda t: f"+{t * 3}% Rarity",
                 "S_RARITY (+% Special Drop Rate)": lambda t: f"+{t}% Special Drop Rate",
-                "FDR (Flat Dmg Reduction)": lambda t: f"+{5 + t * 2} Flat Damage Reduction",
-                "PDR (% Dmg Reduction)": lambda t: f"+{2 + t}% Percent Damage Reduction (bypasses cap)",
+                "FDR (Flat Dmg Reduction)": lambda t: (
+                    f"+{5 + t * 2} Flat Damage Reduction"
+                ),
+                "PDR (% Dmg Reduction)": lambda t: (
+                    f"+{2 + t}% Percent Damage Reduction (bypasses cap)"
+                ),
             }
             comp_text = self._generate_scaling_details(comp_passives, 5)
             comp_text += (
@@ -396,7 +415,9 @@ class General(commands.Cog, name="general"):
                 for slot in ("glove", "boot", "helmet"):
                     key = (deity, slot)
                     if key in _CORRUPTED_DESC:
-                        corrupted_lines.append(f"**{slot.title()}** - {_CORRUPTED_DESC[key]}")
+                        corrupted_lines.append(
+                            f"**{slot.title()}** - {_CORRUPTED_DESC[key]}"
+                        )
                 corrupted_lines.append("")
             corrupted_text = "\n".join(corrupted_lines).rstrip()
             embed.description = (
@@ -426,8 +447,7 @@ class General(commands.Cog, name="general"):
                 "**🌀 Essence of Chaos**\n"
                 "Rerolls the stat values on all occupied regular essence slots. Types are preserved.\n\n"
                 "**✂️ Essence of Annulment**\n"
-                "Removes one random occupied regular essence slot.\n\n"
-                + corrupted_text
+                "Removes one random occupied regular essence slot.\n\n" + corrupted_text
             )
             content_added = True
 

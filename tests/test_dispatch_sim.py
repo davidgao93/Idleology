@@ -21,6 +21,7 @@ from typing import List, Optional, Tuple
 # Minimal Partner stub — mirrors only the fields dispatch.py reads
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FakePartner:
     name: str
@@ -77,6 +78,7 @@ class FakePartner:
 # ---------------------------------------------------------------------------
 
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core.partners.dispatch import calculate_rewards, calculate_sigmund_rewards
@@ -85,8 +87,12 @@ from core.partners.dispatch import calculate_rewards, calculate_sigmund_rewards
 # Simulation helpers
 # ---------------------------------------------------------------------------
 
-_48H_AGO = (datetime.now(timezone.utc) - timedelta(hours=48)).replace(tzinfo=None).isoformat()
-_96H_AGO = (datetime.now(timezone.utc) - timedelta(hours=96)).replace(tzinfo=None).isoformat()
+_48H_AGO = (
+    (datetime.now(timezone.utc) - timedelta(hours=48)).replace(tzinfo=None).isoformat()
+)
+_96H_AGO = (
+    (datetime.now(timezone.utc) - timedelta(hours=96)).replace(tzinfo=None).isoformat()
+)
 _NOW = datetime.now(timezone.utc).replace(tzinfo=None)
 
 RUNS = 1_000
@@ -131,9 +137,9 @@ def _fmt_items(items: dict) -> str:
 
 
 def report(label: str, result: dict, task: str = "combat") -> None:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  {label}  [{task}]")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     if task == "combat":
         print(f"  Gold / window:    {result['gold_avg']:>10,.0f}")
         print(f"  Partner EXP / w:  {result['exp_avg']:>10,.0f}")
@@ -146,6 +152,7 @@ def report(label: str, result: dict, task: str = "combat") -> None:
 # Test partners
 # ---------------------------------------------------------------------------
 
+
 def make_partners() -> list:
     partners = []
 
@@ -156,80 +163,112 @@ def make_partners() -> list:
     # 2. Full combat stack — gold + exp + extra reward at max
     p = FakePartner(
         name="Combat Specialist",
-        partner_id=1, sig_dispatch_lvl=0,
-        dispatch_slot_1="di_gold_boost", dispatch_slot_1_lvl=5,
-        dispatch_slot_2="di_exp_boost",  dispatch_slot_2_lvl=5,
-        dispatch_slot_3="di_extra_reward", dispatch_slot_3_lvl=5,
+        partner_id=1,
+        sig_dispatch_lvl=0,
+        dispatch_slot_1="di_gold_boost",
+        dispatch_slot_1_lvl=5,
+        dispatch_slot_2="di_exp_boost",
+        dispatch_slot_2_lvl=5,
+        dispatch_slot_3="di_extra_reward",
+        dispatch_slot_3_lvl=5,
     )
     partners.append(("Combat: gold+exp+extra (all Lv.5)", p, "combat"))
 
     # 3. Settlement mat hunter
     p = FakePartner(
         name="Material Hunter",
-        partner_id=1, sig_dispatch_lvl=0,
-        dispatch_slot_1="di_gold_boost",       dispatch_slot_1_lvl=3,
-        dispatch_slot_2="di_extra_reward",     dispatch_slot_2_lvl=5,
-        dispatch_slot_3="di_settlement_mat",   dispatch_slot_3_lvl=5,
+        partner_id=1,
+        sig_dispatch_lvl=0,
+        dispatch_slot_1="di_gold_boost",
+        dispatch_slot_1_lvl=3,
+        dispatch_slot_2="di_extra_reward",
+        dispatch_slot_2_lvl=5,
+        dispatch_slot_3="di_settlement_mat",
+        dispatch_slot_3_lvl=5,
     )
     partners.append(("Combat: gold+extra+settlement_mat (Lv.5)", p, "combat"))
 
     # 4. Pinnacle / tome hunter
     p = FakePartner(
         name="Pinnacle Hunter",
-        partner_id=1, sig_dispatch_lvl=0,
-        dispatch_slot_1="di_gold_boost",    dispatch_slot_1_lvl=3,
-        dispatch_slot_2="di_extra_reward",  dispatch_slot_2_lvl=5,
-        dispatch_slot_3="di_pinnacle_find", dispatch_slot_3_lvl=5,
+        partner_id=1,
+        sig_dispatch_lvl=0,
+        dispatch_slot_1="di_gold_boost",
+        dispatch_slot_1_lvl=3,
+        dispatch_slot_2="di_extra_reward",
+        dispatch_slot_2_lvl=5,
+        dispatch_slot_3="di_pinnacle_find",
+        dispatch_slot_3_lvl=5,
     )
     partners.append(("Combat: gold+extra+pinnacle_find (Lv.5)", p, "combat"))
 
     # 5. Contract (ticket) hunter
     p = FakePartner(
         name="Ticket Farmer",
-        partner_id=1, sig_dispatch_lvl=0,
-        dispatch_slot_1="di_gold_boost",     dispatch_slot_1_lvl=3,
-        dispatch_slot_2="di_extra_reward",   dispatch_slot_2_lvl=5,
-        dispatch_slot_3="di_contract_find",  dispatch_slot_3_lvl=5,
+        partner_id=1,
+        sig_dispatch_lvl=0,
+        dispatch_slot_1="di_gold_boost",
+        dispatch_slot_1_lvl=3,
+        dispatch_slot_2="di_extra_reward",
+        dispatch_slot_2_lvl=5,
+        dispatch_slot_3="di_contract_find",
+        dispatch_slot_3_lvl=5,
     )
     partners.append(("Combat: gold+extra+contract_find (Lv.5)", p, "combat"))
 
     # 6. Skol sig — essence finder at max (5%)
     p = FakePartner(
         name="Skol (essence sig)",
-        partner_id=1, sig_dispatch_lvl=5,
-        dispatch_slot_1="di_gold_boost",    dispatch_slot_1_lvl=5,
-        dispatch_slot_2="di_exp_boost",     dispatch_slot_2_lvl=5,
-        dispatch_slot_3="di_extra_reward",  dispatch_slot_3_lvl=5,
+        partner_id=1,
+        sig_dispatch_lvl=5,
+        dispatch_slot_1="di_gold_boost",
+        dispatch_slot_1_lvl=5,
+        dispatch_slot_2="di_exp_boost",
+        dispatch_slot_2_lvl=5,
+        dispatch_slot_3="di_extra_reward",
+        dispatch_slot_3_lvl=5,
     )
     partners.append(("Skol Sig Lv.5 — essence chance 5%", p, "combat"))
 
     # 7. Eve sig — spirit stone finder at max (5%)
     p = FakePartner(
         name="Eve (spirit stone sig)",
-        partner_id=2, sig_dispatch_lvl=5,
-        dispatch_slot_1="di_gold_boost",    dispatch_slot_1_lvl=5,
-        dispatch_slot_2="di_exp_boost",     dispatch_slot_2_lvl=5,
-        dispatch_slot_3="di_extra_reward",  dispatch_slot_3_lvl=5,
+        partner_id=2,
+        sig_dispatch_lvl=5,
+        dispatch_slot_1="di_gold_boost",
+        dispatch_slot_1_lvl=5,
+        dispatch_slot_2="di_exp_boost",
+        dispatch_slot_2_lvl=5,
+        dispatch_slot_3="di_extra_reward",
+        dispatch_slot_3_lvl=5,
     )
     partners.append(("Eve Sig Lv.5 — spirit_stone chance 5%", p, "combat"))
 
     # 8. Velour sig — elemental key at max (5%)
     p = FakePartner(
         name="Velour (elemental key sig)",
-        partner_id=5, sig_dispatch_lvl=5,
-        dispatch_slot_1="di_gold_boost",    dispatch_slot_1_lvl=5,
-        dispatch_slot_2="di_exp_boost",     dispatch_slot_2_lvl=5,
-        dispatch_slot_3="di_extra_reward",  dispatch_slot_3_lvl=5,
+        partner_id=5,
+        sig_dispatch_lvl=5,
+        dispatch_slot_1="di_gold_boost",
+        dispatch_slot_1_lvl=5,
+        dispatch_slot_2="di_exp_boost",
+        dispatch_slot_2_lvl=5,
+        dispatch_slot_3="di_extra_reward",
+        dispatch_slot_3_lvl=5,
     )
     partners.append(("Velour Sig Lv.5 — elemental_key chance 5%", p, "combat"))
 
     # 9. Yvenn sig — slayer drop at max (5%)
     p = FakePartner(
         name="Yvenn (slayer sig)",
-        partner_id=7, sig_dispatch_lvl=5,
-        dispatch_slot_1="di_gold_boost",    dispatch_slot_1_lvl=5,
-        dispatch_slot_2="di_exp_boost",     dispatch_slot_2_lvl=5,
-        dispatch_slot_3="di_extra_reward",  dispatch_slot_3_lvl=5,
+        partner_id=7,
+        sig_dispatch_lvl=5,
+        dispatch_slot_1="di_gold_boost",
+        dispatch_slot_1_lvl=5,
+        dispatch_slot_2="di_exp_boost",
+        dispatch_slot_2_lvl=5,
+        dispatch_slot_3="di_extra_reward",
+        dispatch_slot_3_lvl=5,
     )
     partners.append(("Yvenn Sig Lv.5 — slayer_drop chance 5%", p, "combat"))
 
@@ -240,17 +279,22 @@ def make_partners() -> list:
     # 11. Boss dispatch — with extra reward skill
     p = FakePartner(
         name="Boss Specialist",
-        partner_id=1, sig_dispatch_lvl=0,
-        dispatch_slot_1="di_boss_reward",  dispatch_slot_1_lvl=5,
+        partner_id=1,
+        sig_dispatch_lvl=0,
+        dispatch_slot_1="di_boss_reward",
+        dispatch_slot_1_lvl=5,
     )
     partners.append(("Boss dispatch — boss_reward Lv.5", p, "boss"))
 
     # 12. Gathering dispatch — skilling boost at max
     p = FakePartner(
         name="Gatherer",
-        partner_id=6, sig_dispatch_lvl=5,   # Flora sig: 50% double chance
-        dispatch_slot_1="di_skilling_boost", dispatch_slot_1_lvl=5,
-        dispatch_slot_2="di_skilling_boost", dispatch_slot_2_lvl=5,  # same key dupe for test
+        partner_id=6,
+        sig_dispatch_lvl=5,  # Flora sig: 50% double chance
+        dispatch_slot_1="di_skilling_boost",
+        dispatch_slot_1_lvl=5,
+        dispatch_slot_2="di_skilling_boost",
+        dispatch_slot_2_lvl=5,  # same key dupe for test
     )
     partners.append(("Gathering: skilling Lv.5 + Flora sig Lv.5", p, "gathering"))
 
@@ -258,7 +302,9 @@ def make_partners() -> list:
     for lv in (1, 25, 50, 75, 100):
         p = FakePartner(
             name=f"Level {lv} baseline",
-            partner_id=1, level=lv, sig_dispatch_lvl=0,
+            partner_id=1,
+            level=lv,
+            sig_dispatch_lvl=0,
         )
         partners.append((f"Combat baseline — Lv.{lv}", p, "combat"))
 
@@ -316,15 +362,15 @@ if __name__ == "__main__":
     # --- Boss party simulation ---
     from core.partners.dispatch import calculate_boss_party_rewards
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Boss Party Dispatch (12h window, 1000 runs)")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     for desc, a_lv, t_lv, h_lv in [
-        ("All Lv.1",  1,   1,   1  ),
-        ("All Lv.50", 50,  50,  50 ),
-        ("All Lv.100",100, 100, 100),
-        ("Mixed Lv.", 25,  75,  50 ),
+        ("All Lv.1", 1, 1, 1),
+        ("All Lv.50", 50, 50, 50),
+        ("All Lv.100", 100, 100, 100),
+        ("Mixed Lv.", 25, 75, 50),
     ]:
         golds, sigils, tickets, a_exps, t_exps, h_exps = [], [], [], [], [], []
         for _ in range(RUNS):
@@ -341,12 +387,12 @@ if __name__ == "__main__":
         print(f"\n  Party {desc}  (ATK {a_lv} / TNK {t_lv} / HLR {h_lv})")
         print(f"  Gold avg:        {statistics.mean(golds):>10,.0f}")
         print(f"  Sigils avg:      {statistics.mean(sigils):>10.2f}")
-        print(f"  Ticket rate:     {statistics.mean(tickets)*100:>9.1f}%")
+        print(f"  Ticket rate:     {statistics.mean(tickets) * 100:>9.1f}%")
         print(f"  ATK partner EXP: {statistics.mean(a_exps):>10,.0f}")
         print(f"  TNK partner EXP: {statistics.mean(t_exps):>10,.0f}")
         print(f"  HLR partner EXP: {statistics.mean(h_exps):>10,.0f}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Simulation complete — {RUNS} windows per partner")
     print(f"  All values are per dispatch window (combat=48h, boss party=12h)")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")

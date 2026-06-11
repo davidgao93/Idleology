@@ -50,7 +50,9 @@ class PrestigeBossHarvestView(BaseView):
         super().__init__(bot, user_id, server_id)
         self.player = player
         self.monster = monster
-        self.prestige_boss_type = prestige_boss_type  # "golem", "leviathan", or "colossus"
+        self.prestige_boss_type = (
+            prestige_boss_type  # "golem", "leviathan", or "colossus"
+        )
         self.rematch_callback = rematch_callback
         self._harvested = False
         self._launching = False  # Re-entry guard for Fight Again
@@ -78,7 +80,11 @@ class PrestigeBossHarvestView(BaseView):
         )
 
         # Award +10 tripled ticks (base) + Grove's Reckoning bonus from Nature's Attunement
-        skill_map = {"golem": "mining", "leviathan": "fishing", "colossus": "woodcutting"}
+        skill_map = {
+            "golem": "mining",
+            "leviathan": "fishing",
+            "colossus": "woodcutting",
+        }
         skill = skill_map.get(self.prestige_boss_type, "mining")
         base_ticks = 10
         mrow = await self.bot.database.skills.get_mastery(self.user_id, self.server_id)
@@ -106,7 +112,9 @@ class PrestigeBossHarvestView(BaseView):
 
         # Build result embed (single edit — Harvested! button stays visible)
         extra_ticks = total_ticks - base_ticks
-        bonus_line = f" (+{extra_ticks} from Grove's Reckoning)" if extra_ticks > 0 else ""
+        bonus_line = (
+            f" (+{extra_ticks} from Grove's Reckoning)" if extra_ticks > 0 else ""
+        )
         embed = discord.Embed(
             title=f"✨ {self.monster.name} Defeated!",
             description=(
@@ -161,6 +169,7 @@ class PrestigeBossHarvestView(BaseView):
             return
 
         from core.items.factory import load_player
+
         fresh_player = await load_player(self.user_id, existing_user, self.bot.database)
         self.bot.state_manager.set_active(self.user_id, "combat")
         await self.rematch_callback(

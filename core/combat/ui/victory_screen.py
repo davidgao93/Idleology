@@ -117,8 +117,12 @@ def create_victory_embed(
     # 5. Apex Shard drops (from apex hunt victory)
     if rewards.get("apex_shards"):
         _SHARD_EMOJIS = {
-            "pyre": "🔥", "tempest": "⚡", "bulwark": "🏰",
-            "verdant": "🌿", "fortune": "💰", "rift": "🌀",
+            "pyre": "🔥",
+            "tempest": "⚡",
+            "bulwark": "🏰",
+            "verdant": "🌿",
+            "fortune": "💰",
+            "rift": "🌀",
         }
         shard_type = rewards["apex_shards"]["shard_type"]
         shard_amt = rewards["apex_shards"]["shard_amount"]
@@ -128,8 +132,11 @@ def create_victory_embed(
         )
     if rewards.get("apex_meta"):
         from core.apex.data import META_SHARD_DISPLAY
+
         for meta_key, count in rewards["apex_meta"].items():
-            display_name, _ = META_SHARD_DISPLAY.get(meta_key, (f"✨ {meta_key.replace('_', ' ').title()}", ""))
+            display_name, _ = META_SHARD_DISPLAY.get(
+                meta_key, (f"✨ {meta_key.replace('_', ' ').title()}", "")
+            )
             for _ in range(count):
                 loot_lines.append(display_name)
     if rewards.get("soul_fragments"):

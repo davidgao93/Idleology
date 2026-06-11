@@ -1,6 +1,7 @@
 """
 core/quests/mechanics.py — Quest Board game logic (pure + async with DB calls).
 """
+
 from __future__ import annotations
 
 import random
@@ -151,7 +152,13 @@ async def tick_quest_progress(
                 continue
 
             # Some events use the raw value (damage amount, gold won, runes used, etc.)
-            _VALUE_EVENTS = {"damage", "casino_win", "rune_refinement", "rune_shatter", "rune_potential"}
+            _VALUE_EVENTS = {
+                "damage",
+                "casino_win",
+                "rune_refinement",
+                "rune_shatter",
+                "rune_potential",
+            }
             tick_amount = value if event_type in _VALUE_EVENTS else 1
             updated = await bot.database.quests.tick_contract_progress(
                 user_id, server_id, contract["quest_id"], tick_amount
@@ -195,9 +202,7 @@ async def tick_quest_progress(
     return msgs
 
 
-async def grant_contract_reward(
-    bot, user_id: str, server_id: str, slot: int
-) -> list:
+async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) -> list:
     """Grant the reward for a completed contract. Returns display strings."""
     contracts = await bot.database.quests.get_contracts(user_id, server_id)
     contract = next((c for c in contracts if c["slot"] == slot), None)
@@ -234,14 +239,20 @@ async def grant_contract_reward(
     if meta.get("prospector_unlocked"):
         try:
             import random as _random
+
             skill_type = _random.choice(["mining", "woodcutting", "fishing"])
-            skill_row = await bot.database.skills.get_data(user_id, server_id, skill_type)
+            skill_row = await bot.database.skills.get_data(
+                user_id, server_id, skill_type
+            )
             if skill_row:
                 from core.skills.mechanics import SkillMechanics
+
                 tool_tier = skill_row[2]
                 base = SkillMechanics.calculate_yield(skill_type, tool_tier)
                 resources = {k: v * 3 for k, v in base.items()}
-                await bot.database.skills.update_batch(user_id, server_id, skill_type, resources)
+                await bot.database.skills.update_batch(
+                    user_id, server_id, skill_type, resources
+                )
                 msgs.append(f"⛏️ Prospector's Cache: +{skill_type.title()} materials")
         except Exception as e:
             print(f"[Prospector perk error]: {e}")
@@ -250,6 +261,7 @@ async def grant_contract_reward(
     try:
         from core.settlement.constants import ZEAL_PER_COMBAT
         from core.settlement.turn_engine import compute_zeal_gain
+
         _zeal_base = 30 if tier == 1 else 90
         await bot.database.settlement.reset_daily_zeal_if_needed(user_id)
         _zeal_data = await bot.database.settlement.get_zeal_data(user_id)
@@ -295,11 +307,15 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
 
         elif path_id == "glutton":
             # Find highest consumed part level
-            equipped_parts = await bot.database.monster_parts.get_equipped_parts(user_id)
+            equipped_parts = await bot.database.monster_parts.get_equipped_parts(
+                user_id
+            )
             max_hp = 0
             if equipped_parts:
                 for slot_data in equipped_parts.values():
-                    hp_val = slot_data.get("hp", 30) if isinstance(slot_data, dict) else 30
+                    hp_val = (
+                        slot_data.get("hp", 30) if isinstance(slot_data, dict) else 30
+                    )
                     if hp_val > max_hp:
                         max_hp = hp_val
             reward_hp = max_hp + 10 if max_hp > 0 else 30
@@ -309,7 +325,9 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
             await bot.database.monster_parts.add_part(
                 user_id, slot, monster_name, reward_ilvl, reward_hp
             )
-            msgs.append(f"🦴 +1 Monster Part ({monster_name} — {slot.replace('_', ' ').title()})")
+            msgs.append(
+                f"🦴 +1 Monster Part ({monster_name} — {slot.replace('_', ' ').title()})"
+            )
 
         elif path_id == "slayer":
             await bot.database.slayer.modify_materials(
@@ -330,14 +348,19 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
         elif path_id == "elemental":
             # Grant gathering resources
             for skill_type in ("mining", "woodcutting", "fishing"):
-                skill_row = await bot.database.skills.get_data(user_id, server_id, skill_type)
+                skill_row = await bot.database.skills.get_data(
+                    user_id, server_id, skill_type
+                )
                 if skill_row:
                     from core.skills.mechanics import SkillMechanics
+
                     tool_tier = skill_row[2]
                     base = SkillMechanics.calculate_yield(skill_type, tool_tier)
                     # Multiply by 10 for a decent reward
                     resources = {k: v * 10 for k, v in base.items()}
-                    await bot.database.skills.update_batch(user_id, server_id, skill_type, resources)
+                    await bot.database.skills.update_batch(
+                        user_id, server_id, skill_type, resources
+                    )
             msgs.append("⛏️ +Gathering Resources (all skills)")
 
         elif path_id == "apex":
@@ -359,7 +382,9 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
             msgs.append("📦 +1 Curio")
             choice = random.choice(["rune", "key"])
             if choice == "rune":
-                rune = random.choice(["refinement_runes", "potential_runes", "shatter_runes"])
+                rune = random.choice(
+                    ["refinement_runes", "potential_runes", "shatter_runes"]
+                )
                 await bot.database.users.modify_currency(user_id, rune, 1)
                 msgs.append(f"🔮 +1 {rune.replace('_', ' ').title()}")
             else:

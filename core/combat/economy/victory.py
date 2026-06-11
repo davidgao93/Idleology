@@ -175,25 +175,33 @@ async def _apply_slayer_rewards(
 
     # ── Boss task branch ────────────────────────────────────────────────────
     if monster.is_boss and task_species and task_species.startswith(BOSS_TASK_PREFIX):
-        boss_key = task_species[len(BOSS_TASK_PREFIX):]
+        boss_key = task_species[len(BOSS_TASK_PREFIX) :]
         # Match by checking if the boss key appears anywhere in the monster name
         if boss_key.lower() not in monster.name.lower():
             return  # Wrong boss
 
         slayer_lines = []
         per_kill_xp = BOSS_TASK_XP_PER_KILL
-        await bot.database.slayer.add_rewards(user_id, server_id, xp=per_kill_xp, points=0)
+        await bot.database.slayer.add_rewards(
+            user_id, server_id, xp=per_kill_xp, points=0
+        )
         slayer_lines.append(f"💀 **Boss Kill!** +{per_kill_xp:,} Slayer XP")
 
         new_prog = s_profile["active_task_progress"] + 1
         if new_prog >= s_profile["active_task_amount"]:
             await bot.database.slayer.add_rewards(
-                user_id, server_id, xp=BOSS_TASK_COMPLETION_XP, points=s_profile["active_task_amount"]
+                user_id,
+                server_id,
+                xp=BOSS_TASK_COMPLETION_XP,
+                points=s_profile["active_task_amount"],
             )
             await bot.database.slayer.clear_task(user_id, server_id)
             try:
                 from core.quests.mechanics import tick_quest_progress
-                await tick_quest_progress(bot, user_id, server_id, "slayer_task_complete")
+
+                await tick_quest_progress(
+                    bot, user_id, server_id, "slayer_task_complete"
+                )
             except Exception as _qe:
                 print(f"[Quest tick error in slayer boss task]: {_qe}")
             slayer_lines.append(
@@ -206,12 +214,20 @@ async def _apply_slayer_rewards(
             )
 
         # Slayer level-up check
-        total_xp_gained = per_kill_xp + (BOSS_TASK_COMPLETION_XP if new_prog >= s_profile["active_task_amount"] else 0)
+        total_xp_gained = per_kill_xp + (
+            BOSS_TASK_COMPLETION_XP
+            if new_prog >= s_profile["active_task_amount"]
+            else 0
+        )
         new_s_xp = s_profile["xp"] + total_xp_gained
-        new_s_lvl = core.slayer.mechanics.SlayerMechanics.calculate_level_from_xp(new_s_xp)
+        new_s_lvl = core.slayer.mechanics.SlayerMechanics.calculate_level_from_xp(
+            new_s_xp
+        )
         if new_s_lvl > s_profile["level"]:
             await bot.database.slayer.update_level(user_id, server_id, new_s_lvl)
-            slayer_lines.append(f"🎉 **Slayer Level Up!** You are now Level {new_s_lvl}.")
+            slayer_lines.append(
+                f"🎉 **Slayer Level Up!** You are now Level {new_s_lvl}."
+            )
 
         reward_data["msgs"].append("🩸 **Slayer Task**\n" + "\n".join(slayer_lines))
         return
@@ -275,6 +291,7 @@ async def _apply_slayer_rewards(
         await bot.database.slayer.clear_task(user_id, server_id)
         try:
             from core.quests.mechanics import tick_quest_progress
+
             await tick_quest_progress(bot, user_id, server_id, "slayer_task_complete")
         except Exception as _qe:
             print(f"[Quest tick error in slayer regular task]: {_qe}")
@@ -331,8 +348,12 @@ async def apply_victory_rewards(
     # Total damage dealt to the monster (used by damage quest tracking)
     reward_data["total_damage"] = monster.max_hp
 
-    await apply_boss_sigil_drops(bot, user_id, server_id, monster, reward_data, player=player)
-    await apply_corrupted_monster_drops(bot, user_id, server_id, monster, reward_data, player=player)
+    await apply_boss_sigil_drops(
+        bot, user_id, server_id, monster, reward_data, player=player
+    )
+    await apply_corrupted_monster_drops(
+        bot, user_id, server_id, monster, reward_data, player=player
+    )
     await apply_incubated_monster_drops(bot, user_id, monster, reward_data)
     await apply_special_flags(bot, user_id, server_id, special_flags, reward_data)
 
@@ -397,6 +418,7 @@ async def apply_victory_rewards(
     # Quest progress tracking
     try:
         from core.quests.mechanics import tick_quest_progress
+
         quest_msgs = []
 
         # Combat win (all victories)
@@ -405,33 +427,53 @@ async def apply_victory_rewards(
         # Damage dealt
         total_dmg = reward_data.get("total_damage", 0)
         if total_dmg > 0:
-            quest_msgs += await tick_quest_progress(bot, user_id, server_id, "damage", total_dmg)
+            quest_msgs += await tick_quest_progress(
+                bot, user_id, server_id, "damage", total_dmg
+            )
 
         # Named boss kills (normal multi-phase encounters; uber bosses never reach this path)
         if monster.is_boss:
             boss_name = monster.name.lower()
             if "aphrodite" in boss_name:
-                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:aphrodite")
+                quest_msgs += await tick_quest_progress(
+                    bot, user_id, server_id, "boss_kill:aphrodite"
+                )
             elif "lucifer" in boss_name:
-                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:lucifer")
-            elif "castor" in boss_name or "pollux" in boss_name or "gemini" in boss_name:
-                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:gemini")
+                quest_msgs += await tick_quest_progress(
+                    bot, user_id, server_id, "boss_kill:lucifer"
+                )
+            elif (
+                "castor" in boss_name or "pollux" in boss_name or "gemini" in boss_name
+            ):
+                quest_msgs += await tick_quest_progress(
+                    bot, user_id, server_id, "boss_kill:gemini"
+                )
             elif "neet" in boss_name:
-                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:neet")
+                quest_msgs += await tick_quest_progress(
+                    bot, user_id, server_id, "boss_kill:neet"
+                )
             elif "evelynn" in boss_name:
-                quest_msgs += await tick_quest_progress(bot, user_id, server_id, "boss_kill:evelynn")
+                quest_msgs += await tick_quest_progress(
+                    bot, user_id, server_id, "boss_kill:evelynn"
+                )
 
         # Calcified monsters
         if getattr(monster, "is_essence", False):
-            quest_msgs += await tick_quest_progress(bot, user_id, server_id, "calcified_kill")
+            quest_msgs += await tick_quest_progress(
+                bot, user_id, server_id, "calcified_kill"
+            )
 
         # Corrupted monsters
         if getattr(monster, "is_corrupted", False):
-            quest_msgs += await tick_quest_progress(bot, user_id, server_id, "corrupted_kill")
+            quest_msgs += await tick_quest_progress(
+                bot, user_id, server_id, "corrupted_kill"
+            )
 
         # Incubated monsters (egg_release hook)
         if getattr(monster, "is_incubated", False):
-            quest_msgs += await tick_quest_progress(bot, user_id, server_id, "egg_release")
+            quest_msgs += await tick_quest_progress(
+                bot, user_id, server_id, "egg_release"
+            )
 
         if quest_msgs:
             reward_data["msgs"].extend(quest_msgs)
@@ -440,8 +482,13 @@ async def apply_victory_rewards(
 
     # Settlement Zeal (10 per combat win, subject to daily cap)
     try:
-        from core.settlement.constants import ZEAL_DAILY_HARD_CAP, ZEAL_DAILY_SOFT_CAP, ZEAL_PER_COMBAT
+        from core.settlement.constants import (
+            ZEAL_DAILY_HARD_CAP,
+            ZEAL_DAILY_SOFT_CAP,
+            ZEAL_PER_COMBAT,
+        )
         from core.settlement.turn_engine import compute_zeal_gain
+
         await bot.database.settlement.reset_daily_zeal_if_needed(user_id)
         zeal_data = await bot.database.settlement.get_zeal_data(user_id)
         earned_today = zeal_data.get("zeal_earned_today", 0)

@@ -228,7 +228,7 @@ class SlotPickerView(BaseView):
                 discord.SelectOption(
                     label=f"{p.name} Lv.{p.level} ({hint})"[:100],
                     value=str(p.partner_id),
-                    description=f"{'★'*p.rarity}  ATK {p.total_attack}  DEF {p.total_defence}"[
+                    description=f"{'★' * p.rarity}  ATK {p.total_attack}  DEF {p.total_defence}"[
                         :100
                     ],
                     default=(
@@ -382,9 +382,7 @@ class BossPartyFormView(BaseView):
         async def callback(interaction: Interaction):
             await interaction.response.defer()
             eligible = _eligible_for_slot(self.all_partners, slot_key, self.slots)
-            picker = SlotPickerView(
-                self.bot, slot_key, eligible, form_view=self
-            )
+            picker = SlotPickerView(self.bot, slot_key, eligible, form_view=self)
             picker.message = self.message
             await interaction.edit_original_response(
                 embed=picker.build_embed(), view=picker

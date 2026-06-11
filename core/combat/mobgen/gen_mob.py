@@ -883,6 +883,7 @@ async def generate_prestige_golem(player, monster):
     monster.flavor = "stomps and bellows fiercely"
     monster.species = "Golem"
     from core.images import MERIDIAN_GOLEM_FIGHT
+
     monster.image = MERIDIAN_GOLEM_FIGHT
 
     monster.modifiers = []
@@ -916,6 +917,7 @@ async def generate_prestige_leviathan(player, monster):
     monster.flavor = "bites from impossible depths"
     monster.species = "Leviathan"
     from core.images import DROWNED_LEVIATHAN_FIGHT
+
     monster.image = DROWNED_LEVIATHAN_FIGHT
 
     monster.modifiers = []
@@ -949,6 +951,7 @@ async def generate_prestige_colossus(player, monster):
     monster.flavor = "ensnares you with titanic roots"
     monster.species = "Colossus"
     from core.images import VERDANT_COLOSSUS_FIGHT
+
     monster.image = VERDANT_COLOSSUS_FIGHT
 
     monster.modifiers = []

@@ -100,6 +100,7 @@ class AlchemyHubView(BaseView):
     @ui.button(label="Synthesis", style=ButtonStyle.secondary, emoji="⚗️", row=0)
     async def synthesis(self, interaction: Interaction, button: ui.Button):
         from core.alchemy.synthesis_views import _build_synthesis_hub
+
         await interaction.response.defer()
         view = await _build_synthesis_hub(self.bot, self.user_id, self.server_id)
         embed = view.build_embed()
@@ -186,7 +187,6 @@ class AlchemyHubView(BaseView):
         self.stop()
         await interaction.response.defer()
         await interaction.delete_original_response()
-
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +281,7 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
                 self._view.user_id, self._view.server_id
             )
             from core.skills.mastery import has_master_baiter
+
             if has_master_baiter(mrow):
                 # Improve the ratio by 1 step (lower number is better for upgrade)
                 if opt["type"] == "upgrade":
@@ -346,7 +347,9 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
             )
             self._view.player_gold = max(0, self._view.player_gold - total_gold)
 
-            bonus_text = f" (+{dst_delta - qty} from Druidic Ritual)" if dst_delta > qty else ""
+            bonus_text = (
+                f" (+{dst_delta - qty} from Druidic Ritual)" if dst_delta > qty else ""
+            )
             await interaction.response.send_message(
                 f"✅ Transmuted **{ratio * qty}×** {opt['src_col']} → **{dst_delta}×** {opt['dst_col']}!{bonus_text} "
                 f"(-💰 {total_gold:,})",
@@ -428,14 +431,21 @@ class AlchemyTransmuteView(BaseView):
     async def build_embed(self) -> discord.Embed:
         has_baiter = False
         try:
-            mrow = await self.bot.database.skills.get_mastery(self.user_id, self.server_id)
+            mrow = await self.bot.database.skills.get_mastery(
+                self.user_id, self.server_id
+            )
             from core.skills.mastery import has_master_baiter
+
             has_baiter = has_master_baiter(mrow)
         except Exception:
             pass
 
-        up_ratio = AlchemyMechanics.get_effective_upgrade_ratio(self.alchemy_level, has_baiter)
-        dn_ratio = AlchemyMechanics.get_effective_downgrade_ratio(self.alchemy_level, has_baiter)
+        up_ratio = AlchemyMechanics.get_effective_upgrade_ratio(
+            self.alchemy_level, has_baiter
+        )
+        dn_ratio = AlchemyMechanics.get_effective_downgrade_ratio(
+            self.alchemy_level, has_baiter
+        )
 
         amounts: dict[tuple, int] = {}
         for skill, cols in AlchemyMechanics.SKILL_TIERS.items():
@@ -587,7 +597,9 @@ class _ClearConfirmView(BaseView):
 
         self.stop()
         await interaction.response.edit_message(
-            content=None, embed=embed, view=self._parent  # clean — no top-level content
+            content=None,
+            embed=embed,
+            view=self._parent,  # clean — no top-level content
         )
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="⬅️")
@@ -766,6 +778,7 @@ class AlchemyPotionLabView(BaseView):
         """Launch (or resume) the new 9-step powerful distillation system."""
         await interaction.response.defer()
         from core.alchemy.distillation_views import start_distillation
+
         await start_distillation(self.bot, self.user_id, self.server_id, interaction)
 
     async def _on_distill_guide(self, interaction: Interaction):
@@ -779,7 +792,7 @@ class AlchemyPotionLabView(BaseView):
                 "**1. Choose Core (the 'skill'):** The three options show a brief description + the possible roll ranges (value & duration) for that powerful passive. "
                 "This core stays fixed for the entire run.\n\n"
                 "**2-9. Reagent steps:** At each step the three colored reagents are assigned fresh special properties drawn from a wide weighted pool (middle outcomes common, very powerful effects rare).\n"
-                "The properties are **displayed in the embed** so you can see what each choice does before picking (e.g. \"This step costs no dust\", \"double dust + slightly lucky\", \"will not decrease...\", \"all future steps free\", \"very lucky\", etc.).\n\n"
+                'The properties are **displayed in the embed** so you can see what each choice does before picking (e.g. "This step costs no dust", "double dust + slightly lucky", "will not decrease...", "all future steps free", "very lucky", etc.).\n\n'
                 "Buttons show your dust balance after the choice: e.g. (68->60). You cannot select a reagent whose cost would take you below 0 dust.\n\n"
                 "In the background each step resolves to: nothing / duration inc or dec / power inc or dec. The chosen property controls the roll (slightly lucky = double-roll good results and take the better; very lucky = re-roll on bad outcomes and take best-of; safe = no decreases this step, etc.).\n\n"
                 "**Reagents (by their nature — no extra guide needed in the distil screen):**\n"

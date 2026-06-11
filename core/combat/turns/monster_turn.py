@@ -10,7 +10,9 @@ from core.combat.turns.helpers import MonsterTurnResult, capture_compact_events
 from core.models import Monster, Player
 
 
-def process_monster_turn(player: Player, monster: Monster, *, context_note: str = "") -> MonsterTurnResult:
+def process_monster_turn(
+    player: Player, monster: Monster, *, context_note: str = ""
+) -> MonsterTurnResult:
     """Executes the monster's turn, applies damage to player, and returns combat log."""
     if player.is_invulnerable_this_combat:
         return MonsterTurnResult(
@@ -27,7 +29,9 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
         if on_monster_turn_start(player, monster, _freeze_log):
             monster.combat_round += 1
             _freeze_txt = "\n".join(_freeze_log)
-            return MonsterTurnResult(log=_freeze_txt, hp_damage=0, compact_log=_freeze_txt)
+            return MonsterTurnResult(
+                log=_freeze_txt, hp_damage=0, compact_log=_freeze_txt
+            )
 
     monster.combat_round += 1
     prev_hp = player.current_hp
@@ -42,7 +46,9 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
         player.alchemy_ailment_immunity_turns -= 1
         if player.alchemy_ailment_immunity_turns > 0:
             # Simple representation: player is protected this turn
-            log.append(f"🌿 **Panacea** — protected from ailments this turn ({player.alchemy_ailment_immunity_turns} remaining).")
+            log.append(
+                f"🌿 **Panacea** — protected from ailments this turn ({player.alchemy_ailment_immunity_turns} remaining)."
+            )
 
     celestial = player.get_celestial_armor_passive()
     helmet_passive = player.get_helmet_passive()
@@ -57,9 +63,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             if monster.hp < heal_target:
                 healed = heal_target - monster.hp
                 monster.hp = heal_target
-                _dr_heal_msg = (
-                    f"☠️ **Death Rattle** — {monster.name} endures! Heals to **{monster.hp}** HP! (+{healed})"
-                )
+                _dr_heal_msg = f"☠️ **Death Rattle** — {monster.name} endures! Heals to **{monster.hp}** HP! (+{healed})"
                 log.append(_dr_heal_msg)
                 clog.append(_dr_heal_msg)  # heal is a significant event
         else:
@@ -80,7 +84,9 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             log.append(
                 f"🔥 **Flashfire DETONATES!** The buildup erupts for **{burst}** 🔥 true damage!"
             )
-    capture_compact_events(log, clog, start)  # detonation only (silent on charge buildup)
+    capture_compact_events(
+        log, clog, start
+    )  # detonation only (silent on charge buildup)
 
     # --- Hemorrhage: true DoT per stack at start of each monster turn ---
     start = len(log)
@@ -121,7 +127,9 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             log.append(
                 f"⚡ **Pressure Surge RELEASES!** Pent-up force slams for **{burst}** true damage!"
             )
-    capture_compact_events(log, clog, start)  # release burst only (silent on stack increment)
+    capture_compact_events(
+        log, clog, start
+    )  # release burst only (silent on stack increment)
 
     # --- Soul Siphon: every 2 turns drain ward → monster heals 50% of drained ---
     if monster.has_modifier("Soul Siphon") and monster.combat_round % 2 == 0:
@@ -274,7 +282,7 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
     # --- Hit chance ---
     hit_chance_base = calculate_monster_hit_chance(player, monster)
     hit_chance = hit_chance_base
-    hit_mods: list[str] = [f"base={hit_chance_base*100:.1f}%"]
+    hit_mods: list[str] = [f"base={hit_chance_base * 100:.1f}%"]
 
     # Difficulty: scaled flat accuracy bonus applied before other modifiers
     _DIFFICULTY_HIT_BONUS = [0.0, 0.15, 0.20, 0.30, 0.50]
@@ -283,7 +291,9 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
         hit_bonus = _DIFFICULTY_HIT_BONUS[monster.difficulty_level]
         diff_label = _DIFFICULTY_NAMES_MT[monster.difficulty_level]
         hit_chance = min(0.95, hit_chance + hit_bonus)
-        hit_mods.append(f"+{int(hit_bonus*100)}%({diff_label}_mode)={hit_chance*100:.1f}%")
+        hit_mods.append(
+            f"+{int(hit_bonus * 100)}%({diff_label}_mode)={hit_chance * 100:.1f}%"
+        )
 
     # Keen: flat bonus treated as +X% hit chance (capped at 0.95 unless Inevitable)
     keen_bonus = (
@@ -291,12 +301,12 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
     )
     if keen_bonus > 0:
         hit_chance = min(0.95, hit_chance + keen_bonus / 100)
-        hit_mods.append(f"+{keen_bonus}%(keen)={hit_chance*100:.1f}%")
+        hit_mods.append(f"+{keen_bonus}%(keen)={hit_chance * 100:.1f}%")
 
     # Overwhelming: −25 accuracy penalty (trade-off for double damage)
     if monster.has_modifier("Overwhelming"):
         hit_chance = max(0.15, hit_chance - 0.25)
-        hit_mods.append(f"-25%(overwhelming)={hit_chance*100:.1f}%")
+        hit_mods.append(f"-25%(overwhelming)={hit_chance * 100:.1f}%")
 
     # Unerring: hit rolls take the higher of two
     if monster.has_modifier("Unerring"):
@@ -327,7 +337,9 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             corrode_reduction = monster.corrode_stacks * int(
                 monster.get_modifier_value("Corrosion")
             )
-            effective_pdr = min(effective_pdr, max(0, player.get_raw_pdr() - corrode_reduction))
+            effective_pdr = min(
+                effective_pdr, max(0, player.get_raw_pdr() - corrode_reduction)
+            )
         pdr_notes = [f"base={effective_pdr}%"]
         if celestial == "celestial_fortress":
             missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
@@ -359,9 +371,13 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
         # Onslaught now boosts effective ATK (surplus) instead of the damage pool.
 
         if monster.has_modifier("Wrathful Retaliation") and monster.wrathful_stacks > 0:
-            wr_val = monster.wrathful_stacks * monster.get_modifier_value("Wrathful Retaliation")
+            wr_val = monster.wrathful_stacks * monster.get_modifier_value(
+                "Wrathful Retaliation"
+            )
             monster.damage_increased_pct += wr_val
-            calc.append(f"  +{wr_val:.2f} to damage_increased_pct from Wrathful Retaliation ({monster.wrathful_stacks} stacks)")
+            calc.append(
+                f"  +{wr_val:.2f} to damage_increased_pct from Wrathful Retaliation ({monster.wrathful_stacks} stacks)"
+            )
 
         if monster.undying_atk_boost_turns > 0:
             monster.damage_increased_pct += 1.0
@@ -514,7 +530,9 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             player.current_hp = max(0, player.current_hp - bypass)
             total_damage = ward_portion - ward_absorbed  # remaining after ward
             if bypass > 0:
-                _sun_msg = f"⚡ **Sundering** — {bypass} damage pierces your ward directly!"
+                _sun_msg = (
+                    f"⚡ **Sundering** — {bypass} damage pierces your ward directly!"
+                )
                 log.append(_sun_msg)
                 clog.append(_sun_msg)
             calc.append(
@@ -621,7 +639,9 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
                         f"{monster.name} {monster.flavor}.\n"
                         f"**Twin Balance** reduces and splits the blow (−20%) — 🔮 {ward_absorbed} to ward, 💔 {hp_half} bleeds through!"
                     )
-                    clog.append(f"⚖️ Twin Balance: 🔮 {ward_absorbed} to ward, 💔 {hp_half} bleeds through!")
+                    clog.append(
+                        f"⚖️ Twin Balance: 🔮 {ward_absorbed} to ward, 💔 {hp_half} bleeds through!"
+                    )
                 total_damage = hp_half
 
             elif player.combat_ward > 0 and total_damage > 0:
@@ -640,7 +660,9 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
                         log.append(
                             f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {player.combat_ward} damage, but shatters!"
                         )
-                        clog.append(f"🔮 Ward shatters! ({player.combat_ward} absorbed)")
+                        clog.append(
+                            f"🔮 Ward shatters! ({player.combat_ward} absorbed)"
+                        )
                     total_damage -= player.combat_ward
                     player.combat_ward = 0
 
@@ -688,7 +710,9 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
                     player.current_hp = max(1, player.current_hp)
                     player.alchemy_shield_hp = 0
                     player.alchemy_shield_turns = 0
-                    _aegis_save = f"🛡️ **Astral Aegis** shatters to prevent a lethal blow!"
+                    _aegis_save = (
+                        f"🛡️ **Astral Aegis** shatters to prevent a lethal blow!"
+                    )
                     log.append(f"\n{_aegis_save}")
                     clog.append(_aegis_save)
                 else:
@@ -713,7 +737,12 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
             elif monster.has_modifier("Commanding"):
                 minion_echo_pct = 0.075
 
-            if minion_echo_pct > 0 and total_damage > 0 and not is_dodged and not is_blocked:
+            if (
+                minion_echo_pct > 0
+                and total_damage > 0
+                and not is_dodged
+                and not is_blocked
+            ):
                 echo_dmg = int(total_damage * minion_echo_pct)
                 if echo_dmg > 0:
                     player.current_hp = max(0, player.current_hp - echo_dmg)
@@ -815,16 +844,22 @@ def process_monster_turn(player: Player, monster: Monster, *, context_note: str 
                 t_fdr = player.get_total_fdr()
                 thorned_dmg = max(1, int(base_thorned * (1 - t_pdr / 100)) - t_fdr)
                 player.current_hp = max(0, player.current_hp - thorned_dmg)
-                _thorned_msg = f"🩸 **Thorned** — you take **{thorned_dmg}** damage for striking!"
+                _thorned_msg = (
+                    f"🩸 **Thorned** — you take **{thorned_dmg}** damage for striking!"
+                )
                 log.append(_thorned_msg)
                 clog.append(_thorned_msg)
 
             if minion_dmg > 0:
-                _min_msg = f"Their minions strike for an additional {minion_dmg} damage!"
+                _min_msg = (
+                    f"Their minions strike for an additional {minion_dmg} damage!"
+                )
                 log.append(_min_msg)
                 clog.append(_min_msg)
             if multistrike_damage > 0:
-                _multi_msg = f"{monster.name} strikes again for {multistrike_damage} damage!"
+                _multi_msg = (
+                    f"{monster.name} strikes again for {multistrike_damage} damage!"
+                )
                 log.append(_multi_msg)
                 clog.append(_multi_msg)
 

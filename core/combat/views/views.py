@@ -182,9 +182,7 @@ class StatPackagePicker(BaseView):
         ]
         for i, pkg in enumerate(current_set):
             label = f"⚔️ +{pkg['atk']}  🛡️ +{pkg['def']}  ❤️ +{pkg['hp']}"
-            btn = discord.ui.Button(
-                label=label, style=styles[i % len(styles)], row=0
-            )
+            btn = discord.ui.Button(label=label, style=styles[i % len(styles)], row=0)
             btn.callback = self._make_callback(pkg)
             self.add_item(btn)
 
@@ -203,9 +201,7 @@ class StatPackagePicker(BaseView):
             await self.bot.database.users.modify_stat(
                 self.user_id, "defence", pkg["def"]
             )
-            await self.bot.database.users.modify_stat(
-                self.user_id, "max_hp", pkg["hp"]
-            )
+            await self.bot.database.users.modify_stat(self.user_id, "max_hp", pkg["hp"])
 
             # Apply to player object in memory
             self.player.base_attack += pkg["atk"]
@@ -247,7 +243,7 @@ class StatPackagePicker(BaseView):
 
         cur_atk = self.player.base_attack
         cur_def = self.player.base_defence
-        cur_hp  = self.player.max_hp
+        cur_hp = self.player.max_hp
 
         embed = discord.Embed(
             title="🎉 Level Up! Choose a Stat Package",
@@ -296,7 +292,9 @@ class CombatView(BaseView):
         self.logs = initial_logs or {}
         self.post_combat_view = post_combat_view
         self.rematch_callback = rematch_callback
-        self.hard_mode = hard_mode  # int: 0=off, 1=hard, 2=extreme, 3=nightmarish, 4=delirious
+        self.hard_mode = (
+            hard_mode  # int: 0=off, 1=hard, 2=extreme, 3=nightmarish, 4=delirious
+        )
         self.combat_streak = combat_streak  # streak at start of this fight
 
         _je.reset_jewel_charges(player)
@@ -312,7 +310,9 @@ class CombatView(BaseView):
         self._auto_running = False
         self._was_auto = False
         self.killing_blow = 0
-        self._processing = False  # Re-entry guard for mutating actions (Free Yourself, etc.)
+        self._processing = (
+            False  # Re-entry guard for mutating actions (Free Yourself, etc.)
+        )
 
         self.combat_logger = CombatLogger(player, monster)
         self.combat_logger.log_combat_start(player, monster)
@@ -380,7 +380,9 @@ class CombatView(BaseView):
 
     def _do_monster_turn(self, *, context_note: str = "") -> str:
         hp_before = self.player.current_hp
-        log = engine.process_monster_turn(self.player, self.monster, context_note=context_note)
+        log = engine.process_monster_turn(
+            self.player, self.monster, context_note=context_note
+        )
         self.killing_blow = hp_before - max(0, self.player.current_hp)
         self.combat_logger.log_monster_turn(log, self.player)
         return log
@@ -408,7 +410,9 @@ class CombatView(BaseView):
         streak_txt = self._streak_footer()
         if streak_txt:
             existing = embed.footer.text or ""
-            embed.set_footer(text=f"{streak_txt}  •  {existing}" if existing else streak_txt)
+            embed.set_footer(
+                text=f"{streak_txt}  •  {existing}" if existing else streak_txt
+            )
 
         # Check if we have already deferred or responded (e.g. via Fast Auto)
         if interaction.response.is_done():
@@ -459,7 +463,9 @@ class CombatView(BaseView):
         self._processing = True
 
         if not getattr(self.player.cs, "is_snared", False):
-            await interaction.response.send_message("You are not currently snared.", ephemeral=True)
+            await interaction.response.send_message(
+                "You are not currently snared.", ephemeral=True
+            )
             self._processing = False
             return
 
@@ -471,7 +477,9 @@ class CombatView(BaseView):
 
         # Monster gets a free retaliation turn after you free yourself (per design)
         if self.monster.hp > 0:
-            m_log = self._do_monster_turn(context_note="(retaliation after breaking snare)")
+            m_log = self._do_monster_turn(
+                context_note="(retaliation after breaking snare)"
+            )
             self.logs[self.monster.name] = m_log
 
         self._processing = False
@@ -545,7 +553,9 @@ class CombatView(BaseView):
 
     @ui.button(label="Flee", style=ButtonStyle.secondary, emoji="🏃")
     async def flee_btn(self, interaction: Interaction, button: ui.Button):
-        self.player.cs.is_snared = False  # Clean up any transient snare before leaving the fight
+        self.player.cs.is_snared = (
+            False  # Clean up any transient snare before leaving the fight
+        )
         self.logs["Flee"] = "You managed to escape safely!"
         self.update_buttons()  # Disable all
 
@@ -640,7 +650,9 @@ class CombatView(BaseView):
 
             _DIFFICULTY_NAMES = ["", "Hard", "Extreme", "Nightmarish", "Delirious"]
             _DIFFICULTY_EMOJIS = ["", "☠️", "💀", "👁️", "🌀"]
-            exp_protected = await self.bot.database.users.get_exp_protection(self.user_id)
+            exp_protected = await self.bot.database.users.get_exp_protection(
+                self.user_id
+            )
             if self.hard_mode > 0 and not exp_protected:
                 # Any difficulty mode: wipe ALL current-level EXP instead of the standard % loss
                 xp_loss = self.player.exp
@@ -707,7 +719,7 @@ class CombatView(BaseView):
                 self.player,
                 self.monster,
                 new_logs,
-                title_override=f"⚔️ BOSS PHASE {self.current_phase_index+1}",
+                title_override=f"⚔️ BOSS PHASE {self.current_phase_index + 1}",
             )
             await message.edit(embed=embed, view=self)
             return  # Keep view alive for next phase
@@ -745,7 +757,10 @@ class CombatView(BaseView):
             bonus_gold = int(reward_data["gold"] * total_bonus_pct / 100)
             if bonus_xp > 0:
                 bonus_exp_changes = await ExperienceManager.add_experience(
-                    self.bot, self.user_id, self.player, bonus_xp,
+                    self.bot,
+                    self.user_id,
+                    self.player,
+                    bonus_xp,
                     server_id=self.server_id,
                 )
                 reward_data["msgs"].extend(bonus_exp_changes["msgs"])
@@ -815,7 +830,13 @@ class CombatView(BaseView):
             await self.bot.database.users.update_from_player_object(self.player)
             await _je.save_jewel_state(self.bot, self.user_id, self.player)
             harvest_view = PrestigeBossHarvestView(
-                self.bot, self.user_id, self.server_id, self.player, self.monster, prestige_type, self.rematch_callback
+                self.bot,
+                self.user_id,
+                self.server_id,
+                self.player,
+                self.monster,
+                prestige_type,
+                self.rematch_callback,
             )
             await message.edit(embed=embed, view=harvest_view)
             harvest_view.message = message
