@@ -107,6 +107,28 @@ class MonsterPartsRepository(BaseRepository):
         )
         await self.connection.commit()
 
+    async def equip_and_remove_part(
+        self,
+        user_id: str,
+        part_id: int,
+        slot_type: str,
+        hp_value: int,
+        monster_name: str,
+    ) -> None:
+        """Atomically equips a part and removes it from inventory in one commit."""
+        await self.connection.execute(
+            """INSERT INTO monster_parts_equipped (user_id, slot_type, hp_value, monster_name)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(user_id, slot_type)
+               DO UPDATE SET hp_value = excluded.hp_value, monster_name = excluded.monster_name""",
+            (user_id, slot_type, hp_value, monster_name),
+        )
+        await self.connection.execute(
+            "DELETE FROM monster_parts WHERE id = ? AND user_id = ?",
+            (part_id, user_id),
+        )
+        await self.connection.commit()
+
     async def unequip_slot(self, user_id: str, slot_type: str) -> None:
         await self.connection.execute(
             "DELETE FROM monster_parts_equipped WHERE user_id = ? AND slot_type = ?",

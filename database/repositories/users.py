@@ -1,5 +1,6 @@
 # database/repositories/users.py
 
+import re
 from datetime import datetime, timedelta
 
 import aiosqlite
@@ -227,17 +228,11 @@ class UserRepository:
         )
         await self.connection.commit()
 
-    _CURRENCY_COLS: frozenset[str] = frozenset({
-        "dragon_key", "angel_key", "void_keys", "soul_cores", "void_frags",
-        "balance_fragment", "refinement_runes", "potential_runes", "imbue_runes",
-        "shatter_runes", "curios", "curios_purchased_today",
-        "celestial_stone", "void_crystal", "infernal_cinder",
-        "antique_tome", "pinnacle_key",
-    })
+    _COLUMN_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
     async def get_currency(self, user_id: str, column: str) -> int:
-        if column not in self._CURRENCY_COLS:
-            raise ValueError(f"get_currency: disallowed column {column!r}")
+        if not self._COLUMN_RE.match(column):
+            raise ValueError(f"get_currency: invalid column name {column!r}")
         rows = await self.connection.execute(
             f"SELECT {column} FROM users WHERE user_id = ?", (user_id,)
         )
@@ -251,8 +246,8 @@ class UserRepository:
         Generic handler for keys, runes, and misc counters.
         Only columns in _CURRENCY_COLS are accepted.
         """
-        if currency_column not in self._CURRENCY_COLS:
-            raise ValueError(f"modify_currency: disallowed column {currency_column!r}")
+        if not self._COLUMN_RE.match(currency_column):
+            raise ValueError(f"modify_currency: invalid column name {currency_column!r}")
         await self.connection.execute(
             f"UPDATE users SET {currency_column} = {currency_column} + ? WHERE user_id = ?",
             (amount, user_id),
@@ -263,8 +258,8 @@ class UserRepository:
         self, user_id: str, currency_column: str, amount: int
     ) -> bool:
         """Deducts a currency column only if balance >= amount. Returns True on success."""
-        if currency_column not in self._CURRENCY_COLS:
-            raise ValueError(f"deduct_currency_atomic: disallowed column {currency_column!r}")
+        if not self._COLUMN_RE.match(currency_column):
+            raise ValueError(f"deduct_currency_atomic: invalid column name {currency_column!r}")
         cursor = await self.connection.execute(
             f"UPDATE users SET {currency_column} = {currency_column} - ? "
             f"WHERE user_id = ? AND {currency_column} >= ?",

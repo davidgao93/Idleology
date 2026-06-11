@@ -495,21 +495,15 @@ class SettlementRepository:
             pass
 
     async def spend_zeal(self, user_id: str, amount: int) -> bool:
-        """Deducts Zeal if sufficient; returns True on success."""
+        """Deducts Zeal atomically if sufficient; returns True on success."""
         try:
             cursor = await self.connection.execute(
-                "SELECT settlement_zeal FROM users WHERE user_id = ?", (user_id,)
-            )
-            row = await cursor.fetchone()
-            current = (row[0] or 0) if row else 0
-            if current < amount:
-                return False
-            await self.connection.execute(
-                "UPDATE users SET settlement_zeal = settlement_zeal - ? WHERE user_id = ?",
-                (amount, user_id),
+                "UPDATE users SET settlement_zeal = settlement_zeal - ? "
+                "WHERE user_id = ? AND settlement_zeal >= ?",
+                (amount, user_id, amount),
             )
             await self.connection.commit()
-            return True
+            return cursor.rowcount == 1
         except Exception:
             return False
 

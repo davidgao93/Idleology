@@ -41,17 +41,29 @@ class RouletteNumberModal(Modal, title="Bet on a Number"):
     async def on_submit(self, interaction: Interaction):
         try:
             val = int(self.number_input.value)
-            if 0 <= val <= 36:
-                await interaction.response.defer()
-                await self.parent_view.run_spin(interaction, "number", str(val))
-            else:
+            if not (0 <= val <= 36):
                 await interaction.response.send_message(
                     "Number must be between 0 and 36.", ephemeral=True
                 )
+                return
         except ValueError:
             await interaction.response.send_message(
                 "Please enter a valid integer.", ephemeral=True
             )
+            return
+
+        # Deduct here — after the user has confirmed their number.
+        # This prevents gold loss if the modal is dismissed without submitting.
+        user_data = await self.parent_view.bot.database.users.get(
+            self.parent_view.user_id, interaction.guild.id
+        )
+        if user_data[6] < self.parent_view.bet_amount:
+            await interaction.response.send_message("Insufficient funds!", ephemeral=True)
+            return
+        await self.parent_view.bot.database.users.modify_gold(
+            self.parent_view.user_id, -self.parent_view.bet_amount
+        )
+        await self.parent_view.run_spin(interaction, "number", str(val))
 
 
 class RouletteView(BaseView):
@@ -212,9 +224,7 @@ class RouletteView(BaseView):
 
     @discord.ui.button(label="Number (x35)", style=ButtonStyle.success, row=2)
     async def bet_number(self, interaction: Interaction, button: Button):
-        if await self._deduct_and_verify(interaction):
-            # Launch Modal
-            await interaction.response.send_modal(RouletteNumberModal(self))
+        await interaction.response.send_modal(RouletteNumberModal(self))
 
 
 # ==============================================================================
@@ -534,6 +544,11 @@ class CrashView(BaseView):
         except Exception as e:
             self.bot.logger.error(f"Crash loop error: {e}")
             self.is_running = False
+            if not self.cashed_out:
+                try:
+                    await self.bot.database.users.modify_gold(self.user_id, self.bet_amount)
+                except Exception:
+                    pass
 
     async def _add_restart_buttons(self):
         self.clear_items()
@@ -730,8 +745,14 @@ class HorseRaceView(BaseView):
             embed.description = self.race_logic.get_race_string()
             try:
                 await self.original_interaction.edit_original_response(embed=embed)
-            except:
-                return  # Message deleted
+            except Exception:
+                # Message was deleted mid-race — refund the bet
+                try:
+                    await self.bot.database.users.modify_gold(self.user_id, self.bet_amount)
+                except Exception:
+                    pass
+                self.bot.state_manager.clear_active(self.user_id)
+                return
 
         # Race Finished
         winner = self.race_logic.winner

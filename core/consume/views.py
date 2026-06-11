@@ -192,10 +192,9 @@ class EquipConfirmView(BaseView):
 
     async def _do_equip(self):
         slot = self.part.slot_type
-        await self.parent.bot.database.monster_parts.equip_part(
-            self.parent.user_id, slot, self.part.hp_value, self.part.monster_name
+        await self.parent.bot.database.monster_parts.equip_and_remove_part(
+            self.parent.user_id, self.part.id, slot, self.part.hp_value, self.part.monster_name
         )
-        await self.parent.bot.database.monster_parts.delete_part(self.part.id)
         self.parent.player.equipped_parts[slot] = {
             "hp": self.part.hp_value,
             "monster_name": self.part.monster_name,
@@ -243,10 +242,9 @@ class PartDetailView(BaseView):
         else:
             # Slot empty — equip immediately
             await interaction.response.defer()
-            await self.parent.bot.database.monster_parts.equip_part(
-                self.parent.user_id, slot, self.part.hp_value, self.part.monster_name
+            await self.parent.bot.database.monster_parts.equip_and_remove_part(
+                self.parent.user_id, self.part.id, slot, self.part.hp_value, self.part.monster_name
             )
-            await self.parent.bot.database.monster_parts.delete_part(self.part.id)
             self.parent.player.equipped_parts[slot] = {
                 "hp": self.part.hp_value,
                 "monster_name": self.part.monster_name,
