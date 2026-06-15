@@ -104,8 +104,9 @@ class NurseryView(SettlementBaseView):
 
         try:
             workers_this_turn = self._workers_per_turn()
+            self.bot.logger.info(f"[NURSERY DEBUG] _on_queue: user_id={self.user_id!r} server_id={self.server_id!r} workers={workers_this_turn}")
 
-            await self.bot.database.settlement.upsert_project(
+            project_id = await self.bot.database.settlement.upsert_project(
                 user_id=self.user_id,
                 server_id=self.server_id,
                 project_type="nursery",
@@ -113,10 +114,12 @@ class NurseryView(SettlementBaseView):
                 required_turns=1,
                 data={"workers_per_turn": workers_this_turn},
             )
+            self.bot.logger.info(f"[NURSERY DEBUG] upsert_project returned id={project_id}")
 
             projects = await self.bot.database.settlement.get_projects(
                 self.user_id, self.server_id
             )
+            self.bot.logger.info(f"[NURSERY DEBUG] get_projects after queue: {[(p['project_type'], p['invested_turns'], p['required_turns']) for p in projects]}")
             embed = self.build_embed(projects=projects)
             embed.add_field(
                 name="✅ Queued",
@@ -124,6 +127,9 @@ class NurseryView(SettlementBaseView):
                 inline=False,
             )
             await interaction.edit_original_response(embed=embed, view=self)
+        except Exception as e:
+            self.bot.logger.error(f"[NURSERY DEBUG] _on_queue exception: {e}", exc_info=True)
+            raise
         finally:
             self._processing = False
 

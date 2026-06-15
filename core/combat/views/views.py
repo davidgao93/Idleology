@@ -592,6 +592,14 @@ class CombatView(BaseView):
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)
         await _je.save_jewel_state(self.bot, self.user_id, self.player)
+
+        # Treat fleeing as a failure for crisis combat (same as defeat)
+        if self.crisis_callback:
+            try:
+                await self.crisis_callback(False)
+            except Exception:
+                pass
+
         self.stop()
 
     @ui.button(label="10 Turns", style=ButtonStyle.secondary, emoji="⚡", row=1)

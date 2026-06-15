@@ -6,7 +6,7 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
-from core.images import MAID_AUTHOR, MAID_SPRITZ_PORTRAIT, SETTLEMENT_BUILDINGS
+from core.images import CRISIS_MONSTER_IMAGES, MAID_AUTHOR, MAID_SPRITZ_PORTRAIT, SETTLEMENT_BUILDINGS
 from core.settlement.constants import (
     RESOURCE_DISPLAY_NAMES,
     SETTLEMENT_EVENTS,
@@ -399,9 +399,16 @@ class SettlementDashboardView(SettlementBaseView):
             if turn_summary.get("events_fired"):
                 for e in turn_summary["events_fired"]:
                     lines.append(f"🎉 Event: {e}")
+            if turn_summary.get("crisis_result"):
+                cr = turn_summary["crisis_result"]
+                if cr.get("won"):
+                    zeal = cr.get("zeal_earned", 50)
+                    lines.append(f"⚔️ **{cr['event_name']} repelled!** Your settlement is safe. +{zeal} Zeal awarded.")
+                else:
+                    lines.append(f"💀 **{cr['event_name']} — crisis not prevented.** Check your buildings for damage.")
             if turn_summary.get("crisis_events_fired"):
                 for e in turn_summary["crisis_events_fired"]:
-                    lines.append(f"⚠️ Crisis incoming: {e} — use **Confront** to fight it off!")
+                    lines.append(f"❌ Crisis expired: **{e}** — the crisis has taken hold. Check your buildings.")
             if turn_summary.get("events_expired"):
                 for e in turn_summary["events_expired"]:
                     lines.append(f"⏹️ Event ended: {e}")
@@ -1104,6 +1111,11 @@ class SettlementDashboardView(SettlementBaseView):
             self.settlement = await self.bot.database.settlement.get_settlement(
                 uid, sid
             )
+            _user_row = await self.bot.database.users.get(uid, sid)
+            if _user_row and _user_row["ideology"]:
+                self.follower_count = await self.bot.database.social.get_follower_count(
+                    _user_row["ideology"]
+                )
             _plot_rows = await self.bot.database.plots.get_plots(uid, sid)
             self.plots = [
                 Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
@@ -1260,11 +1272,18 @@ class SettlementDashboardView(SettlementBaseView):
             user_row = await self.bot.database.users.get(uid, sid)
             player = await load_player(uid, user_row, self.bot.database)
 
+            spawn_key = ev_def.get("effects", {}).get("spawn_combat", "")
+            crisis_image = CRISIS_MONSTER_IMAGES.get(spawn_key, "")
+
             base_monster = Monster(
-                name="", level=0, hp=0, max_hp=0, xp=0,
-                attack=0, defence=0, modifiers=[], image="", flavor="",
+                name=enemy_name, level=0, hp=0, max_hp=0, xp=0,
+                attack=0, defence=0, modifiers=[], image=crisis_image, flavor="",
             )
             monster = await generate_encounter(player, base_monster, is_treasure=False)
+            # Override name and image with the crisis-specific values
+            monster.name = enemy_name
+            if crisis_image:
+                monster.image = crisis_image
 
             monster.reset_combat_bonuses()
             engine.apply_stat_effects(player, monster)
@@ -1284,8 +1303,10 @@ class SettlementDashboardView(SettlementBaseView):
                 await self.bot.database.settlement.remove_events_by_key(
                     uid, sid, event["event_key"]
                 )
+                zeal_reward = 0
                 if won:
-                    await self.bot.database.settlement.add_zeal(uid, 50)
+                    zeal_reward = 50
+                    await self.bot.database.settlement.add_zeal(uid, zeal_reward)
                 else:
                     if target_building_type:
                         b = await self.bot.database.settlement.get_building_by_type(
@@ -1308,9 +1329,18 @@ class SettlementDashboardView(SettlementBaseView):
                 self._rebuild_ui()
                 self._processing = False
                 self.bot.state_manager.set_active(uid, "settlement")
+                crisis_summary = {
+                    "crisis_result": {
+                        "won": won,
+                        "event_name": ev_def.get("name", enemy_name),
+                        "zeal_earned": zeal_reward,
+                    }
+                }
                 if self.message:
                     try:
-                        await self.message.edit(embed=self.build_embed(), view=self)
+                        await self.message.edit(
+                            embed=self.build_embed(turn_summary=crisis_summary), view=self
+                        )
                     except Exception:
                         pass
 

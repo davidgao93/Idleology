@@ -48,15 +48,11 @@ class SocialRepository:
         self, ideology_name: str, amount: int, server_id: str = "", user_id: str = ""
     ) -> None:
         """Atomically increments the follower count for an ideology.
-        If no matching row exists (e.g. ideology created before followers column),
-        inserts one so the count is never silently lost."""
-        where = (
-            "WHERE name = ? AND server_id = ?" if server_id else "WHERE name = ?"
-        )
-        params_upd = (amount, ideology_name, server_id) if server_id else (amount, ideology_name)
+        Uses name-only lookup (consistent with get_follower_count / update_followers).
+        If no matching row exists, inserts one so the count is never silently lost."""
         cursor = await self.connection.execute(
-            f"UPDATE ideologies SET followers = followers + ? {where}",
-            params_upd,
+            "UPDATE ideologies SET followers = followers + ? WHERE name = ?",
+            (amount, ideology_name),
         )
         if cursor.rowcount == 0 and ideology_name:
             # Row doesn't exist yet — insert it

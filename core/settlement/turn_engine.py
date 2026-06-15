@@ -116,7 +116,6 @@ async def process_next_turn(
       - deal_rewards: dict | None    (granted rewards if deal completed)
       - events_fired: list[str]      (event names that fired)
       - events_expired: list[str]
-      - passive_zeal_added: int
       - workers_from_nursery: int
       - idlem_from_foundry: int
     """
@@ -129,7 +128,6 @@ async def process_next_turn(
         "events_fired": [],
         "crisis_events_fired": [],
         "events_expired": [],
-        "passive_zeal_added": 0,
         "workers_from_nursery": 0,
         "nursery_ideology": "",
         "idlem_from_foundry": 0,
@@ -158,12 +156,29 @@ async def process_next_turn(
                 "label": result.get("label", proj["project_type"]),
             }
         )
-        if proj["project_type"] == "nursery":
-            summary["workers_from_nursery"] += result.get("workers", 0)
-            if result.get("ideology"):
-                summary["nursery_ideology"] = result["ideology"]
-        elif proj["project_type"] == "foundry_idlem":
+        if proj["project_type"] == "foundry_idlem":
             summary["idlem_from_foundry"] += result.get("idlem", 0)
+
+    # 2b. Nursery: automatically produce workers each DT if staffed
+    nursery_building = await bot.database.settlement.get_building_by_type(
+        user_id, server_id, "nursery"
+    )
+    if nursery_building and nursery_building.workers_assigned > 0 and not nursery_building.is_disabled:
+        nursery_mult = event_effects.get("nursery_mult", 1.0)
+        workers = int(
+            WORKERS_PER_TURN_BASE
+            * nursery_building.tier
+            * (1 + nursery_building.workers_assigned / 500)
+            * nursery_mult
+        )
+        workers = max(1, workers)
+        user_row = await bot.database.users.get(user_id, server_id)
+        ideology_name = (user_row["ideology"] or "") if user_row else ""
+        if ideology_name:
+            current = await bot.database.social.get_follower_count(ideology_name)
+            await bot.database.social.update_followers(ideology_name, current + workers)
+        summary["workers_from_nursery"] = workers
+        summary["nursery_ideology"] = ideology_name
 
     # 3. Advance pending Black Market deal
     deal = await bot.database.settlement.get_pending_deal(user_id, server_id)
@@ -226,13 +241,7 @@ async def process_next_turn(
     # 6. Check for new events to schedule
     await _check_schedule_events(bot, user_id, server_id, new_total)
 
-    # 7. Passive Zeal per DT (mirrors hourly rate: T1=5, T7≈59)
-    # Credited directly to settlement_zeal so it doesn't inflate the Gather Zeal bucket.
-    passive_zeal = max(1, PASSIVE_ZEAL_PER_HOUR_BASE + (town_hall_tier - 1) * 9)
-    await bot.database.settlement.add_zeal(user_id, passive_zeal)
-    summary["passive_zeal_added"] = passive_zeal
-
-    # 8. DT-based resource production (generators + converters at 5× hourly rate)
+    # 7. DT-based resource production (generators + converters at 5× hourly rate)
     (
         dt_changes,
         market_gold,
@@ -422,24 +431,6 @@ async def _complete_project(
                 user_id, server_id, building_type
             )
         return {"label": f"Researched {building_type.replace('_', ' ').title()}"}
-
-    elif ptype == "nursery":
-        workers = int(
-            data.get("workers_per_turn", WORKERS_PER_TURN_BASE)
-            * _ev.get("nursery_mult", 1.0)
-        )
-        ideology_name = ""
-        try:
-            user_row = await bot.database.users.get(user_id, server_id)
-            if user_row:
-                ideology_name = user_row["ideology"] or ""
-                if ideology_name:
-                    await bot.database.social.increment_followers(
-                        ideology_name, workers, server_id=server_id, user_id=user_id
-                    )
-        except Exception:
-            pass
-        return {"label": "Nursery produced workers", "workers": workers, "ideology": ideology_name}
 
     elif ptype == "plot_develop":
         plot_index = data.get("plot_index")

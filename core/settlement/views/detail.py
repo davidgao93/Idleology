@@ -142,6 +142,11 @@ class BuildingDetailView(SettlementBaseView):
                     f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
                     f"**Processing Rates:** Assign workers to start converting."
                 )
+        elif self.building.building_type == "black_market":
+            desc = (
+                f"**Level:** {self.building.tier}/5\n"
+                f"**Type:** Special"
+            )
         else:
             desc = (
                 f"**Level:** {self.building.tier}/5\n"
@@ -184,16 +189,17 @@ class BuildingDetailView(SettlementBaseView):
     def setup_ui(self):
         self.clear_items()
 
-        # Workers
-        btn_workers = ui.Button(
-            label="Assign Workers", style=ButtonStyle.primary, emoji="👥"
-        )
-        btn_workers.callback = self.manage_workers
-        self.add_item(btn_workers)
+        # Workers (not shown for special buildings that don't use workers)
+        if self.building.building_type != "black_market":
+            btn_workers = ui.Button(
+                label="Assign Workers", style=ButtonStyle.primary, emoji="👥"
+            )
+            btn_workers.callback = self.manage_workers
+            self.add_item(btn_workers)
 
-        btn_max = ui.Button(label="Max Workers", style=ButtonStyle.primary, row=0)
-        btn_max.callback = self.max_workers
-        self.add_item(btn_max)
+            btn_max = ui.Button(label="Max Workers", style=ButtonStyle.primary, row=0)
+            btn_max.callback = self.max_workers
+            self.add_item(btn_max)
 
         # Upgrade
         btn_upgrade = ui.Button(

@@ -781,10 +781,19 @@ class PlotDetailView(SettlementBaseView):
     async def _open_black_market(self, interaction: Interaction):
         from core.settlement.views.black_market import BlackMarketView
 
-        # Pass self as parent so BlackMarketView.go_back() returns here.
-        # PlotDetailView exposes .settlement and .server_id as properties.
-        view = BlackMarketView(self.bot, self.user_id, self, self.building)
-        await interaction.response.edit_message(embed=view.build_embed(), view=view)
+        await interaction.response.defer()
+        pending_deal = await self.bot.database.settlement.get_pending_deal(
+            self.user_id, self.server_id
+        )
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        view = BlackMarketView(
+            self.bot, self.user_id, self, self.building,
+            has_pending_deal=bool(pending_deal),
+        )
+        await interaction.edit_original_response(
+            embed=view.build_embed(pending_deal=pending_deal, zeal_data=zeal_data),
+            view=view,
+        )
 
     async def _open_hatchery(self, interaction: Interaction):
         await interaction.response.defer()

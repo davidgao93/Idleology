@@ -230,7 +230,14 @@ SETTLEMENT_BUILDINGS = {
 
 # Settlement NPC portraits
 SETTLEMENT_MAID = MAID_SPRITZ_PORTRAIT
-BLACK_MARKET_VESPERA = SETTLEMENT_BUILDINGS["black_market"]  # placeholder
+
+# Crisis event monster images — keyed by spawn_combat value in SETTLEMENT_EVENTS
+CRISIS_MONSTER_IMAGES: dict[str, str] = {
+    "bandit_captain": "https://cdn.discordapp.com/attachments/1334637411363323996/1514740273081483395/bandit_captain.jpg?ex=6a2c774f&is=6a2b25cf&hm=df58e04d836176c7bdc9e8075e0bfbf652b32feda9a54b282ba62836c919a588&",
+    "ember_wraith": "https://cdn.discordapp.com/attachments/1334637411363323996/1514740273350185062/ember_wraith.jpg?ex=6a2c774f&is=6a2b25cf&hm=b7a85321d4e43f111c37336382bc08fdf601e975741842b99234adbcb45c2a4d&",
+    "plague_wraith": "https://cdn.discordapp.com/attachments/1334637411363323996/1514740273593319455/plague_wraith.jpg?ex=6a2c774f&is=6a2b25cf&hm=0df4e7d1edd3f10c9e1ebd003553c41c63f81add0f412c2af36a2270c052b022&",
+    "void_sentry": "https://cdn.discordapp.com/attachments/1334637411363323996/1514740273849045022/void_incursion.jpg?ex=6a2c774f&is=6a2b25cf&hm=f57ed932aa0686e974a4acce1fe26221e8f983d76498ddcd6f5a6380ed3d2e72&",
+}
 
 # ── CORRUPTED MONSTERS ────────────────────────────────────────────────────────
 # Dict keyed by monster name stem (without "corrupted_" prefix).

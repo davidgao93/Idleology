@@ -121,10 +121,11 @@ class TownHallView(SettlementBaseView):
         meta_cap = get_meta_slots(tier)
         meta_used = sum(1 for b in self.settlement.buildings if b.is_meta)
 
+        passive_zeal_rate = 5 + (tier - 1) * 9
         desc = (
             f"**Level:** {tier}/7\n"
             f"**Meta Building Slots:** {meta_used}/{meta_cap}\n"
-            f"**Follower Cap Buff:** +{tier * 10}%\n"
+            f"**Passive Zeal:** {passive_zeal_rate}/hr\n"
             f"📜 **Development Contracts:** {self.dc_count}"
         )
 
@@ -166,11 +167,12 @@ class TownHallView(SettlementBaseView):
                 reqs = [f"{s['name']} ×{s['qty']}" for s in costs["specials"]]
                 cost_str += f"\n✨ **Requires:** {', '.join(reqs)}"
 
+            next_passive_zeal = 5 + tier * 9
             embed.add_field(
                 name="Upgrade Benefits",
                 value=(
                     f"Meta Slots: {meta_cap} ➡️ **{meta_cap + 1}**\n"
-                    f"Follower Cap: +{tier * 10}% ➡️ **+{(tier + 1) * 10}%**"
+                    f"Passive Zeal: {passive_zeal_rate}/hr ➡️ **{next_passive_zeal}/hr**"
                 ),
                 inline=False,
             )

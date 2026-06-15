@@ -3,7 +3,7 @@ core/settlement/views/black_market.py
 Redesigned Black Market — Merchant Mini-Game with Passive Tree.
 
 Flow:
-  1. Main view: shows Madame Vespera greeting, pending deal status, buttons.
+  1. Main view: shows Mysterious Merchant Max greeting, pending deal status, buttons.
   2. "Make Offer" → OfferBuilderView: build a resource bundle across pages.
   3. "Submit Offer" → calculate value / turns, deduct resources, create pending deal.
   4. "Passive Tree" → BMPassiveTreeView: spend Idlem to unlock/upgrade nodes.
@@ -20,7 +20,6 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 from core.images import BLACK_MARKET_AUTHOR, SETTLEMENT_BUILDINGS
 from core.settlement.constants import (
     BM_ITEM_VALUES,
-    BM_OFFERABLE_RESOURCES,
     BM_TREE_NODES,
     SETTLEMENT_EVENTS,
 )
@@ -97,6 +96,85 @@ _BM_RESOURCE_PAGES: list[list[tuple[str, str]]] = [
     ],
 ]
 
+# Flat key→label lookup built from all pages
+_BM_ALL_LABELS: dict[str, str] = {
+    key: label
+    for page in _BM_RESOURCE_PAGES
+    for key, label in page
+}
+
+# Category filter buttons: (id, button_label, [resource_keys])
+_BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
+    ("settlement", "🏗️ Settlement", ["timber", "stone"]),
+    ("mining", "⛏️ Mining", [
+        "iron", "coal", "gold", "platinum", "idea",
+        "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar",
+    ]),
+    ("lumber", "🌲 Lumber", [
+        "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
+        "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank",
+    ]),
+    ("fishing", "🦴 Fishing", [
+        "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
+        "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence",
+    ]),
+    ("valuables", "💎 Valuables", [
+        "refinement_runes", "potential_runes", "shatter_runes", "imbue_runes",
+        "dragon_key", "angel_key", "soul_cores", "balance_fragment", "void_frags",
+        "magma_core", "life_root", "spirit_shard", "curios", "unidentified_blueprint",
+        "spirit_stones", "celestial_stone", "infernal_cinder", "void_crystal",
+        "bound_crystal", "corrupted_crystal", "blessed_bismuth", "sparkling_sprig", "capricious_carp",
+    ]),
+]
+
+# Resources stored in skill / settlement tables vs. user currency columns
+_SETTLEMENT_RESOURCE_KEYS: frozenset[str] = frozenset(["timber", "stone"])
+_SKILL_RESOURCE_KEYS: frozenset[str] = frozenset([
+    "iron", "coal", "gold", "platinum", "idea",
+    "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar",
+    "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
+    "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank",
+    "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
+    "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence",
+])
+
+_MINING_COLS = ["iron", "coal", "gold", "platinum", "idea", "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"]
+_WOOD_COLS = ["oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs", "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank"]
+_FISH_COLS = ["desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones", "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence"]
+
+
+async def _load_player_inventory(bot, user_id: str, server_id: str) -> dict[str, int]:
+    """Loads all BM-tradeable resources for the player into a flat key→qty dict."""
+    user_row = await bot.database.users.get(user_id, server_id)
+    settlement = await bot.database.settlement.get_settlement(user_id, server_id)
+    skill_mining = await bot.database.skills.get_data(user_id, server_id, "mining")
+    skill_wood = await bot.database.skills.get_data(user_id, server_id, "woodcutting")
+    skill_fish = await bot.database.skills.get_data(user_id, server_id, "fishing")
+
+    inv: dict[str, int] = {}
+    inv["timber"] = int(getattr(settlement, "timber", 0))
+    inv["stone"] = int(getattr(settlement, "stone", 0))
+
+    if skill_mining:
+        for i, col in enumerate(_MINING_COLS):
+            inv[col] = int(skill_mining[3 + i]) if len(skill_mining) > 3 + i else 0
+    if skill_wood:
+        for i, col in enumerate(_WOOD_COLS):
+            inv[col] = int(skill_wood[3 + i]) if len(skill_wood) > 3 + i else 0
+    if skill_fish:
+        for i, col in enumerate(_FISH_COLS):
+            inv[col] = int(skill_fish[3 + i]) if len(skill_fish) > 3 + i else 0
+
+    valuables = [k for cat_id, _lbl, keys in _BM_CATEGORIES if cat_id == "valuables" for k in keys]
+    for key in valuables:
+        try:
+            inv[key] = int(await bot.database.users.get_currency(user_id, key))
+        except Exception:
+            inv[key] = 0
+
+    return inv
+
+
 _MAX_GREETINGS = [
     "Max tilts his head. 'What have you brought me today?'",
     "'Interesting selection,' he murmurs. 'Let's see what this fetches.'",
@@ -109,19 +187,21 @@ _MAX_GREETINGS = [
 class BlackMarketView(SettlementBaseView):
     """Main Black Market hub — shows pending deal, make offer, passive tree."""
 
-    def __init__(self, bot, user_id: str, parent_view, building):
+    def __init__(self, bot, user_id: str, parent_view, building, *, has_pending_deal: bool = False):
         super().__init__(bot, user_id)
         self.parent = parent_view
         self.server_id = parent_view.server_id
         self.building = building
         self._processing = False
+        self.has_pending_deal = has_pending_deal
         self._setup_ui()
 
     def _setup_ui(self) -> None:
         self.clear_items()
 
         offer_btn = ui.Button(
-            label="Make Offer", style=ButtonStyle.primary, emoji="📦", row=0
+            label="Make Offer", style=ButtonStyle.primary, emoji="📦", row=0,
+            disabled=self.has_pending_deal,
         )
         offer_btn.callback = self._on_make_offer
         self.add_item(offer_btn)
@@ -177,7 +257,7 @@ class BlackMarketView(SettlementBaseView):
         embed.add_field(
             name="📖 How it works",
             value=(
-                "Bring a bundle of resources. Vespera calculates their **Value** "
+                "Bring a bundle of resources. Max calculates their **Value** "
                 "and processes the deal over **Development Turns**, returning a "
                 "curated loot package based on your passive tree biases."
             ),
@@ -201,6 +281,21 @@ class BlackMarketView(SettlementBaseView):
                 inline=False,
             )
 
+        if tier < 5:
+            costs = SettlementMechanics.get_upgrade_cost("black_market", tier)
+            cost_parts = [
+                f"🪵 {costs['timber']:,}",
+                f"🪨 {costs['stone']:,}",
+                f"💰 {costs['gold']:,}",
+            ]
+            for spec in costs.get("specials", []):
+                cost_parts.append(f"{spec['name']} ×{spec['qty']}")
+            embed.add_field(
+                name=f"⬆️ Upgrade to Tier {tier + 1}",
+                value=" | ".join(cost_parts),
+                inline=False,
+            )
+
         return embed
 
     async def _on_make_offer(self, interaction: Interaction) -> None:
@@ -213,9 +308,13 @@ class BlackMarketView(SettlementBaseView):
             self.user_id, self.server_id
         )
         if pending:
-            await interaction.response.send_message(
-                "You already have an active deal processing. Wait for it to complete before submitting another offer.",
-                ephemeral=True,
+            await interaction.response.defer()
+            zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+            self.has_pending_deal = True
+            self._setup_ui()
+            await interaction.edit_original_response(
+                embed=self.build_embed(pending_deal=pending, zeal_data=zeal_data),
+                view=self,
             )
             return
 
@@ -223,6 +322,7 @@ class BlackMarketView(SettlementBaseView):
         tree_nodes = await self.bot.database.settlement.get_bm_tree(
             self.user_id, self.server_id
         )
+        inventory = await _load_player_inventory(self.bot, self.user_id, self.server_id)
         view = OfferBuilderView(
             self.bot,
             self.user_id,
@@ -230,6 +330,7 @@ class BlackMarketView(SettlementBaseView):
             self.building,
             self,
             tree_nodes=tree_nodes,
+            inventory=inventory,
         )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
 
@@ -308,7 +409,10 @@ class BlackMarketView(SettlementBaseView):
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def _on_back(self, interaction: Interaction) -> None:
-        self.parent._rebuild_ui()
+        if hasattr(self.parent, "_rebuild_ui"):
+            self.parent._rebuild_ui()
+        elif hasattr(self.parent, "_build_buttons"):
+            self.parent._build_buttons()
         await interaction.response.edit_message(
             embed=self.parent.build_embed(), view=self.parent
         )
@@ -322,12 +426,14 @@ class BlackMarketView(SettlementBaseView):
 
 class OfferBuilderView(SettlementBaseView):
     """
-    Multi-step offering UI.
-    Row 0: page select (choose a resource from the current page)
-    Row 1: page navigation + submit / cancel
+    Offer builder with category filter buttons.
+    Row 0: resource select (filtered to selected category, owned, not-yet-offered)
+    Row 1: category filter buttons
+    Row 2: Submit / Clear / Cancel
+    Row 3: Bias toggles
     """
 
-    MAX_OFFER_ITEMS = 8  # max distinct resource types in one offer
+    MAX_OFFER_ITEMS = 8
 
     def __init__(
         self,
@@ -335,60 +441,82 @@ class OfferBuilderView(SettlementBaseView):
         user_id: str,
         server_id: str,
         building,
-        parent_market: BlackMarketView,
+        parent_market: "BlackMarketView",
         tree_nodes: dict | None = None,
+        inventory: dict | None = None,
     ):
         super().__init__(bot, user_id)
         self.server_id = server_id
         self.building = building
         self.parent_market = parent_market
         self.tree_nodes = tree_nodes or {}
-        self._current_page = 0
-        self._offer: dict[str, int] = {}  # resource_key → qty
+        self._inventory: dict[str, int] = inventory or {}
+        self._current_category: str = _BM_CATEGORIES[0][0]
+        self._offer: dict[str, int] = {}
         self._active_biases: list[str] = []
         self._processing = False
         self._build_ui()
 
+    def _category_options(self) -> list[SelectOption]:
+        """Build select options for the current category, filtered to owned + not-yet-offered."""
+        _, _lbl, keys = next(c for c in _BM_CATEGORIES if c[0] == self._current_category)
+        options = []
+        for key in keys:
+            if key in self._offer:
+                continue  # already added
+            qty = self._inventory.get(key, 0)
+            if qty <= 0:
+                continue  # player doesn't have any
+            label = _BM_ALL_LABELS.get(key, key)
+            unit_val = BM_ITEM_VALUES.get(key, 0)
+            options.append(SelectOption(
+                label=label,
+                value=key,
+                description=f"Owned: {qty:,} | {unit_val:,}/unit",
+            ))
+        return options[:25]
+
     def _build_ui(self) -> None:
         self.clear_items()
 
-        page = _BM_RESOURCE_PAGES[self._current_page]
-        options = [
-            SelectOption(
-                label=label,
-                value=key,
-                description=f"Value: {BM_ITEM_VALUES.get(key, 0):,}/unit",
+        # Row 0: resource select (or disabled placeholder if nothing available)
+        options = self._category_options()
+        if options:
+            sel = ui.Select(
+                placeholder="Choose a resource to add to your offer…",
+                options=options,
+                row=0,
             )
-            for key, label in page
-        ]
-
-        sel = ui.Select(
-            placeholder=f"Add resource to offer (page {self._current_page + 1}/{len(_BM_RESOURCE_PAGES)})...",
-            options=options,
-            row=0,
-        )
-        sel.callback = self._on_resource_select
+            sel.callback = self._on_resource_select
+        else:
+            sel = ui.Select(
+                placeholder="No resources available in this category",
+                options=[SelectOption(label="—", value="__none__")],
+                disabled=True,
+                row=0,
+            )
         self.add_item(sel)
 
-        if self._current_page > 0:
-            prev_btn = ui.Button(label="◀ Prev", style=ButtonStyle.secondary, row=1)
-            prev_btn.callback = self._on_prev_page
-            self.add_item(prev_btn)
+        # Row 1: category filter buttons
+        for cat_id, cat_label, _ in _BM_CATEGORIES:
+            btn = ui.Button(
+                label=cat_label,
+                style=ButtonStyle.blurple if cat_id == self._current_category else ButtonStyle.secondary,
+                row=1,
+            )
+            btn.callback = self._make_category_switch(cat_id)
+            self.add_item(btn)
 
-        if self._current_page < len(_BM_RESOURCE_PAGES) - 1:
-            next_btn = ui.Button(label="Next ▶", style=ButtonStyle.secondary, row=1)
-            next_btn.callback = self._on_next_page
-            self.add_item(next_btn)
-
+        # Row 2: action buttons
         if self._offer:
             submit_btn = ui.Button(
-                label="Submit Offer", style=ButtonStyle.success, emoji="✅", row=1
+                label="Submit Offer", style=ButtonStyle.success, emoji="✅", row=2
             )
             submit_btn.callback = self._on_submit
             self.add_item(submit_btn)
 
             clear_btn = ui.Button(
-                label="Clear Offer", style=ButtonStyle.danger, emoji="🗑️", row=1
+                label="Clear Offer", style=ButtonStyle.danger, emoji="🗑️", row=2
             )
             clear_btn.callback = self._on_clear
             self.add_item(clear_btn)
@@ -399,25 +527,32 @@ class OfferBuilderView(SettlementBaseView):
         cancel_btn.callback = self._on_cancel
         self.add_item(cancel_btn)
 
-        # Bias toggles (row 3) — only show bias nodes the player has unlocked
-        bias_row = 3
+        # Row 3: bias toggles (unlocked nodes only, max 5)
         bias_count = 0
         for node_key, node in BM_TREE_NODES.items():
             if node.get("branch") != "bias":
                 continue
             if node_key not in self.tree_nodes:
                 continue
-            if bias_count >= 4:
+            if bias_count >= 5:
                 break
             toggled = node_key in self._active_biases
             btn = ui.Button(
                 label=f"{'✅' if toggled else '○'} {node['name']}",
                 style=ButtonStyle.blurple if toggled else ButtonStyle.secondary,
-                row=bias_row,
+                row=3,
             )
             btn.callback = self._make_bias_toggle(node_key)
             self.add_item(btn)
             bias_count += 1
+
+    def _make_category_switch(self, cat_id: str):
+        async def callback(interaction: Interaction) -> None:
+            await interaction.response.defer()
+            self._current_category = cat_id
+            self._build_ui()
+            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+        return callback
 
     def _make_bias_toggle(self, node_key: str):
         async def callback(interaction: Interaction) -> None:
@@ -427,18 +562,17 @@ class OfferBuilderView(SettlementBaseView):
             else:
                 self._active_biases.append(node_key)
             self._build_ui()
-            await interaction.edit_original_response(
-                embed=self.build_embed(), view=self
-            )
-
+            await interaction.edit_original_response(embed=self.build_embed(), view=self)
         return callback
 
     def build_embed(self) -> discord.Embed:
+        _, cat_label, _ = next(c for c in _BM_CATEGORIES if c[0] == self._current_category)
         embed = discord.Embed(
             title="📦 Build Your Offer",
             description=(
-                "Select resources from the list to add them to your offer bundle.\n"
-                "You'll enter the quantity via a modal. Value is calculated when you submit."
+                f"Browsing: **{cat_label}**\n"
+                "Select a resource to set the quantity. "
+                "Resources already in your offer are hidden until you Clear."
             ),
             color=discord.Color.dark_gray(),
         )
@@ -447,23 +581,17 @@ class OfferBuilderView(SettlementBaseView):
 
         if self._offer:
             offer_lines = []
-            estimated = calculate_offer_value(
-                self._offer, self.tree_nodes, self.building.tier
-            )
+            estimated = calculate_offer_value(self._offer, self.tree_nodes, self.building.tier)
             for key, qty in self._offer.items():
-                label = next(
-                    (l for k, l in sum(_BM_RESOURCE_PAGES, []) if k == key), key
-                )
+                label = _BM_ALL_LABELS.get(key, key)
                 val = BM_ITEM_VALUES.get(key, 0) * qty
                 offer_lines.append(f"• {label}: **{qty:,}** (≈ {val:,} value)")
             embed.add_field(
                 name=f"🧾 Current Offer (Value ≈ {estimated:,})",
-                value="\n".join(offer_lines) or "—",
+                value="\n".join(offer_lines),
                 inline=False,
             )
-            turns = compute_processing_turns(
-                estimated, self.building.tier, self.tree_nodes
-            )
+            turns = compute_processing_turns(estimated, self.building.tier, self.tree_nodes)
             embed.add_field(
                 name="⏭️ Estimated Processing",
                 value=f"**{turns}** Development Turn(s)",
@@ -472,49 +600,32 @@ class OfferBuilderView(SettlementBaseView):
         else:
             embed.add_field(
                 name="🧾 Current Offer",
-                value="*Nothing added yet. Select a resource above.*",
+                value="*Nothing added yet. Pick a category and select a resource.*",
                 inline=False,
             )
 
         if self._active_biases:
-            bias_names = [
-                BM_TREE_NODES[b]["name"]
-                for b in self._active_biases
-                if b in BM_TREE_NODES
-            ]
-            embed.add_field(
-                name="🎯 Active Biases",
-                value=", ".join(bias_names),
-                inline=True,
-            )
+            bias_names = [BM_TREE_NODES[b]["name"] for b in self._active_biases if b in BM_TREE_NODES]
+            embed.add_field(name="🎯 Active Biases", value=", ".join(bias_names), inline=True)
 
         return embed
 
     async def _on_resource_select(self, interaction: Interaction) -> None:
         resource_key = interaction.data["values"][0]
-        if len(self._offer) >= self.MAX_OFFER_ITEMS and resource_key not in self._offer:
+        if resource_key == "__none__":
+            await interaction.response.defer()
+            return
+        if len(self._offer) >= self.MAX_OFFER_ITEMS:
             await interaction.response.send_message(
-                f"You can only include up to {self.MAX_OFFER_ITEMS} distinct resource types.",
+                f"Maximum {self.MAX_OFFER_ITEMS} distinct resource types per offer.",
                 ephemeral=True,
             )
             return
 
-        label = next(
-            (l for k, l in sum(_BM_RESOURCE_PAGES, []) if k == resource_key),
-            resource_key,
-        )
-        modal = QuantityInputModal(self, resource_key, label)
+        label = _BM_ALL_LABELS.get(resource_key, resource_key)
+        max_qty = self._inventory.get(resource_key, 0)
+        modal = QuantityInputModal(self, resource_key, label, max_qty)
         await interaction.response.send_modal(modal)
-
-    async def _on_prev_page(self, interaction: Interaction) -> None:
-        self._current_page = max(0, self._current_page - 1)
-        self._build_ui()
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
-
-    async def _on_next_page(self, interaction: Interaction) -> None:
-        self._current_page = min(len(_BM_RESOURCE_PAGES) - 1, self._current_page + 1)
-        self._build_ui()
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
     async def _on_clear(self, interaction: Interaction) -> None:
         self._offer.clear()
@@ -530,100 +641,40 @@ class OfferBuilderView(SettlementBaseView):
 
         try:
             if not self._offer:
-                await interaction.followup.send(
-                    "Nothing in your offer.", ephemeral=True
-                )
+                await interaction.followup.send("Nothing in your offer.", ephemeral=True)
                 return
 
-            # Verify player has the resources
             uid = self.user_id
             sid = self.server_id
 
-            # Build resource ownership check (mixed sources)
-            user_row = await self.bot.database.users.get(uid, sid)
-            settlement = await self.bot.database.settlement.get_settlement(uid, sid)
-            skill_mining = await self.bot.database.skills.get_data(uid, sid, "mining")
-            skill_wood = await self.bot.database.skills.get_data(
-                uid, sid, "woodcutting"
-            )
-            skill_fish = await self.bot.database.skills.get_data(uid, sid, "fishing")
-
-            _OWNED: dict = {}
-            _OWNED["timber"] = settlement.timber
-            _OWNED["stone"] = settlement.stone
-            _OWNED["gold"] = user_row["gold"] if user_row else 0
-
-            # Mapping for skill data (order matches DB column order starting at index 3)
-            _MINING_COLS = [
-                "iron",
-                "coal",
-                "gold",
-                "platinum",
-                "idea",
-                "iron_bar",
-                "steel_bar",
-                "gold_bar",
-                "platinum_bar",
-                "idea_bar",
-            ]
-            _WOOD_COLS = [
-                "oak_logs",
-                "willow_logs",
-                "mahogany_logs",
-                "magic_logs",
-                "idea_logs",
-                "oak_plank",
-                "willow_plank",
-                "mahogany_plank",
-                "magic_plank",
-                "idea_plank",
-            ]
-            _FISH_COLS = [
-                "desiccated_bones",
-                "regular_bones",
-                "sturdy_bones",
-                "reinforced_bones",
-                "titanium_bones",
-                "desiccated_essence",
-                "regular_essence",
-                "sturdy_essence",
-                "reinforced_essence",
-                "titanium_essence",
-            ]
-
-            if skill_mining:
-                for i, col in enumerate(_MINING_COLS):
-                    _OWNED[col] = (
-                        skill_mining[3 + i] if len(skill_mining) > 3 + i else 0
-                    )
-            if skill_wood:
-                for i, col in enumerate(_WOOD_COLS):
-                    _OWNED[col] = skill_wood[3 + i] if len(skill_wood) > 3 + i else 0
-            if skill_fish:
-                for i, col in enumerate(_FISH_COLS):
-                    _OWNED[col] = skill_fish[3 + i] if len(skill_fish) > 3 + i else 0
-
-            # User currency columns
-            for key in self._offer:
-                if key not in _OWNED:
-                    try:
-                        _OWNED[key] = await self.bot.database.users.get_currency(
-                            uid, key
-                        )
-                    except Exception:
-                        _OWNED[key] = 0
-
-            # Validate all offered quantities
+            # Re-validate against live inventory at submission time
+            live_inv = await _load_player_inventory(self.bot, uid, sid)
             for res, qty in self._offer.items():
-                if _OWNED.get(res, 0) < qty:
-                    label = next(
-                        (l for k, l in sum(_BM_RESOURCE_PAGES, []) if k == res), res
-                    )
+                if live_inv.get(res, 0) < qty:
+                    label = _BM_ALL_LABELS.get(res, res)
                     await interaction.followup.send(
-                        f"Not enough **{label}**! You have {_OWNED.get(res, 0):,}, need {qty:,}.",
+                        f"Not enough **{label}**! You now have {live_inv.get(res, 0):,}, need {qty:,}.",
                         ephemeral=True,
                     )
+                    self._processing = False
                     return
+
+            # Deduct resources from player inventory
+            settlement_changes: dict = {}
+            user_currency_changes: dict = {}
+            for res, qty in self._offer.items():
+                if res in _SETTLEMENT_RESOURCE_KEYS or res in _SKILL_RESOURCE_KEYS:
+                    settlement_changes[res] = settlement_changes.get(res, 0) - qty
+                else:
+                    user_currency_changes[res] = user_currency_changes.get(res, 0) - qty
+
+            if settlement_changes:
+                await self.bot.database.settlement.commit_production(uid, sid, settlement_changes)
+            for cur, delta in user_currency_changes.items():
+                try:
+                    await self.bot.database.users.modify_currency(uid, cur, delta)
+                except Exception:
+                    pass
 
             # Calculate value and turns
             tree_nodes = await self.bot.database.settlement.get_bm_tree(uid, sid)
@@ -654,59 +705,6 @@ class OfferBuilderView(SettlementBaseView):
                     "This offer has no tradeable value.", ephemeral=True
                 )
                 return
-
-            # Deduct resources
-            settlement_changes: dict = {}
-            user_currency_changes: dict = {}
-
-            for res, qty in self._offer.items():
-                if res in ("timber", "stone"):
-                    settlement_changes[res] = settlement_changes.get(res, 0) - qty
-                elif res in (
-                    "iron",
-                    "coal",
-                    "gold",
-                    "platinum",
-                    "idea",
-                    "iron_bar",
-                    "steel_bar",
-                    "gold_bar",
-                    "platinum_bar",
-                    "idea_bar",
-                    "oak_logs",
-                    "willow_logs",
-                    "mahogany_logs",
-                    "magic_logs",
-                    "idea_logs",
-                    "oak_plank",
-                    "willow_plank",
-                    "mahogany_plank",
-                    "magic_plank",
-                    "idea_plank",
-                    "desiccated_bones",
-                    "regular_bones",
-                    "sturdy_bones",
-                    "reinforced_bones",
-                    "titanium_bones",
-                    "desiccated_essence",
-                    "regular_essence",
-                    "sturdy_essence",
-                    "reinforced_essence",
-                    "titanium_essence",
-                ):
-                    settlement_changes[res] = settlement_changes.get(res, 0) - qty
-                else:
-                    user_currency_changes[res] = user_currency_changes.get(res, 0) - qty
-
-            if settlement_changes:
-                await self.bot.database.settlement.commit_production(
-                    uid, sid, settlement_changes
-                )
-            for cur, delta in user_currency_changes.items():
-                try:
-                    await self.bot.database.users.modify_currency(uid, cur, delta)
-                except Exception:
-                    pass
 
             # Get current turn count for record-keeping
             turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
@@ -747,6 +745,7 @@ class OfferBuilderView(SettlementBaseView):
             # Return to main market view
             pending = await self.bot.database.settlement.get_pending_deal(uid, sid)
             zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
+            self.parent_market.has_pending_deal = bool(pending)
             self.parent_market._setup_ui()
             await interaction.edit_original_response(
                 embed=self.parent_market.build_embed(
@@ -764,6 +763,7 @@ class OfferBuilderView(SettlementBaseView):
             self.user_id, self.server_id
         )
         zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        self.parent_market.has_pending_deal = bool(pending)
         self.parent_market._setup_ui()
         await interaction.response.edit_message(
             embed=self.parent_market.build_embed(
@@ -775,19 +775,24 @@ class OfferBuilderView(SettlementBaseView):
 
 
 class QuantityInputModal(ui.Modal):
-    qty_input = ui.TextInput(
-        label="How many? (enter a number)",
-        placeholder="e.g. 100",
-        min_length=1,
-        max_length=10,
-    )
-
     def __init__(
-        self, offer_view: OfferBuilderView, resource_key: str, resource_label: str
+        self,
+        offer_view: "OfferBuilderView",
+        resource_key: str,
+        resource_label: str,
+        max_qty: int,
     ):
-        super().__init__(title=f"Add {resource_label[:30]}...")
+        super().__init__(title=f"Add {resource_label[:40]}")
         self.offer_view = offer_view
         self.resource_key = resource_key
+        self.max_qty = max_qty
+        self.qty_input = ui.TextInput(
+            label=f"How many? (you have {max_qty:,})",
+            placeholder=f"1 – {max_qty:,}",
+            min_length=1,
+            max_length=10,
+        )
+        self.add_item(self.qty_input)
 
     async def on_submit(self, interaction: Interaction) -> None:
         try:
@@ -796,13 +801,17 @@ class QuantityInputModal(ui.Modal):
                 raise ValueError
         except (ValueError, TypeError):
             await interaction.response.send_message(
-                "Please enter a positive number.", ephemeral=True
+                "Please enter a positive whole number.", ephemeral=True
             )
             return
 
-        self.offer_view._offer[self.resource_key] = (
-            self.offer_view._offer.get(self.resource_key, 0) + qty
-        )
+        if qty > self.max_qty:
+            await interaction.response.send_message(
+                f"You only have **{self.max_qty:,}** available.", ephemeral=True
+            )
+            return
+
+        self.offer_view._offer[self.resource_key] = qty  # set, not accumulate
         self.offer_view._build_ui()
         await interaction.response.edit_message(
             embed=self.offer_view.build_embed(), view=self.offer_view
@@ -967,6 +976,7 @@ class BMPassiveTreeView(SettlementBaseView):
             self.user_id, self.server_id
         )
         zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        self.parent_market.has_pending_deal = bool(pending)
         self.parent_market._setup_ui()
         await interaction.response.edit_message(
             embed=self.parent_market.build_embed(
