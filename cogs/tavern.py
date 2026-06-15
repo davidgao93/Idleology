@@ -15,7 +15,6 @@ from core.images import (
     QUEST_SHOP_AUTHOR,
     TAVERN_CASINO,
     TAVERN_GAMES,
-    TAVERN_KEEPER,
 )
 from core.items.factory import load_player
 from core.quests.data import CHECKIN_DAY_LABELS

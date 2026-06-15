@@ -1,22 +1,15 @@
-import json
-
 import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.character.tutorial import TutorialView
-from core.images import AMARA_AUTHOR
 from core.character.views import RegistrationView, UnregisterView
-from core.images import GUILD_UNREGISTER
+from core.images import AMARA_AUTHOR, AMARA_PORTRAIT, GUILD_UNREGISTER
 
 
 class Guild(commands.Cog, name="adventurer's guild"):
     def __init__(self, bot):
         self.bot = bot
-
-    def load_exp_table(self):
-        with open("assets/exp.json") as file:
-            return json.load(file)
 
     @app_commands.command(name="register", description="Start your journey.")
     async def register(self, interaction: Interaction, name: str):

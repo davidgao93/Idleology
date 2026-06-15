@@ -12,6 +12,8 @@ from typing import Any, Dict, Optional
 import discord
 
 from core.images import COMBAT_VICTORY
+from core.items.models import _PART_SLOT_LABELS
+from core.models import Monster, Player
 
 _EXP_TABLE: dict = {}
 
@@ -36,10 +38,6 @@ def _exp_progress_str(level: int, exp: int) -> str:
         return ""
     pct = min(99.9, exp / needed * 100)
     return f"{pct:.1f}% to Lv.{level + 1}"
-
-
-from core.items.models import _PART_SLOT_LABELS
-from core.models import Monster, Player
 
 
 def create_victory_embed(
