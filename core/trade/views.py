@@ -157,8 +157,6 @@ class TradeRootView(BaseView):
         cat = interaction.data["values"][0]
 
         # Filter RESOURCE_MAP based on category
-        # This is a bit manual but effective
-        choices = []
         if cat == "keys":
             keys = [
                 "Draconic Key",

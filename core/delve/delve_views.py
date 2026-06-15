@@ -73,7 +73,6 @@ class DelveView(BaseView):
         self.state = state
         self.stats = stats
         self.parent_gather_view = parent_gather_view
-        self.initial_stability: int = 100
 
         self.processing = False
 
@@ -250,12 +249,9 @@ class DelveView(BaseView):
             ]
             msg += f" ⛏️ Ore Vein! {', '.join(ore_parts)}"
 
-        c, s = DelveMechanics.check_rewards(self.state.depth)
-        if c > 0:
-            msg += " 🎁 **FOUND CURIO!**"
+        s = DelveMechanics.check_rewards(self.state.depth)
         if s > 0:
             msg += f" 💎 Found {s} Shards!"
-        self.state.curios_found += c
         self.state.shards_found += s
 
         if self.state.stability <= 0:
@@ -465,15 +461,7 @@ class DelveView(BaseView):
         # 2. Deduct
         await self.bot.database.users.modify_gold(self.user_id, -cost)
 
-        # 3. Create Fresh State
-        max_fuel = DelveMechanics.get_max_fuel(self.stats["fuel_lvl"])
-        new_state = DelveState(
-            max_fuel=max_fuel,
-            current_fuel=max_fuel,
-            pickaxe_tier=self.state.pickaxe_tier,  # Preserve tool
-        )
-
-        # 4. Create New View & Replace Message
+        # 3. Create New View & Replace Message
         # We reuse self.stats because levels haven't changed (shop is separate)
         stats = await self.bot.database.delve.get_profile(self.user_id, self.server_id)
         max_fuel = DelveMechanics.get_max_fuel(stats["fuel_lvl"])

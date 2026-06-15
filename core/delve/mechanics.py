@@ -1,6 +1,6 @@
 import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 
 @dataclass
@@ -11,7 +11,6 @@ class DelveState:
     stability: int = 100
     pickaxe_tier: str = "iron"
     shards_found: int = 0
-    curios_found: int = 0
     ore_found: Dict[str, int] = field(default_factory=dict)
     hazards: List[str] = field(default_factory=list)
     revealed_indices: List[int] = field(default_factory=list)
@@ -51,12 +50,6 @@ class DelveMechanics:
     @staticmethod
     def get_entry_cost(fuel_level: int) -> int:
         return 1000 + (fuel_level * 500)
-
-    @staticmethod
-    def calculate_level_from_xp(total_xp: int) -> int:
-        if total_xp <= 0:
-            return 1
-        return int((total_xp / 50) ** 0.5) + 1
 
     @staticmethod
     def get_level_reward(level: int) -> int:
@@ -108,8 +101,7 @@ class DelveMechanics:
         return int(randomized)
 
     @staticmethod
-    def check_rewards(depth: int) -> Tuple[int, int]:
-        curios = 0
+    def check_rewards(depth: int) -> int:
         shards = 0
 
         if depth > 15:
@@ -117,7 +109,7 @@ class DelveMechanics:
             if random.random() < chance:
                 shards = random.randint(1, 2)
 
-        return curios, shards
+        return shards
 
     @staticmethod
     def calculate_level_from_xp(total_xp: int) -> int:

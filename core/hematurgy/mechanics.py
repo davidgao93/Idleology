@@ -222,7 +222,7 @@ def _desc(pid: str, tier: int) -> str:
             return f"{pct(v)} of all ward generated is simultaneously applied as HP recovery."
         case "executioners_rite":
             return f"While the monster is below 30% HP: +{pct(v)} ATK and +{pct(v)} crit damage."
-        case "bloodthirst":
+        case "crimson_feast":
             return f"On monster kill: restore {pct(v)} of Max HP."
         case "phantom_reflex":
             return (
@@ -253,7 +253,7 @@ def _desc(pid: str, tier: int) -> str:
                 f"At the start of each player turn, {pct(v)} of your total DEF is added "
                 f"as flat bonus ATK for that turn."
             )
-        case "tenacity":
+        case "defiance":
             return (
                 f"The first time your HP drops below 40% during combat: permanently "
                 f"gain +{pct(v)} ATK and +{pct(v)} DEF for the remainder of the fight (one-shot)."
@@ -298,14 +298,14 @@ PASSIVE_POOL: dict[str, dict] = {
     "haemorrhage": {"name": "Haemorrhage", "description": _desc},
     "vital_resonance": {"name": "Vital Resonance", "description": _desc},
     "executioners_rite": {"name": "Executioner's Rite", "description": _desc},
-    "bloodthirst": {"name": "Bloodthirst", "description": _desc},
+    "crimson_feast": {"name": "Crimson Feast", "description": _desc},
     "phantom_reflex": {"name": "Phantom Reflex", "description": _desc},
     "chain_reaction": {"name": "Chain Reaction", "description": _desc},
     "regenerative_tissue": {"name": "Regenerative Tissue", "description": _desc},
     "fevered_strike": {"name": "Fevered Strike", "description": _desc},
     "predators_mark": {"name": "Predator's Mark", "description": _desc},
     "counterforce": {"name": "Counterforce", "description": _desc},
-    "tenacity": {"name": "Tenacity", "description": _desc},
+    "defiance": {"name": "Defiance", "description": _desc},
 }
 
 # ---------------------------------------------------------------------------

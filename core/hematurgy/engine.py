@@ -465,7 +465,7 @@ def on_monster_turn_end(
     if get_h(player, "soul_fracture") is not None and hp_damage > 0:
         player.cs.hema_hp_lost_combat += hp_damage
 
-    # --- Tenacity: one-shot trigger when HP drops below 40% ---
+    # --- Defiance: one-shot trigger when HP drops below 40% ---
     tier_ten = get_h(player, "defiance")
     if (
         tier_ten is not None

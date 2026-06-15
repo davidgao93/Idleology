@@ -140,7 +140,7 @@ class CurioManager:
 
         await bot.database.users.modify_currency(user_id, "curios", -amount)
 
-        return {"summary": dict(summary), "loot_logs": []}
+        return {"summary": dict(summary)}
 
     @staticmethod
     def get_image_url(reward_name: str) -> str:

@@ -10,11 +10,6 @@ from core.hatchery.mechanics import HatcheryMechanics
 
 _EGG_TIER_EMOJI = {"normal": "🥚", "rare": "🪺", "giga": "🐲"}
 _EGG_TIER_LABEL = {"normal": "Normal Egg", "rare": "Rare Egg", "giga": "Giga Egg"}
-_BLOOD_NAMES = {
-    "primordial": "Primordial 🩸",
-    "evolutionary": "Evolutionary 🧬",
-    "mutative": "Mutative ☣️",
-}
 
 
 def _fmt_duration(seconds: int) -> str:

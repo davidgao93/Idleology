@@ -148,12 +148,6 @@ class CurioView(BaseView):
             f"**{k}** x{v}" for k, v in result["summary"].items()
         )
 
-        if result["loot_logs"]:
-            preview = "\n".join(result["loot_logs"][:5])
-            if len(result["loot_logs"]) > 5:
-                preview += f"\n…and {len(result['loot_logs']) - 5} more."
-            embed.add_field(name="Gear Details", value=preview, inline=False)
-
         if amount == 1:
             item_name = list(result["summary"].keys())[0]
             url = CurioManager.get_image_url(item_name)
@@ -203,12 +197,6 @@ class CurioView(BaseView):
         embed.description = "\n".join(
             f"**{k}** x{v}" for k, v in result["summary"].items()
         )
-
-        if result["loot_logs"]:
-            preview = "\n".join(result["loot_logs"][:5])
-            if len(result["loot_logs"]) > 5:
-                preview += f"\n…and {len(result['loot_logs']) - 5} more."
-            embed.add_field(name="Gear Details", value=preview, inline=False)
 
         if amount == 1:
             item_name = list(result["summary"].keys())[0]
