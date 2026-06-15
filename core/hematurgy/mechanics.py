@@ -67,7 +67,15 @@ _TV: dict[str, list] = {
         0.35,
         0.40,
     ],  # ATK+crit-dmg bonus below 30% HP
-    "crimson_feast": [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40],  # Max HP healed on kill
+    "crimson_feast": [
+        0.10,
+        0.15,
+        0.20,
+        0.25,
+        0.30,
+        0.35,
+        0.40,
+    ],  # Max HP healed on kill
     "phantom_reflex": [
         0.10,
         0.15,

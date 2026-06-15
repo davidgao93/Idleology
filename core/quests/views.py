@@ -506,7 +506,9 @@ class QuestBoardView(BaseView):
 
     async def execute_abandon(self, slot: int) -> None:
         """Performs the abandon and refreshes the main message. Called from the confirm view."""
-        await self.bot.database.quests.abandon_contract(self.user_id, self.server_id, slot)
+        await self.bot.database.quests.abandon_contract(
+            self.user_id, self.server_id, slot
+        )
         await self.load()
         active = [c for c in self.contracts if not c["turned_in"]]
         if not active and not self._is_on_cooldown():
@@ -590,7 +592,9 @@ class QuestBoardView(BaseView):
             and current.get("progress", 0) > 0
         )
         if switching_active:
-            confirm = _HorizonSwitchConfirmView(self.bot, self, path_id, path_def["name"])
+            confirm = _HorizonSwitchConfirmView(
+                self.bot, self, path_id, path_def["name"]
+            )
             await interaction.response.send_message(
                 f"Switch to **{path_def['name']}**? Your progress on the current path will be lost.",
                 view=confirm,
@@ -685,9 +689,11 @@ class _AbandonSelect(discord.ui.Select):
     async def callback(self, interaction: Interaction) -> None:
         slot = int(self.values[0])
         contract = next((c for c in self._contracts if c["slot"] == slot), None)
-        quest_def = next(
-            (q for q in DAILY_QUESTS if q["id"] == contract["quest_id"]), None
-        ) if contract else None
+        quest_def = (
+            next((q for q in DAILY_QUESTS if q["id"] == contract["quest_id"]), None)
+            if contract
+            else None
+        )
         quest_label = quest_def["label"] if quest_def else f"Slot {slot}"
         confirm = _AbandonConfirmView(self.view.bot, self.view, slot, quest_label)
         await interaction.response.send_message(

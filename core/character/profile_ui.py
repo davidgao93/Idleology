@@ -866,7 +866,9 @@ class ProfileBuilder:
                     hours_to_cap = max(0.0, (ZEAL_GATHER_CAP - pending_zeal) / rate)
                     available = min(pending_zeal, ZEAL_GATHER_CAP)
                     if available >= ZEAL_GATHER_CAP:
-                        zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — ready to collect!"
+                        zeal_str = (
+                            f"**{available}/{ZEAL_GATHER_CAP}** — ready to collect!"
+                        )
                     elif hours_to_cap < 1.0:
                         zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — cap in <1h"
                     else:

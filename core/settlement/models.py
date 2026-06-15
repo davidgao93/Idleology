@@ -28,7 +28,9 @@ class Building:
     workers_assigned: int
     plot_index: Optional[int] = None  # which grid plot this building sits on
     is_meta: bool = False  # True = meta building (no tiers, no slot cost)
-    is_disabled: bool = False  # True = disabled by crisis event; needs repair to reactivate
+    is_disabled: bool = (
+        False  # True = disabled by crisis event; needs repair to reactivate
+    )
 
     @property
     def name(self) -> str:

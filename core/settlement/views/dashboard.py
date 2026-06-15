@@ -6,7 +6,12 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
-from core.images import CRISIS_MONSTER_IMAGES, MAID_AUTHOR, MAID_SPRITZ_PORTRAIT, SETTLEMENT_BUILDINGS
+from core.images import (
+    CRISIS_MONSTER_IMAGES,
+    MAID_AUTHOR,
+    MAID_SPRITZ_PORTRAIT,
+    SETTLEMENT_BUILDINGS,
+)
 from core.settlement.constants import (
     RESOURCE_DISPLAY_NAMES,
     SETTLEMENT_EVENTS,
@@ -331,7 +336,11 @@ class SettlementDashboardView(SettlementBaseView):
                 filled = int(10 * p["invested_turns"] / max(1, p["required_turns"]))
                 bar = "█" * filled + "░" * (10 - filled)
                 _pdata = p.get("data", {})
-                label = _pdata.get("display_label") or _pdata.get("building_type") or p["project_type"]
+                label = (
+                    _pdata.get("display_label")
+                    or _pdata.get("building_type")
+                    or p["project_type"]
+                )
                 proj_lines.append(
                     f"🔨 {label.replace('_', ' ').title()} — {pct}% `{bar}`"
                 )
@@ -403,12 +412,18 @@ class SettlementDashboardView(SettlementBaseView):
                 cr = turn_summary["crisis_result"]
                 if cr.get("won"):
                     zeal = cr.get("zeal_earned", 50)
-                    lines.append(f"⚔️ **{cr['event_name']} repelled!** Your settlement is safe. +{zeal} Zeal awarded.")
+                    lines.append(
+                        f"⚔️ **{cr['event_name']} repelled!** Your settlement is safe. +{zeal} Zeal awarded."
+                    )
                 else:
-                    lines.append(f"💀 **{cr['event_name']} — crisis not prevented.** Check your buildings for damage.")
+                    lines.append(
+                        f"💀 **{cr['event_name']} — crisis not prevented.** Check your buildings for damage."
+                    )
             if turn_summary.get("crisis_events_fired"):
                 for e in turn_summary["crisis_events_fired"]:
-                    lines.append(f"❌ Crisis expired: **{e}** — the crisis has taken hold. Check your buildings.")
+                    lines.append(
+                        f"❌ Crisis expired: **{e}** — the crisis has taken hold. Check your buildings."
+                    )
             if turn_summary.get("events_expired"):
                 for e in turn_summary["events_expired"]:
                     lines.append(f"⏹️ Event ended: {e}")
@@ -634,7 +649,9 @@ class SettlementDashboardView(SettlementBaseView):
 
         _pz = min(self._cached_pending_zeal, ZEAL_GATHER_CAP)
         gather_zeal_btn = ui.Button(
-            label=f"Gather Zeal ({_pz}/{ZEAL_GATHER_CAP})" if _pz > 0 else f"Gather Zeal (cap {ZEAL_GATHER_CAP})",
+            label=f"Gather Zeal ({_pz}/{ZEAL_GATHER_CAP})"
+            if _pz > 0
+            else f"Gather Zeal (cap {ZEAL_GATHER_CAP})",
             style=ButtonStyle.blurple,
             emoji="🔥",
             row=1,
@@ -1247,7 +1264,8 @@ class SettlementDashboardView(SettlementBaseView):
             current_op = self.bot.state_manager.active_operations.get(uid, (None, 0))[0]
             if current_op and current_op != "settlement":
                 await interaction.followup.send(
-                    "You're already in another activity. Finish it first.", ephemeral=True
+                    "You're already in another activity. Finish it first.",
+                    ephemeral=True,
                 )
                 return
 
@@ -1276,8 +1294,16 @@ class SettlementDashboardView(SettlementBaseView):
             crisis_image = CRISIS_MONSTER_IMAGES.get(spawn_key, "")
 
             base_monster = Monster(
-                name=enemy_name, level=0, hp=0, max_hp=0, xp=0,
-                attack=0, defence=0, modifiers=[], image=crisis_image, flavor="",
+                name=enemy_name,
+                level=0,
+                hp=0,
+                max_hp=0,
+                xp=0,
+                attack=0,
+                defence=0,
+                modifiers=[],
+                image=crisis_image,
+                flavor="",
             )
             monster = await generate_encounter(player, base_monster, is_treasure=False)
             # Override name and image with the crisis-specific values
@@ -1292,7 +1318,9 @@ class SettlementDashboardView(SettlementBaseView):
             reset_combat_transients(player)
 
             combat_embed = combat_ui.create_combat_embed(
-                player, monster, start_logs,
+                player,
+                monster,
+                start_logs,
                 title_override=f"⚔️ Crisis: {enemy_name}",
             )
 
@@ -1316,13 +1344,17 @@ class SettlementDashboardView(SettlementBaseView):
                             await self.bot.database.settlement.disable_building(b.id)
 
                 # Reload settlement state and transition the message back to the dashboard.
-                self.settlement = await self.bot.database.settlement.get_settlement(uid, sid)
+                self.settlement = await self.bot.database.settlement.get_settlement(
+                    uid, sid
+                )
                 _plot_rows = await self.bot.database.plots.get_plots(uid, sid)
                 self.plots = [
                     Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
                     for r in _plot_rows
                 ]
-                self.projects = await self.bot.database.settlement.get_projects(uid, sid)
+                self.projects = await self.bot.database.settlement.get_projects(
+                    uid, sid
+                )
                 self._cached_active_events = (
                     await self.bot.database.settlement.get_active_events(uid, sid)
                 )
@@ -1339,7 +1371,8 @@ class SettlementDashboardView(SettlementBaseView):
                 if self.message:
                     try:
                         await self.message.edit(
-                            embed=self.build_embed(turn_summary=crisis_summary), view=self
+                            embed=self.build_embed(turn_summary=crisis_summary),
+                            view=self,
                         )
                     except Exception:
                         pass
@@ -1348,7 +1381,12 @@ class SettlementDashboardView(SettlementBaseView):
             self.bot.state_manager.set_active(uid, "combat")
 
             view = CombatView(
-                self.bot, uid, sid, player, monster, start_logs,
+                self.bot,
+                uid,
+                sid,
+                player,
+                monster,
+                start_logs,
                 combat_phases=[None],
                 crisis_callback=_crisis_end,
             )

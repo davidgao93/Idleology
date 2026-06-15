@@ -163,7 +163,11 @@ async def process_next_turn(
     nursery_building = await bot.database.settlement.get_building_by_type(
         user_id, server_id, "nursery"
     )
-    if nursery_building and nursery_building.workers_assigned > 0 and not nursery_building.is_disabled:
+    if (
+        nursery_building
+        and nursery_building.workers_assigned > 0
+        and not nursery_building.is_disabled
+    ):
         nursery_mult = event_effects.get("nursery_mult", 1.0)
         workers = int(
             WORKERS_PER_TURN_BASE

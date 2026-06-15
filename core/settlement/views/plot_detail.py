@@ -11,20 +11,18 @@ Handles three states:
 from __future__ import annotations
 
 import asyncio
-import random
 
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
-from core.images import SETTLEMENT_BUILDINGS, SETTLEMENT_CONSTRUCTION, SETTLEMENT_HUB
+from core.images import SETTLEMENT_BUILDINGS, SETTLEMENT_CONSTRUCTION
 from core.settlement.constants import (
-    BUILD_MESSAGES,
     BUILDING_INFO,
-    CONSTRUCTION_COSTS,
     RESOURCE_DISPLAY_NAMES,
 )
+from core.settlement.encounter import get_repair_cost
 from core.settlement.mechanics import SettlementMechanics
-from core.settlement.models import Building, Plot, Settlement
+from core.settlement.models import Building, Plot
 from core.settlement.plots import (
     META_BUILDINGS,
     PLOT_BONUS_AFFECTED,
@@ -33,9 +31,9 @@ from core.settlement.plots import (
     get_effective_max_workers,
     roll_plot_bonus,
 )
-from core.settlement.encounter import get_repair_cost
-from core.settlement.turn_engine import upgrade_dt_cost  # noqa: F401 — used for DT display
-from core.settlement.views.research import RESEARCHABLE_BUILDINGS
+from core.settlement.turn_engine import (
+    upgrade_dt_cost,  # noqa: F401 — used for DT display
+)
 
 from .base import SettlementBaseView
 
@@ -367,7 +365,9 @@ class PlotWorkerModal(ui.Modal, title="Manage Workforce"):
             adj_shrine_cap_x2=adj.get("shrine_cap_x2", False),
             has_watchtower=adj.get("has_watchtower", False),
         )
-        total_assigned = sum(bld.workers_assigned for bld in pv.parent.settlement.buildings)
+        total_assigned = sum(
+            bld.workers_assigned for bld in pv.parent.settlement.buildings
+        )
         free = pv.parent.follower_count - (total_assigned - b.workers_assigned)
 
         self.count = ui.TextInput(
@@ -512,7 +512,11 @@ class PlotDetailView(SettlementBaseView):
             bonus_label = (
                 f"{bonus_data.get('emoji', '')} **{bonus_data['label']}**\n"
                 f"{bonus_data['description']}"
-                + (f"\n-# Affects: {_affected}" if _affected and _affected != "None" else "")
+                + (
+                    f"\n-# Affects: {_affected}"
+                    if _affected and _affected != "None"
+                    else ""
+                )
             )
         else:
             bonus_label = ""
@@ -787,7 +791,10 @@ class PlotDetailView(SettlementBaseView):
         )
         zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
         view = BlackMarketView(
-            self.bot, self.user_id, self, self.building,
+            self.bot,
+            self.user_id,
+            self,
+            self.building,
             has_pending_deal=bool(pending_deal),
         )
         await interaction.edit_original_response(

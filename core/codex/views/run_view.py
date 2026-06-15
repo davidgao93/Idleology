@@ -585,6 +585,7 @@ class CodexRunView(BaseView):
         self.waves_cleared_this_run += 1
 
         from core.combat.turns.boundary import fire_on_victory_effects
+
         fire_on_victory_effects(self.player)
 
         if self.wave_num in (3, 6):

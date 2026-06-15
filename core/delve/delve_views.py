@@ -286,9 +286,7 @@ class DelveView(BaseView):
                 embed=self.build_embed("Scanners activated."), view=self
             )
 
-    @ui.button(
-        label="Reinforce (-5 Fuel)", style=ButtonStyle.success, emoji="🏗️", row=1
-    )
+    @ui.button(label="Reinforce (-5 Fuel)", style=ButtonStyle.success, emoji="🏗️", row=1)
     async def reinforce(self, interaction: Interaction, button: ui.Button):
         await self._safe_process(interaction, self._reinforce_logic)
 
@@ -527,17 +525,17 @@ class DelveUpgradeView(BaseView):
         self.children[0].disabled = shards < fuel_cost or self.stats["fuel_lvl"] >= 10
 
         struct_cost = DelveMechanics.get_upgrade_cost(self.stats["struct_lvl"])
-        self.children[1].label = (
-            f"Struct Lvl {self.stats['struct_lvl']} ({struct_cost} 💎)"
-        )
+        self.children[
+            1
+        ].label = f"Struct Lvl {self.stats['struct_lvl']} ({struct_cost} 💎)"
         self.children[1].disabled = (
             shards < struct_cost or self.stats["struct_lvl"] >= 10
         )
 
         sensor_cost = DelveMechanics.get_upgrade_cost(self.stats["sensor_lvl"])
-        self.children[2].label = (
-            f"Sensor Lvl {self.stats['sensor_lvl']} ({sensor_cost} 💎)"
-        )
+        self.children[
+            2
+        ].label = f"Sensor Lvl {self.stats['sensor_lvl']} ({sensor_cost} 💎)"
         self.children[2].disabled = (
             shards < sensor_cost or self.stats["sensor_lvl"] >= 8
         )

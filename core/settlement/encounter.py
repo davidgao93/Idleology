@@ -142,8 +142,13 @@ async def run_settlement_encounter(
         from core.combat.economy.victory import apply_victory_rewards
 
         reward_data = await apply_victory_rewards(
-            bot, user_id, server_id, sim_player, monster,
-            message=None, combat_logger=None,
+            bot,
+            user_id,
+            server_id,
+            sim_player,
+            monster,
+            message=None,
+            combat_logger=None,
         )
         await bot.database.users.update_from_player_object(sim_player)
         # +50 Zeal bonus for defending the settlement.

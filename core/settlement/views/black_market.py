@@ -98,49 +98,164 @@ _BM_RESOURCE_PAGES: list[list[tuple[str, str]]] = [
 
 # Flat key→label lookup built from all pages
 _BM_ALL_LABELS: dict[str, str] = {
-    key: label
-    for page in _BM_RESOURCE_PAGES
-    for key, label in page
+    key: label for page in _BM_RESOURCE_PAGES for key, label in page
 }
 
 # Category filter buttons: (id, button_label, [resource_keys])
 _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
     ("settlement", "🏗️ Settlement", ["timber", "stone"]),
-    ("mining", "⛏️ Mining", [
-        "iron", "coal", "gold", "platinum", "idea",
-        "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar",
-    ]),
-    ("lumber", "🌲 Lumber", [
-        "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
-        "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank",
-    ]),
-    ("fishing", "🦴 Fishing", [
-        "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
-        "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence",
-    ]),
-    ("valuables", "💎 Valuables", [
-        "refinement_runes", "potential_runes", "shatter_runes", "imbue_runes",
-        "dragon_key", "angel_key", "soul_cores", "balance_fragment", "void_frags",
-        "magma_core", "life_root", "spirit_shard", "curios", "unidentified_blueprint",
-        "spirit_stones", "celestial_stone", "infernal_cinder", "void_crystal",
-        "bound_crystal", "corrupted_crystal", "blessed_bismuth", "sparkling_sprig", "capricious_carp",
-    ]),
+    (
+        "mining",
+        "⛏️ Mining",
+        [
+            "iron",
+            "coal",
+            "gold",
+            "platinum",
+            "idea",
+            "iron_bar",
+            "steel_bar",
+            "gold_bar",
+            "platinum_bar",
+            "idea_bar",
+        ],
+    ),
+    (
+        "lumber",
+        "🌲 Lumber",
+        [
+            "oak_logs",
+            "willow_logs",
+            "mahogany_logs",
+            "magic_logs",
+            "idea_logs",
+            "oak_plank",
+            "willow_plank",
+            "mahogany_plank",
+            "magic_plank",
+            "idea_plank",
+        ],
+    ),
+    (
+        "fishing",
+        "🦴 Fishing",
+        [
+            "desiccated_bones",
+            "regular_bones",
+            "sturdy_bones",
+            "reinforced_bones",
+            "titanium_bones",
+            "desiccated_essence",
+            "regular_essence",
+            "sturdy_essence",
+            "reinforced_essence",
+            "titanium_essence",
+        ],
+    ),
+    (
+        "valuables",
+        "💎 Valuables",
+        [
+            "refinement_runes",
+            "potential_runes",
+            "shatter_runes",
+            "imbue_runes",
+            "dragon_key",
+            "angel_key",
+            "soul_cores",
+            "balance_fragment",
+            "void_frags",
+            "magma_core",
+            "life_root",
+            "spirit_shard",
+            "curios",
+            "unidentified_blueprint",
+            "spirit_stones",
+            "celestial_stone",
+            "infernal_cinder",
+            "void_crystal",
+            "bound_crystal",
+            "corrupted_crystal",
+            "blessed_bismuth",
+            "sparkling_sprig",
+            "capricious_carp",
+        ],
+    ),
 ]
 
 # Resources stored in skill / settlement tables vs. user currency columns
 _SETTLEMENT_RESOURCE_KEYS: frozenset[str] = frozenset(["timber", "stone"])
-_SKILL_RESOURCE_KEYS: frozenset[str] = frozenset([
-    "iron", "coal", "gold", "platinum", "idea",
-    "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar",
-    "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
-    "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank",
-    "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
-    "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence",
-])
+_SKILL_RESOURCE_KEYS: frozenset[str] = frozenset(
+    [
+        "iron",
+        "coal",
+        "gold",
+        "platinum",
+        "idea",
+        "iron_bar",
+        "steel_bar",
+        "gold_bar",
+        "platinum_bar",
+        "idea_bar",
+        "oak_logs",
+        "willow_logs",
+        "mahogany_logs",
+        "magic_logs",
+        "idea_logs",
+        "oak_plank",
+        "willow_plank",
+        "mahogany_plank",
+        "magic_plank",
+        "idea_plank",
+        "desiccated_bones",
+        "regular_bones",
+        "sturdy_bones",
+        "reinforced_bones",
+        "titanium_bones",
+        "desiccated_essence",
+        "regular_essence",
+        "sturdy_essence",
+        "reinforced_essence",
+        "titanium_essence",
+    ]
+)
 
-_MINING_COLS = ["iron", "coal", "gold", "platinum", "idea", "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"]
-_WOOD_COLS = ["oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs", "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank"]
-_FISH_COLS = ["desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones", "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence"]
+_MINING_COLS = [
+    "iron",
+    "coal",
+    "gold",
+    "platinum",
+    "idea",
+    "iron_bar",
+    "steel_bar",
+    "gold_bar",
+    "platinum_bar",
+    "idea_bar",
+]
+_WOOD_COLS = [
+    "oak_logs",
+    "willow_logs",
+    "mahogany_logs",
+    "magic_logs",
+    "idea_logs",
+    "oak_plank",
+    "willow_plank",
+    "mahogany_plank",
+    "magic_plank",
+    "idea_plank",
+]
+_FISH_COLS = [
+    "desiccated_bones",
+    "regular_bones",
+    "sturdy_bones",
+    "reinforced_bones",
+    "titanium_bones",
+    "desiccated_essence",
+    "regular_essence",
+    "sturdy_essence",
+    "reinforced_essence",
+    "titanium_essence",
+]
 
 
 async def _load_player_inventory(bot, user_id: str, server_id: str) -> dict[str, int]:
@@ -165,7 +280,12 @@ async def _load_player_inventory(bot, user_id: str, server_id: str) -> dict[str,
         for i, col in enumerate(_FISH_COLS):
             inv[col] = int(skill_fish[3 + i]) if len(skill_fish) > 3 + i else 0
 
-    valuables = [k for cat_id, _lbl, keys in _BM_CATEGORIES if cat_id == "valuables" for k in keys]
+    valuables = [
+        k
+        for cat_id, _lbl, keys in _BM_CATEGORIES
+        if cat_id == "valuables"
+        for k in keys
+    ]
     for key in valuables:
         try:
             inv[key] = int(await bot.database.users.get_currency(user_id, key))
@@ -187,7 +307,15 @@ _MAX_GREETINGS = [
 class BlackMarketView(SettlementBaseView):
     """Main Black Market hub — shows pending deal, make offer, passive tree."""
 
-    def __init__(self, bot, user_id: str, parent_view, building, *, has_pending_deal: bool = False):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        parent_view,
+        building,
+        *,
+        has_pending_deal: bool = False,
+    ):
         super().__init__(bot, user_id)
         self.parent = parent_view
         self.server_id = parent_view.server_id
@@ -200,7 +328,10 @@ class BlackMarketView(SettlementBaseView):
         self.clear_items()
 
         offer_btn = ui.Button(
-            label="Make Offer", style=ButtonStyle.primary, emoji="📦", row=0,
+            label="Make Offer",
+            style=ButtonStyle.primary,
+            emoji="📦",
+            row=0,
             disabled=self.has_pending_deal,
         )
         offer_btn.callback = self._on_make_offer
@@ -459,7 +590,9 @@ class OfferBuilderView(SettlementBaseView):
 
     def _category_options(self) -> list[SelectOption]:
         """Build select options for the current category, filtered to owned + not-yet-offered."""
-        _, _lbl, keys = next(c for c in _BM_CATEGORIES if c[0] == self._current_category)
+        _, _lbl, keys = next(
+            c for c in _BM_CATEGORIES if c[0] == self._current_category
+        )
         options = []
         for key in keys:
             if key in self._offer:
@@ -469,11 +602,13 @@ class OfferBuilderView(SettlementBaseView):
                 continue  # player doesn't have any
             label = _BM_ALL_LABELS.get(key, key)
             unit_val = BM_ITEM_VALUES.get(key, 0)
-            options.append(SelectOption(
-                label=label,
-                value=key,
-                description=f"Owned: {qty:,} | {unit_val:,}/unit",
-            ))
+            options.append(
+                SelectOption(
+                    label=label,
+                    value=key,
+                    description=f"Owned: {qty:,} | {unit_val:,}/unit",
+                )
+            )
         return options[:25]
 
     def _build_ui(self) -> None:
@@ -501,7 +636,9 @@ class OfferBuilderView(SettlementBaseView):
         for cat_id, cat_label, _ in _BM_CATEGORIES:
             btn = ui.Button(
                 label=cat_label,
-                style=ButtonStyle.blurple if cat_id == self._current_category else ButtonStyle.secondary,
+                style=ButtonStyle.blurple
+                if cat_id == self._current_category
+                else ButtonStyle.secondary,
                 row=1,
             )
             btn.callback = self._make_category_switch(cat_id)
@@ -551,7 +688,10 @@ class OfferBuilderView(SettlementBaseView):
             await interaction.response.defer()
             self._current_category = cat_id
             self._build_ui()
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
+
         return callback
 
     def _make_bias_toggle(self, node_key: str):
@@ -562,11 +702,16 @@ class OfferBuilderView(SettlementBaseView):
             else:
                 self._active_biases.append(node_key)
             self._build_ui()
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
+
         return callback
 
     def build_embed(self) -> discord.Embed:
-        _, cat_label, _ = next(c for c in _BM_CATEGORIES if c[0] == self._current_category)
+        _, cat_label, _ = next(
+            c for c in _BM_CATEGORIES if c[0] == self._current_category
+        )
         embed = discord.Embed(
             title="📦 Build Your Offer",
             description=(
@@ -581,7 +726,9 @@ class OfferBuilderView(SettlementBaseView):
 
         if self._offer:
             offer_lines = []
-            estimated = calculate_offer_value(self._offer, self.tree_nodes, self.building.tier)
+            estimated = calculate_offer_value(
+                self._offer, self.tree_nodes, self.building.tier
+            )
             for key, qty in self._offer.items():
                 label = _BM_ALL_LABELS.get(key, key)
                 val = BM_ITEM_VALUES.get(key, 0) * qty
@@ -591,7 +738,9 @@ class OfferBuilderView(SettlementBaseView):
                 value="\n".join(offer_lines),
                 inline=False,
             )
-            turns = compute_processing_turns(estimated, self.building.tier, self.tree_nodes)
+            turns = compute_processing_turns(
+                estimated, self.building.tier, self.tree_nodes
+            )
             embed.add_field(
                 name="⏭️ Estimated Processing",
                 value=f"**{turns}** Development Turn(s)",
@@ -605,8 +754,14 @@ class OfferBuilderView(SettlementBaseView):
             )
 
         if self._active_biases:
-            bias_names = [BM_TREE_NODES[b]["name"] for b in self._active_biases if b in BM_TREE_NODES]
-            embed.add_field(name="🎯 Active Biases", value=", ".join(bias_names), inline=True)
+            bias_names = [
+                BM_TREE_NODES[b]["name"]
+                for b in self._active_biases
+                if b in BM_TREE_NODES
+            ]
+            embed.add_field(
+                name="🎯 Active Biases", value=", ".join(bias_names), inline=True
+            )
 
         return embed
 
@@ -641,7 +796,9 @@ class OfferBuilderView(SettlementBaseView):
 
         try:
             if not self._offer:
-                await interaction.followup.send("Nothing in your offer.", ephemeral=True)
+                await interaction.followup.send(
+                    "Nothing in your offer.", ephemeral=True
+                )
                 return
 
             uid = self.user_id
@@ -669,7 +826,9 @@ class OfferBuilderView(SettlementBaseView):
                     user_currency_changes[res] = user_currency_changes.get(res, 0) - qty
 
             if settlement_changes:
-                await self.bot.database.settlement.commit_production(uid, sid, settlement_changes)
+                await self.bot.database.settlement.commit_production(
+                    uid, sid, settlement_changes
+                )
             for cur, delta in user_currency_changes.items():
                 try:
                     await self.bot.database.users.modify_currency(uid, cur, delta)

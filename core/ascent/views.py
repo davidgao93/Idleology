@@ -500,6 +500,7 @@ class AscentView(BaseView):
             pinnacle_gained = label
 
         from core.combat.turns.boundary import fire_on_victory_effects
+
         fire_on_victory_effects(self.player)
 
         # Skiller boot passive

@@ -23,7 +23,10 @@ from core.combat.economy.config import (
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.victory import apply_victory_rewards
 from core.combat.mobgen.gen_mob import generate_boss
-from core.combat.turns.boundary import fire_on_victory_effects, reset_for_phase_transition
+from core.combat.turns.boundary import (
+    fire_on_victory_effects,
+    reset_for_phase_transition,
+)
 from core.combat.turns import engine
 from core.combat.views.views_lucifer import LuciferChoiceView
 from core.combat.views.views_prestige_boss import PrestigeBossHarvestView

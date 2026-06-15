@@ -19,7 +19,9 @@ _EXP_TABLE: dict = {}
 def _load_exp_table() -> dict:
     global _EXP_TABLE
     if not _EXP_TABLE:
-        path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "exp.json")
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "..", "assets", "exp.json"
+        )
         with open(path, encoding="utf-8") as f:
             _EXP_TABLE = json.load(f)["levels"]
     return _EXP_TABLE
@@ -34,6 +36,8 @@ def _exp_progress_str(level: int, exp: int) -> str:
         return ""
     pct = min(99.9, exp / needed * 100)
     return f"{pct:.1f}% to Lv.{level + 1}"
+
+
 from core.items.models import _PART_SLOT_LABELS
 from core.models import Monster, Player
 

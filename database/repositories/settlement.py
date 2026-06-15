@@ -128,9 +128,16 @@ class SettlementRepository:
         if not r:
             return None
         return Building(
-            id=r[0], user_id=r[1], server_id=r[2], building_type=r[3],
-            tier=r[4], slot_index=r[5], workers_assigned=r[6],
-            plot_index=r[7], is_meta=bool(r[8]), is_disabled=bool(r[9]),
+            id=r[0],
+            user_id=r[1],
+            server_id=r[2],
+            building_type=r[3],
+            tier=r[4],
+            slot_index=r[5],
+            workers_assigned=r[6],
+            plot_index=r[7],
+            is_meta=bool(r[8]),
+            is_disabled=bool(r[9]),
         )
 
     async def update_collection_timer(self, user_id: str, server_id: str):
@@ -535,7 +542,9 @@ class SettlementRepository:
         except Exception:
             return 0
 
-    async def spend_pending_zeal(self, user_id: str, server_id: str, amount: int) -> None:
+    async def spend_pending_zeal(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         """Deducts *amount* from pending_zeal (floors at 0). Does NOT credit settlement_zeal."""
         await self.connection.execute(
             "UPDATE settlements SET pending_zeal = MAX(0, pending_zeal - ?) "

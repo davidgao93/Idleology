@@ -143,10 +143,7 @@ class BuildingDetailView(SettlementBaseView):
                     f"**Processing Rates:** Assign workers to start converting."
                 )
         elif self.building.building_type == "black_market":
-            desc = (
-                f"**Level:** {self.building.tier}/5\n"
-                f"**Type:** Special"
-            )
+            desc = f"**Level:** {self.building.tier}/5\n**Type:** Special"
         else:
             desc = (
                 f"**Level:** {self.building.tier}/5\n"
@@ -448,9 +445,7 @@ class BuildingDetailView(SettlementBaseView):
             queued_embed.set_thumbnail(url=thumb)
 
         self._processing = False
-        await interaction.edit_original_response(
-            embed=queued_embed, view=self.parent
-        )
+        await interaction.edit_original_response(embed=queued_embed, view=self.parent)
         self.stop()
 
     async def open_hatchery(self, interaction: Interaction):
