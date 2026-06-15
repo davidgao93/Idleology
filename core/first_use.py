@@ -185,34 +185,12 @@ TUTORIALS: dict[str, dict] = {
         "description": (
             "Alchemy is your hub for resource transmutation, Cosmic Dust synthesis/disenchanting, "
             "and — most importantly — **Distilling powerful potion passives**. "
-            "Use the Potion Lab's Distill Elixir for the 9-step system (see Passives tutorial)."
+            "Use the Potion Lab's Distill Elixir for the 9-step system."
         ),
         "tips": [
             "Level up to unlock more passive slots and better transmutation/synthesis rates.",
             "Cosmic Dust (from disenchanting keys/essences) powers the new Distillation system.",
             "Transmute gathering resources here for upgrade materials.",
-        ],
-        "image": ALCHEMY_HUB,
-        "color": discord.Color.purple(),
-    },
-    "passives": {
-        "title": "🧪 Potion Passives (Distillation)",
-        "description": (
-            "Potion passives are now crafted exclusively via the **9-step Distillation** system in the Potion Lab. "
-            "First choose a core 'skill' (powerful base effect like Panacea, Eclipse Strike, Astral Aegis, etc.). "
-            "The three options each display a brief description of what the passive does together with the possible roll ranges for its strength and duration. "
-            "Then over 8 reagent steps you tune Duration Power (how long it lasts) and Value Power (how strong it is). "
-            "Each reagent step draws three special properties from a wide weighted pool (middle outcomes are common; extremely powerful effects like 'all future steps free' or 'this step cannot decrease anything' are rare). "
-            "The properties are shown in the embed so you know exactly what each colored choice will do. Buttons preview your dust after the choice, e.g. (68->60). "
-            "Background resolution (nothing / inc or dec on duration or power) is modified by the property you picked (slightly lucky doubles good rolls and takes the better; very lucky re-rolls on bad results and picks the best-of; safe steps never decrease, etc.). "
-            "The final passive is placed in a slot and is far more encounter-changing than legacy effects."
-        ),
-        "tips": [
-            "Core chosen in step 1 is fixed for the run; reagents only tune its two power axes.",
-            "At every reagent step the three special properties (cost mods, lucky, safe, free steps, guarantees, very rare powerful bonuses...) are freshly sampled and displayed — read them before clicking.",
-            "🟢 Verdant tends toward stable value. 🔵 Astral balanced. 🔴 Crimson higher variance and dramatic events.",
-            "Track the two accumulators and active effects in the embed. Dust balance is always visible.",
-            "Distilled passives go into slots (Alchemy level unlocks more) and are the only way to obtain powerful potion passives now.",
         ],
         "image": ALCHEMY_HUB,
         "color": discord.Color.purple(),

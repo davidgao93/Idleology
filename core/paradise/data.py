@@ -136,7 +136,6 @@ SKILL_JEWELS: dict[str, SkillJewelDef] = {
     ),
 }
 
-ALL_SKILL_KEYS: list[str] = list(SKILL_JEWELS.keys())
 
 
 # ---------------------------------------------------------------------------
@@ -326,8 +325,7 @@ SPEC_PASSIVE_KEYS: list[str] = [k for k in PASSIVES if k.startswith("spec_")]
 # Weighted pool: specs are "rare" — appear at 1/4 the rate of general passives
 REROLL_TYPE_POOL: list[str] = GENERAL_PASSIVE_KEYS * 4 + SPEC_PASSIVE_KEYS
 
-# Passive slot unlock costs per slot index (0-indexed)
-PASSIVE_SLOT_COSTS: list[int] = [1, 3, 5, 10, 15]
+# Passive slot unlock thresholds per slot index (0-indexed)
 PASSIVE_SLOT_THRESHOLDS: list[int] = [1, 4, 9, 19, 34]
 
 # Cosmic Dust costs

@@ -849,18 +849,6 @@ class CodexRunView(BaseView):
         await interaction.response.defer()
         await self._execute_turn(message=interaction.message)
 
-    # @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹", row=0)
-    # async def _heal_btn(self, interaction: Interaction, button: ui.Button):
-    #     await interaction.response.defer()
-    #     message = interaction.message
-    #     heal_log = engine.process_heal(self.player, self.monster)
-    #     self.logs = {"Heal": heal_log}
-    #     if self.monster.hp > 0:
-    #         m_log = engine.process_monster_turn(self.player, self.monster)
-    #         self.combat_logger.log_monster_turn(m_log, self.player)
-    #         self.logs[self.monster.name] = m_log
-    #     await self._check_state(message=message)
-
     @ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩", row=0)
     async def _auto_btn(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()

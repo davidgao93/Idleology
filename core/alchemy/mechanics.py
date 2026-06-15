@@ -65,9 +65,6 @@ class AlchemyMechanics:
     # All potion passives now come exclusively from the Distillation system.
     # Any pre-existing legacy passives in a player's DB will show by key (no mechanical effect).
 
-    # Spirit Stone cost for any reroll-like actions (kept for level-up free roll concept if re-added)
-    REROLL_COST: int = 1  # spirit stones
-
     # ------------------------------------------------------------------
     # Transmutation resource definitions
     # ------------------------------------------------------------------
@@ -1009,30 +1006,6 @@ class DistillationMechanics:
                 return events[i]
         return events[-1]
 
-    @staticmethod
-    def _roll_tier(event: Optional[dict], mods: dict) -> int:
-        """Legacy tier roll (kept for any fallback paths). 0=nothing ... 3=a lot."""
-        lucky = bool(mods.get("lucky")) or (
-            event and event.get("effect", {}).get("this_lucky")
-        )
-        unlucky = bool(mods.get("future_free_but_unlucky"))
-
-        if event and event.get("effect", {}).get("force_nothing"):
-            return 0
-        if event and "min_tier" in event.get("effect", {}):
-            min_t = {"nothing": 0, "little": 1, "good": 2, "a lot": 3}.get(
-                event["effect"]["min_tier"], 1
-            )
-            return max(min_t, 2 if lucky else 1)
-
-        if lucky:
-            roll = random.choices([1, 2, 3], weights=[10, 35, 55])[0]
-        elif unlucky:
-            roll = random.choices([0, 1, 2], weights=[25, 50, 25])[0]
-        else:
-            roll = random.choices([0, 1, 2, 3], weights=[8, 32, 42, 18])[0]
-        return roll
-
     # ------------------------------------------------------------------
     # New background outcome + property-driven resolution (per latest spec)
     # ------------------------------------------------------------------
@@ -1219,20 +1192,6 @@ class DistillationMechanics:
             "delta": round(delta, 1) if delta else 0.0,
             "tier_desc": tier_desc,
         }
-
-    @staticmethod
-    def _tier_to_gain(tier: int, gain_type: str, alchemy_level: int) -> float:
-        """Convert tier + alch level into a numeric bonus added to the accumulator."""
-        if tier == 0:
-            return 0.0
-
-        # Base "a little" at this level
-        base = 0.8 + (alchemy_level - 1) * 0.15
-        if gain_type == "duration":
-            base *= 0.9  # duration is a bit more "valuable" per point in many designs
-
-        mult = {1: 1.0, 2: 2.2, 3: 4.0}[tier]  # little / good / a lot
-        return round(base * mult, 1)
 
     @staticmethod
     def finalize(session: dict) -> tuple[str, float, float]:

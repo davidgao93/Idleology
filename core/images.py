@@ -358,14 +358,3 @@ APEX_ENTROPY_ENGINE = "https://cdn.discordapp.com/attachments/133463741136332399
 APEX_NEXUS_ABOMINATION = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612122026283258/nexus_abomination.jpg?ex=6a19cf59&is=6a187dd9&hm=e7075d92b22650c3a8b05a55a94a5c56bbcb1ded4d405ea2546891d717e27e24&"
 APEX_RIFT_LEVIATHAN = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612122735120434/rift_leviathan.jpg?ex=6a19cf59&is=6a187dd9&hm=053b56c2498cc3873dc79861d2d7f7df005cfb5552dfa566eac6ef379c03c72e&"
 
-# ── PARTNER AFFINITY STORY IMAGES ─────────────────────────────────────────────
-# Used in AffinityStoryView (set_image for story illustrations)
-EVE_AFFINITY_1 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612101461872721/eve_affinity_1.jpg?ex=6a19cf54&is=6a187dd4&hm=db300ee0e6ec4c142501fe2d293fb30bd2f0ff7a74f1726e7f89aa7f2a0a6613&"
-EVE_AFFINITY_2 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612101705011440/eve_affinity_2.jpg?ex=6a19cf54&is=6a187dd4&hm=c629797840d2d3c423d5d86b78d78d626988ad66887c71d67fb44c58507b6d96&"
-EVE_AFFINITY_3 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612101960990761/eve_affinity_3.jpg?ex=6a19cf54&is=6a187dd4&hm=3b74ba71c56b630f86f0b296e380453081682daceb4ca97a1b3962828abf0d5e&"
-EVE_AFFINITY_4 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612102191419442/eve_affinity_4.jpg?ex=6a19cf54&is=6a187dd4&hm=53849de9a63de8b8ab6dfb1ce99d69a1cee0358cb5d8eae6f51503721db45c04&"
-
-KAY_AFFINITY_1 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612111272349876/kay_affinity_1.jpg?ex=6a19cf56&is=6a187dd6&hm=34b8fce01bbc321a8350f59d731b7030561dcc6bb5898e7bf03a3689bf6bc6a9&"
-KAY_AFFINITY_2 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612111570141367/kay_affinity_2.jpg?ex=6a19cf56&is=6a187dd6&hm=293d82d257bc20b73af1106453a405d254f33d5237379d0e4129e0b8c436ede2&"
-KAY_AFFINITY_3 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612111817478254/kay_affinity_3.jpg?ex=6a19cf56&is=6a187dd6&hm=7cc198970203b583e475ab067650c7afbd919b1c6e1381d89815c30a0330282b&"
-KAY_AFFINITY_4 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612112048033992/kay_affinity_4.jpg?ex=6a19cf56&is=6a187dd6&hm=1dbfaa623958f387844bd3bc80bc4c2caac694afc4936da9daa60cbbe13199ae&"

@@ -505,7 +505,7 @@ def pick_party_boss() -> dict:
 _BOSS_NAME_TO_SIGIL: Dict[str, str] = {
     "Aphrodite, the Celestial": "celestial_sigils",
     "Lucifer, the Infernal": "infernal_sigils",
-    "NEET, Void Manifest": "void_shards",
+    "NEET, Void Manifest": "void_sigils",
     "Gemini, Twin Souls": "gemini_sigils",
 }
 

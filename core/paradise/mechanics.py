@@ -288,14 +288,6 @@ def roll_new_passive() -> dict:
 # ---------------------------------------------------------------------------
 
 
-def can_consume_jewel(data: dict) -> bool:
-    """True if there is something useful the player can do with a jewel."""
-    skills_unlocked = len(data.get("unlocked_skills", []))
-    passive_count = get_passive_slot_count(data)
-    # Can unlock more skills (up to 8 total), or invest in passive slots (up to 5)
-    return skills_unlocked < len(SKILL_JEWELS) or passive_count < 5
-
-
 def consume_jewel_unlock_skill(data: dict, skill_key: str) -> str | None:
     """
     Unlocks a skill using one Jewel of Paradise.

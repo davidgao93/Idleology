@@ -529,7 +529,7 @@ class BossPartyProgressView(BaseView):
         _SIGIL_METHODS = {
             "celestial_sigils": self.bot.database.uber.increment_sigils,
             "infernal_sigils": self.bot.database.uber.increment_infernal_sigils,
-            "void_shards": self.bot.database.uber.increment_void_shards,
+            "void_sigils": self.bot.database.uber.increment_void_shards,
             "gemini_sigils": self.bot.database.uber.increment_gemini_sigils,
         }
         sigil_fn = _SIGIL_METHODS.get(sigil_type)
