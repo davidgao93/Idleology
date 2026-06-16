@@ -26,6 +26,7 @@ class GatherView(BaseView):
         # Data cache
         self.user_data = None
         self.skill_data = None
+        self.refined_data = None  # refined amounts parallel to skill resources
         self.uber_data = None
         self.mastery_row = None
 
@@ -46,6 +47,13 @@ class GatherView(BaseView):
         self.skill_data = await self.bot.database.skills.get_data(
             self.user_id, self.server_id, self.current_skill
         )
+        refined_cols = SkillMechanics.get_refined_columns(self.current_skill)
+        if refined_cols:
+            self.refined_data = await self.bot.database.skills.get_multi_resource(
+                self.user_id, self.server_id, self.current_skill, refined_cols
+            )
+        else:
+            self.refined_data = None
         self.uber_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
@@ -240,10 +248,21 @@ class GatherView(BaseView):
         resources = SkillMechanics.map_db_row_to_resources(
             self.current_skill, self.skill_data
         )
-        res_text = (
-            "\n".join([f"**{name}:** {amt:,}" for name, amt in resources if amt > 0])
-            or "No resources gathered."
-        )
+        refined_names = SkillMechanics.get_refined_names(self.current_skill)
+        ref = self.refined_data or ()
+        res_lines = []
+        for i, (raw_name, raw_amt) in enumerate(resources):
+            ref_amt = ref[i] if i < len(ref) else 0
+            ref_name = refined_names[i] if i < len(refined_names) else ""
+            if raw_amt > 0 and ref_amt > 0:
+                res_lines.append(
+                    f"**{raw_name}:** {raw_amt:,}  ·  **{ref_name}:** {ref_amt:,}"
+                )
+            elif raw_amt > 0:
+                res_lines.append(f"**{raw_name}:** {raw_amt:,}")
+            elif ref_amt > 0:
+                res_lines.append(f"**{ref_name}:** {ref_amt:,}")
+        res_text = "\n".join(res_lines) or "No resources gathered."
 
         artisan_pts = 0
         if self.mastery_row:
@@ -257,15 +276,19 @@ class GatherView(BaseView):
             costs = SkillMechanics.get_upgrade_cost(
                 self.current_skill, current_tier, self._get_tool_cost_reduction()
             )
+            ref = self.refined_data or ()
             cost_parts = []
             for i in range(1, 5):
                 qty = costs.get(f"res_{i}", 0)
                 if qty > 0:
-                    res_name = info["resources"][i - 1][1]
-                    cost_parts.append(f"{qty} {res_name}")
+                    raw_name = info["resources"][i - 1][1]
+                    raw_held = self.skill_data[i + 2] if self.skill_data else 0
+                    ref_held = ref[i - 1] if i - 1 < len(ref) else 0
+                    total_held = raw_held + ref_held
+                    cost_parts.append(f"{qty:,} {raw_name} (have: {total_held:,})")
             if costs["gold"] > 0:
                 cost_parts.append(f"{costs['gold']:,} GP")
-            desc += f"\n\n**Next Upgrade:** {next_tier.title()}\n**Costs:** {', '.join(cost_parts)}"
+            desc += f"\n\n**Next Upgrade:** {next_tier.title()}\n**Costs:** {', '.join(cost_parts)}\n*Raw and refined materials are both accepted.*"
 
             # Familiarization gate status
             gate_secs = self._gate_remaining()
@@ -299,11 +322,12 @@ class GatherView(BaseView):
     def _check_affordability(self, costs) -> bool:
         if not costs:
             return False
+        ref = self.refined_data or (0, 0, 0, 0, 0)
         res_held = [
-            self.skill_data[3],
-            self.skill_data[4],
-            self.skill_data[5],
-            self.skill_data[6],
+            self.skill_data[3] + ref[0],
+            self.skill_data[4] + ref[1],
+            self.skill_data[5] + ref[2],
+            self.skill_data[6] + ref[3],
         ]
         gold_held = self.user_data[6]
         if res_held[0] < costs["res_1"]:

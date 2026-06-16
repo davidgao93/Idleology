@@ -127,7 +127,11 @@ class PartnerRosterView(PartnerBaseView):
             return
 
         form_view = BossPartyFormView(
-            self.bot, self.user_id, server_id, self.partners, back_view=self,
+            self.bot,
+            self.user_id,
+            server_id,
+            self.partners,
+            back_view=self,
             player_level=player_level,
         )
         form_view.message = self.message

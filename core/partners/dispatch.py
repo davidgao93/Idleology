@@ -506,7 +506,9 @@ BOSS_PARTY_DURATION_HOURS = 22
 
 def pick_party_boss(player_level: int = 1) -> dict:
     """Returns a randomly chosen boss dict the player is eligible for based on level."""
-    eligible = [b for b in _PARTY_BOSSES if player_level >= _PARTY_BOSS_LEVEL_GATES[b["name"]]]
+    eligible = [
+        b for b in _PARTY_BOSSES if player_level >= _PARTY_BOSS_LEVEL_GATES[b["name"]]
+    ]
     if not eligible:
         eligible = [_PARTY_BOSSES[0]]
     return random.choice(eligible).copy()

@@ -47,9 +47,10 @@ class BaseUpgradeView(BaseView):
         cost: int,
         uid: str,
         gid: str,
-    ):
-        """Deduct cost from raw resources first, then spill into refined."""
-        await self.bot.database.skills.deduct_upgrade_material(
+    ) -> bool:
+        """Deduct cost from raw resources first, then spill into refined.
+        Returns True if the deduction succeeded."""
+        return await self.bot.database.skills.deduct_upgrade_material(
             uid, gid, table, raw_col, ref_col, raw_held, cost
         )
 
@@ -123,6 +124,7 @@ class BaseUpgradeView(BaseView):
         return has_mats, "\n".join(lines)
 
     async def go_back(self, interaction: Interaction):
+        self.bot.state_manager.clear_active(self.user_id)
         # 1. Import inside method to avoid circular import at top of file
         from core.inventory.inventory import InventoryUI
         from core.inventory.views import ItemDetailView

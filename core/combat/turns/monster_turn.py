@@ -690,9 +690,13 @@ def process_monster_turn(
                         total_damage = int(total_damage * (1 - min(0.50, tiers * 0.02)))
                     _tree_nodes = getattr(player, "slayer_tree_nodes", {})
                     if _tree_nodes.get("hu_2") == "def":
-                        total_damage = int(total_damage * 0.85)  # +18% DEF ≈ −15% dmg taken
+                        total_damage = int(
+                            total_damage * 0.85
+                        )  # +18% DEF ≈ −15% dmg taken
                     if _tree_nodes.get("hu_3") == "tank":
-                        total_damage = int(total_damage * 0.75)  # −25% dmg taken vs task
+                        total_damage = int(
+                            total_damage * 0.75
+                        )  # −25% dmg taken vs task
 
                 # Astral Aegis shield (powerful distilled passive) — absorb damage, prevent death while active
                 shield_hp = getattr(player, "alchemy_shield_hp", 0)

@@ -23,7 +23,9 @@ from core.images import (
 from core.models import Monster
 
 
-async def generate_encounter(player, monster, is_treasure, task_species=None, slayer_tree_nodes=None):
+async def generate_encounter(
+    player, monster, is_treasure, task_species=None, slayer_tree_nodes=None
+):
     """Generate an encounter with a monster based on the user's level."""
     if player.level < 5:
         difficulty_multiplier = random.randint(1, 2)
@@ -808,6 +810,7 @@ def generate_uber_gemini(player, monster):
     random.shuffle(boss_pool)
     monster.modifiers.append(make_modifier(boss_pool[0], monster.level))
 
+    finalize_monster_spawn(monster)
     return monster
 
 

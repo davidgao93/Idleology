@@ -78,36 +78,45 @@ class ForgeView(BaseUpgradeView):
             self.inventory_snapshot, uid, gid
         )
 
-        await self._deduct_smart(
-            "mining",
-            ore["raw_col"],
-            ore["ref_col"],
-            live_ore[0],
-            self.costs["ore_qty"],
-            uid,
-            gid,
+        mats_ok = (
+            await self._deduct_smart(
+                "mining",
+                ore["raw_col"],
+                ore["ref_col"],
+                live_ore[0],
+                self.costs["ore_qty"],
+                uid,
+                gid,
+            )
+            and await self._deduct_smart(
+                "woodcutting",
+                log["raw_col"],
+                log["ref_col"],
+                live_log[0],
+                self.costs["log_qty"],
+                uid,
+                gid,
+            )
+            and await self._deduct_smart(
+                "fishing",
+                bone["raw_col"],
+                bone["ref_col"],
+                live_bone[0],
+                self.costs["bone_qty"],
+                uid,
+                gid,
+            )
         )
-        await self._deduct_smart(
-            "woodcutting",
-            log["raw_col"],
-            log["ref_col"],
-            live_log[0],
-            self.costs["log_qty"],
-            uid,
-            gid,
-        )
-        await self._deduct_smart(
-            "fishing",
-            bone["raw_col"],
-            bone["ref_col"],
-            live_bone[0],
-            self.costs["bone_qty"],
-            uid,
-            gid,
-        )
+        if not mats_ok:
+            return await interaction.followup.send(
+                "Insufficient materials!", ephemeral=True
+            )
 
-        await self.bot.database.users.modify_gold(uid, -self.costs["gold"])
-        await self.bot.database.connection.commit()
+        gold_ok = await self.bot.database.users.deduct_gold_atomic(
+            uid, self.costs["gold"]
+        )
+        if not gold_ok:
+            return await interaction.followup.send("Insufficient gold!", ephemeral=True)
 
         success, new_passive = EquipmentMechanics.roll_forge_outcome(self.item)
 
@@ -213,8 +222,11 @@ class ForgeView(BaseUpgradeView):
                 uid,
                 gid,
             )
-            await self.bot.database.users.modify_gold(uid, -costs["gold"])
-            await self.bot.database.connection.commit()
+            gold_ok = await self.bot.database.users.deduct_gold_atomic(
+                uid, costs["gold"]
+            )
+            if not gold_ok:
+                break
 
             success, new_passive = EquipmentMechanics.roll_forge_outcome(self.item)
             self.item.forges_remaining -= 1

@@ -65,7 +65,9 @@ class Alchemy(commands.Cog, name="alchemy"):
                 gate = TutorialGateView(
                     self.bot, user_id, server_id, "alchemy", build_main=_build
                 )
-                await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+                await interaction.response.send_message(
+                    embed=gate.build_embed(), view=gate
+                )
                 gate.message = await interaction.original_response()
                 return
 

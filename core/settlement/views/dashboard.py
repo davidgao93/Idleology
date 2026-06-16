@@ -21,7 +21,7 @@ from core.settlement.constants import (
 from core.settlement.mechanics import SettlementMechanics
 from core.settlement.models import Plot
 from core.settlement.plots import META_BUILDINGS, get_meta_slots, render_grid
-from core.settlement.turn_engine import process_next_turn
+from core.settlement.turn_engine import passive_zeal_for_period, process_next_turn
 from core.settlement.views.research import ResearchView
 from core.settlement.views.town_hall import TownHallView
 
@@ -428,7 +428,9 @@ class SettlementDashboardView(SettlementBaseView):
             if turn_summary.get("crisis_events_fired"):
                 for e in turn_summary["crisis_events_fired"]:
                     ev_name = e["name"] if isinstance(e, dict) else e
-                    plague_losses = e.get("plague_losses") if isinstance(e, dict) else None
+                    plague_losses = (
+                        e.get("plague_losses") if isinstance(e, dict) else None
+                    )
                     if plague_losses:
                         total_lost = sum(x["lost"] for x in plague_losses)
                         affected = ", ".join(
@@ -665,7 +667,20 @@ class SettlementDashboardView(SettlementBaseView):
             )
             self.add_item(confront_btn)
 
-        _pz = min(self._cached_pending_zeal, ZEAL_GATHER_CAP)
+        _pz = self._cached_pending_zeal
+        try:
+            _gather_ts = (
+                self.settlement.last_zeal_gather_time
+                or self.settlement.last_collection_time
+            )
+            if _gather_ts:
+                _hours = (
+                    datetime.now() - datetime.fromisoformat(_gather_ts)
+                ).total_seconds() / 3600
+                _pz += passive_zeal_for_period(_hours, self.settlement.town_hall_tier)
+        except Exception:
+            pass
+        _pz = min(_pz, ZEAL_GATHER_CAP)
         gather_zeal_btn = ui.Button(
             label=f"Gather Zeal ({_pz}/{ZEAL_GATHER_CAP})",
             style=ButtonStyle.blurple,
@@ -1193,8 +1208,6 @@ class SettlementDashboardView(SettlementBaseView):
 
             # Add time-based passive generation since last Zeal gather (tracked
             # separately from resource collection so the two timers don't interfere).
-            from core.settlement.turn_engine import passive_zeal_for_period
-
             gather_ts = (
                 self.settlement.last_zeal_gather_time
                 or self.settlement.last_collection_time
@@ -1365,14 +1378,21 @@ class SettlementDashboardView(SettlementBaseView):
                     plague_losses = []
                     if ev_def.get("effects", {}).get("on_fail_lose_workers_pct"):
                         import math
+
                         pct = (event.get("data") or {}).get("band", 0.05)
-                        settlement_state = await self.bot.database.settlement.get_settlement(uid, sid)
-                        for bldg in (settlement_state.buildings if settlement_state else []):
+                        settlement_state = (
+                            await self.bot.database.settlement.get_settlement(uid, sid)
+                        )
+                        for bldg in (
+                            settlement_state.buildings if settlement_state else []
+                        ):
                             if bldg.workers_assigned <= 0:
                                 continue
                             lost = max(1, math.ceil(bldg.workers_assigned * pct))
                             new_count = max(0, bldg.workers_assigned - lost)
-                            await self.bot.database.settlement.assign_workers(bldg.id, new_count)
+                            await self.bot.database.settlement.assign_workers(
+                                bldg.id, new_count
+                            )
                             plague_losses.append({"name": bldg.name, "lost": lost})
 
                 # Reload settlement state and transition the message back to the dashboard.

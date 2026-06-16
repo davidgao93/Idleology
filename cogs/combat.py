@@ -429,7 +429,10 @@ class Combat(commands.Cog, name="combat"):
                 treasure_chance += player.equipped_boot.passive_lvl * 0.5
             is_treasure = random.random() * 100 < treasure_chance
             monster = await generate_encounter(
-                player, monster, is_treasure=is_treasure, task_species=task_species,
+                player,
+                monster,
+                is_treasure=is_treasure,
+                task_species=task_species,
                 slayer_tree_nodes=player.slayer_tree_nodes,
             )
             combat_phases = [None]

@@ -223,29 +223,62 @@ class SkillRepository:
     async def upgrade_pickaxe(
         self, user_id: str, server_id: str, new_tier: str, costs: tuple
     ) -> None:
-        iron, coal, gold, platinum, gp = costs
-        await self.connection.execute(
-            """UPDATE mining SET iron=iron-?, coal=coal-?, gold=gold-?, platinum=platinum-?, pickaxe_tier=? 
-            WHERE user_id=? AND server_id=?""",
-            (iron, coal, gold, platinum, new_tier, user_id, server_id),
+        iron_cost, coal_cost, gold_cost, platinum_cost, gp = costs
+        raw_held = await self.get_multi_resource(
+            user_id, server_id, "mining", ["iron", "coal", "gold", "platinum"]
         )
+        for raw_col, ref_col, held, qty in [
+            ("iron", "iron_bar", raw_held[0], iron_cost),
+            ("coal", "steel_bar", raw_held[1], coal_cost),
+            ("gold", "gold_bar", raw_held[2], gold_cost),
+            ("platinum", "platinum_bar", raw_held[3], platinum_cost),
+        ]:
+            if qty > 0:
+                await self.deduct_upgrade_material(
+                    user_id, server_id, "mining", raw_col, ref_col, held, qty
+                )
         await self.connection.execute(
-            "UPDATE users SET gold = gold - ? WHERE user_id = ?", (gp, user_id)
+            "UPDATE mining SET pickaxe_tier=? WHERE user_id=? AND server_id=?",
+            (new_tier, user_id, server_id),
         )
+        cursor = await self.connection.execute(
+            "UPDATE users SET gold = gold - ? WHERE user_id = ? AND gold >= ?",
+            (gp, user_id, gp),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError("Insufficient gold for pickaxe upgrade")
         await self.connection.commit()
 
     async def upgrade_axe(
         self, user_id: str, server_id: str, new_tier: str, costs: tuple
     ) -> None:
-        oak, willow, mahogany, magic, gp = costs
-        await self.connection.execute(
-            """UPDATE woodcutting SET oak_logs=oak_logs-?, willow_logs=willow_logs-?, mahogany_logs=mahogany_logs-?, magic_logs=magic_logs-?, axe_type=? 
-            WHERE user_id=? AND server_id=?""",
-            (oak, willow, mahogany, magic, new_tier, user_id, server_id),
+        oak_cost, willow_cost, mahogany_cost, magic_cost, gp = costs
+        raw_held = await self.get_multi_resource(
+            user_id,
+            server_id,
+            "woodcutting",
+            ["oak_logs", "willow_logs", "mahogany_logs", "magic_logs"],
         )
+        for raw_col, ref_col, held, qty in [
+            ("oak_logs", "oak_plank", raw_held[0], oak_cost),
+            ("willow_logs", "willow_plank", raw_held[1], willow_cost),
+            ("mahogany_logs", "mahogany_plank", raw_held[2], mahogany_cost),
+            ("magic_logs", "magic_plank", raw_held[3], magic_cost),
+        ]:
+            if qty > 0:
+                await self.deduct_upgrade_material(
+                    user_id, server_id, "woodcutting", raw_col, ref_col, held, qty
+                )
         await self.connection.execute(
-            "UPDATE users SET gold = gold - ? WHERE user_id = ?", (gp, user_id)
+            "UPDATE woodcutting SET axe_type=? WHERE user_id=? AND server_id=?",
+            (new_tier, user_id, server_id),
         )
+        cursor = await self.connection.execute(
+            "UPDATE users SET gold = gold - ? WHERE user_id = ? AND gold >= ?",
+            (gp, user_id, gp),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError("Insufficient gold for axe upgrade")
         await self.connection.commit()
 
     # ---------------------------------------------------------
@@ -292,18 +325,21 @@ class SkillRepository:
         ref_col: str,
         raw_held: int,
         cost: int,
-    ) -> None:
-        """Deduct cost from raw resources first, spilling into refined if needed."""
+    ) -> bool:
+        """Deduct cost from raw resources first, spilling into refined if needed.
+        Returns True if all deductions succeeded."""
         to_take_raw = min(raw_held, cost)
         to_take_ref = cost - to_take_raw
+        ok = True
         if to_take_raw > 0:
-            await self.deduct_resource_atomic(
+            ok = ok and await self.deduct_resource_atomic(
                 user_id, server_id, table, raw_col, to_take_raw
             )
         if to_take_ref > 0:
-            await self.deduct_resource_atomic(
+            ok = ok and await self.deduct_resource_atomic(
                 user_id, server_id, table, ref_col, to_take_ref
             )
+        return ok
 
     async def charge_entry_cost(self, user_id: str, gold_amount: int) -> None:
         """Deducts gold from a user for a minigame entry cost (bait / forestry pass)."""
@@ -316,15 +352,33 @@ class SkillRepository:
     async def upgrade_fishing_rod(
         self, user_id: str, server_id: str, new_tier: str, costs: tuple
     ) -> None:
-        des, reg, stu, rein, gp = costs
-        await self.connection.execute(
-            """UPDATE fishing SET desiccated_bones=desiccated_bones-?, regular_bones=regular_bones-?, sturdy_bones=sturdy_bones-?, reinforced_bones=reinforced_bones-?, fishing_rod=? 
-            WHERE user_id=? AND server_id=?""",
-            (des, reg, stu, rein, new_tier, user_id, server_id),
+        des_cost, reg_cost, stu_cost, rein_cost, gp = costs
+        raw_held = await self.get_multi_resource(
+            user_id,
+            server_id,
+            "fishing",
+            ["desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones"],
         )
+        for raw_col, ref_col, held, qty in [
+            ("desiccated_bones", "desiccated_essence", raw_held[0], des_cost),
+            ("regular_bones", "regular_essence", raw_held[1], reg_cost),
+            ("sturdy_bones", "sturdy_essence", raw_held[2], stu_cost),
+            ("reinforced_bones", "reinforced_essence", raw_held[3], rein_cost),
+        ]:
+            if qty > 0:
+                await self.deduct_upgrade_material(
+                    user_id, server_id, "fishing", raw_col, ref_col, held, qty
+                )
         await self.connection.execute(
-            "UPDATE users SET gold = gold - ? WHERE user_id = ?", (gp, user_id)
+            "UPDATE fishing SET fishing_rod=? WHERE user_id=? AND server_id=?",
+            (new_tier, user_id, server_id),
         )
+        cursor = await self.connection.execute(
+            "UPDATE users SET gold = gold - ? WHERE user_id = ? AND gold >= ?",
+            (gp, user_id, gp),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError("Insufficient gold for fishing rod upgrade")
         await self.connection.commit()
 
     # =========================================================

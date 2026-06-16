@@ -90,9 +90,16 @@ class Character(commands.Cog, name="character"):
     @tasks.loop(minutes=5)
     async def check_stamina(self):
         """Grant 1 combat stamina per hour to all users below the cap of 10."""
-        updated = await self.bot.database.users.regen_stamina_tick()
-        if updated:
-            self.bot.logger.info(f"Stamina regen: granted +1 to {updated} user(s)")
+        try:
+            updated = await self.bot.database.users.regen_stamina_tick()
+            if updated:
+                self.bot.logger.info(f"Stamina regen: granted +1 to {updated} user(s)")
+        except Exception:
+            self.bot.logger.error("check_stamina task error", exc_info=True)
+
+    @check_stamina.error
+    async def check_stamina_error(self, error):
+        self.bot.logger.error(f"check_stamina task crashed: {error}", exc_info=True)
 
     @tasks.loop(minutes=15)
     async def check_hp(self):
@@ -101,13 +108,22 @@ class Character(commands.Cog, name="character"):
         self.bot.logger.info("Healing all users")
         for user in users:
             user_id = user["user_id"]
-            current_hp = user["current_hp"]
-            player = await load_player(user_id, user, self.bot.database)
-            max_hp = player.total_max_hp
-            scaling = int(max_hp / 30)
-            if current_hp < max_hp:
-                new_hp = min(current_hp + 1 + scaling, max_hp)
-                await self.bot.database.users.update_hp(user_id, new_hp)
+            try:
+                current_hp = user["current_hp"]
+                player = await load_player(user_id, user, self.bot.database)
+                max_hp = player.total_max_hp
+                scaling = int(max_hp / 30)
+                if current_hp < max_hp:
+                    new_hp = min(current_hp + 1 + scaling, max_hp)
+                    await self.bot.database.users.update_hp(user_id, new_hp)
+            except Exception:
+                self.bot.logger.error(
+                    f"check_hp error for user {user_id}", exc_info=True
+                )
+
+    @check_hp.error
+    async def check_hp_error(self, error):
+        self.bot.logger.error(f"check_hp task crashed: {error}", exc_info=True)
 
     @app_commands.command(name="card", description="View your adventurer license.")
     async def card(self, interaction: Interaction):

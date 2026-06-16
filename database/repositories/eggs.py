@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database.base import BaseRepository
 
@@ -91,7 +91,7 @@ class EggsRepository(BaseRepository):
         monster_name: str,
         duration_seconds: int,
     ) -> None:
-        start_time = datetime.utcnow().isoformat()
+        start_time = datetime.now(timezone.utc).isoformat()
         await self.connection.execute(
             """INSERT INTO hatchery_incubation
                (user_id, server_id, egg_id, egg_tier, monster_level, monster_name, start_time, duration_seconds)
@@ -128,7 +128,7 @@ class EggsRepository(BaseRepository):
         monster_level: int,
         egg_tier: str,
     ) -> None:
-        created_at = datetime.utcnow().isoformat()
+        created_at = datetime.now(timezone.utc).isoformat()
         await self.connection.execute(
             "INSERT INTO incubated_encounters (user_id, monster_name, monster_level, egg_tier, created_at) "
             "VALUES (?, ?, ?, ?, ?)",

@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 
 from core.models import Monster
 
-
 _REPAIR_COSTS: dict[int, int] = {
     1: 5_000,
     2: 10_000,
@@ -61,7 +60,6 @@ async def run_settlement_encounter(
     """
     from core.combat.mobgen.gen_mob import (
         calculate_monster_stats,
-        fetch_monster_image,
         finalize_monster_spawn,
     )
     from core.combat.turns import engine

@@ -133,35 +133,45 @@ class TemperView(BaseUpgradeView):
             self.inventory_snapshot, uid, gid
         )
 
-        await self._deduct_smart(
-            "mining",
-            ore["raw_col"],
-            ore["ref_col"],
-            live_ore[0],
-            self.costs["ore_qty"],
-            uid,
-            gid,
+        mats_ok = (
+            await self._deduct_smart(
+                "mining",
+                ore["raw_col"],
+                ore["ref_col"],
+                live_ore[0],
+                self.costs["ore_qty"],
+                uid,
+                gid,
+            )
+            and await self._deduct_smart(
+                "woodcutting",
+                log["raw_col"],
+                log["ref_col"],
+                live_log[0],
+                self.costs["log_qty"],
+                uid,
+                gid,
+            )
+            and await self._deduct_smart(
+                "fishing",
+                bone["raw_col"],
+                bone["ref_col"],
+                live_bone[0],
+                self.costs["bone_qty"],
+                uid,
+                gid,
+            )
         )
-        await self._deduct_smart(
-            "woodcutting",
-            log["raw_col"],
-            log["ref_col"],
-            live_log[0],
-            self.costs["log_qty"],
-            uid,
-            gid,
-        )
-        await self._deduct_smart(
-            "fishing",
-            bone["raw_col"],
-            bone["ref_col"],
-            live_bone[0],
-            self.costs["bone_qty"],
-            uid,
-            gid,
-        )
+        if not mats_ok:
+            return await interaction.followup.send(
+                "Insufficient materials!", ephemeral=True
+            )
 
-        await self.bot.database.users.modify_gold(uid, -self.costs["gold"])
+        gold_ok = await self.bot.database.users.deduct_gold_atomic(
+            uid, self.costs["gold"]
+        )
+        if not gold_ok:
+            return await interaction.followup.send("Insufficient gold!", ephemeral=True)
 
         success, stat, amount = EquipmentMechanics.roll_temper_outcome(
             self.item, bonus_chance=bonus
@@ -202,8 +212,6 @@ class TemperView(BaseUpgradeView):
             res_embed.description = (
                 "🔨 **Failed.**\nThe metal cooled too quickly. Materials consumed."
             )
-
-        await self.bot.database.connection.commit()
 
         # UI Refresh
         self.clear_items()
@@ -359,6 +367,14 @@ class ReinforceView(BaseUpgradeView):
 
         action_btn.callback = self.confirm_reinforce
         self.add_item(action_btn)
+
+        shattermaxx_btn = Button(label="Shattermaxx", style=ButtonStyle.danger)
+        shattermaxx_btn.disabled = shatter_runes == 0 and not (
+            has_funds and has_mats and has_slots
+        )
+        shattermaxx_btn.callback = self.shattermaxx
+        self.add_item(shattermaxx_btn)
+
         self.add_back_button()
 
         color = (
@@ -426,7 +442,13 @@ class ReinforceView(BaseUpgradeView):
                         f"Insufficient {mat['name']}!", ephemeral=True
                     )
 
-            await self.bot.database.users.modify_gold(self.user_id, -cost_gold)
+            gold_ok = await self.bot.database.users.deduct_gold_atomic(
+                self.user_id, cost_gold
+            )
+            if not gold_ok:
+                return await interaction.followup.send(
+                    "Insufficient gold!", ephemeral=True
+                )
 
             gain = EquipmentMechanics.roll_reinforce_outcome(self.item, stat_col)
             setattr(self.item, stat_col, getattr(self.item, stat_col) + gain)
@@ -445,7 +467,6 @@ class ReinforceView(BaseUpgradeView):
             await self.bot.database.equipment.increase_stat(
                 self.item.item_id, itype, "reinforcement_lvl", 1
             )
-            await self.bot.database.connection.commit()
 
             new_val = getattr(self.item, stat_col)
             suffix = "%" if is_pct else ""
@@ -471,6 +492,118 @@ class ReinforceView(BaseUpgradeView):
 
         except Exception as e:
             await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
+
+    async def shattermaxx(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+        for item in self.children:
+            item.disabled = True
+        await interaction.edit_original_response(view=self)
+
+        itype, stat_col, stat_label, _, is_pct = self._reinforce_info()
+        uid, sid = self.user_id, str(interaction.guild.id)
+
+        reinforces_done = 0
+        shatter_runes_used = 0
+        total_gain = 0
+        stop_reason = "Complete."
+
+        while True:
+            if self.item.reinforces_remaining == 0:
+                runes = await self.bot.database.users.get_currency(uid, "shatter_runes")
+                if runes == 0:
+                    stop_reason = "Ran out of Shatter Runes."
+                    break
+                await self.bot.database.users.modify_currency(uid, "shatter_runes", -1)
+                await self.bot.database.equipment.update_counter(
+                    self.item.item_id, itype, "reinforces_remaining", 1
+                )
+                self.item.reinforces_remaining = 1
+                shatter_runes_used += 1
+                try:
+                    from core.quests.mechanics import tick_quest_progress
+
+                    await tick_quest_progress(
+                        self.bot,
+                        self.user_id,
+                        str(interaction.guild.id),
+                        "rune_shatter",
+                    )
+                except Exception:
+                    pass
+
+            cost_data = EquipmentMechanics.calculate_reinforce_cost(self.item)
+            cost_gold = cost_data["gold"]
+            materials = cost_data.get("materials", [])
+
+            failed_mat = None
+            for mat in materials:
+                success = await self.bot.database.skills.deduct_resource_atomic(
+                    uid, sid, mat["table"], mat["column"], mat["qty"]
+                )
+                if not success:
+                    failed_mat = mat["name"]
+                    break
+            if failed_mat:
+                stop_reason = f"Ran out of {failed_mat}."
+                break
+
+            gold_ok = await self.bot.database.users.deduct_gold_atomic(uid, cost_gold)
+            if not gold_ok:
+                stop_reason = "Ran out of Gold."
+                break
+
+            gain = EquipmentMechanics.roll_reinforce_outcome(self.item, stat_col)
+            setattr(self.item, stat_col, getattr(self.item, stat_col) + gain)
+            total_gain += gain
+            await self.bot.database.equipment.increase_stat(
+                self.item.item_id, itype, stat_col, gain
+            )
+
+            self.item.reinforces_remaining -= 1
+            self.item.reinforcement_lvl += 1
+            await self.bot.database.equipment.update_counter(
+                self.item.item_id,
+                itype,
+                "reinforces_remaining",
+                self.item.reinforces_remaining,
+            )
+            await self.bot.database.equipment.increase_stat(
+                self.item.item_id, itype, "reinforcement_lvl", 1
+            )
+            reinforces_done += 1
+
+        if reinforces_done == 0:
+            await interaction.followup.send(stop_reason, ephemeral=True)
+            return
+
+        suffix = "%" if is_pct else ""
+        new_val = getattr(self.item, stat_col)
+        embed = discord.Embed(
+            title="⚒️ Shattermaxx Complete", color=discord.Color.gold()
+        )
+        embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
+        embed.set_thumbnail(url=UPGRADE_REINFORCE)
+        embed.description = (
+            f"**Reinforces Performed:** {reinforces_done}\n"
+            f"**Shatter Runes Used:** {shatter_runes_used}\n"
+            f"**Total Gain:** +{total_gain}{suffix} {stat_label}\n"
+            f"**Reinforcement Level:** +{self.item.reinforcement_lvl}\n\n"
+            f"**{stat_label}:** {new_val:,}{suffix}\n\n"
+            f"*Stopped: {stop_reason}*"
+        )
+
+        self.clear_items()
+        cont_btn = Button(label="Continue", style=ButtonStyle.primary)
+        cont_btn.callback = self.render
+        self.add_item(cont_btn)
+        self.add_back_button()
+
+        await interaction.edit_original_response(embed=embed, view=self)
+        self.message = await interaction.original_response()
 
 
 class EngramView(BaseUpgradeView):

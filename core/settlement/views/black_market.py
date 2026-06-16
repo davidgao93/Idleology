@@ -502,9 +502,9 @@ class BlackMarketView(SettlementBaseView):
             settlement_timber = _s.timber
             settlement_stone = _s.stone
 
-        if settlement_timber < costs.get(
-            "timber", 0
-        ) or settlement_stone < costs.get("stone", 0):
+        if settlement_timber < costs.get("timber", 0) or settlement_stone < costs.get(
+            "stone", 0
+        ):
             self._processing = False
             return await interaction.response.send_message(
                 "Insufficient Timber or Stone!", ephemeral=True
@@ -873,7 +873,9 @@ class OfferBuilderView(SettlementBaseView):
                     if isinstance(raw_val, (int, float)):
                         event_value_bonus += raw_val
 
-            raw_value = calculate_offer_value(self._offer, tree_nodes, self.building.tier)
+            raw_value = calculate_offer_value(
+                self._offer, tree_nodes, self.building.tier
+            )
             raw_value = int(raw_value * (1 + event_value_bonus))
             # Divide by 100 internally: Valuables were ×100 in the table so rewards
             # stay the same as before, while non-Valuables are worth 100× less.

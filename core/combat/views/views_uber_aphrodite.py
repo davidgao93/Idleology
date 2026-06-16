@@ -30,6 +30,7 @@ class UberAphroditeLobbyView(BaseView):
         self.readiness_text = readiness_text
         self.sigils = uber_data["celestial_sigils"]
         self.message = None
+        self._processing = False
         self._build_buttons()
 
     def _build_buttons(self):
@@ -101,11 +102,16 @@ class UberAphroditeLobbyView(BaseView):
         self.stop()
 
     async def start_uber(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
 
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
         if current_data["celestial_sigils"] < 3:
+            self._processing = False
             return await interaction.response.send_message(
                 "You do not have enough Celestial Sigils.", ephemeral=True
             )
@@ -113,6 +119,7 @@ class UberAphroditeLobbyView(BaseView):
         await interaction.response.defer()
 
         await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, -3)
+        self.bot.state_manager.set_active(self.user_id, "uber_boss")
 
         monster = Monster(
             name="",
@@ -152,4 +159,5 @@ class UberAphroditeLobbyView(BaseView):
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
+        view.message = await interaction.original_response()
         self.stop()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import ButtonStyle, Interaction, ui
@@ -24,7 +24,9 @@ def _fmt_duration(seconds: int) -> str:
 
 def _remaining_seconds(start_time_iso: str, duration_seconds: int) -> float:
     start = datetime.fromisoformat(start_time_iso)
-    elapsed = (datetime.utcnow() - start).total_seconds()
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    elapsed = (datetime.now(timezone.utc) - start).total_seconds()
     return max(0.0, duration_seconds - elapsed)
 
 

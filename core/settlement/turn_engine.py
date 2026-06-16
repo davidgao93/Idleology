@@ -504,7 +504,7 @@ async def _apply_event_effects(
         pct = _resolve_band(effects["on_fail_lose_workers_pct"], ev_data)
         settlement = await bot.database.settlement.get_settlement(user_id, server_id)
         losses = []
-        for b in (settlement.buildings if settlement else []):
+        for b in settlement.buildings if settlement else []:
             if b.workers_assigned <= 0:
                 continue
             lost = max(1, math.ceil(b.workers_assigned * pct))

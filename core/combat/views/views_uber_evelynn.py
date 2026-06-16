@@ -30,6 +30,7 @@ class UberEvelynnLobbyView(BaseView):
         self.readiness_text = readiness_text
         self.sigils = uber_data["corruption_sigils"]
         self.message = None
+        self._processing = False
         self._build_buttons()
 
     def _build_buttons(self):
@@ -107,10 +108,16 @@ class UberEvelynnLobbyView(BaseView):
         self.stop()
 
     async def start_uber(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         current_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
         )
         if current_data["corruption_sigils"] < 3:
+            self._processing = False
             return await interaction.response.send_message(
                 "You do not have enough Sigils of Corruption.", ephemeral=True
             )
@@ -160,4 +167,5 @@ class UberEvelynnLobbyView(BaseView):
         )
 
         await interaction.edit_original_response(embed=embed, view=view)
+        view.message = await interaction.original_response()
         self.stop()

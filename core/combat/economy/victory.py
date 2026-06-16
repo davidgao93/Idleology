@@ -189,7 +189,9 @@ async def _apply_slayer_rewards(
         await bot.database.slayer.modify_materials(
             user_id, server_id, "violent_essence", 1
         )
-        slayer_lines.append(f"💀 **Boss Kill!** +{per_kill_xp:,} Slayer XP | 🩸 +1 Violent Essence")
+        slayer_lines.append(
+            f"💀 **Boss Kill!** +{per_kill_xp:,} Slayer XP | 🩸 +1 Violent Essence"
+        )
 
         new_prog = s_profile["active_task_progress"] + 1
         if new_prog >= s_profile["active_task_amount"]:
@@ -247,7 +249,9 @@ async def _apply_slayer_rewards(
     # Base Slayer XP + drops
     _tree_nodes = getattr(player, "slayer_tree_nodes", {})
     per_kill_base_xp = 500 + (_tree_nodes.get("tm_4") and 250 or 0)
-    await bot.database.slayer.add_rewards(user_id, server_id, xp=per_kill_base_xp, points=0)
+    await bot.database.slayer.add_rewards(
+        user_id, server_id, xp=per_kill_base_xp, points=0
+    )
     slayer_lines.append(f"+{per_kill_base_xp} Slayer XP")
     if _tree_nodes.get("tm_4"):
         slayer_lines[-1] += " *(+250 Relentless)*"
@@ -289,7 +293,9 @@ async def _apply_slayer_rewards(
 
     # Zenith monster: guaranteed Imbued Heart drop (before task completion check)
     if getattr(monster, "is_zenith", False):
-        await bot.database.slayer.modify_materials(user_id, server_id, "imbued_heart", 1)
+        await bot.database.slayer.modify_materials(
+            user_id, server_id, "imbued_heart", 1
+        )
         slayer_lines.append("👑 **Zenith Monster!** Guaranteed ❤️ Imbued Heart!")
 
     if new_prog >= s_profile["active_task_amount"]:
@@ -304,6 +310,7 @@ async def _apply_slayer_rewards(
         # pu_2: +25% bonus Slayer Points
         if _tree_nodes.get("pu_2"):
             import math
+
             burst_pts = math.floor(burst_pts * 1.25)
         await bot.database.slayer.add_rewards(
             user_id, server_id, xp=burst_xp, points=burst_pts

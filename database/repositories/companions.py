@@ -158,10 +158,13 @@ class CompanionRepository:
         """
         # new_stats dict keys: name, species, image_url, passive_type, passive_tier, level, exp
         try:
-            # 1. Deduct Gold
-            await self.connection.execute(
-                "UPDATE users SET gold = gold - ? WHERE user_id = ?", (cost, user_id)
+            # 1. Deduct Gold (guard prevents going negative)
+            cursor = await self.connection.execute(
+                "UPDATE users SET gold = gold - ? WHERE user_id = ? AND gold >= ?",
+                (cost, user_id, cost),
             )
+            if cursor.rowcount == 0:
+                raise ValueError("Insufficient gold for companion fusion")
 
             # 2. Delete Parents
             await self.connection.execute(

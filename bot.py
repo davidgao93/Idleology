@@ -253,6 +253,14 @@ class DiscordBot(commands.Bot):
         await self.load_cogs()
         self.status_task.start()
 
+    async def close(self) -> None:
+        if self.database is not None:
+            try:
+                await self.database.connection.close()
+            except Exception:
+                pass
+        await super().close()
+
     async def on_message(self, message: discord.Message) -> None:
         """
         The code in this event is executed every time someone sends a message, with or without the prefix

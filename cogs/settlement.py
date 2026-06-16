@@ -157,7 +157,6 @@ class SettlementCog(commands.Cog, name="settlement"):
         await interaction.response.send_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
 
-
     @app_commands.command(
         name="black_market",
         description="Open your settlement's Black Market directly.",

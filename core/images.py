@@ -357,4 +357,3 @@ APEX_VOID_FRACTURE = "https://cdn.discordapp.com/attachments/1334637411363323996
 APEX_ENTROPY_ENGINE = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612103726661732/iron_golem_lord.jpg?ex=6a19cf54&is=6a187dd4&hm=356fba25d5dfa3756d95d9771534a0a409466d46795764fc396b9321196d70d8&"
 APEX_NEXUS_ABOMINATION = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612122026283258/nexus_abomination.jpg?ex=6a19cf59&is=6a187dd9&hm=e7075d92b22650c3a8b05a55a94a5c56bbcb1ded4d405ea2546891d717e27e24&"
 APEX_RIFT_LEVIATHAN = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612122735120434/rift_leviathan.jpg?ex=6a19cf59&is=6a187dd9&hm=053b56c2498cc3873dc79861d2d7f7df005cfb5552dfa566eac6ef379c03c72e&"
-

@@ -89,11 +89,6 @@ def _build_checkin_embed(
                 value=f"**{h}h {m}m**",
                 inline=True,
             )
-        embed.add_field(
-            name="Lira",
-            value="Already claimed today's parcel? Good on you. Come back a little later — I'll have the next one ready.",
-            inline=False,
-        )
 
     return embed
 

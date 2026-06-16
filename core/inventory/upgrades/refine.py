@@ -130,7 +130,13 @@ class RefineView(BaseUpgradeView):
                         f"Insufficient {mat['name']}!", ephemeral=True
                     )
 
-            await self.bot.database.users.modify_gold(self.user_id, -cost_gold)
+            gold_ok = await self.bot.database.users.deduct_gold_atomic(
+                self.user_id, cost_gold
+            )
+            if not gold_ok:
+                return await interaction.followup.send(
+                    "Insufficient gold!", ephemeral=True
+                )
 
             stats = EquipmentMechanics.roll_refine_outcome(self.item)
 
@@ -162,7 +168,6 @@ class RefineView(BaseUpgradeView):
             await self.bot.database.equipment.increase_stat(
                 self.item.item_id, "weapon", "refinement_lvl", 1
             )
-            await self.bot.database.connection.commit()
 
             res_str = (
                 ", ".join([f"+{v} {k.title()}" for k, v in stats.items() if v > 0])
@@ -256,7 +261,10 @@ class RefineView(BaseUpgradeView):
             if failed:
                 break
 
-            await self.bot.database.users.modify_gold(uid, -cost_gold)
+            gold_ok = await self.bot.database.users.deduct_gold_atomic(uid, cost_gold)
+            if not gold_ok:
+                stop_reason = "Ran out of Gold."
+                break
 
             stats = EquipmentMechanics.roll_refine_outcome(self.item)
             for key in ("attack", "defence", "rarity"):
@@ -278,7 +286,6 @@ class RefineView(BaseUpgradeView):
             await self.bot.database.equipment.increase_stat(
                 self.item.item_id, "weapon", "refinement_lvl", 1
             )
-            await self.bot.database.connection.commit()
             refines_done += 1
 
         if refines_done == 0:
@@ -494,7 +501,10 @@ class RefineView(BaseUpgradeView):
                 stop_reason = f"Ran out of {failed_mat}."
                 break
 
-            await self.bot.database.users.modify_gold(uid, -cost_gold)
+            gold_ok = await self.bot.database.users.deduct_gold_atomic(uid, cost_gold)
+            if not gold_ok:
+                stop_reason = "Ran out of Gold."
+                break
 
             stats = EquipmentMechanics.roll_refine_outcome(self.item)
             for key in ("attack", "defence", "rarity"):
@@ -516,7 +526,6 @@ class RefineView(BaseUpgradeView):
             await self.bot.database.equipment.increase_stat(
                 self.item.item_id, "weapon", "refinement_lvl", 1
             )
-            await self.bot.database.connection.commit()
             refines_done += 1
 
         if runes_used > 0:

@@ -173,7 +173,20 @@ def create_victory_embed(
         frags = rewards["soul_fragments"]
         loot_lines.append(f"🔘 **{frags}x Soul Fragment{'s' if frags > 1 else ''}**")
 
-    # 6. Monster Body Part Drop
+    # 6. Monster Egg Drop
+    if rewards.get("egg"):
+        _EGG_TIER_LABELS = {
+            "normal": "Monster Egg",
+            "rare": "Rare Monster Egg",
+            "giga": "Giga Monster Egg",
+        }
+        _EGG_TIER_EMOJIS = {"normal": "🥚", "rare": "🪺", "giga": "🐲"}
+        egg_tier = rewards["egg"]
+        egg_label = _EGG_TIER_LABELS.get(egg_tier, "Monster Egg")
+        egg_emoji = _EGG_TIER_EMOJIS.get(egg_tier, "🥚")
+        loot_lines.append(f"{egg_emoji} **{egg_label}**")
+
+    # 7. Monster Body Part Drop
     if rewards.get("body_part"):
         slot, mname, hp = rewards["body_part"]
         label = _PART_SLOT_LABELS.get(slot, slot)

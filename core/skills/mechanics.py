@@ -109,6 +109,42 @@ class SkillMechanics:
         """Returns the number of Swing clicks required to fell a tree."""
         return SkillMechanics.FORESTRY_SWINGS.get(axe_tier, 8)
 
+    # Refined resource DB columns and display names, in the same order as SKILL_CONFIG resources
+    REFINED_RESOURCE_COLUMNS = {
+        "mining": ["iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"],
+        "woodcutting": [
+            "oak_plank",
+            "willow_plank",
+            "mahogany_plank",
+            "magic_plank",
+            "idea_plank",
+        ],
+        "fishing": [
+            "desiccated_essence",
+            "regular_essence",
+            "sturdy_essence",
+            "reinforced_essence",
+            "titanium_essence",
+        ],
+    }
+    REFINED_RESOURCE_NAMES = {
+        "mining": ["Iron Bar", "Steel Bar", "Gold Bar", "Platinum Bar", "Idea Bar"],
+        "woodcutting": [
+            "Oak Plank",
+            "Willow Plank",
+            "Mahogany Plank",
+            "Magic Plank",
+            "Idea Plank",
+        ],
+        "fishing": [
+            "Desiccated Essence",
+            "Regular Essence",
+            "Sturdy Essence",
+            "Reinforced Essence",
+            "Titanium Essence",
+        ],
+    }
+
     SKILL_CONFIG = {
         "mining": {
             "display_name": "Mining",
@@ -150,6 +186,14 @@ class SkillMechanics:
             ],
         },
     }
+
+    @staticmethod
+    def get_refined_columns(skill: str) -> list:
+        return SkillMechanics.REFINED_RESOURCE_COLUMNS.get(skill, [])
+
+    @staticmethod
+    def get_refined_names(skill: str) -> list:
+        return SkillMechanics.REFINED_RESOURCE_NAMES.get(skill, [])
 
     @staticmethod
     def get_skill_info(skill: str) -> dict:

@@ -665,7 +665,11 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         and random.random() < 0.05
     ):
         slay_dmg = monster.hp
-        if monster.has_modifier("Time Lord") and monster.hp > 1 and random.random() < 0.80:
+        if (
+            monster.has_modifier("Time Lord")
+            and monster.hp > 1
+            and random.random() < 0.80
+        ):
             monster.hp = 1
             log.append(
                 f"⚡ **Instant Slay** triggers! ({slay_dmg - 1} true damage) "
