@@ -54,6 +54,7 @@ class AlchemyRepository(BaseRepository):
             "INSERT OR IGNORE INTO alchemy_data (user_id, level) VALUES (?, 1)",
             (user_id,),
         )
+        await self.connection.commit()
 
     async def get_level(self, user_id: str) -> int:
         await self._ensure_row(user_id)

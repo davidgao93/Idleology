@@ -26,51 +26,55 @@ class Alchemy(commands.Cog, name="alchemy"):
 
         self.bot.state_manager.set_active(user_id, "alchemy")
 
-        # 2. Initialize alchemy row if this is a first visit
-        is_new = await self.bot.database.alchemy.initialize_if_new(user_id)
-        welcome_msg = None
-        if is_new:
-            welcome_msg = (
-                "✨ **Welcome to Alchemist's Guild!** You start at Level 1 with 1 passive slot.\n"
-                "Head to the **Potion Lab** to roll your first passive!"
+        try:
+            # 2. Initialize alchemy row if this is a first visit
+            is_new = await self.bot.database.alchemy.initialize_if_new(user_id)
+            welcome_msg = None
+            if is_new:
+                welcome_msg = (
+                    "✨ **Welcome to Alchemist's Guild!** You start at Level 1 with 1 passive slot.\n"
+                    "Head to the **Potion Lab** to roll your first passive!"
+                )
+
+            # 3. Fetch alchemy state
+            alchemy_level = await self.bot.database.alchemy.get_level(user_id)
+            passives = await self.bot.database.alchemy.get_potion_passives(user_id)
+            gold = existing_user["gold"]
+            spirit_stones = await self.bot.database.users.get_currency(
+                user_id, "spirit_stones"
             )
 
-        # 3. Fetch alchemy state
-        alchemy_level = await self.bot.database.alchemy.get_level(user_id)
-        passives = await self.bot.database.alchemy.get_potion_passives(user_id)
-        gold = existing_user["gold"]
-        spirit_stones = await self.bot.database.users.get_currency(
-            user_id, "spirit_stones"
-        )
+            async def _build():
+                view = AlchemyHubView(
+                    self.bot,
+                    user_id,
+                    server_id,
+                    alchemy_level,
+                    passives,
+                    gold,
+                    spirit_stones,
+                )
+                embed = view.build_embed()
+                if welcome_msg:
+                    embed.title = "⚗️ The Alchemy Guild"
+                    embed.description = welcome_msg + "\n\n" + (embed.description or "")
+                return embed, view
 
-        async def _build():
-            view = AlchemyHubView(
-                self.bot,
-                user_id,
-                server_id,
-                alchemy_level,
-                passives,
-                gold,
-                spirit_stones,
-            )
-            embed = view.build_embed()
-            if welcome_msg:
-                embed.title = "⚗️ The Alchemy Guild"
-                embed.description = welcome_msg + "\n\n" + (embed.description or "")
-            return embed, view
+            if not await self.bot.database.tutorials.has_seen(user_id, "alchemy"):
+                await self.bot.database.tutorials.mark_seen(user_id, "alchemy")
+                gate = TutorialGateView(
+                    self.bot, user_id, server_id, "alchemy", build_main=_build
+                )
+                await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+                gate.message = await interaction.original_response()
+                return
 
-        if not await self.bot.database.tutorials.has_seen(user_id, "alchemy"):
-            await self.bot.database.tutorials.mark_seen(user_id, "alchemy")
-            gate = TutorialGateView(
-                self.bot, user_id, server_id, "alchemy", build_main=_build
-            )
-            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
-            gate.message = await interaction.original_response()
-            return
-
-        embed, view = await _build()
-        await interaction.response.send_message(embed=embed, view=view)
-        view.message = await interaction.original_response()
+            embed, view = await _build()
+            await interaction.response.send_message(embed=embed, view=view)
+            view.message = await interaction.original_response()
+        except Exception:
+            self.bot.state_manager.clear_active(user_id)
+            raise
 
 
 async def setup(bot) -> None:

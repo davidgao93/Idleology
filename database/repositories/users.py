@@ -170,6 +170,7 @@ class UserRepository:
         await self.connection.execute(
             "UPDATE users SET current_hp = ? WHERE user_id = ?", (hp, user_id)
         )
+        await self.connection.commit()
 
     async def update_appearance(self, user_id: str, url: str) -> None:
         """Update the player's avatar URL across all servers."""
@@ -519,10 +520,9 @@ class UserRepository:
                     "UPDATE users SET combat_stamina = ?, last_stamina_regen = ? WHERE user_id = ?",
                     (min(10, stamina + 1), now.isoformat(), user_id),
                 )
+                await self.connection.commit()
                 updated += 1
 
-        if updated:
-            await self.connection.commit()
         return updated
 
     # ---------------------------------------------------------

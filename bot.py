@@ -245,6 +245,8 @@ class DiscordBot(commands.Bot):
             f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
         )
         _conn.row_factory = sqlite3.Row
+        await _conn.execute("PRAGMA journal_mode=WAL")
+        await _conn.execute("PRAGMA synchronous=NORMAL")
         self.database = DatabaseManager(connection=_conn)
         await self.database.quests.create_tables()
         await self.database.settlement.migrate_buildings_schema()
