@@ -298,6 +298,7 @@ class ItemDetailView(BaseView):
 
             if xp_per_pet > 0:
                 leveled_up_names = []
+                overflow_xp_total = 0
                 for row in active_rows:
                     comp_id = row[0]
                     name = row[2]
@@ -315,6 +316,10 @@ class ItemDetailView(BaseView):
                         else:
                             break
 
+                    if current_lvl >= 100:
+                        overflow_xp_total += current_exp
+                        current_exp = 0
+
                     await self.bot.database.companions.update_stats(
                         comp_id, current_lvl, current_exp
                     )
@@ -324,6 +329,16 @@ class ItemDetailView(BaseView):
                 xp_msg = f"\n🐾 Active pets gained **{xp_per_pet:,} XP** each."
                 if leveled_up_names:
                     xp_msg += f"\n🎉 **Level Up:** {', '.join(leveled_up_names)}"
+
+                if overflow_xp_total > 0:
+                    from core.companions.mastery import kp_from_overflow_xp
+                    kp_earned = kp_from_overflow_xp(overflow_xp_total)
+                    if kp_earned > 0:
+                        server_id = str(interaction.guild_id)
+                        await self.bot.database.companions.add_kinship_points(
+                            self.user_id, server_id, kp_earned
+                        )
+                        xp_msg += f"\n✨ Gained **{kp_earned} Kinship Point(s)** from overflow XP."
 
         # Discard DB
         await self.bot.database.equipment.discard(self.item.item_id, itype)

@@ -138,10 +138,13 @@ class CompanionMechanics:
 
     @staticmethod
     def calculate_collection_rewards(
-        companions: List[Companion], last_collect_str: str
+        companions: List[Companion],
+        last_collect_str: str,
+        mastery_nodes: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         """
         Calculates passive rewards based on time elapsed and active companions.
+        Pass mastery_nodes (from companion_mastery.nodes_owned) to apply tree bonuses.
         """
         if not last_collect_str or not companions:
             return {"items": [], "cycles": 0, "can_collect": False}
@@ -157,47 +160,56 @@ class CompanionMechanics:
         if cycles <= 0:
             return {"items": [], "cycles": 0, "can_collect": False}
 
+        # --- Mastery node effects ---
+        from core.companions.mastery import (
+            get_find_chance_bonus,
+            get_double_haul_chance,
+            get_max_cycles,
+            get_loot_weights,
+            is_apex_scavenger,
+            get_biased_loot_keys,
+        )
+        nodes = mastery_nodes or {}
+        find_bonus = get_find_chance_bonus(nodes)
+        double_haul_chance = get_double_haul_chance(nodes)
+        max_cycles = get_max_cycles(nodes)
+        weight_map = get_loot_weights(nodes)
+        apex = is_apex_scavenger(nodes)
+        biased_keys = get_biased_loot_keys(nodes) if apex else set()
+
         # Cap cycles
-        cycles = min(cycles, CompanionMechanics.MAX_COLLECTION_CYCLES)
+        cycles = min(cycles, max_cycles)
 
         loot_bag = []
 
-        # Loot Weights (Sum = 105, random.choices handles normalization)
-        loot_types = [
-            "Gold",
-            "Boss Key",
-            "Rune of Refinement",
-            "Rune of Potential",
-            "Rune of Shattering",
-        ]
-        loot_weights = [90, 2, 2, 3, 3]
+        loot_types = list(weight_map.keys())
+        loot_weights = [weight_map[k] for k in loot_types]
 
         for comp in companions:
-            # Chance to find *anything* this cycle: 0.5% per level
-            find_chance = comp.level * 0.005
+            # Chance to find *anything* this cycle: 0.5% per level + mastery bonus
+            find_chance = min(1.0, comp.level * 0.005 + find_bonus)
 
-            # Optimization: If 100% chance (Lvl 100), just generate 'cycles' amount of loot
-            # Otherwise, simulate checks
             successful_rolls = 0
-
-            # Binomial simulation approx or simple loop
             for _ in range(cycles):
                 if random.random() < find_chance:
                     successful_rolls += 1
 
             if successful_rolls > 0:
-                # Batch roll types
                 results = random.choices(
                     loot_types, weights=loot_weights, k=successful_rolls
                 )
 
                 for res in results:
-                    if res == "Gold":
-                        # Gold Amount: Level * 300 (e.g. Lvl 50 = 15000g, Lvl 100 = 30000g)
-                        amount = comp.level * 300
-                        loot_bag.append(("Gold", amount))
-                    else:
-                        loot_bag.append((res, 1))
+                    amt = comp.level * 300 if res == "Gold" else 1
+                    loot_bag.append((res, amt))
+
+                    # double_haul: 20% chance for an extra copy of the same item
+                    if double_haul_chance > 0 and random.random() < double_haul_chance:
+                        loot_bag.append((res, amt))
+
+                    # apex_scavenger: biased loot types always get a free extra roll
+                    if apex and res in biased_keys:
+                        loot_bag.append((res, amt))
 
         return {
             "items": loot_bag,  # List of tuples: ("Type", Amount/1)

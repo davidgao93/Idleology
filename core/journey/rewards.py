@@ -190,8 +190,8 @@ MILESTONES = [
         "title": "The Infinite Maw",
         "reward_desc": "3 Curios + 50,000 Gold",
         "systems": [
-            "Maw of Infinity — weekly world boss; deal damage over the week for cumulative rewards",
-            "Uber Bosses — Aphrodite unlocked; spend keys to challenge elite encounters",
+            "Maw of Infinity — weekly world boss; deal damage over the week for rewards",
+            "Bosses — Aphrodite (and Uber Aphrodite) unlocked; you might encounter her in Combat",
         ],
         "commands": ["/maw", "/uber"],
         "image": MAW_MAIN,
@@ -203,8 +203,8 @@ MILESTONES = [
         "reward_desc": "3 Essences of Power + 100,000 Gold",
         "systems": [
             "Calcified Monsters — rare calcified enemies drop Essences to socket into equipment",
-            "Alchemy — transmute potions with passive effects that carry into every fight",
-            "Lucifer Gate — second Uber Boss unlocked",
+            "Alchemy — transmute, sythesize, and upgrade your potions",
+            "Bosses — Lucifer (and Uber Lucifer) unlocked; you might encounter him in Combat",
         ],
         "commands": ["/consume", "/gear", "/alchemy"],
         "image": ALCHEMY_HUB,
@@ -216,7 +216,7 @@ MILESTONES = [
         "reward_desc": "3 Random Boss Keys + 150,000 Gold",
         "systems": [
             "Companion System — raise creatures that passively boost your combat stats",
-            "Gemini Gate — third Uber Boss unlocked",
+            "Bosses — Gemini (and Uber Gemini) unlocked; you might encounter them in Combat",
         ],
         "commands": ["/companions"],
         "image": COMPANIONS_HUB,

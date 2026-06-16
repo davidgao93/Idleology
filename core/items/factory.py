@@ -324,6 +324,16 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     if comp_rows:
         player.active_companions = [create_companion(row) for row in comp_rows]
 
+    # --- Fetch Companion Mastery ---
+    try:
+        mastery = await database.companions.get_mastery(user_id, server_id)
+        nodes = mastery.get("nodes_owned", {})
+        from core.companions.mastery import get_passive_mult, has_elite_bond
+        player.companion_passive_mult = get_passive_mult(nodes, len(player.active_companions))
+        player.companion_elite_bond = has_elite_bond(nodes)
+    except Exception:
+        pass  # defaults (1.0 / False) from Player dataclass
+
     # --- Fetch Slayer Data ---
     try:
         # Load Emblem

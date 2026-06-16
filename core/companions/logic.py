@@ -23,15 +23,22 @@ class CompanionLogic:
 
         active_comps = [create_companion(row) for row in active_rows]
 
-        # 2. Calculate
+        # 2. Load mastery nodes for loot modifiers
+        try:
+            mastery = await bot.database.companions.get_mastery(user_id, guild_id)
+            mastery_nodes = mastery.get("nodes_owned", {})
+        except Exception:
+            mastery_nodes = {}
+
+        # 3. Calculate
         results = CompanionMechanics.calculate_collection_rewards(
-            active_comps, last_collect
+            active_comps, last_collect, mastery_nodes=mastery_nodes
         )
 
         if not results["can_collect"]:
             return "Your companions are still gathering supplies. Check back later (1h interval)."
 
-        # 3. Process Loot
+        # 4. Process Loot
         # results['items'] is a list of ("Type", Amount)
 
         summary = defaultdict(int)
@@ -75,12 +82,12 @@ class CompanionLogic:
                     )  # [NEW]
                     summary["Fragment of Balance"] += 1
 
-        # 4. Update Timer
+        # 5. Update Timer
         await bot.database.users.update_companion_collect_time(
             user_id, datetime.now().isoformat()
         )
 
-        # 5. Format Output
+        # 6. Format Output
         if not summary:
             return f"Your companions returned empty-handed from {results['cycles']} cycles."
 

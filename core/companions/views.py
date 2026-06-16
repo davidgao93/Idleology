@@ -1,5 +1,6 @@
 # core/companions/views.py
 
+import asyncio
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
@@ -144,6 +145,12 @@ class CompanionListView(BaseView):
         fusion_btn.callback = self.open_fusion
         self.add_item(fusion_btn)
 
+        mastery_btn = ui.Button(
+            label="Mastery", style=ButtonStyle.blurple, emoji="✨", row=1
+        )
+        mastery_btn.callback = self.open_mastery
+        self.add_item(mastery_btn)
+
         close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
         close_btn.callback = self.close_view
         self.add_item(close_btn)
@@ -224,6 +231,17 @@ class CompanionListView(BaseView):
             color=discord.Color.blue(),
         )
         embed.set_thumbnail(url=COMPANIONS_FUSION)
+        await interaction.response.edit_message(embed=embed, view=view)
+
+    async def open_mastery(self, interaction: Interaction):
+        from core.companions.mastery_views import CompanionMasteryView
+
+        server_id = str(interaction.guild.id)
+        mastery = await self.bot.database.companions.get_mastery(self.user_id, server_id)
+        view = CompanionMasteryView(
+            self.bot, self.user_id, server_id, mastery, parent=self
+        )
+        embed = view.get_embed()
         await interaction.response.edit_message(embed=embed, view=view)
 
 
@@ -420,6 +438,49 @@ class CompanionDetailView(BaseView):
             item.disabled = True
         await interaction.edit_original_response(view=self)
 
+        # Distribute flat 2000 XP to each remaining active companion
+        RELEASE_XP = 2000
+        xp_note = ""
+        try:
+            active_rows = await self.bot.database.companions.get_active(self.user_id)
+            recipients = [r for r in active_rows if r[0] != self.comp.id]
+            if recipients:
+                leveled_names = []
+                overflow_xp = 0
+                for row in recipients:
+                    comp_id, name, cur_lvl, cur_exp = row[0], row[2], row[5], row[6]
+                    cur_exp += RELEASE_XP
+                    did_level = False
+                    while cur_lvl < 100:
+                        req = CompanionMechanics.calculate_next_level_xp(cur_lvl)
+                        if cur_exp >= req:
+                            cur_exp -= req
+                            cur_lvl += 1
+                            did_level = True
+                        else:
+                            break
+                    if cur_lvl >= 100:
+                        overflow_xp += cur_exp
+                        cur_exp = 0
+                    await self.bot.database.companions.update_stats(comp_id, cur_lvl, cur_exp)
+                    if did_level:
+                        leveled_names.append(f"{name} (Lv.{cur_lvl})")
+
+                xp_note = f"\n🐾 Remaining companions each gained **{RELEASE_XP:,} XP**."
+                if leveled_names:
+                    xp_note += f"\n🎉 **Level Up:** {', '.join(leveled_names)}"
+
+                if overflow_xp > 0:
+                    from core.companions.mastery import kp_from_overflow_xp
+                    kp_earned = kp_from_overflow_xp(overflow_xp)
+                    if kp_earned > 0:
+                        await self.bot.database.companions.add_kinship_points(
+                            self.user_id, str(interaction.guild_id), kp_earned
+                        )
+                        xp_note += f"\n✨ Gained **{kp_earned} Kinship Point(s)** from overflow XP."
+        except Exception:
+            pass
+
         await self.bot.database.companions.delete_companion(self.comp.id, self.user_id)
 
         # Remove from parent list
@@ -427,6 +488,15 @@ class CompanionDetailView(BaseView):
             c for c in self.parent.companions if c.id != self.comp.id
         ]
         self.parent.update_buttons()
+
+        temp_embed = discord.Embed(
+            title="Companion Released",
+            description=f"**{self.comp.name}** has returned to the wild.{xp_note}",
+            color=discord.Color.orange(),
+        )
+        await interaction.edit_original_response(embed=temp_embed, view=None)
+
+        await asyncio.sleep(2.0)
 
         await interaction.edit_original_response(
             embed=self.parent.get_embed(), view=self.parent

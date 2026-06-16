@@ -781,6 +781,19 @@ CREATE TABLE IF NOT EXISTS gathering_mastery (
     PRIMARY KEY (user_id, server_id)
 );
 
+-- ── COMPANION MASTERY ────────────────────────────────────────────────────────
+-- Three branches (Forager / Affinity / Bonded), 3 nodes each.
+-- Kinship Points earned from overflow XP when companions are already at level 100.
+-- nodes_owned: JSON {node_id: true | "choice_str"}.  Choice nodes store the player's pick.
+CREATE TABLE IF NOT EXISTS companion_mastery (
+    user_id         TEXT NOT NULL,
+    server_id       TEXT NOT NULL,
+    nodes_owned     TEXT NOT NULL DEFAULT '{}',
+    points_spent    INTEGER NOT NULL DEFAULT 0,
+    kinship_points  INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, server_id)
+);
+
 -- ── FIRST-USE TUTORIALS ───────────────────────────────────────────────────────
 -- Tracks which tutorial prompts a player has already been shown.
 -- Keyed by (user_id, feature_key); no server_id needed since tutorials are

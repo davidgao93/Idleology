@@ -272,7 +272,9 @@ async def process_next_turn(
             if active_rows:
                 xp_per = companion_cookie // len(active_rows)
                 from core.companions.mechanics import CompanionMechanics
+                from core.companions.mastery import kp_from_overflow_xp
 
+                overflow_xp = 0
                 for row in active_rows:
                     comp_id, cur_lvl, cur_exp = row[0], row[5], row[6]
                     cur_exp += xp_per
@@ -283,9 +285,18 @@ async def process_next_turn(
                             cur_lvl += 1
                         else:
                             break
+                    if cur_lvl >= 100:
+                        overflow_xp += cur_exp
+                        cur_exp = 0
                     await bot.database.companions.update_stats(
                         comp_id, cur_lvl, cur_exp
                     )
+                if overflow_xp > 0:
+                    kp_earned = kp_from_overflow_xp(overflow_xp)
+                    if kp_earned > 0:
+                        await bot.database.companions.add_kinship_points(
+                            user_id, server_id, kp_earned
+                        )
         except Exception:
             pass
 

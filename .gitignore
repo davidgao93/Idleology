@@ -7,6 +7,8 @@ _upload_ready
 # Ignore all markdown files except the main README
 *.md
 !README.md
+*.db-shm
+*.db-wal
 
 partners.txt
 docs/

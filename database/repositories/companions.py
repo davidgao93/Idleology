@@ -1,5 +1,6 @@
 # database/repositories/companions.py
 
+import json
 from typing import List, Optional, Tuple
 
 import aiosqlite
@@ -196,3 +197,55 @@ class CompanionRepository:
         except Exception:
             await self.connection.rollback()
             raise
+
+    # ------------------------------------------------------------------
+    # Companion Mastery
+    # ------------------------------------------------------------------
+
+    async def ensure_mastery(self, user_id: str, server_id: str) -> None:
+        await self.connection.execute(
+            "INSERT OR IGNORE INTO companion_mastery (user_id, server_id) VALUES (?, ?)",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def get_mastery(self, user_id: str, server_id: str) -> dict:
+        await self.ensure_mastery(user_id, server_id)
+        async with self.connection.execute(
+            "SELECT nodes_owned, points_spent, kinship_points FROM companion_mastery WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return {
+            "nodes_owned": json.loads(row[0]) if row and row[0] else {},
+            "points_spent": row[1] if row else 0,
+            "kinship_points": row[2] if row else 0,
+        }
+
+    async def add_kinship_points(self, user_id: str, server_id: str, amount: int) -> None:
+        await self.ensure_mastery(user_id, server_id)
+        await self.connection.execute(
+            "UPDATE companion_mastery SET kinship_points = kinship_points + ? WHERE user_id=? AND server_id=?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def purchase_mastery_node(
+        self, user_id: str, server_id: str, node_id: str, cost: int, choice: str | None = None
+    ) -> bool:
+        """Atomically deducts KP and stores the node. Returns True on success."""
+        async with self.connection.execute(
+            "SELECT nodes_owned, kinship_points FROM companion_mastery WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if not row or row[1] < cost:
+            return False
+        nodes = json.loads(row[0]) if row[0] else {}
+        nodes[node_id] = choice if choice is not None else True
+        await self.connection.execute(
+            "UPDATE companion_mastery SET nodes_owned=?, kinship_points=kinship_points-?, points_spent=points_spent+? WHERE user_id=? AND server_id=?",
+            (json.dumps(nodes), cost, cost, user_id, server_id),
+        )
+        await self.connection.commit()
+        return True
