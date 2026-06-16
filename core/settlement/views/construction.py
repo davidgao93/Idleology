@@ -4,7 +4,6 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.images import SETTLEMENT_CONSTRUCTION
 from core.settlement.constants import (
-    BUILD_MESSAGES,
     BUILDING_INFO,
     CONSTRUCTION_COSTS,
     PROJECT_CONSTRUCTION_DT,

@@ -488,6 +488,13 @@ _PARTY_BOSSES = [
     {"name": "Gemini, Twin Souls", "max_hp": 55_000},
 ]
 
+_PARTY_BOSS_LEVEL_GATES: Dict[str, int] = {
+    "Aphrodite, the Celestial": 20,
+    "Lucifer, the Infernal": 30,
+    "Gemini, Twin Souls": 40,
+    "NEET, Void Manifest": 50,
+}
+
 _PARTY_BOSS_GOLD_MIN = 500_000
 _PARTY_BOSS_GOLD_MAX = 2_000_000
 _PARTY_BOSS_SIGIL_MIN = 1
@@ -497,9 +504,12 @@ _PARTY_BOSS_TICKET_CHANCE = 0.5
 BOSS_PARTY_DURATION_HOURS = 22
 
 
-def pick_party_boss() -> dict:
-    """Returns a randomly chosen boss dict with name and max_hp."""
-    return random.choice(_PARTY_BOSSES).copy()
+def pick_party_boss(player_level: int = 1) -> dict:
+    """Returns a randomly chosen boss dict the player is eligible for based on level."""
+    eligible = [b for b in _PARTY_BOSSES if player_level >= _PARTY_BOSS_LEVEL_GATES[b["name"]]]
+    if not eligible:
+        eligible = [_PARTY_BOSSES[0]]
+    return random.choice(eligible).copy()
 
 
 _BOSS_NAME_TO_SIGIL: Dict[str, str] = {

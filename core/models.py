@@ -5,7 +5,7 @@ All dataclasses have moved to domain-specific modules:
   core/items/models.py       — Weapon, Accessory, Armor, Glove, Boot, Helmet,
                                Companion, CodexTome, MonsterPart
   core/combat/models.py      — CombatState, CodexRunState, MonsterModifier,
-                               Monster, DungeonRoomOption, DungeonState, Player
+                               Monster, Player
   core/settlement/models.py  — Settlement, Building
   core/partners/models.py    — Partner
 

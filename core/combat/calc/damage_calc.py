@@ -22,7 +22,8 @@ import random
 
 from core.models import Monster, Player
 
-_DMG_VARIANCE = (0.65, 1.35)
+_DMG_VARIANCE_CEIL = 1.35
+_DMG_VARIANCE_FLOOR_MAX = 0.65  # reached at player level 65
 
 
 def _mid_level_scalar(level: int) -> float:
@@ -58,8 +59,9 @@ def calculate_damage_taken(player: Player, monster: Monster) -> int:
     surplus = max(-0.95, surplus)
     surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
     raw = base_raw * (1.0 + surplus * surplus_mult)
-    raw_min = max(1, int(raw * _DMG_VARIANCE[0]))
-    raw_max = max(raw_min, int(raw * _DMG_VARIANCE[1]))
+    variance_floor = min(player.level * 0.01, _DMG_VARIANCE_FLOOR_MAX)
+    raw_min = max(1, int(raw * variance_floor))
+    raw_max = max(raw_min, int(raw * _DMG_VARIANCE_CEIL))
     dmg = random.randint(raw_min, raw_max)
 
     # Rookie damage shield: levels 1–3 cap at 1; each level above 3 raises by 1.
@@ -99,10 +101,11 @@ def roll_monster_damage(
 
     base_raw_display = monster.level * 1.5 * _mid_level_scalar(monster.level)
     post_surplus = base_raw_display * (1.0 + surplus * surplus_mult)
-    var_low = max(1, int(post_surplus * _DMG_VARIANCE[0]))
-    var_high = max(var_low, int(post_surplus * _DMG_VARIANCE[1]))
+    _var_floor = min(player.level * 0.01, _DMG_VARIANCE_FLOOR_MAX)
+    var_low = max(1, int(post_surplus * _var_floor))
+    var_high = max(var_low, int(post_surplus * _DMG_VARIANCE_CEIL))
     calc_notes: list[str] = [
-        f"m_atk={m_atk} p_def={p_def} base_raw={base_raw_display:.0f} surplus={surplus:+.3f}×{surplus_mult:.1f} → post_surplus={post_surplus:.0f} variance[{_DMG_VARIANCE[0]:.2f}–{_DMG_VARIANCE[1]:.2f}] range[{var_low}–{var_high}] rolled={dmg}"
+        f"m_atk={m_atk} p_def={p_def} base_raw={base_raw_display:.0f} surplus={surplus:+.3f}×{surplus_mult:.1f} → post_surplus={post_surplus:.0f} variance[{_var_floor:.2f}–{_DMG_VARIANCE_CEIL:.2f}] range[{var_low}–{var_high}] rolled={dmg}"
     ]
 
     # =====================================================================

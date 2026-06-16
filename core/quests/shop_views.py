@@ -229,13 +229,6 @@ class TokenShopView(BaseView):
             )
             return "Board cooldown cleared!"
 
-        elif item_id == "horizon_boost":
-            current_uses = meta.get("horizon_boost_uses", 0)
-            await self.bot.database.quests.set_meta_field(
-                self.user_id, "horizon_boost_uses", current_uses + 10
-            )
-            return "+10 Horizon Boost uses added!"
-
         # ── Permanent Upgrades ───────────────────────────────────────────────
         elif item_id == "enrichment":
             await self.bot.database.quests.set_meta_field(

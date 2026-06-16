@@ -9,7 +9,6 @@ from core.settlement.constants import (
     RESOURCE_DISPLAY_NAMES,
     SPECIAL_MAP,
     UBER_BUILDINGS,
-    UPGRADE_MESSAGES,
 )
 from core.settlement.mechanics import SettlementMechanics
 from core.settlement.turn_engine import upgrade_dt_cost

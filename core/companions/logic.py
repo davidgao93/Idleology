@@ -4,15 +4,6 @@ import random
 from collections import defaultdict
 from datetime import datetime
 
-# Import Generators
-from core.combat.economy.loot import (
-    generate_accessory,
-    generate_armor,
-    generate_boot,
-    generate_glove,
-    generate_helmet,
-    generate_weapon,
-)
 from core.companions.mechanics import CompanionMechanics
 from core.items.factory import create_companion
 
@@ -44,7 +35,6 @@ class CompanionLogic:
         # results['items'] is a list of ("Type", Amount)
 
         summary = defaultdict(int)
-        generated_gear_count = 0
 
         for loot_type, amount in results["items"]:
             # --- GOLD ---
@@ -85,42 +75,13 @@ class CompanionLogic:
                     )  # [NEW]
                     summary["Fragment of Balance"] += 1
 
-            # --- EQUIPMENT (Random Generation) ---
-            elif loot_type == "Equipment":
-                # Pick slot
-                slot = random.choice(
-                    ["weapon", "armor", "accessory", "glove", "boot", "helmet"]
-                )
-                lvl = random.randint(1, 100)  # Random level gear
-
-                if slot == "weapon":
-                    item = await generate_weapon(user_id, lvl, drop_rune=False)
-                    await bot.database.equipment.create_weapon(item)
-                elif slot == "armor":
-                    item = await generate_armor(user_id, lvl, drop_rune=False)
-                    await bot.database.equipment.create_armor(item)
-                elif slot == "accessory":
-                    item = await generate_accessory(user_id, lvl, drop_rune=False)
-                    await bot.database.equipment.create_accessory(item)
-                elif slot == "glove":
-                    item = await generate_glove(user_id, lvl)
-                    await bot.database.equipment.create_glove(item)
-                elif slot == "boot":
-                    item = await generate_boot(user_id, lvl)
-                    await bot.database.equipment.create_boot(item)
-                elif slot == "helmet":
-                    item = await generate_helmet(user_id, lvl)
-                    await bot.database.equipment.create_helmet(item)
-
-                generated_gear_count += 1
-
         # 4. Update Timer
         await bot.database.users.update_companion_collect_time(
             user_id, datetime.now().isoformat()
         )
 
         # 5. Format Output
-        if not summary and generated_gear_count == 0:
+        if not summary:
             return f"Your companions returned empty-handed from {results['cycles']} cycles."
 
         msg = f"**Companions returned after {results['cycles']} adventures! They drop their gifts at your feet.**\n"
@@ -132,8 +93,6 @@ class CompanionLogic:
 
         # Items
         items_list = [f"{k} x{v}" for k, v in summary.items()]
-        if generated_gear_count > 0:
-            items_list.append(f"Pieces of equipment x{generated_gear_count}")
 
         if items_list:
             msg += "📦 " + ", ".join(items_list)

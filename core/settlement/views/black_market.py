@@ -315,10 +315,11 @@ class BlackMarketView(SettlementBaseView):
         building,
         *,
         has_pending_deal: bool = False,
+        server_id: str | None = None,
     ):
         super().__init__(bot, user_id)
         self.parent = parent_view
-        self.server_id = parent_view.server_id
+        self.server_id = server_id if server_id is not None else parent_view.server_id
         self.building = building
         self._processing = False
         self.has_pending_deal = has_pending_deal
@@ -491,9 +492,19 @@ class BlackMarketView(SettlementBaseView):
         target_tier = self.building.tier + 1
         costs = SettlementMechanics.get_upgrade_cost("black_market", self.building.tier)
 
-        if self.parent.settlement.timber < costs.get(
+        if self.parent is not None:
+            settlement_timber = self.parent.settlement.timber
+            settlement_stone = self.parent.settlement.stone
+        else:
+            _s = await self.bot.database.settlement.get_settlement(
+                self.user_id, self.server_id
+            )
+            settlement_timber = _s.timber
+            settlement_stone = _s.stone
+
+        if settlement_timber < costs.get(
             "timber", 0
-        ) or self.parent.settlement.stone < costs.get("stone", 0):
+        ) or settlement_stone < costs.get("stone", 0):
             self._processing = False
             return await interaction.response.send_message(
                 "Insufficient Timber or Stone!", ephemeral=True
@@ -532,14 +543,21 @@ class BlackMarketView(SettlementBaseView):
         await self.bot.database.users.modify_gold(self.user_id, -costs.get("gold", 0))
         await self.bot.database.settlement.upgrade_building_tier(self.building.id)
         self.building.tier += 1
-        self.parent.settlement.timber -= costs.get("timber", 0)
-        self.parent.settlement.stone -= costs.get("stone", 0)
+        if self.parent is not None:
+            self.parent.settlement.timber -= costs.get("timber", 0)
+            self.parent.settlement.stone -= costs.get("stone", 0)
 
         self._processing = False
         self._setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def _on_back(self, interaction: Interaction) -> None:
+        if self.parent is None:
+            self.bot.state_manager.clear_active(self.user_id)
+            self.stop()
+            await interaction.response.defer()
+            await interaction.delete_original_response()
+            return
         if hasattr(self.parent, "_rebuild_ui"):
             self.parent._rebuild_ui()
         elif hasattr(self.parent, "_build_buttons"):
@@ -739,7 +757,7 @@ class OfferBuilderView(SettlementBaseView):
                 inline=False,
             )
             turns = compute_processing_turns(
-                estimated, self.building.tier, self.tree_nodes
+                estimated // 100, self.building.tier, self.tree_nodes
             )
             embed.add_field(
                 name="⏭️ Estimated Processing",
@@ -855,8 +873,11 @@ class OfferBuilderView(SettlementBaseView):
                     if isinstance(raw_val, (int, float)):
                         event_value_bonus += raw_val
 
-            value = calculate_offer_value(self._offer, tree_nodes, self.building.tier)
-            value = int(value * (1 + event_value_bonus))
+            raw_value = calculate_offer_value(self._offer, tree_nodes, self.building.tier)
+            raw_value = int(raw_value * (1 + event_value_bonus))
+            # Divide by 100 internally: Valuables were ×100 in the table so rewards
+            # stay the same as before, while non-Valuables are worth 100× less.
+            value = raw_value // 100
             turns = compute_processing_turns(value, self.building.tier, tree_nodes)
 
             if value <= 0:
@@ -883,7 +904,7 @@ class OfferBuilderView(SettlementBaseView):
                 title="✅ Deal Submitted",
                 description=(
                     f"**Max eyes the goods and gives a thin smile.**\n\n"
-                    f"Value assessed: **{value:,}**\n"
+                    f"Value assessed: **{raw_value:,}**\n"
                     f"Processing: **{turns}** Development Turn(s)\n\n"
                     f"Advance turns on the dashboard to collect your loot."
                 ),

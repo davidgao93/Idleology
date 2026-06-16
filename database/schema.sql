@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `magma_core` INTEGER NOT NULL DEFAULT 0,
   `life_root` INTEGER NOT NULL DEFAULT 0,
   `spirit_shard` INTEGER NOT NULL DEFAULT 0,
-  `doors_enabled` INTEGER NOT NULL DEFAULT 0,
+  `doors_enabled` INTEGER NOT NULL DEFAULT 1,
   `celestial_stone` INTEGER NOT NULL DEFAULT 0,
   `void_crystal` INTEGER NOT NULL DEFAULT 0,
   `infernal_cinder` INTEGER NOT NULL DEFAULT 0,

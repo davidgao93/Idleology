@@ -323,10 +323,12 @@ class BossPartyFormView(BaseView):
         all_partners: List[Partner],
         back_view,
         initial_slots: Optional[Dict[str, Optional[Partner]]] = None,
+        player_level: int = 1,
     ):
         super().__init__(bot, user_id, server_id)
         self.all_partners = all_partners
         self.back_view = back_view
+        self.player_level = player_level
         self.slots: Dict[str, Optional[Partner]] = initial_slots or {
             "attacker": None,
             "tank": None,
@@ -392,7 +394,7 @@ class BossPartyFormView(BaseView):
 
     async def _confirm(self, interaction: Interaction):
         await interaction.response.defer()
-        boss = pick_party_boss()
+        boss = pick_party_boss(self.player_level)
         start_time = _now_utc().isoformat()
 
         attacker = self.slots["attacker"]
@@ -435,6 +437,7 @@ class BossPartyFormView(BaseView):
             },
             partners_by_id={p.partner_id: p for p in (attacker, tank, healer)},
             back_view=self.back_view,
+            player_level=self.player_level,
         )
         embed, _ = _build_progress_embed(
             progress_view.party_row, progress_view.partners_by_id
@@ -466,11 +469,13 @@ class BossPartyProgressView(BaseView):
         party_row: dict,
         partners_by_id: Dict[int, Partner],
         back_view,
+        player_level: int = 1,
     ):
         super().__init__(bot, user_id, server_id)
         self.party_row = party_row
         self.partners_by_id = partners_by_id
         self.back_view = back_view
+        self.player_level = player_level
         self._refresh_buttons()
 
     async def on_timeout(self):
@@ -623,6 +628,7 @@ class BossPartyProgressView(BaseView):
             all_partners,
             back_view=self.back_view,
             initial_slots=dict(self._last_slots),
+            player_level=self.player_level,
         )
         form_view.message = self.message
         embed = _build_form_embed(form_view.slots, all_partners)

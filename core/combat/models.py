@@ -6,13 +6,11 @@ Contains:
   CodexRunState     — state that persists across Codex waves within one run
   MonsterModifier   — a single modifier applied to a monster instance
   Monster           — monster entity used during combat
-  DungeonRoomOption — one branching option in a dungeon room
-  DungeonState      — full dungeon-crawl session state
   Player            — player character with all stats, gear, and combat helpers
 """
 
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional
 
 from core.items.models import (
     Accessory,
@@ -362,41 +360,6 @@ class Monster:
         # Note: We do NOT clear bonus_*_pct or flat_*_bonus here,
         # as those may contain spawn-time or persistent bonuses.
         # Only clear things that are purely per-fight accumulations.
-
-
-# ---------------------------------------------------------------------------
-# Dungeon models
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class DungeonRoomOption:
-    direction: str
-    flavor_text: str
-    encounter_type: str
-
-
-@dataclass
-class DungeonState:
-    player_id: str
-    player_name: str
-    current_floor: int
-    max_regular_floors: int
-
-    player_current_hp: int
-    player_max_hp: int
-    player_current_ward: int
-    player_base_ward: int
-
-    potions_remaining: int
-    dungeon_coins: int
-    loot_gathered: List[Union[Weapon, Accessory, Armor]] = field(default_factory=list)
-
-    player_buffs: List[str] = field(default_factory=list)
-    player_curses: List[str] = field(default_factory=list)
-
-    current_room_options: Optional[List[DungeonRoomOption]] = None
-    last_action_message: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

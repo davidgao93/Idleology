@@ -356,17 +356,6 @@ def get_adjacent_plot_indices(plot_index: int) -> list[int]:
     return adjacent
 
 
-def can_develop(plot_index: int, developed_indices: set[int]) -> bool:
-    """
-    A plot is developable when at least one orthogonal neighbour is already
-    developed (TH = index 0 is always treated as developed).
-    """
-    for adj in get_adjacent_plot_indices(plot_index):
-        if adj == 0 or adj in developed_indices:
-            return True
-    return False
-
-
 def roll_plot_bonus() -> str:
     """Randomly selects a plot-bonus type from the weighted pool."""
     return random.choice(_BONUS_POOL)

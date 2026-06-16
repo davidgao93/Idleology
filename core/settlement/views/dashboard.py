@@ -189,11 +189,6 @@ class SettlementDashboardView(SettlementBaseView):
         self._processing = False
         self._rebuild_ui()
 
-    # Backward-compat alias — old BuildingDetailView / TownHallView /
-    # BuildConstructionView all call self.parent.update_grid()
-    def update_grid(self):
-        self._rebuild_ui()
-
     def _pending_by_plot(self) -> dict[int, str]:
         """Derives {plot_index: building_type} for construction projects,
         and {plot_index: '__excavating__'} for pending plot_develop projects."""

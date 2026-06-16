@@ -97,6 +97,8 @@ class PartnerRosterView(PartnerBaseView):
         )
 
         server_id = str(interaction.guild.id)
+        user_data = await self.bot.database.users.get(self.user_id, server_id)
+        player_level = user_data["level"] if user_data else 1
 
         party_row = await self.bot.database.boss_party.get_active(
             self.user_id, server_id
@@ -117,6 +119,7 @@ class PartnerRosterView(PartnerBaseView):
                 party_row,
                 partners_by_id,
                 back_view=self,
+                player_level=player_level,
             )
             progress_view.message = self.message
             embed, _ = _build_progress_embed(party_row, partners_by_id)
@@ -124,7 +127,8 @@ class PartnerRosterView(PartnerBaseView):
             return
 
         form_view = BossPartyFormView(
-            self.bot, self.user_id, server_id, self.partners, back_view=self
+            self.bot, self.user_id, server_id, self.partners, back_view=self,
+            player_level=player_level,
         )
         form_view.message = self.message
         embed = _build_form_embed(form_view.slots, self.partners)

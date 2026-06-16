@@ -4,7 +4,7 @@ from discord.ext import commands
 from core.first_use import TutorialGateView
 from core.hatchery.views import HatcheryView
 from core.settlement.models import Plot
-from core.settlement.views import SettlementDashboardView
+from core.settlement.views import BlackMarketView, SettlementDashboardView
 
 
 class SettlementCog(commands.Cog, name="settlement"):
@@ -155,6 +155,53 @@ class SettlementCog(commands.Cog, name="settlement"):
         view._rebuild_buttons()
 
         await interaction.response.send_message(embed=view.build_embed(), view=view)
+        view.message = await interaction.original_response()
+
+
+    @app_commands.command(
+        name="black_market",
+        description="Open your settlement's Black Market directly.",
+    )
+    async def black_market(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        user_data = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, user_data):
+            return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+
+        settlement = await self.bot.database.settlement.get_settlement(
+            user_id, server_id
+        )
+        bm_building = next(
+            (b for b in settlement.buildings if b.building_type == "black_market"),
+            None,
+        )
+        if bm_building is None:
+            return await interaction.response.send_message(
+                "You don't have a **Black Market** built yet. "
+                "Construct one in your `/settlement` first!",
+                ephemeral=True,
+            )
+
+        self.bot.state_manager.set_active(user_id, "settlement")
+        pending = await self.bot.database.settlement.get_pending_deal(
+            user_id, server_id
+        )
+        zeal_data = await self.bot.database.settlement.get_zeal_data(user_id)
+        view = BlackMarketView(
+            self.bot,
+            user_id,
+            parent_view=None,
+            building=bm_building,
+            has_pending_deal=bool(pending),
+            server_id=server_id,
+        )
+        await interaction.response.send_message(
+            embed=view.build_embed(pending_deal=pending, zeal_data=zeal_data), view=view
+        )
         view.message = await interaction.original_response()
 
 

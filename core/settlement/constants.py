@@ -131,31 +131,6 @@ BLACK_MARKET_TRADES = {
     "key": {"label": "Boss Key Caches (1 Void Key each)", "key": "key"},
 }
 
-# Construction flavor text (used during building animation)
-BUILD_MESSAGES = [
-    ("Your workers start building...", 6),
-    ("Laying the foundations...", 5),
-    ("Hammering beams into place...", 4),
-    ("Raising the walls...", 4),
-    ("Roofing the structure...", 3),
-    ("Clearing up dead workers...", 1),  # darker / rarer
-    ("Incinerating bodies...", 1),
-    ("Burying the fallen...", 1),
-    ("Whispering dark incantations...", 1),
-]
-
-UPGRADE_MESSAGES = [
-    ("Reinforcing the foundations...", 6),
-    ("Expanding the structure...", 5),
-    ("Upgrading the core systems...", 5),
-    ("Fortifying the walls...", 4),
-    ("Installing new machinery...", 4),
-    ("Sacrificing resources to the old gods...", 1),
-    ("Binding worker souls to the framework...", 1),
-    ("Incinerating outdated materials...", 1),
-    ("Clearing out the weak...", 1),
-]
-
 # ---------------------------------------------------------------------------
 # New Buildings — Nursery + Idlem Foundry + Uber Shrine
 # ---------------------------------------------------------------------------
@@ -278,47 +253,47 @@ BM_ITEM_VALUES: dict[str, int] = {
     "sturdy_essence": 7,
     "reinforced_essence": 8,
     "titanium_essence": 9,
-    # Runes
-    "refinement_runes": 150,
-    "potential_runes": 150,
-    "shatter_runes": 150,
-    "imbue_runes": 250,
-    "partnership_runes": 200,
-    # Boss keys
-    "dragon_key": 400,
-    "angel_key": 400,
-    "soul_cores": 300,
-    "balance_fragment": 400,
-    "void_frags": 350,
-    "void_keys": 1000,
-    # Elemental keys
-    "blessed_bismuth": 500,
-    "sparkling_sprig": 500,
-    "capricious_carp": 500,
-    # Settlement materials
-    "magma_core": 500,
-    "life_root": 500,
-    "spirit_shard": 500,
-    "celestial_stone": 2500,
-    "infernal_cinder": 2500,
-    "void_crystal": 2500,
-    "bound_crystal": 2500,
-    "corrupted_crystal": 2500,
-    # Blueprints etc.
-    "unidentified_blueprint": 800,
-    "diviners_rod": 600,
-    "spirit_stones": 50,
-    # Endgame
-    "antique_tome": 1800,
-    "pinnacle_key": 2200,
-    # Uber sigils
-    "celestial_sigils": 3000,
-    "infernal_sigils": 3000,
-    "void_shards": 3000,
-    "gemini_sigils": 3000,
-    "corruption_sigils": 3000,
-    # Curios
-    "curios": 200,
+    # Runes — Valuables ×100
+    "refinement_runes": 15_000,
+    "potential_runes": 15_000,
+    "shatter_runes": 15_000,
+    "imbue_runes": 25_000,
+    "partnership_runes": 20_000,
+    # Boss keys — Valuables ×100
+    "dragon_key": 40_000,
+    "angel_key": 40_000,
+    "soul_cores": 30_000,
+    "balance_fragment": 40_000,
+    "void_frags": 35_000,
+    "void_keys": 100_000,
+    # Elemental keys — Valuables ×100
+    "blessed_bismuth": 50_000,
+    "sparkling_sprig": 50_000,
+    "capricious_carp": 50_000,
+    # Settlement materials — Valuables ×100
+    "magma_core": 50_000,
+    "life_root": 50_000,
+    "spirit_shard": 50_000,
+    "celestial_stone": 250_000,
+    "infernal_cinder": 250_000,
+    "void_crystal": 250_000,
+    "bound_crystal": 250_000,
+    "corrupted_crystal": 250_000,
+    # Blueprints etc. — Valuables ×100
+    "unidentified_blueprint": 80_000,
+    "diviners_rod": 60_000,
+    "spirit_stones": 5_000,
+    # Endgame — Valuables ×100
+    "antique_tome": 180_000,
+    "pinnacle_key": 220_000,
+    # Uber sigils — Valuables ×100
+    "celestial_sigils": 300_000,
+    "infernal_sigils": 300_000,
+    "void_shards": 300_000,
+    "gemini_sigils": 300_000,
+    "corruption_sigils": 300_000,
+    # Curios — Valuables ×100
+    "curios": 20_000,
 }
 
 # Processing turn formula: turns = BM_TURNS_BASE + (value / BM_TURNS_PER_VALUE)
@@ -694,9 +669,6 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "advance_warning_turns": 2,
     },
 }
-
-# Mapping building types that raids can disable (for event resolution)
-RAID_DISABLE_BUILDINGS = {"market", "void_shrine", "logging_camp", "apothecary"}
 
 # Resources that can be offered to the Black Market (displayed in offering UI)
 BM_OFFERABLE_RESOURCES: list[tuple[str, str]] = [
