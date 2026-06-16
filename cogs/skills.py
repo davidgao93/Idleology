@@ -148,6 +148,10 @@ class Skills(commands.Cog, name="skills"):
                     await self.bot.database.skills.add_mastery_points(
                         user_id, server_id, skill, pts
                     )
+                    # Advance the timestamp only when points are awarded, so
+                    # fractional hours accumulate across ticks for sub-daily rates.
+                    # (Done here instead of the unconditional update below.)
+                    mrow["_pts_awarded"] = True
 
                 # --- 2. Yield (with mastery multipliers) ---
                 resources = SkillMechanics.calculate_yield_with_mastery(
@@ -206,11 +210,13 @@ class Skills(commands.Cog, name="skills"):
                     user_id, server_id, skill, resources
                 )
 
-                # Update last claim (always advance so next hour is normal 1/24 rate)
-                # All SQL must live in the repository layer (AGENTS.md rule)
-                await self.bot.database.skills.update_last_mastery_claim(
-                    user_id, server_id, now_iso
-                )
+                # Only advance last_point_claim when we actually awarded points.
+                # If we advanced it every tick, the fractional part of rate/24
+                # (<1.0 for all tiers) would be lost and players would accrue 0 pts/tick.
+                if mrow.get("_pts_awarded"):
+                    await self.bot.database.skills.update_last_mastery_claim(
+                        user_id, server_id, now_iso
+                    )
 
                 # --- Post-max Mastery Insight conversion (only when everything including Nature's Attunement is fully purchased) ---
                 # We check on every skill tick for the user; the repo method is safe and cheap.

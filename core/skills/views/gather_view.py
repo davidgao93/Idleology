@@ -277,7 +277,7 @@ class GatherView(BaseView):
                 gate_line += "\n*Tip: Participating actively in the mini-game earns Momentum, which reduces your Familiarization time.*"
                 desc += gate_line
             elif self.fam_momentum > 0:
-                desc += "\n✅ You feel familiarized with the tool!*"
+                desc += "\n✅ You feel familiarized with the tool!"
         else:
             desc += "\n\n**Tool is Max Level!**"
 

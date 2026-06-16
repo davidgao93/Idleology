@@ -35,12 +35,12 @@ from core.images import (
     COMPANIONS_HUB,
     DELVE_HUB,
     INVENTORY_HUB,
+    MASTERY_MINING,
     PARTNERS_HUB,
     QUEST_BOARD,
     SETTLEMENT_HUB,
     SLAYER_MASTER,
     TAVERN_KEEPER,
-    MASTERY_MINING,
 )
 
 # ---------------------------------------------------------------------------
@@ -54,15 +54,16 @@ TUTORIALS: dict[str, dict] = {
         "title": "⚔️ Combat",
         "description": (
             "Every fight puts your stats against a monster's. "
-            "**Attack** determines how hard you hit; **Defence** reduces how hard they hit you. "
-            "**Hit chance** is affected by your accuracy and the monster's evasion — "
+            "**Attack** determines how often and hard you hit; "
+            "**Defence** reduces how often they hit you. Percent DR and Flat DR reduces how hard. "
+            "**Hit chance** is also affected by your accuracy and the monster's evasion — "
             "a miss deals no damage. Land a **Critical Hit** for bonus damage. "
-            "Use **Potions** to restore HP during the fight. "
-            "If things look grim, you can always **Flee** — though it costs you a turn."
+            "Use **Potions** to restore HP during the fight, though it costs you a turn. "
+            "If things look grim, you can always **Flee** - better safe than dead."
         ),
         "tips": [
             "Higher **ATK** and **DEF** come from your equipped gear — upgrade it regularly.",
-            "Each **Weapon passive** activates under specific conditions — read them in `/gear`.",
+            "Equip yourself with powerful passives.",
             "Potions scale with your level, so they stay useful all game.",
         ],
         "image": COMBAT_VICTORY,
@@ -71,7 +72,7 @@ TUTORIALS: dict[str, dict] = {
     "slayer": {
         "title": "⚔️ Slayer Tasks",
         "description": (
-            "The Slayer Master assigns you a species to hunt. "
+            "Slayer Master Kael assigns you a species to hunt. You can encounter them via combat. "
             "Completing tasks earns **Slayer XP** and currency you can spend on "
             "powerful **Emblems** — passive stat boosts that persist across all combat. "
             "You have 5 Emblem slots; filling them makes a noticeable difference."
@@ -109,8 +110,8 @@ TUTORIALS: dict[str, dict] = {
             "You can tame monsters through combat or earn special companions from boss encounters."
         ),
         "tips": [
-            "Only your **active companion** applies its passive — choose wisely.",
-            "Boss companions (Aphrodite, Lucifer…) have rare passive types.",
+            "Only your **active companion(s)** applies passives — choose wisely.",
+            "Rare companions have rare passive types.",
             "You can hold up to **20 companions** in your roster at once.",
         ],
         "image": COMPANIONS_HUB,
@@ -127,7 +128,6 @@ TUTORIALS: dict[str, dict] = {
         "tips": [
             "Resources accumulate over time — collect them regularly to avoid waste.",
             "Upgrade your **Town Hall** to unlock additional building slots.",
-            "The **Hatchery** (unlocked later) lets you incubate monster eggs.",
         ],
         "image": SETTLEMENT_HUB,
         "color": discord.Color.dark_green(),
@@ -141,9 +141,9 @@ TUTORIALS: dict[str, dict] = {
             "better materials and larger yields per action."
         ),
         "tips": [
-            "Resources are collected on a **cooldown** — check back regularly.",
-            "Earning **Mastery XP** unlocks permanent passive bonuses per skill.",
-            "Higher-tier tools also reduce the chance of coming back empty-handed.",
+            "Resources can be collected passively or actively through minigames.",
+            "Artisan Mastery lets you unlock permanent passive bonuses per skill.",
+            "Higher-tier tools give you access to higher tier materials.",
         ],
         "image": MASTERY_MINING,
         "color": discord.Color.dark_orange(),
@@ -170,7 +170,7 @@ TUTORIALS: dict[str, dict] = {
             "Partners are powerful NPC allies recruited via **Guild Tickets**. "
             "Deploy one in combat to benefit from their passive skills — ATK boosts, "
             "crit bonuses, slayer synergies, and more. "
-            "Send others on **Dispatch tasks** to earn resources and keys while you're away."
+            "Send one on **Dispatch** to earn resources and keys while you're away."
         ),
         "tips": [
             "Partner **affinity** grows each fight — reach milestones to unlock story content.",
@@ -185,7 +185,7 @@ TUTORIALS: dict[str, dict] = {
         "description": (
             "Alchemy is your hub for resource transmutation, Cosmic Dust synthesis/disenchanting, "
             "and — most importantly — **Distilling powerful potion passives**. "
-            "Use the Potion Lab's Distill Elixir for the 9-step system."
+            "Use the Potion Lab's Distill Elixir."
         ),
         "tips": [
             "Level up to unlock more passive slots and better transmutation/synthesis rates.",
@@ -198,15 +198,13 @@ TUTORIALS: dict[str, dict] = {
     "quests": {
         "title": "📜 Quests",
         "description": (
-            "Quests give you long-term goals that reward you for playing every part of the game. "
-            "Choose a **Horizon Path** that fits your playstyle — each tracks specific activities "
+            "Quests give you daily goals that reward you for playing. "
+            "Choose a **Horizon Path** that's a long term goal "
             "and pays out unique materials on completion. "
-            "Daily and weekly **contracts** refresh automatically for ongoing rewards."
         ),
         "tips": [
             "Your Horizon Path can be changed, but progress resets when you switch.",
             "Contracts stack up — complete several at once for burst rewards.",
-            "Quest rewards often include rare materials not available elsewhere.",
         ],
         "image": QUEST_BOARD,
         "color": discord.Color.teal(),
@@ -215,14 +213,13 @@ TUTORIALS: dict[str, dict] = {
         "title": "🎒 Inventory & Gear",
         "description": (
             "Your Inventory holds all your weapons, armor, and accessories. "
-            "Equip items to raise your combat stats, then **upgrade** them at the Forge "
+            "Equip items to raise your combat stats, then **upgrade** them "
             "to push them further. "
-            "Gloves, Boots, and Helmets support **Essences** — slotting these can dramatically "
+            "Later on, Gloves, Boots, and Helmets support **Essences** — slotting these can dramatically "
             "change your build."
         ),
         "tips": [
-            "Higher **rarity** items drop with better base stats and stronger passives.",
-            "Each gear piece has a **passive ability** — read them carefully when equipping.",
+            "Higher **quality** items drop with better base stats.",
             "Upgrading gear costs resources but permanently improves the item.",
         ],
         "image": INVENTORY_HUB,

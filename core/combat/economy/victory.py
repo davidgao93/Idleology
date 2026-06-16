@@ -186,7 +186,10 @@ async def _apply_slayer_rewards(
         await bot.database.slayer.add_rewards(
             user_id, server_id, xp=per_kill_xp, points=0
         )
-        slayer_lines.append(f"💀 **Boss Kill!** +{per_kill_xp:,} Slayer XP")
+        await bot.database.slayer.modify_materials(
+            user_id, server_id, "violent_essence", 1
+        )
+        slayer_lines.append(f"💀 **Boss Kill!** +{per_kill_xp:,} Slayer XP | 🩸 +1 Violent Essence")
 
         new_prog = s_profile["active_task_progress"] + 1
         if new_prog >= s_profile["active_task_amount"]:
@@ -281,13 +284,16 @@ async def _apply_slayer_rewards(
     new_prog = s_profile["active_task_progress"] + prog_gain
 
     if new_prog >= s_profile["active_task_amount"]:
+        task_size = s_profile["active_task_amount"]
         burst_xp, burst_pts = (
-            core.slayer.mechanics.SlayerMechanics.calculate_task_rewards(
-                s_profile["active_task_amount"]
-            )
+            core.slayer.mechanics.SlayerMechanics.calculate_task_rewards(task_size)
         )
         await bot.database.slayer.add_rewards(
             user_id, server_id, xp=burst_xp, points=burst_pts
+        )
+        task_ess = max(1, task_size // 5)
+        await bot.database.slayer.modify_materials(
+            user_id, server_id, "violent_essence", task_ess
         )
         await bot.database.slayer.clear_task(user_id, server_id)
         try:
@@ -297,7 +303,7 @@ async def _apply_slayer_rewards(
         except Exception as _qe:
             print(f"[Quest tick error in slayer regular task]: {_qe}")
         slayer_lines.append(
-            f"🏆 **Task Complete!** +{burst_xp} Slayer XP | +{burst_pts} Slayer Pts"
+            f"🏆 **Task Complete!** +{burst_xp} Slayer XP | +{burst_pts} Slayer Pts | 🩸 +{task_ess} Violent Essence"
         )
     else:
         await bot.database.slayer.update_task_progress(user_id, server_id, 1)

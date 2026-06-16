@@ -411,14 +411,37 @@ class SettlementDashboardView(SettlementBaseView):
                         f"⚔️ **{cr['event_name']} repelled!** Your settlement is safe. +{zeal} Zeal awarded."
                     )
                 else:
-                    lines.append(
-                        f"💀 **{cr['event_name']} — crisis not prevented.** Check your buildings for damage."
-                    )
+                    plague_losses = cr.get("plague_losses")
+                    if plague_losses:
+                        total_lost = sum(x["lost"] for x in plague_losses)
+                        affected = ", ".join(
+                            f"{x['name']} (−{x['lost']})" for x in plague_losses
+                        )
+                        lines.append(
+                            f"💀 **{cr['event_name']} — crisis not prevented.** "
+                            f"{total_lost} worker(s) perished: {affected}."
+                        )
+                    else:
+                        lines.append(
+                            f"💀 **{cr['event_name']} — crisis not prevented.** Check your buildings for damage."
+                        )
             if turn_summary.get("crisis_events_fired"):
                 for e in turn_summary["crisis_events_fired"]:
-                    lines.append(
-                        f"❌ Crisis expired: **{e}** — the crisis has taken hold. Check your buildings."
-                    )
+                    ev_name = e["name"] if isinstance(e, dict) else e
+                    plague_losses = e.get("plague_losses") if isinstance(e, dict) else None
+                    if plague_losses:
+                        total_lost = sum(x["lost"] for x in plague_losses)
+                        affected = ", ".join(
+                            f"{x['name']} (−{x['lost']})" for x in plague_losses
+                        )
+                        lines.append(
+                            f"🦠 **{ev_name} — the crisis has taken hold.** "
+                            f"{total_lost} worker(s) perished: {affected}."
+                        )
+                    else:
+                        lines.append(
+                            f"❌ Crisis expired: **{ev_name}** — the crisis has taken hold. Check your buildings."
+                        )
             if turn_summary.get("events_expired"):
                 for e in turn_summary["events_expired"]:
                     lines.append(f"⏹️ Event ended: {e}")
@@ -426,7 +449,7 @@ class SettlementDashboardView(SettlementBaseView):
                 ideology = turn_summary.get("nursery_ideology", "")
                 if ideology:
                     lines.append(
-                        f"👶 Nursery produced {turn_summary['workers_from_nursery']} worker(s) → added to **{ideology}** Workforce."
+                        f"👶 Nursery produced {turn_summary['workers_from_nursery']} worker(s)"
                     )
                 else:
                     lines.append(
@@ -644,9 +667,7 @@ class SettlementDashboardView(SettlementBaseView):
 
         _pz = min(self._cached_pending_zeal, ZEAL_GATHER_CAP)
         gather_zeal_btn = ui.Button(
-            label=f"Gather Zeal ({_pz}/{ZEAL_GATHER_CAP})"
-            if _pz > 0
-            else f"Gather Zeal (cap {ZEAL_GATHER_CAP})",
+            label=f"Gather Zeal ({_pz}/{ZEAL_GATHER_CAP})",
             style=ButtonStyle.blurple,
             emoji="🔥",
             row=1,
@@ -1141,6 +1162,8 @@ class SettlementDashboardView(SettlementBaseView):
             projects = await self.bot.database.settlement.get_projects(uid, sid)
             pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
 
+            self._cached_pending_deal = pending_deal
+            self._cached_pending_zeal = turns_data.get("pending_zeal", 0)
             self._rebuild_ui()
             embed = self.build_embed(
                 turn_summary=summary,
@@ -1217,6 +1240,8 @@ class SettlementDashboardView(SettlementBaseView):
             projects = await self.bot.database.settlement.get_projects(uid, sid)
             pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
 
+            self._cached_pending_deal = pending_deal
+            self._cached_pending_zeal = turns_data.get("pending_zeal", 0)
             self._rebuild_ui()
             embed = self.build_embed(
                 turns_data=turns_data,
@@ -1273,14 +1298,14 @@ class SettlementDashboardView(SettlementBaseView):
             )
             target_building_type = (event.get("data") or {}).get("target_building")
 
-            from core.items.factory import load_player
-            from core.models import Monster
+            from core.combat import jewel_engine as _je
+            from core.combat import ui as combat_ui
             from core.combat.mobgen.gen_mob import generate_encounter
             from core.combat.turns import engine
             from core.combat.turns.boundary import reset_combat_transients
-            from core.combat import ui as combat_ui
-            from core.combat import jewel_engine as _je
             from core.combat.views.views import CombatView
+            from core.items.factory import load_player
+            from core.models import Monster
 
             user_row = await self.bot.database.users.get(uid, sid)
             player = await load_player(uid, user_row, self.bot.database)
@@ -1337,6 +1362,18 @@ class SettlementDashboardView(SettlementBaseView):
                         )
                         if b:
                             await self.bot.database.settlement.disable_building(b.id)
+                    plague_losses = []
+                    if ev_def.get("effects", {}).get("on_fail_lose_workers_pct"):
+                        import math
+                        pct = (event.get("data") or {}).get("band", 0.05)
+                        settlement_state = await self.bot.database.settlement.get_settlement(uid, sid)
+                        for bldg in (settlement_state.buildings if settlement_state else []):
+                            if bldg.workers_assigned <= 0:
+                                continue
+                            lost = max(1, math.ceil(bldg.workers_assigned * pct))
+                            new_count = max(0, bldg.workers_assigned - lost)
+                            await self.bot.database.settlement.assign_workers(bldg.id, new_count)
+                            plague_losses.append({"name": bldg.name, "lost": lost})
 
                 # Reload settlement state and transition the message back to the dashboard.
                 self.settlement = await self.bot.database.settlement.get_settlement(
@@ -1355,22 +1392,20 @@ class SettlementDashboardView(SettlementBaseView):
                 )
                 self._rebuild_ui()
                 self._processing = False
-                self.bot.state_manager.set_active(uid, "settlement")
-                crisis_summary = {
-                    "crisis_result": {
-                        "won": won,
-                        "event_name": ev_def.get("name", enemy_name),
-                        "zeal_earned": zeal_reward,
-                    }
+                crisis_result: dict = {
+                    "won": won,
+                    "event_name": ev_def.get("name", enemy_name),
+                    "zeal_earned": zeal_reward,
                 }
+                if not won and plague_losses:
+                    crisis_result["plague_losses"] = plague_losses
+                crisis_summary = {"crisis_result": crisis_result}
                 if self.message:
-                    try:
-                        await self.message.edit(
-                            embed=self.build_embed(turn_summary=crisis_summary),
-                            view=self,
-                        )
-                    except Exception:
-                        pass
+                    await self.message.edit(
+                        embed=self.build_embed(turn_summary=crisis_summary),
+                        view=self,
+                    )
+                self.bot.state_manager.set_active(uid, "settlement")
 
             # Switch active state: settlement → combat
             self.bot.state_manager.set_active(uid, "combat")

@@ -352,7 +352,7 @@ class SlotManageView(BaseView):
 
                 embed.add_field(
                     name="Upgrade Odds",
-                    value=f"🟢 Success: {success_rate}%\n🔴 Downgrade: {downgrade_rate}%",
+                    value=f"🟢 Success: {success_rate}%\n🔴 Downgrade: {downgrade_rate}%\n🩸 Cost: {p_tier + 1} Violent Essence",
                     inline=False,
                 )
             else:
@@ -380,11 +380,12 @@ class SlotManageView(BaseView):
             btn_awaken.callback = self.awaken_slot
             self.add_item(btn_awaken)
         else:
+            upgrade_cost = p_tier + 1  # T1→T2 costs 2, T2→T3 costs 3, …, T4→T5 costs 5
             btn_upgrade = ui.Button(
-                label="Upgrade (1 Essence)",
+                label=f"Upgrade ({upgrade_cost} Essence)",
                 style=ButtonStyle.success,
                 emoji="🩸",
-                disabled=(essences < 1 or p_tier >= 5),
+                disabled=(essences < upgrade_cost or p_tier >= 5),
             )
             btn_upgrade.callback = self.upgrade_slot
             self.add_item(btn_upgrade)
@@ -432,17 +433,18 @@ class SlotManageView(BaseView):
     async def upgrade_slot(self, interaction: Interaction):
         await interaction.response.defer()
 
+        old_tier = self.slot_data["tier"]
+        upgrade_cost = old_tier + 1  # matches setup_ui
+
         # ATOMIC DEDUCTION CHECK
         if not await self.bot.database.slayer.consume_material(
-            self.user_id, self.server_id, "violent_essence", 1
+            self.user_id, self.server_id, "violent_essence", upgrade_cost
         ):
             return await interaction.followup.send(
-                "Not enough Violent Essence!", ephemeral=True
+                f"Not enough Violent Essence! You need {upgrade_cost}.", ephemeral=True
             )
 
-        self.profile["violent_essence"] -= 1
-
-        old_tier = self.slot_data["tier"]
+        self.profile["violent_essence"] -= upgrade_cost
         success, new_tier = SlayerMechanics.roll_upgrade(old_tier)
 
         self.slot_data["tier"] = new_tier

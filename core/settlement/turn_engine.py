@@ -217,7 +217,7 @@ async def process_next_turn(
     for ev in newly_fired:
         ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
         ev_data = ev.get("data", {})
-        await _apply_event_effects(bot, user_id, server_id, ev_def, ev_data)
+        fx_result = await _apply_event_effects(bot, user_id, server_id, ev_def, ev_data)
         # Convert upcoming → ongoing if it has duration; carry over ev_data so band values persist
         dur = ev_data.get("duration", ev_def.get("duration_turns", 0))
         if dur > 0:
@@ -233,7 +233,10 @@ async def process_next_turn(
         await bot.database.settlement.remove_event(ev["id"])
         ev_name = ev_def.get("name", ev["event_key"])
         if ev_def.get("effects", {}).get("spawn_combat"):
-            summary["crisis_events_fired"].append(ev_name)
+            entry: dict = {"name": ev_name}
+            if fx_result.get("plague_losses"):
+                entry["plague_losses"] = fx_result["plague_losses"]
+            summary["crisis_events_fired"].append(entry)
         else:
             summary["events_fired"].append(ev_name)
 
@@ -468,9 +471,13 @@ def _resolve_band(effect_val, ev_data: dict):
 
 async def _apply_event_effects(
     bot, user_id: str, server_id: str, ev_def: dict, ev_data: dict | None = None
-) -> None:
+) -> dict:
+    """Applies on-fire/on-fail effects for a settlement event. Returns extra context (e.g. plague losses)."""
+    import math
+
     effects = ev_def.get("effects", {})
     ev_data = ev_data or {}
+    result: dict = {}
 
     if "grant_zeal" in effects:
         val = _resolve_band(effects["grant_zeal"], ev_data)
@@ -491,6 +498,22 @@ async def _apply_event_effects(
             )
             if building and not building.is_disabled:
                 await bot.database.settlement.disable_building(building.id)
+
+    if "on_fail_lose_workers_pct" in effects:
+        # Plague Outbreak: remove a percentage of workers from every building.
+        pct = _resolve_band(effects["on_fail_lose_workers_pct"], ev_data)
+        settlement = await bot.database.settlement.get_settlement(user_id, server_id)
+        losses = []
+        for b in (settlement.buildings if settlement else []):
+            if b.workers_assigned <= 0:
+                continue
+            lost = max(1, math.ceil(b.workers_assigned * pct))
+            new_count = max(0, b.workers_assigned - lost)
+            await bot.database.settlement.assign_workers(b.id, new_count)
+            losses.append({"name": b.name, "lost": lost})
+        result["plague_losses"] = losses
+
+    return result
 
 
 async def _check_schedule_events(

@@ -107,13 +107,17 @@ class BuildingDetailView(SettlementBaseView):
         base_rate = b_data.get("base_rate", 0)
         rate = base_rate * self.building.tier * self.building.workers_assigned
 
+        _DT_HOURS = 5  # 1 Development Turn = 5 hours of production
+
         # Adjust description based on building type
         if b_data.get("type") == "generator":
             output_name = b_data.get("output", "goods").replace("_", " ").title()
+            rate_hr = int(rate)
+            rate_dt = int(rate * _DT_HOURS)
             desc = (
                 f"**Level:** {self.building.tier}/5\n"
                 f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
-                f"**Output:** ~{rate:,}/hr ({output_name})"
+                f"**Output:** ~{rate_hr:,}/hr · ~{rate_dt:,}/turn ({output_name})"
             )
         elif b_data.get("type") == "converter":
             tier_rates = SettlementMechanics.get_converter_rates(
@@ -127,13 +131,13 @@ class BuildingDetailView(SettlementBaseView):
 
             if tier_rates:
                 rate_lines = "\n".join(
-                    f"  • {_rname(raw)} → {_rname(ref)}: ~{r:,}/hr"
+                    f"  • {_rname(raw)} → {_rname(ref)}: ~{int(r):,}/hr · ~{int(r * _DT_HOURS):,}/turn"
                     for raw, ref, r in tier_rates
                 )
                 desc = (
                     f"**Level:** {self.building.tier}/5\n"
                     f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
-                    f"**Processing Rates (per hr):**\n{rate_lines}"
+                    f"**Processing Rates:**\n{rate_lines}"
                 )
             else:
                 desc = (

@@ -904,7 +904,19 @@ class CombatView(BaseView):
             try:
                 await self.crisis_callback(True)
             except Exception:
-                pass
+                # Settlement transition failed — show a plain recovery message so the
+                # player isn't stuck looking at dead combat buttons.
+                try:
+                    await message.edit(
+                        content=(
+                            "⚔️ Crisis resolved! Your settlement is safe. "
+                            "Use `/settlement` to return."
+                        ),
+                        embed=None,
+                        view=None,
+                    )
+                except Exception:
+                    pass
             self.stop()
             return  # Caller handles the view transition; skip normal post-combat UI
 
