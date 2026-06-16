@@ -1,16 +1,2 @@
-from core.alchemy.views import AlchemyHubView
-from core.alchemy.mechanics import AlchemyMechanics, DistillationMechanics
-from core.alchemy.mechanics import (
-    get_passive_info,
-    get_passive_name_emoji,
-    get_passive_list_desc,
-)
-
-__all__ = [
-    "AlchemyHubView",
-    "AlchemyMechanics",
-    "DistillationMechanics",
-    "get_passive_info",
-    "get_passive_name_emoji",
-    "get_passive_list_desc",
-]
+# core/alchemy package
+# No public re-exports (import directly from submodules: .views, .mechanics, .distillation_views, .synthesis_views)

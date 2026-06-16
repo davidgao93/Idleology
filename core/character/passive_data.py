@@ -247,31 +247,6 @@ _CODEX_TOME_INFO: dict = {
 # Roman numeral display for passive tiers
 _ROMAN = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}
 
-_HEMATURGY_PASSIVE_NAMES: dict[str, str] = {
-    # Main pool
-    "reverberation": "Reverberation",
-    "soothing_venom": "Soothing Venom",
-    "iron_momentum": "Iron Momentum",
-    "serrated": "Serrated",
-    "haemorrhage": "Haemorrhage",
-    "vital_resonance": "Vital Resonance",
-    "executioners_rite": "Executioner's Rite",
-    "crimson_feast": "Crimson Feast",
-    "phantom_reflex": "Phantom Reflex",
-    "chain_reaction": "Chain Reaction",
-    "regenerative_tissue": "Regenerative Tissue",
-    "fevered_strike": "Fevered Strike",
-    "predators_mark": "Predator's Mark",
-    "counterforce": "Counterforce",
-    "defiance": "Defiance",
-    # Mutated pool
-    "spectral_waltz": "Spectral Waltz",
-    "puncture": "Puncture",
-    "flash_frost": "Flash Frost",
-    "ward_inoculation": "Ward Inoculation",
-    "soul_fracture": "Soul Fracture",
-}
-
 _HEMATURGY_SHORT_FUNCS: dict = {
     "reverberation": lambda t: (
         f"On hit: {[40, 50, 60, 70, 80][t - 1]}% chance for echoes to retrigger (−10% per chain)"

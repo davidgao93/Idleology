@@ -1,3 +1,5 @@
+import asyncio
+
 from discord import Interaction, app_commands
 from discord.ext import commands
 
@@ -25,9 +27,12 @@ class Slayer(commands.Cog, name="slayer"):
         self.bot.state_manager.set_active(user_id, "slayer")
 
         async def _build():
-            profile = await self.bot.database.slayer.get_profile(user_id, server_id)
+            profile, tree_data = await asyncio.gather(
+                self.bot.database.slayer.get_profile(user_id, server_id),
+                self.bot.database.slayer.get_tree(user_id, server_id),
+            )
             view = SlayerDashboardView(
-                self.bot, user_id, server_id, profile, existing_user[4]
+                self.bot, user_id, server_id, profile, existing_user[4], tree_data
             )
             return view.build_embed(), view
 

@@ -1,3 +1,5 @@
+import json
+
 import aiosqlite
 
 
@@ -121,6 +123,39 @@ class SlayerRepository:
         )
         await self.connection.commit()
         return cursor.rowcount > 0
+
+    async def get_tree(self, user_id: str, server_id: str) -> dict:
+        cursor = await self.connection.execute(
+            "SELECT nodes_owned, points_spent FROM slayer_tree WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return {"nodes_owned": {}, "points_spent": 0}
+        return {
+            "nodes_owned": json.loads(row[0]) if row[0] else {},
+            "points_spent": row[1],
+        }
+
+    async def upsert_tree(
+        self, user_id: str, server_id: str, nodes_owned: dict, points_spent: int
+    ) -> None:
+        await self.connection.execute(
+            """INSERT INTO slayer_tree (user_id, server_id, nodes_owned, points_spent)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(user_id, server_id) DO UPDATE SET
+                 nodes_owned = excluded.nodes_owned,
+                 points_spent = excluded.points_spent""",
+            (user_id, server_id, json.dumps(nodes_owned), points_spent),
+        )
+        await self.connection.commit()
+
+    async def reset_tree(self, user_id: str, server_id: str) -> int:
+        """Clears the tree and returns points_spent before the reset (for refund calc)."""
+        data = await self.get_tree(user_id, server_id)
+        pts = data["points_spent"]
+        await self.upsert_tree(user_id, server_id, {}, 0)
+        return pts
 
     async def get_leaderboard(self, limit: int = 10):
         # Join with users table to get the player's name

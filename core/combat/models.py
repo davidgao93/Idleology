@@ -403,6 +403,7 @@ class Player:
 
     # Slayer
     slayer_emblem: dict = field(default_factory=dict)
+    slayer_tree_nodes: dict = field(default_factory=dict)  # nodes_owned from slayer_tree table
     active_task_species: str = (
         None  # Store this so the engine knows if we are fighting a task mob
     )

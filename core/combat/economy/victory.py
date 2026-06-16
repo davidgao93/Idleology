@@ -245,8 +245,12 @@ async def _apply_slayer_rewards(
     slayer_lines = []
 
     # Base Slayer XP + drops
-    await bot.database.slayer.add_rewards(user_id, server_id, xp=500, points=0)
-    slayer_lines.append("+500 Slayer XP")
+    _tree_nodes = getattr(player, "slayer_tree_nodes", {})
+    per_kill_base_xp = 500 + (_tree_nodes.get("tm_4") and 250 or 0)
+    await bot.database.slayer.add_rewards(user_id, server_id, xp=per_kill_base_xp, points=0)
+    slayer_lines.append(f"+{per_kill_base_xp} Slayer XP")
+    if _tree_nodes.get("tm_4"):
+        slayer_lines[-1] += " *(+250 Relentless)*"
 
     ess, heart = core.slayer.mechanics.SlayerMechanics.roll_drops(monster.level)
     drop_bonus_tiers = player.get_emblem_bonus("slayer_drops")
@@ -283,11 +287,24 @@ async def _apply_slayer_rewards(
     # Progress tracker
     new_prog = s_profile["active_task_progress"] + prog_gain
 
+    # Zenith monster: guaranteed Imbued Heart drop (before task completion check)
+    if getattr(monster, "is_zenith", False):
+        await bot.database.slayer.modify_materials(user_id, server_id, "imbued_heart", 1)
+        slayer_lines.append("👑 **Zenith Monster!** Guaranteed ❤️ Imbued Heart!")
+
     if new_prog >= s_profile["active_task_amount"]:
         task_size = s_profile["active_task_amount"]
         burst_xp, burst_pts = (
             core.slayer.mechanics.SlayerMechanics.calculate_task_rewards(task_size)
         )
+        # tm_3: 50% chance to double the XP burst
+        if _tree_nodes.get("tm_3") and random.random() < 0.50:
+            burst_xp *= 2
+            slayer_lines.append("🔥 **Executioner's High!** XP burst doubled!")
+        # pu_2: +25% bonus Slayer Points
+        if _tree_nodes.get("pu_2"):
+            import math
+            burst_pts = math.floor(burst_pts * 1.25)
         await bot.database.slayer.add_rewards(
             user_id, server_id, xp=burst_xp, points=burst_pts
         )
@@ -312,11 +329,8 @@ async def _apply_slayer_rewards(
         )
 
     # Level-up check
-    new_s_xp = (
-        s_profile["xp"]
-        + 100
-        + (burst_xp if new_prog >= s_profile["active_task_amount"] else 0)
-    )
+    _task_xp = burst_xp if new_prog >= s_profile["active_task_amount"] else 0
+    new_s_xp = s_profile["xp"] + per_kill_base_xp + _task_xp
     new_s_lvl = core.slayer.mechanics.SlayerMechanics.calculate_level_from_xp(new_s_xp)
     if new_s_lvl > s_profile["level"]:
         await bot.database.slayer.update_level(user_id, server_id, new_s_lvl)

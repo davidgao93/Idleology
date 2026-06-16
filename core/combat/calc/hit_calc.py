@@ -147,6 +147,14 @@ def build_attack_multiplier(
         if tiers > 0:
             add_pool_bonus += tiers * 0.05
             add_pool_parts.append(f"slayer_dmg+{int(tiers * 5)}%")
+        # Slayer tree hu_1 ATK bonus vs task species
+        if getattr(player, "slayer_tree_nodes", {}).get("hu_1") == "atk":
+            add_pool_bonus += 0.18
+            add_pool_parts.append("hu1_atk+18%")
+        # Slayer tree hu_3 DMG bonus vs task species
+        if getattr(player, "slayer_tree_nodes", {}).get("hu_3") == "dmg":
+            add_pool_bonus += 0.25
+            add_pool_parts.append("hu3_dmg+25%")
 
     if glove_passive == "instability" and glove_lvl > 0:
         if random.random() < 0.5:
@@ -254,6 +262,14 @@ def resolve_hit(
     hit_chance = calculate_hit_chance(player, monster)
     acc_bonus = player.get_emblem_bonus("accuracy") * 2
 
+    # Slayer tree hu_1 accuracy bonus vs task species
+    if (
+        getattr(player, "slayer_tree_nodes", {}).get("hu_1") == "accuracy"
+        and player.active_task_species
+        and player.active_task_species == monster.species
+    ):
+        acc_bonus += 8
+
     idx, name = get_weapon_tier(player, "deadeye")
     if idx >= 0:
         wep_acc = (idx + 1) * 4
@@ -327,6 +343,14 @@ def resolve_crit(
         return False
 
     crit_chance = calculate_crit_chance(player)
+
+    # Slayer tree hu_1 crit bonus vs task species
+    if (
+        getattr(player, "slayer_tree_nodes", {}).get("hu_1") == "crit"
+        and player.active_task_species
+        and player.active_task_species == monster.species
+    ):
+        crit_chance += 8
 
     if monster.has_modifier("Dampening"):
         crit_chance = max(0, crit_chance - monster.get_modifier_value("Dampening"))

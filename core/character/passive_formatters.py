@@ -47,47 +47,6 @@ def _get_piercing_crit_bonus(passive: str) -> int:
     return 0
 
 
-def _format_essence_slot(etype: str, raw_val: float, item) -> str:
-    """Format an essence slot description, computing actual flat values from item stats."""
-    key = etype.lower()
-    if key == "power":
-        is_helmet = type(item).__name__ == "Helmet"
-        if is_helmet:
-            flat_def = int(item.defence * raw_val / 100)
-            flat_ward = int(item.ward * raw_val / 100)
-            parts = []
-            if flat_def:
-                parts.append(f"+{flat_def} Def")
-            if flat_ward:
-                parts.append(f"+{flat_ward}% Ward")
-            return f"Power Essence ({int(raw_val)}%) — {' | '.join(parts) or 'no base stats'}"
-        else:
-            flat_atk = int(item.attack * raw_val / 100)
-            return f"Power Essence ({int(raw_val)}%) — +{flat_atk} flat Atk"
-    elif key == "protection":
-        flat_pdr = int(item.pdr * raw_val / 100)
-        flat_fdr = int(item.fdr * raw_val / 100)
-        parts = []
-        if flat_pdr:
-            parts.append(f"+{flat_pdr}% PDR")
-        if flat_fdr:
-            parts.append(f"+{flat_fdr} FDR")
-        return f"Protection Essence ({int(raw_val)}%) — {' | '.join(parts) or 'no base PDR/FDR to amplify'}"
-    elif key == "insight":
-        return f"Insight Essence — +{int(raw_val)} Crit Chance"
-    elif key == "evasion":
-        return f"Evasion Essence — +{int(raw_val)}% Evasion"
-    elif key == "blocking":
-        return f"Blocking Essence — +{int(raw_val)}% Block"
-    elif key == "deftness":
-        return f"Deftness Essence — +{raw_val:.2f}× Crit Multiplier"
-    elif key == "precision":
-        return f"Precision Essence — +{int(raw_val)}% Hit Chance"
-    elif key == "gluttony":
-        return f"Gluttony Essence — +{int(raw_val)}% Max HP"
-    return f"{etype.replace('_', ' ').title()} Essence — {raw_val}"
-
-
 def _format_corrupted(etype: str, slot: str) -> str:
     key = (_normalize(etype), slot.lower())
     desc = _CORRUPTED_DESC.get(key, etype.replace("_", " ").title())

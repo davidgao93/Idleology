@@ -357,6 +357,16 @@ def process_monster_turn(
                 f"+{bonus_pdr}%(fortress,{missing_pct:.1f}%missing)={effective_pdr}%"
             )
         effective_fdr = player.get_total_fdr()
+
+        # Slayer tree hu_2 bonus PDR/FDR vs assigned species
+        _hu2 = getattr(player, "slayer_tree_nodes", {}).get("hu_2")
+        if _hu2 and player.active_task_species == monster.species:
+            if _hu2 == "pdr":
+                effective_pdr = min(80, effective_pdr + 8)
+                pdr_notes.append(f"+8%(hu2_pdr)={effective_pdr}%")
+            elif _hu2 == "fdr":
+                effective_fdr += 24
+
         calc.append(f"  PDR: {' → '.join(pdr_notes)} | FDR: {effective_fdr}")
 
         # --- Phase 1: Prepare unified damage modifier pools for this turn's hit ---
@@ -678,6 +688,11 @@ def process_monster_turn(
                     tiers = player.get_emblem_bonus("slayer_def")
                     if tiers > 0:
                         total_damage = int(total_damage * (1 - min(0.50, tiers * 0.02)))
+                    _tree_nodes = getattr(player, "slayer_tree_nodes", {})
+                    if _tree_nodes.get("hu_2") == "def":
+                        total_damage = int(total_damage * 0.85)  # +18% DEF ≈ −15% dmg taken
+                    if _tree_nodes.get("hu_3") == "tank":
+                        total_damage = int(total_damage * 0.75)  # −25% dmg taken vs task
 
                 # Astral Aegis shield (powerful distilled passive) — absorb damage, prevent death while active
                 shield_hp = getattr(player, "alchemy_shield_hp", 0)

@@ -5,7 +5,6 @@ Contains:
   ZoneDef           — zone metadata
   ZONE_DEFS         — 6 zones keyed by zone_key
   ApexMonsterDef    — apex monster definition
-  APEX_POOL         — 30 apex monsters (5 per zone)
   APEX_BY_ZONE      — monsters indexed by zone_key
   PASSIVE_SHARD_MAP — passive_name → shard_type
   PASSIVE_CATEGORY_MAP — passive_name → category
@@ -161,7 +160,8 @@ class ApexMonsterDef:
     image: str = ""  # URL or asset key
 
 
-APEX_POOL: list[ApexMonsterDef] = [
+# Apex monster pool (module-private; only used to populate the zone index below)
+_apex_pool: list[ApexMonsterDef] = [
     # ----- Ashen Wastes (pyre) -----
     ApexMonsterDef(
         "Cinderborn Drake",
@@ -352,7 +352,7 @@ APEX_POOL: list[ApexMonsterDef] = [
 
 # Build lookup by zone
 APEX_BY_ZONE: dict[str, list[ApexMonsterDef]] = {}
-for _m in APEX_POOL:
+for _m in _apex_pool:
     APEX_BY_ZONE.setdefault(_m.zone_key, []).append(_m)
 
 # ---------------------------------------------------------------------------

@@ -444,6 +444,14 @@ CREATE TABLE IF NOT EXISTS slayer_emblems (
     PRIMARY KEY (user_id, server_id)
 );
 
+CREATE TABLE IF NOT EXISTS slayer_tree (
+    user_id      TEXT    NOT NULL,
+    server_id    TEXT    NOT NULL,
+    nodes_owned  TEXT    NOT NULL DEFAULT '{}',
+    points_spent INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, server_id)
+);
+
 CREATE TABLE IF NOT EXISTS uber_progress (
     user_id TEXT NOT NULL,
     server_id TEXT NOT NULL,

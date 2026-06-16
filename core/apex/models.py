@@ -52,11 +52,6 @@ class SoulStone:
                 return i
         return None
 
-    @property
-    def active_passives(self) -> list[tuple[str, int, str]]:
-        """Returns list of (passive, tier, category) for all filled slots."""
-        return [(s.passive, s.tier, s.category) for s in self.slots if not s.is_empty]
-
     def get_passive_tier(self, passive_key: str) -> int | None:
         """Returns the tier of the given passive if it exists in any slot, else None."""
         for s in self.slots:

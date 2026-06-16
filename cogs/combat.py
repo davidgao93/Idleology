@@ -398,6 +398,8 @@ class Combat(commands.Cog, name="combat"):
 
         slayer_profile = await self.bot.database.slayer.get_profile(user_id, server_id)
         task_species = slayer_profile["active_task_species"]
+        slayer_tree_data = await self.bot.database.slayer.get_tree(user_id, server_id)
+        player.slayer_tree_nodes = slayer_tree_data["nodes_owned"]
 
         monster = Monster(
             name="",
@@ -427,7 +429,8 @@ class Combat(commands.Cog, name="combat"):
                 treasure_chance += player.equipped_boot.passive_lvl * 0.5
             is_treasure = random.random() * 100 < treasure_chance
             monster = await generate_encounter(
-                player, monster, is_treasure=is_treasure, task_species=task_species
+                player, monster, is_treasure=is_treasure, task_species=task_species,
+                slayer_tree_nodes=player.slayer_tree_nodes,
             )
             combat_phases = [None]
 

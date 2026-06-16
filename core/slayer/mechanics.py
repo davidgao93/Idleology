@@ -44,6 +44,62 @@ SLAYER_PASSIVE_DEFS: dict[str, Callable[[int], str]] = {
 
 BOSS_TASK_PREFIX = "BOSS:"
 
+# ---------------------------------------------------------------------------
+# Slayer Tree
+# ---------------------------------------------------------------------------
+
+TREE_RESET_COST = 20  # Violent Essence; gives back 80% of points_spent
+
+# Node definitions: prereq is the node_id that must be owned first.
+# Hunter nodes store the player's *choice* as the value (string), not True.
+SLAYER_TREE_NODES: dict[str, dict] = {
+    # Taskmaster branch
+    "tm_1": {"branch": "taskmaster", "name": "Oversized Contract", "cost": 20, "prereq": None,   "desc": "Task sizes +20%"},
+    "tm_2": {"branch": "taskmaster", "name": "Favored Target",     "cost": 35, "prereq": "tm_1", "desc": "50% increased chance of a boss task"},
+    "tm_3": {"branch": "taskmaster", "name": "Executioner's High", "cost": 55, "prereq": "tm_2", "desc": "50% chance to double Slayer XP burst on task completion"},
+    "tm_4": {"branch": "taskmaster", "name": "Relentless",         "cost": 85, "prereq": "tm_3", "desc": "+250 flat Slayer XP per kill while on task"},
+    # Hunter branch — choice nodes (value = chosen option string)
+    "hu_1": {
+        "branch": "hunter", "name": "Slayer's Edge", "cost": 20, "prereq": None,
+        "choices": [("accuracy", "+8 Accuracy vs task species"), ("crit", "+8 Crit Chance vs task species"), ("atk", "+18% ATK vs task species")],
+    },
+    "hu_2": {
+        "branch": "hunter", "name": "Hunter's Resolve", "cost": 35, "prereq": "hu_1",
+        "choices": [("pdr", "+8% PDR vs task species"), ("fdr", "+24 flat FDR vs task species"), ("def", "+18% DEF vs task species")],
+    },
+    "hu_3": {
+        "branch": "hunter", "name": "Killing Blow", "cost": 55, "prereq": "hu_2",
+        "choices": [("dmg", "+25% damage dealt vs task species"), ("tank", "+25% damage taken reduction vs task species")],
+    },
+    "hu_4": {
+        "branch": "hunter", "name": "Apex Predator", "cost": 85, "prereq": "hu_3",
+        "choices": [("slay", "5% chance to instantly slay (non-boss)"), ("zenith", "5% chance next encounter spawns a Zenith monster (+100% ATK/DEF, drops guaranteed Imbued Heart)")],
+    },
+    # Purveyor branch
+    "pu_1": {"branch": "purveyor", "name": "Black Contract",   "cost": 20, "prereq": None,   "desc": "Task skips cost 30% fewer Slayer Points"},
+    "pu_2": {"branch": "purveyor", "name": "Slayer's Fortune", "cost": 35, "prereq": "pu_1", "desc": "+25% bonus Slayer Points on task completion"},
+    "pu_3": {"branch": "purveyor", "name": "Material Market",  "cost": 55, "prereq": "pu_2", "desc": "Unlock Shop: buy 1 Violent Essence for 40 pts"},
+    "pu_4": {"branch": "purveyor", "name": "Essence Exchange", "cost": 85, "prereq": "pu_3", "desc": "Unlock Shop: buy 1 Imbued Heart for 120 pts"},
+}
+
+
+def get_tree_bonuses(nodes_owned: dict) -> dict:
+    """Converts raw nodes_owned dict into structured bonus values for combat/UI use."""
+    return {
+        "tm_1": bool(nodes_owned.get("tm_1")),
+        "tm_2": bool(nodes_owned.get("tm_2")),
+        "tm_3": bool(nodes_owned.get("tm_3")),
+        "tm_4": bool(nodes_owned.get("tm_4")),
+        "hu_1": nodes_owned.get("hu_1") or None,   # "accuracy", "crit", or "atk"
+        "hu_2": nodes_owned.get("hu_2") or None,   # "pdr", "fdr", or "def"
+        "hu_3": nodes_owned.get("hu_3") or None,   # "dmg" or "tank"
+        "hu_4": nodes_owned.get("hu_4") or None,   # "slay" or "zenith"
+        "pu_1": bool(nodes_owned.get("pu_1")),
+        "pu_2": bool(nodes_owned.get("pu_2")),
+        "pu_3": bool(nodes_owned.get("pu_3")),
+        "pu_4": bool(nodes_owned.get("pu_4")),
+    }
+
 # Level-gated boss hunt targets.  ``key`` is appended to BOSS_TASK_PREFIX and
 # used to match monsters in combat; ``name`` is the display name shown to the player.
 BOSS_TASK_CATALOG = [

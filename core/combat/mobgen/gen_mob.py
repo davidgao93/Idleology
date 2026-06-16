@@ -23,7 +23,7 @@ from core.images import (
 from core.models import Monster
 
 
-async def generate_encounter(player, monster, is_treasure, task_species=None):
+async def generate_encounter(player, monster, is_treasure, task_species=None, slayer_tree_nodes=None):
     """Generate an encounter with a monster based on the user's level."""
     if player.level < 5:
         difficulty_multiplier = random.randint(1, 2)
@@ -106,6 +106,8 @@ async def generate_encounter(player, monster, is_treasure, task_species=None):
             _assign_modifiers(monster, num_mods, is_boss=False)
             _apply_spawn_modifiers(monster)
         _roll_essence_spawn(monster, player.level)
+        if not monster.is_essence:
+            _roll_zenith_spawn(monster, player, slayer_tree_nodes or {})
 
     finalize_monster_spawn(monster)
     return monster
@@ -135,7 +137,7 @@ async def generate_boss(player, monster, phase, phase_index):
 
     monster.modifiers = []
     _assign_modifiers(
-        monster, phase["modifiers_count"], is_boss=True, force_max_tier=True
+        monster, phase["modifiers_count"], is_boss=True, force_max_eligible_tier=True
     )
     _apply_spawn_modifiers(monster)
     finalize_monster_spawn(monster)
@@ -195,7 +197,11 @@ def _pick_modifier_type(is_boss: bool) -> str:
 
 
 def _assign_modifiers(
-    monster, num_mods: int, is_boss: bool, force_max_tier: bool = False
+    monster,
+    num_mods: int,
+    is_boss: bool,
+    force_max_tier: bool = False,
+    force_max_eligible_tier: bool = False,
 ) -> None:
     """Fills monster.modifiers with num_mods unique MonsterModifier instances."""
     used_names: set = set()
@@ -216,7 +222,12 @@ def _assign_modifiers(
         name = random.choice(candidates)
         used_names.add(name)
         monster.modifiers.append(
-            make_modifier(name, monster.level, force_max_tier=force_max_tier)
+            make_modifier(
+                name,
+                monster.level,
+                force_max_tier=force_max_tier,
+                force_max_eligible_tier=force_max_eligible_tier,
+            )
         )
 
 
@@ -460,6 +471,27 @@ async def fetch_monster_image(level, monster_data, task_species=None):
 
 _ESSENCE_SPAWN_CHANCES = {0: 0.0, 1: 0.05, 2: 0.12, 3: 0.22}
 _ESSENCE_SPAWN_CHANCE_MAX = 0.35  # 4+ modifiers
+
+
+def _roll_zenith_spawn(monster, player, slayer_tree_nodes: dict) -> None:
+    """5% chance to spawn a Zenith variant when player owns hu_4=zenith tree node.
+
+    Zenith monsters mirror the Calcified pattern: mutated in-place, +100% ATK/DEF,
+    flagged with is_zenith=True so victory.py can guarantee the Imbued Heart drop.
+    Only triggers on the player's active task species; never on bosses or essence spawns.
+    """
+    if slayer_tree_nodes.get("hu_4") != "zenith":
+        return
+    if not getattr(player, "active_task_species", None):
+        return
+    if monster.species != player.active_task_species:
+        return
+    if random.random() >= 0.05:
+        return
+    monster.bonus_attack_pct += 1.0
+    monster.bonus_defence_pct += 1.0
+    monster.is_zenith = True
+    monster.name = f"Zenith {monster.name}"
 
 
 def _roll_essence_spawn(monster, player_level: int) -> None:

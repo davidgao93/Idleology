@@ -652,6 +652,44 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         )
     capture_compact_events(log, clog, start)
 
+    # --- Slayer tree hu_4 instant slay (non-boss only, before cull) ---
+    _instant_slay_fired = False
+    if (
+        is_hit
+        and monster.hp > 0
+        and not monster.is_boss
+        and not getattr(monster, "is_uber", False)
+        and player.active_task_species
+        and player.active_task_species == monster.species
+        and getattr(player, "slayer_tree_nodes", {}).get("hu_4") == "slay"
+        and random.random() < 0.05
+    ):
+        slay_dmg = monster.hp
+        if monster.has_modifier("Time Lord") and monster.hp > 1 and random.random() < 0.80:
+            monster.hp = 1
+            log.append(
+                f"⚡ **Instant Slay** triggers! ({slay_dmg - 1} true damage) "
+                f"**Time Lord** cheats death — {monster.name} clings to 1 HP!"
+            )
+        elif (
+            monster.has_modifier("Undying Resolve")
+            and not monster.undying_resolve_triggered
+        ):
+            heal_pct = monster.get_modifier_value("Undying Resolve")
+            monster.hp = max(1, int(monster.max_hp * heal_pct))
+            monster.undying_resolve_triggered = True
+            monster.undying_immune_turns = 2
+            monster.undying_atk_boost_turns = 2
+            log.append(
+                f"⚡ **Instant Slay** triggers! **Undying Resolve!** "
+                f"{monster.name} refuses to die — rises to **{monster.hp}** HP!"
+            )
+        else:
+            monster.hp = 0
+            _instant_slay_fired = True
+            log.append(f"⚡ **Instant Slay** strikes true! ({slay_dmg} true damage)")
+            clog.append(f"⚡ **Instant Slay!** ({slay_dmg} dmg)")
+
     # --- Culling strike (before Undying Resolve so it can protect from cull kills) ---
     start = len(log)
     _cull_fired = _pt_check_cull(player, monster, log)

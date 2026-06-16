@@ -47,7 +47,6 @@ class ApexCombatView(CombatView):
         monster: Monster,
         zone_key: str,
         initial_logs: dict,
-        return_view_factory=None,
     ):
         super().__init__(
             bot,
@@ -58,9 +57,6 @@ class ApexCombatView(CombatView):
             initial_logs,
         )
         self.zone_key = zone_key
-        self._return_view_factory = (
-            return_view_factory  # callable() → view to show after
-        )
 
     # ------------------------------------------------------------------
     # Override handle_end_state for apex-specific routing
