@@ -500,15 +500,29 @@ class SettlementDashboardView(SettlementBaseView):
                     "war_camp_stamina": "Stamina (War Camp)",
                     "companion_xp": "Companion XP",
                 }
+                _BARS = {"iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"}
+                _PLANKS = {"oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank"}
+                _ESSENCES = {"desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence"}
                 res_lines = []
+                bars_produced = any(dt_res.get(k, 0) > 0 for k in _BARS)
+                planks_produced = any(dt_res.get(k, 0) > 0 for k in _PLANKS)
+                essences_produced = any(dt_res.get(k, 0) > 0 for k in _ESSENCES)
                 for k, v in dt_res.items():
                     if v <= 0:
                         continue
+                    if k in _BARS or k in _PLANKS or k in _ESSENCES:
+                        continue  # handled below as grouped lines
                     icon = _ICONS.get(k, "📦")
                     label = _LABELS.get(k) or RESOURCE_DISPLAY_NAMES.get(
                         k, k.replace("_", " ").title()
                     )
                     res_lines.append(f"{icon} +{v:,} {label}")
+                if bars_produced:
+                    res_lines.append("🔧 Metal Bars produced")
+                if planks_produced:
+                    res_lines.append("🪵 Planks produced")
+                if essences_produced:
+                    res_lines.append("✨ Essences produced")
                 if res_lines:
                     lines.append("🏭 **Buildings produced:**")
                     lines.extend(res_lines[:10])

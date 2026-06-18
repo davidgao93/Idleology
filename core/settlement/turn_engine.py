@@ -783,16 +783,24 @@ def roll_bm_rewards(
 
         elif cat == "gathering":
             mat_pool = [
+                # Mining (T1–T5)
                 ("iron", 100),
                 ("coal", 80),
                 ("gold", 60),
                 ("platinum", 40),
+                ("idea", 20),
+                # Woodcutting (T1–T5)
                 ("oak_logs", 100),
                 ("willow_logs", 80),
                 ("mahogany_logs", 60),
+                ("magic_logs", 40),
+                ("idea_logs", 20),
+                # Fishing (T1–T5)
                 ("desiccated_bones", 100),
                 ("regular_bones", 80),
                 ("sturdy_bones", 60),
+                ("reinforced_bones", 40),
+                ("titanium_bones", 20),
             ]
             chosen, qty_base = random.choice(mat_pool)
             qty = random.randint(qty_base // 2, qty_base)
@@ -816,7 +824,7 @@ def roll_bm_rewards(
             result["items"].append({"type": "random", "level": min(player_level, 100)})
 
         elif cat == "settler_mat":
-            mat_pool = ["magma_core", "life_root", "spirit_shard"]
+            mat_pool = ["magma_core", "life_root", "spirit_shard", "cosmic_dust"]
             chosen = random.choice(mat_pool)
             result["currencies"][chosen] = result["currencies"].get(
                 chosen, 0
@@ -832,8 +840,9 @@ def roll_bm_rewards(
             result["currencies"]["curios"] = result["currencies"].get("curios", 0) + 1
 
         elif cat == "high_end":
-            pool = ["antique_tome", "pinnacle_key"]
-            chosen = random.choices(pool, weights=[55, 45], k=1)[0]
+            pool = ["antique_tome", "pinnacle_key", "spirit_stones", "diviners_rod", "unidentified_blueprint"]
+            weights_he = [25, 20, 30, 15, 10]
+            chosen = random.choices(pool, weights=weights_he, k=1)[0]
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + 1
 
         elif cat == "guild_ticket":
@@ -850,11 +859,42 @@ def roll_bm_rewards(
     for cat in extra_rolls:
         _roll_category(cat)
 
+    _CURRENCY_LABELS = {
+        "refinement_runes": "Rune of Refinement",
+        "potential_runes": "Rune of Potential",
+        "shatter_runes": "Rune of Shattering",
+        "imbue_runes": "Rune of Imbuing",
+        "dragon_key": "Dragon Key",
+        "angel_key": "Angel Key",
+        "soul_cores": "Soul Core",
+        "balance_fragment": "Fragment of Balance",
+        "void_frags": "Void Fragment",
+        "magma_core": "Magma Core",
+        "life_root": "Life Root",
+        "spirit_shard": "Spirit Shard",
+        "cosmic_dust": "Cosmic Dust",
+        "antique_tome": "Antique Tome",
+        "pinnacle_key": "Pinnacle Key",
+        "spirit_stones": "Spirit Stone",
+        "diviners_rod": "Diviner's Rod",
+        "unidentified_blueprint": "Unidentified Blueprint",
+        "guild_ticket": "Guild Ticket",
+        "curios": "Curio",
+        "idea": "Idea Ore",
+        "idea_logs": "Idea Logs",
+        "magic_logs": "Magic Logs",
+        "reinforced_bones": "Reinforced Bones",
+        "titanium_bones": "Titanium Bones",
+    }
     # Build summary
     if result["gold"] > 0:
         result["summary_lines"].append(f"💰 {result['gold']:,} Gold")
     for cur, qty in result["currencies"].items():
-        label = cur.replace("essence_", "Essence of ").replace("_", " ").title()
+        if cur.startswith("essence_"):
+            ess = cur[len("essence_"):].replace("_", " ").title()
+            label = f"Essence of {ess}"
+        else:
+            label = _CURRENCY_LABELS.get(cur) or cur.replace("_", " ").title()
         result["summary_lines"].append(f"• {qty}× {label}")
     if result["items"]:
         result["summary_lines"].append(f"⚔️ {len(result['items'])}× Equipment Cache")
@@ -864,6 +904,15 @@ def roll_bm_rewards(
         result["summary_lines"].append(f"🦴 {result['consume_parts']}× Body Part")
 
     return result
+
+
+_GATHERING_SKILL_MAP: dict[str, str] = {
+    "iron": "mining", "coal": "mining", "gold": "mining", "platinum": "mining", "idea": "mining",
+    "oak_logs": "woodcutting", "willow_logs": "woodcutting", "mahogany_logs": "woodcutting",
+    "magic_logs": "woodcutting", "idea_logs": "woodcutting",
+    "desiccated_bones": "fishing", "regular_bones": "fishing", "sturdy_bones": "fishing",
+    "reinforced_bones": "fishing", "titanium_bones": "fishing",
+}
 
 
 async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) -> None:
@@ -878,6 +927,14 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
                 await bot.database.essences.add(user_id, ess_type)
         elif cur in ("guild_ticket",):
             await bot.database.partners.add_tickets(user_id, qty)
+        elif cur == "cosmic_dust":
+            await bot.database.alchemy.modify_cosmic_dust(user_id, qty)
+        elif cur in _GATHERING_SKILL_MAP:
+            skill = _GATHERING_SKILL_MAP[cur]
+            try:
+                await bot.database.skills.update_single_resource(user_id, server_id, skill, cur, qty)
+            except Exception:
+                pass
         else:
             try:
                 await bot.database.users.modify_currency(user_id, cur, qty)

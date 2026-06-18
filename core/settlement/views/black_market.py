@@ -1085,10 +1085,11 @@ class BMPassiveTreeView(SettlementBaseView):
                 if current_lvl >= max_lvl
                 else (f"Lv{current_lvl}" if current_lvl > 0 else "🔒")
             )
-            next_cost = (
-                node["idlem_costs"][current_lvl] if current_lvl < max_lvl else "—"
-            )
-            line = f"{status} **{node['name']}** — {node['description']} (next: {next_cost} Idlem)"
+            if current_lvl >= max_lvl:
+                cost_str = "✅ Max Tier"
+            else:
+                cost_str = f"next: {node['idlem_costs'][current_lvl]} Idlem"
+            line = f"{status} **{node['name']}** — {node['description']} ({cost_str})"
             branches.setdefault(branch, []).append(line)
 
         branch_labels = {
