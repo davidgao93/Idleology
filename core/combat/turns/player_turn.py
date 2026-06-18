@@ -648,11 +648,12 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         and 0 < monster.hp < int(monster.max_hp * 0.50)
     ):
         monster.colossus_active = True
-        monster.bonus_attack_pct += 0.30
-        monster.colossus_dr = 0.15
+        cp_v = monster.get_modifier_value("Colossus Protocol")
+        monster.bonus_attack_pct += cp_v
+        monster.colossus_dr = cp_v / 2
         log.append(
             f"⚙️ **Colossus Protocol ENGAGES!** {monster.name}'s power surges — "
-            f"ATK +30%, DR +15%!"
+            f"ATK +{int(cp_v * 100)}%, DR +{int(cp_v / 2 * 100)}%!"
         )
     capture_compact_events(log, clog, start)
 
@@ -672,7 +673,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         if (
             monster.has_modifier("Time Lord")
             and monster.hp > 1
-            and random.random() < 0.80
+            and random.random() < monster.get_modifier_value("Time Lord")
         ):
             monster.hp = 1
             log.append(
@@ -730,9 +731,10 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     ):
         monster.death_rattle_triggered = True
         monster.death_rattle_countdown = 5
+        dr_heal_pct = int(monster.get_modifier_value("Death Rattle") * 100)
         log.append(
             f"☠️ **Death Rattle** — {monster.name} is mortally wounded! "
-            f"If it survives **5 turns**, it will heal to 25% HP!"
+            f"If it survives **5 turns**, it will heal to {dr_heal_pct}% HP!"
         )
     capture_compact_events(log, clog, start)
 

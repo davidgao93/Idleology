@@ -170,7 +170,8 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
         lines.append(f"🧪 Corroded  {monster.corrode_stacks} stacks  (−{pdr_loss} PDR)")
 
     if monster.has_modifier("Impending Doom") and monster.doom_stacks > 0:
-        lines.append(f"☠️ Doom  {monster.doom_stacks}/44")
+        doom_threshold = int(monster.get_modifier_value("Impending Doom"))
+        lines.append(f"☠️ Doom  {monster.doom_stacks}/{doom_threshold}")
 
     if monster.has_modifier("Temporal Collapse") and monster.temporal_window_damage > 0:
         lines.append(f"⏳ Temporal  {monster.temporal_window_damage:,} pending")

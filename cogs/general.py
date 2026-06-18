@@ -13,7 +13,6 @@ from core.combat.calc.calcs import (
 from core.combat.mobgen.modifier_data import (
     BOSS_MOD_NAMES,
     COMMON_MOD_NAMES,
-    RARE_FLAT_MOD_NAMES,
     RARE_TIERED_MOD_NAMES,
     make_modifier,
 )
@@ -51,7 +50,6 @@ class ModDetailsMonsterView(BaseView):
         common_part1: list,
         common_part2: list,
         rare_tiered_lines: list,
-        rare_flat_lines: list,
         boss_lines: list,
     ):
         super().__init__(bot, user_id)
@@ -59,7 +57,6 @@ class ModDetailsMonsterView(BaseView):
             "common1": ("🔵 Common Tiered — Part 1", common_part1),
             "common2": ("🔵 Common Tiered — Part 2", common_part2),
             "rare_tiered": ("🟣 Rare Tiered", rare_tiered_lines),
-            "rare_flat": ("🟣 Rare Flat", rare_flat_lines),
             "boss_uber": ("🔴 Boss & Uber", boss_lines),
         }
         self.current_category = "common1"
@@ -73,7 +70,6 @@ class ModDetailsMonsterView(BaseView):
             "common1": "Common 1",
             "common2": "Common 2",
             "rare_tiered": "Rare Tiered",
-            "rare_flat": "Rare Flat",
             "boss_uber": "Boss & Uber",
         }
 
@@ -105,8 +101,26 @@ class ModDetailsMonsterView(BaseView):
         )
 
         if lines:
-            field_value = "\n".join(lines)
-            embed.add_field(name="Modifiers", value=field_value, inline=False)
+            # Split into ≤1024-char chunks across multiple fields
+            chunks: list[str] = []
+            current: list[str] = []
+            current_len = 0
+            for line in lines:
+                line_len = len(line) + 1  # +1 for newline
+                if current and current_len + line_len > 1020:
+                    chunks.append("\n".join(current))
+                    current = []
+                    current_len = 0
+                current.append(line)
+                current_len += line_len
+            if current:
+                chunks.append("\n".join(current))
+            for i, chunk in enumerate(chunks):
+                embed.add_field(
+                    name="Modifiers" if i == 0 else "​",
+                    value=chunk,
+                    inline=False,
+                )
         else:
             embed.add_field(
                 name="No modifiers", value="This category is empty.", inline=False
@@ -253,9 +267,6 @@ class General(commands.Cog, name="general"):
                 else:
                     return f"{d1} → {d_max} (max T{max_available_tier})"
 
-            def _flat_desc(name: str) -> str:
-                return get_modifier_description(make_modifier(name, 50))
-
             # Build common lines (sorted alphabetically) + Ascended at end
             common_sorted = sorted(COMMON_MOD_NAMES)
             common_lines = [f"**{n}**: {_tier_range(n)}" for n in common_sorted]
@@ -273,10 +284,7 @@ class General(commands.Cog, name="general"):
             rare_tiered_lines = [
                 f"**{n}**: {_tier_range(n)}" for n in sorted(RARE_TIERED_MOD_NAMES)
             ]
-            rare_flat_lines = [
-                f"**{n}**: {_flat_desc(n)}" for n in sorted(RARE_FLAT_MOD_NAMES)
-            ]
-            boss_lines = [f"**{n}**: {_flat_desc(n)}" for n in sorted(BOSS_MOD_NAMES)]
+            boss_lines = [f"**{n}**: {_tier_range(n)}" for n in sorted(BOSS_MOD_NAMES)]
 
             user_id = str(interaction.user.id)
             view = ModDetailsMonsterView(
@@ -285,7 +293,6 @@ class General(commands.Cog, name="general"):
                 common_part1,
                 common_part2,
                 rare_tiered_lines,
-                rare_flat_lines,
                 boss_lines,
             )
             await interaction.response.send_message(
@@ -552,11 +559,11 @@ class General(commands.Cog, name="general"):
             content_added = True
 
         elif category == "alchemy":
-            from core.alchemy.mechanics import AlchemyMechanics
+            from core.alchemy.mechanics import DistillationMechanics
 
             embed.title = "⚗️ Alchemy Potion Passives"
             lines = []
-            for key, p in AlchemyMechanics.POWERFUL_PASSIVES.items():
+            for key, p in DistillationMechanics.POWERFUL_PASSIVES.items():
                 v_min = p["value_min"]
                 v_max = p["value_max"]
                 d_min = p["duration_min"]

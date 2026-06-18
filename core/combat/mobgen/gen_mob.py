@@ -6,7 +6,6 @@ from core.combat.mobgen.modifier_data import (
     BOSS_MOD_NAMES,
     COMMON_MOD_NAMES,
     MODIFIER_DEFINITIONS,
-    RARE_FLAT_MOD_NAMES,
     RARE_TIERED_MOD_NAMES,
     make_modifier,
 )
@@ -188,13 +187,13 @@ async def generate_ascent_monster(
 
 
 def _pick_modifier_type(is_boss: bool) -> str:
-    """Returns 'common', 'rare_tiered', 'rare_flat', or 'boss'."""
+    """Returns 'common', 'rare_tiered', or 'boss'."""
     if is_boss:
-        weights = [55, 20, 10, 15]  # common, rare_tiered, rare_flat, boss
+        weights = [55, 30, 15]  # common, rare_tiered, boss
     else:
-        weights = [75, 15, 10, 0]  # regular monsters never get boss mods
+        weights = [75, 25, 0]  # regular monsters never get boss mods
     return random.choices(
-        ["common", "rare_tiered", "rare_flat", "boss"], weights=weights, k=1
+        ["common", "rare_tiered", "boss"], weights=weights, k=1
     )[0]
 
 
@@ -215,8 +214,6 @@ def _assign_modifiers(
             candidates = [n for n in COMMON_MOD_NAMES if n not in used_names]
         elif pool_type == "rare_tiered":
             candidates = [n for n in RARE_TIERED_MOD_NAMES if n not in used_names]
-        elif pool_type == "rare_flat":
-            candidates = [n for n in RARE_FLAT_MOD_NAMES if n not in used_names]
         else:
             candidates = [n for n in BOSS_MOD_NAMES if n not in used_names]
         if not candidates:
@@ -254,12 +251,11 @@ def _assign_ascent_modifiers(monster, num_mods: int, num_boss_mods: int = 0) -> 
     while remaining > 0 and attempts < remaining * 10:
         attempts += 1
         pool_type = random.choices(
-            ["common", "rare_tiered", "rare_flat"], weights=[65, 20, 15], k=1
+            ["common", "rare_tiered"], weights=[72, 28], k=1
         )[0]
         candidates = {
             "common": COMMON_MOD_NAMES,
             "rare_tiered": RARE_TIERED_MOD_NAMES,
-            "rare_flat": RARE_FLAT_MOD_NAMES,
         }[pool_type]
         candidates = [n for n in candidates if n not in used_names]
         if candidates:
@@ -539,9 +535,8 @@ def apply_all_corrupted_modifiers(monster, force_tier: int = 2) -> None:
 
     Called once during generation — after HP/stats are set and before
     _apply_spawn_modifiers, which reads the modifier list to mutate stats.
-    Rare-flat modifiers are untiered and use their fixed value as normal.
     """
-    all_names = COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES + RARE_FLAT_MOD_NAMES
+    all_names = COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES
     for name in all_names:
         monster.modifiers.append(
             make_modifier(name, monster.level, force_tier=force_tier)
@@ -642,12 +637,11 @@ def _assign_incubated_modifiers(monster) -> None:
     while remaining > 0 and attempts < 80:
         attempts += 1
         pool_type = random.choices(
-            ["common", "rare_tiered", "rare_flat"], weights=[65, 20, 15], k=1
+            ["common", "rare_tiered"], weights=[72, 28], k=1
         )[0]
         pool = {
             "common": COMMON_MOD_NAMES,
             "rare_tiered": RARE_TIERED_MOD_NAMES,
-            "rare_flat": RARE_FLAT_MOD_NAMES,
         }[pool_type]
         candidates = [n for n in pool if n not in used]
         if not candidates:

@@ -138,20 +138,19 @@ def roll_monster_damage(
         calc_notes.append(f"savage+{monster.get_modifier_value('Savage'):.2f}")
 
     if monster.has_modifier("Overwhelming"):
-        # Value is 2.0 → +100% increased
-        monster.damage_increased_pct += 1.0
-        calc_notes.append("overwhelming+100%")
+        v = monster.get_modifier_value("Overwhelming")
+        monster.damage_increased_pct += (v - 1.0)
+        calc_notes.append(f"overwhelming+{int((v - 1.0) * 100)}%")
 
     if monster.has_modifier("Hell's Fury"):
         # Value is 3.0 → +200% increased
         monster.damage_increased_pct += 2.0
         calc_notes.append("hells_fury+200%")
 
-    if monster.has_modifier(
-        "Spectral"
-    ) and random.random() < monster.get_modifier_value("Spectral"):
-        monster.damage_increased_pct += 1.0
-        calc_notes.append("spectral+100% (proc)")
+    if monster.has_modifier("Spectral") and random.random() < 0.20:
+        spectral_bonus = monster.get_modifier_value("Spectral")
+        monster.damage_increased_pct += spectral_bonus
+        calc_notes.append(f"spectral+{int(spectral_bonus * 100)}% (proc)")
 
     # Zone effects (Scorched) count as increased per design
     zone_boost = getattr(monster, "zone_dmg_boost", 0.0)
@@ -229,18 +228,19 @@ def roll_monster_damage(
         if getattr(monster, "zone_dmg_boost", 0.0) > 0:
             inc_sources.append(f"Zone+{int(monster.zone_dmg_boost * 100)}%")
         if monster.has_modifier("Overwhelming"):
-            inc_sources.append("Overwhelming+100%")
+            ov = monster.get_modifier_value("Overwhelming")
+            inc_sources.append(f"Overwhelming+{int((ov - 1.0) * 100)}%")
         if monster.has_modifier("Hell's Fury"):
             inc_sources.append("Hell's Fury+200%")
         if monster.has_modifier("Spectral"):
-            # Note: this is only added on proc, but we can note if the modifier is present
-            inc_sources.append("Spectral (possible +100% on proc)")
+            inc_sources.append(f"Spectral (possible +{int(monster.get_modifier_value('Spectral') * 100)}% on proc)")
 
         breakdown = f" from [{', '.join(inc_sources)}]" if inc_sources else ""
         more_note = ""
         if monster.damage_more_mult != 1.0:
             if monster.has_modifier("Inevitable"):
-                more_note = " (from Inevitable 50% less damage)"
+                inev_v = monster.get_modifier_value("Inevitable")
+                more_note = f" (from Inevitable {int((1 - inev_v) * 100)}% less damage)"
             else:
                 more_note = " (from other more/less source)"
 
@@ -730,7 +730,7 @@ def apply_damage_to_monster(
     if damage >= monster.hp:
         if (
             monster.has_modifier("Time Lord")
-            and random.random() < 0.80
+            and random.random() < monster.get_modifier_value("Time Lord")
             and monster.hp > 1
         ):
             damage = monster.hp - 1
