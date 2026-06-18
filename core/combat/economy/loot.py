@@ -6,7 +6,6 @@ from core.combat.economy.config import (
     BOOT_STAT_CAPS,
     GLOVE_STAT_CAPS,
     HELM_STAT_CAPS,
-    WEAPON_ATTACK_ROLL_CHANCE,
     WEAPON_DEFENCE_ROLL_CHANCE,
     WEAPON_RARITY_ROLL_CHANCE,
     WEAPON_STAT_CAPS,
@@ -74,7 +73,7 @@ def get_scaled_stat(
     )
 
 
-async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
+async def generate_weapon(user_id: str, level: int) -> Weapon:
     """Generate a unique loot item."""
     prefix = random.choice(load_list("assets/items/pref.txt"))
     weapon_type = random.choice(load_list("assets/items/wep.txt"))
@@ -82,26 +81,17 @@ async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
     item_name = f"{prefix} {weapon_type} {suffix}"
 
     weapon = Weapon(
-        user="",
-        name="",
-        level=0,
-        attack=0,
+        user=user_id,
+        name=item_name,
+        level=level,
+        attack=int(get_scaled_stat(level, _WEAPON_CAPS["attack"])),
         defence=0,
         rarity=0,
-        passive="",
+        passive="none",
         description="",
         p_passive="",
         u_passive="",
     )
-    weapon.user = user_id
-    weapon.name = item_name
-    weapon.level = level
-    # If a rune cannot be dropped, set attack mod to always be true (curio case)
-    if drop_rune:
-        if random.randint(0, 100) < WEAPON_ATTACK_ROLL_CHANCE:
-            weapon.attack = int(get_scaled_stat(level, _WEAPON_CAPS["attack"]))
-    else:
-        weapon.attack = int(get_scaled_stat(level, _WEAPON_CAPS["attack"]))
 
     if random.randint(0, 100) < WEAPON_DEFENCE_ROLL_CHANCE:
         weapon.defence = int(get_scaled_stat(level, _WEAPON_CAPS["defence"]))
@@ -109,41 +99,28 @@ async def generate_weapon(user_id: str, level: int, drop_rune: bool) -> str:
     if random.randint(0, 100) < WEAPON_RARITY_ROLL_CHANCE:
         weapon.rarity = int(get_scaled_stat(level, _WEAPON_CAPS["rarity"]))
 
-    if weapon.attack > 0 or weapon.defence > 0 or weapon.rarity > 0:
-        # Select a base template (determines hit/crit/multi and display rarity)
-        hit, crit, multi, base_rar = random.choices(
-            _WEAPON_BASE_TEMPLATES, _TEMPLATE_WEIGHTS
-        )[0]
-        weapon.hit_chance = hit
-        weapon.crit_chance = crit
-        weapon.crit_multi = multi
-        weapon.base_rarity = base_rar
+    hit, crit, multi, base_rar = random.choices(_WEAPON_BASE_TEMPLATES, _TEMPLATE_WEIGHTS)[0]
+    weapon.hit_chance = hit
+    weapon.crit_chance = crit
+    weapon.crit_multi = multi
+    weapon.base_rarity = base_rar
 
-        weapon.passive = "none"
-        weapon.description = (
-            (f"**{weapon.name}**\n(Level {weapon.level})\n")
-            + (f"+{weapon.attack} Attack\n" if weapon.attack > 0 else "")
-            + (f"+{weapon.defence} Defence\n" if weapon.defence > 0 else "")
-            + (f"+{weapon.rarity}% Rarity\n" if weapon.rarity > 0 else "")
-        )
-    else:
-        weapon.name = "Rune of Refinement"
-        weapon.description = f"{weapon.name}\nAdds a refinement attempt if the weapon is no longer refinable."
+    weapon.description = (
+        (f"**{weapon.name}**\n(Level {weapon.level})\n")
+        + f"+{weapon.attack} Attack\n"
+        + (f"+{weapon.defence} Defence\n" if weapon.defence > 0 else "")
+        + (f"+{weapon.rarity}% Rarity\n" if weapon.rarity > 0 else "")
+    )
 
     return weapon
 
 
-async def generate_accessory(user_id: str, level: int, drop_rune: bool) -> str:
+async def generate_accessory(user_id: str, level: int) -> Accessory:
     """Generate a unique accessory item."""
     prefix = random.choice(load_list("assets/items/pref.txt"))
     accessory_type = random.choice(load_list("assets/items/acc.txt"))
     suffix = random.choice(load_list("assets/items/suff.txt"))
     acc_name = f"{prefix} {accessory_type} {suffix}"
-
-    if drop_rune:
-        randroll = random.randint(0, 100)
-    else:
-        randroll = random.randint(0, 90)
 
     acc = Accessory(
         user=user_id,
@@ -159,34 +136,30 @@ async def generate_accessory(user_id: str, level: int, drop_rune: bool) -> str:
         description=f"**{acc_name}**\n(Level {level})\n",
     )
 
-    if randroll <= 18:  # 18% chance for attack roll
+    stat = random.choices(["attack", "defence", "rarity", "ward", "crit"], k=1)[0]
+    if stat == "attack":
         acc.attack = int(get_scaled_stat(level, _ACC_CAPS["attack"]))
         acc.description += f"+{acc.attack} Attack"
-    elif randroll > 18 and randroll <= 36:  # 18% chance for defense roll
+    elif stat == "defence":
         acc.defence = int(get_scaled_stat(level, _ACC_CAPS["defence"]))
         acc.description += f"+{acc.defence} Defence"
-    elif randroll > 36 and randroll <= 54:
+    elif stat == "rarity":
         acc.rarity = int(get_scaled_stat(level, _ACC_CAPS["rarity"]))
         acc.description += f"+{acc.rarity}% Rarity"
-    elif randroll > 54 and randroll <= 72:
+    elif stat == "ward":
         acc.ward = int(get_scaled_stat(level, _ACC_CAPS["ward"]))
         acc.description += f"+{acc.ward}% Ward"
-    elif randroll > 72 and randroll <= 90:
+    else:
         acc.crit = int(get_scaled_stat(level, _ACC_CAPS["crit"]))
         acc.description += f"+{acc.crit}% Crit"
-    else:
-        acc.name = "Rune of Potential"
-        acc.description = f"{acc.name}\n25% increased chance to succeed at increasing an accessory's potential level."
 
     return acc
 
 
-async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
+async def generate_armor(user_id: str, level: int) -> Armor:
     """Generate a unique armor item."""
     prefix = random.choice(load_list("assets/items/pref.txt"))
-    armor_type = random.choice(
-        load_list("assets/items/armor.txt")
-    )  # Load names from armor.txt
+    armor_type = random.choice(load_list("assets/items/armor.txt"))
     suffix = random.choice(load_list("assets/items/suff.txt"))
     armor_name = f"{prefix} {armor_type} {suffix}"
 
@@ -202,18 +175,6 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
         passive="",
         description=f"**{armor_name}**\n(Level {level})\n",
     )
-
-    if drop_rune:
-        rune_roll = random.randint(0, 100)
-    else:
-        rune_roll = random.randint(0, 90)
-
-    if rune_roll > 90:
-        armor.name = "Rune of Imbuing"
-        armor.description = (
-            f"{armor.name}\nPotentially imbues a powerful passive onto your armor."
-        )
-        return armor
 
     # Main stat: ATK or DEF
     if random.random() < 0.5:
@@ -245,7 +206,7 @@ async def generate_armor(user_id: str, level: int, drop_rune: bool) -> str:
 
 async def generate_glove(
     user_id: str, level: int
-) -> Glove:  # drop_rune parameter removed
+) -> Glove:
     """Generate a unique glove item. Gloves roll one primary stat (Atk, Def, or Ward)
     and one secondary stat (PDR or FDR). They do not drop runes."""
     try:

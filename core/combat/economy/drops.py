@@ -245,70 +245,45 @@ class DropManager:
         reward_data["rolls"]["gear_hit"] = drop_roll <= drop_threshold
 
         if drop_roll <= drop_threshold:
-            item_roll = random.randint(1, 100)
-            reward_data["rolls"]["item_roll"] = item_roll
+            chosen_slot = random.choices(
+                ["weapon", "accessory", "armor", "glove", "boot", "helmet"],
+                weights=[35, 25, 10, 10, 10, 10],
+                k=1,
+            )[0]
+            reward_data["rolls"]["item_slot"] = chosen_slot
 
             # Helper to check inventory limit
             async def check_limit(itype):
                 return await bot.database.equipment.get_count(user_id, itype) < 60
 
             item_desc = None
-            chosen_slot = None
 
-            # Adjusted Logic to prevent huge nesting
-            if item_roll <= 35 and await check_limit("weapon"):
-                chosen_slot = "weapon"
-                item = await generate_weapon(user_id, monster_level, drop_rune=True)
-                if item.name == "Rune of Refinement":
-                    await bot.database.users.modify_currency(
-                        user_id, "refinement_runes", 1
-                    )
-                    item_desc = f"**{item.name}**"
-                else:
-                    await bot.database.equipment.create_weapon(item)
-                    item_desc = item.description
-
-            elif item_roll <= 60 and await check_limit("accessory"):
-                chosen_slot = "accessory"
-                item = await generate_accessory(user_id, monster_level, drop_rune=True)
-                if item.name == "Rune of Potential":
-                    await bot.database.users.modify_currency(
-                        user_id, "potential_runes", 1
-                    )
-                    item_desc = f"**{item.name}**"
-                else:
-                    await bot.database.equipment.create_accessory(item)
-                    item_desc = item.description
-
-            elif item_roll <= 70 and await check_limit("armor"):
-                chosen_slot = "armor"
-                item = await generate_armor(user_id, monster_level, drop_rune=True)
-                if item.name == "Rune of Imbuing":
-                    await bot.database.users.modify_currency(user_id, "imbue_runes", 1)
-                    item_desc = f"**{item.name}**"
-                else:
-                    await bot.database.equipment.create_armor(item)
-                    item_desc = item.description
-
-            elif item_roll <= 80 and await check_limit("glove"):
-                chosen_slot = "glove"
+            if not await check_limit(chosen_slot):
+                pass  # inventory full, skip drop
+            elif chosen_slot == "weapon":
+                item = await generate_weapon(user_id, monster_level)
+                await bot.database.equipment.create_weapon(item)
+                item_desc = item.description
+            elif chosen_slot == "accessory":
+                item = await generate_accessory(user_id, monster_level)
+                await bot.database.equipment.create_accessory(item)
+                item_desc = item.description
+            elif chosen_slot == "armor":
+                item = await generate_armor(user_id, monster_level)
+                await bot.database.equipment.create_armor(item)
+                item_desc = item.description
+            elif chosen_slot == "glove":
                 item = await generate_glove(user_id, monster_level)
                 await bot.database.equipment.create_glove(item)
                 item_desc = item.description
-
-            elif item_roll <= 90 and await check_limit("boot"):
-                chosen_slot = "boot"
+            elif chosen_slot == "boot":
                 item = await generate_boot(user_id, monster_level)
                 await bot.database.equipment.create_boot(item)
                 item_desc = item.description
-
-            elif item_roll <= 100 and await check_limit("helmet"):
-                chosen_slot = "helmet"
+            else:  # helmet
                 item = await generate_helmet(user_id, monster_level)
                 await bot.database.equipment.create_helmet(item)
                 item_desc = item.description
-
-            reward_data["rolls"]["item_slot"] = chosen_slot
 
             if item_desc:
                 reward_data["items"].append(item_desc)

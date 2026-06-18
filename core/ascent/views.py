@@ -59,9 +59,9 @@ async def _grant_milestone_rewards(
     elif cache_choice == "equipment":
         slot = random.choices(_EQUIP_SLOTS, weights=_EQUIP_WEIGHTS, k=1)[0]
         generators = {
-            "weapon": lambda: generate_weapon(user_id, player.level, False),
-            "armor": lambda: generate_armor(user_id, player.level, False),
-            "accessory": lambda: generate_accessory(user_id, player.level, False),
+            "weapon": lambda: generate_weapon(user_id, player.level),
+            "armor": lambda: generate_armor(user_id, player.level),
+            "accessory": lambda: generate_accessory(user_id, player.level),
             "glove": lambda: generate_glove(user_id, player.level),
             "boot": lambda: generate_boot(user_id, player.level),
             "helmet": lambda: generate_helmet(user_id, player.level),

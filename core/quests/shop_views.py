@@ -175,13 +175,13 @@ class TokenShopView(BaseView):
                 k=1,
             )[0]
             if slot == "weapon":
-                item = await generate_weapon(self.user_id, ilvl, False)
+                item = await generate_weapon(self.user_id, ilvl)
                 await self.bot.database.equipment.create_weapon(item)
             elif slot == "armor":
-                item = await generate_armor(self.user_id, ilvl, False)
+                item = await generate_armor(self.user_id, ilvl)
                 await self.bot.database.equipment.create_armor(item)
             elif slot == "accessory":
-                item = await generate_accessory(self.user_id, ilvl, False)
+                item = await generate_accessory(self.user_id, ilvl)
                 await self.bot.database.equipment.create_accessory(item)
             elif slot == "glove":
                 item = await generate_glove(self.user_id, ilvl)

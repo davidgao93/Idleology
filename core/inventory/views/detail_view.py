@@ -169,11 +169,11 @@ class ItemDetailView(BaseView):
         self.add_item(btn)
 
     async def handle_upgrade(self, interaction: Interaction, action_type: str):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
-        if self.bot.state_manager.is_active(self.user_id):
-            return await interaction.followup.send(
-                "You're already in an active session.", ephemeral=True
-            )
         self.bot.state_manager.set_active(self.user_id, "upgrade")
         view_map = {
             "forge": ForgeView,

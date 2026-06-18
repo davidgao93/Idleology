@@ -932,13 +932,13 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
             )[0]
             ilvl = item_spec.get("level", 1)
             if slot == "weapon":
-                item = await generate_weapon(user_id, ilvl, False)
+                item = await generate_weapon(user_id, ilvl)
                 await bot.database.equipment.create_weapon(item)
             elif slot == "armor":
-                item = await generate_armor(user_id, ilvl, False)
+                item = await generate_armor(user_id, ilvl)
                 await bot.database.equipment.create_armor(item)
             elif slot == "accessory":
-                item = await generate_accessory(user_id, ilvl, False)
+                item = await generate_accessory(user_id, ilvl)
                 await bot.database.equipment.create_accessory(item)
             elif slot == "glove":
                 item = await generate_glove(user_id, ilvl)

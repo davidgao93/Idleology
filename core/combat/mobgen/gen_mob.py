@@ -131,6 +131,7 @@ async def generate_boss(player, monster, phase, phase_index):
         10 * (monster.level ** random.uniform(1.6, 1.7))
     )
     base_hp = int(base_hp * phase["hp_multiplier"])
+    base_hp = int(base_hp * (monster.level / 100))
     monster.base_max_hp = base_hp
     monster.hp = base_hp
     monster.max_hp = base_hp
