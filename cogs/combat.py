@@ -13,7 +13,6 @@ from discord.ui import Button
 from core.base_view import BaseView
 from core.combat import jewel_engine as _je
 from core.combat import ui
-from core.first_use import TUTORIALS
 from core.combat.dojo.views_dojo import DummyConfigView
 from core.combat.mobgen.encounters import EncounterManager
 from core.combat.mobgen.gen_mob import (
@@ -31,6 +30,7 @@ from core.combat.views.warning_views import (
     CorruptedEncounterGateView,
     LowHealthWarningView,
 )
+from core.first_use import TUTORIALS
 from core.items.factory import load_player
 from core.models import Monster
 
@@ -384,7 +384,9 @@ class Combat(commands.Cog, name="combat"):
 
                 if view.accepted:
                     is_boss = True
-                    combat_phases = EncounterManager.get_boss_phases(boss_type)
+                    combat_phases = EncounterManager.get_boss_phases(
+                        boss_type, player.level
+                    )
                     await self.bot.database.users.update_timer(user_id, "last_combat")
                 else:
                     turn_embed = discord.Embed(

@@ -81,102 +81,171 @@ class EncounterManager:
             }
         return {}
 
+    # ============================================================
+    # Modifiers count progression tables (tied to player level)
+    # Breakpoints: <20, 20-39, 40-59, 60-79, 80-99, >=100
+    # ============================================================
+    _MOD_PROG_WEAK = [1, 1, 2, 2, 3]
+    _MOD_PROG_LIGHT = [1, 2, 2, 3, 4]
+    _MOD_PROG_MEDIUM = [1, 2, 3, 4, 5]
+    _MOD_PROG_STRONG = [2, 4, 4, 5, 6]
+    _MOD_PROG_VERY_STRONG = [2, 4, 6, 6, 8]
+    _MOD_PROG_NEET_FINAL = [3, 5, 7, 8, 10]
+    _MOD_PROG_GEMINI = [2, 2, 3, 3, 5]
+
     @staticmethod
-    def get_boss_phases(boss_type: str) -> List[Dict[str, Any]]:
+    def _resolve_modifiers_count(player_level: int, progression: List[int]) -> int:
+        """Resolve modifiers_count using the 20/40/60/80/100 breakpoints."""
+        breakpoints = [20, 40, 60, 80, 100]
+        for i, bp in enumerate(breakpoints):
+            if player_level < bp:
+                return progression[i]
+        return progression[-1]  # >= 100
+
+    @staticmethod
+    def get_boss_phases(
+        boss_type: str, player_level: int = 100
+    ) -> List[Dict[str, Any]]:
         if boss_type == "aphrodite":
             return [
                 {
                     "name": "Aphrodite, Heaven's Envoy",
                     "level": 886,
-                    "modifiers_count": 3,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_WEAK
+                    ),
                     "hp_multiplier": 1.2,
+                    "modifiers_progression": EncounterManager._MOD_PROG_WEAK,  # optional
                 },
                 {
                     "name": "Aphrodite, the Eternal",
                     "level": 887,
-                    "modifiers_count": 5,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_MEDIUM
+                    ),
                     "hp_multiplier": 1.3,
+                    "modifiers_progression": EncounterManager._MOD_PROG_MEDIUM,
                 },
                 {
                     "name": "Aphrodite, Harbinger of Destruction",
                     "level": 888,
-                    "modifiers_count": 8,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_STRONG
+                    ),
                     "hp_multiplier": 1.5,
+                    "modifiers_progression": EncounterManager._MOD_PROG_STRONG,
                 },
             ]
+
         elif boss_type == "lucifer":
             return [
                 {
                     "name": "Lucifer, Fallen",
                     "level": 663,
-                    "modifiers_count": 3,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_WEAK
+                    ),
                     "hp_multiplier": 1.1,
+                    "modifiers_progression": EncounterManager._MOD_PROG_WEAK,
                 },
                 {
                     "name": "Lucifer, Maddened",
                     "level": 664,
-                    "modifiers_count": 4,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_LIGHT
+                    ),
                     "hp_multiplier": 1.2,
+                    "modifiers_progression": EncounterManager._MOD_PROG_LIGHT,
                 },
                 {
                     "name": "Lucifer, Enraged",
                     "level": 665,
-                    "modifiers_count": 5,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_MEDIUM
+                    ),
                     "hp_multiplier": 1.3,
+                    "modifiers_progression": EncounterManager._MOD_PROG_MEDIUM,
                 },
                 {
                     "name": "Lucifer, Unbound",
                     "level": 666,
-                    "modifiers_count": 8,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_VERY_STRONG
+                    ),
                     "hp_multiplier": 1.5,
+                    "modifiers_progression": EncounterManager._MOD_PROG_VERY_STRONG,
                 },
             ]
+
         elif boss_type == "NEET":
             return [
                 {
                     "name": "NEET.Sadge",
                     "level": 444,
-                    "modifiers_count": 2,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_WEAK
+                    ),
                     "hp_multiplier": 1.15,
+                    "modifiers_progression": EncounterManager._MOD_PROG_WEAK,
                 },
                 {
                     "name": "NEET.Madge",
                     "level": 445,
-                    "modifiers_count": 4,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_LIGHT
+                    ),
                     "hp_multiplier": 1.25,
+                    "modifiers_progression": EncounterManager._MOD_PROG_LIGHT,
                 },
                 {
                     "name": "NEET.REEEEEE",
                     "level": 446,
-                    "modifiers_count": 6,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_MEDIUM
+                    ),
                     "hp_multiplier": 1.5,
+                    "modifiers_progression": EncounterManager._MOD_PROG_MEDIUM,
                 },
                 {
                     "name": "NEET.Deadge",
                     "level": 447,
-                    "modifiers_count": 8,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_NEET_FINAL
+                    ),
                     "hp_multiplier": 0.2,
+                    "modifiers_progression": EncounterManager._MOD_PROG_NEET_FINAL,
                 },
             ]
+
         elif boss_type == "gemini":
             return [
                 {
                     "name": "Castor the Mortal",
                     "level": 555,
-                    "modifiers_count": 5,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_GEMINI
+                    ),
                     "hp_multiplier": 1.2,
+                    "modifiers_progression": EncounterManager._MOD_PROG_GEMINI,
                 },
                 {
                     "name": "Pollux the Divine",
                     "level": 556,
-                    "modifiers_count": 5,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_GEMINI
+                    ),
                     "hp_multiplier": 1.2,
+                    "modifiers_progression": EncounterManager._MOD_PROG_GEMINI,
                 },
                 {
                     "name": "The Gemini Twins",
                     "level": 557,
-                    "modifiers_count": 8,
+                    "modifiers_count": EncounterManager._resolve_modifiers_count(
+                        player_level, EncounterManager._MOD_PROG_STRONG
+                    ),
                     "hp_multiplier": 1.5,
+                    "modifiers_progression": EncounterManager._MOD_PROG_STRONG,
                 },
             ]
+
         return []
