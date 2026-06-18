@@ -4,8 +4,7 @@ import os
 import platform
 import sqlite3
 import sys
-import time
-from typing import Dict, Tuple
+from typing import Dict
 
 import aiosqlite
 import discord
@@ -435,7 +434,7 @@ class DiscordBot(commands.Bot):
         Check if a user has an active operation.
         """
         if self.state_manager.is_active(user_id):
-            operation = self.state_manager.active_operations[user_id][0]
+            operation = self.state_manager.active_operations[user_id]
             await interaction.response.send_message(
                 f"Please wrap up your {operation.title()} interaction first.",
                 ephemeral=True,
@@ -492,8 +491,6 @@ class StateManager:
         count = len(self.active_operations)
         self.active_operations.clear()
         self.logger.info(f"Cleared all {count} active operations")
-
-        return len(expired_users)
 
     def get_active_count(self):
         """Get count of active operations."""

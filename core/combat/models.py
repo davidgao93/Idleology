@@ -54,6 +54,8 @@ class CombatState:
     alchemy_linger_hp: int = 0
     alchemy_linger_turns: int = 0
     alchemy_guaranteed_hit: bool = False
+    alchemy_hit_boost_pct: float = 0.0
+    alchemy_hit_boost_turns: int = 0
     # New powerful distilled potion transients (from 9-step distillation)
     alchemy_ailment_immunity_turns: int = 0
     alchemy_eclipse_strikes: int = 0
@@ -627,6 +629,22 @@ class Player:
     @alchemy_guaranteed_hit.setter
     def alchemy_guaranteed_hit(self, v: bool) -> None:
         self.cs.alchemy_guaranteed_hit = v
+
+    @property
+    def alchemy_hit_boost_pct(self) -> float:
+        return self.cs.alchemy_hit_boost_pct
+
+    @alchemy_hit_boost_pct.setter
+    def alchemy_hit_boost_pct(self, v: float) -> None:
+        self.cs.alchemy_hit_boost_pct = v
+
+    @property
+    def alchemy_hit_boost_turns(self) -> int:
+        return self.cs.alchemy_hit_boost_turns
+
+    @alchemy_hit_boost_turns.setter
+    def alchemy_hit_boost_turns(self, v: int) -> None:
+        self.cs.alchemy_hit_boost_turns = v
 
     # New powerful distilled potion passives (from distillation system)
     @property

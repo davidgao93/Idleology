@@ -574,7 +574,6 @@ class PlotDetailView(SettlementBaseView):
                 adj.get("shrine_cap_x2", False),
                 adj.get("has_watchtower", False),
             )
-            tier_str = f"T{b.tier}/5" if not b.is_meta else f"Meta T{b.tier}"
             embed = discord.Embed(
                 title=f"📍 Plot {p.plot_index} — {b.name}",
                 color=discord.Color.red() if b.is_disabled else discord.Color.gold(),
@@ -583,10 +582,11 @@ class PlotDetailView(SettlementBaseView):
                 b.is_meta
                 and META_BUILDINGS.get(b.building_type, {}).get("max_workers", 1) == 0
             )
+            tier_label = f"Meta Tier {b.tier}/5" if b.is_meta else f"{b.tier}/5"
             if is_passive_meta:
-                desc = f"**Type:** {tier_str} *(Passive — no workers needed)*"
+                desc = f"**Tier:** {tier_label} *(Passive — no workers needed)*"
             else:
-                desc = f"**Type:** {tier_str}\n**Workers:** {b.workers_assigned:,}/{max_w:,}"
+                desc = f"**Tier:** {tier_label}\n**Workers:** {b.workers_assigned:,}/{max_w:,}"
             if b.is_disabled:
                 repair_cost = get_repair_cost(b.tier)
                 desc += f"\n\n🚧 **DISABLED** — damaged by a crisis event.\nRepair cost: **{repair_cost:,} gold**"
@@ -739,14 +739,25 @@ class PlotDetailView(SettlementBaseView):
 
         # --- Special case: Black Market opens its own dedicated view ---
         if b.building_type == "black_market":
-            btn_bm = ui.Button(
-                label="Open Black Market",
-                style=ButtonStyle.blurple,
-                emoji="⚫",
-                row=0,
-            )
-            btn_bm.callback = self._open_black_market
-            self.add_item(btn_bm)
+            if b.is_disabled:
+                repair_cost = get_repair_cost(b.tier)
+                btn_repair = ui.Button(
+                    label=f"Repair ({repair_cost:,}g)",
+                    style=ButtonStyle.danger,
+                    emoji="🔧",
+                    row=0,
+                )
+                btn_repair.callback = self._repair_building
+                self.add_item(btn_repair)
+            else:
+                btn_bm = ui.Button(
+                    label="Open Black Market",
+                    style=ButtonStyle.blurple,
+                    emoji="⚫",
+                    row=0,
+                )
+                btn_bm.callback = self._open_black_market
+                self.add_item(btn_bm)
 
             btn_demo = ui.Button(
                 label="Demolish", style=ButtonStyle.danger, emoji="💥", row=1
@@ -780,6 +791,15 @@ class PlotDetailView(SettlementBaseView):
             )
             btn_workers.callback = self._manage_workers
             self.add_item(btn_workers)
+
+            btn_max = ui.Button(
+                label="Max",
+                style=ButtonStyle.primary,
+                emoji="⬆️",
+                row=0,
+            )
+            btn_max.callback = self._max_workers
+            self.add_item(btn_max)
 
         # Upgrade button — row 0 alongside Manage (regular and meta buildings)
         if b.tier < 5:
@@ -987,6 +1007,23 @@ class PlotDetailView(SettlementBaseView):
         modal = PlotWorkerModal(self)
         await interaction.response.send_modal(modal)
 
+    async def _max_workers(self, interaction: Interaction):
+        await interaction.response.defer()
+        b = self.building
+        p = self.plot
+        adj = self.adj_bonus or {}
+        max_w = get_effective_max_workers(
+            b.building_type,
+            b.tier,
+            p.bonus_type if p else None,
+            adj.get("shrine_cap_x2", False),
+            adj.get("has_watchtower", False),
+        )
+        await self.bot.database.settlement.assign_workers(b.id, max_w)
+        b.workers_assigned = max_w
+        self._build_buttons()
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+
     async def _upgrade_building(self, interaction: Interaction):
         if self._processing:
             await interaction.response.defer()
@@ -1082,6 +1119,9 @@ class PlotDetailView(SettlementBaseView):
         self._processing = False
         await interaction.edit_original_response(embed=queued_embed, view=self.parent)
         self.stop()
+        await asyncio.sleep(3)
+        dash_embed = self.parent.build_embed()
+        await interaction.edit_original_response(embed=dash_embed, view=self.parent)
 
     async def _repair_building(self, interaction: Interaction):
         if self._processing:

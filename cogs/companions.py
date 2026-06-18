@@ -39,7 +39,8 @@ class Companions(commands.Cog):
         async def _build():
             rows = await self.bot.database.companions.get_all(user_id)
             companions = [create_companion(row) for row in rows] if rows else []
-            view = CompanionListView(self.bot, user_id, companions)
+            pending_cookies = await self.bot.database.users.get_pending_companion_cookies(user_id)
+            view = CompanionListView(self.bot, user_id, companions, pending_cookies=pending_cookies)
             embed = view.get_embed()
             embed.set_thumbnail(url=COMPANIONS_HUB)
             return embed, view

@@ -15,6 +15,7 @@ from core.character.passive_data import (
     _HELMET_PASSIVE_FUNCS,
     _HEMATURGY_SHORT_FUNCS,
     _INFERNAL_PASSIVE_DESC,
+    _POTION_PASSIVE_DESCS,
     _SLAYER_EMBLEM_FUNCS,
     _SLAYER_EMBLEM_NAMES,
     _VOID_PASSIVE_DESC,
@@ -459,6 +460,21 @@ class CombatProfileBuilder:
             for i in range(0, len(lines), chunk):
                 field_name = "💉 Hematurgy" if i == 0 else "​"
                 _add(field_name, lines[i : i + chunk])
+
+        # ── Alchemy Potion Passives ───────────────────────────────────────────
+        if p.potion_passives:
+            lines = []
+            for entry in p.potion_passives:
+                ptype = entry.get("passive_type", "")
+                pval = entry.get("passive_value", 0)
+                pdur = entry.get("passive_duration", 0)
+                info = _POTION_PASSIVE_DESCS.get(ptype)
+                if info:
+                    label, fn = info
+                    lines.append(f"• {label} — {fn(pval, pdur)}")
+                else:
+                    lines.append(f"• {ptype.replace('_', ' ').title()} ({pval:.0f})")
+            _add("⚗️ Alchemy Passives", lines)
 
         if not has_any:
             embed.description = "No active passives found."

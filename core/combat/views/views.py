@@ -764,6 +764,9 @@ class CombatView(BaseView):
             if not self._was_auto:
                 self.update_buttons()
 
+            # Release the guard so the next phase's buttons are clickable.
+            self._processing = False
+
             embed = combat_ui.create_combat_embed(
                 self.player,
                 self.monster,

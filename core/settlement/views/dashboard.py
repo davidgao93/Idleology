@@ -819,40 +819,40 @@ class SettlementDashboardView(SettlementBaseView):
     # -------------------------------------------------------------------------
 
     async def show_building_list(self, interaction: Interaction):
-        _REGULAR = [
-            ("🪵 Logging Camp", "Generator · Timber · scales with tier & workers"),
-            ("🪨 Quarry", "Generator · Stone · scales with tier & workers"),
-            ("🔥 Foundry", "Converter · Ore → Bars · T1 Iron → T5 Idea"),
-            ("🌲 Sawmill", "Converter · Logs → Planks · T1 Oak → T5 Idea"),
-            (
-                "🦴 Reliquary",
-                "Converter · Bones → Essences · T1 Desiccated → T5 Titanium",
-            ),
-            ("💰 Market", "Generator · Gold · scales with tier & workers"),
-            ("⚔️ Barracks", "Passive · +% Attack & Defence in combat"),
-            ("⛪ Temple", "Passive · +% Propagate follower gain"),
-            ("💊 Apothecary", "Passive · +Flat HP restored per potion use"),
-            (
-                "🌑 Black Market",
-                "Special · Submit bundles for loot · invest Idlem to improve",
-            ),
-            ("🐾 Companion Ranch", "Generator · Companion XP · distributed on collect"),
-            ("🥚 Hatchery", "Special · Incubates eggs for Hematurgy drops · Lv50"),
-            ("🏕️ War Camp", "Generator · Combat Stamina · capped at 10"),
-            ("👶 Nursery", "Project Building · Workers per DT · scales with tier"),
-            (
-                "⚗️ Idlem Foundry",
-                "Project Building · Idlem per DT · powers BM passive tree",
-            ),
-            ("🔮 Uber Shrine", "Passive · Houses all 5 shrine statues for sigil drops"),
+        _GENERATORS = [
+            ("🪵 Logging Camp", "Hybrid · Timber · passive hourly + 5× per DT"),
+            ("🪨 Quarry", "Hybrid · Stone · passive hourly + 5× per DT"),
+            ("💰 Market", "Hybrid · Gold · passive hourly + 5× per DT"),
+            ("🐾 Companion Ranch", "Hybrid · Companion XP (cookies) · passive + 5× per DT · claim from /companions"),
+            ("🏕️ War Camp", "Hybrid · Combat Stamina · passive hourly + 5× per DT · capped at 10"),
         ]
-        regular_lines = "\n".join(f"**{n}** — {d}" for n, d in _REGULAR)
-        embed = discord.Embed(
-            title="📖 Regular Buildings",
-            description=regular_lines,
-            color=discord.Color.blue(),
-        )
-        embed.set_footer(text="Select a building in the dashboard for full details.")
+        _CONVERTERS = [
+            ("🔥 Foundry", "Hybrid · Ore → Bars · T1 Iron → T5 Idea · passive + 5× per DT"),
+            ("🌲 Sawmill", "Hybrid · Logs → Planks · T1 Oak → T5 Idea · passive + 5× per DT"),
+            ("🦴 Reliquary", "Hybrid · Bones → Essences · T1 Desiccated → T5 Titanium · passive + 5× per DT"),
+        ]
+        _PASSIVES = [
+            ("⚔️ Barracks", "Passive · +% Attack & Defence in combat · scales with workers"),
+            ("⛪ Temple", "Passive · +% Propagate follower gain · scales with workers"),
+            ("💊 Apothecary", "Passive · +Flat HP restored per potion use · scales with workers"),
+            ("🔮 Uber Shrine", "Passive · Houses all 5 shrine statues for boss sigil drops"),
+        ]
+        _SPECIALS = [
+            ("🌑 Black Market", "Special · Submit resource bundles for loot · invest Idlem to improve"),
+            ("🥚 Hatchery", "Special · Incubates eggs for Hematurgy blood drops · Lv50"),
+            ("👶 Nursery", "Project · Produces workers per DT · scales with tier"),
+            ("⚗️ Idlem Foundry", "Project · Produces Idlem per DT · powers Black Market passive tree"),
+        ]
+
+        def _fmt(entries):
+            return "\n".join(f"**{n}** — {d}" for n, d in entries)
+
+        embed = discord.Embed(title="📖 Regular Buildings", color=discord.Color.blue())
+        embed.add_field(name="⚡ Generators", value=_fmt(_GENERATORS), inline=False)
+        embed.add_field(name="🔄 Converters", value=_fmt(_CONVERTERS), inline=False)
+        embed.add_field(name="🛡️ Passives", value=_fmt(_PASSIVES), inline=False)
+        embed.add_field(name="✨ Special / Project", value=_fmt(_SPECIALS), inline=False)
+        embed.set_footer(text="Hybrid buildings produce passively over time AND award a 5× burst each Development Turn.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def show_meta_buildings(self, interaction: Interaction):

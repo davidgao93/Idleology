@@ -276,35 +276,7 @@ async def process_next_turn(
     if companion_cookie > 0:
         summary["dt_resources"]["companion_xp"] = companion_cookie
         try:
-            active_rows = await bot.database.companions.get_active(user_id)
-            if active_rows:
-                xp_per = companion_cookie // len(active_rows)
-                from core.companions.mechanics import CompanionMechanics
-                from core.companions.mastery import kp_from_overflow_xp
-
-                overflow_xp = 0
-                for row in active_rows:
-                    comp_id, cur_lvl, cur_exp = row[0], row[5], row[6]
-                    cur_exp += xp_per
-                    while cur_lvl < 100:
-                        req = CompanionMechanics.calculate_next_level_xp(cur_lvl)
-                        if cur_exp >= req:
-                            cur_exp -= req
-                            cur_lvl += 1
-                        else:
-                            break
-                    if cur_lvl >= 100:
-                        overflow_xp += cur_exp
-                        cur_exp = 0
-                    await bot.database.companions.update_stats(
-                        comp_id, cur_lvl, cur_exp
-                    )
-                if overflow_xp > 0:
-                    kp_earned = kp_from_overflow_xp(overflow_xp)
-                    if kp_earned > 0:
-                        await bot.database.companions.add_kinship_points(
-                            user_id, server_id, kp_earned
-                        )
+            await bot.database.users.add_pending_companion_cookies(user_id, companion_cookie)
         except Exception:
             pass
 
@@ -439,7 +411,7 @@ async def _complete_project(
             await bot.database.settlement.build_structure(
                 user_id, server_id, building_type, plot_index, is_meta
             )
-        return {"label": f"Built {building_type.replace('_', ' ').title()}"}
+        return {"label": f"{building_type.replace('_', ' ').title()}"}
 
     elif ptype == "upgrade":
         building_id = proj.get("target_id")
@@ -546,7 +518,7 @@ async def _check_schedule_events(
     settlement = await bot.database.settlement.get_settlement(user_id, server_id)
     player_building_types: set[str] = set()
     if settlement and settlement.buildings:
-        player_building_types = {b.building_type for b in settlement.buildings}
+        player_building_types = {b.building_type for b in settlement.buildings if not b.is_meta}
 
     for key, ev_def in SETTLEMENT_EVENTS.items():
         if key in existing_keys:

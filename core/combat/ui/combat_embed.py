@@ -59,9 +59,13 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
     # --- Alchemy: next-attack buffs (consumed on use) ---
     if player.alchemy_guaranteed_hit:
         lines.append("⚔️ Bottled Courage  **ready**")
+    if player.alchemy_hit_boost_pct > 0:
+        lines.append(
+            f"⚡ Quickening Draught  +{int(player.alchemy_hit_boost_pct * 100)}% Hit  {player.alchemy_hit_boost_turns}t left"
+        )
     if player.alchemy_atk_boost_pct > 0:
         lines.append(
-            f"💪 Warrior's Draft  +{int(player.alchemy_atk_boost_pct * 100)}% ATK  **ready**"
+            f"💪 Battle Draft  +{int(player.alchemy_atk_boost_pct * 100)}% ATK  **ready**"
         )
 
     # --- Alchemy: timed buffs ---
@@ -211,11 +215,7 @@ def create_combat_embed(
     p_atk = player.get_total_attack()
     p_def = player.get_total_defence()
 
-    description = (
-        f"A level **{monster.level}** {monster.name} approaches!{mod_text}\n\n"
-        f"⚔️ {p_atk:,} vs {monster.attack:,} | 🛡️ {p_def:,} vs {monster.defence:,}\n"
-        f"~{p_hit}% to hit | ~{m_hit}% to be hit"
-    )
+    description = f"A level **{monster.level}** {monster.name} approaches!{mod_text}"
 
     # UBER OVERRIDES
     is_essence = getattr(monster, "is_essence", False)
@@ -240,11 +240,21 @@ def create_combat_embed(
     embed = discord.Embed(title=title, description=description, color=color)
     embed.set_image(url=monster.image)
 
-    embed.add_field(name="🐲 HP", value=f"{monster.hp}/{monster.max_hp}", inline=True)
     embed.add_field(
-        name="❤️ HP",
-        value=get_hp_display(
-            player.current_hp, player.total_max_hp, player.combat_ward
+        name=f"🐲 {monster.name}",
+        value=(
+            f"{monster.hp:,}/{monster.max_hp:,} ❤️\n"
+            f"⚔️ ATK {monster.attack:,} | 🛡️ DEF {monster.defence:,}\n"
+            f"~{m_hit}% to hit"
+        ),
+        inline=True,
+    )
+    embed.add_field(
+        name=f"❤️ {player.name}",
+        value=(
+            f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
+            f"⚔️ ATK {p_atk:,} | 🛡️ DEF {p_def:,}\n"
+            f"~{p_hit}% to hit"
         ),
         inline=True,
     )

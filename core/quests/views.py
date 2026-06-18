@@ -514,7 +514,7 @@ class QuestBoardView(BaseView):
         if not active and not self._is_on_cooldown():
             await self._roll_fresh_board()
         self._build_view_components()
-        await self.message.edit(embed=self.build_embed(), view=self)
+        await self.message.edit(content=None, embed=self.build_embed(), view=self)
 
     async def _check_for_fresh_board_ready(self, interaction: Interaction) -> None:
         """If all contracts are done/abandoned and cooldown expired, reload board."""
@@ -595,10 +595,10 @@ class QuestBoardView(BaseView):
             confirm = _HorizonSwitchConfirmView(
                 self.bot, self, path_id, path_def["name"]
             )
-            await interaction.response.send_message(
-                f"Switch to **{path_def['name']}**? Your progress on the current path will be lost.",
+            await interaction.response.edit_message(
+                content=f"⚠️ Switch to **{path_def['name']}**? Your progress on the current path will be lost.",
+                embed=None,
                 view=confirm,
-                ephemeral=True,
             )
         else:
             await interaction.response.defer()
@@ -611,7 +611,7 @@ class QuestBoardView(BaseView):
         )
         await self.load()
         self._build_view_components()
-        await self.message.edit(embed=self.build_embed(), view=self)
+        await self.message.edit(content=None, embed=self.build_embed(), view=self)
 
     # ------------------------------------------------------------------
     # Shop / Close
@@ -696,15 +696,15 @@ class _AbandonSelect(discord.ui.Select):
         )
         quest_label = quest_def["label"] if quest_def else f"Slot {slot}"
         confirm = _AbandonConfirmView(self.view.bot, self.view, slot, quest_label)
-        await interaction.response.send_message(
-            f"Walk away from **{quest_label}** (Slot {slot})? Your progress will be lost.",
+        await interaction.response.edit_message(
+            content=f"⚠️ Abandon **{quest_label}**? Your progress on this contract will be lost.",
+            embed=None,
             view=confirm,
-            ephemeral=True,
         )
 
 
 class _AbandonConfirmView(BaseView):
-    """Ephemeral confirmation before abandoning a contract."""
+    """Inline confirmation before abandoning a contract."""
 
     def __init__(self, bot, parent: QuestBoardView, slot: int, quest_label: str):
         super().__init__(bot, parent=parent)
@@ -719,15 +719,16 @@ class _AbandonConfirmView(BaseView):
             await interaction.response.defer()
             return
         self._done = True
-        await interaction.response.edit_message(
-            content=f"Contract **{self.quest_label}** abandoned.", view=None
-        )
+        await interaction.response.defer()
         await self.main_view.execute_abandon(self.slot)
         self.stop()
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary)
     async def cancel_btn(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.edit_message(content="Cancelled.", view=None)
+        self.main_view._build_view_components()
+        await interaction.response.edit_message(
+            content=None, embed=self.main_view.build_embed(), view=self.main_view
+        )
         self.stop()
 
 
@@ -747,16 +748,17 @@ class _HorizonSwitchConfirmView(BaseView):
             await interaction.response.defer()
             return
         self._done = True
-        await interaction.response.edit_message(
-            content=f"Switched to **{self.path_name}**.", view=None
-        )
+        await interaction.response.defer()
         path_def = HORIZON_PATHS.get(self.path_id)
         await self.main_view.execute_horizon_select(self.path_id, path_def)
         self.stop()
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary)
     async def cancel_btn(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.edit_message(content="Cancelled.", view=None)
+        self.main_view._build_view_components()
+        await interaction.response.edit_message(
+            content=None, embed=self.main_view.build_embed(), view=self.main_view
+        )
         self.stop()
 
 

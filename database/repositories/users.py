@@ -474,6 +474,52 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    _pending_cookies_col_added: bool = False
+
+    async def _ensure_pending_cookies_column(self) -> None:
+        if UserRepository._pending_cookies_col_added:
+            return
+        try:
+            await self.connection.execute(
+                "ALTER TABLE users ADD COLUMN pending_companion_cookies INTEGER DEFAULT 0"
+            )
+            await self.connection.commit()
+        except Exception:
+            pass
+        UserRepository._pending_cookies_col_added = True
+
+    async def add_pending_companion_cookies(self, user_id: str, amount: int) -> None:
+        """Accumulate Ranch XP cookies; redeemed from the Companions view."""
+        await self._ensure_pending_cookies_column()
+        await self.connection.execute(
+            "UPDATE users SET pending_companion_cookies = pending_companion_cookies + ? WHERE user_id = ?",
+            (amount, user_id),
+        )
+        await self.connection.commit()
+
+    async def get_pending_companion_cookies(self, user_id: str) -> int:
+        await self._ensure_pending_cookies_column()
+        async with self.connection.execute(
+            "SELECT pending_companion_cookies FROM users WHERE user_id = ?", (user_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+        return (row[0] or 0) if row else 0
+
+    async def consume_pending_companion_cookies(self, user_id: str) -> int:
+        """Read and zero out the pending cookie balance. Returns the amount consumed."""
+        await self._ensure_pending_cookies_column()
+        async with self.connection.execute(
+            "SELECT pending_companion_cookies FROM users WHERE user_id = ?", (user_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+        amount = (row[0] or 0) if row else 0
+        if amount > 0:
+            await self.connection.execute(
+                "UPDATE users SET pending_companion_cookies = 0 WHERE user_id = ?", (user_id,)
+            )
+            await self.connection.commit()
+        return amount
+
     async def add_stamina_capped(self, user_id: str, amount: int) -> None:
         """Adds stamina, honouring the normal 10-unit cap. Used by the new War Camp collection."""
         await self.connection.execute(

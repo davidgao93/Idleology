@@ -212,8 +212,8 @@ class Companion:
             "ward": f"+{val}% HP as Ward",
             "rarity": f"+{val}% More Rarity",
             "s_rarity": f"+{val:.1f}% Special Drop Rate",
-            "fdr": f"+{val} Flat Dmg Red.",
-            "pdr": f"+{val}% Dmg Red.",
+            "fdr": f"+{val} FDR",
+            "pdr": f"+{val}% PDR",
         }
         return p_map.get(self.passive_type, "Unknown Effect")
 

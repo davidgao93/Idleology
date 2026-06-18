@@ -1,4 +1,5 @@
 # core/settlement/views/detail.py
+import asyncio
 import discord
 from discord import ButtonStyle, Interaction, ui
 
@@ -115,7 +116,7 @@ class BuildingDetailView(SettlementBaseView):
             rate_hr = int(rate)
             rate_dt = int(rate * _DT_HOURS)
             desc = (
-                f"**Level:** {self.building.tier}/5\n"
+                f"**Tier:** {self.building.tier}/5\n"
                 f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
                 f"**Output:** ~{rate_hr:,}/hr · ~{rate_dt:,}/turn ({output_name})"
             )
@@ -135,21 +136,21 @@ class BuildingDetailView(SettlementBaseView):
                     for raw, ref, r in tier_rates
                 )
                 desc = (
-                    f"**Level:** {self.building.tier}/5\n"
+                    f"**Tier:** {self.building.tier}/5\n"
                     f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
                     f"**Processing Rates:**\n{rate_lines}"
                 )
             else:
                 desc = (
-                    f"**Level:** {self.building.tier}/5\n"
+                    f"**Tier:** {self.building.tier}/5\n"
                     f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
                     f"**Processing Rates:** Assign workers to start converting."
                 )
         elif self.building.building_type == "black_market":
-            desc = f"**Level:** {self.building.tier}/5\n**Type:** Special"
+            desc = f"**Tier:** {self.building.tier}/5\n**Type:** Special"
         else:
             desc = (
-                f"**Level:** {self.building.tier}/5\n"
+                f"**Tier:** {self.building.tier}/5\n"
                 f"**Workers:** {self.building.workers_assigned}/{max_w}\n"
                 f"**Type:** {b_data.get('type', 'Passive').title()}"
             )
@@ -450,6 +451,9 @@ class BuildingDetailView(SettlementBaseView):
         self._processing = False
         await interaction.edit_original_response(embed=queued_embed, view=self.parent)
         self.stop()
+        await asyncio.sleep(3)
+        dash_embed = self.parent.build_embed()
+        await interaction.edit_original_response(embed=dash_embed, view=self.parent)
 
     async def open_hatchery(self, interaction: Interaction):
         await interaction.response.defer()

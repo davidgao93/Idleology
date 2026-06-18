@@ -188,10 +188,9 @@ def process_heal(player: Player, monster=None) -> str:
     quick = potion_passives_by_type.get("quickening_draught", 0)
     if quick:
         player.alchemy_guaranteed_hit = True
-        player.alchemy_atk_boost_pct = max(
-            getattr(player, "alchemy_atk_boost_pct", 0.0), quick / 100.0
-        )
-        msg += f"\n⚡ **Quickening Draught** — guaranteed next hit and speed boost!"
+        player.alchemy_hit_boost_pct = quick / 100.0
+        player.alchemy_hit_boost_turns = 3
+        msg += f"\n⚡ **Quickening Draught** — guaranteed next hit +{quick:.0f}% Hit Chance for 3 turns!"
 
     if potent:
         msg += f"\n🍺 **Potent Brew** — heal increased by additional {potent:.0f}% of max HP!"
@@ -515,6 +514,11 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             f"({player.alchemy_linger_turns - 1} turn{'s' if player.alchemy_linger_turns - 1 != 1 else ''} left)"
         )
         player.alchemy_linger_turns -= 1
+
+    if player.alchemy_hit_boost_turns > 0:
+        player.alchemy_hit_boost_turns -= 1
+        if player.alchemy_hit_boost_turns <= 0:
+            player.alchemy_hit_boost_pct = 0.0
 
     # --- Hematurgy: Haemorrhage bleed tick (before attack) ---
     if player.hematurgy_passives:

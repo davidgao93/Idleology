@@ -309,3 +309,22 @@ _HEMATURGY_SHORT_FUNCS: dict = {
         f"During combat: +{[3, 5, 7, 9, 11][t - 1]}% ATK per 10% Max HP lost this fight"
     ),
 }
+
+# Alchemy potion passives — (value, duration) → description string
+_POTION_PASSIVE_DESCS: dict[str, tuple[str, callable]] = {
+    "panacea":            ("🌿 Panacea",          lambda v, d: f"On potion use: {v:.0f}% chance to cleanse ailments and gain {d:.0f}t immunity"),
+    "eclipse_strike":     ("🌑 Eclipse Strike",    lambda v, d: f"On potion use: next {d:.0f} attack(s) deal +{v:.0f}% damage and guaranteed crit"),
+    "astral_aegis":       ("🛡️ Astral Aegis",      lambda v, d: f"On potion use: shield = {v:.0f}% max HP for {d:.0f} turns; immune to next lethal blow"),
+    "void_tide":          ("🌊 Void Tide",          lambda v, d: f"On potion use: monster −{v:.0f}% ATK/DEF for {d:.0f} of its turns"),
+    "blood_pact":         ("🩸 Blood Pact",         lambda v, d: f"On potion use: leech {v:.0f}% of damage as HP for next {d:.0f} hits"),
+    "quickening_draught": ("⚡ Quickening Draught", lambda v, d: f"On potion use: guaranteed hit + +{v:.0f}% Hit Chance for 3 turns"),
+    "potent_brew":        ("🍺 Potent Brew",        lambda v, d: f"On potion use: heal +{v:.0f}% extra max HP"),
+    "venomous_infusion":  ("🐍 Venomous Infusion",  lambda v, d: f"On potion use: deal {v:.0f}% of heal amount as damage to monster"),
+    "battle_draft":       ("💪 Battle Draft",        lambda v, d: f"On potion use: +{v:.0f}% ATK for next {d:.0f} attacks"),
+    "ironclad_elixir":    ("⚔️ Ironclad Elixir",    lambda v, d: f"On potion use: +{v:.0f}% DEF for {d:.0f} monster turns"),
+    "ward_surge":         ("🔮 Ward Surge",          lambda v, d: f"On potion use: restore {v:.0f}% of heal as Ward"),
+    "overflow_elixir":    ("💥 Overflow Elixir",     lambda v, d: f"On potion use: overheal up to {v:.0f}% max HP as temp HP"),
+    "numbing_tonic":      ("🩹 Numbing Tonic",       lambda v, d: f"On potion use: −{v:.0f}% damage from next monster attack"),
+    "sustained_remedy":   ("🌱 Sustained Remedy",    lambda v, d: f"On potion use: restore {v:.0f} HP/turn for {d:.0f} turns"),
+    "surestrike_serum":   ("🎯 Surestrike Serum",    lambda v, d: f"On potion use: next attack cannot miss and will crit"),
+}

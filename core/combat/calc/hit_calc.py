@@ -73,6 +73,9 @@ def calculate_hit_chance(player: Player, monster: Monster) -> float:
             if hit_pct:
                 base = min(_HIT_MAX, base + hit_pct * 0.01)
 
+    if player.alchemy_hit_boost_pct > 0:
+        base = min(_HIT_MAX, base + player.alchemy_hit_boost_pct)
+
     return base
 
 
@@ -204,9 +207,9 @@ def build_attack_multiplier(
     if player.alchemy_atk_boost_pct > 0:
         factor = 1 + player.alchemy_atk_boost_pct
         mult *= factor
-        calc_sources.append(f"warriors_draft×{factor:.3f}")
+        calc_sources.append(f"battle_draft×{factor:.3f}")
         log.append(
-            f"💪 **Warrior's Draft** boosts damage! (+{int(player.alchemy_atk_boost_pct * 100)}% ATK)"
+            f"💪 **Battle Draft** boosts damage! (+{int(player.alchemy_atk_boost_pct * 100)}% ATK)"
         )
         player.alchemy_atk_boost_pct = 0.0
 

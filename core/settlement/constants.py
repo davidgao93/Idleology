@@ -38,19 +38,19 @@ RESOURCE_DISPLAY_NAMES = {
 
 # Unified building info (used by dashboard, construction, and detail views)
 BUILDING_INFO = {
-    "logging_camp": "Generator: Produces **20 Timber/hr per 100 Workers** at T1, scaling with tier (×2 at T2, ×3 at T3, up to ×5 at T5). Raw timber feed for the Sawmill.",
-    "quarry": "Generator: Produces **20 Stone/hr per 100 Workers** at T1, scaling with tier (×2 at T2, up to ×5 at T5). Raw stone for construction and the Foundry.",
-    "foundry": "Converter: Processes ore into ingots. **100 conversions/hr per 100 Workers** at T1, scaling with tier. Tiers unlock ore grades: T1→Iron, T2→Coal, T3→Gold, T4→Platinum, T5→Idea. All unlocked tiers run simultaneously.",
-    "sawmill": "Converter: Processes logs into planks. **100 conversions/hr per 100 Workers** at T1, scaling with tier. Tiers unlock log grades: T1→Oak, T2→Willow, T3→Mahogany, T4→Magic, T5→Idea. All unlocked tiers run simultaneously.",
-    "reliquary": "Converter: Processes bones into essences. **100 conversions/hr per 100 Workers** at T1, scaling with tier. Tiers unlock bone grades: T1→Desiccated, T2→Regular, T3→Sturdy, T4→Reinforced, T5→Titanium. All unlocked tiers run simultaneously.",
-    "market": "Generator: Produces **5,000 Gold/hr per 100 Workers** at T1, scaling with tier (up to 25,000/hr at T5). Gold is collected alongside resources.",
+    "logging_camp": "Hybrid: Produces **20 Timber/hr per 100 Workers** at T1 passively, scaling with tier (×2 at T2, ×3 at T3, up to ×5 at T5). Also awards a **5× burst** each Development Turn. Raw timber for construction and the Sawmill.",
+    "quarry": "Hybrid: Produces **20 Stone/hr per 100 Workers** at T1 passively, scaling with tier (×2 at T2, up to ×5 at T5). Also awards a **5× burst** each Development Turn. Raw stone for construction and the Foundry.",
+    "foundry": "Hybrid: Processes ore into ingots — **100 conversions/hr per 100 Workers** at T1 passively, plus a **5× burst** each Development Turn. Tiers unlock ore grades: T1→Iron, T2→Coal, T3→Gold, T4→Platinum, T5→Idea. All unlocked tiers run simultaneously.",
+    "sawmill": "Hybrid: Processes logs into planks — **100 conversions/hr per 100 Workers** at T1 passively, plus a **5× burst** each Development Turn. Tiers unlock log grades: T1→Oak, T2→Willow, T3→Mahogany, T4→Magic, T5→Idea. All unlocked tiers run simultaneously.",
+    "reliquary": "Hybrid: Processes bones into essences — **100 conversions/hr per 100 Workers** at T1 passively, plus a **5× burst** each Development Turn. Tiers unlock bone grades: T1→Desiccated, T2→Regular, T3→Sturdy, T4→Reinforced, T5→Titanium. All unlocked tiers run simultaneously.",
+    "market": "Hybrid: Produces **5,000 Gold/hr per 100 Workers** at T1 passively, scaling with tier (up to 25,000/hr at T5). Also awards a **5× burst** each Development Turn.",
     "barracks": "Passive: Grants **+1% Attack and Defence per 100 Workers** (applied globally during combat). Scales with tier — higher tiers raise the worker cap, increasing the maximum bonus.",
     "temple": "Passive: Grants **+5% Propagate follower gain per 100 Workers**. Scales with tier. Followers are required to staff all buildings, so this multiplies your workforce growth.",
     "apothecary": "Passive: Each potion use heals an additional **+20 flat HP per 100 Workers**. Scales with tier. Stacks with all other healing bonuses.",
     "black_market": "Special: Submit resource bundles as trade offers. Deals process over Development Turns and return curated loot. Invest Idlem into the passive tree to improve deal value, speed, and loot bias.",
-    "companion_ranch": "Generator: Produces **10 Companion XP/hr per 100 Workers** at T1, scaling with tier. XP is distributed across all active companions when you collect resources.",
+    "companion_ranch": "Hybrid: Produces **10 Companion XP/hr per 100 Workers** at T1 passively, scaling with tier. Also awards a **5× burst** each Development Turn. XP accumulates as Cookies and is claimed manually from **/companions**.",
     "hatchery": "Special: Incubate monster eggs for Hematurgy blood drops. Workers reduce incubation time — **10% faster per 100 Workers**. Requires Level 50 to build.",
-    "war_camp": "Generator: Produces Combat Stamina passively. **~10 Stamina per 24h per 100 Workers** (does not scale with tier). Collected stamina is capped at 10 and never exceeds the normal maximum.",
+    "war_camp": "Hybrid: Produces Combat Stamina passively — **~10 Stamina per 24h per 100 Workers**, plus a **5× burst** each Development Turn. Collected stamina is capped at 10 and never exceeds the normal maximum.",
 }
 
 # Construction costs (used by BuildConstructionView)
@@ -631,7 +631,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
     "void_incursion": {
         "name": "🌑 Void Incursion",
         "type": "upcoming",
-        "description": "A void rift opens near your {target_building_label}. Use the **Confront** button on your settlement dashboard to seal it, or the building will be lost.",
+        "description": "A void rift opens near your {target_building_label}. Use the **Confront** button on your settlement dashboard to seal it, or the building will be disabled.",
         "effects": {
             "spawn_combat": "void_sentry",
             "on_fail_disable": "target_building",

@@ -230,6 +230,7 @@ class General(commands.Cog, name="general"):
             "partner",
             "paradise",
             "hematurgy",
+            "alchemy",
         ],
     ):
 
@@ -548,6 +549,30 @@ class General(commands.Cog, name="general"):
                 "**Ward Inoculation** — At combat start ward converts to DEF and Max HP is doubled; ward generated deals % of its value as damage to the monster.\n\n"
                 "**Soul Fracture** — Gain +ATK for every 10% of Max HP lost during this combat."
             )
+            content_added = True
+
+        elif category == "alchemy":
+            from core.alchemy.mechanics import AlchemyMechanics
+
+            embed.title = "⚗️ Alchemy Potion Passives"
+            lines = []
+            for key, p in AlchemyMechanics.POWERFUL_PASSIVES.items():
+                v_min = p["value_min"]
+                v_max = p["value_max"]
+                d_min = p["duration_min"]
+                d_max = p["duration_max"]
+                if v_min == v_max:
+                    v_str = f"{v_min:.0f}"
+                else:
+                    v_str = f"{v_min:.0f}–{v_max:.0f}"
+                if d_min == 0 and d_max == 0:
+                    desc = p["desc"].replace("{value:.0f}", v_str).replace(" for {duration:.0f} turns", "").replace("{duration:.0f}", "")
+                elif d_min == d_max:
+                    desc = p["desc"].replace("{value:.0f}", v_str).replace("{duration:.0f}", f"{d_min:.0f}")
+                else:
+                    desc = p["desc"].replace("{value:.0f}", v_str).replace("{duration:.0f}", f"{d_min:.0f}–{d_max:.0f}")
+                lines.append(f"{p['emoji']} **{p['name']}** — {desc}")
+            embed.description = "\n\n".join(lines)
             content_added = True
 
         if not content_added:

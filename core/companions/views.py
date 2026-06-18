@@ -89,11 +89,12 @@ class RerollConfirmView(BaseView):
 
 
 class CompanionListView(BaseView):
-    def __init__(self, bot, user_id: str, companions: list[Companion]):
+    def __init__(self, bot, user_id: str, companions: list[Companion], pending_cookies: int = 0):
         super().__init__(bot, user_id)
         self.bot = bot
         self.user_id = user_id
         self.companions = companions
+        self._pending_cookies = pending_cookies
         self.update_buttons()
 
     async def close_view(self, interaction: Interaction):
@@ -138,6 +139,16 @@ class CompanionListView(BaseView):
         )
         collect_btn.callback = self.collect_loot
         self.add_item(collect_btn)
+
+        if self._pending_cookies > 0:
+            cookies_btn = ui.Button(
+                label=f"Claim Ranch XP ({self._pending_cookies:,})",
+                style=ButtonStyle.success,
+                emoji="🐾",
+                row=1,
+            )
+            cookies_btn.callback = self.claim_ranch_xp
+            self.add_item(cookies_btn)
 
         fusion_btn = ui.Button(
             label="Fusion", style=ButtonStyle.primary, emoji="🧬", row=1
@@ -208,6 +219,75 @@ class CompanionListView(BaseView):
             self.bot, self.user_id, str(interaction.guild.id)
         )
         await interaction.response.send_message(result_msg, ephemeral=True)
+
+    async def claim_ranch_xp(self, interaction: Interaction):
+        await interaction.response.defer()
+        total_xp = await self.bot.database.users.consume_pending_companion_cookies(self.user_id)
+        if total_xp <= 0:
+            await interaction.followup.send("No Ranch XP to claim.", ephemeral=True)
+            return
+
+        active = [c for c in self.companions if c.is_active]
+        if not active:
+            # No active companions — bank it back and inform
+            await self.bot.database.users.add_pending_companion_cookies(self.user_id, total_xp)
+            await interaction.followup.send(
+                "You have no active companions to receive Ranch XP. "
+                "Set at least one companion as active first.",
+                ephemeral=True,
+            )
+            return
+
+        xp_per = total_xp // len(active)
+        from core.companions.mastery import kp_from_overflow_xp
+
+        msgs = []
+        overflow_xp = 0
+        for comp in active:
+            rows = await self.bot.database.companions.get_by_id(comp.id)
+            if rows is None:
+                continue
+            cur_lvl, cur_exp = comp.level, comp.exp
+            cur_exp += xp_per
+            while cur_lvl < 100:
+                req = CompanionMechanics.calculate_next_level_xp(cur_lvl)
+                if cur_exp >= req:
+                    cur_exp -= req
+                    cur_lvl += 1
+                else:
+                    break
+            if cur_lvl >= 100:
+                overflow_xp += cur_exp
+                cur_exp = 0
+            await self.bot.database.companions.update_stats(comp.id, cur_lvl, cur_exp)
+            if cur_lvl != comp.level:
+                msgs.append(f"**{comp.name}** levelled up to **{cur_lvl}**!")
+            else:
+                msgs.append(f"**{comp.name}** gained {xp_per:,} XP (Lv.{cur_lvl})")
+
+        if overflow_xp > 0:
+            kp_earned = kp_from_overflow_xp(overflow_xp)
+            if kp_earned > 0:
+                server_id = str(interaction.guild.id)
+                await self.bot.database.companions.add_kinship_points(self.user_id, server_id, kp_earned)
+                msgs.append(f"+{kp_earned} Kinship Points from overflow XP.")
+
+        # Refresh companion data
+        from core.items.factory import create_companion
+        rows = await self.bot.database.companions.get_all(self.user_id)
+        self.companions = [create_companion(r) for r in rows] if rows else []
+        self._pending_cookies = 0
+        self.update_buttons()
+
+        summary = "\n".join(msgs) if msgs else "XP distributed."
+        await interaction.edit_original_response(
+            embed=self.get_embed(),
+            view=self,
+        )
+        await interaction.followup.send(
+            f"🐾 **Ranch XP Claimed** ({total_xp:,} XP across {len(active)} companion(s))\n{summary}",
+            ephemeral=True,
+        )
 
     async def open_fusion(self, interaction: Interaction):
         from core.companions.fusion_views import FusionWizardView
