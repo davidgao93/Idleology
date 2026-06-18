@@ -56,12 +56,20 @@ class CombatState:
     alchemy_guaranteed_hit: bool = False
     alchemy_hit_boost_pct: float = 0.0
     alchemy_hit_boost_turns: int = 0
-    # New powerful distilled potion transients (from 9-step distillation)
+    # Powerful distilled potion transients (11-passive system)
     alchemy_ailment_immunity_turns: int = 0
     alchemy_eclipse_strikes: int = 0
     alchemy_eclipse_bonus: float = 0.0
     alchemy_shield_hp: int = 0
     alchemy_shield_turns: int = 0
+    alchemy_enfeeble_pct: float = 0.0
+    alchemy_enfeeble_turns: int = 0
+    alchemy_blood_tithe_leech: float = 0.0
+    alchemy_blood_tithe_hits: int = 0
+    alchemy_barrier_ward_per_turn: int = 0
+    alchemy_barrier_turns: int = 0
+    alchemy_viper_dot_dmg: int = 0
+    alchemy_viper_dot_turns: int = 0
     # Per-combat bonus accumulators and multipliers
     bonus_atk: int = 0
     bonus_def: int = 0
@@ -686,6 +694,70 @@ class Player:
     @alchemy_shield_turns.setter
     def alchemy_shield_turns(self, v: int) -> None:
         self.cs.alchemy_shield_turns = v
+
+    @property
+    def alchemy_enfeeble_pct(self) -> float:
+        return self.cs.alchemy_enfeeble_pct
+
+    @alchemy_enfeeble_pct.setter
+    def alchemy_enfeeble_pct(self, v: float) -> None:
+        self.cs.alchemy_enfeeble_pct = v
+
+    @property
+    def alchemy_enfeeble_turns(self) -> int:
+        return self.cs.alchemy_enfeeble_turns
+
+    @alchemy_enfeeble_turns.setter
+    def alchemy_enfeeble_turns(self, v: int) -> None:
+        self.cs.alchemy_enfeeble_turns = v
+
+    @property
+    def alchemy_blood_tithe_leech(self) -> float:
+        return self.cs.alchemy_blood_tithe_leech
+
+    @alchemy_blood_tithe_leech.setter
+    def alchemy_blood_tithe_leech(self, v: float) -> None:
+        self.cs.alchemy_blood_tithe_leech = v
+
+    @property
+    def alchemy_blood_tithe_hits(self) -> int:
+        return self.cs.alchemy_blood_tithe_hits
+
+    @alchemy_blood_tithe_hits.setter
+    def alchemy_blood_tithe_hits(self, v: int) -> None:
+        self.cs.alchemy_blood_tithe_hits = v
+
+    @property
+    def alchemy_barrier_ward_per_turn(self) -> int:
+        return self.cs.alchemy_barrier_ward_per_turn
+
+    @alchemy_barrier_ward_per_turn.setter
+    def alchemy_barrier_ward_per_turn(self, v: int) -> None:
+        self.cs.alchemy_barrier_ward_per_turn = v
+
+    @property
+    def alchemy_barrier_turns(self) -> int:
+        return self.cs.alchemy_barrier_turns
+
+    @alchemy_barrier_turns.setter
+    def alchemy_barrier_turns(self, v: int) -> None:
+        self.cs.alchemy_barrier_turns = v
+
+    @property
+    def alchemy_viper_dot_dmg(self) -> int:
+        return self.cs.alchemy_viper_dot_dmg
+
+    @alchemy_viper_dot_dmg.setter
+    def alchemy_viper_dot_dmg(self, v: int) -> None:
+        self.cs.alchemy_viper_dot_dmg = v
+
+    @property
+    def alchemy_viper_dot_turns(self) -> int:
+        return self.cs.alchemy_viper_dot_turns
+
+    @alchemy_viper_dot_turns.setter
+    def alchemy_viper_dot_turns(self, v: int) -> None:
+        self.cs.alchemy_viper_dot_turns = v
 
     @property
     def bonus_atk(self) -> int:

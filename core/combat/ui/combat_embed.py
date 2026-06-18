@@ -56,36 +56,45 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
                 f"  · {player.jewel_acrimony_dot}t left"
             )
 
-    # --- Alchemy: next-attack buffs (consumed on use) ---
-    if player.alchemy_guaranteed_hit:
-        lines.append("⚔️ Bottled Courage  **ready**")
+    # --- Alchemy: timed buffs ---
     if player.alchemy_hit_boost_pct > 0:
         lines.append(
-            f"⚡ Quickening Draught  +{int(player.alchemy_hit_boost_pct * 100)}% Hit  {player.alchemy_hit_boost_turns}t left"
+            f"⚡ Accel  +{int(player.alchemy_hit_boost_pct * 100)}% Hit  {player.alchemy_hit_boost_turns}t left"
         )
     if player.alchemy_atk_boost_pct > 0:
         lines.append(
-            f"💪 Battle Draft  +{int(player.alchemy_atk_boost_pct * 100)}% ATK  **ready**"
+            f"💪 Enrage  +{int(player.alchemy_atk_boost_pct * 100)}% ATK/DEF  {player.alchemy_def_boost_turns}t left"
         )
-
-    # --- Alchemy: timed buffs ---
-    if player.alchemy_def_boost_turns > 0:
+    if player.alchemy_enfeeble_turns > 0:
         lines.append(
-            f"🛡️ Iron Skin  +{int(player.alchemy_def_boost_pct * 100)}%"
-            f"  · {player.alchemy_def_boost_turns}t"
+            f"🌊 Enfeeble  -{int(player.alchemy_enfeeble_pct * 100)}% ATK/DEF"
+            f"  · {player.alchemy_enfeeble_turns}t"
         )
     if player.alchemy_dmg_reduction_turns > 0:
         lines.append(
-            f"🩹 Dulled Pain  -{int(player.alchemy_dmg_reduction_pct * 100)}%"
-            f"  · {player.alchemy_dmg_reduction_turns}t"
+            f"🩹 Painkiller  -{int(player.alchemy_dmg_reduction_pct * 100)}%"
+            f"  · {player.alchemy_dmg_reduction_turns} hit{'s' if player.alchemy_dmg_reduction_turns != 1 else ''}"
         )
     if player.alchemy_linger_turns > 0:
         lines.append(
-            f"🌿 Linger  {player.alchemy_linger_hp:,}/turn"
+            f"🍺 Quench  {player.alchemy_linger_hp:,}/turn"
             f"  · {player.alchemy_linger_turns}t"
         )
-    if player.alchemy_overcap_hp > 0:
-        lines.append(f"💥 Temp HP  {player.alchemy_overcap_hp:,}")
+    if player.alchemy_viper_dot_turns > 0:
+        lines.append(
+            f"🐍 Viper DoT  {player.alchemy_viper_dot_dmg:,}/turn"
+            f"  · {player.alchemy_viper_dot_turns}t"
+        )
+    if player.alchemy_barrier_turns > 0:
+        lines.append(
+            f"🔮 Barrier  +{player.alchemy_barrier_ward_per_turn:,} Ward/turn"
+            f"  · {player.alchemy_barrier_turns}t"
+        )
+    if player.alchemy_blood_tithe_hits > 0:
+        lines.append(
+            f"🩸 Blood Tithe  {int(player.alchemy_blood_tithe_leech * 100)}% leech"
+            f"  · {player.alchemy_blood_tithe_hits} hit{'s' if player.alchemy_blood_tithe_hits != 1 else ''}"
+        )
 
     # --- Weapon / accessory stacks ---
     if player.voracious_stacks > 0:

@@ -111,6 +111,8 @@ CURIO_PUZZLE_BOX = "https://cdn.discordapp.com/attachments/1334637411363323996/1
 
 # ── ALCHEMY ───────────────────────────────────────────────────────────────────
 ALCHEMY_HUB = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512901767889046/alchemy_hub.png?ex=69f8b509&is=69f76389&hm=94fd4553150fd35994f99b0545167463f80846ec531d5f9809a863e8443c87e6&"
+ELYNDRA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517257938555637991/master_alchemist_elyndra.jpg?ex=6a35a011&is=6a344e91&hm=78d689b0a7b92dbcc1e9b2c16e8a43e83203cec016f02e0b27e7c44e43eec402&"
+ELYNDRA_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517257938836787380/master_alchemist_elyndra_portrait.jpg?ex=6a35a011&is=6a344e91&hm=e0ffa48f740c8dc1e5e5ede9862b9b9f3b6f683e46f07e7f8cbdbe54c422e54c&"
 
 # ── ESSENCE ───────────────────────────────────────────────────────────────────
 ESSENCE_HUB = "https://cdn.discordapp.com/attachments/1334637411363323996/1507523688818282577/ESSENCE_HUB.jpg?ex=6a123657&is=6a10e4d7&hm=bbb43a95b64dd49bd25b825afa93eb3d9d7cc03aa64535b350ad5ba6e9d8de0f&"

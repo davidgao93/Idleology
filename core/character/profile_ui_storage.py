@@ -242,7 +242,7 @@ class StorageProfileBuilder:
                 f"🔮 Celestial Sigils: {uber_data['celestial_sigils']}\n"
                 f"💠 Celestial Engrams: {uber_data['celestial_engrams']}\n"
                 f"🪨 Celestial Stone: {specials[0]}\n"
-                f"📜 Shrine Blueprint: {bp_status}"
+                f"📜 Celestial Statue Blueprint: {bp_status}"
             ),
             inline=True,
         )
@@ -256,7 +256,7 @@ class StorageProfileBuilder:
                 f"🔥 Infernal Sigils: {uber_data['infernal_sigils']}\n"
                 f"🔴 Infernal Engrams: {uber_data['infernal_engrams']}\n"
                 f"🔥 Infernal Cinder: {specials[1]}\n"
-                f"📜 Infernal Forge Blueprint: {infernal_bp_status}"
+                f"📜 Infernal Statue Blueprint: {infernal_bp_status}"
             ),
             inline=True,
         )
@@ -272,7 +272,7 @@ class StorageProfileBuilder:
                 f"⬛ Void Sigils: {uber_data.get('void_shards', 0)}\n"
                 f"🔮 Void Engrams: {uber_data.get('void_engrams', 0)}\n"
                 f"💎 Void Crystal: {specials[2]}\n"
-                f"📜 Void Sanctum Blueprint: {void_bp_status}"
+                f"📜 Void Statue Blueprint: {void_bp_status}"
             ),
             inline=True,
         )
@@ -288,16 +288,20 @@ class StorageProfileBuilder:
                 f"♊ Gemini Sigils: {uber_data.get('gemini_sigils', 0)}\n"
                 f"💠 Gemini Engrams: {uber_data.get('gemini_engrams', 0)}\n"
                 f"🔷 Bound Crystal: {specials[3]}\n"
-                f"📜 Twin Shrine Blueprint: {gemini_bp_status}"
+                f"📜 Twin Statue Blueprint: {gemini_bp_status}"
             ),
             inline=True,
         )
-
+        corrupted_bp_status = (
+            "✅ Unlocked"
+            if uber_data.get("corruption_blueprint_unlocked", 0)
+            else "🔒 Locked"
+        )
         embed.add_field(
             name="**Evelynn**",
             value=(
                 f"☠️ Corruption Sigils: {uber_data.get('corruption_sigils', 0)}\n"
-                f"*(costs 3 to challenge)*"
+                f"📜 Corrupted Statue Blueprint: {corrupted_bp_status}"
             ),
             inline=True,
         )

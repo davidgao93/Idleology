@@ -30,10 +30,11 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.images import (
-    ALCHEMY_HUB,
     COMBAT_VICTORY,
     COMPANIONS_HUB,
     DELVE_HUB,
+    ELYNDRA_PORTRAIT,
+    ELYNDRA_THUMBNAIL,
     HARLAN_AUTHOR,
     INVENTORY_HUB,
     MASTERY_MINING,
@@ -184,17 +185,31 @@ TUTORIALS: dict[str, dict] = {
     },
     "alchemy": {
         "title": "⚗️ Alchemy",
+        "author": "Master Alchemist Elyndra",
         "description": (
-            "Alchemy is your hub for resource transmutation, Cosmic Dust synthesis/disenchanting, "
-            "and — most importantly — **Distilling powerful potion passives**. "
-            "Use the Potion Lab's Distill Elixir."
+            "*You've wandered into my lab. How fortunate — for you.*\n\n"
+            "Alchemy is not mere potion-mixing. It is the art of coaxing power out of "
+            "reluctant materials, and occasionally out of catastrophe.\n\n"
+            "My laboratory handles three disciplines:\n"
+            "**Transmutation** — shift your gathered resources up or down the tier ladder. "
+            "Efficient. Reliable. Occasionally expensive, but that is the cost of ambition.\n"
+            "**Synthesis** — convert keys, essences, and other materials into Cosmic Dust, "
+            "or use Dust to produce something more immediately useful. "
+            "The process is straightforward. The results are not always.\n"
+            "**The Potion Lab** — my masterwork. Use *Distill Elixir* to run a "
+            "distillation ritual that imprints a powerful passive onto your potions. "
+            "Choose your reagents carefully. The Crimson ones in particular have… opinions.\n\n"
+            "Level up to unlock additional passive slots. "
+            "You may one day have as many as five active distilled passives. "
+            "Try not to waste them."
         ),
         "tips": [
-            "Level up to unlock more passive slots and better transmutation/synthesis rates.",
-            "Cosmic Dust (from disenchanting keys/essences) powers the new Distillation system.",
-            "Transmute gathering resources here for upgrade materials.",
+            "Cosmic Dust is earned through various activities — it's your primary distillation resource, so don't waste it.",
+            "Each reagent color has a different risk profile. Verdant is safe. Crimson is not.",
+            "Higher alchemy level unlocks more passive slots and better transmutation rates.",
         ],
-        "image": ALCHEMY_HUB,
+        "image": ELYNDRA_THUMBNAIL,
+        "author_icon": ELYNDRA_PORTRAIT,
         "color": discord.Color.purple(),
     },
     "quests": {

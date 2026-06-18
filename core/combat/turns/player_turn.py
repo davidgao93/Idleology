@@ -51,9 +51,13 @@ def process_heal(player: Player, monster=None) -> str:
         p["passive_type"]: p["passive_value"] for p in player.potion_passives
     }
 
-    potent = potion_passives_by_type.get("potent_brew", 0)
-    if potent:
-        heal_pct += potent / 100.0
+    potion_durations_by_type = {
+        p["passive_type"]: p.get("passive_duration", 2.0) for p in player.potion_passives
+    }
+
+    quench = potion_passives_by_type.get("quench", 0)
+    if quench:
+        heal_pct += quench / 100.0
 
     heal_amount = int((player.total_max_hp * heal_pct) + random.randint(1, 6))
 
@@ -122,15 +126,14 @@ def process_heal(player: Player, monster=None) -> str:
         msg += f"\n**Divine** converts **{added}** overheal into 🔮 Ward!"
 
     # ------------------------------------------------------------------
-    # POWERFUL DISTILLED PASSIVES (from 9-step distillation system)
-    # All legacy simple passives have been removed / converted.
+    # POWERFUL DISTILLED PASSIVES (11-passive system)
     # ------------------------------------------------------------------
     panacea = potion_passives_by_type.get("panacea", 0)
     if panacea:
         if random.random() < (panacea / 100.0):
+            dur = max(2, int(potion_durations_by_type.get("panacea", 2.0)))
             player.alchemy_ailment_immunity_turns = max(
-                getattr(player, "alchemy_ailment_immunity_turns", 0),
-                int(panacea / 20) + 1,
+                player.alchemy_ailment_immunity_turns, dur
             )
             if getattr(player.cs, "is_snared", False):
                 player.cs.is_snared = False
@@ -144,111 +147,106 @@ def process_heal(player: Player, monster=None) -> str:
                     setattr(player.cs, attr, 0)
             msg += (
                 f"\n🌿 **Panacea** triggers! All ailments cleansed. "
-                f"You are protected from ailments for **{player.alchemy_ailment_immunity_turns}** turns!"
+                f"Protected for **{player.alchemy_ailment_immunity_turns}** turns!"
             )
         else:
-            msg += f"\n🌿 **Panacea** — the elixir stabilizes your condition."
+            msg += f"\n🌿 **Panacea** — the cleansing fails to trigger this time."
 
-    eclipse = potion_passives_by_type.get("eclipse_strike", 0)
+    eclipse = potion_passives_by_type.get("eclipse", 0)
     if eclipse:
-        strikes = max(1, int(eclipse / 40))
-        player.alchemy_eclipse_strikes = (
-            getattr(player, "alchemy_eclipse_strikes", 0) + strikes
-        )
-        player.alchemy_eclipse_bonus = max(
-            getattr(player, "alchemy_eclipse_bonus", 0.0), eclipse / 100.0
-        )
+        strikes = max(2, int(potion_durations_by_type.get("eclipse", 2.0)))
+        player.alchemy_eclipse_strikes = player.alchemy_eclipse_strikes + strikes
+        player.alchemy_eclipse_bonus = max(player.alchemy_eclipse_bonus, eclipse / 100.0)
         msg += (
-            f"\n🌑 **Eclipse Strike** — your next **{strikes}** attack(s) are guaranteed crits "
+            f"\n🌑 **Eclipse** — your next **{strikes}** attack(s) are guaranteed crits "
             f"with **+{eclipse:.0f}%** damage!"
         )
 
-    aegis = potion_passives_by_type.get("astral_aegis", 0)
+    aegis = potion_passives_by_type.get("aegis", 0)
     if aegis:
+        dur = max(2, int(potion_durations_by_type.get("aegis", 2.0)))
         shield = int(player.total_max_hp * (aegis / 100.0))
-        player.alchemy_shield_hp = getattr(player, "alchemy_shield_hp", 0) + shield
-        player.alchemy_shield_turns = max(
-            getattr(player, "alchemy_shield_turns", 0), int(aegis / 15) + 1
-        )
+        player.alchemy_shield_hp = player.alchemy_shield_hp + shield
+        player.alchemy_shield_turns = max(player.alchemy_shield_turns, dur)
         msg += (
-            f"\n🛡️ **Astral Aegis** — you gain a **{shield}** HP shield for "
-            f"**{player.alchemy_shield_turns}** turns (absorbs lethal blows)!"
+            f"\n🛡️ **Aegis** — you gain a **{shield}** HP shield for "
+            f"**{player.alchemy_shield_turns}** turns!"
         )
 
-    blood = potion_passives_by_type.get("blood_pact", 0)
-    if blood:
-        player.alchemy_blood_pact_leech = max(
-            getattr(player, "alchemy_blood_pact_leech", 0.0), blood / 100.0
-        )
-        player.alchemy_blood_pact_hits = max(
-            getattr(player, "alchemy_blood_pact_hits", 0), 3
-        )
-        msg += f"\n🩸 **Blood Pact** — your attacks will leech for the next few hits!"
-
-    quick = potion_passives_by_type.get("quickening_draught", 0)
-    if quick:
-        player.alchemy_guaranteed_hit = True
-        player.alchemy_hit_boost_pct = quick / 100.0
-        player.alchemy_hit_boost_turns = 3
-        msg += f"\n⚡ **Quickening Draught** — guaranteed next hit +{quick:.0f}% Hit Chance for 3 turns!"
-
-    if potent:
-        msg += f"\n🍺 **Potent Brew** — heal increased by additional {potent:.0f}% of max HP!"
-
-    venom_inf = potion_passives_by_type.get("venomous_infusion", 0)
-    if venom_inf and monster is not None and monster.hp > 0:
-        extra_dmg = int(heal_amount * (venom_inf / 100.0))
-        monster.hp = max(0, monster.hp - extra_dmg)
-        msg += f"\n🐍 **Venomous Infusion** — deals **{extra_dmg}** bonus damage to the monster!"
-
-    battle = potion_passives_by_type.get("battle_draft", 0)
-    if battle:
-        player.alchemy_atk_boost_pct = max(
-            getattr(player, "alchemy_atk_boost_pct", 0.0), battle / 100.0
-        )
-        msg += f"\n💪 **Battle Draft** — +{battle:.0f}% ATK on next attacks!"
-
-    ironclad = potion_passives_by_type.get("ironclad_elixir", 0)
-    if ironclad:
-        player.alchemy_def_boost_pct = ironclad / 100.0
-        player.alchemy_def_boost_turns = 3
+    enfeeble = potion_passives_by_type.get("enfeeble", 0)
+    if enfeeble:
+        dur = max(2, int(potion_durations_by_type.get("enfeeble", 2.0)))
+        player.alchemy_enfeeble_pct = max(player.alchemy_enfeeble_pct, enfeeble / 100.0)
+        player.alchemy_enfeeble_turns = max(player.alchemy_enfeeble_turns, dur)
         msg += (
-            f"\n🛡️ **Ironclad Elixir** — +{ironclad:.0f}% DEF for several monster turns!"
+            f"\n🌊 **Enfeeble** — monster suffers **-{enfeeble:.0f}%** ATK/DEF "
+            f"for **{player.alchemy_enfeeble_turns}** of its turns!"
         )
 
-    ward_s = potion_passives_by_type.get("ward_surge", 0)
-    if ward_s:
-        ward_gain = int(heal_amount * (ward_s / 100.0))
-        added = _add_ward(player, ward_gain, [], "Ward Surge")
-        msg += f"\n🔮 **Ward Surge** generates **{added}** Ward!"
+    blood_tithe = potion_passives_by_type.get("blood_tithe", 0)
+    if blood_tithe:
+        dur = max(2, int(potion_durations_by_type.get("blood_tithe", 2.0)))
+        player.alchemy_blood_tithe_leech = max(player.alchemy_blood_tithe_leech, blood_tithe / 100.0)
+        player.alchemy_blood_tithe_hits = max(player.alchemy_blood_tithe_hits, dur)
+        msg += f"\n🩸 **Blood Tithe** — leech {blood_tithe:.0f}% of damage for the next **{dur}** hits!"
 
-    overflow = potion_passives_by_type.get("overflow_elixir", 0)
-    if overflow:
-        overcap_cap = int(player.total_max_hp * (overflow / 100.0))
-        if overcap_cap > 0 and potential_hp > player.total_max_hp:
-            excess = potential_hp - player.total_max_hp
-            stored = min(excess, overcap_cap)
-            player.alchemy_overcap_hp = stored
-            msg += f"\n💥 **Overflow Elixir** — stored **{stored}** temp HP!"
+    accel = potion_passives_by_type.get("accel", 0)
+    if accel:
+        dur = max(2, int(potion_durations_by_type.get("accel", 2.0)))
+        player.alchemy_hit_boost_pct = max(player.alchemy_hit_boost_pct, accel / 100.0)
+        player.alchemy_hit_boost_turns = max(player.alchemy_hit_boost_turns, dur)
+        msg += f"\n⚡ **Accel** — +{accel:.0f}% Hit Chance for **{dur}** turns!"
 
-    numbing = potion_passives_by_type.get("numbing_tonic", 0)
-    if numbing:
-        player.alchemy_dmg_reduction_pct = numbing / 100.0
-        player.alchemy_dmg_reduction_turns = 1
+    if quench:
+        dur = max(2, int(potion_durations_by_type.get("quench", 2.0)))
+        regen_per_turn = max(1, int(player.total_max_hp * 0.05))
+        player.alchemy_linger_hp = regen_per_turn
+        player.alchemy_linger_turns = max(player.alchemy_linger_turns, dur)
         msg += (
-            f"\n🩹 **Numbing Tonic** — -{numbing:.0f}% damage from next monster attack!"
+            f"\n🍺 **Quench** — healed extra {quench:.0f}% of max HP, "
+            f"then +{regen_per_turn:,} HP/turn for **{dur}** turns!"
         )
 
-    sustained = potion_passives_by_type.get("sustained_remedy", 0)
-    if sustained:
-        player.alchemy_linger_hp = int(sustained)
-        player.alchemy_linger_turns = 3
-        msg += f"\n🌿 **Sustained Remedy** — +{player.alchemy_linger_hp} HP/turn for 3 turns!"
+    viper = potion_passives_by_type.get("viper", 0)
+    if viper and monster is not None and monster.hp > 0:
+        dur = max(2, int(potion_durations_by_type.get("viper", 2.0)))
+        burst_dmg = int(heal_amount * (viper / 100.0))
+        dot_pool = int(heal_amount * 20.0)
+        dot_per_turn = max(1, int(dot_pool * 0.20))
+        monster.hp = max(0, monster.hp - burst_dmg)
+        player.alchemy_viper_dot_dmg = dot_per_turn
+        player.alchemy_viper_dot_turns = dur
+        msg += (
+            f"\n🐍 **Viper** — **{burst_dmg}** burst damage! "
+            f"DoT: **{dot_per_turn:,}**/turn for **{dur}** turns!"
+        )
 
-    sure = potion_passives_by_type.get("surestrike_serum", 0)
-    if sure:
-        player.alchemy_guaranteed_hit = True
-        msg += "\n🎯 **Surestrike Serum** — your next attack cannot miss and will crit!"
+    enrage = potion_passives_by_type.get("enrage", 0)
+    if enrage:
+        dur = max(2, int(potion_durations_by_type.get("enrage", 2.0)))
+        player.alchemy_atk_boost_pct = max(player.alchemy_atk_boost_pct, enrage / 100.0)
+        player.alchemy_def_boost_pct = max(player.alchemy_def_boost_pct, enrage / 100.0)
+        player.alchemy_def_boost_turns = max(player.alchemy_def_boost_turns, dur)
+        msg += f"\n💪 **Enrage** — +{enrage:.0f}% ATK and DEF for **{dur}** monster turns!"
+
+    barrier = potion_passives_by_type.get("barrier", 0)
+    if barrier:
+        dur = max(2, int(potion_durations_by_type.get("barrier", 2.0)))
+        ward_per_turn = max(1, int(heal_amount * (barrier / 100.0)))
+        player.alchemy_barrier_ward_per_turn = ward_per_turn
+        player.alchemy_barrier_turns = max(player.alchemy_barrier_turns, dur)
+        msg += (
+            f"\n🔮 **Barrier** — +{ward_per_turn:,} Ward/turn for **{dur}** turns!"
+        )
+
+    painkiller = potion_passives_by_type.get("painkiller", 0)
+    if painkiller:
+        dur = max(2, int(potion_durations_by_type.get("painkiller", 2.0)))
+        player.alchemy_dmg_reduction_pct = max(player.alchemy_dmg_reduction_pct, painkiller / 100.0)
+        player.alchemy_dmg_reduction_turns = max(player.alchemy_dmg_reduction_turns, dur)
+        msg += (
+            f"\n🩹 **Painkiller** — -{painkiller:.0f}% damage from the monster's next **{dur}** hits!"
+        )
 
     msg += f"\n**{player.potions}** potions left."
 
@@ -305,6 +303,17 @@ def _pt_post_hit_effects(
         log.append(
             f"🌿 **Living Battlefield** — you heal **{grove_heal}** HP from the strike!"
         )
+
+    # Blood Tithe: leech % of damage dealt as HP for remaining hits
+    if player.alchemy_blood_tithe_hits > 0 and damage > 0:
+        leech = int(damage * player.alchemy_blood_tithe_leech)
+        if leech > 0:
+            player.current_hp = min(player.total_max_hp, player.current_hp + leech)
+            log.append(
+                f"🩸 **Blood Tithe** leeches **{leech}** HP! "
+                f"({player.alchemy_blood_tithe_hits - 1} hit{'s' if player.alchemy_blood_tithe_hits - 1 != 1 else ''} left)"
+            )
+        player.alchemy_blood_tithe_hits -= 1
 
     # Soul Stone: leeching (separate from helmet leeching)
     ss_leeching = player.get_soul_stone_passive("leeching")
@@ -510,10 +519,29 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             player.total_max_hp, player.current_hp + player.alchemy_linger_hp
         )
         log.append(
-            f"🌿 **Lingering Remedy** restores **{player.alchemy_linger_hp}** HP! "
+            f"🍺 **Quench** restores **{player.alchemy_linger_hp}** HP! "
             f"({player.alchemy_linger_turns - 1} turn{'s' if player.alchemy_linger_turns - 1 != 1 else ''} left)"
         )
         player.alchemy_linger_turns -= 1
+
+    if player.alchemy_viper_dot_turns > 0 and monster.hp > 0:
+        dot_dmg = player.alchemy_viper_dot_dmg
+        monster.hp = max(0, monster.hp - dot_dmg)
+        log.append(
+            f"🐍 **Viper** DoT deals **{dot_dmg:,}** damage! "
+            f"({player.alchemy_viper_dot_turns - 1} turn{'s' if player.alchemy_viper_dot_turns - 1 != 1 else ''} left)"
+        )
+        player.alchemy_viper_dot_turns -= 1
+
+    if player.alchemy_barrier_turns > 0:
+        from core.combat.calc.ward_system import _add_ward as _barrier_add_ward
+        added = _barrier_add_ward(player, player.alchemy_barrier_ward_per_turn, [])
+        if added > 0:
+            log.append(
+                f"🔮 **Barrier** adds **{added}** Ward! "
+                f"({player.alchemy_barrier_turns - 1} turn{'s' if player.alchemy_barrier_turns - 1 != 1 else ''} left)"
+            )
+        player.alchemy_barrier_turns -= 1
 
     if player.alchemy_hit_boost_turns > 0:
         player.alchemy_hit_boost_turns -= 1
@@ -559,13 +587,13 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         is_crit = False
         calc.append("  neet: accuracy 0, always miss")
 
-    # Eclipse Strike (powerful distilled passive): force crit + bonus damage for remaining strikes
-    if getattr(player, "alchemy_eclipse_strikes", 0) > 0:
+    # Eclipse: force crit + bonus damage for remaining strikes
+    if player.alchemy_eclipse_strikes > 0:
         is_crit = True
         if player.alchemy_eclipse_bonus > 0:
             attack_multiplier += player.alchemy_eclipse_bonus
             calc.append(
-                f"  eclipse_strike: +{player.alchemy_eclipse_bonus:.2f} mult + guaranteed crit"
+                f"  eclipse: +{player.alchemy_eclipse_bonus:.2f} mult + guaranteed crit"
             )
         player.alchemy_eclipse_strikes -= 1
         if player.alchemy_eclipse_strikes <= 0:

@@ -12,7 +12,7 @@ from core.alchemy.mechanics import (
     get_passive_list_desc,
 )
 from core.base_view import BaseView
-from core.images import ALCHEMY_HUB
+from core.images import ALCHEMY_HUB, ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.skills.mastery import get_attunement_alchemy_bonus
 
 # ---------------------------------------------------------------------------
@@ -54,12 +54,27 @@ class AlchemyHubView(BaseView):
         self.player_gold = player_gold
         self.spirit_stones = spirit_stones
 
+    _ELYNDRA_QUIPS = [
+        "Welcome back to the lab, adventurer. The reagents are restless today. Try not to disappoint them.",
+        "You again. The cauldron hasn't exploded since your last visit. I'm choosing to see that as progress.",
+        "Ah. I was beginning to wonder if you'd dissolved.",
+        "The lab is open. Whether you emerge from it intact is, as always, entirely up to you.",
+        "Back so soon? Either you've been productive, or something has gone terribly wrong. Either way — welcome.",
+        "I've had worse visitors. Most of them left voluntarily.",
+        "Your timing is acceptable. The fumes have mostly cleared.",
+        "Don't touch the red flask. I know you're looking at it. Don't.",
+        "Progress requires boldness. It also requires not drinking unlabeled substances. Keep both in mind.",
+        "I see you've survived long enough to return. Encouraging.",
+    ]
+
     def build_embed(self) -> discord.Embed:
         slot_count = AlchemyMechanics.get_slot_count(self.alchemy_level)
         level_cost = AlchemyMechanics.get_level_up_cost(self.alchemy_level)
 
         embed = discord.Embed(title="⚗️ Alchemy", color=discord.Color.purple())
-        embed.set_thumbnail(url=ALCHEMY_HUB)
+        embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
+        embed.set_footer(text=random.choice(self._ELYNDRA_QUIPS))
         info = [
             f"**Level:** {self.alchemy_level} / {AlchemyMechanics.MAX_LEVEL}",
             f"**Spirit Stones:** 🔮 {self.spirit_stones}",
@@ -439,7 +454,7 @@ class AlchemyTransmuteView(BaseView):
 
     async def _toggle_direction(self, interaction: Interaction) -> None:
         self._processed_direction = (
-            "to_raw" if self._processed_direction == "to_processed" else "to_processed"
+            "proc_upgrade" if self._processed_direction == "to_processed" else "to_processed"
         )
         embed = await self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
@@ -477,7 +492,7 @@ class AlchemyTransmuteView(BaseView):
             # Direction toggle button
             going_up = self._processed_direction == "to_processed"
             dir_btn = ui.Button(
-                label="Show Processed → Raw" if going_up else "Show Raw → Processed",
+                label="Show Processed Tiers" if going_up else "Show Raw → Processed",
                 style=ButtonStyle.secondary,
                 emoji="🔃",
                 row=2,
@@ -579,7 +594,12 @@ class AlchemyTransmuteView(BaseView):
         return embed
 
     async def _build_settlement_embed(self, embed: discord.Embed) -> discord.Embed:
-        """Processed resources tab: convert raw ↔ processed (bars, planks, essences) at 1:1."""
+        """Processed resources tab.
+
+        to_processed:  raw → processed at 1:1 (e.g. Oak Logs → Oak Plank).
+        proc_upgrade:  processed tier upgrade using the same ratio as raw-tier upgrades
+                       (e.g. Oak Plank → Willow Plank at up_ratio:1).
+        """
         # (raw_col, processed_col, raw_name, processed_name, skill, tier_idx)
         _PAIRS = [
             # Mining
@@ -658,6 +678,31 @@ class AlchemyTransmuteView(BaseView):
             ),
         ]
 
+        # Processed tier ordering — mirrors SKILL_TIERS but for processed forms
+        _PROC_TIERS: dict[str, list[tuple[str, str]]] = {
+            "mining": [
+                ("iron_bar", "Iron Bar"),
+                ("steel_bar", "Steel Bar"),
+                ("gold_bar", "Gold Bar"),
+                ("platinum_bar", "Platinum Bar"),
+                ("idea_bar", "Idea Bar"),
+            ],
+            "woodcutting": [
+                ("oak_plank", "Oak Plank"),
+                ("willow_plank", "Willow Plank"),
+                ("mahogany_plank", "Mahogany Plank"),
+                ("magic_plank", "Magic Plank"),
+                ("idea_plank", "Idea Plank"),
+            ],
+            "fishing": [
+                ("desiccated_essence", "Desd. Essence"),
+                ("regular_essence", "Reg. Essence"),
+                ("sturdy_essence", "Sturdy Essence"),
+                ("reinforced_essence", "Reinf. Essence"),
+                ("titanium_essence", "Titan. Essence"),
+            ],
+        }
+
         # Batch-fetch amounts: one query per skill for raw + processed columns
         raw_amounts: dict[tuple[str, str], int] = {}
         proc_amounts: dict[tuple[str, str], int] = {}
@@ -678,13 +723,14 @@ class AlchemyTransmuteView(BaseView):
                 else:
                     proc_amounts[(skill, col)] = val
 
-        self._options_data = []
         going_up = self._processed_direction == "to_processed"
-        for raw_col, proc_col, raw_name, proc_name, skill, tier_idx in _PAIRS:
-            gold_up = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD.get(tier_idx, 75_000)
-            gold_dn = AlchemyMechanics.TRANSMUTE_DOWNGRADE_GOLD.get(tier_idx, 20_000)
-            skill_label = skill.title()
-            if going_up:
+        self._options_data = []
+
+        if going_up:
+            # Raw → Processed at 1:1
+            for raw_col, proc_col, raw_name, proc_name, skill, tier_idx in _PAIRS:
+                gold_cost = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD.get(tier_idx, 75_000)
+                skill_label = skill.title()
                 raw_amt = raw_amounts.get((skill, raw_col), 0)
                 self._options_data.append(
                     {
@@ -693,37 +739,64 @@ class AlchemyTransmuteView(BaseView):
                         "src_col": raw_col,
                         "dst_col": proc_col,
                         "label": f"↑ {raw_name} → {proc_name} ({skill_label})",
-                        "desc": f"1:1 | have {raw_amt:,} {raw_name} | {gold_up:,}g",
-                        "gold_cost": gold_up,
+                        "desc": f"1:1 | have {raw_amt:,} {raw_name} | {gold_cost:,}g",
+                        "gold_cost": gold_cost,
                         "ratio": 1,
                     }
                 )
-            else:
-                proc_amt = proc_amounts.get((skill, proc_col), 0)
-                self._options_data.append(
-                    {
-                        "type": "downgrade",
-                        "skill": skill,
-                        "src_col": proc_col,
-                        "dst_col": raw_col,
-                        "label": f"↓ {proc_name} → {raw_name} ({skill_label})",
-                        "desc": f"1:1 | have {proc_amt:,} {proc_name} | {gold_dn:,}g",
-                        "gold_cost": gold_dn,
-                        "ratio": 1,
-                    }
+        else:
+            # Processed → Processed tier upgrade (same ratio as raw tier upgrades)
+            has_baiter = False
+            try:
+                mrow = await self.bot.database.skills.get_mastery(
+                    self.user_id, self.server_id
                 )
+                from core.skills.mastery import has_master_baiter
+
+                has_baiter = has_master_baiter(mrow)
+            except Exception:
+                pass
+            up_ratio = AlchemyMechanics.get_effective_upgrade_ratio(
+                self.alchemy_level, has_baiter
+            )
+            for skill, tiers in _PROC_TIERS.items():
+                skill_label = skill.title()
+                for i in range(len(tiers) - 1):
+                    src_col, src_name = tiers[i]
+                    dst_col, dst_name = tiers[i + 1]
+                    src_amt = proc_amounts.get((skill, src_col), 0)
+                    gold_cost = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD.get(i + 1, 75_000)
+                    self._options_data.append(
+                        {
+                            "type": "upgrade",
+                            "skill": skill,
+                            "src_col": src_col,
+                            "dst_col": dst_col,
+                            "label": f"↑ {src_name} → {dst_name} ({skill_label})",
+                            "desc": f"{up_ratio}:1 | have {src_amt:,} {src_name} | {gold_cost:,}g",
+                            "gold_cost": gold_cost,
+                            "ratio": up_ratio,
+                        }
+                    )
 
         self._select = _TransmuteSelect(self._options_data)
         self._select.row = 1
         self.add_item(self._select)
 
-        direction_label = "Raw → Processed" if going_up else "Processed → Raw"
-        embed.description = (
-            f"Convert raw gathering resources to/from their processed forms (bars, planks, essences).\n"
-            f"All conversions are **1:1** — no ratio loss.\n"
-            f"**Direction:** {direction_label} | **Gold:** 💰 {self.player_gold:,}\n\n"
-            "Select a conversion, then press **Transmute** to enter a quantity."
-        )
+        if going_up:
+            embed.description = (
+                f"Convert raw gathering resources to their processed forms (bars, planks, essences).\n"
+                f"All conversions are **1:1** — no ratio loss.\n"
+                f"**Gold:** 💰 {self.player_gold:,}\n\n"
+                "Select a conversion, then press **Transmute** to enter a quantity."
+            )
+        else:
+            embed.description = (
+                f"Upgrade processed resources to a higher tier (e.g. Oak Plank → Willow Plank).\n"
+                f"Uses the same ratio as raw-tier upgrades.\n"
+                f"**Upgrade ratio:** {up_ratio}:1 | **Gold:** 💰 {self.player_gold:,}\n\n"
+                "Select a conversion, then press **Transmute** to enter a quantity."
+            )
         return embed
 
     async def _on_confirm(self, interaction: Interaction):
@@ -750,7 +823,7 @@ class AlchemyTransmuteView(BaseView):
 
 
 class _SlotSelect(ui.Select):
-    def __init__(self, slot_count: int):
+    def __init__(self, slot_count: int, parent_view: "AlchemyPotionLabView"):
         options = [
             discord.SelectOption(label=f"Slot {s}", value=str(s))
             for s in range(1, slot_count + 1)
@@ -759,10 +832,15 @@ class _SlotSelect(ui.Select):
             placeholder="Choose a slot…", options=options, min_values=1, max_values=1
         )
         self.chosen_slot: int | None = None
+        self._parent_view = parent_view
 
     async def callback(self, interaction: Interaction):
         self.chosen_slot = int(self.values[0])
-        await interaction.response.defer()
+        self._parent_view._distill_btn.disabled = False
+        self._parent_view._clear_btn.disabled = False
+        await interaction.response.edit_message(
+            embed=self._parent_view.build_embed(), view=self._parent_view
+        )
 
 
 class _ClearConfirmView(BaseView):
@@ -837,12 +915,13 @@ class _DistillPassivesView(BaseView):
             title="📜 Possible Distilled Passives",
             description=(
                 "These are all the powerful, encounter-changing potion passives obtainable via Distillation.\n"
-                "When you click **Distill Elixir**, three are randomly offered as the 'core' for that 9-step run. "
+                "When you click **Distill Elixir**, three are randomly offered as the 'core' for the run. "
                 "The reagents then tune its Duration Power and Value Power."
             ),
             color=discord.Color.purple(),
         )
-        embed.set_thumbnail(url=ALCHEMY_HUB)
+        embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
 
         powerful = DistillationMechanics.POWERFUL_PASSIVES
         for k, v in powerful.items():
@@ -881,35 +960,44 @@ class AlchemyPotionLabView(BaseView):
 
         slot_count = AlchemyMechanics.get_slot_count(alchemy_level)
         if slot_count > 0:
-            self._slot_select = _SlotSelect(slot_count)
+            self._slot_select = _SlotSelect(slot_count, self)
             self.add_item(self._slot_select)
 
-        # Distill powerful passives (the main system now)
-        distill_btn = ui.Button(
-            label="Distill Elixir", style=ButtonStyle.primary, emoji="🧪", row=1
+        # Distill powerful passives (the main system now) — disabled until a slot is chosen
+        self._distill_btn = ui.Button(
+            label="Distill Elixir",
+            style=ButtonStyle.primary,
+            emoji="🧪",
+            row=1,
+            disabled=slot_count > 0,
         )
-        distill_btn.callback = self._on_distill
-        self.add_item(distill_btn)
+        self._distill_btn.callback = self._on_distill
+        self.add_item(self._distill_btn)
 
         # Tutorial/guide next to Distill Elixir
         guide_btn = ui.Button(
-            label="📖 Guide", style=ButtonStyle.secondary, emoji="ℹ️", row=1
+            label="Guide", style=ButtonStyle.secondary, emoji="📖", row=1
         )
         guide_btn.callback = self._on_distill_guide
         self.add_item(guide_btn)
 
         # Full catalog of powerful passives (moved out of the main embed to avoid clutter and cutoff)
         passives_btn = ui.Button(
-            label="📜 Passives", style=ButtonStyle.secondary, emoji="📜", row=1
+            label="Passives", style=ButtonStyle.secondary, emoji="📜", row=1
         )
         passives_btn.callback = self._on_view_passives
         self.add_item(passives_btn)
 
-        clear_btn = ui.Button(
-            label="Destroy", style=ButtonStyle.danger, emoji="🗑️", row=1
+        # Destroy — disabled until a slot is chosen
+        self._clear_btn = ui.Button(
+            label="Destroy",
+            style=ButtonStyle.danger,
+            emoji="🗑️",
+            row=1,
+            disabled=slot_count > 0,
         )
-        clear_btn.callback = self._on_clear
-        self.add_item(clear_btn)
+        self._clear_btn.callback = self._on_clear
+        self.add_item(self._clear_btn)
 
         back_btn = ui.Button(
             label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1
@@ -950,7 +1038,7 @@ class AlchemyPotionLabView(BaseView):
             f"**Level:** {self.alchemy_level} | **Spirit Stones:** 🔮 {self.spirit_stones}\n\n"
             "Select a slot to destroy, or click **Distill Elixir** (costs 🔮 1 Spirit Stone) "
             "to craft a powerful passive (assigned to an empty slot). "
-            "Click **📖 Guide** for the 9-step system rules. Click **📜 Passives** to browse every possible distilled core and its ranges."
+            "Click **Guide** for the distillation rules. Click **Passives** to browse every possible distilled core and its ranges."
         )
 
         passive_by_slot = {p["slot"]: p for p in self.passives}
@@ -1014,24 +1102,39 @@ class AlchemyPotionLabView(BaseView):
         await interaction.response.defer()
 
         guide_embed = discord.Embed(
-            title="📖 Distillation Guide",
+            title="📖 Distillation — Elyndra's Notes",
             description=(
-                "Craft **powerful potion passives** over 9 steps using Cosmic Dust.\n\n"
-                "**1. Choose Core (the 'skill'):** The three options show a brief description + the possible roll ranges (value & duration) for that powerful passive. "
-                "This core stays fixed for the entire run.\n\n"
-                "**2-9. Reagent steps:** At each step the three colored reagents are assigned fresh special properties drawn from a wide weighted pool (middle outcomes common, very powerful effects rare).\n"
-                'The properties are **displayed in the embed** so you can see what each choice does before picking (e.g. "This step costs no dust", "double dust + slightly lucky", "will not decrease...", "all future steps free", "very lucky", etc.).\n\n'
-                "Buttons show your dust balance after the choice: e.g. (68->60). You cannot select a reagent whose cost would take you below 0 dust.\n\n"
-                "In the background each step resolves to: nothing / duration inc or dec / power inc or dec. The chosen property controls the roll (slightly lucky = double-roll good results and take the better; very lucky = re-roll on bad outcomes and take best-of; safe = no decreases this step, etc.).\n\n"
-                "**Reagents (by their nature — no extra guide needed in the distil screen):**\n"
-                "🟢 Verdant — calm and reliable, tends toward consistent Value Power gains.\n"
-                "🔵 Astral — middling / balanced.\n"
-                "🔴 Crimson — risky and volatile, bigger swings, more dramatic (and occasionally costly) events.\n\n"
-                "Track **Duration Power** and **Value Power** accumulators (the live passive preview updates with your current power). At the end you receive a far stronger encounter-changing passive than the old system."
+                "*You want to understand the process before committing? Sensible. Most don't bother. "
+                "They explode.*\n\n"
+                "Distillation is a multi-step ritual that costs Cosmic Dust. "
+                "Each run produces one powerful passive, imprinted to an empty potion slot. "
+                "Choose your core wisely — it cannot be changed once the ritual begins.\n\n"
+                "**Step 1 — Choose a Core:**\n"
+                "Three passives are offered. Each shows its possible value and duration ranges. "
+                "This is the passive you will receive. Everything after this point merely determines "
+                "*how powerful* that passive becomes. Do not rush.\n\n"
+                "**Steps 2–9 — Reagent Selection:**\n"
+                "At each step, three reagents appear — each bearing a special property from a weighted pool. "
+                "Properties are shown before you commit: free steps, double dust, lucky rolls, "
+                "safe floors, and rarer effects that border on unreasonable.\n"
+                "Dust cost after each choice is displayed on the button itself (e.g. *68 → 60*). "
+                "You cannot select what you cannot afford. I built that safeguard myself, "
+                "after an incident I prefer not to discuss.\n\n"
+                "Each step quietly adjusts your **Value Power** and **Duration Power** accumulators. "
+                "The live passive preview reflects your current standing after every choice.\n\n"
+                "**Reagent Temperament:**\n"
+                "🟢 **Verdant** — measured, steady. Consistent Value Power gains. Boring in the best way.\n"
+                "🔵 **Astral** — balanced. Neither spectacular nor catastrophic. A coward's comfort.\n"
+                "🔴 **Crimson** — volatile. Large swings. Dramatic events. "
+                "Occasionally transcendent. Occasionally tragic. I recommend it to adventurers "
+                "who do not value their Cosmic Dust.\n\n"
+                "*The result at Step 9 will exceed anything the old system could produce. "
+                "That is by design. Now stop reading and go make something.*"
             ),
             color=discord.Color.purple(),
         )
-        guide_embed.set_thumbnail(url=ALCHEMY_HUB)
+        guide_embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        guide_embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
 
         back_view = _DistillGuideBackView(self)
         await interaction.edit_original_response(embed=guide_embed, view=back_view)

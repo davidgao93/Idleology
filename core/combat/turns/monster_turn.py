@@ -551,30 +551,50 @@ def process_monster_turn(
                 f"  sundering: bypass={bypass} ward_absorbed={ward_absorbed} remaining={total_damage}"
             )
 
+        # --- Enfeeble: monster ATK/DEF debuff reduces incoming damage ---
+        if player.alchemy_enfeeble_turns > 0 and total_damage > 0:
+            enfeeble_reduction = int(total_damage * player.alchemy_enfeeble_pct)
+            total_damage = max(0, total_damage - enfeeble_reduction)
+            player.alchemy_enfeeble_turns -= 1
+            if enfeeble_reduction > 0:
+                _enf_msg = (
+                    f"🌊 **Enfeeble** weakens the blow by **{enfeeble_reduction}**! "
+                    f"({player.alchemy_enfeeble_turns} turn{'s' if player.alchemy_enfeeble_turns != 1 else ''} left)"
+                )
+                log.append(_enf_msg)
+                clog.append(_enf_msg)
+            if player.alchemy_enfeeble_turns <= 0:
+                player.alchemy_enfeeble_pct = 0.0
+
         # --- Apply damage to ward / HP ---
         if player.alchemy_def_boost_turns > 0 and total_damage > 0:
             reduction = int(total_damage * player.alchemy_def_boost_pct)
             total_damage = max(0, total_damage - reduction)
             player.alchemy_def_boost_turns -= 1
             if reduction > 0:
-                _iron_msg = (
-                    f"🛡️ **Iron Skin** absorbs **{reduction}** damage! "
+                _enrage_msg = (
+                    f"💪 **Enrage** DEF absorbs **{reduction}** damage! "
                     f"({player.alchemy_def_boost_turns} turn{'s' if player.alchemy_def_boost_turns != 1 else ''} left)"
                 )
-                log.append(_iron_msg)
-                clog.append(_iron_msg)
+                log.append(_enrage_msg)
+                clog.append(_enrage_msg)
             if player.alchemy_def_boost_turns <= 0:
                 player.alchemy_def_boost_pct = 0.0
+                player.alchemy_atk_boost_pct = 0.0
 
         if player.alchemy_dmg_reduction_turns > 0 and total_damage > 0:
             reduction = int(total_damage * player.alchemy_dmg_reduction_pct)
             total_damage = max(0, total_damage - reduction)
-            player.alchemy_dmg_reduction_turns = 0
-            player.alchemy_dmg_reduction_pct = 0.0
+            player.alchemy_dmg_reduction_turns -= 1
             if reduction > 0:
-                _dulled_msg = f"🩹 **Dulled Pain** reduces damage by **{reduction}**!"
-                log.append(_dulled_msg)
-                clog.append(_dulled_msg)
+                _pain_msg = (
+                    f"🩹 **Painkiller** reduces damage by **{reduction}**! "
+                    f"({player.alchemy_dmg_reduction_turns} hit{'s' if player.alchemy_dmg_reduction_turns != 1 else ''} left)"
+                )
+                log.append(_pain_msg)
+                clog.append(_pain_msg)
+            if player.alchemy_dmg_reduction_turns <= 0:
+                player.alchemy_dmg_reduction_pct = 0.0
 
         # Partner: co_damage_reduction (L×5% chance to halve incoming damage)
         if (
@@ -622,14 +642,6 @@ def process_monster_turn(
                 log.append(_null_msg)
                 clog.append(_null_msg)
                 total_damage = 0
-
-            if player.alchemy_overcap_hp > 0 and total_damage > 0:
-                absorbed = min(player.alchemy_overcap_hp, total_damage)
-                player.alchemy_overcap_hp = 0
-                total_damage -= absorbed
-                _overcap_msg = f"💥 **Overcap Brew** temp HP absorbs **{absorbed}** damage and shatters!"
-                log.append(_overcap_msg)
-                clog.append(_overcap_msg)
 
             glove_corrupted = player.get_glove_corrupted_essence()
             helmet_corrupted = player.get_helmet_corrupted_essence()
@@ -700,19 +712,19 @@ def process_monster_turn(
                             total_damage * 0.75
                         )  # −25% dmg taken vs task
 
-                # Astral Aegis shield (powerful distilled passive) — absorb damage, prevent death while active
+                # Aegis shield (powerful distilled passive) — absorb damage
                 shield_hp = getattr(player, "alchemy_shield_hp", 0)
                 if shield_hp > 0 and total_damage > 0:
                     absorb = min(shield_hp, total_damage)
                     player.alchemy_shield_hp = max(0, shield_hp - absorb)
                     total_damage -= absorb
                     if absorb > 0:
-                        _shield_msg = f"🛡️ **Astral Aegis** absorbs **{absorb}** damage!"
+                        _shield_msg = f"🛡️ **Aegis** absorbs **{absorb}** damage!"
                         log.append(_shield_msg)
                         clog.append(_shield_msg)
                     if player.alchemy_shield_hp <= 0:
                         player.alchemy_shield_turns = 0
-                        log.append("🛡️ Astral Aegis shield has been depleted.")
+                        log.append("🛡️ Aegis shield has been depleted.")
 
                 if (
                     celestial == "celestial_vow"
@@ -726,16 +738,6 @@ def process_monster_turn(
                     _vow_msg = f"✨ **Celestial Vow** activates! You survive the fatal blow and gain {added} 🔮 Ward!"
                     log.append(f"\n{_vow_msg}")
                     clog.append(_vow_msg)
-                elif shield_hp > 0 and (player.current_hp - total_damage <= 0):
-                    # Astral Aegis saves from lethal: shield was active but depleted mid-hit
-                    player.current_hp = max(1, player.current_hp)
-                    player.alchemy_shield_hp = 0
-                    player.alchemy_shield_turns = 0
-                    _aegis_save = (
-                        f"🛡️ **Astral Aegis** shatters to prevent a lethal blow!"
-                    )
-                    log.append(f"\n{_aegis_save}")
-                    clog.append(_aegis_save)
                 else:
                     damage_dealt += total_damage
                     player.current_hp -= total_damage
@@ -745,7 +747,7 @@ def process_monster_turn(
                         )
                         clog.append(f"You take 💔 **{total_damage}** damage!")
 
-                # Tick Astral Aegis duration down after this monster attack
+                # Tick Aegis duration down after this monster attack
                 if getattr(player, "alchemy_shield_turns", 0) > 0:
                     player.alchemy_shield_turns -= 1
                     if player.alchemy_shield_turns <= 0:

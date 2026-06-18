@@ -54,7 +54,7 @@ def calculate_damage_taken(player: Player, monster: Monster) -> int:
     per hit, floored at 1.  Cap starts at 1 (levels 1–3) and rises by +1 per level,
     reaching the uncapped formula at level 50."""
     p_def = max(player.get_total_defence(), 1)
-    base_raw = monster.level * 1.5 * _mid_level_scalar(monster.level)
+    base_raw = monster.level * 0.75 * _mid_level_scalar(monster.level)
     surplus = (monster.effective_attack - p_def) / p_def
     surplus = max(-0.95, surplus)
     surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
@@ -65,8 +65,8 @@ def calculate_damage_taken(player: Player, monster: Monster) -> int:
     dmg = random.randint(raw_min, raw_max)
 
     # Rookie damage shield: levels 1–3 cap at 1; each level above 3 raises by 1.
-    # Removed entirely at level 50 where the normal formula takes over.
-    if player.level < 50:
+    # Removed entirely at level 65 where the normal formula takes over.
+    if player.level < 65:
         rookie_cap = max(1, player.level - 2)
         dmg = min(rookie_cap, dmg)
 
@@ -99,7 +99,7 @@ def roll_monster_damage(
     surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
     dmg = calculate_damage_taken(player, monster)
 
-    base_raw_display = monster.level * 1.5 * _mid_level_scalar(monster.level)
+    base_raw_display = monster.level * 0.75 * _mid_level_scalar(monster.level)
     post_surplus = base_raw_display * (1.0 + surplus * surplus_mult)
     _var_floor = min(player.level * 0.01, _DMG_VARIANCE_FLOOR_MAX)
     var_low = max(1, int(post_surplus * _var_floor))
@@ -139,7 +139,7 @@ def roll_monster_damage(
 
     if monster.has_modifier("Overwhelming"):
         v = monster.get_modifier_value("Overwhelming")
-        monster.damage_increased_pct += (v - 1.0)
+        monster.damage_increased_pct += v - 1.0
         calc_notes.append(f"overwhelming+{int((v - 1.0) * 100)}%")
 
     if monster.has_modifier("Hell's Fury"):
@@ -233,7 +233,9 @@ def roll_monster_damage(
         if monster.has_modifier("Hell's Fury"):
             inc_sources.append("Hell's Fury+200%")
         if monster.has_modifier("Spectral"):
-            inc_sources.append(f"Spectral (possible +{int(monster.get_modifier_value('Spectral') * 100)}% on proc)")
+            inc_sources.append(
+                f"Spectral (possible +{int(monster.get_modifier_value('Spectral') * 100)}% on proc)"
+            )
 
         breakdown = f" from [{', '.join(inc_sources)}]" if inc_sources else ""
         more_note = ""

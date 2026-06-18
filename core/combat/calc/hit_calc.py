@@ -207,11 +207,10 @@ def build_attack_multiplier(
     if player.alchemy_atk_boost_pct > 0:
         factor = 1 + player.alchemy_atk_boost_pct
         mult *= factor
-        calc_sources.append(f"battle_draft×{factor:.3f}")
+        calc_sources.append(f"enrage×{factor:.3f}")
         log.append(
-            f"💪 **Battle Draft** boosts damage! (+{int(player.alchemy_atk_boost_pct * 100)}% ATK)"
+            f"💪 **Enrage** boosts damage! (+{int(player.alchemy_atk_boost_pct * 100)}% ATK)"
         )
-        player.alchemy_atk_boost_pct = 0.0
 
     # --- Hematurgy ATK multipliers ---
     if player.hematurgy_passives:
