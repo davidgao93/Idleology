@@ -338,7 +338,10 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         mastery = await database.companions.get_mastery(user_id, server_id)
         nodes = mastery.get("nodes_owned", {})
         from core.companions.mastery import get_passive_mult, has_elite_bond
-        player.companion_passive_mult = get_passive_mult(nodes, len(player.active_companions))
+
+        player.companion_passive_mult = get_passive_mult(
+            nodes, len(player.active_companions)
+        )
         player.companion_elite_bond = has_elite_bond(nodes)
     except Exception as e:
         print(f"[load_player] companion mastery failed for {user_id}: {e}")

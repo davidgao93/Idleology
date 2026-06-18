@@ -411,44 +411,44 @@ _MINI_W = 7  # Cell width in chars
 
 # Human-readable 7-char (max) labels for each building type
 MINI_GRID_LABELS: dict[str, str] = {
-    "logging_camp":       "Logging",
-    "quarry":             "Quarry",
-    "foundry":            "Foundry",
-    "sawmill":            "Sawmill",
-    "reliquary":          "Reliqry",
-    "market":             "Market",
-    "barracks":           "Barrack",
-    "temple":             "Temple",
-    "apothecary":         "Apothcy",
-    "black_market":       "Blk.Mkt",
-    "companion_ranch":    "CoRanch",
-    "hatchery":           "Hatchry",
-    "celestial_shrine":   "CelShr.",
-    "infernal_shrine":    "InfShr.",
-    "void_shrine":        "VoidShr",
-    "twin_shrine":        "TwinShr",
-    "corruption_shrine":  "CorShr.",
-    "war_camp":           "WarCamp",
-    "nursery":            "Nursery",
-    "idlem_foundry":      "IdlFdry",
-    "uber_shrine":        "UbrShr.",
+    "logging_camp": "Logging",
+    "quarry": "Quarry",
+    "foundry": "Foundry",
+    "sawmill": "Sawmill",
+    "reliquary": "Reliqry",
+    "market": "Market",
+    "barracks": "Barrack",
+    "temple": "Temple",
+    "apothecary": "Apothcy",
+    "black_market": "Blk.Mkt",
+    "companion_ranch": "CoRanch",
+    "hatchery": "Hatchry",
+    "celestial_shrine": "CelShr.",
+    "infernal_shrine": "InfShr.",
+    "void_shrine": "VoidShr",
+    "twin_shrine": "TwinShr",
+    "corruption_shrine": "CorShr.",
+    "war_camp": "WarCamp",
+    "nursery": "Nursery",
+    "idlem_foundry": "IdlFdry",
+    "uber_shrine": "UbrShr.",
     # Meta buildings
-    "servants_quarters":  "SrvtQtr",
-    "grand_cathedral":    "GndCthl",
-    "supply_depot":       "SupDept",
-    "watchtower":         "Wchtwr.",
-    "foremans_post":      "FrmPost",
-    "shrine_garden":      "ShrGrdn",
-    "encampment":         "Encamp.",
-    "apothecary_annex":   "ApoAnnx",
+    "servants_quarters": "SrvtQtr",
+    "grand_cathedral": "GndCthl",
+    "supply_depot": "SupDept",
+    "watchtower": "Wchtwr.",
+    "foremans_post": "FrmPost",
+    "shrine_garden": "ShrGrdn",
+    "encampment": "Encamp.",
+    "apothecary_annex": "ApoAnnx",
 }
 
 
 def render_mini_grid(
     focal_index: int,
-    plots: list,       # Plot objects: .plot_index, .is_developed
-    buildings: list,   # Building objects: .plot_index, .building_type, .tier, .is_meta
-    projects: list,    # settlement_projects dicts (for under-construction state)
+    plots: list,  # Plot objects: .plot_index, .is_developed
+    buildings: list,  # Building objects: .plot_index, .building_type, .tier, .is_meta
+    projects: list,  # settlement_projects dicts (for under-construction state)
 ) -> str:
     """
     Renders a 3×3 grid centred on *focal_index*.

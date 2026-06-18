@@ -46,7 +46,11 @@ MASTERY_BRANCHES: dict = {
                 "cost": 45,
                 "requires": "prey_instinct",
                 "desc": "Primary focus raised to 5× weight. Unlock a second loot focus (3× weight).",
-                "choice": ["Gold", "Runes", "Keys"],  # filtered at runtime to exclude prey_instinct pick
+                "choice": [
+                    "Gold",
+                    "Runes",
+                    "Keys",
+                ],  # filtered at runtime to exclude prey_instinct pick
             },
             {
                 "id": "apex_scavenger",
@@ -87,18 +91,18 @@ MASTERY_BRANCHES: dict = {
 
 # Loot table keys that belong to each bias category
 BIAS_TO_LOOT_KEYS: dict = {
-    "Gold":  ["Gold"],
+    "Gold": ["Gold"],
     "Runes": ["Rune of Refinement", "Rune of Potential", "Rune of Shattering"],
-    "Keys":  ["Boss Key"],
+    "Keys": ["Boss Key"],
 }
 
 # Default loot weights (mirrors mechanics.py)
 _DEFAULT_WEIGHTS: dict = {
-    "Gold":                 90,
-    "Boss Key":             2,
-    "Rune of Refinement":   2,
-    "Rune of Potential":    3,
-    "Rune of Shattering":   3,
+    "Gold": 90,
+    "Boss Key": 2,
+    "Rune of Refinement": 2,
+    "Rune of Potential": 3,
+    "Rune of Shattering": 3,
 }
 
 
@@ -113,7 +117,9 @@ def get_node_by_id(node_id: str) -> dict | None:
     return None
 
 
-def can_purchase(node_id: str, nodes_owned: dict, kinship_points: int) -> tuple[bool, str]:
+def can_purchase(
+    node_id: str, nodes_owned: dict, kinship_points: int
+) -> tuple[bool, str]:
     node = get_node_by_id(node_id)
     if not node:
         return False, "Unknown node."
@@ -135,6 +141,7 @@ def kp_from_overflow_xp(xp: int) -> int:
 
 
 # ── Effect helpers ────────────────────────────────────────────────────────────
+
 
 def get_find_chance_bonus(nodes_owned: dict) -> float:
     """Additive bonus added to each companion's per-cycle find chance."""

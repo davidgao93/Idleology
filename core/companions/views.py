@@ -237,7 +237,9 @@ class CompanionListView(BaseView):
         from core.companions.mastery_views import CompanionMasteryView
 
         server_id = str(interaction.guild.id)
-        mastery = await self.bot.database.companions.get_mastery(self.user_id, server_id)
+        mastery = await self.bot.database.companions.get_mastery(
+            self.user_id, server_id
+        )
         view = CompanionMasteryView(
             self.bot, self.user_id, server_id, mastery, parent=self
         )
@@ -462,16 +464,21 @@ class CompanionDetailView(BaseView):
                     if cur_lvl >= 100:
                         overflow_xp += cur_exp
                         cur_exp = 0
-                    await self.bot.database.companions.update_stats(comp_id, cur_lvl, cur_exp)
+                    await self.bot.database.companions.update_stats(
+                        comp_id, cur_lvl, cur_exp
+                    )
                     if did_level:
                         leveled_names.append(f"{name} (Lv.{cur_lvl})")
 
-                xp_note = f"\n🐾 Remaining companions each gained **{RELEASE_XP:,} XP**."
+                xp_note = (
+                    f"\n🐾 Remaining companions each gained **{RELEASE_XP:,} XP**."
+                )
                 if leveled_names:
                     xp_note += f"\n🎉 **Level Up:** {', '.join(leveled_names)}"
 
                 if overflow_xp > 0:
                     from core.companions.mastery import kp_from_overflow_xp
+
                     kp_earned = kp_from_overflow_xp(overflow_xp)
                     if kp_earned > 0:
                         await self.bot.database.companions.add_kinship_points(

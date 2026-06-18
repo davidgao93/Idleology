@@ -459,7 +459,9 @@ class AlchemyTransmuteView(BaseView):
 
         sett_btn = ui.Button(
             label="Settlement Resources",
-            style=ButtonStyle.primary if self._mode == "settlement" else ButtonStyle.secondary,
+            style=ButtonStyle.primary
+            if self._mode == "settlement"
+            else ButtonStyle.secondary,
             emoji="🏗️",
             row=0,
         )
@@ -581,33 +583,91 @@ class AlchemyTransmuteView(BaseView):
         # (raw_col, processed_col, raw_name, processed_name, skill, tier_idx)
         _PAIRS = [
             # Mining
-            ("iron",      "iron_bar",          "Iron",             "Iron Bar",         "mining",      1),
-            ("coal",      "steel_bar",         "Coal",             "Steel Bar",        "mining",      2),
-            ("gold",      "gold_bar",          "Gold Ore",         "Gold Bar",         "mining",      3),
-            ("platinum",  "platinum_bar",      "Platinum",         "Platinum Bar",     "mining",      4),
-            ("idea",      "idea_bar",          "Idea Ore",         "Idea Bar",         "mining",      4),
+            ("iron", "iron_bar", "Iron", "Iron Bar", "mining", 1),
+            ("coal", "steel_bar", "Coal", "Steel Bar", "mining", 2),
+            ("gold", "gold_bar", "Gold Ore", "Gold Bar", "mining", 3),
+            ("platinum", "platinum_bar", "Platinum", "Platinum Bar", "mining", 4),
+            ("idea", "idea_bar", "Idea Ore", "Idea Bar", "mining", 4),
             # Woodcutting
-            ("oak_logs",      "oak_plank",         "Oak Logs",         "Oak Plank",        "woodcutting", 1),
-            ("willow_logs",   "willow_plank",      "Willow Logs",      "Willow Plank",     "woodcutting", 2),
-            ("mahogany_logs", "mahogany_plank",    "Mahogany Logs",    "Mahogany Plank",   "woodcutting", 3),
-            ("magic_logs",    "magic_plank",       "Magic Logs",       "Magic Plank",      "woodcutting", 4),
-            ("idea_logs",     "idea_plank",        "Idea Logs",        "Idea Plank",       "woodcutting", 4),
+            ("oak_logs", "oak_plank", "Oak Logs", "Oak Plank", "woodcutting", 1),
+            (
+                "willow_logs",
+                "willow_plank",
+                "Willow Logs",
+                "Willow Plank",
+                "woodcutting",
+                2,
+            ),
+            (
+                "mahogany_logs",
+                "mahogany_plank",
+                "Mahogany Logs",
+                "Mahogany Plank",
+                "woodcutting",
+                3,
+            ),
+            (
+                "magic_logs",
+                "magic_plank",
+                "Magic Logs",
+                "Magic Plank",
+                "woodcutting",
+                4,
+            ),
+            ("idea_logs", "idea_plank", "Idea Logs", "Idea Plank", "woodcutting", 4),
             # Fishing
-            ("desiccated_bones",  "desiccated_essence",  "Desd. Bones",    "Desd. Essence",    "fishing", 1),
-            ("regular_bones",     "regular_essence",     "Reg. Bones",     "Reg. Essence",     "fishing", 2),
-            ("sturdy_bones",      "sturdy_essence",      "Sturdy Bones",   "Sturdy Essence",   "fishing", 3),
-            ("reinforced_bones",  "reinforced_essence",  "Reinf. Bones",   "Reinf. Essence",   "fishing", 4),
-            ("titanium_bones",    "titanium_essence",    "Titan. Bones",   "Titan. Essence",   "fishing", 4),
+            (
+                "desiccated_bones",
+                "desiccated_essence",
+                "Desd. Bones",
+                "Desd. Essence",
+                "fishing",
+                1,
+            ),
+            (
+                "regular_bones",
+                "regular_essence",
+                "Reg. Bones",
+                "Reg. Essence",
+                "fishing",
+                2,
+            ),
+            (
+                "sturdy_bones",
+                "sturdy_essence",
+                "Sturdy Bones",
+                "Sturdy Essence",
+                "fishing",
+                3,
+            ),
+            (
+                "reinforced_bones",
+                "reinforced_essence",
+                "Reinf. Bones",
+                "Reinf. Essence",
+                "fishing",
+                4,
+            ),
+            (
+                "titanium_bones",
+                "titanium_essence",
+                "Titan. Bones",
+                "Titan. Essence",
+                "fishing",
+                4,
+            ),
         ]
 
         # Batch-fetch amounts: one query per skill for raw + processed columns
         raw_amounts: dict[tuple[str, str], int] = {}
         proc_amounts: dict[tuple[str, str], int] = {}
         for skill in ("mining", "woodcutting", "fishing"):
-            pairs_for_skill = [(r, p) for r, p, _rn, _pn, sk, _ti in _PAIRS if sk == skill]
-            raw_cols  = [r for r, _ in pairs_for_skill]
+            pairs_for_skill = [
+                (r, p) for r, p, _rn, _pn, sk, _ti in _PAIRS if sk == skill
+            ]
+            raw_cols = [r for r, _ in pairs_for_skill]
             proc_cols = [p for _, p in pairs_for_skill]
-            all_cols  = raw_cols + proc_cols
+            all_cols = raw_cols + proc_cols
             row = await self.bot.database.skills.get_multi_resource(
                 self.user_id, self.server_id, skill, all_cols
             )
@@ -626,28 +686,32 @@ class AlchemyTransmuteView(BaseView):
             skill_label = skill.title()
             if going_up:
                 raw_amt = raw_amounts.get((skill, raw_col), 0)
-                self._options_data.append({
-                    "type": "upgrade",
-                    "skill": skill,
-                    "src_col": raw_col,
-                    "dst_col": proc_col,
-                    "label": f"↑ {raw_name} → {proc_name} ({skill_label})",
-                    "desc":  f"1:1 | have {raw_amt:,} {raw_name} | {gold_up:,}g",
-                    "gold_cost": gold_up,
-                    "ratio": 1,
-                })
+                self._options_data.append(
+                    {
+                        "type": "upgrade",
+                        "skill": skill,
+                        "src_col": raw_col,
+                        "dst_col": proc_col,
+                        "label": f"↑ {raw_name} → {proc_name} ({skill_label})",
+                        "desc": f"1:1 | have {raw_amt:,} {raw_name} | {gold_up:,}g",
+                        "gold_cost": gold_up,
+                        "ratio": 1,
+                    }
+                )
             else:
                 proc_amt = proc_amounts.get((skill, proc_col), 0)
-                self._options_data.append({
-                    "type": "downgrade",
-                    "skill": skill,
-                    "src_col": proc_col,
-                    "dst_col": raw_col,
-                    "label": f"↓ {proc_name} → {raw_name} ({skill_label})",
-                    "desc":  f"1:1 | have {proc_amt:,} {proc_name} | {gold_dn:,}g",
-                    "gold_cost": gold_dn,
-                    "ratio": 1,
-                })
+                self._options_data.append(
+                    {
+                        "type": "downgrade",
+                        "skill": skill,
+                        "src_col": proc_col,
+                        "dst_col": raw_col,
+                        "label": f"↓ {proc_name} → {raw_name} ({skill_label})",
+                        "desc": f"1:1 | have {proc_amt:,} {proc_name} | {gold_dn:,}g",
+                        "gold_cost": gold_dn,
+                        "ratio": 1,
+                    }
+                )
 
         self._select = _TransmuteSelect(self._options_data)
         self._select.row = 1

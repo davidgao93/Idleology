@@ -118,9 +118,8 @@ class UberAphroditeLobbyView(BaseView):
 
         await interaction.response.defer()
 
-        await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, -3)
-        self.bot.state_manager.set_active(self.user_id, "uber_boss")
-
+        # Build the entire encounter in-memory before spending sigils so that
+        # a generation or Discord API failure cannot consume the entry cost.
         monster = Monster(
             name="",
             level=0,
@@ -134,13 +133,10 @@ class UberAphroditeLobbyView(BaseView):
             flavor="",
         )
         monster = await generate_uber_aphrodite(self.player, monster)
-
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
-
         monster.is_uber = True
-
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="UBER ENCOUNTER"
         )
@@ -158,6 +154,21 @@ class UberAphroditeLobbyView(BaseView):
             post_combat_view=return_view,
         )
 
-        await interaction.edit_original_response(embed=embed, view=view)
-        view.message = await interaction.original_response()
+        # Spend sigils and commit the encounter. Refund on any failure so the
+        # player is never charged for an encounter that never launched.
+        await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, -3)
+        self.bot.state_manager.set_active(self.user_id, "uber_boss")
+        try:
+            await interaction.edit_original_response(embed=embed, view=view)
+            view.message = await interaction.original_response()
+        except Exception:
+            await self.bot.database.uber.increment_sigils(
+                self.user_id, self.server_id, 3
+            )
+            self.bot.state_manager.clear_active(self.user_id)
+            await interaction.followup.send(
+                "Something went wrong starting the encounter. Your sigils have been refunded.",
+                ephemeral=True,
+            )
+            return
         self.stop()

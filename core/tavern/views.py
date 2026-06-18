@@ -76,11 +76,16 @@ class ShopView(BaseView):
         self._processing = True
 
         cost = self.potion_cost * qty
-        await self.bot.database.users.modify_gold(self.user_id, -cost)
+        ok = await self.bot.database.users.deduct_gold_atomic(self.user_id, cost)
+        if not ok:
+            self._processing = False
+            return await interaction.response.send_message(
+                "You don't have enough gold.", ephemeral=True
+            )
         await self.bot.database.users.modify_stat(self.user_id, "potions", qty)
         self.gold -= cost
         self.potions += qty
-        msg = f"Here are your **{qty}** potions. Stay safe out there."  # Elara's voice in the field update
+        msg = f"Here are your **{qty}** potions. Stay safe out there."
         self._processing = False
         await self.refresh_ui(interaction, msg)
 
@@ -127,8 +132,16 @@ class RestView(BaseView):
         button.disabled = True
         await interaction.edit_original_response(view=self)
 
-        # 1. Deduct Gold
-        await self.bot.database.users.modify_gold(self.user_id, -self.cost)
+        # 1. Deduct Gold — atomic so a concurrent spend cannot push below zero
+        ok = await self.bot.database.users.deduct_gold_atomic(self.user_id, self.cost)
+        if not ok:
+            button.disabled = False
+            self._processing = False
+            await interaction.edit_original_response(view=self)
+            await interaction.followup.send(
+                "You don't have enough gold.", ephemeral=True
+            )
+            return
         # 2. Heal
         await self.bot.database.users.update_hp(self.user_id, self.max_hp)
 

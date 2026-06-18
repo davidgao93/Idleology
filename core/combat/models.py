@@ -392,8 +392,8 @@ class Player:
 
     # Active Companions
     active_companions: List[Companion] = field(default_factory=list)
-    companion_passive_mult: float = 1.0   # from Companion Mastery (Bonded branch)
-    companion_elite_bond: bool = False    # elite_bond node: balanced passives +1 tier
+    companion_passive_mult: float = 1.0  # from Companion Mastery (Bonded branch)
+    companion_elite_bond: bool = False  # elite_bond node: balanced passives +1 tier
 
     # Settlement buffs
     apothecary_workers: int = 0
@@ -957,8 +957,11 @@ class Player:
         )
         if self.companion_elite_bond:
             from core.companions.mastery import passive_value_for_type
+
             balanced = sum(
-                passive_value_for_type(c.balanced_passive, min(5, c.balanced_passive_tier + 1))
+                passive_value_for_type(
+                    c.balanced_passive, min(5, c.balanced_passive_tier + 1)
+                )
                 for c in self.active_companions
                 if c.balanced_passive == p_type and c.balanced_passive != "none"
             )

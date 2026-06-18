@@ -222,7 +222,9 @@ class CompanionRepository:
             "kinship_points": row[2] if row else 0,
         }
 
-    async def add_kinship_points(self, user_id: str, server_id: str, amount: int) -> None:
+    async def add_kinship_points(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
         await self.ensure_mastery(user_id, server_id)
         await self.connection.execute(
             "UPDATE companion_mastery SET kinship_points = kinship_points + ? WHERE user_id=? AND server_id=?",
@@ -231,7 +233,12 @@ class CompanionRepository:
         await self.connection.commit()
 
     async def purchase_mastery_node(
-        self, user_id: str, server_id: str, node_id: str, cost: int, choice: str | None = None
+        self,
+        user_id: str,
+        server_id: str,
+        node_id: str,
+        cost: int,
+        choice: str | None = None,
     ) -> bool:
         """Atomically deducts KP and stores the node. Returns True on success."""
         async with self.connection.execute(

@@ -169,6 +169,7 @@ class CompanionMechanics:
             is_apex_scavenger,
             get_biased_loot_keys,
         )
+
         nodes = mastery_nodes or {}
         find_bonus = get_find_chance_bonus(nodes)
         double_haul_chance = get_double_haul_chance(nodes)

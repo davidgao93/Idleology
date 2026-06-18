@@ -124,11 +124,6 @@ class UberEvelynnLobbyView(BaseView):
 
         await interaction.response.defer()
 
-        await self.bot.database.uber.increment_corruption_sigils(
-            self.user_id, self.server_id, -3
-        )
-        self.bot.state_manager.set_active(self.user_id, "uber_boss")
-
         monster = Monster(
             name="",
             level=0,
@@ -142,13 +137,10 @@ class UberEvelynnLobbyView(BaseView):
             flavor="",
         )
         monster = generate_uber_evelynn(self.player, monster)
-
         self.player.combat_ward = self.player.get_combat_ward_value()
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
-
         monster.is_uber = True
-
         embed = combat_ui.create_combat_embed(
             self.player, monster, start_logs, title_override="☠️ UBER ENCOUNTER"
         )
@@ -166,6 +158,21 @@ class UberEvelynnLobbyView(BaseView):
             post_combat_view=return_view,
         )
 
-        await interaction.edit_original_response(embed=embed, view=view)
-        view.message = await interaction.original_response()
+        await self.bot.database.uber.increment_corruption_sigils(
+            self.user_id, self.server_id, -3
+        )
+        self.bot.state_manager.set_active(self.user_id, "uber_boss")
+        try:
+            await interaction.edit_original_response(embed=embed, view=view)
+            view.message = await interaction.original_response()
+        except Exception:
+            await self.bot.database.uber.increment_corruption_sigils(
+                self.user_id, self.server_id, 3
+            )
+            self.bot.state_manager.clear_active(self.user_id)
+            await interaction.followup.send(
+                "Something went wrong starting the encounter. Your sigils have been refunded.",
+                ephemeral=True,
+            )
+            return
         self.stop()

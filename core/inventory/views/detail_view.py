@@ -332,6 +332,7 @@ class ItemDetailView(BaseView):
 
                 if overflow_xp_total > 0:
                     from core.companions.mastery import kp_from_overflow_xp
+
                     kp_earned = kp_from_overflow_xp(overflow_xp_total)
                     if kp_earned > 0:
                         server_id = str(interaction.guild_id)

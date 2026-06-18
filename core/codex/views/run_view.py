@@ -100,6 +100,29 @@ class CodexRunView(BaseView):
     """
     Manages a complete Codex run (5 chapters × 7 waves each).
     State machine: "combat" | "respite" | "chapter_transition" | "done"
+
+    HP persistence contract
+    -----------------------
+    player.current_hp is mutated in-memory during every wave and is only
+    written to the DB at three points:
+      - _handle_defeat: resets to full HP for the next chapter and saves.
+      - _handle_run_complete: saves at run end (XP + HP settled).
+      - _retreat_btn: saves immediately so the retreated HP is the DB value.
+
+    This is intentional: HP carries across waves and chapters within a single
+    session, and the run is expected to complete (or retreat) before the
+    session ends.  If the bot process restarts mid-run the player returns to
+    whatever HP was last written — either the full-HP reset after the most
+    recent defeat, or the value from load_player at run start if they hadn't
+    died yet.  There is no checkpoint save between waves by design.
+
+    View timeout
+    ------------
+    BaseView.timeout is None (no auto-expiry).  Players must explicitly retreat
+    or finish; they cannot idle-timeout their way out of a damaged HP state.
+    A shard resume clears StateManager so the player can start a new run, but
+    the in-progress run is abandoned and any unsaved HP damage from that session
+    is lost (they return to the last DB-persisted value).
     """
 
     def __init__(

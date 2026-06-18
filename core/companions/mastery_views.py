@@ -21,11 +21,13 @@ def _branch_for_node(node_id: str) -> str | None:
 
 
 class CompanionMasteryView(BaseView):
-    def __init__(self, bot, user_id: str, server_id: str, mastery: dict, *, parent: BaseView):
+    def __init__(
+        self, bot, user_id: str, server_id: str, mastery: dict, *, parent: BaseView
+    ):
         super().__init__(bot, parent=parent)
         self.user_id = user_id
         self.server_id = server_id
-        self.mastery = mastery          # {nodes_owned, points_spent, kinship_points}
+        self.mastery = mastery  # {nodes_owned, points_spent, kinship_points}
         self.parent_view = parent
         self._processing = False
         self._build_select()
@@ -150,7 +152,9 @@ class CompanionMasteryView(BaseView):
 class _ChoiceSelectView(BaseView):
     """Secondary view for nodes that require a choice (prey_instinct / fine_palate)."""
 
-    def __init__(self, bot, mastery_view: CompanionMasteryView, node: dict, *, parent: BaseView):
+    def __init__(
+        self, bot, mastery_view: CompanionMasteryView, node: dict, *, parent: BaseView
+    ):
         super().__init__(bot, parent=parent)
         self.mastery_view = mastery_view
         self.node = node
@@ -167,7 +171,9 @@ class _ChoiceSelectView(BaseView):
             all_choices = [c for c in all_choices if c != prey_pick]
 
         options = [SelectOption(label=c, value=c) for c in all_choices]
-        select = ui.Select(placeholder="Choose your loot focus…", options=options, row=0)
+        select = ui.Select(
+            placeholder="Choose your loot focus…", options=options, row=0
+        )
         select.callback = self._on_choice
         self.add_item(select)
 

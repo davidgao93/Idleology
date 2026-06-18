@@ -11,13 +11,37 @@ _SKILL_TABLES = frozenset({"mining", "fishing", "woodcutting"})
 _SKILL_COLUMNS = frozenset(
     {
         # Raw gathering resources
-        "iron", "coal", "gold", "platinum", "idea",
-        "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
-        "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
+        "iron",
+        "coal",
+        "gold",
+        "platinum",
+        "idea",
+        "desiccated_bones",
+        "regular_bones",
+        "sturdy_bones",
+        "reinforced_bones",
+        "titanium_bones",
+        "oak_logs",
+        "willow_logs",
+        "mahogany_logs",
+        "magic_logs",
+        "idea_logs",
         # Processed (converter building outputs)
-        "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar",
-        "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank",
-        "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence",
+        "iron_bar",
+        "steel_bar",
+        "gold_bar",
+        "platinum_bar",
+        "idea_bar",
+        "oak_plank",
+        "willow_plank",
+        "mahogany_plank",
+        "magic_plank",
+        "idea_plank",
+        "desiccated_essence",
+        "regular_essence",
+        "sturdy_essence",
+        "reinforced_essence",
+        "titanium_essence",
     }
 )
 _UBER_COLUMNS = frozenset({"capricious_carp", "blessed_bismuth", "sparkling_sprig"})

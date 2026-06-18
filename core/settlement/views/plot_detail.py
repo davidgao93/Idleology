@@ -579,7 +579,10 @@ class PlotDetailView(SettlementBaseView):
                 title=f"📍 Plot {p.plot_index} — {b.name}",
                 color=discord.Color.red() if b.is_disabled else discord.Color.gold(),
             )
-            is_passive_meta = b.is_meta and META_BUILDINGS.get(b.building_type, {}).get("max_workers", 1) == 0
+            is_passive_meta = (
+                b.is_meta
+                and META_BUILDINGS.get(b.building_type, {}).get("max_workers", 1) == 0
+            )
             if is_passive_meta:
                 desc = f"**Type:** {tier_str} *(Passive — no workers needed)*"
             else:
@@ -633,7 +636,9 @@ class PlotDetailView(SettlementBaseView):
                         f"⏱️ {upgrade_dt_cost(b.building_type, target_t)} DTs"
                     )
                     if "special_name" in cost:
-                        cost_str += f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
+                        cost_str += (
+                            f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
+                        )
                 embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
 
         embed.add_field(
@@ -1174,7 +1179,9 @@ class PlotDetailView(SettlementBaseView):
                 ),
                 inline=False,
             )
-            await interaction.edit_original_response(content=None, embed=embed, view=self)
+            await interaction.edit_original_response(
+                content=None, embed=embed, view=self
+            )
             return
 
         await self.bot.database.plots.reroll_bonus(
@@ -1314,7 +1321,9 @@ class MetaBuildingConstructionView(SettlementBaseView):
     def _sorted_keys(self, cat: str) -> list[str]:
         """Keys in this category sorted by gold cost ascending."""
         keys = _META_CATEGORIES[cat]["keys"]
-        return sorted(keys, key=lambda k: META_BUILDINGS.get(k, {}).get("cost", {}).get("gold", 0))
+        return sorted(
+            keys, key=lambda k: META_BUILDINGS.get(k, {}).get("cost", {}).get("gold", 0)
+        )
 
     # ------------------------------------------------------------------
     # UI rebuild
@@ -1323,6 +1332,7 @@ class MetaBuildingConstructionView(SettlementBaseView):
     def _make_category_callback(self, cat_key: str):
         async def _cb(interaction: Interaction):
             await self._switch_category(interaction, cat_key)
+
         return _cb
 
     def _rebuild(self):

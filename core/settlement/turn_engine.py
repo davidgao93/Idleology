@@ -99,6 +99,7 @@ def upgrade_dt_cost(building_type: str, target_tier: int) -> int:
 def meta_construction_dt_cost(building_type: str) -> int:
     """DT cost to construct a meta building = gold_cost // 1000, minimum 1."""
     from core.settlement.plots import META_BUILDINGS
+
     gold = META_BUILDINGS.get(building_type, {}).get("cost", {}).get("gold", 10_000)
     return max(1, gold // 1000)
 

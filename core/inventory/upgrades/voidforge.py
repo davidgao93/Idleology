@@ -239,7 +239,9 @@ class _VoidforgeTutorialGate(BaseUpgradeView):
         self._forge = forge_view
         self._processing = False
 
-        btn = Button(label="Understood — show me the forge →", style=ButtonStyle.success)
+        btn = Button(
+            label="Understood — show me the forge →", style=ButtonStyle.success
+        )
         btn.callback = self._continue
         self.add_item(btn)
 
