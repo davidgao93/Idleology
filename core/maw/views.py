@@ -217,7 +217,7 @@ class MawView(BaseView):
             f"**{guild_tickets} Guild Ticket{'s' if guild_tickets != 1 else ''}**"
         )
         if puzzle_box:
-            reward_parts.append("**Curio Puzzle Box** 🏆 *(Top 3!)*")
+            reward_parts.append("**Curio Puzzle Box** 🏆 *(Top 3)*")
         reward_msg = "Collected: " + ", ".join(reward_parts) + "!"
 
         self.now_ts = int(time.time())

@@ -89,11 +89,18 @@ def construction_dt_cost(building_type: str, event_effects: dict | None = None) 
     return base
 
 
+_UPGRADE_DT_TABLE = {2: 5, 3: 10, 4: 25, 5: 50}
+
+
 def upgrade_dt_cost(building_type: str, target_tier: int) -> int:
-    per_tier = PROJECT_UPGRADE_DT_PER_TIER.get(
-        building_type, PROJECT_UPGRADE_DT_PER_TIER["default"]
-    )
-    return per_tier * (target_tier - 1)
+    return max(1, _UPGRADE_DT_TABLE.get(target_tier, 50))
+
+
+def meta_construction_dt_cost(building_type: str) -> int:
+    """DT cost to construct a meta building = gold_cost // 1000, minimum 1."""
+    from core.settlement.plots import META_BUILDINGS
+    gold = META_BUILDINGS.get(building_type, {}).get("cost", {}).get("gold", 10_000)
+    return max(1, gold // 1000)
 
 
 # ---------------------------------------------------------------------------

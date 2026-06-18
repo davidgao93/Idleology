@@ -200,12 +200,10 @@ PROJECT_CONSTRUCTION_DT = {
     "uber_shrine": 40,
 }
 
-# Extra DT cost per tier level for upgrades (applied on top of resource cost).
+# Legacy reference — upgrade DT costs are now a lookup table in turn_engine.py:
+# T1→T2 = 5 DTs, T2→T3 = 10, T3→T4 = 25, T4→T5 = 50
 PROJECT_UPGRADE_DT_PER_TIER = {
-    "default": 5,  # T1→T2 = 5 DTs, T2→T3 = 10, T3→T4 = 15, T4→T5 = 20
-    "uber_shrine": 5,
-    "black_market": 5,
-    "town_hall": 5,  # T5→T6 = 25, T6→T7 = 30 (continuing 5× trend)
+    "default": 5,
 }
 
 # ---------------------------------------------------------------------------

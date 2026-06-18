@@ -29,10 +29,12 @@ from core.settlement.plots import (
     PLOT_BONUS_TABLE,
     SHRINE_BUILDING_TYPES,
     get_effective_max_workers,
+    render_mini_grid,
     roll_plot_bonus,
 )
 from core.settlement.turn_engine import (
-    upgrade_dt_cost,  # noqa: F401 — used for DT display
+    meta_construction_dt_cost,
+    upgrade_dt_cost,
 )
 
 from .base import SettlementBaseView
@@ -572,14 +574,16 @@ class PlotDetailView(SettlementBaseView):
                 adj.get("shrine_cap_x2", False),
                 adj.get("has_watchtower", False),
             )
-            tier_str = f"T{b.tier}/5" if not b.is_meta else "Meta"
+            tier_str = f"T{b.tier}/5" if not b.is_meta else f"Meta T{b.tier}"
             embed = discord.Embed(
                 title=f"📍 Plot {p.plot_index} — {b.name}",
                 color=discord.Color.red() if b.is_disabled else discord.Color.gold(),
             )
-            desc = (
-                f"**Type:** {tier_str}\n**Workers:** {b.workers_assigned:,}/{max_w:,}"
-            )
+            is_passive_meta = b.is_meta and META_BUILDINGS.get(b.building_type, {}).get("max_workers", 1) == 0
+            if is_passive_meta:
+                desc = f"**Type:** {tier_str} *(Passive — no workers needed)*"
+            else:
+                desc = f"**Type:** {tier_str}\n**Workers:** {b.workers_assigned:,}/{max_w:,}"
             if b.is_disabled:
                 repair_cost = get_repair_cost(b.tier)
                 desc += f"\n\n🚧 **DISABLED** — damaged by a crisis event.\nRepair cost: **{repair_cost:,} gold**"
@@ -605,16 +609,43 @@ class PlotDetailView(SettlementBaseView):
                 embed.set_thumbnail(url=thumb)
 
             # Upgrade cost preview
-            if not b.is_meta and b.tier < 5:
-                cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
-                cost_str = (
-                    f"🪵 {cost.get('timber', 0):,} | "
-                    f"🪨 {cost.get('stone', 0):,} | "
-                    f"💰 {cost.get('gold', 0):,}"
-                )
-                if "special_name" in cost:
-                    cost_str += f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
+            if b.tier < 5:
+                target_t = b.tier + 1
+                if b.is_meta:
+                    meta_base = META_BUILDINGS.get(b.building_type, {}).get("cost", {})
+                    meta_cost = {
+                        "timber": meta_base.get("timber", 0) * target_t,
+                        "stone": meta_base.get("stone", 0) * target_t,
+                        "gold": meta_base.get("gold", 0) * target_t,
+                    }
+                    cost_str = (
+                        f"🪵 {meta_cost['timber']:,} | "
+                        f"🪨 {meta_cost['stone']:,} | "
+                        f"💰 {meta_cost['gold']:,} | "
+                        f"⏱️ {upgrade_dt_cost(b.building_type, target_t)} DTs"
+                    )
+                else:
+                    cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
+                    cost_str = (
+                        f"🪵 {cost.get('timber', 0):,} | "
+                        f"🪨 {cost.get('stone', 0):,} | "
+                        f"💰 {cost.get('gold', 0):,} | "
+                        f"⏱️ {upgrade_dt_cost(b.building_type, target_t)} DTs"
+                    )
+                    if "special_name" in cost:
+                        cost_str += f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
                 embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
+
+        embed.add_field(
+            name="Surrounding Plots",
+            value=render_mini_grid(
+                p.plot_index,
+                self.parent.plots,
+                self.parent.settlement.buildings,
+                self.parent.projects,
+            ),
+            inline=False,
+        )
 
         embed.set_footer(text=f"Settlement Plot {p.plot_index}/20")
         return embed
@@ -745,17 +776,16 @@ class PlotDetailView(SettlementBaseView):
             btn_workers.callback = self._manage_workers
             self.add_item(btn_workers)
 
-        if not b.is_meta:
-            # Upgrade button — row 0 alongside Manage
-            if b.tier < 5:
-                btn_up = ui.Button(
-                    label=f"Upgrade to T{b.tier + 1}",
-                    style=ButtonStyle.success,
-                    emoji="⬆️",
-                    row=0,
-                )
-                btn_up.callback = self._upgrade_building
-                self.add_item(btn_up)
+        # Upgrade button — row 0 alongside Manage (regular and meta buildings)
+        if b.tier < 5:
+            btn_up = ui.Button(
+                label=f"Upgrade to T{b.tier + 1}",
+                style=ButtonStyle.success,
+                emoji="⬆️",
+                row=0,
+            )
+            btn_up.callback = self._upgrade_building
+            self.add_item(btn_up)
 
         if b.is_disabled:
             repair_cost = get_repair_cost(b.tier)
@@ -960,17 +990,24 @@ class PlotDetailView(SettlementBaseView):
 
         b = self.building
         target_tier = b.tier + 1
-        cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
 
-        # Apply plot bonus discounts to upgrade cost
-        plot_bonus = self.plot.bonus_type if self.plot else None
-        if plot_bonus == "gold_vein":
-            cost["gold"] = int(cost.get("gold", 0) * 0.65)
-        if plot_bonus == "ancient_foundation":
-            cost["timber"] = int(cost.get("timber", 0) * 0.70)
-            cost["stone"] = int(cost.get("stone", 0) * 0.70)
+        if b.is_meta:
+            meta_base = META_BUILDINGS.get(b.building_type, {}).get("cost", {})
+            cost = {
+                "timber": meta_base.get("timber", 0) * target_tier,
+                "stone": meta_base.get("stone", 0) * target_tier,
+                "gold": meta_base.get("gold", 0) * target_tier,
+            }
+        else:
+            cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
+            # Apply plot bonus discounts
+            plot_bonus = self.plot.bonus_type if self.plot else None
+            if plot_bonus == "gold_vein":
+                cost["gold"] = int(cost.get("gold", 0) * 0.65)
+            if plot_bonus == "ancient_foundation":
+                cost["timber"] = int(cost.get("timber", 0) * 0.70)
+                cost["stone"] = int(cost.get("stone", 0) * 0.70)
 
-        # Check resources
         stl = self.parent.settlement
         gold = await self.bot.database.users.get_gold(self.user_id)
         if (
@@ -996,7 +1033,6 @@ class PlotDetailView(SettlementBaseView):
 
         await interaction.response.defer()
 
-        # Consume resources
         changes = {
             "timber": -cost.get("timber", 0),
             "stone": -cost.get("stone", 0),
@@ -1010,18 +1046,37 @@ class PlotDetailView(SettlementBaseView):
                 self.user_id, cost["special_key"], -cost["special_qty"]
             )
 
-        await self.bot.database.settlement.upgrade_building_tier(b.id)
+        # Queue upgrade project
+        dt_cost = upgrade_dt_cost(b.building_type, target_tier)
+        await self.bot.database.settlement.upsert_project(
+            user_id=self.user_id,
+            server_id=self.parent.server_id,
+            project_type="upgrade",
+            target_id=b.id,
+            required_turns=dt_cost,
+            data={"building_type": b.building_type},
+        )
 
-        # Refresh
-        self.parent.settlement = await self.bot.database.settlement.get_settlement(
+        self.parent.projects = await self.bot.database.settlement.get_projects(
             self.user_id, self.parent.server_id
         )
-        self.building = next(
-            (x for x in self.parent.settlement.buildings if x.id == b.id), self.building
+
+        thumb = SETTLEMENT_BUILDINGS.get(b.building_type)
+        queued_embed = discord.Embed(
+            title="⏳ Upgrade Queued",
+            description=(
+                f"**{b.name}** upgrade to Tier {target_tier} has been queued.\n\n"
+                f"Resources deducted. The upgrade will complete after **{dt_cost} Development Turn(s)**.\n"
+                "Use **Next Turn** on your settlement dashboard to process it."
+            ),
+            color=discord.Color.orange(),
         )
+        if thumb:
+            queued_embed.set_thumbnail(url=thumb)
+
         self._processing = False
-        self._build_buttons()
-        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+        await interaction.edit_original_response(embed=queued_embed, view=self.parent)
+        self.stop()
 
     async def _repair_building(self, interaction: Interaction):
         if self._processing:
@@ -1099,8 +1154,29 @@ class PlotDetailView(SettlementBaseView):
 
         await interaction.response.defer()
 
+        old_bonus = self.plot.bonus_type
         new_bonus = roll_plot_bonus()
         await self.bot.database.users.modify_currency(self.user_id, "diviners_rod", -1)
+
+        if new_bonus == old_bonus:
+            # Rod consumed but terrain unchanged — inform the player
+            self._processing = False
+            self._build_buttons()
+            embed = self.build_embed()
+            embed.title = f"📍 Plot {self.plot.plot_index} — 🔮 Power Fails to Bind"
+            embed.color = discord.Color.dark_grey()
+            embed.add_field(
+                name="The Diviner's Rod fizzles...",
+                value=(
+                    "The rod's power attempted to reshape the terrain, "
+                    "but the land resisted and returned to the same state. "
+                    "The rod was consumed with no effect."
+                ),
+                inline=False,
+            )
+            await interaction.edit_original_response(content=None, embed=embed, view=self)
+            return
+
         await self.bot.database.plots.reroll_bonus(
             self.user_id, self.parent.server_id, self.plot.plot_index, new_bonus
         )
@@ -1120,7 +1196,6 @@ class PlotDetailView(SettlementBaseView):
             self.plot,
         )
 
-        bonus_data = PLOT_BONUS_TABLE.get(new_bonus, {})
         self._processing = False
         self._build_buttons()
         embed = self.build_embed()
@@ -1193,6 +1268,25 @@ class _DemolishConfirmView(SettlementBaseView):
 # ---------------------------------------------------------------------------
 
 
+_META_CATEGORIES: dict[str, dict] = {
+    "production": {
+        "label": "Production",
+        "emoji": "⚙️",
+        "keys": ["servants_quarters", "supply_depot", "foremans_post"],
+    },
+    "combat": {
+        "label": "Combat",
+        "emoji": "⚔️",
+        "keys": ["encampment", "apothecary_annex", "grand_cathedral", "shrine_garden"],
+    },
+    "global": {
+        "label": "Global",
+        "emoji": "🌐",
+        "keys": ["watchtower"],
+    },
+}
+
+
 class MetaBuildingConstructionView(SettlementBaseView):
     def __init__(
         self, bot, user_id: str, plot_index: int, parent_view, return_to_detail
@@ -1202,43 +1296,14 @@ class MetaBuildingConstructionView(SettlementBaseView):
         self.parent = parent_view
         self.return_to = return_to_detail
         self._processing = False
-        self._build_select()
+        self._category = "production"
+        self._rebuild()
 
-    def build_embed(self) -> discord.Embed:
-        embed = discord.Embed(
-            title="⚙️ Build Meta Building",
-            description=(
-                "Meta buildings provide powerful adjacency bonuses to neighbouring plots.\n\n"
-                "**Available Meta Buildings:**"
-            ),
-            color=discord.Color.blurple(),
-        )
-        existing_types = {
-            b.building_type for b in self.parent.settlement.buildings if b.is_meta
-        }
-        pending_types = self._pending_meta_types()
-        for key, data in META_BUILDINGS.items():
-            cost = data["cost"]
-            cost_str = (
-                f"💰 {cost.get('gold', 0):,} | "
-                f"🪵 {cost.get('timber', 0):,} | "
-                f"🪨 {cost.get('stone', 0):,}"
-            )
-            if key in existing_types:
-                suffix = " *(already built)*"
-            elif key in pending_types:
-                suffix = " *(under construction)*"
-            else:
-                suffix = ""
-            embed.add_field(
-                name=f"{data['emoji']} {data['label']}{suffix}",
-                value=f"{data['description']}\n*Cost: {cost_str}*",
-                inline=False,
-            )
-        return embed
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
     def _pending_meta_types(self) -> set[str]:
-        """Returns meta building types that already have a queued construction project."""
         return {
             proj["data"].get("building_type", "")
             for proj in self.parent.projects
@@ -1246,21 +1311,51 @@ class MetaBuildingConstructionView(SettlementBaseView):
             and proj.get("data", {}).get("building_type") in META_BUILDINGS
         }
 
-    def _build_select(self):
+    def _sorted_keys(self, cat: str) -> list[str]:
+        """Keys in this category sorted by gold cost ascending."""
+        keys = _META_CATEGORIES[cat]["keys"]
+        return sorted(keys, key=lambda k: META_BUILDINGS.get(k, {}).get("cost", {}).get("gold", 0))
+
+    # ------------------------------------------------------------------
+    # UI rebuild
+    # ------------------------------------------------------------------
+
+    def _make_category_callback(self, cat_key: str):
+        async def _cb(interaction: Interaction):
+            await self._switch_category(interaction, cat_key)
+        return _cb
+
+    def _rebuild(self):
         self.clear_items()
+
+        # Row 0: category toggle buttons
+        for cat_key, cat_data in _META_CATEGORIES.items():
+            active = self._category == cat_key
+            btn = ui.Button(
+                label=f"{cat_data['emoji']} {cat_data['label']}",
+                style=ButtonStyle.blurple if active else ButtonStyle.secondary,
+                disabled=active,
+                row=0,
+            )
+            btn.callback = self._make_category_callback(cat_key)
+            self.add_item(btn)
+
+        # Row 1: building select for current category
         existing_types = {
             b.building_type for b in self.parent.settlement.buildings if b.is_meta
         }
         pending_types = self._pending_meta_types()
+        keys = self._sorted_keys(self._category)
         options = []
-        for key, data in META_BUILDINGS.items():
+        for key in keys:
             if key in existing_types or key in pending_types:
                 continue
+            data = META_BUILDINGS[key]
             cost = data["cost"]
+            dt = meta_construction_dt_cost(key)
             desc = (
-                f"Cost: {cost.get('gold', 0):,}g, "
-                f"{cost.get('timber', 0):,} Wood, "
-                f"{cost.get('stone', 0):,} Stone"
+                f"💰{cost.get('gold', 0):,}g  🪵{cost.get('timber', 0):,}  "
+                f"🪨{cost.get('stone', 0):,}  ⏱️{dt} DTs"
             )
             options.append(
                 SelectOption(
@@ -1273,25 +1368,82 @@ class MetaBuildingConstructionView(SettlementBaseView):
 
         if options:
             sel = ui.Select(
-                placeholder="Select a meta building to construct...",
+                placeholder=f"Select {_META_CATEGORIES[self._category]['label']} meta building...",
                 options=options,
-                row=0,
+                row=1,
             )
             sel.callback = self._on_select
             self.add_item(sel)
         else:
             self.add_item(
                 ui.Button(
-                    label="All meta buildings already constructed",
+                    label="All buildings in this category already built/queued",
                     style=ButtonStyle.secondary,
                     disabled=True,
-                    row=0,
+                    row=1,
                 )
             )
 
-        cancel = ui.Button(label="Cancel", style=ButtonStyle.danger, row=1)
+        cancel = ui.Button(label="Cancel", style=ButtonStyle.danger, row=2)
         cancel.callback = self._cancel
         self.add_item(cancel)
+
+    async def _switch_category(self, interaction: Interaction, cat_key: str):
+        self._category = cat_key
+        self._rebuild()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    # ------------------------------------------------------------------
+    # Embed
+    # ------------------------------------------------------------------
+
+    def build_embed(self) -> discord.Embed:
+        cat_data = _META_CATEGORIES[self._category]
+        embed = discord.Embed(
+            title=f"⚙️ Build Meta Building — {cat_data['emoji']} {cat_data['label']}",
+            description=(
+                "Meta buildings provide powerful adjacency or global bonuses.\n"
+                "Construction costs Development Turns based on building value.\n\n"
+                f"**{cat_data['emoji']} {cat_data['label']} Buildings:**"
+            ),
+            color=discord.Color.blurple(),
+        )
+        existing_types = {
+            b.building_type for b in self.parent.settlement.buildings if b.is_meta
+        }
+        pending_types = self._pending_meta_types()
+        keys = self._sorted_keys(self._category)
+        for key in keys:
+            data = META_BUILDINGS[key]
+            cost = data["cost"]
+            dt = meta_construction_dt_cost(key)
+            cost_str = (
+                f"💰 {cost.get('gold', 0):,} | "
+                f"🪵 {cost.get('timber', 0):,} | "
+                f"🪨 {cost.get('stone', 0):,} | "
+                f"⏱️ {dt} DTs"
+            )
+            affects = data.get("affects", "")
+            if key in existing_types:
+                suffix = " *(already built)*"
+            elif key in pending_types:
+                suffix = " *(under construction)*"
+            else:
+                suffix = ""
+            value = data["description"]
+            if affects:
+                value += f"\n-# Affects: {affects}"
+            value += f"\n*Cost: {cost_str}*"
+            embed.add_field(
+                name=f"{data['emoji']} {data['label']}{suffix}",
+                value=value,
+                inline=False,
+            )
+        return embed
+
+    # ------------------------------------------------------------------
+    # Callbacks
+    # ------------------------------------------------------------------
 
     async def _on_select(self, interaction: Interaction):
         if self._processing:
@@ -1302,6 +1454,7 @@ class MetaBuildingConstructionView(SettlementBaseView):
         key = interaction.data["values"][0]
         data = META_BUILDINGS[key]
         cost = data["cost"]
+        dt_cost = meta_construction_dt_cost(key)
 
         gold = await self.bot.database.users.get_gold(self.user_id)
         stl = self.parent.settlement
@@ -1317,14 +1470,6 @@ class MetaBuildingConstructionView(SettlementBaseView):
 
         await interaction.response.defer()
 
-        # Short construction animation — strip select immediately so it can't be re-clicked
-        prog = discord.Embed(
-            title="⚙️ Construction in Progress", color=discord.Color.orange()
-        )
-        prog.description = "Laying the foundations for the new meta building..."
-        await interaction.edit_original_response(embed=prog, view=discord.ui.View())
-        await asyncio.sleep(2)
-
         # Deduct resources
         changes = {
             "timber": -cost.get("timber", 0),
@@ -1335,34 +1480,38 @@ class MetaBuildingConstructionView(SettlementBaseView):
         )
         await self.bot.database.users.modify_gold(self.user_id, -cost.get("gold", 0))
 
-        # Build
-        await self.bot.database.settlement.build_structure(
-            self.user_id,
-            self.parent.server_id,
-            key,
-            self.plot_index,
-            is_meta=True,
+        # Queue construction project
+        await self.bot.database.settlement.upsert_project(
+            user_id=self.user_id,
+            server_id=self.parent.server_id,
+            project_type="construction",
+            target_id=self.plot_index,
+            required_turns=dt_cost,
+            data={
+                "building_type": key,
+                "plot_index": self.plot_index,
+                "is_meta": True,
+            },
         )
 
-        # Refresh
-        self.parent.settlement = await self.bot.database.settlement.get_settlement(
+        self.parent.projects = await self.bot.database.settlement.get_projects(
             self.user_id, self.parent.server_id
         )
-        new_building = next(
-            (
-                b
-                for b in self.parent.settlement.buildings
-                if b.plot_index == self.plot_index
-            ),
-            None,
-        )
-        self.return_to.building = new_building
-        self.return_to._build_buttons()
 
-        embed = self.return_to.build_embed()
-        embed.title = f"📍 Plot {self.plot_index} — ✅ {data['label']} Constructed!"
+        queued_embed = discord.Embed(
+            title=f"📍 Plot {self.plot_index} — 🏗️ {data['label']} Queued",
+            description=(
+                f"**{data['label']}** construction has been queued.\n\n"
+                f"Resources deducted. Construction will complete after **{dt_cost} Development Turn(s)**.\n"
+                "Use **Next Turn** on your settlement dashboard to process it."
+            ),
+            color=discord.Color.orange(),
+        )
+        queued_embed.set_thumbnail(url=SETTLEMENT_CONSTRUCTION)
+
+        self._processing = False
         await interaction.edit_original_response(
-            content=None, embed=embed, view=self.return_to
+            content=None, embed=queued_embed, view=self.parent
         )
         self.stop()
 

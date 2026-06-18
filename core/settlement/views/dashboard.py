@@ -66,8 +66,8 @@ _SPRITZ_SCENES = [
             "output scales with workers assigned.\n\n"
             "⚙️ **Converters** (Foundry, Sawmill, Reliquary) refine raw materials into finished goods "
             "automatically, as long as they're staffed. Each tier unlocks a higher material grade.\n\n"
-            "🏪 **Special Buildings** offer services: the Apothecary heals, the Barracks trains fighters, "
-            "the Nursery grows new followers, and the Idlem Foundry produces Idlem for the Black Market tree.\n\n"
+            "🏪 **Special Buildings** offer services: the Apothecary boosts your potions, the Barracks your stats, "
+            "the Nursery grows new followers, and the Idlem Foundry produces Idlem, a special resource.\n\n"
             "Workers come from your ideology's follower count — assign them via each building's detail view. "
             "More workers means more output, up to the building's cap."
         ),
@@ -76,13 +76,13 @@ _SPRITZ_SCENES = [
     {
         "title": "The Black Market and Research",
         "text": (
-            "The **Black Market** converts raw production into meaningful rewards.\n\n"
+            "The **Black Market** converts raw production and excess items into meaningful rewards.\n\n"
             "Submit a resource bundle as an offer. It processes over several Development Turns "
             "and returns curated loot — gear, runes, keys, and more. "
-            "As you invest **Idlem** into the Black Market's passive tree, deals become "
+            "As you invest **Idlem** with Max, the Mysterious Merchant, deals become "
             "cheaper, more valuable, and biased toward your preferred loot types.\n\n"
             "**Research** uses 📋 Unidentified Blueprints (dropped from combat) to unlock "
-            "advanced buildings — the Idlem Foundry, Nursery, shrine variants, and more. "
+            "advanced buildings — the Idlem Foundry, Nursery, uber boss shrines, and more. "
             "Check the Research panel to see what each blueprint unlocks and what it costs."
         ),
         "color": 0x4A235A,
@@ -92,8 +92,8 @@ _SPRITZ_SCENES = [
         "text": (
             "A few final details:\n\n"
             "🔥 **Magma Core** · 🌿 **Life Root** · 👻 **Spirit Shard** — rare construction "
-            "materials dropped from combat. Certain buildings require them alongside standard resources.\n\n"
-            "📋 **Unidentified Blueprints** — dropped from combat; required for research. Do not sell them.\n\n"
+            "materials obtained from various sources. Certain buildings require them alongside standard resources.\n\n"
+            "📋 **Unidentified Blueprints** — also obtained from various sources; required for research.\n\n"
             "🔮 **Diviner's Rod** — use one from a plot's detail view to reroll that plot's terrain bonus. "
             "Bonuses like *Gold Vein* reduce construction gold costs and *Ancient Foundation* discounts "
             "timber and stone.\n\n"
@@ -1202,16 +1202,31 @@ class SettlementDashboardView(SettlementBaseView):
 
         try:
             uid, sid = self.user_id, self.server_id
-            # Also accrue passive Zeal based on hours since last collection
             turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
-            pending = turns_data.get("pending_zeal", 0)
 
-            # Add time-based passive generation since last Zeal gather (tracked
-            # separately from resource collection so the two timers don't interfere).
+            # 5-minute cooldown prevents double-collecting the pending remainder
             gather_ts = (
                 self.settlement.last_zeal_gather_time
                 or self.settlement.last_collection_time
             )
+            if gather_ts:
+                try:
+                    last = datetime.fromisoformat(gather_ts)
+                    seconds_since = (datetime.now() - last).total_seconds()
+                    if seconds_since < 300:
+                        mins_left = max(1, int((300 - seconds_since) / 60) + 1)
+                        self._processing = False
+                        await interaction.followup.send(
+                            f"You've already gathered recently. "
+                            f"Try again in **{mins_left}** minute(s).",
+                            ephemeral=True,
+                        )
+                        return
+                except Exception:
+                    pass
+
+            # Add time-based passive generation since last Zeal gather (tracked
+            # separately from resource collection so the two timers don't interfere).
             if gather_ts:
                 try:
                     last = datetime.fromisoformat(gather_ts)

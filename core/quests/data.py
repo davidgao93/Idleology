@@ -267,14 +267,14 @@ CHECKIN_DAY_LABELS = {
     4: "Key Cache",
     5: "Curio & Tokens",
     6: "Rune Cache",
-    7: "Curios & Tickets",
+    7: "5 Curios & 5 Tickets",
     8: "Power Cache",
     9: "Tome Cache",
     10: "Elemental Cache",
     11: "Rune Cache",
     12: "Key Cache",
     13: "Tokens & Curio",
-    14: "Grand Curios & Tickets",
+    14: "10 Curios & 10 Tickets",
 }
 
 

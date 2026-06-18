@@ -244,12 +244,12 @@ class CombatProfileBuilder:
         fdr_other = p._get_companion_bonus("fdr") + int(p.get_tome_bonus("resilience"))
         if p.ascension_unlocks:
             fdr_other += p.get_ascension_bonuses()["fdr"]
-        total_fdr = fdr_equip + fdr_other
+        total_fdr = int(fdr_equip + fdr_other)
         if total_fdr > 0:
             fdr_val = f"**{total_fdr:,}**\n↳ Equipment: {fdr_equip}"
             if fdr_other > 0:
                 fdr_val += f"\n↳ Other: {fdr_other}"
-            embed.add_field(name="🔒 FDR", value=fdr_val, inline=True)
+            embed.add_field(name="🛡️ FDR", value=fdr_val, inline=True)
 
         # ── Evasion ───────────────────────────────────────────────────────────
         evasion_armor = p.equipped_armor.evasion if p.equipped_armor else 0

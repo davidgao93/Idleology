@@ -10,27 +10,35 @@ from database.base import BaseRepository
 _SKILL_TABLES = frozenset({"mining", "fishing", "woodcutting"})
 _SKILL_COLUMNS = frozenset(
     {
-        "iron",
-        "coal",
-        "gold",
-        "platinum",
-        "idea",
-        "desiccated_bones",
-        "regular_bones",
-        "sturdy_bones",
-        "reinforced_bones",
-        "titanium_bones",
-        "oak_logs",
-        "willow_logs",
-        "mahogany_logs",
-        "magic_logs",
-        "idea_logs",
+        # Raw gathering resources
+        "iron", "coal", "gold", "platinum", "idea",
+        "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
+        "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
+        # Processed (converter building outputs)
+        "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar",
+        "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank",
+        "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence",
     }
 )
 _UBER_COLUMNS = frozenset({"capricious_carp", "blessed_bismuth", "sparkling_sprig"})
 
 
 class AlchemyRepository(BaseRepository):
+    _passive_duration_col_added: bool = False
+
+    async def _ensure_passive_duration_column(self) -> None:
+        """Idempotent: adds passive_duration column to potion_passives if not yet present."""
+        if AlchemyRepository._passive_duration_col_added:
+            return
+        try:
+            await self.connection.execute(
+                "ALTER TABLE potion_passives ADD COLUMN passive_duration REAL DEFAULT 2.0"
+            )
+            await self.connection.commit()
+        except Exception:
+            pass  # column already exists
+        AlchemyRepository._passive_duration_col_added = True
+
     # ------------------------------------------------------------------
     # Alchemy Level
     # ------------------------------------------------------------------
@@ -99,27 +107,41 @@ class AlchemyRepository(BaseRepository):
     # ------------------------------------------------------------------
 
     async def get_potion_passives(self, user_id: str) -> List[dict]:
-        """Returns [{slot, passive_type, passive_value}, ...] ordered by slot."""
+        """Returns [{slot, passive_type, passive_value, passive_duration}, ...] ordered by slot."""
+        await self._ensure_passive_duration_column()
         async with self.connection.execute(
-            "SELECT slot, passive_type, passive_value FROM potion_passives "
+            "SELECT slot, passive_type, passive_value, passive_duration FROM potion_passives "
             "WHERE user_id = ? ORDER BY slot",
             (user_id,),
         ) as cursor:
             rows = await cursor.fetchall()
         return [
-            {"slot": r[0], "passive_type": r[1], "passive_value": r[2]} for r in rows
+            {
+                "slot": r[0],
+                "passive_type": r[1],
+                "passive_value": r[2],
+                "passive_duration": r[3] if r[3] is not None else 2.0,
+            }
+            for r in rows
         ]
 
     async def set_passive(
-        self, user_id: str, slot: int, passive_type: str, passive_value: float
+        self,
+        user_id: str,
+        slot: int,
+        passive_type: str,
+        passive_value: float,
+        passive_duration: float = 2.0,
     ) -> None:
+        await self._ensure_passive_duration_column()
         await self.connection.execute(
-            """INSERT INTO potion_passives (user_id, slot, passive_type, passive_value)
-               VALUES (?, ?, ?, ?)
+            """INSERT INTO potion_passives (user_id, slot, passive_type, passive_value, passive_duration)
+               VALUES (?, ?, ?, ?, ?)
                ON CONFLICT(user_id, slot) DO UPDATE SET
                    passive_type = excluded.passive_type,
-                   passive_value = excluded.passive_value""",
-            (user_id, slot, passive_type, passive_value),
+                   passive_value = excluded.passive_value,
+                   passive_duration = excluded.passive_duration""",
+            (user_id, slot, passive_type, passive_value, passive_duration),
         )
         await self.connection.commit()
 

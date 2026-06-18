@@ -1,6 +1,6 @@
 import math
 import random
-from typing import Optional, Tuple
+from typing import Optional
 
 
 class AlchemyMechanics:
@@ -113,15 +113,15 @@ class AlchemyMechanics:
         return AlchemyMechanics.LEVEL_COSTS.get(current_level)
 
     @staticmethod
-    def format_passive(passive_type: str, passive_value: float) -> str:
-        """Returns a short human-readable description for a passive + value.
+    def format_passive(
+        passive_type: str, passive_value: float, passive_duration: float = 2.0
+    ) -> str:
+        """Returns a short human-readable description for a passive + value + duration.
         Checks powerful distilled passives first (new system).
         """
         pinfo = DistillationMechanics.POWERFUL_PASSIVES.get(passive_type)
         if pinfo:
-            return (
-                f"{pinfo['desc'].format(value=passive_value, duration=2)} (distilled)"
-            )
+            return pinfo["desc"].format(value=passive_value, duration=passive_duration)
 
         # Fallback for any remaining legacy passives in DB
         return f"{passive_type.replace('_', ' ').title()}: {passive_value}"
@@ -352,10 +352,7 @@ class DistillationMechanics:
     ]
 
     # ------------------------------------------------------------------
-    # Powerful (distilled) passives — the new high-impact catalog.
-    # These are the "encounter changing" effects the user asked for.
-    # For MVP we use a simple structure: name, desc template, base power ranges.
-    # The distillation session's duration_mod and value_mod are applied at finalize.
+    # Passives
     # ------------------------------------------------------------------
     POWERFUL_PASSIVES: dict[str, dict] = {
         # Core encounter-changing (original 6, worded consistently)
@@ -419,7 +416,6 @@ class DistillationMechanics:
             "duration_max": 4.0,
             "category": "utility",
         },
-        # Converted legacy passives (reworded to match passive_data.py style, no overlap with above)
         "potent_brew": {
             "name": "Potent Brew",
             "emoji": "🍺",
@@ -452,7 +448,7 @@ class DistillationMechanics:
         },
         "ironclad_elixir": {
             "name": "Ironclad Elixir",
-            "emoji": "🛡️",
+            "emoji": "⚔️",
             "desc": "On potion use: Gain {value:.0f}% DEF for the next {duration:.0f} monster turns.",
             "value_min": 25.0,
             "value_max": 75.0,
@@ -492,23 +488,13 @@ class DistillationMechanics:
         },
         "sustained_remedy": {
             "name": "Sustained Remedy",
-            "emoji": "🌿",
+            "emoji": "🌱",
             "desc": "On potion use: Restore {value:.0f} HP at the start of each of your next {duration:.0f} turns.",
             "value_min": 8.0,
             "value_max": 30.0,
             "duration_min": 2.0,
             "duration_max": 5.0,
             "category": "healing",
-        },
-        "surestrike_serum": {
-            "name": "Surestrike Serum",
-            "emoji": "🎯",
-            "desc": "On potion use: Your next hit this combat cannot miss and is guaranteed to crit.",
-            "value_min": 1.0,
-            "value_max": 1.0,
-            "duration_min": 1.0,
-            "duration_max": 1.0,
-            "category": "offensive",
         },
     }
 
@@ -684,26 +670,34 @@ class DistillationMechanics:
     TIER_NAMES = {0: "nothing", 1: "a little", 2: "good", 3: "a lot"}
 
     @staticmethod
-    def start_distillation(alchemy_level: int) -> dict:
+    def start_distillation(
+        alchemy_level: int, excluded_passive_types: list | None = None
+    ) -> dict:
         """Create a fresh distillation session state (step 0 = choosing base)."""
         return {
             "step": 0,
-            "base_type": None,  # chosen on first real step or entry
-            "duration_mod": 0.0,  # accumulated multiplier / additive bonus
+            "base_type": None,
+            "duration_mod": 0.0,
             "value_mod": 0.0,
-            "active_modifiers": {},  # e.g. {"free_next_steps": 2, "lucky": True, "future_unlucky": True, ...}
-            "history": [],  # list of {"step": n, "reagent": "...", "event": "...", "gain": "..."}
+            "active_modifiers": {},
+            "history": [],
             "dust_spent": 0,
             "alchemy_level": alchemy_level,
+            "excluded_passive_types": excluded_passive_types or [],
         }
 
     @staticmethod
-    def get_base_choices() -> list[dict]:
-        """The initial 'three skills' / core effect choices presented at the start of distillation.
-        Samples 3 from the full pool for replayability.
-        """
-        keys = list(DistillationMechanics.POWERFUL_PASSIVES.keys())
-        chosen_keys = random.sample(keys, min(3, len(keys)))
+    def get_base_choices(excluded_types: set | None = None) -> list[dict]:
+        """Sample 3 core passive choices, excluding any types the player already owns."""
+        all_keys = list(DistillationMechanics.POWERFUL_PASSIVES.keys())
+        if excluded_types:
+            pool = [k for k in all_keys if k not in excluded_types]
+        else:
+            pool = all_keys
+        # Ensure we always get 3 options; fall back to full pool if needed
+        if len(pool) < 3:
+            pool = all_keys
+        chosen_keys = random.sample(pool, min(3, len(pool)))
         choices = []
         for key in chosen_keys:
             info = DistillationMechanics.POWERFUL_PASSIVES[key]
@@ -712,23 +706,18 @@ class DistillationMechanics:
                     "key": key,
                     "name": info["name"],
                     "emoji": info["emoji"],
-                    "desc": get_passive_list_desc(
-                        key
-                    ),  # clean ranged version for the choice embed
+                    "desc": get_passive_list_desc(key),
                 }
             )
         return choices
 
     @staticmethod
     def prepare_core_choices(session: dict) -> list[dict]:
-        """Sample the 3 core passive options once (via get_base_choices) and store them in the session.
-        This locks the exact same 3 (with their names, emojis, and ranged descs)
-        for the duration of the base choice presentation so that the embed fields,
-        button labels, and the click handler all agree on what idx 0/1/2 means.
-        """
+        """Lock in the 3 core choices for this run (idempotent — re-uses if already stored)."""
         if session.get("core_choices"):
             return session["core_choices"]
-        choices = DistillationMechanics.get_base_choices()
+        excluded = set(session.get("excluded_passive_types", []))
+        choices = DistillationMechanics.get_base_choices(excluded_types=excluded)
         session["core_choices"] = choices
         return choices
 

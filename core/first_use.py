@@ -34,6 +34,7 @@ from core.images import (
     COMBAT_VICTORY,
     COMPANIONS_HUB,
     DELVE_HUB,
+    HARLAN_AUTHOR,
     INVENTORY_HUB,
     MASTERY_MINING,
     PARTNERS_HUB,
@@ -41,6 +42,7 @@ from core.images import (
     SETTLEMENT_HUB,
     SLAYER_MASTER,
     TAVERN_KEEPER,
+    UPGRADE_VOIDFORGE,
 )
 
 # ---------------------------------------------------------------------------
@@ -225,6 +227,45 @@ TUTORIALS: dict[str, dict] = {
         "image": INVENTORY_HUB,
         "color": discord.Color.blue(),
     },
+    "voidforge": {
+        "title": "🌌 The Voidforge",
+        "author": "Master Smith Harlan",
+        "description": (
+            "*You've come to the Voidforge. Good. Let me explain exactly what you're getting into — "
+            "there's no undoing this once the ritual begins.*\n\n"
+            "The Voidforge channels the essence trapped inside a **sacrifice weapon** — "
+            "a weapon you no longer need — and attempts to imprint its passive onto your target weapon. "
+            "The sacrifice weapon is consumed regardless of outcome. That's the cost of the void.\n\n"
+            "**What is a Passive?**\n"
+            "Every weapon can carry a primary passive ability — a bonus that activates in combat. "
+            "Think of it as the weapon's soul. Forging and refining can improve a weapon's numbers, "
+            "but they cannot change its passive. Only the Voidforge can.\n\n"
+            "**What is a Pinnacle Passive?**\n"
+            "A second passive slot, rarer and more powerful. Once you've imprinted a Pinnacle, "
+            "the Voidforge costs double. It's worth it.\n\n"
+            "**What is an Utmost Passive?**\n"
+            "A third and final slot — only reachable after a Pinnacle exists. "
+            "The rarest configuration a weapon can have. Few smiths ever see one.\n\n"
+            "**The Three Outcomes (each attempt):**\n"
+            "— 🌌 **Success (25%):** The sacrifice's passive is written into your weapon as "
+            "a Pinnacle Passive. If a Pinnacle already exists, it becomes the Utmost instead.\n"
+            "— 🔄 **Chaos (25%):** The essence overpowers the ritual. "
+            "Your weapon's **main passive is overwritten** with the sacrifice's passive.\n"
+            "— ❌ **Failure (50%):** The void consumes the essence entirely. "
+            "Your target weapon is untouched, but the sacrifice is still gone.\n\n"
+            "*I've seen veterans lose three weapons in a row chasing a Pinnacle. "
+            "I've also seen one succeed on the first try. The void doesn't negotiate.*"
+        ),
+        "tips": [
+            "Pick your sacrifice weapon carefully — its **passive** is what transfers, not its stats.",
+            "If your weapon has no Pinnacle yet, a Success writes the Pinnacle slot.",
+            "With a Pinnacle already present, a Success writes the Utmost — costs 10M gold.",
+            "A Void Key is consumed on every attempt, win or lose.",
+        ],
+        "image": UPGRADE_VOIDFORGE,
+        "author_icon": HARLAN_AUTHOR,
+        "color": discord.Color.dark_purple(),
+    },
 }
 
 
@@ -284,6 +325,8 @@ class TutorialGateView(BaseView):
             description=data["description"],
             color=data.get("color", discord.Color.blue()),
         )
+        if author := data.get("author"):
+            embed.set_author(name=author, icon_url=data.get("author_icon"))
         if tips := data.get("tips"):
             embed.add_field(
                 name="Quick Tips",

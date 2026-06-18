@@ -5,6 +5,7 @@ from discord import ButtonStyle, Interaction, SelectOption
 from discord.ui import Button, Select
 
 from core.combat.calc.calcs import fmt_weapon_passive
+from core.first_use import TUTORIALS
 from core.images import HARLAN_AUTHOR, UPGRADE_VOIDFORGE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.factory import create_weapon
@@ -20,6 +21,30 @@ class VoidforgeView(BaseUpgradeView):
         self._processing = False
 
     async def render(self, interaction: Interaction):
+        # ── First-use tutorial gate ────────────────────────────────────────
+        if not await self.bot.database.tutorials.has_seen(self.user_id, "voidforge"):
+            await self.bot.database.tutorials.mark_seen(self.user_id, "voidforge")
+
+            data = TUTORIALS["voidforge"]
+            embed = discord.Embed(
+                title=data["title"],
+                description=data["description"],
+                color=data["color"],
+            )
+            embed.set_author(name=data["author"], icon_url=data.get("author_icon"))
+            if tips := data.get("tips"):
+                embed.add_field(
+                    name="Harlan's Advice",
+                    value="\n".join(f"• {t}" for t in tips),
+                    inline=False,
+                )
+            embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
+            embed.set_footer(text="✨ First visit — this message only appears once.")
+
+            gate = _VoidforgeTutorialGate(self.bot, self.user_id, forge_view=self)
+            await self._send_render(interaction, embed, view=gate)
+            return
+
         self.selected_target = None
 
         self.gold_cost = 5_000_000 if self.item.p_passive == "none" else 10_000_000
@@ -204,3 +229,24 @@ class VoidforgeView(BaseUpgradeView):
 
         await interaction.edit_original_response(embed=embed, view=self)
         self.message = await interaction.original_response()
+
+
+class _VoidforgeTutorialGate(BaseUpgradeView):
+    """Shown on first visit to Voidforge. 'Understood' proceeds to the real UI."""
+
+    def __init__(self, bot, user_id: str, forge_view: "VoidforgeView"):
+        super().__init__(bot, user_id, forge_view.item, forge_view.parent_view)
+        self._forge = forge_view
+        self._processing = False
+
+        btn = Button(label="Understood — show me the forge →", style=ButtonStyle.success)
+        btn.callback = self._continue
+        self.add_item(btn)
+
+    async def _continue(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await self._forge.render(interaction)
+        self.stop()

@@ -262,6 +262,7 @@ META_BUILDINGS: dict[str, dict] = {
             "Adjacent production buildings gain +2% effectiveness per 10 workers "
             "here, up to +20% at full capacity."
         ),
+        "affects": "Logging Camp, Quarry, Market, Companion Ranch, War Camp",
         "effect": "production_boost",
     },
     "grand_cathedral": {
@@ -272,6 +273,7 @@ META_BUILDINGS: dict[str, dict] = {
         "description": (
             "Adjacent shrine buildings can have twice as many workers per tier."
         ),
+        "affects": "All Shrine buildings (Uber Shrine, Temple, individual Shrines)",
         "effect": "shrine_cap",
     },
     "supply_depot": {
@@ -280,6 +282,7 @@ META_BUILDINGS: dict[str, dict] = {
         "cost": {"gold": 25_000, "timber": 1_000, "stone": 1_000},
         "max_workers": 100,
         "description": ("Adjacent converter buildings are 15% more effective."),
+        "affects": "Foundry, Sawmill, Reliquary",
         "effect": "converter_boost",
     },
     "watchtower": {
@@ -291,6 +294,7 @@ META_BUILDINGS: dict[str, dict] = {
             "Each regular building's worker cap is increased by +1% per its own tier "
             "(T1 → +1%, T5 → +5%). Passive — no workers needed."
         ),
+        "affects": "All regular buildings (global effect)",
         "effect": "global_cap",
     },
     "foremans_post": {
@@ -299,6 +303,7 @@ META_BUILDINGS: dict[str, dict] = {
         "cost": {"gold": 30_000, "timber": 1_500, "stone": 500},
         "max_workers": 100,
         "description": "Adjacent buildings gain +25% output rate.",
+        "affects": "All adjacent buildings (generators and converters)",
         "effect": "output_boost",
     },
     "shrine_garden": {
@@ -307,6 +312,7 @@ META_BUILDINGS: dict[str, dict] = {
         "cost": {"gold": 40_000, "timber": 2_000, "stone": 2_000},
         "max_workers": 100,
         "description": "Adjacent shrine buildings are 15% more effective.",
+        "affects": "All Shrine buildings (Uber Shrine, Temple, individual Shrines)",
         "effect": "shrine_boost",
     },
     "encampment": {
@@ -318,6 +324,7 @@ META_BUILDINGS: dict[str, dict] = {
             "Adjacent War Camps generate +0.5 additional Combat Stamina "
             "per 100 War Camp workers/hr."
         ),
+        "affects": "War Camp",
         "effect": "war_camp_boost",
     },
     "apothecary_annex": {
@@ -329,6 +336,7 @@ META_BUILDINGS: dict[str, dict] = {
             "Adjacent Apothecary gains +4% to its flat heal bonus "
             "per 100 workers assigned here."
         ),
+        "affects": "Apothecary",
         "effect": "apothecary_boost",
     },
 }
@@ -393,6 +401,140 @@ def get_effective_max_workers(
     if adj_shrine_cap_x2 and building_type in SHRINE_BUILDING_TYPES:
         result *= 2
     return result
+
+
+# ---------------------------------------------------------------------------
+# Mini-grid (3×3 centred on a focal plot, used in PlotDetailView)
+# ---------------------------------------------------------------------------
+
+_MINI_W = 7  # Cell width in chars
+
+# Human-readable 7-char (max) labels for each building type
+MINI_GRID_LABELS: dict[str, str] = {
+    "logging_camp":       "Logging",
+    "quarry":             "Quarry",
+    "foundry":            "Foundry",
+    "sawmill":            "Sawmill",
+    "reliquary":          "Reliqry",
+    "market":             "Market",
+    "barracks":           "Barrack",
+    "temple":             "Temple",
+    "apothecary":         "Apothcy",
+    "black_market":       "Blk.Mkt",
+    "companion_ranch":    "CoRanch",
+    "hatchery":           "Hatchry",
+    "celestial_shrine":   "CelShr.",
+    "infernal_shrine":    "InfShr.",
+    "void_shrine":        "VoidShr",
+    "twin_shrine":        "TwinShr",
+    "corruption_shrine":  "CorShr.",
+    "war_camp":           "WarCamp",
+    "nursery":            "Nursery",
+    "idlem_foundry":      "IdlFdry",
+    "uber_shrine":        "UbrShr.",
+    # Meta buildings
+    "servants_quarters":  "SrvtQtr",
+    "grand_cathedral":    "GndCthl",
+    "supply_depot":       "SupDept",
+    "watchtower":         "Wchtwr.",
+    "foremans_post":      "FrmPost",
+    "shrine_garden":      "ShrGrdn",
+    "encampment":         "Encamp.",
+    "apothecary_annex":   "ApoAnnx",
+}
+
+
+def render_mini_grid(
+    focal_index: int,
+    plots: list,       # Plot objects: .plot_index, .is_developed
+    buildings: list,   # Building objects: .plot_index, .building_type, .tier, .is_meta
+    projects: list,    # settlement_projects dicts (for under-construction state)
+) -> str:
+    """
+    Renders a 3×3 grid centred on *focal_index*.
+
+    The focal plot occupies the centre cell and is highlighted with >…<.
+    Adjacent plots (orthogonal + diagonal) fill the surrounding cells.
+    Positions that fall outside the 5×5 grid or on dead corners are blank.
+
+    Returns a markdown ````` code block string.
+    """
+    W = _MINI_W
+
+    # Lookup structures
+    plot_by_idx: dict = {p.plot_index: p for p in plots}
+    building_by_idx: dict = {
+        b.plot_index: b for b in buildings if b.plot_index is not None
+    }
+    pending_by_idx: dict[int, str] = {}
+    for proj in projects:
+        if proj.get("project_type") == "construction":
+            tid = proj.get("target_id")
+            btype = proj.get("data", {}).get("building_type", "")
+            if tid is not None and btype:
+                pending_by_idx[int(tid)] = btype
+
+    focal_row, focal_col = PLOT_POSITIONS[focal_index]
+
+    def _fmt(text: str, focal: bool) -> str:
+        """Format *text* into exactly W chars; focal cell wrapped in > <."""
+        if focal:
+            return f">{text[:5]:<5}<"
+        return f"{text:<{W}}"[:W]
+
+    def _cell(r: int, c: int, is_focal: bool) -> tuple[str, str]:
+        """Return (line1, line2) for the cell at grid position (r, c)."""
+        pos = (r, c)
+
+        # Off the 5×5 or a dead corner → blank padding
+        if not (0 <= r <= 4 and 0 <= c <= 4) or pos in DEAD_CORNERS:
+            return " " * W, " " * W
+
+        # Town Hall
+        if pos == TH_POSITION:
+            return _fmt("TwnHall", is_focal), _fmt("Center", is_focal)
+
+        idx = POSITION_TO_PLOT[pos]
+        plot = plot_by_idx.get(idx)
+
+        # Undeveloped
+        if plot is None or not plot.is_developed:
+            return _fmt("Locked", is_focal), _fmt(f"P{idx:02d}", is_focal)
+
+        b = building_by_idx.get(idx)
+        pending = pending_by_idx.get(idx)
+
+        if b is not None:
+            label = MINI_GRID_LABELS.get(b.building_type, b.building_type[:W])
+            tier_str = f"[M]T{b.tier}" if b.is_meta else f"T{b.tier}/5"
+            return _fmt(label, is_focal), _fmt(tier_str, is_focal)
+
+        if pending:
+            label = MINI_GRID_LABELS.get(pending, pending[:W])
+            return _fmt(label, is_focal), _fmt("~Build~", is_focal)
+
+        # Empty developed plot
+        return _fmt("Empty", is_focal), _fmt(f"P{idx:02d}", is_focal)
+
+    # Build the grid string
+    top_border = f"┌{'─' * W}┬{'─' * W}┬{'─' * W}┐"
+    sep_border = f"├{'─' * W}┼{'─' * W}┼{'─' * W}┤"
+    bot_border = f"└{'─' * W}┴{'─' * W}┴{'─' * W}┘"
+
+    lines = [top_border]
+    for row_idx, dr in enumerate((-1, 0, 1)):
+        if row_idx > 0:
+            lines.append(sep_border)
+        tops, bots = [], []
+        for dc in (-1, 0, 1):
+            t, b = _cell(focal_row + dr, focal_col + dc, dr == 0 and dc == 0)
+            tops.append(t)
+            bots.append(b)
+        lines.append("│" + "│".join(tops) + "│")
+        lines.append("│" + "│".join(bots) + "│")
+    lines.append(bot_border)
+
+    return "```\n" + "\n".join(lines) + "\n```"
 
 
 def render_grid(

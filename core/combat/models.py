@@ -1206,7 +1206,7 @@ class Player:
             self.equipped_armor and self.equipped_armor.passive == "Impregnable"
         ) or bool(ss_impregnable)
         cap = 90 if has_impregnable else 80
-        return max(0, total), cap
+        return int(max(0, total)), cap
 
     def get_total_pdr(self) -> int:
         raw, cap = self._calc_raw_pdr()
@@ -1248,7 +1248,7 @@ class Player:
         if self.ascension_unlocks:
             total += self.get_ascension_bonuses()["fdr"]
 
-        return total
+        return int(total)
 
     def get_total_ward_percentage(self) -> int:
         from core.items.essence_mechanics import compute_essence_stat_bonus

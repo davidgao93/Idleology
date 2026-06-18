@@ -58,6 +58,7 @@ class Companions(commands.Cog):
                 )
                 gate.message = await interaction.original_response()
                 return
+            self.bot.state_manager.clear_active(user_id)
             return await interaction.response.send_message(
                 "You have no companions yet. Defeat monsters in combat after level 40 to tame them!",
                 ephemeral=True,

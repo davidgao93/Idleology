@@ -38,13 +38,20 @@ class PotionDistillationView(BaseView):
     """
 
     def __init__(
-        self, bot, user_id: str, server_id: str, alchemy_level: int, cosmic_dust: int
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        alchemy_level: int,
+        cosmic_dust: int,
+        excluded_passive_types: list | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
         self.cosmic_dust = cosmic_dust
         self.session: dict = {}
         self._processing = False
+        self._excluded_passive_types: list = excluded_passive_types or []
         # Session is loaded asynchronously via _ensure_session() when the view is started.
 
     async def _ensure_session(self):
@@ -56,7 +63,9 @@ class PotionDistillationView(BaseView):
             self.session = row["data"] or {}
             self.session["step"] = row.get("step", 0)
         else:
-            self.session = DistillationMechanics.start_distillation(self.alchemy_level)
+            self.session = DistillationMechanics.start_distillation(
+                self.alchemy_level, self._excluded_passive_types
+            )
             await self._save_session()
 
         # Keep dust fresh for accurate (current->after) previews on buttons.
@@ -390,47 +399,49 @@ class PotionDistillationView(BaseView):
             base_type, final_val, final_dur
         )
 
-        # Put into first empty slot, or slot 1 if all full (MVP behavior).
-        # A later phase can add explicit slot selection UI after finalize.
+        # Place in first empty slot, or overwrite slot 1 if all full.
         passives = await self.bot.database.alchemy.get_potion_passives(self.user_id)
         occupied = {p["slot"] for p in passives}
-        slot_count = 5  # current max
-        slot = next((s for s in range(1, slot_count + 1) if s not in occupied), 1)
+        slot_count = 5
+        slot = next((sl for sl in range(1, slot_count + 1) if sl not in occupied), 1)
+
+        # Save with the actual distilled duration so the hub displays it correctly.
         await self.bot.database.alchemy.set_passive(
-            self.user_id, slot, base_type, final_val
+            self.user_id, slot, base_type, final_val, final_dur
         )
-        # We store the distilled duration in a simple way for now (the combat code will need
-        # to be taught to read duration for these new types; see later todos).
 
         await self._clear_session()
 
-        final_embed = previous_embed
-        final_embed.title = "✨ Distillation Complete!"
-        final_embed.colour = discord.Color.gold()
-        final_embed.add_field(
-            name="Your Elixir",
-            value=f"{emoji} **{name}**\n*{final_desc}*",
-            inline=False,
+        # Edit original in-progress message to a clean "done" state (no buttons).
+        done_embed = discord.Embed(
+            title="✨ Distillation Complete!",
+            description=(
+                f"**{emoji} {name}** has been placed in **Slot {slot}**.\n"
+                "Your new elixir details are in the message below."
+            ),
+            color=discord.Color.gold(),
         )
-        final_embed.add_field(
-            name="Placed in Potion Passive Slot",
-            value=f"**Slot {slot}** has been overwritten with this powerful new effect.",
-            inline=False,
-        )
+        await interaction.edit_original_response(embed=done_embed, view=None)
 
-        # Return to a fresh hub so the player sees their new passive
+        # Send the full result as a separate followup message with the hub.
         from core.alchemy.views import _hub_from_db
 
         hub = await _hub_from_db(self.bot, self.user_id, self.server_id)
-        hub_embed = hub.build_embed()
-        hub_embed.title = "⚗️ Alchemy"
-        hub_embed.description = "Your newly distilled elixir is ready!"
+        result_embed = hub.build_embed()
+        result_embed.title = "⚗️ Alchemy — New Elixir Ready"
+        result_embed.colour = discord.Color.gold()
+        result_embed.insert_field_at(
+            0,
+            name=f"✨ {emoji} {name} (distilled)",
+            value=f"*{final_desc}*\nPlaced in **Slot {slot}**.",
+            inline=False,
+        )
 
-        await interaction.edit_original_response(embed=final_embed, view=None)
-        # Send a follow-up hub for convenience
         try:
-            await interaction.followup.send(embed=hub_embed, view=hub, ephemeral=False)
-            hub.message = await interaction.original_response()
+            msg = await interaction.followup.send(
+                embed=result_embed, view=hub, ephemeral=False
+            )
+            hub.message = msg
         except Exception:
             pass
 
@@ -464,8 +475,14 @@ class PotionDistillationView(BaseView):
 
 # Convenience launcher (similar to _build_synthesis_hub)
 async def start_distillation(
-    bot, user_id: str, server_id: str, interaction: Interaction
+    bot,
+    user_id: str,
+    server_id: str,
+    interaction: Interaction,
+    excluded_passive_types: list | None = None,
 ):
     level, dust = await _get_alchemy_context(bot, user_id, server_id)
-    view = PotionDistillationView(bot, user_id, server_id, level, dust)
+    view = PotionDistillationView(
+        bot, user_id, server_id, level, dust, excluded_passive_types
+    )
     await view.start(interaction)

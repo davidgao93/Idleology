@@ -414,28 +414,7 @@ async def _deduct_item(
 # ---------------------------------------------------------------------------
 
 
-class _DisenchantCategorySelect(ui.Select):
-    def __init__(self) -> None:
-        opts = [
-            discord.SelectOption(
-                label="Boss Keys", value=_CATEGORY_BOSS_KEYS, emoji="🔑"
-            ),
-            discord.SelectOption(
-                label="Elemental Materials", value=_CATEGORY_ELEMENTAL, emoji="🌟"
-            ),
-            discord.SelectOption(
-                label="Essences", value=_CATEGORY_ESSENCES, emoji="🔮"
-            ),
-            discord.SelectOption(
-                label="Paradise Jewels", value=_CATEGORY_JEWELS, emoji="💎"
-            ),
-        ]
-        super().__init__(placeholder="Select item category…", options=opts)
-        self.selected: str | None = None
-
-    async def callback(self, interaction: Interaction) -> None:
-        self.selected = self.values[0]
-        await self.view._load_items_for_category(interaction, self.selected)
+# Category dropdown replaced with buttons — no _DisenchantCategorySelect class needed.
 
 
 class _DisenchantItemSelect(ui.Select):
@@ -558,6 +537,14 @@ class _DisenchantQuantityModal(ui.Modal, title="How many items to disenchant?"):
         self._parent.stop()
 
 
+_CATEGORY_DEFS = [
+    (_CATEGORY_BOSS_KEYS, "Boss Keys", "🔑"),
+    (_CATEGORY_ELEMENTAL, "Elemental", "🌟"),
+    (_CATEGORY_ESSENCES, "Essences", "🔮"),
+    (_CATEGORY_JEWELS, "Jewels", "💎"),
+]
+
+
 class _DisenchantSelectView(BaseView):
     def __init__(
         self, bot, user_id: str, server_id: str, alchemy_level: int, target_slot: int
@@ -566,10 +553,21 @@ class _DisenchantSelectView(BaseView):
         self.alchemy_level = alchemy_level
         self.target_slot = target_slot
         self._options_data: list[dict] = []
-        self._category_select = _DisenchantCategorySelect()
         self._item_select: _DisenchantItemSelect | None = None
-        self.add_item(self._category_select)
+        self._active_category: str | None = None
 
+        # Row 0: category buttons
+        for cat_key, cat_label, cat_emoji in _CATEGORY_DEFS:
+            btn = ui.Button(
+                label=cat_label,
+                style=ButtonStyle.secondary,
+                emoji=cat_emoji,
+                row=0,
+            )
+            btn.callback = self._make_category_callback(cat_key)
+            self.add_item(btn)
+
+        # Row 2: confirm + back (item select will occupy row 1 when loaded)
         self._confirm_btn = ui.Button(
             label="Queue Disenchant", style=ButtonStyle.green, emoji="🔨", row=2
         )
@@ -582,13 +580,31 @@ class _DisenchantSelectView(BaseView):
         back_btn.callback = self._on_back
         self.add_item(back_btn)
 
+    def _make_category_callback(self, cat_key: str):
+        async def _cb(interaction: Interaction) -> None:
+            self._active_category = cat_key
+            # Highlight the clicked category button, reset others
+            active_label = next(
+                (lbl for k, lbl, _ in _CATEGORY_DEFS if k == cat_key), None
+            )
+            for child in self.children:
+                if isinstance(child, ui.Button) and child.row == 0:
+                    child.style = (
+                        ButtonStyle.primary
+                        if child.label == active_label
+                        else ButtonStyle.secondary
+                    )
+            await self._load_items_for_category(interaction, cat_key)
+
+        return _cb
+
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title=f"🔨 Disenchant Items — Queue Slot {self.target_slot}",
             color=discord.Color.blurple(),
         )
         embed.description = (
-            "Select a **category** to load the items you own.\n"
+            "Choose a **category** above to see the items you own.\n"
             "Then select an item and click **Queue Disenchant**."
         )
         return embed
