@@ -142,7 +142,18 @@ class UserRepository:
     # ---------------------------------------------------------
 
     async def update_from_player_object(self, player: Player) -> None:
-        """Syncs a core.models.Player object back to the DB."""
+        """Syncs the five combat-outcome fields of a Player object back to the DB.
+
+        Deliberately narrow: only level, ascension, current_hp, potions, and
+        experience are written here.  All other mutable fields (gold, attack,
+        defence, max_hp, currencies, cooldown timestamps) have their own
+        dedicated repo methods (modify_gold, modify_stat, update_timer, …) that
+        are called explicitly at the site where the mutation happens.  Adding a
+        new Player field that needs persistence requires a dedicated method —
+        do not widen this update to a broad "write everything" query, as that
+        would hide mutation sites and create silent staleness bugs when Player
+        fields diverge from what the DB expects.
+        """
         await self.connection.execute(
             """
                 UPDATE users SET

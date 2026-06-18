@@ -329,7 +329,7 @@ class GatherView(BaseView):
             self.skill_data[5] + ref[2],
             self.skill_data[6] + ref[3],
         ]
-        gold_held = self.user_data[6]
+        gold_held = self.user_data["gold"]
         if res_held[0] < costs["res_1"]:
             return False
         if res_held[1] < costs["res_2"]:
@@ -472,7 +472,7 @@ class GatherView(BaseView):
         )
         entry_cost = DelveMechanics.get_entry_cost(delve_stats["fuel_lvl"])
 
-        if self.user_data[6] < entry_cost:
+        if self.user_data["gold"] < entry_cost:
             self._processing = False
             await interaction.followup.send(
                 f"You need **{entry_cost:,} Gold** to purchase a mining permit.",

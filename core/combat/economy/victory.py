@@ -422,7 +422,10 @@ async def apply_victory_rewards(
             await bot.database.skills.update_batch(
                 user_id, server_id, _skill_type, _resources
             )
-            # NEET boot doubles skilling yield from Flora too
+            # NEET boot doubles Flora skilling yield by granting the same
+            # batch a second time.  update_batch is additive, so two calls
+            # with the same dict produce exactly 2× resources — this is the
+            # intended doubling effect, not an accidental duplicate.
             if player.get_boot_corrupted_essence() == "neet":
                 await bot.database.skills.update_batch(
                     user_id, server_id, _skill_type, _resources

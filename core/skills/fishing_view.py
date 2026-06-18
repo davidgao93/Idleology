@@ -84,7 +84,7 @@ class FishingView(BaseView):
 
     @property
     def gold(self) -> int:
-        return self.user_data[6] if self.user_data else 0
+        return self.user_data["gold"] if self.user_data else 0
 
     def _focus_bar(self) -> str:
         if self.focus_streak == 0:

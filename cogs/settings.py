@@ -25,7 +25,7 @@ class Settings(commands.Cog, name="settings"):
         exp_protection = await self.bot.database.users.get_exp_protection(user_id)
         auto_rest_pay = await self.bot.database.users.get_auto_rest_pay(user_id)
         difficulty = await self.bot.database.users.get_hard_mode(user_id)
-        player_level = existing_user[4]  # level column index
+        player_level = existing_user["level"]
 
         view = SettingsView(
             self.bot,

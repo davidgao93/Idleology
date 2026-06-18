@@ -344,8 +344,8 @@ class CompanionDetailView(BaseView):
         user_row = await self.bot.database.users.get(
             self.user_id, str(interaction.guild.id)
         )
-        player_level = user_row[4] if user_row else 1
-        player_ascension = user_row[15] if user_row else 0
+        player_level = user_row["level"] if user_row else 1
+        player_ascension = user_row["ascension"] if user_row else 0
         max_slots = self._companion_slot_cap(player_level, player_ascension)
 
         new_state = not self.comp.is_active

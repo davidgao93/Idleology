@@ -244,6 +244,13 @@ class Combat(commands.Cog, name="combat"):
             gate.message = await interaction.original_response()
             return
 
+        # set_active is called here, before any gate views, so that the
+        # LowHealthWarningView and any downstream gate (CorruptedEncounterGateView /
+        # DoorPromptView) share the same active-state lifetime.
+        # Safety net: every gate view inherits BaseView whose on_timeout calls
+        # clear_active, so a user who ignores a gate for 10 min won't be stuck.
+        # If an unhandled exception fires between this line and CombatView.send,
+        # StateManager's own 10-minute auto-expiry serves as the final fallback.
         self.bot.state_manager.set_active(user_id, "combat")
 
         player = await load_player(user_id, existing_user, self.bot.database)
@@ -311,6 +318,13 @@ class Combat(commands.Cog, name="combat"):
         _DIFFICULTY_CORRUPTED_BONUS = [0.0, 0.02, 0.05, 0.08, 0.10]
 
         # 3a. Corrupted encounter roll — resolves first (level 100+)
+        # Gate-view state-clear contract: CorruptedEncounterGateView and
+        # DoorPromptView do NOT clear active state on their own.  They are
+        # fire-and-wait gates inside _execute_combat, which always continues
+        # to a CombatView after the gate resolves (even on "flee/decline" it
+        # falls through to a regular fight).  The CombatView owns the
+        # clear_active call on combat end; BaseView.on_timeout handles the gate
+        # timeout case by clearing state early (10-min fallback).
         if player.level >= 100:
             corrupted_chance = (
                 0.01

@@ -23,7 +23,7 @@ from core.skills.mastery import get_attunement_alchemy_bonus
 async def _hub_from_db(bot, user_id: str, server_id: str) -> "AlchemyHubView":
     """Re-fetches all alchemy data from the DB and returns a fresh hub view."""
     user_row = await bot.database.users.get(user_id, server_id)
-    gold = user_row[6] if user_row else 0
+    gold = user_row["gold"] if user_row else 0
     spirit_stones = await bot.database.users.get_currency(user_id, "spirit_stones")
     alchemy_level = await bot.database.alchemy.get_level(user_id)
     passives = await bot.database.alchemy.get_potion_passives(user_id)
@@ -297,7 +297,7 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
         user_row = await self._view.bot.database.users.get(
             self._view.user_id, self._view.server_id
         )
-        current_gold = user_row[6] if user_row else 0
+        current_gold = user_row["gold"] if user_row else 0
         total_gold = gold_cost_each * qty
         if current_gold < total_gold:
             max_by_gold = current_gold // gold_cost_each
@@ -653,11 +653,12 @@ class AlchemyTransmuteView(BaseView):
         self._select.row = 1
         self.add_item(self._select)
 
+        direction_label = "Raw → Processed" if going_up else "Processed → Raw"
         embed.description = (
             f"Convert raw gathering resources to/from their processed forms (bars, planks, essences).\n"
             f"All conversions are **1:1** — no ratio loss.\n"
-            f"**Gold:** 💰 {self.player_gold:,}\n\n"
-            "Select a conversion (up to 25 shown), then press **Transmute** to enter a quantity."
+            f"**Direction:** {direction_label} | **Gold:** 💰 {self.player_gold:,}\n\n"
+            "Select a conversion, then press **Transmute** to enter a quantity."
         )
         return embed
 

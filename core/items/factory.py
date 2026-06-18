@@ -255,22 +255,25 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         user_data (tuple): The raw tuple from the 'users' table
         database (DatabaseManager): The active database manager instance
     """
-    # 1. Initialize Player with base stats from 'users' table
-    # Schema: 3:name, 4:level, 5:exp, 9:atk, 10:def, 11:cur_hp, 12:max_hp, 15:asc, 16:pots
+    # 1. Initialize Player with base stats from 'users' table.
+    # The connection uses sqlite3.Row as its row_factory (set in bot.py on_ready),
+    # so user_data supports both named access and integer indexing. Named access
+    # is used here so column insertions/reorderings in schema.sql never silently
+    # corrupt stats.
     player = Player(
         id=user_id,
-        name=user_data[3],
-        level=user_data[4],
-        ascension=user_data[15],
-        exp=user_data[5],
-        current_hp=user_data[11],
-        max_hp=user_data[12],
-        base_attack=user_data[9],
-        base_defence=user_data[10],
-        potions=user_data[16],
+        name=user_data["name"],
+        level=user_data["level"],
+        ascension=user_data["ascension"],
+        exp=user_data["experience"],
+        current_hp=user_data["current_hp"],
+        max_hp=user_data["max_hp"],
+        base_attack=user_data["attack"],
+        base_defence=user_data["defence"],
+        potions=user_data["potions"],
     )
 
-    server_id = user_data[2]  # Assuming index 2 is server_id in users table
+    server_id = user_data["server_id"]
 
     # Settlement buffs
     b_tier, b_workers = await database.settlement.get_building_details(
@@ -290,8 +293,9 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         )
         player.apothecary_boost_pct = combat_bonuses["apothecary_boost_pct"]
         player.shrine_effectiveness = combat_bonuses["shrine_effectiveness"]
-    except Exception:
-        pass  # defaults to 0.0 / {} from Player dataclass
+    except Exception as e:
+        print(f"[load_player] settlement combat bonuses failed for {user_id}: {e}")
+        # defaults to 0.0 / {} from Player dataclass
 
     # 2. Fetch and Attach Gear
     # We await the database calls here so the resulting Player object is fully populated
@@ -325,14 +329,20 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         player.active_companions = [create_companion(row) for row in comp_rows]
 
     # --- Fetch Companion Mastery ---
+    # Each block below uses bare except so that a missing row (first-time unlock)
+    # or a mid-migration schema gap silently falls back to safe defaults rather
+    # than crashing the entire player load.  The print lets us catch unexpected
+    # DB errors without spamming logs for every new player who hasn't visited
+    # the feature yet.
     try:
         mastery = await database.companions.get_mastery(user_id, server_id)
         nodes = mastery.get("nodes_owned", {})
         from core.companions.mastery import get_passive_mult, has_elite_bond
         player.companion_passive_mult = get_passive_mult(nodes, len(player.active_companions))
         player.companion_elite_bond = has_elite_bond(nodes)
-    except Exception:
-        pass  # defaults (1.0 / False) from Player dataclass
+    except Exception as e:
+        print(f"[load_player] companion mastery failed for {user_id}: {e}")
+        # defaults (1.0 / False) from Player dataclass
 
     # --- Fetch Slayer Data ---
     try:
@@ -341,40 +351,47 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         # Load Active Task to check for Slayer-specific buffs
         profile = await database.slayer.get_profile(user_id, server_id)
         player.active_task_species = profile.get("active_task_species")
-    except Exception:
-        # Failsafe if player hasn't opened /slayer yet
+    except Exception as e:
+        # Expected for players who haven't opened /slayer yet (no profile row).
+        # Any other exception here is unexpected and worth investigating.
+        print(f"[load_player] slayer data failed for {user_id}: {e}")
         player.slayer_emblem = {}
         player.active_task_species = None
 
     # --- Fetch Codex Tomes ---
     try:
         player.codex_tomes = await database.codex.get_tomes(user_id)
-    except Exception:
+    except Exception as e:
+        print(f"[load_player] codex tomes failed for {user_id}: {e}")
         player.codex_tomes = []
 
     # --- Fetch Ascension Pinnacle Unlocks ---
     try:
         player.ascension_unlocks = await database.ascension.get_unlocked_floors(user_id)
-    except Exception:
+    except Exception as e:
+        print(f"[load_player] ascension unlocks failed for {user_id}: {e}")
         player.ascension_unlocks = set()
 
     # --- Fetch Alchemy Potion Passives ---
     try:
         player.potion_passives = await database.alchemy.get_potion_passives(user_id)
-    except Exception:
+    except Exception as e:
+        print(f"[load_player] alchemy passives failed for {user_id}: {e}")
         player.potion_passives = []
 
     # --- Fetch Equipped Monster Body Parts ---
     try:
         player.equipped_parts = await database.monster_parts.get_equipped_parts(user_id)
-    except Exception:
+    except Exception as e:
+        print(f"[load_player] monster parts failed for {user_id}: {e}")
         player.equipped_parts = {}
 
     # --- Fetch Paradise Jewel Data ---
     try:
         player.jewel_of_paradise = await database.paradise.get(user_id)
-    except Exception:
-        pass  # keeps default empty structure
+    except Exception as e:
+        print(f"[load_player] paradise jewel failed for {user_id}: {e}")
+        # keeps default empty structure
 
     # --- Fetch Active Combat Partner ---
     try:
@@ -386,14 +403,16 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
             static = PARTNER_DATA.get(partner_row[2])
             if static:
                 player.active_partner = Partner.from_row(partner_row, static)
-    except Exception:
+    except Exception as e:
+        print(f"[load_player] active partner failed for {user_id}: {e}")
         player.active_partner = None
 
     # --- Fetch Hematurgy Passives ---
     try:
         raw = await database.hematurgy.get_all_passives(user_id)
         player.hematurgy_passives = {v["passive_id"]: v["tier"] for v in raw.values()}
-    except Exception:
+    except Exception as e:
+        print(f"[load_player] hematurgy passives failed for {user_id}: {e}")
         player.hematurgy_passives = {}
 
     # --- Fetch Soul Stone ---
@@ -402,7 +421,8 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         from core.apex.models import soul_stone_from_db
 
         player.soul_stone = soul_stone_from_db(ss_row)
-    except Exception:
+    except Exception as e:
+        print(f"[load_player] soul stone failed for {user_id}: {e}")
         player.soul_stone = None
 
     # --- Fetch Stat Investments (passive_point allocations) ---
@@ -412,8 +432,9 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         player.stat_invest_def = stat_inv["def"]
         player.stat_invest_hp = stat_inv["hp"]
         player.stat_invest_gold = stat_inv["gold"]
-    except Exception:
-        pass  # defaults to 0 from Player dataclass
+    except Exception as e:
+        print(f"[load_player] stat investments failed for {user_id}: {e}")
+        # defaults to 0 from Player dataclass
 
     # 3. Pre-compute flat stat cache (base + gear + essences + barracks).
     # Must be done after all gear is attached and before any combat begins.
@@ -434,9 +455,17 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
                 player.equipped_boot.passive_lvl * 60
             )
 
-    # Hearty boot passive is now a percentage in total_max_hp (additive with Vitality).
-    # If the player was at or above their base max HP (e.g. full HP from a previous session),
-    # restore current_hp to the new full total_max_hp so the Hearty bonus takes effect immediately.
+    # HP ceiling enforcement — single enforcement point at load time.
+    #
+    # total_max_hp is always >= max_hp (it only adds bonuses), so any stored
+    # current_hp that is at or above the base max_hp must be clamped to the
+    # current total_max_hp.  This handles the common "swap out Hearty/gluttony
+    # gear while at full HP" case: the DB row retains the old inflated value,
+    # and this line corrects it on next load without needing a migration or a
+    # per-equip clamp in the inventory system.
+    #
+    # If current_hp is below max_hp (player was wounded), total_max_hp >= max_hp
+    # so the value is already safe — no clamp needed.
     if player.current_hp >= player.max_hp:
         player.current_hp = player.total_max_hp
 

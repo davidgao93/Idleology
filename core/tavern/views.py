@@ -12,9 +12,9 @@ from core.tavern.mechanics import TavernMechanics
 class ShopView(BaseView):
     def __init__(self, bot, user_id: str, user_data: tuple):
         super().__init__(bot, user_id)
-        self.gold = user_data[6]
-        self.potions = user_data[16]
-        self.level = user_data[4]
+        self.gold = user_data["gold"]
+        self.potions = user_data["potions"]
+        self.level = user_data["level"]
         self.potion_cost = TavernMechanics.calculate_potion_cost(self.level)
         self._processing = False
         self.update_buttons()

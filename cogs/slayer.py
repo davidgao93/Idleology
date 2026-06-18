@@ -28,7 +28,7 @@ class Slayer(commands.Cog, name="slayer"):
             profile = await self.bot.database.slayer.get_profile(user_id, server_id)
             tree_data = await self.bot.database.slayer.get_tree(user_id, server_id)
             view = SlayerDashboardView(
-                self.bot, user_id, server_id, profile, existing_user[4], tree_data
+                self.bot, user_id, server_id, profile, existing_user["level"], tree_data
             )
             return view.build_embed(), view
 

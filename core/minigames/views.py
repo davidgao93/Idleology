@@ -12,7 +12,7 @@ from .logic import BlackjackLogic, CrashLogic, HorseRaceLogic, RouletteLogic
 
 async def check_funds(bot, user_id, amount, interaction):
     user_data = await bot.database.users.get(user_id, interaction.guild.id)
-    if user_data[6] < amount:
+    if user_data["gold"] < amount:
         await interaction.response.send_message(
             f"Insufficient funds to restart! You need {amount:,} gold.", ephemeral=True
         )
@@ -57,7 +57,7 @@ class RouletteNumberModal(Modal, title="Bet on a Number"):
         user_data = await self.parent_view.bot.database.users.get(
             self.parent_view.user_id, interaction.guild.id
         )
-        if user_data[6] < self.parent_view.bet_amount:
+        if user_data["gold"] < self.parent_view.bet_amount:
             await interaction.response.send_message(
                 "Insufficient funds!", ephemeral=True
             )
@@ -89,7 +89,7 @@ class RouletteView(BaseView):
         user_data = await self.bot.database.users.get(
             self.user_id, interaction.guild.id
         )
-        if user_data[6] < self.bet_amount:
+        if user_data["gold"] < self.bet_amount:
             await interaction.response.send_message(
                 "Insufficient funds!", ephemeral=True
             )
@@ -422,7 +422,7 @@ class BlackjackView(BaseView):
         user_data = await self.bot.database.users.get(
             self.user_id, interaction.guild.id
         )
-        if user_data[6] < self.bet_amount:
+        if user_data["gold"] < self.bet_amount:
             await interaction.response.send_message(
                 "Insufficient funds.", ephemeral=True
             )

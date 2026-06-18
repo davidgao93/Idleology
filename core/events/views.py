@@ -107,7 +107,7 @@ class RandomEventView(BaseView):
 
             # Find or Create "Recent Claims" field
             field_found = False
-            new_val = f"**{existing_user[3]}** {reward_msg}"
+            new_val = f"**{existing_user['name']}** {reward_msg}"
 
             # Simple list management for the embed field
             for i, field in enumerate(embed.fields):
