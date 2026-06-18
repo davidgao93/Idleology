@@ -39,7 +39,7 @@ class CombatTutorialView(BaseView):
     """First-time combat tutorial gate. Shown once; 'Begin Combat' re-enters the full combat flow."""
 
     def __init__(self, bot, cog, user_id: str, server_id: str, existing_user):
-        super().__init__(bot, user_id, server_id, timeout=300)
+        super().__init__(bot, user_id, server_id)
         self._cog = cog
         self._existing_user = existing_user
         self._processing = False

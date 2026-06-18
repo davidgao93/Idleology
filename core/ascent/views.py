@@ -106,7 +106,7 @@ class AscentLobbyView(BaseView):
         best_floor: int,
         pinnacle_keys: int,
     ):
-        super().__init__(bot, user_id, server_id, timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.player = player
         self.best_floor = best_floor
         self.pinnacle_keys = pinnacle_keys
@@ -331,7 +331,7 @@ class AscentView(BaseView):
         starting_floor: int,
         best_floor: int,
     ):
-        super().__init__(bot, user_id, server_id, timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.player = player
         self.monster = initial_monster
         self.logs = start_logs or {}

@@ -362,7 +362,7 @@ class ParadiseHubView(BaseView):
 
 class _ManageSkillsView(BaseView):
     def __init__(self, bot, user_id, server_id, data, jewel_count, message):
-        super().__init__(bot, user_id, server_id, timeout=120)
+        super().__init__(bot, user_id, server_id)
         self.data = data
         self.jewel_count = jewel_count
         self.message = message
@@ -467,7 +467,7 @@ class _SkillPickView(BaseView):
     def __init__(
         self, bot, user_id, server_id, data, remaining_skills, jewel_count, message
     ):
-        super().__init__(bot, user_id, server_id, timeout=120)
+        super().__init__(bot, user_id, server_id)
         self.data = data
         self.jewel_count = jewel_count
         self.message = message
@@ -546,7 +546,7 @@ class _SkillPickView(BaseView):
 
 class _ManagePassivesView(BaseView):
     def __init__(self, bot, user_id, server_id, data, jewel_count, dust, message):
-        super().__init__(bot, user_id, server_id, timeout=120)
+        super().__init__(bot, user_id, server_id)
         self.data = data
         self.jewel_count = jewel_count
         self.dust = dust
@@ -736,7 +736,7 @@ class _RerollActionView(BaseView):
     def __init__(
         self, bot, user_id, server_id, data, slot_idx, jewel_count, dust, message
     ):
-        super().__init__(bot, user_id, server_id, timeout=120)
+        super().__init__(bot, user_id, server_id)
         self.data = data
         self.slot_idx = slot_idx
         self.jewel_count = jewel_count

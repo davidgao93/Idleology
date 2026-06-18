@@ -47,7 +47,7 @@ class CodexTomsView(BaseView):
         rerolls: int,
         chapter_history: dict,
     ):
-        super().__init__(bot, user_id, timeout=600)
+        super().__init__(bot, user_id)
         self.player = player
         self.fragments = fragments
         self.pages = pages

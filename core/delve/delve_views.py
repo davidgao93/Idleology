@@ -11,7 +11,7 @@ class DelveEntryView(BaseView):
     def __init__(
         self, bot, user_id, server_id, cost, start_callback, *, parent_gather_view=None
     ):
-        super().__init__(bot, user_id, server_id, timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.cost = cost
         self.start_callback = start_callback
         self.parent_gather_view = parent_gather_view
@@ -69,7 +69,7 @@ class DelveView(BaseView):
         *,
         parent_gather_view=None,
     ):
-        super().__init__(bot, user_id, server_id, timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.state = state
         self.stats = stats
         self.parent_gather_view = parent_gather_view
@@ -500,7 +500,7 @@ class DelveView(BaseView):
 
 class DelveUpgradeView(BaseView):
     def __init__(self, bot, user_id, server_id, stats):
-        super().__init__(bot, user_id, server_id, timeout=600)
+        super().__init__(bot, user_id, server_id)
         self.stats = stats  # dict from repo
         self._processing = False
         self.update_buttons()

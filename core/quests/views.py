@@ -39,7 +39,7 @@ def _fmt_td(td: timedelta) -> str:
 
 class QuestBoardView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str):
-        super().__init__(bot, user_id, server_id, timeout=600)
+        super().__init__(bot, user_id, server_id)
         self._processing = False
 
         # Loaded state

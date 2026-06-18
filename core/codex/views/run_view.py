@@ -112,7 +112,7 @@ class CodexRunView(BaseView):
         start_logs: dict,
         chapter_wave_baseline: dict = None,
     ):
-        super().__init__(bot, user_id, timeout=600)
+        super().__init__(bot, user_id)
         self.player = player
         self.chapters = chapters
         self.chapter_idx = 0

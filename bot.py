@@ -261,6 +261,18 @@ class DiscordBot(commands.Bot):
                 pass
         await super().close()
 
+    async def on_resumed(self) -> None:
+        """Called when the gateway reconnects after a shard drop.
+
+        Any view that was open during the disconnect is effectively dead —
+        Discord drops unacknowledged interactions during the outage, so
+        users could not have completed their session.  Clearing all active
+        state here lets them start fresh immediately after reconnect rather
+        than being locked out until a manual /clearall.
+        """
+        self.logger.info("Shard resumed — clearing all active sessions")
+        self.state_manager.clear_all()
+
     async def on_message(self, message: discord.Message) -> None:
         """
         The code in this event is executed every time someone sends a message, with or without the prefix
@@ -445,59 +457,41 @@ class DiscordBot(commands.Bot):
 
 
 class StateManager:
-    def __init__(self, logger, timeout_minutes=10):
+    """Tracks which users are currently inside an interactive view.
+
+    State is cleared in three ways:
+    - Explicitly by each view's exit/complete/flee button path.
+    - By ``clear_all()`` when the bot's shard resumes after a disconnect
+      (users cannot interact with a view during a shard drop, so their
+      session is considered expired on reconnect).
+    - By the owner ``/clearall`` command for manual admin resets.
+
+    There is intentionally no time-based auto-expiry: users are expected
+    to finish views before starting new ones.  A bot restart naturally
+    wipes this in-memory dict, and ``on_resumed`` handles shard drops.
+    """
+
+    def __init__(self, logger):
         self.logger = logger
-        self.active_operations: Dict[
-            str, Tuple[str, float]
-        ] = {}  # user_id: (operation, timestamp)
-        self.timeout_seconds = timeout_minutes * 60
+        self.active_operations: Dict[str, str] = {}  # user_id → operation name
 
     def set_active(self, user_id: str, operation: str):
-        """Set a user's operation state with timestamp."""
-        timestamp = time.time()
         self.logger.info(f"Set {user_id} as {operation}")
-        self.active_operations[user_id] = (operation, timestamp)
+        self.active_operations[user_id] = operation
 
     def clear_active(self, user_id: str):
-        """Clear a user's operation state."""
         self.logger.info(f"Attempt to clear {user_id}")
         if user_id in self.active_operations:
             self.logger.info(f"{user_id} found in active list, cleared")
             del self.active_operations[user_id]
 
-    def is_active(self, user_id: str):
-        """Check if a user is currently engaged in an operation."""
-        if user_id in self.active_operations:
-            operation, timestamp = self.active_operations[user_id]
-            # Auto-clear if operation is too old
-            if time.time() - timestamp > self.timeout_seconds:
-                self.logger.info(
-                    f"Auto-clearing expired operation for {user_id}: {operation}"
-                )
-                del self.active_operations[user_id]
-                return False
-            return True
-        return False
+    def is_active(self, user_id: str) -> bool:
+        return user_id in self.active_operations
 
     def clear_all(self):
-        """Clear all active operations."""
         count = len(self.active_operations)
         self.active_operations.clear()
         self.logger.info(f"Cleared all {count} active operations")
-
-    def clear_expired(self):
-        """Clear all expired operations."""
-        current_time = time.time()
-        expired_users = [
-            user_id
-            for user_id, (operation, timestamp) in self.active_operations.items()
-            if current_time - timestamp > self.timeout_seconds
-        ]
-
-        for user_id in expired_users:
-            operation = self.active_operations[user_id][0]
-            del self.active_operations[user_id]
-            self.logger.info(f"Cleared expired operation for {user_id}: {operation}")
 
         return len(expired_users)
 

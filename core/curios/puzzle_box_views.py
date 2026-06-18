@@ -16,7 +16,7 @@ from core.curios.puzzle_box_logic import (
 
 class PuzzleBoxView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str):
-        super().__init__(bot=bot, user_id=user_id, server_id=server_id, timeout=60)
+        super().__init__(bot=bot, user_id=user_id, server_id=server_id)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id

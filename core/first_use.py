@@ -293,7 +293,7 @@ class TutorialGateView(BaseView):
         *,
         build_main,
     ):
-        super().__init__(bot, user_id, server_id, timeout=180)
+        super().__init__(bot, user_id, server_id)
         self._feature_key = feature_key
         self._build_main = build_main
         self._processing = False

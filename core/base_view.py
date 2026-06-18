@@ -23,7 +23,7 @@ class BaseView(ui.View):
         server_id: str | None = None,
         *,
         parent: "BaseView | None" = None,
-        timeout: int = 600,
+        timeout: int | None = None,
     ):
         super().__init__(timeout=timeout)
         self.bot = bot

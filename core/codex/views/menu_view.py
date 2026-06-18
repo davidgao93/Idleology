@@ -23,7 +23,7 @@ class CodexMenuView(BaseView):
         chapter_history: dict,
         antique_tomes: int = 0,
     ):
-        super().__init__(bot, user_id, timeout=600)
+        super().__init__(bot, user_id)
         self.player = player
         self.fragments = fragments
         self.pages = pages

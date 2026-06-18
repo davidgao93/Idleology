@@ -85,7 +85,7 @@ class PostCombatView(BaseView):
     def __init__(
         self, bot, user_id: str, server_id: str, player, stamina: int, rematch_callback
     ):
-        super().__init__(bot, user_id, server_id, timeout=120)
+        super().__init__(bot, user_id, server_id)
         self.player = player
         self.rematch_callback = rematch_callback
         self._stamina = stamina
@@ -169,7 +169,7 @@ class StatPackagePicker(BaseView):
         *,
         on_done,
     ):
-        super().__init__(bot, user_id, server_id, timeout=300)
+        super().__init__(bot, user_id, server_id)
         self.player = player
         self.pending = pending_packages  # list of package-sets (list of 3 dicts each)
         self.on_done = on_done
