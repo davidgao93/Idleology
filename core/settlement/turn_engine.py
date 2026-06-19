@@ -448,6 +448,13 @@ async def _complete_project(
         await bot.database.settlement.add_idlem(user_id, idlem)
         return {"label": "Foundry produced Idlem", "idlem": idlem}
 
+    elif ptype == "uber_statue":
+        statue_type = data.get("statue_type")
+        if statue_type:
+            await bot.database.settlement.unlock_statue(user_id, server_id, statue_type)
+        label = f"{statue_type.title()} Statue" if statue_type else "Statue"
+        return {"label": f"{label} Built"}
+
     return {"label": ptype}
 
 
@@ -687,8 +694,6 @@ def roll_bm_rewards(
         "gold": int,
         "currencies": {currency_key: qty},
         "items": [{"type": "weapon"|"armor"|etc., "level": int}],
-        "eggs": int,
-        "consume_parts": int,
         "summary_lines": [str],  # human-readable
       }
     """
@@ -698,8 +703,6 @@ def roll_bm_rewards(
         "gold": 0,
         "currencies": {},
         "items": [],
-        "eggs": 0,
-        "consume_parts": 0,
         "summary_lines": [],
     }
 
@@ -802,12 +805,6 @@ def roll_bm_rewards(
                 chosen, 0
             ) + random.randint(1, 2)
 
-        elif cat == "egg":
-            result["eggs"] += 1
-
-        elif cat == "consume":
-            result["consume_parts"] += 1
-
         elif cat == "curio":
             result["currencies"]["curios"] = result["currencies"].get("curios", 0) + 1
 
@@ -870,10 +867,6 @@ def roll_bm_rewards(
         result["summary_lines"].append(f"• {qty}× {label}")
     if result["items"]:
         result["summary_lines"].append(f"⚔️ {len(result['items'])}× Equipment Cache")
-    if result["eggs"] > 0:
-        result["summary_lines"].append(f"🥚 {result['eggs']}× Monster Egg")
-    if result["consume_parts"] > 0:
-        result["summary_lines"].append(f"🦴 {result['consume_parts']}× Body Part")
 
     return result
 
@@ -952,20 +945,3 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
         except Exception:
             pass
 
-    for _ in range(rewards.get("eggs", 0)):
-        try:
-            await bot.database.eggs.add_egg(user_id, "normal")
-        except Exception:
-            pass
-
-    for _ in range(rewards.get("consume_parts", 0)):
-        try:
-            import random as _rnd
-
-            slots = ["head", "torso", "right_arm", "left_arm", "right_leg", "left_leg"]
-            slot = _rnd.choice(slots)
-            await bot.database.monster_parts.add_part(
-                user_id, slot, "Unknown Creature", 1, 50
-            )
-        except Exception:
-            pass

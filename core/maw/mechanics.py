@@ -99,6 +99,49 @@ def calculate_pool_size(participant_count: int) -> int:
     return n * 10 + n * (n - 1) // 2
 
 
+# ---------------------------------------------------------------------------
+# Weekly weakness
+# ---------------------------------------------------------------------------
+
+# 4 weaknesses cycling through the year in ~13-week blocks.
+# week_of_year (0-indexed) % 4 selects the active weakness.
+_WEEKLY_WEAKNESSES = [
+    {
+        "key": "hit_damage",
+        "name": "Temporal Fracture",
+        "description": "Hit damage dealt to the Maw is amplified by **+50%**.",
+        "emoji": "⚔️",
+    },
+    {
+        "key": "crit_damage",
+        "name": "Exposed Core",
+        "description": "Critical hit damage dealt to the Maw is amplified by **+50%**.",
+        "emoji": "💥",
+    },
+    {
+        "key": "miss_damage",
+        "name": "Phantom Strikes",
+        "description": "Misses still deal **50% of normal hit damage** to the Maw.",
+        "emoji": "👻",
+    },
+    {
+        "key": "ward_to_damage",
+        "name": "Void Hunger",
+        "description": "Ward absorbed this fight converts to **bonus damage** dealt to the Maw.",
+        "emoji": "🔮",
+    },
+]
+
+
+def get_weekly_weakness(now: datetime | None = None) -> dict:
+    """Returns the active weakness dict for the current week-of-year."""
+    if now is None:
+        now = datetime.now(tz=timezone.utc)
+    now_utc = now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    week_of_year = int(now_utc.strftime("%W"))  # 0-indexed week, Mon start
+    return _WEEKLY_WEAKNESSES[week_of_year % len(_WEEKLY_WEAKNESSES)]
+
+
 def calculate_rewards(
     player_damage: int,
     total_damage: int,

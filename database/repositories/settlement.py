@@ -998,3 +998,79 @@ class SettlementRepository:
             (user_id, server_id, node_key, level),
         )
         await self.connection.commit()
+
+
+    # ------------------------------------------------------------------
+    # Uber Shrine Statues
+    # ------------------------------------------------------------------
+
+    async def get_uber_shrine_statues(
+        self, user_id: str, server_id: str
+    ) -> dict[str, dict]:
+        """Returns {statue_type: {can_build, is_unlocked, workers_assigned}}.
+
+        can_build  — blueprint earned from defeating the uber boss (uber_progress table).
+        is_unlocked — statue has been physically constructed via the 15-DT project.
+        workers_assigned — workers currently staffing the statue.
+        """
+        # Blueprint prerequisite flags from uber_progress
+        bp_cursor = await self.connection.execute(
+            "SELECT celestial_blueprint_unlocked, infernal_blueprint_unlocked, "
+            "void_blueprint_unlocked, gemini_blueprint_unlocked "
+            "FROM uber_progress WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        bp_row = await bp_cursor.fetchone()
+        can_build = {
+            "celestial": bool(bp_row[0]) if bp_row else False,
+            "infernal": bool(bp_row[1]) if bp_row else False,
+            "void": bool(bp_row[2]) if bp_row else False,
+            "bound": bool(bp_row[3]) if bp_row else False,  # gemini → bound statue
+        }
+
+        # Built state + worker counts from uber_shrine_statues
+        s_cursor = await self.connection.execute(
+            "SELECT statue_type, is_unlocked, workers_assigned FROM uber_shrine_statues "
+            "WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        s_rows = await s_cursor.fetchall()
+        statue_state = {r[0]: {"is_unlocked": bool(r[1]), "workers_assigned": r[2]} for r in s_rows}
+
+        return {
+            key: {
+                "can_build": can_build[key],
+                "is_unlocked": statue_state.get(key, {}).get("is_unlocked", False),
+                "workers_assigned": statue_state.get(key, {}).get("workers_assigned", 0),
+            }
+            for key in ("celestial", "infernal", "void", "bound")
+        }
+
+    async def set_statue_workers(
+        self,
+        user_id: str,
+        server_id: str,
+        statue_type: str,
+        workers: int,
+    ) -> None:
+        await self.connection.execute(
+            """INSERT INTO uber_shrine_statues (user_id, server_id, statue_type, workers_assigned)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(user_id, server_id, statue_type)
+               DO UPDATE SET workers_assigned = excluded.workers_assigned""",
+            (user_id, server_id, statue_type, workers),
+        )
+        await self.connection.commit()
+
+    async def unlock_statue(
+        self, user_id: str, server_id: str, statue_type: str
+    ) -> None:
+        """Marks the statue as built (called when the 15-DT project completes)."""
+        await self.connection.execute(
+            """INSERT INTO uber_shrine_statues (user_id, server_id, statue_type, is_unlocked)
+               VALUES (?, ?, ?, 1)
+               ON CONFLICT(user_id, server_id, statue_type)
+               DO UPDATE SET is_unlocked = 1""",
+            (user_id, server_id, statue_type),
+        )
+        await self.connection.commit()

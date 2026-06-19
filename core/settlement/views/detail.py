@@ -10,6 +10,7 @@ from core.settlement.constants import (
     RESOURCE_DISPLAY_NAMES,
     SPECIAL_MAP,
     UBER_BUILDINGS,
+    UBER_STATUE_DEFS,
 )
 from core.settlement.mechanics import SettlementMechanics
 from core.settlement.turn_engine import upgrade_dt_cost
@@ -211,6 +212,13 @@ class BuildingDetailView(SettlementBaseView):
         )
         btn_upgrade.callback = self.upgrade_building
         self.add_item(btn_upgrade)
+
+        if self.building.building_type == "uber_shrine":
+            btn_shrine = ui.Button(
+                label="Manage Statues", style=ButtonStyle.blurple, emoji="🏛️", row=1
+            )
+            btn_shrine.callback = self.open_uber_shrine
+            self.add_item(btn_shrine)
 
         if self.building.building_type == "hatchery":
             btn_hatchery = ui.Button(
@@ -513,8 +521,303 @@ class BuildingDetailView(SettlementBaseView):
             embed=view.build_embed(pending_deal=pending, zeal_data=zeal_data), view=view
         )
 
+    async def open_uber_shrine(self, interaction: Interaction):
+        await interaction.response.defer()
+        view = UberShrineView(
+            self.bot, self.user_id, self.parent.server_id, self.building, self
+        )
+        await view._load()
+        await interaction.edit_original_response(embed=view.build_embed(), view=view)
+
     async def go_back(self, interaction: Interaction):
         await interaction.response.edit_message(
             embed=self.parent.build_embed(), view=self.parent
         )
         self.stop()
+
+
+# ---------------------------------------------------------------------------
+# Uber Shrine statue management
+# ---------------------------------------------------------------------------
+
+
+class _StatueWorkerModal(ui.Modal, title="Assign Statue Workers"):
+    count = ui.TextInput(label="Number of Workers", min_length=1, max_length=4)
+
+    def __init__(self, parent: "UberShrineView", statue_type: str, max_workers: int):
+        super().__init__()
+        self.shrine_parent = parent
+        self.statue_type = statue_type
+        self.max_workers = max_workers
+
+    async def on_submit(self, interaction: Interaction):
+        try:
+            val = int(self.count.value)
+            if val < 0:
+                raise ValueError
+        except ValueError:
+            return await interaction.response.send_message("Invalid number.", ephemeral=True)
+
+        if val > self.max_workers:
+            return await interaction.response.send_message(
+                f"This statue can only hold {self.max_workers} workers.", ephemeral=True
+            )
+
+        free = await self.shrine_parent._free_followers(self.statue_type, val)
+        if val > free:
+            return await interaction.response.send_message(
+                f"You only have {free} available followers.", ephemeral=True
+            )
+
+        await self.shrine_parent.bot.database.settlement.set_statue_workers(
+            self.shrine_parent.user_id,
+            self.shrine_parent.server_id,
+            self.statue_type,
+            val,
+        )
+        self.shrine_parent.statue_data[self.statue_type]["workers_assigned"] = val
+        self.shrine_parent._rebuild_ui()
+        await interaction.response.edit_message(
+            embed=self.shrine_parent.build_embed(), view=self.shrine_parent
+        )
+
+
+class _StatueSelect(ui.Select):
+    def __init__(self, statue_data: dict):
+        options = []
+        for key, defn in UBER_STATUE_DEFS.items():
+            data = statue_data.get(key, {})
+            status = "Unlocked" if data.get("is_unlocked") else "Locked"
+            options.append(
+                discord.SelectOption(
+                    label=f"{defn['emoji']} {defn['name']}",
+                    value=key,
+                    description=status,
+                )
+            )
+        super().__init__(
+            placeholder="Select a statue to manage…", options=options, row=0
+        )
+        self.chosen: str | None = None
+
+    async def callback(self, interaction: Interaction):
+        self.chosen = self.values[0]
+        view: "UberShrineView" = self.view  # type: ignore[assignment]
+        view._rebuild_ui()
+        await interaction.response.edit_message(embed=view.build_embed(), view=view)
+
+
+class UberShrineView(SettlementBaseView):
+    """Manages per-statue worker allocation for the Uber Shrine building."""
+
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        building,
+        parent_detail: BuildingDetailView,
+    ):
+        super().__init__(bot, user_id)
+        self.server_id = server_id
+        self.building = building
+        self.parent_detail = parent_detail
+        self.statue_data: dict = {}
+        self._select: _StatueSelect = _StatueSelect({})
+        self._processing = False
+
+    async def _load(self) -> None:
+        self.statue_data = await self.bot.database.settlement.get_uber_shrine_statues(
+            self.user_id, self.server_id
+        )
+        self._select = _StatueSelect(self.statue_data)
+        self._rebuild_ui()
+
+    def _statue_worker_cap(self) -> int:
+        return self.building.tier * 10
+
+    async def _free_followers(self, statue_type: str, new_workers: int) -> int:
+        settlement = self.parent_detail.parent.settlement
+        total_building_workers = sum(b.workers_assigned for b in settlement.buildings)
+        total_statue_workers = sum(
+            d.get("workers_assigned", 0) for d in self.statue_data.values()
+        )
+        current_statue = self.statue_data.get(statue_type, {}).get("workers_assigned", 0)
+        follower_count = self.parent_detail.parent.follower_count
+        used = total_building_workers + total_statue_workers - current_statue
+        return follower_count - used
+
+    def _rebuild_ui(self) -> None:
+        self.clear_items()
+        self.add_item(self._select)
+
+        chosen = self._select.chosen
+        if chosen:
+            data = self.statue_data.get(chosen, {})
+            defn = UBER_STATUE_DEFS[chosen]
+            is_unlocked = data.get("is_unlocked", False)
+
+            can_build = data.get("can_build", False)
+            if not is_unlocked:
+                if can_build:
+                    btn_build = ui.Button(
+                        label=f"Build ({defn['build_dt']} DT + 1x {defn['material_name']})",
+                        style=ButtonStyle.success,
+                        emoji="🔨",
+                        row=1,
+                    )
+
+                    async def _on_build(interaction: Interaction, _t=chosen):
+                        await self._build_statue(interaction, _t)
+
+                    btn_build.callback = _on_build
+                    self.add_item(btn_build)
+                # else: fully locked, no button shown
+            else:
+                btn_workers = ui.Button(
+                    label="Assign Workers", style=ButtonStyle.primary, emoji="👥", row=1
+                )
+
+                async def _on_workers(interaction: Interaction, _t=chosen):
+                    cap = self._statue_worker_cap()
+                    modal = _StatueWorkerModal(self, _t, cap)
+                    await interaction.response.send_modal(modal)
+
+                btn_workers.callback = _on_workers
+                self.add_item(btn_workers)
+
+                btn_max = ui.Button(label="Max Workers", style=ButtonStyle.primary, row=1)
+
+                async def _on_max(interaction: Interaction, _t=chosen):
+                    await self._max_workers(interaction, _t)
+
+                btn_max.callback = _on_max
+                self.add_item(btn_max)
+
+        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
+
+        async def _on_back(interaction: Interaction):
+            await interaction.response.edit_message(
+                embed=self.parent_detail.build_embed(), view=self.parent_detail
+            )
+            self.stop()
+
+        btn_back.callback = _on_back
+        self.add_item(btn_back)
+
+    def build_embed(self) -> discord.Embed:
+        cap = self._statue_worker_cap()
+        lines = []
+        for key, defn in UBER_STATUE_DEFS.items():
+            data = self.statue_data.get(key, {})
+            if data.get("is_unlocked"):
+                w = data.get("workers_assigned", 0)
+                lines.append(f"{defn['emoji']} **{defn['name']}** — {w}/{cap} workers")
+            elif data.get("can_build"):
+                lines.append(
+                    f"{defn['emoji']} **{defn['name']}** — "
+                    f"📋 Blueprint ready · {defn['build_dt']} DT + 1x {defn['material_name']}"
+                )
+            else:
+                lines.append(
+                    f"{defn['emoji']} **{defn['name']}** — "
+                    f"🔒 Defeat **{defn['boss_name']}** to unlock blueprint"
+                )
+
+        chosen = self._select.chosen
+        detail = ""
+        if chosen:
+            data = self.statue_data.get(chosen, {})
+            defn = UBER_STATUE_DEFS[chosen]
+            if data.get("is_unlocked"):
+                w = data.get("workers_assigned", 0)
+                detail = (
+                    f"\n\n**Selected:** {defn['emoji']} {defn['name']}\n"
+                    f"{w}/{cap} workers assigned"
+                )
+            elif data.get("can_build"):
+                detail = (
+                    f"\n\n**Selected:** {defn['emoji']} {defn['name']}\n"
+                    f"📋 Blueprint unlocked — build for **{defn['build_dt']} DT** + **1x {defn['material_name']}**"
+                )
+            else:
+                detail = (
+                    f"\n\n**Selected:** {defn['emoji']} {defn['name']}\n"
+                    f"🔒 Defeat **{defn['boss_name']}** to earn the blueprint"
+                )
+
+        embed = discord.Embed(
+            title="🏛️ Uber Shrine — Statue Management",
+            description="\n".join(lines) + detail,
+            color=discord.Color.gold(),
+        )
+        embed.add_field(
+            name="Worker Cap",
+            value=f"{cap} workers per statue (Shrine Tier {self.building.tier})",
+            inline=False,
+        )
+        return embed
+
+    async def _build_statue(self, interaction: Interaction, statue_type: str) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        defn = UBER_STATUE_DEFS[statue_type]
+
+        owned = await self.bot.database.users.get_currency(
+            self.user_id, defn["material"]
+        )
+        if owned < defn["material_qty"]:
+            self._processing = False
+            return await interaction.response.send_message(
+                f"You need **{defn['material_qty']}x {defn['material_name']}** to build this statue. (You have {owned})",
+                ephemeral=True,
+            )
+
+        await interaction.response.defer()
+        await self.bot.database.users.modify_currency(
+            self.user_id, defn["material"], -defn["material_qty"]
+        )
+        await self.bot.database.settlement.upsert_project(
+            user_id=self.user_id,
+            server_id=self.server_id,
+            project_type="uber_statue",
+            target_id=None,
+            required_turns=defn["build_dt"],
+            data={"statue_type": statue_type},
+        )
+        self._processing = False
+        await interaction.edit_original_response(
+            content=(
+                f"🔨 **{defn['name']}** construction queued! "
+                f"Completes in **{defn['build_dt']} Development Turns**."
+            ),
+            embed=self.build_embed(),
+            view=self,
+        )
+
+    async def _max_workers(self, interaction: Interaction, statue_type: str) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        cap = self._statue_worker_cap()
+        current = self.statue_data.get(statue_type, {}).get("workers_assigned", 0)
+        free = await self._free_followers(statue_type, 0)
+        target = min(cap, free + current)
+
+        if target == current:
+            self._processing = False
+            return await interaction.response.send_message(
+                "Already at max capacity.", ephemeral=True
+            )
+
+        await interaction.response.defer()
+        await self.bot.database.settlement.set_statue_workers(
+            self.user_id, self.server_id, statue_type, target
+        )
+        self.statue_data[statue_type]["workers_assigned"] = target
+        self._rebuild_ui()
+        self._processing = False
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)

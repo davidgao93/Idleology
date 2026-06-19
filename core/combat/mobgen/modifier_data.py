@@ -632,6 +632,8 @@ def roll_tier(monster_level: int, mod_def: ModifierDef) -> int:
     monster.level exceeds the gate.
     """
     gates = mod_def.level_gates
+    if not gates:
+        return 1  # no level gates defined — always T1
     eligible = [i for i, gate in enumerate(gates) if monster_level >= gate]
     if not eligible:
         eligible = [0]  # fallback to T1

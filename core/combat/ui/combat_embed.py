@@ -269,9 +269,9 @@ def create_combat_embed(
         inline=True,
     )
 
-    embed.add_field(
-        name="⚙️ Status", value=build_status_text(player, monster), inline=False
-    )
+    status_text = build_status_text(player, monster)
+    if status_text:
+        embed.add_field(name="⚙️ Status", value=status_text, inline=False)
 
     afflictions = build_afflictions_text(player, monster)
     if afflictions:

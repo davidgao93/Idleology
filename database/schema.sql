@@ -400,6 +400,16 @@ CREATE TABLE IF NOT EXISTS buildings (
     UNIQUE(user_id, server_id, slot_index)
 );
 
+-- Uber Shrine per-statue state (blueprint from uber_progress gates the build; is_unlocked = statue built)
+CREATE TABLE IF NOT EXISTS uber_shrine_statues (
+    user_id         TEXT NOT NULL,
+    server_id       TEXT NOT NULL,
+    statue_type     TEXT NOT NULL,  -- 'celestial' | 'infernal' | 'void' | 'bound'
+    is_unlocked     INTEGER NOT NULL DEFAULT 0,  -- 1 = statue has been built (project completed)
+    workers_assigned INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, server_id, statue_type)
+);
+
 -- Plot grid for the settlement map system (5×5 minus corners = 20 buildable plots)
 CREATE TABLE IF NOT EXISTS settlement_plots (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

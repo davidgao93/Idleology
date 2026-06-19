@@ -160,6 +160,63 @@ SPECIAL_MAP.update(
 )
 
 # ---------------------------------------------------------------------------
+# Uber Shrine — statue definitions
+# ---------------------------------------------------------------------------
+# Each uber statue can be unlocked (via a 15-DT project), then staffed with workers.
+# Workers provide a sigil drop bonus per assigned worker.
+
+UBER_STATUE_DEFS: dict[str, dict] = {
+    "celestial": {
+        "name": "Celestial Statue",
+        "emoji": "⭐",
+        "blueprint_key": "celestial_blueprint_unlocked",
+        "boss_name": "Aphrodite",
+        "material": "celestial_stone",
+        "material_name": "Celestial Stone",
+        "material_qty": 1,
+        "build_dt": 15,
+        "worker_cap_per_tier": 10,  # max workers = shrine_tier * worker_cap_per_tier
+        "sigil_key": "celestial_shrine",
+    },
+    "infernal": {
+        "name": "Infernal Statue",
+        "emoji": "🔥",
+        "blueprint_key": "infernal_blueprint_unlocked",
+        "boss_name": "Lucifer",
+        "material": "infernal_cinder",
+        "material_name": "Infernal Cinder",
+        "material_qty": 1,
+        "build_dt": 15,
+        "worker_cap_per_tier": 10,
+        "sigil_key": "infernal_shrine",
+    },
+    "void": {
+        "name": "Void Statue",
+        "emoji": "🌀",
+        "blueprint_key": "void_blueprint_unlocked",
+        "boss_name": "NEET",
+        "material": "void_crystal",
+        "material_name": "Void Crystal",
+        "material_qty": 1,
+        "build_dt": 15,
+        "worker_cap_per_tier": 10,
+        "sigil_key": "void_shrine",
+    },
+    "bound": {
+        "name": "Bound Statue",
+        "emoji": "🔗",
+        "blueprint_key": "gemini_blueprint_unlocked",
+        "boss_name": "Gemini",
+        "material": "bound_crystal",
+        "material_name": "Bound Crystal",
+        "material_qty": 1,
+        "build_dt": 15,
+        "worker_cap_per_tier": 10,
+        "sigil_key": "twin_shrine",
+    },
+}
+
+# ---------------------------------------------------------------------------
 # Development Turns / Zeal economy
 # ---------------------------------------------------------------------------
 
@@ -311,10 +368,8 @@ BM_BASE_LOOT_WEIGHTS: list[tuple[str, int]] = [
     ("essence", 8),
     ("gear", 8),
     ("settler_mat", 5),
-    ("egg", 4),
-    ("guild_ticket", 4),
-    ("consume", 3),
-    ("curio", 3),
+    ("guild_ticket", 5),
+    ("curio", 4),
     ("high_end", 3),
 ]
 
@@ -408,15 +463,6 @@ BM_TREE_NODES: dict[str, dict] = {
         "idlem_costs": [150, 400, 900],
         "extra_rolls": [1, 2, 3],
         "category": "boss_key",
-    },
-    "egg_bias": {
-        "name": "Egg & Consume Focus",
-        "description": "+1/+2 extra Egg/Consume rolls per deal (by level).",
-        "branch": "bias",
-        "max_level": 2,
-        "idlem_costs": [200, 600],
-        "extra_rolls": [1, 2],
-        "category": "egg",
     },
     "gear_bias": {
         "name": "Gear Focus",

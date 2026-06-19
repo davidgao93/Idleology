@@ -15,6 +15,7 @@ from core.maw.mechanics import (
     fight_remaining_seconds,
     get_cycle_end_ts,
     get_next_cycle_id,
+    get_weekly_weakness,
     is_collection_window,
     is_cycle_active,
 )
@@ -123,6 +124,14 @@ def build_maw_embed(
             lines.append(f"**Next fight:** {_fmt_time(remaining)}")
 
         embed.add_field(name="Your Contribution", value="\n".join(lines), inline=False)
+
+    # --- Weekly Weakness ---
+    w = get_weekly_weakness()
+    embed.add_field(
+        name=f"{w['emoji']} Weekly Weakness — {w['name']}",
+        value=w["description"],
+        inline=False,
+    )
 
     embed.set_footer(
         text=f"Up to {MAX_FIGHTS_PER_CYCLE} fights/cycle · 20h cooldown · Resets every Sunday 12:00 UTC"

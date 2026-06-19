@@ -111,10 +111,12 @@ def process_monster_turn(
             )
     capture_compact_events(log, clog, start)
 
-    # --- Pressure Surge: +1 if player didn't crit; at 10 → true damage ---
+    # --- Pressure Surge: +1 if player didn't crit; -1 if player critted; at 10 → true damage ---
     start = len(log)
     if monster.has_modifier("Pressure Surge"):
-        if not monster.pressure_player_critted:
+        if monster.pressure_player_critted:
+            monster.pressure_stacks = max(0, monster.pressure_stacks - 1)
+        else:
             monster.pressure_stacks = min(10, monster.pressure_stacks + 1)
         monster.pressure_player_critted = (
             False  # reset; player_turn will write it again
@@ -155,9 +157,10 @@ def process_monster_turn(
         )
         # skip in compact — PDR change visible in Afflictions field
 
-    # --- Temporal Collapse: every 6 turns return accumulated player damage as true damage ---
-    # Burst is capped at 35% of player max HP to prevent instant kills — endgame players
-    # can deal 100-200k damage in 6 turns while only having ~1200-1400 HP.
+    # --- Temporal Collapse: every N turns return a fraction of accumulated damage ---
+    # Returns 4% of total damage dealt, hard-capped at 10% of player max HP.
+    # This scales naturally with how much damage the player dealt rather than
+    # always hitting the ceiling for high-damage players.
     start = len(log)
     if (
         monster.has_modifier("Temporal Collapse")
@@ -165,9 +168,10 @@ def process_monster_turn(
         and monster.combat_round > 0
     ):
         if monster.temporal_window_damage > 0:
-            cap = int(player.total_max_hp * 0.15)
-            was_capped = monster.temporal_window_damage > cap
-            collapse_dmg = min(monster.temporal_window_damage, cap)
+            proportional = int(monster.temporal_window_damage * 0.04)
+            cap = int(player.total_max_hp * 0.10)
+            collapse_dmg = min(proportional, cap)
+            was_capped = proportional > cap
             player.current_hp = max(0, player.current_hp - collapse_dmg)
             monster.temporal_window_damage = 0
             cap_note = " *(capped)*" if was_capped else ""

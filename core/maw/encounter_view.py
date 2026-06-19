@@ -64,6 +64,9 @@ class MawEncounterView(BaseView):
         self.last_log = ""
         self._running = False
 
+        self.weakness = mechanics.get_weekly_weakness()
+        self._ward_at_start = player.combat_ward  # track ward baseline for ward_to_damage
+
         # Apply stat effects first (modifiers reduce player stats), then
         # start passives (weapon/armor round-1 effects). Correct order per
         # the main combat system in cogs/combat.py.
@@ -94,6 +97,13 @@ class MawEncounterView(BaseView):
             color=0x1A0033,
         )
         embed.set_image(url=MAW_MAIN)
+
+        w = self.weakness
+        embed.add_field(
+            name=f"{w['emoji']} Weekly Weakness — {w['name']}",
+            value=w["description"],
+            inline=False,
+        )
         return embed
 
     # ------------------------------------------------------------------
@@ -109,10 +119,22 @@ class MawEncounterView(BaseView):
         button.disabled = True
         message = interaction.message
 
+        weakness_key = self.weakness["key"]
         while self.turn < self.MAX_TURNS:
             self.turn += 1
             result = engine.process_player_turn(self.player, self.monster)
-            self.total_damage += result.damage
+            turn_damage = result.damage
+
+            # Apply weekly weakness bonus
+            if weakness_key == "hit_damage" and result.is_hit and not result.is_crit:
+                turn_damage = int(turn_damage * 1.5)
+            elif weakness_key == "crit_damage" and result.is_crit:
+                turn_damage = int(turn_damage * 1.5)
+            elif weakness_key == "miss_damage" and not result.is_hit:
+                # Misses deal 50% of the player's base attack as phantom damage
+                turn_damage = int(self.player.get_total_attack() * 0.5)
+
+            self.total_damage += turn_damage
             self.monster.hp = self.monster.max_hp  # Maw never dies
             self.last_log = result.log
             try:
@@ -120,6 +142,11 @@ class MawEncounterView(BaseView):
             except discord.HTTPException:
                 pass
             await asyncio.sleep(1.0)
+
+        # Ward-to-damage: accumulate ward gained during the fight as bonus damage
+        if weakness_key == "ward_to_damage":
+            ward_generated = max(0, self.player.combat_ward - self._ward_at_start)
+            self.total_damage += ward_generated
 
         await self._finalize(message)
 
