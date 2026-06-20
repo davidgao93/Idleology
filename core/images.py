@@ -25,7 +25,7 @@ AMARA_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/15143
 QUEST_SHOP_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321500193423420/quest_shop_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=58e3fda24dcf189e3832e2c28dc217dcc66c42f0240623eeca65c678a32c721e&"
 SLAYER_MASTER_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321500415463494/slayer_master_portrait.jpeg?ex=6a2af14c&is=6a299fcc&hm=fbfcaa46508bb3e13f0dec144de832b8d7c6120ef02e1c16e27b2f49000d3f9f&"
 BAR_MAID_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321498968690708/bar_maid_portrait.jpeg?ex=6a2af14c&is=6a299fcc&hm=5649bc84fe4d78f518254f06d14d4f35cf45982a2db5b75418b281ec346b98d6&"
-CASINO_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321499559952414/casino_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=8d17e4ceab7175dd41167534a7b2b0e229f0e607d72f4fc8b4e30fabe26283a9&"
+CASINO_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684191238553690/tavern_casino_portrait.jpg?ex=6a372d0c&is=6a35db8c&hm=1aa7a8ac9120dee24bed1853792d12749be7d99504d6649c92ccf26eea7ea03a&"
 POTION_SHOP_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321499975061624/potion_shop_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=a6d7c0231f772865d4c2da884f8d917a9898d2751bd3bac93821fa7170c3e3b1&"
 HARLAN_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321499765477488/harlan_portrait.jpeg?ex=6a2af14c&is=6a299fcc&hm=572eb27722eb196242aae16fee3a06fc279aea7742d4021c8307294a19e0b5cb&"
 SYLAS_AUTHOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1514321500679966791/sylas_portrait.jpg?ex=6a2af14c&is=6a299fcc&hm=a8b86fd26be5eeffe95d8d25e9888165a61287d2dc85a7d7d0b06c26c69e2bb7&"
@@ -46,6 +46,21 @@ VALE_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517
 
 YUNA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517328762906083360/yuna_master_tamer.jpg?ex=6a35e207&is=6a349087&hm=2dc743d0ea0c08d05d303b2441dea3c03b696330ff055b38fc40d36304f4975d&"
 YUNA_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517328763153551451/yuna_master_tamer_portrait.jpg?ex=6a35e207&is=6a349087&hm=9b6c178f8b469536185a7de8d6489853ab88bae34e31714a54667636e353ae3f&"
+
+BROTHER_SOLEN_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684189862953120/brother_solen.jpg?ex=6a372d0c&is=6a35db8c&hm=5ced23795533c23ffbf0a666d86158ad0d3a96c4477e0a54b8fa784326c4f0b0&"
+BROTHER_SOLEN_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684190085382294/brother_solen_portrait.jpg?ex=6a372d0c&is=6a35db8c&hm=6aa6f7c6d228cf53f3eca04597cc024d32b8f67a6c82b8073c634d69c09942be&"
+
+RAGNA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684190315941998/ragna_fleshwright.jpg?ex=6a372d0c&is=6a35db8c&hm=c5582838f9b4975d9fd0c5572270b48933b7432470bf8b24338e4376570f91a6&"
+RAGNA_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684190567727325/ragna_fleshwright_portrait.jpg?ex=6a372d0c&is=6a35db8c&hm=78326ccf42e6bf66f8936d1d90088069e024d972af758c5f9ba894b71a17592e&"
+
+VALDRIS_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684199648399490/valdris_sanguine.jpg?ex=6a372d0e&is=6a35db8e&hm=8ac796c4c4466c5c8b1b9808bb5b0f4dd307ed1dd766b7f2f93877b3b7d99f6d&"
+VALDRIS_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684199878950912/valdris_sanguine_portrait.jpg?ex=6a372d0e&is=6a35db8e&hm=d859bb50794fa64c3c753b29b7c53adb0bfcfdfc95c7645d5b5639bb85815fc5&"
+
+ARBITER_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684189325951079/arbiter_uber.jpg?ex=6a372d0b&is=6a35db8b&hm=73261c4096d46f3908020d3a5dab2b3216c0c391bd8e57d27290606678df7446&"
+ARBITER_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684189594521691/arbiter_uber_portrait.jpg?ex=6a372d0c&is=6a35db8c&hm=d6f3d514a0979214c777b11057f67d9f9d537317d8058941d2463c3b1c5af407&"
+
+TESSARA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684191674896384/tessara_lapidary.jpg?ex=6a372d0c&is=6a35db8c&hm=d658e0bb24bc7c85df495988027ba5cd6d16397b1f4cf5865af4a2f5fae62001&"
+TESSARA_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684191926419476/tessara_lapidary_portrait.jpg?ex=6a372d0c&is=6a35db8c&hm=02bf22c965b775160c5ab2f48efce90edc46f1c4aeee6c11e86f453d2bb2fe19&"
 
 # ── COMBAT ────────────────────────────────────────────────────────────────────
 COMBAT_VICTORY = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512645961482270/combat_victory.png?ex=69f8b4cc&is=69f7634c&hm=98c607e7f4ef046069201a604d70b06c0adc16b42dfde6feb11d8ec5489a699c&"
@@ -313,7 +328,7 @@ GUILD_UNREGISTER = "https://cdn.discordapp.com/attachments/1334637411363323996/1
 TAVERN_KEEPER = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512945447374948/tavern_keeper.jpeg?ex=69f8b514&is=69f76394&hm=f4a3a9fe2ccef135bce7489b28a7b4f3e5afea70c81df77cac7b297d6ab6dd81&"  # also used as help embed logo
 TAVERN_GAMES = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512945850024048/tavern_games.jpeg?ex=69f8b514&is=69f76394&hm=6b14a97a92706c0fb8aa4301a4b793d6cf9f4e01810d572721fdba269c33cb9a&"
 BAR_MAID = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512946206281738/tavern_roulette.jpeg?ex=69f8b514&is=69f76394&hm=88200c170f94e9f47dc070f2f1b6a9ca67b4aa660170c072c6b7f4580ea73f7d&"
-TAVERN_CASINO = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512946495951030/tavern_casino.jpeg?ex=69f8b514&is=69f76394&hm=652f9b4e7e07797ea6b3c52265bfc0267b742c50051fbbef779ec4c88df0950a&"  # also used in minigames
+TAVERN_CASINO = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684190928310372/tavern_casino.jpg?ex=6a372d0c&is=6a35db8c&hm=5774e397605ae025ec3676b5bb2d823b5a89363fc444966c752f47e7c66e2cd8&"  # also used in minigames
 DEFAULT_SILHOUETTE = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512946823102566/default_silhouette.jpeg?ex=69f8b514&is=69f76394&hm=31db3a8a07afdcf6563ade9036515d2a727003c11801dd76e6192d75cd19583a&"  # guild/character fallback
 
 # ── ARTISAN MASTERY ───────────────────────────────────────────────────────────

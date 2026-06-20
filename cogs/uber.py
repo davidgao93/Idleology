@@ -2,6 +2,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.combat.views.views_uber import UberHubView
+from core.first_use import TutorialGateView
 from core.items.factory import load_player
 
 
@@ -24,13 +25,27 @@ class Uber(commands.Cog, name="uber"):
                 "You must be **Level 20** to access the Uber Encounters.",
                 ephemeral=True,
             )
+
         self.bot.state_manager.set_active(user_id, "uber_boss")
-        player = await load_player(user_id, existing_user, self.bot.database)
-        uber_data = await self.bot.database.uber.get_uber_progress(user_id, server_id)
 
-        view = UberHubView(self.bot, user_id, server_id, player, uber_data)
-        embed = view.build_embed()
+        async def _build():
+            player = await load_player(user_id, existing_user, self.bot.database)
+            uber_data = await self.bot.database.uber.get_uber_progress(
+                user_id, server_id
+            )
+            view = UberHubView(self.bot, user_id, server_id, player, uber_data)
+            return view.build_embed(), view
 
+        if not await self.bot.database.tutorials.has_seen(user_id, "uber"):
+            await self.bot.database.tutorials.mark_seen(user_id, "uber")
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "uber", build_main=_build
+            )
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
+
+        embed, view = await _build()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

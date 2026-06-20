@@ -31,27 +31,40 @@ from discord import ButtonStyle, Interaction, ui
 from core.base_view import BaseView
 from core.images import (
     AMARA_AUTHOR,
+    ARBITER_PORTRAIT,
+    ARBITER_THUMBNAIL,
+    BROTHER_SOLEN_PORTRAIT,
+    BROTHER_SOLEN_THUMBNAIL,
     COMBAT_VICTORY,
     DELVE_HUB,
     ELYNDRA_PORTRAIT,
     ELYNDRA_THUMBNAIL,
     HARLAN_AUTHOR,
+    HEMATURGY,
     INVENTORY_HUB,
     LUCIEN_PORTRAIT,
     LUCIEN_THUMBNAIL,
+    MAW_MAIN,
     MASTERY_MINING,
     PARTNERS_HUB,
     POTION_SHOP_AUTHOR,
     QUEST_BOARD,
+    RAGNA_PORTRAIT,
+    RAGNA_THUMBNAIL,
     SERAPHINE_PORTRAIT,
     SERAPHINE_THUMBNAIL,
     SETTLEMENT_HUB,
     SLAYER_MASTER,
     SLAYER_MASTER_AUTHOR,
     TAVERN_KEEPER,
+    TESSARA_PORTRAIT,
+    TESSARA_THUMBNAIL,
+    UBER_HUB,
     UPGRADE_VOIDFORGE,
     VALE_PORTRAIT,
     VALE_THUMBNAIL,
+    VALDRIS_PORTRAIT,
+    VALDRIS_THUMBNAIL,
     VEYRA_AUTHOR,
     YUNA_PORTRAIT,
     YUNA_THUMBNAIL,
@@ -396,6 +409,117 @@ TUTORIALS: dict[str, dict] = {
         ],
         "image": SERAPHINE_THUMBNAIL,
         "color": discord.Color.dark_purple(),
+    },
+    "maw": {
+        "title": "🌊 Maw of Infinity",
+        "author": "Brother Solen",
+        "author_icon": BROTHER_SOLEN_PORTRAIT,
+        "description": (
+            "*The Maw does not die. It has never died. But it remembers the ones who hurt it most — and so do I.*\n\n"
+            "The Maw of Infinity is a **weekly world boss** that the entire server fights together. "
+            "You have up to **5 attempts per cycle** with a 20-hour cooldown between each fight. "
+            "Every hit you land in a 10-turn auto-battle contributes to your cycle total.\n\n"
+            "Each week brings a different **weakness** — a modifier that changes how your damage is calculated. "
+            "Pay attention to it. Some weeks reward raw power; others reward consistency or ward.\n\n"
+            "When the cycle ends, rewards are split among participants. "
+            "The **top 3 contributors** receive a Curio Puzzle Box on top of the base reward."
+        ),
+        "tips": [
+            "The **weekly weakness** can dramatically shift which builds perform best — read it before you fight.",
+            "You don't need to deal the most damage to earn rewards — participating is enough.",
+            "Rewards are collected during the **collection window** after the cycle ends, not immediately.",
+        ],
+        "image": BROTHER_SOLEN_THUMBNAIL,
+        "color": discord.Color.dark_blue(),
+    },
+    "consume": {
+        "title": "🦴 Consume",
+        "author": "Ragna the Fleshwright",
+        "author_icon": RAGNA_PORTRAIT,
+        "description": (
+            "*You think that's grotesque? You're wearing its arm. It's keeping you alive. "
+            "That's more respect than most people get.*\n\n"
+            "Monster body parts drop from combat and can be **equipped to your body slots** for permanent Max HP bonuses. "
+            "You have 8 slots: head, torso, right arm, left arm, right leg, left leg, cheeks, and organs.\n\n"
+            "Each part has an HP value. Equipping it replaces whatever was in that slot — "
+            "the old part is destroyed, so confirm before you commit. "
+            "Your inventory caps at **20 parts**. Discard what you don't need."
+        ),
+        "tips": [
+            "Equipping a part to an occupied slot **destroys the old one** — a confirmation prompt will appear.",
+            "Parts drop from all combat — your inventory fills fast. Discard lower-value pieces regularly.",
+            "Max HP from parts stacks with every other HP source, including alchemy and companions.",
+        ],
+        "image": RAGNA_THUMBNAIL,
+        "color": discord.Color.dark_red(),
+    },
+    "hematurgy": {
+        "title": "🩸 Hematurgy",
+        "author": "Valdris the Sanguine",
+        "author_icon": VALDRIS_PORTRAIT,
+        "description": (
+            "*Primordial blood unlocks the channel. Evolutionary blood deepens it. "
+            "Mutative blood — well. That's where it gets* interesting.\n\n"
+            "Hematurgy is a **permanent passive upgrade system** powered by monster blood. "
+            "Each passive slot must be unlocked first with **Primordial Blood**, "
+            "then tiered up using **Evolutionary Blood** (T1–T5) or **Mutative Blood** (T6–T7, chase tiers only).\n\n"
+            "Active passives include effects like reverberation (bonus ATK on hit), "
+            "soothing venom (HP regen), haemorrhage (bleed on crit), vital resonance, and more. "
+            "Higher tiers produce dramatically stronger effects."
+        ),
+        "tips": [
+            "Unlock slots with **Primordial Blood** before you can tier them up.",
+            "T6–T7 require **Mutative Blood** — rarer and only for the dedicated.",
+            "Blood drops from combat. Higher-level monsters drop better blood types.",
+        ],
+        "image": VALDRIS_THUMBNAIL,
+        "color": discord.Color.red(),
+    },
+    "uber": {
+        "title": "⚡ Uber Encounters",
+        "author": "The Arbiter",
+        "author_icon": ARBITER_PORTRAIT,
+        "description": (
+            "*Aphrodite does not forgive hesitation. Lucifer does not forgive pride. "
+            "You have been warned. The gate is open.*\n\n"
+            "Uber Encounters are the pinnacle of combat. "
+            "Four bosses — **Aphrodite, Lucifer, NEET, and Gemini** — each requiring a "
+            "dedicated boss key earned through gameplay. They are multi-phase fights "
+            "that demand full preparation.\n\n"
+            "Defeating an Uber boss for the first time unlocks a **blueprint** — "
+            "a prerequisite for building that boss's statue in your Settlement's Uber Shrine. "
+            "Repeat victories yield rare materials used for the most powerful upgrades in the game."
+        ),
+        "tips": [
+            "Each boss has a distinct combat style — review their modifiers before entering.",
+            "**Boss keys** are earned through dispatch tasks, curios, and quest rewards.",
+            "First-time kills unlock shrine blueprints. Keep fighting for crafting materials.",
+        ],
+        "image": ARBITER_THUMBNAIL,
+        "color": discord.Color.gold(),
+    },
+    "paradise": {
+        "title": "💎 Paradise Jewel",
+        "author": "Tessara the Lapidary",
+        "author_icon": TESSARA_PORTRAIT,
+        "description": (
+            "*A jewel is not a weapon. It is a conversation. "
+            "You tell it what you need; it tells you what it's capable of. "
+            "Rushing that conversation produces nothing but cracks.*\n\n"
+            "The Jewel of Paradise is an **active skill system** that gives you powerful abilities "
+            "usable in combat. Each jewel skill charges over multiple turns and unleashes a "
+            "significant effect — burst damage, ward generation, healing, DoT, and more.\n\n"
+            "Jewels are unlocked by defeating Uber bosses and can be **upgraded** using Cosmic Dust "
+            "and Paradise Jewels. Higher tiers dramatically increase skill potency. "
+            "Charges persist across Ascent floors and Codex waves, but reset between normal combat sessions."
+        ),
+        "tips": [
+            "Skills charge over turns — pick a skill that fits how long your fights typically last.",
+            "Upgrade jewel skills with **Cosmic Dust** and **Paradise Jewels** dropped from Uber bosses.",
+            "Charges **carry between floors** in Ascent and Codex — don't waste an almost-charged skill.",
+        ],
+        "image": TESSARA_THUMBNAIL,
+        "color": discord.Color.purple(),
     },
 }
 

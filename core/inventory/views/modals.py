@@ -49,44 +49,13 @@ class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
             total_xp_val += CompanionMechanics.calculate_feed_xp(item)
             await self.parent_view.bot.database.equipment.discard(item.item_id, itype)
 
-        # Distribute XP
+        # Pool XP for manual distribution via Companions view
         xp_msg = ""
-        active_rows = await self.parent_view.bot.database.companions.get_active(
-            self.parent_view.user_id
-        )
-
-        if active_rows and total_xp_val > 0:
-            xp_per_pet = total_xp_val // len(active_rows)
-            if xp_per_pet > 0:
-                leveled_up_names = []
-                for row in active_rows:
-                    comp_id, name, current_lvl, current_exp = (
-                        row[0],
-                        row[2],
-                        row[5],
-                        row[6],
-                    )
-                    current_exp += xp_per_pet
-
-                    did_level = False
-                    while current_lvl < 100:  # 100 is max level
-                        req_xp = CompanionMechanics.calculate_next_level_xp(current_lvl)
-                        if current_exp >= req_xp:
-                            current_exp -= req_xp
-                            current_lvl += 1
-                            did_level = True
-                        else:
-                            break
-
-                    await self.parent_view.bot.database.companions.update_stats(
-                        comp_id, current_lvl, current_exp
-                    )
-                    if did_level:
-                        leveled_up_names.append(f"{name} (Lv.{current_lvl})")
-
-                xp_msg = f"\n🐾 Active pets gained **{xp_per_pet:,} XP** each."
-                if leveled_up_names:
-                    xp_msg += f"\n🎉 **Level Up:** {', '.join(leveled_up_names)}"
+        if total_xp_val > 0:
+            await self.parent_view.bot.database.users.add_pending_companion_cookies(
+                self.parent_view.user_id, total_xp_val
+            )
+            xp_msg = f"\n🐾 **+{total_xp_val:,} XP** added to your Companion XP pool."
 
         # Update List State
         deleted_ids = {i.item_id for i in items_to_delete}

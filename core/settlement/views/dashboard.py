@@ -5,7 +5,6 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
-from core.companions.mechanics import CompanionMechanics
 from core.images import (
     CRISIS_MONSTER_IMAGES,
     MAID_AUTHOR,
@@ -1067,29 +1066,11 @@ class SettlementDashboardView(SettlementBaseView):
             await self.bot.database.users.modify_development_contracts(uid, dc_earned)
         await self.bot.database.settlement.update_collection_timer(uid, sid)
 
-        # Companion XP distribution
+        # Companion XP — pool for manual distribution via Companions view
         xp_msg = ""
         if cookie_xp > 0:
-            active_rows = await self.bot.database.companions.get_active(self.user_id)
-            if active_rows:
-                xp_per_pet = cookie_xp // len(active_rows)
-                for row in active_rows:
-                    comp_id, cur_lvl, cur_exp = row[0], row[5], row[6]
-                    cur_exp += xp_per_pet
-                    while cur_lvl < 100:
-                        req = CompanionMechanics.calculate_next_level_xp(cur_lvl)
-                        if cur_exp >= req:
-                            cur_exp -= req
-                            cur_lvl += 1
-                        else:
-                            break
-                    await self.bot.database.companions.update_stats(
-                        comp_id, cur_lvl, cur_exp
-                    )
-                xp_msg = (
-                    f"\n🐾 **Companion Ranch:** Distributed {cookie_xp:,} XP "
-                    "among active pets."
-                )
+            await self.bot.database.users.add_pending_companion_cookies(self.user_id, cookie_xp)
+            xp_msg = f"\n🐾 **Companion Ranch:** +{cookie_xp:,} XP added to your Companion XP pool."
 
         stamina_msg = ""
         if war_camp_stamina > 0:

@@ -2,6 +2,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.consume.views import ConsumeView
+from core.first_use import TutorialGateView
 from core.items.factory import load_player
 
 
@@ -23,13 +24,26 @@ class Consume(commands.Cog, name="consume"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        player = await load_player(user_id, user_data, self.bot.database)
-        inventory = await self.bot.database.monster_parts.get_inventory(user_id)
-        eggs = await self.bot.database.eggs.get_eggs(user_id)
-
         self.bot.state_manager.set_active(user_id, "consume")
-        view = ConsumeView(player, inventory, self.bot, eggs=eggs)
-        await interaction.response.send_message(embed=view.build_embed(), view=view)
+
+        async def _build():
+            player = await load_player(user_id, user_data, self.bot.database)
+            inventory = await self.bot.database.monster_parts.get_inventory(user_id)
+            eggs = await self.bot.database.eggs.get_eggs(user_id)
+            view = ConsumeView(player, inventory, self.bot, eggs=eggs)
+            return view.build_embed(), view
+
+        if not await self.bot.database.tutorials.has_seen(user_id, "consume"):
+            await self.bot.database.tutorials.mark_seen(user_id, "consume")
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "consume", build_main=_build
+            )
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
+
+        embed, view = await _build()
+        await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(
@@ -53,15 +67,27 @@ class Consume(commands.Cog, name="consume"):
             )
 
         self.bot.state_manager.set_active(user_id, "consume")
-        passives = await self.bot.database.hematurgy.get_all_passives(user_id)
-        blood = await self.bot.database.hematurgy.get_blood(user_id)
 
-        from core.hematurgy.views import HematurgyView, _build_hematurgy_embed
+        async def _build():
+            from core.hematurgy.views import HematurgyView, _build_hematurgy_embed
 
-        view = HematurgyView(
-            self.bot, passives, blood, user_id=user_id, server_id=server_id
-        )
-        embed = _build_hematurgy_embed(passives, blood)
+            passives = await self.bot.database.hematurgy.get_all_passives(user_id)
+            blood = await self.bot.database.hematurgy.get_blood(user_id)
+            view = HematurgyView(
+                self.bot, passives, blood, user_id=user_id, server_id=server_id
+            )
+            return _build_hematurgy_embed(passives, blood), view
+
+        if not await self.bot.database.tutorials.has_seen(user_id, "hematurgy"):
+            await self.bot.database.tutorials.mark_seen(user_id, "hematurgy")
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "hematurgy", build_main=_build
+            )
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
+
+        embed, view = await _build()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

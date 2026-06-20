@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from core.first_use import TutorialGateView
 from core.maw import mechanics
 from core.maw.views import MawView
 
@@ -35,71 +36,73 @@ class Maw(commands.Cog, name="maw"):
             return
 
         self.bot.state_manager.set_active(user_id, "maw")
-        await interaction.response.defer()
 
-        now_ts = int(time.time())
-        now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
-        cycle_id = mechanics.get_current_cycle_id(now_dt)
+        async def _build():
+            now_ts = int(time.time())
+            now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
+            cycle_id = mechanics.get_current_cycle_id(now_dt)
 
-        # During the collection window the just-ended cycle IS the pending cycle.
-        in_collection = mechanics.is_collection_window(cycle_id, now_ts)
-        if in_collection:
-            pending_cycle_id = cycle_id
-            cycle_id = mechanics.get_next_cycle_id(cycle_id)
-        else:
-            pending_cycle_id = mechanics.get_previous_cycle_id(cycle_id)
+            in_collection = mechanics.is_collection_window(cycle_id, now_ts)
+            if in_collection:
+                pending_cycle_id = cycle_id
+                cycle_id = mechanics.get_next_cycle_id(cycle_id)
+            else:
+                pending_cycle_id = mechanics.get_previous_cycle_id(cycle_id)
 
-        # Load records
-        record = await self.bot.database.maw.get_record(user_id, cycle_id)
-        pending_record = await self.bot.database.maw.get_record(
-            user_id, pending_cycle_id
-        )
-        if pending_record and pending_record["rewards_collected"]:
-            pending_record = None
-
-        # The "display cycle" is the one whose stats appear in the embed description:
-        # the ended cycle during collection window, or the active cycle otherwise.
-        display_cycle_id = pending_cycle_id if in_collection else cycle_id
-        participant_count = await self.bot.database.maw.count_participants(
-            display_cycle_id
-        )
-        total_cycle_damage = await self.bot.database.maw.get_cycle_total_damage(
-            display_cycle_id
-        )
-
-        # Separate totals for the pending-rewards preview section.
-        # During collection window they're the same as the display cycle; otherwise
-        # they cover the prior cycle independently.
-        if in_collection:
-            pending_total_damage = total_cycle_damage
-            pending_participant_count = participant_count
-        elif pending_record:
-            pending_total_damage = await self.bot.database.maw.get_cycle_total_damage(
-                pending_cycle_id
+            record = await self.bot.database.maw.get_record(user_id, cycle_id)
+            pending_record = await self.bot.database.maw.get_record(
+                user_id, pending_cycle_id
             )
-            pending_participant_count = await self.bot.database.maw.count_participants(
-                pending_cycle_id
-            )
-        else:
-            pending_total_damage = 0
-            pending_participant_count = 0
+            if pending_record and pending_record["rewards_collected"]:
+                pending_record = None
 
-        view = MawView(
-            bot=self.bot,
-            user_id=user_id,
-            server_id=server_id,
-            cycle_id=cycle_id,
-            now_ts=now_ts,
-            record=record,
-            pending_record=pending_record,
-            prev_cycle_id=pending_cycle_id,
-            participant_count=participant_count,
-            total_cycle_damage=total_cycle_damage,
-            pending_total_damage=pending_total_damage,
-            pending_participant_count=pending_participant_count,
-        )
-        embed = view.build_embed()
-        await interaction.followup.send(embed=embed, view=view)
+            display_cycle_id = pending_cycle_id if in_collection else cycle_id
+            participant_count = await self.bot.database.maw.count_participants(
+                display_cycle_id
+            )
+            total_cycle_damage = await self.bot.database.maw.get_cycle_total_damage(
+                display_cycle_id
+            )
+
+            if in_collection:
+                pending_total_damage = total_cycle_damage
+                pending_participant_count = participant_count
+            elif pending_record:
+                pending_total_damage = (
+                    await self.bot.database.maw.get_cycle_total_damage(pending_cycle_id)
+                )
+                pending_participant_count = (
+                    await self.bot.database.maw.count_participants(pending_cycle_id)
+                )
+            else:
+                pending_total_damage = 0
+                pending_participant_count = 0
+
+            view = MawView(
+                bot=self.bot,
+                user_id=user_id,
+                server_id=server_id,
+                cycle_id=cycle_id,
+                now_ts=now_ts,
+                record=record,
+                pending_record=pending_record,
+                prev_cycle_id=pending_cycle_id,
+                participant_count=participant_count,
+                total_cycle_damage=total_cycle_damage,
+                pending_total_damage=pending_total_damage,
+                pending_participant_count=pending_participant_count,
+            )
+            return view.build_embed(), view
+
+        if not await self.bot.database.tutorials.has_seen(user_id, "maw"):
+            await self.bot.database.tutorials.mark_seen(user_id, "maw")
+            gate = TutorialGateView(self.bot, user_id, server_id, "maw", build_main=_build)
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
+
+        embed, view = await _build()
+        await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
 

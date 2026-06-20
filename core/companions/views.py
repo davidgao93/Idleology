@@ -6,7 +6,7 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.companions.engram_view import BalancedEngramView
-from core.images import COMPANIONS_HUB, COMPANIONS_FUSION
+from core.images import COMPANIONS_HUB, COMPANIONS_FUSION, YUNA_PORTRAIT, YUNA_THUMBNAIL
 from core.companions.logic import CompanionLogic
 from core.companions.mechanics import CompanionMechanics
 from core.models import Companion
@@ -142,12 +142,12 @@ class CompanionListView(BaseView):
 
         if self._pending_cookies > 0:
             cookies_btn = ui.Button(
-                label=f"Claim Ranch XP ({self._pending_cookies:,})",
+                label=f"Distribute XP ({self._pending_cookies:,})",
                 style=ButtonStyle.success,
                 emoji="🐾",
                 row=1,
             )
-            cookies_btn.callback = self.claim_ranch_xp
+            cookies_btn.callback = self.open_xp_distribute
             self.add_item(cookies_btn)
 
         fusion_btn = ui.Button(
@@ -168,7 +168,8 @@ class CompanionListView(BaseView):
 
     def get_embed(self):
         embed = discord.Embed(title="🐾 Companions", color=discord.Color.blue())
-        embed.set_thumbnail(url=COMPANIONS_HUB)
+        embed.set_author(name="Master Tamer Yuna", icon_url=YUNA_PORTRAIT)
+        embed.set_thumbnail(url=YUNA_THUMBNAIL)
         embed.set_footer(text=f"Roster: {len(self.companions)}/20")
 
         if not self.companions:
@@ -220,74 +221,24 @@ class CompanionListView(BaseView):
         )
         await interaction.response.send_message(result_msg, ephemeral=True)
 
-    async def claim_ranch_xp(self, interaction: Interaction):
+    async def open_xp_distribute(self, interaction: Interaction):
         await interaction.response.defer()
-        total_xp = await self.bot.database.users.consume_pending_companion_cookies(self.user_id)
-        if total_xp <= 0:
-            await interaction.followup.send("No Ranch XP to claim.", ephemeral=True)
-            return
+        server_id = str(interaction.guild.id)
 
-        active = [c for c in self.companions if c.is_active]
-        if not active:
-            # No active companions — bank it back and inform
-            await self.bot.database.users.add_pending_companion_cookies(self.user_id, total_xp)
-            await interaction.followup.send(
-                "You have no active companions to receive Ranch XP. "
-                "Set at least one companion as active first.",
-                ephemeral=True,
-            )
-            return
+        # Check mastery tree completeness for rune unlock
+        from core.companions.mastery import get_all_nodes
+        mastery = await self.bot.database.companions.get_mastery(self.user_id, server_id)
+        nodes_owned = mastery.get("nodes_owned", {})
+        total_nodes = len(get_all_nodes())
+        tree_maxed = len(nodes_owned) >= total_nodes
+        companions_maxed = bool(self.companions) and all(c.level >= CompanionMechanics.MAX_LEVEL for c in self.companions)
+        is_maxed = tree_maxed and companions_maxed
 
-        xp_per = total_xp // len(active)
-        from core.companions.mastery import kp_from_overflow_xp
-
-        msgs = []
-        overflow_xp = 0
-        for comp in active:
-            rows = await self.bot.database.companions.get_by_id(comp.id)
-            if rows is None:
-                continue
-            cur_lvl, cur_exp = comp.level, comp.exp
-            cur_exp += xp_per
-            while cur_lvl < 100:
-                req = CompanionMechanics.calculate_next_level_xp(cur_lvl)
-                if cur_exp >= req:
-                    cur_exp -= req
-                    cur_lvl += 1
-                else:
-                    break
-            if cur_lvl >= 100:
-                overflow_xp += cur_exp
-                cur_exp = 0
-            await self.bot.database.companions.update_stats(comp.id, cur_lvl, cur_exp)
-            if cur_lvl != comp.level:
-                msgs.append(f"**{comp.name}** levelled up to **{cur_lvl}**!")
-            else:
-                msgs.append(f"**{comp.name}** gained {xp_per:,} XP (Lv.{cur_lvl})")
-
-        if overflow_xp > 0:
-            kp_earned = kp_from_overflow_xp(overflow_xp)
-            if kp_earned > 0:
-                server_id = str(interaction.guild.id)
-                await self.bot.database.companions.add_kinship_points(self.user_id, server_id, kp_earned)
-                msgs.append(f"+{kp_earned} Kinship Points from overflow XP.")
-
-        # Refresh companion data
-        from core.items.factory import create_companion
-        rows = await self.bot.database.companions.get_all(self.user_id)
-        self.companions = [create_companion(r) for r in rows] if rows else []
-        self._pending_cookies = 0
-        self.update_buttons()
-
-        summary = "\n".join(msgs) if msgs else "XP distributed."
-        await interaction.edit_original_response(
-            embed=self.get_embed(),
-            view=self,
+        view = XPDistributeView(
+            self.bot, self.user_id, server_id,
+            self._pending_cookies, self.companions, is_maxed, parent=self
         )
-        await interaction.followup.send(
-            f"🐾 **Ranch XP Claimed** ({total_xp:,} XP across {len(active)} companion(s))\n{summary}",
-            ephemeral=True,
-        )
+        await interaction.edit_original_response(embed=view.get_embed(), view=view)
 
     async def open_fusion(self, interaction: Interaction):
         from core.companions.fusion_views import FusionWizardView
@@ -325,6 +276,202 @@ class CompanionListView(BaseView):
         )
         embed = view.get_embed()
         await interaction.response.edit_message(embed=embed, view=view)
+
+
+class XPDistributeView(BaseView):
+    XP_PER_KP = 1_000
+    XP_PER_RUNE = 25_000
+
+    def __init__(self, bot, user_id, server_id, pending_xp, companions, is_maxed, parent):
+        super().__init__(bot, user_id)
+        self.server_id = server_id
+        self.pending_xp = pending_xp
+        self.companions = companions
+        self.is_maxed = is_maxed
+        self.parent = parent
+        self._processing = False
+        self._add_buttons()
+
+    def _add_buttons(self):
+        self.clear_items()
+        active = [c for c in self.companions if c.is_active]
+
+        if active and self.pending_xp > 0:
+            btn = ui.Button(label="Level Companions", style=ButtonStyle.success, emoji="🐾", row=0)
+            btn.callback = self.distribute_to_companions
+            self.add_item(btn)
+
+        if self.pending_xp >= self.XP_PER_KP:
+            kp_count = self.pending_xp // self.XP_PER_KP
+            btn = ui.Button(label=f"Convert to KP ({kp_count:,})", style=ButtonStyle.primary, emoji="✨", row=0)
+            btn.callback = self.convert_to_kp
+            self.add_item(btn)
+
+        if self.is_maxed and self.pending_xp >= self.XP_PER_RUNE:
+            rune_count = self.pending_xp // self.XP_PER_RUNE
+            btn = ui.Button(label=f"Buy Rune of Partnership ({rune_count})", style=ButtonStyle.blurple, emoji="🔮", row=1)
+            btn.callback = self.buy_rune
+            self.add_item(btn)
+
+        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        btn_back.callback = self.go_back
+        self.add_item(btn_back)
+
+    def get_embed(self):
+        embed = discord.Embed(title="Distribute XP", color=discord.Color.blue())
+        embed.set_author(name="Master Tamer Yuna", icon_url=YUNA_PORTRAIT)
+        embed.set_thumbnail(url=YUNA_THUMBNAIL)
+        embed.add_field(name="Companion XP Pool", value=f"**{self.pending_xp:,}** XP", inline=False)
+
+        active = [c for c in self.companions if c.is_active]
+        lines = []
+        if active and self.pending_xp > 0:
+            lines.append(f"🐾 **Level Companions** — Split {self.pending_xp:,} XP among {len(active)} active companion(s)")
+        if self.pending_xp >= self.XP_PER_KP:
+            lines.append(f"✨ **Convert to KP** — {self.XP_PER_KP:,} XP = 1 Kinship Point ({self.pending_xp // self.XP_PER_KP:,} available)")
+        if self.is_maxed and self.pending_xp >= self.XP_PER_RUNE:
+            lines.append(f"🔮 **Rune of Partnership** — {self.XP_PER_RUNE:,} XP = 1 Rune ({self.pending_xp // self.XP_PER_RUNE} available)")
+        if not lines:
+            lines.append("*Earn more XP to unlock options.*")
+
+        embed.add_field(name="Options", value="\n".join(lines), inline=False)
+        return embed
+
+    async def distribute_to_companions(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        total_xp = await self.bot.database.users.consume_pending_companion_cookies(self.user_id)
+        if total_xp <= 0:
+            self._processing = False
+            await interaction.followup.send("No XP to distribute.", ephemeral=True)
+            return
+
+        active = [c for c in self.companions if c.is_active]
+        if not active:
+            await self.bot.database.users.add_pending_companion_cookies(self.user_id, total_xp)
+            self._processing = False
+            await interaction.followup.send("No active companions. Set one active first.", ephemeral=True)
+            return
+
+        xp_per = total_xp // len(active)
+        from core.companions.mastery import kp_from_overflow_xp
+        msgs = []
+        overflow_xp = 0
+        for comp in active:
+            cur_lvl, cur_exp = comp.level, comp.exp
+            cur_exp += xp_per
+            while cur_lvl < CompanionMechanics.MAX_LEVEL:
+                req = CompanionMechanics.calculate_next_level_xp(cur_lvl)
+                if cur_exp >= req:
+                    cur_exp -= req
+                    cur_lvl += 1
+                else:
+                    break
+            if cur_lvl >= CompanionMechanics.MAX_LEVEL:
+                overflow_xp += cur_exp
+                cur_exp = 0
+            await self.bot.database.companions.update_stats(comp.id, cur_lvl, cur_exp)
+            if cur_lvl != comp.level:
+                msgs.append(f"**{comp.name}** levelled up to **{cur_lvl}**!")
+            else:
+                msgs.append(f"**{comp.name}** gained {xp_per:,} XP (Lv.{cur_lvl})")
+
+        if overflow_xp > 0:
+            kp_earned = kp_from_overflow_xp(overflow_xp)
+            if kp_earned > 0:
+                await self.bot.database.companions.add_kinship_points(self.user_id, self.server_id, kp_earned)
+                msgs.append(f"+{kp_earned} Kinship Points from overflow XP.")
+
+        from core.items.factory import create_companion
+        rows = await self.bot.database.companions.get_all(self.user_id)
+        self.companions = [create_companion(r) for r in rows] if rows else []
+        self.parent.companions = self.companions
+        self.pending_xp = 0
+        self.parent._pending_cookies = 0
+        self.parent.update_buttons()
+
+        summary = "\n".join(msgs) if msgs else "XP distributed."
+        await interaction.edit_original_response(embed=self.parent.get_embed(), view=self.parent)
+        await interaction.followup.send(
+            f"🐾 **XP Distributed** ({total_xp:,} XP across {len(active)} companion(s))\n{summary}",
+            ephemeral=True,
+        )
+
+    async def convert_to_kp(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        pending = await self.bot.database.users.get_pending_companion_cookies(self.user_id)
+        kp_to_gain = pending // self.XP_PER_KP
+        xp_to_spend = kp_to_gain * self.XP_PER_KP
+
+        if kp_to_gain <= 0:
+            self._processing = False
+            await interaction.followup.send(f"Need at least {self.XP_PER_KP:,} XP to convert.", ephemeral=True)
+            return
+
+        all_xp = await self.bot.database.users.consume_pending_companion_cookies(self.user_id)
+        remainder = all_xp - xp_to_spend
+        if remainder > 0:
+            await self.bot.database.users.add_pending_companion_cookies(self.user_id, remainder)
+        await self.bot.database.companions.add_kinship_points(self.user_id, self.server_id, kp_to_gain)
+
+        self.pending_xp = remainder
+        self.parent._pending_cookies = remainder
+        self.parent.update_buttons()
+        self._processing = False
+        self._add_buttons()
+
+        await interaction.edit_original_response(embed=self.get_embed(), view=self)
+        await interaction.followup.send(
+            f"✨ Converted {xp_to_spend:,} XP → **{kp_to_gain:,} Kinship Point(s)**.",
+            ephemeral=True,
+        )
+
+    async def buy_rune(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        pending = await self.bot.database.users.get_pending_companion_cookies(self.user_id)
+        runes_to_gain = pending // self.XP_PER_RUNE
+        xp_to_spend = runes_to_gain * self.XP_PER_RUNE
+
+        if runes_to_gain <= 0:
+            self._processing = False
+            await interaction.followup.send(f"Need at least {self.XP_PER_RUNE:,} XP.", ephemeral=True)
+            return
+
+        all_xp = await self.bot.database.users.consume_pending_companion_cookies(self.user_id)
+        remainder = all_xp - xp_to_spend
+        if remainder > 0:
+            await self.bot.database.users.add_pending_companion_cookies(self.user_id, remainder)
+        await self.bot.database.users.modify_currency(self.user_id, "partnership_runes", runes_to_gain)
+
+        self.pending_xp = remainder
+        self.parent._pending_cookies = remainder
+        self.parent.update_buttons()
+        self._processing = False
+        self._add_buttons()
+
+        await interaction.edit_original_response(embed=self.get_embed(), view=self)
+        await interaction.followup.send(
+            f"🔮 Converted {xp_to_spend:,} XP → **{runes_to_gain} Rune(s) of Partnership**.",
+            ephemeral=True,
+        )
+
+    async def go_back(self, interaction: Interaction):
+        self.parent.update_buttons()
+        await interaction.response.edit_message(embed=self.parent.get_embed(), view=self.parent)
 
 
 class CompanionDetailView(BaseView):
