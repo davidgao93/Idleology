@@ -30,20 +30,31 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.images import (
+    AMARA_AUTHOR,
     COMBAT_VICTORY,
-    COMPANIONS_HUB,
     DELVE_HUB,
     ELYNDRA_PORTRAIT,
     ELYNDRA_THUMBNAIL,
     HARLAN_AUTHOR,
     INVENTORY_HUB,
+    LUCIEN_PORTRAIT,
+    LUCIEN_THUMBNAIL,
     MASTERY_MINING,
     PARTNERS_HUB,
+    POTION_SHOP_AUTHOR,
     QUEST_BOARD,
+    SERAPHINE_PORTRAIT,
+    SERAPHINE_THUMBNAIL,
     SETTLEMENT_HUB,
     SLAYER_MASTER,
+    SLAYER_MASTER_AUTHOR,
     TAVERN_KEEPER,
     UPGRADE_VOIDFORGE,
+    VALE_PORTRAIT,
+    VALE_THUMBNAIL,
+    VEYRA_AUTHOR,
+    YUNA_PORTRAIT,
+    YUNA_THUMBNAIL,
 )
 
 # ---------------------------------------------------------------------------
@@ -74,63 +85,81 @@ TUTORIALS: dict[str, dict] = {
     },
     "slayer": {
         "title": "⚔️ Slayer Tasks",
+        "author": "Slayer Master Kael",
+        "author_icon": SLAYER_MASTER_AUTHOR,
         "description": (
-            "Slayer Master Kael assigns you a species to hunt. You can encounter them via combat. "
-            "Completing tasks earns **Slayer XP** and currency you can spend on "
-            "powerful **Emblems** — passive stat boosts that persist across all combat. "
-            "You have 5 Emblem slots; filling them makes a noticeable difference."
+            "*You want a task? Good. I don't assign easy ones.*\n\n"
+            "I'll give you a species to hunt. Get out there and kill them — "
+            "you'll find your targets through regular combat. "
+            "Complete the task and you earn **Slayer XP** and points to spend on "
+            "**Emblems** — passive boosts that carry into every fight you ever take. "
+            "Five slots. Fill them. You'll feel the difference."
         ),
         "tips": [
-            "You can **reroll** an unwanted task once before starting.",
-            "Killing your assigned species gives **bonus drop rates** during the task.",
-            "Higher Slayer level unlocks tougher (and more rewarding) task types.",
+            "You can **reroll** an unwanted task once before starting — don't waste it.",
+            "Killing your assigned species gives **bonus drop rates** for the duration.",
+            "Higher Slayer level unlocks tougher task types with better rewards.",
         ],
         "image": SLAYER_MASTER,
         "color": discord.Color.red(),
     },
     "shop": {
         "title": "🏪 Tavern Shop",
+        "author": "Elara",
+        "author_icon": POTION_SHOP_AUTHOR,
         "description": (
-            "Elara keeps a modest but essential stock. "
-            "**Potions** are your primary combat lifeline — buy them here using gold. "
-            "Potion cost scales with your level, but so does their effectiveness. "
-            "Keep your stock topped up before heading into combat."
+            "*Oh, a new face! Don't be shy — I don't bite. Much.*\n\n"
+            "I keep a small but very important stock here. "
+            "**Potions** are what keep you breathing out there — buy them before every fight. "
+            "The cost goes up as you level, but so does how much they heal. "
+            "Run out mid-combat and you'll regret it."
         ),
         "tips": [
-            "The **Top Up** option buys only as many as you need to reach 20.",
-            "Some alchemy passives augment potions — unlock them via `/alchemy`.",
-            "Gold is earned from combat. `/journey` grants bonus gold at milestones.",
+            "**Top Up** buys only as many as you need to reach 20 — efficient and cheap.",
+            "Alchemy passives can make potions stronger or add bonus effects — check `/alchemy`.",
+            "Gold comes from combat. `/journey` gives bonus gold at level milestones.",
         ],
         "image": TAVERN_KEEPER,
         "color": discord.Color.gold(),
     },
     "companions": {
         "title": "🐾 Companions",
+        "author": "Master Tamer Yuna",
+        "author_icon": YUNA_PORTRAIT,
         "description": (
+            "*Welcome back! Your little ones missed you. Well… most of them. The grumpy one is still pretending he doesn't care.*\n\n"
             "Companions are creatures that travel with you and **passively boost your stats**. "
-            "Each has a passive type (ATK, DEF, Hit, Crit, Ward, Rarity…) and a tier — "
-            "higher tiers give stronger bonuses. "
-            "You can tame monsters through combat or earn special companions from boss encounters."
+            "Each has a passive type — ATK, DEF, Hit, Crit, Ward, Rarity, and more — and a tier that determines how strong the bonus is. "
+            "Your **active companion** is always working for you in combat.\n\n"
+            "Companions can be tamed through combat, earned from boss encounters, or **hatched from eggs** at your Settlement's Hatchery. "
+            "Fuse two companions of the same species to produce a stronger one with a chance at a rare passive!"
         ),
         "tips": [
-            "Only your **active companion(s)** applies passives — choose wisely.",
-            "Rare companions have rare passive types.",
-            "You can hold up to **20 companions** in your roster at once.",
+            "Only your **active companion** applies its passive — choose the one that fits your build.",
+            "Rare passive types like **Crit** and **Ward** can be game-changing at high tiers.",
+            "You can hold up to **20 companions** in your roster. Fuse duplicates to save space and gain power.",
         ],
-        "image": COMPANIONS_HUB,
+        "image": YUNA_THUMBNAIL,
         "color": discord.Color.green(),
     },
     "settlement": {
         "title": "🏰 Settlement",
+        "author": "Guildmaster Amara",
+        "author_icon": AMARA_AUTHOR,
         "description": (
-            "Your Settlement is your ideology's home base. "
-            "Build structures to generate resources automatically — "
-            "**Apothecaries** produce potions, **Barracks** train fighters, and more. "
-            "Assign Workers to each building to increase their output rate."
+            "*Every great force needs a home. This is yours.*\n\n"
+            "Your Settlement is your ideology's base of operations. "
+            "Build structures here to generate resources automatically — "
+            "**Apothecaries** brew potions, **Barracks** produce fighters, "
+            "**Logging Camps** and **Quarries** supply raw materials, and much more. "
+            "Assign **Workers** to each building to increase its output.\n\n"
+            "As your **Town Hall** tiers up, you unlock new building slots, better upgrades, "
+            "and access to endgame structures like the Black Market and Uber Shrine."
         ),
         "tips": [
-            "Resources accumulate over time — collect them regularly to avoid waste.",
-            "Upgrade your **Town Hall** to unlock additional building slots.",
+            "Resources cap over time — collect regularly from the dashboard to avoid waste.",
+            "**Development Turns** drive construction and upgrades. Earn them through combat and quests.",
+            "Upgrade the **Town Hall** first — it unlocks everything else.",
         ],
         "image": SETTLEMENT_HUB,
         "color": discord.Color.dark_green(),
@@ -169,16 +198,21 @@ TUTORIALS: dict[str, dict] = {
     },
     "partner": {
         "title": "🤝 Partners",
+        "author": "Guildmaster Amara",
+        "author_icon": AMARA_AUTHOR,
         "description": (
-            "Partners are powerful NPC allies recruited via **Guild Tickets**. "
-            "Deploy one in combat to benefit from their passive skills — ATK boosts, "
-            "crit bonuses, slayer synergies, and more. "
-            "Send one on **Dispatch** to earn resources and keys while you're away."
+            "*The guild attracts all kinds. Some of them are worth keeping close.*\n\n"
+            "Partners are NPC allies recruited using **Guild Tickets**. "
+            "Deploy one as your active partner and they'll contribute combat skills in every fight — "
+            "ATK boosts, crit bonuses, survivability buffs, and more depending on who you bring.\n\n"
+            "When you don't need them in combat, send them on **Dispatch** — "
+            "timed missions that return gold, materials, and keys while you're busy elsewhere. "
+            "Build **affinity** over time to unlock personal story content with each partner."
         ),
         "tips": [
-            "Partner **affinity** grows each fight — reach milestones to unlock story content.",
-            "Skills improve by spending Guild Tickets on the partner's skill page.",
-            "Dispatch tasks run passively — queue them up and collect later.",
+            "Each partner has distinct **combat skills** and **dispatch skills** — pick one that fits your current goal.",
+            "Skills level up by spending Guild Tickets on the partner's skill page.",
+            "Dispatch accumulates for up to 48 hours — you won't miss rewards if you're offline.",
         ],
         "image": PARTNERS_HUB,
         "color": discord.Color.blurple(),
@@ -214,30 +248,44 @@ TUTORIALS: dict[str, dict] = {
     },
     "quests": {
         "title": "📜 Quests",
+        "author": "Guildmaster Amara",
+        "author_icon": AMARA_AUTHOR,
         "description": (
-            "Quests give you daily goals that reward you for playing. "
-            "Choose a **Horizon Path** that's a long term goal "
-            "and pays out unique materials on completion. "
+            "*I don't hand out rewards for nothing. But I do hand them out.*\n\n"
+            "The board has two layers. **Daily Contracts** are short-term goals — "
+            "kill X, deal Y damage, clear a boss — each one pays out **Quest Tokens** "
+            "you can spend in the shop on materials you'd otherwise grind for.\n\n"
+            "**Horizon Paths** are the long game. Pick one that matches where you're heading "
+            "and work toward it over days or weeks. Finishing a path pays out "
+            "unique rewards you can't get anywhere else. "
+            "Switching paths resets your progress, so choose carefully."
         ),
         "tips": [
-            "Your Horizon Path can be changed, but progress resets when you switch.",
-            "Contracts stack up — complete several at once for burst rewards.",
+            "Contracts stack — finishing multiple at once gives burst token income.",
+            "Rerolling a contract costs a token. Use it when the task is genuinely bad for your build.",
+            "Completing quests also earns **Zeal** for your settlement — two birds, one task.",
         ],
         "image": QUEST_BOARD,
         "color": discord.Color.teal(),
     },
     "inventory": {
         "title": "🎒 Inventory & Gear",
+        "author": "Armorsmith Veyra",
+        "author_icon": VEYRA_AUTHOR,
         "description": (
-            "Your Inventory holds all your weapons, armor, and accessories. "
-            "Equip items to raise your combat stats, then **upgrade** them "
-            "to push them further. "
-            "Later on, Gloves, Boots, and Helmets support **Essences** — slotting these can dramatically "
-            "change your build."
+            "*Don't just carry it. Understand it.*\n\n"
+            "Your inventory holds every weapon, armor piece, and accessory you've ever found. "
+            "Equip items to raise your combat stats — Attack, Defence, Crit, Ward, and more. "
+            "Then **upgrade** them: Forge and Refine weapons, Temper and Reinforce armor, "
+            "and push their stats well beyond what they dropped with.\n\n"
+            "Gloves, Boots, and Helmets support **Essences** — powerful stat modifiers "
+            "you slot in directly. Get the right essences and they'll change how your build plays entirely. "
+            "Top-tier weapons can also carry a **Pinnacle** or **Utmost Passive** via the Voidforge."
         ),
         "tips": [
-            "Higher **quality** items drop with better base stats.",
-            "Upgrading gear costs resources but permanently improves the item.",
+            "Higher **rarity** items drop with stronger base stats — worth equipping even at lower level.",
+            "Upgrade costs resources, but upgrades are permanent and carry to your next fight.",
+            "Essences on gloves, boots, and helmets are your mid-to-late-game build shapers.",
         ],
         "image": INVENTORY_HUB,
         "color": discord.Color.blue(),
@@ -279,6 +327,74 @@ TUTORIALS: dict[str, dict] = {
         ],
         "image": UPGRADE_VOIDFORGE,
         "author_icon": HARLAN_AUTHOR,
+        "color": discord.Color.dark_purple(),
+    },
+    "apex": {
+        "title": "🏹 Apex Hunt",
+        "author": "Apex Hunter Lucien",
+        "author_icon": LUCIEN_PORTRAIT,
+        "description": (
+            "*You've got the look of someone who thinks they're ready for this. Good. "
+            "Confidence is useful — overconfidence gets you killed.*\n\n"
+            "The Apex Hunt sends you into six distinct **Zones**, each with unique monsters, "
+            "terrain effects, and signature hazards. "
+            "Clear a hunt to earn zone-specific **Shards** — the raw materials for upgrading your Soul Stone.\n\n"
+            "**The Soul Stone** is a three-slot artifact built over time by imprinting passives extracted "
+            "from your best gear. "
+            "Slot two or more passives from the same category and they **Resonate** — granting combat "
+            "multipliers that compound in your favor.\n\n"
+            "You have **3 charges**. One regenerates every 8 hours. "
+            "Don't waste them on zones you haven't prepared for."
+        ),
+        "tips": [
+            "Each zone has a **zone effect** active during the hunt — read it before you commit.",
+            "Extract passives from **max-rank gear** only; quality in determines quality out.",
+            "Two or more **matching passive categories** trigger Resonance — that's where the real power is.",
+        ],
+        "image": LUCIEN_THUMBNAIL,
+        "color": discord.Color.dark_orange(),
+    },
+    "ascent": {
+        "title": "🗼 The Ascent",
+        "author": "Tower Warden Vale",
+        "author_icon": VALE_PORTRAIT,
+        "description": (
+            "*So you're the new fool who wants to climb the Spire. Good. "
+            "The last one made it to floor 87 before the screams started. You might do better.*\n\n"
+            "The Ascent is a tower of progressively harder floors. "
+            "Each cleared floor grants you a **permanent stat bonus** — not just for the Ascent, "
+            "but everywhere, forever.\n\n"
+            "Floors are grouped into milestone tiers that unlock new bonuses at key thresholds. "
+            "The higher you climb, the more your character is permanently shaped. "
+            "Dying ends the run, but every bonus already earned is yours to keep."
+        ),
+        "tips": [
+            "**Permanent bonuses persist** across all content — every floor cleared makes you stronger forever.",
+            "Milestone floors are significantly harder. Come prepared before pushing into a new tier.",
+            "Your gear matters here more than anywhere else. Don't attempt floors you're not ready for.",
+        ],
+        "image": VALE_THUMBNAIL,
+        "color": discord.Color.greyple(),
+    },
+    "codex": {
+        "title": "📖 The Codex",
+        "author": "Grand Archivist Seraphine",
+        "author_icon": SERAPHINE_PORTRAIT,
+        "description": (
+            "*Another seeker of the Codex. How many pages will you claim before the tome claims something from you?*\n\n"
+            "The Codex is a wave-based survival mode. You fight through escalating waves and collect **Pages** as you go. "
+            "Pages are bound into permanent **Codex Tomes** — powerful multiplier bonuses (Vitality, Wrath, Bastion, and more) "
+            "that apply to your stats in all content, forever.\n\n"
+            "Each run features **Boons** — per-run modifiers that shape your combat — and a **Signature**, "
+            "a defining twist that makes no two runs quite the same.\n\n"
+            "*The pages remember. They will stay with you long after this run ends… if you survive.*"
+        ),
+        "tips": [
+            "Tomes are **permanent multiplier bonuses** — prioritize types that fit your build.",
+            "Your **Signature** shapes the entire run; boons are temporary but stack meaningfully.",
+            "Know when the run is worth pushing and when it isn't — each wave gets harder.",
+        ],
+        "image": SERAPHINE_THUMBNAIL,
         "color": discord.Color.dark_purple(),
     },
 }

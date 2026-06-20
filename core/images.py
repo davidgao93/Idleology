@@ -35,6 +35,18 @@ BLACK_MARKET_AUTHOR = "https://cdn.discordapp.com/attachments/133463741136332399
 # Convenience alias for the maid portrait (already defined above)
 MAID_AUTHOR = MAID_SPRITZ_PORTRAIT
 
+LUCIEN_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517328761257857145/apex_hunter_lucien.jpg?ex=6a35e207&is=6a349087&hm=815b60b5f828b6b2fe134e5528e622c8bdc965741e23d9cff74a6bae6d4d3748&"
+LUCIEN_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517328761572425838/apex_hunter_lucien_portrait.jpg?ex=6a35e207&is=6a349087&hm=54f082f0571526026868f79191fb2a506a3b21ab73842e77635971b9da2a47c9&"
+
+SERAPHINE_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517328761832476682/seraphine_grand_archivist.jpg?ex=6a35e207&is=6a349087&hm=921d64e5c9e50f19fada53265956901023f65c4dc46ab90606539f8cb4f092fd&"
+SERAPHINE_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517328762197377034/seraphine_grand_archivist_portrait.jpg?ex=6a35e207&is=6a349087&hm=03b2540289133608773733361e464dd952c5cb3701feb278d3e143dedc64da3e&"
+
+VALE_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517328762398576783/tower_warden_vale.jpg?ex=6a35e207&is=6a349087&hm=c145daa214c87dd66d42f76c638f380dae6d0a8336b965d13f9f517007a0447d&"
+VALE_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517328762604228669/tower_warden_vale_portrait.jpg?ex=6a35e207&is=6a349087&hm=2700770b6baed0be7cdd82d974f84585307c409c6f8a1d70d58ba866f934500d&"
+
+YUNA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517328762906083360/yuna_master_tamer.jpg?ex=6a35e207&is=6a349087&hm=2dc743d0ea0c08d05d303b2441dea3c03b696330ff055b38fc40d36304f4975d&"
+YUNA_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517328763153551451/yuna_master_tamer_portrait.jpg?ex=6a35e207&is=6a349087&hm=9b6c178f8b469536185a7de8d6489853ab88bae34e31714a54667636e353ae3f&"
+
 # ── COMBAT ────────────────────────────────────────────────────────────────────
 COMBAT_VICTORY = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512645961482270/combat_victory.png?ex=69f8b4cc&is=69f7634c&hm=98c607e7f4ef046069201a604d70b06c0adc16b42dfde6feb11d8ec5489a699c&"
 COMBAT_REDEMPTION = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512646523260968/combat_redemption.png?ex=69f8b4cd&is=69f7634d&hm=8872a1beecb580641323693b67bd3f2235a2f7a14a2248b5a478b9cd5ff5721a&"

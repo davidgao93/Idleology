@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `idlem` INTEGER NOT NULL DEFAULT 0,
   `zeal_earned_today` INTEGER NOT NULL DEFAULT 0,
   `last_zeal_reset` TEXT DEFAULT NULL,
-  `pending_companion_cookies` INTEGER NOT NULL DEFAULT 0,
+  `pending_companion_cookies` INTEGER NOT NULL DEFAULT 0
 );
 
 
