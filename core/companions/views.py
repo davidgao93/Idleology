@@ -10,6 +10,7 @@ from core.images import COMPANIONS_HUB, COMPANIONS_FUSION, YUNA_PORTRAIT, YUNA_T
 from core.companions.logic import CompanionLogic
 from core.companions.mechanics import CompanionMechanics
 from core.models import Companion
+from core.npc_voices import get_quip
 
 
 class RerollConfirmView(BaseView):
@@ -173,14 +174,14 @@ class CompanionListView(BaseView):
         embed.set_footer(text=f"Roster: {len(self.companions)}/20")
 
         if not self.companions:
-            embed.description = "You have no companions. Fight monsters to capture one!"
+            embed.description = f"*{get_quip('companions')}*\n\nYou have no companions. Fight monsters to capture one!"
             return embed
 
         active = [c for c in self.companions if c.is_active]
         inactive = [c for c in self.companions if not c.is_active]
 
         active_count = len(active)
-        desc = f"**Active Companions** ({active_count}/3)\n"
+        desc = f"*{get_quip('companions')}*\n\n**Active Companions** ({active_count}/3)\n"
 
         if active:
             desc += "\n"
@@ -318,7 +319,11 @@ class XPDistributeView(BaseView):
         self.add_item(btn_back)
 
     def get_embed(self):
-        embed = discord.Embed(title="Distribute XP", color=discord.Color.blue())
+        embed = discord.Embed(
+            title="Distribute XP",
+            description=f"*{get_quip('companions')}*",
+            color=discord.Color.blue(),
+        )
         embed.set_author(name="Master Tamer Yuna", icon_url=YUNA_PORTRAIT)
         embed.set_thumbnail(url=YUNA_THUMBNAIL)
         embed.add_field(name="Companion XP Pool", value=f"**{self.pending_xp:,}** XP", inline=False)

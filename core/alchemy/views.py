@@ -13,6 +13,7 @@ from core.alchemy.mechanics import (
 )
 from core.base_view import BaseView
 from core.images import ALCHEMY_HUB, ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
+from core.npc_voices import get_quip
 from core.skills.mastery import get_attunement_alchemy_bonus
 
 # ---------------------------------------------------------------------------
@@ -54,19 +55,6 @@ class AlchemyHubView(BaseView):
         self.player_gold = player_gold
         self.spirit_stones = spirit_stones
 
-    _ELYNDRA_QUIPS = [
-        "Welcome back to the lab, adventurer. The reagents are restless today. Try not to disappoint them.",
-        "You again. The cauldron hasn't exploded since your last visit. I'm choosing to see that as progress.",
-        "Ah. I was beginning to wonder if you'd dissolved.",
-        "The lab is open. Whether you emerge from it intact is, as always, entirely up to you.",
-        "Back so soon? Either you've been productive, or something has gone terribly wrong. Either way — welcome.",
-        "I've had worse visitors. Most of them left voluntarily.",
-        "Your timing is acceptable. The fumes have mostly cleared.",
-        "Don't touch the red flask. I know you're looking at it. Don't.",
-        "Progress requires boldness. It also requires not drinking unlabeled substances. Keep both in mind.",
-        "I see you've survived long enough to return. Encouraging.",
-    ]
-
     def build_embed(self) -> discord.Embed:
         slot_count = AlchemyMechanics.get_slot_count(self.alchemy_level)
         level_cost = AlchemyMechanics.get_level_up_cost(self.alchemy_level)
@@ -74,7 +62,7 @@ class AlchemyHubView(BaseView):
         embed = discord.Embed(title="⚗️ Alchemy", color=discord.Color.purple())
         embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
         embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
-        embed.set_footer(text=random.choice(self._ELYNDRA_QUIPS))
+        embed.set_footer(text=get_quip("alchemy"))
         info = [
             f"**Level:** {self.alchemy_level} / {AlchemyMechanics.MAX_LEVEL}",
             f"**Spirit Stones:** 🔮 {self.spirit_stones}",

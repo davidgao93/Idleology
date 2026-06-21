@@ -24,7 +24,8 @@ from core.apex.models import (
     soul_stone_from_db,
 )
 from core.base_view import BaseView
-from core.images import APEX_HUB
+from core.images import APEX_HUB, LUCIEN_PORTRAIT, LUCIEN_THUMBNAIL
+from core.npc_voices import get_quip
 
 
 def _fmt_time(seconds: int) -> str:
@@ -48,13 +49,16 @@ def _build_lobby_embed(
     embed = discord.Embed(
         title="🏹 Apex Hunt — Lobby",
         description=(
-            f"Welcome, **{player_name}**.\n"
+            f"*{get_quip('apex')}*\n\n"
+            f"Welcome back, **{player_name}**. "
             "Apex Hunts pit you against powerful monsters in lethal zones. "
             "Each zone grants unique shards used to empower your Soul Stone.\n\n"
             "Select a zone below to begin your hunt."
         ),
         color=0x9900CC,
     )
+    embed.set_author(name="Lucien", icon_url=LUCIEN_PORTRAIT)
+    embed.set_thumbnail(url=LUCIEN_THUMBNAIL)
 
     # Charges
     charge_bar = "🔵" * charges + "⚫" * (3 - charges)
@@ -94,7 +98,6 @@ def _build_lobby_embed(
         )
 
     embed.add_field(name="🗺️ Zones", value="\n".join(zone_lines), inline=False)
-    embed.set_thumbnail(url=APEX_HUB)
     embed.set_footer(
         text="Apex Hunts consume 1 charge per attempt. "
         "Charges regenerate 1 per 8 hours (max 3)."

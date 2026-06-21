@@ -133,12 +133,8 @@ class PotionDistillationView(BaseView):
             1, step
         )  # after base choice we are on reagent step 1 even if internal counter is still 0
 
-        # Show the *actual* passive with current projected values (instead of raw +0.0 / +0.9 accumulators).
-        # The numbers in the passive text reflect the current Duration/Value Power.
-        # We use __underline__ on the accumulators below to indicate what the powers are tuning.
         safe_dust = max(0, self.cosmic_dust)
-        projected_val = max(5.0, 5.0 + val)
-        projected_dur = max(1.0, 1.0 + dur)
+        projected_val, projected_dur = DistillationMechanics.project_values(s)
         passive_preview = DistillationMechanics.format_distilled_passive(
             base, projected_val, projected_dur
         )
@@ -147,8 +143,7 @@ class PotionDistillationView(BaseView):
             f"**Step {display_step} / {DistillationMechanics.STEPS}**\n"
             f"**Core:** {base_info.get('emoji', '⚗️')} **{base_info.get('name', base)}**\n\n"
             f"{passive_preview}\n\n"
-            f"**Cosmic Dust:** ✨ {safe_dust:,}\n"
-            f"**Value Power:** __+{val:.1f}__   **Duration Power:** __+{dur:.1f}__\n\n"
+            f"**Cosmic Dust:** ✨ {safe_dust:,}\n\n"
             'Choose a reagent below. The special properties for this step are listed under "Reagent Properties (this step)". '
             "Button labels preview the dust cost and resulting balance."
         )

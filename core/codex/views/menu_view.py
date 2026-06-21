@@ -7,7 +7,8 @@ from core.codex.views.run_view import CodexRunView, _generate_codex_wave_monster
 from core.codex.views.tomes_view import CodexTomsView
 from core.combat import jewel_engine as _je
 from core.combat.turns import engine
-from core.images import CODEX_HUB
+from core.images import SERAPHINE_PORTRAIT, SERAPHINE_THUMBNAIL
+from core.npc_voices import get_quip
 from core.models import Player
 
 
@@ -36,11 +37,14 @@ class CodexMenuView(BaseView):
         embed = discord.Embed(
             title="📖 The Codex",
             description=(
+                f"*{get_quip('codex')}*\n\n"
                 "An onslaught of curated chapters, each more brutal than the last.\n"
                 "Five chapters are drawn at random per run. Manage your Tomes of power."
             ),
             color=discord.Color.dark_purple(),
         )
+        embed.set_author(name="Seraphine", icon_url=SERAPHINE_PORTRAIT)
+        embed.set_thumbnail(url=SERAPHINE_THUMBNAIL)
         embed.add_field(
             name="Resources",
             value=(
@@ -56,7 +60,6 @@ class CodexMenuView(BaseView):
         embed.add_field(
             name="Tome Slots Unlocked", value=f"{len(tomes)}/5", inline=True
         )
-        embed.set_thumbnail(url=CODEX_HUB)
         embed.set_footer(text="Level 80+ required to begin a run.")
         return embed
 

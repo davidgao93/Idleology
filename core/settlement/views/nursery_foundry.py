@@ -10,7 +10,8 @@ from __future__ import annotations
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.images import SETTLEMENT_BUILDINGS
+from core.images import SETTLEMENT_BUILDINGS, YUNA_PORTRAIT, YUNA_THUMBNAIL
+from core.npc_voices import get_quip
 from core.settlement.constants import (
     IDLEM_PER_TURN_BASE,
     WORKERS_PER_TURN_BASE,
@@ -65,6 +66,7 @@ class NurseryView(SettlementBaseView):
         embed = discord.Embed(
             title="👶 Nursery",
             description=(
+                f"*{get_quip('nursery')}*\n\n"
                 "The Nursery produces new workers for your settlement "
                 "through Development Turns. Each queued project completes "
                 "in **1 turn**, adding workers to your ideology.\n\n"
@@ -74,9 +76,8 @@ class NurseryView(SettlementBaseView):
             ),
             color=discord.Color.green(),
         )
-        embed.set_thumbnail(
-            url=SETTLEMENT_BUILDINGS.get("nursery", SETTLEMENT_BUILDINGS["town_hall"])
-        )
+        embed.set_author(name="Master Tamer Yuna", icon_url=YUNA_PORTRAIT)
+        embed.set_thumbnail(url=YUNA_THUMBNAIL)
 
         if projects:
             nursery_proj = [p for p in projects if p["project_type"] == "nursery"]

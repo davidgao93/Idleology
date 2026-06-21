@@ -2,7 +2,8 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.images import CONSUME_SLOT_IMAGES, HEMATURGY
+from core.images import CONSUME_SLOT_IMAGES, HEMATURGY, VALDRIS_PORTRAIT, VALDRIS_THUMBNAIL
+from core.npc_voices import get_quip
 from core.hematurgy.mechanics import (
     EVO_MAX_TIER,
     MAX_TIER,
@@ -65,6 +66,7 @@ def _build_hematurgy_embed(passives: dict, blood: dict) -> discord.Embed:
     embed = discord.Embed(
         title="🩸 Hematurgy",
         description=(
+            f"*{get_quip('hematurgy')}*\n\n"
             "Imbue your body slots with permanent passives through the power of monster blood.\n\n"
             f"🩸 **Primordial:** {blood.get('primordial', 0):,}  "
             f"🧬 **Evolutionary:** {blood.get('evolutionary', 0):,}  "
@@ -72,7 +74,8 @@ def _build_hematurgy_embed(passives: dict, blood: dict) -> discord.Embed:
         ),
         color=0x8B0000,
     )
-    embed.set_thumbnail(url=HEMATURGY)
+    embed.set_author(name="Valdris", icon_url=VALDRIS_PORTRAIT)
+    embed.set_thumbnail(url=VALDRIS_THUMBNAIL)
     for slot in _SLOT_ORDER:
         label = _SLOT_LABELS[slot]
         emoji = _SLOT_EMOJI[slot]

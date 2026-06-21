@@ -6,6 +6,7 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.images import SLAYER_EMBLEM, SLAYER_MASTER, SLAYER_MASTER_AUTHOR
+from core.npc_voices import get_quip
 from core.slayer.mechanics import (
     BOSS_TASK_PREFIX,
     SLAYER_TREE_NODES,
@@ -38,7 +39,7 @@ class SlayerDashboardView(BaseView):
 
         embed = discord.Embed(
             title="Slayer Records",
-            description="Another hunter walks in. Let's see how much blood you've spilled since last time. Don't disappoint me.",
+            description=get_quip("slayer"),
             color=discord.Color.dark_red(),
         )
         embed.set_author(name="Slayer Master Kael", icon_url=SLAYER_MASTER_AUTHOR)

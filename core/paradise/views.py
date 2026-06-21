@@ -12,7 +12,8 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.images import SKILL_IMAGES, SKILL_UNCUT
+from core.images import SKILL_IMAGES, SKILL_UNCUT, TESSARA_PORTRAIT, TESSARA_THUMBNAIL
+from core.npc_voices import get_quip
 from core.paradise import mechanics as M
 from core.paradise.data import (
     DUST_REROLL_TYPE,
@@ -88,6 +89,8 @@ def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
     embed = discord.Embed(
         title="💎 Jewel of Paradise", color=discord.Color.from_str("#b967ff")
     )
+    embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
+    embed.set_footer(text=get_quip("paradise"))
 
     obtained = data.get("total_jewels_obtained", 0)
     consumed = data.get("total_jewels_consumed", 0)

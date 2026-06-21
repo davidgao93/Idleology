@@ -12,12 +12,11 @@ Flow:
 
 from __future__ import annotations
 
-import random
-
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.images import BLACK_MARKET_AUTHOR, SETTLEMENT_BUILDINGS
+from core.npc_voices import get_quip
 from core.settlement.constants import (
     BM_ITEM_VALUES,
     BM_TREE_NODES,
@@ -295,15 +294,6 @@ async def _load_player_inventory(bot, user_id: str, server_id: str) -> dict[str,
     return inv
 
 
-_MAX_GREETINGS = [
-    "Max tilts his head. 'What have you brought me today?'",
-    "'Interesting selection,' he murmurs. 'Let's see what this fetches.'",
-    "'Ah, another visitor.' He gestures to the scale. 'Place your offering.'",
-    "'I trust you've brought something worth my time?' A thin smile. 'Show me.'",
-    "'The market is quiet today,' he says. 'Which means I'm in a generous mood.'",
-]
-
-
 class BlackMarketView(SettlementBaseView):
     """Main Black Market hub — shows pending deal, make offer, passive tree."""
 
@@ -367,7 +357,7 @@ class BlackMarketView(SettlementBaseView):
 
         embed = discord.Embed(
             title=f"The Black Market (Tier {tier})",
-            description=random.choice(_MAX_GREETINGS),
+            description=get_quip("black_market"),
             color=discord.Color.dark_gray(),
         )
         embed.set_author(name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR)

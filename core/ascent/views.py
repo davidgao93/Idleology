@@ -20,7 +20,8 @@ from core.combat.economy.loot import (
 )
 from core.combat.mobgen.gen_mob import generate_ascent_monster
 from core.combat.turns import engine
-from core.images import ASCENT_HUB
+from core.images import VALE_PORTRAIT, VALE_THUMBNAIL
+from core.npc_voices import get_quip
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -115,12 +116,14 @@ class AscentLobbyView(BaseView):
         embed = discord.Embed(
             title="🏔️ The Ascent",
             description=(
+                f"*{get_quip('ascent')}*\n\n"
                 "Climb an endless tower of escalating floors, each guarded by a fearsome boss.\n"
                 "Reach new pinnacle floors to earn permanent stat bonuses."
             ),
             color=discord.Color.from_rgb(180, 120, 60),
         )
-        embed.set_thumbnail(url=ASCENT_HUB)
+        embed.set_author(name="Vale", icon_url=VALE_PORTRAIT)
+        embed.set_thumbnail(url=VALE_THUMBNAIL)
         # Floor info
         starting_floor = AscentMechanics.calculate_starting_floor(self.best_floor)
         embed.add_field(

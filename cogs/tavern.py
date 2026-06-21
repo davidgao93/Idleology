@@ -17,6 +17,7 @@ from core.images import (
     TAVERN_GAMES,
 )
 from core.items.factory import load_player
+from core.npc_voices import get_quip
 from core.quests.data import CHECKIN_DAY_LABELS
 from core.tavern.mechanics import TavernMechanics
 from core.tavern.views import CasinoMenuView, RestView, ShopView
@@ -120,11 +121,7 @@ class Tavern(commands.Cog, name="tavern"):
             topup_qty = max(0, 20 - potions)
             embed = discord.Embed(
                 title="Tavern Shop",
-                description=(
-                    "Still alive, adventurer? Good. The shelves are a bit bare today, "
-                    "but I still have what you need — potions to keep you on your feet. "
-                    "Buy a few before you go getting yourself killed again."
-                ),
+                description=get_quip("shop"),
                 color=0xFFCC00,
             )
             embed.set_author(name="Elara", icon_url=POTION_SHOP_AUTHOR)
@@ -285,11 +282,7 @@ class Tavern(commands.Cog, name="tavern"):
 
         embed = discord.Embed(
             title="The Tavern Casino",
-            description=(
-                f"Table Stake: **{amount:,} gold**. Feeling lucky, or just desperate?\n"
-                "Pick your poison — blackjack, roulette, crash, or the horses. "
-                "House always wins in the end, but maybe tonight's different."
-            ),
+            description=f"Table Stake: **{amount:,} gold**. {get_quip('casino')}",
             color=0xFFD700,
         )
         embed.set_author(name="Vespera", icon_url=CASINO_AUTHOR)

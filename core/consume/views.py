@@ -5,7 +5,8 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.combat.economy.drops import _PART_SLOTS, _PART_WEIGHTS
-from core.images import CONSUME_EGG, CONSUME_HUB, CONSUME_SLOT_IMAGES
+from core.images import CONSUME_EGG, CONSUME_HUB, CONSUME_SLOT_IMAGES, RAGNA_PORTRAIT, RAGNA_THUMBNAIL
+from core.npc_voices import get_quip
 from core.items.factory import create_monster_part
 from core.models import MonsterPart, Player
 
@@ -56,12 +57,15 @@ def _build_main_embed(player: Player, inventory: list) -> discord.Embed:
     embed = discord.Embed(
         title=f"🫀 {player.name}'s Monster Parts",
         description=(
+            f"*{get_quip('consume')}*\n\n"
             f"Consume monster body parts to empower your spirit.\n"
             f"**Max HP Gained:** +{parts_hp:,}\n"
             f"**Inventory:** {len(inventory)}/20 parts"
         ),
         color=0xB22222,
     )
+    embed.set_author(name="Ragna", icon_url=RAGNA_PORTRAIT)
+    embed.set_thumbnail(url=RAGNA_THUMBNAIL)
     for slot in _SLOT_ORDER:
         label = _SLOT_LABELS[slot]
         emoji = _SLOT_EMOJI[slot]
@@ -78,7 +82,6 @@ def _build_main_embed(player: Player, inventory: list) -> discord.Embed:
                 value="*Empty*",
                 inline=True,
             )
-    embed.set_thumbnail(url=CONSUME_HUB)
     return embed
 
 

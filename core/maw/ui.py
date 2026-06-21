@@ -4,7 +4,8 @@ core/maw/ui.py — Stateless embed builders for the Maw of Infinity.
 
 import discord
 
-from core.images import MAW_MAIN, MAW_VICTORY
+from core.images import MAW_MAIN, MAW_VICTORY, BROTHER_SOLEN_PORTRAIT, BROTHER_SOLEN_THUMBNAIL
+from core.npc_voices import get_quip
 from core.maw.mechanics import (
     MAX_FIGHTS_PER_CYCLE,
     BASE_CURIOS,
@@ -41,6 +42,8 @@ def build_maw_embed(
     pending_participant_count: int = 0,
 ) -> discord.Embed:
     embed = discord.Embed(title="🌑 The Maw of Infinity", color=0x1A0033)
+    embed.set_author(name="Brother Solen", icon_url=BROTHER_SOLEN_PORTRAIT)
+    embed.set_footer(text=get_quip("maw"))
 
     cycle_end = get_cycle_end_ts(cycle_id)
     in_collection = pending_cycle_id is not None and is_collection_window(
@@ -140,6 +143,6 @@ def build_maw_embed(
     if pending_record and not pending_record["rewards_collected"]:
         embed.set_image(url=MAW_VICTORY)
     else:
-        embed.set_thumbnail(url=MAW_MAIN)
+        embed.set_thumbnail(url=BROTHER_SOLEN_THUMBNAIL)
 
     return embed

@@ -9,6 +9,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.images import QUEST_SHOP, QUEST_SHOP_AUTHOR
+from core.npc_voices import get_quip
 from core.quests.data import TOKEN_SHOP_ITEMS
 
 _SHOP_COLOR = 0xF0A500
@@ -35,12 +36,7 @@ class TokenShopView(BaseView):
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title="Quest Token Shop",
-            description=(
-                "Oh good, you're here. Those tokens burning a hole in your pocket? "
-                "I've got just the thing to lighten the load — upgrades, caches, the usual. "
-                "Spend wisely.\n\n"
-                f"🎫 **Your Tokens: {self._tokens}**"
-            ),
+            description=f"{get_quip('quest_shop')}\n\n🎫 **Your Tokens: {self._tokens}**",
             color=_SHOP_COLOR,
         )
         embed.set_author(name="Lira", icon_url=QUEST_SHOP_AUTHOR)

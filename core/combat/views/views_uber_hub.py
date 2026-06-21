@@ -2,7 +2,8 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.images import UBER_HUB
+from core.images import UBER_HUB, ARBITER_PORTRAIT, ARBITER_THUMBNAIL
+from core.npc_voices import get_quip
 from core.models import Player
 
 
@@ -113,13 +114,15 @@ class UberHubView(BaseView):
         embed = discord.Embed(
             title="⚔️ Uber Encounters",
             description=(
+                f"*{get_quip('uber')}*\n\n"
                 "These are the most powerful beings in existence. "
                 "Only the truly prepared dare to challenge them.\n\n"
                 "Select a boss to view your readiness and available keys."
             ),
             color=discord.Color.dark_gold(),
         )
-        embed.set_thumbnail(url=UBER_HUB)
+        embed.set_author(name="The Arbiter", icon_url=ARBITER_PORTRAIT)
+        embed.set_thumbnail(url=ARBITER_THUMBNAIL)
 
         def _boss_field(name: str, flavor: str, key_text: str, req_lvl: int) -> str:
             if lvl >= req_lvl:
