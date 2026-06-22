@@ -42,7 +42,9 @@ def _refresh_parent(parent) -> None:
 
 def _next_free_slot(statue_data: dict[str, dict]) -> int:
     """Return the lowest slot index (1–5) not yet occupied by a built statue."""
-    occupied = {d["slot_index"] for d in statue_data.values() if d.get("slot_index", 0) > 0}
+    occupied = {
+        d["slot_index"] for d in statue_data.values() if d.get("slot_index", 0) > 0
+    }
     for i in range(1, 6):
         if i not in occupied:
             return i
@@ -81,7 +83,9 @@ class _StatueWorkerModal(ui.Modal, title="Assign Statue Workers"):
             if val < 0:
                 raise ValueError
         except ValueError:
-            return await interaction.response.send_message("Invalid number.", ephemeral=True)
+            return await interaction.response.send_message(
+                "Invalid number.", ephemeral=True
+            )
 
         sv = self.slot_view
         data = sv.shrine_view.statue_data.get(sv.statue_type, {})
@@ -115,7 +119,9 @@ class _StatueWorkerModal(ui.Modal, title="Assign Statue Workers"):
 class EmptySlotView(SettlementBaseView):
     """Shown when a player selects an empty shrine slot; lets them pick a statue to construct."""
 
-    def __init__(self, bot, user_id: str, shrine_view: "UberShrineView", slot_index: int):
+    def __init__(
+        self, bot, user_id: str, shrine_view: "UberShrineView", slot_index: int
+    ):
         super().__init__(bot, user_id)
         self.shrine_view = shrine_view
         self.slot_index = slot_index
@@ -132,7 +138,11 @@ class EmptySlotView(SettlementBaseView):
         }
         result = []
         for stype, d in self.shrine_view.statue_data.items():
-            if d.get("can_build") and not d.get("is_unlocked") and stype not in queued_types:
+            if (
+                d.get("can_build")
+                and not d.get("is_unlocked")
+                and stype not in queued_types
+            ):
                 result.append(stype)
         return result
 
@@ -149,7 +159,9 @@ class EmptySlotView(SettlementBaseView):
                 + "\n".join(
                     f"• {d['emoji']} **{d['name']}** — defeat **{d['boss_name']}**"
                     for d in UBER_STATUE_DEFS.values()
-                    if not self.shrine_view.statue_data.get(d.get("key", ""), {}).get("is_unlocked")
+                    if not self.shrine_view.statue_data.get(d.get("key", ""), {}).get(
+                        "is_unlocked"
+                    )
                 )
             )
         else:
@@ -182,7 +194,9 @@ class EmptySlotView(SettlementBaseView):
                 )
                 for stype in available
             ]
-            sel = ui.Select(placeholder="Choose a statue to construct…", options=options, row=0)
+            sel = ui.Select(
+                placeholder="Choose a statue to construct…", options=options, row=0
+            )
             sel.callback = self._on_type_select
             self.add_item(sel)
 
@@ -209,7 +223,9 @@ class EmptySlotView(SettlementBaseView):
             data={"statue_type": statue_type, "slot_index": self.slot_index},
         )
         self.shrine_view._pending_projects = (
-            await self.bot.database.settlement.get_projects(self.user_id, self.server_id)
+            await self.bot.database.settlement.get_projects(
+                self.user_id, self.server_id
+            )
         )
         self._processing = False
 
@@ -228,7 +244,9 @@ class EmptySlotView(SettlementBaseView):
         self.stop()
         await asyncio.sleep(3)
         _refresh_parent(parent)
-        await interaction.edit_original_response(embed=parent.build_embed(), view=parent)
+        await interaction.edit_original_response(
+            embed=parent.build_embed(), view=parent
+        )
 
     async def _on_back(self, interaction: Interaction):
         self.shrine_view._rebuild_ui()
@@ -288,9 +306,15 @@ class StatueSlotView(SettlementBaseView):
         parent = sv.parent
         dashboard = getattr(parent, "parent", parent)
         settlement = getattr(dashboard, "settlement", None)
-        follower_count = getattr(parent, "follower_count", 0) or getattr(dashboard, "follower_count", 0)
-        building_workers = sum(b.workers_assigned for b in settlement.buildings) if settlement else 0
-        statue_workers = sum(d.get("workers_assigned", 0) for d in sv.statue_data.values())
+        follower_count = getattr(parent, "follower_count", 0) or getattr(
+            dashboard, "follower_count", 0
+        )
+        building_workers = (
+            sum(b.workers_assigned for b in settlement.buildings) if settlement else 0
+        )
+        statue_workers = sum(
+            d.get("workers_assigned", 0) for d in sv.statue_data.values()
+        )
         current = self._data().get("workers_assigned", 0)
         used = building_workers + statue_workers - current
         return max(0, follower_count - used)
@@ -337,7 +361,9 @@ class StatueSlotView(SettlementBaseView):
             f"(cap ≈ {cap_pct:.2f}% at T{statue_tier})"
         )
         if eff_sources:
-            effect_line += f"\n_Effectiveness ×{shrine_eff:.2f}: {', '.join(eff_sources)}_"
+            effect_line += (
+                f"\n_Effectiveness ×{shrine_eff:.2f}: {', '.join(eff_sources)}_"
+            )
 
         embed.description = (
             f"**Tier:** {tier_str}\n"
@@ -384,11 +410,15 @@ class StatueSlotView(SettlementBaseView):
             for p in self.shrine_view._pending_projects
         )
 
-        btn_workers = ui.Button(label="Manage Workers", style=ButtonStyle.primary, emoji="👥", row=0)
+        btn_workers = ui.Button(
+            label="Manage Workers", style=ButtonStyle.primary, emoji="👥", row=0
+        )
         btn_workers.callback = self._on_manage_workers
         self.add_item(btn_workers)
 
-        btn_max = ui.Button(label="Max Workers", style=ButtonStyle.primary, emoji="⬆️", row=0)
+        btn_max = ui.Button(
+            label="Max Workers", style=ButtonStyle.primary, emoji="⬆️", row=0
+        )
         btn_max.callback = self._on_max_workers
         self.add_item(btn_max)
 
@@ -403,7 +433,12 @@ class StatueSlotView(SettlementBaseView):
             self.add_item(btn_up)
         elif upgrade_pending:
             self.add_item(
-                ui.Button(label="⏳ Upgrade in progress…", style=ButtonStyle.secondary, disabled=True, row=0)
+                ui.Button(
+                    label="⏳ Upgrade in progress…",
+                    style=ButtonStyle.secondary,
+                    disabled=True,
+                    row=0,
+                )
             )
 
         back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
@@ -434,7 +469,9 @@ class StatueSlotView(SettlementBaseView):
 
         if target <= current:
             self._processing = False
-            return await interaction.response.send_message("Already at maximum capacity.", ephemeral=True)
+            return await interaction.response.send_message(
+                "Already at maximum capacity.", ephemeral=True
+            )
 
         await interaction.response.defer()
         await self.bot.database.settlement.set_statue_workers(
@@ -465,16 +502,21 @@ class StatueSlotView(SettlementBaseView):
             return await interaction.response.send_message(
                 f"Need **{gold_cost:,} gold** (you have **{gold:,}**).", ephemeral=True
             )
-        owned_mat = await self.bot.database.users.get_currency(self.user_id, defn["material"])
+        owned_mat = await self.bot.database.users.get_currency(
+            self.user_id, defn["material"]
+        )
         if owned_mat < mat_qty:
             self._processing = False
             return await interaction.response.send_message(
-                f"Need **{mat_qty}× {defn['material_name']}** (you have {owned_mat}).", ephemeral=True
+                f"Need **{mat_qty}× {defn['material_name']}** (you have {owned_mat}).",
+                ephemeral=True,
             )
 
         await interaction.response.defer()
         await self.bot.database.users.modify_gold(self.user_id, -gold_cost)
-        await self.bot.database.users.modify_currency(self.user_id, defn["material"], -mat_qty)
+        await self.bot.database.users.modify_currency(
+            self.user_id, defn["material"], -mat_qty
+        )
 
         await self.bot.database.settlement.upsert_project(
             user_id=self.user_id,
@@ -485,7 +527,9 @@ class StatueSlotView(SettlementBaseView):
             data={"statue_type": self.statue_type, "target_tier": target_tier},
         )
         self.shrine_view._pending_projects = (
-            await self.bot.database.settlement.get_projects(self.user_id, self.server_id)
+            await self.bot.database.settlement.get_projects(
+                self.user_id, self.server_id
+            )
         )
         self._processing = False
         self._rebuild_ui()
@@ -505,7 +549,9 @@ class StatueSlotView(SettlementBaseView):
         self.stop()
         await asyncio.sleep(3)
         _refresh_parent(parent)
-        await interaction.edit_original_response(embed=parent.build_embed(), view=parent)
+        await interaction.edit_original_response(
+            embed=parent.build_embed(), view=parent
+        )
 
     async def _on_back(self, interaction: Interaction):
         self.shrine_view._rebuild_ui()
@@ -576,7 +622,9 @@ class UberShrineView(SettlementBaseView):
         lines = []
         for slot_num in range(1, 6):
             if slot_num > shrine_tier:
-                lines.append(f"**Slot {slot_num}** — 🔒 *Locked (upgrade shrine to T{slot_num})*")
+                lines.append(
+                    f"**Slot {slot_num}** — 🔒 *Locked (upgrade shrine to T{slot_num})*"
+                )
                 continue
 
             if slot_num in by_slot:
@@ -592,7 +640,8 @@ class UberShrineView(SettlementBaseView):
                     self.adj_bonus.get("has_watchtower", False),
                 )
                 upgrading = any(
-                    p.get("project_type") == "statue_upgrade" and p.get("target_id") == slot_num
+                    p.get("project_type") == "statue_upgrade"
+                    and p.get("target_id") == slot_num
                     for p in self._pending_projects
                 )
                 tier_str = f"T{statue_tier}" + (" *(upgrading)*" if upgrading else "")
@@ -607,7 +656,9 @@ class UberShrineView(SettlementBaseView):
                     f"**Slot {slot_num}** — {defn['emoji']} **{defn['name']}** 🏗️ *under construction*"
                 )
             else:
-                lines.append(f"**Slot {slot_num}** — *(empty — select to construct a statue)*")
+                lines.append(
+                    f"**Slot {slot_num}** — *(empty — select to construct a statue)*"
+                )
 
         embed = discord.Embed(
             title="🏛️ Monument Hall to the Gods",
@@ -630,6 +681,7 @@ class UberShrineView(SettlementBaseView):
         )
         if self.plot_bonus_type:
             from core.settlement.plots import PLOT_BONUS_TABLE
+
             bonus_data = PLOT_BONUS_TABLE.get(self.plot_bonus_type, {})
             embed.add_field(
                 name="📍 Terrain Bonus",
@@ -694,7 +746,9 @@ class UberShrineView(SettlementBaseView):
                 )
 
         if options:
-            sel = ui.Select(placeholder="Select a shrine slot to manage…", options=options, row=0)
+            sel = ui.Select(
+                placeholder="Select a shrine slot to manage…", options=options, row=0
+            )
             sel.callback = self._on_slot_select
             self.add_item(sel)
 
@@ -727,16 +781,22 @@ class UberShrineView(SettlementBaseView):
             statue_type = parts[2]
             defn = UBER_STATUE_DEFS[statue_type]
             proj = next(
-                (p for p in self._pending_projects
-                 if p.get("project_type") == "uber_statue" and p.get("target_id") == slot_index),
+                (
+                    p
+                    for p in self._pending_projects
+                    if p.get("project_type") == "uber_statue"
+                    and p.get("target_id") == slot_index
+                ),
                 None,
             )
-            remaining = (proj["required_turns"] - proj["invested_turns"]) if proj else "?"
+            remaining = (
+                (proj["required_turns"] - proj["invested_turns"]) if proj else "?"
+            )
             embed = discord.Embed(
                 title=f"🏗️ Slot {slot_index} — {defn['name']} Under Construction",
                 description=f"**{defn['name']}** is being constructed in this slot.\n\n"
-                            f"**Turns remaining:** {remaining}\n"
-                            "Use **Next Turn** on the dashboard to advance the project.",
+                f"**Turns remaining:** {remaining}\n"
+                "Use **Next Turn** on the dashboard to advance the project.",
                 color=discord.Color.orange(),
             )
             self._rebuild_ui()

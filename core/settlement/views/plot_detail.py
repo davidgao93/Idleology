@@ -1123,7 +1123,9 @@ class PlotDetailView(SettlementBaseView):
 
         if "specials" in cost:
             for s in cost["specials"]:
-                owned = await self.bot.database.users.get_currency(self.user_id, s["key"])
+                owned = await self.bot.database.users.get_currency(
+                    self.user_id, s["key"]
+                )
                 if owned < s["qty"]:
                     self._processing = False
                     return await interaction.response.send_message(

@@ -151,9 +151,13 @@ class DummyEngine:
             avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
             if time_to_die < 10:
-                return "You feel as if you are **not ready**. The aura alone crushes you."
+                return (
+                    "You feel as if you are **not ready**. The aura alone crushes you."
+                )
             elif res.average_damage < (player.total_max_hp * 0.05) or time_to_die < 20:
-                return "You feel this would be a **tough battle**. Survival is uncertain."
+                return (
+                    "You feel this would be a **tough battle**. Survival is uncertain."
+                )
             return "You are **filled with determination**. Press onwards."
 
         if target == "lucifer_uber":
@@ -175,7 +179,9 @@ class DummyEngine:
             if time_to_die < 10:
                 return "You feel as if you are **not ready**. His strikes alone would end you."
             elif res.average_damage < (player.total_max_hp * 0.05) or time_to_die < 20:
-                return "You feel this would be a **tough battle**. Survival is uncertain."
+                return (
+                    "You feel this would be a **tough battle**. Survival is uncertain."
+                )
             return "You are **filled with determination**. Press onwards."
 
         if target == "neet_uber":

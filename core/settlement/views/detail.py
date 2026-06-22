@@ -525,7 +525,9 @@ class BuildingDetailView(SettlementBaseView):
         self.setup_ui()
 
     async def open_uber_shrine(self, interaction: Interaction):
-        from core.settlement.views.uber_shrine import UberShrineView as NewUberShrineView
+        from core.settlement.views.uber_shrine import (
+            UberShrineView as NewUberShrineView,
+        )
 
         await interaction.response.defer()
         view = NewUberShrineView(

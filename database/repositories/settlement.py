@@ -509,6 +509,7 @@ class SettlementRepository:
 
     async def add_pending_zeal(self, user_id: str, server_id: str, amount: int) -> None:
         from core.settlement.constants import ZEAL_GATHER_CAP
+
         try:
             await self.connection.execute(
                 "UPDATE settlements SET pending_zeal = MIN(pending_zeal + ?, ?) "
@@ -1052,7 +1053,9 @@ class SettlementRepository:
             key: {
                 "can_build": can_build[key],
                 "is_unlocked": statue_state.get(key, {}).get("is_unlocked", False),
-                "workers_assigned": statue_state.get(key, {}).get("workers_assigned", 0),
+                "workers_assigned": statue_state.get(key, {}).get(
+                    "workers_assigned", 0
+                ),
                 "tier": statue_state.get(key, {}).get("tier", 1),
                 "slot_index": statue_state.get(key, {}).get("slot_index", 0),
             }

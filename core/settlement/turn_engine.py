@@ -455,7 +455,9 @@ async def _complete_project(
         statue_type = data.get("statue_type")
         slot_index = data.get("slot_index", 0)
         if statue_type:
-            await bot.database.settlement.unlock_statue(user_id, server_id, statue_type, slot_index)
+            await bot.database.settlement.unlock_statue(
+                user_id, server_id, statue_type, slot_index
+            )
         label = f"{statue_type.title()} Statue" if statue_type else "Statue"
         return {"label": f"{label} Built"}
 
@@ -463,7 +465,9 @@ async def _complete_project(
         statue_type = data.get("statue_type")
         target_tier = data.get("target_tier", 2)
         if statue_type:
-            await bot.database.settlement.upgrade_statue_tier(user_id, server_id, statue_type)
+            await bot.database.settlement.upgrade_statue_tier(
+                user_id, server_id, statue_type
+            )
         label = f"{statue_type.title()} Statue" if statue_type else "Statue"
         return {"label": f"{label} Upgraded to T{target_tier}"}
 
