@@ -174,14 +174,17 @@ class AlchemyHubView(BaseView):
         embed = discord.Embed(
             title="⬆️ Level Up Alchemy?",
             description=(
+                f"*You're ready to push this further. Good.*\n\n"
                 f"Upgrade from **Level {self.alchemy_level}** → **Level {new_level}**\n\n"
                 f"Cost: 🔮 **{cost}** Spirit Stones\n"
                 f"New slot count: **{AlchemyMechanics.get_slot_count(new_level)}**\n"
                 f"New transmutation ratio: **{up_r}:1** upgrade / **1:{dn_r}** downgrade\n\n"
-                f"✨ The new slot will be available for a free Distillation in the Potion Lab!"
+                f"✨ The new slot will be ready for a free Distillation in the Potion Lab."
             ),
             color=discord.Color.gold(),
         )
+        embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
         await interaction.response.edit_message(embed=embed, view=view)
         view.message = interaction.message
         self.stop()
@@ -433,17 +436,21 @@ class AlchemyTransmuteView(BaseView):
         self._select: _TransmuteSelect | None = None
         self._options_data: list = []
         self._mode: str = "raw"  # "raw" | "settlement"
-        self._processed_direction: str = "to_processed"  # "to_processed" | "to_raw"
+        self._raw_direction: str = "upgrade"  # "upgrade" | "downgrade"
+        self._settlement_direction: str = "upgrade"  # "upgrade" | "downgrade"
 
     async def _switch_mode(self, interaction: Interaction, mode: str) -> None:
         self._mode = mode
         embed = await self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
-    async def _toggle_direction(self, interaction: Interaction) -> None:
-        self._processed_direction = (
-            "proc_upgrade" if self._processed_direction == "to_processed" else "to_processed"
-        )
+    async def _toggle_raw_direction(self, interaction: Interaction) -> None:
+        self._raw_direction = "downgrade" if self._raw_direction == "upgrade" else "upgrade"
+        embed = await self.build_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def _toggle_settlement_direction(self, interaction: Interaction) -> None:
+        self._settlement_direction = "downgrade" if self._settlement_direction == "upgrade" else "upgrade"
         embed = await self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -474,21 +481,30 @@ class AlchemyTransmuteView(BaseView):
         embed = discord.Embed(
             title="🔄 Transmute Resources", color=discord.Color.blurple()
         )
+        embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
+        embed.set_footer(text=get_quip("alchemy"))
 
         if self._mode == "settlement":
             embed = await self._build_settlement_embed(embed)
-            # Direction toggle button
-            going_up = self._processed_direction == "to_processed"
             dir_btn = ui.Button(
-                label="Show Processed Tiers" if going_up else "Show Raw → Processed",
+                label="Show Downgrades" if self._settlement_direction == "upgrade" else "Show Upgrades",
                 style=ButtonStyle.secondary,
                 emoji="🔃",
                 row=2,
             )
-            dir_btn.callback = self._toggle_direction
+            dir_btn.callback = self._toggle_settlement_direction
             self.add_item(dir_btn)
         else:
             embed = await self._build_raw_embed(embed)
+            dir_btn = ui.Button(
+                label="Show Downgrades" if self._raw_direction == "upgrade" else "Show Upgrades",
+                style=ButtonStyle.secondary,
+                emoji="🔃",
+                row=2,
+            )
+            dir_btn.callback = self._toggle_raw_direction
+            self.add_item(dir_btn)
 
         confirm_btn = ui.Button(
             label="Transmute", style=ButtonStyle.green, emoji="✅", row=2
@@ -535,138 +551,61 @@ class AlchemyTransmuteView(BaseView):
 
         for skill, cols in AlchemyMechanics.SKILL_TIERS.items():
             names = AlchemyMechanics.SKILL_TIER_NAMES[skill]
-            for i in range(len(cols) - 1):
-                src_col, dst_col = cols[i], cols[i + 1]
-                src_amt = amounts.get((skill, src_col), 0)
-                gold_cost = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD[i + 1]
-                self._options_data.append(
-                    {
-                        "type": "upgrade",
-                        "skill": skill,
-                        "src_col": src_col,
-                        "dst_col": dst_col,
-                        "label": f"↑ {names[i]} → {names[i + 1]} ({skill.title()})",
-                        "desc": f"{up_ratio}× {names[i]} → 1× {names[i + 1]} | have {src_amt} | {gold_cost:,}g each",
-                        "gold_cost": gold_cost,
-                        "ratio": up_ratio,
-                    }
-                )
-            for i in range(1, len(cols)):
-                src_col, dst_col = cols[i], cols[i - 1]
-                src_amt = amounts.get((skill, src_col), 0)
-                gold_cost = AlchemyMechanics.TRANSMUTE_DOWNGRADE_GOLD[i]
-                self._options_data.append(
-                    {
-                        "type": "downgrade",
-                        "skill": skill,
-                        "src_col": src_col,
-                        "dst_col": dst_col,
-                        "label": f"↓ {names[i]} → {names[i - 1]} ({skill.title()})",
-                        "desc": f"1× {names[i]} → {dn_ratio}× {names[i - 1]} | have {src_amt} | {gold_cost:,}g each",
-                        "gold_cost": gold_cost,
-                        "ratio": dn_ratio,
-                    }
-                )
+            if self._raw_direction == "upgrade":
+                for i in range(len(cols) - 1):
+                    src_col, dst_col = cols[i], cols[i + 1]
+                    src_amt = amounts.get((skill, src_col), 0)
+                    gold_cost = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD[i + 1]
+                    self._options_data.append(
+                        {
+                            "type": "upgrade",
+                            "skill": skill,
+                            "src_col": src_col,
+                            "dst_col": dst_col,
+                            "label": f"↑ {names[i]} → {names[i + 1]} ({skill.title()})",
+                            "desc": f"{up_ratio}× {names[i]} → 1× {names[i + 1]} | have {src_amt} | {gold_cost:,}g each",
+                            "gold_cost": gold_cost,
+                            "ratio": up_ratio,
+                        }
+                    )
+            else:
+                for i in range(1, len(cols)):
+                    src_col, dst_col = cols[i], cols[i - 1]
+                    src_amt = amounts.get((skill, src_col), 0)
+                    gold_cost = AlchemyMechanics.TRANSMUTE_DOWNGRADE_GOLD[i]
+                    self._options_data.append(
+                        {
+                            "type": "downgrade",
+                            "skill": skill,
+                            "src_col": src_col,
+                            "dst_col": dst_col,
+                            "label": f"↓ {names[i]} → {names[i - 1]} ({skill.title()})",
+                            "desc": f"1× {names[i]} → {dn_ratio}× {names[i - 1]} | have {src_amt} | {gold_cost:,}g each",
+                            "gold_cost": gold_cost,
+                            "ratio": dn_ratio,
+                        }
+                    )
 
         self._select = _TransmuteSelect(self._options_data)
         self._select.row = 1
         self.add_item(self._select)
 
-        embed.description = (
-            f"Convert gathering resources between tiers.\n"
-            f"**Upgrade ratio:** {up_ratio}:1 | **Downgrade ratio:** 1:{dn_ratio} "
-            f"(improves with alchemy level)\n"
-            f"**Gold:** 💰 {self.player_gold:,}\n\n"
-            "Select a conversion, then press **Transmute** to enter a quantity."
-        )
+        if self._raw_direction == "upgrade":
+            embed.description = (
+                f"Upgrade raw gathering resources to the next tier.\n"
+                f"**Ratio:** {up_ratio}:1 | **Gold:** 💰 {self.player_gold:,}\n\n"
+                "Select a conversion, then press **Transmute** to enter a quantity."
+            )
+        else:
+            embed.description = (
+                f"Break down raw gathering resources into a lower tier.\n"
+                f"**Ratio:** 1:{dn_ratio} | **Gold:** 💰 {self.player_gold:,}\n\n"
+                "Select a conversion, then press **Transmute** to enter a quantity."
+            )
         return embed
 
     async def _build_settlement_embed(self, embed: discord.Embed) -> discord.Embed:
-        """Processed resources tab.
-
-        to_processed:  raw → processed at 1:1 (e.g. Oak Logs → Oak Plank).
-        proc_upgrade:  processed tier upgrade using the same ratio as raw-tier upgrades
-                       (e.g. Oak Plank → Willow Plank at up_ratio:1).
-        """
-        # (raw_col, processed_col, raw_name, processed_name, skill, tier_idx)
-        _PAIRS = [
-            # Mining
-            ("iron", "iron_bar", "Iron", "Iron Bar", "mining", 1),
-            ("coal", "steel_bar", "Coal", "Steel Bar", "mining", 2),
-            ("gold", "gold_bar", "Gold Ore", "Gold Bar", "mining", 3),
-            ("platinum", "platinum_bar", "Platinum", "Platinum Bar", "mining", 4),
-            ("idea", "idea_bar", "Idea Ore", "Idea Bar", "mining", 4),
-            # Woodcutting
-            ("oak_logs", "oak_plank", "Oak Logs", "Oak Plank", "woodcutting", 1),
-            (
-                "willow_logs",
-                "willow_plank",
-                "Willow Logs",
-                "Willow Plank",
-                "woodcutting",
-                2,
-            ),
-            (
-                "mahogany_logs",
-                "mahogany_plank",
-                "Mahogany Logs",
-                "Mahogany Plank",
-                "woodcutting",
-                3,
-            ),
-            (
-                "magic_logs",
-                "magic_plank",
-                "Magic Logs",
-                "Magic Plank",
-                "woodcutting",
-                4,
-            ),
-            ("idea_logs", "idea_plank", "Idea Logs", "Idea Plank", "woodcutting", 4),
-            # Fishing
-            (
-                "desiccated_bones",
-                "desiccated_essence",
-                "Desd. Bones",
-                "Desd. Essence",
-                "fishing",
-                1,
-            ),
-            (
-                "regular_bones",
-                "regular_essence",
-                "Reg. Bones",
-                "Reg. Essence",
-                "fishing",
-                2,
-            ),
-            (
-                "sturdy_bones",
-                "sturdy_essence",
-                "Sturdy Bones",
-                "Sturdy Essence",
-                "fishing",
-                3,
-            ),
-            (
-                "reinforced_bones",
-                "reinforced_essence",
-                "Reinf. Bones",
-                "Reinf. Essence",
-                "fishing",
-                4,
-            ),
-            (
-                "titanium_bones",
-                "titanium_essence",
-                "Titan. Bones",
-                "Titan. Essence",
-                "fishing",
-                4,
-            ),
-        ]
-
-        # Processed tier ordering — mirrors SKILL_TIERS but for processed forms
+        """Processed resources tab — upgrade or downgrade processed tiers (bar/plank/essence)."""
         _PROC_TIERS: dict[str, list[tuple[str, str]]] = {
             "mining": [
                 ("iron_bar", "Iron Bar"),
@@ -691,69 +630,41 @@ class AlchemyTransmuteView(BaseView):
             ],
         }
 
-        # Batch-fetch amounts: one query per skill for raw + processed columns
-        raw_amounts: dict[tuple[str, str], int] = {}
+        # Fetch processed amounts
         proc_amounts: dict[tuple[str, str], int] = {}
-        for skill in ("mining", "woodcutting", "fishing"):
-            pairs_for_skill = [
-                (r, p) for r, p, _rn, _pn, sk, _ti in _PAIRS if sk == skill
-            ]
-            raw_cols = [r for r, _ in pairs_for_skill]
-            proc_cols = [p for _, p in pairs_for_skill]
-            all_cols = raw_cols + proc_cols
+        for skill, tiers in _PROC_TIERS.items():
+            proc_cols = [col for col, _ in tiers]
             row = await self.bot.database.skills.get_multi_resource(
-                self.user_id, self.server_id, skill, all_cols
+                self.user_id, self.server_id, skill, proc_cols
             )
-            for i, col in enumerate(all_cols):
-                val = row[i] if row else 0
-                if col in raw_cols:
-                    raw_amounts[(skill, col)] = val
-                else:
-                    proc_amounts[(skill, col)] = val
+            for i, col in enumerate(proc_cols):
+                proc_amounts[(skill, col)] = row[i] if row else 0
 
-        going_up = self._processed_direction == "to_processed"
+        has_baiter = False
+        try:
+            mrow = await self.bot.database.skills.get_mastery(
+                self.user_id, self.server_id
+            )
+            from core.skills.mastery import has_master_baiter
+
+            has_baiter = has_master_baiter(mrow)
+        except Exception:
+            pass
+
+        up_ratio = AlchemyMechanics.get_effective_upgrade_ratio(self.alchemy_level, has_baiter)
+        dn_ratio = AlchemyMechanics.get_effective_downgrade_ratio(self.alchemy_level, has_baiter)
+
+        going_up = self._settlement_direction == "upgrade"
         self._options_data = []
 
         if going_up:
-            # Raw → Processed at 1:1
-            for raw_col, proc_col, raw_name, proc_name, skill, tier_idx in _PAIRS:
-                gold_cost = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD.get(tier_idx, 75_000)
-                skill_label = skill.title()
-                raw_amt = raw_amounts.get((skill, raw_col), 0)
-                self._options_data.append(
-                    {
-                        "type": "upgrade",
-                        "skill": skill,
-                        "src_col": raw_col,
-                        "dst_col": proc_col,
-                        "label": f"↑ {raw_name} → {proc_name} ({skill_label})",
-                        "desc": f"1:1 | have {raw_amt:,} {raw_name} | {gold_cost:,}g",
-                        "gold_cost": gold_cost,
-                        "ratio": 1,
-                    }
-                )
-        else:
-            # Processed → Processed tier upgrade (same ratio as raw tier upgrades)
-            has_baiter = False
-            try:
-                mrow = await self.bot.database.skills.get_mastery(
-                    self.user_id, self.server_id
-                )
-                from core.skills.mastery import has_master_baiter
-
-                has_baiter = has_master_baiter(mrow)
-            except Exception:
-                pass
-            up_ratio = AlchemyMechanics.get_effective_upgrade_ratio(
-                self.alchemy_level, has_baiter
-            )
             for skill, tiers in _PROC_TIERS.items():
                 skill_label = skill.title()
                 for i in range(len(tiers) - 1):
                     src_col, src_name = tiers[i]
                     dst_col, dst_name = tiers[i + 1]
                     src_amt = proc_amounts.get((skill, src_col), 0)
-                    gold_cost = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD.get(i + 1, 75_000)
+                    gold_cost = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD.get(i + 1, 7_500)
                     self._options_data.append(
                         {
                             "type": "upgrade",
@@ -766,6 +677,26 @@ class AlchemyTransmuteView(BaseView):
                             "ratio": up_ratio,
                         }
                     )
+        else:
+            for skill, tiers in _PROC_TIERS.items():
+                skill_label = skill.title()
+                for i in range(len(tiers) - 1, 0, -1):
+                    src_col, src_name = tiers[i]
+                    dst_col, dst_name = tiers[i - 1]
+                    src_amt = proc_amounts.get((skill, src_col), 0)
+                    gold_cost = AlchemyMechanics.TRANSMUTE_DOWNGRADE_GOLD.get(i, 50)
+                    self._options_data.append(
+                        {
+                            "type": "downgrade",
+                            "skill": skill,
+                            "src_col": src_col,
+                            "dst_col": dst_col,
+                            "label": f"↓ {src_name} → {dst_name} ({skill_label})",
+                            "desc": f"1× {src_name} → {dn_ratio}× {dst_name} | have {src_amt:,} | {gold_cost:,}g",
+                            "gold_cost": gold_cost,
+                            "ratio": dn_ratio,
+                        }
+                    )
 
         self._select = _TransmuteSelect(self._options_data)
         self._select.row = 1
@@ -773,16 +704,14 @@ class AlchemyTransmuteView(BaseView):
 
         if going_up:
             embed.description = (
-                f"Convert raw gathering resources to their processed forms (bars, planks, essences).\n"
-                f"All conversions are **1:1** — no ratio loss.\n"
-                f"**Gold:** 💰 {self.player_gold:,}\n\n"
+                f"Upgrade processed resources to a higher tier (e.g. Iron Bar → Steel Bar).\n"
+                f"**Ratio:** {up_ratio}:1 | **Gold:** 💰 {self.player_gold:,}\n\n"
                 "Select a conversion, then press **Transmute** to enter a quantity."
             )
         else:
             embed.description = (
-                f"Upgrade processed resources to a higher tier (e.g. Oak Plank → Willow Plank).\n"
-                f"Uses the same ratio as raw-tier upgrades.\n"
-                f"**Upgrade ratio:** {up_ratio}:1 | **Gold:** 💰 {self.player_gold:,}\n\n"
+                f"Break down processed resources to a lower tier (e.g. Steel Bar → Iron Bar).\n"
+                f"**Ratio:** 1:{dn_ratio} | **Gold:** 💰 {self.player_gold:,}\n\n"
                 "Select a conversion, then press **Transmute** to enter a quantity."
             )
         return embed
@@ -813,19 +742,21 @@ class AlchemyTransmuteView(BaseView):
 class _SlotSelect(ui.Select):
     def __init__(self, slot_count: int, parent_view: "AlchemyPotionLabView"):
         options = [
-            discord.SelectOption(label=f"Slot {s}", value=str(s))
+            discord.SelectOption(label=f"Slot {s}", value=str(s), default=(s == 1))
             for s in range(1, slot_count + 1)
         ]
         super().__init__(
-            placeholder="Choose a slot…", options=options, min_values=1, max_values=1
+            placeholder="Slot 1 selected", options=options, min_values=1, max_values=1
         )
-        self.chosen_slot: int | None = None
+        self.chosen_slot: int = 1  # slot 1 pre-selected by default
         self._parent_view = parent_view
 
     async def callback(self, interaction: Interaction):
         self.chosen_slot = int(self.values[0])
-        self._parent_view._distill_btn.disabled = False
-        self._parent_view._clear_btn.disabled = False
+        # Update the default marker in the dropdown to match the new selection
+        for opt in self.options:
+            opt.default = opt.value == self.values[0]
+        self.placeholder = f"Slot {self.chosen_slot} selected"
         await interaction.response.edit_message(
             embed=self._parent_view.build_embed(), view=self._parent_view
         )
@@ -951,13 +882,13 @@ class AlchemyPotionLabView(BaseView):
             self._slot_select = _SlotSelect(slot_count, self)
             self.add_item(self._slot_select)
 
-        # Distill powerful passives (the main system now) — disabled until a slot is chosen
+        # Distill — slot 1 is pre-selected so this is ready immediately
         self._distill_btn = ui.Button(
             label="Distill Elixir",
             style=ButtonStyle.primary,
             emoji="🧪",
             row=1,
-            disabled=slot_count > 0,
+            disabled=(slot_count == 0),
         )
         self._distill_btn.callback = self._on_distill
         self.add_item(self._distill_btn)
@@ -969,29 +900,29 @@ class AlchemyPotionLabView(BaseView):
         guide_btn.callback = self._on_distill_guide
         self.add_item(guide_btn)
 
-        # Full catalog of powerful passives (moved out of the main embed to avoid clutter and cutoff)
+        # Full catalog of powerful passives
         passives_btn = ui.Button(
             label="Passives", style=ButtonStyle.secondary, emoji="📜", row=1
         )
         passives_btn.callback = self._on_view_passives
         self.add_item(passives_btn)
 
-        # Destroy — disabled until a slot is chosen
+        back_btn = ui.Button(
+            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=2
+        )
+        back_btn.callback = self._on_back
+        self.add_item(back_btn)
+
+        # Destroy — slot 1 pre-selected so enabled immediately (if slots exist)
         self._clear_btn = ui.Button(
             label="Destroy",
             style=ButtonStyle.danger,
             emoji="🗑️",
-            row=1,
-            disabled=slot_count > 0,
+            row=2,
+            disabled=(slot_count == 0),
         )
         self._clear_btn.callback = self._on_clear
         self.add_item(self._clear_btn)
-
-        back_btn = ui.Button(
-            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1
-        )
-        back_btn.callback = self._on_back
-        self.add_item(back_btn)
 
     def _set_buttons_disabled(self, disabled: bool):
         """Temporarily disable or re-enable all interactive components."""
@@ -1020,18 +951,23 @@ class AlchemyPotionLabView(BaseView):
 
     def build_embed(self) -> discord.Embed:
         slot_count = AlchemyMechanics.get_slot_count(self.alchemy_level)
+        chosen = self._slot_select.chosen_slot if self._slot_select else 1
+
         embed = discord.Embed(title="⚗️ Potion Lab", color=discord.Color.green())
+        embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
+        embed.set_footer(text=get_quip("alchemy"))
 
         embed.description = (
             f"**Level:** {self.alchemy_level} | **Spirit Stones:** 🔮 {self.spirit_stones}\n\n"
-            "Select a slot to destroy, or click **Distill Elixir** (costs 🔮 1 Spirit Stone) "
-            "to craft a powerful passive (assigned to an empty slot). "
-            "Click **Guide** for the distillation rules. Click **Passives** to browse every possible distilled core and its ranges."
+            "**Distill Elixir** (🔮 1 Spirit Stone) crafts a powerful passive into the selected slot. "
+            "Click **Guide** for distillation rules, or **Passives** to browse all possible cores."
         )
 
         passive_by_slot = {p["slot"]: p for p in self.passives}
         lines = []
         for s in range(1, slot_count + 1):
+            arrow = "▶ " if s == chosen else "    "
             if s in passive_by_slot:
                 p = passive_by_slot[s]
                 name, emoji = get_passive_name_emoji(p["passive_type"])
@@ -1040,18 +976,16 @@ class AlchemyPotionLabView(BaseView):
                     p["passive_value"],
                     p.get("passive_duration", 2.0),
                 )
-                lines.append(f"**[{s}]** {emoji} {name}: *{desc}*")
+                lines.append(f"{arrow}**[{s}]** {emoji} {name}: *{desc}*")
             else:
-                lines.append(f"**[{s}]** *Empty slot*")
+                lines.append(f"{arrow}**[{s}]** *Empty slot*")
 
         embed.add_field(
-            name="Current Passives",
+            name="Potion Passives",
             value="\n".join(lines) if lines else "None",
             inline=False,
         )
 
-        # The full list of possible distilled passives has been moved to its own button ("📜 Passives")
-        # so it doesn't clutter the main lab screen and avoids truncation.
         return embed
 
     async def _on_distill(self, interaction: Interaction):
@@ -1081,8 +1015,10 @@ class AlchemyPotionLabView(BaseView):
 
         # Pass the player's existing passive types so the core-choice pool excludes them.
         excluded = [p["passive_type"] for p in self.passives]
+        chosen_slot = self._slot_select.chosen_slot if self._slot_select else None
         await start_distillation(
-            self.bot, self.user_id, self.server_id, interaction, excluded
+            self.bot, self.user_id, self.server_id, interaction, excluded,
+            target_slot=chosen_slot,
         )
 
     async def _on_distill_guide(self, interaction: Interaction):

@@ -21,7 +21,8 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.alchemy.mechanics import AlchemyMechanics
 from core.base_view import BaseView
-from core.images import ALCHEMY_HUB
+from core.images import ALCHEMY_HUB, ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
+from core.npc_voices import get_quip
 from core.paradise.mechanics import dust_from_jewel
 
 # ---------------------------------------------------------------------------
@@ -168,7 +169,9 @@ class AlchemySynthesisHubView(BaseView):
         discount = level
 
         embed = discord.Embed(title="⚗️ Synthesis", color=discord.Color.teal())
-        embed.set_thumbnail(url=ALCHEMY_HUB)
+        embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
+        embed.set_footer(text=get_quip("alchemy"))
         embed.description = (
             f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}\n"
             f"**Gold:** 💰 {self.player_gold:,}\n"
@@ -603,7 +606,11 @@ class _DisenchantSelectView(BaseView):
             title=f"🔨 Disenchant Items — Queue Slot {self.target_slot}",
             color=discord.Color.blurple(),
         )
+        embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
+        embed.set_footer(text=get_quip("alchemy"))
         embed.description = (
+            "*Everything has latent value — you just have to render it down.*\n\n"
             "Choose a **category** above to see the items you own.\n"
             "Then select an item and click **Queue Disenchant**."
         )
@@ -861,10 +868,13 @@ class _SynthesizeSelectView(BaseView):
         discount = level
 
         embed = discord.Embed(title="⚗️ Synthesize Item", color=discord.Color.purple())
+        embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
+        embed.set_footer(text=get_quip("alchemy"))
         embed.description = (
             f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}  |  **Gold:** 💰 {self.player_gold:,}\n"
             f"**Synthesis Discount:** {discount}% (Alchemy Level {level})\n\n"
-            "*Not all items are available for synthesis. Select an item to begin.*"
+            "*Dust in, item out. Select what you want synthesized.*"
         )
 
         lines = []

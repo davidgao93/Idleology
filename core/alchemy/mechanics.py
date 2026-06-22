@@ -96,10 +96,10 @@ class AlchemyMechanics:
     }
 
     # Gold cost per upgrade transmutation, keyed by destination tier index (1=T2 … 4=T5)
-    TRANSMUTE_UPGRADE_GOLD: dict[int, int] = {1: 2_000, 2: 8_000, 3: 25_000, 4: 75_000}
+    TRANSMUTE_UPGRADE_GOLD: dict[int, int] = {1: 200, 2: 800, 3: 2_500, 4: 7_500}
 
     # Gold cost per downgrade transmutation, keyed by source tier index (1=T2 … 4=T5)
-    TRANSMUTE_DOWNGRADE_GOLD: dict[int, int] = {1: 500, 2: 2_000, 3: 6_000, 4: 20_000}
+    TRANSMUTE_DOWNGRADE_GOLD: dict[int, int] = {1: 50, 2: 200, 3: 600, 4: 2_000}
 
     # ------------------------------------------------------------------
     # Helpers

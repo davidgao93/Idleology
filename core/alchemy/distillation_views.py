@@ -22,7 +22,8 @@ from core.alchemy.mechanics import (
     get_passive_info,
 )
 from core.base_view import BaseView
-from core.images import ALCHEMY_HUB
+from core.images import ALCHEMY_HUB, ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
+from core.npc_voices import get_quip
 
 
 async def _get_alchemy_context(bot, user_id: str, server_id: str):
@@ -30,6 +31,11 @@ async def _get_alchemy_context(bot, user_id: str, server_id: str):
     level = await bot.database.alchemy.get_level(user_id)
     dust = await bot.database.alchemy.get_cosmic_dust(user_id)
     return level, dust
+
+
+def _pct_bar(frac: float, width: int = 10) -> str:
+    filled = max(0, min(width, round(frac * width)))
+    return "█" * filled + "░" * (width - filled)
 
 
 class PotionDistillationView(BaseView):
@@ -45,6 +51,7 @@ class PotionDistillationView(BaseView):
         alchemy_level: int,
         cosmic_dust: int,
         excluded_passive_types: list | None = None,
+        target_slot: int | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
@@ -52,7 +59,7 @@ class PotionDistillationView(BaseView):
         self.session: dict = {}
         self._processing = False
         self._excluded_passive_types: list = excluded_passive_types or []
-        # Session is loaded asynchronously via _ensure_session() when the view is started.
+        self._target_slot: int | None = target_slot
 
     async def _ensure_session(self):
         # Always load latest from DB to ensure persistence across steps (e.g. base choice)
@@ -66,6 +73,8 @@ class PotionDistillationView(BaseView):
             self.session = DistillationMechanics.start_distillation(
                 self.alchemy_level, self._excluded_passive_types
             )
+            if self._target_slot is not None:
+                self.session["target_slot"] = self._target_slot
             await self._save_session()
 
         # Keep dust fresh for accurate (current->after) previews on buttons.
@@ -101,19 +110,21 @@ class PotionDistillationView(BaseView):
         val = s.get("value_mod", 0.0)
 
         embed = discord.Embed(
-            title="🧪 Potion Distillation", color=discord.Color.purple()
+            title="⚗️ Potion Distillation", color=discord.Color.purple()
         )
-        embed.set_thumbnail(url=ALCHEMY_HUB)
+        embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
 
         # ------------------------------------------------------------------
         # BASE CHOICE (initial 3 skills) — show brief desc + roll ranges for each
         # ------------------------------------------------------------------
         if step == 0 and not base:
             embed.description = (
-                "You stand before the Great Alembic.\n\n"
-                "**Step 1: Choose the core essence** — the base passive (skill) you will distill over the next 9 steps. "
-                "Each choice below shows what the final passive does and the possible roll ranges for its strength and duration.\n\n"
-                "After choosing, 8 reagent steps remain. Each reagent step has its own special properties (shown on the next screen)."
+                f"*{get_quip('alchemy')}*\n\n"
+                "I've prepared three formulations. Each one will anchor the elixir's core effect — "
+                "choose carefully, because once the distillation begins, there's no going back.\n\n"
+                "The next nine steps determine how potent your result is. "
+                "Each reagent step carries its own properties — read them before you commit."
             )
             bases = DistillationMechanics.get_prepared_core_choices(s)
             for b in bases:
@@ -122,7 +133,7 @@ class PotionDistillationView(BaseView):
                     value=b.get("desc", "Powerful distilled passive."),
                     inline=False,
                 )
-            embed.set_footer(text="Pick one. You cannot change the core later.")
+            embed.set_footer(text="Your choice is final. Make it count.")
             return embed
 
         # ------------------------------------------------------------------
@@ -139,13 +150,22 @@ class PotionDistillationView(BaseView):
             base, projected_val, projected_dur
         )
 
+        val_min = base_info.get("value_min", 5.0)
+        val_max = base_info.get("value_max", 150.0)
+        dur_min = base_info.get("duration_min", 2.0)
+        dur_max = base_info.get("duration_max", 5.0)
+        val_frac = (projected_val - val_min) / max(1.0, val_max - val_min)
+        dur_frac = (projected_dur - dur_min) / max(1.0, dur_max - dur_min)
+        val_pct = int(val_frac * 100)
+        dur_pct = int(dur_frac * 100)
+
         embed.description = (
-            f"**Step {display_step} / {DistillationMechanics.STEPS}**\n"
+            f"**Step {display_step} / {DistillationMechanics.STEPS}** · ✨ {safe_dust:,} dust\n"
             f"**Core:** {base_info.get('emoji', '⚗️')} **{base_info.get('name', base)}**\n\n"
             f"{passive_preview}\n\n"
-            f"**Cosmic Dust:** ✨ {safe_dust:,}\n\n"
-            'Choose a reagent below. The special properties for this step are listed under "Reagent Properties (this step)". '
-            "Button labels preview the dust cost and resulting balance."
+            f"`Power   ` {_pct_bar(val_frac)} {val_pct}%\n"
+            f"`Duration` {_pct_bar(dur_frac)} {dur_pct}%\n\n"
+            "Pick a reagent — each carries a different property this step."
         )
 
         # Show the 3 special properties for the reagents this step (key per user spec)
@@ -394,11 +414,16 @@ class PotionDistillationView(BaseView):
             base_type, final_val, final_dur
         )
 
-        # Place in first empty slot, or overwrite slot 1 if all full.
+        # Use the slot the player selected when launching distillation.
+        # Fall back to first empty slot (or slot 1) if the session has no target.
         passives = await self.bot.database.alchemy.get_potion_passives(self.user_id)
         occupied = {p["slot"] for p in passives}
         slot_count = 5
-        slot = next((sl for sl in range(1, slot_count + 1) if sl not in occupied), 1)
+        target = s.get("target_slot")
+        if target and 1 <= target <= slot_count:
+            slot = target
+        else:
+            slot = next((sl for sl in range(1, slot_count + 1) if sl not in occupied), 1)
 
         # Save with the actual distilled duration so the hub displays it correctly.
         await self.bot.database.alchemy.set_passive(
@@ -475,9 +500,10 @@ async def start_distillation(
     server_id: str,
     interaction: Interaction,
     excluded_passive_types: list | None = None,
+    target_slot: int | None = None,
 ):
     level, dust = await _get_alchemy_context(bot, user_id, server_id)
     view = PotionDistillationView(
-        bot, user_id, server_id, level, dust, excluded_passive_types
+        bot, user_id, server_id, level, dust, excluded_passive_types, target_slot=target_slot
     )
     await view.start(interaction)
