@@ -583,7 +583,9 @@ class PlotDetailView(SettlementBaseView):
                 and META_BUILDINGS.get(b.building_type, {}).get("max_workers", 1) == 0
             )
             tier_label = f"Meta Tier {b.tier}/5" if b.is_meta else f"{b.tier}/5"
-            if is_passive_meta:
+            if b.building_type == "uber_shrine":
+                desc = f"**Tier:** {tier_label}\n🏛️ Workers are managed per statue — open Monument Hall to assign them."
+            elif is_passive_meta:
                 desc = f"**Tier:** {tier_label} *(Passive — no workers needed)*"
             else:
                 desc = f"**Tier:** {tier_label}\n**Workers:** {b.workers_assigned:,}/{max_w:,}"

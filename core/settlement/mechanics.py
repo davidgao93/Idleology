@@ -91,7 +91,7 @@ class SettlementMechanics:
         "corruption_shrine": {"type": "passive", "effect": "corruption_sigil_bonus"},
         # Consolidated uber shrine — replaces the five individual shrines.
         # Internal per-statue worker allocation stored as JSON in building data.
-        "uber_shrine": {"type": "passive", "effect": "all_sigil_bonus"},
+        "uber_shrine": {"type": "special", "effect": "all_sigil_bonus"},
         # New turn-based buildings
         "nursery": {"type": "special", "effect": "worker_production"},
         "idlem_foundry": {"type": "special", "effect": "idlem_production"},

@@ -1031,9 +1031,9 @@ class SettlementRepository:
             "corrupted": bool(bp_row[4]) if bp_row else False,
         }
 
-        # Built state + worker counts + tier from uber_shrine_statues
+        # Built state + worker counts + tier + slot_index from uber_shrine_statues
         s_cursor = await self.connection.execute(
-            "SELECT statue_type, is_unlocked, workers_assigned, tier "
+            "SELECT statue_type, is_unlocked, workers_assigned, tier, slot_index "
             "FROM uber_shrine_statues WHERE user_id = ? AND server_id = ?",
             (user_id, server_id),
         )
@@ -1043,6 +1043,7 @@ class SettlementRepository:
                 "is_unlocked": bool(r[1]),
                 "workers_assigned": r[2],
                 "tier": r[3] if r[3] is not None else 1,
+                "slot_index": r[4] if r[4] else 0,
             }
             for r in s_rows
         }
@@ -1053,6 +1054,7 @@ class SettlementRepository:
                 "is_unlocked": statue_state.get(key, {}).get("is_unlocked", False),
                 "workers_assigned": statue_state.get(key, {}).get("workers_assigned", 0),
                 "tier": statue_state.get(key, {}).get("tier", 1),
+                "slot_index": statue_state.get(key, {}).get("slot_index", 0),
             }
             for key in ("celestial", "infernal", "void", "bound", "corrupted")
         }
@@ -1086,14 +1088,15 @@ class SettlementRepository:
         await self.connection.commit()
 
     async def unlock_statue(
-        self, user_id: str, server_id: str, statue_type: str
+        self, user_id: str, server_id: str, statue_type: str, slot_index: int = 0
     ) -> None:
         """Marks the statue as built (called when the build project completes)."""
         await self.connection.execute(
-            """INSERT INTO uber_shrine_statues (user_id, server_id, statue_type, is_unlocked)
-               VALUES (?, ?, ?, 1)
+            """INSERT INTO uber_shrine_statues
+               (user_id, server_id, statue_type, is_unlocked, slot_index)
+               VALUES (?, ?, ?, 1, ?)
                ON CONFLICT(user_id, server_id, statue_type)
-               DO UPDATE SET is_unlocked = 1""",
-            (user_id, server_id, statue_type),
+               DO UPDATE SET is_unlocked = 1, slot_index = excluded.slot_index""",
+            (user_id, server_id, statue_type, slot_index),
         )
         await self.connection.commit()

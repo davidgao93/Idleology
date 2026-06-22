@@ -408,6 +408,7 @@ CREATE TABLE IF NOT EXISTS uber_shrine_statues (
     is_unlocked     INTEGER NOT NULL DEFAULT 0,  -- 1 = statue has been built (project completed)
     workers_assigned INTEGER NOT NULL DEFAULT 0,
     tier            INTEGER NOT NULL DEFAULT 1,  -- statue upgrade tier (1–5)
+    slot_index      INTEGER NOT NULL DEFAULT 0,  -- which shrine slot (1–5) this statue occupies
     PRIMARY KEY (user_id, server_id, statue_type)
 );
 

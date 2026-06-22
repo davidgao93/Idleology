@@ -453,8 +453,9 @@ async def _complete_project(
 
     elif ptype == "uber_statue":
         statue_type = data.get("statue_type")
+        slot_index = data.get("slot_index", 0)
         if statue_type:
-            await bot.database.settlement.unlock_statue(user_id, server_id, statue_type)
+            await bot.database.settlement.unlock_statue(user_id, server_id, statue_type, slot_index)
         label = f"{statue_type.title()} Statue" if statue_type else "Statue"
         return {"label": f"{label} Built"}
 
@@ -525,12 +526,18 @@ async def _apply_event_effects(
     return result
 
 
+_COMBAT_EVENTS: frozenset[str] = frozenset(
+    {"bandit_raid", "plague_outbreak", "void_incursion", "fire_hazard"}
+)
+
+
 async def _check_schedule_events(
     bot, user_id: str, server_id: str, total_turns: int
 ) -> None:
     """Schedules upcoming events that are due based on total turns."""
     existing = await bot.database.settlement.get_active_events(user_id, server_id)
     existing_keys = {ev["event_key"] for ev in existing}
+    combat_event_active = bool(existing_keys & _COMBAT_EVENTS)
 
     # Fetch the player's buildings so we can enforce requirements and pick targets.
     settlement = await bot.database.settlement.get_settlement(user_id, server_id)
@@ -543,6 +550,9 @@ async def _check_schedule_events(
     for key, ev_def in SETTLEMENT_EVENTS.items():
         if key in existing_keys:
             continue  # Already active
+        # Only one combat event can be active at a time
+        if key in _COMBAT_EVENTS and combat_event_active:
+            continue
 
         trigger_at = ev_def.get("trigger_at", [])
         rec_interval = ev_def.get("recurring_interval", 0)

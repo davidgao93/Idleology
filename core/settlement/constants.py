@@ -239,8 +239,8 @@ STATUE_UPGRADE_GOLD: dict[int, int] = {
     5: 5_000_000,
 }
 
-# Statue tier upgrade material quantities (of the statue's own material)
-STATUE_UPGRADE_MATERIAL_QTY: dict[int, int] = {2: 2, 3: 4, 4: 8, 5: 15}
+# Statue tier upgrade material quantities (of the statue's own material): T2=1, T3=2, T4=3, T5=4
+STATUE_UPGRADE_MATERIAL_QTY: dict[int, int] = {2: 1, 3: 2, 4: 3, 5: 4}
 
 # ---------------------------------------------------------------------------
 # Development Turns / Zeal economy
