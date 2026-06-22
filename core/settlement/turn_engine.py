@@ -204,12 +204,18 @@ async def process_next_turn(
             deal_tree_nodes = await bot.database.settlement.get_bm_tree(
                 user_id, server_id
             )
+            from core.settlement.bm_log import BMLogger
+
+            bm_log = BMLogger(user_id, deal["total_value"], 0)
+            bm_log.log_tree(deal_tree_nodes, deal.get("active_biases", []))
             rewards = roll_bm_rewards(
                 deal["total_value"],
                 deal["active_biases"],
                 player_level,
                 tree_nodes=deal_tree_nodes,
+                bm_logger=bm_log,
             )
+            bm_log.close()
             await _grant_bm_rewards(bot, user_id, server_id, rewards)
             await bot.database.settlement.delete_pending_deal(user_id, server_id)
             summary["deal_completed"] = deal
@@ -707,11 +713,52 @@ def compute_processing_turns(
 # ---------------------------------------------------------------------------
 
 
+_GEAR_SLOTS = ["weapon", "armor", "accessory", "glove", "boot", "helmet"]
+_GEAR_SLOT_WEIGHTS = [35, 10, 25, 10, 10, 10]
+_GEAR_SLOT_LABELS = {
+    "weapon": "Weapon",
+    "armor": "Armor",
+    "accessory": "Accessory",
+    "glove": "Gloves",
+    "boot": "Boots",
+    "helmet": "Helmet",
+}
+
+_CURRENCY_LABELS = {
+    "refinement_runes": "Rune of Refinement",
+    "potential_runes": "Rune of Potential",
+    "shatter_runes": "Rune of Shattering",
+    "imbue_runes": "Rune of Imbuing",
+    "dragon_key": "Dragon Key",
+    "angel_key": "Angel Key",
+    "soul_cores": "Soul Core",
+    "balance_fragment": "Fragment of Balance",
+    "void_frags": "Void Fragment",
+    "magma_core": "Magma Core",
+    "life_root": "Life Root",
+    "spirit_shard": "Spirit Shard",
+    "cosmic_dust": "Cosmic Dust",
+    "antique_tome": "Antique Tome",
+    "pinnacle_key": "Pinnacle Key",
+    "spirit_stones": "Spirit Stone",
+    "diviners_rod": "Diviner's Rod",
+    "unidentified_blueprint": "Unidentified Blueprint",
+    "guild_ticket": "Guild Ticket",
+    "curios": "Curio",
+    "idea": "Idea Ore",
+    "idea_logs": "Idea Logs",
+    "magic_logs": "Magic Logs",
+    "reinforced_bones": "Reinforced Bones",
+    "titanium_bones": "Titanium Bones",
+}
+
+
 def roll_bm_rewards(
     value: int,
     active_biases: list[str],
     player_level: int = 1,
     tree_nodes: dict | None = None,
+    bm_logger=None,
 ) -> dict:
     """
     Rolls Black Market rewards for a completed deal.
@@ -721,7 +768,7 @@ def roll_bm_rewards(
         "gold": int,
         "currencies": {currency_key: qty},
         "items": [{"type": "weapon"|"armor"|etc., "level": int}],
-        "summary_lines": [str],  # human-readable
+        "summary_lines": [str],  # human-readable, joined as one line for display
       }
     """
     base_rolls = max(1, math.floor(value / BM_ROLLS_PER_VALUE))
@@ -751,10 +798,36 @@ def roll_bm_rewards(
         category = node.get("category", "rune")
         extra_rolls.extend([category] * extra_count)
 
+    if bm_logger:
+        bm_logger.log_roll_plan(base_rolls, extra_rolls)
+
+    # Variety tracker: track which sub-types have been used per category this deal.
+    # Once all sub-types in a pool are used, allow repeats.
+    _used: dict[str, list[str]] = {
+        "essence": [],
+        "rune": [],
+        "gathering": [],
+        "boss_key": [],
+    }
+
+    def _pick_varied(pool: list, used_list: list) -> str:
+        """Pick from pool, preferring sub-types not yet used this deal."""
+        fresh = [x for x in pool if x not in used_list]
+        chosen = random.choice(fresh if fresh else pool)
+        used_list.append(chosen)
+        return chosen
+
+    _roll_num = [0]
+
     def _roll_category(cat: str) -> None:
+        _roll_num[0] += 1
+        n = _roll_num[0]
+
         if cat == "gold":
             g = random.randint(BM_GOLD_MIN, BM_GOLD_MAX)
             result["gold"] += g
+            if bm_logger:
+                bm_logger.log_roll(n, cat, "gold", g)
 
         elif cat == "rune":
             rune_pool = [
@@ -763,14 +836,15 @@ def roll_bm_rewards(
                 "shatter_runes",
                 "imbue_runes",
             ]
-            rune_weights = [40, 40, 30, 10]
-            chosen = random.choices(rune_pool, weights=rune_weights, k=1)[0]
+            chosen = _pick_varied(rune_pool, _used["rune"])
             qty = (
                 random.randint(1, 5)
                 if chosen != "imbue_runes"
                 else random.randint(1, 2)
             )
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + qty
+            if bm_logger:
+                bm_logger.log_roll(n, cat, chosen, qty)
 
         elif cat == "boss_key":
             key_pool = [
@@ -780,33 +854,45 @@ def roll_bm_rewards(
                 "balance_fragment",
                 "void_frags",
             ]
-            chosen = random.choice(key_pool)
+            chosen = _pick_varied(key_pool, _used["boss_key"])
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + 1
+            if bm_logger:
+                bm_logger.log_roll(n, cat, chosen, 1)
 
         elif cat == "gathering":
+            # T1–T5 materials per skill; qty_base scaled for meaningful quantities
             mat_pool = [
                 # Mining (T1–T5)
-                ("iron", 100),
-                ("coal", 80),
-                ("gold", 60),
-                ("platinum", 40),
-                ("idea", 20),
+                ("iron", 1000),
+                ("coal", 800),
+                ("gold", 600),
+                ("platinum", 400),
+                ("idea", 200),
                 # Woodcutting (T1–T5)
-                ("oak_logs", 100),
-                ("willow_logs", 80),
-                ("mahogany_logs", 60),
-                ("magic_logs", 40),
-                ("idea_logs", 20),
+                ("oak_logs", 1000),
+                ("willow_logs", 800),
+                ("mahogany_logs", 600),
+                ("magic_logs", 400),
+                ("idea_logs", 200),
                 # Fishing (T1–T5)
-                ("desiccated_bones", 100),
-                ("regular_bones", 80),
-                ("sturdy_bones", 60),
-                ("reinforced_bones", 40),
-                ("titanium_bones", 20),
+                ("desiccated_bones", 1000),
+                ("regular_bones", 800),
+                ("sturdy_bones", 600),
+                ("reinforced_bones", 400),
+                ("titanium_bones", 200),
             ]
-            chosen, qty_base = random.choice(mat_pool)
+            mat_names = [m for m, _ in mat_pool]
+            fresh = [m for m in mat_names if m not in _used["gathering"]]
+            if fresh:
+                chosen = random.choice(fresh)
+                qty_base = next(q for m, q in mat_pool if m == chosen)
+            else:
+                chosen, qty_base = random.choice(mat_pool)
+            _used["gathering"].append(chosen)
             qty = random.randint(qty_base // 2, qty_base)
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + qty
+            if bm_logger:
+                bm_logger.log_roll(n, cat, chosen, qty)
 
         elif cat == "essence":
             ess_pool = [
@@ -817,23 +903,32 @@ def roll_bm_rewards(
                 "blocking",
                 "deftness",
             ]
-            chosen = random.choice(ess_pool)
-            result["currencies"][f"essence_{chosen}"] = result["currencies"].get(
-                f"essence_{chosen}", 0
-            ) + random.randint(1, 3)
+            chosen_ess = _pick_varied(ess_pool, _used["essence"])
+            qty = random.randint(1, 3)
+            result["currencies"][f"essence_{chosen_ess}"] = (
+                result["currencies"].get(f"essence_{chosen_ess}", 0) + qty
+            )
+            if bm_logger:
+                bm_logger.log_roll(n, cat, f"essence_{chosen_ess}", qty)
 
         elif cat == "gear":
-            result["items"].append({"type": "random", "level": min(player_level, 100)})
+            slot = random.choices(_GEAR_SLOTS, weights=_GEAR_SLOT_WEIGHTS, k=1)[0]
+            result["items"].append({"type": slot, "level": min(player_level, 100)})
+            if bm_logger:
+                bm_logger.log_roll(n, cat, slot, 1)
 
         elif cat == "settler_mat":
             mat_pool = ["magma_core", "life_root", "spirit_shard", "cosmic_dust"]
             chosen = random.choice(mat_pool)
-            result["currencies"][chosen] = result["currencies"].get(
-                chosen, 0
-            ) + random.randint(1, 2)
+            qty = random.randint(1, 2)
+            result["currencies"][chosen] = result["currencies"].get(chosen, 0) + qty
+            if bm_logger:
+                bm_logger.log_roll(n, cat, chosen, qty)
 
         elif cat == "curio":
             result["currencies"]["curios"] = result["currencies"].get("curios", 0) + 1
+            if bm_logger:
+                bm_logger.log_roll(n, cat, "curio", 1)
 
         elif cat == "high_end":
             pool = [
@@ -846,11 +941,16 @@ def roll_bm_rewards(
             weights_he = [25, 20, 30, 15, 10]
             chosen = random.choices(pool, weights=weights_he, k=1)[0]
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + 1
+            if bm_logger:
+                bm_logger.log_roll(n, cat, chosen, 1)
 
         elif cat == "guild_ticket":
-            result["currencies"]["guild_ticket"] = result["currencies"].get(
-                "guild_ticket", 0
-            ) + random.randint(1, 2)
+            qty = random.randint(1, 2)
+            result["currencies"]["guild_ticket"] = (
+                result["currencies"].get("guild_ticket", 0) + qty
+            )
+            if bm_logger:
+                bm_logger.log_roll(n, cat, "guild_ticket", qty)
 
     # Base rolls
     for _ in range(base_rolls):
@@ -861,45 +961,33 @@ def roll_bm_rewards(
     for cat in extra_rolls:
         _roll_category(cat)
 
-    _CURRENCY_LABELS = {
-        "refinement_runes": "Rune of Refinement",
-        "potential_runes": "Rune of Potential",
-        "shatter_runes": "Rune of Shattering",
-        "imbue_runes": "Rune of Imbuing",
-        "dragon_key": "Dragon Key",
-        "angel_key": "Angel Key",
-        "soul_cores": "Soul Core",
-        "balance_fragment": "Fragment of Balance",
-        "void_frags": "Void Fragment",
-        "magma_core": "Magma Core",
-        "life_root": "Life Root",
-        "spirit_shard": "Spirit Shard",
-        "cosmic_dust": "Cosmic Dust",
-        "antique_tome": "Antique Tome",
-        "pinnacle_key": "Pinnacle Key",
-        "spirit_stones": "Spirit Stone",
-        "diviners_rod": "Diviner's Rod",
-        "unidentified_blueprint": "Unidentified Blueprint",
-        "guild_ticket": "Guild Ticket",
-        "curios": "Curio",
-        "idea": "Idea Ore",
-        "idea_logs": "Idea Logs",
-        "magic_logs": "Magic Logs",
-        "reinforced_bones": "Reinforced Bones",
-        "titanium_bones": "Titanium Bones",
-    }
-    # Build summary
+    # Build compact summary — one segment per reward type, joined for single-line display
+    parts: list[str] = []
     if result["gold"] > 0:
-        result["summary_lines"].append(f"💰 {result['gold']:,} Gold")
+        parts.append(f"💰 {result['gold']:,}g")
     for cur, qty in result["currencies"].items():
         if cur.startswith("essence_"):
-            ess = cur[len("essence_") :].replace("_", " ").title()
+            ess = cur[len("essence_"):].replace("_", " ").title()
             label = f"Essence of {ess}"
         else:
             label = _CURRENCY_LABELS.get(cur) or cur.replace("_", " ").title()
-        result["summary_lines"].append(f"• {qty}× {label}")
+        parts.append(f"{qty}× {label}")
     if result["items"]:
-        result["summary_lines"].append(f"⚔️ {len(result['items'])}× Equipment Cache")
+        from collections import Counter
+
+        slot_counts = Counter(item["type"] for item in result["items"])
+        gear_parts = [
+            f"{cnt}× {_GEAR_SLOT_LABELS.get(slot, slot.title())}"
+            for slot, cnt in slot_counts.items()
+        ]
+        parts.append(f"⚔️ {', '.join(gear_parts)}")
+
+    # Store as a single summary line (wrapped in a list for backward compat)
+    if parts:
+        result["summary_lines"] = [" | ".join(parts)]
+
+    if bm_logger:
+        bm_logger.log_summary(result)
 
     return result
 
@@ -980,13 +1068,12 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
                 generate_helmet,
                 generate_weapon,
             )
-            import random as _rnd
 
-            slot = _rnd.choices(
-                ["weapon", "armor", "accessory", "glove", "boot", "helmet"],
-                weights=[35, 10, 25, 10, 10, 10],
-                k=1,
-            )[0]
+            slot = item_spec.get("type", "random")
+            if slot == "random":
+                slot = random.choices(
+                    _GEAR_SLOTS, weights=_GEAR_SLOT_WEIGHTS, k=1
+                )[0]
             ilvl = item_spec.get("level", 1)
             if slot == "weapon":
                 item = await generate_weapon(user_id, ilvl)
@@ -1008,3 +1095,25 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
                 await bot.database.equipment.create_helmet(item)
         except Exception:
             pass
+
+
+async def complete_bm_deal_instant(
+    bot,
+    user_id: str,
+    server_id: str,
+    value: int,
+    active_biases: list[str],
+    player_level: int,
+    tree_nodes: dict,
+) -> dict:
+    """Process a 0-turn BM deal immediately without storing in DB."""
+    from core.settlement.bm_log import BMLogger
+
+    bm_log = BMLogger(user_id, value, 0)
+    bm_log.log_tree(tree_nodes, active_biases)
+    rewards = roll_bm_rewards(
+        value, active_biases, player_level, tree_nodes=tree_nodes, bm_logger=bm_log
+    )
+    bm_log.close()
+    await _grant_bm_rewards(bot, user_id, server_id, rewards)
+    return rewards

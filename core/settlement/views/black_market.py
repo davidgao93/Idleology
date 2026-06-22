@@ -25,7 +25,9 @@ from core.settlement.constants import (
 from core.settlement.mechanics import SettlementMechanics
 from core.settlement.turn_engine import (
     calculate_offer_value,
+    complete_bm_deal_instant,
     compute_processing_turns,
+    upgrade_dt_cost,
 )
 
 from .base import SettlementBaseView
@@ -408,7 +410,7 @@ class BlackMarketView(SettlementBaseView):
                 value=(
                     f"Value: **{pending_deal['total_value']:,}** — "
                     f"**{pending_deal['turns_remaining']}** turn(s) remaining\n"
-                    f"Biases: {', '.join(pending_deal.get('active_biases', [])) or 'none'}"
+                    f"Biases: {', '.join(BM_TREE_NODES[b]['name'] for b in pending_deal.get('active_biases', []) if b in BM_TREE_NODES) or 'none'}"
                 ),
                 inline=False,
             )
@@ -546,15 +548,34 @@ class BlackMarketView(SettlementBaseView):
             {"timber": -costs.get("timber", 0), "stone": -costs.get("stone", 0)},
         )
         await self.bot.database.users.modify_gold(self.user_id, -costs.get("gold", 0))
-        await self.bot.database.settlement.upgrade_building_tier(self.building.id)
-        self.building.tier += 1
         if self.parent is not None:
             self.parent.settlement.timber -= costs.get("timber", 0)
             self.parent.settlement.stone -= costs.get("stone", 0)
 
+        # Queue as a DT project (same pattern as other building upgrades)
+        target_tier = self.building.tier + 1
+        dt_cost = upgrade_dt_cost("black_market", target_tier)
+        await self.bot.database.settlement.upsert_project(
+            user_id=self.user_id,
+            server_id=self.server_id,
+            project_type="upgrade",
+            target_id=self.building.id,
+            required_turns=dt_cost,
+            data={"building_type": "black_market"},
+        )
+
+        queued_embed = discord.Embed(
+            title="⏳ Upgrade Queued",
+            description=(
+                f"**Black Market** upgrade to Tier {target_tier} has been queued.\n\n"
+                f"Resources deducted. The upgrade will complete after "
+                f"**{dt_cost} Development Turn(s)**.\n"
+                f"Use **Next Turn** on your settlement dashboard to process it."
+            ),
+            color=discord.Color.blurple(),
+        )
         self._processing = False
-        self._setup_ui()
-        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+        await interaction.edit_original_response(embed=queued_embed, view=discord.ui.View())
 
     async def _on_back(self, interaction: Interaction) -> None:
         if self.parent is None:
@@ -890,47 +911,76 @@ class OfferBuilderView(SettlementBaseView):
             value = raw_value // 100
             turns = compute_processing_turns(value, self.building.tier, tree_nodes)
 
+            # Log offer submission details
+            from core.settlement.bm_log import BMLogger
+
+            _bm_submit_log = BMLogger(uid, value, turns)
+            _bm_submit_log.log_offer(self._offer, raw_value, event_value_bonus)
+            _bm_submit_log.log_tree(tree_nodes, self._active_biases)
+            _bm_submit_log.close()
+
             if value <= 0:
                 await interaction.followup.send(
                     "This offer has no tradeable value.", ephemeral=True
                 )
                 return
 
-            # Get current turn count for record-keeping
-            turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
-            current_turn = turns_data.get("total_development_turns", 0)
-
-            await self.bot.database.settlement.create_pending_deal(
-                uid,
-                sid,
-                offer_data=self._offer,
-                total_value=value,
-                turns_required=turns,
-                active_biases=self._active_biases,
-                current_turn=current_turn,
-            )
-
-            embed = discord.Embed(
-                title="✅ Deal Submitted",
-                description=(
-                    f"**Max eyes the goods and gives a thin smile.**\n\n"
-                    f"Value assessed: **{raw_value:,}**\n"
-                    f"Processing: **{turns}** Development Turn(s)\n\n"
-                    f"Advance turns on the dashboard to collect your loot."
-                ),
-                color=discord.Color.green(),
-            )
-            embed.set_author(
-                name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR
-            )
-            embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
-            await interaction.edit_original_response(
-                embed=embed, view=discord.ui.View()
-            )
-
             import asyncio
 
-            await asyncio.sleep(2)
+            if turns == 0:
+                # Instant deal — process immediately (Efficiency III node)
+                user_row = await self.bot.database.users.get(uid, sid)
+                player_level = user_row["level"] if user_row else 1
+                rewards = await complete_bm_deal_instant(
+                    self.bot, uid, sid, value, self._active_biases, player_level, tree_nodes
+                )
+                summary_text = rewards["summary_lines"][0] if rewards["summary_lines"] else "Nothing"
+                embed = discord.Embed(
+                    title="⚡ Instant Deal Complete!",
+                    description=(
+                        f"**Max nods approvingly — no waiting needed.**\n\n"
+                        f"Value: **{raw_value:,}**\n\n"
+                        f"**Rewards:** {summary_text}"
+                    ),
+                    color=discord.Color.gold(),
+                )
+                embed.set_author(
+                    name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR
+                )
+                embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
+                await interaction.edit_original_response(embed=embed, view=discord.ui.View())
+                await asyncio.sleep(3)
+            else:
+                # Get current turn count for record-keeping
+                turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
+                current_turn = turns_data.get("total_development_turns", 0)
+
+                await self.bot.database.settlement.create_pending_deal(
+                    uid,
+                    sid,
+                    offer_data=self._offer,
+                    total_value=value,
+                    turns_required=turns,
+                    active_biases=self._active_biases,
+                    current_turn=current_turn,
+                )
+
+                embed = discord.Embed(
+                    title="✅ Deal Submitted",
+                    description=(
+                        f"**Max eyes the goods and gives a thin smile.**\n\n"
+                        f"Value assessed: **{raw_value:,}**\n"
+                        f"Processing: **{turns}** Development Turn(s)\n\n"
+                        f"Advance turns on the dashboard to collect your loot."
+                    ),
+                    color=discord.Color.green(),
+                )
+                embed.set_author(
+                    name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR
+                )
+                embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
+                await interaction.edit_original_response(embed=embed, view=discord.ui.View())
+                await asyncio.sleep(2)
 
             # Return to main market view
             pending = await self.bot.database.settlement.get_pending_deal(uid, sid)

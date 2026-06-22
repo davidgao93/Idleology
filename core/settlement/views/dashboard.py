@@ -390,11 +390,14 @@ class SettlementDashboardView(SettlementBaseView):
                 for p in turn_summary["projects_completed"]:
                     lines.append(f"✅ {p.get('label', 'Project')} completed!")
             if turn_summary.get("deal_completed"):
-                lines.append("🎁 **Black Market deal returned!** Check your inventory.")
-                for line in (turn_summary.get("deal_rewards") or {}).get(
+                reward_parts = (turn_summary.get("deal_rewards") or {}).get(
                     "summary_lines", []
-                )[:6]:
-                    lines.append(f"  {line}")
+                )
+                reward_text = reward_parts[0] if reward_parts else ""
+                lines.append(
+                    f"🎁 **Black Market deal returned!**"
+                    + (f" {reward_text}" if reward_text else "")
+                )
             if turn_summary.get("events_fired"):
                 for e in turn_summary["events_fired"]:
                     lines.append(f"🎉 Event: {e}")
