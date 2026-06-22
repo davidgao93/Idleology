@@ -140,9 +140,8 @@ class PotionDistillationView(BaseView):
         # REAGENT STEP
         # ------------------------------------------------------------------
         base_info = DistillationMechanics.POWERFUL_PASSIVES.get(base, {})
-        display_step = max(
-            1, step
-        )  # after base choice we are on reagent step 1 even if internal counter is still 0
+        # step is the number of reagent steps *completed*, so the current choice is step+1
+        display_step = step + 1
 
         safe_dust = max(0, self.cosmic_dust)
         projected_val, projected_dur = DistillationMechanics.project_values(s)
@@ -150,22 +149,23 @@ class PotionDistillationView(BaseView):
             base, projected_val, projected_dur
         )
 
-        val_min = base_info.get("value_min", 5.0)
-        val_max = base_info.get("value_max", 150.0)
-        dur_min = base_info.get("duration_min", 2.0)
-        dur_max = base_info.get("duration_max", 5.0)
-        val_frac = (projected_val - val_min) / max(1.0, val_max - val_min)
-        dur_frac = (projected_dur - dur_min) / max(1.0, dur_max - dur_min)
+        # Compute bar fractions directly from raw accumulators to avoid rounding
+        # artifacts from back-calculating through project_values' rounded output.
+        raw_max = DistillationMechanics.get_raw_max(s)
+        val_frac = min(1.0, max(0.0, s.get("value_mod", 0.0)) / raw_max) if raw_max > 0 else 0.0
+        dur_frac = min(1.0, max(0.0, s.get("duration_mod", 0.0)) / raw_max) if raw_max > 0 else 0.0
         val_pct = int(val_frac * 100)
         dur_pct = int(dur_frac * 100)
 
+        is_last_step = display_step >= DistillationMechanics.STEPS
+        step_note = "⚠️ **Final step — choose well.**" if is_last_step else "Pick a reagent — each carries a different property this step."
         embed.description = (
             f"**Step {display_step} / {DistillationMechanics.STEPS}** · ✨ {safe_dust:,} dust\n"
             f"**Core:** {base_info.get('emoji', '⚗️')} **{base_info.get('name', base)}**\n\n"
             f"{passive_preview}\n\n"
             f"`Power   ` {_pct_bar(val_frac)} {val_pct}%\n"
             f"`Duration` {_pct_bar(dur_frac)} {dur_pct}%\n\n"
-            "Pick a reagent — each carries a different property this step."
+            f"{step_note}"
         )
 
         # Show the 3 special properties for the reagents this step (key per user spec)
@@ -177,39 +177,45 @@ class PotionDistillationView(BaseView):
         if props:
             prop_lines = []
             for p in props:
-                emoji = p.get("emoji", "⚗️")
-                name = p.get("name", "Reagent")
-                prop = p.get("property_desc") or p.get("desc", "Standard outcome.")
-                prop_lines.append(f"{emoji} **{name}** — {prop}")
+                r_emoji = p.get("emoji", "⚗️")
+                r_name = p.get("name", "Reagent")
+                event = p.get("event", {})
+                e_name = event.get("name", "Standard")
+                e_desc = p.get("property_desc") or event.get("desc", "Standard outcome.")
+                prop_lines.append(f"{r_emoji} {r_name} — **{e_name}**: {e_desc}")
             embed.add_field(
-                name="Reagent Properties (this step)",
+                name="Reagent Properties",
                 value="\n".join(prop_lines),
                 inline=False,
             )
 
         # Active modifiers
         mods = s.get("active_modifiers", {})
-        if mods:
-            mod_lines = []
-            if mods.get("free_next_steps"):
-                mod_lines.append(f"🌿 Next {mods['free_next_steps']} step(s) are free")
-            if mods.get("future_free_but_unlucky"):
-                mod_lines.append("🌑 Future steps are free but **unlucky**")
-            if mods.get("all_future_free"):
-                mod_lines.append("✨ **All future steps cost no dust**")
-            if mod_lines:
-                embed.add_field(
-                    name="Active Effects", value="\n".join(mod_lines), inline=False
-                )
+        mod_lines = []
+        if mods.get("free_next_steps"):
+            n = mods["free_next_steps"]
+            mod_lines.append(f"🌿 Next {n} step{'s' if n != 1 else ''} cost no dust")
+        if mods.get("all_future_free"):
+            mod_lines.append("✨ **All future steps cost no dust**")
+        future_mult = mods.get("future_cost_mult")
+        if future_mult and future_mult < 1.0:
+            pct_off = int((1.0 - future_mult) * 100)
+            mod_lines.append(f"💸 Future steps cost **{pct_off}% less** dust")
+        if mods.get("lucky"):
+            mod_lines.append("🍀 Next step is **lucky**")
+        if mod_lines:
+            embed.add_field(
+                name="Active Effects", value="\n".join(mod_lines), inline=False
+            )
 
         # History
         history = s.get("history", [])[-4:]
         if history:
-            h = "\n".join(
-                f"• Step {h['step']}: {h.get('reagent', '?')} → {h.get('gain', '?')}"
-                for h in history
-            )
-            embed.add_field(name="Recent Steps", value=h, inline=False)
+            h_lines = []
+            for h in history:
+                label = h.get("reagent_label") or h.get("reagent", "?")
+                h_lines.append(f"• Step {h['step']}: {label} → {h.get('gain', '?')}")
+            embed.add_field(name="Recent Steps", value="\n".join(h_lines), inline=False)
 
         return embed
 
@@ -245,8 +251,8 @@ class PotionDistillationView(BaseView):
             for i, ch in enumerate(choices):
                 cost = ch.get("effective_cost", 0)
                 after = max(0, current - cost)
-                cost_part = f"(-{cost}✨) " if cost > 0 else "(free) "
-                label = f"{ch['emoji']} {ch['name']} {cost_part}({current}->{after})"
+                cost_part = f" (-{cost}✨)" if cost > 0 else " (free)"
+                label = f"{ch['emoji']} {ch['name']}{cost_part}"
                 style = (
                     ButtonStyle.secondary
                     if ch["key"] == "blue"
@@ -380,9 +386,13 @@ class PotionDistillationView(BaseView):
 
             await self._save_session()
 
-            # If we just advanced, prepare the properties for the *next* step now (so next embed/buttons are consistent)
+            # Prepare properties for the *next* step and save again immediately.
+            # Without this second save, _ensure_session on the next click reloads the old
+            # (pre-preparation) options from DB and the fallback regenerates different random
+            # events from what the buttons actually show — causing every property mismatch bug.
             if s.get("step", 0) < DistillationMechanics.STEPS:
                 DistillationMechanics.prepare_reagent_options(s, s.get("step", 0))
+                await self._save_session()
 
             # Build embed for the new state
             embed = self._build_embed()
@@ -393,12 +403,18 @@ class PotionDistillationView(BaseView):
                 inline=False,
             )
 
-            self._setup_current_buttons()
             self._processing = False
 
             if s.get("step", 0) >= DistillationMechanics.STEPS:
-                await self._finalize_and_show_result(interaction, embed)
+                # Show last step's result with confirm/abandon buttons before writing the passive
+                confirm_view = _ConfirmOrAbandonView(
+                    self.bot, self.user_id, self.server_id, self
+                )
+                embed.set_footer(text="Distillation complete — confirm to keep this passive, or abandon the run.")
+                await interaction.edit_original_response(embed=embed, view=confirm_view)
+                self.stop()
             else:
+                self._setup_current_buttons()
                 await interaction.edit_original_response(embed=embed, view=self)
 
         return cb
@@ -414,10 +430,10 @@ class PotionDistillationView(BaseView):
             base_type, final_val, final_dur
         )
 
-        # Use the slot the player selected when launching distillation.
-        # Fall back to first empty slot (or slot 1) if the session has no target.
+        # Resolve the target slot.
         passives = await self.bot.database.alchemy.get_potion_passives(self.user_id)
-        occupied = {p["slot"] for p in passives}
+        passive_by_slot = {p["slot"]: p for p in passives}
+        occupied = set(passive_by_slot.keys())
         slot_count = 5
         target = s.get("target_slot")
         if target and 1 <= target <= slot_count:
@@ -425,25 +441,60 @@ class PotionDistillationView(BaseView):
         else:
             slot = next((sl for sl in range(1, slot_count + 1) if sl not in occupied), 1)
 
-        # Save with the actual distilled duration so the hub displays it correctly.
+        # If the slot is occupied, offer a keep-or-replace choice instead of writing directly.
+        if slot in occupied:
+            old_p = passive_by_slot[slot]
+            old_name, old_emoji = get_passive_name_emoji(old_p["passive_type"])
+            from core.alchemy.mechanics import AlchemyMechanics
+            old_desc = AlchemyMechanics.format_passive(
+                old_p["passive_type"],
+                old_p["passive_value"],
+                old_p.get("passive_duration", 2.0),
+            )
+            choice_view = _KeepOrReplaceView(
+                self.bot, self.user_id, self.server_id,
+                slot=slot,
+                new_base_type=base_type,
+                new_val=final_val,
+                new_dur=final_dur,
+                distill_view=self,
+            )
+            choice_embed = discord.Embed(
+                title="⚗️ Distillation Complete — Choose Your Passive",
+                color=discord.Color.gold(),
+            )
+            choice_embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+            choice_embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
+            choice_embed.description = (
+                f"*The ritual is done. Slot {slot} is already occupied — you decide what stays.*\n\n"
+                f"**New:** {emoji} **{name}**\n{final_desc}\n\n"
+                f"**Current:** {old_emoji} **{old_name}**\n{old_desc}"
+            )
+            await interaction.edit_original_response(embed=choice_embed, view=choice_view)
+            self.stop()
+            return
+
+        # Slot is empty — write directly.
+        await self._write_passive_and_show_hub(
+            interaction, slot, base_type, final_val, final_dur, name, emoji, final_desc
+        )
+
+    async def _write_passive_and_show_hub(
+        self,
+        interaction: Interaction,
+        slot: int,
+        base_type: str,
+        final_val: float,
+        final_dur: float,
+        name: str,
+        emoji: str,
+        final_desc: str,
+    ):
         await self.bot.database.alchemy.set_passive(
             self.user_id, slot, base_type, final_val, final_dur
         )
-
         await self._clear_session()
 
-        # Edit original in-progress message to a clean "done" state (no buttons).
-        done_embed = discord.Embed(
-            title="✨ Distillation Complete!",
-            description=(
-                f"**{emoji} {name}** has been placed in **Slot {slot}**.\n"
-                "Your new elixir details are in the message below."
-            ),
-            color=discord.Color.gold(),
-        )
-        await interaction.edit_original_response(embed=done_embed, view=None)
-
-        # Send the full result as a separate followup message with the hub.
         from core.alchemy.views import _hub_from_db
 
         hub = await _hub_from_db(self.bot, self.user_id, self.server_id)
@@ -453,18 +504,11 @@ class PotionDistillationView(BaseView):
         result_embed.insert_field_at(
             0,
             name=f"✨ {emoji} {name} (distilled)",
-            value=f"*{final_desc}*\nPlaced in **Slot {slot}**.",
+            value=f"{final_desc}\nPlaced in **Slot {slot}**.",
             inline=False,
         )
-
-        try:
-            msg = await interaction.followup.send(
-                embed=result_embed, view=hub, ephemeral=False
-            )
-            hub.message = msg
-        except Exception:
-            pass
-
+        msg = await interaction.edit_original_response(embed=result_embed, view=hub)
+        hub.message = msg
         self.stop()
 
     async def _on_abandon(self, interaction: Interaction):
@@ -491,6 +535,103 @@ class PotionDistillationView(BaseView):
         self.bot.state_manager.set_active(self.user_id, "alchemy_distill")
         await self._ensure_session()
         await self._send_choices(interaction)
+
+
+class _ConfirmOrAbandonView(BaseView):
+    """Shown after the final distillation step so the player can see the result before committing."""
+
+    def __init__(self, bot, user_id: str, server_id: str, distill_view: "PotionDistillationView"):
+        super().__init__(bot, user_id, server_id)
+        self._distill_view = distill_view
+        self._processing = False
+
+    @ui.button(label="Confirm Distillation", style=ButtonStyle.green, emoji="✨")
+    async def confirm(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+        await self._distill_view._finalize_and_show_result(interaction, None)
+        self.stop()
+
+    @ui.button(label="Abandon", style=ButtonStyle.danger, emoji="🗑️")
+    async def abandon(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+        await self._distill_view._clear_session()
+
+        from core.alchemy.views import _hub_from_db
+
+        hub = await _hub_from_db(self.bot, self.user_id, self.server_id)
+        embed = hub.build_embed()
+        embed.title = "🗑️ Distillation Abandoned"
+        msg = await interaction.edit_original_response(embed=embed, view=hub)
+        hub.message = msg
+        self.stop()
+
+
+class _KeepOrReplaceView(BaseView):
+    """Shown at the end of distillation when the target slot is already occupied."""
+
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        slot: int,
+        new_base_type: str,
+        new_val: float,
+        new_dur: float,
+        distill_view: "PotionDistillationView",
+    ):
+        super().__init__(bot, user_id, server_id)
+        self._slot = slot
+        self._new_base_type = new_base_type
+        self._new_val = new_val
+        self._new_dur = new_dur
+        self._distill_view = distill_view
+        self._processing = False
+
+    @ui.button(label="Use New Passive", style=ButtonStyle.green, emoji="✨")
+    async def use_new(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        new_name, new_emoji = get_passive_name_emoji(self._new_base_type)
+        new_desc = DistillationMechanics.format_distilled_passive(
+            self._new_base_type, self._new_val, self._new_dur
+        )
+        await self._distill_view._write_passive_and_show_hub(
+            interaction, self._slot, self._new_base_type, self._new_val, self._new_dur,
+            new_name, new_emoji, new_desc,
+        )
+        self.stop()
+
+    @ui.button(label="Keep Current", style=ButtonStyle.secondary, emoji="🔒")
+    async def keep_old(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        await self._distill_view._clear_session()
+
+        from core.alchemy.views import _hub_from_db
+
+        hub = await _hub_from_db(self.bot, self.user_id, self.server_id)
+        embed = hub.build_embed()
+        embed.title = "⚗️ Alchemy — Passive Kept"
+        msg = await interaction.edit_original_response(embed=embed, view=hub)
+        hub.message = msg
+        self.stop()
 
 
 # Convenience launcher (similar to _build_synthesis_hub)

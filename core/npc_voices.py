@@ -65,6 +65,27 @@ _VOICES: dict[str, list[str]] = {
         "I don't run charity. You earned these tokens — now spend them on something that matters.",
     ],
 
+    # ── Hatchery ──────────────────────────────────────────────────────────────
+
+    "hatchery": [
+        "Welcome back, Adventurer! Got any eggs for me to look after? 🥚",
+        "You haven't... eaten any of the eggs you received, have you? You monster!",
+        "I can feel great potential in this one, Adventurer — I can't wait to see them all grown up! 🌸",
+        "Oh, you're here! I've been singing to the eggs. Don't ask. It works.",
+        "Every egg that comes through here gets my full love and attention. Even the grumpy ones.",
+        "A fresh delivery? Wonderful! I'll have them cosy in no time. Leave it to me~",
+        "These little ones are counting on us, Adventurer. Let's not let them down!",
+    ],
+
+    "hatchery_release": [
+        "This one has some fight in them! Better not lose your head, Adventurer — literally. 😅",
+        "This one's a proper feisty fella! They almost bit my arm off the other day — I'd watch out if I were you!",
+        "They've matured beautifully! ...And by that I mean terrifyingly. Please be careful out there.",
+        "I'm so proud of them! They've grown into a magnificent killing machine. Come back in one piece, okay?",
+        "Hehe, they're ready! Just... maybe stretch first? And bring lots of potions. Lots and lots of potions.",
+        "Don't let the cute memories fool you — whatever this thing is now, it is NOT the egg you brought in. Good luck!",
+    ],
+
     # ── Companions & Nursery ──────────────────────────────────────────────────
 
     "companions": [

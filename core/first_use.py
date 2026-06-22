@@ -40,11 +40,9 @@ from core.images import (
     ELYNDRA_PORTRAIT,
     ELYNDRA_THUMBNAIL,
     HARLAN_AUTHOR,
-    HEMATURGY,
     INVENTORY_HUB,
     LUCIEN_PORTRAIT,
     LUCIEN_THUMBNAIL,
-    MAW_MAIN,
     MASTERY_MINING,
     PARTNERS_HUB,
     POTION_SHOP_AUTHOR,
@@ -59,12 +57,11 @@ from core.images import (
     TAVERN_KEEPER,
     TESSARA_PORTRAIT,
     TESSARA_THUMBNAIL,
-    UBER_HUB,
     UPGRADE_VOIDFORGE,
-    VALE_PORTRAIT,
-    VALE_THUMBNAIL,
     VALDRIS_PORTRAIT,
     VALDRIS_THUMBNAIL,
+    VALE_PORTRAIT,
+    VALE_THUMBNAIL,
     VEYRA_AUTHOR,
     YUNA_PORTRAIT,
     YUNA_THUMBNAIL,
@@ -411,23 +408,21 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.dark_purple(),
     },
     "maw": {
-        "title": "🌊 Maw of Infinity",
+        "title": "Maw of Infinity",
         "author": "Brother Solen",
         "author_icon": BROTHER_SOLEN_PORTRAIT,
         "description": (
-            "*The Maw does not die. It has never died. But it remembers the ones who hurt it most — and so do I.*\n\n"
-            "The Maw of Infinity is a **weekly world boss** that the entire server fights together. "
+            "Welcome adventurer... I have witnessed the horrors beyond the imaginable, and none have quite compared to the Maw...\n"
+            "The Maw of Infinity is a **weekly world boss** that all adventurers fight together. "
             "You have up to **5 attempts per cycle** with a 20-hour cooldown between each fight. "
-            "Every hit you land in a 10-turn auto-battle contributes to your cycle total.\n\n"
-            "Each week brings a different **weakness** — a modifier that changes how your damage is calculated. "
-            "Pay attention to it. Some weeks reward raw power; others reward consistency or ward.\n\n"
-            "When the cycle ends, rewards are split among participants. "
-            "The **top 3 contributors** receive a Curio Puzzle Box on top of the base reward."
+            "Every hit you land over 10 turns contributes to your total for that week.\n\n"
+            "Each week the Maw suffers an affliction — a modifier that you can potentially exploit. "
+            "Pay attention to it. Some weeks reward raw power; others something else entirely...\n\n"
+            "When the cycle ends, the maw retreats, leaving behind its forbidden treasures. "
         ),
         "tips": [
-            "The **weekly weakness** can dramatically shift which builds perform best — read it before you fight.",
-            "You don't need to deal the most damage to earn rewards — participating is enough.",
-            "Rewards are collected during the **collection window** after the cycle ends, not immediately.",
+            "The **weekly weakness** can dramatically shift how to earn the most contribution.",
+            "You don't need to deal the most damage to earn rewards.",
         ],
         "image": BROTHER_SOLEN_THUMBNAIL,
         "color": discord.Color.dark_blue(),

@@ -1,4 +1,3 @@
-import asyncio
 import random
 
 import discord
@@ -7,12 +6,11 @@ from discord import ButtonStyle, Interaction, ui
 from core.alchemy.mechanics import (
     AlchemyMechanics,
     DistillationMechanics,
-    get_passive_info,
-    get_passive_name_emoji,
     get_passive_list_desc,
+    get_passive_name_emoji,
 )
 from core.base_view import BaseView
-from core.images import ALCHEMY_HUB, ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
+from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 from core.skills.mastery import get_attunement_alchemy_bonus
 
@@ -54,6 +52,9 @@ class AlchemyHubView(BaseView):
         self.passives = passives
         self.player_gold = player_gold
         self.spirit_stones = spirit_stones
+        if alchemy_level >= AlchemyMechanics.MAX_LEVEL:
+            # Remove Level Up button at max level
+            self.remove_item(self.level_up)
 
     def build_embed(self) -> discord.Embed:
         slot_count = AlchemyMechanics.get_slot_count(self.alchemy_level)
@@ -87,7 +88,7 @@ class AlchemyHubView(BaseView):
                         p["passive_value"],
                         p.get("passive_duration", 2.0),
                     )
-                    lines.append(f"**[{s}]** {emoji} {name}: *{desc}*")
+                    lines.append(f"**[{s}]** {emoji} **{name}** {desc}")
                 else:
                     lines.append(f"**[{s}]** *Empty slot*")
             embed.add_field(
@@ -359,7 +360,7 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
                 f" (+{dst_delta - qty} from Druidic Ritual)" if dst_delta > qty else ""
             )
             await interaction.response.send_message(
-                f"✅ Transmuted **{ratio * qty}×** {opt['src_col']} → **{dst_delta}×** {opt['dst_col']}!{bonus_text} "
+                f"✅ Transmuted **{ratio * qty}×** {opt['src_name']} → **{dst_delta}×** {opt['dst_name']}!{bonus_text} "
                 f"(-💰 {total_gold:,})",
                 ephemeral=True,
             )
@@ -370,7 +371,7 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
             )
             if src_amt < qty:
                 await interaction.response.send_message(
-                    f"Not enough **{opt['src_col']}** for **{qty}** operations "
+                    f"Not enough **{opt['src_name']}** for **{qty}** operations "
                     f"(have {src_amt}).",
                     ephemeral=True,
                 )
@@ -389,7 +390,7 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
             )
             self._view.player_gold = max(0, self._view.player_gold - total_gold)
             await interaction.response.send_message(
-                f"✅ Broke down **{qty}×** {opt['src_col']} → **{ratio * qty}×** {opt['dst_col']}! "
+                f"✅ Broke down **{qty}×** {opt['src_name']} → **{ratio * qty}×** {opt['dst_name']}! "
                 f"(-💰 {total_gold:,})",
                 ephemeral=True,
             )
@@ -445,12 +446,16 @@ class AlchemyTransmuteView(BaseView):
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def _toggle_raw_direction(self, interaction: Interaction) -> None:
-        self._raw_direction = "downgrade" if self._raw_direction == "upgrade" else "upgrade"
+        self._raw_direction = (
+            "downgrade" if self._raw_direction == "upgrade" else "upgrade"
+        )
         embed = await self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def _toggle_settlement_direction(self, interaction: Interaction) -> None:
-        self._settlement_direction = "downgrade" if self._settlement_direction == "upgrade" else "upgrade"
+        self._settlement_direction = (
+            "downgrade" if self._settlement_direction == "upgrade" else "upgrade"
+        )
         embed = await self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -469,9 +474,11 @@ class AlchemyTransmuteView(BaseView):
 
         sett_btn = ui.Button(
             label="Settlement Resources",
-            style=ButtonStyle.primary
-            if self._mode == "settlement"
-            else ButtonStyle.secondary,
+            style=(
+                ButtonStyle.primary
+                if self._mode == "settlement"
+                else ButtonStyle.secondary
+            ),
             emoji="🏗️",
             row=0,
         )
@@ -488,7 +495,11 @@ class AlchemyTransmuteView(BaseView):
         if self._mode == "settlement":
             embed = await self._build_settlement_embed(embed)
             dir_btn = ui.Button(
-                label="Show Downgrades" if self._settlement_direction == "upgrade" else "Show Upgrades",
+                label=(
+                    "Show Downgrades"
+                    if self._settlement_direction == "upgrade"
+                    else "Show Upgrades"
+                ),
                 style=ButtonStyle.secondary,
                 emoji="🔃",
                 row=2,
@@ -498,7 +509,11 @@ class AlchemyTransmuteView(BaseView):
         else:
             embed = await self._build_raw_embed(embed)
             dir_btn = ui.Button(
-                label="Show Downgrades" if self._raw_direction == "upgrade" else "Show Upgrades",
+                label=(
+                    "Show Downgrades"
+                    if self._raw_direction == "upgrade"
+                    else "Show Upgrades"
+                ),
                 style=ButtonStyle.secondary,
                 emoji="🔃",
                 row=2,
@@ -562,6 +577,8 @@ class AlchemyTransmuteView(BaseView):
                             "skill": skill,
                             "src_col": src_col,
                             "dst_col": dst_col,
+                            "src_name": names[i],
+                            "dst_name": names[i + 1],
                             "label": f"↑ {names[i]} → {names[i + 1]} ({skill.title()})",
                             "desc": f"{up_ratio}× {names[i]} → 1× {names[i + 1]} | have {src_amt} | {gold_cost:,}g each",
                             "gold_cost": gold_cost,
@@ -579,6 +596,8 @@ class AlchemyTransmuteView(BaseView):
                             "skill": skill,
                             "src_col": src_col,
                             "dst_col": dst_col,
+                            "src_name": names[i],
+                            "dst_name": names[i - 1],
                             "label": f"↓ {names[i]} → {names[i - 1]} ({skill.title()})",
                             "desc": f"1× {names[i]} → {dn_ratio}× {names[i - 1]} | have {src_amt} | {gold_cost:,}g each",
                             "gold_cost": gold_cost,
@@ -651,8 +670,12 @@ class AlchemyTransmuteView(BaseView):
         except Exception:
             pass
 
-        up_ratio = AlchemyMechanics.get_effective_upgrade_ratio(self.alchemy_level, has_baiter)
-        dn_ratio = AlchemyMechanics.get_effective_downgrade_ratio(self.alchemy_level, has_baiter)
+        up_ratio = AlchemyMechanics.get_effective_upgrade_ratio(
+            self.alchemy_level, has_baiter
+        )
+        dn_ratio = AlchemyMechanics.get_effective_downgrade_ratio(
+            self.alchemy_level, has_baiter
+        )
 
         going_up = self._settlement_direction == "upgrade"
         self._options_data = []
@@ -664,13 +687,17 @@ class AlchemyTransmuteView(BaseView):
                     src_col, src_name = tiers[i]
                     dst_col, dst_name = tiers[i + 1]
                     src_amt = proc_amounts.get((skill, src_col), 0)
-                    gold_cost = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD.get(i + 1, 7_500)
+                    gold_cost = AlchemyMechanics.TRANSMUTE_UPGRADE_GOLD.get(
+                        i + 1, 7_500
+                    )
                     self._options_data.append(
                         {
                             "type": "upgrade",
                             "skill": skill,
                             "src_col": src_col,
                             "dst_col": dst_col,
+                            "src_name": src_name,
+                            "dst_name": dst_name,
                             "label": f"↑ {src_name} → {dst_name} ({skill_label})",
                             "desc": f"{up_ratio}:1 | have {src_amt:,} {src_name} | {gold_cost:,}g",
                             "gold_cost": gold_cost,
@@ -691,6 +718,8 @@ class AlchemyTransmuteView(BaseView):
                             "skill": skill,
                             "src_col": src_col,
                             "dst_col": dst_col,
+                            "src_name": src_name,
+                            "dst_name": dst_name,
                             "label": f"↓ {src_name} → {dst_name} ({skill_label})",
                             "desc": f"1× {src_name} → {dn_ratio}× {dst_name} | have {src_amt:,} | {gold_cost:,}g",
                             "gold_cost": gold_cost,
@@ -961,7 +990,8 @@ class AlchemyPotionLabView(BaseView):
         embed.description = (
             f"**Level:** {self.alchemy_level} | **Spirit Stones:** 🔮 {self.spirit_stones}\n\n"
             "**Distill Elixir** (🔮 1 Spirit Stone) crafts a powerful passive into the selected slot. "
-            "Click **Guide** for distillation rules, or **Passives** to browse all possible cores."
+            "Click **Guide** for distillation rules, or **Passives** to browse all possible cores.\n"
+            "*If the selected slot already has a passive, you'll be offered a choice to keep the old one or take the new one after distillation completes.*"
         )
 
         passive_by_slot = {p["slot"]: p for p in self.passives}
@@ -976,7 +1006,7 @@ class AlchemyPotionLabView(BaseView):
                     p["passive_value"],
                     p.get("passive_duration", 2.0),
                 )
-                lines.append(f"{arrow}**[{s}]** {emoji} {name}: *{desc}*")
+                lines.append(f"{arrow}**[{s}]** {emoji} **{name}** {desc}")
             else:
                 lines.append(f"{arrow}**[{s}]** *Empty slot*")
 
@@ -1017,7 +1047,11 @@ class AlchemyPotionLabView(BaseView):
         excluded = [p["passive_type"] for p in self.passives]
         chosen_slot = self._slot_select.chosen_slot if self._slot_select else None
         await start_distillation(
-            self.bot, self.user_id, self.server_id, interaction, excluded,
+            self.bot,
+            self.user_id,
+            self.server_id,
+            interaction,
+            excluded,
             target_slot=chosen_slot,
         )
 
@@ -1038,26 +1072,21 @@ class AlchemyPotionLabView(BaseView):
                 "This is the passive you will receive. Everything after this point merely determines "
                 "*how powerful* that passive becomes. Do not rush.\n\n"
                 "**Steps 2–9 — Reagent Selection:**\n"
-                "At each step, three reagents appear — each bearing a special property from a weighted pool. "
-                "Properties are shown before you commit: free steps, double dust, lucky rolls, "
-                "safe floors, and rarer effects that border on unreasonable.\n"
-                "Dust cost after each choice is displayed on the button itself (e.g. *68 → 60*). "
-                "You cannot select what you cannot afford. I built that safeguard myself, "
-                "after an incident I prefer not to discuss.\n\n"
-                "Each step quietly adjusts your **Value Power** and **Duration Power** accumulators. "
+                "At each step, three reagents appear — each bearing a special property. "
+                "Each step bears a dust cost: "
+                "You cannot select what you cannot afford. "
+                "After selection, your **Value Power** or **Duration Power** might change. "
                 "The live passive preview reflects your current standing after every choice.\n\n"
                 "**Reagent Temperament:**\n"
-                "🟢 **Verdant** — measured, steady. Consistent Value Power gains. Boring in the best way.\n"
-                "🔵 **Astral** — balanced. Neither spectacular nor catastrophic. A coward's comfort.\n"
-                "🔴 **Crimson** — volatile. Large swings. Dramatic events. "
-                "Occasionally transcendent. Occasionally tragic. I recommend it to adventurers "
-                "who do not value their Cosmic Dust.\n\n"
-                "*The result at Step 9 will exceed anything the old system could produce. "
-                "That is by design. Now stop reading and go make something.*"
+                "🟢 **Verdant** — measured, steady. Consistent gains or losses.\n"
+                "🔵 **Astral** — balanced. Neither spectacular nor catastrophic.\n"
+                "🔴 **Crimson** — volatile. Large swings either way. "
             ),
             color=discord.Color.purple(),
         )
-        guide_embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        guide_embed.set_author(
+            name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT
+        )
         guide_embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
 
         back_view = _DistillGuideBackView(self)

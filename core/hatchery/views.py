@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.hatchery.mechanics import HatcheryMechanics
+from core.images import YUNA_PORTRAIT, YUNA_THUMBNAIL
+from core.npc_voices import get_quip
 
 _EGG_TIER_EMOJI = {"normal": "🥚", "rare": "🪺", "giga": "🐲"}
 _EGG_TIER_LABEL = {"normal": "Normal Egg", "rare": "Rare Egg", "giga": "Giga Egg"}
@@ -85,20 +87,24 @@ class HatcheryView(BaseView):
     # ------------------------------------------------------------------ #
 
     def build_embed(self) -> discord.Embed:
-        from core.settlement.mechanics import SettlementMechanics
-
-        max_w = SettlementMechanics.get_max_workers(self.building.tier)
         workers = self.building.workers_assigned
+
+        # Pick the appropriate quip — release quip if something is ready to collect
+        is_ready = (
+            self._incubation is not None
+            and _remaining_seconds(
+                self._incubation["start_time"], self._incubation["duration_seconds"]
+            ) <= 0
+        )
+        quip = get_quip("hatchery_release") if is_ready else get_quip("hatchery")
 
         embed = discord.Embed(
             title="🐣 Hatchery",
+            description=f"*{quip}*",
             color=0x4CAF50,
         )
-        embed.add_field(
-            name="Workers",
-            value=f"{workers}/{max_w}",
-            inline=True,
-        )
+        embed.set_author(name="Master Tamer Yuna", icon_url=YUNA_PORTRAIT)
+        embed.set_thumbnail(url=YUNA_THUMBNAIL)
 
         egg_counts = {}
         for e in self._eggs:
@@ -114,7 +120,20 @@ class HatcheryView(BaseView):
         embed.add_field(
             name="Egg Inventory",
             value=f"{egg_summary} ({len(self._eggs)}/20)",
-            inline=True,
+            inline=False,
+        )
+
+        # Incubation time table based on current worker count
+        rows = []
+        for tier in ("normal", "rare", "giga"):
+            secs = HatcheryMechanics.incubation_seconds(tier, workers)
+            rows.append(
+                f"{_EGG_TIER_EMOJI[tier]} **{_EGG_TIER_LABEL[tier]}** — {_fmt_duration(secs)}"
+            )
+        embed.add_field(
+            name=f"Incubation Times (with {workers} worker{'s' if workers != 1 else ''})",
+            value="\n".join(rows),
+            inline=False,
         )
 
         if self._incubation:
@@ -130,8 +149,12 @@ class HatcheryView(BaseView):
                 )
             else:
                 embed.add_field(
-                    name="Incubation Complete!",
-                    value=f"{emoji} **{label}** — {inc['monster_name']} (lvl {inc['monster_level']})\nClick **Release** to send it into the wild.",
+                    name="✨ Incubation Complete!",
+                    value=(
+                        f"{emoji} **{label}** — {inc['monster_name']} (lvl {inc['monster_level']})\n"
+                        f"Click **Release** to queue them for your next `/combat` encounter.\n"
+                        f"⚠️ *These creatures are extremely dangerous — come fully prepared!*"
+                    ),
                     inline=False,
                 )
         else:
@@ -150,11 +173,11 @@ class HatcheryView(BaseView):
     def _rebuild_buttons(self):
         self.clear_items()
 
-        # Queue egg button (only when no active incubation and eggs exist)
+        # Incubate egg button (only when no active incubation and eggs exist)
         if self._incubation is None:
             if self._eggs:
                 btn_queue = ui.Button(
-                    label="Queue Egg", style=ButtonStyle.success, emoji="🥚", row=0
+                    label="Incubate Egg", style=ButtonStyle.success, emoji="🥚", row=0
                 )
                 btn_queue.callback = self._open_egg_select
                 self.add_item(btn_queue)

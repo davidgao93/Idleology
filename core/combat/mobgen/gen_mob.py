@@ -550,12 +550,12 @@ _CORRUPTED_MONSTER_NAMES: list[tuple[str, str]] = [
 ]
 
 
-async def generate_incubated_monster(encounter: dict) -> "Monster":
+async def generate_incubated_monster(encounter: dict, player_level: int = 50) -> "Monster":
     """Builds a Monster from a queued incubated encounter row.
 
     The monster's level, name, and species are taken from the stored egg data.
-    Stats are scaled at +20% ATK/DEF, with 2 guaranteed boss modifiers and
-    8 random modifiers all at max tier.
+    Stats are scaled at +20% ATK/DEF. Modifiers scale with player_level
+    (1 random mod at level 50, scaling up to 2 boss + 6 random at level 100).
     """
     monster = Monster(
         name=f"[Incubated] {encounter['monster_name']}",
@@ -596,8 +596,7 @@ async def generate_incubated_monster(encounter: dict) -> "Monster":
     monster.incubated_encounter_id = encounter["id"]
     monster.incubated_egg_tier = encounter["egg_tier"]
 
-    # 2 boss mods + 8 random mods, all at max tier
-    _assign_incubated_modifiers(monster)
+    _assign_incubated_modifiers(monster, player_level)
     _apply_spawn_modifiers(monster)
 
     return monster
@@ -621,19 +620,36 @@ async def _fetch_incubated_image(original_name: str, monster: "Monster") -> "Mon
     return monster  # fallback: image stays empty, name already set
 
 
-def _assign_incubated_modifiers(monster) -> None:
-    """Assigns 2 boss mods + 8 random common/rare mods, all at max tier."""
+def _assign_incubated_modifiers(monster, player_level: int) -> None:
+    """Assigns level-scaled boss + random mods at max tier.
+
+    Modifier counts scale every 10 levels starting at 50:
+      level 50 → 0 boss, 1 random
+      level 60 → 0 boss, 2 random
+      level 70 → 0 boss, 3 random
+      level 80 → 1 boss, 4 random
+      level 90 → 1 boss, 5 random
+      level 100+ → 2 boss, 6 random
+    """
+    clamped = max(50, min(player_level, 100))
+    random_count = (clamped - 40) // 10  # 1 at lvl50 … 6 at lvl100
+    boss_count = 0
+    if clamped >= 100:
+        boss_count = 2
+    elif clamped >= 80:
+        boss_count = 1
+
     used: set = set()
 
     boss_candidates = list(BOSS_MOD_NAMES)
     random.shuffle(boss_candidates)
-    for name in boss_candidates[:2]:
+    for name in boss_candidates[:boss_count]:
         monster.modifiers.append(
             make_modifier(name, monster.level, force_max_tier=True)
         )
         used.add(name)
 
-    remaining = 8
+    remaining = random_count
     attempts = 0
     while remaining > 0 and attempts < 80:
         attempts += 1

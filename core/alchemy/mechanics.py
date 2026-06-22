@@ -121,7 +121,10 @@ class AlchemyMechanics:
         """
         pinfo = DistillationMechanics.POWERFUL_PASSIVES.get(passive_type)
         if pinfo:
-            return pinfo["desc"].format(value=passive_value, duration=passive_duration)
+            result = pinfo["desc"].format(
+                value=passive_value, duration=passive_duration
+            )
+            return result.removeprefix("On potion use: ")
 
         # Fallback for any remaining legacy passives in DB
         return f"{passive_type.replace('_', ' ').title()}: {passive_value}"
@@ -324,7 +327,7 @@ class DistillationMechanics:
     REAGENTS = [
         {
             "key": "green",
-            "name": "Verdant Reagent",
+            "name": "Verdant",
             "emoji": "🟢",
             "color": "green",
             "desc": "Stable growth. Favors consistent value increases with lower variance.",
@@ -333,7 +336,7 @@ class DistillationMechanics:
         },
         {
             "key": "blue",
-            "name": "Astral Reagent",
+            "name": "Astral",
             "emoji": "🔵",
             "color": "blue",
             "desc": "Balanced essence. Good mix of duration and value potential.",
@@ -342,7 +345,7 @@ class DistillationMechanics:
         },
         {
             "key": "red",
-            "name": "Crimson Reagent",
+            "name": "Crimson",
             "emoji": "🔴",
             "color": "red",
             "desc": "Volatile power. Higher risk/reward — bigger swings and more dramatic events.",
@@ -428,7 +431,7 @@ class DistillationMechanics:
         "viper": {
             "name": "Viper",
             "emoji": "🐍",
-            "desc": "On potion use: Deal {value:.0f}% of the heal amount as instant damage, then apply a DoT that deals 20% of the total DoT pool per turn for {duration:.0f} turns.",
+            "desc": "On potion use: Deal {value:.0f}% of the heal amount as instant damage, then deal 20% of that hit per turn as venom for {duration:.0f} turns.",
             "value_min": 100.0,
             "value_max": 500.0,
             "duration_min": 2.0,
@@ -487,49 +490,49 @@ class DistillationMechanics:
             "id": "this_lucky",
             "name": "Perfect Alignment",
             "desc": "This step's result is **lucky**.",
-            "weight": 16,
+            "weight": 4,
             "effect": {"this_lucky": True},
         },
         {
             "id": "guaranteed_duration",
             "name": "Time-Infused",
-            "desc": "This step is **guaranteed to affect duration**.",
-            "weight": 12,
+            "desc": "This step is **guaranteed to affect duration** — for better or worse, but never nothing.",
+            "weight": 15,
             "effect": {"force": "duration"},
         },
         {
             "id": "guaranteed_value",
             "name": "Potency-Infused",
-            "desc": "This step is **guaranteed to affect power**.",
-            "weight": 12,
+            "desc": "This step is **guaranteed to affect power** — for better or worse, but never nothing.",
+            "weight": 15,
             "effect": {"force": "value"},
         },
         {
             "id": "small_boost",
             "name": "Gentle Bloom",
             "desc": "Guarantees at least a **good** tier gain this step.",
-            "weight": 10,
+            "weight": 5,
             "effect": {"min_tier": "good"},
         },
         {
             "id": "free_next",
             "name": "Lingering Essence",
             "desc": "The **next step costs no dust**.",
-            "weight": 13,
+            "weight": 18,
             "effect": {"free_next_steps": 1},
         },
         {
             "id": "half_cost",
             "name": "Efficient Mixture",
             "desc": "This step costs **half the usual dust**.",
-            "weight": 11,
+            "weight": 15,
             "effect": {"cost_mult": 0.5},
         },
         {
             "id": "guaranteed_improvement",
             "name": "Fated Catalyst",
             "desc": "This step is **guaranteed to improve** either duration or power.",
-            "weight": 10,
+            "weight": 8,
             "effect": {"guarantee_improvement": True},
         },
         # ==================== UNCOMMON (weight 5-9) ====================
@@ -580,35 +583,35 @@ class DistillationMechanics:
             "id": "very_lucky",
             "name": "Astral Convergence",
             "desc": "This step will be **very lucky**.",
-            "weight": 4,
+            "weight": 1,
             "effect": {"very_lucky": True},
         },
         {
             "id": "safe_step",
             "name": "Warded Catalyst",
             "desc": "This step will **not decrease** the passive's duration or power.",
-            "weight": 5,
+            "weight": 2,
             "effect": {"safe": True},
         },
         {
             "id": "free_next_three",
             "name": "Harmonic Cascade",
             "desc": "The **next 3 steps cost no dust**.",
-            "weight": 3,
+            "weight": 2,
             "effect": {"free_next_steps": 3},
         },
         {
             "id": "big_swing",
             "name": "Chaotic Catalyst",
             "desc": "Bigger swings: higher chance of large gains *or* noticeable losses.",
-            "weight": 3,
+            "weight": 5,
             "effect": {"big_swing": True},
         },
         {
             "id": "next_free_lucky",
             "name": "Serendipitous Flow",
             "desc": "The next step is **free and lucky**.",
-            "weight": 4,
+            "weight": 2,
             "effect": {"free_next_steps": 1, "next_lucky": True},
         },
         # ==================== VERY RARE / VERY POWERFUL (weight 1-2) ====================
@@ -625,13 +628,6 @@ class DistillationMechanics:
             "desc": "Any gain this step is **doubled** in magnitude.",
             "weight": 2,
             "effect": {"double_gain": True},
-        },
-        {
-            "id": "nothing",
-            "name": "Dud Reagent",
-            "desc": "This step produces **no improvement**.",
-            "weight": 4,
-            "effect": {"force_nothing": True},
         },
     ]
 
@@ -845,85 +841,143 @@ class DistillationMechanics:
             if mods["free_next_steps"] <= 0:
                 mods.pop("free_next_steps", None)
 
-        # Consume any pending lucky modifier set by a previous step's next_lucky effect
+        # Pending lucky from previous step's next_lucky effect
         pending_lucky = mods.pop("lucky", False)
 
-        # --- Background resolution (nothing / duration|value +inc or -dec), property-aware ---
-        raw = DistillationMechanics._roll_raw_outcome(mods, event)
-        resolved = DistillationMechanics._apply_property_resolution(
-            raw, event, mods, session.get("alchemy_level", 1), pending_lucky=pending_lucky
-        )
+        level = session.get("alchemy_level", 1)
 
-        axis = resolved.get("axis")
-        delta = resolved.get("delta", 0.0)
-        tier_desc = resolved.get("tier_desc", "nothing")
+        # Determine luck level from event + pending state
+        is_very = bool(eff.get("very_lucky"))
+        is_lucky = bool(eff.get("lucky")) or pending_lucky
+        is_slight = bool(eff.get("this_lucky"))
+        if is_very:
+            n_out, n_mag = 3, 3
+        elif is_lucky:
+            n_out, n_mag = 2, 2
+        elif is_slight:
+            n_out, n_mag = 2, 1
+        else:
+            n_out, n_mag = 1, 1
 
-        if axis == "duration":
-            session["duration_mod"] = session.get("duration_mod", 0.0) + delta
-        elif axis == "value":
-            session["value_mod"] = session.get("value_mod", 0.0) + delta
+        # --- Roll both axes independently ---
+        if eff.get("force_nothing"):
+            val_out = {"sign": 0, "tier": 0, "delta": 0.0}
+            dur_out = {"sign": 0, "tier": 0, "delta": 0.0}
+        elif eff.get("big_swing"):
+            # Big swing: roll each axis twice, take higher absolute magnitude
+            val_rolls = [DistillationMechanics._roll_one_axis(level) for _ in range(2)]
+            dur_rolls = [DistillationMechanics._roll_one_axis(level) for _ in range(2)]
+            val_out = max(val_rolls, key=lambda o: abs(o["delta"]))
+            dur_out = max(dur_rolls, key=lambda o: abs(o["delta"]))
+        else:
+            val_out = DistillationMechanics._roll_axis_with_luck(level, n_out, n_mag)
+            dur_out = DistillationMechanics._roll_axis_with_luck(level, n_out, n_mag)
 
-        # Record history (support negative)
-        gain_label = tier_desc
-        if axis and delta != 0:
-            sign = "+" if delta > 0 else ""
-            gain_label = f"{sign}{abs(delta):.1f} {axis}"
+        # Apply force: guarantee the specified axis is non-nothing (can be +/-)
+        forced = eff.get("force")
+        if forced == "value":
+            val_out = DistillationMechanics._guarantee_non_nothing(val_out, level)
+        elif forced == "duration":
+            dur_out = DistillationMechanics._guarantee_non_nothing(dur_out, level)
+
+        # Save raw roll for debug before effects are applied
+        val_raw_pre = dict(val_out)
+        dur_raw_pre = dict(dur_out)
+
+        # Apply per-axis property effects (safe, guarantee_improvement, min_tier, unlucky, double_gain)
+        val_out = DistillationMechanics._apply_axis_effects(val_out, eff, level)
+        dur_out = DistillationMechanics._apply_axis_effects(dur_out, eff, level)
+
+        val_delta = val_out["delta"]
+        dur_delta = dur_out["delta"]
+
+        # Cap accumulators at 0 — negative steps can never bank debt that offsets future gains
+        val_before = max(0.0, session.get("value_mod", 0.0))
+        dur_before = max(0.0, session.get("duration_mod", 0.0))
+        val_new = max(0.0, round(val_before + val_delta, 3))
+        dur_new = max(0.0, round(dur_before + dur_delta, 3))
+        # Effective deltas after capping (what actually changed)
+        actual_val_delta = val_new - val_before
+        actual_dur_delta = dur_new - dur_before
+        session["value_mod"] = val_new
+        session["duration_mod"] = dur_new
+
+        # Format changes as percentages of raw_max using actual (capped) deltas
+        raw_max = DistillationMechanics.get_raw_max(session)
+
+        def _fmt_pct(d: float, label: str) -> str | None:
+            if d == 0.0 or raw_max == 0:
+                return None
+            pct = round(d / raw_max * 100)
+            return f"{pct:+d}% {label}" if pct != 0 else None
+
+        val_str = _fmt_pct(actual_val_delta, "power")
+        dur_str = _fmt_pct(actual_dur_delta, "duration")
+        parts = [p for p in [val_str, dur_str] if p]
+        gain_label = ", ".join(parts) if parts else "nothing"
+
+        # History entry
         history_entry = {
             "step": step,
             "reagent": reagent["key"],
+            "reagent_label": f"{reagent['emoji']} {reagent['name']}",
             "event_id": event["id"] if event else None,
             "event_name": event["name"] if event else "Normal",
-            "gain": gain_label if axis else "nothing",
+            "gain": gain_label,
         }
         session.setdefault("history", []).append(history_entry)
 
-        # Apply lingering side-effects from the chosen property
-        if event:
-            eff = event.get("effect", {})
-            if eff.get("lucky") or eff.get("this_lucky"):
-                # one-shot; the resolution already used it
-                pass
-            if "free_next_steps" in eff:
-                mods["free_next_steps"] = max(
-                    mods.get("free_next_steps", 0), eff["free_next_steps"]
-                )
-            if eff.get("future_free_but_unlucky"):
-                mods["future_free_but_unlucky"] = True
-            if eff.get("all_future_free"):
-                mods["all_future_free"] = True
-            if "future_cost_mult" in eff:
-                mods["future_cost_mult"] = eff["future_cost_mult"]
-            if eff.get("next_lucky"):
-                mods["lucky"] = True  # will be consumed at the start of the next step
+        # Apply lingering side-effects
+        if "free_next_steps" in eff:
+            mods["free_next_steps"] = max(
+                mods.get("free_next_steps", 0), eff["free_next_steps"]
+            )
+        if eff.get("all_future_free"):
+            mods["all_future_free"] = True
+        if "future_cost_mult" in eff:
+            mods["future_cost_mult"] = eff["future_cost_mult"]
+        if eff.get("next_lucky"):
+            mods["lucky"] = True
 
-        # Result for UI
-        # Note: We intentionally do *not* re-emit the full property description here
-        # (e.g. "Fated Catalyst: This step is guaranteed..."). That was already shown
-        # to the player in the "Reagent Properties (this step)" section before they chose.
-        # Re-stating it makes it feel like "two things" are being applied.
-        # The effect of the property is reflected in the cost charged and the roll outcome.
+        # Debug string (shown in embed temporarily to help isolate issues)
+        def _sign(s):
+            return "+" if s > 0 else ("-" if s < 0 else "0")
+
+        debug_str = (
+            f"event={event['id'] if event else 'None'}\n"
+            f"eff={eff}\n"
+            f"luck: very={is_very} lucky={is_lucky} slight={is_slight} pending={pending_lucky}\n"
+            f"val  raw({_sign(val_raw_pre['sign'])}T{val_raw_pre['tier']} "
+            f"Δ{val_raw_pre['delta']:+.2f})→after({_sign(val_out['sign'])}T{val_out['tier']} "
+            f"Δ{val_out['delta']:+.2f}) actual={actual_val_delta:+.3f}\n"
+            f"dur  raw({_sign(dur_raw_pre['sign'])}T{dur_raw_pre['tier']} "
+            f"Δ{dur_raw_pre['delta']:+.2f})→after({_sign(dur_out['sign'])}T{dur_out['tier']} "
+            f"Δ{dur_out['delta']:+.2f}) actual={actual_dur_delta:+.3f}\n"
+            f"mods_after={dict(mods)}"
+        )
+
+        # Build result for UI
         result = {
             "step": step,
             "reagent": reagent["key"],
             "cost": final_cost,
             "event": event,
-            "gain_type": axis or "none",
-            "gain_amount": delta,
+            "debug": debug_str,
             "messages": [
                 f"Used **{reagent['emoji']} {reagent['name']}** (-✨ {final_cost} Cosmic Dust)",
             ],
         }
-        if axis:
-            sign = "+" if delta > 0 else ""
-            result["messages"].append(f"**{sign}{abs(delta):.1f}** {axis} power.")
+        if parts:
+            result["messages"].append(", ".join(f"**{p}**" for p in parts) + ".")
         else:
             result["messages"].append("No change this step.")
 
-        # Optional refund side-effect (after the fact)
-        if event and event.get("effect", {}).get("refund_on_gain") and delta > 0:
+        # Refund side-effect
+        any_gain = val_delta > 0 or dur_delta > 0
+        if event and eff.get("refund_on_gain") and any_gain:
             session["dust_spent"] = max(0, session.get("dust_spent", 0) - final_cost)
             result["messages"].append("Dust spent on this step was refunded!")
-            result["cost"] = 0  # so the view doesn't double-deduct
+            result["cost"] = 0
 
         return result
 
@@ -969,23 +1023,8 @@ class DistillationMechanics:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _roll_raw_outcome(mods: dict, event: Optional[dict]) -> dict:
-        """Roll the base background event for the step: nothing, or +/- on duration or value.
-        Middle outcomes (small gains, occasional nothing) are favored.
-        Decreases exist for variance and are modulated by the chosen property.
-        """
-        eff = (event or {}).get("effect", {})
-
-        # Forced nothing from property
-        if eff.get("force_nothing"):
-            return {"axis": None, "sign": 0, "tier": 0, "raw_delta": 0.0}
-
-        # Forced axis
-        forced_axis = eff.get("force")  # "duration" or "value"
-
-        # Base category probabilities (nothing / inc / dec). Middle bias.
-        # nothing 22%, small-positive 30%, medium-pos 18%, big-pos 8%,
-        # small-neg 12%, med-neg 7%, big-neg 3%  (tuned for "middle" feel)
+    def _roll_one_axis(level: int) -> dict:
+        """Roll an outcome for a single axis (no axis choice). Returns {sign, tier, delta}."""
         cat = random.choices(
             [
                 "nothing",
@@ -996,32 +1035,99 @@ class DistillationMechanics:
                 "dec_med",
                 "dec_big",
             ],
-            weights=[22, 30, 18, 8, 12, 7, 3],
+            weights=[35, 22, 13, 5, 14, 8, 3],  # 35% nothing, 40% positive, 25% negative
         )[0]
-
         if cat == "nothing":
-            return {"axis": None, "sign": 0, "tier": 0, "raw_delta": 0.0}
-
+            return {"sign": 0, "tier": 0, "delta": 0.0}
         sign = 1 if cat.startswith("inc") else -1
-        size = cat.split("_")[1]  # small/good/big or med
+        size = cat.split("_")[1]
+        tier = {"small": 1, "good": 2, "med": 2, "big": 3}[size]
+        mag = DistillationMechanics._delta_for(tier, "value", level)
+        return {"sign": sign, "tier": tier, "delta": mag * sign}
 
-        # Pick axis (forced wins; otherwise 50/50 with slight value lean for "power" fantasy)
-        if forced_axis in ("duration", "value"):
-            axis = forced_axis
-        else:
-            axis = "duration" if random.random() < 0.48 else "value"
+    @staticmethod
+    def _better_axis_outcome(a: dict, b: dict) -> dict:
+        """Return whichever single-axis outcome is better for the player."""
+        sa, sb = a["sign"], b["sign"]
+        if sa != sb:
+            return a if sa > sb else b  # positive > nothing > negative
+        if sa > 0:
+            return a if a["tier"] >= b["tier"] else b  # higher tier for positive
+        if sa < 0:
+            return (
+                a if a["tier"] <= b["tier"] else b
+            )  # lower tier (less loss) for negative
+        return a  # both nothing
 
-        # Magnitude (positive number; sign applied by caller)
-        level = 1  # magnitude base is mild; alchemy_level scaling happens in _delta_for
-        if size == "small":
+    @staticmethod
+    def _roll_axis_with_luck(level: int, n_outcome: int, n_mag: int) -> dict:
+        """Roll a single-axis outcome applying luck (n_outcome outcome rolls, n_mag magnitude rolls)."""
+        outcomes = [
+            DistillationMechanics._roll_one_axis(level) for _ in range(n_outcome)
+        ]
+        best = outcomes[0]
+        for o in outcomes[1:]:
+            best = DistillationMechanics._better_axis_outcome(best, o)
+        # If lucky, also try additional magnitude rolls in the same direction
+        if n_mag > 1 and best["sign"] != 0:
+            for _ in range(n_mag - 1):
+                extra = DistillationMechanics._roll_one_axis(level)
+                if extra["sign"] == best["sign"]:
+                    best = DistillationMechanics._better_axis_outcome(best, extra)
+        return best
+
+    @staticmethod
+    def _guarantee_non_nothing(outcome: dict, level: int) -> dict:
+        """For force events: ensure the outcome is not nothing — can be positive or negative."""
+        if outcome["sign"] == 0:
+            sign = 1 if random.random() < 0.5 else -1
+            mag = DistillationMechanics._delta_for(1, "value", level)
+            return {"sign": sign, "tier": 1, "delta": mag * sign}
+        return outcome
+
+    @staticmethod
+    def _apply_axis_effects(outcome: dict, eff: dict, level: int) -> dict:
+        """Apply property effects (safe, guarantee_improvement, min_tier, unlucky, double_gain) to one axis."""
+        sign, tier, delta = outcome["sign"], outcome["tier"], outcome["delta"]
+
+        # safe: no decreases — negative becomes nothing
+        if eff.get("safe") and sign < 0:
+            sign, tier, delta = 0, 0, 0.0
+
+        # guarantee_improvement: nothing or negative becomes small positive
+        if eff.get("guarantee_improvement") and sign <= 0:
+            sign = 1
             tier = 1
-        elif size == "good" or size == "med":
-            tier = 2
-        else:
-            tier = 3
+            delta = DistillationMechanics._delta_for(1, "value", level)
 
-        mag = DistillationMechanics._delta_for(tier, axis, level)
-        return {"axis": axis, "sign": sign, "tier": tier, "raw_delta": mag * sign}
+        # min_tier: ensure at least minimum tier on a positive outcome
+        min_tier_val = {"good": 2, "a_lot": 3}.get(eff.get("min_tier", ""), 0)
+        if min_tier_val > 0:
+            if sign <= 0:
+                sign = 1
+                tier = min_tier_val
+                delta = DistillationMechanics._delta_for(min_tier_val, "value", level)
+            elif tier < min_tier_val:
+                tier = min_tier_val
+                delta = DistillationMechanics._delta_for(min_tier_val, "value", level)
+
+        # unlucky: degrade outcome by one tier
+        if eff.get("unlucky"):
+            if sign > 0 and tier > 1:
+                tier -= 1
+                delta = DistillationMechanics._delta_for(tier, "value", level)
+            elif sign > 0 and tier == 1:
+                sign, tier, delta = 0, 0, 0.0
+            elif sign == 0 and random.random() < 0.4:
+                sign = -1
+                tier = 1
+                delta = -DistillationMechanics._delta_for(1, "value", level)
+
+        # double_gain: double any positive gain
+        if eff.get("double_gain") and sign > 0 and delta > 0:
+            delta *= 2.0
+
+        return {"sign": sign, "tier": tier, "delta": delta}
 
     @staticmethod
     def _delta_for(tier: int, axis: str, alchemy_level: int) -> float:
@@ -1033,135 +1139,6 @@ class DistillationMechanics:
             base *= 0.95
         mult = {1: 1.0, 2: 2.15, 3: 3.9}[tier]
         return round(base * mult, 1)
-
-    @staticmethod
-    def _apply_property_resolution(
-        raw: dict,
-        event: Optional[dict],
-        mods: dict,
-        alchemy_level: int,
-        pending_lucky: bool = False,
-    ) -> dict:
-        """Take the raw background outcome and apply the rules from the chosen reagent property."""
-        eff = (event or {}).get("effect", {})
-        axis = raw.get("axis")
-        sign = raw.get("sign", 0)
-        tier = raw.get("tier", 0)
-        delta = raw.get("raw_delta", 0.0)
-
-        # 1) Hard force_nothing from property
-        if eff.get("force_nothing"):
-            return {"axis": None, "sign": 0, "delta": 0.0, "tier_desc": "nothing"}
-
-        # 2) Big swing: re-roll once and keep whichever outcome has higher absolute magnitude
-        if eff.get("big_swing"):
-            roll2 = DistillationMechanics._roll_raw_outcome({}, None)
-            if roll2.get("axis") is not None and abs(roll2.get("raw_delta", 0.0)) > abs(delta):
-                axis = roll2["axis"]
-                sign = roll2["sign"]
-                tier = roll2["tier"]
-                delta = roll2["raw_delta"]
-
-        # 3) Guarantee improvement (turn a nothing or decrease into at least a little positive)
-        if eff.get("guarantee_improvement") and (axis is None or sign <= 0):
-            axis = "duration" if random.random() < 0.5 else "value"
-            sign = 1
-            tier = 1
-            delta = DistillationMechanics._delta_for(1, axis, alchemy_level)
-
-        # 4) Force axis — also guarantees at least a tiny positive when the raw roll was nothing
-        if eff.get("force") in ("duration", "value"):
-            if axis is None:
-                axis = eff["force"]
-                sign = 1
-                tier = 1
-                delta = DistillationMechanics._delta_for(1, axis, alchemy_level)
-            else:
-                axis = eff["force"]
-
-        # 5) Safe step: never produce a decrease (nothing stays nothing per the description)
-        if eff.get("safe") and sign < 0:
-            axis = eff.get("force") or ("duration" if random.random() < 0.5 else "value")
-            sign = 1
-            tier = 1
-            delta = DistillationMechanics._delta_for(1, axis, alchemy_level)
-
-        # 6) Core lucky / very_lucky resolution
-        # pending_lucky = lucky carried from the previous step's next_lucky effect
-        is_very = bool(eff.get("very_lucky"))
-        is_slight = bool(eff.get("lucky")) or bool(eff.get("this_lucky")) or pending_lucky
-
-        if is_very or is_slight:
-            was_good = axis is not None and sign > 0
-            was_bad = axis is None or sign < 0
-
-            if is_very and was_bad:
-                # Re-roll once hoping for an increase
-                roll2 = DistillationMechanics._roll_raw_outcome(mods, event)
-                if roll2.get("sign", 0) > 0:
-                    axis = roll2["axis"]
-                    sign = 1
-                    tier = roll2["tier"]
-                    delta = (
-                        roll2["raw_delta"]
-                        if roll2["raw_delta"] > 0
-                        else DistillationMechanics._delta_for(tier, axis, alchemy_level)
-                    )
-                    was_good = True
-                    was_bad = False
-                else:
-                    candidates = [raw, roll2]
-                    chosen = random.choice(candidates)
-                    axis = chosen.get("axis")
-                    sign = chosen.get("sign", 0)
-                    tier = chosen.get("tier", 0)
-                    if axis and sign < 0:
-                        d1 = DistillationMechanics._delta_for(max(1, tier), axis, alchemy_level)
-                        d2 = DistillationMechanics._delta_for(max(1, tier), axis, alchemy_level)
-                        delta = -min(d1, d2)  # smaller loss is better for the player
-                    else:
-                        delta = chosen.get("raw_delta", 0.0)
-            elif (is_very or is_slight) and was_good:
-                # Good outcome under any lucky flag → double-roll and take the higher value
-                d1 = DistillationMechanics._delta_for(max(1, tier), axis, alchemy_level)
-                d2 = DistillationMechanics._delta_for(max(1, tier), axis, alchemy_level)
-                best = max(d1, d2)
-                delta = best if sign > 0 else -best
-
-        # 7) min_tier: ensure the outcome reaches at least the specified tier on a positive
-        min_tier_val = {"good": 2, "a_lot": 3}.get(eff.get("min_tier", ""), 0)
-        if min_tier_val > 0:
-            if axis is None or sign <= 0:
-                # No positive yet — generate one at the minimum tier
-                axis = "duration" if random.random() < 0.5 else "value"
-                sign = 1
-                tier = min_tier_val
-                delta = DistillationMechanics._delta_for(min_tier_val, axis, alchemy_level)
-            elif tier < min_tier_val:
-                # Positive exists but below minimum tier — upgrade it
-                tier = min_tier_val
-                delta = DistillationMechanics._delta_for(min_tier_val, axis, alchemy_level)
-
-        # 8) Double-gain property (after all other resolution)
-        if eff.get("double_gain") and axis and sign > 0 and delta > 0:
-            delta *= 2.0
-
-        # Final tier description for UI/history
-        if axis is None or delta == 0:
-            tier_desc = "nothing"
-        elif abs(delta) < 1.6:
-            tier_desc = "a little"
-        elif abs(delta) < 3.5:
-            tier_desc = "good"
-        else:
-            tier_desc = "a lot"
-
-        return {
-            "axis": axis,
-            "sign": sign,
-            "delta": round(delta, 1) if delta else 0.0,
-            "tier_desc": tier_desc,
-        }
 
     @staticmethod
     def project_values(session: dict) -> tuple[float, float]:
@@ -1197,9 +1174,19 @@ class DistillationMechanics:
         val = val_min + val_frac * (val_max - val_min)
         dur = dur_min + dur_frac * (dur_max - dur_min)
 
+        # Duration is always an integer number of turns — use floor so 3.5 shows as 3, not 4.
+        dur_int = max(int(dur_min), min(int(dur), int(dur_max)))
         return (
             max(val_min, min(round(val, 1), val_max)),
-            max(dur_min, min(round(dur, 1), dur_max)),
+            float(dur_int),
+        )
+
+    @staticmethod
+    def get_raw_max(session: dict) -> float:
+        """Return the calibrated raw accumulator ceiling used by project_values."""
+        alchemy_level = session.get("alchemy_level", 1)
+        return (DistillationMechanics.STEPS / 2) * DistillationMechanics._delta_for(
+            2, "value", alchemy_level
         )
 
     @staticmethod
@@ -1216,7 +1203,11 @@ class DistillationMechanics:
         info = DistillationMechanics.POWERFUL_PASSIVES.get(passive_type)
         if not info:
             return f"{passive_type} (value {value}, duration {duration})"
-        return info["desc"].format(value=value, duration=duration)
+        return (
+            info["desc"]
+            .format(value=value, duration=duration)
+            .removeprefix("On potion use: ")
+        )
 
 
 # ------------------------------------------------------------------
