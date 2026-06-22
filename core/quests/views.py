@@ -11,9 +11,8 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.images import AMARA_AUTHOR, QUEST_BOARD
-from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, TOKEN_SHOP_ITEMS
+from core.quests.data import DAILY_QUESTS, HORIZON_PATHS
 from core.quests.mechanics import (
-    BOARD_COOLDOWN_HOURS,
     compute_goal_for_quest,
     format_goal_description,
     get_board_cooldown_remaining,

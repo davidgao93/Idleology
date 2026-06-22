@@ -635,7 +635,10 @@ class PlotDetailView(SettlementBaseView):
                         f"💰 {cost.get('gold', 0):,} | "
                         f"⏱️ {upgrade_dt_cost(b.building_type, target_t)} DTs"
                     )
-                    if "special_name" in cost:
+                    if "specials" in cost:
+                        for s in cost["specials"]:
+                            cost_str += f" | ✨ {s['name']} ×{s['qty']}"
+                    elif "special_name" in cost:
                         cost_str += (
                             f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
                         )
@@ -766,6 +769,45 @@ class PlotDetailView(SettlementBaseView):
             self.add_item(btn_demo)
             return
 
+        # --- Special case: Uber Shrine opens Monument Hall view ---
+        if b.building_type == "uber_shrine":
+            if b.is_disabled:
+                repair_cost = get_repair_cost(b.tier)
+                btn_repair = ui.Button(
+                    label=f"Repair ({repair_cost:,}g)",
+                    style=ButtonStyle.danger,
+                    emoji="🔧",
+                    row=0,
+                )
+                btn_repair.callback = self._repair_building
+                self.add_item(btn_repair)
+            else:
+                btn_shrine = ui.Button(
+                    label="Open Monument Hall",
+                    style=ButtonStyle.blurple,
+                    emoji="🏛️",
+                    row=0,
+                )
+                btn_shrine.callback = self._open_uber_shrine
+                self.add_item(btn_shrine)
+
+            if b.tier < 5:
+                btn_up = ui.Button(
+                    label=f"Upgrade to T{b.tier + 1}",
+                    style=ButtonStyle.success,
+                    emoji="⬆️",
+                    row=0,
+                )
+                btn_up.callback = self._upgrade_building
+                self.add_item(btn_up)
+
+            btn_demo = ui.Button(
+                label="Demolish", style=ButtonStyle.danger, emoji="💥", row=1
+            )
+            btn_demo.callback = self._demolish_confirm
+            self.add_item(btn_demo)
+            return
+
         # --- Special case: Hatchery opens its own dedicated view ---
         if b.building_type == "hatchery":
             btn_hatch = ui.Button(
@@ -856,6 +898,21 @@ class PlotDetailView(SettlementBaseView):
             embed=view.build_embed(pending_deal=pending_deal, zeal_data=zeal_data),
             view=view,
         )
+
+    async def _open_uber_shrine(self, interaction: Interaction):
+        from core.settlement.views.uber_shrine import UberShrineView
+
+        await interaction.response.defer()
+        view = UberShrineView(
+            self.bot,
+            self.user_id,
+            self,
+            self.building,
+            self.plot,
+            self.adj_bonus,
+        )
+        await view._load()
+        await interaction.edit_original_response(embed=view.build_embed(), view=view)
 
     async def _open_hatchery(self, interaction: Interaction):
         await interaction.response.defer()
@@ -1062,7 +1119,15 @@ class PlotDetailView(SettlementBaseView):
                 "Insufficient resources for upgrade!", ephemeral=True
             )
 
-        if "special_key" in cost:
+        if "specials" in cost:
+            for s in cost["specials"]:
+                owned = await self.bot.database.users.get_currency(self.user_id, s["key"])
+                if owned < s["qty"]:
+                    self._processing = False
+                    return await interaction.response.send_message(
+                        f"Need {s['qty']}× {s['name']}!", ephemeral=True
+                    )
+        elif "special_key" in cost:
             owned = await self.bot.database.users.get_currency(
                 self.user_id, cost["special_key"]
             )
@@ -1083,7 +1148,12 @@ class PlotDetailView(SettlementBaseView):
             self.user_id, self.parent.server_id, changes
         )
         await self.bot.database.users.modify_gold(self.user_id, -cost.get("gold", 0))
-        if "special_key" in cost:
+        if "specials" in cost:
+            for s in cost["specials"]:
+                await self.bot.database.users.modify_currency(
+                    self.user_id, s["key"], -s["qty"]
+                )
+        elif "special_key" in cost:
             await self.bot.database.users.modify_currency(
                 self.user_id, cost["special_key"], -cost["special_qty"]
             )
@@ -1564,6 +1634,11 @@ class MetaBuildingConstructionView(SettlementBaseView):
             content=None, embed=queued_embed, view=self.parent
         )
         self.stop()
+        await asyncio.sleep(3)
+        self.parent._rebuild_ui()
+        await interaction.edit_original_response(
+            embed=self.parent.build_embed(), view=self.parent
+        )
 
     async def _cancel(self, interaction: Interaction):
         await interaction.response.edit_message(

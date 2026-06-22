@@ -6,7 +6,6 @@ from core.images import SETTLEMENT_CONSTRUCTION
 from core.settlement.constants import (
     BUILDING_INFO,
     CONSTRUCTION_COSTS,
-    PROJECT_CONSTRUCTION_DT,
 )
 from core.settlement.turn_engine import construction_dt_cost
 from core.settlement.views.research import RESEARCHABLE_BUILDINGS

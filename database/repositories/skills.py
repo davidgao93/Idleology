@@ -707,7 +707,7 @@ class SkillRepository:
         if not row:
             return 0
 
-        m_pts, f_pts, w_pts, current_insight = (
+        m_pts, f_pts, w_pts = (
             row[0] or 0,
             row[1] or 0,
             row[2] or 0,

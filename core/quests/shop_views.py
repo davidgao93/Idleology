@@ -5,7 +5,7 @@ core/quests/shop_views.py — Token Shop UI for Quest Board.
 from __future__ import annotations
 
 import discord
-from discord import ButtonStyle, Interaction, ui
+from discord import ButtonStyle, Interaction
 
 from core.base_view import BaseView
 from core.images import QUEST_SHOP, QUEST_SHOP_AUTHOR

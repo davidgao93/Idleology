@@ -10,24 +10,20 @@ Subclass of CombatView that:
 
 from __future__ import annotations
 
-import random
-
 import discord
 
 from core.apex.data import ZONE_DEFS
 from core.apex.mechanics import ApexMechanics
 from core.apex.models import (
     profile_from_db,
-    shards_from_db,
-    meta_shards_from_db,
     soul_stone_from_db,
 )
+from core.base_view import BaseView
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.economy.config import XP_LOSS_ON_DEFEAT
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
-from core.base_view import BaseView
 from core.combat.views.views import CombatView
 from core.models import Monster, Player
 
@@ -178,8 +174,8 @@ class ApexCombatView(CombatView):
                 {
                     "name": f"{zone.emoji if zone else '💎'} {zone.name if zone else 'Apex Hunt'} Complete!",
                     "value": (
-                        f"Zone shards, upgrades, and extractions available via `/apex`.\n"
-                        f"Hunt charges: check `/apex` for remaining charges."
+                        "Zone shards, upgrades, and extractions available via `/apex`.\n"
+                        "Hunt charges: check `/apex` for remaining charges."
                     ),
                     "inline": False,
                 }

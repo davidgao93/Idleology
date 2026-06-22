@@ -19,7 +19,6 @@ import discord
 from discord import ButtonStyle, Interaction
 
 from core.base_view import BaseView
-from core.combat import jewel_engine as _je
 from core.combat.turns import engine
 from core.images import MAW_MAIN
 from core.maw import mechanics

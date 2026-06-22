@@ -263,7 +263,7 @@ class QuestsRepository(BaseRepository):
         now = datetime.now().isoformat()
         for row in board:
             # Determine goal from the quest data
-            from core.quests.data import DAILY_QUESTS, get_damage_goals
+            from core.quests.data import DAILY_QUESTS
 
             quest_def = next(
                 (q for q in DAILY_QUESTS if q["id"] == row["quest_id"]), None

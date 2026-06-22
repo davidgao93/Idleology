@@ -259,7 +259,6 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
 
     # Grant Zeal for quest completion (30 for 1★, 90 for 3★)
     try:
-        from core.settlement.constants import ZEAL_PER_COMBAT
         from core.settlement.turn_engine import compute_zeal_gain
 
         _zeal_base = 30 if tier == 1 else 90

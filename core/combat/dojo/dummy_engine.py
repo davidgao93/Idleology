@@ -135,27 +135,31 @@ class DummyEngine:
 
     @staticmethod
     def assess_readiness(player: Player, target: str) -> str:
+        # Thresholds represent "turns to die" at avg incoming damage.
+        # Boss fights run 30–80 turns; dying before turn ~20 is typically a loss.
+        # The proxy also omits the real boss's random bonus boss modifier, so
+        # all thresholds are kept conservative to compensate for that variance.
 
         ref_lvl = player.level + player.ascension + 20
 
         if target == "aphrodite_uber":
+            # Radiant Protection: 60% DR — modest incoming damage, tight DPS check.
             proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Radiant Protection"])
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
             avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
-            if time_to_die < 5:
-                return (
-                    "You feel as if you are **not ready**. The aura alone crushes you."
-                )
-            elif res.average_damage < (player.total_max_hp * 0.1) and time_to_die < 15:
-                return (
-                    "You feel this would be a **tough battle**. Survival is uncertain."
-                )
+            if time_to_die < 10:
+                return "You feel as if you are **not ready**. The aura alone crushes you."
+            elif res.average_damage < (player.total_max_hp * 0.05) or time_to_die < 20:
+                return "You feel this would be a **tough battle**. Survival is uncertain."
             return "You are **filled with determination**. Press onwards."
 
         if target == "lucifer_uber":
+            # Hell's Fury: +200% increased damage — hits for 3× base.
+            # Real Lucifer also rolls a random boss mod; proxy omits it, so
+            # thresholds are set tighter than other bosses to cover the variance.
             proxy = DummyEngine._make_uber_proxy(
                 ref_lvl, ["Infernal Protection", "Hell's Fury"]
             )
@@ -163,79 +167,72 @@ class DummyEngine:
             proxy.bonus_defence_pct -= 0.70
             proxy.base_attack += int(ref_lvl * 1.0)
             proxy.base_defence += int(ref_lvl * 0.2)
-            proxy.attack = int(proxy.base_attack * (1 + proxy.bonus_attack_pct))
-            proxy.defence = int(proxy.base_defence * (1 + proxy.bonus_defence_pct))
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
             avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
-            if time_to_die < 3:
+            if time_to_die < 10:
                 return "You feel as if you are **not ready**. His strikes alone would end you."
-            elif res.average_damage < (player.total_max_hp * 0.1) and time_to_die < 10:
-                return (
-                    "You feel this would be a **tough battle**. Survival is uncertain."
-                )
+            elif res.average_damage < (player.total_max_hp * 0.05) or time_to_die < 20:
+                return "You feel this would be a **tough battle**. Survival is uncertain."
             return "You are **filled with determination**. Press onwards."
 
         if target == "neet_uber":
+            # Void Aura drains player ATK/DEF each turn — attrition fight.
             proxy = DummyEngine._make_uber_proxy(
                 ref_lvl, ["Void Protection", "Void Aura"]
             )
             proxy.base_attack += int(ref_lvl * 0.8)
             proxy.base_defence += int(ref_lvl * 0.5)
-            proxy.attack = int(proxy.base_attack * (1 + proxy.bonus_attack_pct))
-            proxy.defence = int(proxy.base_defence * (1 + proxy.bonus_defence_pct))
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
             avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
-            if res.average_damage < (player.total_max_hp * 0.05):
+            if res.average_damage < (player.total_max_hp * 0.03):
                 return "You feel as if you are **not ready**. The void would consume you before you land a dent."
-            elif time_to_die < 5:
+            elif time_to_die < 10:
                 return "You feel as if you are **not ready**. Its strikes alone would end you."
-            elif res.average_damage < (player.total_max_hp * 0.10) and time_to_die < 12:
+            elif res.average_damage < (player.total_max_hp * 0.06) or time_to_die < 20:
                 return "You feel this would be a **tough battle**. The void slowly drains everything."
             return "You are **filled with determination**. The void beckons."
 
         if target == "gemini_uber":
+            # Balanced Strikes: free extra hit every even turn bypassing ward.
             proxy = DummyEngine._make_uber_proxy(
                 ref_lvl, ["Balanced Protection", "Balanced Strikes"]
             )
             proxy.base_attack += int(ref_lvl * 0.65)
             proxy.base_defence += int(ref_lvl * 0.65)
-            proxy.attack = int(proxy.base_attack * (1 + proxy.bonus_attack_pct))
-            proxy.defence = int(proxy.base_defence * (1 + proxy.bonus_defence_pct))
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
             avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
-            if res.average_damage < (player.total_max_hp * 0.05):
+            if res.average_damage < (player.total_max_hp * 0.03):
                 return "You feel as if you are **not ready**. The twins would outlast you entirely."
-            elif time_to_die < 4:
+            elif time_to_die < 10:
                 return "You feel as if you are **not ready**. Their Twin Strike would end you too quickly."
-            elif res.average_damage < (player.total_max_hp * 0.10) and time_to_die < 10:
+            elif res.average_damage < (player.total_max_hp * 0.06) or time_to_die < 20:
                 return "You feel this would be a **tough battle**. The twins' rhythm is relentless."
             return "You are **filled with determination**. The constellation awaits."
 
         if target == "evelynn_uber":
+            # Corrupted Protection: 60% DR — heavy ATK boost compensates.
             proxy = DummyEngine._make_uber_proxy(ref_lvl, ["Corrupted Protection"])
             proxy.bonus_attack_pct += 0.40
             proxy.bonus_defence_pct -= 0.15
-            proxy.attack = int(proxy.base_attack * (1 + proxy.bonus_attack_pct))
-            proxy.defence = int(proxy.base_defence * (1 + proxy.bonus_defence_pct))
             proxy.is_boss = True
 
             res = DummyEngine.run_simulation(player, proxy, turns=50)
             avg_taken = res.avg_damage_taken
             time_to_die = player.total_max_hp / avg_taken if avg_taken > 0 else 999
-            if res.average_damage < (player.total_max_hp * 0.05):
+            if res.average_damage < (player.total_max_hp * 0.03):
                 return "You feel as if you are **not ready**. The corruption would consume you before you leave a mark."
-            elif time_to_die < 5:
+            elif time_to_die < 10:
                 return "You feel as if you are **not ready**. Her strikes alone would end you."
-            elif res.average_damage < (player.total_max_hp * 0.10) and time_to_die < 12:
+            elif res.average_damage < (player.total_max_hp * 0.06) or time_to_die < 20:
                 return "You feel this would be a **tough battle**. The primordial rot is relentless."
             return "You are **filled with determination**. The source of all corruption awaits."
 

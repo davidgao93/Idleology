@@ -12,7 +12,6 @@ from core.settlement.constants import (
 from core.settlement.plots import (
     META_BUILDINGS,
     PLOT_BONUS_TABLE,
-    SHRINE_BUILDING_TYPES,
     get_adjacent_plot_indices,
 )
 
@@ -386,6 +385,23 @@ class SettlementMechanics:
         def _round_to_thousand(n: int) -> int:
             """Round to nearest 1,000 (standard rounding)."""
             return round(n / 1000) * 1000
+
+        # 1a. Uber Shrine building: mirrors Town Hall upgrade costs exactly
+        if building_type == "uber_shrine":
+            base = 20_000
+            base_gold = 500_000
+            cost = {
+                "timber": _round_to_thousand(int(base * (target_tier**1.5))),
+                "stone": _round_to_thousand(int(base * (target_tier**1.5))),
+                "gold": _round_to_thousand(int(base_gold * (target_tier**1.5))),
+            }
+            qty = target_tier - 1  # T2=1, T3=2, T4=3, T5=4
+            cost["specials"] = [
+                {"key": "magma_core", "name": "Magma Core", "qty": qty},
+                {"key": "life_root", "name": "Life Root", "qty": qty},
+                {"key": "spirit_shard", "name": "Spirit Shard", "qty": qty},
+            ]
+            return cost
 
         # 1. Uber buildings (flat high cost)
         if building_type in UBER_BUILDINGS:

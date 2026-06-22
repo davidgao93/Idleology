@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional
 import json
 
-import aiosqlite
 
 from database.base import BaseRepository
 

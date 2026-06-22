@@ -12,7 +12,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.images import SKILL_IMAGES, SKILL_UNCUT, TESSARA_PORTRAIT, TESSARA_THUMBNAIL
+from core.images import SKILL_IMAGES, SKILL_UNCUT, TESSARA_PORTRAIT
 from core.npc_voices import get_quip
 from core.paradise import mechanics as M
 from core.paradise.data import (

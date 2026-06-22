@@ -521,10 +521,20 @@ class BuildingDetailView(SettlementBaseView):
             embed=view.build_embed(pending_deal=pending, zeal_data=zeal_data), view=view
         )
 
+    def _rebuild_ui(self):
+        self.setup_ui()
+
     async def open_uber_shrine(self, interaction: Interaction):
+        from core.settlement.views.uber_shrine import UberShrineView as NewUberShrineView
+
         await interaction.response.defer()
-        view = UberShrineView(
-            self.bot, self.user_id, self.parent.server_id, self.building, self
+        view = NewUberShrineView(
+            self.bot,
+            self.user_id,
+            self,
+            self.building,
+            plot=None,
+            adj_bonus={},
         )
         await view._load()
         await interaction.edit_original_response(embed=view.build_embed(), view=view)

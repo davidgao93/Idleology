@@ -190,6 +190,7 @@ class DiscordBot(commands.Bot):
                 "ALTER TABLE maw_participants ADD COLUMN fights_this_cycle INTEGER NOT NULL DEFAULT 0",
                 # Maw rework: rename last_damage_check → last_fight_ts (SQLite 3.25+).
                 "ALTER TABLE maw_participants RENAME COLUMN last_damage_check TO last_fight_ts",
+                "ALTER TABLE uber_shrine_statues ADD COLUMN tier INTEGER NOT NULL DEFAULT 1",
             ]:
                 try:
                     await db.execute(stmt)

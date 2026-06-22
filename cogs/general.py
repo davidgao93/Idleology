@@ -28,7 +28,7 @@ from core.character.passive_data import (
     _VOID_PASSIVE_DESC,
     _WEAPON_PASSIVE_DESC,
 )
-from core.images import AMARA_AUTHOR, AMARA_PORTRAIT, TAVERN_KEEPER
+from core.images import AMARA_AUTHOR, AMARA_PORTRAIT
 from core.slayer.mechanics import SLAYER_PASSIVE_DEFS, SLAYER_PASSIVE_NAMES
 
 

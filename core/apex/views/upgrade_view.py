@@ -205,7 +205,9 @@ class UpgradeView(BaseView):
             f"⏺️ Stay (T{slot.tier}): **{stay}%**",
         ]
         if down > 0:
-            outcome_lines.append(f"⬇️ Downgrade (T{max(1, slot.tier - 1)}): **{down}%**")
+            outcome_lines.append(
+                f"⬇️ Downgrade (T{max(1, slot.tier - 1)}): **{down}%**"
+            )
         embed.add_field(
             name="📊 Outcomes", value="\n".join(outcome_lines), inline=False
         )
@@ -338,9 +340,9 @@ class UpgradeView(BaseView):
         await interaction.response.defer()
 
         from core.apex.models import (
-            soul_stone_from_db,
-            shards_from_db,
             meta_shards_from_db,
+            shards_from_db,
+            soul_stone_from_db,
         )
         from core.apex.views.soul_stone_view import (
             SoulStoneView,

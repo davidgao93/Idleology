@@ -404,9 +404,10 @@ CREATE TABLE IF NOT EXISTS buildings (
 CREATE TABLE IF NOT EXISTS uber_shrine_statues (
     user_id         TEXT NOT NULL,
     server_id       TEXT NOT NULL,
-    statue_type     TEXT NOT NULL,  -- 'celestial' | 'infernal' | 'void' | 'bound'
+    statue_type     TEXT NOT NULL,  -- 'celestial' | 'infernal' | 'void' | 'bound' | 'corrupted'
     is_unlocked     INTEGER NOT NULL DEFAULT 0,  -- 1 = statue has been built (project completed)
     workers_assigned INTEGER NOT NULL DEFAULT 0,
+    tier            INTEGER NOT NULL DEFAULT 1,  -- statue upgrade tier (1–5)
     PRIMARY KEY (user_id, server_id, statue_type)
 );
 

@@ -26,12 +26,10 @@ from core.settlement.constants import (
     IDLEM_PER_TURN_BASE,
     PASSIVE_ZEAL_PER_HOUR_BASE,
     PROJECT_CONSTRUCTION_DT,
-    PROJECT_UPGRADE_DT_PER_TIER,
     SETTLEMENT_EVENTS,
     WORKERS_PER_TURN_BASE,
     ZEAL_DAILY_HARD_CAP,
     ZEAL_DAILY_SOFT_CAP,
-    ZEAL_PER_COMBAT,
     ZEAL_TO_DT,
 )
 
@@ -90,9 +88,12 @@ def construction_dt_cost(building_type: str, event_effects: dict | None = None) 
 
 
 _UPGRADE_DT_TABLE = {2: 5, 3: 10, 4: 25, 5: 50}
+_UBER_SHRINE_UPGRADE_DT = {2: 25, 3: 50, 4: 100, 5: 200}
 
 
 def upgrade_dt_cost(building_type: str, target_tier: int) -> int:
+    if building_type == "uber_shrine":
+        return _UBER_SHRINE_UPGRADE_DT.get(target_tier, 200)
     return max(1, _UPGRADE_DT_TABLE.get(target_tier, 50))
 
 
@@ -456,6 +457,14 @@ async def _complete_project(
             await bot.database.settlement.unlock_statue(user_id, server_id, statue_type)
         label = f"{statue_type.title()} Statue" if statue_type else "Statue"
         return {"label": f"{label} Built"}
+
+    elif ptype == "statue_upgrade":
+        statue_type = data.get("statue_type")
+        target_tier = data.get("target_tier", 2)
+        if statue_type:
+            await bot.database.settlement.upgrade_statue_tier(user_id, server_id, statue_type)
+        label = f"{statue_type.title()} Statue" if statue_type else "Statue"
+        return {"label": f"{label} Upgraded to T{target_tier}"}
 
     return {"label": ptype}
 

@@ -627,6 +627,9 @@ class SettlementDashboardView(SettlementBaseView):
                 elif b.building_type == "black_market":
                     status_emoji = "⚫"
                     worker_desc = "Special trading post"
+                elif b.building_type == "uber_shrine":
+                    status_emoji = "🏛️"
+                    worker_desc = "Monument Hall to the Gods"
                 elif not _needs_workers:
                     status_emoji = (
                         "🔵"  # passive/always-on — distinct from active 🟢 / idle 🔴

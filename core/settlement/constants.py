@@ -169,52 +169,78 @@ UBER_STATUE_DEFS: dict[str, dict] = {
     "celestial": {
         "name": "Celestial Statue",
         "emoji": "⭐",
+        "slot": 1,
         "blueprint_key": "celestial_blueprint_unlocked",
         "boss_name": "Aphrodite",
         "material": "celestial_stone",
         "material_name": "Celestial Stone",
         "material_qty": 1,
-        "build_dt": 15,
-        "worker_cap_per_tier": 10,  # max workers = shrine_tier * worker_cap_per_tier
+        "build_dt": 40,
         "sigil_key": "celestial_shrine",
     },
     "infernal": {
         "name": "Infernal Statue",
         "emoji": "🔥",
+        "slot": 2,
         "blueprint_key": "infernal_blueprint_unlocked",
         "boss_name": "Lucifer",
         "material": "infernal_cinder",
         "material_name": "Infernal Cinder",
         "material_qty": 1,
-        "build_dt": 15,
-        "worker_cap_per_tier": 10,
+        "build_dt": 40,
         "sigil_key": "infernal_shrine",
     },
     "void": {
         "name": "Void Statue",
         "emoji": "🌀",
+        "slot": 3,
         "blueprint_key": "void_blueprint_unlocked",
         "boss_name": "NEET",
         "material": "void_crystal",
         "material_name": "Void Crystal",
         "material_qty": 1,
-        "build_dt": 15,
-        "worker_cap_per_tier": 10,
+        "build_dt": 40,
         "sigil_key": "void_shrine",
     },
     "bound": {
-        "name": "Bound Statue",
+        "name": "Twin Statue",
         "emoji": "🔗",
+        "slot": 4,
         "blueprint_key": "gemini_blueprint_unlocked",
         "boss_name": "Gemini",
         "material": "bound_crystal",
         "material_name": "Bound Crystal",
         "material_qty": 1,
-        "build_dt": 15,
-        "worker_cap_per_tier": 10,
+        "build_dt": 40,
         "sigil_key": "twin_shrine",
     },
+    "corrupted": {
+        "name": "Corrupted Statue",
+        "emoji": "☠️",
+        "slot": 5,
+        "blueprint_key": "corruption_blueprint_unlocked",
+        "boss_name": "Evelynn",
+        "material": "corrupted_crystal",
+        "material_name": "Corrupted Crystal",
+        "material_qty": 1,
+        "build_dt": 40,
+        "sigil_key": "corruption_shrine",
+    },
 }
+
+# Statue tier upgrade DT costs (T1→T2, T2→T3, T3→T4, T4→T5)
+STATUE_UPGRADE_DT: dict[int, int] = {2: 40, 3: 80, 4: 120, 5: 200}
+
+# Statue tier upgrade gold costs
+STATUE_UPGRADE_GOLD: dict[int, int] = {
+    2: 100_000,
+    3: 500_000,
+    4: 2_000_000,
+    5: 5_000_000,
+}
+
+# Statue tier upgrade material quantities (of the statue's own material)
+STATUE_UPGRADE_MATERIAL_QTY: dict[int, int] = {2: 2, 3: 4, 4: 8, 5: 15}
 
 # ---------------------------------------------------------------------------
 # Development Turns / Zeal economy

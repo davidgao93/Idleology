@@ -11,18 +11,15 @@ All views extend BaseView. Session state is persisted in the DB so players can
 log out and resume.
 """
 
-import json
-
 import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.alchemy.mechanics import (
     DistillationMechanics,
     get_passive_name_emoji,
-    get_passive_info,
 )
 from core.base_view import BaseView
-from core.images import ALCHEMY_HUB, ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
+from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 
 
@@ -106,8 +103,6 @@ class PotionDistillationView(BaseView):
         s = self.session
         step = s.get("step", 0)
         base = s.get("base_type")
-        dur = s.get("duration_mod", 0.0)
-        val = s.get("value_mod", 0.0)
 
         embed = discord.Embed(
             title="⚗️ Potion Distillation", color=discord.Color.purple()
@@ -264,7 +259,6 @@ class PotionDistillationView(BaseView):
             current = max(0, self.cosmic_dust)
             for i, ch in enumerate(choices):
                 cost = ch.get("effective_cost", 0)
-                after = max(0, current - cost)
                 cost_part = f" (-{cost}✨)" if cost > 0 else " (free)"
                 label = f"{ch['emoji']} {ch['name']}{cost_part}"
                 style = (

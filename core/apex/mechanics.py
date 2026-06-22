@@ -17,7 +17,6 @@ from core.apex.data import (
     PASSIVE_CATEGORY_MAP,
     PASSIVE_SHARD_MAP,
     RESONANCE_TABLE,
-    UPGRADE_COSTS,
     UPGRADE_OUTCOMES,
     ZONE_DEFS,
 )
@@ -25,7 +24,6 @@ from core.apex.models import ApexHuntProfile
 
 if TYPE_CHECKING:
     from core.apex.models import SoulStone
-    from core.combat.models import Monster, Player
 
 
 CHARGE_REGEN_SECONDS: float = 8 * 3600  # 8 hours per charge
@@ -102,8 +100,8 @@ class ApexMechanics:
         Constructs a Monster from an ApexMonsterDef scaled to the player's level.
         Returns a fully populated Monster instance.
         """
-        from core.combat.models import Monster
         from core.combat.mobgen.modifier_data import make_modifier
+        from core.combat.models import Monster
 
         # Apex hunts are endgame content (unlock at 90): monsters sit well above the player
         monster_level = max(100, player_level + random.randint(30, 50))

@@ -151,7 +151,7 @@ def process_heal(player: Player, monster=None) -> str:
                 f"Protected for **{player.alchemy_ailment_immunity_turns}** turns!"
             )
         else:
-            msg += f"\n🌿 **Panacea** — the cleansing fails to trigger this time."
+            msg += "\n🌿 **Panacea** — the cleansing fails to trigger this time."
 
     eclipse = potion_passives_by_type.get("eclipse", 0)
     if eclipse:

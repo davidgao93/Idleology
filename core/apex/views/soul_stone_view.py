@@ -7,13 +7,13 @@ All sub-views replace the current message in-place (no ephemeral pop-overs).
 
 from __future__ import annotations
 
+from collections import Counter
+
 import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
-from collections import Counter
-
-from core.apex.data import RESONANCE_TABLE, ZONE_DEFS
+from core.apex.data import RESONANCE_TABLE
 from core.apex.mechanics import ApexMechanics
 from core.apex.models import (
     MetaShardInventory,
@@ -25,7 +25,6 @@ from core.apex.models import (
 )
 from core.base_view import BaseView
 from core.images import APEX_SOUL_STONE
-
 
 _CAT_EMOJI: dict[str, str] = {
     "offensive": "🔥",
@@ -432,9 +431,9 @@ class _ClearSlotView(BaseView):
     async def _return_to_soul_stone(self, interaction: Interaction):
         await interaction.response.defer()
         from core.apex.models import (
-            soul_stone_from_db,
-            shards_from_db,
             meta_shards_from_db,
+            shards_from_db,
+            soul_stone_from_db,
         )
 
         ss_row = await self.bot.database.apex.get_or_create_soul_stone(

@@ -5,7 +5,6 @@ from core.first_use import TutorialGateView
 from core.skills.fishing_view import FishingView
 from core.skills.forestry_view import ForestryView
 from core.skills.mastery import (
-    get_points_for_tool,
     compute_catchup_points,
     roll_rich_event,
     roll_remnant_generation,
@@ -19,7 +18,6 @@ from core.skills.mastery import (
 from core.skills.mechanics import SkillMechanics
 from core.skills.views import GatherView
 import datetime
-import json
 import random
 
 

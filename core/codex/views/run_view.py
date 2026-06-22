@@ -17,7 +17,6 @@ from core.codex.mechanics import (
     restore_clean_stats,
     roll_boons,
 )
-from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.calc.hit_calc import calculate_crit_chance
 from core.combat.combat_log import CombatLogger

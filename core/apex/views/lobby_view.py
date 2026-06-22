@@ -363,9 +363,9 @@ class ApexLobbyView(BaseView):
             }
 
         # Build initial combat embed
+        from core.apex.views.combat_view import ApexCombatView
         from core.combat import jewel_engine as _je
         from core.combat import ui as combat_ui
-        from core.apex.views.combat_view import ApexCombatView
 
         # Reset jewel charges before building the embed so the status bar shows 0
         # on the very first frame. The reset in CombatView.__init__ is kept as a guard.

@@ -8,40 +8,39 @@ Artisan Mastery UI
 """
 
 import json
+
 import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
 from core.images import (
-    ARTISAN_MASTERY_HUB,
     ARTISAN_MASTERY_ATTUNEMENT,
-    MASTERY_MINING,
+    ARTISAN_MASTERY_HUB,
     MASTERY_FISHING,
+    MASTERY_MINING,
     MASTERY_WOODCUTTING,
 )
 from core.skills.mastery import (
-    NODE_LABELS,
-    get_tree,
-    get_branch_display_name,
     BRANCH_NODE_ORDERS,
-    get_branch_progress,
-    invest_in_branch,
-    _get_unlocked_nodes_from_alloc,
-    RUNE_CRAFT_COST,
-    get_yield_proc_bonus,
-    get_rich_base_bonus,
-    get_prestige_spawn_bonus,
-    get_branch_total_cost,
-    has_nature_attunement_unlocked,
-    get_attunement_progress,
-    get_total_insight_bonuses,
-    NATURE_ATTUNEMENT_TREE,
     NATURE_ATTUNEMENT_NODE_ORDER,
+    NATURE_ATTUNEMENT_TREE,
+    NODE_LABELS,
+    RUNE_CRAFT_COST,
+    get_attunement_progress,
+    get_branch_display_name,
+    get_branch_progress,
+    get_branch_total_cost,
+    get_prestige_spawn_bonus,
+    get_rich_base_bonus,
+    get_total_insight_bonuses,
+    get_tree,
+    get_yield_proc_bonus,
+    has_nature_attunement_unlocked,
     invest_in_attunement,
+    invest_in_branch,
 )
 from core.skills.mechanics import SkillMechanics
-
 
 # =========================================================
 # HUB VIEW
@@ -292,9 +291,11 @@ class SkillMasteryView(BaseView):
         if self.parent_view:
             await self.parent_view.refresh()
             await interaction.edit_original_response(
-                embed=self.parent_view.get_embed()
-                if hasattr(self.parent_view, "get_embed")
-                else None,
+                embed=(
+                    self.parent_view.get_embed()
+                    if hasattr(self.parent_view, "get_embed")
+                    else None
+                ),
                 view=self.parent_view,
             )
         else:
@@ -525,7 +526,6 @@ class BranchDetailView(BaseView):
         )
         alloc = json.loads(alloc_json)
         progress = get_branch_progress(self.skill, self.branch, alloc)
-        total_cost = get_branch_total_cost(self.skill, self.branch)
         bonus_inv = progress.get("bonus_invested", 0)
         is_complete = progress.get("complete") and bonus_inv >= 10
         can_invest = pts > 0 and not is_complete
@@ -595,9 +595,11 @@ class BranchDetailView(BaseView):
         if self.parent_view:
             await self.parent_view.refresh()
             await interaction.edit_original_response(
-                embed=self.parent_view.get_embed()
-                if hasattr(self.parent_view, "get_embed")
-                else None,
+                embed=(
+                    self.parent_view.get_embed()
+                    if hasattr(self.parent_view, "get_embed")
+                    else None
+                ),
                 view=self.parent_view,
             )
         else:
@@ -802,9 +804,11 @@ class AttunementView(BaseView):
         if self.parent_view:
             await self.parent_view.refresh()
             await interaction.edit_original_response(
-                embed=self.parent_view.get_embed()
-                if hasattr(self.parent_view, "get_embed")
-                else None,
+                embed=(
+                    self.parent_view.get_embed()
+                    if hasattr(self.parent_view, "get_embed")
+                    else None
+                ),
                 view=self.parent_view,
             )
         else:

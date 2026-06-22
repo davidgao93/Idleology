@@ -765,7 +765,7 @@ def compute_catchup_points(
     last_claim_iso: str | None, tool_tier: str, now_iso: str
 ) -> int:
     """Return integer points to award (capped at 24h worth)."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     rate = get_points_for_tool(tool_tier)
     if not last_claim_iso:

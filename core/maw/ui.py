@@ -5,7 +5,6 @@ core/maw/ui.py — Stateless embed builders for the Maw of Infinity.
 import discord
 
 from core.images import (
-    MAW_MAIN,
     MAW_VICTORY,
     BROTHER_SOLEN_PORTRAIT,
     BROTHER_SOLEN_THUMBNAIL,

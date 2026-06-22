@@ -444,7 +444,7 @@ class ImprintView(BaseView):
         else:
             result_title = "❌ Extraction Failed"
             result_desc = (
-                f"The passive could not be extracted.\n"
+                "The passive could not be extracted.\n"
                 + (
                     "🏺 Soul Vessel preserved the item."
                     if vessel
@@ -499,16 +499,16 @@ class ImprintView(BaseView):
         """Rebuilds and transitions back to the SoulStoneView with fresh DB data."""
         await interaction.response.defer()
 
-        from core.items.factory import load_player
         from core.apex.models import (
-            soul_stone_from_db,
-            shards_from_db,
             meta_shards_from_db,
+            shards_from_db,
+            soul_stone_from_db,
         )
         from core.apex.views.soul_stone_view import (
             SoulStoneView,
             _build_soul_stone_embed,
         )
+        from core.items.factory import load_player
 
         # Reload player to reflect any item destruction that occurred
         user_row = await self.bot.database.users.get(self.user_id, self.server_id)

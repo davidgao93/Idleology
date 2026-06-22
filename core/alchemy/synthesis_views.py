@@ -21,7 +21,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.alchemy.mechanics import AlchemyMechanics
 from core.base_view import BaseView
-from core.images import ALCHEMY_HUB, ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
+from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 from core.paradise.mechanics import dust_from_jewel
 
