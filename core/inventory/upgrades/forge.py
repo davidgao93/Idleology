@@ -27,7 +27,6 @@ class ForgeView(BaseUpgradeView):
             costs, uid, gid
         )
         self.costs = costs
-        desc = f"**Cost:**\n{cost_lines}"
 
         self.embed = discord.Embed(
             title=f"Forge {self.item.name}",

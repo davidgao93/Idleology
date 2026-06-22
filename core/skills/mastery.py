@@ -599,7 +599,6 @@ def get_signature_resource_bonus(skill: SkillType, mastery_row: dict) -> float:
     """Quality branch signature bonuses (+20/38%) + Synergy 5pt capstone (+55% from passive hourly ticks per Living Mountain / Old One's Favor / Forest Remembers)."""
     alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
     bonus = 1.0
-    tree = ALL_TREES[skill]
     for node in _get_unlocked_nodes_from_alloc(alloc, "quality"):
         if node in ("ideal_seeker", "tide_seeker", "heartwood_seeker"):
             bonus += 0.20

@@ -301,7 +301,7 @@ async def generate_helmet(user_id: str, level: int) -> Helmet:
         )
         suffix = random.choice(load_list("assets/items/suff.txt"))
         name = f"{prefix} {helm_type} {suffix}"
-    except:
+    except Exception:
         name = f"Sturdy Helm of Level {level}"
 
     helm = Helmet(

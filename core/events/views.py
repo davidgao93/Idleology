@@ -143,6 +143,6 @@ class RandomEventView(BaseView):
         if hasattr(self, "message") and self.message:
             try:
                 await self.message.edit(view=self)
-            except:
+            except Exception:
                 pass
         await super().on_timeout()

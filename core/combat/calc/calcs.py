@@ -134,41 +134,41 @@ PASSIVE_SCALE: dict[str, float] = {k: v.scale for k, v in WEAPON_PASSIVE_DEFS.it
 # ---------------------------------------------------------------------------
 
 ACCESSORY_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
-    "obliterate": lambda l: f"{l * 4}% chance to deal Double Damage",
-    "absorb": lambda l: f"{l * 10}% chance to gain 10% of Monster's ATK and DEF",
-    "prosper": lambda l: f"{l * 10}% chance to Double Gold gained",
-    "infinite wisdom": lambda l: f"{l * 5}% chance to Double XP gained",
-    "lucky strikes": lambda l: f"{l * 10}% chance for Lucky Hits",
+    "obliterate": lambda lvl: f"{lvl * 4}% chance to deal Double Damage",
+    "absorb": lambda lvl: f"{lvl * 10}% chance to gain 10% of Monster's ATK and DEF",
+    "prosper": lambda lvl: f"{lvl * 10}% chance to Double Gold gained",
+    "infinite wisdom": lambda lvl: f"{lvl * 5}% chance to Double XP gained",
+    "lucky strikes": lambda lvl: f"{lvl * 10}% chance for Lucky Hits",
 }
 
 GLOVE_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
-    "ward-touched": lambda l: f"Gain {l * 25} Ward on Hits",
-    "ward-fused": lambda l: f"Gain {l * 50} Ward on Crits",
-    "instability": lambda l: f"Hits are 50% dmg OR {150 + (l * 10)}% dmg",
-    "deftness": lambda l: f"Crit roll floor raised by {l * 5}% of max",
-    "adroit": lambda l: f"Normal Hit Floor raised by {l * 2}%",
-    "equilibrium": lambda l: f"Gain {l * 5}% of Dmg Dealt as XP",
-    "plundering": lambda l: f"Gain {l * 10}% of Dmg Dealt as Gold",
+    "ward-touched": lambda lvl: f"Gain {lvl * 25} Ward on Hits",
+    "ward-fused": lambda lvl: f"Gain {lvl * 50} Ward on Crits",
+    "instability": lambda lvl: f"Hits are 50% dmg OR {150 + (lvl * 10)}% dmg",
+    "deftness": lambda lvl: f"Crit roll floor raised by {lvl * 5}% of max",
+    "adroit": lambda lvl: f"Normal Hit Floor raised by {lvl * 2}%",
+    "equilibrium": lambda lvl: f"Gain {lvl * 5}% of Dmg Dealt as XP",
+    "plundering": lambda lvl: f"Gain {lvl * 10}% of Dmg Dealt as Gold",
 }
 
 BOOT_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
-    "speedster": lambda l: f"Cooldown reduced by {l}m",
-    "skiller": lambda l: f"{l * 5}% chance for extra skill mats",
-    "treasure-tracker": lambda l: f"Treasure Mob chance +{l * 0.5:.1f}%",
-    "hearty": lambda l: f"Max HP +{l * 5}%",
-    "cleric": lambda l: f"Potions heal +{l * 10}% extra",
-    "thrill-seeker": lambda l: f"Special Rarity +{l * 0.5:.1f}%",
+    "speedster": lambda lvl: f"Cooldown reduced by {lvl}m",
+    "skiller": lambda lvl: f"{lvl * 5}% chance for extra skill mats",
+    "treasure-tracker": lambda lvl: f"Treasure Mob chance +{lvl * 0.5:.1f}%",
+    "hearty": lambda lvl: f"Max HP +{lvl * 5}%",
+    "cleric": lambda lvl: f"Potions heal +{lvl * 10}% extra",
+    "thrill-seeker": lambda lvl: f"Special Rarity +{lvl * 0.5:.1f}%",
 }
 
 HELMET_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
-    "juggernaut": lambda l: f"Gain {l * 4}% of Def as Atk",
-    "insight": lambda l: f"Crit Dmg Multiplier +{l * 0.1:.1f}x",
-    "volatile": lambda l: f"Deal {l * 100}% of Max HP as Dmg on ward break",
-    "divine": lambda l: f"Converts {l * 100}% of Potion Overheal to Ward",
-    "frenzy": lambda l: f"{l * 0.5:.1f}% Inc Dmg per 1% Missing HP",
-    "leeching": lambda l: f"Heal {l * 0.2:.2f}% of dmg dealt",
-    "thorns": lambda l: f"Reflect {l * 100}% of blocked damage",
-    "ghosted": lambda l: f"Gain {l * 10} Ward on Evade",
+    "juggernaut": lambda lvl: f"Gain {lvl * 4}% of Def as Atk",
+    "insight": lambda lvl: f"Crit Dmg Multiplier +{lvl * 0.1:.1f}x",
+    "volatile": lambda lvl: f"Deal {lvl * 100}% of Max HP as Dmg on ward break",
+    "divine": lambda lvl: f"Converts {lvl * 100}% of Potion Overheal to Ward",
+    "frenzy": lambda lvl: f"{lvl * 0.5:.1f}% Inc Dmg per 1% Missing HP",
+    "leeching": lambda lvl: f"Heal {lvl * 0.2:.2f}% of dmg dealt",
+    "thorns": lambda lvl: f"Reflect {lvl * 100}% of blocked damage",
+    "ghosted": lambda lvl: f"Gain {lvl * 10} Ward on Evade",
 }
 
 

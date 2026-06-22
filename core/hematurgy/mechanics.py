@@ -194,7 +194,10 @@ def tier_val(passive_id: str, tier: int) -> float:
 def _desc(pid: str, tier: int) -> str:
     """Generates a human-readable description for a passive at a given tier."""
     v = tier_val(pid, tier)
-    pct = lambda x: f"{int(x * 100)}%"
+
+    def pct(x):
+        return f"{int(x * 100)}%"
+
     match pid:
         case "reverberation":
             return (

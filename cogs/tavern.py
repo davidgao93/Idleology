@@ -190,7 +190,7 @@ class Tavern(commands.Cog, name="tavern"):
                     remaining_str = (
                         f"**{rem.seconds // 3600}h {(rem.seconds // 60) % 60}m**"
                     )
-            except:
+            except Exception:
                 pass
 
         if not on_cooldown:

@@ -119,7 +119,7 @@ class AvatarModal(discord.ui.Modal, title="Set Custom Avatar"):
         await self.bot.database.users.modify_gold(self.user_id, -AVATAR_COST)
         await self.bot.database.users.update_appearance(self.user_id, url)
 
-        embed = await self.hub_view.refresh_and_sync()
+        await self.hub_view.refresh_and_sync()
         await interaction.followup.send(
             f"Avatar updated! (-{AVATAR_COST:,}g)", ephemeral=True
         )

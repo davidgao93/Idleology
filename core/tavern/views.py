@@ -171,7 +171,7 @@ class CasinoMenuView(BaseView):
         self.bot.state_manager.clear_active(self.user_id)
         try:
             await self.message.delete()
-        except:
+        except Exception:
             pass
 
     async def _check_funds(self, interaction: Interaction):

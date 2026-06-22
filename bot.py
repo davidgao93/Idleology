@@ -397,7 +397,7 @@ class DiscordBot(commands.Bot):
                             "Discord is experiencing issues. Your session has been reset. Please try again.",
                             ephemeral=True,
                         )
-                except:
+                except Exception:
                     # If we can't even send this message, just log it
                     self.logger.error(
                         f"Failed to notify user {user_id} about 503 reset"

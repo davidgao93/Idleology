@@ -105,7 +105,6 @@ async def _apply_dispatch_rewards(
 
     gold = result.get("gold", 0)
     exp = result.get("exp", 0)
-    rolls = result.get("rolls", 0)
     items_got = result.get("items", {})
 
     if gold > 0:

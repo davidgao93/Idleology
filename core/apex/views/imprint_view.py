@@ -412,7 +412,6 @@ class ImprintView(BaseView):
 
         # Item destruction / Soul Vessel handling
         # Soul Vessel protects the item regardless of success or failure — always consumed.
-        item_destroyed = False
         if vessel:
             # Consume the vessel; item survives no matter what
             await self.bot.database.apex.modify_meta_shard(
@@ -420,7 +419,6 @@ class ImprintView(BaseView):
             )
         else:
             # No vessel — item is destroyed on any attempt (success or failure)
-            item_destroyed = True
             await self._destroy_item(self._selected_item)
 
         # Build result embed

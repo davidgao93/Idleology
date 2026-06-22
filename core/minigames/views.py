@@ -80,7 +80,7 @@ class RouletteView(BaseView):
             # Only delete, do not refund yet as money is only taken on button press
             try:
                 await self.original_interaction.delete_original_response()
-            except:
+            except Exception:
                 pass
         self.bot.state_manager.clear_active(self.user_id)
 
@@ -257,7 +257,7 @@ class BlackjackView(BaseView):
             self.bot.state_manager.clear_active(self.user_id)
             try:
                 await self.original_interaction.delete_original_response()
-            except:
+            except Exception:
                 pass
 
     async def start_game(self):
@@ -480,7 +480,7 @@ class CrashView(BaseView):
                     embed=None,
                     view=None,
                 )
-            except:
+            except Exception:
                 pass
         elif not self.is_running:
             # Game didn't even start or finished cleanly
@@ -669,7 +669,7 @@ class HorseRaceView(BaseView):
             self.bot.state_manager.clear_active(self.user_id)
             try:
                 await self.original_interaction.delete_original_response()
-            except:
+            except Exception:
                 pass
 
     async def start_race(self):

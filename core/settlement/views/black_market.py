@@ -259,7 +259,6 @@ _FISH_COLS = [
 
 async def _load_player_inventory(bot, user_id: str, server_id: str) -> dict[str, int]:
     """Loads all BM-tradeable resources for the player into a flat key→qty dict."""
-    user_row = await bot.database.users.get(user_id, server_id)
     settlement = await bot.database.settlement.get_settlement(user_id, server_id)
     skill_mining = await bot.database.skills.get_data(user_id, server_id, "mining")
     skill_wood = await bot.database.skills.get_data(user_id, server_id, "woodcutting")
@@ -479,7 +478,6 @@ class BlackMarketView(SettlementBaseView):
             return
         self._processing = True
 
-        target_tier = self.building.tier + 1
         costs = SettlementMechanics.get_upgrade_cost("black_market", self.building.tier)
 
         if self.parent is not None:

@@ -106,7 +106,7 @@ class NurseryView(SettlementBaseView):
         try:
             workers_this_turn = self._workers_per_turn()
 
-            project_id = await self.bot.database.settlement.upsert_project(
+            await self.bot.database.settlement.upsert_project(
                 user_id=self.user_id,
                 server_id=self.server_id,
                 project_type="nursery",

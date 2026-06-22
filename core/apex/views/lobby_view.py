@@ -76,9 +76,9 @@ def _build_lobby_embed(
             continue  # shown separately
         stats = profile.zone_stats.get(zone_key, {})
         w = stats.get("wins", 0)
-        l = stats.get("losses", 0)
+        losses = stats.get("losses", 0)
         zone_lines.append(
-            f"{zone.emoji} **{zone.name}** — W: {w} / L: {l}\n"
+            f"{zone.emoji} **{zone.name}** — W: {w} / L: {losses}\n"
             f"  *{zone.shard_type.title()} Shards · {zone.modifier_name}*"
         )
 
@@ -114,7 +114,7 @@ def _build_zone_confirm_embed(
     zone = ZONE_DEFS[zone_key]
     stats = profile.zone_stats.get(zone_key, {})
     w = stats.get("wins", 0)
-    l = stats.get("losses", 0)
+    losses = stats.get("losses", 0)
 
     embed = discord.Embed(
         title=f"{zone.emoji} {zone.name}",
@@ -126,7 +126,7 @@ def _build_zone_confirm_embed(
         color=zone.color,
     )
     embed.add_field(name="🔮 Shard Type", value=zone.shard_type.title(), inline=True)
-    embed.add_field(name="📊 Your Record", value=f"W: {w} / L: {l}", inline=True)
+    embed.add_field(name="📊 Your Record", value=f"W: {w} / L: {losses}", inline=True)
     embed.add_field(
         name="⚡ Charges After",
         value=f"**{max(0, charges - 1)}/3**",

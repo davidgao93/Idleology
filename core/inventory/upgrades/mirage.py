@@ -151,8 +151,11 @@ def _stat_lines_after(target, source, item_type: str, new_level: int) -> list:
     def arrow(old, new, fmt=str):
         return f"{fmt(old)} → {fmt(new)}" if old != new else fmt(new)
 
-    pct = lambda x: f"{x}%"
-    lv = lambda x: f"Lv.{x}"
+    def pct(x):
+        return f"{x}%"
+
+    def lv(x):
+        return f"Lv.{x}"
 
     lines = [f"Level: {arrow(target.level, new_level)}"]
     if item_type == "weapon":

@@ -15,7 +15,6 @@ from core.settlement.constants import (
     RESOURCE_DISPLAY_NAMES,
     SETTLEMENT_EVENTS,
     ZEAL_GATHER_CAP,
-    ZEAL_TO_DT,
 )
 from core.settlement.mechanics import SettlementMechanics
 from core.settlement.models import Plot
@@ -261,9 +260,6 @@ class SettlementDashboardView(SettlementBaseView):
         total_turns = (turns_data or {}).get("total_development_turns", 0)
         zeal = (zeal_data or {}).get("settlement_zeal", 0)
         idlem = (zeal_data or {}).get("idlem", 0)
-        dt_available = zeal // ZEAL_TO_DT
-        zeal_leftover = zeal % ZEAL_TO_DT
-
         name_str = self.player_name or "Master"
         welcome = (
             f"Welcome back, **{name_str}**. It's Day **{total_turns}**, "
@@ -395,10 +391,10 @@ class SettlementDashboardView(SettlementBaseView):
                     lines.append(f"✅ {p.get('label', 'Project')} completed!")
             if turn_summary.get("deal_completed"):
                 lines.append("🎁 **Black Market deal returned!** Check your inventory.")
-                for l in (turn_summary.get("deal_rewards") or {}).get(
+                for line in (turn_summary.get("deal_rewards") or {}).get(
                     "summary_lines", []
                 )[:6]:
-                    lines.append(f"  {l}")
+                    lines.append(f"  {line}")
             if turn_summary.get("events_fired"):
                 for e in turn_summary["events_fired"]:
                     lines.append(f"🎉 Event: {e}")

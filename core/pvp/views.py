@@ -37,7 +37,7 @@ class ChallengeView(BaseView):
             self.bot.state_manager.clear_active(self.challenger_id)
             try:
                 await self.message.edit(content="Challenge timed out.", view=None)
-            except:
+            except Exception:
                 pass
 
     @discord.ui.button(label="Accept", style=ButtonStyle.success)
@@ -87,7 +87,7 @@ class DuelView(BaseView):
             self.names[self.p2_id] = u2.display_name
             self.avatars[self.p1_id] = u1.display_avatar.url
             self.avatars[self.p2_id] = u2.display_avatar.url
-        except:
+        except Exception:
             pass
 
         self.current_turn = random.choice([self.p1_id, self.p2_id])
@@ -210,7 +210,7 @@ class DuelView(BaseView):
                 color=discord.Color.red(),
             )
             await self.message.edit(embed=embed, view=None)
-        except:
+        except Exception:
             pass
 
     @discord.ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️")

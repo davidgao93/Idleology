@@ -107,61 +107,61 @@ _VOID_PASSIVE_DESC: dict[str, str] = {
 }
 
 _ACCESSORY_PASSIVE_FUNCS: dict = {
-    "obliterate": lambda l: f"On hit: {l * 4}% chance to deal 100% increased damage",
-    "absorb": lambda l: (
-        f"Combat start: {l * 10}% chance to steal 10% of Monster ATK & DEF as bonus ATK & DEF"
+    "obliterate": lambda lvl: f"On hit: {lvl * 4}% chance to deal 100% increased damage",
+    "absorb": lambda lvl: (
+        f"Combat start: {lvl * 10}% chance to steal 10% of Monster ATK & DEF as bonus ATK & DEF"
     ),
-    "prosper": lambda l: f"On victory: {l * 10}% chance for 100% increased Gold",
-    "infinite wisdom": lambda l: f"On victory: {l * 5}% chance for 100% increased XP",
-    "lucky strikes": lambda l: (
-        f"Turn start: {l * 10}% chance for Hit chance to be lucky"
+    "prosper": lambda lvl: f"On victory: {lvl * 10}% chance for 100% increased Gold",
+    "infinite wisdom": lambda lvl: f"On victory: {lvl * 5}% chance for 100% increased XP",
+    "lucky strikes": lambda lvl: (
+        f"Turn start: {lvl * 10}% chance for Hit chance to be lucky"
     ),
 }
 
 _GLOVE_PASSIVE_FUNCS: dict = {
-    "ward-touched": lambda l: f"On hit: Gain {l * 25} Ward on non-crits",
-    "ward-fused": lambda l: f"On crit: Gain {l * 50} Ward",
-    "instability": lambda l: (
-        f"On hit: Damage dealt is decreased by 50% or increased by {150 + l * 10}%"
+    "ward-touched": lambda lvl: f"On hit: Gain {lvl * 25} Ward on non-crits",
+    "ward-fused": lambda lvl: f"On crit: Gain {lvl * 50} Ward",
+    "instability": lambda lvl: (
+        f"On hit: Damage dealt is decreased by 50% or increased by {150 + lvl * 10}%"
     ),
-    "deftness": lambda l: (
-        f"On crit: Crit damage is increased by at least {l * 5}% of max"
+    "deftness": lambda lvl: (
+        f"On crit: Crit damage is increased by at least {lvl * 5}% of max"
     ),
-    "adroit": lambda l: (
-        f"On hit: Hit damage is increased by at least {l * 2}% of ATK on non-crits"
+    "adroit": lambda lvl: (
+        f"On hit: Hit damage is increased by at least {lvl * 2}% of ATK on non-crits"
     ),
-    "equilibrium": lambda l: f"On victory: Gain {l * 5}% of Dmg dealt as XP",
-    "plundering": lambda l: f"On victory: Gain {l * 10}% of Dmg dealt as Gold",
+    "equilibrium": lambda lvl: f"On victory: Gain {lvl * 5}% of Dmg dealt as XP",
+    "plundering": lambda lvl: f"On victory: Gain {lvl * 10}% of Dmg dealt as Gold",
 }
 
 _BOOT_PASSIVE_FUNCS: dict = {
-    "speedster": lambda l: f"On equip: Combat cooldown reduced by {l}m",
-    "skiller": lambda l: (
-        f"On victory: {l * 5}% chance to find extra gathering materials"
+    "speedster": lambda lvl: f"On equip: Combat cooldown reduced by {lvl}m",
+    "skiller": lambda lvl: (
+        f"On victory: {lvl * 5}% chance to find extra gathering materials"
     ),
-    "treasure-tracker": lambda l: (
-        f"On equip: {l * 0.5:.1f}% added chance to encounter a Treasure Monster"
+    "treasure-tracker": lambda lvl: (
+        f"On equip: {lvl * 0.5:.1f}% added chance to encounter a Treasure Monster"
     ),
-    "hearty": lambda l: f"On equip: Increase Max HP by {l * 5}%",
-    "cleric": lambda l: f"During combat: Potion healing is increased by {l * 10}%",
-    "thrill-seeker": lambda l: f"On victory: +{l * 0.5:.1f}% Special Rarity",
+    "hearty": lambda lvl: f"On equip: Increase Max HP by {lvl * 5}%",
+    "cleric": lambda lvl: f"During combat: Potion healing is increased by {lvl * 10}%",
+    "thrill-seeker": lambda lvl: f"On victory: +{lvl * 0.5:.1f}% Special Rarity",
 }
 
 _HELMET_PASSIVE_FUNCS: dict = {
-    "juggernaut": lambda l: f"Combat start: Gain {l * 4}% of total DEF as bonus ATK",
-    "insight": lambda l: f"On equip: Crit Dmg Multiplier +{l * 0.1:.1f}×",
-    "volatile": lambda l: (
-        f"During combat: Deal {l * 100}% of Max HP as Dmg on ward break"
+    "juggernaut": lambda lvl: f"Combat start: Gain {lvl * 4}% of total DEF as bonus ATK",
+    "insight": lambda lvl: f"On equip: Crit Dmg Multiplier +{lvl * 0.1:.1f}×",
+    "volatile": lambda lvl: (
+        f"During combat: Deal {lvl * 100}% of Max HP as Dmg on ward break"
     ),
-    "divine": lambda l: (
-        f"During combat: Converts {l * 100}% of Potion Overheal to Ward"
+    "divine": lambda lvl: (
+        f"During combat: Converts {lvl * 100}% of Potion Overheal to Ward"
     ),
-    "frenzy": lambda l: (
-        f"During combat: {l * 0.5:.1f}% increased damage per 1% missing HP"
+    "frenzy": lambda lvl: (
+        f"During combat: {lvl * 0.5:.1f}% increased damage per 1% missing HP"
     ),
-    "leeching": lambda l: f"During combat: Heal {l * 0.2:.2f}% of damage dealt",
-    "thorns": lambda l: f"On block: Reflect {l * 100}% of blocked damage",
-    "ghosted": lambda l: f"On dodge: Gain {l * 10} Ward",
+    "leeching": lambda lvl: f"During combat: Heal {lvl * 0.2:.2f}% of damage dealt",
+    "thorns": lambda lvl: f"On block: Reflect {lvl * 100}% of blocked damage",
+    "ghosted": lambda lvl: f"On dodge: Gain {lvl * 10} Ward",
 }
 
 _CORRUPTED_DESC: dict[tuple, str] = {

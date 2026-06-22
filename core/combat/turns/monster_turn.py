@@ -421,7 +421,7 @@ def process_monster_turn(
                 player, monster, effective_pdr, effective_fdr
             )
             if alt_total < total_damage:
-                total_damage, dmg_raw, dmg_base, minion_dmg = (
+                total_damage, dmg_raw, _, minion_dmg = (
                     alt_total,
                     alt_raw,
                     alt_base,

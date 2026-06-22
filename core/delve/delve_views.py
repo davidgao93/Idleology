@@ -125,8 +125,6 @@ class DelveView(BaseView):
 
         # XP for Next Level
         next_lvl_threshold = DelveMechanics.calculate_xp_for_level(current_lvl + 1)
-        # XP for Current Level floor (for bar calculation)
-        current_lvl_floor = DelveMechanics.calculate_xp_for_level(current_lvl)
 
         # Format: "Lv. 5 (450/800 XP)"
         xp_display = (
@@ -202,7 +200,7 @@ class DelveView(BaseView):
         if self.processing:
             try:
                 await interaction.response.defer()
-            except:
+            except Exception:
                 pass
             return
 
