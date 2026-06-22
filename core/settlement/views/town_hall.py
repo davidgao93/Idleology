@@ -46,7 +46,9 @@ class DCCraftModal(ui.Modal, title="Craft Development Contracts"):
         pv = self.parent_view
 
         # --- Daily cap check ---
-        crafted_today = await pv.bot.database.users.get_dc_crafted_today(pv.user_id)
+        crafted_today = await pv.bot.database.settlement.get_dc_crafted_today(
+            pv.user_id, pv.parent.server_id
+        )
         remaining_today = _DC_DAILY_CAP - crafted_today
         if remaining_today <= 0:
             return await interaction.response.send_message(
@@ -80,8 +82,12 @@ class DCCraftModal(ui.Modal, title="Craft Development Contracts"):
             pv.user_id, pv.parent.server_id, changes
         )
         await pv.bot.database.users.modify_gold(pv.user_id, -cost_gold)
-        await pv.bot.database.users.modify_development_contracts(pv.user_id, qty)
-        await pv.bot.database.users.add_dc_crafted_today(pv.user_id, qty)
+        await pv.bot.database.settlement.modify_development_contracts(
+            pv.user_id, pv.parent.server_id, qty
+        )
+        await pv.bot.database.settlement.add_dc_crafted_today(
+            pv.user_id, pv.parent.server_id, qty
+        )
 
         # Update local state
         pv.settlement.timber -= cost_timber
@@ -244,10 +250,9 @@ class TownHallView(SettlementBaseView):
             )
 
         if "specials" in costs:
+            _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
             for sp in costs["specials"]:
-                owned = await self.bot.database.users.get_currency(
-                    self.user_id, sp["key"]
-                )
+                owned = _mats.get(sp["key"], 0)
                 if owned < sp["qty"]:
                     self._processing = False
                     return await interaction.response.send_message(
@@ -262,7 +267,7 @@ class TownHallView(SettlementBaseView):
 
         if "specials" in costs:
             for sp in costs["specials"]:
-                await self.bot.database.users.modify_currency(
+                await self.bot.database.settlement_materials.modify(
                     self.user_id, sp["key"], -sp["qty"]
                 )
 

@@ -399,7 +399,8 @@ class BuildingDetailView(SettlementBaseView):
         if "special_key" in costs:
             col = costs["special_key"]
             req = costs["special_qty"]
-            owned = await self.bot.database.users.get_currency(self.user_id, col)
+            _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
+            owned = _mats.get(col, 0)
 
             if owned < req:
                 self._processing = False
@@ -420,7 +421,7 @@ class BuildingDetailView(SettlementBaseView):
         )
         await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
         if "special_key" in costs:
-            await self.bot.database.users.modify_currency(
+            await self.bot.database.settlement_materials.modify(
                 self.user_id, costs["special_key"], -costs["special_qty"]
             )
 
@@ -496,7 +497,7 @@ class BuildingDetailView(SettlementBaseView):
         await interaction.response.defer()
         from core.settlement.views.nursery_foundry import IdlemFoundryView
 
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.parent.server_id)
         view = IdlemFoundryView(
             self.bot, self.user_id, self.parent.server_id, self.building, self.parent
         )
@@ -516,7 +517,7 @@ class BuildingDetailView(SettlementBaseView):
         pending = await self.bot.database.settlement.get_pending_deal(
             self.user_id, self.parent.server_id
         )
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.parent.server_id)
         await interaction.edit_original_response(
             embed=view.build_embed(pending_deal=pending, zeal_data=zeal_data), view=view
         )
@@ -783,9 +784,8 @@ class UberShrineView(SettlementBaseView):
         self._processing = True
         defn = UBER_STATUE_DEFS[statue_type]
 
-        owned = await self.bot.database.users.get_currency(
-            self.user_id, defn["material"]
-        )
+        _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
+        owned = _mats.get(defn["material"], 0)
         if owned < defn["material_qty"]:
             self._processing = False
             return await interaction.response.send_message(
@@ -794,7 +794,7 @@ class UberShrineView(SettlementBaseView):
             )
 
         await interaction.response.defer()
-        await self.bot.database.users.modify_currency(
+        await self.bot.database.settlement_materials.modify(
             self.user_id, defn["material"], -defn["material_qty"]
         )
         await self.bot.database.settlement.upsert_project(

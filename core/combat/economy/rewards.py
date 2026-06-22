@@ -409,14 +409,18 @@ _SPECIAL_FLAG_CURRENCY_MAP: Dict[str, tuple] = {
     "imbue_rune": ("imbue_runes", "Rune of Imbuing"),
     "shatter_rune": ("shatter_runes", "Rune of Shattering"),
     "partnership_rune": ("partnership_runes", "Rune of Partnership"),
-    "magma_core": ("magma_core", "Magma Core"),
-    "life_root": ("life_root", "Life Root"),
-    "spirit_shard": ("spirit_shard", "Spirit Shard"),
-    "unidentified_blueprint": ("unidentified_blueprint", "📋 Unidentified Blueprint"),
-    "diviners_rod": ("diviners_rod", "🔮 Diviner's Rod"),
     "spirit_stone": ("spirit_stones", "🔮 Spirit Stone"),
     "antique_tome": ("antique_tome", "📖 Antique Tome"),
     "pinnacle_key": ("pinnacle_key", "🗝️ Pinnacle Key"),
+}
+
+# Settlement materials routed to settlement_materials repo (not users table)
+_SETTLEMENT_MATERIAL_MAP: Dict[str, str] = {
+    "magma_core": "Magma Core",
+    "life_root": "Life Root",
+    "spirit_shard": "Spirit Shard",
+    "unidentified_blueprint": "📋 Unidentified Blueprint",
+    "diviners_rod": "🔮 Diviner's Rod",
 }
 
 
@@ -443,7 +447,12 @@ async def apply_special_flags(
         if not val:
             continue
 
-        if key in _SPECIAL_FLAG_CURRENCY_MAP:
+        if key in _SETTLEMENT_MATERIAL_MAP:
+            display_name = _SETTLEMENT_MATERIAL_MAP[key]
+            await bot.database.settlement_materials.modify(user_id, key, 1)
+            reward_data["special"].append(display_name)
+
+        elif key in _SPECIAL_FLAG_CURRENCY_MAP:
             currency_key, display_name = _SPECIAL_FLAG_CURRENCY_MAP[key]
             await bot.database.users.modify_currency(user_id, currency_key, 1)
             reward_data["special"].append(display_name)

@@ -97,9 +97,8 @@ class ResearchView(SettlementBaseView):
         self._active = await self.bot.database.settlement.get_active_research(
             self.user_id, self.server_id
         )
-        self._blueprint_count = await self.bot.database.users.get_currency(
-            self.user_id, _RESEARCH_COST_ITEM
-        )
+        _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
+        self._blueprint_count = _mats.get(_RESEARCH_COST_ITEM, 0)
         self._research_projects = await self.bot.database.settlement.get_projects(
             self.user_id, self.server_id
         )
@@ -266,9 +265,8 @@ class ResearchView(SettlementBaseView):
         b_type = self._select.values[0]
 
         # Check blueprint
-        blueprints = await self.bot.database.users.get_currency(
-            self.user_id, _RESEARCH_COST_ITEM
-        )
+        _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
+        blueprints = _mats.get(_RESEARCH_COST_ITEM, 0)
         if blueprints < 1:
             await interaction.response.send_message(
                 "You need 1 **Unidentified Blueprint** to begin research.\n"
@@ -290,7 +288,7 @@ class ResearchView(SettlementBaseView):
         await interaction.response.defer()
 
         # Deduct blueprint and start research
-        await self.bot.database.users.modify_currency(
+        await self.bot.database.settlement_materials.modify(
             self.user_id, _RESEARCH_COST_ITEM, -1
         )
         await self.bot.database.settlement.start_research(

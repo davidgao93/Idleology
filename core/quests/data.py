@@ -423,7 +423,7 @@ async def grant_checkin_day(
                 "spirit_shard": "Spirit Shard",
             }
             for m, n in mats.items():
-                await bot.database.users.modify_currency(user_id, m, n)
+                await bot.database.settlement_materials.modify(user_id, m, n)
                 rewards.append(f"🪨 +{n} {_MAT_LABELS[m]}{'s' if n > 1 else ''}")
             await bot.database.quests.add_tokens(user_id, 2)
             rewards.append("🎫 +2 Quest Tokens")
@@ -592,7 +592,7 @@ async def grant_checkin_day(
                 "spirit_shard": "Spirit Shard",
             }
             for m, n in mats.items():
-                await bot.database.users.modify_currency(user_id, m, n)
+                await bot.database.settlement_materials.modify(user_id, m, n)
                 rewards.append(f"🪨 +{n} {_MAT_LABELS[m]}{'s' if n > 1 else ''}")
             await bot.database.quests.add_tokens(user_id, 2)
             rewards.append("🎫 +2 Quest Tokens")

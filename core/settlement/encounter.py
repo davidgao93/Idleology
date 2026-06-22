@@ -150,7 +150,7 @@ async def run_settlement_encounter(
         )
         await bot.database.users.update_from_player_object(sim_player)
         # +50 Zeal bonus for defending the settlement.
-        await bot.database.settlement.add_zeal(user_id, 50)
+        await bot.database.settlement.add_zeal(user_id, server_id, 50)
         result.reward_data = reward_data
         result.reward_lines = reward_data.get("msgs", [])
     else:

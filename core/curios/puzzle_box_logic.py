@@ -150,7 +150,7 @@ async def claim_rewards(
                 col = random.choice(list(mat_labels.keys()))
                 mat_counts[col] += 1
             for col, cnt in mat_counts.items():
-                await bot.database.users.modify_currency(user_id, col, cnt)
+                await bot.database.settlement_materials.modify(user_id, col, cnt)
             summary = ", ".join(f"{mat_labels[c]} x{v}" for c, v in mat_counts.items())
             lines.append(f"{emoji} **Settler Materials** x{qty} — {summary}")
 

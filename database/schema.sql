@@ -38,14 +38,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `partnership_runes` INTEGER NOT NULL DEFAULT 0,
   `last_companion_collect_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `balance_fragment` INTEGER NOT NULL DEFAULT 0,
-  `magma_core` INTEGER NOT NULL DEFAULT 0,
-  `life_root` INTEGER NOT NULL DEFAULT 0,
-  `spirit_shard` INTEGER NOT NULL DEFAULT 0,
   `doors_enabled` INTEGER NOT NULL DEFAULT 1,
-  `celestial_stone` INTEGER NOT NULL DEFAULT 0,
-  `void_crystal` INTEGER NOT NULL DEFAULT 0,
-  `infernal_cinder` INTEGER NOT NULL DEFAULT 0,
-  `bound_crystal` INTEGER NOT NULL DEFAULT 0,
   `codex_fragments` INTEGER NOT NULL DEFAULT 0,
   `codex_pages` INTEGER NOT NULL DEFAULT 0,
   `codex_rerolls` INTEGER NOT NULL DEFAULT 0,
@@ -64,8 +57,6 @@ CREATE TABLE IF NOT EXISTS `users` (
   `curio_puzzle_boxes` INTEGER NOT NULL DEFAULT 0,
   `mirage_runes_imperfect` INTEGER NOT NULL DEFAULT 0,
   `mirage_runes_perfected` INTEGER NOT NULL DEFAULT 0,
-  `unidentified_blueprint` INTEGER NOT NULL DEFAULT 0,
-  `diviners_rod` INTEGER NOT NULL DEFAULT 0,
   `hard_mode` INTEGER NOT NULL DEFAULT 0,
   `auto_rest_pay` INTEGER NOT NULL DEFAULT 0,
   `combat_streak` INTEGER NOT NULL DEFAULT 0,
@@ -75,15 +66,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `stat_invest_hp` INTEGER NOT NULL DEFAULT 0,
   `stat_invest_gold` INTEGER NOT NULL DEFAULT 0,
   `rune_of_regret` INTEGER NOT NULL DEFAULT 0,
-  `development_contracts` INTEGER NOT NULL DEFAULT 0,
-  `dc_crafted_today` INTEGER NOT NULL DEFAULT 0,
-  `last_dc_craft_date` TEXT DEFAULT NULL,
-  `runes_of_nature` INTEGER NOT NULL DEFAULT 0,
-  `settlement_zeal` INTEGER NOT NULL DEFAULT 0,
-  `idlem` INTEGER NOT NULL DEFAULT 0,
-  `zeal_earned_today` INTEGER NOT NULL DEFAULT 0,
-  `last_zeal_reset` TEXT DEFAULT NULL,
-  `pending_companion_cookies` INTEGER NOT NULL DEFAULT 0
+  `runes_of_nature` INTEGER NOT NULL DEFAULT 0
 );
 
 
@@ -383,7 +366,28 @@ CREATE TABLE IF NOT EXISTS settlements (
     last_zeal_gather_time TEXT DEFAULT NULL,
     total_development_turns INTEGER NOT NULL DEFAULT 0,
     pending_zeal INTEGER NOT NULL DEFAULT 0,
+    settlement_zeal INTEGER NOT NULL DEFAULT 0,
+    idlem INTEGER NOT NULL DEFAULT 0,
+    zeal_earned_today INTEGER NOT NULL DEFAULT 0,
+    last_zeal_reset TEXT DEFAULT NULL,
+    development_contracts INTEGER NOT NULL DEFAULT 0,
+    dc_crafted_today INTEGER NOT NULL DEFAULT 0,
+    last_dc_craft_date TEXT DEFAULT NULL,
+    pending_companion_cookies INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
+);
+
+CREATE TABLE IF NOT EXISTS settlement_materials (
+    user_id TEXT PRIMARY KEY,
+    magma_core INTEGER NOT NULL DEFAULT 0,
+    life_root INTEGER NOT NULL DEFAULT 0,
+    spirit_shard INTEGER NOT NULL DEFAULT 0,
+    celestial_stone INTEGER NOT NULL DEFAULT 0,
+    void_crystal INTEGER NOT NULL DEFAULT 0,
+    infernal_cinder INTEGER NOT NULL DEFAULT 0,
+    bound_crystal INTEGER NOT NULL DEFAULT 0,
+    diviners_rod INTEGER NOT NULL DEFAULT 0,
+    unidentified_blueprint INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS buildings (

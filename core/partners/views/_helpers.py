@@ -130,7 +130,7 @@ async def _apply_dispatch_rewards(
             elif item_key in _FISHING_ITEMS:
                 fishing_batch[item_key] = fishing_batch.get(item_key, 0) + qty
             elif item_key in ("magma_core", "life_root", "spirit_shard"):
-                await bot.database.users.modify_currency(user_id, item_key, qty)
+                await bot.database.settlement_materials.modify(user_id, item_key, qty)
             elif item_key == "celestial_sigils":
                 await bot.database.uber.increment_sigils(user_id, server_id, qty)
             elif item_key == "infernal_sigils":

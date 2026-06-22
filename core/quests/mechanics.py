@@ -262,12 +262,12 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
         from core.settlement.turn_engine import compute_zeal_gain
 
         _zeal_base = 30 if tier == 1 else 90
-        await bot.database.settlement.reset_daily_zeal_if_needed(user_id)
-        _zeal_data = await bot.database.settlement.get_zeal_data(user_id)
+        await bot.database.settlement.reset_daily_zeal_if_needed(user_id, server_id)
+        _zeal_data = await bot.database.settlement.get_zeal_data(user_id, server_id)
         _earned = _zeal_data.get("zeal_earned_today", 0)
         _actual = compute_zeal_gain(_zeal_base, _earned)
         if _actual > 0:
-            await bot.database.settlement.add_zeal(user_id, _actual)
+            await bot.database.settlement.add_zeal(user_id, server_id, _actual)
             msgs.append(f"🔥 +{_actual} Zeal")
     except Exception:
         pass

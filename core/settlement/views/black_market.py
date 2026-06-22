@@ -184,6 +184,19 @@ _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
 
 # Resources stored in skill / settlement tables vs. user currency columns
 _SETTLEMENT_RESOURCE_KEYS: frozenset[str] = frozenset(["timber", "stone"])
+_SETTLEMENT_MATERIAL_KEYS: frozenset[str] = frozenset(
+    [
+        "magma_core",
+        "life_root",
+        "spirit_shard",
+        "celestial_stone",
+        "infernal_cinder",
+        "void_crystal",
+        "bound_crystal",
+        "diviners_rod",
+        "unidentified_blueprint",
+    ]
+)
 _SKILL_RESOURCE_KEYS: frozenset[str] = frozenset(
     [
         "iron",
@@ -284,11 +297,15 @@ async def _load_player_inventory(bot, user_id: str, server_id: str) -> dict[str,
         if cat_id == "valuables"
         for k in keys
     ]
+    mat_data = await bot.database.settlement_materials.get_all(user_id)
     for key in valuables:
-        try:
-            inv[key] = int(await bot.database.users.get_currency(user_id, key))
-        except Exception:
-            inv[key] = 0
+        if key in _SETTLEMENT_MATERIAL_KEYS:
+            inv[key] = mat_data.get(key, 0)
+        else:
+            try:
+                inv[key] = int(await bot.database.users.get_currency(user_id, key))
+            except Exception:
+                inv[key] = 0
 
     return inv
 
@@ -430,7 +447,7 @@ class BlackMarketView(SettlementBaseView):
         )
         if pending:
             await interaction.response.defer()
-            zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
             self.has_pending_deal = True
             self._setup_ui()
             await interaction.edit_original_response(
@@ -460,7 +477,7 @@ class BlackMarketView(SettlementBaseView):
         tree_nodes = await self.bot.database.settlement.get_bm_tree(
             self.user_id, self.server_id
         )
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
         view = BMPassiveTreeView(
             self.bot,
             self.user_id,
@@ -506,20 +523,20 @@ class BlackMarketView(SettlementBaseView):
             )
 
         # Check specials (black_market needs all 3)
-        for spec in costs.get("specials", []):
-            owned = await self.bot.database.users.get_currency(
-                self.user_id, spec["key"]
-            )
-            if owned < spec["qty"]:
-                self._processing = False
-                return await interaction.response.send_message(
-                    f"Need {spec['qty']}× {spec['name']}!", ephemeral=True
-                )
+        if costs.get("specials"):
+            _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
+            for spec in costs["specials"]:
+                owned = _mats.get(spec["key"], 0)
+                if owned < spec["qty"]:
+                    self._processing = False
+                    return await interaction.response.send_message(
+                        f"Need {spec['qty']}× {spec['name']}!", ephemeral=True
+                    )
 
         await interaction.response.defer()
 
         for spec in costs.get("specials", []):
-            await self.bot.database.users.modify_currency(
+            await self.bot.database.settlement_materials.modify(
                 self.user_id, spec["key"], -spec["qty"]
             )
 
@@ -837,7 +854,10 @@ class OfferBuilderView(SettlementBaseView):
                 )
             for cur, delta in user_currency_changes.items():
                 try:
-                    await self.bot.database.users.modify_currency(uid, cur, delta)
+                    if cur in _SETTLEMENT_MATERIAL_KEYS:
+                        await self.bot.database.settlement_materials.modify(uid, cur, delta)
+                    else:
+                        await self.bot.database.users.modify_currency(uid, cur, delta)
                 except Exception:
                     pass
 
@@ -914,7 +934,7 @@ class OfferBuilderView(SettlementBaseView):
 
             # Return to main market view
             pending = await self.bot.database.settlement.get_pending_deal(uid, sid)
-            zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(uid, sid)
             self.parent_market.has_pending_deal = bool(pending)
             self.parent_market._setup_ui()
             await interaction.edit_original_response(
@@ -932,7 +952,7 @@ class OfferBuilderView(SettlementBaseView):
         pending = await self.bot.database.settlement.get_pending_deal(
             self.user_id, self.server_id
         )
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
         self.parent_market.has_pending_deal = bool(pending)
         self.parent_market._setup_ui()
         await interaction.response.edit_message(
@@ -1115,7 +1135,7 @@ class BMPassiveTreeView(SettlementBaseView):
                 return
 
             cost = node["idlem_costs"][current_lvl]
-            ok = await self.bot.database.settlement.spend_idlem(self.user_id, cost)
+            ok = await self.bot.database.settlement.spend_idlem(self.user_id, self.server_id, cost)
             if not ok:
                 await interaction.followup.send(
                     f"Need **{cost} Idlem** to unlock this. You have {self.idlem}.",
@@ -1146,7 +1166,7 @@ class BMPassiveTreeView(SettlementBaseView):
         pending = await self.bot.database.settlement.get_pending_deal(
             self.user_id, self.server_id
         )
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
         self.parent_market.has_pending_deal = bool(pending)
         self.parent_market._setup_ui()
         await interaction.response.edit_message(

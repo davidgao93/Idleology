@@ -888,7 +888,7 @@ class PlotDetailView(SettlementBaseView):
         pending_deal = await self.bot.database.settlement.get_pending_deal(
             self.user_id, self.server_id
         )
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
         view = BlackMarketView(
             self.bot,
             self.user_id,
@@ -943,7 +943,7 @@ class PlotDetailView(SettlementBaseView):
 
         dc_cost = _compute_dc_cost(self.parent.plots, self.parent.projects)
 
-        dcs = await self.bot.database.users.get_development_contracts(self.user_id)
+        dcs = await self.bot.database.settlement.get_development_contracts(self.user_id, self.server_id)
         if dcs < dc_cost:
             self._processing = False
             return await interaction.response.send_message(
@@ -955,8 +955,8 @@ class PlotDetailView(SettlementBaseView):
 
         # Roll bonus type and deduct DCs immediately
         bonus_type = roll_plot_bonus()
-        await self.bot.database.users.modify_development_contracts(
-            self.user_id, -dc_cost
+        await self.bot.database.settlement.modify_development_contracts(
+            self.user_id, self.server_id, -dc_cost
         )
 
         # DT cost: 5 for first paid plot, +1 for each subsequent (including pending)
@@ -1122,19 +1122,17 @@ class PlotDetailView(SettlementBaseView):
             )
 
         if "specials" in cost:
+            _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
             for s in cost["specials"]:
-                owned = await self.bot.database.users.get_currency(
-                    self.user_id, s["key"]
-                )
+                owned = _mats.get(s["key"], 0)
                 if owned < s["qty"]:
                     self._processing = False
                     return await interaction.response.send_message(
                         f"Need {s['qty']}× {s['name']}!", ephemeral=True
                     )
         elif "special_key" in cost:
-            owned = await self.bot.database.users.get_currency(
-                self.user_id, cost["special_key"]
-            )
+            _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
+            owned = _mats.get(cost["special_key"], 0)
             if owned < cost["special_qty"]:
                 self._processing = False
                 return await interaction.response.send_message(
@@ -1154,11 +1152,11 @@ class PlotDetailView(SettlementBaseView):
         await self.bot.database.users.modify_gold(self.user_id, -cost.get("gold", 0))
         if "specials" in cost:
             for s in cost["specials"]:
-                await self.bot.database.users.modify_currency(
+                await self.bot.database.settlement_materials.modify(
                     self.user_id, s["key"], -s["qty"]
                 )
         elif "special_key" in cost:
-            await self.bot.database.users.modify_currency(
+            await self.bot.database.settlement_materials.modify(
                 self.user_id, cost["special_key"], -cost["special_qty"]
             )
 
@@ -1262,7 +1260,8 @@ class PlotDetailView(SettlementBaseView):
             return
         self._processing = True
 
-        rods = await self.bot.database.users.get_currency(self.user_id, "diviners_rod")
+        mats = await self.bot.database.settlement_materials.get_all(self.user_id)
+        rods = mats.get("diviners_rod", 0)
         if rods < 1:
             self._processing = False
             return await interaction.response.send_message(
@@ -1275,7 +1274,7 @@ class PlotDetailView(SettlementBaseView):
 
         old_bonus = self.plot.bonus_type
         new_bonus = roll_plot_bonus()
-        await self.bot.database.users.modify_currency(self.user_id, "diviners_rod", -1)
+        await self.bot.database.settlement_materials.modify(self.user_id, "diviners_rod", -1)
 
         if new_bonus == old_bonus:
             # Rod consumed but terrain unchanged — inform the player

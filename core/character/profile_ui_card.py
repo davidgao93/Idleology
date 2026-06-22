@@ -333,7 +333,7 @@ class CardProfileBuilder:
                     # Development Contracts
                     try:
                         dc_crafted_today = (
-                            await bot.database.users.get_dc_crafted_today(user_id)
+                            await bot.database.settlement.get_dc_crafted_today(user_id, server_id)
                         )
                         _dc_now = datetime.now()
                         _next_midnight = _dc_now.replace(

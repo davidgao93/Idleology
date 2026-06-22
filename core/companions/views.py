@@ -91,9 +91,14 @@ class RerollConfirmView(BaseView):
 
 class CompanionListView(BaseView):
     def __init__(
-        self, bot, user_id: str, companions: list[Companion], pending_cookies: int = 0
+        self,
+        bot,
+        user_id: str,
+        companions: list[Companion],
+        server_id: str = "",
+        pending_cookies: int = 0,
     ):
-        super().__init__(bot, user_id)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.companions = companions
@@ -385,8 +390,8 @@ class XPDistributeView(BaseView):
         self._processing = True
         await interaction.response.defer()
 
-        total_xp = await self.bot.database.users.consume_pending_companion_cookies(
-            self.user_id
+        total_xp = await self.bot.database.settlement.consume_pending_companion_cookies(
+            self.user_id, self.server_id
         )
         if total_xp <= 0:
             self._processing = False
@@ -395,8 +400,8 @@ class XPDistributeView(BaseView):
 
         active = [c for c in self.companions if c.is_active]
         if not active:
-            await self.bot.database.users.add_pending_companion_cookies(
-                self.user_id, total_xp
+            await self.bot.database.settlement.add_pending_companion_cookies(
+                self.user_id, self.server_id, total_xp
             )
             self._processing = False
             await interaction.followup.send(
@@ -461,8 +466,8 @@ class XPDistributeView(BaseView):
         self._processing = True
         await interaction.response.defer()
 
-        pending = await self.bot.database.users.get_pending_companion_cookies(
-            self.user_id
+        pending = await self.bot.database.settlement.get_pending_companion_cookies(
+            self.user_id, self.server_id
         )
         kp_to_gain = pending // self.XP_PER_KP
         xp_to_spend = kp_to_gain * self.XP_PER_KP
@@ -474,13 +479,13 @@ class XPDistributeView(BaseView):
             )
             return
 
-        all_xp = await self.bot.database.users.consume_pending_companion_cookies(
-            self.user_id
+        all_xp = await self.bot.database.settlement.consume_pending_companion_cookies(
+            self.user_id, self.server_id
         )
         remainder = all_xp - xp_to_spend
         if remainder > 0:
-            await self.bot.database.users.add_pending_companion_cookies(
-                self.user_id, remainder
+            await self.bot.database.settlement.add_pending_companion_cookies(
+                self.user_id, self.server_id, remainder
             )
         await self.bot.database.companions.add_kinship_points(
             self.user_id, self.server_id, kp_to_gain
@@ -505,8 +510,8 @@ class XPDistributeView(BaseView):
         self._processing = True
         await interaction.response.defer()
 
-        pending = await self.bot.database.users.get_pending_companion_cookies(
-            self.user_id
+        pending = await self.bot.database.settlement.get_pending_companion_cookies(
+            self.user_id, self.server_id
         )
         runes_to_gain = pending // self.XP_PER_RUNE
         xp_to_spend = runes_to_gain * self.XP_PER_RUNE
@@ -518,13 +523,13 @@ class XPDistributeView(BaseView):
             )
             return
 
-        all_xp = await self.bot.database.users.consume_pending_companion_cookies(
-            self.user_id
+        all_xp = await self.bot.database.settlement.consume_pending_companion_cookies(
+            self.user_id, self.server_id
         )
         remainder = all_xp - xp_to_spend
         if remainder > 0:
-            await self.bot.database.users.add_pending_companion_cookies(
-                self.user_id, remainder
+            await self.bot.database.settlement.add_pending_companion_cookies(
+                self.user_id, self.server_id, remainder
             )
         await self.bot.database.users.modify_currency(
             self.user_id, "partnership_runes", runes_to_gain

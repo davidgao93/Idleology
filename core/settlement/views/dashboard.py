@@ -942,9 +942,11 @@ class SettlementDashboardView(SettlementBaseView):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def open_town_hall(self, interaction: Interaction):
-        dc_count = await self.bot.database.users.get_development_contracts(self.user_id)
-        dc_crafted_today = await self.bot.database.users.get_dc_crafted_today(
-            self.user_id
+        dc_count = await self.bot.database.settlement.get_development_contracts(
+            self.user_id, self.server_id
+        )
+        dc_crafted_today = await self.bot.database.settlement.get_dc_crafted_today(
+            self.user_id, self.server_id
         )
         view = TownHallView(
             self.bot,
@@ -1117,14 +1119,14 @@ class SettlementDashboardView(SettlementBaseView):
         if war_camp_stamina > 0:
             await self.bot.database.users.add_stamina_capped(uid, war_camp_stamina)
         if dc_earned > 0:
-            await self.bot.database.users.modify_development_contracts(uid, dc_earned)
+            await self.bot.database.settlement.modify_development_contracts(uid, sid, dc_earned)
         await self.bot.database.settlement.update_collection_timer(uid, sid)
 
         # Companion XP — pool for manual distribution via Companions view
         xp_msg = ""
         if cookie_xp > 0:
-            await self.bot.database.users.add_pending_companion_cookies(
-                self.user_id, cookie_xp
+            await self.bot.database.settlement.add_pending_companion_cookies(
+                self.user_id, self.server_id, cookie_xp
             )
             xp_msg = f"\n🐾 **Companion Ranch:** +{cookie_xp:,} XP added to your Companion XP pool."
 
@@ -1186,7 +1188,7 @@ class SettlementDashboardView(SettlementBaseView):
             uid, sid = self.user_id, self.server_id
 
             # Check Zeal; convert to DT if enough
-            zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(uid, sid)
             zeal = zeal_data.get("settlement_zeal", 0)
             from core.settlement.constants import ZEAL_TO_DT
 
@@ -1199,7 +1201,7 @@ class SettlementDashboardView(SettlementBaseView):
                 return
 
             # Spend exactly ZEAL_TO_DT Zeal
-            await self.bot.database.settlement.spend_zeal(uid, ZEAL_TO_DT)
+            await self.bot.database.settlement.spend_zeal(uid, sid, ZEAL_TO_DT)
 
             # Process the turn
             summary = await process_next_turn(
@@ -1221,7 +1223,7 @@ class SettlementDashboardView(SettlementBaseView):
                 for r in _plot_rows
             ]
             turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
-            zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(uid, sid)
             active_events = await self.bot.database.settlement.get_active_events(
                 uid, sid
             )
@@ -1311,7 +1313,7 @@ class SettlementDashboardView(SettlementBaseView):
                 )
                 return
 
-            zeal_data = await self.bot.database.settlement.get_zeal_data(uid)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(uid, sid)
             turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
             active_events = await self.bot.database.settlement.get_active_events(
                 uid, sid
@@ -1433,7 +1435,7 @@ class SettlementDashboardView(SettlementBaseView):
                 zeal_reward = 0
                 if won:
                     zeal_reward = 50
-                    await self.bot.database.settlement.add_zeal(uid, zeal_reward)
+                    await self.bot.database.settlement.add_zeal(uid, sid, zeal_reward)
                 else:
                     if target_building_type:
                         b = await self.bot.database.settlement.get_building_by_type(

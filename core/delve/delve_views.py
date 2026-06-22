@@ -410,7 +410,7 @@ class DelveView(BaseView):
                 # Masterful extractions grant a small settlement Zeal bonus (non-critical)
                 if quality == "masterful":
                     try:
-                        await self.bot.database.settlement.add_zeal(self.user_id, 5)
+                        await self.bot.database.settlement.add_zeal(self.user_id, self.server_id, 5)
                     except Exception:
                         pass
 

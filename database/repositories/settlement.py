@@ -521,7 +521,7 @@ class SettlementRepository:
             pass
 
     async def collect_pending_zeal(self, user_id: str, server_id: str) -> int:
-        """Transfers all pending_zeal to user.settlement_zeal; returns amount collected."""
+        """Transfers all pending_zeal into settlement_zeal; returns amount collected."""
         try:
             cursor = await self.connection.execute(
                 "SELECT pending_zeal FROM settlements WHERE user_id = ? AND server_id = ?",
@@ -532,12 +532,10 @@ class SettlementRepository:
             if amount <= 0:
                 return 0
             await self.connection.execute(
-                "UPDATE settlements SET pending_zeal = 0 WHERE user_id = ? AND server_id = ?",
-                (user_id, server_id),
-            )
-            await self.connection.execute(
-                "UPDATE users SET settlement_zeal = settlement_zeal + ? WHERE user_id = ?",
-                (amount, user_id),
+                "UPDATE settlements SET pending_zeal = 0, "
+                "settlement_zeal = settlement_zeal + ? "
+                "WHERE user_id = ? AND server_id = ?",
+                (amount, user_id, server_id),
             )
             await self.connection.commit()
             return amount
@@ -574,13 +572,10 @@ class SettlementRepository:
             if amount <= 0:
                 return 0
             await self.connection.execute(
-                "UPDATE settlements SET pending_zeal = pending_zeal - ? "
+                "UPDATE settlements SET pending_zeal = pending_zeal - ?, "
+                "settlement_zeal = settlement_zeal + ? "
                 "WHERE user_id = ? AND server_id = ?",
-                (amount, user_id, server_id),
-            )
-            await self.connection.execute(
-                "UPDATE users SET settlement_zeal = settlement_zeal + ? WHERE user_id = ?",
-                (amount, user_id),
+                (amount, amount, user_id, server_id),
             )
             await self.connection.commit()
             return amount
@@ -588,10 +583,11 @@ class SettlementRepository:
             return 0
 
     # ------------------------------------------------------------------
-    # Zeal & Idlem on users table
+    # Zeal, Idlem, Development Contracts & Companion Cookies
+    # (all stored on the settlements table, per user_id + server_id)
     # ------------------------------------------------------------------
 
-    async def get_zeal_data(self, user_id: str) -> dict:
+    async def get_zeal_data(self, user_id: str, server_id: str) -> dict:
         """Returns {settlement_zeal, idlem, zeal_earned_today, last_zeal_reset}."""
         _default = {
             "settlement_zeal": 0,
@@ -602,8 +598,8 @@ class SettlementRepository:
         try:
             cursor = await self.connection.execute(
                 "SELECT settlement_zeal, idlem, zeal_earned_today, last_zeal_reset "
-                "FROM users WHERE user_id = ?",
-                (user_id,),
+                "FROM settlements WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
             )
             row = await cursor.fetchone()
             if row:
@@ -617,77 +613,197 @@ class SettlementRepository:
             pass
         return _default
 
-    async def add_zeal(self, user_id: str, amount: int) -> None:
-        """Adds Zeal to the user's settlement_zeal and zeal_earned_today totals."""
+    async def add_zeal(self, user_id: str, server_id: str, amount: int) -> None:
+        """Adds Zeal to the settlement's settlement_zeal and zeal_earned_today totals."""
         try:
             await self.connection.execute(
-                "UPDATE users SET settlement_zeal = settlement_zeal + ?, "
-                "zeal_earned_today = zeal_earned_today + ? WHERE user_id = ?",
-                (amount, amount, user_id),
+                "UPDATE settlements SET settlement_zeal = settlement_zeal + ?, "
+                "zeal_earned_today = zeal_earned_today + ? "
+                "WHERE user_id = ? AND server_id = ?",
+                (amount, amount, user_id, server_id),
             )
             await self.connection.commit()
         except Exception:
             pass
 
-    async def spend_zeal(self, user_id: str, amount: int) -> bool:
+    async def spend_zeal(self, user_id: str, server_id: str, amount: int) -> bool:
         """Deducts Zeal atomically if sufficient; returns True on success."""
         try:
             cursor = await self.connection.execute(
-                "UPDATE users SET settlement_zeal = settlement_zeal - ? "
-                "WHERE user_id = ? AND settlement_zeal >= ?",
-                (amount, user_id, amount),
+                "UPDATE settlements SET settlement_zeal = settlement_zeal - ? "
+                "WHERE user_id = ? AND server_id = ? AND settlement_zeal >= ?",
+                (amount, user_id, server_id, amount),
             )
             await self.connection.commit()
             return cursor.rowcount == 1
         except Exception:
             return False
 
-    async def reset_daily_zeal_if_needed(self, user_id: str) -> None:
+    async def reset_daily_zeal_if_needed(self, user_id: str, server_id: str) -> None:
         """Resets zeal_earned_today if a new UTC day has started."""
         from datetime import datetime, timezone
 
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         try:
             cursor = await self.connection.execute(
-                "SELECT last_zeal_reset FROM users WHERE user_id = ?", (user_id,)
+                "SELECT last_zeal_reset FROM settlements WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
             )
             row = await cursor.fetchone()
             last = row[0] if row else None
             if last != today:
                 await self.connection.execute(
-                    "UPDATE users SET zeal_earned_today = 0, last_zeal_reset = ? WHERE user_id = ?",
-                    (today, user_id),
+                    "UPDATE settlements SET zeal_earned_today = 0, last_zeal_reset = ? "
+                    "WHERE user_id = ? AND server_id = ?",
+                    (today, user_id, server_id),
                 )
                 await self.connection.commit()
         except Exception:
             pass
 
-    async def add_idlem(self, user_id: str, amount: int) -> None:
+    async def add_idlem(self, user_id: str, server_id: str, amount: int) -> None:
         try:
             await self.connection.execute(
-                "UPDATE users SET idlem = idlem + ? WHERE user_id = ?",
-                (amount, user_id),
+                "UPDATE settlements SET idlem = idlem + ? "
+                "WHERE user_id = ? AND server_id = ?",
+                (amount, user_id, server_id),
             )
             await self.connection.commit()
         except Exception:
             pass
 
-    async def spend_idlem(self, user_id: str, amount: int) -> bool:
+    async def spend_idlem(self, user_id: str, server_id: str, amount: int) -> bool:
         try:
             cursor = await self.connection.execute(
-                "SELECT idlem FROM users WHERE user_id = ?", (user_id,)
+                "SELECT idlem FROM settlements WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
             )
             row = await cursor.fetchone()
             if not row or (row[0] or 0) < amount:
                 return False
             await self.connection.execute(
-                "UPDATE users SET idlem = idlem - ? WHERE user_id = ?",
-                (amount, user_id),
+                "UPDATE settlements SET idlem = idlem - ? "
+                "WHERE user_id = ? AND server_id = ?",
+                (amount, user_id, server_id),
             )
             await self.connection.commit()
             return True
         except Exception:
             return False
+
+    # ------------------------------------------------------------------
+    # Development Contracts
+    # ------------------------------------------------------------------
+
+    async def get_development_contracts(self, user_id: str, server_id: str) -> int:
+        """Returns the player's current Development Contract count for a settlement."""
+        try:
+            async with self.connection.execute(
+                "SELECT development_contracts FROM settlements "
+                "WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
+            ) as cursor:
+                row = await cursor.fetchone()
+            return (row[0] or 0) if row else 0
+        except Exception:
+            return 0
+
+    async def modify_development_contracts(
+        self, user_id: str, server_id: str, delta: int
+    ) -> None:
+        """Adds delta (may be negative) to development_contracts, flooring at 0."""
+        await self.connection.execute(
+            "UPDATE settlements SET development_contracts = MAX(0, development_contracts + ?) "
+            "WHERE user_id = ? AND server_id = ?",
+            (delta, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def get_dc_crafted_today(self, user_id: str, server_id: str) -> int:
+        """Returns DCs crafted today; auto-resets on a new calendar day."""
+        from datetime import date
+
+        today = date.today().isoformat()
+        try:
+            async with self.connection.execute(
+                "SELECT dc_crafted_today, last_dc_craft_date FROM settlements "
+                "WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
+            ) as cursor:
+                row = await cursor.fetchone()
+            if row is None:
+                return 0
+            crafted, last_date = row
+            return int(crafted) if last_date == today else 0
+        except Exception:
+            return 0
+
+    async def add_dc_crafted_today(self, user_id: str, server_id: str, qty: int) -> None:
+        """Increments dc_crafted_today; resets the counter automatically on a new day."""
+        from datetime import date
+
+        today = date.today().isoformat()
+        await self.connection.execute(
+            """
+            UPDATE settlements
+            SET dc_crafted_today  = CASE
+                    WHEN last_dc_craft_date = ? THEN dc_crafted_today + ?
+                    ELSE ?
+                END,
+                last_dc_craft_date = ?
+            WHERE user_id = ? AND server_id = ?
+            """,
+            (today, qty, qty, today, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Companion Cookies (Ranch building output)
+    # ------------------------------------------------------------------
+
+    async def add_pending_companion_cookies(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
+        """Accumulate Ranch XP cookies for a settlement; redeemed from the Companions view."""
+        await self.connection.execute(
+            "UPDATE settlements SET pending_companion_cookies = pending_companion_cookies + ? "
+            "WHERE user_id = ? AND server_id = ?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def get_pending_companion_cookies(self, user_id: str, server_id: str) -> int:
+        try:
+            async with self.connection.execute(
+                "SELECT pending_companion_cookies FROM settlements "
+                "WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
+            ) as cursor:
+                row = await cursor.fetchone()
+            return (row[0] or 0) if row else 0
+        except Exception:
+            return 0
+
+    async def consume_pending_companion_cookies(self, user_id: str, server_id: str) -> int:
+        """Read and zero out the pending cookie balance. Returns the amount consumed."""
+        try:
+            async with self.connection.execute(
+                "SELECT pending_companion_cookies FROM settlements "
+                "WHERE user_id = ? AND server_id = ?",
+                (user_id, server_id),
+            ) as cursor:
+                row = await cursor.fetchone()
+            amount = (row[0] or 0) if row else 0
+            if amount > 0:
+                await self.connection.execute(
+                    "UPDATE settlements SET pending_companion_cookies = 0 "
+                    "WHERE user_id = ? AND server_id = ?",
+                    (user_id, server_id),
+                )
+                await self.connection.commit()
+            return amount
+        except Exception:
+            return 0
 
     # ------------------------------------------------------------------
     # Projects

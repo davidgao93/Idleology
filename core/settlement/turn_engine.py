@@ -277,8 +277,8 @@ async def process_next_turn(
     if companion_cookie > 0:
         summary["dt_resources"]["companion_xp"] = companion_cookie
         try:
-            await bot.database.users.add_pending_companion_cookies(
-                user_id, companion_cookie
+            await bot.database.settlement.add_pending_companion_cookies(
+                user_id, server_id, companion_cookie
             )
         except Exception:
             pass
@@ -448,7 +448,7 @@ async def _complete_project(
         )
         # Design: 1-2 Idlem per turn with variance
         idlem = int(base_idlem) + random.randint(0, 1)
-        await bot.database.settlement.add_idlem(user_id, idlem)
+        await bot.database.settlement.add_idlem(user_id, server_id, idlem)
         return {"label": "Foundry produced Idlem", "idlem": idlem}
 
     elif ptype == "uber_statue":
@@ -495,11 +495,11 @@ async def _apply_event_effects(
 
     if "grant_zeal" in effects:
         val = _resolve_band(effects["grant_zeal"], ev_data)
-        await bot.database.settlement.add_zeal(user_id, int(val))
+        await bot.database.settlement.add_zeal(user_id, server_id, int(val))
 
     if "grant_blueprints" in effects:
         val = _resolve_band(effects["grant_blueprints"], ev_data)
-        await bot.database.users.modify_currency(
+        await bot.database.settlement_materials.modify(
             user_id, "unidentified_blueprint", int(val)
         )
 
@@ -904,6 +904,20 @@ def roll_bm_rewards(
     return result
 
 
+_SETTLEMENT_MATERIAL_COLS: frozenset[str] = frozenset(
+    [
+        "magma_core",
+        "life_root",
+        "spirit_shard",
+        "celestial_stone",
+        "infernal_cinder",
+        "void_crystal",
+        "bound_crystal",
+        "diviners_rod",
+        "unidentified_blueprint",
+    ]
+)
+
 _GATHERING_SKILL_MAP: dict[str, str] = {
     "iron": "mining",
     "coal": "mining",
@@ -943,6 +957,11 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
                 await bot.database.skills.update_single_resource(
                     user_id, server_id, skill, cur, qty
                 )
+            except Exception:
+                pass
+        elif cur in _SETTLEMENT_MATERIAL_COLS:
+            try:
+                await bot.database.settlement_materials.modify(user_id, cur, qty)
             except Exception:
                 pass
         else:

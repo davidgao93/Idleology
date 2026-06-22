@@ -131,9 +131,8 @@ class StorageProfileBuilder:
     async def build_resources(bot, user_id: str, server_id: str) -> discord.Embed:
         settlement = await bot.database.settlement.get_settlement(user_id, server_id)
         uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
-        blueprint_count = await bot.database.users.get_currency(
-            user_id, "unidentified_blueprint"
-        )
+        mat_all = await bot.database.settlement_materials.get_all(user_id)
+        blueprint_count = mat_all.get("unidentified_blueprint", 0)
 
         ores = await bot.database.skills.get_multi_resource(
             user_id, server_id, "mining", ["iron", "coal", "gold", "platinum", "idea"]
@@ -186,7 +185,7 @@ class StorageProfileBuilder:
                 "titanium_essence",
             ],
         )
-        rares = await bot.database.users.get_rare_materials(user_id)
+        rares = await bot.database.settlement_materials.get_rare_materials(user_id)
 
         mastery_row = await bot.database.skills.get_mastery(user_id, server_id)
         geode_cores = mastery_row.get("geode_cores", 0) or 0
@@ -229,7 +228,7 @@ class StorageProfileBuilder:
     @staticmethod
     async def build_uber(bot, user_id: str, server_id: str) -> discord.Embed:
         uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
-        specials = await bot.database.users.get_uber_materials(user_id)
+        specials = await bot.database.settlement_materials.get_uber_materials(user_id)
 
         embed = discord.Embed(title="Uber Encounters", color=discord.Color.dark_gold())
 

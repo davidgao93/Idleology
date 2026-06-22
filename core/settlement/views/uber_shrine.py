@@ -502,9 +502,8 @@ class StatueSlotView(SettlementBaseView):
             return await interaction.response.send_message(
                 f"Need **{gold_cost:,} gold** (you have **{gold:,}**).", ephemeral=True
             )
-        owned_mat = await self.bot.database.users.get_currency(
-            self.user_id, defn["material"]
-        )
+        _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
+        owned_mat = _mats.get(defn["material"], 0)
         if owned_mat < mat_qty:
             self._processing = False
             return await interaction.response.send_message(
@@ -514,7 +513,7 @@ class StatueSlotView(SettlementBaseView):
 
         await interaction.response.defer()
         await self.bot.database.users.modify_gold(self.user_id, -gold_cost)
-        await self.bot.database.users.modify_currency(
+        await self.bot.database.settlement_materials.modify(
             self.user_id, defn["material"], -mat_qty
         )
 

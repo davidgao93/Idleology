@@ -255,7 +255,7 @@ async def _handle_engram_and_blueprint(view, reward_data: dict, cfg: dict) -> No
             reward_data["special"].append(cfg["blueprint_display"])
             reward_data["msgs"].append(cfg["blueprint_msg"])
         else:
-            await view.bot.database.users.modify_currency(
+            await view.bot.database.settlement_materials.modify(
                 view.user_id, cfg["stone_currency"], 1
             )
             reward_data["special"].append(cfg["stone_display"])

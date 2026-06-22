@@ -379,67 +379,11 @@ class UserRepository:
         )
         await self.connection.commit()
 
-    # ---------------------------------------------------------
-    # Development Contracts
-    # ---------------------------------------------------------
-
-    async def get_development_contracts(self, user_id: str) -> int:
-        """Returns the player's current Development Contract count."""
-        async with self.connection.execute(
-            "SELECT development_contracts FROM users WHERE user_id = ?",
-            (user_id,),
-        ) as cursor:
-            row = await cursor.fetchone()
-        return row[0] if row else 0
-
-    async def modify_development_contracts(self, user_id: str, delta: int) -> None:
-        """Adds delta (may be negative) to development_contracts, flooring at 0."""
-        await self.connection.execute(
-            "UPDATE users SET development_contracts = MAX(0, development_contracts + ?) "
-            "WHERE user_id = ?",
-            (delta, user_id),
-        )
-        await self.connection.commit()
-
     async def modify_spirit_stones(self, user_id: str, delta: int) -> None:
         """Adds delta (may be negative) to spirit_stones, flooring at 0."""
         await self.connection.execute(
             "UPDATE users SET spirit_stones = MAX(0, spirit_stones + ?) WHERE user_id = ?",
             (delta, user_id),
-        )
-        await self.connection.commit()
-
-    async def get_dc_crafted_today(self, user_id: str) -> int:
-        """Returns how many DCs have been crafted today; auto-resets on a new calendar day."""
-        from datetime import date
-
-        today = date.today().isoformat()
-        async with self.connection.execute(
-            "SELECT dc_crafted_today, last_dc_craft_date FROM users WHERE user_id = ?",
-            (user_id,),
-        ) as cursor:
-            row = await cursor.fetchone()
-        if row is None:
-            return 0
-        crafted, last_date = row
-        return int(crafted) if last_date == today else 0
-
-    async def add_dc_crafted_today(self, user_id: str, qty: int) -> None:
-        """Increments dc_crafted_today; resets the counter automatically on a new day."""
-        from datetime import date
-
-        today = date.today().isoformat()
-        await self.connection.execute(
-            """
-            UPDATE users
-            SET dc_crafted_today  = CASE
-                    WHEN last_dc_craft_date = ? THEN dc_crafted_today + ?
-                    ELSE ?
-                END,
-                last_dc_craft_date = ?
-            WHERE user_id = ?
-            """,
-            (today, qty, qty, today, user_id),
         )
         await self.connection.commit()
 
@@ -473,53 +417,6 @@ class UserRepository:
             (amount, user_id),
         )
         await self.connection.commit()
-
-    _pending_cookies_col_added: bool = False
-
-    async def _ensure_pending_cookies_column(self) -> None:
-        if UserRepository._pending_cookies_col_added:
-            return
-        try:
-            await self.connection.execute(
-                "ALTER TABLE users ADD COLUMN pending_companion_cookies INTEGER DEFAULT 0"
-            )
-            await self.connection.commit()
-        except Exception:
-            pass
-        UserRepository._pending_cookies_col_added = True
-
-    async def add_pending_companion_cookies(self, user_id: str, amount: int) -> None:
-        """Accumulate Ranch XP cookies; redeemed from the Companions view."""
-        await self._ensure_pending_cookies_column()
-        await self.connection.execute(
-            "UPDATE users SET pending_companion_cookies = pending_companion_cookies + ? WHERE user_id = ?",
-            (amount, user_id),
-        )
-        await self.connection.commit()
-
-    async def get_pending_companion_cookies(self, user_id: str) -> int:
-        await self._ensure_pending_cookies_column()
-        async with self.connection.execute(
-            "SELECT pending_companion_cookies FROM users WHERE user_id = ?", (user_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-        return (row[0] or 0) if row else 0
-
-    async def consume_pending_companion_cookies(self, user_id: str) -> int:
-        """Read and zero out the pending cookie balance. Returns the amount consumed."""
-        await self._ensure_pending_cookies_column()
-        async with self.connection.execute(
-            "SELECT pending_companion_cookies FROM users WHERE user_id = ?", (user_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-        amount = (row[0] or 0) if row else 0
-        if amount > 0:
-            await self.connection.execute(
-                "UPDATE users SET pending_companion_cookies = 0 WHERE user_id = ?",
-                (user_id,),
-            )
-            await self.connection.commit()
-        return amount
 
     async def add_stamina_capped(self, user_id: str, amount: int) -> None:
         """Adds stamina, honouring the normal 10-unit cap. Used by the new War Camp collection."""
@@ -642,24 +539,6 @@ class UserRepository:
             "UPDATE users SET exp_protection = ? WHERE user_id = ?", (val, user_id)
         )
         await self.connection.commit()
-
-    async def get_rare_materials(self, user_id: str) -> tuple:
-        """Returns (magma_core, life_root, spirit_shard) for a user."""
-        async with self.connection.execute(
-            "SELECT magma_core, life_root, spirit_shard FROM users WHERE user_id=?",
-            (user_id,),
-        ) as cursor:
-            row = await cursor.fetchone()
-        return row if row else (0, 0, 0)
-
-    async def get_uber_materials(self, user_id: str) -> tuple:
-        """Returns (celestial_stone, infernal_cinder, void_crystal, bound_crystal) for a user."""
-        async with self.connection.execute(
-            "SELECT celestial_stone, infernal_cinder, void_crystal, bound_crystal FROM users WHERE user_id=?",
-            (user_id,),
-        ) as cursor:
-            row = await cursor.fetchone()
-        return row if row else (0, 0, 0, 0)
 
     async def get_wealth_leaderboard(self, limit: int = 10):
         rows = await self.connection.execute(

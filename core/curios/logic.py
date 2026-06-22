@@ -104,7 +104,7 @@ class CurioManager:
             for _ in range(summary["Settler Material"]):
                 mat_counts[random.choice(mat_keys)] += 1
             for col, cnt in mat_counts.items():
-                await bot.database.users.modify_currency(user_id, col, cnt)
+                await bot.database.settlement_materials.modify(user_id, col, cnt)
 
         # --- Pinnacle Key (1x per drop) ---
         if "Pinnacle Key" in summary:

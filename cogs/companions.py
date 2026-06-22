@@ -40,10 +40,12 @@ class Companions(commands.Cog):
             rows = await self.bot.database.companions.get_all(user_id)
             companions = [create_companion(row) for row in rows] if rows else []
             pending_cookies = (
-                await self.bot.database.users.get_pending_companion_cookies(user_id)
+                await self.bot.database.settlement.get_pending_companion_cookies(
+                    user_id, server_id
+                )
             )
             view = CompanionListView(
-                self.bot, user_id, companions, pending_cookies=pending_cookies
+                self.bot, user_id, companions, server_id=server_id, pending_cookies=pending_cookies
             )
             embed = view.get_embed()
             embed.set_thumbnail(url=COMPANIONS_HUB)
