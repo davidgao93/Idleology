@@ -243,7 +243,9 @@ class BlackjackView(BaseView):
         super().__init__(bot, user_id)
         self.bet_amount = bet_amount
         self.original_interaction = parent_interaction
-        self.guild_id = str(parent_interaction.guild_id) if parent_interaction.guild_id else ""
+        self.guild_id = (
+            str(parent_interaction.guild_id) if parent_interaction.guild_id else ""
+        )
         self.player_hand = []
         self.dealer_hand = []
         self.deck = BlackjackLogic()
@@ -330,7 +332,9 @@ class BlackjackView(BaseView):
                 try:
                     from core.quests.mechanics import tick_quest_progress
 
-                    guild_id = str(interaction.guild_id) if interaction else self.guild_id
+                    guild_id = (
+                        str(interaction.guild_id) if interaction else self.guild_id
+                    )
                     await tick_quest_progress(
                         self.bot, self.user_id, guild_id, "casino_win", value=net_win
                     )

@@ -556,7 +556,9 @@ class _StatueWorkerModal(ui.Modal, title="Assign Statue Workers"):
             if val < 0:
                 raise ValueError
         except ValueError:
-            return await interaction.response.send_message("Invalid number.", ephemeral=True)
+            return await interaction.response.send_message(
+                "Invalid number.", ephemeral=True
+            )
 
         if val > self.max_workers:
             return await interaction.response.send_message(
@@ -642,7 +644,9 @@ class UberShrineView(SettlementBaseView):
         total_statue_workers = sum(
             d.get("workers_assigned", 0) for d in self.statue_data.values()
         )
-        current_statue = self.statue_data.get(statue_type, {}).get("workers_assigned", 0)
+        current_statue = self.statue_data.get(statue_type, {}).get(
+            "workers_assigned", 0
+        )
         follower_count = self.parent_detail.parent.follower_count
         used = total_building_workers + total_statue_workers - current_statue
         return follower_count - used
@@ -686,7 +690,9 @@ class UberShrineView(SettlementBaseView):
                 btn_workers.callback = _on_workers
                 self.add_item(btn_workers)
 
-                btn_max = ui.Button(label="Max Workers", style=ButtonStyle.primary, row=1)
+                btn_max = ui.Button(
+                    label="Max Workers", style=ButtonStyle.primary, row=1
+                )
 
                 async def _on_max(interaction: Interaction, _t=chosen):
                     await self._max_workers(interaction, _t)

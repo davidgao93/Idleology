@@ -276,7 +276,9 @@ async def process_next_turn(
     if companion_cookie > 0:
         summary["dt_resources"]["companion_xp"] = companion_cookie
         try:
-            await bot.database.users.add_pending_companion_cookies(user_id, companion_cookie)
+            await bot.database.users.add_pending_companion_cookies(
+                user_id, companion_cookie
+            )
         except Exception:
             pass
 
@@ -525,7 +527,9 @@ async def _check_schedule_events(
     settlement = await bot.database.settlement.get_settlement(user_id, server_id)
     player_building_types: set[str] = set()
     if settlement and settlement.buildings:
-        player_building_types = {b.building_type for b in settlement.buildings if not b.is_meta}
+        player_building_types = {
+            b.building_type for b in settlement.buildings if not b.is_meta
+        }
 
     for key, ev_def in SETTLEMENT_EVENTS.items():
         if key in existing_keys:
@@ -809,7 +813,13 @@ def roll_bm_rewards(
             result["currencies"]["curios"] = result["currencies"].get("curios", 0) + 1
 
         elif cat == "high_end":
-            pool = ["antique_tome", "pinnacle_key", "spirit_stones", "diviners_rod", "unidentified_blueprint"]
+            pool = [
+                "antique_tome",
+                "pinnacle_key",
+                "spirit_stones",
+                "diviners_rod",
+                "unidentified_blueprint",
+            ]
             weights_he = [25, 20, 30, 15, 10]
             chosen = random.choices(pool, weights=weights_he, k=1)[0]
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + 1
@@ -860,7 +870,7 @@ def roll_bm_rewards(
         result["summary_lines"].append(f"💰 {result['gold']:,} Gold")
     for cur, qty in result["currencies"].items():
         if cur.startswith("essence_"):
-            ess = cur[len("essence_"):].replace("_", " ").title()
+            ess = cur[len("essence_") :].replace("_", " ").title()
             label = f"Essence of {ess}"
         else:
             label = _CURRENCY_LABELS.get(cur) or cur.replace("_", " ").title()
@@ -872,11 +882,21 @@ def roll_bm_rewards(
 
 
 _GATHERING_SKILL_MAP: dict[str, str] = {
-    "iron": "mining", "coal": "mining", "gold": "mining", "platinum": "mining", "idea": "mining",
-    "oak_logs": "woodcutting", "willow_logs": "woodcutting", "mahogany_logs": "woodcutting",
-    "magic_logs": "woodcutting", "idea_logs": "woodcutting",
-    "desiccated_bones": "fishing", "regular_bones": "fishing", "sturdy_bones": "fishing",
-    "reinforced_bones": "fishing", "titanium_bones": "fishing",
+    "iron": "mining",
+    "coal": "mining",
+    "gold": "mining",
+    "platinum": "mining",
+    "idea": "mining",
+    "oak_logs": "woodcutting",
+    "willow_logs": "woodcutting",
+    "mahogany_logs": "woodcutting",
+    "magic_logs": "woodcutting",
+    "idea_logs": "woodcutting",
+    "desiccated_bones": "fishing",
+    "regular_bones": "fishing",
+    "sturdy_bones": "fishing",
+    "reinforced_bones": "fishing",
+    "titanium_bones": "fishing",
 }
 
 
@@ -897,7 +917,9 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
         elif cur in _GATHERING_SKILL_MAP:
             skill = _GATHERING_SKILL_MAP[cur]
             try:
-                await bot.database.skills.update_single_resource(user_id, server_id, skill, cur, qty)
+                await bot.database.skills.update_single_resource(
+                    user_id, server_id, skill, cur, qty
+                )
             except Exception:
                 pass
         else:
@@ -944,4 +966,3 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
                 await bot.database.equipment.create_helmet(item)
         except Exception:
             pass
-

@@ -499,9 +499,27 @@ class SettlementDashboardView(SettlementBaseView):
                     "war_camp_stamina": "Stamina (War Camp)",
                     "companion_xp": "Companion XP",
                 }
-                _BARS = {"iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"}
-                _PLANKS = {"oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank"}
-                _ESSENCES = {"desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence"}
+                _BARS = {
+                    "iron_bar",
+                    "steel_bar",
+                    "gold_bar",
+                    "platinum_bar",
+                    "idea_bar",
+                }
+                _PLANKS = {
+                    "oak_plank",
+                    "willow_plank",
+                    "mahogany_plank",
+                    "magic_plank",
+                    "idea_plank",
+                }
+                _ESSENCES = {
+                    "desiccated_essence",
+                    "regular_essence",
+                    "sturdy_essence",
+                    "reinforced_essence",
+                    "titanium_essence",
+                }
                 res_lines = []
                 bars_produced = any(dt_res.get(k, 0) > 0 for k in _BARS)
                 planks_produced = any(dt_res.get(k, 0) > 0 for k in _PLANKS)
@@ -822,25 +840,58 @@ class SettlementDashboardView(SettlementBaseView):
             ("🪵 Logging Camp", "Hybrid · Timber · passive hourly + 5× per DT"),
             ("🪨 Quarry", "Hybrid · Stone · passive hourly + 5× per DT"),
             ("💰 Market", "Hybrid · Gold · passive hourly + 5× per DT"),
-            ("🐾 Companion Ranch", "Hybrid · Companion XP (cookies) · passive + 5× per DT · claim from /companions"),
-            ("🏕️ War Camp", "Hybrid · Combat Stamina · passive hourly + 5× per DT · capped at 10"),
+            (
+                "🐾 Companion Ranch",
+                "Hybrid · Companion XP (cookies) · passive + 5× per DT · claim from /companions",
+            ),
+            (
+                "🏕️ War Camp",
+                "Hybrid · Combat Stamina · passive hourly + 5× per DT · capped at 10",
+            ),
         ]
         _CONVERTERS = [
-            ("🔥 Foundry", "Hybrid · Ore → Bars · T1 Iron → T5 Idea · passive + 5× per DT"),
-            ("🌲 Sawmill", "Hybrid · Logs → Planks · T1 Oak → T5 Idea · passive + 5× per DT"),
-            ("🦴 Reliquary", "Hybrid · Bones → Essences · T1 Desiccated → T5 Titanium · passive + 5× per DT"),
+            (
+                "🔥 Foundry",
+                "Hybrid · Ore → Bars · T1 Iron → T5 Idea · passive + 5× per DT",
+            ),
+            (
+                "🌲 Sawmill",
+                "Hybrid · Logs → Planks · T1 Oak → T5 Idea · passive + 5× per DT",
+            ),
+            (
+                "🦴 Reliquary",
+                "Hybrid · Bones → Essences · T1 Desiccated → T5 Titanium · passive + 5× per DT",
+            ),
         ]
         _PASSIVES = [
-            ("⚔️ Barracks", "Passive · +% Attack & Defence in combat · scales with workers"),
+            (
+                "⚔️ Barracks",
+                "Passive · +% Attack & Defence in combat · scales with workers",
+            ),
             ("⛪ Temple", "Passive · +% Propagate follower gain · scales with workers"),
-            ("💊 Apothecary", "Passive · +Flat HP restored per potion use · scales with workers"),
-            ("🔮 Uber Shrine", "Passive · Houses all 5 shrine statues for boss sigil drops"),
+            (
+                "💊 Apothecary",
+                "Passive · +Flat HP restored per potion use · scales with workers",
+            ),
+            (
+                "🔮 Uber Shrine",
+                "Passive · Houses all 5 shrine statues for boss sigil drops",
+            ),
         ]
         _SPECIALS = [
-            ("🌑 Black Market", "Special · Submit resource bundles for loot · invest Idlem to improve"),
-            ("🥚 Hatchery", "Special · Incubates eggs for Hematurgy blood drops · Lv50"),
+            (
+                "🌑 Black Market",
+                "Special · Submit resource bundles for loot · invest Idlem to improve",
+            ),
+            (
+                "🥚 Hatchery",
+                "Special · Incubates eggs for Hematurgy blood drops · Lv50",
+            ),
             ("👶 Nursery", "Project · Produces workers per DT · scales with tier"),
-            ("⚗️ Idlem Foundry", "Project · Produces Idlem per DT · powers Black Market passive tree"),
+            (
+                "⚗️ Idlem Foundry",
+                "Project · Produces Idlem per DT · powers Black Market passive tree",
+            ),
         ]
 
         def _fmt(entries):
@@ -850,8 +901,12 @@ class SettlementDashboardView(SettlementBaseView):
         embed.add_field(name="⚡ Generators", value=_fmt(_GENERATORS), inline=False)
         embed.add_field(name="🔄 Converters", value=_fmt(_CONVERTERS), inline=False)
         embed.add_field(name="🛡️ Passives", value=_fmt(_PASSIVES), inline=False)
-        embed.add_field(name="✨ Special / Project", value=_fmt(_SPECIALS), inline=False)
-        embed.set_footer(text="Hybrid buildings produce passively over time AND award a 5× burst each Development Turn.")
+        embed.add_field(
+            name="✨ Special / Project", value=_fmt(_SPECIALS), inline=False
+        )
+        embed.set_footer(
+            text="Hybrid buildings produce passively over time AND award a 5× burst each Development Turn."
+        )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def show_meta_buildings(self, interaction: Interaction):
@@ -1069,7 +1124,9 @@ class SettlementDashboardView(SettlementBaseView):
         # Companion XP — pool for manual distribution via Companions view
         xp_msg = ""
         if cookie_xp > 0:
-            await self.bot.database.users.add_pending_companion_cookies(self.user_id, cookie_xp)
+            await self.bot.database.users.add_pending_companion_cookies(
+                self.user_id, cookie_xp
+            )
             xp_msg = f"\n🐾 **Companion Ranch:** +{cookie_xp:,} XP added to your Companion XP pool."
 
         stamina_msg = ""

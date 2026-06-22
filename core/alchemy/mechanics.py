@@ -1035,7 +1035,15 @@ class DistillationMechanics:
                 "dec_med",
                 "dec_big",
             ],
-            weights=[35, 22, 13, 5, 14, 8, 3],  # 35% nothing, 40% positive, 25% negative
+            weights=[
+                35,
+                22,
+                13,
+                5,
+                14,
+                8,
+                3,
+            ],  # 35% nothing, 40% positive, 25% negative
         )[0]
         if cat == "nothing":
             return {"sign": 0, "tier": 0, "delta": 0.0}

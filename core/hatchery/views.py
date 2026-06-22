@@ -94,7 +94,8 @@ class HatcheryView(BaseView):
             self._incubation is not None
             and _remaining_seconds(
                 self._incubation["start_time"], self._incubation["duration_seconds"]
-            ) <= 0
+            )
+            <= 0
         )
         quip = get_quip("hatchery_release") if is_ready else get_quip("hatchery")
 

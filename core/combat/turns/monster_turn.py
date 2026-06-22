@@ -59,7 +59,9 @@ def process_monster_turn(
     if monster.death_rattle_triggered and monster.death_rattle_countdown > 0:
         monster.death_rattle_countdown -= 1
         if monster.death_rattle_countdown == 0:
-            heal_target = int(monster.max_hp * monster.get_modifier_value("Death Rattle"))
+            heal_target = int(
+                monster.max_hp * monster.get_modifier_value("Death Rattle")
+            )
             if monster.hp < heal_target:
                 healed = heal_target - monster.hp
                 monster.hp = heal_target
@@ -148,7 +150,10 @@ def process_monster_turn(
                 # skip in compact — ward change visible in HP bar
 
     # --- Corrosion: +1 corrode stack every N turns (cap 5); N decreases with tier ---
-    if monster.has_modifier("Corrosion") and monster.combat_round % int(monster.get_modifier_value("Corrosion")) == 0:
+    if (
+        monster.has_modifier("Corrosion")
+        and monster.combat_round % int(monster.get_modifier_value("Corrosion")) == 0
+    ):
         if monster.corrode_stacks < 5:
             monster.corrode_stacks += 1
         v = int(monster.get_modifier_value("Corrosion"))
@@ -164,7 +169,8 @@ def process_monster_turn(
     start = len(log)
     if (
         monster.has_modifier("Temporal Collapse")
-        and monster.combat_round % int(monster.get_modifier_value("Temporal Collapse")) == 0
+        and monster.combat_round % int(monster.get_modifier_value("Temporal Collapse"))
+        == 0
         and monster.combat_round > 0
     ):
         if monster.temporal_window_damage > 0:
@@ -312,11 +318,15 @@ def process_monster_turn(
         ov = monster.get_modifier_value("Overwhelming")
         ov_penalty = int((ov - 1.6) * 50 + 20) / 100
         hit_chance = max(0.15, hit_chance - ov_penalty)
-        hit_mods.append(f"-{int(ov_penalty * 100)}%(overwhelming)={hit_chance * 100:.1f}%")
+        hit_mods.append(
+            f"-{int(ov_penalty * 100)}%(overwhelming)={hit_chance * 100:.1f}%"
+        )
 
     # Unerring: chance to take higher of two rolls
     if monster.has_modifier("Unerring"):
-        hit_mods.append(f"unerring({int(monster.get_modifier_value('Unerring') * 100)}%chance-2roll-high)")
+        hit_mods.append(
+            f"unerring({int(monster.get_modifier_value('Unerring') * 100)}%chance-2roll-high)"
+        )
 
     # Inevitable: always hit
     if monster.has_modifier("Inevitable"):
@@ -324,7 +334,9 @@ def process_monster_turn(
         hit_mods.append("100%(inevitable)")
 
     monster_roll = random.random()
-    if monster.has_modifier("Unerring") and random.random() < monster.get_modifier_value("Unerring"):
+    if monster.has_modifier(
+        "Unerring"
+    ) and random.random() < monster.get_modifier_value("Unerring"):
         monster_roll = max(monster_roll, random.random())
 
     is_monster_hit = monster_roll <= hit_chance
@@ -457,7 +469,9 @@ def process_monster_turn(
             _pr_bonus = get_phantom_reflex_evasion_bonus(player)
 
         if monster.has_modifier("Unavoidable"):
-            dodge_chance = (player.get_total_evasion() / 100 + _pr_bonus) * monster.get_modifier_value("Unavoidable")
+            dodge_chance = (
+                player.get_total_evasion() / 100 + _pr_bonus
+            ) * monster.get_modifier_value("Unavoidable")
         else:
             dodge_chance = player.get_total_evasion() / 100 + _pr_bonus
         if celestial == "celestial_wind_dancer":
@@ -467,7 +481,11 @@ def process_monster_turn(
 
         if not is_dodged:
             if monster.has_modifier("Unblockable"):
-                block_chance = player.get_total_block() / 100 * monster.get_modifier_value("Unblockable")
+                block_chance = (
+                    player.get_total_block()
+                    / 100
+                    * monster.get_modifier_value("Unblockable")
+                )
             else:
                 block_chance = player.get_total_block() / 100
             if celestial == "celestial_glancing_blows":
@@ -475,8 +493,16 @@ def process_monster_turn(
             if random.random() <= block_chance:
                 is_blocked = True
 
-        _unav_note = f"(×{monster.get_modifier_value('Unavoidable'):.2f}unavoidable)" if monster.has_modifier("Unavoidable") else ""
-        _unbl_note = f"(×{monster.get_modifier_value('Unblockable'):.2f}unblockable)" if monster.has_modifier("Unblockable") else ""
+        _unav_note = (
+            f"(×{monster.get_modifier_value('Unavoidable'):.2f}unavoidable)"
+            if monster.has_modifier("Unavoidable")
+            else ""
+        )
+        _unbl_note = (
+            f"(×{monster.get_modifier_value('Unblockable'):.2f}unblockable)"
+            if monster.has_modifier("Unblockable")
+            else ""
+        )
         calc.append(
             f"  dodge/block: evasion={player.get_total_evasion()}%{_unav_note} "
             f"block={player.get_total_block()}%{_unbl_note} "
@@ -856,7 +882,9 @@ def process_monster_turn(
             # --- Impending Doom: +1 doom stack per hit; instant kill at tier-scaled threshold ---
             if monster.has_modifier("Impending Doom") and damage_dealt > 0:
                 monster.doom_stacks += 1
-                if monster.doom_stacks >= int(monster.get_modifier_value("Impending Doom")):
+                if monster.doom_stacks >= int(
+                    monster.get_modifier_value("Impending Doom")
+                ):
                     player.current_hp = 0
                     _doom_msg = "☠️ **Impending Doom fulfills itself!** The accumulated curse shatters your existence!"
                     log.append(_doom_msg)
@@ -908,7 +936,9 @@ def process_monster_turn(
         # --- Executioner: true damage — bypasses all PDR/FDR/ward/DR layers ---
         # Fires only when the attack connected (not dodged, not blocked).
         if is_executed and not is_dodged and not is_blocked and player.current_hp > 0:
-            exec_dmg = int(player.current_hp * monster.get_modifier_value("Executioner"))
+            exec_dmg = int(
+                player.current_hp * monster.get_modifier_value("Executioner")
+            )
             if exec_dmg > 0:
                 player.current_hp = max(0, player.current_hp - exec_dmg)
                 calc.append(

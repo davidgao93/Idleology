@@ -23,8 +23,9 @@ class CodexMenuView(BaseView):
         rerolls: int,
         chapter_history: dict,
         antique_tomes: int = 0,
+        server_id: str = "",
     ):
-        super().__init__(bot, user_id)
+        super().__init__(bot, user_id, server_id)
         self.player = player
         self.fragments = fragments
         self.pages = pages
@@ -116,6 +117,7 @@ class CodexMenuView(BaseView):
             monster,
             start_logs,
             chapter_wave_baseline=wave_baseline,
+            server_id=self.server_id,
         )
 
         embed = view._combat_embed()

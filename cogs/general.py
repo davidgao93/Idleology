@@ -573,11 +573,24 @@ class General(commands.Cog, name="general"):
                 else:
                     v_str = f"{v_min:.0f}–{v_max:.0f}"
                 if d_min == 0 and d_max == 0:
-                    desc = p["desc"].replace("{value:.0f}", v_str).replace(" for {duration:.0f} turns", "").replace("{duration:.0f}", "")
+                    desc = (
+                        p["desc"]
+                        .replace("{value:.0f}", v_str)
+                        .replace(" for {duration:.0f} turns", "")
+                        .replace("{duration:.0f}", "")
+                    )
                 elif d_min == d_max:
-                    desc = p["desc"].replace("{value:.0f}", v_str).replace("{duration:.0f}", f"{d_min:.0f}")
+                    desc = (
+                        p["desc"]
+                        .replace("{value:.0f}", v_str)
+                        .replace("{duration:.0f}", f"{d_min:.0f}")
+                    )
                 else:
-                    desc = p["desc"].replace("{value:.0f}", v_str).replace("{duration:.0f}", f"{d_min:.0f}–{d_max:.0f}")
+                    desc = (
+                        p["desc"]
+                        .replace("{value:.0f}", v_str)
+                        .replace("{duration:.0f}", f"{d_min:.0f}–{d_max:.0f}")
+                    )
                 lines.append(f"{p['emoji']} **{p['name']}** — {desc}")
             embed.description = "\n\n".join(lines)
             content_added = True

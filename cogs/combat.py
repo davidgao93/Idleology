@@ -437,7 +437,9 @@ class Combat(commands.Cog, name="combat"):
             monster = generate_corrupted_encounter(player, monster)
             combat_phases = [None]
         elif is_incubated:
-            monster = await generate_incubated_monster(incubated_encounter, player.level)
+            monster = await generate_incubated_monster(
+                incubated_encounter, player.level
+            )
             combat_phases = [None]
         else:
             treasure_chance = 1.0

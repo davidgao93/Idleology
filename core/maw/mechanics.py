@@ -137,7 +137,9 @@ def get_weekly_weakness(now: datetime | None = None) -> dict:
     """Returns the active weakness dict for the current week-of-year."""
     if now is None:
         now = datetime.now(tz=timezone.utc)
-    now_utc = now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    now_utc = (
+        now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    )
     week_of_year = int(now_utc.strftime("%W"))  # 0-indexed week, Mon start
     return _WEEKLY_WEAKNESSES[week_of_year % len(_WEEKLY_WEAKNESSES)]
 

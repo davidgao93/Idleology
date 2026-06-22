@@ -96,7 +96,9 @@ class Maw(commands.Cog, name="maw"):
 
         if not await self.bot.database.tutorials.has_seen(user_id, "maw"):
             await self.bot.database.tutorials.mark_seen(user_id, "maw")
-            gate = TutorialGateView(self.bot, user_id, server_id, "maw", build_main=_build)
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "maw", build_main=_build
+            )
             await interaction.response.send_message(embed=gate.build_embed(), view=gate)
             gate.message = await interaction.original_response()
             return

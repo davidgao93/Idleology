@@ -347,7 +347,9 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.36, 0.28, 0.24, 0.20, 0.16],
         difficulties=[0.004, 0.006, 0.008, 0.008, 0.010],
         level_gates=[20, 40, 60, 80, 100],
-        description=lambda v: f"Combat start: Block Chance is {int((1 - v) * 100)}% less effective",
+        description=lambda v: (
+            f"Combat start: Block Chance is {int((1 - v) * 100)}% less effective"
+        ),
     ),
     "Unavoidable": ModifierDef(
         "Unavoidable",
@@ -355,7 +357,9 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.36, 0.28, 0.24, 0.20, 0.16],
         difficulties=[0.004, 0.006, 0.008, 0.008, 0.010],
         level_gates=[20, 40, 60, 80, 100],
-        description=lambda v: f"Combat start: Evasion Chance is {int((1 - v) * 100)}% less effective",
+        description=lambda v: (
+            f"Combat start: Evasion Chance is {int((1 - v) * 100)}% less effective"
+        ),
     ),
     "Dispelling": ModifierDef(
         "Dispelling",
@@ -381,7 +385,9 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.50, 0.75, 1.00, 1.25, 1.50],
         difficulties=[0.005, 0.007, 0.009, 0.010, 0.012],
         level_gates=[20, 40, 60, 80, 100],
-        description=lambda v: f"On hit: 20% chance to deal {int(v * 100)}% increased damage",
+        description=lambda v: (
+            f"On hit: 20% chance to deal {int(v * 100)}% increased damage"
+        ),
     ),
     "Executioner": ModifierDef(
         "Executioner",
@@ -399,7 +405,9 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.96, 0.92, 0.88, 0.84, 0.80],
         difficulties=[0.007, 0.009, 0.011, 0.013, 0.015],
         level_gates=[20, 40, 60, 80, 100],
-        description=lambda v: f"On lethal hit: {int(v * 100)}% chance to survive at 1 HP",
+        description=lambda v: (
+            f"On lethal hit: {int(v * 100)}% chance to survive at 1 HP"
+        ),
     ),
     "Corrosion": ModifierDef(
         "Corrosion",
@@ -448,7 +456,9 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.15, 0.20, 0.25, 0.30, 0.35],
         difficulties=[0.0, 0.0, 0.0, 0.0, 0.0],
         level_gates=[20, 40, 60, 80, 100],
-        description=lambda v: f"Combat start: {int(v * 100)}% of its damage bypasses your Ward",
+        description=lambda v: (
+            f"Combat start: {int(v * 100)}% of its damage bypasses your Ward"
+        ),
     ),
     "Unerring": ModifierDef(
         "Unerring",
@@ -484,7 +494,9 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.20, 0.25, 0.30, 0.35, 0.40],
         difficulties=[0.0, 0.0, 0.0, 0.0, 0.0],
         level_gates=[20, 40, 60, 80, 100],
-        description=lambda v: f"Below 50% HP: +{int(v * 100)}% ATK and +{int(v / 2 * 100)}% damage reduction",
+        description=lambda v: (
+            f"Below 50% HP: +{int(v * 100)}% ATK and +{int(v / 2 * 100)}% damage reduction"
+        ),
     ),
     "Temporal Collapse": ModifierDef(
         "Temporal Collapse",

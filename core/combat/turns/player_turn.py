@@ -52,7 +52,8 @@ def process_heal(player: Player, monster=None) -> str:
     }
 
     potion_durations_by_type = {
-        p["passive_type"]: p.get("passive_duration", 2.0) for p in player.potion_passives
+        p["passive_type"]: p.get("passive_duration", 2.0)
+        for p in player.potion_passives
     }
 
     quench = potion_passives_by_type.get("quench", 0)
@@ -156,7 +157,9 @@ def process_heal(player: Player, monster=None) -> str:
     if eclipse:
         strikes = max(2, int(potion_durations_by_type.get("eclipse", 2.0)))
         player.alchemy_eclipse_strikes = player.alchemy_eclipse_strikes + strikes
-        player.alchemy_eclipse_bonus = max(player.alchemy_eclipse_bonus, eclipse / 100.0)
+        player.alchemy_eclipse_bonus = max(
+            player.alchemy_eclipse_bonus, eclipse / 100.0
+        )
         msg += (
             f"\n🌑 **Eclipse** — your next **{strikes}** attack(s) are guaranteed crits "
             f"with **+{eclipse:.0f}%** damage!"
@@ -186,7 +189,9 @@ def process_heal(player: Player, monster=None) -> str:
     blood_tithe = potion_passives_by_type.get("blood_tithe", 0)
     if blood_tithe:
         dur = max(2, int(potion_durations_by_type.get("blood_tithe", 2.0)))
-        player.alchemy_blood_tithe_leech = max(player.alchemy_blood_tithe_leech, blood_tithe / 100.0)
+        player.alchemy_blood_tithe_leech = max(
+            player.alchemy_blood_tithe_leech, blood_tithe / 100.0
+        )
         player.alchemy_blood_tithe_hits = max(player.alchemy_blood_tithe_hits, dur)
         msg += f"\n🩸 **Blood Tithe** — leech {blood_tithe:.0f}% of damage for the next **{dur}** hits!"
 
@@ -227,7 +232,9 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_atk_boost_pct = max(player.alchemy_atk_boost_pct, enrage / 100.0)
         player.alchemy_def_boost_pct = max(player.alchemy_def_boost_pct, enrage / 100.0)
         player.alchemy_def_boost_turns = max(player.alchemy_def_boost_turns, dur)
-        msg += f"\n💪 **Enrage** — +{enrage:.0f}% ATK and DEF for **{dur}** monster turns!"
+        msg += (
+            f"\n💪 **Enrage** — +{enrage:.0f}% ATK and DEF for **{dur}** monster turns!"
+        )
 
     barrier = potion_passives_by_type.get("barrier", 0)
     if barrier:
@@ -235,18 +242,18 @@ def process_heal(player: Player, monster=None) -> str:
         ward_per_turn = max(1, int(heal_amount * (barrier / 100.0)))
         player.alchemy_barrier_ward_per_turn = ward_per_turn
         player.alchemy_barrier_turns = max(player.alchemy_barrier_turns, dur)
-        msg += (
-            f"\n🔮 **Barrier** — +{ward_per_turn:,} Ward/turn for **{dur}** turns!"
-        )
+        msg += f"\n🔮 **Barrier** — +{ward_per_turn:,} Ward/turn for **{dur}** turns!"
 
     painkiller = potion_passives_by_type.get("painkiller", 0)
     if painkiller:
         dur = max(2, int(potion_durations_by_type.get("painkiller", 2.0)))
-        player.alchemy_dmg_reduction_pct = max(player.alchemy_dmg_reduction_pct, painkiller / 100.0)
-        player.alchemy_dmg_reduction_turns = max(player.alchemy_dmg_reduction_turns, dur)
-        msg += (
-            f"\n🩹 **Painkiller** — -{painkiller:.0f}% damage from the monster's next **{dur}** hits!"
+        player.alchemy_dmg_reduction_pct = max(
+            player.alchemy_dmg_reduction_pct, painkiller / 100.0
         )
+        player.alchemy_dmg_reduction_turns = max(
+            player.alchemy_dmg_reduction_turns, dur
+        )
+        msg += f"\n🩹 **Painkiller** — -{painkiller:.0f}% damage from the monster's next **{dur}** hits!"
 
     msg += f"\n**{player.potions}** potions left."
 
@@ -535,6 +542,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
 
     if player.alchemy_barrier_turns > 0:
         from core.combat.calc.ward_system import _add_ward as _barrier_add_ward
+
         added = _barrier_add_ward(player, player.alchemy_barrier_ward_per_turn, [])
         if added > 0:
             log.append(

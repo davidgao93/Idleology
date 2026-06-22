@@ -29,10 +29,7 @@ def _build_checkin_embed(
     remaining: timedelta | None,
 ) -> discord.Embed:
     """Build the 14-day check-in track embed."""
-    embed = discord.Embed(
-        title="📅 Daily Check-in Track",
-        color=0x7289DA,
-    )
+    embed = discord.Embed(title="📅 Daily Check-in Track", color=0x7289DA)
     embed.set_author(name="Lira", icon_url=QUEST_SHOP_AUTHOR)
     embed.set_thumbnail(url=CHECKIN)
 
@@ -366,7 +363,7 @@ class Tavern(commands.Cog, name="tavern"):
             embed.color = 0x00CC77
             embed.set_thumbnail(url=CHECKIN)
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot) -> None:

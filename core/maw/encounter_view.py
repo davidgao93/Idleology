@@ -65,7 +65,9 @@ class MawEncounterView(BaseView):
         self._running = False
 
         self.weakness = mechanics.get_weekly_weakness()
-        self._ward_at_start = player.combat_ward  # track ward baseline for ward_to_damage
+        self._ward_at_start = (
+            player.combat_ward
+        )  # track ward baseline for ward_to_damage
 
         # Apply stat effects first (modifiers reduce player stats), then
         # start passives (weapon/armor round-1 effects). Correct order per

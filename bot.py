@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import platform
+import random
 import sqlite3
 import sys
 from typing import Dict
@@ -215,11 +216,25 @@ class DiscordBot(commands.Bot):
     @tasks.loop(minutes=1.0)
     async def status_task(self) -> None:
         """
-        Setup the game status task of the bot.
+        Rotate the bot's Discord status every minute.
+        Shows helpful / thematic messages to new and returning players.
         """
-        # statuses = ["Idleology"]
-        # await self.change_presence(activity=discord.Game(random.choice(statuses)))
-        await self.change_presence(activity=discord.Game("Idleology"))
+        statuses = [
+            "/register to get started",
+            "/help to see all available commands",
+            "climbing the infinite tower",
+            "chasing down apex monsters",
+            "diving into the codex",
+            "feeding the infinite maw",
+            "working with monster parts",
+            "tuning the jewel of paradise",
+        ]
+
+        status = random.choice(statuses)
+
+        await self.change_presence(
+            activity=discord.Activity(type=discord.ActivityType.playing, name=status)
+        )
 
     @status_task.before_loop
     async def before_status_task(self) -> None:

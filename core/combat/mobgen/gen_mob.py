@@ -193,9 +193,7 @@ def _pick_modifier_type(is_boss: bool) -> str:
         weights = [55, 30, 15]  # common, rare_tiered, boss
     else:
         weights = [75, 25, 0]  # regular monsters never get boss mods
-    return random.choices(
-        ["common", "rare_tiered", "boss"], weights=weights, k=1
-    )[0]
+    return random.choices(["common", "rare_tiered", "boss"], weights=weights, k=1)[0]
 
 
 def _assign_modifiers(
@@ -251,9 +249,7 @@ def _assign_ascent_modifiers(monster, num_mods: int, num_boss_mods: int = 0) -> 
     attempts = 0
     while remaining > 0 and attempts < remaining * 10:
         attempts += 1
-        pool_type = random.choices(
-            ["common", "rare_tiered"], weights=[72, 28], k=1
-        )[0]
+        pool_type = random.choices(["common", "rare_tiered"], weights=[72, 28], k=1)[0]
         candidates = {
             "common": COMMON_MOD_NAMES,
             "rare_tiered": RARE_TIERED_MOD_NAMES,
@@ -550,7 +546,9 @@ _CORRUPTED_MONSTER_NAMES: list[tuple[str, str]] = [
 ]
 
 
-async def generate_incubated_monster(encounter: dict, player_level: int = 50) -> "Monster":
+async def generate_incubated_monster(
+    encounter: dict, player_level: int = 50
+) -> "Monster":
     """Builds a Monster from a queued incubated encounter row.
 
     The monster's level, name, and species are taken from the stored egg data.
@@ -653,9 +651,7 @@ def _assign_incubated_modifiers(monster, player_level: int) -> None:
     attempts = 0
     while remaining > 0 and attempts < 80:
         attempts += 1
-        pool_type = random.choices(
-            ["common", "rare_tiered"], weights=[72, 28], k=1
-        )[0]
+        pool_type = random.choices(["common", "rare_tiered"], weights=[72, 28], k=1)[0]
         pool = {
             "common": COMMON_MOD_NAMES,
             "rare_tiered": RARE_TIERED_MOD_NAMES,

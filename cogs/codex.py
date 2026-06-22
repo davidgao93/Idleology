@@ -63,12 +63,15 @@ class Codex(commands.Cog, name="codex"):
                 rerolls,
                 chapter_history,
                 antique_tomes=antique_tomes,
+                server_id=server_id,
             )
             return _view.build_embed(), _view
 
         if not await self.bot.database.tutorials.has_seen(user_id, "codex"):
             await self.bot.database.tutorials.mark_seen(user_id, "codex")
-            gate = TutorialGateView(self.bot, user_id, server_id, "codex", build_main=_build)
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "codex", build_main=_build
+            )
             await interaction.response.send_message(embed=gate.build_embed(), view=gate)
             gate.message = await interaction.original_response()
             return

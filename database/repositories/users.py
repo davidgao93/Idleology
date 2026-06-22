@@ -515,7 +515,8 @@ class UserRepository:
         amount = (row[0] or 0) if row else 0
         if amount > 0:
             await self.connection.execute(
-                "UPDATE users SET pending_companion_cookies = 0 WHERE user_id = ?", (user_id,)
+                "UPDATE users SET pending_companion_cookies = 0 WHERE user_id = ?",
+                (user_id,),
             )
             await self.connection.commit()
         return amount

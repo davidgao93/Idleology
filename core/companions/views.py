@@ -90,7 +90,9 @@ class RerollConfirmView(BaseView):
 
 
 class CompanionListView(BaseView):
-    def __init__(self, bot, user_id: str, companions: list[Companion], pending_cookies: int = 0):
+    def __init__(
+        self, bot, user_id: str, companions: list[Companion], pending_cookies: int = 0
+    ):
         super().__init__(bot, user_id)
         self.bot = bot
         self.user_id = user_id
@@ -181,7 +183,9 @@ class CompanionListView(BaseView):
         inactive = [c for c in self.companions if not c.is_active]
 
         active_count = len(active)
-        desc = f"*{get_quip('companions')}*\n\n**Active Companions** ({active_count}/3)\n"
+        desc = (
+            f"*{get_quip('companions')}*\n\n**Active Companions** ({active_count}/3)\n"
+        )
 
         if active:
             desc += "\n"
@@ -228,16 +232,26 @@ class CompanionListView(BaseView):
 
         # Check mastery tree completeness for rune unlock
         from core.companions.mastery import get_all_nodes
-        mastery = await self.bot.database.companions.get_mastery(self.user_id, server_id)
+
+        mastery = await self.bot.database.companions.get_mastery(
+            self.user_id, server_id
+        )
         nodes_owned = mastery.get("nodes_owned", {})
         total_nodes = len(get_all_nodes())
         tree_maxed = len(nodes_owned) >= total_nodes
-        companions_maxed = bool(self.companions) and all(c.level >= CompanionMechanics.MAX_LEVEL for c in self.companions)
+        companions_maxed = bool(self.companions) and all(
+            c.level >= CompanionMechanics.MAX_LEVEL for c in self.companions
+        )
         is_maxed = tree_maxed and companions_maxed
 
         view = XPDistributeView(
-            self.bot, self.user_id, server_id,
-            self._pending_cookies, self.companions, is_maxed, parent=self
+            self.bot,
+            self.user_id,
+            server_id,
+            self._pending_cookies,
+            self.companions,
+            is_maxed,
+            parent=self,
         )
         await interaction.edit_original_response(embed=view.get_embed(), view=view)
 
@@ -283,7 +297,9 @@ class XPDistributeView(BaseView):
     XP_PER_KP = 1_000
     XP_PER_RUNE = 25_000
 
-    def __init__(self, bot, user_id, server_id, pending_xp, companions, is_maxed, parent):
+    def __init__(
+        self, bot, user_id, server_id, pending_xp, companions, is_maxed, parent
+    ):
         super().__init__(bot, user_id)
         self.server_id = server_id
         self.pending_xp = pending_xp
@@ -298,19 +314,31 @@ class XPDistributeView(BaseView):
         active = [c for c in self.companions if c.is_active]
 
         if active and self.pending_xp > 0:
-            btn = ui.Button(label="Level Companions", style=ButtonStyle.success, emoji="🐾", row=0)
+            btn = ui.Button(
+                label="Level Companions", style=ButtonStyle.success, emoji="🐾", row=0
+            )
             btn.callback = self.distribute_to_companions
             self.add_item(btn)
 
         if self.pending_xp >= self.XP_PER_KP:
             kp_count = self.pending_xp // self.XP_PER_KP
-            btn = ui.Button(label=f"Convert to KP ({kp_count:,})", style=ButtonStyle.primary, emoji="✨", row=0)
+            btn = ui.Button(
+                label=f"Convert to KP ({kp_count:,})",
+                style=ButtonStyle.primary,
+                emoji="✨",
+                row=0,
+            )
             btn.callback = self.convert_to_kp
             self.add_item(btn)
 
         if self.is_maxed and self.pending_xp >= self.XP_PER_RUNE:
             rune_count = self.pending_xp // self.XP_PER_RUNE
-            btn = ui.Button(label=f"Buy Rune of Partnership ({rune_count})", style=ButtonStyle.blurple, emoji="🔮", row=1)
+            btn = ui.Button(
+                label=f"Buy Rune of Partnership ({rune_count})",
+                style=ButtonStyle.blurple,
+                emoji="🔮",
+                row=1,
+            )
             btn.callback = self.buy_rune
             self.add_item(btn)
 
@@ -326,16 +354,24 @@ class XPDistributeView(BaseView):
         )
         embed.set_author(name="Master Tamer Yuna", icon_url=YUNA_PORTRAIT)
         embed.set_thumbnail(url=YUNA_THUMBNAIL)
-        embed.add_field(name="Companion XP Pool", value=f"**{self.pending_xp:,}** XP", inline=False)
+        embed.add_field(
+            name="Companion XP Pool", value=f"**{self.pending_xp:,}** XP", inline=False
+        )
 
         active = [c for c in self.companions if c.is_active]
         lines = []
         if active and self.pending_xp > 0:
-            lines.append(f"🐾 **Level Companions** — Split {self.pending_xp:,} XP among {len(active)} active companion(s)")
+            lines.append(
+                f"🐾 **Level Companions** — Split {self.pending_xp:,} XP among {len(active)} active companion(s)"
+            )
         if self.pending_xp >= self.XP_PER_KP:
-            lines.append(f"✨ **Convert to KP** — {self.XP_PER_KP:,} XP = 1 Kinship Point ({self.pending_xp // self.XP_PER_KP:,} available)")
+            lines.append(
+                f"✨ **Convert to KP** — {self.XP_PER_KP:,} XP = 1 Kinship Point ({self.pending_xp // self.XP_PER_KP:,} available)"
+            )
         if self.is_maxed and self.pending_xp >= self.XP_PER_RUNE:
-            lines.append(f"🔮 **Rune of Partnership** — {self.XP_PER_RUNE:,} XP = 1 Rune ({self.pending_xp // self.XP_PER_RUNE} available)")
+            lines.append(
+                f"🔮 **Rune of Partnership** — {self.XP_PER_RUNE:,} XP = 1 Rune ({self.pending_xp // self.XP_PER_RUNE} available)"
+            )
         if not lines:
             lines.append("*Earn more XP to unlock options.*")
 
@@ -349,7 +385,9 @@ class XPDistributeView(BaseView):
         self._processing = True
         await interaction.response.defer()
 
-        total_xp = await self.bot.database.users.consume_pending_companion_cookies(self.user_id)
+        total_xp = await self.bot.database.users.consume_pending_companion_cookies(
+            self.user_id
+        )
         if total_xp <= 0:
             self._processing = False
             await interaction.followup.send("No XP to distribute.", ephemeral=True)
@@ -357,13 +395,18 @@ class XPDistributeView(BaseView):
 
         active = [c for c in self.companions if c.is_active]
         if not active:
-            await self.bot.database.users.add_pending_companion_cookies(self.user_id, total_xp)
+            await self.bot.database.users.add_pending_companion_cookies(
+                self.user_id, total_xp
+            )
             self._processing = False
-            await interaction.followup.send("No active companions. Set one active first.", ephemeral=True)
+            await interaction.followup.send(
+                "No active companions. Set one active first.", ephemeral=True
+            )
             return
 
         xp_per = total_xp // len(active)
         from core.companions.mastery import kp_from_overflow_xp
+
         msgs = []
         overflow_xp = 0
         for comp in active:
@@ -388,10 +431,13 @@ class XPDistributeView(BaseView):
         if overflow_xp > 0:
             kp_earned = kp_from_overflow_xp(overflow_xp)
             if kp_earned > 0:
-                await self.bot.database.companions.add_kinship_points(self.user_id, self.server_id, kp_earned)
+                await self.bot.database.companions.add_kinship_points(
+                    self.user_id, self.server_id, kp_earned
+                )
                 msgs.append(f"+{kp_earned} Kinship Points from overflow XP.")
 
         from core.items.factory import create_companion
+
         rows = await self.bot.database.companions.get_all(self.user_id)
         self.companions = [create_companion(r) for r in rows] if rows else []
         self.parent.companions = self.companions
@@ -400,7 +446,9 @@ class XPDistributeView(BaseView):
         self.parent.update_buttons()
 
         summary = "\n".join(msgs) if msgs else "XP distributed."
-        await interaction.edit_original_response(embed=self.parent.get_embed(), view=self.parent)
+        await interaction.edit_original_response(
+            embed=self.parent.get_embed(), view=self.parent
+        )
         await interaction.followup.send(
             f"🐾 **XP Distributed** ({total_xp:,} XP across {len(active)} companion(s))\n{summary}",
             ephemeral=True,
@@ -413,20 +461,30 @@ class XPDistributeView(BaseView):
         self._processing = True
         await interaction.response.defer()
 
-        pending = await self.bot.database.users.get_pending_companion_cookies(self.user_id)
+        pending = await self.bot.database.users.get_pending_companion_cookies(
+            self.user_id
+        )
         kp_to_gain = pending // self.XP_PER_KP
         xp_to_spend = kp_to_gain * self.XP_PER_KP
 
         if kp_to_gain <= 0:
             self._processing = False
-            await interaction.followup.send(f"Need at least {self.XP_PER_KP:,} XP to convert.", ephemeral=True)
+            await interaction.followup.send(
+                f"Need at least {self.XP_PER_KP:,} XP to convert.", ephemeral=True
+            )
             return
 
-        all_xp = await self.bot.database.users.consume_pending_companion_cookies(self.user_id)
+        all_xp = await self.bot.database.users.consume_pending_companion_cookies(
+            self.user_id
+        )
         remainder = all_xp - xp_to_spend
         if remainder > 0:
-            await self.bot.database.users.add_pending_companion_cookies(self.user_id, remainder)
-        await self.bot.database.companions.add_kinship_points(self.user_id, self.server_id, kp_to_gain)
+            await self.bot.database.users.add_pending_companion_cookies(
+                self.user_id, remainder
+            )
+        await self.bot.database.companions.add_kinship_points(
+            self.user_id, self.server_id, kp_to_gain
+        )
 
         self.pending_xp = remainder
         self.parent._pending_cookies = remainder
@@ -447,20 +505,30 @@ class XPDistributeView(BaseView):
         self._processing = True
         await interaction.response.defer()
 
-        pending = await self.bot.database.users.get_pending_companion_cookies(self.user_id)
+        pending = await self.bot.database.users.get_pending_companion_cookies(
+            self.user_id
+        )
         runes_to_gain = pending // self.XP_PER_RUNE
         xp_to_spend = runes_to_gain * self.XP_PER_RUNE
 
         if runes_to_gain <= 0:
             self._processing = False
-            await interaction.followup.send(f"Need at least {self.XP_PER_RUNE:,} XP.", ephemeral=True)
+            await interaction.followup.send(
+                f"Need at least {self.XP_PER_RUNE:,} XP.", ephemeral=True
+            )
             return
 
-        all_xp = await self.bot.database.users.consume_pending_companion_cookies(self.user_id)
+        all_xp = await self.bot.database.users.consume_pending_companion_cookies(
+            self.user_id
+        )
         remainder = all_xp - xp_to_spend
         if remainder > 0:
-            await self.bot.database.users.add_pending_companion_cookies(self.user_id, remainder)
-        await self.bot.database.users.modify_currency(self.user_id, "partnership_runes", runes_to_gain)
+            await self.bot.database.users.add_pending_companion_cookies(
+                self.user_id, remainder
+            )
+        await self.bot.database.users.modify_currency(
+            self.user_id, "partnership_runes", runes_to_gain
+        )
 
         self.pending_xp = remainder
         self.parent._pending_cookies = remainder
@@ -476,7 +544,9 @@ class XPDistributeView(BaseView):
 
     async def go_back(self, interaction: Interaction):
         self.parent.update_buttons()
-        await interaction.response.edit_message(embed=self.parent.get_embed(), view=self.parent)
+        await interaction.response.edit_message(
+            embed=self.parent.get_embed(), view=self.parent
+        )
 
 
 class CompanionDetailView(BaseView):

@@ -99,7 +99,9 @@ async def generate_weapon(user_id: str, level: int) -> Weapon:
     if random.randint(0, 100) < WEAPON_RARITY_ROLL_CHANCE:
         weapon.rarity = int(get_scaled_stat(level, _WEAPON_CAPS["rarity"]))
 
-    hit, crit, multi, base_rar = random.choices(_WEAPON_BASE_TEMPLATES, _TEMPLATE_WEIGHTS)[0]
+    hit, crit, multi, base_rar = random.choices(
+        _WEAPON_BASE_TEMPLATES, _TEMPLATE_WEIGHTS
+    )[0]
     weapon.hit_chance = hit
     weapon.crit_chance = crit
     weapon.crit_multi = multi
@@ -204,9 +206,7 @@ async def generate_armor(user_id: str, level: int) -> Armor:
     return armor
 
 
-async def generate_glove(
-    user_id: str, level: int
-) -> Glove:
+async def generate_glove(user_id: str, level: int) -> Glove:
     """Generate a unique glove item. Gloves roll one primary stat (Atk, Def, or Ward)
     and one secondary stat (PDR or FDR). They do not drop runes."""
     try:

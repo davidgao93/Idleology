@@ -292,7 +292,9 @@ class ItemDetailView(BaseView):
         xp_msg = ""
         total_xp_val = CompanionMechanics.calculate_feed_xp(self.item)
         if total_xp_val > 0:
-            await self.bot.database.users.add_pending_companion_cookies(self.user_id, total_xp_val)
+            await self.bot.database.users.add_pending_companion_cookies(
+                self.user_id, total_xp_val
+            )
             xp_msg = f"\n🐾 **+{total_xp_val:,} XP** added to your Companion XP pool."
 
         # Discard DB

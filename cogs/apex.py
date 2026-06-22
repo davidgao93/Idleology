@@ -1,6 +1,5 @@
 # cogs/apex.py
 
-import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
@@ -70,11 +69,16 @@ class Apex(commands.Cog, name="apex"):
                 profile,
                 charges,
             )
-            return _build_lobby_embed(player_name, profile, charges, secs_to_next), _view
+            return (
+                _build_lobby_embed(player_name, profile, charges, secs_to_next),
+                _view,
+            )
 
         if not await self.bot.database.tutorials.has_seen(user_id, "apex"):
             await self.bot.database.tutorials.mark_seen(user_id, "apex")
-            gate = TutorialGateView(self.bot, user_id, server_id, "apex", build_main=_build)
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "apex", build_main=_build
+            )
             await interaction.response.send_message(embed=gate.build_embed(), view=gate)
             gate.message = await interaction.original_response()
             return
@@ -107,16 +111,16 @@ class Apex(commands.Cog, name="apex"):
                 ephemeral=True,
             )
 
-        from core.items.factory import load_player
         from core.apex.models import (
-            soul_stone_from_db,
-            shards_from_db,
             meta_shards_from_db,
+            shards_from_db,
+            soul_stone_from_db,
         )
         from core.apex.views.soul_stone_view import (
             SoulStoneView,
             _build_soul_stone_embed,
         )
+        from core.items.factory import load_player
 
         player = await load_player(user_id, existing_user, self.bot.database)
 

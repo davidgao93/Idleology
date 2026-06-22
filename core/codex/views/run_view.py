@@ -134,8 +134,9 @@ class CodexRunView(BaseView):
         initial_monster: Monster,
         start_logs: dict,
         chapter_wave_baseline: dict = None,
+        server_id: str = "",
     ):
-        super().__init__(bot, user_id)
+        super().__init__(bot, user_id, server_id)
         self.player = player
         self.chapters = chapters
         self.chapter_idx = 0
@@ -743,7 +744,11 @@ class CodexRunView(BaseView):
         await self.bot.database.users.modify_gold(self.user_id, self.cumulative_gold)
 
         exp_changes = await ExperienceManager.add_experience(
-            self.bot, self.user_id, self.player, self.cumulative_xp
+            self.bot,
+            self.user_id,
+            self.player,
+            self.cumulative_xp,
+            server_id=self.server_id,
         )
         await self.bot.database.users.update_from_player_object(self.player)
 

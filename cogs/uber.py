@@ -26,8 +26,6 @@ class Uber(commands.Cog, name="uber"):
                 ephemeral=True,
             )
 
-        self.bot.state_manager.set_active(user_id, "uber_boss")
-
         async def _build():
             player = await load_player(user_id, existing_user, self.bot.database)
             uber_data = await self.bot.database.uber.get_uber_progress(

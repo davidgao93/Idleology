@@ -999,7 +999,6 @@ class SettlementRepository:
         )
         await self.connection.commit()
 
-
     # ------------------------------------------------------------------
     # Uber Shrine Statues
     # ------------------------------------------------------------------
@@ -1035,13 +1034,17 @@ class SettlementRepository:
             (user_id, server_id),
         )
         s_rows = await s_cursor.fetchall()
-        statue_state = {r[0]: {"is_unlocked": bool(r[1]), "workers_assigned": r[2]} for r in s_rows}
+        statue_state = {
+            r[0]: {"is_unlocked": bool(r[1]), "workers_assigned": r[2]} for r in s_rows
+        }
 
         return {
             key: {
                 "can_build": can_build[key],
                 "is_unlocked": statue_state.get(key, {}).get("is_unlocked", False),
-                "workers_assigned": statue_state.get(key, {}).get("workers_assigned", 0),
+                "workers_assigned": statue_state.get(key, {}).get(
+                    "workers_assigned", 0
+                ),
             }
             for key in ("celestial", "infernal", "void", "bound")
         }

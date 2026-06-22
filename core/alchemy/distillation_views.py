@@ -152,13 +152,25 @@ class PotionDistillationView(BaseView):
         # Compute bar fractions directly from raw accumulators to avoid rounding
         # artifacts from back-calculating through project_values' rounded output.
         raw_max = DistillationMechanics.get_raw_max(s)
-        val_frac = min(1.0, max(0.0, s.get("value_mod", 0.0)) / raw_max) if raw_max > 0 else 0.0
-        dur_frac = min(1.0, max(0.0, s.get("duration_mod", 0.0)) / raw_max) if raw_max > 0 else 0.0
+        val_frac = (
+            min(1.0, max(0.0, s.get("value_mod", 0.0)) / raw_max)
+            if raw_max > 0
+            else 0.0
+        )
+        dur_frac = (
+            min(1.0, max(0.0, s.get("duration_mod", 0.0)) / raw_max)
+            if raw_max > 0
+            else 0.0
+        )
         val_pct = int(val_frac * 100)
         dur_pct = int(dur_frac * 100)
 
         is_last_step = display_step >= DistillationMechanics.STEPS
-        step_note = "⚠️ **Final step — choose well.**" if is_last_step else "Pick a reagent — each carries a different property this step."
+        step_note = (
+            "⚠️ **Final step — choose well.**"
+            if is_last_step
+            else "Pick a reagent — each carries a different property this step."
+        )
         embed.description = (
             f"**Step {display_step} / {DistillationMechanics.STEPS}** · ✨ {safe_dust:,} dust\n"
             f"**Core:** {base_info.get('emoji', '⚗️')} **{base_info.get('name', base)}**\n\n"
@@ -181,7 +193,9 @@ class PotionDistillationView(BaseView):
                 r_name = p.get("name", "Reagent")
                 event = p.get("event", {})
                 e_name = event.get("name", "Standard")
-                e_desc = p.get("property_desc") or event.get("desc", "Standard outcome.")
+                e_desc = p.get("property_desc") or event.get(
+                    "desc", "Standard outcome."
+                )
                 prop_lines.append(f"{r_emoji} {r_name} — **{e_name}**: {e_desc}")
             embed.add_field(
                 name="Reagent Properties",
@@ -410,7 +424,9 @@ class PotionDistillationView(BaseView):
                 confirm_view = _ConfirmOrAbandonView(
                     self.bot, self.user_id, self.server_id, self
                 )
-                embed.set_footer(text="Distillation complete — confirm to keep this passive, or abandon the run.")
+                embed.set_footer(
+                    text="Distillation complete — confirm to keep this passive, or abandon the run."
+                )
                 await interaction.edit_original_response(embed=embed, view=confirm_view)
                 self.stop()
             else:
@@ -439,20 +455,25 @@ class PotionDistillationView(BaseView):
         if target and 1 <= target <= slot_count:
             slot = target
         else:
-            slot = next((sl for sl in range(1, slot_count + 1) if sl not in occupied), 1)
+            slot = next(
+                (sl for sl in range(1, slot_count + 1) if sl not in occupied), 1
+            )
 
         # If the slot is occupied, offer a keep-or-replace choice instead of writing directly.
         if slot in occupied:
             old_p = passive_by_slot[slot]
             old_name, old_emoji = get_passive_name_emoji(old_p["passive_type"])
             from core.alchemy.mechanics import AlchemyMechanics
+
             old_desc = AlchemyMechanics.format_passive(
                 old_p["passive_type"],
                 old_p["passive_value"],
                 old_p.get("passive_duration", 2.0),
             )
             choice_view = _KeepOrReplaceView(
-                self.bot, self.user_id, self.server_id,
+                self.bot,
+                self.user_id,
+                self.server_id,
                 slot=slot,
                 new_base_type=base_type,
                 new_val=final_val,
@@ -463,14 +484,18 @@ class PotionDistillationView(BaseView):
                 title="⚗️ Distillation Complete — Choose Your Passive",
                 color=discord.Color.gold(),
             )
-            choice_embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+            choice_embed.set_author(
+                name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT
+            )
             choice_embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
             choice_embed.description = (
                 f"*The ritual is done. Slot {slot} is already occupied — you decide what stays.*\n\n"
                 f"**New:** {emoji} **{name}**\n{final_desc}\n\n"
                 f"**Current:** {old_emoji} **{old_name}**\n{old_desc}"
             )
-            await interaction.edit_original_response(embed=choice_embed, view=choice_view)
+            await interaction.edit_original_response(
+                embed=choice_embed, view=choice_view
+            )
             self.stop()
             return
 
@@ -540,7 +565,9 @@ class PotionDistillationView(BaseView):
 class _ConfirmOrAbandonView(BaseView):
     """Shown after the final distillation step so the player can see the result before committing."""
 
-    def __init__(self, bot, user_id: str, server_id: str, distill_view: "PotionDistillationView"):
+    def __init__(
+        self, bot, user_id: str, server_id: str, distill_view: "PotionDistillationView"
+    ):
         super().__init__(bot, user_id, server_id)
         self._distill_view = distill_view
         self._processing = False
@@ -609,8 +636,14 @@ class _KeepOrReplaceView(BaseView):
             self._new_base_type, self._new_val, self._new_dur
         )
         await self._distill_view._write_passive_and_show_hub(
-            interaction, self._slot, self._new_base_type, self._new_val, self._new_dur,
-            new_name, new_emoji, new_desc,
+            interaction,
+            self._slot,
+            self._new_base_type,
+            self._new_val,
+            self._new_dur,
+            new_name,
+            new_emoji,
+            new_desc,
         )
         self.stop()
 
@@ -645,6 +678,12 @@ async def start_distillation(
 ):
     level, dust = await _get_alchemy_context(bot, user_id, server_id)
     view = PotionDistillationView(
-        bot, user_id, server_id, level, dust, excluded_passive_types, target_slot=target_slot
+        bot,
+        user_id,
+        server_id,
+        level,
+        dust,
+        excluded_passive_types,
+        target_slot=target_slot,
     )
     await view.start(interaction)

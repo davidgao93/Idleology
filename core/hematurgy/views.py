@@ -2,7 +2,12 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.images import CONSUME_SLOT_IMAGES, HEMATURGY, VALDRIS_PORTRAIT, VALDRIS_THUMBNAIL
+from core.images import (
+    CONSUME_SLOT_IMAGES,
+    HEMATURGY,
+    VALDRIS_PORTRAIT,
+    VALDRIS_THUMBNAIL,
+)
 from core.npc_voices import get_quip
 from core.hematurgy.mechanics import (
     EVO_MAX_TIER,

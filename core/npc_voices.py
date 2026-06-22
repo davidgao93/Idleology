@@ -14,9 +14,7 @@ import random
 # ---------------------------------------------------------------------------
 
 _VOICES: dict[str, list[str]] = {
-
     # ── Tavern ────────────────────────────────────────────────────────────────
-
     "shop": [
         "Still alive, adventurer? Good. The shelves are a bit bare today, but I still have what you need.",
         "Another face through my door. Let's see if your gold lasts longer than your luck.",
@@ -24,7 +22,6 @@ _VOICES: dict[str, list[str]] = {
         "You look like you could use a patch-up. Lucky for you, I never close.",
         "Stock's fresh. Don't make me wait all day — what'll it be?",
     ],
-
     "casino": [
         "Table Stake down. Feeling lucky, or just desperate? Either way, I'm here for it.",
         "The house never sleeps. Neither do I. Place your bet.",
@@ -32,23 +29,19 @@ _VOICES: dict[str, list[str]] = {
         "Fortune favours the bold. Or so they keep telling me. Let's find out.",
         "Sit down. The night is young and your gold has places to be.",
     ],
-
     "rest": [
         "Rough out there? I've got a room with your name on it.",
         "You look like you've been through a war. The bed doesn't judge.",
         "Clean sheets. Warm fire. It's all yours — for the right price.",
         "Rest well. You'll need it.",
     ],
-
     "checkin": [
         "On time again. I was starting to think you'd forgotten about me.",
         "Day's rewards are ready. Don't spend it all in one place.",
         "There you are. I keep a tally, you know. Consistency counts.",
         "A little something for showing up. It adds up, trust me.",
     ],
-
     # ── Guild & Quests ────────────────────────────────────────────────────────
-
     "slayer": [
         "Another hunter walks in. Let's see how much blood you've spilled since last time. Don't disappoint me.",
         "I don't hand out easy tasks. If you want a challenge, you came to the right place.",
@@ -56,7 +49,6 @@ _VOICES: dict[str, list[str]] = {
         "The monsters aren't going to slay themselves. Get moving.",
         "I've seen veterans crumble on these tasks. I don't think you will. Prove me right.",
     ],
-
     "quest_shop": [
         "Oh good, you're here. Those tokens burning a hole in your pocket? I've got just the thing.",
         "Spend wisely. I only restock what's worth stocking.",
@@ -64,9 +56,7 @@ _VOICES: dict[str, list[str]] = {
         "The best rewards don't come cheap. But you've already done the hard part.",
         "I don't run charity. You earned these tokens — now spend them on something that matters.",
     ],
-
     # ── Hatchery ──────────────────────────────────────────────────────────────
-
     "hatchery": [
         "Welcome back, Adventurer! Got any eggs for me to look after? 🥚",
         "You haven't... eaten any of the eggs you received, have you? You monster!",
@@ -76,7 +66,6 @@ _VOICES: dict[str, list[str]] = {
         "A fresh delivery? Wonderful! I'll have them cosy in no time. Leave it to me~",
         "These little ones are counting on us, Adventurer. Let's not let them down!",
     ],
-
     "hatchery_release": [
         "This one has some fight in them! Better not lose your head, Adventurer — literally. 😅",
         "This one's a proper feisty fella! They almost bit my arm off the other day — I'd watch out if I were you!",
@@ -85,9 +74,7 @@ _VOICES: dict[str, list[str]] = {
         "Hehe, they're ready! Just... maybe stretch first? And bring lots of potions. Lots and lots of potions.",
         "Don't let the cute memories fool you — whatever this thing is now, it is NOT the egg you brought in. Good luck!",
     ],
-
     # ── Companions & Nursery ──────────────────────────────────────────────────
-
     "companions": [
         "Back again? Your companions have been restless without you.",
         "Every bond you forge here will carry you further than any weapon.",
@@ -95,7 +82,6 @@ _VOICES: dict[str, list[str]] = {
         "They fight for you. The least you can do is check in on them.",
         "I've seen a lot of tamers pass through. The ones who care about their partners go the furthest.",
     ],
-
     "nursery": [
         "A well-staffed Nursery is the heartbeat of any thriving settlement.",
         "More workers, more progress. It's not complicated — it just takes patience.",
@@ -103,9 +89,7 @@ _VOICES: dict[str, list[str]] = {
         "The Nursery never rests. Neither should you.",
         "Growth takes time. But it also takes someone tending the flame. That's your job.",
     ],
-
     # ── Endgame Systems ───────────────────────────────────────────────────────
-
     "ascent": [
         "Each floor you conquer brings you one step closer to your true self. The summit does not wait.",
         "I've guided many climbers. Few reach the top. I believe you will.",
@@ -113,7 +97,6 @@ _VOICES: dict[str, list[str]] = {
         "Every pinnacle floor you unlock is a permanent mark on who you are. Climb well.",
         "The Ascent isn't just a tower. It's a mirror. What you find at the top will surprise you.",
     ],
-
     "codex": [
         "The Codex rewards those who return to it. Every run teaches you something the last one didn't.",
         "Five chapters. Endless variation. The knowledge is here — you just have to survive it.",
@@ -121,7 +104,6 @@ _VOICES: dict[str, list[str]] = {
         "Don't underestimate the tomes. They compound. So does your potential.",
         "A scholar does not fear difficulty. They study it. Welcome back.",
     ],
-
     "apex": [
         "The Apex zones are no place for the unprepared. Choose your hunt wisely.",
         "Each zone shapes you differently. The shards you carry are proof of that.",
@@ -129,7 +111,6 @@ _VOICES: dict[str, list[str]] = {
         "Defeat teaches more than victory ever could. But winning is better. Go win.",
         "The Soul Stone doesn't care how you got the shards. Only that you did.",
     ],
-
     "maw": [
         "The Maw stirs again. Strike true — every wound you deal is remembered.",
         "It cannot be killed. But it can be hurt. Show it what you're made of.",
@@ -137,7 +118,6 @@ _VOICES: dict[str, list[str]] = {
         "Faith is striking a thing that will not fall and striking it anyway.",
         "Your contribution matters more than you know. The wound you deal is carried by all of us.",
     ],
-
     "consume": [
         "What you consume, you become. Choose carefully what you take from the fallen.",
         "The parts of your enemies are not trophies — they're resources. Use them.",
@@ -145,7 +125,6 @@ _VOICES: dict[str, list[str]] = {
         "Don't waste what the monsters leave behind. That's just leaving power on the floor.",
         "The body is a vessel. Fill it with something worth carrying.",
     ],
-
     "hematurgy": [
         "The blood holds secrets that even death cannot silence. I'll show you how to unlock them.",
         "Every passive you unlock here is woven into your very nature. Permanent. Irreversible. Choose wisely.",
@@ -153,7 +132,6 @@ _VOICES: dict[str, list[str]] = {
         "This is not for the faint of heart. Good. You don't look faint of heart.",
         "The body adapts. That's the truth every hematurge builds their craft on. Let's adapt you.",
     ],
-
     "paradise": [
         "The Jewel responds to those who have mastered themselves. Tell me — what power will you seek?",
         "Each cut reveals something inside the stone. Each skill reveals something inside you.",
@@ -161,7 +139,6 @@ _VOICES: dict[str, list[str]] = {
         "I've watched warriors unlock their first skill and never look back. You'll understand soon.",
         "The Jewel of Paradise is not a reward. It is a beginning.",
     ],
-
     "uber": [
         "These are the pinnacle of all you will face. Only those who have proven themselves may challenge them.",
         "Step carefully. These beings did not become what they are by accident.",
@@ -169,9 +146,7 @@ _VOICES: dict[str, list[str]] = {
         "The Sovereigns are not just powerful. They are patient. Do not let them outlast you.",
         "Every key you spend here is a declaration. Make sure you mean it.",
     ],
-
     # ── Alchemy ───────────────────────────────────────────────────────────────
-
     "alchemy": [
         "Welcome back to the lab. The reagents are restless today. Try not to disappoint them.",
         "You again. The cauldron hasn't exploded since your last visit. I'm choosing to see that as progress.",
@@ -184,9 +159,7 @@ _VOICES: dict[str, list[str]] = {
         "Progress requires boldness. It also requires not drinking unlabeled substances. Keep both in mind.",
         "I see you've survived long enough to return. Encouraging.",
     ],
-
     # ── Settlement ────────────────────────────────────────────────────────────
-
     "black_market": [
         "Max tilts his head. 'What have you brought me today?'",
         "'Interesting selection,' he murmurs. 'Let's see what this fetches.'",
@@ -202,6 +175,7 @@ _VOICES: dict[str, list[str]] = {
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def get_quip(key: str) -> str:
     """Return a random quip for the given NPC / feature key.

@@ -5,7 +5,13 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.combat.economy.drops import _PART_SLOTS, _PART_WEIGHTS
-from core.images import CONSUME_EGG, CONSUME_HUB, CONSUME_SLOT_IMAGES, RAGNA_PORTRAIT, RAGNA_THUMBNAIL
+from core.images import (
+    CONSUME_EGG,
+    CONSUME_HUB,
+    CONSUME_SLOT_IMAGES,
+    RAGNA_PORTRAIT,
+    RAGNA_THUMBNAIL,
+)
 from core.npc_voices import get_quip
 from core.items.factory import create_monster_part
 from core.models import MonsterPart, Player

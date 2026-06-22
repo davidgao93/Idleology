@@ -115,7 +115,11 @@ class ApexCombatView(CombatView):
 
         # Apply XP gain
         exp_changes = await ExperienceManager.add_experience(
-            self.bot, self.user_id, self.player, reward_data["xp"]
+            self.bot,
+            self.user_id,
+            self.player,
+            reward_data["xp"],
+            server_id=self.server_id,
         )
         reward_data["xp"] = exp_changes["xp_added"]
         reward_data["msgs"].extend(exp_changes["msgs"])

@@ -228,7 +228,9 @@ _SLAYER_EMBLEM_FUNCS: dict = {
     "xp_find": lambda t: f"+{t * 3}% XP from combat",
     "task_progress": lambda t: f"{t * 5}% chance for a kill to count twice",
     "slayer_drops": lambda t: f"{t * 5}% chance for extra slayer drops",
-    "corrupted_find": lambda t: f"+{t * 0.2:.1f}% corrupted encounter chance (Level 100+)",
+    "corrupted_find": lambda t: (
+        f"+{t * 0.2:.1f}% corrupted encounter chance (Level 100+)"
+    ),
 }
 
 _CODEX_TOME_INFO: dict = {
@@ -312,15 +314,64 @@ _HEMATURGY_SHORT_FUNCS: dict = {
 
 # Alchemy potion passives — (value, duration) → description string
 _POTION_PASSIVE_DESCS: dict[str, tuple[str, callable]] = {
-    "panacea":      ("🌿 Panacea",      lambda v, d: f"On potion use: {v:.0f}% chance to cleanse ailments and grant {d:.0f}t immunity"),
-    "eclipse":      ("🌑 Eclipse",      lambda v, d: f"On potion use: next {d:.0f} attacks deal +{v:.0f}% damage and are guaranteed crits"),
-    "aegis":        ("🛡️ Aegis",        lambda v, d: f"On potion use: shield = {v:.0f}% max HP for {d:.0f} turns"),
-    "enfeeble":     ("🌊 Enfeeble",     lambda v, d: f"On potion use: monster −{v:.0f}% ATK/DEF for {d:.0f} of its turns"),
-    "blood_tithe":  ("🩸 Blood Tithe",  lambda v, d: f"On potion use: leech {v:.0f}% of damage as HP for next {d:.0f} hits"),
-    "accel":        ("⚡ Accel",        lambda v, d: f"On potion use: +{v:.0f}% Hit Chance for {d:.0f} turns"),
-    "quench":       ("🍺 Quench",       lambda v, d: f"On potion use: heal +{v:.0f}% max HP then 5% max HP/turn for {d:.0f} turns"),
-    "viper":        ("🐍 Viper",        lambda v, d: f"On potion use: {v:.0f}% heal as burst damage + DoT for {d:.0f} turns"),
-    "enrage":       ("💪 Enrage",       lambda v, d: f"On potion use: +{v:.0f}% ATK and DEF for {d:.0f} monster turns"),
-    "barrier":      ("🔮 Barrier",      lambda v, d: f"On potion use: +{v:.0f}% of heal as Ward each turn for {d:.0f} turns"),
-    "painkiller":   ("🩹 Painkiller",   lambda v, d: f"On potion use: −{v:.0f}% damage from the monster's next {d:.0f} hits"),
+    "panacea": (
+        "🌿 Panacea",
+        lambda v, d: (
+            f"On potion use: {v:.0f}% chance to cleanse ailments and grant {d:.0f}t immunity"
+        ),
+    ),
+    "eclipse": (
+        "🌑 Eclipse",
+        lambda v, d: (
+            f"On potion use: next {d:.0f} attacks deal +{v:.0f}% damage and are guaranteed crits"
+        ),
+    ),
+    "aegis": (
+        "🛡️ Aegis",
+        lambda v, d: f"On potion use: shield = {v:.0f}% max HP for {d:.0f} turns",
+    ),
+    "enfeeble": (
+        "🌊 Enfeeble",
+        lambda v, d: (
+            f"On potion use: monster −{v:.0f}% ATK/DEF for {d:.0f} of its turns"
+        ),
+    ),
+    "blood_tithe": (
+        "🩸 Blood Tithe",
+        lambda v, d: (
+            f"On potion use: leech {v:.0f}% of damage as HP for next {d:.0f} hits"
+        ),
+    ),
+    "accel": (
+        "⚡ Accel",
+        lambda v, d: f"On potion use: +{v:.0f}% Hit Chance for {d:.0f} turns",
+    ),
+    "quench": (
+        "🍺 Quench",
+        lambda v, d: (
+            f"On potion use: heal +{v:.0f}% max HP then 5% max HP/turn for {d:.0f} turns"
+        ),
+    ),
+    "viper": (
+        "🐍 Viper",
+        lambda v, d: (
+            f"On potion use: {v:.0f}% heal as burst damage + DoT for {d:.0f} turns"
+        ),
+    ),
+    "enrage": (
+        "💪 Enrage",
+        lambda v, d: f"On potion use: +{v:.0f}% ATK and DEF for {d:.0f} monster turns",
+    ),
+    "barrier": (
+        "🔮 Barrier",
+        lambda v, d: (
+            f"On potion use: +{v:.0f}% of heal as Ward each turn for {d:.0f} turns"
+        ),
+    ),
+    "painkiller": (
+        "🩹 Painkiller",
+        lambda v, d: (
+            f"On potion use: −{v:.0f}% damage from the monster's next {d:.0f} hits"
+        ),
+    ),
 }

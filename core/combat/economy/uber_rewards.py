@@ -168,7 +168,11 @@ async def _uber_defeat(
 async def _uber_finalize_rewards(view, reward_data: dict) -> None:
     """Apply XP, gold, soulreap heal, and persist player. Mutates reward_data xp field."""
     exp_changes = await ExperienceManager.add_experience(
-        view.bot, view.user_id, view.player, reward_data["xp"]
+        view.bot,
+        view.user_id,
+        view.player,
+        reward_data["xp"],
+        server_id=view.server_id,
     )
     reward_data["xp"] = exp_changes["xp_added"]
     reward_data["msgs"].extend(exp_changes["msgs"])
