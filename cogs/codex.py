@@ -36,15 +36,12 @@ class Codex(commands.Cog, name="codex"):
         # 3. Load player with all gear and tomes (cooldown is checked on Begin Run, not here)
         player = await load_player(user_id, existing_user, self.bot.database)
 
-        # 5. Load Codex currencies (fetched by column name to avoid index fragility)
-        fragments = await self.bot.database.users.get_currency(
-            user_id, "codex_fragments"
-        )
-        pages = await self.bot.database.users.get_currency(user_id, "codex_pages")
-        rerolls = await self.bot.database.users.get_currency(user_id, "codex_rerolls")
-        antique_tomes = await self.bot.database.users.get_currency(
-            user_id, "antique_tome"
-        )
+        # 5. Load Codex currencies
+        cur = await self.bot.database.users.get_all_currencies(user_id)
+        fragments = cur["codex_fragments"]
+        pages = cur["codex_pages"]
+        rerolls = cur["codex_rerolls"]
+        antique_tomes = cur["antique_tome"]
 
         # 6. Load chapter history for display
         try:

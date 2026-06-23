@@ -270,6 +270,14 @@ class UserRepository:
 
     _COLUMN_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
+    async def get_all_currencies(self, user_id: str) -> dict:
+        """Fetch the full player_currencies row as a plain dict. Returns {} if no row exists."""
+        cursor = await self.connection.execute(
+            "SELECT * FROM player_currencies WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else {}
+
     async def get_currency(self, user_id: str, column: str) -> int:
         if not self._COLUMN_RE.match(column):
             raise ValueError(f"get_currency: invalid column name {column!r}")

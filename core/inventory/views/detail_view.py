@@ -75,20 +75,13 @@ class ItemDetailView(BaseView):
 
     async def fetch_data(self):
         """Async setup to fetch currency/keys needed for button logic."""
+        cur = await self.bot.database.users.get_all_currencies(self.user_id)
         if isinstance(self.item, Weapon):
-            self.void_keys = await self.bot.database.users.get_currency(
-                self.user_id, "void_keys"
-            )
+            self.void_keys = cur["void_keys"]
         if isinstance(self.item, (Armor, Glove, Boot, Helmet)):
-            self.shatter_runes = await self.bot.database.users.get_currency(
-                self.user_id, "shatter_runes"
-            )
-        self.mirage_runes_imperfect = await self.bot.database.users.get_currency(
-            self.user_id, "mirage_runes_imperfect"
-        )
-        self.mirage_runes_perfected = await self.bot.database.users.get_currency(
-            self.user_id, "mirage_runes_perfected"
-        )
+            self.shatter_runes = cur["shatter_runes"]
+        self.mirage_runes_imperfect = cur["mirage_runes_imperfect"]
+        self.mirage_runes_perfected = cur["mirage_runes_perfected"]
         self.setup_buttons()
 
     def setup_buttons(self):

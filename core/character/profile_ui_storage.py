@@ -22,15 +22,16 @@ class StorageProfileBuilder:
         h_count = await bot.database.equipment.get_count(user_id, "helmet")
         pet_count = await bot.database.companions.get_count(user_id)
 
-        dragon_keys = await bot.database.users.get_currency(user_id, "dragon_key")
-        angel_keys = await bot.database.users.get_currency(user_id, "angel_key")
-        void_frags = await bot.database.users.get_currency(user_id, "void_frags")
-        soul_cores = await bot.database.users.get_currency(user_id, "soul_cores")
-        k_balance = await bot.database.users.get_currency(user_id, "balance_fragment")
-        curios = await bot.database.users.get_currency(user_id, "curios")
-        antique_tomes = await bot.database.users.get_currency(user_id, "antique_tome")
-        pinnacle_keys = await bot.database.users.get_currency(user_id, "pinnacle_key")
-        puzzle_boxes = await bot.database.users.get_currency(user_id, "curio_puzzle_boxes")
+        cur = await bot.database.users.get_all_currencies(user_id)
+        dragon_keys = cur["dragon_key"]
+        angel_keys = cur["angel_key"]
+        void_frags = cur["void_frags"]
+        soul_cores = cur["soul_cores"]
+        k_balance = cur["balance_fragment"]
+        curios = cur["curios"]
+        antique_tomes = cur["antique_tome"]
+        pinnacle_keys = cur["pinnacle_key"]
+        puzzle_boxes = cur["curio_puzzle_boxes"]
         items = await bot.database.partners.get_items(user_id)
         guild_tickets = items.get("guild_tickets", 0)
 
@@ -76,14 +77,15 @@ class StorageProfileBuilder:
     async def build_crafting(bot, user_id: str, server_id: str) -> discord.Embed:
         user = await bot.database.users.get(user_id, server_id)
 
-        ref_runes = await bot.database.users.get_currency(user_id, "refinement_runes")
-        pot_runes = await bot.database.users.get_currency(user_id, "potential_runes")
-        imbue_runes = await bot.database.users.get_currency(user_id, "imbue_runes")
-        shat_runes = await bot.database.users.get_currency(user_id, "shatter_runes")
-        r_partner = await bot.database.users.get_currency(user_id, "partnership_runes")
-        mirage_imp = await bot.database.users.get_currency(user_id, "mirage_runes_imperfect")
-        mirage_perf = await bot.database.users.get_currency(user_id, "mirage_runes_perfected")
-        void_keys = await bot.database.users.get_currency(user_id, "void_keys")
+        cur = await bot.database.users.get_all_currencies(user_id)
+        ref_runes = cur["refinement_runes"]
+        pot_runes = cur["potential_runes"]
+        imbue_runes = cur["imbue_runes"]
+        shat_runes = cur["shatter_runes"]
+        r_partner = cur["partnership_runes"]
+        mirage_imp = cur["mirage_runes_imperfect"]
+        mirage_perf = cur["mirage_runes_perfected"]
+        void_keys = cur["void_keys"]
 
         essence_data = await bot.database.essences.get_all(user_id)
 

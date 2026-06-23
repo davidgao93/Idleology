@@ -189,16 +189,31 @@ class Character(commands.Cog, name="character"):
             player = await load_player(user_id, data, self.bot.database)
 
             async def _on_packages_done(msg):
-                done_embed = discord.Embed(
-                    title="✅ Stat Packages Applied!",
-                    description=(
-                        "Your base stats have been updated.\n\n"
-                        "Run `/allocate_stats` again to spend any passive points you've earned."
-                    ),
-                    color=discord.Color.green(),
+                # After packages are spent, check for passive points and flow
+                # directly into StatInvestView rather than making the user re-run.
+                fresh_data = await self.bot.database.users.get(user_id, server_id)
+                all_currencies = await self.bot.database.users.get_all_currencies(
+                    user_id
                 )
-                self.bot.state_manager.clear_active(user_id)
-                await msg.edit(embed=done_embed, view=None)
+                currencies = {
+                    "passive_points": all_currencies["passive_points"],
+                    "rune_of_regret": all_currencies["rune_of_regret"],
+                }
+
+                if currencies["passive_points"] > 0 or currencies["rune_of_regret"] > 0:
+                    invest_view = StatInvestView(
+                        self.bot, user_id, server_id, fresh_data, currencies
+                    )
+                    invest_view.message = msg
+                    await msg.edit(embed=invest_view.build_embed(), view=invest_view)
+                else:
+                    done_embed = discord.Embed(
+                        title="✅ Stat Packages Applied!",
+                        description="Your base stats have been updated.",
+                        color=discord.Color.green(),
+                    )
+                    self.bot.state_manager.clear_active(user_id)
+                    await msg.edit(embed=done_embed, view=None)
 
             picker = StatPackagePicker(
                 self.bot,
@@ -216,7 +231,12 @@ class Character(commands.Cog, name="character"):
 
         # No pending packages — show passive-point allocation as normal.
         self.bot.state_manager.set_active(user_id, "allocate_stats")
-        view = StatInvestView(self.bot, user_id, server_id, data)
+        all_currencies = await self.bot.database.users.get_all_currencies(user_id)
+        currencies = {
+            "passive_points": all_currencies["passive_points"],
+            "rune_of_regret": all_currencies["rune_of_regret"],
+        }
+        view = StatInvestView(self.bot, user_id, server_id, data, currencies)
         await interaction.response.send_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
 

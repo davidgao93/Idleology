@@ -354,14 +354,15 @@ class Combat(commands.Cog, name="combat"):
         if not is_corrupted:
             doors_enabled = await self.bot.database.users.get_doors_enabled(user_id)
             if doors_enabled:
+                all_currencies = await self.bot.database.users.get_all_currencies(
+                    user_id
+                )
                 currencies = {
-                    "dragon_key": existing_user["dragon_key"],
-                    "angel_key": existing_user["angel_key"],
-                    "soul_cores": existing_user["soul_cores"],
-                    "void_frags": existing_user["void_frags"],
-                    "balance_fragment": await self.bot.database.users.get_currency(
-                        user_id, "balance_fragment"
-                    ),
+                    "dragon_key": all_currencies["dragon_key"],
+                    "angel_key": all_currencies["angel_key"],
+                    "soul_cores": all_currencies["soul_cores"],
+                    "void_frags": all_currencies["void_frags"],
+                    "balance_fragment": all_currencies["balance_fragment"],
                 }
                 triggered, boss_type, cost_dict = EncounterManager.check_boss_door(
                     player.level, currencies

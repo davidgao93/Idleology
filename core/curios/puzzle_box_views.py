@@ -150,10 +150,9 @@ class PuzzleBoxView(BaseView):
 
         user_id = self.user_id
         server_id = self.server_id
-        curio_count = await self.bot.database.users.get_currency(user_id, "curios")
-        puzzle_box_count = await self.bot.database.users.get_currency(
-            user_id, "curio_puzzle_boxes"
-        )
+        cur = await self.bot.database.users.get_all_currencies(user_id)
+        curio_count = cur["curios"]
+        puzzle_box_count = cur["curio_puzzle_boxes"]
 
         if curio_count <= 0 and puzzle_box_count <= 0:
             self.stop()

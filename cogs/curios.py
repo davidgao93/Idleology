@@ -21,10 +21,9 @@ class Curios(commands.Cog, name="curios"):
         if not await self.bot.check_is_active(interaction, user_id):
             return
 
-        curio_count = existing_user["curios"]
-        puzzle_box_count = await self.bot.database.users.get_currency(
-            user_id, "curio_puzzle_boxes"
-        )
+        cur = await self.bot.database.users.get_all_currencies(user_id)
+        curio_count = cur["curios"]
+        puzzle_box_count = cur["curio_puzzle_boxes"]
 
         if curio_count <= 0 and puzzle_box_count <= 0:
             return await interaction.response.send_message(

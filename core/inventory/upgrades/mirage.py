@@ -282,12 +282,9 @@ class MirageView(BaseUpgradeView):
         item_type = _item_type_str(self.item)
         factory = _FACTORIES[item_type]
 
-        self.mirage_runes_imperfect = await self.bot.database.users.get_currency(
-            self.user_id, "mirage_runes_imperfect"
-        )
-        self.mirage_runes_perfected = await self.bot.database.users.get_currency(
-            self.user_id, "mirage_runes_perfected"
-        )
+        cur = await self.bot.database.users.get_all_currencies(self.user_id)
+        self.mirage_runes_imperfect = cur["mirage_runes_imperfect"]
+        self.mirage_runes_perfected = cur["mirage_runes_perfected"]
 
         rows = await self.bot.database.equipment.get_all(self.user_id, item_type)
         self.candidates = [
