@@ -17,10 +17,10 @@ class TradeManager:
         "Rune of Imbuing": ("users", "imbue_runes"),
         "Rune of Shattering": ("users", "shatter_runes"),
         # Mining
-        "Iron Ore": ("mining", "iron"),
-        "Coal": ("mining", "coal"),
-        "Gold Ore": ("mining", "gold"),
-        "Platinum Ore": ("mining", "platinum"),
+        "Iron Ore": ("mining", "iron_ore"),
+        "Coal": ("mining", "coal_ore"),
+        "Gold Ore": ("mining", "gold_ore"),
+        "Platinum Ore": ("mining", "platinum_ore"),
         # Woodcutting
         "Oak Logs": ("woodcutting", "oak_logs"),
         "Willow Logs": ("woodcutting", "willow_logs"),

@@ -138,7 +138,7 @@ class StorageProfileBuilder:
         blueprint_count = mat_all.get("unidentified_blueprint", 0)
 
         ores = await bot.database.skills.get_multi_resource(
-            user_id, server_id, "mining", ["iron", "coal", "gold", "platinum", "idea"]
+            user_id, server_id, "mining", ["iron_ore", "coal_ore", "gold_ore", "platinum_ore", "idea_ore"]
         )
         logs = await bot.database.skills.get_multi_resource(
             user_id,

@@ -314,21 +314,21 @@ async def _calculate_dt_production(
         wood = await bot.database.skills.get_data(user_id, server_id, "woodcutting")
         fish = await bot.database.skills.get_data(user_id, server_id, "fishing")
         raw_inv = {
-            "iron": mining[3],
-            "coal": mining[4],
-            "gold": mining[5],
-            "platinum": mining[6],
-            "idea": mining[7],
-            "oak_logs": wood[3],
-            "willow_logs": wood[4],
-            "mahogany_logs": wood[5],
-            "magic_logs": wood[6],
-            "idea_logs": wood[7],
-            "desiccated_bones": fish[3],
-            "regular_bones": fish[4],
-            "sturdy_bones": fish[5],
-            "reinforced_bones": fish[6],
-            "titanium_bones": fish[7],
+            "iron_ore": mining["iron_ore"],
+            "coal_ore": mining["coal_ore"],
+            "gold_ore": mining["gold_ore"],
+            "platinum_ore": mining["platinum_ore"],
+            "idea_ore": mining["idea_ore"],
+            "oak_logs": wood["oak_logs"],
+            "willow_logs": wood["willow_logs"],
+            "mahogany_logs": wood["mahogany_logs"],
+            "magic_logs": wood["magic_logs"],
+            "idea_logs": wood["idea_logs"],
+            "desiccated_bones": fish["desiccated_bones"],
+            "regular_bones": fish["regular_bones"],
+            "sturdy_bones": fish["sturdy_bones"],
+            "reinforced_bones": fish["reinforced_bones"],
+            "titanium_bones": fish["titanium_bones"],
         }
     except Exception:
         raw_inv = {}
@@ -745,7 +745,7 @@ _CURRENCY_LABELS = {
     "unidentified_blueprint": "Unidentified Blueprint",
     "guild_ticket": "Guild Ticket",
     "curios": "Curio",
-    "idea": "Idea Ore",
+    "idea_ore": "Idea Ore",
     "idea_logs": "Idea Logs",
     "magic_logs": "Magic Logs",
     "reinforced_bones": "Reinforced Bones",
@@ -869,11 +869,11 @@ def roll_bm_rewards(
             # T1–T5 materials per skill; qty_base scaled for meaningful quantities
             mat_pool = [
                 # Mining (T1–T5)
-                ("iron", 1000),
-                ("coal", 800),
-                ("gold", 600),
-                ("platinum", 400),
-                ("idea", 200),
+                ("iron_ore", 1000),
+                ("coal_ore", 800),
+                ("gold_ore", 600),
+                ("platinum_ore", 400),
+                ("idea_ore", 200),
                 # Woodcutting (T1–T5)
                 ("oak_logs", 1000),
                 ("willow_logs", 800),
@@ -1036,11 +1036,11 @@ _SETTLEMENT_MATERIAL_COLS: frozenset[str] = frozenset(
 )
 
 _GATHERING_SKILL_MAP: dict[str, str] = {
-    "iron": "mining",
-    "coal": "mining",
-    "gold": "mining",
-    "platinum": "mining",
-    "idea": "mining",
+    "iron_ore": "mining",
+    "coal_ore": "mining",
+    "gold_ore": "mining",
+    "platinum_ore": "mining",
+    "idea_ore": "mining",
     "oak_logs": "woodcutting",
     "willow_logs": "woodcutting",
     "mahogany_logs": "woodcutting",

@@ -46,21 +46,21 @@ _COMBAT_EXP_MAX = 2000
 # ---------------------------------------------------------------------------
 
 _MINING_YIELDS: Dict[str, Dict[str, tuple]] = {
-    "iron": {"iron": (150, 400)},
-    "steel": {"iron": (200, 450), "coal": (100, 250)},
-    "gold": {"iron": (200, 450), "coal": (150, 300), "gold": (100, 250)},
+    "iron": {"iron_ore": (150, 400)},
+    "steel": {"iron_ore": (200, 450), "coal_ore": (100, 250)},
+    "gold": {"iron_ore": (200, 450), "coal_ore": (150, 300), "gold_ore": (100, 250)},
     "platinum": {
-        "iron": (200, 450),
-        "coal": (150, 300),
-        "gold": (120, 270),
-        "platinum": (80, 200),
+        "iron_ore": (200, 450),
+        "coal_ore": (150, 300),
+        "gold_ore": (120, 270),
+        "platinum_ore": (80, 200),
     },
     "ideal": {
-        "iron": (200, 450),
-        "coal": (150, 300),
-        "gold": (120, 270),
-        "platinum": (80, 200),
-        "idea": (50, 150),
+        "iron_ore": (200, 450),
+        "coal_ore": (150, 300),
+        "gold_ore": (120, 270),
+        "platinum_ore": (80, 200),
+        "idea_ore": (50, 150),
     },
 }
 

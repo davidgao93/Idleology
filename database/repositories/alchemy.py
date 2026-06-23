@@ -10,11 +10,11 @@ _SKILL_TABLES = frozenset({"mining", "fishing", "woodcutting"})
 _SKILL_COLUMNS = frozenset(
     {
         # Raw gathering resources
-        "iron",
-        "coal",
-        "gold",
-        "platinum",
-        "idea",
+        "iron_ore",
+        "coal_ore",
+        "gold_ore",
+        "platinum_ore",
+        "idea_ore",
         "desiccated_bones",
         "regular_bones",
         "sturdy_bones",

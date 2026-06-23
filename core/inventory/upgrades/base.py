@@ -23,7 +23,8 @@ class BaseUpgradeView(BaseView):
     def _resolve_material_columns(costs: dict) -> dict:
         """Map a costs dict to raw/refined DB column names for ore, log, and bone."""
         raw_ore = costs["ore_type"]
-        refined_ore = f"{'steel' if raw_ore == 'coal' else raw_ore}_bar"
+        base_ore = raw_ore.removesuffix("_ore")
+        refined_ore = "steel_bar" if raw_ore == "coal_ore" else f"{base_ore}_bar"
         raw_log = costs["log_type"]
         raw_bone = costs["bone_type"]
         return {
@@ -87,7 +88,7 @@ class BaseUpgradeView(BaseView):
         }
 
         cost_lines = (
-            f"⛏️ {costs['ore_qty']} {costs['ore_type'].title()} (Have: {total_ore})\n"
+            f"⛏️ {costs['ore_qty']} {costs['ore_type'].removesuffix('_ore').title()} (Have: {total_ore})\n"
             f"🪓 {costs['log_qty']} {costs['log_type'].title()} (Have: {total_log})\n"
             f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} (Have: {total_bone})\n"
             f"💰 {costs['gold']:,} Gold"

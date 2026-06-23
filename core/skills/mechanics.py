@@ -152,11 +152,11 @@ class SkillMechanics:
             "tool_name": "Pickaxe",
             "image": TOOL_PICKAXE,
             "resources": [
-                ("iron", "Iron Ore"),
-                ("coal", "Coal"),
-                ("gold", "Gold Ore"),
-                ("platinum", "Platinum Ore"),
-                ("idea", "Idea Ore"),
+                ("iron_ore", "Iron Ore"),
+                ("coal_ore", "Coal"),
+                ("gold_ore", "Gold Ore"),
+                ("platinum_ore", "Platinum Ore"),
+                ("idea_ore", "Idea Ore"),
             ],
         },
         "woodcutting": {
@@ -257,24 +257,23 @@ class SkillMechanics:
         ranges = {}
 
         if skill_type == "mining":
-            # Resources: iron, coal, gold, platinum, idea
             ranges = {
-                "iron": {
+                "iron_ore": {
                     "iron": (3, 5),
                     "steel": (4, 7),
                     "gold": (5, 8),
                     "platinum": (6, 10),
                     "ideal": (7, 12),
                 },
-                "coal": {
+                "coal_ore": {
                     "steel": (3, 5),
                     "gold": (4, 7),
                     "platinum": (5, 8),
                     "ideal": (6, 10),
                 },
-                "gold": {"gold": (3, 5), "platinum": (4, 7), "ideal": (5, 8)},
-                "platinum": {"platinum": (3, 5), "ideal": (4, 7)},
-                "idea": {"ideal": (3, 5)},
+                "gold_ore": {"gold": (3, 5), "platinum": (4, 7), "ideal": (5, 8)},
+                "platinum_ore": {"platinum": (3, 5), "ideal": (4, 7)},
+                "idea_ore": {"ideal": (3, 5)},
             }
         elif skill_type == "fishing":
             # Resources: desiccated_bones, regular_bones, sturdy_bones, reinforced_bones, titanium_bones
@@ -352,7 +351,7 @@ class SkillMechanics:
 
         # Map display/internal names for signature resources
         sig_map = {
-            "mining": ("idea", "idea"),
+            "mining": ("idea_ore", "idea_ore"),
             "fishing": ("titanium_bones", "titanium_bones"),
             "woodcutting": ("idea_logs", "idea_logs"),
         }

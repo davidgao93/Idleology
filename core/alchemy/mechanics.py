@@ -71,7 +71,7 @@ class AlchemyMechanics:
 
     # Ordered resource columns per skill (index 0 = tier 1, index 4 = tier 5)
     SKILL_TIERS: dict[str, list[str]] = {
-        "mining": ["iron", "coal", "gold", "platinum", "idea"],
+        "mining": ["iron_ore", "coal_ore", "gold_ore", "platinum_ore", "idea_ore"],
         "fishing": [
             "desiccated_bones",
             "regular_bones",

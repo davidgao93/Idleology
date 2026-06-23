@@ -103,7 +103,7 @@ class Inventory(commands.Cog, name="inventory"):
         equipped_raw = await self.bot.database.equipment.get_equipped(
             user_id, item_type
         )
-        equipped_id = equipped_raw[0] if equipped_raw else None
+        equipped_id = equipped_raw["item_id"] if equipped_raw else None
 
         items.sort(key=lambda x: (x.item_id == equipped_id, x.level), reverse=True)
 

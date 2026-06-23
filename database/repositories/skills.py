@@ -11,7 +11,7 @@ class SkillRepository:
 
         # Whitelist for dynamic SQL generation to prevent injection (raw resources)
         self.allowed_columns = {
-            "mining": ["iron", "coal", "gold", "platinum", "idea", "pickaxe_tier"],
+            "mining": ["iron_ore", "coal_ore", "gold_ore", "platinum_ore", "idea_ore", "pickaxe_tier"],
             "woodcutting": [
                 "oak_logs",
                 "willow_logs",
@@ -36,15 +36,15 @@ class SkillRepository:
         # Extended whitelist covering both raw and refined (used by upgrade views, trade)
         self.allowed_columns_extended = {
             "mining": [
-                "iron",
+                "iron_ore",
                 "iron_bar",
-                "coal",
+                "coal_ore",
                 "steel_bar",
-                "gold",
+                "gold_ore",
                 "gold_bar",
-                "platinum",
+                "platinum_ore",
                 "platinum_bar",
-                "idea",
+                "idea_ore",
                 "idea_bar",
                 "pickaxe_tier",
             ],
@@ -225,13 +225,13 @@ class SkillRepository:
     ) -> None:
         iron_cost, coal_cost, gold_cost, platinum_cost, gp = costs
         raw_held = await self.get_multi_resource(
-            user_id, server_id, "mining", ["iron", "coal", "gold", "platinum"]
+            user_id, server_id, "mining", ["iron_ore", "coal_ore", "gold_ore", "platinum_ore"]
         )
         for raw_col, ref_col, held, qty in [
-            ("iron", "iron_bar", raw_held[0], iron_cost),
-            ("coal", "steel_bar", raw_held[1], coal_cost),
-            ("gold", "gold_bar", raw_held[2], gold_cost),
-            ("platinum", "platinum_bar", raw_held[3], platinum_cost),
+            ("iron_ore", "iron_bar", raw_held[0], iron_cost),
+            ("coal_ore", "steel_bar", raw_held[1], coal_cost),
+            ("gold_ore", "gold_bar", raw_held[2], gold_cost),
+            ("platinum_ore", "platinum_bar", raw_held[3], platinum_cost),
         ]:
             if qty > 0:
                 await self.deduct_upgrade_material(

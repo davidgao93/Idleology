@@ -314,8 +314,13 @@ class EquipmentRepository:
         if not row:
             return []
         slots = []
-        for i in range(3):
-            t, v = row[i * 2], row[i * 2 + 1]
+        col_pairs = [
+            ("essence_1", "essence_1_val"),
+            ("essence_2", "essence_2_val"),
+            ("essence_3", "essence_3_val"),
+        ]
+        for i, (t_col, v_col) in enumerate(col_pairs):
+            t, v = row[t_col], row[v_col]
             if t and t != "none":
                 slots.append((i + 1, t, v or 0.0))
         return slots

@@ -36,11 +36,11 @@ class SettlementMechanics:
         "foundry": {
             "type": "converter",
             "map": [
-                ("iron", "iron_bar"),
-                ("coal", "steel_bar"),
-                ("gold", "gold_bar"),
-                ("platinum", "platinum_bar"),
-                ("idea", "idea_bar"),
+                ("iron_ore", "iron_bar"),
+                ("coal_ore", "steel_bar"),
+                ("gold_ore", "gold_bar"),
+                ("platinum_ore", "platinum_bar"),
+                ("idea_ore", "idea_bar"),
             ],
             "base_rate": 1,  # 5 conversions per worker/hr
         },

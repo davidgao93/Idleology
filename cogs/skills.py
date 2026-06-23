@@ -165,7 +165,7 @@ class Skills(commands.Cog, name="skills"):
                         below_tier_chance = get_below_tier_chance(skill, mrow)
                         if below_tier_chance > 0 and random.random() < below_tier_chance:
                             sig_map = {
-                                "mining": "idea",
+                                "mining": "idea_ore",
                                 "fishing": "titanium_bones",
                                 "woodcutting": "idea_logs",
                             }

@@ -30,21 +30,21 @@ class EquipmentMechanics:
         if weapon.level <= 40:
             tier_data = {
                 0: {
-                    "ore": "iron",
+                    "ore": "iron_ore",
                     "log": "oak",
                     "bone": "desiccated",
                     "qty": 10,
                     "gold": 100,
                 },
                 1: {
-                    "ore": "coal",
+                    "ore": "coal_ore",
                     "log": "willow",
                     "bone": "regular",
                     "qty": 10,
                     "gold": 400,
                 },
                 2: {
-                    "ore": "gold",
+                    "ore": "gold_ore",
                     "log": "mahogany",
                     "bone": "sturdy",
                     "qty": 10,
@@ -54,28 +54,28 @@ class EquipmentMechanics:
         elif weapon.level <= 80:
             tier_data = {
                 0: {
-                    "ore": "iron",
+                    "ore": "iron_ore",
                     "log": "oak",
                     "bone": "desiccated",
                     "qty": 25,
                     "gold": 250,
                 },
                 1: {
-                    "ore": "coal",
+                    "ore": "coal_ore",
                     "log": "willow",
                     "bone": "regular",
                     "qty": 25,
                     "gold": 1000,
                 },
                 2: {
-                    "ore": "gold",
+                    "ore": "gold_ore",
                     "log": "mahogany",
                     "bone": "sturdy",
                     "qty": 25,
                     "gold": 2500,
                 },
                 3: {
-                    "ore": "platinum",
+                    "ore": "platinum_ore",
                     "log": "magic",
                     "bone": "reinforced",
                     "qty": 25,
@@ -85,35 +85,35 @@ class EquipmentMechanics:
         else:  # Level 80+
             tier_data = {
                 0: {
-                    "ore": "iron",
+                    "ore": "iron_ore",
                     "log": "oak",
                     "bone": "desiccated",
                     "qty": 50,
                     "gold": 500,
                 },
                 1: {
-                    "ore": "coal",
+                    "ore": "coal_ore",
                     "log": "willow",
                     "bone": "regular",
                     "qty": 50,
                     "gold": 2000,
                 },
                 2: {
-                    "ore": "gold",
+                    "ore": "gold_ore",
                     "log": "mahogany",
                     "bone": "sturdy",
                     "qty": 50,
                     "gold": 5000,
                 },
                 3: {
-                    "ore": "platinum",
+                    "ore": "platinum_ore",
                     "log": "magic",
                     "bone": "reinforced",
                     "qty": 50,
                     "gold": 10000,
                 },
                 4: {
-                    "ore": "idea",
+                    "ore": "idea_ore",
                     "log": "idea",
                     "bone": "titanium",
                     "qty": 50,
@@ -342,21 +342,21 @@ class EquipmentMechanics:
         if armor.level <= 40:
             tier_data = {
                 3: {
-                    "ore": "iron",
+                    "ore": "iron_ore",
                     "log": "oak",
                     "bone": "desiccated",
                     "qty": 20,
                     "gold": 500,
                 },
                 2: {
-                    "ore": "coal",
+                    "ore": "coal_ore",
                     "log": "willow",
                     "bone": "regular",
                     "qty": 20,
                     "gold": 100,
                 },
                 1: {
-                    "ore": "gold",
+                    "ore": "gold_ore",
                     "log": "mahogany",
                     "bone": "sturdy",
                     "qty": 20,
@@ -366,28 +366,28 @@ class EquipmentMechanics:
         elif armor.level <= 80:
             tier_data = {
                 4: {
-                    "ore": "iron",
+                    "ore": "iron_ore",
                     "log": "oak",
                     "bone": "desiccated",
                     "qty": 50,
                     "gold": 500,
                 },
                 3: {
-                    "ore": "coal",
+                    "ore": "coal_ore",
                     "log": "willow",
                     "bone": "regular",
                     "qty": 50,
                     "gold": 1500,
                 },
                 2: {
-                    "ore": "gold",
+                    "ore": "gold_ore",
                     "log": "mahogany",
                     "bone": "sturdy",
                     "qty": 50,
                     "gold": 3000,
                 },
                 1: {
-                    "ore": "platinum",
+                    "ore": "platinum_ore",
                     "log": "magic",
                     "bone": "reinforced",
                     "qty": 50,
@@ -397,35 +397,35 @@ class EquipmentMechanics:
         else:
             tier_data = {
                 5: {
-                    "ore": "iron",
+                    "ore": "iron_ore",
                     "log": "oak",
                     "bone": "desiccated",
                     "qty": 100,
                     "gold": 500,
                 },
                 4: {
-                    "ore": "coal",
+                    "ore": "coal_ore",
                     "log": "willow",
                     "bone": "regular",
                     "qty": 100,
                     "gold": 2000,
                 },
                 3: {
-                    "ore": "gold",
+                    "ore": "gold_ore",
                     "log": "mahogany",
                     "bone": "sturdy",
                     "qty": 100,
                     "gold": 5000,
                 },
                 2: {
-                    "ore": "platinum",
+                    "ore": "platinum_ore",
                     "log": "magic",
                     "bone": "reinforced",
                     "qty": 100,
                     "gold": 10000,
                 },
                 1: {
-                    "ore": "idea",
+                    "ore": "idea_ore",
                     "log": "idea",
                     "bone": "titanium",
                     "qty": 100,

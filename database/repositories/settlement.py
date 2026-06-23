@@ -187,15 +187,15 @@ class SettlementRepository:
         # Mappings based on prefixes or known lists
         tables = {
             "mining": [
-                "iron",
+                "iron_ore",
                 "iron_bar",
-                "coal",
+                "coal_ore",
                 "steel_bar",
-                "gold",
+                "gold_ore",
                 "gold_bar",
-                "platinum",
+                "platinum_ore",
                 "platinum_bar",
-                "idea",
+                "idea_ore",
                 "idea_bar",
             ],
             "woodcutting": [
