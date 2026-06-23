@@ -300,7 +300,9 @@ class CardProfileBuilder:
                                 PASSIVE_ZEAL_PER_HOUR_BASE,
                                 ZEAL_GATHER_CAP,
                             )
-                            from core.settlement.turn_engine import passive_zeal_for_period
+                            from core.settlement.turn_engine import (
+                                passive_zeal_for_period,
+                            )
 
                             tier = settlement.town_hall_tier
                             rate = PASSIVE_ZEAL_PER_HOUR_BASE + (tier - 1) * 9
@@ -308,21 +310,29 @@ class CardProfileBuilder:
                                 0.0,
                                 (
                                     datetime.now()
-                                    - datetime.fromisoformat(settlement.last_zeal_gather_time)
+                                    - datetime.fromisoformat(
+                                        settlement.last_zeal_gather_time
+                                    )
                                 ).total_seconds()
                                 / 3600,
                             )
                             available = min(
                                 passive_zeal_for_period(_hours, tier), ZEAL_GATHER_CAP
                             )
-                            hours_to_cap = max(0.0, (ZEAL_GATHER_CAP - available) / rate)
+                            hours_to_cap = max(
+                                0.0, (ZEAL_GATHER_CAP - available) / rate
+                            )
                             if available >= ZEAL_GATHER_CAP:
                                 zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — ready to collect!"
                             elif hours_to_cap < 1.0:
-                                zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — cap in <1h"
+                                zeal_str = (
+                                    f"**{available}/{ZEAL_GATHER_CAP}** — cap in <1h"
+                                )
                             else:
                                 h = int(hours_to_cap)
-                                zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — cap in ~{h}h"
+                                zeal_str = (
+                                    f"**{available}/{ZEAL_GATHER_CAP}** — cap in ~{h}h"
+                                )
                             settlement_lines.append(f"🔥 **Zeal** — {zeal_str}")
                         except Exception:
                             pass

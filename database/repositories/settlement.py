@@ -28,9 +28,9 @@ class SettlementRepository:
         row = await cursor.fetchone()
 
         if not row:
-            # Create Default
+            # Create default row — timestamps left NULL until first settlement visit
             await self.connection.execute(
-                "INSERT INTO settlements (user_id, server_id, town_hall_tier, building_slots, last_collection_time) VALUES (?, ?, 1, 5, datetime('now'))",
+                "INSERT INTO settlements (user_id, server_id, town_hall_tier, building_slots) VALUES (?, ?, 1, 5)",
                 (user_id, server_id),
             )
             await self.connection.commit()
@@ -690,7 +690,9 @@ class SettlementRepository:
             )
             await self.connection.commit()
         except Exception as e:
-            print(f"[settlement.add_passive_zeal error] user={user_id} server={server_id}: {e}")
+            print(
+                f"[settlement.add_passive_zeal error] user={user_id} server={server_id}: {e}"
+            )
 
     async def add_idlem(self, user_id: str, server_id: str, amount: int) -> None:
         try:

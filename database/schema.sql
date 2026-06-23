@@ -788,7 +788,7 @@ CREATE TABLE IF NOT EXISTS settlements (
   building_slots            INTEGER DEFAULT 3,
   timber                    INTEGER DEFAULT 0,
   stone                     INTEGER DEFAULT 0,
-  last_collection_time      TEXT,
+  last_collection_time      TEXT DEFAULT NULL,
   last_zeal_gather_time     TEXT DEFAULT NULL,
   -- Zeal economy
   settlement_zeal           INTEGER NOT NULL DEFAULT 0,

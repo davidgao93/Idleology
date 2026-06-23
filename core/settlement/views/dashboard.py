@@ -704,7 +704,9 @@ class SettlementDashboardView(SettlementBaseView):
             if _gather_ts:
                 _hours = max(
                     0.0,
-                    (datetime.now() - datetime.fromisoformat(_gather_ts)).total_seconds()
+                    (
+                        datetime.now() - datetime.fromisoformat(_gather_ts)
+                    ).total_seconds()
                     / 3600,
                 )
                 _pz = min(

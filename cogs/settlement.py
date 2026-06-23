@@ -39,11 +39,17 @@ class SettlementCog(commands.Cog, name="settlement"):
                 user_id, server_id
             )
             await self.bot.database.settlement.init_timestamps(user_id, server_id)
-            if not settlement.last_collection_time or not settlement.last_zeal_gather_time:
+            if (
+                not settlement.last_collection_time
+                or not settlement.last_zeal_gather_time
+            ):
                 from datetime import datetime
+
                 ts = datetime.now().isoformat()
                 settlement.last_collection_time = settlement.last_collection_time or ts
-                settlement.last_zeal_gather_time = settlement.last_zeal_gather_time or ts
+                settlement.last_zeal_gather_time = (
+                    settlement.last_zeal_gather_time or ts
+                )
             ideology = existing_user["ideology"]
             total_followers = await self.bot.database.social.get_follower_count(
                 ideology
