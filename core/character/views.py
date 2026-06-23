@@ -256,7 +256,9 @@ class StatInvestView(BaseView):
         ("gold", "💰 Gold Find", "gold"),
     ]
 
-    def __init__(self, bot, user_id: str, server_id: str, data, currencies: dict | None = None):
+    def __init__(
+        self, bot, user_id: str, server_id: str, data, currencies: dict | None = None
+    ):
         super().__init__(bot, user_id, server_id)
         self._data = dict(data)  # sqlite3.Row → dict so .get() works
         if currencies:
@@ -270,8 +272,12 @@ class StatInvestView(BaseView):
             await self.bot.database.users.get(self.user_id, self.server_id)
         )
         all_currencies = await self.bot.database.users.get_all_currencies(self.user_id)
-        self._data["passive_points"] = all_currencies["passive_points"] if all_currencies else 0
-        self._data["rune_of_regret"] = all_currencies["rune_of_regret"] if all_currencies else 0
+        self._data["passive_points"] = (
+            all_currencies["passive_points"] if all_currencies else 0
+        )
+        self._data["rune_of_regret"] = (
+            all_currencies["rune_of_regret"] if all_currencies else 0
+        )
 
     # ------------------------------------------------------------------
     # UI construction

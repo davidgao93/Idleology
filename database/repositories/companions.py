@@ -217,7 +217,9 @@ class CompanionRepository:
         ) as cursor:
             row = await cursor.fetchone()
         return {
-            "nodes_owned": json.loads(row["nodes_owned"]) if row and row["nodes_owned"] else {},
+            "nodes_owned": json.loads(row["nodes_owned"])
+            if row and row["nodes_owned"]
+            else {},
             "points_spent": row["points_spent"] if row else 0,
             "kinship_points": row["kinship_points"] if row else 0,
         }

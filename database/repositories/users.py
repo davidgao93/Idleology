@@ -408,7 +408,10 @@ class UserRepository:
         ) as cursor:
             row = await cursor.fetchone()
         if row:
-            return {"combat_stamina": row["combat_stamina"], "last_stamina_regen": row["last_stamina_regen"]}
+            return {
+                "combat_stamina": row["combat_stamina"],
+                "last_stamina_regen": row["last_stamina_regen"],
+            }
         return {"combat_stamina": 10, "last_stamina_regen": None}
 
     async def set_stamina(self, user_id: str, value: int) -> None:
@@ -465,7 +468,11 @@ class UserRepository:
 
         updated = 0
         for row in rows:
-            user_id, stamina, last_regen_str = row["user_id"], row["combat_stamina"], row["last_stamina_regen"]
+            user_id, stamina, last_regen_str = (
+                row["user_id"],
+                row["combat_stamina"],
+                row["last_stamina_regen"],
+            )
             should_grant = False
             if last_regen_str is None:
                 should_grant = True
@@ -640,7 +647,12 @@ class UserRepository:
         row = await cursor.fetchone()
         if not row:
             return {"atk": 0, "def": 0, "hp": 0, "gold": 0}
-        return {"atk": row["stat_invest_atk"], "def": row["stat_invest_def"], "hp": row["stat_invest_hp"], "gold": row["stat_invest_gold"]}
+        return {
+            "atk": row["stat_invest_atk"],
+            "def": row["stat_invest_def"],
+            "hp": row["stat_invest_hp"],
+            "gold": row["stat_invest_gold"],
+        }
 
     async def invest_stat_point(self, user_id: str, server_id: str, stat: str) -> bool:
         """

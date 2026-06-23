@@ -1224,7 +1224,11 @@ class SettlementDashboardView(SettlementBaseView):
                 )
             _plot_rows = await self.bot.database.plots.get_plots(uid, sid)
             self.plots = [
-                Plot(plot_index=r["plot_index"], is_developed=bool(r["is_developed"]), bonus_type=r["bonus_type"])
+                Plot(
+                    plot_index=r["plot_index"],
+                    is_developed=bool(r["is_developed"]),
+                    bonus_type=r["bonus_type"],
+                )
                 for r in _plot_rows
             ]
             turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
@@ -1474,7 +1478,11 @@ class SettlementDashboardView(SettlementBaseView):
                 )
                 _plot_rows = await self.bot.database.plots.get_plots(uid, sid)
                 self.plots = [
-                    Plot(plot_index=r["plot_index"], is_developed=bool(r["is_developed"]), bonus_type=r["bonus_type"])
+                    Plot(
+                        plot_index=r["plot_index"],
+                        is_developed=bool(r["is_developed"]),
+                        bonus_type=r["bonus_type"],
+                    )
                     for r in _plot_rows
                 ]
                 self.projects = await self.bot.database.settlement.get_projects(

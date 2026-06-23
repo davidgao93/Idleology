@@ -1314,7 +1314,11 @@ class PlotDetailView(SettlementBaseView):
         from core.settlement.models import Plot as PlotModel
 
         self.parent.plots = [
-            PlotModel(plot_index=r["plot_index"], is_developed=bool(r["is_developed"]), bonus_type=r["bonus_type"])
+            PlotModel(
+                plot_index=r["plot_index"],
+                is_developed=bool(r["is_developed"]),
+                bonus_type=r["bonus_type"],
+            )
             for r in plot_rows
         ]
         self.plot = next(

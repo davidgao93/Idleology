@@ -157,7 +157,9 @@ class GatherView(BaseView):
 
         # --- ROW 3: UPGRADE / MAXED + CLOSE ---
         if self.skill_data:
-            current_tier = SkillMechanics.get_tool_tier(self.current_skill, self.skill_data)
+            current_tier = SkillMechanics.get_tool_tier(
+                self.current_skill, self.skill_data
+            )
             next_tier = SkillMechanics.get_next_tier(self.current_skill, current_tier)
 
             if next_tier:
@@ -319,10 +321,13 @@ class GatherView(BaseView):
         if not costs:
             return False
         ref = self.refined_data or (0, 0, 0, 0, 0)
-        res_cols = [col for col, _ in SkillMechanics.SKILL_CONFIG.get(self.current_skill, {}).get("resources", [])][:4]
-        res_held = [
-            self.skill_data[res_cols[i]] + ref[i] for i in range(len(res_cols))
-        ]
+        res_cols = [
+            col
+            for col, _ in SkillMechanics.SKILL_CONFIG.get(self.current_skill, {}).get(
+                "resources", []
+            )
+        ][:4]
+        res_held = [self.skill_data[res_cols[i]] + ref[i] for i in range(len(res_cols))]
         gold_held = self.user_data["gold"]
         if res_held[0] < costs["res_1"]:
             return False

@@ -12,7 +12,9 @@ from core.partners.mechanics import grant_xp as _grant_xp
 # Dispatch item routing constants
 # ---------------------------------------------------------------------------
 
-_MINING_ITEMS = frozenset({"iron_ore", "coal_ore", "gold_ore", "platinum_ore", "idea_ore"})
+_MINING_ITEMS = frozenset(
+    {"iron_ore", "coal_ore", "gold_ore", "platinum_ore", "idea_ore"}
+)
 _WOODCUTTING_ITEMS = frozenset(
     {"oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs"}
 )

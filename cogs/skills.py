@@ -163,7 +163,10 @@ class Skills(commands.Cog, name="skills"):
 
                         # Below-tier signature resource chance (from 2pt Quality nodes)
                         below_tier_chance = get_below_tier_chance(skill, mrow)
-                        if below_tier_chance > 0 and random.random() < below_tier_chance:
+                        if (
+                            below_tier_chance > 0
+                            and random.random() < below_tier_chance
+                        ):
                             sig_map = {
                                 "mining": "idea_ore",
                                 "fishing": "titanium_bones",
@@ -188,7 +191,10 @@ class Skills(commands.Cog, name="skills"):
 
                         # Never Empty / equivalent Yield proc
                         never_empty_chance = get_never_empty_proc_chance(skill, mrow)
-                        if never_empty_chance > 0 and random.random() < never_empty_chance:
+                        if (
+                            never_empty_chance > 0
+                            and random.random() < never_empty_chance
+                        ):
                             for k in resources:
                                 resources[k] = int(resources[k] * 1.70)
 

@@ -50,19 +50,43 @@ class UberRepository:
             "celestial_sigils": row["celestial_sigils"],
             "celestial_engrams": row["celestial_engrams"],
             "celestial_blueprint_unlocked": row["celestial_blueprint_unlocked"],
-            "infernal_sigils": row["infernal_sigils"] if row["infernal_sigils"] is not None else 0,
-            "infernal_engrams": row["infernal_engrams"] if row["infernal_engrams"] is not None else 0,
-            "infernal_blueprint_unlocked": row["infernal_blueprint_unlocked"] if row["infernal_blueprint_unlocked"] is not None else 0,
+            "infernal_sigils": row["infernal_sigils"]
+            if row["infernal_sigils"] is not None
+            else 0,
+            "infernal_engrams": row["infernal_engrams"]
+            if row["infernal_engrams"] is not None
+            else 0,
+            "infernal_blueprint_unlocked": row["infernal_blueprint_unlocked"]
+            if row["infernal_blueprint_unlocked"] is not None
+            else 0,
             "void_shards": row["void_shards"] if row["void_shards"] is not None else 0,
-            "void_engrams": row["void_engrams"] if row["void_engrams"] is not None else 0,
-            "void_blueprint_unlocked": row["void_blueprint_unlocked"] if row["void_blueprint_unlocked"] is not None else 0,
-            "gemini_sigils": row["gemini_sigils"] if row["gemini_sigils"] is not None else 0,
-            "gemini_engrams": row["gemini_engrams"] if row["gemini_engrams"] is not None else 0,
-            "gemini_blueprint_unlocked": row["gemini_blueprint_unlocked"] if row["gemini_blueprint_unlocked"] is not None else 0,
-            "corruption_sigils": row["corruption_sigils"] if row["corruption_sigils"] is not None else 0,
-            "paradise_jewels": row["paradise_jewels"] if row["paradise_jewels"] is not None else 0,
-            "corruption_engrams": row["corruption_engrams"] if row["corruption_engrams"] is not None else 0,
-            "corruption_blueprint_unlocked": row["corruption_blueprint_unlocked"] if row["corruption_blueprint_unlocked"] is not None else 0,
+            "void_engrams": row["void_engrams"]
+            if row["void_engrams"] is not None
+            else 0,
+            "void_blueprint_unlocked": row["void_blueprint_unlocked"]
+            if row["void_blueprint_unlocked"] is not None
+            else 0,
+            "gemini_sigils": row["gemini_sigils"]
+            if row["gemini_sigils"] is not None
+            else 0,
+            "gemini_engrams": row["gemini_engrams"]
+            if row["gemini_engrams"] is not None
+            else 0,
+            "gemini_blueprint_unlocked": row["gemini_blueprint_unlocked"]
+            if row["gemini_blueprint_unlocked"] is not None
+            else 0,
+            "corruption_sigils": row["corruption_sigils"]
+            if row["corruption_sigils"] is not None
+            else 0,
+            "paradise_jewels": row["paradise_jewels"]
+            if row["paradise_jewels"] is not None
+            else 0,
+            "corruption_engrams": row["corruption_engrams"]
+            if row["corruption_engrams"] is not None
+            else 0,
+            "corruption_blueprint_unlocked": row["corruption_blueprint_unlocked"]
+            if row["corruption_blueprint_unlocked"] is not None
+            else 0,
         }
 
     # --- Celestial (Aphrodite) ---

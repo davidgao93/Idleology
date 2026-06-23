@@ -90,7 +90,13 @@ class CodexRepository:
         )
         rows = await cursor.fetchall()
         return [
-            CodexTome(slot=r["slot"], passive_type=r["passive_type"], tier=r["tier"], value=r["value"]) for r in rows
+            CodexTome(
+                slot=r["slot"],
+                passive_type=r["passive_type"],
+                tier=r["tier"],
+                value=r["value"],
+            )
+            for r in rows
         ]
 
     async def get_unlocked_slots(self, user_id: str) -> int:
@@ -243,4 +249,10 @@ class CodexRepository:
             (user_id,),
         )
         rows = await cursor.fetchall()
-        return {r["chapter_id"]: {"clears": r["clears"], "perfect_clears": r["perfect_clears"]} for r in rows}
+        return {
+            r["chapter_id"]: {
+                "clears": r["clears"],
+                "perfect_clears": r["perfect_clears"],
+            }
+            for r in rows
+        }

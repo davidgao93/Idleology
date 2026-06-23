@@ -325,7 +325,11 @@ class SettlementRepository:
                 (user_id, server_id),
             )
             plots = [
-                Plot(plot_index=r["plot_index"], is_developed=bool(r["is_developed"]), bonus_type=r["bonus_type"])
+                Plot(
+                    plot_index=r["plot_index"],
+                    is_developed=bool(r["is_developed"]),
+                    bonus_type=r["bonus_type"],
+                )
                 for r in await p_cursor.fetchall()
             ]
         except Exception:
@@ -887,7 +891,9 @@ class SettlementRepository:
                     data_json,
                 ),
             )
-            cursor2 = await self.connection.execute("SELECT last_insert_rowid() AS rowid")
+            cursor2 = await self.connection.execute(
+                "SELECT last_insert_rowid() AS rowid"
+            )
             r = await cursor2.fetchone()
             row_id = r["rowid"] if r else -1
 
@@ -945,7 +951,9 @@ class SettlementRepository:
             "offer_data": json.loads(row["offer_data"]),
             "total_value": row["total_value"],
             "turns_remaining": row["turns_remaining"],
-            "active_biases": json.loads(row["active_biases"]) if row["active_biases"] else [],
+            "active_biases": json.loads(row["active_biases"])
+            if row["active_biases"]
+            else [],
             "created_turn": row["created_turn"],
         }
 
@@ -1145,11 +1153,17 @@ class SettlementRepository:
         )
         bp_row = await bp_cursor.fetchone()
         can_build = {
-            "celestial": bool(bp_row["celestial_blueprint_unlocked"]) if bp_row else False,
-            "infernal": bool(bp_row["infernal_blueprint_unlocked"]) if bp_row else False,
+            "celestial": bool(bp_row["celestial_blueprint_unlocked"])
+            if bp_row
+            else False,
+            "infernal": bool(bp_row["infernal_blueprint_unlocked"])
+            if bp_row
+            else False,
             "void": bool(bp_row["void_blueprint_unlocked"]) if bp_row else False,
             "bound": bool(bp_row["gemini_blueprint_unlocked"]) if bp_row else False,
-            "corrupted": bool(bp_row["corruption_blueprint_unlocked"]) if bp_row else False,
+            "corrupted": bool(bp_row["corruption_blueprint_unlocked"])
+            if bp_row
+            else False,
         }
 
         # Built state + worker counts + tier + slot_index from uber_shrine_statues

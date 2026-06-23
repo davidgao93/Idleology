@@ -25,7 +25,9 @@ class CardProfileBuilder:
 
         embed.add_field(name="Name", value=f"**{user['name']}**", inline=True)
         embed.add_field(
-            name="Level", value=f"{user['level']} (Ascension {user['ascension']})", inline=True
+            name="Level",
+            value=f"{user['level']} (Ascension {user['ascension']})",
+            inline=True,
         )
         _lvl, _exp = user["level"], user["experience"]
         try:
@@ -134,7 +136,9 @@ class CardProfileBuilder:
                 combat_lines.append(f"  ↳ Cooldown: {cd_str}")
 
         # Rest
-        combat_lines.append(f"🛏️ **Rest** — {_fmt_hms(user['last_rest_time'], timedelta(hours=2))}")
+        combat_lines.append(
+            f"🛏️ **Rest** — {_fmt_hms(user['last_rest_time'], timedelta(hours=2))}"
+        )
 
         # Maw
         try:

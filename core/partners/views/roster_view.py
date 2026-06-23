@@ -355,7 +355,8 @@ class PartnerMainView(PartnerBaseView):
         partners_6star = [
             Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
             for row in rows
-            if row["partner_id"] in PARTNER_DATA and PARTNER_DATA[row["partner_id"]]["rarity"] == 6
+            if row["partner_id"] in PARTNER_DATA
+            and PARTNER_DATA[row["partner_id"]]["rarity"] == 6
         ]
         view = AffinityView(self.bot, self.user_id, partners_6star, items, self)
         view.message = self.message

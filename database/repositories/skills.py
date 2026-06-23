@@ -11,7 +11,14 @@ class SkillRepository:
 
         # Whitelist for dynamic SQL generation to prevent injection (raw resources)
         self.allowed_columns = {
-            "mining": ["iron_ore", "coal_ore", "gold_ore", "platinum_ore", "idea_ore", "pickaxe_tier"],
+            "mining": [
+                "iron_ore",
+                "coal_ore",
+                "gold_ore",
+                "platinum_ore",
+                "idea_ore",
+                "pickaxe_tier",
+            ],
             "woodcutting": [
                 "oak_logs",
                 "willow_logs",
@@ -225,7 +232,10 @@ class SkillRepository:
     ) -> None:
         iron_cost, coal_cost, gold_cost, platinum_cost, gp = costs
         raw_held = await self.get_multi_resource(
-            user_id, server_id, "mining", ["iron_ore", "coal_ore", "gold_ore", "platinum_ore"]
+            user_id,
+            server_id,
+            "mining",
+            ["iron_ore", "coal_ore", "gold_ore", "platinum_ore"],
         )
         for raw_col, ref_col, held, qty in [
             ("iron_ore", "iron_bar", raw_held[0], iron_cost),
@@ -668,7 +678,11 @@ class SkillRepository:
             (user_id, server_id),
         ) as cursor:
             row = await cursor.fetchone()
-        return int(row["mastery_insight"]) if row and row["mastery_insight"] is not None else 0
+        return (
+            int(row["mastery_insight"])
+            if row and row["mastery_insight"] is not None
+            else 0
+        )
 
     # =========================================================
     # Gathering Expansion: Familiarization + Session Momentum
@@ -690,7 +704,11 @@ class SkillRepository:
                 (user_id, server_id),
             ) as cursor:
                 row = await cursor.fetchone()
-            return (row["familiarization_end"], int(row["momentum_minutes"] or 0)) if row else (None, 0)
+            return (
+                (row["familiarization_end"], int(row["momentum_minutes"] or 0))
+                if row
+                else (None, 0)
+            )
         except Exception:
             return (None, 0)
 

@@ -162,7 +162,8 @@ class EggsRepository(BaseRepository):
 
     async def get_incubated_queue_count(self, user_id: str) -> int:
         cursor = await self.connection.execute(
-            "SELECT COUNT(*) AS cnt FROM incubated_encounters WHERE user_id = ?", (user_id,)
+            "SELECT COUNT(*) AS cnt FROM incubated_encounters WHERE user_id = ?",
+            (user_id,),
         )
         row = await cursor.fetchone()
         return row["cnt"] if row else 0

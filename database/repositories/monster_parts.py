@@ -35,7 +35,10 @@ class MonsterPartsRepository(BaseRepository):
         rows = await self.get_inventory(user_id)
         if not rows:
             return
-        worst = min(rows, key=lambda r: (_SLOT_RARITY_TIER.get(r["slot_type"], 0), r["hp_value"]))
+        worst = min(
+            rows,
+            key=lambda r: (_SLOT_RARITY_TIER.get(r["slot_type"], 0), r["hp_value"]),
+        )
         await self.connection.execute(
             "DELETE FROM monster_parts WHERE id = ?", (worst["id"],)
         )
@@ -87,7 +90,10 @@ class MonsterPartsRepository(BaseRepository):
             (user_id,),
         )
         rows = await cursor.fetchall()
-        return {r["slot_type"]: {"hp": r["hp_value"], "monster_name": r["monster_name"]} for r in rows}
+        return {
+            r["slot_type"]: {"hp": r["hp_value"], "monster_name": r["monster_name"]}
+            for r in rows
+        }
 
     async def equip_part(
         self,

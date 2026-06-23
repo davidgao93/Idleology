@@ -757,7 +757,12 @@ class CompanionDetailView(BaseView):
                 leveled_names = []
                 overflow_xp = 0
                 for row in recipients:
-                    comp_id, name, cur_lvl, cur_exp = row["id"], row["name"], row["level"], row["exp"]
+                    comp_id, name, cur_lvl, cur_exp = (
+                        row["id"],
+                        row["name"],
+                        row["level"],
+                        row["exp"],
+                    )
                     cur_exp += RELEASE_XP
                     did_level = False
                     while cur_lvl < 100:

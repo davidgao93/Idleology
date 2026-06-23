@@ -10,7 +10,11 @@ class HematurgyRepository(BaseRepository):
         )
         row = await cursor.fetchone()
         if row:
-            return {"primordial": row["primordial"], "evolutionary": row["evolutionary"], "mutative": row["mutative"]}
+            return {
+                "primordial": row["primordial"],
+                "evolutionary": row["evolutionary"],
+                "mutative": row["mutative"],
+            }
         await self.connection.execute(
             "INSERT OR IGNORE INTO hematurgy_blood (user_id) VALUES (?)", (user_id,)
         )
@@ -54,7 +58,10 @@ class HematurgyRepository(BaseRepository):
             (user_id,),
         )
         rows = await cursor.fetchall()
-        return {r["slot_type"]: {"passive_id": r["passive_id"], "tier": r["tier"]} for r in rows}
+        return {
+            r["slot_type"]: {"passive_id": r["passive_id"], "tier": r["tier"]}
+            for r in rows
+        }
 
     async def set_passive(
         self, user_id: str, slot_type: str, passive_id: str, tier: int = 1

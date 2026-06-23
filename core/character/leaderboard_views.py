@@ -68,7 +68,8 @@ class LeaderboardHubView(BaseView):
             data = await self.bot.database.users.get_wealth_leaderboard(10)
             embed = discord.Embed(title="Hiscores: Wealthiest 💰", color=0xFFD700)
             lines = [
-                f"**{i + 1}. {row['name']}** - {row['gold']:,} GP" for i, row in enumerate(data)
+                f"**{i + 1}. {row['name']}** - {row['gold']:,} GP"
+                for i, row in enumerate(data)
             ]
 
         elif self.active_tab == "slayer":

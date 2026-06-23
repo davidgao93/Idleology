@@ -143,7 +143,9 @@ class AlchemyRepository(BaseRepository):
                 "slot": r["slot"],
                 "passive_type": r["passive_type"],
                 "passive_value": r["passive_value"],
-                "passive_duration": r["passive_duration"] if r["passive_duration"] is not None else 2.0,
+                "passive_duration": r["passive_duration"]
+                if r["passive_duration"] is not None
+                else 2.0,
             }
             for r in rows
         ]
@@ -265,7 +267,9 @@ class AlchemyRepository(BaseRepository):
         for slot in (1, 2, 3):
             row = await self.get_synthesis_queue(user_id, slot)
             if row:
-                result.append((slot, row["item_type"], row["quantity"], row["start_time"]))
+                result.append(
+                    (slot, row["item_type"], row["quantity"], row["start_time"])
+                )
         return result
 
     async def start_disenchant(
