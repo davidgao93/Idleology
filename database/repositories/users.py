@@ -225,7 +225,7 @@ class UserRepository:
             f"SELECT {column} FROM player_currencies WHERE user_id = ?", (user_id,)
         )
         result = await rows.fetchone()
-        return result[0] if result else 0
+        return result[column] if result else 0
 
     async def set_passive_points(self, user_id: str, server_id: str, amount: int):
         await self.connection.execute(
@@ -243,7 +243,7 @@ class UserRepository:
             "SELECT gold FROM users WHERE user_id = ?", (user_id,)
         )
         result = await rows.fetchone()
-        return result[0] if result else 0
+        return result["gold"] if result else 0
 
     async def modify_gold(self, user_id: str, amount: int) -> None:
         """Add (positive) or remove (negative) gold."""
@@ -277,7 +277,7 @@ class UserRepository:
             f"SELECT {column} FROM player_currencies WHERE user_id = ?", (user_id,)
         )
         result = await rows.fetchone()
-        return result[0] if result else 0
+        return result[column] if result else 0
 
     async def modify_currency(
         self, user_id: str, currency_column: str, amount: int
@@ -345,7 +345,7 @@ class UserRepository:
             f"SELECT {timer_column} FROM users WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return row[0] if row else None
+        return row[timer_column] if row else None
 
     async def get_companion_collect_time(self, user_id: str) -> str | None:
         """Returns the last companion collection timestamp for a user."""
@@ -354,7 +354,7 @@ class UserRepository:
             (user_id,),
         ) as cursor:
             row = await cursor.fetchone()
-        return row[0] if row else None
+        return row["last_companion_collect_time"] if row else None
 
     async def update_companion_collect_time(self, user_id: str, timestamp: str) -> None:
         """Sets the companion collection timer to the given ISO timestamp."""
@@ -400,7 +400,7 @@ class UserRepository:
         ) as cursor:
             row = await cursor.fetchone()
         if row:
-            return {"combat_stamina": row[0], "last_stamina_regen": row[1]}
+            return {"combat_stamina": row["combat_stamina"], "last_stamina_regen": row["last_stamina_regen"]}
         return {"combat_stamina": 10, "last_stamina_regen": None}
 
     async def set_stamina(self, user_id: str, value: int) -> None:
@@ -457,7 +457,7 @@ class UserRepository:
 
         updated = 0
         for row in rows:
-            user_id, stamina, last_regen_str = row[0], row[1], row[2]
+            user_id, stamina, last_regen_str = row["user_id"], row["combat_stamina"], row["last_stamina_regen"]
             should_grant = False
             if last_regen_str is None:
                 should_grant = True
@@ -515,7 +515,7 @@ class UserRepository:
             "SELECT doors_enabled FROM users WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return bool(row[0]) if row else True
+        return bool(row["doors_enabled"]) if row else True
 
     async def toggle_doors(self, user_id: str, status: bool) -> None:
         """Updates the boss door preference."""
@@ -531,7 +531,7 @@ class UserRepository:
             "SELECT exp_protection FROM users WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return bool(row[0]) if row else False
+        return bool(row["exp_protection"]) if row else False
 
     async def toggle_exp_protection(self, user_id: str, status: bool) -> None:
         """Updates the exp protection preference."""
@@ -558,7 +558,7 @@ class UserRepository:
             "SELECT hard_mode FROM users WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return int(row[0]) if row else 0
+        return int(row["hard_mode"]) if row else 0
 
     async def set_difficulty(self, user_id: str, level: int) -> None:
         """Persists the difficulty level (0–4)."""
@@ -574,7 +574,7 @@ class UserRepository:
             "SELECT auto_rest_pay FROM users WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return bool(row[0]) if row else False
+        return bool(row["auto_rest_pay"]) if row else False
 
     async def toggle_auto_rest_pay(self, user_id: str, status: bool) -> None:
         """Updates the auto-pay for tavern rest preference."""
@@ -597,7 +597,7 @@ class UserRepository:
             "SELECT combat_streak FROM users WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["combat_streak"] if row else 0
 
     async def increment_combat_streak(self, user_id: str) -> int:
         """Increments and returns the new streak value."""
@@ -610,7 +610,7 @@ class UserRepository:
             "SELECT combat_streak FROM users WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return row[0] if row else 1
+        return row["combat_streak"] if row else 1
 
     async def reset_combat_streak(self, user_id: str) -> None:
         await self.connection.execute(
@@ -632,7 +632,7 @@ class UserRepository:
         row = await cursor.fetchone()
         if not row:
             return {"atk": 0, "def": 0, "hp": 0, "gold": 0}
-        return {"atk": row[0], "def": row[1], "hp": row[2], "gold": row[3]}
+        return {"atk": row["stat_invest_atk"], "def": row["stat_invest_def"], "hp": row["stat_invest_hp"], "gold": row["stat_invest_gold"]}
 
     async def invest_stat_point(self, user_id: str, server_id: str, stat: str) -> bool:
         """
@@ -645,7 +645,7 @@ class UserRepository:
             (user_id,),
         )
         row = await cursor.fetchone()
-        if not row or row[0] <= 0:
+        if not row or row["passive_points"] <= 0:
             return False
         await self.connection.execute(
             "UPDATE player_currencies SET passive_points = passive_points - 1 WHERE user_id = ?",
@@ -674,7 +674,7 @@ class UserRepository:
             (user_id,),
         )
         c_row = await c_cursor.fetchone()
-        if not u_row or u_row[0] <= 0 or not c_row or c_row[0] <= 0:
+        if not u_row or u_row[col] <= 0 or not c_row or c_row["rune_of_regret"] <= 0:
             return False
         await self.connection.execute(
             f"UPDATE users SET {col} = {col} - 1 WHERE user_id = ? AND server_id = ?",
@@ -701,8 +701,8 @@ class UserRepository:
             (user_id, server_id),
         )
         row = await cursor.fetchone()
-        if row and row[0]:
-            return json.loads(row[0])
+        if row and row["pending_stat_packages"]:
+            return json.loads(row["pending_stat_packages"])
         return None
 
     async def set_pending_packages(

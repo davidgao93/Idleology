@@ -17,7 +17,7 @@ class SocialRepository:
         async with rows as cursor:
             results = await cursor.fetchall()
         # Flatten [(name1,), (name2,)] to [name1, name2]
-        return [row[0] for row in results]
+        return [row["name"] for row in results]
 
     async def get_follower_count(self, ideology_name: str) -> int:
         """Fetches the number of followers for a specific ideology."""
@@ -26,7 +26,7 @@ class SocialRepository:
         )
         async with rows as cursor:
             count = await cursor.fetchone()
-        return count[0] if count else 0
+        return count["followers"] if count else 0
 
     async def create_ideology(self, user_id: str, server_id: str, name: str) -> None:
         """Registers a new ideology."""

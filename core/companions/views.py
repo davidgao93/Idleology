@@ -752,12 +752,12 @@ class CompanionDetailView(BaseView):
         xp_note = ""
         try:
             active_rows = await self.bot.database.companions.get_active(self.user_id)
-            recipients = [r for r in active_rows if r[0] != self.comp.id]
+            recipients = [r for r in active_rows if r["id"] != self.comp.id]
             if recipients:
                 leveled_names = []
                 overflow_xp = 0
                 for row in recipients:
-                    comp_id, name, cur_lvl, cur_exp = row[0], row[2], row[5], row[6]
+                    comp_id, name, cur_lvl, cur_exp = row["id"], row["name"], row["level"], row["exp"]
                     cur_exp += RELEASE_XP
                     did_level = False
                     while cur_lvl < 100:

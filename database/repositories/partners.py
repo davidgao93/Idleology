@@ -49,10 +49,10 @@ class PartnerRepository(BaseRepository):
             user_id, 0
         )  # shared pool (partner_id=0)
         return {
-            "guild_tickets": row[0],
-            "pity_counter": row[1],
-            "combat_skill_shards": row[2],
-            "dispatch_skill_shards": row[3],
+            "guild_tickets": row["guild_tickets"],
+            "pity_counter": row["pity_counter"],
+            "combat_skill_shards": row["combat_skill_shards"],
+            "dispatch_skill_shards": row["dispatch_skill_shards"],
             "char_shards": char_shards,
         }
 
@@ -132,7 +132,7 @@ class PartnerRepository(BaseRepository):
             (user_id, partner_id),
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["shard_count"] if row else 0
 
     async def add_shard(self, user_id: str, partner_id: int, amount: int) -> None:
         await self.connection.execute(

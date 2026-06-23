@@ -247,7 +247,7 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
             if skill_row:
                 from core.skills.mechanics import SkillMechanics
 
-                tool_tier = skill_row[2]
+                tool_tier = SkillMechanics.get_tool_tier(skill_type, skill_row)
                 base = SkillMechanics.calculate_yield(skill_type, tool_tier)
                 resources = {k: v * 3 for k, v in base.items()}
                 await bot.database.skills.update_batch(
@@ -353,7 +353,7 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
                 if skill_row:
                     from core.skills.mechanics import SkillMechanics
 
-                    tool_tier = skill_row[2]
+                    tool_tier = SkillMechanics.get_tool_tier(skill_type, skill_row)
                     base = SkillMechanics.calculate_yield(skill_type, tool_tier)
                     # Multiply by 10 for a decent reward
                     resources = {k: v * 10 for k, v in base.items()}

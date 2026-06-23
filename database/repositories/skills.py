@@ -92,7 +92,7 @@ class SkillRepository:
             (user_id, server_id),
         ) as cursor:
             row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row[column] if row else 0
 
     async def get_multi_resource(
         self, user_id: str, server_id: str, skill_type: str, columns: list
@@ -569,7 +569,7 @@ class SkillRepository:
             (user_id,),
         ) as cursor:
             row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["runes_of_nature"] if row else 0
 
     async def respec_mastery(
         self, user_id: str, server_id: str, skill: str, refund_points: int
@@ -668,7 +668,7 @@ class SkillRepository:
             (user_id, server_id),
         ) as cursor:
             row = await cursor.fetchone()
-        return int(row[0]) if row and row[0] is not None else 0
+        return int(row["mastery_insight"]) if row and row["mastery_insight"] is not None else 0
 
     # =========================================================
     # Gathering Expansion: Familiarization + Session Momentum
@@ -690,7 +690,7 @@ class SkillRepository:
                 (user_id, server_id),
             ) as cursor:
                 row = await cursor.fetchone()
-            return (row[0], int(row[1] or 0)) if row else (None, 0)
+            return (row["familiarization_end"], int(row["momentum_minutes"] or 0)) if row else (None, 0)
         except Exception:
             return (None, 0)
 
@@ -753,12 +753,9 @@ class SkillRepository:
         if not row:
             return 0
 
-        m_pts, f_pts, w_pts = (
-            row[0] or 0,
-            row[1] or 0,
-            row[2] or 0,
-            row[3] or 0,
-        )
+        m_pts = row["mining_points"] or 0
+        f_pts = row["fishing_points"] or 0
+        w_pts = row["woodcutting_points"] or 0
         total_points = m_pts + f_pts + w_pts
         if total_points < conversion_rate:
             return 0

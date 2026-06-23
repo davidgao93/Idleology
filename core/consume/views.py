@@ -213,7 +213,7 @@ class EquipConfirmView(BaseView):
             "monster_name": self.part.monster_name,
         }
         self.parent.inventory = [
-            r for r in self.parent.inventory if r[0] != self.part.id
+            r for r in self.parent.inventory if r["id"] != self.part.id
         ]
         self.parent.inventory_parts = [
             create_monster_part(r) for r in self.parent.inventory
@@ -267,7 +267,7 @@ class PartDetailView(BaseView):
                 "monster_name": self.part.monster_name,
             }
             self.parent.inventory = [
-                r for r in self.parent.inventory if r[0] != self.part.id
+                r for r in self.parent.inventory if r["id"] != self.part.id
             ]
             self.parent.inventory_parts = [
                 create_monster_part(r) for r in self.parent.inventory
@@ -283,7 +283,7 @@ class PartDetailView(BaseView):
         await interaction.response.defer()
         await self.parent.bot.database.monster_parts.delete_part(self.part.id)
         self.parent.inventory = [
-            r for r in self.parent.inventory if r[0] != self.part.id
+            r for r in self.parent.inventory if r["id"] != self.part.id
         ]
         self.parent.inventory_parts = [
             create_monster_part(r) for r in self.parent.inventory

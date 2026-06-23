@@ -69,10 +69,10 @@ class AlchemyRepository(BaseRepository):
     async def initialize_if_new(self, user_id: str) -> bool:
         """Insert a level-1 row if none exists. Returns True if this is a new user."""
         async with self.connection.execute(
-            "SELECT COUNT(*) FROM alchemy_data WHERE user_id = ?", (user_id,)
+            "SELECT COUNT(*) AS cnt FROM alchemy_data WHERE user_id = ?", (user_id,)
         ) as cursor:
             row = await cursor.fetchone()
-        if row[0] == 0:
+        if row["cnt"] == 0:
             await self.connection.execute(
                 "INSERT INTO alchemy_data (user_id, level) VALUES (?, 1)", (user_id,)
             )
@@ -93,7 +93,7 @@ class AlchemyRepository(BaseRepository):
             "SELECT level FROM alchemy_data WHERE user_id = ?", (user_id,)
         ) as cursor:
             row = await cursor.fetchone()
-        level = row[0] if row else 1
+        level = row["level"] if row else 1
         # Migrate legacy level-0 users to level 1
         if level == 0:
             await self.connection.execute(
@@ -116,7 +116,7 @@ class AlchemyRepository(BaseRepository):
             "SELECT free_roll_used FROM alchemy_data WHERE user_id = ?", (user_id,)
         ) as cursor:
             row = await cursor.fetchone()
-        return bool(row[0]) if row else False
+        return bool(row["free_roll_used"]) if row else False
 
     async def set_free_roll_used(self, user_id: str) -> None:
         await self._ensure_row(user_id)
@@ -140,10 +140,10 @@ class AlchemyRepository(BaseRepository):
             rows = await cursor.fetchall()
         return [
             {
-                "slot": r[0],
-                "passive_type": r[1],
-                "passive_value": r[2],
-                "passive_duration": r[3] if r[3] is not None else 2.0,
+                "slot": r["slot"],
+                "passive_type": r["passive_type"],
+                "passive_value": r["passive_value"],
+                "passive_duration": r["passive_duration"] if r["passive_duration"] is not None else 2.0,
             }
             for r in rows
         ]
@@ -190,7 +190,7 @@ class AlchemyRepository(BaseRepository):
             (user_id, server_id),
         ) as cursor:
             row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row[col] if row else 0
 
     async def transmute(
         self,
@@ -229,7 +229,7 @@ class AlchemyRepository(BaseRepository):
             "SELECT cosmic_dust FROM alchemy_data WHERE user_id = ?", (user_id,)
         ) as cursor:
             row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["cosmic_dust"] if row else 0
 
     async def modify_cosmic_dust(self, user_id: str, delta: int) -> None:
         await self._ensure_row(user_id)
@@ -265,7 +265,7 @@ class AlchemyRepository(BaseRepository):
         for slot in (1, 2, 3):
             row = await self.get_synthesis_queue(user_id, slot)
             if row:
-                result.append((slot, row[0], row[1], row[2]))
+                result.append((slot, row["item_type"], row["quantity"], row["start_time"]))
         return result
 
     async def start_disenchant(
@@ -309,7 +309,7 @@ class AlchemyRepository(BaseRepository):
             (user_id, server_id),
         ) as cursor:
             row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row[col] if row else 0
 
     async def deduct_uber_material(
         self, user_id: str, server_id: str, col: str, amount: int
@@ -333,7 +333,7 @@ class AlchemyRepository(BaseRepository):
             (user_id, essence_type),
         ) as cursor:
             row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["quantity"] if row else 0
 
     async def deduct_essence(
         self, user_id: str, essence_type: str, amount: int
@@ -363,9 +363,9 @@ class AlchemyRepository(BaseRepository):
         if not row:
             return None
         return {
-            "step": row[0],
-            "data": json.loads(row[1]) if row[1] else {},
-            "started_at": row[2],
+            "step": row["step"],
+            "data": json.loads(row["data"]) if row["data"] else {},
+            "started_at": row["started_at"],
         }
 
     async def upsert_distillation(

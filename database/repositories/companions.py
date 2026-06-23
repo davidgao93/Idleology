@@ -37,10 +37,10 @@ class CompanionRepository:
     async def get_count(self, user_id: str) -> int:
         """Counts total companions owned (for 20 slot cap)."""
         rows = await self.connection.execute(
-            "SELECT COUNT(*) FROM companions WHERE user_id = ?", (user_id,)
+            "SELECT COUNT(*) AS cnt FROM companions WHERE user_id = ?", (user_id,)
         )
         res = await rows.fetchone()
-        return res[0] if res else 0
+        return res["cnt"] if res else 0
 
     async def add_companion(
         self,
@@ -86,10 +86,10 @@ class CompanionRepository:
         if active:
             # Check current active count against the caller-supplied cap
             rows = await self.connection.execute(
-                "SELECT COUNT(*) FROM companions WHERE user_id = ? AND is_active = 1",
+                "SELECT COUNT(*) AS cnt FROM companions WHERE user_id = ? AND is_active = 1",
                 (user_id,),
             )
-            count = (await rows.fetchone())[0]
+            count = (await rows.fetchone())["cnt"]
             if count >= max_active:
                 return False
 
@@ -217,9 +217,9 @@ class CompanionRepository:
         ) as cursor:
             row = await cursor.fetchone()
         return {
-            "nodes_owned": json.loads(row[0]) if row and row[0] else {},
-            "points_spent": row[1] if row else 0,
-            "kinship_points": row[2] if row else 0,
+            "nodes_owned": json.loads(row["nodes_owned"]) if row and row["nodes_owned"] else {},
+            "points_spent": row["points_spent"] if row else 0,
+            "kinship_points": row["kinship_points"] if row else 0,
         }
 
     async def add_kinship_points(
@@ -246,9 +246,9 @@ class CompanionRepository:
             (user_id, server_id),
         ) as cursor:
             row = await cursor.fetchone()
-        if not row or row[1] < cost:
+        if not row or row["kinship_points"] < cost:
             return False
-        nodes = json.loads(row[0]) if row[0] else {}
+        nodes = json.loads(row["nodes_owned"]) if row["nodes_owned"] else {}
         nodes[node_id] = choice if choice is not None else True
         await self.connection.execute(
             "UPDATE companion_mastery SET nodes_owned=?, kinship_points=kinship_points-?, points_spent=points_spent+? WHERE user_id=? AND server_id=?",

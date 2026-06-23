@@ -11,237 +11,219 @@ from core.models import (
 )
 
 
-def create_weapon(data: tuple) -> Weapon:
-    """Map a DB row tuple from the `items` table to a Weapon model.
-    See database/schema.sql (column order) and core/items/models.py (dataclass).
-    """
+def _gcol(row, col, default=None):
+    """Get a named column from a sqlite3.Row, returning default if not present."""
+    try:
+        return row[col]
+    except IndexError:
+        return default
+
+
+def create_weapon(data) -> Weapon:
+    """Map a DB row from the `items` table to a Weapon model."""
     if not data:
         return None
 
     return Weapon(
-        item_id=data[0],
-        user=data[1],
-        name=data[2],
-        level=data[3],
-        attack=data[4],
-        defence=data[5],
-        rarity=data[6],
-        passive=data[7],
-        is_equipped=bool(data[8]),
-        forges_remaining=data[9],
-        refines_remaining=data[10],
-        refinement_lvl=data[11],
-        p_passive=data[12] if len(data) > 12 else "none",
-        u_passive=data[13] if len(data) > 13 else "none",
-        infernal_passive=data[14] if len(data) > 14 else "none",
-        forge_tier=data[15] if len(data) > 15 else 0,
-        hit_chance=data[16] if len(data) > 16 else 0.60,
-        crit_chance=data[17] if len(data) > 17 else 0.00,
-        crit_multi=data[18] if len(data) > 18 else 2.00,
-        base_rarity=data[19] if len(data) > 19 else 3,
+        item_id=data["item_id"],
+        user=data["user_id"],
+        name=data["item_name"],
+        level=data["item_level"],
+        attack=data["attack"],
+        defence=data["defence"],
+        rarity=data["rarity"],
+        passive=data["passive"],
+        is_equipped=bool(data["is_equipped"]),
+        forges_remaining=data["forges_remaining"],
+        refines_remaining=data["refines_remaining"],
+        refinement_lvl=data["refinement_lvl"],
+        p_passive=_gcol(data, "pinnacle_passive", "none"),
+        u_passive=_gcol(data, "utmost_passive", "none"),
+        infernal_passive=_gcol(data, "infernal_passive", "none"),
+        forge_tier=_gcol(data, "forge_tier", 0),
+        hit_chance=_gcol(data, "hit_chance", 0.60),
+        crit_chance=_gcol(data, "crit_chance", 0.00),
+        crit_multi=_gcol(data, "crit_multi", 2.00),
+        base_rarity=_gcol(data, "base_rarity", 3),
         description="",  # Description is typically generated dynamically in views
     )
 
 
-def create_accessory(data: tuple) -> Accessory:
-    """Map a DB row tuple from the `accessories` table to an Accessory model.
-    See database/schema.sql (column order) and core/items/models.py (dataclass).
-    """
+def create_accessory(data) -> Accessory:
+    """Map a DB row from the `accessories` table to an Accessory model."""
     if not data:
         return None
 
     return Accessory(
-        item_id=data[0],
-        user=data[1],
-        name=data[2],
-        level=data[3],
-        attack=data[4],
-        defence=data[5],
-        rarity=data[6],
-        ward=data[7],
-        crit=data[8],
-        passive=data[9],
-        is_equipped=bool(data[10]),
-        potential_remaining=data[11],
-        passive_lvl=data[12],
-        void_passive=data[13] if len(data) > 13 else "none",
+        item_id=data["item_id"],
+        user=data["user_id"],
+        name=data["item_name"],
+        level=data["item_level"],
+        attack=data["attack"],
+        defence=data["defence"],
+        rarity=data["rarity"],
+        ward=data["ward"],
+        crit=data["crit"],
+        passive=data["passive"],
+        is_equipped=bool(data["is_equipped"]),
+        potential_remaining=data["potential_remaining"],
+        passive_lvl=data["passive_lvl"],
+        void_passive=_gcol(data, "void_passive", "none"),
         description="",
     )
 
 
-def create_armor(data: tuple) -> Armor:
-    """Map a DB row tuple from the `armor` table to an Armor model.
-    See database/schema.sql (column order) and core/items/models.py (dataclass).
-    """
+def create_armor(data) -> Armor:
+    """Map a DB row from the `armor` table to an Armor model."""
     if not data:
         return None
 
     return Armor(
-        item_id=data[0],
-        user=data[1],
-        name=data[2],
-        level=data[3],
-        block=data[4],
-        evasion=data[5],
-        ward=data[6],
-        passive=data[7],
-        is_equipped=bool(data[8]),
-        temper_remaining=data[9],
-        imbue_remaining=data[10],
-        pdr=data[11],
-        fdr=data[12],
-        celestial_passive=data[13] if len(data) > 13 else "none",
-        main_stat_type=data[14] if len(data) > 14 else "def",
-        main_stat=data[15] if len(data) > 15 else 0,
-        reinforces_remaining=data[16] if len(data) > 16 else 0,
-        reinforcement_lvl=data[17] if len(data) > 17 else 0,
+        item_id=data["item_id"],
+        user=data["user_id"],
+        name=data["item_name"],
+        level=data["item_level"],
+        block=data["block"],
+        evasion=data["evasion"],
+        ward=data["ward"],
+        passive=data["armor_passive"],
+        is_equipped=bool(data["is_equipped"]),
+        temper_remaining=data["temper_remaining"],
+        imbue_remaining=data["imbue_remaining"],
+        pdr=data["pdr"],
+        fdr=data["fdr"],
+        celestial_passive=_gcol(data, "celestial_armor_passive", "none"),
+        main_stat_type=_gcol(data, "main_stat_type", "def"),
+        main_stat=_gcol(data, "main_stat", 0),
+        reinforces_remaining=_gcol(data, "reinforces_remaining", 0),
+        reinforcement_lvl=_gcol(data, "reinforcement_lvl", 0),
         description="",
     )
 
 
-def create_glove(data: tuple) -> Glove:
-    """Map a DB row tuple from the `gloves` table to a Glove model.
-    See database/schema.sql (column order) and core/items/models.py (dataclass).
-    """
+def create_glove(data) -> Glove:
+    """Map a DB row from the `gloves` table to a Glove model."""
     if not data:
         return None
 
     return Glove(
-        item_id=data[0],
-        user=data[1],
-        name=data[2],
-        level=data[3],
-        attack=data[4],
-        defence=data[5],
-        ward=data[6],
-        pdr=data[7],
-        fdr=data[8],
-        passive=data[9],
-        is_equipped=bool(data[10]),
-        potential_remaining=data[11],
-        passive_lvl=data[12],
-        essence_1=data[13] if len(data) > 13 and data[13] is not None else "none",
-        essence_1_val=data[14] if len(data) > 14 and data[14] is not None else 0.0,
-        essence_2=data[15] if len(data) > 15 and data[15] is not None else "none",
-        essence_2_val=data[16] if len(data) > 16 and data[16] is not None else 0.0,
-        essence_3=data[17] if len(data) > 17 and data[17] is not None else "none",
-        essence_3_val=data[18] if len(data) > 18 and data[18] is not None else 0.0,
-        corrupted_essence=(
-            data[19] if len(data) > 19 and data[19] is not None else "none"
-        ),
-        reinforces_remaining=data[20] if len(data) > 20 else 0,
-        reinforcement_lvl=data[21] if len(data) > 21 else 0,
+        item_id=data["item_id"],
+        user=data["user_id"],
+        name=data["item_name"],
+        level=data["item_level"],
+        attack=data["attack"],
+        defence=data["defence"],
+        ward=data["ward"],
+        pdr=data["pdr"],
+        fdr=data["fdr"],
+        passive=data["passive"],
+        is_equipped=bool(data["is_equipped"]),
+        potential_remaining=data["potential_remaining"],
+        passive_lvl=data["passive_lvl"],
+        essence_1=_gcol(data, "essence_1") or "none",
+        essence_1_val=_gcol(data, "essence_1_val") or 0.0,
+        essence_2=_gcol(data, "essence_2") or "none",
+        essence_2_val=_gcol(data, "essence_2_val") or 0.0,
+        essence_3=_gcol(data, "essence_3") or "none",
+        essence_3_val=_gcol(data, "essence_3_val") or 0.0,
+        corrupted_essence=_gcol(data, "corrupted_essence") or "none",
+        reinforces_remaining=_gcol(data, "reinforces_remaining", 0),
+        reinforcement_lvl=_gcol(data, "reinforcement_lvl", 0),
         description="",
     )
 
 
-def create_boot(data: tuple) -> Boot:
-    """Map a DB row tuple from the `boots` table to a Boot model.
-    See database/schema.sql (column order) and core/items/models.py (dataclass).
-    """
+def create_boot(data) -> Boot:
+    """Map a DB row from the `boots` table to a Boot model."""
     if not data:
         return None
 
     return Boot(
-        item_id=data[0],
-        user=data[1],
-        name=data[2],
-        level=data[3],
-        attack=data[4],
-        defence=data[5],
-        ward=data[6],
-        pdr=data[7],
-        fdr=data[8],
-        passive=data[9],
-        is_equipped=bool(data[10]),
-        potential_remaining=data[11],
-        passive_lvl=data[12],
-        essence_1=data[13] if len(data) > 13 and data[13] is not None else "none",
-        essence_1_val=data[14] if len(data) > 14 and data[14] is not None else 0.0,
-        essence_2=data[15] if len(data) > 15 and data[15] is not None else "none",
-        essence_2_val=data[16] if len(data) > 16 and data[16] is not None else 0.0,
-        essence_3=data[17] if len(data) > 17 and data[17] is not None else "none",
-        essence_3_val=data[18] if len(data) > 18 and data[18] is not None else 0.0,
-        corrupted_essence=(
-            data[19] if len(data) > 19 and data[19] is not None else "none"
-        ),
-        reinforces_remaining=data[20] if len(data) > 20 else 0,
-        reinforcement_lvl=data[21] if len(data) > 21 else 0,
+        item_id=data["item_id"],
+        user=data["user_id"],
+        name=data["item_name"],
+        level=data["item_level"],
+        attack=data["attack"],
+        defence=data["defence"],
+        ward=data["ward"],
+        pdr=data["pdr"],
+        fdr=data["fdr"],
+        passive=data["passive"],
+        is_equipped=bool(data["is_equipped"]),
+        potential_remaining=data["potential_remaining"],
+        passive_lvl=data["passive_lvl"],
+        essence_1=_gcol(data, "essence_1") or "none",
+        essence_1_val=_gcol(data, "essence_1_val") or 0.0,
+        essence_2=_gcol(data, "essence_2") or "none",
+        essence_2_val=_gcol(data, "essence_2_val") or 0.0,
+        essence_3=_gcol(data, "essence_3") or "none",
+        essence_3_val=_gcol(data, "essence_3_val") or 0.0,
+        corrupted_essence=_gcol(data, "corrupted_essence") or "none",
+        reinforces_remaining=_gcol(data, "reinforces_remaining", 0),
+        reinforcement_lvl=_gcol(data, "reinforcement_lvl", 0),
         description="",
     )
 
 
-def create_helmet(data: tuple) -> Helmet:
-    """Map a DB row tuple from the `helmets` table to a Helmet model.
-    See database/schema.sql (column order) and core/items/models.py (dataclass).
-    """
+def create_helmet(data) -> Helmet:
+    """Map a DB row from the `helmets` table to a Helmet model."""
     if not data:
         return None
     return Helmet(
-        item_id=data[0],
-        user=data[1],
-        name=data[2],
-        level=data[3],
-        defence=data[4],
-        ward=data[5],
-        pdr=data[6],
-        fdr=data[7],
-        passive=data[8],
-        passive_lvl=data[9],
-        is_equipped=bool(data[10]),
-        potential_remaining=data[11],
-        essence_1=data[12] if len(data) > 12 and data[12] is not None else "none",
-        essence_1_val=data[13] if len(data) > 13 and data[13] is not None else 0.0,
-        essence_2=data[14] if len(data) > 14 and data[14] is not None else "none",
-        essence_2_val=data[15] if len(data) > 15 and data[15] is not None else 0.0,
-        essence_3=data[16] if len(data) > 16 and data[16] is not None else "none",
-        essence_3_val=data[17] if len(data) > 17 and data[17] is not None else 0.0,
-        corrupted_essence=(
-            data[18] if len(data) > 18 and data[18] is not None else "none"
-        ),
-        reinforces_remaining=data[19] if len(data) > 19 else 0,
-        reinforcement_lvl=data[20] if len(data) > 20 else 0,
+        item_id=data["item_id"],
+        user=data["user_id"],
+        name=data["item_name"],
+        level=data["item_level"],
+        defence=data["defence"],
+        ward=data["ward"],
+        pdr=data["pdr"],
+        fdr=data["fdr"],
+        passive=data["passive"],
+        passive_lvl=data["passive_lvl"],
+        is_equipped=bool(data["is_equipped"]),
+        potential_remaining=data["potential_remaining"],
+        essence_1=_gcol(data, "essence_1") or "none",
+        essence_1_val=_gcol(data, "essence_1_val") or 0.0,
+        essence_2=_gcol(data, "essence_2") or "none",
+        essence_2_val=_gcol(data, "essence_2_val") or 0.0,
+        essence_3=_gcol(data, "essence_3") or "none",
+        essence_3_val=_gcol(data, "essence_3_val") or 0.0,
+        corrupted_essence=_gcol(data, "corrupted_essence") or "none",
+        reinforces_remaining=_gcol(data, "reinforces_remaining", 0),
+        reinforcement_lvl=_gcol(data, "reinforcement_lvl", 0),
         description="",
     )
 
 
-def create_companion(data: tuple) -> Companion:
-    """
-    Maps a database tuple from table `companions` to a Companion object.
-    Schema: id(0), user_id(1), name(2), species(3), image_url(4),
-            level(5), exp(6), passive_type(7), passive_tier(8), is_active(9), created_at(10)
-    """
+def create_companion(data) -> Companion:
+    """Maps a database row from table `companions` to a Companion object."""
     if not data:
         return None
     return Companion(
-        id=data[0],
-        user_id=data[1],
-        name=data[2],
-        species=data[3],
-        image_url=data[4],
-        level=data[5],
-        exp=data[6],
-        passive_type=data[7],
-        passive_tier=data[8],
-        is_active=bool(data[9]),
-        balanced_passive=(
-            data[11] if len(data) > 11 and data[11] is not None else "none"
-        ),
-        balanced_passive_tier=(
-            data[12] if len(data) > 12 and data[12] is not None else 0
-        ),
+        id=data["id"],
+        user_id=data["user_id"],
+        name=data["name"],
+        species=data["species"],
+        image_url=data["image_url"],
+        level=data["level"],
+        exp=data["exp"],
+        passive_type=data["passive_type"],
+        passive_tier=data["passive_tier"],
+        is_active=bool(data["is_active"]),
+        balanced_passive=_gcol(data, "balanced_passive") or "none",
+        balanced_passive_tier=_gcol(data, "balanced_passive_tier") or 0,
     )
 
 
 def create_monster_part(row) -> MonsterPart:
     """Maps a monster_parts DB row to a MonsterPart object."""
     return MonsterPart(
-        id=row[0],
-        user_id=row[1],
-        slot_type=row[2],
-        monster_name=row[3],
-        ilvl=row[4],
-        hp_value=row[5],
+        id=row["id"],
+        user_id=row["user_id"],
+        slot_type=row["slot_type"],
+        monster_name=row["monster_name"],
+        ilvl=row["ilvl"],
+        hp_value=row["hp_value"],
     )
 
 
@@ -403,7 +385,7 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
             from core.models import Partner
             from core.partners.data import PARTNER_DATA
 
-            static = PARTNER_DATA.get(partner_row[2])
+            static = PARTNER_DATA.get(partner_row["partner_id"])
             if static:
                 player.active_partner = Partner.from_row(partner_row, static)
     except Exception as e:

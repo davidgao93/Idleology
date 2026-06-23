@@ -64,7 +64,7 @@ class ForestryView(BaseView):
 
     @property
     def axe_tier(self) -> str:
-        return self.skill_data[2] if self.skill_data else "flimsy"
+        return self.skill_data["axe_type"] if self.skill_data else "flimsy"
 
     @property
     def gold(self) -> int:

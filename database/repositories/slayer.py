@@ -26,14 +26,14 @@ class SlayerRepository:
             return await self.get_profile(user_id, server_id)
 
         return {
-            "level": row[2],
-            "xp": row[3],
-            "points": row[4],
-            "violent_essence": row[5],
-            "imbued_heart": row[6],
-            "active_task_species": row[7],
-            "active_task_amount": row[8],
-            "active_task_progress": row[9],
+            "level": row["level"],
+            "xp": row["xp"],
+            "points": row["slayer_points"],
+            "violent_essence": row["violent_essence"],
+            "imbued_heart": row["imbued_heart"],
+            "active_task_species": row["active_task_species"],
+            "active_task_amount": row["active_task_amount"],
+            "active_task_progress": row["active_task_progress"],
         }
 
     async def get_emblem(self, user_id: str, server_id: str) -> dict:
@@ -44,13 +44,12 @@ class SlayerRepository:
         row = await cursor.fetchone()
         if not row:
             return {}
-        # Map row[2] through row[11] to dict
         return {
-            1: {"type": row[2], "tier": row[3]},
-            2: {"type": row[4], "tier": row[5]},
-            3: {"type": row[6], "tier": row[7]},
-            4: {"type": row[8], "tier": row[9]},
-            5: {"type": row[10], "tier": row[11]},
+            1: {"type": row["slot_1_type"], "tier": row["slot_1_tier"]},
+            2: {"type": row["slot_2_type"], "tier": row["slot_2_tier"]},
+            3: {"type": row["slot_3_type"], "tier": row["slot_3_tier"]},
+            4: {"type": row["slot_4_type"], "tier": row["slot_4_tier"]},
+            5: {"type": row["slot_5_type"], "tier": row["slot_5_tier"]},
         }
 
     async def assign_task(
@@ -133,8 +132,8 @@ class SlayerRepository:
         if not row:
             return {"nodes_owned": {}, "points_spent": 0}
         return {
-            "nodes_owned": json.loads(row[0]) if row[0] else {},
-            "points_spent": row[1],
+            "nodes_owned": json.loads(row["nodes_owned"]) if row["nodes_owned"] else {},
+            "points_spent": row["points_spent"],
         }
 
     async def upsert_tree(

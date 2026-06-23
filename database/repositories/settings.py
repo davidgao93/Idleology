@@ -27,7 +27,7 @@ class SettingsRepository:
         )
         async with rows as cursor:
             result = await cursor.fetchone()
-            return result[0] if result else None
+            return result["event_channel_id"] if result else None
 
     async def get_all_event_channels(self) -> List[Tuple[str, str]]:
         """

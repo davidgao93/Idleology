@@ -29,7 +29,7 @@ async def _get_sig_lvl(bot, user_id: str, partner_id: int) -> int:
     row = await bot.database.partners.get_partner(user_id, partner_id)
     if not row:
         return 0
-    return row[11]  # sig_combat_lvl column index
+    return row["sig_combat_lvl"]
 
 
 # ---------------------------------------------------------------------------

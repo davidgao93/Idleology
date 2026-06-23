@@ -184,7 +184,7 @@ class ElementalEncounterView(BaseView):
             skill_row = await self.bot.database.skills.get_data(
                 self.user_id, self.server_id, skill_type
             )
-            tool_tier = skill_row[2]
+            tool_tier = SkillMechanics.get_tool_tier(skill_type, skill_row)
             base = SkillMechanics.calculate_yield(skill_type, tool_tier)
             rewards[skill_type] = {k: v * multiplier for k, v in base.items()}
 

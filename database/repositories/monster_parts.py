@@ -26,18 +26,18 @@ class MonsterPartsRepository(BaseRepository):
 
     async def get_count(self, user_id: str) -> int:
         cursor = await self.connection.execute(
-            "SELECT COUNT(*) FROM monster_parts WHERE user_id = ?", (user_id,)
+            "SELECT COUNT(*) AS cnt FROM monster_parts WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["cnt"] if row else 0
 
     async def _discard_worst(self, user_id: str) -> None:
         rows = await self.get_inventory(user_id)
         if not rows:
             return
-        worst = min(rows, key=lambda r: (_SLOT_RARITY_TIER.get(r[2], 0), r[5]))
+        worst = min(rows, key=lambda r: (_SLOT_RARITY_TIER.get(r["slot_type"], 0), r["hp_value"]))
         await self.connection.execute(
-            "DELETE FROM monster_parts WHERE id = ?", (worst[0],)
+            "DELETE FROM monster_parts WHERE id = ?", (worst["id"],)
         )
 
     async def add_part(
@@ -66,11 +66,11 @@ class MonsterPartsRepository(BaseRepository):
 
     async def delete_below_ilvl(self, user_id: str, threshold: int) -> int:
         cursor = await self.connection.execute(
-            "SELECT COUNT(*) FROM monster_parts WHERE user_id = ? AND ilvl < ?",
+            "SELECT COUNT(*) AS cnt FROM monster_parts WHERE user_id = ? AND ilvl < ?",
             (user_id, threshold),
         )
         row = await cursor.fetchone()
-        count = row[0] if row else 0
+        count = row["cnt"] if row else 0
         if count > 0:
             await self.connection.execute(
                 "DELETE FROM monster_parts WHERE user_id = ? AND ilvl < ?",
@@ -87,7 +87,7 @@ class MonsterPartsRepository(BaseRepository):
             (user_id,),
         )
         rows = await cursor.fetchall()
-        return {r[0]: {"hp": r[1], "monster_name": r[2]} for r in rows}
+        return {r["slot_type"]: {"hp": r["hp_value"], "monster_name": r["monster_name"]} for r in rows}
 
     async def equip_part(
         self,

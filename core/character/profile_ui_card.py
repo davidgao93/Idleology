@@ -377,9 +377,9 @@ class CardProfileBuilder:
 
                 rows = await bot.database.partners.get_owned(user_id)
                 all_partners = [
-                    Partner.from_row(row, PARTNER_DATA[row[2]])
+                    Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
                     for row in rows
-                    if row[2] in PARTNER_DATA
+                    if row["partner_id"] in PARTNER_DATA
                 ]
 
                 active_dispatch = next(

@@ -22,14 +22,14 @@ def _default_data() -> dict:
 
 def _row_to_dict(row) -> dict:
     return {
-        "unlocked_skills": json.loads(row[1]),
-        "equipped_skill": row[2],
-        "skill_levels": json.loads(row[3]),
-        "skill_charges": json.loads(row[4]),
-        "passive_slots": json.loads(row[5]),
-        "passive_jewels_invested": row[6],
-        "total_jewels_obtained": row[7],
-        "total_jewels_consumed": row[8],
+        "unlocked_skills": json.loads(row["unlocked_skills"]),
+        "equipped_skill": row["equipped_skill"],
+        "skill_levels": json.loads(row["skill_levels"]),
+        "skill_charges": json.loads(row["skill_charges"]),
+        "passive_slots": json.loads(row["passive_slots"]),
+        "passive_jewels_invested": row["passive_jewels_invested"],
+        "total_jewels_obtained": row["total_jewels_obtained"],
+        "total_jewels_consumed": row["total_jewels_consumed"],
     }
 
 

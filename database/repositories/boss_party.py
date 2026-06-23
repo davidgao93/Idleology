@@ -22,13 +22,13 @@ class BossPartyRepository:
         if not row:
             return None
         return {
-            "id": row[0],
-            "attacker_id": row[1],
-            "tank_id": row[2],
-            "healer_id": row[3],
-            "boss_name": row[4],
-            "boss_max_hp": row[5],
-            "start_time": row[6],
+            "id": row["id"],
+            "attacker_id": row["attacker_id"],
+            "tank_id": row["tank_id"],
+            "healer_id": row["healer_id"],
+            "boss_name": row["boss_name"],
+            "boss_max_hp": row["boss_max_hp"],
+            "start_time": row["start_time"],
         }
 
     async def create(

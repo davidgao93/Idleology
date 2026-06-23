@@ -433,9 +433,9 @@ class PartnerDetailView(PartnerBaseView):
         rows = await self.bot.database.partners.get_owned(self.user_id)
         items = await self.bot.database.partners.get_items(self.user_id)
         partners = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
+            Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
             for row in rows
-            if row[2] in PARTNER_DATA
+            if row["partner_id"] in PARTNER_DATA
         ]
         main_view = self.roster_view.main_view if self.roster_view else None
         new_roster = PartnerRosterView(

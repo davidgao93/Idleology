@@ -90,15 +90,15 @@ class CodexRepository:
         )
         rows = await cursor.fetchall()
         return [
-            CodexTome(slot=r[0], passive_type=r[1], tier=r[2], value=r[3]) for r in rows
+            CodexTome(slot=r["slot"], passive_type=r["passive_type"], tier=r["tier"], value=r["value"]) for r in rows
         ]
 
     async def get_unlocked_slots(self, user_id: str) -> int:
         cursor = await self.connection.execute(
-            "SELECT COUNT(*) FROM codex_tomes WHERE user_id = ?", (user_id,)
+            "SELECT COUNT(*) AS cnt FROM codex_tomes WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["cnt"] if row else 0
 
     async def _get_owned_passive_types(self, user_id: str) -> set[str]:
         """Returns the set of passive_types already present in this player's tome slots."""
@@ -107,7 +107,7 @@ class CodexRepository:
             (user_id,),
         )
         rows = await cursor.fetchall()
-        return {r[0] for r in rows}
+        return {r["passive_type"] for r in rows}
 
     async def unlock_tome_slot(self, user_id: str) -> CodexTome | None:
         """
@@ -142,10 +142,10 @@ class CodexRepository:
             (user_id, slot),
         )
         row = await cursor.fetchone()
-        if not row or row[0] >= 5:
+        if not row or row["tier"] >= 5:
             return False, 0.0
 
-        current_tier, passive_type = row[0], row[1]
+        current_tier, passive_type = row["tier"], row["passive_type"]
         new_tier = current_tier + 1
         new_value = roll_tome_value(passive_type, new_tier)
 
@@ -166,10 +166,10 @@ class CodexRepository:
             (user_id, slot),
         )
         row = await cursor.fetchone()
-        if not row or row[0] == 0:
+        if not row or row["tier"] == 0:
             return False, 0.0
 
-        tier, passive_type = row[0], row[1]
+        tier, passive_type = row["tier"], row["passive_type"]
         new_value = roll_tome_value(passive_type, tier)
 
         await self.connection.execute(
@@ -192,7 +192,7 @@ class CodexRepository:
         if not row:
             return False, ""
 
-        current_type = row[0]
+        current_type = row["passive_type"]
         owned = await self._get_owned_passive_types(user_id)
         # Exclude every type currently in any slot (other slots + current slot itself)
         candidates = [t for t in TOME_PASSIVE_TYPES if t not in owned]
@@ -243,4 +243,4 @@ class CodexRepository:
             (user_id,),
         )
         rows = await cursor.fetchall()
-        return {r[0]: {"clears": r[1], "perfect_clears": r[2]} for r in rows}
+        return {r["chapter_id"]: {"clears": r["clears"], "perfect_clears": r["perfect_clears"]} for r in rows}

@@ -159,9 +159,9 @@ class PartnerMainView(PartnerBaseView):
         items = await self.bot.database.partners.get_items(self.user_id)
         rows = await self.bot.database.partners.get_owned(self.user_id)
         partners = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
+            Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
             for row in rows
-            if row[2] in PARTNER_DATA
+            if row["partner_id"] in PARTNER_DATA
         ]
         return self.build_embed(items, partners), items, partners
 
@@ -303,9 +303,9 @@ class PartnerMainView(PartnerBaseView):
             )
             return
         partners = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
+            Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
             for row in rows
-            if row[2] in PARTNER_DATA
+            if row["partner_id"] in PARTNER_DATA
         ]
         view = PartnerRosterView(self.bot, self.user_id, partners, items, self)
         view.message = self.message
@@ -326,9 +326,9 @@ class PartnerMainView(PartnerBaseView):
             )
             return
         partners = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
+            Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
             for row in rows
-            if row[2] in PARTNER_DATA
+            if row["partner_id"] in PARTNER_DATA
         ]
         view = DispatchView(self.bot, self.user_id, partners, items, self)
         view.message = self.message
@@ -353,9 +353,9 @@ class PartnerMainView(PartnerBaseView):
         rows = await self.bot.database.partners.get_owned(self.user_id)
         items = await self.bot.database.partners.get_items(self.user_id)
         partners_6star = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
+            Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
             for row in rows
-            if row[2] in PARTNER_DATA and PARTNER_DATA[row[2]]["rarity"] == 6
+            if row["partner_id"] in PARTNER_DATA and PARTNER_DATA[row["partner_id"]]["rarity"] == 6
         ]
         view = AffinityView(self.bot, self.user_id, partners_6star, items, self)
         view.message = self.message

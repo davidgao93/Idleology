@@ -8,7 +8,7 @@ class AscensionRepository(BaseRepository):
             (user_id,),
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["highest_ascension_floor"] if row else 0
 
     async def update_highest_floor(self, user_id: str, floor: int) -> None:
         await self.connection.execute(
@@ -23,7 +23,7 @@ class AscensionRepository(BaseRepository):
             (user_id,),
         )
         rows = await cursor.fetchall()
-        return {row[0] for row in rows}
+        return {row["floor"] for row in rows}
 
     async def unlock_floor(self, user_id: str, floor: int) -> None:
         await self.connection.execute(

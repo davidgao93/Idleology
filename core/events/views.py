@@ -59,7 +59,7 @@ class RandomEventView(BaseView):
                 )
 
             # Static call
-            resources = SkillMechanics.calculate_yield("mining", data[2])
+            resources = SkillMechanics.calculate_yield("mining", SkillMechanics.get_tool_tier("mining", data))
             await self.bot.database.skills.update_batch(
                 user_id, server_id, "mining", resources
             )
@@ -74,7 +74,7 @@ class RandomEventView(BaseView):
                     "You need an Axe!", ephemeral=True
                 )
 
-            resources = SkillMechanics.calculate_yield("woodcutting", data[2])
+            resources = SkillMechanics.calculate_yield("woodcutting", SkillMechanics.get_tool_tier("woodcutting", data))
             await self.bot.database.skills.update_batch(
                 user_id, server_id, "woodcutting", resources
             )
@@ -89,7 +89,7 @@ class RandomEventView(BaseView):
                     "You need a Fishing Rod!", ephemeral=True
                 )
 
-            resources = SkillMechanics.calculate_yield("fishing", data[2])
+            resources = SkillMechanics.calculate_yield("fishing", SkillMechanics.get_tool_tier("fishing", data))
             await self.bot.database.skills.update_batch(
                 user_id, server_id, "fishing", resources
             )

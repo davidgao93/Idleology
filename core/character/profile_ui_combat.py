@@ -44,7 +44,7 @@ class CombatProfileBuilder:
         p = await load_player(user_id, data, bot.database)
 
         embed = discord.Embed(title="Combat Statistics", color=0x00FF00)
-        embed.set_thumbnail(url=data[7])
+        embed.set_thumbnail(url=data["appearance"])
 
         cb = _compute_combat_bonuses(p)
 
@@ -331,7 +331,7 @@ class CombatProfileBuilder:
         p = await load_player(user_id, data, bot.database)
 
         embed = discord.Embed(title="Active Passives", color=0x7B68EE)
-        embed.set_thumbnail(url=data[7])
+        embed.set_thumbnail(url=data["appearance"])
 
         has_any = False
 

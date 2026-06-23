@@ -38,19 +38,19 @@ class SettlementRepository:
 
         # Fetch Buildings
         settlement = Settlement(
-            user_id=row[0],
-            server_id=row[1],
-            town_hall_tier=row[2],
-            building_slots=row[3],
-            timber=row[4],
-            stone=row[5],
-            last_collection_time=row[6],
-            last_zeal_gather_time=row[7],
+            user_id=row["user_id"],
+            server_id=row["server_id"],
+            town_hall_tier=row["town_hall_tier"],
+            building_slots=row["building_slots"],
+            timber=row["timber"],
+            stone=row["stone"],
+            last_collection_time=row["last_collection_time"],
+            last_zeal_gather_time=row["last_zeal_gather_time"],
         )
 
         b_cursor = await self.connection.execute(
             "SELECT id, user_id, server_id, building_type, tier, slot_index, "
-            "workers_assigned, plot_index, is_meta, COALESCE(is_disabled, 0) "
+            "workers_assigned, plot_index, is_meta, COALESCE(is_disabled, 0) AS is_disabled "
             "FROM buildings WHERE user_id = ? AND server_id = ? "
             "ORDER BY COALESCE(plot_index, slot_index) ASC",
             (user_id, server_id),
@@ -58,16 +58,16 @@ class SettlementRepository:
         b_rows = await b_cursor.fetchall()
         settlement.buildings = [
             Building(
-                id=r[0],
-                user_id=r[1],
-                server_id=r[2],
-                building_type=r[3],
-                tier=r[4],
-                slot_index=r[5],
-                workers_assigned=r[6],
-                plot_index=r[7],
-                is_meta=bool(r[8]),
-                is_disabled=bool(r[9]),
+                id=r["id"],
+                user_id=r["user_id"],
+                server_id=r["server_id"],
+                building_type=r["building_type"],
+                tier=r["tier"],
+                slot_index=r["slot_index"],
+                workers_assigned=r["workers_assigned"],
+                plot_index=r["plot_index"],
+                is_meta=bool(r["is_meta"]),
+                is_disabled=bool(r["is_disabled"]),
             )
             for r in b_rows
         ]
@@ -120,7 +120,7 @@ class SettlementRepository:
 
         cursor = await self.connection.execute(
             "SELECT id, user_id, server_id, building_type, tier, slot_index, "
-            "workers_assigned, plot_index, is_meta, COALESCE(is_disabled, 0) "
+            "workers_assigned, plot_index, is_meta, COALESCE(is_disabled, 0) AS is_disabled "
             "FROM buildings WHERE user_id = ? AND server_id = ? AND building_type = ? LIMIT 1",
             (user_id, server_id, building_type),
         )
@@ -128,16 +128,16 @@ class SettlementRepository:
         if not r:
             return None
         return Building(
-            id=r[0],
-            user_id=r[1],
-            server_id=r[2],
-            building_type=r[3],
-            tier=r[4],
-            slot_index=r[5],
-            workers_assigned=r[6],
-            plot_index=r[7],
-            is_meta=bool(r[8]),
-            is_disabled=bool(r[9]),
+            id=r["id"],
+            user_id=r["user_id"],
+            server_id=r["server_id"],
+            building_type=r["building_type"],
+            tier=r["tier"],
+            slot_index=r["slot_index"],
+            workers_assigned=r["workers_assigned"],
+            plot_index=r["plot_index"],
+            is_meta=bool(r["is_meta"]),
+            is_disabled=bool(r["is_disabled"]),
         )
 
     async def update_collection_timer(self, user_id: str, server_id: str):
@@ -252,7 +252,7 @@ class SettlementRepository:
             (user_id, server_id, building_type),
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["tier"] if row else 0
 
     async def get_building_details(
         self, user_id: str, server_id: str, building_type: str
@@ -292,22 +292,22 @@ class SettlementRepository:
         try:
             b_cursor = await self.connection.execute(
                 "SELECT id, user_id, server_id, building_type, tier, slot_index, "
-                "workers_assigned, plot_index, is_meta, COALESCE(is_disabled, 0) "
+                "workers_assigned, plot_index, is_meta, COALESCE(is_disabled, 0) AS is_disabled "
                 "FROM buildings WHERE user_id = ? AND server_id = ?",
                 (user_id, server_id),
             )
             buildings = [
                 Building(
-                    id=r[0],
-                    user_id=r[1],
-                    server_id=r[2],
-                    building_type=r[3],
-                    tier=r[4],
-                    slot_index=r[5],
-                    workers_assigned=r[6],
-                    plot_index=r[7],
-                    is_meta=bool(r[8]),
-                    is_disabled=bool(r[9]),
+                    id=r["id"],
+                    user_id=r["user_id"],
+                    server_id=r["server_id"],
+                    building_type=r["building_type"],
+                    tier=r["tier"],
+                    slot_index=r["slot_index"],
+                    workers_assigned=r["workers_assigned"],
+                    plot_index=r["plot_index"],
+                    is_meta=bool(r["is_meta"]),
+                    is_disabled=bool(r["is_disabled"]),
                 )
                 for r in await b_cursor.fetchall()
             ]
@@ -325,7 +325,7 @@ class SettlementRepository:
                 (user_id, server_id),
             )
             plots = [
-                Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
+                Plot(plot_index=r["plot_index"], is_developed=bool(r["is_developed"]), bonus_type=r["bonus_type"])
                 for r in await p_cursor.fetchall()
             ]
         except Exception:
@@ -388,12 +388,12 @@ class SettlementRepository:
     async def get_used_slots_count(self, user_id: str, server_id: str) -> int:
         """Counts how many *regular* (non-meta) buildings a user has constructed."""
         cursor = await self.connection.execute(
-            "SELECT COUNT(*) FROM buildings "
+            "SELECT COUNT(*) AS cnt FROM buildings "
             "WHERE user_id = ? AND server_id = ? AND is_meta = 0",
             (user_id, server_id),
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["cnt"] if row else 0
 
     # ------------------------------------------------------------------
     # Research
@@ -406,7 +406,7 @@ class SettlementRepository:
             (user_id, server_id),
         )
         rows = await cursor.fetchall()
-        return {r[0] for r in rows}
+        return {r["building_type"] for r in rows}
 
     async def get_active_research(self, user_id: str, server_id: str):
         """Returns (building_type, start_time) for in-progress research, or None."""
@@ -487,8 +487,8 @@ class SettlementRepository:
             row = await cursor.fetchone()
             if row:
                 return {
-                    "total_development_turns": row[0] or 0,
-                    "pending_zeal": row[1] or 0,
+                    "total_development_turns": row["total_development_turns"] or 0,
+                    "pending_zeal": row["pending_zeal"] or 0,
                 }
         except Exception:
             pass
@@ -528,7 +528,7 @@ class SettlementRepository:
                 (user_id, server_id),
             )
             row = await cursor.fetchone()
-            amount = (row[0] or 0) if row else 0
+            amount = (row["pending_zeal"] or 0) if row else 0
             if amount <= 0:
                 return 0
             await self.connection.execute(
@@ -567,7 +567,7 @@ class SettlementRepository:
                 (user_id, server_id),
             )
             row = await cursor.fetchone()
-            pending = (row[0] or 0) if row else 0
+            pending = (row["pending_zeal"] or 0) if row else 0
             amount = min(pending, cap)
             if amount <= 0:
                 return 0
@@ -604,10 +604,10 @@ class SettlementRepository:
             row = await cursor.fetchone()
             if row:
                 return {
-                    "settlement_zeal": row[0] or 0,
-                    "idlem": row[1] or 0,
-                    "zeal_earned_today": row[2] or 0,
-                    "last_zeal_reset": row[3],
+                    "settlement_zeal": row["settlement_zeal"] or 0,
+                    "idlem": row["idlem"] or 0,
+                    "zeal_earned_today": row["zeal_earned_today"] or 0,
+                    "last_zeal_reset": row["last_zeal_reset"],
                 }
         except Exception:
             pass
@@ -650,7 +650,7 @@ class SettlementRepository:
                 (user_id, server_id),
             )
             row = await cursor.fetchone()
-            last = row[0] if row else None
+            last = row["last_zeal_reset"] if row else None
             if last != today:
                 await self.connection.execute(
                     "UPDATE settlements SET zeal_earned_today = 0, last_zeal_reset = ? "
@@ -679,7 +679,7 @@ class SettlementRepository:
                 (user_id, server_id),
             )
             row = await cursor.fetchone()
-            if not row or (row[0] or 0) < amount:
+            if not row or (row["idlem"] or 0) < amount:
                 return False
             await self.connection.execute(
                 "UPDATE settlements SET idlem = idlem - ? "
@@ -704,7 +704,7 @@ class SettlementRepository:
                 (user_id, server_id),
             ) as cursor:
                 row = await cursor.fetchone()
-            return (row[0] or 0) if row else 0
+            return (row["development_contracts"] or 0) if row else 0
         except Exception:
             return 0
 
@@ -782,7 +782,7 @@ class SettlementRepository:
                 (user_id, server_id),
             ) as cursor:
                 row = await cursor.fetchone()
-            return (row[0] or 0) if row else 0
+            return (row["pending_companion_cookies"] or 0) if row else 0
         except Exception:
             return 0
 
@@ -797,7 +797,7 @@ class SettlementRepository:
                 (user_id, server_id),
             ) as cursor:
                 row = await cursor.fetchone()
-            amount = (row[0] or 0) if row else 0
+            amount = (row["pending_companion_cookies"] or 0) if row else 0
             if amount > 0:
                 await self.connection.execute(
                     "UPDATE settlements SET pending_companion_cookies = 0 "
@@ -823,12 +823,12 @@ class SettlementRepository:
         rows = await cursor.fetchall()
         return [
             {
-                "id": r[0],
-                "project_type": r[1],
-                "target_id": r[2],
-                "required_turns": r[3],
-                "invested_turns": r[4],
-                "data": json.loads(r[5]) if r[5] else {},
+                "id": r["id"],
+                "project_type": r["project_type"],
+                "target_id": r["target_id"],
+                "required_turns": r["required_turns"],
+                "invested_turns": r["invested_turns"],
+                "data": json.loads(r["data"]) if r["data"] else {},
             }
             for r in rows
         ]
@@ -868,7 +868,7 @@ class SettlementRepository:
         existing = await cursor.fetchone()
 
         if existing:
-            row_id = existing[0]
+            row_id = existing["id"]
             await self.connection.execute(
                 "UPDATE settlement_projects SET required_turns = ?, data = ? WHERE id = ?",
                 (required_turns, data_json, row_id),
@@ -887,9 +887,9 @@ class SettlementRepository:
                     data_json,
                 ),
             )
-            cursor2 = await self.connection.execute("SELECT last_insert_rowid()")
+            cursor2 = await self.connection.execute("SELECT last_insert_rowid() AS rowid")
             r = await cursor2.fetchone()
-            row_id = r[0] if r else -1
+            row_id = r["rowid"] if r else -1
 
         await self.connection.commit()
         return row_id
@@ -911,12 +911,12 @@ class SettlementRepository:
         rows = await cursor.fetchall()
         return [
             {
-                "id": r[0],
-                "project_type": r[1],
-                "target_id": r[2],
-                "required_turns": r[3],
-                "invested_turns": r[4],
-                "data": json.loads(r[5]) if r[5] else {},
+                "id": r["id"],
+                "project_type": r["project_type"],
+                "target_id": r["target_id"],
+                "required_turns": r["required_turns"],
+                "invested_turns": r["invested_turns"],
+                "data": json.loads(r["data"]) if r["data"] else {},
             }
             for r in rows
         ]
@@ -941,12 +941,12 @@ class SettlementRepository:
         if not row:
             return None
         return {
-            "id": row[0],
-            "offer_data": json.loads(row[1]),
-            "total_value": row[2],
-            "turns_remaining": row[3],
-            "active_biases": json.loads(row[4]) if row[4] else [],
-            "created_turn": row[5],
+            "id": row["id"],
+            "offer_data": json.loads(row["offer_data"]),
+            "total_value": row["total_value"],
+            "turns_remaining": row["turns_remaining"],
+            "active_biases": json.loads(row["active_biases"]) if row["active_biases"] else [],
+            "created_turn": row["created_turn"],
         }
 
     async def create_pending_deal(
@@ -1012,12 +1012,12 @@ class SettlementRepository:
         rows = await cursor.fetchall()
         return [
             {
-                "id": r[0],
-                "event_key": r[1],
-                "event_type": r[2],
-                "turns_until": r[3],
-                "turns_remaining": r[4],
-                "data": json.loads(r[5]) if r[5] else {},
+                "id": r["id"],
+                "event_key": r["event_key"],
+                "event_type": r["event_type"],
+                "turns_until": r["turns_until"],
+                "turns_remaining": r["turns_remaining"],
+                "data": json.loads(r["data"]) if r["data"] else {},
             }
             for r in rows
         ]
@@ -1108,7 +1108,7 @@ class SettlementRepository:
             (user_id, server_id),
         )
         rows = await cursor.fetchall()
-        return {r[0]: r[1] for r in rows}
+        return {r["node_key"]: r["level"] for r in rows}
 
     async def set_bm_node(
         self, user_id: str, server_id: str, node_key: str, level: int
@@ -1145,11 +1145,11 @@ class SettlementRepository:
         )
         bp_row = await bp_cursor.fetchone()
         can_build = {
-            "celestial": bool(bp_row[0]) if bp_row else False,
-            "infernal": bool(bp_row[1]) if bp_row else False,
-            "void": bool(bp_row[2]) if bp_row else False,
-            "bound": bool(bp_row[3]) if bp_row else False,
-            "corrupted": bool(bp_row[4]) if bp_row else False,
+            "celestial": bool(bp_row["celestial_blueprint_unlocked"]) if bp_row else False,
+            "infernal": bool(bp_row["infernal_blueprint_unlocked"]) if bp_row else False,
+            "void": bool(bp_row["void_blueprint_unlocked"]) if bp_row else False,
+            "bound": bool(bp_row["gemini_blueprint_unlocked"]) if bp_row else False,
+            "corrupted": bool(bp_row["corruption_blueprint_unlocked"]) if bp_row else False,
         }
 
         # Built state + worker counts + tier + slot_index from uber_shrine_statues
@@ -1160,11 +1160,11 @@ class SettlementRepository:
         )
         s_rows = await s_cursor.fetchall()
         statue_state = {
-            r[0]: {
-                "is_unlocked": bool(r[1]),
-                "workers_assigned": r[2],
-                "tier": r[3] if r[3] is not None else 1,
-                "slot_index": r[4] if r[4] else 0,
+            r["statue_type"]: {
+                "is_unlocked": bool(r["is_unlocked"]),
+                "workers_assigned": r["workers_assigned"],
+                "tier": r["tier"] if r["tier"] is not None else 1,
+                "slot_index": r["slot_index"] if r["slot_index"] else 0,
             }
             for r in s_rows
         }

@@ -50,7 +50,7 @@ class LeaderboardHubView(BaseView):
             data = await self.bot.database.users.get_leaderboard(10)
             embed = discord.Embed(title="Hiscores: Highest Levels 🏆", color=0x00FF00)
             lines = [
-                f"**{i + 1}. {row[3]}** - Level {row[4]} (Ascension {row[15]} 🌟)"
+                f"**{i + 1}. {row['name']}** - Level {row['level']} (Ascension {row['ascension']} 🌟)"
                 for i, row in enumerate(data)
             ]
 
@@ -60,7 +60,7 @@ class LeaderboardHubView(BaseView):
                 title="Hiscores: Highest Ascent Stage 🌟", color=0xFF8C00
             )
             lines = [
-                f"**{i + 1}. {row[0]}** - Stage {row[1]} 🌟 (Level {row[2]})"
+                f"**{i + 1}. {row['name']}** - Stage {row['highest_ascension_stage']} 🌟 (Level {row['level']})"
                 for i, row in enumerate(data)
             ]
 
@@ -68,14 +68,14 @@ class LeaderboardHubView(BaseView):
             data = await self.bot.database.users.get_wealth_leaderboard(10)
             embed = discord.Embed(title="Hiscores: Wealthiest 💰", color=0xFFD700)
             lines = [
-                f"**{i + 1}. {row[0]}** - {row[1]:,} GP" for i, row in enumerate(data)
+                f"**{i + 1}. {row['name']}** - {row['gold']:,} GP" for i, row in enumerate(data)
             ]
 
         elif self.active_tab == "slayer":
             data = await self.bot.database.slayer.get_leaderboard(10)
             embed = discord.Embed(title="Hiscores: Top Slayers 💀", color=0x8B0000)
             lines = [
-                f"**{i + 1}. {row[0]}** - Level {row[1]} ({row[2]:,} XP)"
+                f"**{i + 1}. {row['name']}** - Level {row['level']} ({row['xp']:,} XP)"
                 for i, row in enumerate(data)
             ]
 
@@ -85,7 +85,7 @@ class LeaderboardHubView(BaseView):
                 title="Hiscores: Dominant Ideologies 💡", color=0x00BFFF
             )
             lines = [
-                f"**{i + 1}. {row[0]}** - {row[1]:,} Followers"
+                f"**{i + 1}. {row['name']}** - {row['followers']:,} Followers"
                 for i, row in enumerate(data)
             ]
 

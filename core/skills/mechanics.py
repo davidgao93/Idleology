@@ -200,21 +200,29 @@ class SkillMechanics:
         """Returns UI configuration for a specific skill."""
         return SkillMechanics.SKILL_CONFIG.get(skill, {})
 
+    # Column name for the tool tier in each skill table.
+    TOOL_TIER_COL = {
+        "mining": "pickaxe_tier",
+        "fishing": "fishing_rod",
+        "woodcutting": "axe_type",
+    }
+
     @staticmethod
-    def map_db_row_to_resources(skill: str, row: tuple) -> List[Tuple[str, int]]:
-        """
-        Maps a raw DB tuple to a list of (DisplayName, Amount).
-        Assumes DB row structure: [..., tool_tier, res1, res2, res3, res4, res5]
-        Indices 3-7 are resources.
-        """
+    def get_tool_tier(skill: str, row) -> str:
+        """Returns the tool tier string from a skill DB row."""
+        col = SkillMechanics.TOOL_TIER_COL.get(skill, "pickaxe_tier")
+        return row[col]
+
+    @staticmethod
+    def map_db_row_to_resources(skill: str, row) -> List[Tuple[str, int]]:
+        """Maps a raw DB row to a list of (DisplayName, Amount)."""
         config = SkillMechanics.SKILL_CONFIG.get(skill)
         if not config or not row:
             return []
 
         mapped = []
-        # DB Indices 3 to 7 correspond to the 5 resources in order
-        for i, (db_col, display_name) in enumerate(config["resources"]):
-            amount = row[i + 3]
+        for db_col, display_name in config["resources"]:
+            amount = row[db_col]
             mapped.append((display_name, amount))
 
         return mapped

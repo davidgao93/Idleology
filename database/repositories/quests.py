@@ -119,15 +119,15 @@ class QuestsRepository(BaseRepository):
                 "prospector_unlocked": 0,
             }
         return {
-            "user_id": row[0],
-            "tokens": row[1],
-            "veteran_unlocked": row[2],
-            "extra_slot_unlocked": row[3],
-            "horizon_boost_uses": row[4],
-            "checkin_day": row[5],
-            "checkin_last_time": row[6],
-            "enrichment_unlocked": row[7],
-            "prospector_unlocked": row[8],
+            "user_id": row["user_id"],
+            "tokens": row["tokens"],
+            "veteran_unlocked": row["veteran_unlocked"],
+            "extra_slot_unlocked": row["extra_slot_unlocked"],
+            "horizon_boost_uses": row["horizon_boost_uses"],
+            "checkin_day": row["checkin_day"],
+            "checkin_last_time": row["checkin_last_time"],
+            "enrichment_unlocked": row["enrichment_unlocked"],
+            "prospector_unlocked": row["prospector_unlocked"],
         }
 
     async def add_tokens(self, user_id: str, amount: int) -> None:
@@ -185,11 +185,11 @@ class QuestsRepository(BaseRepository):
         rows = await cursor.fetchall()
         return [
             {
-                "slot": r[0],
-                "quest_id": r[1],
-                "tier": r[2],
-                "free_reroll_used": r[3],
-                "board_rolled_at": r[4],
+                "slot": r["slot"],
+                "quest_id": r["quest_id"],
+                "tier": r["tier"],
+                "free_reroll_used": r["free_reroll_used"],
+                "board_rolled_at": r["board_rolled_at"],
             }
             for r in rows
         ]
@@ -245,14 +245,14 @@ class QuestsRepository(BaseRepository):
         rows = await cursor.fetchall()
         return [
             {
-                "slot": r[0],
-                "quest_id": r[1],
-                "tier": r[2],
-                "progress": r[3],
-                "goal": r[4],
-                "locked_at": r[5],
-                "completed": r[6],
-                "turned_in": r[7],
+                "slot": r["slot"],
+                "quest_id": r["quest_id"],
+                "tier": r["tier"],
+                "progress": r["progress"],
+                "goal": r["goal"],
+                "locked_at": r["locked_at"],
+                "completed": r["completed"],
+                "turned_in": r["turned_in"],
             }
             for r in rows
         ]
@@ -325,9 +325,9 @@ class QuestsRepository(BaseRepository):
         rows = await cursor.fetchall()
         updated = []
         for r in rows:
-            slot = r[0]
-            new_progress = r[3] + amount
-            completed = 1 if new_progress >= r[4] else 0
+            slot = r["slot"]
+            new_progress = r["progress"] + amount
+            completed = 1 if new_progress >= r["goal"] else 0
             await self.connection.execute(
                 "UPDATE quest_contracts SET progress = ?, completed = ? "
                 "WHERE user_id = ? AND server_id = ? AND slot = ?",
@@ -336,13 +336,13 @@ class QuestsRepository(BaseRepository):
             updated.append(
                 {
                     "slot": slot,
-                    "quest_id": r[1],
-                    "tier": r[2],
+                    "quest_id": r["quest_id"],
+                    "tier": r["tier"],
                     "progress": new_progress,
-                    "goal": r[4],
-                    "locked_at": r[5],
+                    "goal": r["goal"],
+                    "locked_at": r["locked_at"],
                     "completed": completed,
-                    "turned_in": r[7],
+                    "turned_in": r["turned_in"],
                 }
             )
         if updated:
@@ -396,12 +396,12 @@ class QuestsRepository(BaseRepository):
         if not row:
             return None
         return {
-            "path_id": row[0],
-            "progress": row[1],
-            "goal": row[2],
-            "locked_at": row[3],
-            "completed": row[4],
-            "turned_in": row[5],
+            "path_id": row["path_id"],
+            "progress": row["progress"],
+            "goal": row["goal"],
+            "locked_at": row["locked_at"],
+            "completed": row["completed"],
+            "turned_in": row["turned_in"],
         }
 
     async def set_horizon(
@@ -427,20 +427,20 @@ class QuestsRepository(BaseRepository):
         row = await cursor.fetchone()
         if not row:
             return None
-        new_progress = row[1] + amount
-        completed = 1 if new_progress >= row[2] else 0
+        new_progress = row["progress"] + amount
+        completed = 1 if new_progress >= row["goal"] else 0
         await self.connection.execute(
             "UPDATE quest_horizon SET progress = ?, completed = ? WHERE user_id = ? AND server_id = ?",
             (new_progress, completed, user_id, server_id),
         )
         await self.connection.commit()
         return {
-            "path_id": row[0],
+            "path_id": row["path_id"],
             "progress": new_progress,
-            "goal": row[2],
-            "locked_at": row[3],
+            "goal": row["goal"],
+            "locked_at": row["locked_at"],
             "completed": completed,
-            "turned_in": row[5],
+            "turned_in": row["turned_in"],
         }
 
     async def complete_horizon(self, user_id: str, server_id: str) -> None:

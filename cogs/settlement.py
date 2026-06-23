@@ -61,7 +61,7 @@ class SettlementCog(commands.Cog, name="settlement"):
             await self.bot.database.plots.ensure_plots(user_id, server_id)
             plot_rows = await self.bot.database.plots.get_plots(user_id, server_id)
             plots = [
-                Plot(plot_index=r[0], is_developed=bool(r[1]), bonus_type=r[2])
+                Plot(plot_index=r["plot_index"], is_developed=bool(r["is_developed"]), bonus_type=r["bonus_type"])
                 for r in plot_rows
             ]
             player_name = (

@@ -265,7 +265,7 @@ class TradeRootView(BaseView):
         async def equip_callback(inter):
             item_id = int(inter.data["values"][0])
             item_row = await self.bot.database.equipment.get_by_id(item_id, itype)
-            item_name = item_row[2]
+            item_name = item_row["item_name"]
 
             # Store type for logic
             self.equip_type_selected = itype

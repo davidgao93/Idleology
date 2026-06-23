@@ -129,7 +129,7 @@ class DropManager:
         skill_row = await bot.database.skills.get_data(user_id, server_id, skill_type)
         if not skill_row:
             return None
-        tool_tier = skill_row[2]
+        tool_tier = SkillMechanics.get_tool_tier(skill_type, skill_row)
         resources = SkillMechanics.calculate_yield(skill_type, tool_tier)
 
         # Apply yield multiplier from mastery

@@ -335,9 +335,9 @@ class DispatchView(PartnerBaseView):
             await _apply_dispatch_rewards(self.bot, self.user_id, server_id, active)
         rows = await self.bot.database.partners.get_owned(self.user_id)
         self.partners = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
+            Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
             for row in rows
-            if row[2] in PARTNER_DATA
+            if row["partner_id"] in PARTNER_DATA
         ]
         self.items = await self.bot.database.partners.get_items(self.user_id)
         sp_id = self.selected_partner.partner_id if self.selected_partner else None
@@ -469,9 +469,9 @@ class DispatchView(PartnerBaseView):
 
         rows = await self.bot.database.partners.get_owned(self.user_id)
         self.partners = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
+            Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
             for row in rows
-            if row[2] in PARTNER_DATA
+            if row["partner_id"] in PARTNER_DATA
         ]
         self.items = await self.bot.database.partners.get_items(self.user_id)
         self.selected_partner = next(
@@ -499,9 +499,9 @@ class DispatchView(PartnerBaseView):
 
         rows = await self.bot.database.partners.get_owned(self.user_id)
         self.partners = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
+            Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
             for row in rows
-            if row[2] in PARTNER_DATA
+            if row["partner_id"] in PARTNER_DATA
         ]
         self.items = await self.bot.database.partners.get_items(self.user_id)
         self.selected_partner = next(
@@ -530,9 +530,9 @@ class DispatchView(PartnerBaseView):
 
         rows = await self.bot.database.partners.get_owned(self.user_id)
         self.partners = [
-            Partner.from_row(row, PARTNER_DATA[row[2]])
+            Partner.from_row(row, PARTNER_DATA[row["partner_id"]])
             for row in rows
-            if row[2] in PARTNER_DATA
+            if row["partner_id"] in PARTNER_DATA
         ]
         self.items = await self.bot.database.partners.get_items(self.user_id)
         self.selected_partner = next(

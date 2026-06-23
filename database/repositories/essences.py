@@ -49,7 +49,7 @@ class EssencesRepository:
             (user_id,),
         )
         rows = await cursor.fetchall()
-        return {row[0]: row[1] for row in rows}
+        return {row["essence_type"]: row["quantity"] for row in rows}
 
     async def get_quantity(self, user_id: str, essence_type: str) -> int:
         """Returns quantity of a specific essence type (0 if none)."""
@@ -58,7 +58,7 @@ class EssencesRepository:
             (user_id, essence_type),
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["quantity"] if row else 0
 
     async def add(self, user_id: str, essence_type: str, quantity: int = 1) -> None:
         """Adds essence(s) to the player's inventory (upsert)."""

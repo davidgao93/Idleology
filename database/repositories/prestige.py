@@ -20,7 +20,7 @@ class PrestigeRepository:
             (user_id, item_type),
         )
         rows = await cursor.fetchall()
-        return [r[0] for r in rows]
+        return [r["item_key"] for r in rows]
 
     async def add_owned(self, user_id: str, item_type: str, item_key: str) -> None:
         await self.connection.execute(
@@ -40,12 +40,12 @@ class PrestigeRepository:
         if not row:
             return {}
         return {
-            "border": row[0],
-            "title": row[1],
-            "display_name": row[2],
-            "flair": row[3],
-            "death_message": row[4],
-            "monument": row[5],
+            "border": row["prestige_border"],
+            "title": row["prestige_title"],
+            "display_name": row["prestige_display_name"],
+            "flair": row["prestige_flair"],
+            "death_message": row["prestige_death_message"],
+            "monument": row["prestige_monument"],
         }
 
     async def set_field(self, user_id: str, field: str, value: str) -> None:

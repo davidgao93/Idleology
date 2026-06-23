@@ -415,7 +415,7 @@ async def apply_victory_rewards(
         _skill_type = random.choice(["mining", "woodcutting", "fishing"])
         _skill_row = await bot.database.skills.get_data(user_id, server_id, _skill_type)
         if _skill_row:
-            _tool_tier = _skill_row[2]
+            _tool_tier = _SM.get_tool_tier(_skill_type, _skill_row)
             _units = max(1, flora_gold // 1000)
             _base = _SM.calculate_yield(_skill_type, _tool_tier)
             _resources = {k: v * _units for k, v in _base.items()}

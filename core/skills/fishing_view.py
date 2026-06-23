@@ -80,7 +80,7 @@ class FishingView(BaseView):
 
     @property
     def rod_tier(self) -> str:
-        return self.skill_data[2] if self.skill_data else "desiccated"
+        return self.skill_data["fishing_rod"] if self.skill_data else "desiccated"
 
     @property
     def gold(self) -> int:

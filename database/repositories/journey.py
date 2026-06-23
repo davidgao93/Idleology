@@ -14,7 +14,7 @@ class JourneyRepository:
             (user_id,),
         )
         rows = await cursor.fetchall()
-        return {row[0] for row in rows}
+        return {row["milestone_level"] for row in rows}
 
     async def claim(self, user_id: str, milestone_level: int) -> None:
         """Records a milestone claim. Safe to call even if already claimed (no-op)."""

@@ -12,10 +12,10 @@ class EggsRepository(BaseRepository):
 
     async def get_egg_count(self, user_id: str) -> int:
         cursor = await self.connection.execute(
-            "SELECT COUNT(*) FROM monster_eggs WHERE user_id = ?", (user_id,)
+            "SELECT COUNT(*) AS cnt FROM monster_eggs WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["cnt"] if row else 0
 
     async def get_eggs(self, user_id: str) -> list:
         """Returns all egg rows as list of (id, egg_tier, monster_level, monster_name)."""
@@ -72,12 +72,12 @@ class EggsRepository(BaseRepository):
         row = await cursor.fetchone()
         if row:
             return {
-                "egg_id": row[0],
-                "egg_tier": row[1],
-                "monster_level": row[2],
-                "monster_name": row[3],
-                "start_time": row[4],
-                "duration_seconds": row[5],
+                "egg_id": row["egg_id"],
+                "egg_tier": row["egg_tier"],
+                "monster_level": row["monster_level"],
+                "monster_name": row["monster_name"],
+                "start_time": row["start_time"],
+                "duration_seconds": row["duration_seconds"],
             }
         return None
 
@@ -146,10 +146,10 @@ class EggsRepository(BaseRepository):
         row = await cursor.fetchone()
         if row:
             return {
-                "id": row[0],
-                "monster_name": row[1],
-                "monster_level": row[2],
-                "egg_tier": row[3],
+                "id": row["id"],
+                "monster_name": row["monster_name"],
+                "monster_level": row["monster_level"],
+                "egg_tier": row["egg_tier"],
             }
         return None
 
@@ -162,7 +162,7 @@ class EggsRepository(BaseRepository):
 
     async def get_incubated_queue_count(self, user_id: str) -> int:
         cursor = await self.connection.execute(
-            "SELECT COUNT(*) FROM incubated_encounters WHERE user_id = ?", (user_id,)
+            "SELECT COUNT(*) AS cnt FROM incubated_encounters WHERE user_id = ?", (user_id,)
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return row["cnt"] if row else 0

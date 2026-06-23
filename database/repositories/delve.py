@@ -30,11 +30,11 @@ class DelveRepository:
             }
 
         return {
-            "xp": row[2],
-            "shards": row[3],
-            "fuel_lvl": row[4],
-            "struct_lvl": row[5],
-            "sensor_lvl": row[6],
+            "xp": row["delve_xp"],
+            "shards": row["obsidian_shards"],
+            "fuel_lvl": row["fuel_level"],
+            "struct_lvl": row["struct_level"],
+            "sensor_lvl": row["sensor_level"],
         }
 
     async def modify_shards(self, user_id: str, server_id: str, amount: int):
@@ -54,7 +54,7 @@ class DelveRepository:
             (user_id, server_id),
         )
         row = await cursor.fetchone()
-        old_xp = row[0] if row else 0
+        old_xp = row["delve_xp"] if row else 0
         old_lvl = DelveMechanics.calculate_level_from_xp(old_xp)
 
         new_xp = old_xp + amount
