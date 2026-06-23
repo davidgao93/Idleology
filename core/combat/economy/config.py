@@ -102,12 +102,12 @@ SPECIAL_DROP_BASE_CHANCE: float = 0.01
 
 # Drop-specific base rates that differ from the generic baseline.
 SPIRIT_STONE_BASE_CHANCE: float = 0.01
-SOUL_CORE_BASE_CHANCE: float = 0.05  # +2% from 0.03
+SOUL_CORE_BASE_CHANCE: float = 0.06  # +2% from 0.03
 VOID_FRAG_BASE_CHANCE: float = 0.04  # +2% from 0.02
 
 # Boss key drop rates (each raised +2% from the generic SPECIAL_DROP_BASE_CHANCE baseline).
-DRACONIC_KEY_BASE_CHANCE: float = 0.03
-ANGELIC_KEY_BASE_CHANCE: float = 0.03
+DRACONIC_KEY_BASE_CHANCE: float = 0.02
+ANGELIC_KEY_BASE_CHANCE: float = 0.02
 BALANCE_FRAG_BASE_CHANCE: float = 0.03
 
 # Guild Ticket — drops without an active partner; requires a minimum level.
@@ -141,7 +141,7 @@ SIGIL_WORKER_MULTIPLIER: float = 0.0005
 # ---------------------------------------------------------------------------
 
 # Flat gold added to every reward after the rarity multiplier.
-GOLD_BASE_FLAT: int = 20
+GOLD_BASE_FLAT: int = 80
 
 # Divisor used in the rarity multiplier: mult = 1 + sqrt(rarity) / denominator.
 GOLD_RARITY_DENOMINATOR: float = 20.0

@@ -81,7 +81,9 @@ class SettlementMaterialsRepository(BaseRepository):
     async def modify(self, user_id: str, material: str, amount: int) -> None:
         """Add *amount* (may be negative) to a material column, flooring at 0."""
         if material not in _VALID_MATERIALS:
-            raise ValueError(f"settlement_materials.modify: unknown material {material!r}")
+            raise ValueError(
+                f"settlement_materials.modify: unknown material {material!r}"
+            )
         await self._ensure(user_id)
         await self.connection.execute(
             f"UPDATE settlement_materials "

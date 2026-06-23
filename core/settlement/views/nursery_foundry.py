@@ -241,7 +241,9 @@ class IdlemFoundryView(SettlementBaseView):
                 data={"idlem_per_turn": idlem_this_turn},
             )
 
-            zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(
+                self.user_id, self.server_id
+            )
             projects = await self.bot.database.settlement.get_projects(
                 self.user_id, self.server_id
             )

@@ -299,54 +299,54 @@ BM_ITEM_VALUES: dict[str, int] = {
     "timber": 1,
     "stone": 1,
     # Raw ores / materials
-    "iron": 2,
-    "coal": 2,
-    "gold": 3,
-    "platinum": 4,
-    "idea": 5,
+    "iron": 10,
+    "coal": 20,
+    "gold": 30,
+    "platinum": 40,
+    "idea": 50,
     # Logs
-    "oak_logs": 2,
-    "willow_logs": 2,
-    "mahogany_logs": 3,
-    "magic_logs": 4,
-    "idea_logs": 5,
+    "oak_logs": 10,
+    "willow_logs": 20,
+    "mahogany_logs": 30,
+    "magic_logs": 40,
+    "idea_logs": 50,
     # Refined bars
-    "iron_bar": 4,
-    "steel_bar": 5,
-    "gold_bar": 6,
-    "platinum_bar": 7,
-    "idea_bar": 8,
+    "iron_bar": 20,
+    "steel_bar": 30,
+    "gold_bar": 40,
+    "platinum_bar": 50,
+    "idea_bar": 60,
     # Planks
-    "oak_plank": 4,
-    "willow_plank": 5,
-    "mahogany_plank": 6,
-    "magic_plank": 7,
-    "idea_plank": 8,
+    "oak_plank": 20,
+    "willow_plank": 30,
+    "mahogany_plank": 40,
+    "magic_plank": 50,
+    "idea_plank": 60,
     # Bones
-    "desiccated_bones": 2,
-    "regular_bones": 3,
-    "sturdy_bones": 4,
-    "reinforced_bones": 5,
-    "titanium_bones": 6,
+    "desiccated_bones": 10,
+    "regular_bones": 20,
+    "sturdy_bones": 30,
+    "reinforced_bones": 40,
+    "titanium_bones": 50,
     # Essences
-    "desiccated_essence": 5,
-    "regular_essence": 6,
-    "sturdy_essence": 7,
-    "reinforced_essence": 8,
-    "titanium_essence": 9,
+    "desiccated_essence": 20,
+    "regular_essence": 30,
+    "sturdy_essence": 40,
+    "reinforced_essence": 50,
+    "titanium_essence": 60,
     # Runes — Valuables ×100
-    "refinement_runes": 15_000,
-    "potential_runes": 15_000,
-    "shatter_runes": 15_000,
-    "imbue_runes": 25_000,
-    "partnership_runes": 20_000,
+    "refinement_runes": 100_000,
+    "potential_runes": 60_000,
+    "shatter_runes": 85_000,
+    "imbue_runes": 175_000,
+    "partnership_runes": 50_000,
     # Boss keys — Valuables ×100
     "dragon_key": 40_000,
     "angel_key": 40_000,
     "soul_cores": 30_000,
     "balance_fragment": 40_000,
     "void_frags": 35_000,
-    "void_keys": 100_000,
+    "void_keys": 150_000,
     # Elemental keys — Valuables ×100
     "blessed_bismuth": 50_000,
     "sparkling_sprig": 50_000,
@@ -355,18 +355,18 @@ BM_ITEM_VALUES: dict[str, int] = {
     "magma_core": 50_000,
     "life_root": 50_000,
     "spirit_shard": 50_000,
-    "celestial_stone": 250_000,
-    "infernal_cinder": 250_000,
-    "void_crystal": 250_000,
-    "bound_crystal": 250_000,
-    "corrupted_crystal": 250_000,
+    "celestial_stone": 1_250_000,
+    "infernal_cinder": 1_250_000,
+    "void_crystal": 1_250_000,
+    "bound_crystal": 1_250_000,
+    "corrupted_crystal": 10_000_000,
     # Blueprints etc. — Valuables ×100
-    "unidentified_blueprint": 80_000,
-    "diviners_rod": 60_000,
-    "spirit_stones": 5_000,
+    "unidentified_blueprint": 100_000,
+    "diviners_rod": 100_000,
+    "spirit_stones": 100_000,
     # Endgame — Valuables ×100
-    "antique_tome": 180_000,
-    "pinnacle_key": 220_000,
+    "antique_tome": 150_000,
+    "pinnacle_key": 200_000,
     # Uber sigils — Valuables ×100
     "celestial_sigils": 300_000,
     "infernal_sigils": 300_000,
@@ -374,7 +374,7 @@ BM_ITEM_VALUES: dict[str, int] = {
     "gemini_sigils": 300_000,
     "corruption_sigils": 300_000,
     # Curios — Valuables ×100
-    "curios": 20_000,
+    "curios": 200_000,
 }
 
 # Processing turn formula: turns = BM_TURNS_BASE + (value / BM_TURNS_PER_VALUE)
@@ -403,8 +403,8 @@ BM_BASE_LOOT_WEIGHTS: list[tuple[str, int]] = [
 BM_ROLLS_PER_VALUE = 2_000
 
 # Gold range per gold roll (multiplied by value bonus)
-BM_GOLD_MIN = 10_000
-BM_GOLD_MAX = 80_000
+BM_GOLD_MIN = 15_000
+BM_GOLD_MAX = 150_000
 
 # ---------------------------------------------------------------------------
 # Black Market passive tree node definitions

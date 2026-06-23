@@ -333,7 +333,9 @@ class ForestryView(BaseView):
             # Masterful sessions grant a small amount of settlement Zeal (non-critical)
             if self.session_quality == "masterful":
                 try:
-                    await self.bot.database.settlement.add_zeal(self.user_id, self.server_id, 5)
+                    await self.bot.database.settlement.add_zeal(
+                        self.user_id, self.server_id, 5
+                    )
                 except Exception:
                     pass
 

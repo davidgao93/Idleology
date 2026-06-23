@@ -750,6 +750,10 @@ _CURRENCY_LABELS = {
     "magic_logs": "Magic Logs",
     "reinforced_bones": "Reinforced Bones",
     "titanium_bones": "Titanium Bones",
+    "partnership_runes": "Partnership Rune",
+    "mirage_runes_imperfect": "Mirage Rune (Imperfect)",
+    "mirage_runes_perfected": "Mirage Rune (Perfected)",
+    "paradise_jewels": "Paradise Jewel",
 }
 
 
@@ -835,12 +839,13 @@ def roll_bm_rewards(
                 "potential_runes",
                 "shatter_runes",
                 "imbue_runes",
+                "partnership_runes",
             ]
             chosen = _pick_varied(rune_pool, _used["rune"])
             qty = (
-                random.randint(1, 5)
-                if chosen != "imbue_runes"
-                else random.randint(1, 2)
+                random.randint(1, 3)
+                if chosen not in ("imbue_runes", "partnership_runes")
+                else 1
             )
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + qty
             if bm_logger:
@@ -848,13 +853,14 @@ def roll_bm_rewards(
 
         elif cat == "boss_key":
             key_pool = [
+                "soul_cores",
+                "void_frags",
+                "balance_fragment",
                 "dragon_key",
                 "angel_key",
-                "soul_cores",
-                "balance_fragment",
-                "void_frags",
             ]
-            chosen = _pick_varied(key_pool, _used["boss_key"])
+            key_weights = [5, 3, 1, 1, 1]
+            chosen = random.choices(key_pool, weights=key_weights, k=1)[0]
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + 1
             if bm_logger:
                 bm_logger.log_roll(n, cat, chosen, 1)
@@ -895,15 +901,9 @@ def roll_bm_rewards(
                 bm_logger.log_roll(n, cat, chosen, qty)
 
         elif cat == "essence":
-            ess_pool = [
-                "power",
-                "protection",
-                "insight",
-                "evasion",
-                "blocking",
-                "deftness",
-            ]
-            chosen_ess = _pick_varied(ess_pool, _used["essence"])
+            from core.combat.economy.drops import roll_essence_drop
+
+            chosen_ess = roll_essence_drop()
             qty = random.randint(1, 3)
             result["currencies"][f"essence_{chosen_ess}"] = (
                 result["currencies"].get(f"essence_{chosen_ess}", 0) + qty
@@ -920,7 +920,11 @@ def roll_bm_rewards(
         elif cat == "settler_mat":
             mat_pool = ["magma_core", "life_root", "spirit_shard", "cosmic_dust"]
             chosen = random.choice(mat_pool)
-            qty = random.randint(1, 2)
+            qty = (
+                random.randint(40, 60)
+                if chosen == "cosmic_dust"
+                else random.randint(1, 2)
+            )
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + qty
             if bm_logger:
                 bm_logger.log_roll(n, cat, chosen, qty)
@@ -938,28 +942,53 @@ def roll_bm_rewards(
                 "diviners_rod",
                 "unidentified_blueprint",
             ]
-            weights_he = [25, 20, 30, 15, 10]
-            chosen = random.choices(pool, weights=weights_he, k=1)[0]
+            chosen = random.choice(pool)
             result["currencies"][chosen] = result["currencies"].get(chosen, 0) + 1
             if bm_logger:
                 bm_logger.log_roll(n, cat, chosen, 1)
 
         elif cat == "guild_ticket":
-            qty = random.randint(1, 2)
+            qty = random.randint(1, 3)
             result["currencies"]["guild_ticket"] = (
                 result["currencies"].get("guild_ticket", 0) + qty
             )
             if bm_logger:
                 bm_logger.log_roll(n, cat, "guild_ticket", qty)
 
+    # Premier tier — extremely rare table, ~100× less likely than a gold roll per spin
+    # Gold: weight 25 / total ~95 → premier chance = 25 / (95 * 100)
+    _PREMIER_CHANCE = 25 / (95 * 100)
+    _PREMIER_POOL = [
+        "mirage_runes_imperfect",
+        "paradise_jewels",
+        "mirage_runes_perfected",
+    ]
+    _PREMIER_WEIGHTS = [100, 2500, 1]
+
+    def _try_premier(roll_n: int) -> bool:
+        """Returns True if a premier item was awarded instead of the normal roll."""
+        if random.random() >= _PREMIER_CHANCE:
+            return False
+        chosen = random.choices(_PREMIER_POOL, weights=_PREMIER_WEIGHTS, k=1)[0]
+        result["currencies"][chosen] = result["currencies"].get(chosen, 0) + 1
+        if bm_logger:
+            bm_logger.log_roll(roll_n, "premier", chosen, 1)
+        return True
+
     # Base rolls
     for _ in range(base_rolls):
-        cat = random.choices(categories, weights=weights, k=1)[0]
-        _roll_category(cat)
+        _roll_num[0] += 1
+        if not _try_premier(_roll_num[0]):
+            _roll_num[0] -= 1  # reuse the number for the normal roll
+            cat = random.choices(categories, weights=weights, k=1)[0]
+            _roll_category(cat)
 
     # Extra bias rolls
     for cat in extra_rolls:
-        _roll_category(cat)
+        _roll_num[0] += 1
+        if not _try_premier(_roll_num[0]):
+            _roll_num[0] -= 1
+            _roll_category(cat)
 
     # Build compact summary — one segment per reward type, joined for single-line display
     parts: list[str] = []
@@ -967,7 +996,7 @@ def roll_bm_rewards(
         parts.append(f"💰 {result['gold']:,}g")
     for cur, qty in result["currencies"].items():
         if cur.startswith("essence_"):
-            ess = cur[len("essence_"):].replace("_", " ").title()
+            ess = cur[len("essence_") :].replace("_", " ").title()
             label = f"Essence of {ess}"
         else:
             label = _CURRENCY_LABELS.get(cur) or cur.replace("_", " ").title()
@@ -1052,6 +1081,13 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
                 await bot.database.settlement_materials.modify(user_id, cur, qty)
             except Exception:
                 pass
+        elif cur == "paradise_jewels":
+            try:
+                await bot.database.uber.increment_paradise_jewels(
+                    user_id, server_id, qty
+                )
+            except Exception:
+                pass
         else:
             try:
                 await bot.database.users.modify_currency(user_id, cur, qty)
@@ -1071,9 +1107,7 @@ async def _grant_bm_rewards(bot, user_id: str, server_id: str, rewards: dict) ->
 
             slot = item_spec.get("type", "random")
             if slot == "random":
-                slot = random.choices(
-                    _GEAR_SLOTS, weights=_GEAR_SLOT_WEIGHTS, k=1
-                )[0]
+                slot = random.choices(_GEAR_SLOTS, weights=_GEAR_SLOT_WEIGHTS, k=1)[0]
             ilvl = item_spec.get("level", 1)
             if slot == "weapon":
                 item = await generate_weapon(user_id, ilvl)

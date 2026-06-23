@@ -184,6 +184,13 @@ _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
     ),
 ]
 
+# Sort each category's keys by BM value ascending so the select menus display
+# items from cheapest to most valuable within their category.
+_BM_CATEGORIES = [
+    (cat_id, label, sorted(keys, key=lambda k: BM_ITEM_VALUES.get(k, 0)))
+    for cat_id, label, keys in _BM_CATEGORIES
+]
+
 # Resources stored in skill / settlement tables vs. user currency columns
 _SETTLEMENT_RESOURCE_KEYS: frozenset[str] = frozenset(["timber", "stone"])
 _SETTLEMENT_MATERIAL_KEYS: frozenset[str] = frozenset(
@@ -449,7 +456,9 @@ class BlackMarketView(SettlementBaseView):
         )
         if pending:
             await interaction.response.defer()
-            zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(
+                self.user_id, self.server_id
+            )
             self.has_pending_deal = True
             self._setup_ui()
             await interaction.edit_original_response(
@@ -479,7 +488,9 @@ class BlackMarketView(SettlementBaseView):
         tree_nodes = await self.bot.database.settlement.get_bm_tree(
             self.user_id, self.server_id
         )
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(
+            self.user_id, self.server_id
+        )
         view = BMPassiveTreeView(
             self.bot,
             self.user_id,
@@ -575,7 +586,9 @@ class BlackMarketView(SettlementBaseView):
             color=discord.Color.blurple(),
         )
         self._processing = False
-        await interaction.edit_original_response(embed=queued_embed, view=discord.ui.View())
+        await interaction.edit_original_response(
+            embed=queued_embed, view=discord.ui.View()
+        )
 
     async def _on_back(self, interaction: Interaction) -> None:
         if self.parent is None:
@@ -597,6 +610,38 @@ class BlackMarketView(SettlementBaseView):
 # ---------------------------------------------------------------------------
 # Offer Builder
 # ---------------------------------------------------------------------------
+
+
+class _InstantDealConfirmView(SettlementBaseView):
+    """Shown after an instant deal completes. Single button returns to the market."""
+
+    def __init__(
+        self, bot, user_id: str, server_id: str, parent_market: "BlackMarketView"
+    ):
+        super().__init__(bot, user_id)
+        self.server_id = server_id
+        self.parent_market = parent_market
+        btn = ui.Button(label="Collect & Return", style=ButtonStyle.success, emoji="✅")
+        btn.callback = self._on_collect
+        self.add_item(btn)
+
+    async def _on_collect(self, interaction: Interaction) -> None:
+        await interaction.response.defer()
+        pending = await self.bot.database.settlement.get_pending_deal(
+            self.user_id, self.server_id
+        )
+        zeal_data = await self.bot.database.settlement.get_zeal_data(
+            self.user_id, self.server_id
+        )
+        self.parent_market.has_pending_deal = bool(pending)
+        self.parent_market._setup_ui()
+        await interaction.edit_original_response(
+            embed=self.parent_market.build_embed(
+                pending_deal=pending, zeal_data=zeal_data
+            ),
+            view=self.parent_market,
+        )
+        self.stop()
 
 
 class OfferBuilderView(SettlementBaseView):
@@ -876,7 +921,9 @@ class OfferBuilderView(SettlementBaseView):
             for cur, delta in user_currency_changes.items():
                 try:
                     if cur in _SETTLEMENT_MATERIAL_KEYS:
-                        await self.bot.database.settlement_materials.modify(uid, cur, delta)
+                        await self.bot.database.settlement_materials.modify(
+                            uid, cur, delta
+                        )
                     else:
                         await self.bot.database.users.modify_currency(uid, cur, delta)
                 except Exception:
@@ -932,9 +979,19 @@ class OfferBuilderView(SettlementBaseView):
                 user_row = await self.bot.database.users.get(uid, sid)
                 player_level = user_row["level"] if user_row else 1
                 rewards = await complete_bm_deal_instant(
-                    self.bot, uid, sid, value, self._active_biases, player_level, tree_nodes
+                    self.bot,
+                    uid,
+                    sid,
+                    value,
+                    self._active_biases,
+                    player_level,
+                    tree_nodes,
                 )
-                summary_text = rewards["summary_lines"][0] if rewards["summary_lines"] else "Nothing"
+                summary_text = (
+                    rewards["summary_lines"][0]
+                    if rewards["summary_lines"]
+                    else "Nothing"
+                )
                 embed = discord.Embed(
                     title="⚡ Instant Deal Complete!",
                     description=(
@@ -948,8 +1005,12 @@ class OfferBuilderView(SettlementBaseView):
                     name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR
                 )
                 embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
-                await interaction.edit_original_response(embed=embed, view=discord.ui.View())
-                await asyncio.sleep(3)
+                confirm_view = _InstantDealConfirmView(
+                    self.bot, uid, sid, self.parent_market
+                )
+                await interaction.edit_original_response(embed=embed, view=confirm_view)
+                self.stop()
+                return
             else:
                 # Get current turn count for record-keeping
                 turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
@@ -979,7 +1040,9 @@ class OfferBuilderView(SettlementBaseView):
                     name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR
                 )
                 embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
-                await interaction.edit_original_response(embed=embed, view=discord.ui.View())
+                await interaction.edit_original_response(
+                    embed=embed, view=discord.ui.View()
+                )
                 await asyncio.sleep(2)
 
             # Return to main market view
@@ -1002,7 +1065,9 @@ class OfferBuilderView(SettlementBaseView):
         pending = await self.bot.database.settlement.get_pending_deal(
             self.user_id, self.server_id
         )
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(
+            self.user_id, self.server_id
+        )
         self.parent_market.has_pending_deal = bool(pending)
         self.parent_market._setup_ui()
         await interaction.response.edit_message(
@@ -1185,7 +1250,9 @@ class BMPassiveTreeView(SettlementBaseView):
                 return
 
             cost = node["idlem_costs"][current_lvl]
-            ok = await self.bot.database.settlement.spend_idlem(self.user_id, self.server_id, cost)
+            ok = await self.bot.database.settlement.spend_idlem(
+                self.user_id, self.server_id, cost
+            )
             if not ok:
                 await interaction.followup.send(
                     f"Need **{cost} Idlem** to unlock this. You have {self.idlem}.",
@@ -1216,7 +1283,9 @@ class BMPassiveTreeView(SettlementBaseView):
         pending = await self.bot.database.settlement.get_pending_deal(
             self.user_id, self.server_id
         )
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(
+            self.user_id, self.server_id
+        )
         self.parent_market.has_pending_deal = bool(pending)
         self.parent_market._setup_ui()
         await interaction.response.edit_message(

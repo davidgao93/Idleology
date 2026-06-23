@@ -497,7 +497,9 @@ class BuildingDetailView(SettlementBaseView):
         await interaction.response.defer()
         from core.settlement.views.nursery_foundry import IdlemFoundryView
 
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.parent.server_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(
+            self.user_id, self.parent.server_id
+        )
         view = IdlemFoundryView(
             self.bot, self.user_id, self.parent.server_id, self.building, self.parent
         )
@@ -517,7 +519,9 @@ class BuildingDetailView(SettlementBaseView):
         pending = await self.bot.database.settlement.get_pending_deal(
             self.user_id, self.parent.server_id
         )
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.parent.server_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(
+            self.user_id, self.parent.server_id
+        )
         await interaction.edit_original_response(
             embed=view.build_embed(pending_deal=pending, zeal_data=zeal_data), view=view
         )

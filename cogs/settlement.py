@@ -81,7 +81,9 @@ class SettlementCog(commands.Cog, name="settlement"):
             turns_data = await self.bot.database.settlement.get_turns_data(
                 user_id, server_id
             )
-            zeal_data = await self.bot.database.settlement.get_zeal_data(user_id, server_id)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(
+                user_id, server_id
+            )
             active_events = await self.bot.database.settlement.get_active_events(
                 user_id, server_id
             )

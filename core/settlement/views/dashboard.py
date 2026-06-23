@@ -395,7 +395,7 @@ class SettlementDashboardView(SettlementBaseView):
                 )
                 reward_text = reward_parts[0] if reward_parts else ""
                 lines.append(
-                    f"🎁 **Black Market deal returned!**"
+                    "🎁 **Black Market deal returned!**"
                     + (f" {reward_text}" if reward_text else "")
                 )
             if turn_summary.get("events_fired"):
@@ -1122,7 +1122,9 @@ class SettlementDashboardView(SettlementBaseView):
         if war_camp_stamina > 0:
             await self.bot.database.users.add_stamina_capped(uid, war_camp_stamina)
         if dc_earned > 0:
-            await self.bot.database.settlement.modify_development_contracts(uid, sid, dc_earned)
+            await self.bot.database.settlement.modify_development_contracts(
+                uid, sid, dc_earned
+            )
         await self.bot.database.settlement.update_collection_timer(uid, sid)
 
         # Companion XP — pool for manual distribution via Companions view

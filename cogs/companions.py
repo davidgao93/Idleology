@@ -45,7 +45,11 @@ class Companions(commands.Cog):
                 )
             )
             view = CompanionListView(
-                self.bot, user_id, companions, server_id=server_id, pending_cookies=pending_cookies
+                self.bot,
+                user_id,
+                companions,
+                server_id=server_id,
+                pending_cookies=pending_cookies,
             )
             embed = view.get_embed()
             embed.set_thumbnail(url=COMPANIONS_HUB)

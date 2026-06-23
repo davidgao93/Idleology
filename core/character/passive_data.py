@@ -107,12 +107,16 @@ _VOID_PASSIVE_DESC: dict[str, str] = {
 }
 
 _ACCESSORY_PASSIVE_FUNCS: dict = {
-    "obliterate": lambda lvl: f"On hit: {lvl * 4}% chance to deal 100% increased damage",
+    "obliterate": lambda lvl: (
+        f"On hit: {lvl * 4}% chance to deal 100% increased damage"
+    ),
     "absorb": lambda lvl: (
         f"Combat start: {lvl * 10}% chance to steal 10% of Monster ATK & DEF as bonus ATK & DEF"
     ),
     "prosper": lambda lvl: f"On victory: {lvl * 10}% chance for 100% increased Gold",
-    "infinite wisdom": lambda lvl: f"On victory: {lvl * 5}% chance for 100% increased XP",
+    "infinite wisdom": lambda lvl: (
+        f"On victory: {lvl * 5}% chance for 100% increased XP"
+    ),
     "lucky strikes": lambda lvl: (
         f"Turn start: {lvl * 10}% chance for Hit chance to be lucky"
     ),
@@ -148,7 +152,9 @@ _BOOT_PASSIVE_FUNCS: dict = {
 }
 
 _HELMET_PASSIVE_FUNCS: dict = {
-    "juggernaut": lambda lvl: f"Combat start: Gain {lvl * 4}% of total DEF as bonus ATK",
+    "juggernaut": lambda lvl: (
+        f"Combat start: Gain {lvl * 4}% of total DEF as bonus ATK"
+    ),
     "insight": lambda lvl: f"On equip: Crit Dmg Multiplier +{lvl * 0.1:.1f}×",
     "volatile": lambda lvl: (
         f"During combat: Deal {lvl * 100}% of Max HP as Dmg on ward break"

@@ -738,7 +738,9 @@ class SettlementRepository:
         except Exception:
             return 0
 
-    async def add_dc_crafted_today(self, user_id: str, server_id: str, qty: int) -> None:
+    async def add_dc_crafted_today(
+        self, user_id: str, server_id: str, qty: int
+    ) -> None:
         """Increments dc_crafted_today; resets the counter automatically on a new day."""
         from datetime import date
 
@@ -784,7 +786,9 @@ class SettlementRepository:
         except Exception:
             return 0
 
-    async def consume_pending_companion_cookies(self, user_id: str, server_id: str) -> int:
+    async def consume_pending_companion_cookies(
+        self, user_id: str, server_id: str
+    ) -> int:
         """Read and zero out the pending cookie balance. Returns the amount consumed."""
         try:
             async with self.connection.execute(

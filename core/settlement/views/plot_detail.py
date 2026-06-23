@@ -888,7 +888,9 @@ class PlotDetailView(SettlementBaseView):
         pending_deal = await self.bot.database.settlement.get_pending_deal(
             self.user_id, self.server_id
         )
-        zeal_data = await self.bot.database.settlement.get_zeal_data(self.user_id, self.server_id)
+        zeal_data = await self.bot.database.settlement.get_zeal_data(
+            self.user_id, self.server_id
+        )
         view = BlackMarketView(
             self.bot,
             self.user_id,
@@ -943,7 +945,9 @@ class PlotDetailView(SettlementBaseView):
 
         dc_cost = _compute_dc_cost(self.parent.plots, self.parent.projects)
 
-        dcs = await self.bot.database.settlement.get_development_contracts(self.user_id, self.server_id)
+        dcs = await self.bot.database.settlement.get_development_contracts(
+            self.user_id, self.server_id
+        )
         if dcs < dc_cost:
             self._processing = False
             return await interaction.response.send_message(
@@ -1274,7 +1278,9 @@ class PlotDetailView(SettlementBaseView):
 
         old_bonus = self.plot.bonus_type
         new_bonus = roll_plot_bonus()
-        await self.bot.database.settlement_materials.modify(self.user_id, "diviners_rod", -1)
+        await self.bot.database.settlement_materials.modify(
+            self.user_id, "diviners_rod", -1
+        )
 
         if new_bonus == old_bonus:
             # Rod consumed but terrain unchanged — inform the player
