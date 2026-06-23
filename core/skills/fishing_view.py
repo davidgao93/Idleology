@@ -148,11 +148,12 @@ class FishingView(BaseView):
             color = 0xFF8C00
 
         elif self.state == "escaped":
-            penalty = (
-                " (streak reduced)"
-                if self.approach == "aggressive" and self.focus_streak > 0
-                else ""
-            )
+            if self.approach == "aggressive" and self.focus_streak > 0:
+                penalty = " (streak halved)"
+            elif self.approach == "steady" and self.focus_streak > 0:
+                penalty = " (streak −1)"
+            else:
+                penalty = ""
             desc = (
                 f"💨 The fish slipped the hook...{penalty}\n\n"
                 "Cast again to try your luck."
@@ -382,7 +383,7 @@ class FishingView(BaseView):
                 if self.approach == "aggressive":
                     self.focus_streak = max(0, self.focus_streak // 2)
                 else:
-                    self.focus_streak = 0
+                    self.focus_streak = max(0, self.focus_streak - 1)
                 self.state = "escaped"
                 self.setup_ui()
                 await self.refresh_data()

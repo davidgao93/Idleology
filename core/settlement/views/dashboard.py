@@ -183,7 +183,6 @@ class SettlementDashboardView(SettlementBaseView):
         self._cached_zeal_data: dict = {}
         self._cached_active_events: list = []
         self._cached_pending_deal: dict | None = None
-        self._cached_pending_zeal: int = 0
         self._processing = False
         self._rebuild_ui()
 
@@ -228,7 +227,6 @@ class SettlementDashboardView(SettlementBaseView):
         # (which call build_embed with no args) always show the latest values.
         if turns_data is not None:
             self._cached_turns_data = turns_data
-            self._cached_pending_zeal = turns_data.get("pending_zeal", 0)
         if zeal_data is not None:
             self._cached_zeal_data = zeal_data
         if active_events is not None:
@@ -700,20 +698,21 @@ class SettlementDashboardView(SettlementBaseView):
             )
             self.add_item(confront_btn)
 
-        _pz = self._cached_pending_zeal
+        _pz = 0
         try:
-            _gather_ts = (
-                self.settlement.last_zeal_gather_time
-                or self.settlement.last_collection_time
-            )
+            _gather_ts = self.settlement.last_zeal_gather_time
             if _gather_ts:
-                _hours = (
-                    datetime.now() - datetime.fromisoformat(_gather_ts)
-                ).total_seconds() / 3600
-                _pz += passive_zeal_for_period(_hours, self.settlement.town_hall_tier)
+                _hours = max(
+                    0.0,
+                    (datetime.now() - datetime.fromisoformat(_gather_ts)).total_seconds()
+                    / 3600,
+                )
+                _pz = min(
+                    passive_zeal_for_period(_hours, self.settlement.town_hall_tier),
+                    ZEAL_GATHER_CAP,
+                )
         except Exception:
             pass
-        _pz = min(_pz, ZEAL_GATHER_CAP)
         gather_zeal_btn = ui.Button(
             label=f"Gather Zeal ({_pz}/{ZEAL_GATHER_CAP})",
             style=ButtonStyle.blurple,
@@ -1012,7 +1011,7 @@ class SettlementDashboardView(SettlementBaseView):
         # 2. Time elapsed
         now = datetime.now()
         last = datetime.fromisoformat(self.settlement.last_collection_time)
-        hours = (now - last).total_seconds() / 3600
+        hours = max(0.0, (now - last).total_seconds() / 3600)
 
         if hours < 0.1:
             return await interaction.followup.send(
@@ -1240,7 +1239,6 @@ class SettlementDashboardView(SettlementBaseView):
             pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
 
             self._cached_pending_deal = pending_deal
-            self._cached_pending_zeal = turns_data.get("pending_zeal", 0)
             self._rebuild_ui()
             embed = self.build_embed(
                 turn_summary=summary,
@@ -1264,52 +1262,39 @@ class SettlementDashboardView(SettlementBaseView):
 
         try:
             uid, sid = self.user_id, self.server_id
-            turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
 
-            # 5-minute cooldown prevents double-collecting the pending remainder
-            gather_ts = (
-                self.settlement.last_zeal_gather_time
-                or self.settlement.last_collection_time
-            )
-            if gather_ts:
-                try:
-                    last = datetime.fromisoformat(gather_ts)
-                    seconds_since = (datetime.now() - last).total_seconds()
-                    if seconds_since < 300:
-                        mins_left = max(1, int((300 - seconds_since) / 60) + 1)
-                        self._processing = False
-                        await interaction.followup.send(
-                            f"You've already gathered recently. "
-                            f"Try again in **{mins_left}** minute(s).",
-                            ephemeral=True,
-                        )
-                        return
-                except Exception:
-                    pass
+            # Use dedicated zeal gather timestamp — no relation to resource collection
+            gather_ts = self.settlement.last_zeal_gather_time
+            if not gather_ts:
+                self._processing = False
+                await interaction.followup.send(
+                    "No passive Zeal has accumulated yet. Come back later!",
+                    ephemeral=True,
+                )
+                return
 
-            # Add time-based passive generation since last Zeal gather (tracked
-            # separately from resource collection so the two timers don't interfere).
-            if gather_ts:
-                try:
-                    last = datetime.fromisoformat(gather_ts)
-                    hours = (datetime.now() - last).total_seconds() / 3600
-                    extra = passive_zeal_for_period(
-                        hours, self.settlement.town_hall_tier
-                    )
-                    if extra > 0:
-                        await self.bot.database.settlement.add_pending_zeal(
-                            uid, sid, extra
-                        )
-                except Exception:
-                    extra = 0
+            last = datetime.fromisoformat(gather_ts)
+            seconds_since = (datetime.now() - last).total_seconds()
 
-            # Collect up to ZEAL_GATHER_CAP from pending; passive Zeal doesn't count against
-            # the daily earned cap, so we use the capped variant directly.
-            collected = await self.bot.database.settlement.collect_capped_pending_zeal(
-                uid, sid, ZEAL_GATHER_CAP
+            # 5-minute cooldown
+            if seconds_since < 300:
+                mins_left = max(1, int((300 - seconds_since) / 60) + 1)
+                self._processing = False
+                await interaction.followup.send(
+                    f"You've already gathered recently. "
+                    f"Try again in **{mins_left}** minute(s).",
+                    ephemeral=True,
+                )
+                return
+
+            # Calculate zeal purely from elapsed time — no pending_zeal column needed
+            hours = max(0.0, seconds_since / 3600)
+            collected = min(
+                passive_zeal_for_period(hours, self.settlement.town_hall_tier),
+                ZEAL_GATHER_CAP,
             )
 
-            # Stamp the gather time NOW so repeated clicks don't re-add time-based Zeal
+            # Stamp the gather time FIRST so rapid re-clicks don't re-collect
             new_ts = await self.bot.database.settlement.update_zeal_gather_time(
                 uid, sid
             )
@@ -1322,6 +1307,9 @@ class SettlementDashboardView(SettlementBaseView):
                 )
                 return
 
+            # Credit directly to settlement_zeal (passive income, no daily-cap tracking)
+            await self.bot.database.settlement.add_passive_zeal(uid, sid, collected)
+
             zeal_data = await self.bot.database.settlement.get_zeal_data(uid, sid)
             turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
             active_events = await self.bot.database.settlement.get_active_events(
@@ -1331,7 +1319,6 @@ class SettlementDashboardView(SettlementBaseView):
             pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
 
             self._cached_pending_deal = pending_deal
-            self._cached_pending_zeal = turns_data.get("pending_zeal", 0)
             self._rebuild_ui()
             embed = self.build_embed(
                 turns_data=turns_data,

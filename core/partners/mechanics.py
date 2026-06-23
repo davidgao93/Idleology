@@ -318,7 +318,7 @@ def get_skill_effect_text(key: str, level: int) -> str:
         "co_atk_from_def": f"Your base ATK gains {L * 25}% of partner DEF",
         "co_def_from_atk": f"Your base DEF gains {L * 20}% of partner ATK",
         "co_curse_damage": f"Curses the monster, it deals {L * 2}% less damage",
-        "co_curse_taken": f"Curses the monster, it takes {L * 2}% more damage (applied after all reductions)",
+        "co_curse_taken": f"Curses the monster, it takes {L * 2}% more damage",
         # --- Rare combat ---
         "co_crit_rate": f"+{L}% critical strike chance",
         "co_crit_damage": f"+{L * 10}% critical strike multiplier",
@@ -328,13 +328,13 @@ def get_skill_effect_text(key: str, level: int) -> str:
         # --- Common dispatch ---
         "di_exp_boost": f"+{L * 10}% EXP during combat dispatch",
         "di_gold_boost": f"+{L * 10}% gold during combat dispatch",
-        "di_extra_reward": f"+{L}% bonus rewards from combat dispatch ({5 + L}% total)",
+        "di_extra_reward": f"+{L}% bonus rewards from combat dispatch",
         "di_skilling_boost": f"+{L * 10}% materials from gathering dispatch",
         # --- Rare dispatch ---
-        "di_settlement_mat": f"In combat dispatch, +{L}% chance to find a settlement material)",
-        "di_boss_reward": f"In Boss dispatch, +{L}% chance for an extra reward)",
-        "di_contract_find": f"In combat dispatch, +{L}% chance to find a Guild Ticket)",
-        "di_pinnacle_find": f"In combat dispatch, +{L}% chance to find a pinnacle item)",
+        "di_settlement_mat": f"In combat dispatch, +{L}% chance to find a settlement material",
+        "di_boss_reward": f"In Boss Raids, +{L}% chance for an extra reward",
+        "di_contract_find": f"In combat dispatch, +{L}% chance to find a Guild Ticket",
+        "di_pinnacle_find": f"In combat dispatch, +{L}% chance to find a pinnacle item",
     }
     return _texts.get(key, f"{key} Lv.{L}")
 

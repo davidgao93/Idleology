@@ -161,16 +161,15 @@ TUTORIALS: dict[str, dict] = {
             "*Every great force needs a home. This is yours.*\n\n"
             "Your Settlement is your ideology's base of operations. "
             "Build structures here to generate resources automatically — "
-            "**Apothecaries** brew potions, **Barracks** produce fighters, "
-            "**Logging Camps** and **Quarries** supply raw materials, and much more. "
+            "**Logging Camps** and **Quarries** are your bread and butter, and supply the Settlement with a stream of materials. "
             "Assign **Workers** to each building to increase its output.\n\n"
-            "As your **Town Hall** tiers up, you unlock new building slots, better upgrades, "
-            "and access to endgame structures like the Black Market and Uber Shrine."
+            "As your **Town Hall** tiers up, you unlock new types of buildings, more Zeal generation, "
+            "and access to endgame structures like the Uber Shrine."
         ),
         "tips": [
-            "Resources cap over time — collect regularly from the dashboard to avoid waste.",
-            "**Development Turns** drive construction and upgrades. Earn them through combat and quests.",
-            "Upgrade the **Town Hall** first — it unlocks everything else.",
+            "Earn Zeal through combat and quests to take a turn.",
+            "**Development Turns** drive construction and upgrades, events might pop up during a turn as well.",
+            "Maybe just read the Wiki page for this one...",
         ],
         "image": SETTLEMENT_HUB,
         "color": discord.Color.dark_green(),
@@ -218,12 +217,12 @@ TUTORIALS: dict[str, dict] = {
             "ATK boosts, crit bonuses, survivability buffs, and more depending on who you bring.\n\n"
             "When you don't need them in combat, send them on **Dispatch** — "
             "timed missions that return gold, materials, and keys while you're busy elsewhere. "
-            "Build **affinity** over time to unlock personal story content with each partner."
+            "Rare partners can build **affinity** over time unlock alternate looks."
         ),
         "tips": [
-            "Each partner has distinct **combat skills** and **dispatch skills** — pick one that fits your current goal.",
-            "Skills level up by spending Guild Tickets on the partner's skill page.",
-            "Dispatch accumulates for up to 48 hours — you won't miss rewards if you're offline.",
+            "Each partner can roll **combat skills** and **dispatch skills** — pick one that fits your current goal.",
+            "Rarer partners can have powerful, signature skills.",
+            "Dispatch accumulates for up to 48 hours — check back every so often.",
         ],
         "image": PARTNERS_HUB,
         "color": discord.Color.blurple(),

@@ -362,9 +362,21 @@ class CombatView(BaseView):
         for child in self.children:
             child.disabled = is_over or self._auto_running
 
-        # always disable fast_auto_btn if player level < 20:
-        if self.player.level < 20:
+        # always disable fast_auto_btn if player level < 2:
+        if self.player.level < 2:
             self.auto_btn.disabled = True
+
+        # always disable 10 turns if player level < 20:
+        if self.player.level < 20:
+            self.fast_auto_btn.disabled = True
+
+        # always disable heal if potions is 0 or hp is >= max
+        if (
+            self.player.potions <= 0
+            or self.player.current_hp >= self.player.get_effective_max_hp()
+        ):
+            self.heal_btn.disabled = True
+
         # Free Yourself is only in self.children during Verdant Colossus encounters
         # (removed in __init__ for all other fights).
         snare_locks_combat = False

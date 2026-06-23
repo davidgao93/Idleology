@@ -252,6 +252,34 @@ class QuestBoardView(BaseView):
         )
         embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
         embed.set_thumbnail(url=QUEST_BOARD)
+
+        # Horizon Path is always shown
+        if self.horizon and not self.horizon["turned_in"]:
+            path_def = HORIZON_PATHS.get(self.horizon["path_id"])
+            if path_def:
+                progress = self.horizon["progress"]
+                goal = self.horizon["goal"]
+                h_status = (
+                    "✅ Complete — Claim your reward!"
+                    if self.horizon["completed"]
+                    else "In Progress"
+                )
+                embed.add_field(
+                    name=f"🌀 Horizon Path — {path_def['name']}",
+                    value=(
+                        f"{path_def['description']}\n"
+                        f"**Progress:** {progress}/{goal}\n"
+                        f"**Status:** {h_status}"
+                    ),
+                    inline=False,
+                )
+        else:
+            embed.add_field(
+                name="🌀 Horizon Path — None selected",
+                value="Select a Horizon Path below to begin a long-form quest.",
+                inline=False,
+            )
+
         embed.set_footer(text=f"Quest Tokens: {tokens}")
         return embed
 
@@ -358,6 +386,19 @@ class QuestBoardView(BaseView):
     def _add_empty_components(self) -> None:
         # Allow horizon path selection even while waiting for the board to reset
         self.add_item(_HorizonSelect(self._player_level, self.horizon, row=0))
+
+        # Claim Horizon button (row 1) — shown even when board is on cooldown
+        horizon_complete = (
+            self.horizon and self.horizon["completed"] and not self.horizon["turned_in"]
+        )
+        h_btn = discord.ui.Button(
+            label="Claim Horizon",
+            style=ButtonStyle.success,
+            disabled=not horizon_complete,
+            row=1,
+        )
+        h_btn.callback = self._on_claim_horizon
+        self.add_item(h_btn)
 
         shop_btn = discord.ui.Button(
             label="Quest Shop", style=ButtonStyle.secondary, row=1

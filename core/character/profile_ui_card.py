@@ -294,45 +294,38 @@ class CardProfileBuilder:
                         )
 
                     # Zeal
-                    try:
-                        from core.settlement.constants import (
-                            PASSIVE_ZEAL_PER_HOUR_BASE,
-                            ZEAL_GATHER_CAP,
-                        )
-                        from core.settlement.turn_engine import passive_zeal_for_period
+                    if settlement.last_zeal_gather_time:
+                        try:
+                            from core.settlement.constants import (
+                                PASSIVE_ZEAL_PER_HOUR_BASE,
+                                ZEAL_GATHER_CAP,
+                            )
+                            from core.settlement.turn_engine import passive_zeal_for_period
 
-                        turns_data = await bot.database.settlement.get_turns_data(
-                            user_id, server_id
-                        )
-                        pending_zeal = turns_data.get("pending_zeal", 0)
-                        tier = settlement.town_hall_tier
-                        rate = PASSIVE_ZEAL_PER_HOUR_BASE + (tier - 1) * 9
-                        _gather_ts = (
-                            settlement.last_zeal_gather_time
-                            or settlement.last_collection_time
-                        )
-                        _time_based = 0
-                        if _gather_ts:
-                            _hours = (
-                                datetime.now() - datetime.fromisoformat(_gather_ts)
-                            ).total_seconds() / 3600
-                            _time_based = passive_zeal_for_period(_hours, tier)
-                        available = min(pending_zeal + _time_based, ZEAL_GATHER_CAP)
-                        hours_to_cap = max(0.0, (ZEAL_GATHER_CAP - available) / rate)
-                        if available >= ZEAL_GATHER_CAP:
-                            zeal_str = (
-                                f"**{available}/{ZEAL_GATHER_CAP}** — ready to collect!"
+                            tier = settlement.town_hall_tier
+                            rate = PASSIVE_ZEAL_PER_HOUR_BASE + (tier - 1) * 9
+                            _hours = max(
+                                0.0,
+                                (
+                                    datetime.now()
+                                    - datetime.fromisoformat(settlement.last_zeal_gather_time)
+                                ).total_seconds()
+                                / 3600,
                             )
-                        elif hours_to_cap < 1.0:
-                            zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — cap in <1h"
-                        else:
-                            h = int(hours_to_cap)
-                            zeal_str = (
-                                f"**{available}/{ZEAL_GATHER_CAP}** — cap in ~{h}h"
+                            available = min(
+                                passive_zeal_for_period(_hours, tier), ZEAL_GATHER_CAP
                             )
-                        settlement_lines.append(f"🔥 **Zeal** — {zeal_str}")
-                    except Exception:
-                        pass
+                            hours_to_cap = max(0.0, (ZEAL_GATHER_CAP - available) / rate)
+                            if available >= ZEAL_GATHER_CAP:
+                                zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — ready to collect!"
+                            elif hours_to_cap < 1.0:
+                                zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — cap in <1h"
+                            else:
+                                h = int(hours_to_cap)
+                                zeal_str = f"**{available}/{ZEAL_GATHER_CAP}** — cap in ~{h}h"
+                            settlement_lines.append(f"🔥 **Zeal** — {zeal_str}")
+                        except Exception:
+                            pass
 
                     # Development Contracts
                     try:

@@ -372,7 +372,7 @@ class ReinforceView(BaseUpgradeView):
         shattermaxx_btn.disabled = shatter_runes == 0 and not (
             has_funds and has_mats and has_slots
         )
-        shattermaxx_btn.callback = self.shattermaxx
+        shattermaxx_btn.callback = self.shattermaxx_preview
         self.add_item(shattermaxx_btn)
 
         self.add_back_button()
@@ -493,7 +493,116 @@ class ReinforceView(BaseUpgradeView):
         except Exception as e:
             await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
 
-    async def shattermaxx(self, interaction: Interaction):
+    async def shattermaxx_preview(self, interaction: Interaction):
+        """Simulate Shattermaxx and show a resource-cost confirmation before executing."""
+        await interaction.response.defer()
+
+        uid, sid = self.user_id, str(interaction.guild.id)
+        shatter_runes = await self.bot.database.users.get_currency(uid, "shatter_runes")
+        gold = await self.bot.database.users.get_gold(uid)
+
+        itype, stat_col, stat_label, _, is_pct = self._reinforce_info()
+
+        # Read current material inventory for simulation
+        initial_cost = EquipmentMechanics.calculate_reinforce_cost(self.item)
+        all_mat_keys: dict[str, dict] = {}  # column → mat dict
+        for m in initial_cost.get("materials", []):
+            all_mat_keys[m["column"]] = m
+        for m in all_mat_keys.values():
+            m["_stock"] = await self.bot.database.skills.get_single_resource(
+                uid, sid, m["table"], m["column"]
+            )
+
+        import copy
+
+        sim_item = copy.copy(self.item)
+        sim_runes = shatter_runes
+        sim_gold = gold
+        sim_mats = {col: m["_stock"] for col, m in all_mat_keys.items()}
+        reinforces_done = 0
+        runes_used = 0
+        gold_used = 0
+        mat_totals: dict[str, int] = {}
+        stop_reason = "Complete."
+
+        while True:
+            if sim_item.reinforces_remaining == 0:
+                if sim_runes == 0:
+                    stop_reason = "Ran out of Shatter Runes."
+                    break
+                sim_runes -= 1
+                sim_item.reinforces_remaining = 1
+                runes_used += 1
+
+            cost_data = EquipmentMechanics.calculate_reinforce_cost(sim_item)
+            cost_gold = cost_data["gold"]
+            sim_materials = cost_data.get("materials", [])
+
+            if sim_gold < cost_gold:
+                stop_reason = "Ran out of Gold."
+                break
+
+            short = next(
+                (m for m in sim_materials if sim_mats.get(m["column"], 0) < m["qty"]),
+                None,
+            )
+            if short:
+                stop_reason = f"Ran out of {short['name']}."
+                break
+
+            sim_gold -= cost_gold
+            gold_used += cost_gold
+            for mat in sim_materials:
+                sim_mats[mat["column"]] = sim_mats.get(mat["column"], 0) - mat["qty"]
+                mat_totals[mat["name"]] = mat_totals.get(mat["name"], 0) + mat["qty"]
+
+            sim_item.reinforces_remaining -= 1
+            sim_item.reinforcement_lvl += 1
+            reinforces_done += 1
+
+            if reinforces_done >= 10_000:
+                stop_reason = "Reached simulation cap (10,000 reinforces)."
+                break
+
+        if reinforces_done == 0:
+            await interaction.followup.send(
+                f"No reinforces possible: {stop_reason}", ephemeral=True
+            )
+            return
+
+        suffix = "%" if is_pct else ""
+        mat_lines = (
+            "\n".join(f"  {name}: {qty:,}" for name, qty in mat_totals.items())
+            or "  None"
+        )
+        embed = discord.Embed(
+            title="⚠️ Shattermaxx Confirmation", color=discord.Color.orange()
+        )
+        embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
+        embed.set_thumbnail(url=UPGRADE_REINFORCE)
+        embed.description = (
+            f"This will perform **{reinforces_done:,}** reinforce(s) using up to **{runes_used}** Shatter Rune(s).\n\n"
+            f"**Estimated Resources Consumed:**\n"
+            f"💰 Gold: {gold_used:,}\n"
+            f"💥 Shatter Runes: {runes_used}\n"
+            f"📦 Materials:\n{mat_lines}\n\n"
+            f"*Stops when: {stop_reason}*\n\n"
+            f"Proceed?"
+        )
+
+        self.clear_items()
+        confirm_btn = Button(label="Confirm", style=ButtonStyle.danger)
+        confirm_btn.callback = self.shattermaxx_execute
+        self.add_item(confirm_btn)
+
+        cancel_btn = Button(label="Cancel", style=ButtonStyle.secondary)
+        cancel_btn.callback = self.render
+        self.add_item(cancel_btn)
+
+        await interaction.edit_original_response(embed=embed, view=self)
+        self.message = await interaction.original_response()
+
+    async def shattermaxx_execute(self, interaction: Interaction):
         if self._processing:
             await interaction.response.defer()
             return

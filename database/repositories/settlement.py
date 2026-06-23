@@ -152,6 +152,20 @@ class SettlementRepository:
         )
         await self.connection.commit()
 
+    async def init_timestamps(self, user_id: str, server_id: str) -> None:
+        """Stamps last_collection_time and last_zeal_gather_time to now if they are NULL."""
+        from datetime import datetime
+
+        ts = datetime.now().isoformat()
+        await self.connection.execute(
+            "UPDATE settlements "
+            "SET last_collection_time = COALESCE(last_collection_time, ?), "
+            "    last_zeal_gather_time = COALESCE(last_zeal_gather_time, ?) "
+            "WHERE user_id = ? AND server_id = ?",
+            (ts, ts, user_id, server_id),
+        )
+        await self.connection.commit()
+
     async def update_zeal_gather_time(self, user_id: str, server_id: str) -> str:
         """Stamps last_zeal_gather_time to now; returns the ISO timestamp."""
         from datetime import datetime
@@ -621,14 +635,15 @@ class SettlementRepository:
         """Adds Zeal to the settlement's settlement_zeal and zeal_earned_today totals."""
         try:
             await self.connection.execute(
-                "UPDATE settlements SET settlement_zeal = settlement_zeal + ?, "
-                "zeal_earned_today = zeal_earned_today + ? "
+                "UPDATE settlements SET "
+                "settlement_zeal = MAX(0, settlement_zeal) + ?, "
+                "zeal_earned_today = MAX(0, zeal_earned_today) + ? "
                 "WHERE user_id = ? AND server_id = ?",
                 (amount, amount, user_id, server_id),
             )
             await self.connection.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[settlement.add_zeal error] user={user_id} server={server_id}: {e}")
 
     async def spend_zeal(self, user_id: str, server_id: str, amount: int) -> bool:
         """Deducts Zeal atomically if sufficient; returns True on success."""
@@ -664,6 +679,18 @@ class SettlementRepository:
                 await self.connection.commit()
         except Exception:
             pass
+
+    async def add_passive_zeal(self, user_id: str, server_id: str, amount: int) -> None:
+        """Credits passive Zeal to settlement_zeal without affecting zeal_earned_today."""
+        try:
+            await self.connection.execute(
+                "UPDATE settlements SET settlement_zeal = MAX(0, settlement_zeal) + ? "
+                "WHERE user_id = ? AND server_id = ?",
+                (amount, user_id, server_id),
+            )
+            await self.connection.commit()
+        except Exception as e:
+            print(f"[settlement.add_passive_zeal error] user={user_id} server={server_id}: {e}")
 
     async def add_idlem(self, user_id: str, server_id: str, amount: int) -> None:
         try:

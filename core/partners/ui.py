@@ -122,7 +122,7 @@ def _build_roster_embed(partners: List[Partner], items: dict) -> discord.Embed:
         tier_partners = [p for p in partners if p.rarity == rarity]
         if not tier_partners:
             continue
-        lines.append(f"~~─── {_stars(rarity)} ───~~")
+        lines.append(f"─── {_stars(rarity)} ───")
         for p in tier_partners:
             status = " ⚔️" if p.is_active_combat else (" 📋" if p.is_dispatched else "")
             lines.append(f"{_stars(p.rarity)} **{p.name}** Lv.{p.level}{status}")

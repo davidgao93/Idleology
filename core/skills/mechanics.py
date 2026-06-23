@@ -84,7 +84,7 @@ class SkillMechanics:
     }
 
     # Forestry: max seconds between swings to count as "in rhythm".
-    FORESTRY_RHYTHM_WINDOW: int = 45
+    FORESTRY_RHYTHM_WINDOW: int = 8
 
     @staticmethod
     def get_fishing_wait(rod_tier: str) -> int:
