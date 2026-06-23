@@ -301,11 +301,11 @@ class AlchemyRepository(BaseRepository):
     # ------------------------------------------------------------------
 
     async def get_uber_material(self, user_id: str, server_id: str, col: str) -> int:
-        """Reads a single uber material column from uber_progress."""
+        """Reads a single elemental key column from gathering_mastery."""
         if col not in _UBER_COLUMNS:
-            raise ValueError(f"Invalid uber material column: {col!r}")
+            raise ValueError(f"Invalid elemental key column: {col!r}")
         async with self.connection.execute(
-            f"SELECT {col} FROM uber_progress WHERE user_id = ? AND server_id = ?",
+            f"SELECT {col} FROM gathering_mastery WHERE user_id = ? AND server_id = ?",
             (user_id, server_id),
         ) as cursor:
             row = await cursor.fetchone()
@@ -314,11 +314,11 @@ class AlchemyRepository(BaseRepository):
     async def deduct_uber_material(
         self, user_id: str, server_id: str, col: str, amount: int
     ) -> None:
-        """Deducts from an uber material column."""
+        """Deducts from an elemental key column in gathering_mastery."""
         if col not in _UBER_COLUMNS:
-            raise ValueError(f"Invalid uber material column: {col!r}")
+            raise ValueError(f"Invalid elemental key column: {col!r}")
         await self.connection.execute(
-            f"UPDATE uber_progress SET {col} = {col} - ? WHERE user_id = ? AND server_id = ?",
+            f"UPDATE gathering_mastery SET {col} = {col} - ? WHERE user_id = ? AND server_id = ?",
             (amount, user_id, server_id),
         )
         await self.connection.commit()

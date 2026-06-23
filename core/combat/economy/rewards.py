@@ -462,15 +462,15 @@ async def apply_special_flags(
             reward_data["curios"] = 1
 
         elif key == "blessed_bismuth":
-            await bot.database.uber.increment_blessed_bismuth(user_id, server_id, 1)
+            await bot.database.skills.increment_blessed_bismuth(user_id, server_id, 1)
             reward_data["special"].append("⚗️ Blessed Bismuth")
 
         elif key == "sparkling_sprig":
-            await bot.database.uber.increment_sparkling_sprig(user_id, server_id, 1)
+            await bot.database.skills.increment_sparkling_sprig(user_id, server_id, 1)
             reward_data["special"].append("🌿 Sparkling Sprig")
 
         elif key == "capricious_carp":
-            await bot.database.uber.increment_capricious_carp(user_id, server_id, 1)
+            await bot.database.skills.increment_capricious_carp(user_id, server_id, 1)
             reward_data["special"].append("🐟 Capricious Carp")
 
         elif key == "guild_ticket":

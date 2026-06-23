@@ -435,9 +435,9 @@ async def grant_checkin_day(
     elif day == 4:
         if level >= 60:
             elemental_funcs = [
-                bot.database.uber.increment_blessed_bismuth,
-                bot.database.uber.increment_sparkling_sprig,
-                bot.database.uber.increment_capricious_carp,
+                bot.database.skills.increment_blessed_bismuth,
+                bot.database.skills.increment_sparkling_sprig,
+                bot.database.skills.increment_capricious_carp,
             ]
             fn = random.choice(elemental_funcs)
             await fn(user_id, server_id, 1)
@@ -511,9 +511,9 @@ async def grant_checkin_day(
             rewards += ["👑 +1 Pinnacle Key", "🎫 +2 Quest Tokens"]
         elif level >= 60:
             elemental_funcs = [
-                bot.database.uber.increment_blessed_bismuth,
-                bot.database.uber.increment_sparkling_sprig,
-                bot.database.uber.increment_capricious_carp,
+                bot.database.skills.increment_blessed_bismuth,
+                bot.database.skills.increment_sparkling_sprig,
+                bot.database.skills.increment_capricious_carp,
             ]
             fn = random.choice(elemental_funcs)
             await fn(user_id, server_id, 1)
@@ -570,9 +570,9 @@ async def grant_checkin_day(
     elif day == 10:
         if level >= 60:
             elemental_funcs = [
-                bot.database.uber.increment_blessed_bismuth,
-                bot.database.uber.increment_sparkling_sprig,
-                bot.database.uber.increment_capricious_carp,
+                bot.database.skills.increment_blessed_bismuth,
+                bot.database.skills.increment_sparkling_sprig,
+                bot.database.skills.increment_capricious_carp,
             ]
             fn = random.choice(elemental_funcs)
             await fn(user_id, server_id, 1)

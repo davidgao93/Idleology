@@ -28,7 +28,7 @@ class Guild(commands.Cog, name="adventurer's guild"):
         self.bot.state_manager.set_active(user_id, "register")
 
         embed = discord.Embed(
-            title="Adventurers' Guild — Intake",
+            title="The Adventurers' Guild",
             description=(
                 f"So, **{name}** — you want to make it official.\n\n"
                 "I don't turn people away without good reason, but I do need you on "
@@ -41,7 +41,6 @@ class Guild(commands.Cog, name="adventurer's guild"):
         )
         embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
         embed.set_thumbnail(url=AMARA_PORTRAIT)
-        embed.set_image(url=AMARA_PORTRAIT)
 
         view = RegistrationView(self.bot, user_id, name)
         await interaction.response.send_message(embed=embed, view=view)

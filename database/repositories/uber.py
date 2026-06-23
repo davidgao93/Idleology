@@ -14,7 +14,6 @@ class UberRepository:
                       infernal_sigils, infernal_engrams, infernal_blueprint_unlocked,
                       void_shards, void_engrams, void_blueprint_unlocked,
                       gemini_sigils, gemini_engrams, gemini_blueprint_unlocked,
-                      blessed_bismuth, sparkling_sprig, capricious_carp,
                       corruption_sigils, paradise_jewels,
                       corruption_engrams, corruption_blueprint_unlocked
                FROM uber_progress WHERE user_id = ? AND server_id = ?""",
@@ -41,9 +40,6 @@ class UberRepository:
                 "gemini_sigils": 0,
                 "gemini_engrams": 0,
                 "gemini_blueprint_unlocked": 0,
-                "blessed_bismuth": 0,
-                "sparkling_sprig": 0,
-                "capricious_carp": 0,
                 "corruption_sigils": 0,
                 "paradise_jewels": 0,
                 "corruption_engrams": 0,
@@ -63,13 +59,10 @@ class UberRepository:
             "gemini_sigils": row[9] if row[9] is not None else 0,
             "gemini_engrams": row[10] if row[10] is not None else 0,
             "gemini_blueprint_unlocked": row[11] if row[11] is not None else 0,
-            "blessed_bismuth": row[12] if row[12] is not None else 0,
-            "sparkling_sprig": row[13] if row[13] is not None else 0,
-            "capricious_carp": row[14] if row[14] is not None else 0,
-            "corruption_sigils": row[15] if row[15] is not None else 0,
-            "paradise_jewels": row[16] if row[16] is not None else 0,
-            "corruption_engrams": row[17] if row[17] is not None else 0,
-            "corruption_blueprint_unlocked": row[18] if row[18] is not None else 0,
+            "corruption_sigils": row[12] if row[12] is not None else 0,
+            "paradise_jewels": row[13] if row[13] is not None else 0,
+            "corruption_engrams": row[14] if row[14] is not None else 0,
+            "corruption_blueprint_unlocked": row[15] if row[15] is not None else 0,
         }
 
     # --- Celestial (Aphrodite) ---
@@ -199,47 +192,6 @@ class UberRepository:
         await self.connection.execute(
             "UPDATE uber_progress SET gemini_blueprint_unlocked = ? WHERE user_id = ? AND server_id = ?",
             (val, user_id, server_id),
-        )
-        await self.connection.commit()
-
-    # --- Elemental Keys ---
-
-    async def increment_blessed_bismuth(
-        self, user_id: str, server_id: str, amount: int
-    ) -> None:
-        await self.connection.execute(
-            "UPDATE uber_progress SET blessed_bismuth = blessed_bismuth + ? WHERE user_id = ? AND server_id = ?",
-            (amount, user_id, server_id),
-        )
-        await self.connection.commit()
-
-    async def increment_sparkling_sprig(
-        self, user_id: str, server_id: str, amount: int
-    ) -> None:
-        await self.connection.execute(
-            "UPDATE uber_progress SET sparkling_sprig = sparkling_sprig + ? WHERE user_id = ? AND server_id = ?",
-            (amount, user_id, server_id),
-        )
-        await self.connection.commit()
-
-    async def increment_capricious_carp(
-        self, user_id: str, server_id: str, amount: int
-    ) -> None:
-        await self.connection.execute(
-            "UPDATE uber_progress SET capricious_carp = capricious_carp + ? WHERE user_id = ? AND server_id = ?",
-            (amount, user_id, server_id),
-        )
-        await self.connection.commit()
-
-    async def consume_elemental_keys(self, user_id: str, server_id: str) -> None:
-        """Deducts 1 of each elemental key atomically."""
-        await self.connection.execute(
-            """UPDATE uber_progress
-               SET blessed_bismuth = blessed_bismuth - 1,
-                   sparkling_sprig = sparkling_sprig - 1,
-                   capricious_carp = capricious_carp - 1
-               WHERE user_id = ? AND server_id = ?""",
-            (user_id, server_id),
         )
         await self.connection.commit()
 

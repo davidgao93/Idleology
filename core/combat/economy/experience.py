@@ -168,8 +168,8 @@ class ExperienceManager:
                         )
                     else:
                         changes["msgs"].append(
-                            "🩸 *Evelynn's corruption deepens* — you permanently lose **1** hit chance. "
-                            "*The monsters are fiercer now.*"
+                            "🩸 *A strange wave of corruption washes over you* — you permanently lose **1** hit chance. "
+                            "*The monsters seem to grow fiercer...*"
                         )
 
                 if player.level % 10 == 0:

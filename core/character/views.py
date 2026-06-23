@@ -9,7 +9,6 @@ from core.base_view import BaseView
 from core.character.tutorial import TutorialView
 from core.images import DEFAULT_SILHOUETTE
 
-
 _CLASS_DESCRIPTIONS = {
     "Artificer": "Inventor of arcane machinery",
     "Barb": "Primal warrior of raw fury",
@@ -218,7 +217,6 @@ class IdeologyModal(Modal, title="Choose Your Path"):
         default=(
             "Your ideology is the creed you carry into the world. "
             "Name it, spread it, and recruit followers. "
-            "Others can join your cause — or found their own."
         ),
         required=False,
     )

@@ -484,9 +484,6 @@ CREATE TABLE IF NOT EXISTS uber_progress (
     gemini_sigils INTEGER DEFAULT 0,
     gemini_engrams INTEGER DEFAULT 0,
     gemini_blueprint_unlocked INTEGER DEFAULT 0,
-    blessed_bismuth INTEGER DEFAULT 0,
-    sparkling_sprig INTEGER DEFAULT 0,
-    capricious_carp INTEGER DEFAULT 0,
     corruption_sigils INTEGER DEFAULT 0,
     paradise_jewels INTEGER DEFAULT 0,
     corruption_engrams INTEGER DEFAULT 0,
@@ -795,6 +792,10 @@ CREATE TABLE IF NOT EXISTS gathering_mastery (
     attunement_alloc TEXT DEFAULT '{}',
     -- Post-max infinite scaling (every 5 excess points across skills -> 1 insight)
     mastery_insight INTEGER DEFAULT 0,
+    -- Elemental Keys (keys for the Elemental of Elements gathering boss)
+    blessed_bismuth INTEGER DEFAULT 0,
+    sparkling_sprig INTEGER DEFAULT 0,
+    capricious_carp INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, server_id)
 );
 
@@ -877,3 +878,6 @@ CREATE TABLE IF NOT EXISTS bm_passive_tree (
 -- ALTER TABLE users ADD COLUMN runes_of_nature INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE gathering_mastery ADD COLUMN attunement_alloc TEXT DEFAULT '{}';
 -- ALTER TABLE gathering_mastery ADD COLUMN mastery_insight INTEGER DEFAULT 0;
+-- ALTER TABLE gathering_mastery ADD COLUMN blessed_bismuth INTEGER DEFAULT 0;
+-- ALTER TABLE gathering_mastery ADD COLUMN sparkling_sprig INTEGER DEFAULT 0;
+-- ALTER TABLE gathering_mastery ADD COLUMN capricious_carp INTEGER DEFAULT 0;

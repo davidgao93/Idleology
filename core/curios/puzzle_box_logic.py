@@ -117,15 +117,15 @@ async def claim_rewards(
                 key_counts[col] += 1
             for col, cnt in key_counts.items():
                 if col == "blessed_bismuth":
-                    await bot.database.uber.increment_blessed_bismuth(
+                    await bot.database.skills.increment_blessed_bismuth(
                         user_id, server_id, cnt
                     )
                 elif col == "sparkling_sprig":
-                    await bot.database.uber.increment_sparkling_sprig(
+                    await bot.database.skills.increment_sparkling_sprig(
                         user_id, server_id, cnt
                     )
                 elif col == "capricious_carp":
-                    await bot.database.uber.increment_capricious_carp(
+                    await bot.database.skills.increment_capricious_carp(
                         user_id, server_id, cnt
                     )
             summary = ", ".join(f"{key_labels[c]} x{v}" for c, v in key_counts.items())

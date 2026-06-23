@@ -420,6 +420,9 @@ class SkillRepository:
                     "total_mastery_invested",
                     "attunement_alloc",
                     "mastery_insight",
+                    "blessed_bismuth",
+                    "sparkling_sprig",
+                    "capricious_carp",
                 ]
             return dict(zip(cols, row))
         # Create default row
@@ -445,6 +448,9 @@ class SkillRepository:
             "fishing_tripled_ticks": 0,
             "woodcutting_tripled_ticks": 0,
             "total_mastery_invested": 0,
+            "blessed_bismuth": 0,
+            "sparkling_sprig": 0,
+            "capricious_carp": 0,
         }
 
     async def add_mastery_points(
@@ -455,6 +461,47 @@ class SkillRepository:
         await self.connection.execute(
             f"UPDATE gathering_mastery SET {col} = {col} + ? WHERE user_id=? AND server_id=?",
             (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    # --- Elemental Keys (Elemental of Elements gathering boss) ---
+
+    async def increment_blessed_bismuth(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
+        await self.connection.execute(
+            "UPDATE gathering_mastery SET blessed_bismuth = blessed_bismuth + ? WHERE user_id=? AND server_id=?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def increment_sparkling_sprig(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
+        await self.connection.execute(
+            "UPDATE gathering_mastery SET sparkling_sprig = sparkling_sprig + ? WHERE user_id=? AND server_id=?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def increment_capricious_carp(
+        self, user_id: str, server_id: str, amount: int
+    ) -> None:
+        await self.connection.execute(
+            "UPDATE gathering_mastery SET capricious_carp = capricious_carp + ? WHERE user_id=? AND server_id=?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def consume_elemental_keys(self, user_id: str, server_id: str) -> None:
+        """Deducts 1 of each elemental key atomically."""
+        await self.connection.execute(
+            """UPDATE gathering_mastery
+               SET blessed_bismuth = blessed_bismuth - 1,
+                   sparkling_sprig = sparkling_sprig - 1,
+                   capricious_carp = capricious_carp - 1
+               WHERE user_id=? AND server_id=?""",
+            (user_id, server_id),
         )
         await self.connection.commit()
 

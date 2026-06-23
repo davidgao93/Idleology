@@ -157,15 +157,15 @@ async def _apply_dispatch_rewards(
             elif item_key in ("antique_tome", "pinnacle_key"):
                 await bot.database.users.modify_currency(user_id, item_key, qty)
             elif item_key == "blessed_bismuth":
-                await bot.database.uber.increment_blessed_bismuth(
+                await bot.database.skills.increment_blessed_bismuth(
                     user_id, server_id, qty
                 )
             elif item_key == "sparkling_sprig":
-                await bot.database.uber.increment_sparkling_sprig(
+                await bot.database.skills.increment_sparkling_sprig(
                     user_id, server_id, qty
                 )
             elif item_key == "capricious_carp":
-                await bot.database.uber.increment_capricious_carp(
+                await bot.database.skills.increment_capricious_carp(
                     user_id, server_id, qty
                 )
             elif item_key == "spirit_stone":

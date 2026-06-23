@@ -86,9 +86,9 @@ async def _grant_level_50(bot, user_id: str, server_id: str) -> list:
 
 
 async def _grant_level_60(bot, user_id: str, server_id: str) -> list:
-    await bot.database.uber.increment_capricious_carp(user_id, server_id, 1)
-    await bot.database.uber.increment_sparkling_sprig(user_id, server_id, 1)
-    await bot.database.uber.increment_blessed_bismuth(user_id, server_id, 1)
+    await bot.database.skills.increment_capricious_carp(user_id, server_id, 1)
+    await bot.database.skills.increment_sparkling_sprig(user_id, server_id, 1)
+    await bot.database.skills.increment_blessed_bismuth(user_id, server_id, 1)
     return [
         "🐟 **+1 Capricious Carp**",
         "🌿 **+1 Sparkling Sprig**",
@@ -154,20 +154,20 @@ MILESTONES = [
             "Combat — fight monsters to earn gold, XP, and equipment drops",
             "Gathering Skills — mine ore, fish, and chop wood passively while idle",
             "Daily Quests — take contracts from the board for tokens and gold",
-            "Slayer Tasks — the Slayer Master assigns species to hunt for bonus rewards; available from level 1",
+            "Slayer Tasks — the Slayer Master assigns species to hunt for bonus rewards",
             "Tavern Gambling — risk your gold for a chance at big rewards",
             "Equipment Management — collect, equip, and upgrade your gear",
+            "Shop — buy potions for the long road ahead",
         ],
         "commands": [
             "/combat",
             "/gather",
-            "/fish",
-            "/chop",
+            "/quests",
+            "/slayer",
             "/gamble",
             "/gear",
-            "/weapons",
-            "/armor",
-            "/quests",
+            "/slayer",
+            "/shop",
         ],
         "image": TAVERN_KEEPER,
         "grant": _grant_level_1,

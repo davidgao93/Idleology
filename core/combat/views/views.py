@@ -23,11 +23,11 @@ from core.combat.economy.config import (
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.victory import apply_victory_rewards
 from core.combat.mobgen.gen_mob import generate_boss
+from core.combat.turns import engine
 from core.combat.turns.boundary import (
     fire_on_victory_effects,
     reset_for_phase_transition,
 )
-from core.combat.turns import engine
 from core.combat.views.views_lucifer import LuciferChoiceView
 from core.combat.views.views_prestige_boss import PrestigeBossHarvestView
 from core.images import (
@@ -362,6 +362,9 @@ class CombatView(BaseView):
         for child in self.children:
             child.disabled = is_over or self._auto_running
 
+        # always disable fast_auto_btn if player level < 20:
+        if self.player.level < 20:
+            self.auto_btn.disabled = True
         # Free Yourself is only in self.children during Verdant Colossus encounters
         # (removed in __init__ for all other fights).
         snare_locks_combat = False

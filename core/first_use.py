@@ -45,6 +45,7 @@ from core.images import (
     LUCIEN_THUMBNAIL,
     MASTERY_MINING,
     PARTNERS_HUB,
+    POTION_SHOP,
     POTION_SHOP_AUTHOR,
     QUEST_BOARD,
     RAGNA_PORTRAIT,
@@ -54,7 +55,6 @@ from core.images import (
     SETTLEMENT_HUB,
     SLAYER_MASTER,
     SLAYER_MASTER_AUTHOR,
-    TAVERN_KEEPER,
     TESSARA_PORTRAIT,
     TESSARA_THUMBNAIL,
     UPGRADE_VOIDFORGE,
@@ -98,17 +98,18 @@ TUTORIALS: dict[str, dict] = {
         "author": "Slayer Master Kael",
         "author_icon": SLAYER_MASTER_AUTHOR,
         "description": (
-            "*You want a task? Good. I don't assign easy ones.*\n\n"
-            "I'll give you a species to hunt. Get out there and kill them — "
+            "*Another adventurer just out of the woodwork? Come closer, let me inspect that pitiful frame of yours...*\n\n"
+            "Not bad. You'll do. Slayer is the art of killing not just monsters, but the right type of monster."
+            " I'll give you a species to hunt. Your job is to kill a specific number of them - "
             "you'll find your targets through regular combat. "
-            "Complete the task and you earn **Slayer XP** and points to spend on "
-            "**Emblems** — passive boosts that carry into every fight you ever take. "
-            "Five slots. Fill them. You'll feel the difference."
+            "Complete the task and you earn **Slayer XP** and some favor with me.\n\n"
+            "Here, take this Emblem. It absorbs the very essence of the slayer monsters you kill, granting you boons or challenges to face.\n"
+            "As you become a master of slayer yourself, you'll unlock more slots. Fill them. You'll feel the difference."
         ),
         "tips": [
-            "You can **reroll** an unwanted task once before starting — don't waste it.",
-            "Killing your assigned species gives **bonus drop rates** for the duration.",
-            "Higher Slayer level unlocks tougher task types with better rewards.",
+            "Don't hesistate to take a look at the Slayer mastery tree to see what goals you want to work towards. I'll make it worth your while.",
+            "Some tasks are harder than others, maybe pick the one that's doable.",
+            "Feed your emblem well and often.",
         ],
         "image": SLAYER_MASTER,
         "color": discord.Color.red(),
@@ -129,7 +130,7 @@ TUTORIALS: dict[str, dict] = {
             "Alchemy passives can make potions stronger or add bonus effects — check `/alchemy`.",
             "Gold comes from combat. `/journey` gives bonus gold at level milestones.",
         ],
-        "image": TAVERN_KEEPER,
+        "image": POTION_SHOP,
         "color": discord.Color.gold(),
     },
     "companions": {
@@ -262,18 +263,18 @@ TUTORIALS: dict[str, dict] = {
         "author_icon": AMARA_AUTHOR,
         "description": (
             "*I don't hand out rewards for nothing. But I do hand them out.*\n\n"
-            "The board has two layers. **Daily Contracts** are short-term goals — "
+            "The quest board is where various guilds post their latest requests.\n "
+            "It has two layers. **Daily Contracts** are short-term goals — "
             "kill X, deal Y damage, clear a boss — each one pays out **Quest Tokens** "
             "you can spend in the shop on materials you'd otherwise grind for.\n\n"
             "**Horizon Paths** are the long game. Pick one that matches where you're heading "
             "and work toward it over days or weeks. Finishing a path pays out "
-            "unique rewards you can't get anywhere else. "
+            "unique rewards associated with that path, accelerating your progression with that system. "
             "Switching paths resets your progress, so choose carefully."
         ),
         "tips": [
-            "Contracts stack — finishing multiple at once gives burst token income.",
-            "Rerolling a contract costs a token. Use it when the task is genuinely bad for your build.",
-            "Completing quests also earns **Zeal** for your settlement — two birds, one task.",
+            "You can normally take up to 3 contracts a day.",
+            "Rerolling a contract costs a token. Use it when the task is genuinely bad.",
         ],
         "image": QUEST_BOARD,
         "color": discord.Color.teal(),
@@ -288,14 +289,14 @@ TUTORIALS: dict[str, dict] = {
             "Equip items to raise your combat stats — Attack, Defence, Crit, Ward, and more. "
             "Then **upgrade** them: Forge and Refine weapons, Temper and Reinforce armor, "
             "and push their stats well beyond what they dropped with.\n\n"
-            "Gloves, Boots, and Helmets support **Essences** — powerful stat modifiers "
-            "you slot in directly. Get the right essences and they'll change how your build plays entirely. "
-            "Top-tier weapons can also carry a **Pinnacle** or **Utmost Passive** via the Voidforge."
+            "You'll eventually encounter Calcified monsters, monstrosities that drop **Essences** — powerful stat modifiers "
+            "you can use on your equipment. Get the right essences and they'll change how your combat works entirely. "
+            "Down the line, artefacts like the Voidforge can imprint additional passives."
         ),
         "tips": [
-            "Higher **rarity** items drop with stronger base stats — worth equipping even at lower level.",
-            "Upgrade costs resources, but upgrades are permanent and carry to your next fight.",
-            "Essences on gloves, boots, and helmets are your mid-to-late-game build shapers.",
+            "Weapons have different quality, some are better than others.",
+            "Upgrade quickly and often to keep up with the every growing threat of stronger monsters.",
+            "Build around different passive archetypes to shape your build.",
         ],
         "image": INVENTORY_HUB,
         "color": discord.Color.blue(),
@@ -326,7 +327,7 @@ TUTORIALS: dict[str, dict] = {
             "Your weapon's **main passive is overwritten** with the sacrifice's passive.\n"
             "— ❌ **Failure (50%):** The void consumes the essence entirely. "
             "Your target weapon is untouched, but the sacrifice is still gone.\n\n"
-            "*I've seen veterans lose three weapons in a row chasing a Pinnacle. "
+            "*I've seen veterans lose many weapons in a row chasing a Pinnacle. "
             "I've also seen one succeed on the first try. The void doesn't negotiate.*"
         ),
         "tips": [
