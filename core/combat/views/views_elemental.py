@@ -27,11 +27,11 @@ class _ElementalCompletionView(BaseView):
     @discord.ui.button(label="Repeat", style=ButtonStyle.success, emoji="🔄")
     async def repeat(self, interaction: Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        uber_data = await self.bot.database.uber.get_uber_progress(
+        mastery_row = await self.bot.database.skills.get_mastery(
             self.user_id, self.server_id
         )
         has_keys = all(
-            uber_data.get(k, 0) >= 1
+            mastery_row.get(k, 0) >= 1
             for k in ("blessed_bismuth", "sparkling_sprig", "capricious_carp")
         )
         if not has_keys:
@@ -40,7 +40,7 @@ class _ElementalCompletionView(BaseView):
                 ephemeral=True,
             )
 
-        await self.bot.database.uber.consume_elemental_keys(
+        await self.bot.database.skills.consume_elemental_keys(
             self.user_id, self.server_id
         )
         self.bot.state_manager.set_active(self.user_id, "elemental_boss")

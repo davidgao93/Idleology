@@ -39,10 +39,14 @@ class UserRepository:
 
         await self.connection.execute(
             """
-            INSERT INTO users (user_id, server_id, name, appearance, ideology, last_checkin_time) 
+            INSERT INTO users (user_id, server_id, name, appearance, ideology, last_checkin_time)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             (user_id, server_id, name, appearance, ideology, last_checkin),
+        )
+        await self.connection.execute(
+            "INSERT INTO player_currencies (user_id) VALUES (?)",
+            (user_id,),
         )
         await self.connection.commit()
 
@@ -65,6 +69,7 @@ class UserRepository:
 
         # ── Best-effort cleanup: tables keyed by user_id only ──────────────
         _by_user = [
+            "player_currencies",
             "items",
             "accessories",
             "armor",
@@ -212,21 +217,20 @@ class UserRepository:
         await self.connection.commit()
 
     async def get_value(self, user_id: str, column: str) -> int:
-        # Basic validation to prevent SQL injection
         allowed = ["passive_points"]
         if column not in allowed:
             return 0
 
         rows = await self.connection.execute(
-            f"SELECT {column} FROM users WHERE user_id = ?", (user_id,)
+            f"SELECT {column} FROM player_currencies WHERE user_id = ?", (user_id,)
         )
         result = await rows.fetchone()
         return result[0] if result else 0
 
     async def set_passive_points(self, user_id: str, server_id: str, amount: int):
         await self.connection.execute(
-            "UPDATE users SET passive_points = ? WHERE user_id = ? AND server_id = ?",
-            (amount, user_id, server_id),
+            "UPDATE player_currencies SET passive_points = ? WHERE user_id = ?",
+            (amount, user_id),
         )
         await self.connection.commit()
 
@@ -270,7 +274,7 @@ class UserRepository:
         if not self._COLUMN_RE.match(column):
             raise ValueError(f"get_currency: invalid column name {column!r}")
         rows = await self.connection.execute(
-            f"SELECT {column} FROM users WHERE user_id = ?", (user_id,)
+            f"SELECT {column} FROM player_currencies WHERE user_id = ?", (user_id,)
         )
         result = await rows.fetchone()
         return result[0] if result else 0
@@ -278,16 +282,13 @@ class UserRepository:
     async def modify_currency(
         self, user_id: str, currency_column: str, amount: int
     ) -> None:
-        """
-        Generic handler for keys, runes, and misc counters.
-        Only columns in _CURRENCY_COLS are accepted.
-        """
+        """Generic handler for all player_currencies columns (runes, keys, misc counters)."""
         if not self._COLUMN_RE.match(currency_column):
             raise ValueError(
                 f"modify_currency: invalid column name {currency_column!r}"
             )
         await self.connection.execute(
-            f"UPDATE users SET {currency_column} = {currency_column} + ? WHERE user_id = ?",
+            f"UPDATE player_currencies SET {currency_column} = {currency_column} + ? WHERE user_id = ?",
             (amount, user_id),
         )
         await self.connection.commit()
@@ -295,13 +296,13 @@ class UserRepository:
     async def deduct_currency_atomic(
         self, user_id: str, currency_column: str, amount: int
     ) -> bool:
-        """Deducts a currency column only if balance >= amount. Returns True on success."""
+        """Deducts a player_currencies column only if balance >= amount. Returns True on success."""
         if not self._COLUMN_RE.match(currency_column):
             raise ValueError(
                 f"deduct_currency_atomic: invalid column name {currency_column!r}"
             )
         cursor = await self.connection.execute(
-            f"UPDATE users SET {currency_column} = {currency_column} - ? "
+            f"UPDATE player_currencies SET {currency_column} = {currency_column} - ? "
             f"WHERE user_id = ? AND {currency_column} >= ?",
             (amount, user_id, amount),
         )
@@ -382,7 +383,7 @@ class UserRepository:
     async def modify_spirit_stones(self, user_id: str, delta: int) -> None:
         """Adds delta (may be negative) to spirit_stones, flooring at 0."""
         await self.connection.execute(
-            "UPDATE users SET spirit_stones = MAX(0, spirit_stones + ?) WHERE user_id = ?",
+            "UPDATE player_currencies SET spirit_stones = MAX(0, spirit_stones + ?) WHERE user_id = ?",
             (delta, user_id),
         )
         await self.connection.commit()
@@ -640,15 +641,18 @@ class UserRepository:
         """
         col = f"stat_invest_{stat}"
         cursor = await self.connection.execute(
-            "SELECT passive_points FROM users WHERE user_id = ? AND server_id = ?",
-            (user_id, server_id),
+            "SELECT passive_points FROM player_currencies WHERE user_id = ?",
+            (user_id,),
         )
         row = await cursor.fetchone()
         if not row or row[0] <= 0:
             return False
         await self.connection.execute(
-            f"UPDATE users SET passive_points = passive_points - 1, {col} = {col} + 1 "
-            "WHERE user_id = ? AND server_id = ?",
+            "UPDATE player_currencies SET passive_points = passive_points - 1 WHERE user_id = ?",
+            (user_id,),
+        )
+        await self.connection.execute(
+            f"UPDATE users SET {col} = {col} + 1 WHERE user_id = ? AND server_id = ?",
             (user_id, server_id),
         )
         await self.connection.commit()
@@ -660,18 +664,26 @@ class UserRepository:
         Returns False if no points invested in that stat, or no rune available.
         """
         col = f"stat_invest_{stat}"
-        cursor = await self.connection.execute(
-            f"SELECT {col}, rune_of_regret FROM users WHERE user_id = ? AND server_id = ?",
+        u_cursor = await self.connection.execute(
+            f"SELECT {col} FROM users WHERE user_id = ? AND server_id = ?",
             (user_id, server_id),
         )
-        row = await cursor.fetchone()
-        if not row or row[0] <= 0 or row[1] <= 0:
+        u_row = await u_cursor.fetchone()
+        c_cursor = await self.connection.execute(
+            "SELECT rune_of_regret FROM player_currencies WHERE user_id = ?",
+            (user_id,),
+        )
+        c_row = await c_cursor.fetchone()
+        if not u_row or u_row[0] <= 0 or not c_row or c_row[0] <= 0:
             return False
         await self.connection.execute(
-            f"UPDATE users SET {col} = {col} - 1, passive_points = passive_points + 1, "
-            "rune_of_regret = rune_of_regret - 1 "
-            "WHERE user_id = ? AND server_id = ?",
+            f"UPDATE users SET {col} = {col} - 1 WHERE user_id = ? AND server_id = ?",
             (user_id, server_id),
+        )
+        await self.connection.execute(
+            "UPDATE player_currencies SET passive_points = passive_points + 1, "
+            "rune_of_regret = rune_of_regret - 1 WHERE user_id = ?",
+            (user_id,),
         )
         await self.connection.commit()
         return True

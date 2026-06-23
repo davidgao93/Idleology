@@ -27,7 +27,6 @@ class GatherView(BaseView):
         self.user_data = None
         self.skill_data = None
         self.refined_data = None  # refined amounts parallel to skill resources
-        self.uber_data = None
         self.mastery_row = None
 
         # Familiarization gate cache (populated in refresh_state)
@@ -54,9 +53,6 @@ class GatherView(BaseView):
             )
         else:
             self.refined_data = None
-        self.uber_data = await self.bot.database.uber.get_uber_progress(
-            self.user_id, self.server_id
-        )
         self.mastery_row = await self.bot.database.skills.get_mastery(
             self.user_id, self.server_id
         )
@@ -146,8 +142,8 @@ class GatherView(BaseView):
         mastery_btn.callback = self.mastery_callback
         self.add_item(mastery_btn)
 
-        if self.uber_data and all(
-            self.uber_data.get(k, 0) >= 1
+        if self.mastery_row and all(
+            self.mastery_row.get(k, 0) >= 1
             for k in ("blessed_bismuth", "sparkling_sprig", "capricious_carp")
         ):
             resonance_btn = Button(
@@ -532,7 +528,7 @@ class GatherView(BaseView):
             return
         self._processing = True
         await interaction.response.defer()
-        await self.bot.database.uber.consume_elemental_keys(
+        await self.bot.database.skills.consume_elemental_keys(
             self.user_id, self.server_id
         )
         self.bot.state_manager.set_active(self.user_id, "elemental_boss")

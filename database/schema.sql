@@ -14,39 +14,19 @@ CREATE TABLE IF NOT EXISTS `users` (
   `defence` INTEGER NOT NULL DEFAULT 1,
   `current_hp` INTEGER NOT NULL DEFAULT 10,
   `max_hp` INTEGER NOT NULL DEFAULT 10,
-  `last_rest_time` TIMESTAMP DEFAULT NULL, 
-  `last_propagate_time` TIMESTAMP DEFAULT NULL, 
+  `last_rest_time` TIMESTAMP DEFAULT NULL,
+  `last_propagate_time` TIMESTAMP DEFAULT NULL,
   `ascension` INTEGER NOT NULL DEFAULT 0,
   `potions` INTEGER NOT NULL DEFAULT 0,
   `last_checkin_time` TIMESTAMP DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `refinement_runes` INTEGER NOT NULL DEFAULT 0,
-  `passive_points` INTEGER NOT NULL DEFAULT 0,
-  `potential_runes` INTEGER NOT NULL DEFAULT 0,
-  `curios` INTEGER NOT NULL DEFAULT 0,
-  `curios_purchased_today` INTEGER NOT NULL DEFAULT 0,
   `last_combat` TIMESTAMP DEFAULT NULL,
   `combat_stamina` INTEGER NOT NULL DEFAULT 10,
   `last_stamina_regen` TIMESTAMP DEFAULT NULL,
-  `dragon_key` INTEGER NOT NULL DEFAULT 0,
-  `angel_key` INTEGER NOT NULL DEFAULT 0,
-  `imbue_runes` INTEGER NOT NULL DEFAULT 0,
-  `soul_cores` INTEGER NOT NULL DEFAULT 0,
-  `void_frags` INTEGER NOT NULL DEFAULT 0,
-  `void_keys` INTEGER NOT NULL DEFAULT 0,
-  `shatter_runes` INTEGER NOT NULL DEFAULT 0,
-  `partnership_runes` INTEGER NOT NULL DEFAULT 0,
   `last_companion_collect_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `balance_fragment` INTEGER NOT NULL DEFAULT 0,
   `doors_enabled` INTEGER NOT NULL DEFAULT 1,
-  `codex_fragments` INTEGER NOT NULL DEFAULT 0,
-  `codex_pages` INTEGER NOT NULL DEFAULT 0,
-  `codex_rerolls` INTEGER NOT NULL DEFAULT 0,
   `highest_ascension_stage` INTEGER NOT NULL DEFAULT 0,
-  `spirit_stones` INTEGER NOT NULL DEFAULT 0,
   `exp_protection` INTEGER NOT NULL DEFAULT 0,
-  `antique_tome` INTEGER NOT NULL DEFAULT 0,
-  `pinnacle_key` INTEGER NOT NULL DEFAULT 0,
   `highest_ascension_floor` INTEGER NOT NULL DEFAULT 0,
   `prestige_border` TEXT NOT NULL DEFAULT 'none',
   `prestige_title` TEXT NOT NULL DEFAULT 'none',
@@ -54,9 +34,6 @@ CREATE TABLE IF NOT EXISTS `users` (
   `prestige_flair` TEXT NOT NULL DEFAULT 'none',
   `prestige_death_message` TEXT DEFAULT NULL,
   `prestige_monument` TEXT DEFAULT NULL,
-  `curio_puzzle_boxes` INTEGER NOT NULL DEFAULT 0,
-  `mirage_runes_imperfect` INTEGER NOT NULL DEFAULT 0,
-  `mirage_runes_perfected` INTEGER NOT NULL DEFAULT 0,
   `hard_mode` INTEGER NOT NULL DEFAULT 0,
   `auto_rest_pay` INTEGER NOT NULL DEFAULT 0,
   `combat_streak` INTEGER NOT NULL DEFAULT 0,
@@ -64,9 +41,38 @@ CREATE TABLE IF NOT EXISTS `users` (
   `stat_invest_atk` INTEGER NOT NULL DEFAULT 0,
   `stat_invest_def` INTEGER NOT NULL DEFAULT 0,
   `stat_invest_hp` INTEGER NOT NULL DEFAULT 0,
-  `stat_invest_gold` INTEGER NOT NULL DEFAULT 0,
-  `rune_of_regret` INTEGER NOT NULL DEFAULT 0,
-  `runes_of_nature` INTEGER NOT NULL DEFAULT 0
+  `stat_invest_gold` INTEGER NOT NULL DEFAULT 0
+);
+
+-- All additive integer currencies (runes, keys, fragments, etc.) live here.
+-- modify_currency / get_currency / deduct_currency_atomic all target this table.
+-- Add new consumable currencies here, never back on users.
+CREATE TABLE IF NOT EXISTS `player_currencies` (
+  `user_id` TEXT PRIMARY KEY,
+  `passive_points`          INTEGER NOT NULL DEFAULT 0,
+  `refinement_runes`        INTEGER NOT NULL DEFAULT 0,
+  `potential_runes`         INTEGER NOT NULL DEFAULT 0,
+  `imbue_runes`             INTEGER NOT NULL DEFAULT 0,
+  `shatter_runes`           INTEGER NOT NULL DEFAULT 0,
+  `partnership_runes`       INTEGER NOT NULL DEFAULT 0,
+  `rune_of_regret`          INTEGER NOT NULL DEFAULT 0,
+  `runes_of_nature`         INTEGER NOT NULL DEFAULT 0,
+  `dragon_key`              INTEGER NOT NULL DEFAULT 0,
+  `angel_key`               INTEGER NOT NULL DEFAULT 0,
+  `void_keys`               INTEGER NOT NULL DEFAULT 0,
+  `pinnacle_key`            INTEGER NOT NULL DEFAULT 0,
+  `soul_cores`              INTEGER NOT NULL DEFAULT 0,
+  `void_frags`              INTEGER NOT NULL DEFAULT 0,
+  `balance_fragment`        INTEGER NOT NULL DEFAULT 0,
+  `spirit_stones`           INTEGER NOT NULL DEFAULT 0,
+  `antique_tome`            INTEGER NOT NULL DEFAULT 0,
+  `curios`                  INTEGER NOT NULL DEFAULT 0,
+  `curio_puzzle_boxes`      INTEGER NOT NULL DEFAULT 0,
+  `codex_fragments`         INTEGER NOT NULL DEFAULT 0,
+  `codex_pages`             INTEGER NOT NULL DEFAULT 0,
+  `codex_rerolls`           INTEGER NOT NULL DEFAULT 0,
+  `mirage_runes_imperfect`  INTEGER NOT NULL DEFAULT 0,
+  `mirage_runes_perfected`  INTEGER NOT NULL DEFAULT 0
 );
 
 
@@ -874,8 +880,8 @@ CREATE TABLE IF NOT EXISTS bm_passive_tree (
     PRIMARY KEY (user_id, server_id, node_key)
 );
 
+
 -- For existing databases, add ALTER statements here:
--- ALTER TABLE users ADD COLUMN runes_of_nature INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE gathering_mastery ADD COLUMN attunement_alloc TEXT DEFAULT '{}';
 -- ALTER TABLE gathering_mastery ADD COLUMN mastery_insight INTEGER DEFAULT 0;
 -- ALTER TABLE gathering_mastery ADD COLUMN blessed_bismuth INTEGER DEFAULT 0;

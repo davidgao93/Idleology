@@ -549,24 +549,23 @@ class SkillRepository:
     async def add_runes_of_nature(self, user_id: str, amount: int) -> None:
         """Credit runes (from craft or drop)."""
         await self.connection.execute(
-            "UPDATE users SET runes_of_nature = runes_of_nature + ? WHERE user_id = ?",
+            "UPDATE player_currencies SET runes_of_nature = runes_of_nature + ? WHERE user_id = ?",
             (amount, user_id),
         )
         await self.connection.commit()
 
     async def spend_runes_of_nature(self, user_id: str, amount: int) -> bool:
         """Atomic spend. Returns True on success."""
-        await self.connection.execute(
-            "UPDATE users SET runes_of_nature = runes_of_nature - ? WHERE user_id = ? AND runes_of_nature >= ?",
+        cursor = await self.connection.execute(
+            "UPDATE player_currencies SET runes_of_nature = runes_of_nature - ? WHERE user_id = ? AND runes_of_nature >= ?",
             (amount, user_id, amount),
         )
         await self.connection.commit()
-        # aiosqlite doesn't easily give rowcount here; caller can re-fetch if needed
-        return True
+        return cursor.rowcount == 1
 
     async def get_runes_of_nature(self, user_id: str) -> int:
         async with self.connection.execute(
-            "SELECT runes_of_nature FROM users WHERE user_id = ?",
+            "SELECT runes_of_nature FROM player_currencies WHERE user_id = ?",
             (user_id,),
         ) as cursor:
             row = await cursor.fetchone()

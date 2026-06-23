@@ -22,21 +22,24 @@ class StorageProfileBuilder:
         h_count = await bot.database.equipment.get_count(user_id, "helmet")
         pet_count = await bot.database.companions.get_count(user_id)
 
+        dragon_keys = await bot.database.users.get_currency(user_id, "dragon_key")
+        angel_keys = await bot.database.users.get_currency(user_id, "angel_key")
+        void_frags = await bot.database.users.get_currency(user_id, "void_frags")
+        soul_cores = await bot.database.users.get_currency(user_id, "soul_cores")
         k_balance = await bot.database.users.get_currency(user_id, "balance_fragment")
+        curios = await bot.database.users.get_currency(user_id, "curios")
         antique_tomes = await bot.database.users.get_currency(user_id, "antique_tome")
         pinnacle_keys = await bot.database.users.get_currency(user_id, "pinnacle_key")
-        puzzle_boxes = await bot.database.users.get_currency(
-            user_id, "curio_puzzle_boxes"
-        )
+        puzzle_boxes = await bot.database.users.get_currency(user_id, "curio_puzzle_boxes")
         items = await bot.database.partners.get_items(user_id)
         guild_tickets = items.get("guild_tickets", 0)
 
         embed = discord.Embed(
             title="Inventory Summary",
-            description=f"💰 **Gold:** {user[6]:,}\n🧪 **Potions:** {user[16]:,}",
+            description=f"💰 **Gold:** {user['gold']:,}\n🧪 **Potions:** {user['potions']:,}",
             color=0x00FF00,
         )
-        embed.set_thumbnail(url=user[7])
+        embed.set_thumbnail(url=user["appearance"])
 
         embed.add_field(
             name="⚔️ **Gear**",
@@ -50,8 +53,8 @@ class StorageProfileBuilder:
         embed.add_field(
             name="🔑 **Boss Items**",
             value=(
-                f"🐉 Draconic Keys: {user[27]}\n🪽 Angelic Keys: {user[28]}\n🟣 Void Frags: {user[31]}\n"
-                f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {user[30]}"
+                f"🐉 Draconic Keys: {dragon_keys}\n🪽 Angelic Keys: {angel_keys}\n🟣 Void Frags: {void_frags}\n"
+                f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {soul_cores}"
             ),
             inline=True,
         )
@@ -59,7 +62,7 @@ class StorageProfileBuilder:
         embed.add_field(
             name="📦 **Misc Items**",
             value=(
-                f"🎁 Curios: {user[22]}\n"
+                f"🎁 Curios: {curios}\n"
                 f"🎁 Puzzle Boxes: {puzzle_boxes}\n"
                 f"🎫 Guild Tickets: {guild_tickets}\n"
                 f"📖 Antique Tomes: {antique_tomes}\n🗝️ Pinnacle Keys: {pinnacle_keys}"
@@ -73,24 +76,25 @@ class StorageProfileBuilder:
     async def build_crafting(bot, user_id: str, server_id: str) -> discord.Embed:
         user = await bot.database.users.get(user_id, server_id)
 
+        ref_runes = await bot.database.users.get_currency(user_id, "refinement_runes")
+        pot_runes = await bot.database.users.get_currency(user_id, "potential_runes")
+        imbue_runes = await bot.database.users.get_currency(user_id, "imbue_runes")
+        shat_runes = await bot.database.users.get_currency(user_id, "shatter_runes")
         r_partner = await bot.database.users.get_currency(user_id, "partnership_runes")
-        mirage_imp = await bot.database.users.get_currency(
-            user_id, "mirage_runes_imperfect"
-        )
-        mirage_perf = await bot.database.users.get_currency(
-            user_id, "mirage_runes_perfected"
-        )
+        mirage_imp = await bot.database.users.get_currency(user_id, "mirage_runes_imperfect")
+        mirage_perf = await bot.database.users.get_currency(user_id, "mirage_runes_perfected")
+        void_keys = await bot.database.users.get_currency(user_id, "void_keys")
 
         essence_data = await bot.database.essences.get_all(user_id)
 
         embed = discord.Embed(title="⚗️ Crafting Materials", color=0x9B59B6)
-        embed.set_thumbnail(url=user[7])
+        embed.set_thumbnail(url=user["appearance"])
 
         embed.add_field(
             name="💎 **Runes**",
             value=(
-                f"🔨 Refinement: {user[19]}\n✨ Potential: {user[21]}\n🔮 Imbuing: {user[29]}\n"
-                f"💥 Shatter: {user[33]}\n🤝 Partnership: {r_partner}\n"
+                f"🔨 Refinement: {ref_runes}\n✨ Potential: {pot_runes}\n🔮 Imbuing: {imbue_runes}\n"
+                f"💥 Shatter: {shat_runes}\n🤝 Partnership: {r_partner}\n"
                 f"🪞 Mirage (Imperfect): {mirage_imp}\n🪞 Mirage (Perfected): {mirage_perf}"
             ),
             inline=True,
@@ -98,7 +102,7 @@ class StorageProfileBuilder:
 
         embed.add_field(
             name="🗝️ **Void Keys**",
-            value=f"🗝️ Void Keys: {user[32]}",
+            value=f"🗝️ Void Keys: {void_keys}",
             inline=True,
         )
 
@@ -130,7 +134,6 @@ class StorageProfileBuilder:
     @staticmethod
     async def build_resources(bot, user_id: str, server_id: str) -> discord.Embed:
         settlement = await bot.database.settlement.get_settlement(user_id, server_id)
-        uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
         mat_all = await bot.database.settlement_materials.get_all(user_id)
         blueprint_count = mat_all.get("unidentified_blueprint", 0)
 
@@ -191,6 +194,9 @@ class StorageProfileBuilder:
         geode_cores = mastery_row.get("geode_cores", 0) or 0
         tide_relics = mastery_row.get("tide_relics", 0) or 0
         heartwood_shards = mastery_row.get("heartwood_shards", 0) or 0
+        blessed_bismuth = mastery_row.get("blessed_bismuth", 0) or 0
+        sparkling_sprig = mastery_row.get("sparkling_sprig", 0) or 0
+        capricious_carp = mastery_row.get("capricious_carp", 0) or 0
 
         embed = discord.Embed(
             title="Storage Warehouse", color=discord.Color.dark_orange()
@@ -200,7 +206,7 @@ class StorageProfileBuilder:
             f"**Ores:** Iron {ores[0]:,} · Coal {ores[1]:,} · Gold {ores[2]:,} · Plat {ores[3]:,} · Idea {ores[4]:,}\n"
             f"**Logs:** Oak {logs[0]:,} · Willow {logs[1]:,} · Mahog {logs[2]:,} · Magic {logs[3]:,} · Idea {logs[4]:,}\n"
             f"**Bones:** Desic {bones[0]:,} · Reg {bones[1]:,} · Sturdy {bones[2]:,} · Reinf {bones[3]:,} · Titan {bones[4]:,}\n"
-            f"**Elemental Keys:** 💎 Bismuth: {uber_data['blessed_bismuth']} · 🌿 Sprig: {uber_data['sparkling_sprig']} · 🐟 Carp: {uber_data['capricious_carp']}"
+            f"**Elemental Keys:** 💎 Bismuth: {blessed_bismuth} · 🌿 Sprig: {sparkling_sprig} · 🐟 Carp: {capricious_carp}"
         )
         embed.add_field(name="⛏️ Gathering", value=gathering_value, inline=False)
 
@@ -317,7 +323,7 @@ class StorageProfileBuilder:
             description="Essences used to enchant and upgrade equipment.",
             color=0x9B59B6,
         )
-        embed.set_thumbnail(url=user[7])
+        embed.set_thumbnail(url=user["appearance"])
 
         if not essence_data:
             embed.add_field(

@@ -18,16 +18,16 @@ class CardProfileBuilder:
     @staticmethod
     async def build_card(bot, user_id: str, server_id: str) -> discord.Embed:
         user = await bot.database.users.get(user_id, server_id)
-        followers = await bot.database.social.get_follower_count(user[8])
+        followers = await bot.database.social.get_follower_count(user["ideology"])
 
         embed = discord.Embed(title="Adventurer License", color=discord.Color.gold())
-        embed.set_thumbnail(url=user[7])
+        embed.set_thumbnail(url=user["appearance"])
 
-        embed.add_field(name="Name", value=f"**{user[3]}**", inline=True)
+        embed.add_field(name="Name", value=f"**{user['name']}**", inline=True)
         embed.add_field(
-            name="Level", value=f"{user[4]} (Ascension {user[15]})", inline=True
+            name="Level", value=f"{user['level']} (Ascension {user['ascension']})", inline=True
         )
-        _lvl, _exp = user[4], user[5]
+        _lvl, _exp = user["level"], user["experience"]
         try:
             _exp_path = os.path.join(
                 os.path.dirname(__file__), "..", "..", "assets", "exp.json"
@@ -44,9 +44,9 @@ class CardProfileBuilder:
             _exp_str = f"{_exp:,}"
         embed.add_field(name="Experience", value=_exp_str, inline=True)
 
-        embed.add_field(name="Ideology", value=f"{user[8]}", inline=True)
+        embed.add_field(name="Ideology", value=f"{user['ideology']}", inline=True)
         embed.add_field(name="Followers", value=f"{followers:,}", inline=True)
-        embed.add_field(name="Gold", value=f"{user[6]:,} 💰", inline=True)
+        embed.add_field(name="Gold", value=f"{user['gold']:,} 💰", inline=True)
 
         return embed
 
@@ -56,9 +56,9 @@ class CardProfileBuilder:
         p = await load_player(user_id, user, bot.database)
 
         embed = discord.Embed(title="Active Timers & Cooldowns", color=0xBEBEFE)
-        embed.set_thumbnail(url=user[7])
+        embed.set_thumbnail(url=user["appearance"])
 
-        player_level = user["level"] if isinstance(user, dict) else user[4]
+        player_level = user["level"]
 
         def _fmt_ms(time_str, cooldown_td: timedelta) -> str:
             if not time_str:
@@ -126,7 +126,7 @@ class CardProfileBuilder:
             combat_cd_mins = 10
             if p.equipped_boot and p.equipped_boot.passive == "speedster":
                 combat_cd_mins -= p.equipped_boot.passive_lvl
-            cd_str = _fmt_ms(user[24], timedelta(minutes=combat_cd_mins))
+            cd_str = _fmt_ms(user["last_combat"], timedelta(minutes=combat_cd_mins))
             combat_lines.append(
                 f"⚡ **Stamina** — {stamina}/{MAX_STAMINA}{regen_suffix}"
             )
@@ -134,7 +134,7 @@ class CardProfileBuilder:
                 combat_lines.append(f"  ↳ Cooldown: {cd_str}")
 
         # Rest
-        combat_lines.append(f"🛏️ **Rest** — {_fmt_hms(user[13], timedelta(hours=2))}")
+        combat_lines.append(f"🛏️ **Rest** — {_fmt_hms(user['last_rest_time'], timedelta(hours=2))}")
 
         # Maw
         try:
@@ -355,7 +355,7 @@ class CardProfileBuilder:
 
         # Propagate
         settlement_lines.append(
-            f"💡 **Propagate** — {_fmt_hms(user[14], timedelta(hours=18))}"
+            f"💡 **Propagate** — {_fmt_hms(user['last_propagate_time'], timedelta(hours=18))}"
         )
 
         embed.add_field(
