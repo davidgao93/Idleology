@@ -200,7 +200,7 @@ PLOT_BONUS_TABLE: dict[str, dict] = {
     "ley_line": {
         "label": "Ley Line",
         "emoji": "🔮",
-        "description": "Adjacent meta-buildings provide 50% stronger adjacency bonuses.",
+        "description": "A meta building on this plot projects 50% stronger adjacency bonuses to its neighbours.",
         "applies_to": "meta_amplifier",
         "value": 0.50,
     },

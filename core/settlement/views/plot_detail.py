@@ -461,6 +461,7 @@ class PlotDetailView(SettlementBaseView):
         parent,
         adj_bonus: dict | None = None,
         pending_construction: str | None = None,
+        event_effects: dict | None = None,
     ):
         super().__init__(bot, user_id)
         self.plot = plot
@@ -470,6 +471,7 @@ class PlotDetailView(SettlementBaseView):
         # assignment in __init__ is overridden cleanly (no property needed).
         self.server_id = parent.server_id
         self.adj_bonus = adj_bonus or {}
+        self.event_effects: dict = event_effects or {}
         self.pending_construction: str | None = pending_construction
         self._processing = False
         self._build_buttons()
@@ -606,19 +608,20 @@ class PlotDetailView(SettlementBaseView):
             if b.tier < 5 and not b.is_meta:
                 target_t = b.tier + 1
                 cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
+                dt_display = upgrade_dt_cost(b.building_type, target_t, self.event_effects)
                 cost_str = (
                     f"🪵 {cost.get('timber', 0):,} | "
                     f"🪨 {cost.get('stone', 0):,} | "
                     f"💰 {cost.get('gold', 0):,} | "
-                    f"⏱️ {upgrade_dt_cost(b.building_type, target_t)} DTs"
+                    f"⏱️ {dt_display} DTs"
                 )
+                if self.event_effects.get("construction_dt_halved"):
+                    cost_str += " _(Inspiration Surge — halved!)_"
                 if "specials" in cost:
                     for s in cost["specials"]:
                         cost_str += f" | ✨ {s['name']} ×{s['qty']}"
                 elif "special_name" in cost:
-                    cost_str += (
-                        f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
-                    )
+                    cost_str += f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
                 embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
 
         embed.add_field(
@@ -998,10 +1001,30 @@ class PlotDetailView(SettlementBaseView):
     # Callbacks — build regular building
     # ------------------------------------------------------------------
 
+    async def _load_event_effects(self) -> dict:
+        """Load active ongoing event effects for this settlement."""
+        from core.settlement.constants import SETTLEMENT_EVENTS
+
+        active_events = await self.bot.database.settlement.get_active_events(
+            self.user_id, self.parent.server_id
+        )
+        effects: dict = {}
+        for ev in active_events:
+            if ev["event_type"] == "ongoing":
+                ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
+                ev_data = ev.get("data") or {}
+                for _k, _v in ev_def.get("effects", {}).items():
+                    if _v == "band":
+                        _v = ev_data.get("band", 0)
+                    elif _v == "neg_band":
+                        _v = -ev_data.get("band", 0)
+                    effects[_k] = _v
+        return effects
+
     async def _open_construction(self, interaction: Interaction):
         from core.settlement.views.construction import BuildConstructionView
 
-        uber_prog, researched, user_data = await asyncio.gather(
+        uber_prog, researched, user_data, event_effects = await asyncio.gather(
             self.bot.database.uber.get_uber_progress(
                 self.user_id, self.parent.server_id
             ),
@@ -1009,6 +1032,7 @@ class PlotDetailView(SettlementBaseView):
                 self.user_id, self.parent.server_id
             ),
             self.bot.database.users.get(self.user_id, self.parent.server_id),
+            self._load_event_effects(),
         )
         view = BuildConstructionView(
             bot=self.bot,
@@ -1020,6 +1044,7 @@ class PlotDetailView(SettlementBaseView):
             researched=researched,
             return_to_detail=self,
             player_level=user_data["level"] if user_data else 0,
+            event_effects=event_effects,
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
@@ -1028,12 +1053,14 @@ class PlotDetailView(SettlementBaseView):
     # ------------------------------------------------------------------
 
     async def _open_meta_construction(self, interaction: Interaction):
+        event_effects = await self._load_event_effects()
         view = MetaBuildingConstructionView(
             bot=self.bot,
             user_id=self.user_id,
             plot_index=self.plot.plot_index,
             parent_view=self.parent,
             return_to_detail=self,
+            event_effects=event_effects,
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
@@ -1058,9 +1085,7 @@ class PlotDetailView(SettlementBaseView):
             adj.get("has_watchtower", False),
         )
         # Available = total followers minus workers assigned to every other building
-        total_assigned = sum(
-            bld.workers_assigned for bld in self.settlement.buildings
-        )
+        total_assigned = sum(bld.workers_assigned for bld in self.settlement.buildings)
         available = self.follower_count - (total_assigned - b.workers_assigned)
         assign = max(0, min(building_cap, available))
         await self.bot.database.settlement.assign_workers(b.id, assign)
@@ -1127,6 +1152,8 @@ class PlotDetailView(SettlementBaseView):
 
         await interaction.response.defer()
 
+        event_effects = await self._load_event_effects()
+
         changes = {
             "timber": -cost.get("timber", 0),
             "stone": -cost.get("stone", 0),
@@ -1146,7 +1173,7 @@ class PlotDetailView(SettlementBaseView):
             )
 
         # Queue upgrade project
-        dt_cost = upgrade_dt_cost(b.building_type, target_tier)
+        dt_cost = upgrade_dt_cost(b.building_type, target_tier, event_effects)
         await self.bot.database.settlement.upsert_project(
             user_id=self.user_id,
             server_id=self.parent.server_id,
@@ -1250,8 +1277,7 @@ class PlotDetailView(SettlementBaseView):
         if rods < 1:
             self._processing = False
             return await interaction.response.send_message(
-                "You don't have any **Diviner's Rods**! "
-                "They can drop from combat at level 50+.",
+                "You don't have any **Diviner's Rods**! " "They can drop from combat.",
                 ephemeral=True,
             )
 
@@ -1400,12 +1426,19 @@ _META_CATEGORIES: dict[str, dict] = {
 
 class MetaBuildingConstructionView(SettlementBaseView):
     def __init__(
-        self, bot, user_id: str, plot_index: int, parent_view, return_to_detail
+        self,
+        bot,
+        user_id: str,
+        plot_index: int,
+        parent_view,
+        return_to_detail,
+        event_effects: dict | None = None,
     ):
         super().__init__(bot, user_id)
         self.plot_index = plot_index
         self.parent = parent_view
         self.return_to = return_to_detail
+        self.event_effects: dict = event_effects or {}
         self._processing = False
         self._category = "production"
         self._rebuild()
@@ -1466,7 +1499,7 @@ class MetaBuildingConstructionView(SettlementBaseView):
                 continue
             data = META_BUILDINGS[key]
             cost = data["cost"]
-            dt = meta_construction_dt_cost(key)
+            dt = meta_construction_dt_cost(key, self.event_effects)
             desc = (
                 f"💰{cost.get('gold', 0):,}g  🪵{cost.get('timber', 0):,}  "
                 f"🪨{cost.get('stone', 0):,}  ⏱️{dt} DTs"
@@ -1530,7 +1563,7 @@ class MetaBuildingConstructionView(SettlementBaseView):
         for key in keys:
             data = META_BUILDINGS[key]
             cost = data["cost"]
-            dt = meta_construction_dt_cost(key)
+            dt = meta_construction_dt_cost(key, self.event_effects)
             cost_str = (
                 f"💰 {cost.get('gold', 0):,} | "
                 f"🪵 {cost.get('timber', 0):,} | "
@@ -1568,7 +1601,7 @@ class MetaBuildingConstructionView(SettlementBaseView):
         key = interaction.data["values"][0]
         data = META_BUILDINGS[key]
         cost = data["cost"]
-        dt_cost = meta_construction_dt_cost(key)
+        dt_cost = meta_construction_dt_cost(key, self.event_effects)
 
         gold = await self.bot.database.users.get_gold(self.user_id)
         stl = self.parent.settlement

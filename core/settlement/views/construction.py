@@ -25,6 +25,7 @@ class BuildConstructionView(SettlementBaseView):
         plot_bonus_type: str | None = None,
         return_to_detail=None,
         player_level: int = 0,
+        event_effects: dict | None = None,
     ):
         super().__init__(bot, user_id)
         self.plot_index = plot_index
@@ -34,6 +35,7 @@ class BuildConstructionView(SettlementBaseView):
         self.plot_bonus_type = plot_bonus_type
         self.return_to = return_to_detail  # PlotDetailView to return to after build
         self.player_level = player_level
+        self.event_effects: dict = event_effects or {}
         self._processing = False
 
         self.setup_select()
@@ -73,6 +75,8 @@ class BuildConstructionView(SettlementBaseView):
             discount_note = (
                 "\n🏺 **Ancient Foundation:** Timber & Stone cost reduced by 30%."
             )
+        if self.event_effects.get("construction_dt_halved"):
+            discount_note += "\n💡 **Inspiration Surge:** Construction & upgrade DT costs are halved!"
 
         embed = discord.Embed(
             title="🏗️ Construction Site",
@@ -100,7 +104,7 @@ class BuildConstructionView(SettlementBaseView):
                 cost_str += f" | 🪵 {cost['timber']:,}"
             if cost.get("stone"):
                 cost_str += f" | 🪨 {cost['stone']:,}"
-            dt = construction_dt_cost(b_type)
+            dt = construction_dt_cost(b_type, self.event_effects)
             cost_str += f" | ⏭️ {dt} DT"
 
             embed.add_field(

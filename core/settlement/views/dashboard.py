@@ -786,6 +786,15 @@ class SettlementDashboardView(SettlementBaseView):
         meta_btn.callback = self.show_meta_buildings
         self.add_item(meta_btn)
 
+        plots_btn = ui.Button(
+            label="Plot Bonuses",
+            style=ButtonStyle.secondary,
+            emoji="🗺️",
+            row=3,
+        )
+        plots_btn.callback = self.show_plot_bonuses
+        self.add_item(plots_btn)
+
         maid_btn = ui.Button(
             label="Ask Spritz",
             style=ButtonStyle.secondary,
@@ -829,7 +838,23 @@ class SettlementDashboardView(SettlementBaseView):
         )
         adj_bonus = adj_bonuses.get(plot_num, {})
 
+        from core.settlement.constants import SETTLEMENT_EVENTS
         from core.settlement.views.plot_detail import PlotDetailView
+
+        active_events = await self.bot.database.settlement.get_active_events(
+            self.user_id, self.server_id
+        )
+        event_effects: dict = {}
+        for ev in active_events:
+            if ev["event_type"] == "ongoing":
+                ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
+                ev_data = ev.get("data") or {}
+                for _k, _v in ev_def.get("effects", {}).items():
+                    if _v == "band":
+                        _v = ev_data.get("band", 0)
+                    elif _v == "neg_band":
+                        _v = -ev_data.get("band", 0)
+                    event_effects[_k] = _v
 
         pending_construction = self._pending_by_plot().get(plot_num)
 
@@ -841,6 +866,7 @@ class SettlementDashboardView(SettlementBaseView):
             parent=self,
             adj_bonus=adj_bonus,
             pending_construction=pending_construction,
+            event_effects=event_effects,
         )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
 
@@ -926,7 +952,10 @@ class SettlementDashboardView(SettlementBaseView):
         _META = [
             ("🏠 Servant's Quarters", "Adjacent generator buildings gain +20% output."),
             ("📦 Supply Depot", "Adjacent converter buildings are 15% more effective."),
-            ("⛪ Grand Cathedral", "Adjacent shrine buildings can have twice as many workers."),
+            (
+                "⛪ Grand Cathedral",
+                "Adjacent shrine buildings can have twice as many workers.",
+            ),
             (
                 "🏯 Watchtower",
                 "Each regular building's worker cap is increased by +1% per its own tier (T1 → +1%, T5 → +5%). Global effect.",
@@ -934,20 +963,48 @@ class SettlementDashboardView(SettlementBaseView):
             ("🏗️ Foreman's Post", "Adjacent buildings gain +25% output rate."),
             ("🌸 Shrine Garden", "Adjacent shrine buildings are 15% more effective."),
             ("⛺ Encampment", "Adjacent War Camp generates +0.5 Combat Stamina/hr."),
-            ("💊 Apothecary Annex", "Adjacent Apothecary heals +40% more flat HP per potion use."),
+            (
+                "💊 Apothecary Annex",
+                "Adjacent Apothecary heals +40% more flat HP per potion use.",
+            ),
         ]
         lines = "\n".join(f"**{n}** — {d}" for n, d in _META)
         embed = discord.Embed(
             title="⚙️ Meta Buildings",
             description=(
                 "Meta buildings provide powerful passive bonuses to neighbouring plots. "
-                "All meta buildings are Tier 1 only and require no workers to activate. "
-                "You may build up to [Town Hall tier] meta buildings across your settlement.\n\n"
+                "All meta buildings require no workers to activate. "
+                "Your meta building capacity is determined by your Town Hall tier.\n\n"
                 + lines
             ),
             color=discord.Color.blurple(),
         )
         embed.set_footer(text="Build meta buildings from any empty developed plot.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    async def show_plot_bonuses(self, interaction: Interaction):
+        from core.settlement.plots import PLOT_BONUS_TABLE
+
+        lines = []
+        for bonus_type, data in PLOT_BONUS_TABLE.items():
+            emoji = data.get("emoji", "")
+            label = data.get("label", bonus_type)
+            desc = data.get("description", "")
+            lines.append(f"{emoji} **{label}** — {desc}")
+
+        embed = discord.Embed(
+            title="🗺️ Plot Terrain Bonuses",
+            description=(
+                "Each developed plot has a terrain bonus rolled when first revealed. "
+                "Bonuses apply to whichever building occupies that plot. **Ley Line** is special: "
+                "a meta building built on a Ley Line plot projects 50% stronger bonuses to its neighbours.\n\n"
+                + "\n".join(lines)
+            ),
+            color=discord.Color.green(),
+        )
+        embed.set_footer(
+            text="Use a Diviner's Rod on any plot to reroll its terrain bonus."
+        )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def open_town_hall(self, interaction: Interaction):
@@ -1241,6 +1298,12 @@ class SettlementDashboardView(SettlementBaseView):
             # Spend exactly ZEAL_TO_DT Zeal
             await self.bot.database.settlement.spend_zeal(uid, sid, ZEAL_TO_DT)
 
+            try:
+                from core.quests.mechanics import tick_quest_progress
+                await tick_quest_progress(self.bot, uid, sid, "zeal_spent", ZEAL_TO_DT)
+            except Exception:
+                pass
+
             # Process the turn
             summary = await process_next_turn(
                 self.bot, uid, sid, self.settlement.town_hall_tier
@@ -1470,6 +1533,11 @@ class SettlementDashboardView(SettlementBaseView):
                 if won:
                     zeal_reward = 50
                     await self.bot.database.settlement.add_zeal(uid, sid, zeal_reward)
+                    try:
+                        from core.quests.mechanics import tick_quest_progress
+                        await tick_quest_progress(self.bot, uid, sid, "settlement_event_complete")
+                    except Exception:
+                        pass
                 else:
                     if target_building_type:
                         b = await self.bot.database.settlement.get_building_by_type(

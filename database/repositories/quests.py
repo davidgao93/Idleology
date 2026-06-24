@@ -22,6 +22,7 @@ class QuestsRepository(BaseRepository):
                 tier INTEGER NOT NULL,
                 free_reroll_used INTEGER DEFAULT 0,
                 board_rolled_at TEXT,
+                quality TEXT DEFAULT 'normal',
                 PRIMARY KEY (user_id, server_id, slot)
             )
             """
@@ -39,6 +40,7 @@ class QuestsRepository(BaseRepository):
                 locked_at TEXT NOT NULL,
                 completed INTEGER DEFAULT 0,
                 turned_in INTEGER DEFAULT 0,
+                quality TEXT DEFAULT 'normal',
                 PRIMARY KEY (user_id, server_id, slot)
             )
             """
@@ -69,7 +71,9 @@ class QuestsRepository(BaseRepository):
                 checkin_day INTEGER DEFAULT 0,
                 checkin_last_time TEXT,
                 enrichment_unlocked INTEGER DEFAULT 0,
-                prospector_unlocked INTEGER DEFAULT 0
+                prospector_unlocked INTEGER DEFAULT 0,
+                streak INTEGER DEFAULT 0,
+                board_had_abandon INTEGER DEFAULT 0
             )
             """
         )
@@ -77,10 +81,19 @@ class QuestsRepository(BaseRepository):
         for col, defval in (
             ("enrichment_unlocked", "0"),
             ("prospector_unlocked", "0"),
+            ("streak", "0"),
+            ("board_had_abandon", "0"),
         ):
             try:
                 await self.connection.execute(
                     f"ALTER TABLE quest_meta ADD COLUMN {col} INTEGER DEFAULT {defval}"
+                )
+            except Exception:
+                pass  # column already exists
+        for tbl in ("quest_board", "quest_contracts"):
+            try:
+                await self.connection.execute(
+                    f"ALTER TABLE {tbl} ADD COLUMN quality TEXT DEFAULT 'normal'"
                 )
             except Exception:
                 pass  # column already exists
@@ -101,7 +114,7 @@ class QuestsRepository(BaseRepository):
         cursor = await self.connection.execute(
             "SELECT user_id, tokens, veteran_unlocked, extra_slot_unlocked, "
             "horizon_boost_uses, checkin_day, checkin_last_time, "
-            "enrichment_unlocked, prospector_unlocked "
+            "enrichment_unlocked, prospector_unlocked, streak, board_had_abandon "
             "FROM quest_meta WHERE user_id = ?",
             (user_id,),
         )
@@ -117,6 +130,8 @@ class QuestsRepository(BaseRepository):
                 "checkin_last_time": None,
                 "enrichment_unlocked": 0,
                 "prospector_unlocked": 0,
+                "streak": 0,
+                "board_had_abandon": 0,
             }
         return {
             "user_id": row["user_id"],
@@ -128,6 +143,8 @@ class QuestsRepository(BaseRepository):
             "checkin_last_time": row["checkin_last_time"],
             "enrichment_unlocked": row["enrichment_unlocked"],
             "prospector_unlocked": row["prospector_unlocked"],
+            "streak": row["streak"],
+            "board_had_abandon": row["board_had_abandon"],
         }
 
     async def add_tokens(self, user_id: str, amount: int) -> None:
@@ -156,6 +173,8 @@ class QuestsRepository(BaseRepository):
             "horizon_boost_uses",
             "enrichment_unlocked",
             "prospector_unlocked",
+            "streak",
+            "board_had_abandon",
         }
         if field not in allowed:
             raise ValueError(f"Invalid meta field: {field}")
@@ -172,13 +191,44 @@ class QuestsRepository(BaseRepository):
         )
         await self.connection.commit()
 
+    async def increment_streak(self, user_id: str) -> int:
+        """Increment streak by 1 and return the new value."""
+        await self.connection.execute(
+            "UPDATE quest_meta SET streak = streak + 1 WHERE user_id = ?",
+            (user_id,),
+        )
+        await self.connection.commit()
+        meta = await self.get_meta(user_id)
+        return meta["streak"]
+
+    async def reset_streak(self, user_id: str) -> None:
+        await self.connection.execute(
+            "UPDATE quest_meta SET streak = 0 WHERE user_id = ?",
+            (user_id,),
+        )
+        await self.connection.commit()
+
+    async def set_board_had_abandon(self, user_id: str) -> None:
+        await self.connection.execute(
+            "UPDATE quest_meta SET board_had_abandon = 1 WHERE user_id = ?",
+            (user_id,),
+        )
+        await self.connection.commit()
+
+    async def clear_board_had_abandon(self, user_id: str) -> None:
+        await self.connection.execute(
+            "UPDATE quest_meta SET board_had_abandon = 0 WHERE user_id = ?",
+            (user_id,),
+        )
+        await self.connection.commit()
+
     # ------------------------------------------------------------------
     # Board (pre-contract browsing state)
     # ------------------------------------------------------------------
 
     async def get_board(self, user_id: str, server_id: str) -> list:
         cursor = await self.connection.execute(
-            "SELECT slot, quest_id, tier, free_reroll_used, board_rolled_at "
+            "SELECT slot, quest_id, tier, free_reroll_used, board_rolled_at, quality "
             "FROM quest_board WHERE user_id = ? AND server_id = ? ORDER BY slot",
             (user_id, server_id),
         )
@@ -190,19 +240,26 @@ class QuestsRepository(BaseRepository):
                 "tier": r["tier"],
                 "free_reroll_used": r["free_reroll_used"],
                 "board_rolled_at": r["board_rolled_at"],
+                "quality": r["quality"] or "normal",
             }
             for r in rows
         ]
 
     async def set_board_slot(
-        self, user_id: str, server_id: str, slot: int, quest_id: str, tier: int
+        self,
+        user_id: str,
+        server_id: str,
+        slot: int,
+        quest_id: str,
+        tier: int,
+        quality: str = "normal",
     ) -> None:
         now = datetime.now().isoformat()
         await self.connection.execute(
             """INSERT OR REPLACE INTO quest_board
-               (user_id, server_id, slot, quest_id, tier, free_reroll_used, board_rolled_at)
-               VALUES (?, ?, ?, ?, ?, 0, ?)""",
-            (user_id, server_id, slot, quest_id, tier, now),
+               (user_id, server_id, slot, quest_id, tier, free_reroll_used, board_rolled_at, quality)
+               VALUES (?, ?, ?, ?, ?, 0, ?, ?)""",
+            (user_id, server_id, slot, quest_id, tier, now, quality),
         )
         await self.connection.commit()
 
@@ -216,12 +273,19 @@ class QuestsRepository(BaseRepository):
         await self.connection.commit()
 
     async def update_board_slot_quest(
-        self, user_id: str, server_id: str, slot: int, quest_id: str, tier: int
+        self,
+        user_id: str,
+        server_id: str,
+        slot: int,
+        quest_id: str,
+        tier: int,
+        quality: str = "normal",
     ) -> None:
-        """Updates quest_id and tier for an existing board slot (reroll without resetting free_reroll_used)."""
+        """Updates quest_id, tier, and quality for an existing board slot (reroll without resetting free_reroll_used)."""
         await self.connection.execute(
-            "UPDATE quest_board SET quest_id = ?, tier = ? WHERE user_id = ? AND server_id = ? AND slot = ?",
-            (quest_id, tier, user_id, server_id, slot),
+            "UPDATE quest_board SET quest_id = ?, tier = ?, quality = ? "
+            "WHERE user_id = ? AND server_id = ? AND slot = ?",
+            (quest_id, tier, quality, user_id, server_id, slot),
         )
         await self.connection.commit()
 
@@ -238,7 +302,7 @@ class QuestsRepository(BaseRepository):
 
     async def get_contracts(self, user_id: str, server_id: str) -> list:
         cursor = await self.connection.execute(
-            "SELECT slot, quest_id, tier, progress, goal, locked_at, completed, turned_in "
+            "SELECT slot, quest_id, tier, progress, goal, locked_at, completed, turned_in, quality "
             "FROM quest_contracts WHERE user_id = ? AND server_id = ? ORDER BY slot",
             (user_id, server_id),
         )
@@ -253,6 +317,7 @@ class QuestsRepository(BaseRepository):
                 "locked_at": r["locked_at"],
                 "completed": r["completed"],
                 "turned_in": r["turned_in"],
+                "quality": r["quality"] or "normal",
             }
             for r in rows
         ]
@@ -302,14 +367,15 @@ class QuestsRepository(BaseRepository):
         quest_id: str,
         tier: int,
         goal: int,
+        quality: str = "normal",
     ) -> None:
         """Insert or replace a specific contract slot."""
         now = datetime.now().isoformat()
         await self.connection.execute(
             """INSERT OR REPLACE INTO quest_contracts
-               (user_id, server_id, slot, quest_id, tier, progress, goal, locked_at, completed, turned_in)
-               VALUES (?, ?, ?, ?, ?, 0, ?, ?, 0, 0)""",
-            (user_id, server_id, slot, quest_id, tier, goal, now),
+               (user_id, server_id, slot, quest_id, tier, progress, goal, locked_at, completed, turned_in, quality)
+               VALUES (?, ?, ?, ?, ?, 0, ?, ?, 0, 0, ?)""",
+            (user_id, server_id, slot, quest_id, tier, goal, now, quality),
         )
         await self.connection.commit()
 

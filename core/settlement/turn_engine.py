@@ -91,18 +91,29 @@ _UPGRADE_DT_TABLE = {2: 5, 3: 10, 4: 25, 5: 50}
 _UBER_SHRINE_UPGRADE_DT = {2: 25, 3: 50, 4: 100, 5: 200}
 
 
-def upgrade_dt_cost(building_type: str, target_tier: int) -> int:
+def upgrade_dt_cost(
+    building_type: str, target_tier: int, event_effects: dict | None = None
+) -> int:
     if building_type == "uber_shrine":
-        return _UBER_SHRINE_UPGRADE_DT.get(target_tier, 200)
-    return max(1, _UPGRADE_DT_TABLE.get(target_tier, 50))
+        base = _UBER_SHRINE_UPGRADE_DT.get(target_tier, 200)
+    else:
+        base = max(1, _UPGRADE_DT_TABLE.get(target_tier, 50))
+    if event_effects and event_effects.get("construction_dt_halved"):
+        base = max(1, base // 2)
+    return base
 
 
-def meta_construction_dt_cost(building_type: str) -> int:
+def meta_construction_dt_cost(
+    building_type: str, event_effects: dict | None = None
+) -> int:
     """DT cost to construct a meta building = gold_cost // 1000, minimum 1."""
     from core.settlement.plots import META_BUILDINGS
 
     gold = META_BUILDINGS.get(building_type, {}).get("cost", {}).get("gold", 10_000)
-    return max(1, gold // 1000)
+    base = max(1, gold // 1000)
+    if event_effects and event_effects.get("construction_dt_halved"):
+        base = max(1, base // 2)
+    return base
 
 
 # ---------------------------------------------------------------------------
@@ -338,6 +349,44 @@ async def _calculate_dt_production(
     _DT_HOURS = 5.0  # 1 DT = 5× hourly rate
     _SKIP = {"nursery", "idlem_foundry", "black_market", "hatchery", "war_camp"}
 
+    # Adjacency bonuses from meta buildings (Servant's Quarters, Supply Depot, etc.)
+    from core.settlement.models import Plot as PlotModel
+
+    try:
+        _plot_rows = await bot.database.plots.get_plots(user_id, server_id)
+        plots = [
+            PlotModel(
+                plot_index=r["plot_index"],
+                is_developed=bool(r["is_developed"]),
+                bonus_type=r["bonus_type"],
+            )
+            for r in _plot_rows
+        ]
+    except Exception:
+        plots = []
+    adj_bonuses = SettlementMechanics.calculate_adjacency_bonuses(
+        plots, settlement.buildings
+    )
+
+    # Build a plot_index → bonus_type lookup for plot terrain bonuses
+    plot_bonus_map: dict[int, str | None] = (
+        {p.plot_index: p.bonus_type for p in plots} if plots else {}
+    )
+
+    # Mastery converter output bonus (Master Quarry / Seasoned Timber synergy nodes)
+    refining_bonus = 0.0
+    try:
+        mastery_row = await bot.database.skills.get_mastery(user_id, server_id)
+        if mastery_row:
+            from core.skills.mastery import has_master_quarry, has_seasoned_timber
+
+            if has_master_quarry(mastery_row):
+                refining_bonus += 0.10
+            if has_seasoned_timber(mastery_row):
+                refining_bonus += 0.10
+    except Exception:
+        pass
+
     # Extract event production bonuses/penalties for this turn.
     _active_evs = await bot.database.settlement.get_active_events(user_id, server_id)
     _dt_gen_bonus = 0.0
@@ -375,14 +424,19 @@ async def _calculate_dt_production(
         if not b_def or b_def["type"] not in ("generator", "converter"):
             continue
 
+        adj = adj_bonuses.get(b.plot_index, {}) if b.plot_index is not None else {}
+        plot_bonus = plot_bonus_map.get(b.plot_index) if b.plot_index is not None else None
+
         changes = SettlementMechanics.calculate_production(
             building_type=b.building_type,
             tier=b.tier,
             workers=b.workers_assigned,
             hours_elapsed=_DT_HOURS,
-            raw_inventory=dict(
-                raw_inv
-            ),  # pass a copy so converter deductions don't bleed
+            raw_inventory=dict(raw_inv),  # copy so converter deductions don't bleed
+            plot_bonus_type=plot_bonus,
+            adj_production_mult=adj.get("production_mult", 0.0),
+            adj_converter_mult=adj.get("converter_mult", 0.0),
+            mastery_converter_output_mult=refining_bonus,
             event_generator_bonus=_dt_gen_bonus,
             event_converter_bonus=_dt_conv_bonus,
         )

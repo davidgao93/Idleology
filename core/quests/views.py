@@ -13,6 +13,7 @@ from core.base_view import BaseView
 from core.images import AMARA_AUTHOR, QUEST_BOARD
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS
 from core.quests.mechanics import (
+    check_and_apply_streak,
     compute_goal_for_quest,
     format_goal_description,
     get_board_cooldown_remaining,
@@ -91,10 +92,11 @@ class QuestBoardView(BaseView):
 
     async def _roll_fresh_board(self) -> None:
         await self.bot.database.quests.clear_board(self.user_id, self.server_id)
+        await self.bot.database.quests.clear_board_had_abandon(self.user_id)
         rolls = roll_board(self._player_level)
-        for i, (quest_id, tier) in enumerate(rolls, start=1):
+        for i, (quest_id, tier, quality) in enumerate(rolls, start=1):
             await self.bot.database.quests.set_board_slot(
-                self.user_id, self.server_id, i, quest_id, tier
+                self.user_id, self.server_id, i, quest_id, tier, quality
             )
         self.board = await self.bot.database.quests.get_board(
             self.user_id, self.server_id
@@ -135,6 +137,7 @@ class QuestBoardView(BaseView):
             slot = slot_row["slot"]
             quest_id = slot_row["quest_id"]
             tier = slot_row["tier"]
+            quality = slot_row.get("quality", "normal")
             quest_def = next((q for q in DAILY_QUESTS if q["id"] == quest_id), None)
             if quest_def is None:
                 continue
@@ -144,9 +147,10 @@ class QuestBoardView(BaseView):
             gold = 25_000 if tier == 1 else 75_000
             token_word = "Token" if tier == 1 else "Tokens"
             obj_desc = format_goal_description(quest_id, tier, goal)
+            quality_tag = {"gilded": " ✨ **[Gilded]**", "marvelous": " 🌟 **[Marvelous]**"}.get(quality, "")
 
             embed.add_field(
-                name=f"{star} Slot {slot} — {quest_def['label']}",
+                name=f"{star} Slot {slot} — {quest_def['label']}{quality_tag}",
                 value=(
                     f"{quest_def['flavor']}\n"
                     f"**Objective:** {obj_desc}\n"
@@ -177,7 +181,9 @@ class QuestBoardView(BaseView):
                 inline=False,
             )
 
-        embed.set_footer(text=f"Quest Tokens: {tokens}  |  Ready to take contracts")
+        streak = self.meta.get("streak", 0)
+        streak_str = f"  |  🔥 Streak: {streak}" if streak > 0 else ""
+        embed.set_footer(text=f"Quest Tokens: {tokens}{streak_str}  |  Ready to take contracts")
         return embed
 
     def _build_contracts_embed(self, tokens: int) -> discord.Embed:
@@ -195,6 +201,8 @@ class QuestBoardView(BaseView):
                 (q for q in DAILY_QUESTS if q["id"] == contract["quest_id"]), None
             )
             label = quest_def["label"] if quest_def else contract["quest_id"]
+            quality = contract.get("quality", "normal")
+            quality_tag = {"gilded": " ✨ [Gilded]", "marvelous": " 🌟 [Marvelous]"}.get(quality, "")
             progress = min(contract["progress"], contract["goal"])
             if contract["completed"]:
                 status = "✅ Complete — Claim your reward!"
@@ -205,7 +213,7 @@ class QuestBoardView(BaseView):
 
             flavor = quest_def["flavor"] if quest_def else ""
             embed.add_field(
-                name=f"{status_emoji} {label} — Slot {contract['slot']}",
+                name=f"{status_emoji} {label}{quality_tag} — Slot {contract['slot']}",
                 value=(
                     f"{flavor}\n"
                     f"**Progress:** {progress}/{contract['goal']}\n"
@@ -235,11 +243,13 @@ class QuestBoardView(BaseView):
                     inline=False,
                 )
 
+        streak = self.meta.get("streak", 0)
+        streak_str = f"  |  🔥 Streak: {streak}" if streak > 0 else ""
         rem = self._cooldown_remaining()
         if rem.total_seconds() > 0:
-            footer = f"Quest Tokens: {tokens}  |  Next board in: {_fmt_td(rem)}"
+            footer = f"Quest Tokens: {tokens}{streak_str}  |  Next board in: {_fmt_td(rem)}"
         else:
-            footer = f"Quest Tokens: {tokens}  |  Board ready after contracts are done"
+            footer = f"Quest Tokens: {tokens}{streak_str}  |  Board ready after contracts are done"
         embed.set_footer(text=footer)
         return embed
 
@@ -315,8 +325,13 @@ class QuestBoardView(BaseView):
             )
             self.add_item(btn)
 
-        # Horizon path select
-        self.add_item(_HorizonSelect(self._player_level, self.horizon, row=1))
+        # Horizon path select — clear default if the horizon was just claimed
+        _active_horizon = (
+            self.horizon
+            if (self.horizon and not self.horizon.get("turned_in"))
+            else None
+        )
+        self.add_item(_HorizonSelect(self._player_level, _active_horizon, row=1))
 
         # Take Contracts
         take_btn = discord.ui.Button(
@@ -356,7 +371,12 @@ class QuestBoardView(BaseView):
             self.add_item(_AbandonSelect(incomplete, row=1))
 
         # Horizon path select (row 2) — always available so paths can be swapped at any time
-        self.add_item(_HorizonSelect(self._player_level, self.horizon, row=2))
+        _active_horizon = (
+            self.horizon
+            if (self.horizon and not self.horizon.get("turned_in"))
+            else None
+        )
+        self.add_item(_HorizonSelect(self._player_level, _active_horizon, row=2))
 
         # Claim Horizon (row 3)
         horizon_complete = (
@@ -385,7 +405,12 @@ class QuestBoardView(BaseView):
 
     def _add_empty_components(self) -> None:
         # Allow horizon path selection even while waiting for the board to reset
-        self.add_item(_HorizonSelect(self._player_level, self.horizon, row=0))
+        _active_horizon = (
+            self.horizon
+            if (self.horizon and not self.horizon.get("turned_in"))
+            else None
+        )
+        self.add_item(_HorizonSelect(self._player_level, _active_horizon, row=0))
 
         # Claim Horizon button (row 1) — shown even when board is on cooldown
         horizon_complete = (
@@ -455,14 +480,14 @@ class QuestBoardView(BaseView):
                     )
                     return
 
-            # Roll new quest — always tier 3, excluding already-shown quests
+            # Roll new quest — excluding already-shown quests
             existing_ids = [r["quest_id"] for r in self.board]
-            new_quest_id, new_tier = reroll_slot(
+            new_quest_id, new_tier, new_quality = reroll_slot(
                 self._player_level,
                 exclude_quest_ids=existing_ids,
             )
             await self.bot.database.quests.update_board_slot_quest(
-                self.user_id, self.server_id, slot, new_quest_id, new_tier
+                self.user_id, self.server_id, slot, new_quest_id, new_tier, new_quality
             )
             await self.refresh(interaction)
         finally:
@@ -496,6 +521,7 @@ class QuestBoardView(BaseView):
                     slot_row["quest_id"],
                     slot_row["tier"],
                     goal,
+                    slot_row.get("quality", "normal"),
                 )
 
             # Clear the board
@@ -525,6 +551,12 @@ class QuestBoardView(BaseView):
                 )
                 return
 
+            # Streak check — fires after the contract is marked turned_in
+            streak_msgs = await check_and_apply_streak(
+                self.bot, self.user_id, self.server_id
+            )
+            msgs.extend(streak_msgs)
+
             await self.load()
             self._build_view_components()
             embed = self.build_embed()
@@ -549,6 +581,8 @@ class QuestBoardView(BaseView):
         await self.bot.database.quests.abandon_contract(
             self.user_id, self.server_id, slot
         )
+        await self.bot.database.quests.reset_streak(self.user_id)
+        await self.bot.database.quests.set_board_had_abandon(self.user_id)
         await self.load()
         active = [c for c in self.contracts if not c["turned_in"]]
         if not active and not self._is_on_cooldown():

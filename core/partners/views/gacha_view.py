@@ -200,6 +200,14 @@ class PullView(PartnerBaseView):
 
         await interaction.response.defer()
 
+        try:
+            from core.quests.mechanics import tick_quest_progress
+            await tick_quest_progress(
+                self.bot, self.user_id, str(interaction.guild_id), "partner_recruit", count
+            )
+        except Exception:
+            pass
+
         items = await self.bot.database.partners.get_items(self.user_id)
         pity = items["pity_counter"]
 

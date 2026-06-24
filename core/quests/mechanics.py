@@ -12,6 +12,14 @@ from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, get_damage_goals
 BOARD_COOLDOWN_HOURS = 20
 CHECKIN_COOLDOWN_HOURS = 18
 
+_SETTLEMENT_MATERIAL_MAP = {
+    "magma_core": "Magma Core",
+    "life_root": "Life Root",
+    "spirit_shard": "Spirit Shard",
+    "unidentified_blueprint": "Unidentified Blueprint",
+    "diviners_rod": "Diviner's Rod",
+}
+
 # Gold rewards per completion
 _GOLD_REWARDS = {1: 25_000, 3: 75_000}
 
@@ -31,8 +39,15 @@ def get_eligible_quests(level: int) -> list:
     return [q for q in DAILY_QUESTS if level >= q["level_required"]]
 
 
+_QUALITY_WEIGHTS = ["normal"] * 89 + ["gilded"] * 10 + ["marvelous"] * 1
+
+
+def _roll_quality() -> str:
+    return random.choice(_QUALITY_WEIGHTS)
+
+
 def roll_board(level: int) -> list:
-    """Roll 3 quest slots (quest_id, tier). Tier is 1 or 3, weighted 60/40. No duplicate quest_ids."""
+    """Roll 3 quest slots. Returns list of (quest_id, tier, quality)."""
     eligible = get_eligible_quests(level)
     if not eligible:
         eligible = DAILY_QUESTS[:3]
@@ -42,13 +57,13 @@ def roll_board(level: int) -> list:
 
     result = []
     for quest in chosen:
-        tier = random.choices([1, 3], weights=[60, 40], k=1)[0]
-        result.append((quest["id"], tier))
+        tier = 3 if quest.get("tier_3_only") else random.choices([1, 3], weights=[60, 40], k=1)[0]
+        result.append((quest["id"], tier, _roll_quality()))
     return result
 
 
 def reroll_slot(level: int, exclude_quest_ids: list) -> tuple:
-    """Roll a new quest for a slot, always at tier 3 difficulty."""
+    """Roll a new quest for a slot. Returns (quest_id, tier, quality)."""
     eligible = get_eligible_quests(level)
     available = [q for q in eligible if q["id"] not in exclude_quest_ids]
     if not available:
@@ -56,7 +71,8 @@ def reroll_slot(level: int, exclude_quest_ids: list) -> tuple:
     if not available:
         available = list(DAILY_QUESTS)
     quest = random.choice(available)
-    return (quest["id"], 3)
+    tier = 3 if quest.get("tier_3_only") else random.choices([1, 3], weights=[60, 40], k=1)[0]
+    return (quest["id"], tier, _roll_quality())
 
 
 def get_board_cooldown_remaining(locked_at_iso: str) -> timedelta:
@@ -116,6 +132,14 @@ def format_goal_description(quest_id: str, tier: int, goal: int) -> str:
         return f"Use {goal} Shatter Rune{'s' if goal > 1 else ''}"
     elif event == "rune_potential":
         return f"Use {goal} Potential Rune{'s' if goal > 1 else ''}"
+    elif event == "slayer_task_complete":
+        return f"Complete {goal} Slayer task{'s' if goal > 1 else ''}"
+    elif event == "settlement_event_complete":
+        return f"Resolve {goal} Settlement crisis event{'s' if goal > 1 else ''}"
+    elif event == "zeal_spent":
+        return f"Spend {goal:,} Zeal on Development Turns"
+    elif event == "partner_recruit":
+        return f"Recruit {goal} time{'s' if goal > 1 else ''} at the Partner Guild"
     elif event == "casino_win":
         return f"Win {goal:,} gold from the casino"
     return f"Complete {goal} time{'s' if goal > 1 else ''}"
@@ -158,6 +182,8 @@ async def tick_quest_progress(
                 "rune_refinement",
                 "rune_shatter",
                 "rune_potential",
+                "zeal_spent",
+                "partner_recruit",
             }
             tick_amount = value if event_type in _VALUE_EVENTS else 1
             updated = await bot.database.quests.tick_contract_progress(
@@ -211,11 +237,27 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
 
     meta = await bot.database.quests.get_meta(user_id)
     tier = contract["tier"]
+    quality = contract.get("quality", "normal")
 
     # Base tokens
     base_tokens = 1 if tier == 1 else 3
-    bonus_tokens = 1 if meta.get("veteran_unlocked") else 0
-    total_tokens = base_tokens + bonus_tokens
+
+    # Veteran perk: +1 token on every turn-in
+    veteran_bonus = 1 if meta.get("veteran_unlocked") else 0
+
+    # Streak passive: +1 token on 3★ turn-in when streak >= 5
+    streak_bonus = 1 if (tier == 3 and meta.get("streak", 0) >= 5) else 0
+
+    total_tokens = base_tokens + veteran_bonus + streak_bonus
+
+    # Quality modifiers (applied after other bonuses)
+    quality_bonus_msg = None
+    if quality == "marvelous":
+        total_tokens *= 2
+        quality_bonus_msg = "🌟 Marvelous — token reward doubled!"
+    elif quality == "gilded":
+        total_tokens += 1
+        quality_bonus_msg = "✨ Gilded — +1 bonus token!"
 
     base_gold = _GOLD_REWARDS.get(tier, 25_000)
 
@@ -230,8 +272,12 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
     await bot.database.users.modify_gold(user_id, gold)
 
     msgs = [f"🎫 +{total_tokens} Quest Token{'s' if total_tokens > 1 else ''}"]
-    if bonus_tokens:
+    if veteran_bonus:
         msgs.append("  *(+1 Quest Veteran bonus)*")
+    if streak_bonus:
+        msgs.append("  *(+1 Streak bonus — tier 3)*")
+    if quality_bonus_msg:
+        msgs.append(f"  *({quality_bonus_msg})*")
     gold_note = " *(+50% Enrichment)*" if meta.get("enrichment_unlocked") else ""
     msgs.append(f"💰 +{gold:,} Gold{gold_note}")
 
@@ -275,6 +321,42 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
     return msgs
 
 
+async def check_and_apply_streak(
+    bot, user_id: str, server_id: str
+) -> list:
+    """
+    Called after every contract claim. If all contracts are now turned in and
+    the board had no abandons and at least one was tier 3, increments streak
+    and applies any milestone reward. Returns display strings (empty if no change).
+    """
+    meta = await bot.database.quests.get_meta(user_id)
+    if meta.get("board_had_abandon"):
+        return []
+
+    contracts = await bot.database.quests.get_contracts(user_id, server_id)
+    active = [c for c in contracts if not c["turned_in"]]
+    if active:
+        return []  # board not fully cleared yet
+
+    had_tier3 = any(c["tier"] == 3 for c in contracts)
+    if not had_tier3:
+        return []
+
+    new_streak = await bot.database.quests.increment_streak(user_id)
+    msgs = [f"🔥 Streak: **{new_streak}**"]
+
+    if new_streak % 5 == 0:
+        milestone_tokens = new_streak
+        await bot.database.quests.add_tokens(user_id, milestone_tokens)
+        msgs.append(
+            f"🏆 Streak milestone! **+{milestone_tokens} Quest Tokens** (streak {new_streak})"
+        )
+        if new_streak == 5:
+            msgs.append("⚡ Streak 5 unlocked — +1 token on all future 3★ turn-ins!")
+
+    return msgs
+
+
 async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> list:
     """Grant the reward for a completed horizon quest. Returns display strings."""
     horizon = await bot.database.quests.get_horizon(user_id, server_id)
@@ -300,7 +382,31 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
 
     # Path-specific special reward
     try:
-        if path_id == "alchemist":
+        if path_id == "settlers_oath":
+            mat_key = random.choice(list(_SETTLEMENT_MATERIAL_MAP.keys()))
+            mat_label = _SETTLEMENT_MATERIAL_MAP[mat_key]
+            await bot.database.settlement_materials.modify(user_id, mat_key, 1)
+            msgs.append(f"🏗️ +1 {mat_label}")
+
+        elif path_id == "celestial_calling":
+            key = random.choice(["dragon_key", "angel_key"])
+            await bot.database.users.modify_currency(user_id, key, 1)
+            label = "Draconic Key" if key == "dragon_key" else "Angelic Key"
+            msgs.append(f"🗝️ +1 {label}")
+
+        elif path_id == "infernal_pact":
+            await bot.database.users.modify_currency(user_id, "soul_cores", 1)
+            msgs.append("💀 +1 Soul Core")
+
+        elif path_id == "twin_accord":
+            await bot.database.users.modify_currency(user_id, "balance_fragment", 1)
+            msgs.append("⚖️ +1 Fragment of Balance")
+
+        elif path_id == "void_threshold":
+            await bot.database.users.modify_currency(user_id, "void_frags", 1)
+            msgs.append("🌀 +1 Void Fragment")
+
+        elif path_id == "alchemist":
             await bot.database.users.modify_currency(user_id, "spirit_stones", 5)
             msgs.append("💎 +5 Spirit Stones")
 
