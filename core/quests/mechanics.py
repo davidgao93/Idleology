@@ -57,7 +57,11 @@ def roll_board(level: int) -> list:
 
     result = []
     for quest in chosen:
-        tier = 3 if quest.get("tier_3_only") else random.choices([1, 3], weights=[60, 40], k=1)[0]
+        tier = (
+            3
+            if quest.get("tier_3_only")
+            else random.choices([1, 3], weights=[60, 40], k=1)[0]
+        )
         result.append((quest["id"], tier, _roll_quality()))
     return result
 
@@ -71,7 +75,11 @@ def reroll_slot(level: int, exclude_quest_ids: list) -> tuple:
     if not available:
         available = list(DAILY_QUESTS)
     quest = random.choice(available)
-    tier = 3 if quest.get("tier_3_only") else random.choices([1, 3], weights=[60, 40], k=1)[0]
+    tier = (
+        3
+        if quest.get("tier_3_only")
+        else random.choices([1, 3], weights=[60, 40], k=1)[0]
+    )
     return (quest["id"], tier, _roll_quality())
 
 
@@ -321,9 +329,7 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
     return msgs
 
 
-async def check_and_apply_streak(
-    bot, user_id: str, server_id: str
-) -> list:
+async def check_and_apply_streak(bot, user_id: str, server_id: str) -> list:
     """
     Called after every contract claim. If all contracts are now turned in and
     the board had no abandons and at least one was tier 3, increments streak

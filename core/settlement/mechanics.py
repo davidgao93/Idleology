@@ -10,7 +10,6 @@ from core.settlement.constants import (
     UBER_BUILDINGS,
 )
 from core.settlement.plots import (
-    META_BUILDINGS,
     PLOT_BONUS_TABLE,
     get_adjacent_plot_indices,
 )

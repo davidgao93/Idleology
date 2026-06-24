@@ -202,8 +202,13 @@ class PullView(PartnerBaseView):
 
         try:
             from core.quests.mechanics import tick_quest_progress
+
             await tick_quest_progress(
-                self.bot, self.user_id, str(interaction.guild_id), "partner_recruit", count
+                self.bot,
+                self.user_id,
+                str(interaction.guild_id),
+                "partner_recruit",
+                count,
             )
         except Exception:
             pass

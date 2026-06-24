@@ -3,6 +3,7 @@ import random
 from core.images import (
     ALCHEMY_HUB,
     APEX_HUB,
+    ARBITER_PORTRAIT,
     CODEX_HUB,
     COMBAT_ELEMENTAL,
     COMPANIONS_HUB,
@@ -11,7 +12,6 @@ from core.images import (
     MAW_MAIN,
     PARTNERS_HUB,
     TAVERN_KEEPER,
-    UPGRADE_FORGE,
 )
 from core.items.models import Weapon
 
@@ -96,6 +96,27 @@ async def _grant_level_60(bot, user_id: str, server_id: str) -> list:
     ]
 
 
+_SIGIL_POOL = [
+    ("celestial", "Celestial Sigil"),
+    ("infernal", "Infernal Sigil"),
+    ("gemini", "Gemini Sigil"),
+    ("corruption", "Corruption Sigil"),
+]
+
+_SIGIL_INCREMENT = {
+    "celestial": lambda bot, uid, sid: bot.database.uber.increment_sigils(uid, sid, 1),
+    "infernal": lambda bot, uid, sid: bot.database.uber.increment_infernal_sigils(
+        uid, sid, 1
+    ),
+    "gemini": lambda bot, uid, sid: bot.database.uber.increment_gemini_sigils(
+        uid, sid, 1
+    ),
+    "corruption": lambda bot, uid, sid: bot.database.uber.increment_corruption_sigils(
+        uid, sid, 1
+    ),
+}
+
+
 async def _grant_level_70(bot, user_id: str, server_id: str) -> list:
     rune_pool = ["refinement_runes", "shatter_runes", "potential_runes"]
     rune_count = random.randint(2, 4)
@@ -114,7 +135,10 @@ async def _grant_level_70(bot, user_id: str, server_id: str) -> list:
         f"🔮 **+{count} {_RUNE_LABELS[r]}{'s' if count > 1 else ''}**"
         for r, count in runes_granted.items()
     ]
-    return rune_lines + ["💰 **+500,000 Gold**"]
+    await bot.database.uber.get_uber_progress(user_id, server_id)
+    sigil_key, sigil_label = random.choice(_SIGIL_POOL)
+    await _SIGIL_INCREMENT[sigil_key](bot, user_id, server_id)
+    return rune_lines + ["💰 **+500,000 Gold**", f"🔱 **+1 {sigil_label}**"]
 
 
 async def _grant_level_80(bot, user_id: str, server_id: str) -> list:
@@ -194,7 +218,7 @@ MILESTONES = [
         "reward_desc": "3 Curios + 50,000 Gold",
         "systems": [
             "Maw of Infinity — weekly world boss; deal damage over the week for rewards",
-            "Bosses — Aphrodite (and Uber Aphrodite) unlocked; you might encounter her in Combat",
+            "Bosses — Aphrodite unlocked; you might encounter her in Combat",
         ],
         "commands": ["/maw", "/uber"],
         "image": MAW_MAIN,
@@ -207,9 +231,9 @@ MILESTONES = [
         "systems": [
             "Calcified Monsters — rare calcified enemies drop Essences to socket into equipment",
             "Alchemy — transmute, sythesize, and upgrade your potions",
-            "Bosses — Lucifer (and Uber Lucifer) unlocked; you might encounter him in Combat",
+            "Bosses — Lucifer unlocked; you might encounter him in Combat",
         ],
-        "commands": ["/consume", "/gear", "/alchemy"],
+        "commands": ["/alchemy"],
         "image": ALCHEMY_HUB,
         "grant": _grant_level_30,
     },
@@ -219,7 +243,7 @@ MILESTONES = [
         "reward_desc": "3 Random Boss Keys + 150,000 Gold",
         "systems": [
             "Companion System — raise creatures that passively boost your combat stats",
-            "Bosses — Gemini (and Uber Gemini) unlocked; you might encounter them in Combat",
+            "Bosses — Gemini unlocked; you might encounter them in Combat",
         ],
         "commands": ["/companions"],
         "image": COMPANIONS_HUB,
@@ -231,7 +255,7 @@ MILESTONES = [
         "reward_desc": "1 Void Key + 200,000 Gold",
         "systems": [
             "Hematurgy — spend blood to unlock and upgrade powerful passive abilities (requires Hatchery in your settlement)",
-            "NEET Gate — fourth Uber Boss unlocked",
+            "NEET Gate — NEET unlocked; you might encounter him in Combat",
             "Voidforge — infuse weapons with Void passives using Void Crystals",
         ],
         "commands": ["/hematurgy"],
@@ -243,19 +267,21 @@ MILESTONES = [
         "title": "Elemental Forces",
         "reward_desc": "1 Capricious Carp + 1 Sparkling Sprig + 1 Blessed Bismuth",
         "systems": [
-            "Elemental of Elements — a powerful gathering boss encountered while fishing, mining, or woodcutting; defeating it rewards rare Elemental Keys",
+            "Elemental of Elements — a powerful gathering boss available through Elemental Keys; fighting it grants huge amounts of gathering resources",
         ],
-        "commands": ["/gather", "/fish", "/chop"],
+        "commands": ["/gather"],
         "image": COMBAT_ELEMENTAL,
         "grant": _grant_level_60,
     },
     {
         "level": 70,
-        "title": "Veteran's Cache",
-        "reward_desc": "500,000 Gold + 2–4 Random Runes",
-        "systems": [],
-        "commands": [],
-        "image": UPGRADE_FORGE,
+        "title": "The Arbiter's Trial",
+        "reward_desc": "500,000 Gold + 2–4 Random Runes + 1 Random Uber Sigil",
+        "systems": [
+            "Uber Encounters — face the pinnacle bosses: Aphrodite, Lucifer, NEET, Gemini, and Evelynn for exclusive sigils and engrams",
+        ],
+        "commands": ["/uber"],
+        "image": ARBITER_PORTRAIT,
         "grant": _grant_level_70,
     },
     {
@@ -263,7 +289,7 @@ MILESTONES = [
         "title": "The Codex",
         "reward_desc": "1 Antique Tome",
         "systems": [
-            "Codex — wave survival mode; complete runs to earn Tomes that permanently multiply your stats",
+            "Codex — wave survival mode; complete runs to earn Tomes with powerful passives",
         ],
         "commands": ["/codex"],
         "image": CODEX_HUB,
@@ -271,11 +297,11 @@ MILESTONES = [
     },
     {
         "level": 90,
-        "title": "The Edge of Everything",
+        "title": "Monster Safari",
         "reward_desc": "500,000 Gold",
         "systems": [
-            "Apex Hunts — fight escalating Apex monsters for exclusive meta shards and rewards",
-            "Soul System — collect Soul Cores from Apex hunts to power permanent soul upgrades",
+            "Apex Hunts — fight terrifying Apex monsters for exclusive rewards",
+            "Soul System — collect Soul Cores from Apex hunts to power permanent upgrades",
         ],
         "commands": ["/apex", "/soul"],
         "image": APEX_HUB,
@@ -286,9 +312,9 @@ MILESTONES = [
         "title": "Pinnacle",
         "reward_desc": "1 Pinnacle Key",
         "systems": [
-            "Corrupted Monsters — high-danger combat encounters with corrupted drops",
-            "Ascent Mode — climb numbered floors for permanent stat bonuses; Evelynn (final Uber) unlocked",
-            "Paradise — unlock the Jewel of Paradise and its powerful combat skills with Tessara the lapidary",
+            "Corrupted Monsters — high-danger combat encounters that drop Paradise Jewels and face Evelynn",
+            "Ascent Mode — climb numbered floors for permanent stat bonuses",
+            "Paradise — Cut Jewels of Paradise and unlock powerful combat skills with Tessara the lapidary",
         ],
         "commands": ["/ascent", "/paradise"],
         "image": CORRUPTION_GATE,

@@ -44,10 +44,8 @@ class StorageProfileBuilder:
         egg_count = await bot.database.eggs.get_egg_count(user_id)
         blood = await bot.database.hematurgy.get_blood(user_id)
 
-        shards = await bot.database.apex.get_or_create_shards(user_id, server_id)
-        meta_shards = await bot.database.apex.get_or_create_meta_shards(
-            user_id, server_id
-        )
+        await bot.database.apex.get_or_create_shards(user_id, server_id)
+        await bot.database.apex.get_or_create_meta_shards(user_id, server_id)
 
         embed = discord.Embed(
             title="Inventory Summary",
@@ -147,8 +145,15 @@ class StorageProfileBuilder:
 
         _COMMON_ESSENCES = ["power", "protection"]
         _RARE_ESSENCES = [
-            "insight", "evasion", "blocking", "deftness",
-            "precision", "gluttony", "cleansing", "chaos", "annulment",
+            "insight",
+            "evasion",
+            "blocking",
+            "deftness",
+            "precision",
+            "gluttony",
+            "cleansing",
+            "chaos",
+            "annulment",
         ]
         _CORRUPTED_ESSENCES = ["aphrodite", "lucifer", "gemini", "neet"]
 

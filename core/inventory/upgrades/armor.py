@@ -570,7 +570,6 @@ class ReinforceView(BaseUpgradeView):
             )
             return
 
-        suffix = "%" if is_pct else ""
         mat_lines = (
             "\n".join(f"  {name}: {qty:,}" for name, qty in mat_totals.items())
             or "  None"

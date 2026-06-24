@@ -20,9 +20,9 @@ class Uber(commands.Cog, name="uber"):
             return
         if not await self.bot.check_is_active(interaction, user_id):
             return
-        if existing_user["level"] < 20:
+        if existing_user["level"] < 70:
             return await interaction.response.send_message(
-                "You must be **Level 20** to access the Uber Encounters.",
+                "You must be **Level 70** to access the Uber Encounters.",
                 ephemeral=True,
             )
 

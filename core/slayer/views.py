@@ -606,6 +606,7 @@ class SlayerTreeView(BaseView):
         self._processing = False
         self._pending_node: str | None = None  # Hunter node awaiting choice
         self.result_msg = ""
+        self.active_branch = "taskmaster"
         self.setup_ui()
 
     # --- Embed ---------------------------------------------------------------
@@ -613,8 +614,13 @@ class SlayerTreeView(BaseView):
     def build_embed(self) -> discord.Embed:
         pts = self.profile["points"]
         ess = self.profile["violent_essence"]
+        branch = self.active_branch
+        icon = _BRANCH_ICONS[branch]
+        name = _BRANCH_NAMES[branch]
+        prefix = {"taskmaster": "tm", "hunter": "hu", "purveyor": "pu"}[branch]
+
         embed = discord.Embed(
-            title="💀 Slayer Mastery",
+            title=f"💀 Slayer Mastery — {icon} {name}",
             description=(
                 f"**Slayer Points:** {pts} | 🩸 **Violent Essence:** {ess}\n"
                 f"*Points spent: {self.pts_spent}*\n\n"
@@ -623,29 +629,25 @@ class SlayerTreeView(BaseView):
             color=discord.Color.dark_red(),
         )
 
-        for prefix in _NODE_ORDER:
-            branch = {"tm": "taskmaster", "hu": "hunter", "pu": "purveyor"}[prefix]
-            icon = _BRANCH_ICONS[branch]
-            name = _BRANCH_NAMES[branch]
-            lines = []
-            for nid, node in SLAYER_TREE_NODES.items():
-                if not nid.startswith(prefix):
-                    continue
-                status = _node_status(nid, self.tree_nodes)
-                chosen = _node_value_display(nid, self.tree_nodes)
-                cost_str = f"({node['cost']} pts)"
-                if "choices" in node:
-                    desc = "Choose one option"
+        lines = []
+        for nid, node in SLAYER_TREE_NODES.items():
+            if not nid.startswith(prefix):
+                continue
+            status = _node_status(nid, self.tree_nodes)
+            cost_str = f"({node['cost']} pts)"
+            if "choices" in node:
+                val = self.tree_nodes.get(nid)
+                if val and val is not True:
+                    desc = next(
+                        (label for key, label in node["choices"] if key == val),
+                        "Choose one option",
+                    )
                 else:
-                    desc = node["desc"]
-                lines.append(
-                    f"{status} **{node['name']}** {cost_str}{chosen}\n└ *{desc}*"
-                )
-            embed.add_field(
-                name=f"{icon} {name}",
-                value="\n".join(lines),
-                inline=False,
-            )
+                    desc = "Choose one option"
+            else:
+                desc = node["desc"]
+            lines.append(f"{status} **{node['name']}** {cost_str}\n└ *{desc}*")
+        embed.add_field(name=f"{icon} {name}", value="\n".join(lines), inline=False)
 
         embed.set_footer(
             text=f"Reset: costs {TREE_RESET_COST} Violent Essence | refunds 80% of points spent"
@@ -658,11 +660,37 @@ class SlayerTreeView(BaseView):
         self.clear_items()
         self._pending_node = None
 
-        # Select: purchasable nodes (prereq met, not owned)
+        # Row 0: branch navigation buttons
+        _prefix_map = {"taskmaster": "tm", "hunter": "hu", "purveyor": "pu"}
+        for branch in ("taskmaster", "hunter", "purveyor"):
+            icon = _BRANCH_ICONS[branch]
+            name = _BRANCH_NAMES[branch]
+            btn = ui.Button(
+                label=f"{icon} {name}",
+                style=ButtonStyle.primary
+                if branch == self.active_branch
+                else ButtonStyle.secondary,
+                row=0,
+            )
+
+            async def _branch_cb(interaction: Interaction, b=branch):
+                self.active_branch = b
+                self.result_msg = ""
+                self.setup_ui()
+                await interaction.response.edit_message(
+                    embed=self.build_embed(), view=self
+                )
+
+            btn.callback = _branch_cb
+            self.add_item(btn)
+
+        # Row 1: purchasable nodes in the active branch only
+        active_prefix = _prefix_map[self.active_branch]
         purchasable = [
             nid
             for nid, node in SLAYER_TREE_NODES.items()
-            if not self.tree_nodes.get(nid)
+            if nid.startswith(active_prefix)
+            and not self.tree_nodes.get(nid)
             and (node["prereq"] is None or self.tree_nodes.get(node["prereq"]))
         ]
         if purchasable:
@@ -683,7 +711,7 @@ class SlayerTreeView(BaseView):
             sel = ui.Select(
                 placeholder="Select a node to purchase…",
                 options=options,
-                row=0,
+                row=1,
             )
             sel.callback = self.on_node_select
             self.add_item(sel)
@@ -695,12 +723,12 @@ class SlayerTreeView(BaseView):
             label=f"Reset Tree ({TREE_RESET_COST} Essence)",
             style=ButtonStyle.danger,
             disabled=not can_reset,
-            row=1,
+            row=2,
         )
         btn_reset.callback = self.on_reset
         self.add_item(btn_reset)
 
-        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
         btn_back.callback = self.go_back
         self.add_item(btn_back)
 
@@ -867,7 +895,7 @@ class SlayerShopView(BaseView):
     """Lets players spend Slayer Points on materials unlocked via the Purveyor branch."""
 
     _ESS_COST = 40
-    _HEART_COST = 120
+    _HEART_COST = 1200
 
     def __init__(self, bot, user_id, server_id, profile, tree_nodes, parent_view):
         super().__init__(bot, user_id, server_id)

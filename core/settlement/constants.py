@@ -137,8 +137,8 @@ BLACK_MARKET_TRADES = {
 
 BUILDING_INFO.update(
     {
-        "nursery": "Project Building: Produces **~1–2 Workers per Development Turn**. Completed workers are added to your ideology's follower count. Higher tiers increase output per turn.",
-        "idlem_foundry": "Project Building: Produces **~1–2 Idlem per Development Turn**. Idlem is the currency for the Black Market passive tree — invest it to unlock better deal speeds, value, and loot biases.",
+        "nursery": "Project Building: Produces **~1–2 Workers per 100 workers/Turn**. Completed workers are added to your ideology's follower count.",
+        "idlem_foundry": "Project Building: Produces **~1–2 Idlem per 100 workers/ Turn**. Idlem is the currency for the Black Market passive tree — invest it to unlock better deal speeds, value, and loot biases.",
         "uber_shrine": "Passive: Houses shrine statues dedicated to the gods. Statue blueprints drop from uber bosses. Allocate workers to each statue individually — each statue provides a sigil drop boost. Higher tiers raise the total worker cap across all statues.",
     }
 )

@@ -199,12 +199,14 @@ class TradeRootView(BaseView):
             ]
         elif cat == "essences":
             keys = [
-                k for k, (tbl, _) in TradeManager.RESOURCE_MAP.items()
+                k
+                for k, (tbl, _) in TradeManager.RESOURCE_MAP.items()
                 if tbl == "essences"
             ]
         elif cat == "settlement":
             keys = [
-                k for k, (tbl, _) in TradeManager.RESOURCE_MAP.items()
+                k
+                for k, (tbl, _) in TradeManager.RESOURCE_MAP.items()
                 if tbl == "settlement_materials"
             ]
 

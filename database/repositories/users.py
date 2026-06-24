@@ -201,9 +201,7 @@ class UserRepository:
             """
         )
         await self.connection.commit()
-        async with self.connection.execute(
-            "SELECT changes()"
-        ) as cursor:
+        async with self.connection.execute("SELECT changes()") as cursor:
             row = await cursor.fetchone()
         return row[0] if row else 0
 

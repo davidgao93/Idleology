@@ -147,7 +147,10 @@ class QuestBoardView(BaseView):
             gold = 25_000 if tier == 1 else 75_000
             token_word = "Token" if tier == 1 else "Tokens"
             obj_desc = format_goal_description(quest_id, tier, goal)
-            quality_tag = {"gilded": " ✨ **[Gilded]**", "marvelous": " 🌟 **[Marvelous]**"}.get(quality, "")
+            quality_tag = {
+                "gilded": " ✨ **[Gilded]**",
+                "marvelous": " 🌟 **[Marvelous]**",
+            }.get(quality, "")
 
             embed.add_field(
                 name=f"{star} Slot {slot} — {quest_def['label']}{quality_tag}",
@@ -183,7 +186,9 @@ class QuestBoardView(BaseView):
 
         streak = self.meta.get("streak", 0)
         streak_str = f"  |  🔥 Streak: {streak}" if streak > 0 else ""
-        embed.set_footer(text=f"Quest Tokens: {tokens}{streak_str}  |  Ready to take contracts")
+        embed.set_footer(
+            text=f"Quest Tokens: {tokens}{streak_str}  |  Ready to take contracts"
+        )
         return embed
 
     def _build_contracts_embed(self, tokens: int) -> discord.Embed:
@@ -202,7 +207,10 @@ class QuestBoardView(BaseView):
             )
             label = quest_def["label"] if quest_def else contract["quest_id"]
             quality = contract.get("quality", "normal")
-            quality_tag = {"gilded": " ✨ [Gilded]", "marvelous": " 🌟 [Marvelous]"}.get(quality, "")
+            quality_tag = {
+                "gilded": " ✨ [Gilded]",
+                "marvelous": " 🌟 [Marvelous]",
+            }.get(quality, "")
             progress = min(contract["progress"], contract["goal"])
             if contract["completed"]:
                 status = "✅ Complete — Claim your reward!"
@@ -247,7 +255,9 @@ class QuestBoardView(BaseView):
         streak_str = f"  |  🔥 Streak: {streak}" if streak > 0 else ""
         rem = self._cooldown_remaining()
         if rem.total_seconds() > 0:
-            footer = f"Quest Tokens: {tokens}{streak_str}  |  Next board in: {_fmt_td(rem)}"
+            footer = (
+                f"Quest Tokens: {tokens}{streak_str}  |  Next board in: {_fmt_td(rem)}"
+            )
         else:
             footer = f"Quest Tokens: {tokens}{streak_str}  |  Board ready after contracts are done"
         embed.set_footer(text=footer)

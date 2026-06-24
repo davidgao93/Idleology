@@ -1300,6 +1300,7 @@ class SettlementDashboardView(SettlementBaseView):
 
             try:
                 from core.quests.mechanics import tick_quest_progress
+
                 await tick_quest_progress(self.bot, uid, sid, "zeal_spent", ZEAL_TO_DT)
             except Exception:
                 pass
@@ -1535,7 +1536,10 @@ class SettlementDashboardView(SettlementBaseView):
                     await self.bot.database.settlement.add_zeal(uid, sid, zeal_reward)
                     try:
                         from core.quests.mechanics import tick_quest_progress
-                        await tick_quest_progress(self.bot, uid, sid, "settlement_event_complete")
+
+                        await tick_quest_progress(
+                            self.bot, uid, sid, "settlement_event_complete"
+                        )
                     except Exception:
                         pass
                 else:

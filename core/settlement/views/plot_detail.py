@@ -267,7 +267,6 @@ def _append_passive_effect(
 
 def _append_meta_effect(embed, b) -> None:
     meta_data = META_BUILDINGS.get(b.building_type, {})
-    workers = b.workers_assigned
     btype = b.building_type
 
     if btype == "watchtower":
@@ -608,7 +607,9 @@ class PlotDetailView(SettlementBaseView):
             if b.tier < 5 and not b.is_meta:
                 target_t = b.tier + 1
                 cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
-                dt_display = upgrade_dt_cost(b.building_type, target_t, self.event_effects)
+                dt_display = upgrade_dt_cost(
+                    b.building_type, target_t, self.event_effects
+                )
                 cost_str = (
                     f"🪵 {cost.get('timber', 0):,} | "
                     f"🪨 {cost.get('stone', 0):,} | "
@@ -1277,7 +1278,7 @@ class PlotDetailView(SettlementBaseView):
         if rods < 1:
             self._processing = False
             return await interaction.response.send_message(
-                "You don't have any **Diviner's Rods**! " "They can drop from combat.",
+                "You don't have any **Diviner's Rods**! They can drop from combat.",
                 ephemeral=True,
             )
 

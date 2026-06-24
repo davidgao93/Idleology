@@ -155,7 +155,7 @@ SLAYER_TREE_NODES: dict[str, dict] = {
         "name": "Essence Exchange",
         "cost": 85,
         "prereq": "pu_3",
-        "desc": "Unlock Shop: buy 1 Imbued Heart for 120 pts",
+        "desc": "Unlock Shop: buy 1 Imbued Heart for 1200 pts",
     },
 }
 
@@ -245,7 +245,9 @@ class SlayerMechanics:
         counts = Counter(species_pool)
 
         # Weight species selection by how frequently each appears in the bracket pool
-        chosen_species = random.choices(list(counts.keys()), weights=list(counts.values()), k=1)[0]
+        chosen_species = random.choices(
+            list(counts.keys()), weights=list(counts.values()), k=1
+        )[0]
 
         # Level-banded task sizes with variance
         if player_level < 20:

@@ -2,8 +2,11 @@ import random
 from typing import Any, Dict
 
 from core.combat.economy.config import (
+    ANGELIC_KEY_BASE_CHANCE,
+    BALANCE_FRAG_BASE_CHANCE,
     CO_GOLD_BOOST_PER_LEVEL,
     CO_XP_BOOST_PER_LEVEL,
+    DRACONIC_KEY_BASE_CHANCE,
     EMBLEM_FIND_BONUS_PER_TIER,
     FLORA_CONVERSION_PER_LEVEL,
     GEAR_DROP_BASE_CHANCE,
@@ -18,9 +21,6 @@ from core.combat.economy.config import (
     LUCIFER_BOOT_GOLD_PER_MODIFIER,
     MODIFIER_DIFFICULTY_CAP,
     PROSPER_CHANCE_PER_LEVEL,
-    ANGELIC_KEY_BASE_CHANCE,
-    BALANCE_FRAG_BASE_CHANCE,
-    DRACONIC_KEY_BASE_CHANCE,
     SOUL_CORE_BASE_CHANCE,
     SPECIAL_DROP_BASE_CHANCE,
     SPIRIT_STONE_BASE_CHANCE,
@@ -347,6 +347,8 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         for item in ("magma_core", "life_root", "spirit_shard"):
             if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
                 drops[item] = True
+        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+            drops["rune_of_regret"] = True
 
     if player.level >= 50:
         if random.random() < VOID_FRAG_BASE_CHANCE + special_drop_chance:
@@ -409,9 +411,10 @@ _SPECIAL_FLAG_CURRENCY_MAP: Dict[str, tuple] = {
     "imbue_rune": ("imbue_runes", "Rune of Imbuing"),
     "shatter_rune": ("shatter_runes", "Rune of Shattering"),
     "partnership_rune": ("partnership_runes", "Rune of Partnership"),
-    "spirit_stone": ("spirit_stones", "🔮 Spirit Stone"),
-    "antique_tome": ("antique_tome", "📖 Antique Tome"),
-    "pinnacle_key": ("pinnacle_key", "🗝️ Pinnacle Key"),
+    "spirit_stone": ("spirit_stones", "Spirit Stone"),
+    "antique_tome": ("antique_tome", "Antique Tome"),
+    "pinnacle_key": ("pinnacle_key", "Pinnacle Key"),
+    "rune_of_regret": ("rune_of_regret", "Rune of Regret"),
 }
 
 # Settlement materials routed to settlement_materials repo (not users table)
@@ -419,8 +422,8 @@ _SETTLEMENT_MATERIAL_MAP: Dict[str, str] = {
     "magma_core": "Magma Core",
     "life_root": "Life Root",
     "spirit_shard": "Spirit Shard",
-    "unidentified_blueprint": "📋 Unidentified Blueprint",
-    "diviners_rod": "🔮 Diviner's Rod",
+    "unidentified_blueprint": "Unidentified Blueprint",
+    "diviners_rod": "Diviner's Rod",
 }
 
 
@@ -463,15 +466,15 @@ async def apply_special_flags(
 
         elif key == "blessed_bismuth":
             await bot.database.skills.increment_blessed_bismuth(user_id, server_id, 1)
-            reward_data["special"].append("⚗️ Blessed Bismuth")
+            reward_data["special"].append("Blessed Bismuth")
 
         elif key == "sparkling_sprig":
             await bot.database.skills.increment_sparkling_sprig(user_id, server_id, 1)
-            reward_data["special"].append("🌿 Sparkling Sprig")
+            reward_data["special"].append("Sparkling Sprig")
 
         elif key == "capricious_carp":
             await bot.database.skills.increment_capricious_carp(user_id, server_id, 1)
-            reward_data["special"].append("🐟 Capricious Carp")
+            reward_data["special"].append("Capricious Carp")
 
         elif key == "guild_ticket":
             await bot.database.partners.add_tickets(user_id, 1)

@@ -425,7 +425,9 @@ async def _calculate_dt_production(
             continue
 
         adj = adj_bonuses.get(b.plot_index, {}) if b.plot_index is not None else {}
-        plot_bonus = plot_bonus_map.get(b.plot_index) if b.plot_index is not None else None
+        plot_bonus = (
+            plot_bonus_map.get(b.plot_index) if b.plot_index is not None else None
+        )
 
         changes = SettlementMechanics.calculate_production(
             building_type=b.building_type,
