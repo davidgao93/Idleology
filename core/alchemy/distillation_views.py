@@ -203,15 +203,18 @@ class PotionDistillationView(BaseView):
         mod_lines = []
         if mods.get("free_next_steps"):
             n = mods["free_next_steps"]
-            mod_lines.append(f"🌿 Next {n} step{'s' if n != 1 else ''} cost no dust")
+            if n == 1:
+                mod_lines.append("🌿 **This step** costs no dust")
+            else:
+                mod_lines.append(f"🌿 **This step** costs no dust *(+{n - 1} more after)*")
         if mods.get("all_future_free"):
-            mod_lines.append("✨ **All future steps cost no dust**")
+            mod_lines.append("✨ **All remaining steps cost no dust**")
         future_mult = mods.get("future_cost_mult")
         if future_mult and future_mult < 1.0:
             pct_off = int((1.0 - future_mult) * 100)
-            mod_lines.append(f"💸 Future steps cost **{pct_off}% less** dust")
+            mod_lines.append(f"💸 This and future steps cost **{pct_off}% less** dust")
         if mods.get("lucky"):
-            mod_lines.append("🍀 Next step is **lucky**")
+            mod_lines.append("🍀 **This step** is lucky")
         if mod_lines:
             embed.add_field(
                 name="Active Effects", value="\n".join(mod_lines), inline=False

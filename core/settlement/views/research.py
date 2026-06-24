@@ -7,7 +7,10 @@ Research takes 20 hours. Once researched, the building becomes available
 in the Construction menu. Only one research can be active at a time.
 
 Researchable buildings: companion_ranch, apothecary, temple, barracks,
-                        black_market, market
+                        black_market, market, hatchery, war_camp,
+                        idlem_foundry, uber_shrine,
+                        grand_cathedral, shrine_garden, encampment,
+                        apothecary_annex
 """
 
 from __future__ import annotations
@@ -33,6 +36,14 @@ _RESEARCH_DT_COSTS: dict[str, int] = {
     "black_market": 40,
     "market": 25,
     "hatchery": 35,
+    "war_camp": 25,
+    "idlem_foundry": 40,
+    "uber_shrine": 50,
+    # Meta buildings
+    "grand_cathedral": 35,
+    "shrine_garden": 30,
+    "encampment": 20,
+    "apothecary_annex": 25,
 }
 
 # Buildings that require research before they can be built.
@@ -44,6 +55,22 @@ RESEARCHABLE_BUILDINGS: dict[str, str] = {
     "black_market": "Black Market",
     "market": "Market",
     "hatchery": "Hatchery",
+    "war_camp": "War Camp",
+    "idlem_foundry": "Idlem Foundry",
+    "uber_shrine": "Uber Shrine",
+    # Meta buildings — also gated behind regular-building prerequisites
+    "grand_cathedral": "Grand Cathedral",
+    "shrine_garden": "Shrine Garden",
+    "encampment": "Encampment",
+    "apothecary_annex": "Apothecary Annex",
+}
+
+# Some buildings can only be researched after their prerequisite is already researched.
+RESEARCH_PREREQUISITES: dict[str, str] = {
+    "grand_cathedral": "uber_shrine",
+    "shrine_garden": "uber_shrine",
+    "encampment": "war_camp",
+    "apothecary_annex": "apothecary",
 }
 
 _BUILDING_EMOJIS: dict[str, str] = {
@@ -54,6 +81,13 @@ _BUILDING_EMOJIS: dict[str, str] = {
     "black_market": "🕵️",
     "market": "💰",
     "hatchery": "🐣",
+    "war_camp": "⚔️",
+    "idlem_foundry": "🏭",
+    "uber_shrine": "🏛️",
+    "grand_cathedral": "🕍",
+    "shrine_garden": "🌺",
+    "encampment": "🏕️",
+    "apothecary_annex": "💊",
 }
 
 _BUILDING_DESCS: dict[str, str] = {
@@ -64,6 +98,13 @@ _BUILDING_DESCS: dict[str, str] = {
     "black_market": "Trade resources for mystery caches",
     "market": "Generates passive Gold",
     "hatchery": "Incubate monster eggs for blood drops",
+    "war_camp": "Generates passive Combat Stamina",
+    "idlem_foundry": "Produces Idlem for the Black Market tree",
+    "uber_shrine": "Houses shrine statues for sigil drop boosts",
+    "grand_cathedral": "Doubles worker cap for adjacent shrines [Meta]",
+    "shrine_garden": "+15% effectiveness to adjacent shrines [Meta]",
+    "encampment": "+Stamina/hr to adjacent War Camps [Meta]",
+    "apothecary_annex": "+40% flat HP per potion to adjacent Apothecary [Meta]",
 }
 
 
@@ -104,16 +145,24 @@ class ResearchView(SettlementBaseView):
         )
         self._rebuild_ui()
 
+    def _prerequisite_met(self, b_type: str) -> bool:
+        prereq = RESEARCH_PREREQUISITES.get(b_type)
+        if prereq is None:
+            return True
+        return prereq in self._researched
+
     def _rebuild_ui(self) -> None:
         self.clear_items()
 
-        # Select — only buildings not yet researched or active
+        # Select — only buildings not yet researched or active, and with prerequisites met
         options = []
         for b_type, b_name in RESEARCHABLE_BUILDINGS.items():
             if b_type in self._researched:
                 continue
             active_type = self._active[0] if self._active else None
             if b_type == active_type:
+                continue
+            if not self._prerequisite_met(b_type):
                 continue
             emoji = _BUILDING_EMOJIS[b_type]
             options.append(
@@ -242,6 +291,10 @@ class ResearchView(SettlementBaseView):
                 lines.append(f"✅ {emoji} **{b_name}** — Unlocked")
             elif self._active and self._active[0] == b_type:
                 lines.append(f"⏳ {emoji} **{b_name}** — In Progress")
+            elif not self._prerequisite_met(b_type):
+                prereq = RESEARCH_PREREQUISITES[b_type]
+                prereq_name = RESEARCHABLE_BUILDINGS.get(prereq, prereq.replace("_", " ").title())
+                lines.append(f"🔒 {emoji} **{b_name}** — Requires **{prereq_name}** first")
             else:
                 lines.append(f"🔒 {emoji} **{b_name}** — Not Researched")
         embed.add_field(name="📖 Research Status", value="\n".join(lines), inline=False)
@@ -263,6 +316,17 @@ class ResearchView(SettlementBaseView):
             return
 
         b_type = self._select.values[0]
+
+        # Guard: prerequisite must be researched
+        if not self._prerequisite_met(b_type):
+            prereq = RESEARCH_PREREQUISITES[b_type]
+            prereq_name = RESEARCHABLE_BUILDINGS.get(prereq, prereq.replace("_", " ").title())
+            await interaction.response.send_message(
+                f"You must research **{prereq_name}** before you can research "
+                f"**{RESEARCHABLE_BUILDINGS[b_type]}**.",
+                ephemeral=True,
+            )
+            return
 
         # Check blueprint
         _mats = await self.bot.database.settlement_materials.get_all(self.user_id)

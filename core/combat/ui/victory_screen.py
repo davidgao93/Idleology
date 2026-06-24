@@ -192,6 +192,10 @@ def create_victory_embed(
         label = _PART_SLOT_LABELS.get(slot, slot)
         loot_lines.append(f"🫀 {mname}'s **{label}** (+{hp} Max HP)")
 
+    # 8. Consolation cosmic dust
+    if rewards.get("consolation_dust"):
+        loot_lines.append(f"✨ {rewards['consolation_dust']} Cosmic Dust")
+
     embed.add_field(
         name="✨__Loot__✨",
         value="\n".join(loot_lines) if loot_lines else "None",

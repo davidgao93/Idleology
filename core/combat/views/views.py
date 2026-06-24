@@ -633,6 +633,13 @@ class CombatView(BaseView):
         self._processing = True
 
         await interaction.response.defer()
+
+        # Lock all buttons immediately so rapid clicks can't queue stale
+        # deferred interactions that later corrupt the post-combat view.
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+
         turns_processed = 0
 
         for _ in range(10):

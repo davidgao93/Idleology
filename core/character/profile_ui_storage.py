@@ -84,9 +84,9 @@ class StorageProfileBuilder:
         )
 
         embed.add_field(
-            name="✨ **Alchemy**",
+            name="⚗️ **Alchemy**",
             value=(
-                f"💨 Cosmic Dust: {cosmic_dust:,}\n"
+                f"✨ Cosmic Dust: {cosmic_dust:,}\n"
                 f"🔮 Spirit Stones: {spirit_stones}\n"
                 f"💎 Uncut Jewels: {paradise_jewels}"
             ),

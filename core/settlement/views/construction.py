@@ -210,10 +210,14 @@ class BuildConstructionView(SettlementBaseView):
         raw_cost = CONSTRUCTION_COSTS[b_type]
         cost = self._apply_discounts(raw_cost)
 
-        # Resource check
+        # Resource check — always fetch fresh values to avoid stale-cache negatives
+        fresh_stl = await self.bot.database.settlement.get_settlement(
+            self.user_id, self.parent.server_id
+        )
+        self.parent.settlement = fresh_stl
         u_gold = await self.bot.database.users.get_gold(self.user_id)
-        u_timber = self.parent.settlement.timber
-        u_stone = self.parent.settlement.stone
+        u_timber = fresh_stl.timber
+        u_stone = fresh_stl.stone
 
         if (
             u_gold < cost.get("gold", 0)

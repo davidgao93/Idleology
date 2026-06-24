@@ -1054,7 +1054,10 @@ class PlotDetailView(SettlementBaseView):
     # ------------------------------------------------------------------
 
     async def _open_meta_construction(self, interaction: Interaction):
-        event_effects = await self._load_event_effects()
+        event_effects, researched = await asyncio.gather(
+            self._load_event_effects(),
+            self.bot.database.settlement.get_researched(self.user_id, self.parent.server_id),
+        )
         view = MetaBuildingConstructionView(
             bot=self.bot,
             user_id=self.user_id,
@@ -1062,6 +1065,7 @@ class PlotDetailView(SettlementBaseView):
             parent_view=self.parent,
             return_to_detail=self,
             event_effects=event_effects,
+            researched=researched,
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
@@ -1120,7 +1124,10 @@ class PlotDetailView(SettlementBaseView):
                 cost["timber"] = int(cost.get("timber", 0) * 0.70)
                 cost["stone"] = int(cost.get("stone", 0) * 0.70)
 
-        stl = self.parent.settlement
+        stl = await self.bot.database.settlement.get_settlement(
+            self.user_id, self.parent.server_id
+        )
+        self.parent.settlement = stl
         gold = await self.bot.database.users.get_gold(self.user_id)
         if (
             stl.timber < cost.get("timber", 0)
@@ -1185,6 +1192,9 @@ class PlotDetailView(SettlementBaseView):
         )
 
         self.parent.projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.parent.server_id
+        )
+        self.parent.settlement = await self.bot.database.settlement.get_settlement(
             self.user_id, self.parent.server_id
         )
 
@@ -1434,12 +1444,14 @@ class MetaBuildingConstructionView(SettlementBaseView):
         parent_view,
         return_to_detail,
         event_effects: dict | None = None,
+        researched: set | None = None,
     ):
         super().__init__(bot, user_id)
         self.plot_index = plot_index
         self.parent = parent_view
         self.return_to = return_to_detail
         self.event_effects: dict = event_effects or {}
+        self.researched: set = researched or set()
         self._processing = False
         self._category = "production"
         self._rebuild()
@@ -1474,6 +1486,8 @@ class MetaBuildingConstructionView(SettlementBaseView):
         return _cb
 
     def _rebuild(self):
+        from core.settlement.views.research import RESEARCHABLE_BUILDINGS
+
         self.clear_items()
 
         # Row 0: category toggle buttons
@@ -1497,6 +1511,9 @@ class MetaBuildingConstructionView(SettlementBaseView):
         options = []
         for key in keys:
             if key in existing_types or key in pending_types:
+                continue
+            # Gate meta buildings that require research
+            if key in RESEARCHABLE_BUILDINGS and key not in self.researched:
                 continue
             data = META_BUILDINGS[key]
             cost = data["cost"]
@@ -1546,6 +1563,8 @@ class MetaBuildingConstructionView(SettlementBaseView):
     # ------------------------------------------------------------------
 
     def build_embed(self) -> discord.Embed:
+        from core.settlement.views.research import RESEARCHABLE_BUILDINGS, RESEARCH_PREREQUISITES
+
         cat_data = _META_CATEGORIES[self._category]
         embed = discord.Embed(
             title=f"⚙️ Build Meta Building — {cat_data['emoji']} {cat_data['label']}",
@@ -1572,16 +1591,22 @@ class MetaBuildingConstructionView(SettlementBaseView):
                 f"⏱️ {dt} DTs"
             )
             affects = data.get("affects", "")
+            needs_research = key in RESEARCHABLE_BUILDINGS and key not in self.researched
             if key in existing_types:
                 suffix = " *(already built)*"
             elif key in pending_types:
                 suffix = " *(under construction)*"
+            elif needs_research:
+                prereq = RESEARCH_PREREQUISITES.get(key)
+                prereq_name = RESEARCHABLE_BUILDINGS.get(prereq, prereq.replace("_", " ").title()) if prereq else "prerequisite"
+                suffix = f" *(🔒 Research **{prereq_name}** first)*"
             else:
                 suffix = ""
             value = data["description"]
             if affects:
                 value += f"\n-# Affects: {affects}"
-            value += f"\n*Cost: {cost_str}*"
+            if not needs_research:
+                value += f"\n*Cost: {cost_str}*"
             embed.add_field(
                 name=f"{data['emoji']} {data['label']}{suffix}",
                 value=value,
@@ -1605,7 +1630,10 @@ class MetaBuildingConstructionView(SettlementBaseView):
         dt_cost = meta_construction_dt_cost(key, self.event_effects)
 
         gold = await self.bot.database.users.get_gold(self.user_id)
-        stl = self.parent.settlement
+        stl = await self.bot.database.settlement.get_settlement(
+            self.user_id, self.parent.server_id
+        )
+        self.parent.settlement = stl
         if (
             gold < cost.get("gold", 0)
             or stl.timber < cost.get("timber", 0)
@@ -1643,6 +1671,9 @@ class MetaBuildingConstructionView(SettlementBaseView):
         )
 
         self.parent.projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.parent.server_id
+        )
+        self.parent.settlement = await self.bot.database.settlement.get_settlement(
             self.user_id, self.parent.server_id
         )
 

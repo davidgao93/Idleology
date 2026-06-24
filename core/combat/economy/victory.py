@@ -395,6 +395,31 @@ async def apply_victory_rewards(
         monster=monster,
     )
 
+    # Consolation cosmic dust — 1–5 ✨ when truly nothing else dropped.
+    # Biased toward 5 at higher monster levels.
+    if (
+        not reward_data.get("items")
+        and not reward_data.get("special")
+        and not reward_data.get("essences")
+        and not reward_data.get("body_part")
+        and not reward_data.get("egg")
+        and not reward_data.get("curios")
+    ):
+        t = min(monster.level, 100) / 100
+        dust = random.choices(
+            [1, 2, 3, 4, 5],
+            weights=[
+                max(1, round(5 - 4 * t)),
+                max(1, round(4 - 2 * t)),
+                3,
+                round(2 + 2 * t),
+                round(1 + 4 * t),
+            ],
+            k=1,
+        )[0]
+        await bot.database.alchemy.modify_cosmic_dust(user_id, dust)
+        reward_data["consolation_dust"] = dust
+
     exp_changes = await ExperienceManager.add_experience(
         bot, user_id, player, reward_data["xp"], server_id=server_id
     )
@@ -531,7 +556,7 @@ async def apply_victory_rewards(
             if earned_today >= ZEAL_DAILY_HARD_CAP:
                 zeal_note = "🔥 Settlement Zeal: capped for today"
             elif earned_today >= ZEAL_DAILY_SOFT_CAP:
-                zeal_note = f"🔥 +{actual_zeal} Settlement Zeal *(halved — soft cap)*"
+                zeal_note = f"🔥 +{actual_zeal} Settlement Zeal *(soft cap reached)*"
             else:
                 zeal_note = f"🔥 +{actual_zeal} Settlement Zeal"
             reward_data["msgs"].append(zeal_note)

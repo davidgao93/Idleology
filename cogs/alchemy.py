@@ -43,6 +43,7 @@ class Alchemy(commands.Cog, name="alchemy"):
             spirit_stones = await self.bot.database.users.get_currency(
                 user_id, "spirit_stones"
             )
+            cosmic_dust = await self.bot.database.alchemy.get_cosmic_dust(user_id)
 
             async def _build():
                 view = AlchemyHubView(
@@ -53,6 +54,7 @@ class Alchemy(commands.Cog, name="alchemy"):
                     passives,
                     gold,
                     spirit_stones,
+                    cosmic_dust,
                 )
                 embed = view.build_embed()
                 if welcome_msg:

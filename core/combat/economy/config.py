@@ -153,7 +153,7 @@ STAT_INVEST_GOLD_PER_POINT: float = 0.001
 # Gear item drop thresholds
 # ---------------------------------------------------------------------------
 
-GEAR_DROP_BASE_CHANCE: float = 12.0  # % floor for any rarity
+GEAR_DROP_BASE_CHANCE: float = 15.0  # % floor for any rarity
 GEAR_DROP_MAX_BONUS: float = 20.0  # % maximum bonus achievable via rarity
 GEAR_DROP_SCALING_CONSTANT: float = 1000.0  # rarity value at which bonus = half max
 

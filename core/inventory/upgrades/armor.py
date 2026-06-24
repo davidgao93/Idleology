@@ -574,9 +574,7 @@ class ReinforceView(BaseUpgradeView):
             "\n".join(f"  {name}: {qty:,}" for name, qty in mat_totals.items())
             or "  None"
         )
-        embed = discord.Embed(
-            title="⚠️ Shattermaxx Confirmation", color=discord.Color.orange()
-        )
+        embed = discord.Embed(title="⚠️ Confirmation", color=discord.Color.orange())
         embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_REINFORCE)
         embed.description = (
@@ -690,9 +688,7 @@ class ReinforceView(BaseUpgradeView):
 
         suffix = "%" if is_pct else ""
         new_val = getattr(self.item, stat_col)
-        embed = discord.Embed(
-            title="⚒️ Shattermaxx Complete", color=discord.Color.gold()
-        )
+        embed = discord.Embed(title="⚒️ Complete", color=discord.Color.gold())
         embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_REINFORCE)
         embed.description = (

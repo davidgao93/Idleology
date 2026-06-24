@@ -24,10 +24,11 @@ async def _hub_from_db(bot, user_id: str, server_id: str) -> "AlchemyHubView":
     user_row = await bot.database.users.get(user_id, server_id)
     gold = user_row["gold"] if user_row else 0
     spirit_stones = await bot.database.users.get_currency(user_id, "spirit_stones")
+    cosmic_dust = await bot.database.alchemy.get_cosmic_dust(user_id)
     alchemy_level = await bot.database.alchemy.get_level(user_id)
     passives = await bot.database.alchemy.get_potion_passives(user_id)
     return AlchemyHubView(
-        bot, user_id, server_id, alchemy_level, passives, gold, spirit_stones
+        bot, user_id, server_id, alchemy_level, passives, gold, spirit_stones, cosmic_dust
     )
 
 
@@ -46,12 +47,14 @@ class AlchemyHubView(BaseView):
         passives: list,
         player_gold: int,
         spirit_stones: int,
+        cosmic_dust: int = 0,
     ):
         super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
         self.passives = passives
         self.player_gold = player_gold
         self.spirit_stones = spirit_stones
+        self.cosmic_dust = cosmic_dust
         if alchemy_level >= AlchemyMechanics.MAX_LEVEL:
             # Remove Level Up button at max level
             self.remove_item(self.level_up)
@@ -67,6 +70,7 @@ class AlchemyHubView(BaseView):
         info = [
             f"**Level:** {self.alchemy_level} / {AlchemyMechanics.MAX_LEVEL}",
             f"**Spirit Stones:** 🔮 {self.spirit_stones}",
+            f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}",
             f"**Gold:** 💰 {self.player_gold:,}",
             f"**Passive Slots:** {slot_count} unlocked",
         ]
@@ -143,6 +147,7 @@ class AlchemyHubView(BaseView):
             self.alchemy_level,
             self.passives,
             self.spirit_stones,
+            cosmic_dust=self.cosmic_dust,
             free_roll_used=free_roll_used,
         )
         embed = view.build_embed()
@@ -896,12 +901,14 @@ class AlchemyPotionLabView(BaseView):
         alchemy_level: int,
         passives: list,
         spirit_stones: int,
+        cosmic_dust: int = 0,
         free_roll_used: bool = False,
     ):
         super().__init__(bot, user_id, server_id)
         self.alchemy_level = alchemy_level
         self.passives = passives
         self.spirit_stones = spirit_stones
+        self.cosmic_dust = cosmic_dust
         self.free_roll_used = free_roll_used
         self.message = None
         self._slot_select: _SlotSelect | None = None
@@ -988,7 +995,7 @@ class AlchemyPotionLabView(BaseView):
         embed.set_footer(text=get_quip("alchemy"))
 
         embed.description = (
-            f"**Level:** {self.alchemy_level} | **Spirit Stones:** 🔮 {self.spirit_stones}\n\n"
+            f"**Level:** {self.alchemy_level} | **Spirit Stones:** 🔮 {self.spirit_stones} | **Cosmic Dust:** ✨ {self.cosmic_dust:,}\n\n"
             "**Distill Elixir** (🔮 1 Spirit Stone) crafts a powerful passive into the selected slot. "
             "Click **Guide** for distillation rules, or **Passives** to browse all possible cores.\n"
             "*If the selected slot already has a passive, you'll be offered a choice to keep the old one or take the new one after distillation completes.*"
@@ -1032,6 +1039,14 @@ class AlchemyPotionLabView(BaseView):
             if current_stones < 1:
                 await interaction.response.send_message(
                     "You need 🔮 **1 Spirit Stone** to begin a Distillation.",
+                    ephemeral=True,
+                )
+                return
+            current_dust = await self.bot.database.alchemy.get_cosmic_dust(self.user_id)
+            if current_dust < 200:
+                await interaction.response.send_message(
+                    f"⚠️ You only have **{current_dust:,} Cosmic Dust** — you'll likely be unable to complete "
+                    f"the Distillation process (200+ recommended). Return with more dust before starting.",
                     ephemeral=True,
                 )
                 return
