@@ -505,12 +505,11 @@ TUTORIALS: dict[str, dict] = {
             "usable in combat. Each jewel skill charges over multiple turns and unleashes a "
             "significant effect — burst damage, ward generation, healing, DoT, and more.\n\n"
             "Jewels are unlocked by defeating corrupted monsters and can be **upgraded** using Cosmic Dust "
-            "and Paradise Jewels. Higher tiers dramatically increase skill potency. "
-            "Charges persist across Ascent floors and Codex waves, but reset between normal combat sessions."
+            "and Paradise Jewels. Higher tiers dramatically increase skill potency."
         ),
         "tips": [
             "Skills charge over turns — pick a skill that fits how long your fights typically last.",
-            "Upgrade jewel skills with **Cosmic Dust** and **Paradise Jewels** dropped from Uber bosses.",
+            "Upgrade jewel skills with **Cosmic Dust** and **Paradise Jewels**.",
             "Charges **carry between floors** in Ascent and Codex — don't waste an almost-charged skill.",
         ],
         "image": TESSARA_THUMBNAIL,

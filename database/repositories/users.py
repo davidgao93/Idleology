@@ -182,11 +182,30 @@ class UserRepository:
 
     async def update_hp(self, user_id: str, hp: int) -> None:
         """Specific update for HP (e.g., regeneration task)."""
-        # Note: Removed server_id check if user_id is globally unique, otherwise add it back
         await self.connection.execute(
             "UPDATE users SET current_hp = ? WHERE user_id = ?", (hp, user_id)
         )
         await self.connection.commit()
+
+    async def batch_regen_hp(self) -> int:
+        """Regen HP for all users below their base max_hp in a single query.
+
+        Uses stored max_hp (base stat) as the cap to avoid loading all player
+        data per-user. Returns the number of rows updated.
+        """
+        await self.connection.execute(
+            """
+            UPDATE users
+            SET current_hp = MIN(max_hp, current_hp + 1 + CAST(max_hp / 30 AS INTEGER))
+            WHERE current_hp < max_hp
+            """
+        )
+        await self.connection.commit()
+        async with self.connection.execute(
+            "SELECT changes()"
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row[0] if row else 0
 
     async def update_appearance(self, user_id: str, url: str) -> None:
         """Update the player's avatar URL across all servers."""

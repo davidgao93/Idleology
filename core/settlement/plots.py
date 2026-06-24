@@ -257,11 +257,8 @@ META_BUILDINGS: dict[str, dict] = {
         "label": "Servant's Quarters",
         "emoji": "🏠",
         "cost": {"gold": 15_000, "timber": 500, "stone": 500},
-        "max_workers": 100,
-        "description": (
-            "Adjacent production buildings gain +2% effectiveness per 10 workers "
-            "here, up to +20% at full capacity."
-        ),
+        "max_workers": 0,
+        "description": "Adjacent generator buildings gain +20% output. Passive — no workers needed.",
         "affects": "Logging Camp, Quarry, Market, Companion Ranch, War Camp",
         "effect": "production_boost",
     },
@@ -269,10 +266,8 @@ META_BUILDINGS: dict[str, dict] = {
         "label": "Grand Cathedral",
         "emoji": "⛪",
         "cost": {"gold": 75_000, "timber": 3_000, "stone": 3_000},
-        "max_workers": 100,
-        "description": (
-            "Adjacent shrine buildings can have twice as many workers per tier."
-        ),
+        "max_workers": 0,
+        "description": "Adjacent shrine buildings can have twice as many workers. Passive — no workers needed.",
         "affects": "All Shrine buildings (Uber Shrine, Temple, individual Shrines)",
         "effect": "shrine_cap",
     },
@@ -280,14 +275,14 @@ META_BUILDINGS: dict[str, dict] = {
         "label": "Supply Depot",
         "emoji": "📦",
         "cost": {"gold": 25_000, "timber": 1_000, "stone": 1_000},
-        "max_workers": 100,
-        "description": ("Adjacent converter buildings are 15% more effective."),
+        "max_workers": 0,
+        "description": "Adjacent converter buildings are 15% more effective. Passive — no workers needed.",
         "affects": "Foundry, Sawmill, Reliquary",
         "effect": "converter_boost",
     },
     "watchtower": {
         "label": "Watchtower",
-        "emoji": "🗼",
+        "emoji": "🏯",
         "cost": {"gold": 20_000, "timber": 800, "stone": 1_200},
         "max_workers": 0,
         "description": (
@@ -299,43 +294,37 @@ META_BUILDINGS: dict[str, dict] = {
     },
     "foremans_post": {
         "label": "Foreman's Post",
-        "emoji": "📋",
+        "emoji": "🏗️",
         "cost": {"gold": 30_000, "timber": 1_500, "stone": 500},
-        "max_workers": 100,
-        "description": "Adjacent buildings gain +25% output rate.",
+        "max_workers": 0,
+        "description": "Adjacent buildings gain +25% output rate. Passive — no workers needed.",
         "affects": "All adjacent buildings (generators and converters)",
         "effect": "output_boost",
     },
     "shrine_garden": {
         "label": "Shrine Garden",
-        "emoji": "🌺",
+        "emoji": "🌸",
         "cost": {"gold": 40_000, "timber": 2_000, "stone": 2_000},
-        "max_workers": 100,
-        "description": "Adjacent shrine buildings are 15% more effective.",
+        "max_workers": 0,
+        "description": "Adjacent shrine buildings are 15% more effective. Passive — no workers needed.",
         "affects": "All Shrine buildings (Uber Shrine, Temple, individual Shrines)",
         "effect": "shrine_boost",
     },
     "encampment": {
         "label": "Encampment",
-        "emoji": "🏕️",
+        "emoji": "⛺",
         "cost": {"gold": 20_000, "timber": 1_000, "stone": 500},
-        "max_workers": 100,
-        "description": (
-            "Adjacent War Camps generate +0.5 additional Combat Stamina "
-            "per 100 War Camp workers/hr."
-        ),
+        "max_workers": 0,
+        "description": "Adjacent War Camp generates +0.5 Combat Stamina/hr. Passive — no workers needed.",
         "affects": "War Camp",
         "effect": "war_camp_boost",
     },
     "apothecary_annex": {
         "label": "Apothecary Annex",
-        "emoji": "⚗️",
+        "emoji": "💊",
         "cost": {"gold": 35_000, "timber": 1_500, "stone": 1_500},
-        "max_workers": 100,
-        "description": (
-            "Adjacent Apothecary gains +4% to its flat heal bonus "
-            "per 100 workers assigned here."
-        ),
+        "max_workers": 0,
+        "description": "Adjacent Apothecary heals +40% more flat HP per potion use. Passive — no workers needed.",
         "affects": "Apothecary",
         "effect": "apothecary_boost",
     },

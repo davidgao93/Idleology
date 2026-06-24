@@ -336,7 +336,7 @@ async def _calculate_dt_production(
         raw_inv = {}
 
     _DT_HOURS = 5.0  # 1 DT = 5× hourly rate
-    _SKIP = {"nursery", "idlem_foundry", "black_market", "hatchery"}
+    _SKIP = {"nursery", "idlem_foundry", "black_market", "hatchery", "war_camp"}
 
     # Extract event production bonuses/penalties for this turn.
     _active_evs = await bot.database.settlement.get_active_events(user_id, server_id)

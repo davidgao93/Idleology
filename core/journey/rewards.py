@@ -288,8 +288,9 @@ MILESTONES = [
         "systems": [
             "Corrupted Monsters — high-danger combat encounters with corrupted drops",
             "Ascent Mode — climb numbered floors for permanent stat bonuses; Evelynn (final Uber) unlocked",
+            "Paradise — unlock the Jewel of Paradise and its powerful combat skills with Tessara the lapidary",
         ],
-        "commands": ["/ascent"],
+        "commands": ["/ascent", "/paradise"],
         "image": CORRUPTION_GATE,
         "grant": _grant_level_100,
     },

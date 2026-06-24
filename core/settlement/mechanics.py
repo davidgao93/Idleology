@@ -110,13 +110,16 @@ class SettlementMechanics:
         """
         Computes per-plot adjacency bonuses contributed by active meta buildings.
 
+        All meta buildings are passive (no workers required) and apply flat effects.
+
         Returns a dict mapping plot_index → {
-            "production_mult": float,    # Servant's Quarters + Foreman's Post on generators
-            "converter_mult":  float,    # Supply Depot + Foreman's Post on converters
-            "war_camp_rate":   float,    # Encampment speed multiplier for war_camp (0.10 = 10% faster)
-            "shrine_cap_x2":   bool,     # Grand Cathedral doubles shrine worker cap
-            "has_watchtower":  bool,     # Watchtower is globally present (any plot)
-            "shrine_boost":    float,    # Shrine Garden extra mult for shrine buildings
+            "production_mult":    float,  # Servant's Quarters (+20%) + Foreman's Post (+25%) on generators
+            "converter_mult":     float,  # Supply Depot (+15%) + Foreman's Post (+25%) on converters
+            "flat_stamina_per_hr": float, # Encampment flat +0.5 stamina/hr added to adjacent War Camp
+            "shrine_cap_x2":      bool,   # Grand Cathedral doubles shrine worker cap
+            "has_watchtower":     bool,   # Watchtower is globally present (any plot)
+            "shrine_boost":       float,  # Shrine Garden +15% mult for shrine buildings
+            "apothecary_boost":   float,  # Apothecary Annex +40% to flat heal
         }
         Only plots that have a building in *buildings* appear in the result.
         """
@@ -124,22 +127,21 @@ class SettlementMechanics:
             p.plot_index: p for p in plots if p.is_developed
         }
 
-        # Global effect: Watchtower (no workers needed, applies settlement-wide)
+        # Global effect: Watchtower (passive, applies settlement-wide)
         has_watchtower = any(
             b.is_meta and b.building_type == "watchtower" and b.plot_index is not None
             for b in buildings
         )
 
         # Initialise a result entry for every building that has a plot.
-        # Meta buildings are excluded from the Watchtower global cap — they
-        # should not be affected by other meta buildings at all.
+        # Meta buildings are excluded from the Watchtower global cap.
         result: dict[int, dict] = {}
         for b in buildings:
             if b.plot_index is not None:
                 result[b.plot_index] = {
                     "production_mult": 0.0,
                     "converter_mult": 0.0,
-                    "war_camp_rate": 0.0,
+                    "flat_stamina_per_hr": 0.0,
                     "shrine_cap_x2": False,
                     "has_watchtower": has_watchtower and not b.is_meta,
                     "shrine_boost": 0.0,
@@ -153,17 +155,10 @@ class SettlementMechanics:
 
         # Process each active meta building and apply its adjacency bonus.
         # Rule: meta buildings never affect other meta buildings.
+        # All meta buildings are now passive — no staffing requirement.
         for meta_b in buildings:
             if not meta_b.is_meta or meta_b.plot_index is None:
                 continue
-            # Watchtower is passive (no workers required);
-            # all others must be fully staffed to activate.
-            if meta_b.building_type != "watchtower":
-                _required = META_BUILDINGS.get(meta_b.building_type, {}).get(
-                    "max_workers", 100
-                )
-                if meta_b.workers_assigned < _required:
-                    continue
 
             meta_type = meta_b.building_type
             plot_of_meta = plot_by_idx.get(meta_b.plot_index)
@@ -184,9 +179,7 @@ class SettlementMechanics:
                     continue
 
                 if meta_type == "servants_quarters":
-                    # +2% per 10 workers, max +20% (100 workers = full 20%)
-                    bonus = min(0.20, meta_b.workers_assigned * 0.002) * ley_amp
-                    result[adj_idx]["production_mult"] += bonus
+                    result[adj_idx]["production_mult"] += 0.20 * ley_amp
 
                 elif meta_type == "supply_depot":
                     result[adj_idx]["converter_mult"] += 0.15 * ley_amp
@@ -195,21 +188,17 @@ class SettlementMechanics:
                     result[adj_idx]["shrine_cap_x2"] = True
 
                 elif meta_type == "encampment":
-                    result[adj_idx]["war_camp_rate"] += 0.10 * ley_amp
+                    result[adj_idx]["flat_stamina_per_hr"] += 0.5 * ley_amp
 
                 elif meta_type == "shrine_garden":
                     result[adj_idx]["shrine_boost"] += 0.15 * ley_amp
 
                 elif meta_type == "foremans_post":
-                    # Boosts all adjacent buildings' output
                     result[adj_idx]["production_mult"] += 0.25 * ley_amp
                     result[adj_idx]["converter_mult"] += 0.25 * ley_amp
 
                 elif meta_type == "apothecary_annex":
-                    # +0.04% healing per worker here (0.0004 per worker in decimal)
-                    result[adj_idx]["apothecary_boost"] += (
-                        meta_b.workers_assigned * 0.0004 * ley_amp
-                    )
+                    result[adj_idx]["apothecary_boost"] += 0.40 * ley_amp
 
         return result
 
@@ -223,7 +212,6 @@ class SettlementMechanics:
         plot_bonus_type: str | None = None,
         adj_production_mult: float = 0.0,
         adj_converter_mult: float = 0.0,
-        adj_war_camp_rate: float = 0.0,
         adj_output_mult: float = 0.0,
         mastery_converter_output_mult: float = 0.0,  # From Master Quarry / Seasoned Timber
         event_generator_bonus: float = 0.0,  # From active settlement events (e.g. resource_windfall)
@@ -235,11 +223,11 @@ class SettlementMechanics:
 
         Plot / adjacency bonus parameters (all additive, stacking):
           plot_bonus_type     — the roll assigned to the building's plot
-          adj_production_mult — from adjacent Servant's Quarters / Foreman's Post (generators)
-          adj_converter_mult  — from adjacent Supply Depot / Foreman's Post (converters)
-          adj_war_camp_rate   — additive base_rate bonus for war_camp from Encampment
-          adj_output_mult     — from adjacent Shrine Garden for shrine passives (future use)
+          adj_production_mult — from adjacent Servant's Quarters (+20%) / Foreman's Post (+25%) on generators
+          adj_converter_mult  — from adjacent Supply Depot (+15%) / Foreman's Post (+25%) on converters
+          adj_output_mult     — reserved for future use
           mastery_converter_output_mult — +10% from Master Quarry / Seasoned Timber synergy nodes
+        Note: Encampment flat stamina bonus (+0.5/hr) is applied by the caller after this function.
         """
         if workers <= 0 or hours_elapsed <= 0:
             return {}
@@ -274,10 +262,6 @@ class SettlementMechanics:
         elif btype == "converter":
             effectiveness += adj_converter_mult
             effectiveness += event_converter_bonus
-
-        # Encampment meta building gives adjacent war camps a % speed boost
-        if building_type == "war_camp" and adj_war_camp_rate:
-            effectiveness += adj_war_camp_rate
 
         changes = {}
 

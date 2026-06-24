@@ -103,23 +103,14 @@ class Character(commands.Cog, name="character"):
 
     @tasks.loop(minutes=15)
     async def check_hp(self):
-        """Check and increment current_hp for all users every 15m."""
-        users = await self.bot.database.users.get_all()
+        """Regen HP for all users below base max_hp in a single batch query."""
         self.bot.logger.info("Healing all users")
-        for user in users:
-            user_id = user["user_id"]
-            try:
-                current_hp = user["current_hp"]
-                player = await load_player(user_id, user, self.bot.database)
-                max_hp = player.total_max_hp
-                scaling = int(max_hp / 30)
-                if current_hp < max_hp:
-                    new_hp = min(current_hp + 1 + scaling, max_hp)
-                    await self.bot.database.users.update_hp(user_id, new_hp)
-            except Exception:
-                self.bot.logger.error(
-                    f"check_hp error for user {user_id}", exc_info=True
-                )
+        try:
+            updated = await self.bot.database.users.batch_regen_hp()
+            if updated:
+                self.bot.logger.info(f"HP regen: healed {updated} user(s)")
+        except Exception:
+            self.bot.logger.error("check_hp task error", exc_info=True)
 
     @check_hp.error
     async def check_hp_error(self, error):

@@ -244,13 +244,18 @@ class SlayerMechanics:
 
         counts = Counter(species_pool)
 
-        # Pick a random unique species
-        chosen_species = random.choice(list(counts.keys()))
+        # Weight species selection by how frequently each appears in the bracket pool
+        chosen_species = random.choices(list(counts.keys()), weights=list(counts.values()), k=1)[0]
 
-        # Scale task size by how many distinct species exist in the bracket.
-        # Tiny pool (few species) → floor of 5; large pool → up to 50.
-        unique_count = len(counts)
-        amount = max(5, min(50, unique_count * 2))
+        # Level-banded task sizes with variance
+        if player_level < 20:
+            base, variance = 5, 0.20
+        elif player_level < 40:
+            base, variance = 10, 0.30
+        else:
+            base, variance = 15, 0.50
+
+        amount = max(1, round(base * random.uniform(1 - variance, 1 + variance)))
 
         return chosen_species, amount
 

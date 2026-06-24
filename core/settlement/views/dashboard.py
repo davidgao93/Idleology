@@ -329,8 +329,10 @@ class SettlementDashboardView(SettlementBaseView):
                     or _pdata.get("building_type")
                     or p["project_type"]
                 )
+                _ptype = p.get("project_type", "")
+                _pemoji = "🔬" if _ptype == "research" else "🔨"
                 proj_lines.append(
-                    f"🔨 {label.replace('_', ' ').title()} — {pct}% `{bar}`"
+                    f"{_pemoji} {label.replace('_', ' ').title()} — {pct}% `{bar}`"
                 )
             if len(self.projects) > 5:
                 proj_lines.append(f"…+{len(self.projects) - 5} more")
@@ -391,7 +393,9 @@ class SettlementDashboardView(SettlementBaseView):
                     if p.get("type") == "construction":
                         has_new_building = True
                 if has_new_building:
-                    lines.append("👷 Don't forget to assign workers to your new building!")
+                    lines.append(
+                        "👷 Don't forget to assign workers to your new building!"
+                    )
             if turn_summary.get("deal_completed"):
                 reward_parts = (turn_summary.get("deal_rewards") or {}).get(
                     "summary_lines", []
@@ -846,60 +850,60 @@ class SettlementDashboardView(SettlementBaseView):
 
     async def show_building_list(self, interaction: Interaction):
         _GENERATORS = [
-            ("🪵 Logging Camp", "Hybrid · Timber · passive hourly + 5× per DT"),
-            ("🪨 Quarry", "Hybrid · Stone · passive hourly + 5× per DT"),
-            ("💰 Market", "Hybrid · Gold · passive hourly + 5× per DT"),
+            ("🪵 Logging Camp", "Hybrid · Timber · Produces passively and each turn"),
+            ("🪨 Quarry", "Hybrid · Stone · Produces passively and each turn"),
+            ("💰 Market", "Hybrid · Gold · Produces passively and each turn"),
             (
                 "🐾 Companion Ranch",
-                "Hybrid · Companion XP (cookies) · passive + 5× per DT · claim from /companions",
+                "Hybrid · Companion cookies (XP) · Produces passively and each turn",
             ),
             (
                 "🏕️ War Camp",
-                "Hybrid · Combat Stamina · passive hourly + 5× per DT · capped at 10",
+                "Passive · Combat Stamina · Produces passively, capped at 10 on Collect",
             ),
         ]
         _CONVERTERS = [
             (
                 "🔥 Foundry",
-                "Hybrid · Ore → Bars · T1 Iron → T5 Idea · passive + 5× per DT",
+                "Hybrid · Ore → Bars (used for high level refines/reinforces)· Produces passively and each turn",
             ),
             (
                 "🌲 Sawmill",
-                "Hybrid · Logs → Planks · T1 Oak → T5 Idea · passive + 5× per DT",
+                "Hybrid · Logs → Planks (used for high level refines/reinforces)· Produces passively and each turn",
             ),
             (
                 "🦴 Reliquary",
-                "Hybrid · Bones → Essences · T1 Desiccated → T5 Titanium · passive + 5× per DT",
+                "Hybrid · Bones → Essences (used for high level refines/reinforces)· Produces passively and each turn",
             ),
         ]
         _PASSIVES = [
             (
                 "⚔️ Barracks",
-                "Passive · +% Attack & Defence in combat · scales with workers",
+                "Passive · +% Player Attack & Defence in combat",
             ),
-            ("⛪ Temple", "Passive · +% Propagate follower gain · scales with workers"),
+            ("⛪ Temple", "Passive · +% Propagate follower gain"),
             (
                 "💊 Apothecary",
-                "Passive · +Flat HP restored per potion use · scales with workers",
+                "Passive · +Flat HP effectiveness of potions",
             ),
             (
                 "🔮 Uber Shrine",
-                "Passive · Houses all 5 shrine statues for boss sigil drops",
+                "Passive · Shrine statues for uber boss sigil drops",
             ),
         ]
         _SPECIALS = [
             (
                 "🌑 Black Market",
-                "Special · Submit resource bundles for loot · invest Idlem to improve",
+                "Special · Submit unwanted resources for loot",
             ),
             (
                 "🥚 Hatchery",
                 "Special · Incubates eggs for Hematurgy blood drops · Lv50",
             ),
-            ("👶 Nursery", "Project · Produces workers per DT · scales with tier"),
+            ("👶 Nursery", "Project · Produces workers per turn"),
             (
                 "⚗️ Idlem Foundry",
-                "Project · Produces Idlem per DT · powers Black Market passive tree",
+                "Project · Produces Idlem per turn · powers the Black Market passive tree",
             ),
         ]
 
@@ -920,30 +924,25 @@ class SettlementDashboardView(SettlementBaseView):
 
     async def show_meta_buildings(self, interaction: Interaction):
         _META = [
-            (
-                "🏠 Servant's Quarters",
-                "+2% generator output per 10 workers to adjacent generators (cap +20%)",
-            ),
-            ("📦 Supply Depot", "+15% converter effectiveness to adjacent converters"),
-            ("⛪ Grand Cathedral", "Doubles worker cap for adjacent shrine buildings"),
+            ("🏠 Servant's Quarters", "Adjacent generator buildings gain +20% output."),
+            ("📦 Supply Depot", "Adjacent converter buildings are 15% more effective."),
+            ("⛪ Grand Cathedral", "Adjacent shrine buildings can have twice as many workers."),
             (
                 "🏯 Watchtower",
-                "Global +1%×tier worker cap on all regular buildings (no workers needed)",
+                "Each regular building's worker cap is increased by +1% per its own tier (T1 → +1%, T5 → +5%). Global effect.",
             ),
-            ("🏗️ Foreman's Post", "+25% output to all adjacent buildings"),
-            ("🌸 Shrine Garden", "+15% effectiveness to adjacent shrine buildings"),
-            ("⛺ Encampment", "+0.5 stamina/hr per 100 workers to adjacent War Camps"),
-            (
-                "💊 Apothecary Annex",
-                "+4% flat heal per 100 workers to adjacent Apothecary",
-            ),
+            ("🏗️ Foreman's Post", "Adjacent buildings gain +25% output rate."),
+            ("🌸 Shrine Garden", "Adjacent shrine buildings are 15% more effective."),
+            ("⛺ Encampment", "Adjacent War Camp generates +0.5 Combat Stamina/hr."),
+            ("💊 Apothecary Annex", "Adjacent Apothecary heals +40% more flat HP per potion use."),
         ]
         lines = "\n".join(f"**{n}** — {d}" for n, d in _META)
         embed = discord.Embed(
             title="⚙️ Meta Buildings",
             description=(
-                "Meta buildings provide powerful adjacency bonuses to neighbouring plots. "
-                "Each requires full staffing to activate (Watchtower is always-on).\n\n"
+                "Meta buildings provide powerful passive bonuses to neighbouring plots. "
+                "All meta buildings are Tier 1 only and require no workers to activate. "
+                "You may build up to [Town Hall tier] meta buildings across your settlement.\n\n"
                 + lines
             ),
             color=discord.Color.blurple(),
@@ -1078,7 +1077,6 @@ class SettlementDashboardView(SettlementBaseView):
                 plot_bonus_type=plot_bonus,
                 adj_production_mult=adj.get("production_mult", 0.0),
                 adj_converter_mult=adj.get("converter_mult", 0.0),
-                adj_war_camp_rate=adj.get("war_camp_rate", 0.0),
                 mastery_converter_output_mult=refining_bonus,
                 event_generator_bonus=_event_gen_bonus,
                 event_converter_bonus=_event_conv_bonus,
@@ -1087,6 +1085,14 @@ class SettlementDashboardView(SettlementBaseView):
                 total_changes[k] = total_changes.get(k, 0) + v
                 if k in raw_inv:
                     raw_inv[k] = raw_inv[k] + v  # type: ignore[assignment]
+
+            # Encampment: flat +0.5 stamina/hr added to adjacent War Camp
+            if b.building_type == "war_camp" and b.workers_assigned > 0:
+                flat_stamina = adj.get("flat_stamina_per_hr", 0.0) * hours
+                if flat_stamina > 0:
+                    total_changes["war_camp_stamina"] = (
+                        total_changes.get("war_camp_stamina", 0) + flat_stamina
+                    )
 
         # 6. Expedition Camp — passive DC generation (1 DC per 48 h per such plot)
         expedition_count = sum(
@@ -1185,7 +1191,9 @@ class SettlementDashboardView(SettlementBaseView):
         )
 
         try:
-            await interaction.edit_original_response(content=None, embed=embed, view=self)
+            await interaction.edit_original_response(
+                content=None, embed=embed, view=self
+            )
         except Exception:
             if self.message:
                 await self.message.edit(embed=embed, view=self)

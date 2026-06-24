@@ -32,8 +32,22 @@ class StorageProfileBuilder:
         antique_tomes = cur["antique_tome"]
         pinnacle_keys = cur["pinnacle_key"]
         puzzle_boxes = cur["curio_puzzle_boxes"]
+        spirit_stones = cur["spirit_stones"]
         items = await bot.database.partners.get_items(user_id)
         guild_tickets = items.get("guild_tickets", 0)
+
+        cosmic_dust = await bot.database.alchemy.get_cosmic_dust(user_id)
+        uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
+        paradise_jewels = uber_data.get("paradise_jewels", 0)
+
+        parts_count = await bot.database.monster_parts.get_count(user_id)
+        egg_count = await bot.database.eggs.get_egg_count(user_id)
+        blood = await bot.database.hematurgy.get_blood(user_id)
+
+        shards = await bot.database.apex.get_or_create_shards(user_id, server_id)
+        meta_shards = await bot.database.apex.get_or_create_meta_shards(
+            user_id, server_id
+        )
 
         embed = discord.Embed(
             title="Inventory Summary",
@@ -45,8 +59,8 @@ class StorageProfileBuilder:
         embed.add_field(
             name="⚔️ **Gear**",
             value=(
-                f"⚔️ Weapons: {w_count}/60\n🛡️ Armor: {ar_count}/60\n📿 Accessories: {a_count}/60\n"
-                f"🧤 Gloves: {g_count}/60\n👢 Boots: {b_count}/60\n🪖 Helmets: {h_count}/60\n🐾 Companions: {pet_count}/20"
+                f"⚔️ Weapons: {w_count}/60\n🛡️ Armor: {ar_count}/60\n📿 Accs: {a_count}/60\n"
+                f"🧤 Gloves: {g_count}/60\n👢 Boots: {b_count}/60\n🪖 Helms: {h_count}/60\n🐾 Pets: {pet_count}/20"
             ),
             inline=True,
         )
@@ -71,6 +85,28 @@ class StorageProfileBuilder:
             inline=True,
         )
 
+        embed.add_field(
+            name="✨ **Alchemy**",
+            value=(
+                f"💨 Cosmic Dust: {cosmic_dust:,}\n"
+                f"🔮 Spirit Stones: {spirit_stones}\n"
+                f"💎 Uncut Jewels: {paradise_jewels}"
+            ),
+            inline=True,
+        )
+
+        embed.add_field(
+            name="🦴 **Consume**",
+            value=(
+                f"🦴 Parts: {parts_count}/20\n"
+                f"🥚 Eggs: {egg_count}/20\n"
+                f"🩸 Primordial: {blood['primordial']:,}\n"
+                f"🧬 Evolutionary: {blood['evolutionary']:,}\n"
+                f"☣️ Mutative: {blood['mutative']:,}"
+            ),
+            inline=True,
+        )
+
         return embed
 
     @staticmethod
@@ -83,6 +119,7 @@ class StorageProfileBuilder:
         imbue_runes = cur["imbue_runes"]
         shat_runes = cur["shatter_runes"]
         r_partner = cur["partnership_runes"]
+        r_regret = cur["rune_of_regret"]
         mirage_imp = cur["mirage_runes_imperfect"]
         mirage_perf = cur["mirage_runes_perfected"]
         void_keys = cur["void_keys"]
@@ -96,7 +133,7 @@ class StorageProfileBuilder:
             name="💎 **Runes**",
             value=(
                 f"🔨 Refinement: {ref_runes}\n✨ Potential: {pot_runes}\n🔮 Imbuing: {imbue_runes}\n"
-                f"💥 Shatter: {shat_runes}\n🤝 Partnership: {r_partner}\n"
+                f"💥 Shatter: {shat_runes}\n🤝 Partnership: {r_partner}\n💔 Regret: {r_regret}\n"
                 f"🪞 Mirage (Imperfect): {mirage_imp}\n🪞 Mirage (Perfected): {mirage_perf}"
             ),
             inline=True,
@@ -108,28 +145,34 @@ class StorageProfileBuilder:
             inline=True,
         )
 
-        if essence_data:
-            items = {}
-            if hasattr(essence_data, "keys"):
-                items = {
-                    k: v
-                    for k, v in dict(essence_data).items()
-                    if k not in ("user_id", "server_id", "id")
-                }
-            if items:
-                lines = []
-                for e_type, count in items.items():
-                    safe_count = count if count is not None else 0
-                    name = str(e_type).replace("_", " ").title()
-                    lines.append(f"✦ **{name}**: {safe_count:,}")
-                chunk_size = 12
-                for i in range(0, len(lines), chunk_size):
-                    chunk = lines[i : i + chunk_size]
-                    embed.add_field(
-                        name="🧪 Stored Essences" if i == 0 else "​",
-                        value="\n".join(chunk),
-                        inline=True,
-                    )
+        _COMMON_ESSENCES = ["power", "protection"]
+        _RARE_ESSENCES = [
+            "insight", "evasion", "blocking", "deftness",
+            "precision", "gluttony", "cleansing", "chaos", "annulment",
+        ]
+        _CORRUPTED_ESSENCES = ["aphrodite", "lucifer", "gemini", "neet"]
+
+        def _essence_lines(types):
+            return "\n".join(
+                f"✦ **{e.replace('_', ' ').title()}**: {essence_data.get(e, 0):,}"
+                for e in types
+            )
+
+        embed.add_field(
+            name="🧪 **Common Essences**",
+            value=_essence_lines(_COMMON_ESSENCES),
+            inline=False,
+        )
+        embed.add_field(
+            name="💠 **Rare Essences**",
+            value=_essence_lines(_RARE_ESSENCES),
+            inline=True,
+        )
+        embed.add_field(
+            name="☠️ **Corrupted Essences**",
+            value=_essence_lines(_CORRUPTED_ESSENCES),
+            inline=True,
+        )
 
         return embed
 
@@ -202,6 +245,9 @@ class StorageProfileBuilder:
         blessed_bismuth = mastery_row.get("blessed_bismuth", 0) or 0
         sparkling_sprig = mastery_row.get("sparkling_sprig", 0) or 0
         capricious_carp = mastery_row.get("capricious_carp", 0) or 0
+        runes_of_nature = await bot.database.users.get_currency(
+            user_id, "runes_of_nature"
+        )
 
         embed = discord.Embed(
             title="Storage Warehouse", color=discord.Color.dark_orange()
@@ -215,24 +261,25 @@ class StorageProfileBuilder:
         )
         embed.add_field(name="⛏️ Gathering", value=gathering_value, inline=False)
 
+        mastery_value = (
+            f"⛏️ **Geode Cores:** {geode_cores:,}\n"
+            f"🐟 **Tide Relics:** {tide_relics:,}\n"
+            f"🪵 **Heartwood Shards:** {heartwood_shards:,}\n"
+            f"🌿 **Runes of Nature:** {runes_of_nature:,}"
+        )
+        embed.add_field(
+            name="🌿 Artisan Mastery (Remnants)", value=mastery_value, inline=False
+        )
+
         settlement_value = (
             f"🪵 Timber: {settlement.timber:,} · 🪨 Stone: {settlement.stone:,}\n"
             f"**Ingots:** Iron {ingots[0]:,} · Steel {ingots[1]:,} · Gold {ingots[2]:,} · Plat {ingots[3]:,} · Idea {ingots[4]:,}\n"
             f"**Planks:** Oak {planks[0]:,} · Willow {planks[1]:,} · Mahog {planks[2]:,} · Magic {planks[3]:,} · Idea {planks[4]:,}\n"
             f"**Essence:** Desic {essence[0]:,} · Reg {essence[1]:,} · Sturdy {essence[2]:,} · Reinf {essence[3]:,} · Titan {essence[4]:,}\n"
             f"**Rare Materials:** 🔥 Magma Core: {rares[0]} · 🌿 Life Root: {rares[1]} · 👻 Spirit Shard: {rares[2]}\n"
-            f"📋 Unidentified Blueprints: {blueprint_count}"
+            f"📋 Blueprints: {blueprint_count} · 🔮 Diviner's Rods: {mat_all.get('diviners_rod', 0)}"
         )
         embed.add_field(name="🏭 Settlement", value=settlement_value, inline=False)
-
-        mastery_value = (
-            f"⛏️ **Geode Cores:** {geode_cores:,}\n"
-            f"🐟 **Tide Relics:** {tide_relics:,}\n"
-            f"🪵 **Heartwood Shards:** {heartwood_shards:,}"
-        )
-        embed.add_field(
-            name="🌿 Artisan Mastery (Remnants)", value=mastery_value, inline=False
-        )
 
         return embed
 

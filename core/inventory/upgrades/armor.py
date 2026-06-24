@@ -368,7 +368,7 @@ class ReinforceView(BaseUpgradeView):
         action_btn.callback = self.confirm_reinforce
         self.add_item(action_btn)
 
-        shattermaxx_btn = Button(label="Shattermaxx", style=ButtonStyle.danger)
+        shattermaxx_btn = Button(label="Reinforcemaxx", style=ButtonStyle.danger)
         shattermaxx_btn.disabled = shatter_runes == 0 and not (
             has_funds and has_mats and has_slots
         )

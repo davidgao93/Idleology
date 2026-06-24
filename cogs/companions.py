@@ -14,7 +14,7 @@ class Companions(commands.Cog):
         self.bot = bot
 
     @app_commands.command(
-        name="companions", description="View and manage your companions."
+        name="companions", description="View and manage your companions (pets)."
     )
     async def companions(self, interaction: Interaction):
         user_id = str(interaction.user.id)

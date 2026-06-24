@@ -74,8 +74,6 @@ def _gen_effectiveness(
         elif applies == "trade_mult" and building_type in ("market", "war_camp"):
             eff += val
     eff += adj.get("production_mult", 0.0)
-    if building_type == "war_camp":
-        eff += adj.get("war_camp_rate", 0.0)
     return eff, extra_rate
 
 
@@ -142,7 +140,11 @@ def _append_generator(embed, b, b_data: dict, plot_bonus_type, adj: dict) -> Non
     if workers == 0:
         value = _NO_WORKERS
     elif output_key == "war_camp_stamina":
-        value = f"{emoji} **{label}:** ~{rate:.2f}/hr"
+        flat_bonus = adj.get("flat_stamina_per_hr", 0.0)
+        total_rate = rate + flat_bonus
+        value = f"{emoji} **{label}:** ~{total_rate:.2f}/hr"
+        if flat_bonus > 0:
+            value += f"\n_+{flat_bonus:.1f}/hr from Encampment_"
     elif output_key == "companion_cookie":
         value = f"{emoji} **{label}:** ~{int(rate):,}/hr"
     elif output_key == "market_gold":
@@ -269,7 +271,6 @@ def _append_meta_effect(embed, b) -> None:
     btype = b.building_type
 
     if btype == "watchtower":
-        # Passive — no workers needed; effect applies settlement-wide, not just to neighbours
         embed.add_field(
             name="⚙️ Global Effect",
             value=(
@@ -280,18 +281,8 @@ def _append_meta_effect(embed, b) -> None:
         )
         return
 
-    if workers == 0:
-        embed.add_field(
-            name="⚙️ Adjacency Effect",
-            value="_No workers assigned — adjacency effect is inactive._",
-            inline=False,
-        )
-        return
-
     if btype == "servants_quarters":
-        # 0.002 per worker → display as %: workers * 0.2
-        bonus = min(20.0, workers * 0.2)
-        value = f"+**{bonus:.0f}%** output to adjacent production buildings"
+        value = "+**20%** output to adjacent generator buildings"
     elif btype == "supply_depot":
         value = "+**15%** conversion rate to adjacent converter buildings"
     elif btype == "grand_cathedral":
@@ -301,11 +292,9 @@ def _append_meta_effect(embed, b) -> None:
     elif btype == "shrine_garden":
         value = "+**15%** effectiveness to adjacent shrine buildings"
     elif btype == "encampment":
-        value = "Adjacent War Camps generate stamina **10% faster**"
+        value = "+**0.5 stamina/hr** to adjacent War Camps"
     elif btype == "apothecary_annex":
-        # 0.0004 per worker → display as %: workers * 0.04
-        bonus = workers * 0.04
-        value = f"Adjacent Apothecary: +**{bonus:.2f}%** additional healing"
+        value = "Adjacent Apothecary: +**40% flat** HP healed per potion"
     else:
         value = meta_data.get("description", "Meta building effect active.")
 
@@ -613,37 +602,23 @@ class PlotDetailView(SettlementBaseView):
             if thumb:
                 embed.set_thumbnail(url=thumb)
 
-            # Upgrade cost preview
-            if b.tier < 5:
+            # Upgrade cost preview (meta buildings are T1-only, no upgrades)
+            if b.tier < 5 and not b.is_meta:
                 target_t = b.tier + 1
-                if b.is_meta:
-                    meta_base = META_BUILDINGS.get(b.building_type, {}).get("cost", {})
-                    meta_cost = {
-                        "timber": meta_base.get("timber", 0) * target_t,
-                        "stone": meta_base.get("stone", 0) * target_t,
-                        "gold": meta_base.get("gold", 0) * target_t,
-                    }
-                    cost_str = (
-                        f"🪵 {meta_cost['timber']:,} | "
-                        f"🪨 {meta_cost['stone']:,} | "
-                        f"💰 {meta_cost['gold']:,} | "
-                        f"⏱️ {upgrade_dt_cost(b.building_type, target_t)} DTs"
+                cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
+                cost_str = (
+                    f"🪵 {cost.get('timber', 0):,} | "
+                    f"🪨 {cost.get('stone', 0):,} | "
+                    f"💰 {cost.get('gold', 0):,} | "
+                    f"⏱️ {upgrade_dt_cost(b.building_type, target_t)} DTs"
+                )
+                if "specials" in cost:
+                    for s in cost["specials"]:
+                        cost_str += f" | ✨ {s['name']} ×{s['qty']}"
+                elif "special_name" in cost:
+                    cost_str += (
+                        f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
                     )
-                else:
-                    cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
-                    cost_str = (
-                        f"🪵 {cost.get('timber', 0):,} | "
-                        f"🪨 {cost.get('stone', 0):,} | "
-                        f"💰 {cost.get('gold', 0):,} | "
-                        f"⏱️ {upgrade_dt_cost(b.building_type, target_t)} DTs"
-                    )
-                    if "specials" in cost:
-                        for s in cost["specials"]:
-                            cost_str += f" | ✨ {s['name']} ×{s['qty']}"
-                    elif "special_name" in cost:
-                        cost_str += (
-                            f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
-                        )
                 embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
 
         embed.add_field(
@@ -793,7 +768,7 @@ class PlotDetailView(SettlementBaseView):
                 btn_shrine.callback = self._open_uber_shrine
                 self.add_item(btn_shrine)
 
-            if b.tier < 5:
+            if b.tier < 5 and not b.is_meta:
                 btn_up = ui.Button(
                     label=f"Upgrade to T{b.tier + 1}",
                     style=ButtonStyle.success,
@@ -845,8 +820,8 @@ class PlotDetailView(SettlementBaseView):
             btn_max.callback = self._max_workers
             self.add_item(btn_max)
 
-        # Upgrade button — row 0 alongside Manage (regular and meta buildings)
-        if b.tier < 5:
+        # Upgrade button — row 0 alongside Manage (meta buildings are T1-only, no upgrade)
+        if b.tier < 5 and not b.is_meta:
             btn_up = ui.Button(
                 label=f"Upgrade to T{b.tier + 1}",
                 style=ButtonStyle.success,
