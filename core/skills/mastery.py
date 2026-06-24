@@ -12,6 +12,7 @@ Features:
 """
 
 from __future__ import annotations
+
 import json
 import random
 from typing import Any, Dict, List, Literal, Tuple
@@ -119,7 +120,7 @@ MINING_TREE: Dict[str, Dict[str, Any]] = {
     "tool_resonance": {
         "branch": "synergy",
         "cost": 1,
-        "desc": "Tool upgrade costs reduced by 12%.",
+        "desc": "Mining tool upgrade costs reduced by 12%.",
     },
     "skilled_hands": {
         "branch": "synergy",
@@ -677,7 +678,7 @@ def roll_remnant_generation(skill: SkillType, mastery_row: dict, is_rich: bool) 
     Quality 3pt node (geode_cores etc) required for any chance.
     """
     alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
-    quality_nodes = alloc.get("quality", [])
+    quality_nodes = alloc.get("quality", {}).get("unlocked", [])
     has_unlock = False
     if skill == "mining" and "geode_cores" in quality_nodes:
         has_unlock = True
@@ -714,23 +715,23 @@ def get_remnant_column(skill: SkillType) -> str:
 
 def has_master_quarry(mastery_row: dict) -> bool:
     alloc = json.loads(mastery_row.get("mining_alloc", "{}") or "{}")
-    return "master_quarry" in alloc.get("synergy", [])
+    return "master_quarry" in alloc.get("synergy", {}).get("unlocked", [])
 
 
 def has_seasoned_timber(mastery_row: dict) -> bool:
     alloc = json.loads(mastery_row.get("woodcutting_alloc", "{}") or "{}")
-    return "seasoned_timber" in alloc.get("synergy", [])
+    return "seasoned_timber" in alloc.get("synergy", {}).get("unlocked", [])
 
 
 def has_master_baiter(mastery_row: dict) -> bool:
     alloc = json.loads(mastery_row.get("fishing_alloc", "{}") or "{}")
-    return "master_baiter" in alloc.get("synergy", [])
+    return "master_baiter" in alloc.get("synergy", {}).get("unlocked", [])
 
 
 def get_skiller_bonus(mastery_row: dict, skill: SkillType) -> Tuple[float, float]:
     """Returns (proc_chance_mult, yield_mult) for Skiller boots. 1.65x chance, 1.45x yield if owned."""
     alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
-    synergy = alloc.get("synergy", [])
+    synergy = alloc.get("synergy", {}).get("unlocked", [])
     if any(
         n in synergy for n in ("skilled_hands", "favored_currents", "skilled_forester")
     ):
@@ -741,7 +742,7 @@ def get_skiller_bonus(mastery_row: dict, skill: SkillType) -> Tuple[float, float
 def get_tool_cost_reduction(mastery_row: dict, skill: SkillType) -> float:
     """12% reduction if the 1pt synergy node owned."""
     alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
-    synergy = alloc.get("synergy", [])
+    synergy = alloc.get("synergy", {}).get("unlocked", [])
     if skill == "mining" and "tool_resonance" in synergy:
         return 0.12
     if skill == "fishing" and "lighter_bait" in synergy:

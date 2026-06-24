@@ -140,6 +140,8 @@ class TradeRootView(BaseView):
             SelectOption(label="Woodcutting Mats", value="wood", emoji="🪓"),
             SelectOption(label="Fishing Mats", value="fish", emoji="🎣"),
             SelectOption(label="Meta Shards", value="meta", emoji="💠"),
+            SelectOption(label="Essences", value="essences", emoji="✨"),
+            SelectOption(label="Settlement Mats", value="settlement", emoji="🏗️"),
         ]
 
         select = ui.Select(placeholder="Select Category...", options=options)
@@ -166,6 +168,13 @@ class TradeRootView(BaseView):
                 "Void Fragment",
                 "Fragment of Balance",
                 "Curio",
+                "Curio Puzzle Box",
+                "Pinnacle Key",
+                "Spirit Stone",
+                "Antique Tome",
+                "Codex Fragment",
+                "Codex Page",
+                "Codex Reroll",
             ]
         elif cat == "runes":
             keys = [k for k in TradeManager.RESOURCE_MAP if "Rune" in k]
@@ -187,6 +196,16 @@ class TradeRootView(BaseView):
                 "Condensed Blood",
                 "Primal Essence",
                 "Soul Vessel",
+            ]
+        elif cat == "essences":
+            keys = [
+                k for k, (tbl, _) in TradeManager.RESOURCE_MAP.items()
+                if tbl == "essences"
+            ]
+        elif cat == "settlement":
+            keys = [
+                k for k, (tbl, _) in TradeManager.RESOURCE_MAP.items()
+                if tbl == "settlement_materials"
             ]
 
         self.clear_items()

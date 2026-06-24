@@ -1075,15 +1075,21 @@ class PlotDetailView(SettlementBaseView):
         b = self.building
         p = self.plot
         adj = self.adj_bonus or {}
-        max_w = get_effective_max_workers(
+        building_cap = get_effective_max_workers(
             b.building_type,
             b.tier,
             p.bonus_type if p else None,
             adj.get("shrine_cap_x2", False),
             adj.get("has_watchtower", False),
         )
-        await self.bot.database.settlement.assign_workers(b.id, max_w)
-        b.workers_assigned = max_w
+        # Available = total followers minus workers assigned to every other building
+        total_assigned = sum(
+            bld.workers_assigned for bld in self.settlement.buildings
+        )
+        available = self.follower_count - (total_assigned - b.workers_assigned)
+        assign = max(0, min(building_cap, available))
+        await self.bot.database.settlement.assign_workers(b.id, assign)
+        b.workers_assigned = assign
         self._build_buttons()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 

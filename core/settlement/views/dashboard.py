@@ -385,8 +385,13 @@ class SettlementDashboardView(SettlementBaseView):
         if turn_summary:
             lines = []
             if turn_summary.get("projects_completed"):
+                has_new_building = False
                 for p in turn_summary["projects_completed"]:
                     lines.append(f"✅ {p.get('label', 'Project')} completed!")
+                    if p.get("type") == "construction":
+                        has_new_building = True
+                if has_new_building:
+                    lines.append("👷 Don't forget to assign workers to your new building!")
             if turn_summary.get("deal_completed"):
                 reward_parts = (turn_summary.get("deal_rewards") or {}).get(
                     "summary_lines", []
@@ -800,11 +805,12 @@ class SettlementDashboardView(SettlementBaseView):
     # -------------------------------------------------------------------------
 
     async def _on_plot_select(self, interaction: Interaction):
+        await interaction.response.defer()
         plot_num = int(interaction.data["values"][0])
 
         plot = next((p for p in self.plots if p.plot_index == plot_num), None)
         if plot is None:
-            return await interaction.response.send_message(
+            return await interaction.followup.send(
                 "Plot data unavailable — try closing and reopening the settlement.",
                 ephemeral=True,
             )
@@ -832,7 +838,7 @@ class SettlementDashboardView(SettlementBaseView):
             adj_bonus=adj_bonus,
             pending_construction=pending_construction,
         )
-        await interaction.response.edit_message(embed=view.build_embed(), view=view)
+        await interaction.edit_original_response(embed=view.build_embed(), view=view)
 
     # -------------------------------------------------------------------------
     # Button callbacks
@@ -972,6 +978,10 @@ class SettlementDashboardView(SettlementBaseView):
         view.message = msg
 
     async def collect_resources(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         uid, sid = self.user_id, self.server_id
@@ -1086,6 +1096,14 @@ class SettlementDashboardView(SettlementBaseView):
         )
         dc_earned = int(hours / 48) * expedition_count
 
+        # Guard: nothing to collect
+        has_output = any(v > 0 for v in total_changes.values()) or dc_earned > 0
+        if not has_output:
+            return await interaction.followup.send(
+                "Nothing will be collected — construct some buildings and assign workers before collecting.",
+                ephemeral=True,
+            )
+
         # --- Split out special resources before committing ---
         display_changes: dict = dict(total_changes)
 
@@ -1166,7 +1184,13 @@ class SettlementDashboardView(SettlementBaseView):
             inline=False,
         )
 
-        await interaction.edit_original_response(content=None, embed=embed, view=self)
+        try:
+            await interaction.edit_original_response(content=None, embed=embed, view=self)
+        except Exception:
+            if self.message:
+                await self.message.edit(embed=embed, view=self)
+        finally:
+            self._processing = False
 
     # build_embed() with no args still works (all optional) — keep backward compat
 
@@ -1250,7 +1274,11 @@ class SettlementDashboardView(SettlementBaseView):
                 projects=projects,
                 pending_deal=pending_deal,
             )
-            await interaction.edit_original_response(embed=embed, view=self)
+            try:
+                await interaction.edit_original_response(embed=embed, view=self)
+            except Exception:
+                if self.message:
+                    await self.message.edit(embed=embed, view=self)
         finally:
             self._processing = False
 

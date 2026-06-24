@@ -62,7 +62,7 @@ class Consume(commands.Cog, name="consume"):
 
         if user_data["level"] < 50:
             return await interaction.response.send_message(
-                "The Hematurgy system unlocks at **Level 50** via the Hatchery settlement building.",
+                "You're not powerful enough for the Hematurgy system, come back at **Level 50**.",
                 ephemeral=True,
             )
 

@@ -247,6 +247,8 @@ async def process_next_turn(
             )
         await bot.database.settlement.remove_event(ev["id"])
         ev_name = ev_def.get("name", ev["event_key"])
+        if fx_result.get("zeal_granted"):
+            ev_name = f"{ev_name} (+{fx_result['zeal_granted']} Zeal)"
         if ev_def.get("effects", {}).get("spawn_combat"):
             entry: dict = {"name": ev_name}
             if fx_result.get("plague_losses"):
@@ -502,6 +504,7 @@ async def _apply_event_effects(
     if "grant_zeal" in effects:
         val = _resolve_band(effects["grant_zeal"], ev_data)
         await bot.database.settlement.add_zeal(user_id, server_id, int(val))
+        result["zeal_granted"] = int(val)
 
     if "grant_blueprints" in effects:
         val = _resolve_band(effects["grant_blueprints"], ev_data)

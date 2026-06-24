@@ -144,9 +144,11 @@ def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
     passive_slots = data.get("passive_slots", [])
     if slot_count > 0:
         lines = [
-            f"**[{i + 1}]** {M.format_passive_slot(passive_slots[i])}"
-            if i < len(passive_slots)
-            else f"**[{i + 1}]** *Empty*"
+            (
+                f"**[{i + 1}]** {M.format_passive_slot(passive_slots[i])}"
+                if i < len(passive_slots)
+                else f"**[{i + 1}]** *Empty*"
+            )
             for i in range(slot_count)
         ]
         embed.add_field(name="🔮 Passive Slots", value="\n".join(lines), inline=True)
@@ -162,7 +164,7 @@ def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
     needed_next = M.jewels_to_next_slot(data)
     if needed_next and slot_count < 5:
         thres = PASSIVE_SLOT_THRESHOLDS[slot_count]
-        footer = f"Passive Slot {slot_count + 1}: {invested}/{thres} jewels invested  •  Reroll Type: {DUST_REROLL_TYPE:,} dust  •  Reroll Value: {DUST_REROLL_VALUE:,} dust"
+        footer = f"Passive Slot {slot_count + 1}: {invested}/{thres} jewels cut  •  Reroll Type: {DUST_REROLL_TYPE:,} dust  •  Reroll Value: {DUST_REROLL_VALUE:,} dust"
     else:
         footer = f"All 5 passive slots unlocked  •  Reroll Type: {DUST_REROLL_TYPE:,} dust  •  Reroll Value: {DUST_REROLL_VALUE:,} dust"
     embed.set_footer(text=footer)
@@ -243,7 +245,7 @@ def _build_manage_passives_embed(data: dict, dust: int) -> discord.Embed:
     if needed_next and slot_count < 5:
         thres = PASSIVE_SLOT_THRESHOLDS[slot_count]
         embed.set_footer(
-            text=f"Passive Slot {slot_count + 1}: {invested}/{thres} jewels invested"
+            text=f"Passive Slot {slot_count + 1}: {invested}/{thres} jewels cut"
         )
     else:
         embed.set_footer(text="All 5 passive slots unlocked")
@@ -704,10 +706,10 @@ class _PassiveInvestModal(ui.Modal):
             result_desc = "All 5 passive slots are already unlocked."
         elif any_slot_unlocked:
             result_title = "🔮 Passive Slot Unlocked!"
-            result_desc = f"Invested **{invested}** jewel(s). {last_msg}"
+            result_desc = f"Cut **{invested}** jewel(s). {last_msg}"
         else:
-            result_title = "💎 Jewels Invested"
-            result_desc = f"Invested **{invested}** jewel(s). {last_msg}"
+            result_title = "💎 Jewels Cut"
+            result_desc = f"Cut **{invested}** jewel(s). {last_msg}"
 
         result_embed = discord.Embed(
             title=result_title,

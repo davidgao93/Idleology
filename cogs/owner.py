@@ -232,14 +232,14 @@ class Owner(commands.Cog, name="owner"):
                 description=f"**Core**: Refreshed\n**Database**: Refreshed\n**Cogs**: {len(current_extensions)} reloaded.",
                 color=0x00FF00,
             )
-            await context.send(embed=embed, ephemeral=True)
+            await context.send(embed=embed, ephemeral=True, delete_after=5)
 
         except Exception as e:
             self.bot.logger.error(f"Critical failure during system reload: {e}")
             embed = discord.Embed(
                 title="Reload Failed 💥", description=f"```{e}```", color=0xE02B2B
             )
-            await context.send(embed=embed)
+            await context.send(embed=embed, delete_after=5)
 
     @commands.hybrid_command(
         name="debug", description="Check all active operations for users."
