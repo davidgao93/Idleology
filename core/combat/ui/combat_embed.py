@@ -15,11 +15,44 @@ from core.models import Monster, Player
 
 
 def get_hp_display(current: int, max_hp: int, ward: int) -> str:
-    """Formats HP string, e.g., '100/100 ❤️ (50 🔮)'"""
+    """Formats HP string, e.g., '100/100 ❤️ (50 🔮)' or '100/100 ❤️ (~1.2k 🔮)'"""
     display = f"{current}/{max_hp} ❤️"
     if ward > 0:
-        display += f" ({ward} 🔮)"
+        ward_str = _format_ward(ward)
+        display += f" ({ward_str} 🔮)"
     return display
+
+
+def _format_ward(n: int) -> str:
+    """Format ward with ~ and k/m/b suffix for large values."""
+    if n < 1000:
+        return str(n)
+
+    if n < 1_000_000:
+        val = n / 1000
+        prec = 1 if n < 10_000 else 0
+        suffix = "k"
+    elif n < 1_000_000_000:
+        val = n / 1_000_000
+        prec = 1 if n < 10_000_000 else 0
+        suffix = "m"
+    elif n < 1_000_000_000_000:
+        val = n / 1_000_000_000
+        prec = 1 if n < 10_000_000_000 else 0
+        suffix = "b"
+    else:
+        # Extremely large (trillions+)
+        return f"~{n}"
+
+    if prec == 1:
+        formatted = f"{val:.1f}"
+    else:
+        formatted = f"{val:.0f}"
+
+    if formatted.endswith(".0"):
+        formatted = formatted[:-2]
+
+    return f"~{formatted}{suffix}"
 
 
 def build_status_text(player: Player, monster: Monster | None = None) -> str:
@@ -254,17 +287,17 @@ def create_combat_embed(
         name=f"🐲 {monster.name}",
         value=(
             f"{monster.hp:,}/{monster.max_hp:,} ❤️\n"
-            f"⚔️ ATK {monster.attack:,} | 🛡️ DEF {monster.defence:,}\n"
-            f"~{m_hit}% to hit"
+            f"⚔️ {monster.attack:,} | 🛡️ {monster.defence:,}\n"
+            f"🎯 ~{m_hit}%"
         ),
         inline=True,
     )
     embed.add_field(
-        name=f"❤️ {player.name}",
+        name=f"🧠 {player.name}",
         value=(
             f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
-            f"⚔️ ATK {p_atk:,} | 🛡️ DEF {p_def:,}\n"
-            f"~{p_hit}% to hit"
+            f"⚔️ {p_atk:,} | 🛡️ {p_def:,}\n"
+            f"🎯 ~{p_hit}%"
         ),
         inline=True,
     )

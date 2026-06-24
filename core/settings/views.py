@@ -146,7 +146,7 @@ class SettingsView(BaseView):
             "encounter Boss Doors during regular `/combat`. Disable to bypass all boss "
             "encounters and fight only standard monsters (useful for Slayer tasks or general grinding).\n\n"
             "**🛡️ EXP Protection** — {exp}\n"
-            "When enabled, you will still see experience rewards but will not actually gain it. "
+            "When enabled, you will no longer gain any experience. "
             "Useful for staying at your current level.\n\n"
             "**💰 Auto-Pay for Rest** — {rest}\n"
             "When enabled, using `/rest` while on cooldown will automatically pay the gold cost "

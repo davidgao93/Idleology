@@ -235,6 +235,9 @@ class BossTaskAmountModal(ui.Modal, title="Boss Hunt"):
 
     def __init__(self, task_key: str, boss_display_name: str, parent_view):
         super().__init__()
+        self.title = f"Boss Hunt: {boss_display_name}"
+        self.count_input.label = f"Hunt {boss_display_name} — how many? (1–10)"
+        self.count_input.placeholder = "Closing this modal cancels the boss task"
         self.task_key = task_key
         self.boss_display_name = boss_display_name
         self.parent = parent_view

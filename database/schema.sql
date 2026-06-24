@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `last_propagate_time`         TIMESTAMP DEFAULT NULL,
   `last_checkin_time`           TIMESTAMP DEFAULT NULL,
   `last_stamina_regen`          TIMESTAMP DEFAULT NULL,
-  `last_companion_collect_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `last_companion_collect_time` TIMESTAMP DEFAULT NULL
 );
 
 -- All additive integer currencies (runes, keys, fragments, etc.) live here.

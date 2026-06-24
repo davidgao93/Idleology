@@ -30,6 +30,7 @@ class CompanionMasteryView(BaseView):
         self.mastery = mastery  # {nodes_owned, points_spent, kinship_points}
         self.parent_view = parent
         self._processing = False
+        self.active_branch = "forager"
         self._build_select()
 
     def _build_select(self):
@@ -37,8 +38,26 @@ class CompanionMasteryView(BaseView):
         nodes_owned = self.mastery.get("nodes_owned", {})
         kp = self.mastery.get("kinship_points", 0)
 
+        # Row 0: branch navigation buttons
+        for branch_key, branch in MASTERY_BRANCHES.items():
+            btn = ui.Button(
+                label=branch["label"],
+                style=ButtonStyle.primary if branch_key == self.active_branch else ButtonStyle.secondary,
+                row=0,
+            )
+
+            async def _branch_cb(interaction: Interaction, b=branch_key):
+                self.active_branch = b
+                self._build_select()
+                await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+            btn.callback = _branch_cb
+            self.add_item(btn)
+
+        # Row 1: nodes from the active branch only
+        active_nodes = MASTERY_BRANCHES[self.active_branch]["nodes"]
         options = []
-        for node in get_all_nodes():
+        for node in active_nodes:
             owned = node["id"] in nodes_owned
             ok, _ = can_purchase(node["id"], nodes_owned, kp)
             icon = "✅" if owned else ("🔓" if ok else "🔒")
@@ -54,12 +73,12 @@ class CompanionMasteryView(BaseView):
         select = ui.Select(
             placeholder="Select a node to view or purchase…",
             options=options,
-            row=0,
+            row=1,
         )
         select.callback = self._on_select
         self.add_item(select)
 
-        back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
         back_btn.callback = self._go_back
         self.add_item(back_btn)
 
@@ -68,33 +87,29 @@ class CompanionMasteryView(BaseView):
         kp = self.mastery.get("kinship_points", 0)
         spent = self.mastery.get("points_spent", 0)
 
+        branch = MASTERY_BRANCHES[self.active_branch]
         embed = discord.Embed(
-            title="✨ Companion Mastery",
+            title=f"✨ Companion Mastery — {branch['label']}",
             color=discord.Color.purple(),
         )
         embed.set_footer(text=f"Kinship Points: {kp:,} | Total Spent: {spent:,} KP")
 
-        for branch_key, branch in MASTERY_BRANCHES.items():
-            lines = []
-            for node in branch["nodes"]:
-                owned = node["id"] in nodes_owned
-                ok, reason = can_purchase(node["id"], nodes_owned, kp)
-                if owned:
-                    val = nodes_owned[node["id"]]
-                    extra = f" **[{val}]**" if isinstance(val, str) else ""
-                    icon = "✅"
-                else:
-                    icon = "🔓" if ok else "🔒"
-                    extra = ""
-                lines.append(
-                    f"{icon} **{node['name']}** — {node['cost']} KP{extra}\n"
-                    f"> {node['desc']}"
-                )
-            embed.add_field(
-                name=branch["label"],
-                value="\n".join(lines),
-                inline=False,
+        lines = []
+        for node in branch["nodes"]:
+            owned = node["id"] in nodes_owned
+            ok, reason = can_purchase(node["id"], nodes_owned, kp)
+            if owned:
+                val = nodes_owned[node["id"]]
+                extra = f" **[{val}]**" if isinstance(val, str) else ""
+                icon = "✅"
+            else:
+                icon = "🔓" if ok else "🔒"
+                extra = ""
+            lines.append(
+                f"{icon} **{node['name']}** — {node['cost']} KP{extra}\n"
+                f"> {node['desc']}"
             )
+        embed.add_field(name=branch["label"], value="\n".join(lines), inline=False)
 
         return embed
 

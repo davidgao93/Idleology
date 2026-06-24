@@ -431,7 +431,7 @@ class DistillationMechanics:
         "viper": {
             "name": "Viper",
             "emoji": "🐍",
-            "desc": "On potion use: Deal {value:.0f}% of the heal amount as instant damage, then deal 20% of that hit per turn as venom for {duration:.0f} turns.",
+            "desc": "On potion use: Deal {value:.0f}% of the heal amount as instant damage, then deal a DoT based on that hit per turn as venom for {duration:.0f} turns.",
             "value_min": 100.0,
             "value_max": 500.0,
             "duration_min": 2.0,

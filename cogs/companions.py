@@ -44,12 +44,14 @@ class Companions(commands.Cog):
                     user_id, server_id
                 )
             )
+            last_collect_time = await self.bot.database.users.get_companion_collect_time(user_id)
             view = CompanionListView(
                 self.bot,
                 user_id,
                 companions,
                 server_id=server_id,
                 pending_cookies=pending_cookies,
+                last_collect_time=last_collect_time,
             )
             embed = view.get_embed()
             embed.set_thumbnail(url=COMPANIONS_HUB)

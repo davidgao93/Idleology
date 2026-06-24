@@ -1,3 +1,5 @@
+import copy
+
 import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
@@ -28,6 +30,8 @@ class ForgeView(BaseUpgradeView):
         )
         self.costs = costs
 
+        current_passive = fmt_weapon_passive(self.item.passive) if self.item.passive and self.item.passive != "none" else "None"
+
         self.embed = discord.Embed(
             title=f"Forge {self.item.name}",
             description=(
@@ -38,6 +42,12 @@ class ForgeView(BaseUpgradeView):
         )
         self.embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         self.embed.set_thumbnail(url=UPGRADE_FORGE)
+        self.embed.add_field(name="Current Passive", value=current_passive, inline=False)
+        self.embed.add_field(
+            name=f"Cost (Forges Remaining: {self.item.forges_remaining})",
+            value=cost_lines,
+            inline=False,
+        )
 
         self.clear_items()
 
@@ -50,7 +60,7 @@ class ForgeView(BaseUpgradeView):
         forgemaxx_btn = Button(
             label="Forgemaxx", style=ButtonStyle.danger, disabled=not has_res
         )
-        forgemaxx_btn.callback = self.forgemaxx
+        forgemaxx_btn.callback = self.forgemaxx_preview
         self.add_item(forgemaxx_btn)
 
         self.add_back_button()
@@ -163,14 +173,107 @@ class ForgeView(BaseUpgradeView):
             self.add_item(again_btn)
 
             forgemaxx_btn = Button(label="Forgemaxx", style=ButtonStyle.danger)
-            forgemaxx_btn.callback = self.forgemaxx
+            forgemaxx_btn.callback = self.forgemaxx_preview
             self.add_item(forgemaxx_btn)
 
         self.add_back_button()
 
         await interaction.edit_original_response(embed=result_embed, view=self)
 
-    async def forgemaxx(self, interaction: Interaction):
+    async def forgemaxx_preview(self, interaction: Interaction):
+        """Simulate Forgemaxx and show a resource-cost confirmation before executing."""
+        await interaction.response.defer()
+
+        uid, gid = self.user_id, str(interaction.guild.id)
+
+        initial_costs = EquipmentMechanics.calculate_forge_cost(self.item)
+        if not initial_costs:
+            await interaction.followup.send("No forges remaining!", ephemeral=True)
+            return
+
+        has_res, _, snap = await self._check_triad_costs(initial_costs, uid, gid)
+        if not has_res:
+            await interaction.followup.send(
+                "Insufficient resources for even one forge.", ephemeral=True
+            )
+            return
+
+        sim_item = copy.copy(self.item)
+        sim_gold = await self.bot.database.users.get_gold(uid)
+        sim_ore = snap["ore"]["raw_amt"] + snap["ore"]["ref_amt"]
+        sim_log = snap["log"]["raw_amt"] + snap["log"]["ref_amt"]
+        sim_bone = snap["bone"]["raw_amt"] + snap["bone"]["ref_amt"]
+
+        forges_possible = 0
+        total_ore = total_log = total_bone = total_gold = 0
+        stop_reason = "All forge slots exhausted."
+
+        while sim_item.forges_remaining > 0:
+            c = EquipmentMechanics.calculate_forge_cost(sim_item)
+            if not c:
+                break
+            if sim_ore < c["ore_qty"]:
+                stop_reason = f"Ran out of {c['ore_type'].removesuffix('_ore').title()}."
+                break
+            if sim_log < c["log_qty"]:
+                stop_reason = f"Ran out of {c['log_type'].title()}."
+                break
+            if sim_bone < c["bone_qty"]:
+                stop_reason = f"Ran out of {c['bone_type'].title()}."
+                break
+            if sim_gold < c["gold"]:
+                stop_reason = "Ran out of Gold."
+                break
+
+            sim_ore -= c["ore_qty"]
+            sim_log -= c["log_qty"]
+            sim_bone -= c["bone_qty"]
+            sim_gold -= c["gold"]
+            total_ore += c["ore_qty"]
+            total_log += c["log_qty"]
+            total_bone += c["bone_qty"]
+            total_gold += c["gold"]
+            sim_item.forges_remaining -= 1
+            forges_possible += 1
+
+        if forges_possible == 0:
+            await interaction.followup.send(
+                f"No forges possible: {stop_reason}", ephemeral=True
+            )
+            return
+
+        ore_name = initial_costs["ore_type"].removesuffix("_ore").title()
+        log_name = initial_costs["log_type"].title()
+        bone_name = initial_costs["bone_type"].title()
+
+        embed = discord.Embed(title="⚠️ Confirmation", color=discord.Color.orange())
+        embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
+        embed.set_thumbnail(url=UPGRADE_FORGE)
+        embed.description = (
+            f"This will attempt **{forges_possible}** forge(s).\n\n"
+            f"**Estimated Resources Consumed:**\n"
+            f"⛏️ {ore_name}: {total_ore:,}\n"
+            f"🪓 {log_name}: {total_log:,}\n"
+            f"🎣 {bone_name}: {total_bone:,}\n"
+            f"💰 Gold: {total_gold:,}\n\n"
+            f"*Cost is estimated at current forge tier — successes may increase costs slightly.*\n"
+            f"*Stops when: {stop_reason}*\n\n"
+            f"Proceed?"
+        )
+
+        self.clear_items()
+        confirm_btn = Button(label="Confirm", style=ButtonStyle.danger)
+        confirm_btn.callback = self.forgemaxx_execute
+        self.add_item(confirm_btn)
+
+        cancel_btn = Button(label="Cancel", style=ButtonStyle.secondary)
+        cancel_btn.callback = self.render
+        self.add_item(cancel_btn)
+
+        await interaction.edit_original_response(embed=embed, view=self)
+        self.message = await interaction.original_response()
+
+    async def forgemaxx_execute(self, interaction: Interaction):
         """Loop-forge until the player runs out of resources or forge slots."""
         if self._processing:
             await interaction.response.defer()

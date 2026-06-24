@@ -142,13 +142,13 @@ TUTORIALS: dict[str, dict] = {
             "Companions are creatures that travel with you and **passively boost your stats**. "
             "Each has a passive type — ATK, DEF, Hit, Crit, Ward, Rarity, and more — and a tier that determines how strong the bonus is. "
             "Your **active companion** is always working for you in combat.\n\n"
-            "Companions can be tamed through combat, earned from boss encounters, or **hatched from eggs** at your Settlement's Hatchery. "
-            "Fuse two companions of the same species to produce a stronger one with a chance at a rare passive!"
+            "Companions can be tamed through combat or rarely from boss encounters. "
+            "You can even fuse two companions together!"
         ),
         "tips": [
-            "Only your **active companion** applies its passive — choose the one that fits your build.",
-            "Rare passive types like **Crit** and **Ward** can be game-changing at high tiers.",
-            "You can hold up to **20 companions** in your roster. Fuse duplicates to save space and gain power.",
+            "Only your **active companion(s)** applies its passives — choose the one that fits your build.",
+            "Rare passive types like Special Rarity are extremely powerful and game-changing.",
+            "You can hold up to **20 companions** in your roster. Fuse duplicates or let some go to manage your limit.",
         ],
         "image": YUNA_THUMBNAIL,
         "color": discord.Color.green(),

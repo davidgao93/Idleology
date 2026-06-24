@@ -59,15 +59,15 @@ class RefineView(BaseUpgradeView):
         action_btn.callback = self.confirm_refine
         self.add_item(action_btn)
 
-        if has_refines and has_funds and has_mats:
-            maxx_btn = Button(label="Refinemaxx", style=ButtonStyle.danger)
-            maxx_btn.callback = self.refinemaxx
-            self.add_item(maxx_btn)
+        maxx_btn = Button(label="Refinemaxx", style=ButtonStyle.danger)
+        maxx_btn.disabled = not (has_refines and has_funds and has_mats)
+        maxx_btn.callback = self.refinemaxx_preview
+        self.add_item(maxx_btn)
 
-        if runes > 0:
-            maxx_rune_btn = Button(label="Refinemaxx ✨", style=ButtonStyle.danger)
-            maxx_rune_btn.callback = self.refinemaxx_with_runes_preview
-            self.add_item(maxx_rune_btn)
+        maxx_rune_btn = Button(label="Refinemaxx ✨", style=ButtonStyle.danger)
+        maxx_rune_btn.disabled = runes == 0
+        maxx_rune_btn.callback = self.refinemaxx_with_runes_preview
+        self.add_item(maxx_rune_btn)
 
         self.add_back_button()
 
@@ -205,6 +205,93 @@ class RefineView(BaseUpgradeView):
             await interaction.followup.send(
                 "An error occurred processing the refinement.", ephemeral=True
             )
+
+    async def refinemaxx_preview(self, interaction: Interaction):
+        """Simulate Refinemaxx (no runes) and show a confirmation screen before executing."""
+        await interaction.response.defer()
+
+        uid, sid = self.user_id, str(interaction.guild.id)
+
+        cost_data = EquipmentMechanics.calculate_refine_cost(self.item)
+        gold = await self.bot.database.users.get_gold(uid)
+
+        sim = copy.copy(self.item)
+        sim_gold = gold
+
+        all_mat_cols = {
+            "mining": ["iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"],
+            "woodcutting": ["oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank"],
+            "fishing": ["desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence"],
+        }
+        sim_mats = {}
+        for table, cols in all_mat_cols.items():
+            for col in cols:
+                sim_mats[col] = await self.bot.database.skills.get_single_resource(uid, sid, table, col)
+
+        total_cycles = 0
+        gold_used = 0
+        mat_used = {}
+        stop_reason = "No refine slots remaining."
+
+        while sim.refines_remaining > 0:
+            c = EquipmentMechanics.calculate_refine_cost(sim)
+            cost_gold = c["gold"]
+            materials = c.get("materials", [])
+
+            if sim_gold < cost_gold:
+                stop_reason = "Ran out of Gold."
+                break
+
+            short = next((m for m in materials if sim_mats.get(m["column"], 0) < m["qty"]), None)
+            if short:
+                stop_reason = f"Ran out of {short['name']}."
+                break
+
+            sim_gold -= cost_gold
+            gold_used += cost_gold
+            for mat in materials:
+                sim_mats[mat["column"]] = sim_mats.get(mat["column"], 0) - mat["qty"]
+                mat_used[mat["name"]] = mat_used.get(mat["name"], 0) + mat["qty"]
+
+            sim.refines_remaining -= 1
+            sim.refinement_lvl += 1
+            total_cycles += 1
+
+            if total_cycles >= 10_000:
+                stop_reason = "Reached simulation cap (10,000 refines)."
+                break
+
+        if total_cycles == 0:
+            await interaction.followup.send(f"No refines possible: {stop_reason}", ephemeral=True)
+            return
+
+        mat_lines = (
+            "\n".join(f"  {name}: {qty:,}" for name, qty in mat_used.items()) or "  None"
+        )
+
+        embed = discord.Embed(title="⚠️ Confirmation", color=discord.Color.orange())
+        embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
+        embed.set_thumbnail(url=UPGRADE_REFINE)
+        embed.description = (
+            f"This will perform **{total_cycles:,}** refine(s) (no runes).\n\n"
+            f"**Estimated Resources Consumed:**\n"
+            f"💰 Gold: {gold_used:,}\n"
+            f"📦 Materials:\n{mat_lines}\n\n"
+            f"*Stops when: {stop_reason}*\n\n"
+            f"Proceed?"
+        )
+
+        self.clear_items()
+        confirm_btn = Button(label="Confirm", style=ButtonStyle.danger)
+        confirm_btn.callback = self.refinemaxx
+        self.add_item(confirm_btn)
+
+        cancel_btn = Button(label="Cancel", style=ButtonStyle.secondary)
+        cancel_btn.callback = self.render
+        self.add_item(cancel_btn)
+
+        await interaction.edit_original_response(embed=embed, view=self)
+        self.message = await interaction.original_response()
 
     async def refinemaxx(self, interaction: Interaction):
         """Loop-refine until the player runs out of a required resource."""

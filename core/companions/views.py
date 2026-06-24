@@ -1,6 +1,7 @@
 # core/companions/views.py
 
 import asyncio
+from datetime import datetime
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
@@ -97,12 +98,14 @@ class CompanionListView(BaseView):
         companions: list[Companion],
         server_id: str = "",
         pending_cookies: int = 0,
+        last_collect_time: str | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.companions = companions
         self._pending_cookies = pending_cookies
+        self._last_collect_time = last_collect_time
         self.update_buttons()
 
     async def close_view(self, interaction: Interaction):
@@ -141,9 +144,22 @@ class CompanionListView(BaseView):
             select.callback = self._on_select
             self.add_item(select)
 
-        # Action buttons (row 1)
+        # Calculate ready adventures for the collect button label
+        active_comps = [c for c in self.companions if c.is_active]
+        ready_cycles = 0
+        if self._last_collect_time and active_comps:
+            try:
+                diff = (datetime.now() - datetime.fromisoformat(self._last_collect_time)).total_seconds()
+                ready_cycles = min(
+                    int(diff // CompanionMechanics.COLLECTION_INTERVAL_SECONDS),
+                    CompanionMechanics.MAX_COLLECTION_CYCLES,
+                )
+            except ValueError:
+                pass
+
+        collect_label = f"Collect ({ready_cycles} ready)" if ready_cycles > 0 else "Collect"
         collect_btn = ui.Button(
-            label="Collect", style=ButtonStyle.success, emoji="💰", row=1
+            label=collect_label, style=ButtonStyle.success, emoji="💰", row=1
         )
         collect_btn.callback = self.collect_loot
         self.add_item(collect_btn)
@@ -229,7 +245,10 @@ class CompanionListView(BaseView):
         result_msg = await CompanionLogic.collect_passive_rewards(
             self.bot, self.user_id, str(interaction.guild.id)
         )
-        await interaction.response.send_message(result_msg, ephemeral=True)
+        self._last_collect_time = datetime.now().isoformat()
+        self.update_buttons()
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send(result_msg, ephemeral=True)
 
     async def open_xp_distribute(self, interaction: Interaction):
         await interaction.response.defer()
