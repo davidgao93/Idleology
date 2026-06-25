@@ -3,19 +3,36 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.delve.mechanics import DelveMechanics, DelveState
-from core.images import DELVE_MAIN, DELVE_MINING, DELVE_REWARDS
+from core.images import DELVE_HUB, DELVE_MAIN, DELVE_MINING, DELVE_REWARDS
 from core.skills.mechanics import SkillMechanics
 
 
 class DelveEntryView(BaseView):
     def __init__(
-        self, bot, user_id, server_id, cost, start_callback, *, parent_gather_view=None
+        self, bot, user_id, server_id, cost, start_callback, delve_stats, *, parent_gather_view=None
     ):
         super().__init__(bot, user_id, server_id)
         self.cost = cost
         self.start_callback = start_callback
+        self.delve_stats = delve_stats
         self.parent_gather_view = parent_gather_view
         self._processing = False
+
+    def build_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="⛏️ Deep Delve Expedition", color=discord.Color.dark_grey()
+        )
+        embed.set_thumbnail(url=DELVE_HUB)
+        embed.description = (
+            f"**Permit Cost:** {self.cost:,} Gold\n"
+            f"**Fuel Capacity:** {DelveMechanics.get_max_fuel(self.delve_stats['fuel_lvl'])}\n"
+            f"💎 **Obsidian Shards:** {self.delve_stats['shards']}\n\n"
+            "The Guild requires a permit for all deep earth operations.\n"
+            "Deeper layers yield high rewards, but stability is critical.\n"
+            "Once your fuel reaches 0, it's over, you lose it all.\n"
+            "Extract before the mines consume you."
+        )
+        return embed
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
@@ -44,6 +61,29 @@ class DelveEntryView(BaseView):
         await self.bot.database.users.modify_gold(self.user_id, -self.cost)
         await self.start_callback(interaction)
         self.stop()
+
+    @ui.button(label="Shop", style=ButtonStyle.secondary, emoji="🛠️")
+    async def shop(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+        fresh_stats = await self.bot.database.delve.get_profile(self.user_id, self.server_id)
+        self.delve_stats.update(fresh_stats)
+
+        shop_embed = discord.Embed(title="🛠️ Delve Workshop", color=discord.Color.dark_orange())
+        shop_embed.set_thumbnail(url=DELVE_HUB)
+        shop_embed.description = f"💎 **Obsidian Shards:** {self.delve_stats['shards']}"
+        shop_embed.add_field(
+            name="Upgrades",
+            value="Use Shards to improve your specialized equipment.",
+            inline=False,
+        )
+
+        async def back_to_entry(inter: Interaction):
+            await inter.response.edit_message(embed=self.build_embed(), view=self)
+
+        shop_view = DelveUpgradeView(
+            self.bot, self.user_id, self.server_id, self.delve_stats, back_callback=back_to_entry
+        )
+        await interaction.edit_original_response(embed=shop_embed, view=shop_view)
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary)
     async def cancel(self, interaction: Interaction, button: ui.Button):
@@ -240,11 +280,15 @@ class DelveView(BaseView):
             }
             for col, amt in ore_yield.items():
                 self.state.ore_found[col] = self.state.ore_found.get(col, 0) + amt
-            ore_parts = [
-                f"+{amt} {name_map.get(col, col)}"
-                for col, amt in ore_yield.items()
-                if amt > 0
-            ]
+            ore_parts = []
+            for col, amt in ore_yield.items():
+                if amt > 0:
+                    label = name_map.get(col, col)
+                    total = self.state.ore_found[col]
+                    if total > amt:
+                        ore_parts.append(f"+{amt} {label} ({total} total)")
+                    else:
+                        ore_parts.append(f"+{amt} {label}")
             msg += f" ⛏️ Ore Vein! {', '.join(ore_parts)}"
 
         s = DelveMechanics.check_rewards(self.state.depth)
@@ -499,11 +543,14 @@ class DelveView(BaseView):
 
 
 class DelveUpgradeView(BaseView):
-    def __init__(self, bot, user_id, server_id, stats):
+    def __init__(self, bot, user_id, server_id, stats, *, back_callback=None):
         super().__init__(bot, user_id, server_id)
         self.stats = stats  # dict from repo
         self._processing = False
+        self.back_callback = back_callback
         self.update_buttons()
+        if back_callback:
+            self.children[-1].label = "Back"
 
     def update_buttons(self):
         shards = self.stats["shards"]
@@ -563,6 +610,9 @@ class DelveUpgradeView(BaseView):
 
     @ui.button(label="Close", style=ButtonStyle.secondary, row=1)
     async def close(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.defer()
-        await interaction.delete_original_response()
         self.stop()
+        if self.back_callback:
+            await self.back_callback(interaction)
+        else:
+            await interaction.response.defer()
+            await interaction.delete_original_response()

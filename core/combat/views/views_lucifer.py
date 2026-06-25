@@ -12,11 +12,13 @@ from core.combat.views.views_uber_hub import UberReturnView
 class LuciferChoiceView(BaseView):
     """Soul Core selection after defeating Lucifer."""
 
-    def __init__(self, bot, user_id, player):
-        super().__init__(bot, user_id)
+    def __init__(self, bot, user_id, player, server_id: str = None, rematch_callback=None):
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
+        self.server_id = server_id
         self.player = player
+        self.rematch_callback = rematch_callback
         self.message = None  # Set by caller after send
 
     async def on_timeout(self):
@@ -33,9 +35,31 @@ class LuciferChoiceView(BaseView):
         await super().on_timeout()
 
     async def _conclude(self, interaction, msg):
+        from core.combat.views.views import PostCombatView
+
+        await interaction.response.defer()
         embed = interaction.message.embeds[0]
         embed.add_field(name="Choice", value=msg, inline=False)
-        await interaction.response.edit_message(embed=embed, view=None)
+
+        stamina_data = await self.bot.database.users.get_stamina(self.user_id)
+        stamina = stamina_data["combat_stamina"]
+
+        post_view = (
+            PostCombatView(
+                self.bot,
+                self.user_id,
+                self.server_id,
+                self.player,
+                stamina,
+                self.rematch_callback,
+            )
+            if self.rematch_callback
+            else None
+        )
+
+        msg_obj = await interaction.edit_original_response(embed=embed, view=post_view)
+        if post_view:
+            post_view.message = msg_obj
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 

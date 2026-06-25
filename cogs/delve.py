@@ -63,21 +63,10 @@ class Delve(commands.Cog):
                     await inter.response.edit_message(embed=embed, view=view)
                     view.message = await inter.original_response()
 
-                entry_embed = discord.Embed(
-                    title="⛏️ Deep Delve Expedition", color=discord.Color.dark_grey()
+                entry_view = DelveEntryView(
+                    self.bot, user_id, server_id, entry_cost, start_game, delve_stats
                 )
-                entry_embed.description = (
-                    f"**Permit Cost:** {entry_cost:,} Gold\n"
-                    f"**Fuel Capacity:** {DelveMechanics.get_max_fuel(delve_stats['fuel_lvl'])}\n\n"
-                    "The Guild requires a permit for all deep earth operations.\n"
-                    "Deeper layers yield high rewards, but stability is critical.\n"
-                    "Once your fuel reaches 0, it's over, you lose it all.\n"
-                    "Extract before the mines consume you."
-                )
-                entry_embed.set_thumbnail(url=DELVE_HUB)
-                return entry_embed, DelveEntryView(
-                    self.bot, user_id, server_id, entry_cost, start_game
-                )
+                return entry_view.build_embed(), entry_view
 
             gate = TutorialGateView(
                 self.bot, user_id, server_id, "delve", build_main=_build_entry
@@ -102,20 +91,8 @@ class Delve(commands.Cog):
             view.message = await inter.original_response()
 
         # 5. Show Entry View
-        embed = discord.Embed(
-            title="⛏️ Deep Delve Expedition", color=discord.Color.dark_grey()
-        )
-        embed.description = (
-            f"**Permit Cost:** {entry_cost:,} Gold\n"
-            f"**Fuel Capacity:** {DelveMechanics.get_max_fuel(delve_stats['fuel_lvl'])}\n\n"
-            "The Guild requires a permit for all deep earth operations.\n"
-            "Deeper layers yield high rewards, but stability is critical.\n"
-            "Once your fuel reaches 0, it's over, you lose it all.\n"
-            "Extract before the mines consume you."
-        )
-        embed.set_thumbnail(url=DELVE_HUB)
-        view = DelveEntryView(self.bot, user_id, server_id, entry_cost, start_game)
-        await interaction.response.send_message(embed=embed, view=view)
+        view = DelveEntryView(self.bot, user_id, server_id, entry_cost, start_game, delve_stats)
+        await interaction.response.send_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(

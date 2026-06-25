@@ -120,7 +120,7 @@ MINING_TREE: Dict[str, Dict[str, Any]] = {
     "tool_resonance": {
         "branch": "synergy",
         "cost": 1,
-        "desc": "Mining tool upgrade costs reduced by 12%.",
+        "desc": "All tool upgrade costs reduced by 12%.",
     },
     "skilled_hands": {
         "branch": "synergy",

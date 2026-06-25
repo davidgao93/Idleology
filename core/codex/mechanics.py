@@ -65,7 +65,6 @@ _PLAYER_DEBUFFS: list[tuple[str, str, tuple | None]] = [
     ("pdr_pct", "the Flayed", (0.20, 0.25, 0.30, 0.35, 0.40)),
     ("ward_gen_pct", "the Fractured", (0.25, 0.30, 0.40, 0.50, 0.60)),
     ("hp_entry_pct", "the Wounded", (0.20, 0.25, 0.30, 0.35, 0.40)),
-    ("potion_count", "Scarcity", (1.0, 1.0, 2.0, 2.0, 3.0)),
 ]
 
 # Ward disable only available at difficulty 3+
@@ -122,8 +121,6 @@ def _desc_player_mod(mod_type: str, value: float) -> str:
         return f"-{int(value * 100)}% ward gen"
     if mod_type == "hp_entry_pct":
         return f"Enter each fight at {int((1 - value) * 100)}% HP"
-    if mod_type == "potion_count":
-        return f"-{int(value)} potion{'s' if int(value) != 1 else ''}"
     return mod_type
 
 
@@ -456,9 +453,6 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
             player.current_hp = min(
                 player.current_hp, int(player.total_max_hp * (1 - value))
             )
-
-        elif mod_type == "potion_count":
-            player.potions = max(0, player.potions - int(value))
 
 
 # ---------------------------------------------------------------------------

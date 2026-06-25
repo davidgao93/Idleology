@@ -425,9 +425,9 @@ TUTORIALS: dict[str, dict] = {
             "*The pages remember. They will stay with you long after this run ends… if you survive.*"
         ),
         "tips": [
-            "Tomes are **permanent multiplier bonuses** — prioritize types that fit your build.",
-            "Your **Signature** shapes the entire run; boons are temporary but stack meaningfully.",
-            "Know when the run is worth pushing and when it isn't — each wave gets harder.",
+            "Tomes are **permanent multiplier bonuses** — they make you exponentially stronger.",
+            "**Signatures** are dangerous; pick boons to counteract them accordingly.",
+            "Dying isn't a complete loss, you simply move on to the next chapter.",
         ],
         "image": SERAPHINE_THUMBNAIL,
         "color": discord.Color.dark_purple(),

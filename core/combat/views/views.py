@@ -890,7 +890,9 @@ class CombatView(BaseView):
             )
             await ping_msg.delete(delay=45)
             contract_choice_view = LuciferChoiceView(
-                self.bot, self.user_id, self.player
+                self.bot, self.user_id, self.player,
+                server_id=self.server_id,
+                rematch_callback=self.rematch_callback,
             )
             await message.edit(embed=embed, view=contract_choice_view)
             contract_choice_view.message = message

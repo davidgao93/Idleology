@@ -297,6 +297,23 @@ class PotionDistillationView(BaseView):
         await self._ensure_session()
         s = self.session
 
+        # Guard: session already complete (e.g. bot restart with step=9 in DB).
+        # Show confirm/abandon instead of reagent buttons so the player can't do a 10th step.
+        if s.get("step", 0) >= DistillationMechanics.STEPS and s.get("base_type"):
+            confirm_view = _ConfirmOrAbandonView(
+                self.bot, self.user_id, self.server_id, self
+            )
+            embed = self._build_embed()
+            embed.set_footer(
+                text="Distillation complete — confirm to keep this passive, or abandon the run."
+            )
+            if interaction.response.is_done():
+                await interaction.edit_original_response(embed=embed, view=confirm_view)
+            else:
+                await interaction.response.edit_message(embed=embed, view=confirm_view)
+            self.stop()
+            return
+
         # Lock in the 3 core choices for this presentation (prevents re-randomizing between
         # embed fields, button labels, and the click handler that assigns base_type).
         if s.get("step", 0) == 0 and not s.get("base_type"):
@@ -362,6 +379,20 @@ class PotionDistillationView(BaseView):
             await self._ensure_session()
             s = self.session
             current_step = s.get("step", 0)
+
+            # Guard: stale button click after session already completed (race with self.stop()).
+            if current_step >= DistillationMechanics.STEPS:
+                confirm_view = _ConfirmOrAbandonView(
+                    self.bot, self.user_id, self.server_id, self
+                )
+                embed = self._build_embed()
+                embed.set_footer(
+                    text="Distillation complete — confirm to keep this passive, or abandon the run."
+                )
+                await interaction.edit_original_response(embed=embed, view=confirm_view)
+                self.stop()
+                self._processing = False
+                return
 
             # Get the *exact* property set that was shown for this step (guarantees button <-> effect match)
             try:

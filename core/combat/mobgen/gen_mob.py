@@ -138,6 +138,29 @@ async def generate_boss(player, monster, phase, phase_index):
     monster.xp = random.randint(1, 9) + monster.level * 100
 
     monster.modifiers = []
+    # Reset all modifier-driven combat stacks. These are tied to specific modifiers
+    # that are being re-rolled for this phase — stale values from the previous phase
+    # would cause doom to silently fizzle (modifier gone but stacks remain) or
+    # instantly kill the player on the first hit of a new phase (stacks carried in).
+    monster.doom_stacks = 0
+    monster.wrathful_stacks = 0
+    monster.corrode_stacks = 0
+    monster.bleed_stacks = 0
+    monster.spike_stacks = 0
+    monster.onslaught_bonus_atk = 0.0
+    monster.pressure_stacks = 0
+    monster.pressure_player_critted = False
+    monster.flashfire_charges = 0
+    monster.death_rattle_triggered = False
+    monster.death_rattle_countdown = -1
+    monster.colossus_active = False
+    monster.colossus_hit_negated = False
+    monster.colossus_dr = 0.0
+    monster.temporal_window_damage = 0
+    monster.undying_resolve_triggered = False
+    monster.undying_immune_turns = 0
+    monster.undying_atk_boost_turns = 0
+    monster.potion_uses_tracked = 0
     _assign_modifiers(
         monster, phase["modifiers_count"], is_boss=True, force_max_eligible_tier=True
     )
@@ -165,7 +188,9 @@ async def generate_ascent_monster(
     )
     temp_monster_for_stats = calculate_monster_stats(temp_monster_for_stats)
     monster.attack = temp_monster_for_stats.attack
+    monster.base_attack = temp_monster_for_stats.base_attack
     monster.defence = temp_monster_for_stats.defence
+    monster.base_defence = temp_monster_for_stats.base_defence
 
     monster = await fetch_monster_image(random.randint(30, 120), monster)
 

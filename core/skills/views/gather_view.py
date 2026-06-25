@@ -460,7 +460,6 @@ class GatherView(BaseView):
 
         from core.delve.delve_views import DelveEntryView, DelveView
         from core.delve.mechanics import DelveMechanics, DelveState
-        from core.images import DELVE_HUB
 
         mining_data = await self.bot.database.skills.get_data(
             self.user_id, self.server_id, "mining"
@@ -499,26 +498,16 @@ class GatherView(BaseView):
             await inter.response.edit_message(embed=embed, view=view)
             view.message = await inter.original_response()
 
-        entry_embed = discord.Embed(
-            title="⛏️ Deep Delve Expedition", color=discord.Color.dark_grey()
-        )
-        entry_embed.description = (
-            f"**Permit Cost:** {entry_cost:,} Gold\n"
-            f"**Fuel Capacity:** {DelveMechanics.get_max_fuel(delve_stats['fuel_lvl'])}\n\n"
-            "Drill deep, gather ore, extract before fuel runs out.\n"
-            "← Gathering returns you to the hub after the run."
-        )
-        entry_embed.set_thumbnail(url=DELVE_HUB)
-
         entry_view = DelveEntryView(
             self.bot,
             self.user_id,
             self.server_id,
             entry_cost,
             start_delve,
+            delve_stats,
             parent_gather_view=gather_parent,
         )
-        await interaction.edit_original_response(embed=entry_embed, view=entry_view)
+        await interaction.edit_original_response(embed=entry_view.build_embed(), view=entry_view)
         entry_view.message = await interaction.original_response()
 
     # ------------------------------------------------------------------

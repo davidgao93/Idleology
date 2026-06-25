@@ -282,7 +282,7 @@ HORIZON_PATHS = {
         "event_type": "uber_complete",
         "goal": 3,
         "token_reward": 4,
-        "level_required": 60,
+        "level_required": 70,
         "loot_preview": "✨ +2 Random Uber Sigils",
     },
     "alchemist": {
