@@ -82,6 +82,10 @@ def _compute_combat_bonuses(p) -> dict:
     if p.equipped_helmet and _normalize(p.equipped_helmet.passive) == "juggernaut":
         cb["atk"] += int(p.flat_def * p.equipped_helmet.passive_lvl * 0.04)
 
+    # Transcendence (armor passive — 20% of total ATK + DEF as bonus ATK)
+    if p.equipped_armor and _normalize(p.equipped_armor.passive) == "transcendence":
+        cb["atk"] += int((p.get_total_attack() + p.get_total_defence()) * 0.20)
+
     # Sturdy family (weapon passive — boosts defence by a fixed %)
     idx, _ = get_weapon_tier(p, "sturdy")
     if idx >= 0:

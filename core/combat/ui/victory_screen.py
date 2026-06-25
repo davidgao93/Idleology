@@ -63,7 +63,7 @@ def create_victory_embed(
 
     embed = discord.Embed(
         title=cfg.get("title", "Victory! 🎉"),
-        description=f"{player.name} has slain the {monster.name} with {player.current_hp} ❤️ remaining!",
+        description=f"{player.name} has slain the {monster.name} with {player.current_hp:,} ❤️ remaining in {monster.combat_round} turn{'s' if monster.combat_round != 1 else ''}!",
         color=0x00FF00,
     )
     embed.set_thumbnail(url=cfg.get("thumbnail_url") or COMBAT_VICTORY)

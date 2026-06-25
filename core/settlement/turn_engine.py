@@ -295,12 +295,7 @@ async def process_next_turn(
         summary["dt_resources"]["war_camp_stamina"] = war_camp_stamina
     if companion_cookie > 0:
         summary["dt_resources"]["companion_xp"] = companion_cookie
-        try:
-            await bot.database.settlement.add_pending_companion_cookies(
-                user_id, server_id, companion_cookie
-            )
-        except Exception:
-            pass
+        await bot.database.users.modify_currency(user_id, "companion_pet_xp", companion_cookie)
 
     return summary
 

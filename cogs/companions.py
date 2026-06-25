@@ -39,10 +39,8 @@ class Companions(commands.Cog):
         async def _build():
             rows = await self.bot.database.companions.get_all(user_id)
             companions = [create_companion(row) for row in rows] if rows else []
-            pending_cookies = (
-                await self.bot.database.settlement.get_pending_companion_cookies(
-                    user_id, server_id
-                )
+            pending_cookies = await self.bot.database.users.get_currency(
+                user_id, "companion_pet_xp"
             )
             last_collect_time = await self.bot.database.users.get_companion_collect_time(user_id)
             view = CompanionListView(

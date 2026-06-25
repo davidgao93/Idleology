@@ -22,7 +22,7 @@ from core.settlement.constants import (
     BM_TREE_NODES,
     SETTLEMENT_EVENTS,
 )
-from core.settlement.mechanics import SettlementMechanics
+from core.settlement.mechanics import SettlementMechanics, execute_bm_offer
 from core.settlement.turn_engine import (
     calculate_offer_value,
     complete_bm_deal_instant,
@@ -885,13 +885,10 @@ class OfferBuilderView(SettlementBaseView):
 
         try:
             if not self._offer:
-                await interaction.followup.send(
-                    "Nothing in your offer.", ephemeral=True
-                )
+                await interaction.followup.send("Nothing in your offer.", ephemeral=True)
                 return
 
-            uid = self.user_id
-            sid = self.server_id
+            uid, sid = self.user_id, self.server_id
 
             # Re-validate against live inventory at submission time
             live_inv = await _load_player_inventory(self.bot, uid, sid)
@@ -902,71 +899,16 @@ class OfferBuilderView(SettlementBaseView):
                         f"Not enough **{label}**! You now have {live_inv.get(res, 0):,}, need {qty:,}.",
                         ephemeral=True,
                     )
-                    self._processing = False
                     return
 
-            # Deduct resources from player inventory
-            settlement_changes: dict = {}
-            user_currency_changes: dict = {}
-            for res, qty in self._offer.items():
-                if res in _SETTLEMENT_RESOURCE_KEYS or res in _SKILL_RESOURCE_KEYS:
-                    settlement_changes[res] = settlement_changes.get(res, 0) - qty
-                else:
-                    user_currency_changes[res] = user_currency_changes.get(res, 0) - qty
-
-            if settlement_changes:
-                await self.bot.database.settlement.commit_production(
-                    uid, sid, settlement_changes
-                )
-            for cur, delta in user_currency_changes.items():
-                try:
-                    if cur in _SETTLEMENT_MATERIAL_KEYS:
-                        await self.bot.database.settlement_materials.modify(
-                            uid, cur, delta
-                        )
-                    else:
-                        await self.bot.database.users.modify_currency(uid, cur, delta)
-                except Exception:
-                    pass
-
-            # Calculate value and turns
-            tree_nodes = await self.bot.database.settlement.get_bm_tree(uid, sid)
-
-            # Check for active events (merchant caravan = value bonus)
-            active_events = await self.bot.database.settlement.get_active_events(
-                uid, sid
+            result = await execute_bm_offer(
+                self.bot, uid, sid,
+                offer=self._offer,
+                active_biases=self._active_biases,
+                building_tier=self.building.tier,
             )
-            event_value_bonus = 0.0
-            for ev in active_events:
-                if ev["event_type"] == "ongoing":
-                    ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
-                    raw_val = ev_def.get("effects", {}).get("bm_value_bonus", 0.0)
-                    ev_data = ev.get("data") or {}
-                    if raw_val == "band":
-                        raw_val = ev_data.get("band", 0.0)
-                    elif raw_val == "neg_band":
-                        raw_val = -ev_data.get("band", 0.0)
-                    if isinstance(raw_val, (int, float)):
-                        event_value_bonus += raw_val
 
-            raw_value = calculate_offer_value(
-                self._offer, tree_nodes, self.building.tier
-            )
-            raw_value = int(raw_value * (1 + event_value_bonus))
-            # Divide by 100 internally: Valuables were ×100 in the table so rewards
-            # stay the same as before, while non-Valuables are worth 100× less.
-            value = raw_value // 100
-            turns = compute_processing_turns(value, self.building.tier, tree_nodes)
-
-            # Log offer submission details
-            from core.settlement.bm_log import BMLogger
-
-            _bm_submit_log = BMLogger(uid, value, turns)
-            _bm_submit_log.log_offer(self._offer, raw_value, event_value_bonus)
-            _bm_submit_log.log_tree(tree_nodes, self._active_biases)
-            _bm_submit_log.close()
-
-            if value <= 0:
+            if result.get("error") == "no_value":
                 await interaction.followup.send(
                     "This offer has no tradeable value.", ephemeral=True
                 )
@@ -974,24 +916,13 @@ class OfferBuilderView(SettlementBaseView):
 
             import asyncio
 
-            if turns == 0:
-                # Instant deal — process immediately (Efficiency III node)
-                user_row = await self.bot.database.users.get(uid, sid)
-                player_level = user_row["level"] if user_row else 1
-                rewards = await complete_bm_deal_instant(
-                    self.bot,
-                    uid,
-                    sid,
-                    value,
-                    self._active_biases,
-                    player_level,
-                    tree_nodes,
-                )
-                summary_text = (
-                    rewards["summary_lines"][0]
-                    if rewards["summary_lines"]
-                    else "Nothing"
-                )
+            raw_value = result["raw_value"]
+            value = result["value"]
+            turns = result["turns"]
+
+            if result.get("instant"):
+                rewards = result["rewards"]
+                summary_text = rewards["summary_lines"][0] if rewards["summary_lines"] else "Nothing"
                 embed = discord.Embed(
                     title="⚡ Instant Deal Complete!",
                     description=(
@@ -1001,49 +932,27 @@ class OfferBuilderView(SettlementBaseView):
                     ),
                     color=discord.Color.gold(),
                 )
-                embed.set_author(
-                    name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR
-                )
+                embed.set_author(name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR)
                 embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
-                confirm_view = _InstantDealConfirmView(
-                    self.bot, uid, sid, self.parent_market
-                )
+                confirm_view = _InstantDealConfirmView(self.bot, uid, sid, self.parent_market)
                 await interaction.edit_original_response(embed=embed, view=confirm_view)
                 self.stop()
                 return
-            else:
-                # Get current turn count for record-keeping
-                turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
-                current_turn = turns_data.get("total_development_turns", 0)
 
-                await self.bot.database.settlement.create_pending_deal(
-                    uid,
-                    sid,
-                    offer_data=self._offer,
-                    total_value=value,
-                    turns_required=turns,
-                    active_biases=self._active_biases,
-                    current_turn=current_turn,
-                )
-
-                embed = discord.Embed(
-                    title="✅ Deal Submitted",
-                    description=(
-                        f"**Max eyes the goods and gives a thin smile.**\n\n"
-                        f"Value assessed: **{raw_value:,}**\n"
-                        f"Processing: **{turns}** Development Turn(s)\n\n"
-                        f"Advance turns on the dashboard to collect your loot."
-                    ),
-                    color=discord.Color.green(),
-                )
-                embed.set_author(
-                    name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR
-                )
-                embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
-                await interaction.edit_original_response(
-                    embed=embed, view=discord.ui.View()
-                )
-                await asyncio.sleep(2)
+            embed = discord.Embed(
+                title="✅ Deal Submitted",
+                description=(
+                    f"**Max eyes the goods and gives a thin smile.**\n\n"
+                    f"Value assessed: **{raw_value:,}**\n"
+                    f"Processing: **{turns}** Development Turn(s)\n\n"
+                    f"Advance turns on the dashboard to collect your loot."
+                ),
+                color=discord.Color.green(),
+            )
+            embed.set_author(name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR)
+            embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
+            await interaction.edit_original_response(embed=embed, view=discord.ui.View())
+            await asyncio.sleep(2)
 
             # Return to main market view
             pending = await self.bot.database.settlement.get_pending_deal(uid, sid)
@@ -1051,9 +960,7 @@ class OfferBuilderView(SettlementBaseView):
             self.parent_market.has_pending_deal = bool(pending)
             self.parent_market._setup_ui()
             await interaction.edit_original_response(
-                embed=self.parent_market.build_embed(
-                    pending_deal=pending, zeal_data=zeal_data
-                ),
+                embed=self.parent_market.build_embed(pending_deal=pending, zeal_data=zeal_data),
                 view=self.parent_market,
             )
             self.stop()

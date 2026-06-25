@@ -461,3 +461,386 @@ class SettlementMechanics:
                 }
             )
         return cost
+
+
+# ---------------------------------------------------------------------------
+# Resource category sets — which DB table owns each BM-tradeable resource key.
+# ---------------------------------------------------------------------------
+
+_SETTLEMENT_RESOURCE_KEYS: frozenset[str] = frozenset(["timber", "stone"])
+_SETTLEMENT_MATERIAL_KEYS: frozenset[str] = frozenset(
+    [
+        "magma_core",
+        "life_root",
+        "spirit_shard",
+        "celestial_stone",
+        "infernal_cinder",
+        "void_crystal",
+        "bound_crystal",
+        "diviners_rod",
+        "unidentified_blueprint",
+    ]
+)
+_SKILL_RESOURCE_KEYS: frozenset[str] = frozenset(
+    [
+        "iron_ore", "coal_ore", "gold_ore", "platinum_ore", "idea_ore",
+        "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar",
+        "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
+        "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank",
+        "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
+        "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence",
+    ]
+)
+
+
+# ---------------------------------------------------------------------------
+# Async service methods — orchestration called by view button handlers.
+# Views remain responsible for interaction responses and local state caching.
+# ---------------------------------------------------------------------------
+
+
+async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plots: list) -> dict:
+    """
+    Calculates passive building production, commits it to the database, and
+    returns a result dict for the view to render.
+
+    Result keys (always present):
+      too_early  – bool: < 0.1 h elapsed; nothing committed
+      has_output – bool: any resources were produced
+      hours      – float
+
+    Additional keys when has_output is True:
+      display_changes    – dict (display-ready keys including renamed specials)
+      cookie_xp          – int
+      war_camp_stamina   – int (capped at 10)
+      market_gold        – int
+      dc_earned          – int
+      collection_time    – ISO string stamped after commit
+    """
+    from datetime import datetime
+
+    from core.settlement.constants import SETTLEMENT_EVENTS
+    from core.skills.mastery import has_master_quarry, has_seasoned_timber
+
+    mining = await bot.database.skills.get_data(uid, sid, "mining")
+    wood = await bot.database.skills.get_data(uid, sid, "woodcutting")
+    fish = await bot.database.skills.get_data(uid, sid, "fishing")
+
+    mastery_row = await bot.database.skills.get_mastery(uid, sid)
+    refining_bonus = 0.0
+    if mastery_row:
+        if has_master_quarry(mastery_row):
+            refining_bonus += 0.10
+        if has_seasoned_timber(mastery_row):
+            refining_bonus += 0.10
+
+    raw_inv: dict = {
+        "iron_ore": mining["iron_ore"], "coal_ore": mining["coal_ore"],
+        "gold_ore": mining["gold_ore"], "platinum_ore": mining["platinum_ore"],
+        "idea_ore": mining["idea_ore"],
+        "oak_logs": wood["oak_logs"], "willow_logs": wood["willow_logs"],
+        "mahogany_logs": wood["mahogany_logs"], "magic_logs": wood["magic_logs"],
+        "idea_logs": wood["idea_logs"],
+        "desiccated_bones": fish["desiccated_bones"], "regular_bones": fish["regular_bones"],
+        "sturdy_bones": fish["sturdy_bones"], "reinforced_bones": fish["reinforced_bones"],
+        "titanium_bones": fish["titanium_bones"],
+    }
+
+    now = datetime.now()
+    last = datetime.fromisoformat(settlement.last_collection_time)
+    hours = max(0.0, (now - last).total_seconds() / 3600)
+
+    if hours < 0.1:
+        return {"too_early": True, "has_output": False, "hours": hours}
+
+    adj_bonuses = SettlementMechanics.calculate_adjacency_bonuses(plots, settlement.buildings)
+    plot_by_idx = {p.plot_index: p for p in plots}
+
+    active_evs = await bot.database.settlement.get_active_events(uid, sid)
+    event_gen_bonus = 0.0
+    event_conv_bonus = 0.0
+    event_market_gold_bonus = 0.0
+    for ev in active_evs:
+        ev_def = SETTLEMENT_EVENTS.get(ev.get("event_key", ""), {})
+        ev_data = ev.get("data", {})
+        effs = ev_def.get("effects", {})
+
+        def _rb(v, _d=ev_data):
+            if v == "band":
+                return _d.get("band", 0.0)
+            if v == "neg_band":
+                return -_d.get("band", 0.0)
+            return v if isinstance(v, (int, float)) else 0.0
+
+        if "generator_bonus" in effs:
+            event_gen_bonus += _rb(effs["generator_bonus"])
+        if "converter_bonus" in effs:
+            event_conv_bonus += _rb(effs["converter_bonus"])
+        if "market_gold_bonus" in effs:
+            event_market_gold_bonus += _rb(effs["market_gold_bonus"])
+
+    total_changes: dict[str, float] = {}
+    for b in settlement.buildings:
+        if b.is_disabled:
+            continue
+        plot = plot_by_idx.get(b.plot_index) if b.plot_index is not None else None
+        plot_bonus = plot.bonus_type if plot else None
+        adj = adj_bonuses.get(b.plot_index, {}) if b.plot_index is not None else {}
+
+        changes = SettlementMechanics.calculate_production(
+            building_type=b.building_type,
+            tier=b.tier,
+            workers=b.workers_assigned,
+            hours_elapsed=hours,
+            raw_inventory=raw_inv,
+            plot_bonus_type=plot_bonus,
+            adj_production_mult=adj.get("production_mult", 0.0),
+            adj_converter_mult=adj.get("converter_mult", 0.0),
+            mastery_converter_output_mult=refining_bonus,
+            event_generator_bonus=event_gen_bonus,
+            event_converter_bonus=event_conv_bonus,
+        )
+        for k, v in changes.items():
+            total_changes[k] = total_changes.get(k, 0) + v
+            if k in raw_inv:
+                raw_inv[k] = raw_inv[k] + v  # type: ignore[assignment]
+
+        if b.building_type == "war_camp" and b.workers_assigned > 0:
+            flat_stamina = adj.get("flat_stamina_per_hr", 0.0) * hours
+            if flat_stamina > 0:
+                total_changes["war_camp_stamina"] = (
+                    total_changes.get("war_camp_stamina", 0) + flat_stamina
+                )
+
+    expedition_count = sum(
+        1 for p in plots if p.is_developed and p.bonus_type == "expedition_camp"
+    )
+    dc_earned = int(hours / 48) * expedition_count
+
+    if not any(v > 0 for v in total_changes.values()) and dc_earned == 0:
+        return {"too_early": False, "has_output": False, "hours": hours}
+
+    display_changes: dict = dict(total_changes)
+
+    cookie_xp = 0
+    if "companion_cookie" in total_changes:
+        cookie_xp = int(total_changes.pop("companion_cookie"))
+        display_changes["Companion XP"] = display_changes.pop("companion_cookie", cookie_xp)
+
+    war_camp_stamina = 0
+    if "war_camp_stamina" in total_changes:
+        war_camp_stamina = min(10, int(float(total_changes.pop("war_camp_stamina"))))
+        display_changes.pop("war_camp_stamina", None)
+
+    market_gold = 0
+    if "market_gold" in total_changes:
+        market_gold = int(total_changes.pop("market_gold"))
+        if event_market_gold_bonus:
+            market_gold = max(0, int(market_gold * (1 + event_market_gold_bonus)))
+        display_changes["Market Gold"] = display_changes.pop("market_gold", market_gold)
+
+    await bot.database.settlement.commit_production(uid, sid, total_changes)
+    if market_gold > 0:
+        await bot.database.users.modify_gold(uid, market_gold)
+    if war_camp_stamina > 0:
+        await bot.database.users.add_stamina_capped(uid, war_camp_stamina)
+    if dc_earned > 0:
+        await bot.database.settlement.modify_development_contracts(uid, sid, dc_earned)
+    await bot.database.settlement.update_collection_timer(uid, sid)
+    if cookie_xp > 0:
+        await bot.database.users.modify_currency(uid, "companion_pet_xp", cookie_xp)
+
+    return {
+        "too_early": False,
+        "has_output": True,
+        "hours": hours,
+        "display_changes": display_changes,
+        "cookie_xp": cookie_xp,
+        "war_camp_stamina": war_camp_stamina,
+        "market_gold": market_gold,
+        "dc_earned": dc_earned,
+        "collection_time": now.isoformat(),
+    }
+
+
+async def execute_building_upgrade(bot, uid: str, sid: str, building, cost: dict) -> dict:
+    """
+    Deducts upgrade costs, queues the upgrade project, and reloads settlement
+    state. The caller is responsible for pre-validating resource availability.
+
+    Returns {"settlement": Settlement, "projects": list, "dt_cost": int}
+    """
+    from core.settlement.constants import SETTLEMENT_EVENTS
+    from core.settlement.turn_engine import upgrade_dt_cost
+
+    active_evs = await bot.database.settlement.get_active_events(uid, sid)
+    event_effects: dict = {}
+    for ev in active_evs:
+        if ev["event_type"] == "ongoing":
+            ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
+            ev_data = ev.get("data") or {}
+            for _k, _v in ev_def.get("effects", {}).items():
+                if _v == "band":
+                    _v = ev_data.get("band", 0)
+                elif _v == "neg_band":
+                    _v = -ev_data.get("band", 0)
+                event_effects[_k] = _v
+
+    changes = {"timber": -cost.get("timber", 0), "stone": -cost.get("stone", 0)}
+    await bot.database.settlement.commit_production(uid, sid, changes)
+    await bot.database.users.modify_gold(uid, -cost.get("gold", 0))
+
+    if "specials" in cost:
+        for s in cost["specials"]:
+            await bot.database.settlement_materials.modify(uid, s["key"], -s["qty"])
+    elif "special_key" in cost:
+        await bot.database.settlement_materials.modify(
+            uid, cost["special_key"], -cost["special_qty"]
+        )
+
+    target_tier = building.tier + 1
+    dt_cost = upgrade_dt_cost(building.building_type, target_tier, event_effects)
+    await bot.database.settlement.upsert_project(
+        user_id=uid,
+        server_id=sid,
+        project_type="upgrade",
+        target_id=building.id,
+        required_turns=dt_cost,
+        data={"building_type": building.building_type},
+    )
+
+    projects = await bot.database.settlement.get_projects(uid, sid)
+    settlement = await bot.database.settlement.get_settlement(uid, sid)
+    return {"settlement": settlement, "projects": projects, "dt_cost": dt_cost}
+
+
+async def execute_diviners_rod(
+    bot, uid: str, sid: str, plot_index: int, old_bonus: str | None
+) -> dict:
+    """
+    Consumes one Diviner's Rod, rolls a new terrain bonus, and commits the
+    result. Reloads and returns updated Plot objects.
+
+    Returns {"changed": bool, "new_bonus": str, "plots": list[Plot]}
+    """
+    from core.settlement.models import Plot
+    from core.settlement.plots import roll_plot_bonus
+
+    new_bonus = roll_plot_bonus()
+    await bot.database.settlement_materials.modify(uid, "diviners_rod", -1)
+
+    if new_bonus != old_bonus:
+        await bot.database.plots.reroll_bonus(uid, sid, plot_index, new_bonus)
+
+    plot_rows = await bot.database.plots.get_plots(uid, sid)
+    plots = [
+        Plot(
+            plot_index=r["plot_index"],
+            is_developed=bool(r["is_developed"]),
+            bonus_type=r["bonus_type"],
+        )
+        for r in plot_rows
+    ]
+    return {"changed": new_bonus != old_bonus, "new_bonus": new_bonus, "plots": plots}
+
+
+async def execute_bm_offer(
+    bot,
+    uid: str,
+    sid: str,
+    offer: dict,
+    active_biases: list,
+    building_tier: int,
+) -> dict:
+    """
+    Deducts offered resources, calculates offer value (with event bonuses),
+    and either completes the deal instantly or creates a pending deal.
+
+    The caller is responsible for live inventory validation before this call.
+
+    Returns one of:
+      {"error": "no_value"}
+      {"instant": True,  "value": int, "raw_value": int, "turns": 0, "rewards": dict}
+      {"instant": False, "value": int, "raw_value": int, "turns": int}
+    """
+    from core.settlement.constants import SETTLEMENT_EVENTS
+    from core.settlement.turn_engine import (
+        calculate_offer_value,
+        complete_bm_deal_instant,
+        compute_processing_turns,
+    )
+    from core.settlement.bm_log import BMLogger
+
+    settlement_changes: dict = {}
+    user_currency_changes: dict = {}
+    for res, qty in offer.items():
+        if res in _SETTLEMENT_RESOURCE_KEYS or res in _SKILL_RESOURCE_KEYS:
+            settlement_changes[res] = settlement_changes.get(res, 0) - qty
+        else:
+            user_currency_changes[res] = user_currency_changes.get(res, 0) - qty
+
+    if settlement_changes:
+        await bot.database.settlement.commit_production(uid, sid, settlement_changes)
+    for cur, delta in user_currency_changes.items():
+        try:
+            if cur in _SETTLEMENT_MATERIAL_KEYS:
+                await bot.database.settlement_materials.modify(uid, cur, delta)
+            else:
+                await bot.database.users.modify_currency(uid, cur, delta)
+        except Exception:
+            pass
+
+    tree_nodes = await bot.database.settlement.get_bm_tree(uid, sid)
+
+    active_events = await bot.database.settlement.get_active_events(uid, sid)
+    event_value_bonus = 0.0
+    for ev in active_events:
+        if ev["event_type"] == "ongoing":
+            ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
+            raw_val = ev_def.get("effects", {}).get("bm_value_bonus", 0.0)
+            ev_data = ev.get("data") or {}
+            if raw_val == "band":
+                raw_val = ev_data.get("band", 0.0)
+            elif raw_val == "neg_band":
+                raw_val = -ev_data.get("band", 0.0)
+            if isinstance(raw_val, (int, float)):
+                event_value_bonus += raw_val
+
+    raw_value = calculate_offer_value(offer, tree_nodes, building_tier)
+    raw_value = int(raw_value * (1 + event_value_bonus))
+    value = raw_value // 100
+    turns = compute_processing_turns(value, building_tier, tree_nodes)
+
+    bm_submit_log = BMLogger(uid, value, turns)
+    bm_submit_log.log_offer(offer, raw_value, event_value_bonus)
+    bm_submit_log.log_tree(tree_nodes, active_biases)
+    bm_submit_log.close()
+
+    if value <= 0:
+        return {"error": "no_value"}
+
+    if turns == 0:
+        user_row = await bot.database.users.get(uid, sid)
+        player_level = user_row["level"] if user_row else 1
+        rewards = await complete_bm_deal_instant(
+            bot, uid, sid, value, active_biases, player_level, tree_nodes
+        )
+        return {
+            "instant": True,
+            "value": value,
+            "raw_value": raw_value,
+            "turns": 0,
+            "rewards": rewards,
+        }
+
+    turns_data = await bot.database.settlement.get_turns_data(uid, sid)
+    current_turn = turns_data.get("total_development_turns", 0)
+    await bot.database.settlement.create_pending_deal(
+        uid, sid,
+        offer_data=offer,
+        total_value=value,
+        turns_required=turns,
+        active_biases=active_biases,
+        current_turn=current_turn,
+    )
+    return {"instant": False, "value": value, "raw_value": raw_value, "turns": turns}

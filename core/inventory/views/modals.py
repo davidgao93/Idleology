@@ -52,10 +52,8 @@ class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
         # Pool XP for manual distribution via Companions view
         xp_msg = ""
         if total_xp_val > 0:
-            await (
-                self.parent_view.bot.database.settlement.add_pending_companion_cookies(
-                    self.parent_view.user_id, self.parent_view.server_id, total_xp_val
-                )
+            await self.parent_view.bot.database.users.modify_currency(
+                self.parent_view.user_id, "companion_pet_xp", total_xp_val
             )
             xp_msg = f"\n🐾 **+{total_xp_val:,} XP** added to your Companion XP pool."
 

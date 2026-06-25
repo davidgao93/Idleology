@@ -793,56 +793,6 @@ class SettlementRepository:
         await self.connection.commit()
 
     # ------------------------------------------------------------------
-    # Companion Cookies (Ranch building output)
-    # ------------------------------------------------------------------
-
-    async def add_pending_companion_cookies(
-        self, user_id: str, server_id: str, amount: int
-    ) -> None:
-        """Accumulate Ranch XP cookies for a settlement; redeemed from the Companions view."""
-        await self.connection.execute(
-            "UPDATE settlements SET pending_companion_cookies = pending_companion_cookies + ? "
-            "WHERE user_id = ? AND server_id = ?",
-            (amount, user_id, server_id),
-        )
-        await self.connection.commit()
-
-    async def get_pending_companion_cookies(self, user_id: str, server_id: str) -> int:
-        try:
-            async with self.connection.execute(
-                "SELECT pending_companion_cookies FROM settlements "
-                "WHERE user_id = ? AND server_id = ?",
-                (user_id, server_id),
-            ) as cursor:
-                row = await cursor.fetchone()
-            return (row["pending_companion_cookies"] or 0) if row else 0
-        except Exception:
-            return 0
-
-    async def consume_pending_companion_cookies(
-        self, user_id: str, server_id: str
-    ) -> int:
-        """Read and zero out the pending cookie balance. Returns the amount consumed."""
-        try:
-            async with self.connection.execute(
-                "SELECT pending_companion_cookies FROM settlements "
-                "WHERE user_id = ? AND server_id = ?",
-                (user_id, server_id),
-            ) as cursor:
-                row = await cursor.fetchone()
-            amount = (row["pending_companion_cookies"] or 0) if row else 0
-            if amount > 0:
-                await self.connection.execute(
-                    "UPDATE settlements SET pending_companion_cookies = 0 "
-                    "WHERE user_id = ? AND server_id = ?",
-                    (user_id, server_id),
-                )
-                await self.connection.commit()
-            return amount
-        except Exception:
-            return 0
-
-    # ------------------------------------------------------------------
     # Projects
     # ------------------------------------------------------------------
 

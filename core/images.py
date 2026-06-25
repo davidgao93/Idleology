@@ -226,6 +226,16 @@ PARTNERS_FEMALE = "https://cdn.discordapp.com/attachments/1334637411363323996/15
 PARTNERS_BOSS_PARTY = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512934885855393/partners_boss_party.jpeg?ex=69f8b511&is=69f76391&hm=52208047795e976985692729a64ff28d967444fbeba499f5c18ad5314117f6bc&"
 PARTNERS_INTRO = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512935137775817/partners_intro.jpeg?ex=69f8b511&is=69f76391&hm=e2b78dba4721c22201f2da3f80a23078d15fe43a72c7457b4a20bf8a1ab67f0c&"
 PARTNERS_SKILLS = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512935448150026/partners_skills.jpeg?ex=69f8b511&is=69f76391&hm=d8a8251544872d44925eaeb6175f8ff0a792a96b391786c4338aeb9cb7be5dcb&"
+# Partner affinity story images (one per story tier, 4 per partner)
+EVE_AFFINITY_1 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612101461872721/eve_affinity_1.jpg?ex=6a19cf54&is=6a187dd4&hm=db300ee0e6ec4c142501fe2d293fb30bd2f0ff7a74f1726e7f89aa7f2a0a6613&"
+EVE_AFFINITY_2 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612101705011440/eve_affinity_2.jpg?ex=6a19cf54&is=6a187dd4&hm=c629797840d2d3c423d5d86b78d78d626988ad66887c71d67fb44c58507b6d96&"
+EVE_AFFINITY_3 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612101960990761/eve_affinity_3.jpg?ex=6a19cf54&is=6a187dd4&hm=3b74ba71c56b630f86f0b296e380453081682daceb4ca97a1b3962828abf0d5e&"
+EVE_AFFINITY_4 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612102191419442/eve_affinity_4.jpg?ex=6a19cf54&is=6a187dd4&hm=53849de9a63de8b8ab6dfb1ce99d69a1cee0358cb5d8eae6f51503721db45c04&"
+KAY_AFFINITY_1 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612111272349876/kay_affinity_1.jpg?ex=6a19cf56&is=6a187dd6&hm=34b8fce01bbc321a8350f59d731b7030561dcc6bb5898e7bf03a3689bf6bc6a9&"
+KAY_AFFINITY_2 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612111570141367/kay_affinity_2.jpg?ex=6a19cf56&is=6a187dd6&hm=293d82d257bc20b73af1106453a405d254f33d5237379d0e4129e0b8c436ede2&"
+KAY_AFFINITY_3 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612111817478254/kay_affinity_3.jpg?ex=6a19cf56&is=6a187dd6&hm=7cc198970203b583e475ab067650c7afbd919b1c6e1381d89815c30a0330282b&"
+KAY_AFFINITY_4 = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612112048033992/kay_affinity_4.jpg?ex=6a19cf56&is=6a187dd6&hm=1dbfaa623958f387844bd3bc80bc4c2caac694afc4936da9daa60cbbe13199ae&"
+
 GACHA_BANNER_4STAR = "https://cdn.discordapp.com/attachments/1334637411363323996/1500515435366453398/gacha_banner_4star.jpeg?ex=69f8b766&is=69f765e6&hm=5fe2ae5da2c45d30614f747158ff7197b64502a8a64dc5094836b156fe007208&"
 GACHA_BANNER_5STAR = "https://cdn.discordapp.com/attachments/1334637411363323996/1500515435714445343/gacha_banner_5star.jpeg?ex=69f8b766&is=69f765e6&hm=8ad7e30c8acbfb3b3c3147f15dcf7052607db308603728c1e453eadcee5d6010&"
 GACHA_BANNER_6STAR = "https://cdn.discordapp.com/attachments/1334637411363323996/1500515436054446341/gacha_banner_6star.jpeg?ex=69f8b766&is=69f765e6&hm=4c521c1fc1d5f8daffc4b813fa8a59d150cc8ba16da7b6d01f01c83ea0667374&"

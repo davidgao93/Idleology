@@ -138,12 +138,14 @@ TUTORIALS: dict[str, dict] = {
         "author": "Master Tamer Yuna",
         "author_icon": YUNA_PORTRAIT,
         "description": (
-            "*Welcome back! Your little ones missed you. Well… most of them. The grumpy one is still pretending he doesn't care.*\n\n"
+            "*Welcome adventurer! I'm Yuna, Master Tamer and keeper of the Companion Ranch.*\n\n"
             "Companions are creatures that travel with you and **passively boost your stats**. "
             "Each has a passive type — ATK, DEF, Hit, Crit, Ward, Rarity, and more — and a tier that determines how strong the bonus is. "
-            "Your **active companion** is always working for you in combat.\n\n"
+            "Your **active companion(s)** are always working for you in combat.\n\n"
             "Companions can be tamed through combat or rarely from boss encounters. "
-            "You can even fuse two companions together!"
+            "You can even fuse two companions together!\n\n"
+            "Companions can gain levels via XP, and you gain companion XP from discarding unwanted equipment (more upgrades = more xp). "
+            "The Companion Ranch down at the Settlement can also produce XP cookies to feed to your pets."
         ),
         "tips": [
             "Only your **active companion(s)** applies its passives — choose the one that fits your build.",

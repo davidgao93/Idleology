@@ -15,11 +15,19 @@ from core.settlement.constants import (
     RESOURCE_DISPLAY_NAMES,
     SETTLEMENT_EVENTS,
     ZEAL_GATHER_CAP,
+    ZEAL_TO_DT,
 )
 from core.settlement.mechanics import SettlementMechanics
 from core.settlement.models import Plot
 from core.settlement.plots import META_BUILDINGS, get_meta_slots, render_grid
+from core.settlement.mechanics import collect_settlement_resources
 from core.settlement.turn_engine import passive_zeal_for_period, process_next_turn
+from core.settlement.ui import (
+    build_building_list_embed,
+    build_meta_buildings_embed,
+    build_plot_bonuses_embed,
+    format_collection_changes,
+)
 from core.settlement.views.research import ResearchView
 from core.settlement.views.town_hall import TownHallView
 
@@ -668,11 +676,13 @@ class SettlementDashboardView(SettlementBaseView):
             self.add_item(select)
 
         # --- Row 1: primary actions ---
+        _zeal = self._cached_zeal_data.get("settlement_zeal", 0)
         next_turn_btn = ui.Button(
             label="Next",
             style=ButtonStyle.success,
             emoji="⏭️",
             row=1,
+            disabled=_zeal < ZEAL_TO_DT,
         )
         next_turn_btn.callback = self.on_next_turn
         self.add_item(next_turn_btn)
@@ -875,137 +885,13 @@ class SettlementDashboardView(SettlementBaseView):
     # -------------------------------------------------------------------------
 
     async def show_building_list(self, interaction: Interaction):
-        _GENERATORS = [
-            ("🪵 Logging Camp", "Hybrid · Timber · Produces passively and each turn"),
-            ("🪨 Quarry", "Hybrid · Stone · Produces passively and each turn"),
-            ("💰 Market", "Hybrid · Gold · Produces passively and each turn"),
-            (
-                "🐾 Companion Ranch",
-                "Hybrid · Companion cookies (XP) · Produces passively and each turn",
-            ),
-            (
-                "🏕️ War Camp",
-                "Passive · Combat Stamina · Produces passively, capped at 10 on Collect",
-            ),
-        ]
-        _CONVERTERS = [
-            (
-                "🔥 Foundry",
-                "Hybrid · Ore → Bars (used for high level refines/reinforces)· Produces passively and each turn",
-            ),
-            (
-                "🌲 Sawmill",
-                "Hybrid · Logs → Planks (used for high level refines/reinforces)· Produces passively and each turn",
-            ),
-            (
-                "🦴 Reliquary",
-                "Hybrid · Bones → Essences (used for high level refines/reinforces)· Produces passively and each turn",
-            ),
-        ]
-        _PASSIVES = [
-            (
-                "⚔️ Barracks",
-                "Passive · +% Player Attack & Defence in combat",
-            ),
-            ("⛪ Temple", "Passive · +% Propagate follower gain"),
-            (
-                "💊 Apothecary",
-                "Passive · +Flat HP effectiveness of potions",
-            ),
-            (
-                "🔮 Uber Shrine",
-                "Passive · Shrine statues for uber boss sigil drops",
-            ),
-        ]
-        _SPECIALS = [
-            (
-                "🌑 Black Market",
-                "Special · Submit unwanted resources for loot",
-            ),
-            (
-                "🥚 Hatchery",
-                "Special · Incubates eggs for Hematurgy blood drops · Lv50",
-            ),
-            ("👶 Nursery", "Project · Produces workers per turn"),
-            (
-                "⚗️ Idlem Foundry",
-                "Project · Produces Idlem per turn · powers the Black Market passive tree",
-            ),
-        ]
-
-        def _fmt(entries):
-            return "\n".join(f"**{n}** — {d}" for n, d in entries)
-
-        embed = discord.Embed(title="📖 Regular Buildings", color=discord.Color.blue())
-        embed.add_field(name="⚡ Generators", value=_fmt(_GENERATORS), inline=False)
-        embed.add_field(name="🔄 Converters", value=_fmt(_CONVERTERS), inline=False)
-        embed.add_field(name="🛡️ Passives", value=_fmt(_PASSIVES), inline=False)
-        embed.add_field(
-            name="✨ Special / Project", value=_fmt(_SPECIALS), inline=False
-        )
-        embed.set_footer(
-            text="Hybrid buildings produce passively over time AND award a 5× burst each Development Turn."
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=build_building_list_embed(), ephemeral=True)
 
     async def show_meta_buildings(self, interaction: Interaction):
-        _META = [
-            ("🏠 Servant's Quarters", "Adjacent generator buildings gain +20% output."),
-            ("📦 Supply Depot", "Adjacent converter buildings are 15% more effective."),
-            (
-                "⛪ Grand Cathedral",
-                "Adjacent shrine buildings can have twice as many workers.",
-            ),
-            (
-                "🏯 Watchtower",
-                "Each regular building's worker cap is increased by +1% per its own tier (T1 → +1%, T5 → +5%). Global effect.",
-            ),
-            ("🏗️ Foreman's Post", "Adjacent buildings gain +25% output rate."),
-            ("🌸 Shrine Garden", "Adjacent shrine buildings are 15% more effective."),
-            ("⛺ Encampment", "Adjacent War Camp generates +0.5 Combat Stamina/hr."),
-            (
-                "💊 Apothecary Annex",
-                "Adjacent Apothecary heals +40% more flat HP per potion use.",
-            ),
-        ]
-        lines = "\n".join(f"**{n}** — {d}" for n, d in _META)
-        embed = discord.Embed(
-            title="⚙️ Meta Buildings",
-            description=(
-                "Meta buildings provide powerful passive bonuses to neighbouring plots. "
-                "All meta buildings require no workers to activate. "
-                "Your meta building capacity is determined by your Town Hall tier.\n\n"
-                + lines
-            ),
-            color=discord.Color.blurple(),
-        )
-        embed.set_footer(text="Build meta buildings from any empty developed plot.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=build_meta_buildings_embed(), ephemeral=True)
 
     async def show_plot_bonuses(self, interaction: Interaction):
-        from core.settlement.plots import PLOT_BONUS_TABLE
-
-        lines = []
-        for bonus_type, data in PLOT_BONUS_TABLE.items():
-            emoji = data.get("emoji", "")
-            label = data.get("label", bonus_type)
-            desc = data.get("description", "")
-            lines.append(f"{emoji} **{label}** — {desc}")
-
-        embed = discord.Embed(
-            title="🗺️ Plot Terrain Bonuses",
-            description=(
-                "Each developed plot has a terrain bonus rolled when first revealed. "
-                "Bonuses apply to whichever building occupies that plot. **Ley Line** is special: "
-                "a meta building built on a Ley Line plot projects 50% stronger bonuses to its neighbours.\n\n"
-                + "\n".join(lines)
-            ),
-            color=discord.Color.green(),
-        )
-        embed.set_footer(
-            text="Use a Diviner's Rod on any plot to reroll its terrain bonus."
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=build_plot_bonuses_embed(), ephemeral=True)
 
     async def open_town_hall(self, interaction: Interaction):
         dc_count = await self.bot.database.settlement.get_development_contracts(
@@ -1040,220 +926,65 @@ class SettlementDashboardView(SettlementBaseView):
         self._processing = True
         await interaction.response.defer()
 
-        uid, sid = self.user_id, self.server_id
-
-        # 1. Raw inventory for converter limiting
-        mining = await self.bot.database.skills.get_data(uid, sid, "mining")
-        wood = await self.bot.database.skills.get_data(uid, sid, "woodcutting")
-        fish = await self.bot.database.skills.get_data(uid, sid, "fishing")
-
-        # Artisan Mastery refining bonuses (Synergy branch)
-        mastery_row = await self.bot.database.skills.get_mastery(uid, sid)
-        refining_bonus = 0.0
-        if mastery_row:
-            from core.skills.mastery import has_master_quarry, has_seasoned_timber
-
-            if has_master_quarry(mastery_row):
-                refining_bonus += 0.10
-            if has_seasoned_timber(mastery_row):
-                refining_bonus += 0.10
-
-        raw_inv = {
-            "iron_ore": mining["iron_ore"],
-            "coal_ore": mining["coal_ore"],
-            "gold_ore": mining["gold_ore"],
-            "platinum_ore": mining["platinum_ore"],
-            "idea_ore": mining["idea_ore"],
-            "oak_logs": wood["oak_logs"],
-            "willow_logs": wood["willow_logs"],
-            "mahogany_logs": wood["mahogany_logs"],
-            "magic_logs": wood["magic_logs"],
-            "idea_logs": wood["idea_logs"],
-            "desiccated_bones": fish["desiccated_bones"],
-            "regular_bones": fish["regular_bones"],
-            "sturdy_bones": fish["sturdy_bones"],
-            "reinforced_bones": fish["reinforced_bones"],
-            "titanium_bones": fish["titanium_bones"],
-        }
-
-        # 2. Time elapsed
-        now = datetime.now()
-        last = datetime.fromisoformat(self.settlement.last_collection_time)
-        hours = max(0.0, (now - last).total_seconds() / 3600)
-
-        if hours < 0.1:
-            return await interaction.followup.send(
-                "Your workers haven't generated anything yet.", ephemeral=True
+        try:
+            result = await collect_settlement_resources(
+                self.bot, self.user_id, self.server_id, self.settlement, self.plots
             )
 
-        # 3. Adjacency bonuses (incorporates Ley Line plot check)
-        adj_bonuses = SettlementMechanics.calculate_adjacency_bonuses(
-            self.plots, self.settlement.buildings
-        )
-        plot_by_idx = {p.plot_index: p for p in self.plots}
+            if result["too_early"]:
+                await interaction.followup.send(
+                    "Your workers haven't generated anything yet.", ephemeral=True
+                )
+                return
 
-        # 4. Active event production bonuses
-        _active_evs = await self.bot.database.settlement.get_active_events(uid, sid)
-        _event_gen_bonus = 0.0
-        _event_conv_bonus = 0.0
-        _event_market_gold_bonus = 0.0
-        for _ev in _active_evs:
-            _ev_def = SETTLEMENT_EVENTS.get(_ev.get("event_key", ""), {})
-            _ev_data = _ev.get("data", {})
-            _effs = _ev_def.get("effects", {})
+            if not result["has_output"]:
+                await interaction.followup.send(
+                    "Nothing will be collected — construct some buildings and assign workers before collecting.",
+                    ephemeral=True,
+                )
+                return
 
-            def _rb(v):
-                if v == "band":
-                    return _ev_data.get("band", 0.0)
-                if v == "neg_band":
-                    return -_ev_data.get("band", 0.0)
-                return v if isinstance(v, (int, float)) else 0.0
+            hours = result["hours"]
+            display_changes = result["display_changes"]
+            cookie_xp = result["cookie_xp"]
+            war_camp_stamina = result["war_camp_stamina"]
+            dc_earned = result["dc_earned"]
 
-            if "generator_bonus" in _effs:
-                _event_gen_bonus += _rb(_effs["generator_bonus"])
-            if "converter_bonus" in _effs:
-                _event_conv_bonus += _rb(_effs["converter_bonus"])
-            if "market_gold_bonus" in _effs:
-                _event_market_gold_bonus += _rb(_effs["market_gold_bonus"])
-
-        # 5. Per-building production
-        total_changes: dict[str, float] = {}
-        for b in self.settlement.buildings:
-            if b.is_disabled:
-                continue  # disabled buildings produce nothing until repaired
-            plot = plot_by_idx.get(b.plot_index) if b.plot_index is not None else None
-            plot_bonus = plot.bonus_type if plot else None
-            adj = adj_bonuses.get(b.plot_index, {}) if b.plot_index is not None else {}
-
-            changes = SettlementMechanics.calculate_production(
-                building_type=b.building_type,
-                tier=b.tier,
-                workers=b.workers_assigned,
-                hours_elapsed=hours,
-                raw_inventory=raw_inv,
-                plot_bonus_type=plot_bonus,
-                adj_production_mult=adj.get("production_mult", 0.0),
-                adj_converter_mult=adj.get("converter_mult", 0.0),
-                mastery_converter_output_mult=refining_bonus,
-                event_generator_bonus=_event_gen_bonus,
-                event_converter_bonus=_event_conv_bonus,
+            xp_msg = (
+                f"\n🐾 **Companion Ranch:** +{cookie_xp:,} XP added to your Companion XP pool."
+                if cookie_xp > 0
+                else ""
             )
-            for k, v in changes.items():
-                total_changes[k] = total_changes.get(k, 0) + v
-                if k in raw_inv:
-                    raw_inv[k] = raw_inv[k] + v  # type: ignore[assignment]
-
-            # Encampment: flat +0.5 stamina/hr added to adjacent War Camp
-            if b.building_type == "war_camp" and b.workers_assigned > 0:
-                flat_stamina = adj.get("flat_stamina_per_hr", 0.0) * hours
-                if flat_stamina > 0:
-                    total_changes["war_camp_stamina"] = (
-                        total_changes.get("war_camp_stamina", 0) + flat_stamina
-                    )
-
-        # 6. Expedition Camp — passive DC generation (1 DC per 48 h per such plot)
-        expedition_count = sum(
-            1
-            for p in self.plots
-            if p.is_developed and p.bonus_type == "expedition_camp"
-        )
-        dc_earned = int(hours / 48) * expedition_count
-
-        # Guard: nothing to collect
-        has_output = any(v > 0 for v in total_changes.values()) or dc_earned > 0
-        if not has_output:
-            return await interaction.followup.send(
-                "Nothing will be collected — construct some buildings and assign workers before collecting.",
-                ephemeral=True,
+            stamina_msg = (
+                f"\n⚔️ **War Camp:** +{war_camp_stamina} Combat Stamina."
+                if war_camp_stamina > 0
+                else ""
             )
-
-        # --- Split out special resources before committing ---
-        display_changes: dict = dict(total_changes)
-
-        # Companion cookies → XP
-        cookie_xp = 0
-        if "companion_cookie" in total_changes:
-            cookie_xp = int(total_changes.pop("companion_cookie"))
-            display_changes["Companion XP"] = display_changes.pop(
-                "companion_cookie", cookie_xp
-            )
-
-        # War Camp stamina
-        war_camp_stamina = 0
-        if "war_camp_stamina" in total_changes:
-            # Cap at 10 and convert to int — war camp never exceeds the normal stamina cap
-            war_camp_stamina = min(
-                10, int(float(total_changes.pop("war_camp_stamina")))
-            )
-            display_changes.pop("war_camp_stamina", None)
-
-        # Market gold (apply event bonus/penalty after extraction)
-        market_gold = 0
-        if "market_gold" in total_changes:
-            market_gold = int(total_changes.pop("market_gold"))
-            if _event_market_gold_bonus:
-                market_gold = max(0, int(market_gold * (1 + _event_market_gold_bonus)))
-            display_changes["Market Gold"] = display_changes.pop(
-                "market_gold", market_gold
-            )
-
-        # 7. Commit to DB
-        await self.bot.database.settlement.commit_production(uid, sid, total_changes)
-        if market_gold > 0:
-            await self.bot.database.users.modify_gold(uid, market_gold)
-        if war_camp_stamina > 0:
-            await self.bot.database.users.add_stamina_capped(uid, war_camp_stamina)
-        if dc_earned > 0:
-            await self.bot.database.settlement.modify_development_contracts(
-                uid, sid, dc_earned
-            )
-        await self.bot.database.settlement.update_collection_timer(uid, sid)
-
-        # Companion XP — pool for manual distribution via Companions view
-        xp_msg = ""
-        if cookie_xp > 0:
-            await self.bot.database.settlement.add_pending_companion_cookies(
-                self.user_id, self.server_id, cookie_xp
-            )
-            xp_msg = f"\n🐾 **Companion Ranch:** +{cookie_xp:,} XP added to your Companion XP pool."
-
-        stamina_msg = ""
-        if war_camp_stamina > 0:
-            stamina_msg = f"\n⚔️ **War Camp:** +{war_camp_stamina} Combat Stamina."
-
-        dc_msg = ""
-        if dc_earned > 0:
             dc_msg = (
                 f"\n📜 **Expedition Camp:** +{dc_earned} "
                 f"Development Contract{'s' if dc_earned != 1 else ''}."
+                if dc_earned > 0
+                else ""
             )
 
-        # 8. Update local state
-        self.settlement.timber += int(display_changes.get("timber", 0))
-        self.settlement.stone += int(display_changes.get("stone", 0))
-        self.settlement.last_collection_time = now.isoformat()
+            self.settlement.timber += int(display_changes.get("timber", 0))
+            self.settlement.stone += int(display_changes.get("stone", 0))
+            self.settlement.last_collection_time = result["collection_time"]
 
-        # 9. Rebuild UI and respond
-        self._rebuild_ui()
-        embed = self.build_embed()
-        formatted = (
-            self._format_changes(display_changes) + xp_msg + stamina_msg + dc_msg
-        )
-        embed.add_field(
-            name="Last Collection",
-            value=(
-                f"⏱️ Time since last collection: {hours:.2f}h\n\n📦 Yield:\n{formatted}"
-            ),
-            inline=False,
-        )
-
-        try:
-            await interaction.edit_original_response(
-                content=None, embed=embed, view=self
+            self._rebuild_ui()
+            embed = self.build_embed()
+            formatted = format_collection_changes(display_changes) + xp_msg + stamina_msg + dc_msg
+            embed.add_field(
+                name="Last Collection",
+                value=f"⏱️ Time since last collection: {hours:.2f}h\n\n📦 Yield:\n{formatted}",
+                inline=False,
             )
-        except Exception:
-            if self.message:
-                await self.message.edit(embed=embed, view=self)
+
+            try:
+                await interaction.edit_original_response(content=None, embed=embed, view=self)
+            except Exception:
+                if self.message:
+                    await self.message.edit(embed=embed, view=self)
         finally:
             self._processing = False
 
@@ -1285,7 +1016,6 @@ class SettlementDashboardView(SettlementBaseView):
             # Check Zeal; convert to DT if enough
             zeal_data = await self.bot.database.settlement.get_zeal_data(uid, sid)
             zeal = zeal_data.get("settlement_zeal", 0)
-            from core.settlement.constants import ZEAL_TO_DT
 
             if zeal < ZEAL_TO_DT:
                 await interaction.followup.send(
@@ -1627,29 +1357,3 @@ class SettlementDashboardView(SettlementBaseView):
             self._processing = False
             raise
 
-    # -------------------------------------------------------------------------
-    # Internal helpers
-    # -------------------------------------------------------------------------
-
-    def _format_changes(self, changes: dict) -> str:
-        _EMOJI = {"timber": "🪵 ", "stone": "🪨 ", "Market Gold": "💰 "}
-        positive_items: list[str] = []
-        for key, value in changes.items():
-            if not isinstance(value, (int, float)) or value <= 0:
-                continue
-            # Use display name; already-readable keys (contain space) stay as-is
-            name = RESOURCE_DISPLAY_NAMES.get(
-                key,
-                key if " " in key else key.replace("_", " ").title(),
-            )
-            emoji = _EMOJI.get(key, "")
-            val_str = (
-                f"{int(value):,}"
-                if isinstance(value, int) or float(value) == int(value)
-                else f"{value:.4g}"
-            )
-            positive_items.append(f"{emoji}{name}: +{val_str}")
-
-        if not positive_items:
-            return "No resources produced (no workers, generators, or raw materials)."
-        return "\n".join(positive_items)

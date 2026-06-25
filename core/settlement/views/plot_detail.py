@@ -21,7 +21,11 @@ from core.settlement.constants import (
     RESOURCE_DISPLAY_NAMES,
 )
 from core.settlement.encounter import get_repair_cost
-from core.settlement.mechanics import SettlementMechanics
+from core.settlement.mechanics import (
+    SettlementMechanics,
+    execute_building_upgrade,
+    execute_diviners_rod,
+)
 from core.settlement.models import Building, Plot
 from core.settlement.plots import (
     META_BUILDINGS,
@@ -1107,6 +1111,7 @@ class PlotDetailView(SettlementBaseView):
         b = self.building
         target_tier = b.tier + 1
 
+        # Cost computation (pure)
         if b.is_meta:
             meta_base = META_BUILDINGS.get(b.building_type, {}).get("cost", {})
             cost = {
@@ -1116,7 +1121,6 @@ class PlotDetailView(SettlementBaseView):
             }
         else:
             cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
-            # Apply plot bonus discounts
             plot_bonus = self.plot.bonus_type if self.plot else None
             if plot_bonus == "gold_vein":
                 cost["gold"] = int(cost.get("gold", 0) * 0.65)
@@ -1124,6 +1128,7 @@ class PlotDetailView(SettlementBaseView):
                 cost["timber"] = int(cost.get("timber", 0) * 0.70)
                 cost["stone"] = int(cost.get("stone", 0) * 0.70)
 
+        # Fast resource validation (before defer)
         stl = await self.bot.database.settlement.get_settlement(
             self.user_id, self.parent.server_id
         )
@@ -1142,61 +1147,27 @@ class PlotDetailView(SettlementBaseView):
         if "specials" in cost:
             _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
             for s in cost["specials"]:
-                owned = _mats.get(s["key"], 0)
-                if owned < s["qty"]:
+                if _mats.get(s["key"], 0) < s["qty"]:
                     self._processing = False
                     return await interaction.response.send_message(
                         f"Need {s['qty']}× {s['name']}!", ephemeral=True
                     )
         elif "special_key" in cost:
             _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
-            owned = _mats.get(cost["special_key"], 0)
-            if owned < cost["special_qty"]:
+            if _mats.get(cost["special_key"], 0) < cost["special_qty"]:
                 self._processing = False
                 return await interaction.response.send_message(
-                    f"Need {cost['special_qty']}× {cost['special_name']}!",
-                    ephemeral=True,
+                    f"Need {cost['special_qty']}× {cost['special_name']}!", ephemeral=True
                 )
 
         await interaction.response.defer()
 
-        event_effects = await self._load_event_effects()
-
-        changes = {
-            "timber": -cost.get("timber", 0),
-            "stone": -cost.get("stone", 0),
-        }
-        await self.bot.database.settlement.commit_production(
-            self.user_id, self.parent.server_id, changes
+        result = await execute_building_upgrade(
+            self.bot, self.user_id, self.parent.server_id, b, cost
         )
-        await self.bot.database.users.modify_gold(self.user_id, -cost.get("gold", 0))
-        if "specials" in cost:
-            for s in cost["specials"]:
-                await self.bot.database.settlement_materials.modify(
-                    self.user_id, s["key"], -s["qty"]
-                )
-        elif "special_key" in cost:
-            await self.bot.database.settlement_materials.modify(
-                self.user_id, cost["special_key"], -cost["special_qty"]
-            )
-
-        # Queue upgrade project
-        dt_cost = upgrade_dt_cost(b.building_type, target_tier, event_effects)
-        await self.bot.database.settlement.upsert_project(
-            user_id=self.user_id,
-            server_id=self.parent.server_id,
-            project_type="upgrade",
-            target_id=b.id,
-            required_turns=dt_cost,
-            data={"building_type": b.building_type},
-        )
-
-        self.parent.projects = await self.bot.database.settlement.get_projects(
-            self.user_id, self.parent.server_id
-        )
-        self.parent.settlement = await self.bot.database.settlement.get_settlement(
-            self.user_id, self.parent.server_id
-        )
+        self.parent.projects = result["projects"]
+        self.parent.settlement = result["settlement"]
+        dt_cost = result["dt_cost"]
 
         thumb = SETTLEMENT_BUILDINGS.get(b.building_type)
         queued_embed = discord.Embed(
@@ -1283,9 +1254,9 @@ class PlotDetailView(SettlementBaseView):
             return
         self._processing = True
 
+        # Validate rod ownership before deferring so the error is ephemeral
         mats = await self.bot.database.settlement_materials.get_all(self.user_id)
-        rods = mats.get("diviners_rod", 0)
-        if rods < 1:
+        if mats.get("diviners_rod", 0) < 1:
             self._processing = False
             return await interaction.response.send_message(
                 "You don't have any **Diviner's Rods**! They can drop from combat.",
@@ -1294,17 +1265,21 @@ class PlotDetailView(SettlementBaseView):
 
         await interaction.response.defer()
 
-        old_bonus = self.plot.bonus_type
-        new_bonus = roll_plot_bonus()
-        await self.bot.database.settlement_materials.modify(
-            self.user_id, "diviners_rod", -1
+        result = await execute_diviners_rod(
+            self.bot, self.user_id, self.parent.server_id,
+            self.plot.plot_index, self.plot.bonus_type
+        )
+        self.parent.plots = result["plots"]
+        self.plot = next(
+            (p for p in self.parent.plots if p.plot_index == self.plot.plot_index),
+            self.plot,
         )
 
-        if new_bonus == old_bonus:
-            # Rod consumed but terrain unchanged — inform the player
-            self._processing = False
-            self._build_buttons()
-            embed = self.build_embed()
+        self._processing = False
+        self._build_buttons()
+        embed = self.build_embed()
+
+        if not result["changed"]:
             embed.title = f"📍 Plot {self.plot.plot_index} — 🔮 Power Fails to Bind"
             embed.color = discord.Color.dark_grey()
             embed.add_field(
@@ -1316,39 +1291,10 @@ class PlotDetailView(SettlementBaseView):
                 ),
                 inline=False,
             )
-            await interaction.edit_original_response(
-                content=None, embed=embed, view=self
-            )
-            return
+        else:
+            embed.title = f"📍 Plot {self.plot.plot_index} — 🔮 Terrain Rerolled!"
+            embed.color = discord.Color.purple()
 
-        await self.bot.database.plots.reroll_bonus(
-            self.user_id, self.parent.server_id, self.plot.plot_index, new_bonus
-        )
-
-        # Refresh local plot state
-        plot_rows = await self.bot.database.plots.get_plots(
-            self.user_id, self.parent.server_id
-        )
-        from core.settlement.models import Plot as PlotModel
-
-        self.parent.plots = [
-            PlotModel(
-                plot_index=r["plot_index"],
-                is_developed=bool(r["is_developed"]),
-                bonus_type=r["bonus_type"],
-            )
-            for r in plot_rows
-        ]
-        self.plot = next(
-            (p for p in self.parent.plots if p.plot_index == self.plot.plot_index),
-            self.plot,
-        )
-
-        self._processing = False
-        self._build_buttons()
-        embed = self.build_embed()
-        embed.title = f"📍 Plot {self.plot.plot_index} — 🔮 Terrain Rerolled!"
-        embed.color = discord.Color.purple()
         await interaction.edit_original_response(content=None, embed=embed, view=self)
 
     # ------------------------------------------------------------------

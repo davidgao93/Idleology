@@ -90,7 +90,8 @@ CREATE TABLE IF NOT EXISTS `player_currencies` (
   `codex_pages`            INTEGER NOT NULL DEFAULT 0,
   `codex_rerolls`          INTEGER NOT NULL DEFAULT 0,
   `mirage_runes_imperfect` INTEGER NOT NULL DEFAULT 0,
-  `mirage_runes_perfected` INTEGER NOT NULL DEFAULT 0
+  `mirage_runes_perfected` INTEGER NOT NULL DEFAULT 0,
+  `companion_pet_xp`       INTEGER NOT NULL DEFAULT 0
 );
 
 
@@ -802,7 +803,6 @@ CREATE TABLE IF NOT EXISTS settlements (
   last_dc_craft_date        TEXT DEFAULT NULL,
   -- Resources
   idlem                     INTEGER NOT NULL DEFAULT 0,
-  pending_companion_cookies INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (user_id, server_id)
 );
 
