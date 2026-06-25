@@ -116,7 +116,7 @@ async def generate_encounter(
 
 async def generate_boss(player, monster, phase, phase_index):
     """Generate a boss with a phase based on the user's level."""
-    print(f"Generating a boss based on {phase}")
+    # print(f"Generating a boss based on {phase}")
     difficulty_multiplier = int(player.level / 5)
 
     monster.level = (

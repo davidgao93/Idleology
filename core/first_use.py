@@ -76,19 +76,23 @@ from core.images import (
 TUTORIALS: dict[str, dict] = {
     "combat": {
         "title": "⚔️ Combat",
+        "author": "Guildmaster Amara",
+        "author_icon": AMARA_AUTHOR,
         "description": (
-            "Every fight puts your stats against a monster's. "
-            "**Attack** determines how often and hard you hit; "
-            "**Defence** reduces how often they hit you. Percent DR and Flat DR reduces how hard. "
-            "**Hit chance** is also affected by your accuracy and the monster's evasion — "
-            "a miss deals no damage. Land a **Critical Hit** for bonus damage. "
-            "Use **Potions** to restore HP during the fight, though it costs you a turn. "
-            "If things look grim, you can always **Flee** - better safe than dead."
+            "*I'm not going to hold your hand through this. But I will make sure you "
+            "leave this hall knowing what you're walking into.*\n\n"
+            "Combat is straightforward: your **Attack** determines how hard and how often you land hits; "
+            "your **Defence** affects how hard it hits back. "
+            "**Percent DR** and **Flat DR** reduce incoming damage further. "
+            "Miss a hit and you deal nothing — accuracy matters. "
+            "Land a **Critical Hit** and you deal bonus damage.\n\n"
+            "You carry **Potions**. Use them mid-fight to restore HP — but it costs you a turn, "
+            "so pick your moment. If it's going badly, **Flee**. There's no shame in survival."
         ),
         "tips": [
-            "Higher **ATK** and **DEF** come from your equipped gear — upgrade it regularly.",
-            "Equip yourself with powerful passives.",
-            "Potions scale with your level, so they stay useful all game.",
+            "Gear is what separates a survivor from a casualty. Upgrade it early and often.",
+            "Potions scale with level — they stay relevant all game. Keep them stocked.",
+            "Fleeing costs you nothing. Dying costs you everything.",
         ],
         "image": COMBAT_VICTORY,
         "color": discord.Color.red(),
@@ -161,16 +165,19 @@ TUTORIALS: dict[str, dict] = {
         "author_icon": AMARA_AUTHOR,
         "description": (
             "*Every great force needs a home. This is yours.*\n\n"
-            "Your Settlement is your ideology's base of operations. "
-            "Build structures here to generate resources automatically — "
-            "**Logging Camps** and **Quarries** are your bread and butter, and supply the Settlement with a stream of materials. "
-            "Assign **Workers** to each building to increase its output.\n\n"
-            "As your **Town Hall** tiers up, you unlock new types of buildings, more Zeal generation, "
-            "and access to endgame structures like the Uber Shrine."
+            "Your Settlement is what makes this ideology real — it's not just buildings, it's leverage. "
+            "**Logging Camps** and **Quarries** generate materials automatically. "
+            "The **Apothecary** and **Barracks** produce workers. Assign staff, take Development Turns, "
+            "and watch it compound.\n\n"
+            "**Zeal** is the fuel you earn from fighting and quests. Spend it to take a **Development Turn**, "
+            "which advances construction, upgrades, and events. "
+            "As your **Town Hall** tiers up, new buildings unlock — eventually you're working with an "
+            "Uber Shrine, a Black Market passive tree, and Meta Buildings that amplify everything around them. "
+            "Don't rush it. Just keep taking turns."
         ),
         "tips": [
-            "Earn Zeal through combat and quests to take a turn.",
-            "**Development Turns** drive construction and upgrades, events might pop up during a turn as well.",
+            "Earn Zeal through combat and quests. More turns means faster progress across everything.",
+            "Workers are the multiplier — more workers in a building means more output. Staff them.",
             "Maybe just read the Wiki page for this one...",
         ],
         "image": SETTLEMENT_HUB,
@@ -178,32 +185,46 @@ TUTORIALS: dict[str, dict] = {
     },
     "gather": {
         "title": "⛏️ Gathering Skills",
+        "author": "Master Smith Harlan",
+        "author_icon": HARLAN_AUTHOR,
         "description": (
-            "Mining, Fishing, and Woodcutting let you collect resources used in "
-            "upgrades and crafting throughout the game. "
-            "Each skill has its own **tool tier** — upgrading your tools unlocks "
-            "better materials and larger yields per action."
+            "*I'll be brief — you've got work to do.*\n\n"
+            "Every weapon and piece of armor I forge depends on what comes out of the ground, the forest, "
+            "and the water. **Mining**, **Woodcutting**, and **Fishing** — that's where your supply chain starts.\n\n"
+            "Upgrade your **tools** when you can. Better tools reach better veins, richer timber, deeper water. "
+            "The materials from higher-tier nodes are categorically different from what you pull with iron. "
+            "Quantity matters, but quality matters more.\n\n"
+            "**Artisan Mastery** unlocks passive bonuses that compound over time — yield increases, "
+            "rare material chances, synergy between skills. The longer you invest in a skill, "
+            "the more it pays back."
         ),
         "tips": [
-            "Resources can be collected passively or actively through minigames.",
-            "Artisan Mastery lets you unlock permanent passive bonuses per skill.",
-            "Higher-tier tools give you access to higher tier materials.",
+            "Tool tier is the most important upgrade. Don't neglect it.",
+            "Artisan Mastery rewards long-term investment — start early, collect the returns later.",
+            "The three skills cross-pollinate. Progress in one unlocks bonuses in others.",
         ],
         "image": MASTERY_MINING,
         "color": discord.Color.dark_orange(),
     },
     "delve": {
         "title": "🪨 The Delve",
+        "author": "Master Smith Harlan",
+        "author_icon": HARLAN_AUTHOR,
         "description": (
-            "Delve sends you on a mining expedition through procedurally generated layers. "
-            "Each layer is a hazard — **Gas Pockets, Magma Flows, and Gravel** drain your "
-            "Stability. Reach an **Ore Vein** to gather rare Obsidian Shards. "
-            "If Stability hits zero, the run ends early."
+            "*Listen carefully. I've lost workers in those tunnels. "
+            "I won't lose another because they skipped the briefing.*\n\n"
+            "The Delve is an expedition into unstable mining layers. Pay the permit fee and drill down. "
+            "Every layer is a hazard — **Gas Pockets**, **Magma Flows**, **Gravel** — and each drains "
+            "your **Stability**. Hit zero and the run collapses; you come out with nothing.\n\n"
+            "**Ore Veins** are what you're after. They yield rare Obsidian Shards you won't find anywhere else. "
+            "You'll pick up ore along the way.\n\n"
+            "Three upgrades matter: **Fuel** (how deep you go), **Structure** (damage you absorb), "
+            "and **Sensor** (preview the next layer before committing). Invest in all three."
         ),
         "tips": [
-            "Upgrade **Fuel** to reach deeper layers with richer ore.",
-            "Upgrade **Structure** to reduce stability damage from hazards.",
-            "Upgrade **Sensor** to reveal upcoming layers before you commit.",
+            "Sensor is underrated — knowing what's ahead is worth more than it costs.",
+            "Deeper layers carry richer ore. Better Fuel means more Obsidian Shards per run.",
+            "Every point of stability you save through Structure is one more layer you can push through.",
         ],
         "image": DELVE_HUB,
         "color": discord.Color.dark_grey(),
@@ -214,17 +235,20 @@ TUTORIALS: dict[str, dict] = {
         "author_icon": AMARA_AUTHOR,
         "description": (
             "*The guild attracts all kinds. Some of them are worth keeping close.*\n\n"
-            "Partners are NPC allies recruited using **Guild Tickets**. "
-            "Deploy one as your active partner and they'll contribute combat skills in every fight — "
-            "ATK boosts, crit bonuses, survivability buffs, and more depending on who you bring.\n\n"
-            "When you don't need them in combat, send them on **Dispatch** — "
-            "timed missions that return gold, materials, and keys while you're busy elsewhere. "
-            "Rare partners can build **affinity** over time unlock alternate looks."
+            "Partners are NPC allies recruited with **Guild Tickets**. "
+            "Set one as your active partner and they contribute **combat skills** in every fight — "
+            "attack boosts, crit bonuses, survivability buffs. The skills they bring depend entirely "
+            "on who you recruit, so read before you commit.\n\n"
+            "When combat isn't the priority, put them on **Dispatch** — timed missions that run in the "
+            "background and return gold, materials, and keys while you're busy elsewhere. "
+            "Dispatch accumulates for up to 48 hours. Check back when it makes sense.\n\n"
+            "Rarer partners carry stronger signature skills. The grind for them is real, "
+            "but so is the return."
         ),
         "tips": [
-            "Each partner can roll **combat skills** and **dispatch skills** — pick one that fits your current goal.",
-            "Rarer partners can have powerful, signature skills.",
-            "Dispatch accumulates for up to 48 hours — check back every so often.",
+            "Each partner rolls both **combat** and **dispatch** skills — pick the one that fits your current priority.",
+            "Rarer partners carry more powerful signature skills. They're worth chasing.",
+            "Dispatch accumulates for up to 48 hours. Don't let it sit idle.",
         ],
         "image": PARTNERS_HUB,
         "color": discord.Color.blurple(),
@@ -264,14 +288,14 @@ TUTORIALS: dict[str, dict] = {
         "author_icon": AMARA_AUTHOR,
         "description": (
             "*I don't hand out rewards for nothing. But I do hand them out.*\n\n"
-            "The quest board is where various guilds post their latest requests.\n "
-            "It has two layers. **Daily Contracts** are short-term goals — "
-            "kill X, deal Y damage, clear a boss — each one pays out **Quest Tokens** "
-            "you can spend in the shop on materials you'd otherwise grind for.\n\n"
-            "**Horizon Paths** are the long game. Pick one that matches where you're heading "
-            "and work toward it over days or weeks. Finishing a path pays out "
-            "unique rewards associated with that path, accelerating your progression with that system. "
-            "Switching paths resets your progress, so choose carefully."
+            "The board runs two tracks. **Daily Contracts** are short-term — kill X, deal Y damage, "
+            "clear a boss. Finish them and you earn **Quest Tokens**, which you spend in the shop on "
+            "materials you'd otherwise grind for. A token spent rerolling a terrible contract "
+            "is a token well spent.\n\n"
+            "**Horizon Paths** are the long game. Pick the one that aligns with where you're already "
+            "heading and let your progress feed it passively. Each path pays a unique reward tied to "
+            "that system — supplemental, not the main event, but worth doing regardless. "
+            "Switching paths resets your progress, so commit before you start walking."
         ),
         "tips": [
             "You can normally take up to 3 contracts a day.",
@@ -413,17 +437,22 @@ TUTORIALS: dict[str, dict] = {
         "author": "Brother Solen",
         "author_icon": BROTHER_SOLEN_PORTRAIT,
         "description": (
-            "Welcome adventurer... I have witnessed the horrors beyond the imaginable, and none have quite compared to the Maw...\n"
+            "*I have witnessed horrors beyond the imaginable. "
+            "None of them have compared to the Maw. I say that not to frighten you — "
+            "only so you understand what you are agreeing to.*\n\n"
             "The Maw of Infinity is a **weekly world boss** that all adventurers fight together. "
-            "You have up to **5 attempts per cycle** with a 20-hour cooldown between each fight. "
-            "Every hit you land over 10 turns contributes to your total for that week.\n\n"
-            "Each week the Maw suffers an affliction — a modifier that you can potentially exploit. "
-            "Pay attention to it. Some weeks reward raw power; others something else entirely...\n\n"
-            "When the cycle ends, the maw retreats, leaving behind its forbidden treasures. "
+            "You have up to **5 attempts per cycle**, with a cooldown between each fight. "
+            "Every hit you land across your 10-turn encounter is recorded — your total contribution "
+            "for the week accumulates with every visit.\n\n"
+            "When the cycle ends and the Maw retreats, those who struck true collect their rewards: "
+            "Curios, Guild Tickets, and more for all participants. "
+            "The three who landed the heaviest blows receive something extra.\n\n"
+            "*It cannot be killed. It never dies. But it can be hurt. "
+            "That has to be enough. It usually is.*"
         ),
         "tips": [
-            "The **weekly weakness** can dramatically shift how to earn the most contribution.",
-            "You don't need to deal the most damage to earn rewards.",
+            "Each cycle the Maw carries a **weakness**. Study it before you fight — some weeks it changes everything.",
+            "You don't need to deal the most damage to earn rewards. Participation matters.",
         ],
         "image": BROTHER_SOLEN_THUMBNAIL,
         "color": discord.Color.dark_blue(),
@@ -454,19 +483,23 @@ TUTORIALS: dict[str, dict] = {
         "author": "Valdris the Sanguine",
         "author_icon": VALDRIS_PORTRAIT,
         "description": (
-            "*Primordial blood unlocks the channel. Evolutionary blood deepens it. "
-            "Mutative blood — well. That's where it gets* interesting.\n\n"
-            "Hematurgy is a **permanent passive upgrade system** powered by monster blood. "
-            "Each passive slot must be unlocked first with **Primordial Blood**, "
-            "then tiered up using **Evolutionary Blood** (T1–T5) or **Mutative Blood** (T6–T7, chase tiers only).\n\n"
-            "Active passives include effects like reverberation (bonus ATK on hit), "
-            "soothing venom (HP regen), haemorrhage (bleed on crit), vital resonance, and more. "
-            "Higher tiers produce dramatically stronger effects."
+            "*Oh — oh you actually came. Wonderful. Sit down, don't touch that, and do NOT open the jar on the left shelf.*\n\n"
+            "Hematurgy is a **permanent passive upgrade system** — living power, encoded directly into your blood. "
+            "To begin, you need **Primordial Blood**, the raw substrate that opens a passive channel in your body. "
+            "Once unlocked, you tier it up with **Evolutionary Blood** (T1–T5) — controlled adaptation, very elegant — "
+            "or **Mutative Blood** for T6 and T7. Those are… less controlled. I find that exciting. You should too.\n\n"
+            "Now here's the part most people miss: the finest blood does not come from wild kills. "
+            "You raise them. Build a **Hatchery** in your Settlement, let the eggs incubate, "
+            "then release the creatures yourself and *slay them*. "
+            "The blood from a creature you personally hunted — one you raised from nothing — "
+            "that is categorically superior. The fear-response alone does something remarkable to the yield.\n\n"
+            "Passives include reverberation, haemorrhage, vital resonance, soothing venom, and more. "
+            "The effects at high tiers are… dramatic. I would say transformative, but that implies a limit."
         ),
         "tips": [
-            "Unlock slots with **Primordial Blood** before you can tier them up.",
-            "T6–T7 require **Mutative Blood** — rarer and only for the dedicated.",
-            "Blood drops from combat. Higher-level monsters drop better blood types.",
+            "Build the **Hatchery** settlement building and release eggs yourself — that's the best blood pipeline.",
+            "Unlock slots with **Primordial Blood** first. No channel, no power. That's just biology.",
+            "T6–T7 need **Mutative Blood** and a certain tolerance for unpredictability. You'll be fine. Probably.",
         ],
         "image": VALDRIS_THUMBNAIL,
         "color": discord.Color.red(),
@@ -479,17 +512,17 @@ TUTORIALS: dict[str, dict] = {
             "*Aphrodite does not forgive hesitation. Lucifer does not forgive pride. "
             "You have been warned. The gate is open.*\n\n"
             "Uber Encounters are the pinnacle of combat. "
-            "Four bosses — **Aphrodite, Lucifer, NEET, and Gemini** — each requiring a "
-            "dedicated boss key earned through gameplay. They are multi-phase fights "
-            "that demand full preparation.\n\n"
-            "Defeating an Uber boss for the first time unlocks a **blueprint** — "
-            "a prerequisite for building that boss's statue in your Settlement's Uber Shrine. "
-            "Repeat victories yield rare materials used for the most powerful upgrades in the game."
+            "Four bosses — **Aphrodite, Lucifer, NEET, and Gemini** — each requiring a dedicated "
+            "boss key. They are multi-phase encounters that will test every build decision you have made. "
+            "There are no shortcuts.\n\n"
+            "Defeating each boss can yield rare drops, including a **blueprint** for their statue in your "
+            "Settlement's Uber Shrine. Repeat victories yield the rare materials that power the most "
+            "significant upgrades for your gear. You will need to return many times.\n\n"
+            "*I do not grant access to those who are unprepared. "
+            "If you are here, I have judged you ready. Do not prove me wrong.*"
         ),
         "tips": [
             "Each boss has a distinct combat style — review their modifiers before entering.",
-            "**Boss keys** are earned through dispatch tasks, curios, and quest rewards.",
-            "First-time kills unlock shrine blueprints. Keep fighting for crafting materials.",
         ],
         "image": ARBITER_THUMBNAIL,
         "color": discord.Color.gold(),

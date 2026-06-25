@@ -17,10 +17,9 @@ from core.settlement.constants import (
     ZEAL_GATHER_CAP,
     ZEAL_TO_DT,
 )
-from core.settlement.mechanics import SettlementMechanics
+from core.settlement.mechanics import SettlementMechanics, collect_settlement_resources
 from core.settlement.models import Plot
 from core.settlement.plots import META_BUILDINGS, get_meta_slots, render_grid
-from core.settlement.mechanics import collect_settlement_resources
 from core.settlement.turn_engine import passive_zeal_for_period, process_next_turn
 from core.settlement.ui import (
     build_building_list_embed,
@@ -421,7 +420,7 @@ class SettlementDashboardView(SettlementBaseView):
                 if cr.get("won"):
                     zeal = cr.get("zeal_earned", 50)
                     lines.append(
-                        f"⚔️ **{cr['event_name']} repelled!** Your settlement is safe. +{zeal} Zeal awarded."
+                        f"**{cr['event_name']} repelled!** Your settlement is safe. +{zeal} Zeal awarded."
                     )
                 else:
                     plague_losses = cr.get("plague_losses")
@@ -885,13 +884,19 @@ class SettlementDashboardView(SettlementBaseView):
     # -------------------------------------------------------------------------
 
     async def show_building_list(self, interaction: Interaction):
-        await interaction.response.send_message(embed=build_building_list_embed(), ephemeral=True)
+        await interaction.response.send_message(
+            embed=build_building_list_embed(), ephemeral=True
+        )
 
     async def show_meta_buildings(self, interaction: Interaction):
-        await interaction.response.send_message(embed=build_meta_buildings_embed(), ephemeral=True)
+        await interaction.response.send_message(
+            embed=build_meta_buildings_embed(), ephemeral=True
+        )
 
     async def show_plot_bonuses(self, interaction: Interaction):
-        await interaction.response.send_message(embed=build_plot_bonuses_embed(), ephemeral=True)
+        await interaction.response.send_message(
+            embed=build_plot_bonuses_embed(), ephemeral=True
+        )
 
     async def open_town_hall(self, interaction: Interaction):
         dc_count = await self.bot.database.settlement.get_development_contracts(
@@ -973,7 +978,12 @@ class SettlementDashboardView(SettlementBaseView):
 
             self._rebuild_ui()
             embed = self.build_embed()
-            formatted = format_collection_changes(display_changes) + xp_msg + stamina_msg + dc_msg
+            formatted = (
+                format_collection_changes(display_changes)
+                + xp_msg
+                + stamina_msg
+                + dc_msg
+            )
             embed.add_field(
                 name="Last Collection",
                 value=f"⏱️ Time since last collection: {hours:.2f}h\n\n📦 Yield:\n{formatted}",
@@ -981,7 +991,9 @@ class SettlementDashboardView(SettlementBaseView):
             )
 
             try:
-                await interaction.edit_original_response(content=None, embed=embed, view=self)
+                await interaction.edit_original_response(
+                    content=None, embed=embed, view=self
+                )
             except Exception:
                 if self.message:
                     await self.message.edit(embed=embed, view=self)
@@ -1356,4 +1368,3 @@ class SettlementDashboardView(SettlementBaseView):
         except Exception:
             self._processing = False
             raise
-

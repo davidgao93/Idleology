@@ -128,25 +128,31 @@ class Codes(commands.Cog, name="codes"):
 
     # ----------------------------------------------------------------
     # Owner-only prefix command to create codes from the terminal.
-    # JSON must be last because * consumes the rest of the message,
-    # avoiding discord.py's quote parser choking on JSON double-quotes.
+    # Everything is captured as a single rest string to avoid discord.py's
+    # quote parser choking on JSON double-quotes.
     #
     # Usage:
     #   &create_code CODE {"curios":10,"gold":200000}
-    #   &create_code CODE 1 {"gold":2000000000}          (admin-only)
-    #   &create_code CODE 0 100 {"curios":5}             (100 global uses)
+    #   &create_code CODE {"gold":2000000000} --admin
+    #   &create_code CODE {"curios":5} --max 100
+    #   &create_code CODE {"gold":500} --admin --max 50
     # ----------------------------------------------------------------
     @commands.command(name="create_code")
     @commands.is_owner()
-    async def create_code(
-        self,
-        ctx: commands.Context,
-        code: str,
-        is_admin_only: int = 0,
-        max_uses: int | None = None,
-        *,
-        rewards_json: str,
-    ) -> None:
+    async def create_code(self, ctx: commands.Context, *, rest: str) -> None:
+        # Pull the JSON blob out first (everything from the first { to the last })
+        json_start = rest.find("{")
+        json_end = rest.rfind("}") + 1
+        if json_start == -1 or json_end == 0:
+            return await ctx.send("Usage: `&create_code CODE {json} [--admin] [--max N]`")
+
+        code = rest[:json_start].strip().split()[0] if rest[:json_start].strip() else None
+        if not code:
+            return await ctx.send("Usage: `&create_code CODE {json} [--admin] [--max N]`")
+
+        rewards_json = rest[json_start:json_end]
+        flags = rest[json_end:].split()
+
         try:
             rewards = json.loads(rewards_json)
         except json.JSONDecodeError:
@@ -156,12 +162,20 @@ class Codes(commands.Cog, name="codes"):
         if unknown_keys:
             return await ctx.send(f"Unknown reward keys: {unknown_keys}")
 
+        is_admin_only = "--admin" in flags
+        max_uses: int | None = None
+        if "--max" in flags:
+            idx = flags.index("--max")
+            try:
+                max_uses = int(flags[idx + 1])
+            except (IndexError, ValueError):
+                return await ctx.send("--max requires an integer, e.g. `--max 100`")
+
         await self.bot.database.codes.create_code(
             code=code,
             rewards=rewards,
             max_uses=max_uses,
-            is_admin_only=bool(is_admin_only),
-            expires_at=expires_at,
+            is_admin_only=is_admin_only,
         )
         parts = [f"Created code **{code.upper()}**", f"rewards: {rewards_json}"]
         if max_uses:

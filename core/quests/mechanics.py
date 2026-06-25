@@ -413,8 +413,8 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
             msgs.append("🌀 +1 Void Fragment")
 
         elif path_id == "alchemist":
-            await bot.database.users.modify_currency(user_id, "spirit_stones", 5)
-            msgs.append("💎 +5 Spirit Stones")
+            await bot.database.users.modify_currency(user_id, "spirit_stones", 1)
+            msgs.append("💎 +1 Spirit Stone")
 
         elif path_id == "glutton":
             # Find highest consumed part level
@@ -451,10 +451,8 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
             msgs.append("📚 +50 Codex Fragments")
 
         elif path_id == "blood_compact":
-            await bot.database.hematurgy.modify_blood(user_id, "evolutionary", 1)
-            await bot.database.hematurgy.modify_blood(user_id, "mutative", 1)
-            msgs.append("🩸 +1 Evolutionary Blood")
-            msgs.append("🩸 +1 Mutative Blood")
+            await bot.database.hematurgy.modify_blood(user_id, "primordial", 250)
+            msgs.append("🩸 +250 Primordial Blood")
 
         elif path_id == "elemental":
             # Grant gathering resources
@@ -482,26 +480,16 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
                 "primal_essence",
                 "soul_vessel",
             ]
-            for _ in range(3):
-                key = random.choice(meta_keys)
-                await bot.database.apex.modify_meta_shard(user_id, server_id, key, 1)
-            msgs.append("💠 +3 Random Meta Shards")
+            key = random.choice(meta_keys)
+            await bot.database.apex.modify_meta_shard(user_id, server_id, key, 1)
+            msgs.append("💠 +1 Random Meta Shard")
 
         elif path_id == "ascent":
-            # Grant 1 curio + random rune/equip/key
-            await bot.database.users.modify_currency(user_id, "curios", 1)
-            msgs.append("📦 +1 Curio")
-            choice = random.choice(["rune", "key"])
-            if choice == "rune":
-                rune = random.choice(
-                    ["refinement_runes", "potential_runes", "shatter_runes"]
-                )
-                await bot.database.users.modify_currency(user_id, rune, 1)
-                msgs.append(f"🔮 +1 {rune.replace('_', ' ').title()}")
-            else:
-                key = random.choice(["dragon_key", "angel_key"])
-                await bot.database.users.modify_currency(user_id, key, 1)
-                msgs.append(f"🗝️ +1 {'Dragon' if key == 'dragon_key' else 'Angel'} Key")
+            rune = random.choice(
+                ["refinement_runes", "potential_runes", "shatter_runes"]
+            )
+            await bot.database.users.modify_currency(user_id, rune, 1)
+            msgs.append(f"🔮 +1 {rune.replace('_', ' ').title()}")
 
         elif path_id == "sovereign":
             sigil_funcs = {
