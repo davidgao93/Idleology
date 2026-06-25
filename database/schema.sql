@@ -950,6 +950,28 @@ CREATE TABLE IF NOT EXISTS `prestige_owned` (
 
 
 -- ============================================================
+-- REDEEM CODES
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS redeem_codes (
+  code          TEXT PRIMARY KEY,
+  rewards       TEXT NOT NULL,           -- JSON: {"gold": 200000, "curios": 10, ...}
+  max_uses      INTEGER DEFAULT NULL,    -- NULL = no global cap (still 1-use per user)
+  total_uses    INTEGER NOT NULL DEFAULT 0,
+  is_admin_only INTEGER NOT NULL DEFAULT 0,
+  expires_at    TEXT DEFAULT NULL,       -- ISO datetime, NULL = never
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS code_redemptions (
+  code        TEXT NOT NULL,
+  user_id     TEXT NOT NULL,
+  redeemed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (code, user_id)
+);
+
+
+-- ============================================================
 -- INFRASTRUCTURE
 -- ============================================================
 

@@ -58,16 +58,35 @@ class VoidforgeView(BaseUpgradeView):
         ]
 
         if not self.candidates:
-            return await interaction.response.send_message(
-                "No eligible sacrifice weapons found.\nRequires: Unequipped, Must have an active passive.",
-                ephemeral=True,
+            embed = discord.Embed(
+                title="🌌 Voidforge",
+                description=(
+                    "**No eligible sacrifice weapons found.**\n"
+                    "Requires: Unequipped weapon with an active passive.\n\n"
+                    "*Acquire a weapon with a passive and return to use the Voidforge.*"
+                ),
+                color=discord.Color.dark_purple(),
             )
+            embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
+            embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
+            self.clear_items()
+            self.add_back_button()
+            return await self._send_render(interaction, embed)
 
         if user_gold < self.gold_cost:
-            return await interaction.response.send_message(
-                f"Insufficient funds! You need **{self.gold_cost:,} gold** to initiate a Voidforge.",
-                ephemeral=True,
+            embed = discord.Embed(
+                title="🌌 Voidforge",
+                description=(
+                    f"**Insufficient funds.**\n"
+                    f"You need **{self.gold_cost:,} gold** to initiate a Voidforge."
+                ),
+                color=discord.Color.dark_purple(),
             )
+            embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
+            embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
+            self.clear_items()
+            self.add_back_button()
+            return await self._send_render(interaction, embed)
 
         options = []
         for w in self.candidates[:25]:

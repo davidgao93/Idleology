@@ -313,11 +313,10 @@ TUTORIALS: dict[str, dict] = {
             "The sacrifice weapon is consumed regardless of outcome. That's the cost of the void.\n\n"
             "**What is a Passive?**\n"
             "Every weapon can carry a primary passive ability — a bonus that activates in combat. "
-            "Think of it as the weapon's soul. Forging and refining can improve a weapon's numbers, "
+            "Think of it as the weapon's soul. Forging and refining can improve a weapon, "
             "but they cannot change its passive. Only the Voidforge can.\n\n"
             "**What is a Pinnacle Passive?**\n"
-            "A second passive slot, rarer and more powerful. Once you've imprinted a Pinnacle, "
-            "the Voidforge costs double. It's worth it.\n\n"
+            "A second passive slot to hold the passive from another weapon.\n\n"
             "**What is an Utmost Passive?**\n"
             "A third and final slot — only reachable after a Pinnacle exists. "
             "The rarest configuration a weapon can have. Few smiths ever see one.\n\n"
@@ -334,7 +333,7 @@ TUTORIALS: dict[str, dict] = {
         "tips": [
             "Pick your sacrifice weapon carefully — its **passive** is what transfers, not its stats.",
             "If your weapon has no Pinnacle yet, a Success writes the Pinnacle slot.",
-            "With a Pinnacle already present, a Success writes the Utmost — costs 10M gold.",
+            "With a Pinnacle already present, a Success writes the Utmost.",
             "A Void Key is consumed on every attempt, win or lose.",
         ],
         "image": UPGRADE_VOIDFORGE,

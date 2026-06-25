@@ -952,9 +952,7 @@ def process_monster_turn(
                 clog.append(_exec_msg)
 
         if not log:
-            log.append(
-                f"{monster.name} {monster.flavor}, but you mitigate all its damage."
-            )
+            log.append(f"{monster.name} {monster.flavor}, but you shrug it off.")
         if not clog:
             clog.append("All damage mitigated!")
 

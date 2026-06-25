@@ -157,20 +157,22 @@ class EquipmentRepository:
         await self.connection.commit()
 
     async def create_accessory(self, a: Accessory) -> None:
+        potential = 3 if a.level <= 40 else (6 if a.level <= 80 else 10)
         await self.connection.execute(
-            """INSERT INTO accessories (user_id, item_name, item_level, attack, defence, 
-            rarity, ward, crit, is_equipped, potential_remaining, passive_lvl) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 10, 0)""",
-            (a.user, a.name, a.level, a.attack, a.defence, a.rarity, a.ward, a.crit),
+            """INSERT INTO accessories (user_id, item_name, item_level, attack, defence,
+            rarity, ward, crit, is_equipped, potential_remaining, passive_lvl)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0)""",
+            (a.user, a.name, a.level, a.attack, a.defence, a.rarity, a.ward, a.crit, potential),
         )
         await self.connection.commit()
 
     async def create_glove(self, g: Glove) -> None:
-        potential = 3 if g.level <= 40 else (4 if g.level <= 80 else 5)
+        enchant = 1 if g.level <= 40 else (3 if g.level <= 80 else 5)
+        reinforce = 3 if g.level <= 40 else (4 if g.level <= 80 else 5)
         await self.connection.execute(
             """INSERT INTO gloves (user_id, item_name, item_level, attack, defence, ward,
             pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl, reinforces_remaining)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 5, 0, ?)""",
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?)""",
             (
                 g.user,
                 g.name,
@@ -181,17 +183,19 @@ class EquipmentRepository:
                 g.pdr,
                 g.fdr,
                 g.passive,
-                potential,
+                enchant,
+                reinforce,
             ),
         )
         await self.connection.commit()
 
     async def create_boot(self, b: Boot) -> None:
-        potential = 3 if b.level <= 40 else (4 if b.level <= 80 else 5)
+        enchant = 2 if b.level <= 40 else (4 if b.level <= 80 else 6)
+        reinforce = 3 if b.level <= 40 else (4 if b.level <= 80 else 5)
         await self.connection.execute(
             """INSERT INTO boots (user_id, item_name, item_level, attack, defence, ward,
             pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl, reinforces_remaining)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 6, 0, ?)""",
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?)""",
             (
                 b.user,
                 b.name,
@@ -202,17 +206,19 @@ class EquipmentRepository:
                 b.pdr,
                 b.fdr,
                 b.passive,
-                potential,
+                enchant,
+                reinforce,
             ),
         )
         await self.connection.commit()
 
     async def create_helmet(self, h: Helmet) -> None:
-        potential = 3 if h.level <= 40 else (4 if h.level <= 80 else 5)
+        enchant = 1 if h.level <= 40 else (3 if h.level <= 80 else 5)
+        reinforce = 3 if h.level <= 40 else (4 if h.level <= 80 else 5)
         await self.connection.execute(
             """INSERT INTO helmets (user_id, item_name, item_level, defence, ward,
             pdr, fdr, passive, is_equipped, potential_remaining, passive_lvl, reinforces_remaining)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 5, 0, ?)""",
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?)""",
             (
                 h.user,
                 h.name,
@@ -222,7 +228,8 @@ class EquipmentRepository:
                 h.pdr,
                 h.fdr,
                 h.passive,
-                potential,
+                enchant,
+                reinforce,
             ),
         )
         await self.connection.commit()

@@ -1,6 +1,7 @@
 import aiosqlite
 
 from .repositories.apex import ApexRepository
+from .repositories.codes import CodesRepository
 from .repositories.quests import QuestsRepository
 from .repositories.tutorials import TutorialsRepository
 from .repositories.alchemy import AlchemyRepository
@@ -65,3 +66,4 @@ class DatabaseManager:
         self.apex = ApexRepository(connection)
         self.quests = QuestsRepository(connection)
         self.tutorials = TutorialsRepository(connection)
+        self.codes = CodesRepository(connection)
