@@ -50,11 +50,14 @@ class DelveEntryView(BaseView):
             await interaction.response.defer()
             return
         self._processing = True
+        # Fix 4: defer before any DB write so Discord's 3-s window is met even
+        # if the gold check or deduction is slow.
+        await interaction.response.defer()
 
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < self.cost:
             self._processing = False
-            return await interaction.response.send_message(
+            return await interaction.followup.send(
                 "You cannot afford the permit fee.", ephemeral=True
             )
 
@@ -549,8 +552,12 @@ class DelveUpgradeView(BaseView):
         self._processing = False
         self.back_callback = back_callback
         self.update_buttons()
-        if back_callback:
-            self.children[-1].label = "Back"
+        # Fix 10: add the nav button dynamically so the label is set at construction
+        # time rather than via a fragile children[-1] index mutation.
+        label = "Back" if back_callback else "Close"
+        nav = discord.ui.Button(label=label, style=ButtonStyle.secondary, row=1)
+        nav.callback = self._on_nav
+        self.add_item(nav)
 
     def update_buttons(self):
         shards = self.stats["shards"]
@@ -608,8 +615,7 @@ class DelveUpgradeView(BaseView):
     async def up_sensor(self, interaction: Interaction, button: ui.Button):
         await self._upgrade(interaction, "sensor_lvl", "sensor_level")
 
-    @ui.button(label="Close", style=ButtonStyle.secondary, row=1)
-    async def close(self, interaction: Interaction, button: ui.Button):
+    async def _on_nav(self, interaction: Interaction):
         self.stop()
         if self.back_callback:
             await self.back_callback(interaction)

@@ -5,6 +5,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.combat.views.post_combat_view import PostCombatView
 from core.images import BOSS_LUCIFER
 from core.combat.views.views_uber_hub import UberReturnView
 
@@ -20,6 +21,7 @@ class LuciferChoiceView(BaseView):
         self.player = player
         self.rematch_callback = rematch_callback
         self.message = None  # Set by caller after send
+        self._processing = False  # Re-entry guard (fix 1)
 
     async def on_timeout(self):
         if self.message:
@@ -35,7 +37,11 @@ class LuciferChoiceView(BaseView):
         await super().on_timeout()
 
     async def _conclude(self, interaction, msg):
-        from core.combat.views.views import PostCombatView
+        # Fix 1: guard against double-click before the first await.
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
 
         await interaction.response.defer()
         embed = interaction.message.embeds[0]
@@ -145,6 +151,7 @@ class InfernalContractView(BaseView):
         self.player = player
         self.server_id = server_id
         self.message = message
+        self._processing = False  # Re-entry guard (fix 2)
 
         self.contract = self._roll_contract()
 
@@ -175,6 +182,12 @@ class InfernalContractView(BaseView):
 
     @ui.button(label="Accept Contract", style=discord.ButtonStyle.danger, emoji="🩸")
     async def accept(self, interaction: Interaction, button: ui.Button):
+        # Fix 2: guard against double-click before the first await.
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         await interaction.response.defer()
 
         atk_delta = self.contract.get("attack", 0)

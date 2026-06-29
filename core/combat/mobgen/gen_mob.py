@@ -2,6 +2,32 @@ import csv
 import os
 import random
 
+# Module-level cache for monsters.csv rows — populated on first call, never re-read.
+# Tuple layout: (name, url, level_scaled, flavor, species)
+_MONSTER_ROWS: list[tuple] | None = None
+
+
+def _load_monster_rows() -> list[tuple]:
+    global _MONSTER_ROWS
+    if _MONSTER_ROWS is not None:
+        return _MONSTER_ROWS
+    csv_path = os.path.join(os.path.dirname(__file__), "../../../assets/monsters.csv")
+    rows: list[tuple] = []
+    try:
+        with open(csv_path, newline="") as f:
+            for row in csv.DictReader(f):
+                rows.append((
+                    row["name"],
+                    row["url"],
+                    int(row["level"]) * 10,
+                    row["flavor"],
+                    row.get("species", row["name"]),
+                ))
+    except Exception as e:
+        print(f"Error reading monsters.csv: {e}")
+    _MONSTER_ROWS = rows
+    return rows
+
 from core.combat.mobgen.modifier_data import (
     BOSS_MOD_NAMES,
     COMMON_MOD_NAMES,
@@ -161,12 +187,16 @@ async def generate_boss(player, monster, phase, phase_index):
     monster.undying_immune_turns = 0
     monster.undying_atk_boost_turns = 0
     monster.potion_uses_tracked = 0
+    # Fix 3: reset percentage multipliers — _apply_spawn_modifiers uses +=, so stale
+    # phase-1 values would stack additively into phase-2 modifier rolls.
+    monster.bonus_attack_pct = 0.0
+    monster.bonus_defence_pct = 0.0
+    monster.bonus_max_hp_pct = 0.0
     _assign_modifiers(
         monster, phase["modifiers_count"], is_boss=True, force_max_eligible_tier=True
     )
     _apply_spawn_modifiers(monster)
     finalize_monster_spawn(monster)
-    print(monster)
     return monster
 
 
@@ -416,30 +446,8 @@ def calculate_monster_stats(monster):
 
 async def fetch_monster_image(level, monster_data, task_species=None):
     """Fetches a monster image from the monsters.csv file based on the encounter level."""
-    csv_file_path = os.path.join(
-        os.path.dirname(__file__), "../../../assets/monsters.csv"
-    )
-    monsters = []
-    try:
-        with open(csv_file_path, newline="") as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                monster_name = row["name"]
-                monster_url = row["url"]
-                monster_level = int(row["level"]) * 10
-                flavor_txt = row["flavor"]
-                monster_species = row.get("species", monster_name)
-                monsters.append(
-                    (
-                        monster_name,
-                        monster_url,
-                        monster_level,
-                        flavor_txt,
-                        monster_species,
-                    )
-                )
-    except Exception as e:
-        print(f"Error reading monsters.csv: {e}")
+    monsters = _load_monster_rows()
+    if not monsters:
         monster_data.name = "Commoner"
         monster_data.image = COMBAT_DUMMY
         monster_data.flavor = "stares pleadingly at"
@@ -449,7 +457,6 @@ async def fetch_monster_image(level, monster_data, task_species=None):
     if 444 <= level <= 888:
         for monster in monsters:
             if monster[2] == level * 10:
-                print("Monster matched")
                 monster_data.name = monster[0]
                 monster_data.image = monster[1]
                 monster_data.flavor = monster[3]
@@ -627,19 +634,11 @@ async def generate_incubated_monster(
 
 async def _fetch_incubated_image(original_name: str, monster: "Monster") -> "Monster":
     """Tries to match the original monster name in monsters.csv to grab its image."""
-    csv_file_path = os.path.join(
-        os.path.dirname(__file__), "../../../assets/monsters.csv"
-    )
-    try:
-        with open(csv_file_path, newline="") as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                if row["name"] == original_name:
-                    monster.image = row["url"]
-                    monster.species = row.get("species", "Incubated")
-                    return monster
-    except Exception:
-        pass
+    for name, url, _, _, species in _load_monster_rows():
+        if name == original_name:
+            monster.image = url
+            monster.species = species
+            return monster
     return monster  # fallback: image stays empty, name already set
 
 
@@ -728,7 +727,6 @@ def generate_corrupted_encounter(player, monster) -> "Monster":
     _apply_spawn_modifiers(monster)
     finalize_monster_spawn(monster)
 
-    print(monster)
     return monster
 
 
@@ -884,7 +882,6 @@ def generate_uber_evelynn(player, monster):
     monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
     monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
-    print(monster)
     return monster
 
 

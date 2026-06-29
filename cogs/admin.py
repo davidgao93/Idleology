@@ -39,6 +39,15 @@ class Admin(commands.Cog, name="admin"):
         # One API call — required by Discord's 3-second interaction window.
         await interaction.response.defer(ephemeral=True)
 
+        # Fix 8: block if the target user already has an interactive session open.
+        # Running apply_victory_rewards 200× while combat is active causes
+        # application-level lost-update races on the same DB rows.
+        if self.bot.state_manager.is_active(user_id):
+            return await interaction.followup.send(
+                "Cannot simulate while you have an active session. Close it first.",
+                ephemeral=True,
+            )
+
         user_row = await self.bot.database.users.get(user_id, server_id)
         if not user_row:
             return await interaction.followup.send("No character found.")
@@ -92,9 +101,6 @@ class Admin(commands.Cog, name="admin"):
                 combat_logger=None,
             )
 
-            # Persist level/ascension/exp/hp changes (gold is already written by victory).
-            await self.bot.database.users.update_from_player_object(player)
-
             total_gold += reward_data.get("gold", 0)
             total_xp += reward_data.get("xp", 0)
 
@@ -119,6 +125,10 @@ class Admin(commands.Cog, name="admin"):
             for msg in reward_data.get("msgs", []):
                 if "joined your roster" in msg:
                     companions_gained += 1
+
+        # Fix 6: one write after the loop instead of N writes inside it.
+        # apply_victory_rewards already persists gold; this persists level/asc/exp/hp.
+        await self.bot.database.users.update_from_player_object(player)
 
         # --- Build summary embed (single Discord API call) ---
         levels_gained = player.level - level_start

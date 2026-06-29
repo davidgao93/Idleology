@@ -60,7 +60,7 @@ class Delve(commands.Cog):
                     )
                     view = DelveView(self.bot, user_id, server_id, state, delve_stats)
                     embed = view.build_embed("Systems online. Permit verified.")
-                    await inter.response.edit_message(embed=embed, view=view)
+                    await inter.edit_original_response(embed=embed, view=view)
                     view.message = await inter.original_response()
 
                 entry_view = DelveEntryView(

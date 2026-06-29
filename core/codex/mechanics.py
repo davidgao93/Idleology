@@ -121,7 +121,9 @@ def _desc_player_mod(mod_type: str, value: float) -> str:
         return f"-{int(value * 100)}% ward gen"
     if mod_type == "hp_entry_pct":
         return f"Enter each fight at {int((1 - value) * 100)}% HP"
-    return mod_type
+    # Fix 7: unknown/removed modifier types (e.g. potion_count on pre-patch runs)
+    # show a neutral description rather than the raw DB key.
+    return "Modified run"
 
 
 def _desc_monster_mod(modifier_name: str, tier: int) -> str:

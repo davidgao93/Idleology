@@ -495,7 +495,7 @@ class GatherView(BaseView):
                 parent_gather_view=gather_parent,
             )
             embed = view.build_embed("Systems online. Permit verified.")
-            await inter.response.edit_message(embed=embed, view=view)
+            await inter.edit_original_response(embed=embed, view=view)
             view.message = await inter.original_response()
 
         entry_view = DelveEntryView(
