@@ -149,6 +149,34 @@ _VOICES: dict[str, list[str]] = {
         "The Sovereigns are not just powerful. They are patient. Do not let them outlast you.",
         "Every key you spend here is a declaration. Make sure you mean it.",
     ],
+    # ── Upgrade Smiths ───────────────────────────────────────────────────────
+    "enchant": [
+        "Bring it here. Magic doesn't force itself in — it has to be invited. I know how.",
+        "Another piece for enchantment. Set it down carefully. I don't redo sloppy work.",
+        "Passive levels don't climb by themselves. That's what I'm here for.",
+        "You came to the right place. I don't do ordinary.",
+        "This is precision work. Not something you rush. Let's begin.",
+    ],
+    "temper": [
+        "Tempering pushes your armor's resistance to its limit — PDR and FDR are on the table. It's not guaranteed, but nothing worth doing ever is.",
+        "Step up. Each temper attempt drives more resistance into the metal itself. Success improves PDR or FDR. Failure costs materials, not your nerve.",
+        "This is controlled punishment applied to metal. The goal: improved PDR or FDR. The catch: it can fail. The upside: I'm very good at this.",
+    ],
+    "imbue": [
+        "Imbuing is half craft, half faith. If it holds, your armor gains a passive that nothing else can provide. If it doesn't — the rune shatters. That's the risk.",
+        "This isn't tempering. Imbuing writes a permanent passive into the weave of the metal itself. Fifty-fifty odds. One Rune. I don't sugarcoat it.",
+        "You only get one shot per piece. A success means a powerful armor passive. A failure means we try again when you have another Rune.",
+    ],
+    "reinforce": [
+        "Reinforce builds up your main stat one slot at a time. Reinforcemaxx runs that automatically until your materials are spent. No slots left? A Shatter Rune adds one back.",
+        "One slot at a time, or all at once — your call. Reinforce is careful. Reinforcemaxx is relentless. Shatter Runes keep the machine running when the slots dry up.",
+        "What I do here is permanent. The main stat climbs with each reinforcement. Reinforcemaxx handles the grind, Shatter Runes extend it. Simple enough.",
+    ],
+    "refine": [
+        "Raw power, added one roll at a time. Refine does it manually. Refinemaxx runs until materials are gone. Refinemaxx ✨ adds Runes to the loop — won't stop until everything's spent.",
+        "A weapon that doesn't get better is already falling behind. Refine handles it one refinement at a time, or all at once with Refinemaxx. The star version burns Runes too, for those who want it all.",
+        "Refinement isn't glamorous. It's just better numbers. Refine — one at a time. Refinemaxx — runs dry. Refinemaxx ✨ — adds Runes, runs even drier.",
+    ],
     # ── Alchemy ───────────────────────────────────────────────────────────────
     "alchemy": [
         "Welcome back to the lab. The reagents are restless today. Try not to disappoint them.",

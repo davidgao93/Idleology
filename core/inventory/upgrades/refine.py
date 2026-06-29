@@ -8,6 +8,7 @@ from core.images import HARLAN_AUTHOR, UPGRADE_REFINE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.models import Weapon
+from core.npc_voices import get_quip
 
 
 class RefineView(BaseUpgradeView):
@@ -34,6 +35,7 @@ class RefineView(BaseUpgradeView):
         )
 
         desc = (
+            f"{get_quip('refine')}\n\n"
             f"**Refines Remaining:** {self.item.refines_remaining}\n"
             f"**Refinement Level:** +{self.item.refinement_lvl}\n"
             f"**Gold Cost:** {cost_gold:,} ({user_gold:,})"

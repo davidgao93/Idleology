@@ -10,6 +10,7 @@ from core.images import (
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.models import Accessory, Boot, Glove, Helmet
+from core.npc_voices import get_quip
 
 
 class PotentialView(BaseUpgradeView):
@@ -42,6 +43,7 @@ class PotentialView(BaseUpgradeView):
         base_rate = max(75 - (self.item.passive_lvl * 5), 30)
 
         desc = (
+            f"{get_quip('enchant')}\n\n"
             f"**Current Level:** {self.item.passive_lvl}/{max_lvl}\n"
             f"**Attempts Left:** {self.item.potential_remaining}\n"
             f"**Success Rate:** {base_rate}%\n"

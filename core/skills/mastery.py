@@ -122,10 +122,10 @@ MINING_TREE: Dict[str, Dict[str, Any]] = {
         "cost": 1,
         "desc": "All tool upgrade costs reduced by 12%.",
     },
-    "skilled_hands": {
+    "vein_intuition": {
         "branch": "synergy",
         "cost": 2,
-        "desc": "Skiller boot procs are 65% more likely and yield 45% more resources.",
+        "desc": "Delve runs begin with +15 bonus stability. Ore Vein layers in Delve yield 25% more ore.",
     },
     "master_quarry": {
         "branch": "synergy",
@@ -200,10 +200,10 @@ FISHING_TREE: Dict[str, Dict[str, Any]] = {
         "cost": 1,
         "desc": "Bait cost reduced by 12%.",
     },
-    "favored_currents": {
+    "angling_mastery": {
         "branch": "synergy",
         "cost": 2,
-        "desc": "Skiller boot procs are 65% more likely and yield 45% more resources.",
+        "desc": "Fishing mini-game catches yield 30% more resources. Quality sessions grant +5 additional Momentum minutes.",
     },
     "master_baiter": {
         "branch": "synergy",
@@ -384,7 +384,7 @@ BRANCH_NODE_ORDERS = {
         ],
         "synergy": [
             "tool_resonance",
-            "skilled_hands",
+            "vein_intuition",
             "master_quarry",
             "living_mountain",
             "echo_first_vein",
@@ -405,7 +405,7 @@ BRANCH_NODE_ORDERS = {
         ],
         "synergy": [
             "lighter_bait",
-            "favored_currents",
+            "angling_mastery",
             "master_baiter",
             "old_ones_favor",
             "lord_of_the_deep",
@@ -441,7 +441,7 @@ NODE_LABELS = {
     "geode_cores": "Geode Cores",
     "worldcore_resonance": "Worldcore Resonance",
     "tool_resonance": "Tool Resonance",
-    "skilled_hands": "Skilled Hands",
+    "vein_intuition": "Vein Intuition",
     "master_quarry": "Master Quarry",
     "living_mountain": "Living Mountain",
     "echo_first_vein": "Echo of the First Vein",
@@ -455,7 +455,7 @@ NODE_LABELS = {
     "tide_relics": "Tide Relics",
     "deep_current_resonance": "Deep Current Resonance",
     "lighter_bait": "Lighter Bait",
-    "favored_currents": "Favored by the Currents",
+    "angling_mastery": "Angling Mastery",
     "master_baiter": "Master Baiter",
     "old_ones_favor": "The Old One's Favor",
     "lord_of_the_deep": "Lord of the Deep",
@@ -729,14 +729,48 @@ def has_master_baiter(mastery_row: dict) -> bool:
 
 
 def get_skiller_bonus(mastery_row: dict, skill: SkillType) -> Tuple[float, float]:
-    """Returns (proc_chance_mult, yield_mult) for Skiller boots. 1.65x chance, 1.45x yield if owned."""
+    """Returns (proc_chance_mult, yield_mult) for Skiller boots. 1.65x chance, 1.45x yield if owned.
+
+    Only the Woodcutting synergy node (skilled_forester) boosts Skiller boots.
+    Mining and Fishing synergy slot 2 were replaced with skill-specific nodes.
+    """
     alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
     synergy = alloc.get("synergy", {}).get("unlocked", [])
-    if any(
-        n in synergy for n in ("skilled_hands", "favored_currents", "skilled_forester")
-    ):
+    if "skilled_forester" in synergy:
         return 1.65, 1.45
     return 1.0, 1.0
+
+
+def has_vein_intuition(mastery_row: dict) -> bool:
+    """Returns True if the Mining Vein Intuition synergy node is unlocked."""
+    alloc = json.loads(mastery_row.get("mining_alloc", "{}") or "{}")
+    return "vein_intuition" in alloc.get("synergy", {}).get("unlocked", [])
+
+
+def get_vein_intuition_stability_bonus(mastery_row: dict) -> int:
+    """Returns the bonus starting stability from Vein Intuition (0 or 15)."""
+    return 15 if has_vein_intuition(mastery_row) else 0
+
+
+def get_vein_intuition_ore_mult(mastery_row: dict) -> float:
+    """Returns the ore yield multiplier for Ore Vein layers in Delve (1.0 or 1.25)."""
+    return 1.25 if has_vein_intuition(mastery_row) else 1.0
+
+
+def has_angling_mastery(mastery_row: dict) -> bool:
+    """Returns True if the Fishing Angling Mastery synergy node is unlocked."""
+    alloc = json.loads(mastery_row.get("fishing_alloc", "{}") or "{}")
+    return "angling_mastery" in alloc.get("synergy", {}).get("unlocked", [])
+
+
+def get_angling_mastery_yield_mult(mastery_row: dict) -> float:
+    """Returns the fishing mini-game catch yield multiplier (1.0 or 1.30)."""
+    return 1.30 if has_angling_mastery(mastery_row) else 1.0
+
+
+def get_angling_mastery_momentum_bonus(mastery_row: dict) -> int:
+    """Returns extra Momentum minutes granted on quality fishing sessions (0 or 5)."""
+    return 5 if has_angling_mastery(mastery_row) else 0
 
 
 def get_tool_cost_reduction(mastery_row: dict, skill: SkillType) -> float:

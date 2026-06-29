@@ -715,10 +715,15 @@ class SkillRepository:
     async def set_familiarization_end(
         self, user_id: str, server_id: str, skill: str, end_iso: str
     ) -> None:
-        """Start a familiarization gate after a tool upgrade (stored on skill table)."""
+        """Start a familiarization gate after a tool upgrade (stored on skill table).
+
+        Always resets momentum_minutes to 0 so momentum from the previous tier
+        doesn't carry over to the new tier's gate.
+        """
         try:
             await self.connection.execute(
-                f"UPDATE {skill} SET familiarization_end=? WHERE user_id=? AND server_id=?",
+                f"UPDATE {skill} SET familiarization_end=?, momentum_minutes=0"
+                " WHERE user_id=? AND server_id=?",
                 (end_iso, user_id, server_id),
             )
             await self.connection.commit()

@@ -4,6 +4,7 @@ from discord import ButtonStyle, Interaction, ui
 from core.base_view import BaseView
 from core.delve.mechanics import DelveMechanics, DelveState
 from core.images import DELVE_HUB, DELVE_MAIN, DELVE_MINING, DELVE_REWARDS
+from core.skills import mastery as Mastery
 from core.skills.mechanics import SkillMechanics
 
 
@@ -111,11 +112,13 @@ class DelveView(BaseView):
         stats: dict,
         *,
         parent_gather_view=None,
+        mastery_row: dict | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.state = state
         self.stats = stats
         self.parent_gather_view = parent_gather_view
+        self.mastery_row = mastery_row
 
         self.processing = False
 
@@ -277,6 +280,10 @@ class DelveView(BaseView):
             ore_yield = SkillMechanics.calculate_yield(
                 "mining", self.state.pickaxe_tier
             )
+            if self.mastery_row:
+                ore_mult = Mastery.get_vein_intuition_ore_mult(self.mastery_row)
+                if ore_mult > 1.0:
+                    ore_yield = {k: max(1, int(v * ore_mult)) for k, v in ore_yield.items()}
             name_map = {
                 col: label
                 for col, label in SkillMechanics.get_skill_info("mining")["resources"]

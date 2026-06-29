@@ -14,6 +14,7 @@ from core.images import (
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.models import Armor, Boot, Glove
+from core.npc_voices import get_quip
 
 
 class TemperView(BaseUpgradeView):
@@ -34,7 +35,7 @@ class TemperView(BaseUpgradeView):
             costs, uid, gid
         )
         self.costs = costs
-        desc = f"**Temper Cost:**\n{cost_lines}"
+        desc = f"{get_quip('temper')}\n\n**Temper Cost:**\n{cost_lines}"
 
         # New: Get Runes
         runes = await self.bot.database.users.get_currency(
@@ -234,7 +235,10 @@ class ImbueView(BaseUpgradeView):
 
         embed = discord.Embed(
             title="Imbue Armor",
-            description=f"Cost: 1 Rune of Imbuing (Owned: {runes})\nSuccess Rate: **50%**\n\nGrants a powerful passive ability.",
+            description=(
+                f"{get_quip('imbue')}\n\n"
+                f"Cost: 1 Rune of Imbuing (Owned: {runes})\nSuccess Rate: **50%**\n\nGrants a powerful passive ability."
+            ),
             color=discord.Color.purple(),
         )
         embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
@@ -346,6 +350,7 @@ class ReinforceView(BaseUpgradeView):
         has_slots = self.item.reinforces_remaining > 0
 
         desc = (
+            f"{get_quip('reinforce')}\n\n"
             f"**Main Stat:** {stat_label} {val_str}\n"
             f"**Reinforces Remaining:** {self.item.reinforces_remaining}\n"
             f"**Reinforcement Level:** +{self.item.reinforcement_lvl}\n"

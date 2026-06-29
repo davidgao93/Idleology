@@ -8,6 +8,7 @@ from discord.ui import Button
 
 from core.base_view import BaseView
 from core.images import MASTERY_FISHING
+from core.skills import mastery as Mastery
 from core.skills.mechanics import SkillMechanics
 
 ACCEL_WINDOW_MIN = 5
@@ -413,6 +414,15 @@ class FishingView(BaseView):
             yield_dict, self.session_quality
         )
 
+        # Angling Mastery: +30% yield on mini-game catches
+        mastery_row = await self.bot.database.skills.get_mastery(
+            self.user_id, self.server_id
+        )
+        if mastery_row:
+            am_mult = Mastery.get_angling_mastery_yield_mult(mastery_row)
+            if am_mult > 1.0:
+                yield_dict = {k: max(1, int(v * am_mult)) for k, v in yield_dict.items()}
+
         await self.bot.database.skills.update_batch(
             self.user_id, self.server_id, "fishing", yield_dict
         )
@@ -421,6 +431,9 @@ class FishingView(BaseView):
         self.session_momentum = SkillMechanics.get_momentum_minutes(
             self.session_quality
         )
+        # Angling Mastery: +5 extra Momentum minutes on quality sessions
+        if mastery_row and self.session_quality != "none":
+            self.session_momentum += Mastery.get_angling_mastery_momentum_bonus(mastery_row)
         if self.session_momentum > 0:
             try:
                 max_mom = SkillMechanics.MAX_MOMENTUM_MINUTES.get("fishing", 300)

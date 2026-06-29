@@ -8,6 +8,7 @@ from core.base_view import BaseView
 from core.combat.views.views_elemental import ElementalEncounterView
 from core.images import MASTERY_FISHING, MASTERY_MINING, MASTERY_WOODCUTTING
 from core.items.factory import load_player
+from core.skills import mastery as Mastery
 from core.skills.mastery import get_tool_cost_reduction
 from core.skills.mechanics import SkillMechanics
 from core.skills.views.mastery_view import ArtisanMasteryHubView
@@ -480,11 +481,19 @@ class GatherView(BaseView):
 
         gather_parent = self
 
+        mastery_row_for_delve = self.mastery_row
+        stability_bonus = (
+            Mastery.get_vein_intuition_stability_bonus(mastery_row_for_delve)
+            if mastery_row_for_delve
+            else 0
+        )
+
         async def start_delve(inter: Interaction):
             state = DelveState(
                 max_fuel=DelveMechanics.get_max_fuel(delve_stats["fuel_lvl"]),
                 current_fuel=DelveMechanics.get_max_fuel(delve_stats["fuel_lvl"]),
                 pickaxe_tier=pickaxe,
+                stability=min(100, 100 + stability_bonus),
             )
             view = DelveView(
                 self.bot,
@@ -493,6 +502,7 @@ class GatherView(BaseView):
                 state,
                 delve_stats,
                 parent_gather_view=gather_parent,
+                mastery_row=mastery_row_for_delve,
             )
             embed = view.build_embed("Systems online. Permit verified.")
             await inter.edit_original_response(embed=embed, view=view)
