@@ -7,6 +7,7 @@ from discord.ui import Button
 from core.combat.calc.calcs import fmt_weapon_passive
 from core.images import HARLAN_AUTHOR, UPGRADE_FORGE
 from core.inventory.upgrades.base import BaseUpgradeView
+from core.npc_voices import get_quip
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.models import Weapon
 
@@ -17,6 +18,8 @@ class ForgeView(BaseUpgradeView):
         self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._render_gen += 1
+        _my_gen = self._render_gen
         self._processing = False
         costs = EquipmentMechanics.calculate_forge_cost(self.item)
         if not costs:
@@ -34,10 +37,7 @@ class ForgeView(BaseUpgradeView):
 
         self.embed = discord.Embed(
             title=f"Forge {self.item.name}",
-            description=(
-                "Another blade that needs real work. Hand it over — I'll make it sing. "
-                "Costs are fair, results are better than fair."
-            ),
+            description=get_quip("forge"),
             color=discord.Color.green() if has_res else discord.Color.red(),
         )
         self.embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
@@ -65,7 +65,7 @@ class ForgeView(BaseUpgradeView):
 
         self.add_back_button()
 
-        await self._send_render(interaction, self.embed)
+        await self._send_render(interaction, self.embed, render_gen=_my_gen)
 
     async def confirm_forge(self, interaction: Interaction):
         if self._processing:

@@ -38,6 +38,7 @@ _RESEARCH_DT_COSTS: dict[str, int] = {
     "hatchery": 35,
     "war_camp": 25,
     "idlem_foundry": 40,
+    "sanctum": 30,
     "uber_shrine": 50,
     # Meta buildings
     "grand_cathedral": 35,
@@ -57,6 +58,7 @@ RESEARCHABLE_BUILDINGS: dict[str, str] = {
     "hatchery": "Hatchery",
     "war_camp": "War Camp",
     "idlem_foundry": "Idlem Foundry",
+    "sanctum": "Sanctum",
     "uber_shrine": "Uber Shrine",
     # Meta buildings — also gated behind regular-building prerequisites
     "grand_cathedral": "Grand Cathedral",
@@ -83,6 +85,7 @@ _BUILDING_EMOJIS: dict[str, str] = {
     "hatchery": "🐣",
     "war_camp": "⚔️",
     "idlem_foundry": "🏭",
+    "sanctum": "🕍",
     "uber_shrine": "🏛️",
     "grand_cathedral": "🕍",
     "shrine_garden": "🌺",
@@ -100,6 +103,7 @@ _BUILDING_DESCS: dict[str, str] = {
     "hatchery": "Incubate monster eggs for blood drops",
     "war_camp": "Generates passive Combat Stamina",
     "idlem_foundry": "Produces Idlem for the Black Market tree",
+    "sanctum": "Converts fallen enemies into ideology followers",
     "uber_shrine": "Houses shrine statues for sigil drop boosts",
     "grand_cathedral": "Doubles worker cap for adjacent shrines [Meta]",
     "shrine_garden": "+15% effectiveness to adjacent shrines [Meta]",

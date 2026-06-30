@@ -23,6 +23,8 @@ class TemperView(BaseUpgradeView):
         self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._render_gen += 1
+        _my_gen = self._render_gen
         self._processing = False
         costs = EquipmentMechanics.calculate_temper_cost(self.item)
         if not costs:
@@ -87,7 +89,7 @@ class TemperView(BaseUpgradeView):
         )
         embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_TEMPER)
-        await self._send_render(interaction, embed)
+        await self._send_render(interaction, embed, render_gen=_my_gen)
 
     async def confirm_temper(self, interaction: Interaction, use_rune: bool):
         if self._processing:
@@ -231,6 +233,8 @@ class ImbueView(BaseUpgradeView):
         self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._render_gen += 1
+        _my_gen = self._render_gen
         runes = await self.bot.database.users.get_currency(self.user_id, "imbue_runes")
 
         embed = discord.Embed(
@@ -251,7 +255,7 @@ class ImbueView(BaseUpgradeView):
         self.add_item(confirm_btn)
         self.add_back_button()
 
-        await self._send_render(interaction, embed)
+        await self._send_render(interaction, embed, render_gen=_my_gen)
 
     async def confirm(self, interaction: Interaction):
         if self._processing:
@@ -333,6 +337,8 @@ class ReinforceView(BaseUpgradeView):
         return "helmet", "ward", "Ward", self.item.ward, True
 
     async def render(self, interaction: Interaction):
+        self._render_gen += 1
+        _my_gen = self._render_gen
         self._processing = False
         self.cost_data = EquipmentMechanics.calculate_reinforce_cost(self.item)
         cost_gold = self.cost_data["gold"]
@@ -390,7 +396,7 @@ class ReinforceView(BaseUpgradeView):
         )
         embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_TEMPER)
-        await self._send_render(interaction, embed)
+        await self._send_render(interaction, embed, render_gen=_my_gen)
 
     async def confirm_reinforce(self, interaction: Interaction):
         if self._processing:
@@ -721,6 +727,8 @@ class EngramView(BaseUpgradeView):
         self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._render_gen += 1
+        _my_gen = self._render_gen
         self._processing = False
         server_id = str(interaction.guild.id)
 
@@ -758,7 +766,7 @@ class EngramView(BaseUpgradeView):
         self.add_item(btn_consume)
         self.add_back_button()
 
-        await self._send_render(interaction, self.embed)
+        await self._send_render(interaction, self.embed, render_gen=_my_gen)
 
     async def confirm_engram(self, interaction: Interaction):
         if self._processing:

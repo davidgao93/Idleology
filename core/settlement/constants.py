@@ -86,7 +86,7 @@ SPECIAL_MAP = {
     "temple": "spirit_shard",
     "market": "spirit_shard",
     "town_hall": "spirit_shard",
-    "apothecary": "life_root",
+    "apothecary": "spirit_shard",
     "companion_ranch": "life_root",
     "hatchery": "life_root",
     "war_camp": "magma_core",
@@ -140,6 +140,7 @@ BUILDING_INFO.update(
         "nursery": "Project Building: Produces **~1–2 Workers per 100 workers/Turn**. Completed workers are added to your ideology's follower count.",
         "idlem_foundry": "Project Building: Produces **~1–2 Idlem per 100 workers/ Turn**. Idlem is the currency for the Black Market passive tree — invest it to unlock better deal speeds, value, and loot biases.",
         "uber_shrine": "Passive: Houses shrine statues dedicated to the gods. Statue blueprints drop from uber bosses. Allocate workers to each statue individually — each statue provides a sigil drop boost. Higher tiers raise the total worker cap across all statues.",
+        "sanctum": "Passive: Each combat victory has a **1% chance per 10 workers assigned** to convert the fallen enemy into an ideology follower. Chance never exceeds 95%. Sacred Ground plots boost conversion rate by 20%.",
     }
 )
 
@@ -147,6 +148,7 @@ CONSTRUCTION_COSTS.update(
     {
         "nursery": {"gold": 25000, "timber": 2000, "stone": 2000},
         "idlem_foundry": {"gold": 50000, "timber": 5000, "stone": 5000},
+        "sanctum": {"gold": 25000, "timber": 2000, "stone": 2000},
         "uber_shrine": {"gold": 10_000_000, "timber": 100_000, "stone": 100_000},
     }
 )
@@ -154,7 +156,8 @@ CONSTRUCTION_COSTS.update(
 SPECIAL_MAP.update(
     {
         "nursery": "life_root",
-        "idlem_foundry": "spirit_shard",
+        "idlem_foundry": "magma_core",
+        "sanctum": "spirit_shard",
         "uber_shrine": "celestial_stone",  # uses all 5 types for T3+; handled in upgrade logic
     }
 )
@@ -280,6 +283,7 @@ PROJECT_CONSTRUCTION_DT = {
     "war_camp": 16,
     "nursery": 16,
     "idlem_foundry": 22,
+    "sanctum": 18,
     "uber_shrine": 40,
 }
 

@@ -19,6 +19,8 @@ class PotentialView(BaseUpgradeView):
         self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._render_gen += 1
+        _my_gen = self._render_gen
         self._processing = False
         # 1. Determine Item Type & Bonus
         is_accessory = isinstance(self.item, Accessory)
@@ -87,7 +89,7 @@ class PotentialView(BaseUpgradeView):
 
         self.add_back_button()
 
-        await self._send_render(interaction, embed)
+        await self._send_render(interaction, embed, render_gen=_my_gen)
 
     async def confirm_enchant(self, interaction: Interaction, use_rune: bool):
         if self._processing:
@@ -204,6 +206,8 @@ class VoidEngramView(BaseUpgradeView):
         self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._render_gen += 1
+        _my_gen = self._render_gen
         self._processing = False
         server_id = str(interaction.guild.id)
 
@@ -244,7 +248,7 @@ class VoidEngramView(BaseUpgradeView):
         self.add_item(btn_consume)
         self.add_back_button()
 
-        await self._send_render(interaction, self.embed)
+        await self._send_render(interaction, self.embed, render_gen=_my_gen)
 
     async def confirm_engram(self, interaction: Interaction):
         if self._processing:

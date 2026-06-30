@@ -64,6 +64,7 @@ class TradeRootView(BaseView):
     def __init__(self, bot, user_id, receiver, server_id):
         super().__init__(bot, user_id, server_id)
         self.receiver = receiver
+        self._processing = False
 
         # Transaction State
         self.tx_type = None  # 'gold', 'resource', 'equipment'
@@ -345,6 +346,10 @@ class TradeRootView(BaseView):
         await self.update_view(interaction, embed)
 
     async def execute_trade(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         try:

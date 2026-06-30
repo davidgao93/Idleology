@@ -11,6 +11,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.images import AMARA_AUTHOR, QUEST_BOARD
+from core.npc_voices import get_quip
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS
 from core.quests.mechanics import (
     check_and_apply_streak,
@@ -127,7 +128,7 @@ class QuestBoardView(BaseView):
     def _build_board_embed(self, tokens: int) -> discord.Embed:
         embed = discord.Embed(
             title="The Quest Board",
-            description="There you are. The board's fresh — a few contracts worth risking your neck over. Choose wisely, adventurer.",
+            description=get_quip("quests"),
             color=_BOARD_COLOR,
         )
         embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
@@ -194,7 +195,7 @@ class QuestBoardView(BaseView):
     def _build_contracts_embed(self, tokens: int) -> discord.Embed:
         embed = discord.Embed(
             title="Active Contracts",
-            description="Still breathing? Good. Here's what you've got on the fire right now. Don't let me down.",
+            description=get_quip("quests"),
             color=_BOARD_COLOR,
         )
         embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)

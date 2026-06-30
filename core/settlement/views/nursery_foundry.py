@@ -1,8 +1,6 @@
 """
 core/settlement/views/nursery_foundry.py
-Detail views for the Nursery and Idlem Foundry buildings.
-Both produce their output through Development Turns (Next Turn button).
-Each "activation" queues a single-turn project that produces output on completion.
+Detail views for the Nursery, Idlem Foundry, and Sanctum buildings.
 """
 
 from __future__ import annotations
@@ -140,6 +138,11 @@ class NurseryView(SettlementBaseView):
         self.stop()
 
 
+# ---------------------------------------------------------------------------
+# Idlem Foundry
+# ---------------------------------------------------------------------------
+
+
 class IdlemFoundryView(SettlementBaseView):
     """
     Detail view for the Idlem Foundry building.
@@ -262,5 +265,260 @@ class IdlemFoundryView(SettlementBaseView):
         self.parent._rebuild_ui()
         await interaction.edit_original_response(
             embed=self.parent.build_embed(), view=self.parent
+        )
+        self.stop()
+
+
+# ---------------------------------------------------------------------------
+# Sanctum
+# ---------------------------------------------------------------------------
+
+
+class _SanctumWorkerModal(ui.Modal, title="Assign Sanctum Workers"):
+    count = ui.TextInput(label="Number of Workers", min_length=1, max_length=4)
+
+    def __init__(self, parent: "SanctumView") -> None:
+        super().__init__()
+        self.parent = parent
+
+    async def on_submit(self, interaction: Interaction) -> None:
+        try:
+            val = int(self.count.value)
+            if val < 0:
+                raise ValueError
+        except ValueError:
+            return await interaction.response.send_message(
+                "Invalid number.", ephemeral=True
+            )
+
+        max_w = 100 * self.parent.building.tier
+        if val > max_w:
+            return await interaction.response.send_message(
+                f"This building can only hold {max_w:,} workers.", ephemeral=True
+            )
+
+        dashboard = self.parent.parent_detail.parent
+        total_assigned = sum(
+            b.workers_assigned for b in dashboard.settlement.buildings
+        )
+        free = dashboard.follower_count - (
+            total_assigned - self.parent.building.workers_assigned
+        )
+        if val > free:
+            return await interaction.response.send_message(
+                f"You only have {free:,} available followers.", ephemeral=True
+            )
+
+        await self.parent.bot.database.settlement.assign_workers(
+            self.parent.building.id, val
+        )
+        dashboard.settlement = await self.parent.bot.database.settlement.get_settlement(
+            self.parent.user_id, dashboard.server_id
+        )
+        for b in dashboard.settlement.buildings:
+            if b.id == self.parent.building.id:
+                self.parent.building = b
+                break
+        dashboard._rebuild_ui()
+
+        await interaction.response.edit_message(
+            embed=self.parent.build_embed(), view=self.parent
+        )
+
+
+class SanctumView(SettlementBaseView):
+    """
+    Detail panel for the Sanctum. Displays live conversion stats and handles
+    worker assignment. Navigation returns to BuildingDetailView.
+    """
+
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        building,
+        parent_detail,
+    ) -> None:
+        super().__init__(bot, user_id)
+        self.server_id = server_id
+        self.building = building
+        self.parent_detail = parent_detail  # BuildingDetailView
+        self._plot_bonus: str | None = None
+        self._processing = False
+        self._build_ui()
+
+    async def _load(self) -> None:
+        if self.building.plot_index is not None:
+            plot = await self.bot.database.plots.get_plot(
+                self.user_id, self.server_id, self.building.plot_index
+            )
+            if plot:
+                self._plot_bonus = plot["bonus_type"]
+
+    # ------------------------------------------------------------------
+    # Chance helpers
+    # ------------------------------------------------------------------
+
+    def _base_chance(self) -> float:
+        return self.building.workers_assigned / 1000
+
+    def _effective_chance(self) -> float:
+        ch = self._base_chance()
+        if self._plot_bonus == "sacred_ground":
+            ch *= 1.20
+        return min(0.95, ch)
+
+    # ------------------------------------------------------------------
+    # Embed
+    # ------------------------------------------------------------------
+
+    def build_embed(self) -> discord.Embed:
+        max_w = 100 * self.building.tier
+        workers = self.building.workers_assigned
+        base_pct = self._base_chance() * 100
+        eff_pct = self._effective_chance() * 100
+        has_sg = self._plot_bonus == "sacred_ground"
+
+        embed = discord.Embed(
+            title="🕍 Sanctum",
+            description=(
+                "Each combat victory has a chance to convert the fallen enemy "
+                "into a devoted follower of your ideology.\n\n"
+                f"**Tier {self.building.tier}/5** · "
+                f"**{workers:,}/{max_w:,} workers** · "
+                f"**{eff_pct:.1f}% conversion chance**"
+            ),
+            color=discord.Color.from_rgb(100, 70, 180),
+        )
+
+        thumb = SETTLEMENT_BUILDINGS.get("sanctum")
+        if thumb:
+            embed.set_thumbnail(url=thumb)
+
+        # Conversion breakdown
+        breakdown = [f"Base: {workers:,} workers ÷ 1000 = **{base_pct:.1f}%**"]
+        if has_sg:
+            breakdown.append("Plot bonus: **×1.20 (Sacred Ground)**")
+            breakdown.append(f"→ Effective: **{eff_pct:.1f}%**")
+        else:
+            breakdown.append("Plot bonus: none *(Sacred Ground grants ×1.20)*")
+        breakdown.append("Hard cap: **95%**")
+        embed.add_field(
+            name="Conversion Breakdown",
+            value="\n".join(breakdown),
+            inline=False,
+        )
+
+        # Per-tier reference
+        tier_lines = []
+        for t in range(1, 6):
+            cap = 100 * t
+            ch = cap / 1000
+            if has_sg:
+                ch = min(0.95, ch * 1.20)
+            else:
+                ch = min(0.95, ch)
+            marker = " ← **current**" if t == self.building.tier else ""
+            tier_lines.append(f"T{t} ({cap:,}w max): **{ch * 100:.0f}%**{marker}")
+
+        if has_sg:
+            tier_footer = "*Includes ×1.20 Sacred Ground bonus.*"
+        else:
+            tier_footer = (
+                "*Place on Sacred Ground for ×1.20 multiplier.\n"
+                "Bedrock plot raises worker cap by +25%.*"
+            )
+        embed.add_field(
+            name="Max Chance per Tier",
+            value="\n".join(tier_lines) + f"\n{tier_footer}",
+            inline=False,
+        )
+
+        # Workers-to-next-milestone helper
+        divisor = 1.20 if has_sg else 1.0
+        targets = []
+        for target_pct in (0.25, 0.50, 0.75, 0.95):
+            needed = int((target_pct / divisor) * 1000)
+            label = f"{int(target_pct * 100)}%"
+            if needed <= workers:
+                targets.append(f"✅ {label} — reached")
+            else:
+                targets.append(f"• {label} — need **{needed:,}** workers")
+        embed.add_field(
+            name="Milestones",
+            value="\n".join(targets),
+            inline=False,
+        )
+
+        return embed
+
+    # ------------------------------------------------------------------
+    # UI
+    # ------------------------------------------------------------------
+
+    def _build_ui(self) -> None:
+        self.clear_items()
+
+        assign_btn = ui.Button(
+            label="Assign Workers", style=ButtonStyle.primary, emoji="👥", row=0
+        )
+        assign_btn.callback = self._on_assign
+        self.add_item(assign_btn)
+
+        max_btn = ui.Button(label="Max Workers", style=ButtonStyle.primary, row=0)
+        max_btn.callback = self._on_max
+        self.add_item(max_btn)
+
+        back_btn = ui.Button(
+            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1
+        )
+        back_btn.callback = self._on_back
+        self.add_item(back_btn)
+
+    async def _on_assign(self, interaction: Interaction) -> None:
+        await interaction.response.send_modal(_SanctumWorkerModal(self))
+
+    async def _on_max(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
+        max_w = 100 * self.building.tier
+        dashboard = self.parent_detail.parent
+        total_assigned = sum(
+            b.workers_assigned for b in dashboard.settlement.buildings
+        )
+        free = dashboard.follower_count - (
+            total_assigned - self.building.workers_assigned
+        )
+        target = min(max_w, free)
+
+        if target == self.building.workers_assigned:
+            self._processing = False
+            return await interaction.response.send_message(
+                "Already at maximum capacity.", ephemeral=True
+            )
+
+        await interaction.response.defer()
+        await self.bot.database.settlement.assign_workers(self.building.id, target)
+
+        dashboard.settlement = await self.bot.database.settlement.get_settlement(
+            self.user_id, dashboard.server_id
+        )
+        for b in dashboard.settlement.buildings:
+            if b.id == self.building.id:
+                self.building = b
+                break
+        dashboard._rebuild_ui()
+
+        self._processing = False
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+
+    async def _on_back(self, interaction: Interaction) -> None:
+        self.parent_detail._rebuild_ui()
+        await interaction.response.edit_message(
+            embed=self.parent_detail.build_embed(), view=self.parent_detail
         )
         self.stop()

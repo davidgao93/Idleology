@@ -42,6 +42,15 @@ _VOICES: dict[str, list[str]] = {
         "A little something for showing up. It adds up, trust me.",
     ],
     # ── Guild & Quests ────────────────────────────────────────────────────────
+    "quests": [
+        "There you are. The board's fresh — a few contracts worth risking your neck over. Choose wisely.",
+        "Back already? Good. New contracts are up. Don't sit on them.",
+        "The board doesn't wait. Neither do I. What are you after?",
+        "Results first. Questions later. Pick a contract and get moving.",
+        "Every contract here is an opportunity. Whether you see it that way is your problem.",
+        "I don't post easy work. If it were easy, someone else would've done it already.",
+        "Fresh meat at the board. The good kind, I hope. Make your mark.",
+    ],
     "slayer": [
         "Another hunter walks in. Let's see how much blood you've spilled since last time. Don't disappoint me.",
         "I don't hand out easy tasks. If you want a challenge, you came to the right place.",
@@ -150,6 +159,13 @@ _VOICES: dict[str, list[str]] = {
         "Every key you spend here is a declaration. Make sure you mean it.",
     ],
     # ── Upgrade Smiths ───────────────────────────────────────────────────────
+    "forge": [
+        "Another blade that needs real work. Hand it over — I'll make it sing.",
+        "Good metal. Could be better. That's what I'm here for.",
+        "Every weapon that leaves this forge is stronger than the one that came in. Yours won't be the exception.",
+        "I don't rush. The forge doesn't rush. You shouldn't either — but the work will be worth it.",
+        "Costs are fair. Results are better than fair. Trust the process.",
+    ],
     "enchant": [
         "Bring it here. Magic doesn't force itself in — it has to be invited. I know how.",
         "Another piece for enchantment. Set it down carefully. I don't redo sloppy work.",

@@ -39,6 +39,7 @@ class Settings(commands.Cog, name="settings"):
         await interaction.response.send_message(
             embed=view.build_embed(), view=view, ephemeral=False
         )
+        view.message = await interaction.original_response()
 
 
 async def setup(bot):

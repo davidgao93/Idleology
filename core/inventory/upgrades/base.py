@@ -14,6 +14,7 @@ class BaseUpgradeView(BaseView):
         self.item = item
         self.parent_view = parent_view
         self.embed = None
+        self._render_gen = 0  # incremented each render; go_back also increments to cancel in-flight renders
 
     # ------------------------------------------------------------------
     # Shared resource helpers (used by ForgeView, TemperView, etc.)
@@ -125,6 +126,7 @@ class BaseUpgradeView(BaseView):
         return has_mats, "\n".join(lines)
 
     async def go_back(self, interaction: Interaction):
+        self._render_gen += 1  # invalidate any render still awaiting DB results
         self.bot.state_manager.clear_active(self.user_id)
         # 1. Import inside method to avoid circular import at top of file
         from core.inventory.inventory import InventoryUI
@@ -151,8 +153,14 @@ class BaseUpgradeView(BaseView):
         )
         self.stop()
 
-    async def _send_render(self, interaction: Interaction, embed, view=None):
-        """Send or edit the upgrade render embed, then cache the message reference."""
+    async def _send_render(self, interaction: Interaction, embed, view=None, render_gen: int | None = None):
+        """Send or edit the upgrade render embed, then cache the message reference.
+
+        Pass render_gen=my_gen (captured at the top of render()) to automatically
+        discard stale renders that lost a race with go_back or a concurrent render.
+        """
+        if render_gen is not None and render_gen != self._render_gen:
+            return  # navigation happened while we were fetching — discard
         v = view or self
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=v)

@@ -90,11 +90,11 @@ def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
         title="💎 Jewel of Paradise", color=discord.Color.from_str("#b967ff")
     )
     embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
-    embed.set_footer(text=get_quip("paradise"))
 
     obtained = data.get("total_jewels_obtained", 0)
     consumed = data.get("total_jewels_consumed", 0)
     embed.description = (
+        f"*{get_quip('paradise')}*\n\n"
         f"**Uncut Jewels:** 💎 {jewel_count}\n"
         f"**Cosmic Dust:** ✨ {dust:,}\n"
         f"**Jewels Obtained:** {obtained}  •  **Cut:** {consumed}"

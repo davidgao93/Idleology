@@ -55,7 +55,7 @@ def _build_checkin_embed(
         f"**Days 8–14:**\n{row2}\n\n"
         f"**Milestones:**\n{milestone_lines}"
     )
-    embed.description = track_display
+    embed.description = f"*{get_quip('checkin')}*\n\n{track_display}"
 
     if current_day > 0:
         embed.add_field(
@@ -213,7 +213,7 @@ class Tavern(commands.Cog, name="tavern"):
 
             embed = discord.Embed(
                 title="The Tavern 🛏️",
-                description=f"You need to wait {remaining_str} before resting for free again.",
+                description=f"*{get_quip('rest')}*\n\nYou need to wait {remaining_str} before resting for free again.",
                 color=0xFFCC00,
             )
             embed.set_thumbnail(url=BAR_MAID)

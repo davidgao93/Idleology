@@ -224,7 +224,7 @@ PLOT_BONUS_TABLE: dict[str, dict] = {
 PLOT_BONUS_AFFECTED: dict[str, str] = {
     "fertile_ground": "Logging Camp, Quarry, Market, War Camp",
     "rich_seam": "Foundry, Sawmill, Reliquary",
-    "sacred_ground": "Celestial, Infernal, Void, Twin & Corruption Shrines, Temple, Uber Shrine",
+    "sacred_ground": "Celestial, Infernal, Void, Twin & Corruption Shrines, Temple, Sanctum, Uber Shrine",
     "gold_vein": "All buildings (construction cost only)",
     "bedrock": "All buildings (worker cap)",
     "trade_route": "Market, War Camp",

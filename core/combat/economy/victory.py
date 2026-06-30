@@ -153,6 +153,52 @@ async def _apply_companion_drops(
 
 
 # ---------------------------------------------------------------------------
+# Sanctum conversion
+# ---------------------------------------------------------------------------
+
+
+async def _apply_sanctum_conversion(
+    bot,
+    user_id: str,
+    server_id: str,
+    reward_data: dict,
+) -> None:
+    """1% per 10 workers chance to convert the killed monster into a follower."""
+    try:
+        sanctum = await bot.database.settlement.get_building_by_type(
+            user_id, server_id, "sanctum"
+        )
+        if not sanctum or sanctum.is_disabled or sanctum.workers_assigned <= 0:
+            return
+
+        chance = sanctum.workers_assigned / 1000
+
+        # Sacred Ground plot: +20% to conversion rate
+        if sanctum.plot_index is not None:
+            plot = await bot.database.plots.get_plot(user_id, server_id, sanctum.plot_index)
+            if plot and plot["bonus_type"] == "sacred_ground":
+                chance *= 1.20
+
+        chance = min(0.95, chance)
+        if random.random() >= chance:
+            return
+
+        user_row = await bot.database.users.get(user_id, server_id)
+        ideology_name = (user_row["ideology"] or "") if user_row else ""
+        if not ideology_name:
+            return
+
+        await bot.database.social.increment_followers(
+            ideology_name, 1, server_id, user_id
+        )
+        reward_data["msgs"].append(
+            "🕍 Your Sanctum converts the fallen enemy into a devoted follower!"
+        )
+    except Exception:
+        pass  # Non-critical; never break combat
+
+
+# ---------------------------------------------------------------------------
 # Slayer task rewards
 # ---------------------------------------------------------------------------
 
@@ -458,6 +504,7 @@ async def apply_victory_rewards(
 
     await _apply_companion_drops(bot, user_id, player, monster, reward_data, message)
     await _apply_slayer_rewards(bot, user_id, server_id, player, monster, reward_data)
+    await _apply_sanctum_conversion(bot, user_id, server_id, reward_data)
 
     if player.active_partner:
         partner = player.active_partner

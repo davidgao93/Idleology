@@ -94,6 +94,7 @@ class SettlementMechanics:
         # New turn-based buildings
         "nursery": {"type": "special", "effect": "worker_production"},
         "idlem_foundry": {"type": "special", "effect": "idlem_production"},
+        "sanctum": {"type": "passive", "effect": "kill_convert"},
     }
 
     @staticmethod

@@ -168,17 +168,37 @@ class BuildingDetailView(SettlementBaseView):
         if info:
             embed.add_field(name="Function", value=info, inline=False)
 
+        # Check for active upgrade project
+        _projects = getattr(self.parent, "projects", []) or []
+        _upgrade_proj = next(
+            (
+                p
+                for p in _projects
+                if p["project_type"] == "upgrade" and p["target_id"] == self.building.id
+            ),
+            None,
+        )
+
         # Upgrade Cost Preview
         next_tier = self.building.tier + 1
-        next_cost = self._get_upgrade_cost(next_tier)
         if self.building.tier < 5:
-            dt = upgrade_dt_cost(self.building.building_type, next_tier)
-            cost_str = f"🪵 {next_cost.get('timber'):,} | 🪨 {next_cost.get('stone'):,} | 💰 {next_cost.get('gold'):,} | ⏱️ {dt} DT(s)"
-            if "special_name" in next_cost:
-                cost_str += (
-                    f" | ✨ {next_cost['special_name']} x{next_cost['special_qty']}"
+            if _upgrade_proj:
+                invested = _upgrade_proj["invested_turns"]
+                required = _upgrade_proj["required_turns"]
+                embed.add_field(
+                    name="🔨 Under Construction",
+                    value=f"Upgrading to Tier {next_tier} — **{invested}/{required} DT(s)** complete",
+                    inline=False,
                 )
-            embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
+            else:
+                next_cost = self._get_upgrade_cost(next_tier)
+                dt = upgrade_dt_cost(self.building.building_type, next_tier)
+                cost_str = f"🪵 {next_cost.get('timber'):,} | 🪨 {next_cost.get('stone'):,} | 💰 {next_cost.get('gold'):,} | ⏱️ {dt} DT(s)"
+                if "special_name" in next_cost:
+                    cost_str += (
+                        f" | ✨ {next_cost['special_name']} x{next_cost['special_qty']}"
+                    )
+                embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
         else:
             embed.add_field(name="Status", value="🌟 Max Level Reached", inline=False)
         return embed
@@ -203,12 +223,17 @@ class BuildingDetailView(SettlementBaseView):
             btn_max.callback = self.max_workers
             self.add_item(btn_max)
 
-        # Upgrade
+        # Upgrade — disabled if max tier or an upgrade is already queued
+        _projects = getattr(self.parent, "projects", []) or []
+        _has_upgrade = any(
+            p["project_type"] == "upgrade" and p["target_id"] == self.building.id
+            for p in _projects
+        )
         btn_upgrade = ui.Button(
             label="Upgrade",
             style=ButtonStyle.success,
             emoji="⬆️",
-            disabled=(self.building.tier >= 5),
+            disabled=(self.building.tier >= 5 or _has_upgrade),
         )
         btn_upgrade.callback = self.upgrade_building
         self.add_item(btn_upgrade)
@@ -240,6 +265,13 @@ class BuildingDetailView(SettlementBaseView):
             )
             btn_foundry.callback = self.open_idlem_foundry
             self.add_item(btn_foundry)
+
+        if self.building.building_type == "sanctum":
+            btn_sanctum = ui.Button(
+                label="Open Sanctum", style=ButtonStyle.blurple, emoji="🕍", row=1
+            )
+            btn_sanctum.callback = self.open_sanctum
+            self.add_item(btn_sanctum)
 
         if self.building.building_type == "black_market":
             btn_bm = ui.Button(
@@ -510,6 +542,16 @@ class BuildingDetailView(SettlementBaseView):
             embed=view.build_embed(projects=projects, idlem=zeal_data.get("idlem", 0)),
             view=view,
         )
+
+    async def open_sanctum(self, interaction: Interaction):
+        await interaction.response.defer()
+        from core.settlement.views.nursery_foundry import SanctumView
+
+        view = SanctumView(
+            self.bot, self.user_id, self.parent.server_id, self.building, self
+        )
+        await view._load()
+        await interaction.edit_original_response(embed=view.build_embed(), view=view)
 
     async def open_black_market(self, interaction: Interaction):
         await interaction.response.defer()

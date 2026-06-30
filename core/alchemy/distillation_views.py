@@ -136,7 +136,7 @@ class PotionDistillationView(BaseView):
         # ------------------------------------------------------------------
         base_info = DistillationMechanics.POWERFUL_PASSIVES.get(base, {})
         # step is the number of reagent steps *completed*, so the current choice is step+1
-        display_step = step + 1
+        display_step = min(step + 1, DistillationMechanics.STEPS)
 
         safe_dust = max(0, self.cosmic_dust)
         projected_val, projected_dur = DistillationMechanics.project_values(s)

@@ -18,6 +18,8 @@ class RefineView(BaseUpgradeView):
         self._processing = False
 
     async def render(self, interaction: Interaction):
+        self._render_gen += 1
+        _my_gen = self._render_gen
         self._processing = False
         self.cost_data = EquipmentMechanics.calculate_refine_cost(self.item)
         cost_gold = self.cost_data["gold"]
@@ -82,7 +84,7 @@ class RefineView(BaseUpgradeView):
         self.embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         self.embed.set_thumbnail(url=UPGRADE_REFINE)
 
-        await self._send_render(interaction, self.embed)
+        await self._send_render(interaction, self.embed, render_gen=_my_gen)
 
     async def confirm_refine(self, interaction: Interaction):
         if self._processing:
