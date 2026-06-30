@@ -52,6 +52,7 @@ class FishingView(BaseView):
         self._accel_scheduler_task: asyncio.Task | None = None
         self._bite_end_time: float = 0.0
         self._accel_active: bool = False
+        self._processing = False
 
     # ------------------------------------------------------------------
     # Helpers
@@ -284,11 +285,16 @@ class FishingView(BaseView):
         return callback
 
     async def _cast(self, interaction: Interaction, approach: str):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         await self.refresh_data()
 
         cost = SkillMechanics.get_entry_cost("fishing", self.rod_tier)
         if self.gold < cost:
+            self._processing = False
             await interaction.followup.send(
                 "You don't have enough gold to buy bait!", ephemeral=True
             )
@@ -300,6 +306,7 @@ class FishingView(BaseView):
         self.approach = approach
         self.state = "casting"
         self.setup_ui()
+        self._processing = False  # casting state has different buttons; allow pack_up
         await interaction.edit_original_response(
             content=None, embed=self.get_embed(), view=self
         )
@@ -393,6 +400,10 @@ class FishingView(BaseView):
             pass
 
     async def reel_callback(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         if self._escape_task:
             self._escape_task.cancel()
@@ -482,12 +493,17 @@ class FishingView(BaseView):
 
         self.state = "result"
         self.setup_ui()
+        self._processing = False  # result state shows new buttons; allow next cast
         await self.refresh_data()
         await interaction.edit_original_response(
             content=None, embed=self.get_embed(), view=self
         )
 
     async def pack_up_callback(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         self._cancel_tasks()
 
         if self.parent_gather_view:

@@ -152,6 +152,7 @@ class PullView(PartnerBaseView):
     def __init__(self, bot, user_id: str, main_view):
         super().__init__(bot, user_id)
         self.main_view = main_view
+        self._processing = False
 
     def build_embed(self, items: dict) -> discord.Embed:
         embed = discord.Embed(
@@ -190,9 +191,14 @@ class PullView(PartnerBaseView):
         self.stop()
 
     async def _do_pull(self, interaction: Interaction, count: int):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         ticket_cost = count
         ok = await self.bot.database.partners.spend_tickets(self.user_id, ticket_cost)
         if not ok:
+            self._processing = False
             await interaction.response.send_message(
                 f"Not enough tickets! You need **{ticket_cost}** 🎫.", ephemeral=True
             )
@@ -380,6 +386,7 @@ class PullView(PartnerBaseView):
         await asyncio.sleep(2.5)
 
         # Stage 3: Final view
+        self._processing = False  # reset before showing result so re-pulls work
         if new_partners:
             if count == 1:
                 final_view = SinglePullDetailView(

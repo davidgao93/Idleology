@@ -42,6 +42,7 @@ class ForestryView(BaseView):
 
         self._cooldown_task: asyncio.Task | None = None
         self._cooldown_start_time: float = 0.0
+        self._processing = False
 
     # ------------------------------------------------------------------
     # Helpers
@@ -256,11 +257,16 @@ class ForestryView(BaseView):
     # ------------------------------------------------------------------
 
     async def enter_callback(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         await self.refresh_data()
 
         cost = SkillMechanics.get_entry_cost("forestry", self.axe_tier)
         if self.gold < cost:
+            self._processing = False
             await interaction.followup.send(
                 "You don't have enough gold for a forestry pass!", ephemeral=True
             )
@@ -277,9 +283,14 @@ class ForestryView(BaseView):
         self.last_swing_time = None
         self.state = "chopping"
         self.setup_ui()
+        self._processing = False  # chopping state has different buttons; allow swing
         await interaction.edit_original_response(embed=self.get_embed(), view=self)
 
     async def swing_callback(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         # Rhythm check: timely if within FORESTRY_RHYTHM_WINDOW seconds of last action
@@ -366,6 +377,7 @@ class ForestryView(BaseView):
             self._cooldown_start_time = time.time()
             self.state = "cooldown"
             self.setup_ui()
+            self._processing = False  # cooldown state has different buttons
             await self.refresh_data()
             await interaction.edit_original_response(embed=self.get_embed(), view=self)
 
@@ -382,6 +394,7 @@ class ForestryView(BaseView):
         else:
             self.knot_state = None
         self.setup_ui()
+        self._processing = False  # still chopping; allow next swing
         await interaction.edit_original_response(embed=self.get_embed(), view=self)
 
     async def pry_callback(self, interaction: Interaction):
@@ -409,6 +422,10 @@ class ForestryView(BaseView):
             pass
 
     async def pack_up_callback(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         if self._cooldown_task:
             self._cooldown_task.cancel()
 

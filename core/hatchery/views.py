@@ -71,6 +71,7 @@ class HatcheryView(BaseView):
         self.parent_view = parent_view  # BuildingDetailView, or None if standalone
         self._incubation = None  # cached incubation dict
         self._eggs = []  # cached egg inventory
+        self._processing = False
 
     # ------------------------------------------------------------------ #
     #  Data helpers
@@ -239,7 +240,10 @@ class HatcheryView(BaseView):
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def _start_incubation(self, interaction: Interaction, egg: tuple):
-        """Called by EggQueueSelect.callback."""
+        """Called by EggQueueSelect.callback (interaction already deferred)."""
+        if self._processing:
+            return
+        self._processing = True
         egg_id, egg_tier, monster_level, monster_name = egg[0], egg[1], egg[2], egg[3]
         workers = self.building.workers_assigned
         duration = HatcheryMechanics.incubation_seconds(egg_tier, workers)
@@ -261,16 +265,23 @@ class HatcheryView(BaseView):
         embed.set_footer(
             text=f"Incubation started! Estimated: {_fmt_duration(duration)}"
         )
+        self._processing = False
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _release(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         inc = self._incubation
         if inc is None:
+            self._processing = False
             return
 
         rem = _remaining_seconds(inc["start_time"], inc["duration_seconds"])
         if rem > 0:
+            self._processing = False
             return await interaction.followup.send(
                 f"Incubation not yet complete ({_fmt_duration(rem)} remaining).",
                 ephemeral=True,
@@ -287,6 +298,7 @@ class HatcheryView(BaseView):
         embed.set_footer(
             text="The creature has been released. It will appear in your next /combat encounter."
         )
+        self._processing = False
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _back(self, interaction: Interaction):

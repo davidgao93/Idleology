@@ -111,6 +111,7 @@ class AscentLobbyView(BaseView):
         self.player = player
         self.best_floor = best_floor
         self.pinnacle_keys = pinnacle_keys
+        self._processing = False
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
@@ -183,10 +184,15 @@ class AscentLobbyView(BaseView):
 
     @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="🏔️", row=0)
     async def begin_run(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         current_keys = await self.bot.database.users.get_currency(
             self.user_id, "pinnacle_key"
         )
         if current_keys < 1:
+            self._processing = False
             return await interaction.response.send_message(
                 "You need a **Pinnacle Key** to begin the Ascent.", ephemeral=True
             )

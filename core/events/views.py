@@ -38,6 +38,7 @@ class RandomEventView(BaseView):
                 "You have already claimed this event!", ephemeral=True
             )
             return
+        self.claimed_users.add(user_id)  # guard before first await
 
         # Check registration
         existing_user = await self.bot.database.users.get(user_id, server_id)
@@ -102,7 +103,6 @@ class RandomEventView(BaseView):
             reward_msg = "caught fish from the High Tide!"
 
         # Success Handling
-        self.claimed_users.add(user_id)
         await interaction.response.send_message(
             f"Event claimed! You {reward_msg}", ephemeral=True
         )

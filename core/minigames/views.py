@@ -74,6 +74,7 @@ class RouletteView(BaseView):
         self.bet_amount = bet_amount
         self.original_interaction = parent_interaction
         self.game_over = False
+        self._processing = False
 
     async def on_timeout(self):
         if not self.game_over:
@@ -178,8 +179,13 @@ class RouletteView(BaseView):
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def reset_table(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         # Verify they still have money for the base bet size
         if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
+            self._processing = False
             return
 
         self.game_over = False
@@ -199,6 +205,7 @@ class RouletteView(BaseView):
         )
         embed.set_thumbnail(url=TAVERN_CASINO)
 
+        self._processing = False
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def quit_game(self, interaction: Interaction):
@@ -210,26 +217,53 @@ class RouletteView(BaseView):
     # --- UI BUTTONS ---
     @discord.ui.button(label="Red (x2)", style=ButtonStyle.danger, row=0)
     async def bet_red(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         if await self._deduct_and_verify(interaction):
             await self.run_spin(interaction, "color", "red")
+        else:
+            self._processing = False
 
     @discord.ui.button(label="Black (x2)", style=ButtonStyle.secondary, row=0)
     async def bet_black(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         if await self._deduct_and_verify(interaction):
             await self.run_spin(interaction, "color", "black")
+        else:
+            self._processing = False
 
     @discord.ui.button(label="Even (x2)", style=ButtonStyle.primary, row=1)
     async def bet_even(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         if await self._deduct_and_verify(interaction):
             await self.run_spin(interaction, "parity", "even")
+        else:
+            self._processing = False
 
     @discord.ui.button(label="Odd (x2)", style=ButtonStyle.primary, row=1)
     async def bet_odd(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         if await self._deduct_and_verify(interaction):
             await self.run_spin(interaction, "parity", "odd")
+        else:
+            self._processing = False
 
     @discord.ui.button(label="Number (x35)", style=ButtonStyle.success, row=2)
     async def bet_number(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
         await interaction.response.send_modal(RouletteNumberModal(self))
 
 
@@ -250,6 +284,7 @@ class BlackjackView(BaseView):
         self.dealer_hand = []
         self.deck = BlackjackLogic()
         self.game_over = False
+        self._processing = False
 
     async def on_timeout(self):
         if not self.game_over:
@@ -402,15 +437,25 @@ class BlackjackView(BaseView):
 
     @discord.ui.button(label="Hit", style=ButtonStyle.primary, emoji="👊")
     async def hit_button(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         self.player_hand.append(self.deck.draw_card())
         self.double_button.disabled = True
         if self.deck.calculate_score(self.player_hand) > 21:
             await self.end_game("bust", interaction)
+            # game over — _processing stays True (buttons cleared)
         else:
             await self.update_table(interaction)
+            self._processing = False  # still in game
 
     @discord.ui.button(label="Stand", style=ButtonStyle.secondary, emoji="✋")
     async def stand_button(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         while self.deck.calculate_score(self.dealer_hand) < 17:
             self.dealer_hand.append(self.deck.draw_card())
         p = self.deck.calculate_score(self.player_hand)
@@ -424,10 +469,15 @@ class BlackjackView(BaseView):
 
     @discord.ui.button(label="Double Down", style=ButtonStyle.success, emoji="💰")
     async def double_button(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         user_data = await self.bot.database.users.get(
             self.user_id, interaction.guild.id
         )
         if user_data["gold"] < self.bet_amount:
+            self._processing = False
             await interaction.response.send_message(
                 "Insufficient funds.", ephemeral=True
             )
@@ -663,6 +713,7 @@ class HorseRaceView(BaseView):
         self.race_logic = HorseRaceLogic()
         self.selected_horse_index = None
         self.task = None
+        self._processing = False
 
     async def on_timeout(self):
         if not self.selected_horse_index and not self.task:
@@ -757,7 +808,12 @@ class HorseRaceView(BaseView):
         await self.original_interaction.edit_original_response(embed=embed, view=self)
 
     async def restart_game(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
+            self._processing = False
             return
 
         # New view instance
@@ -790,6 +846,10 @@ class HorseRaceView(BaseView):
         self.stop()
 
     async def _pick_horse(self, interaction: Interaction, index: int):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         self.selected_horse_index = index
         await interaction.response.defer()
         await self.start_race()

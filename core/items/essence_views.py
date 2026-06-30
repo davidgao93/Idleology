@@ -244,9 +244,14 @@ class ConfirmApplyView(BaseView):
         self.hub = hub
         self.essence_type = essence_type
         self.corrupted = corrupted
+        self._processing = False
 
     @discord.ui.button(label="Confirm", style=ButtonStyle.success)
     async def confirm(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         consumed = await self.hub.bot.database.essences.consume(
@@ -304,9 +309,14 @@ class ConfirmUtilityView(BaseView):
         super().__init__(bot=hub.bot, parent=hub)
         self.hub = hub
         self.utility_type = utility_type
+        self._processing = False
 
     @discord.ui.button(label="Confirm", style=ButtonStyle.danger)
     async def confirm(self, interaction: Interaction, button: Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         consumed = await self.hub.bot.database.essences.consume(
@@ -457,6 +467,7 @@ class EssenceView(BaseView):
         self.item_type = item_type  # "glove" | "boot" | "helmet"
         self.parent = parent_view  # ItemDetailView
         self.essence_inventory = essence_inventory
+        self._processing = False
         self._build_buttons()
 
     # ------------------------------------------------------------------
@@ -464,6 +475,7 @@ class EssenceView(BaseView):
     # ------------------------------------------------------------------
 
     def _build_buttons(self):
+        self._processing = False
         self.clear_items()
         slots = get_essence_slots(self.item)
         corrupted = getattr(self.item, "corrupted_essence", "none") or "none"
@@ -526,6 +538,9 @@ class EssenceView(BaseView):
     # ------------------------------------------------------------------
 
     async def _open_apply_regular(self, interaction: Interaction):
+        if self._processing:
+            return await interaction.response.defer()
+        self._processing = True
         applicable = []
         for etype in sorted(REGULAR_ESSENCE_TYPES):
             qty = self.essence_inventory.get(etype, 0)
@@ -535,6 +550,7 @@ class EssenceView(BaseView):
                     applicable.append((etype, qty))
 
         if not applicable:
+            self._processing = False
             return await interaction.response.send_message(
                 "You have no applicable regular essences for this item.", ephemeral=True
             )
@@ -551,6 +567,9 @@ class EssenceView(BaseView):
         self.message = await interaction.original_response()
 
     async def _open_apply_corrupted(self, interaction: Interaction):
+        if self._processing:
+            return await interaction.response.defer()
+        self._processing = True
         applicable = []
         for etype in sorted(CORRUPTED_ESSENCE_TYPES):
             qty = self.essence_inventory.get(etype, 0)
@@ -560,6 +579,7 @@ class EssenceView(BaseView):
                     applicable.append((etype, qty))
 
         if not applicable:
+            self._processing = False
             return await interaction.response.send_message(
                 "You have no corrupted essences.", ephemeral=True
             )
@@ -576,12 +596,17 @@ class EssenceView(BaseView):
         self.message = await interaction.original_response()
 
     async def _confirm_utility(self, interaction: Interaction, utility_type: str):
+        if self._processing:
+            return await interaction.response.defer()
+        self._processing = True
         ok, reason = can_apply_utility(self.item, utility_type)
         if not ok:
+            self._processing = False
             return await interaction.response.send_message(reason, ephemeral=True)
 
         qty = self.essence_inventory.get(utility_type, 0)
         if qty == 0:
+            self._processing = False
             return await interaction.response.send_message(
                 f"You don't have any {utility_type} essences.", ephemeral=True
             )
@@ -622,6 +647,7 @@ class EssenceView(BaseView):
     # ------------------------------------------------------------------
 
     async def refresh(self, interaction: Interaction):
+        self._processing = False
         from core.items.factory import create_boot, create_glove, create_helmet
 
         factories = {

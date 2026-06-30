@@ -32,6 +32,7 @@ class CodexMenuView(BaseView):
         self.rerolls = rerolls
         self.chapter_history = chapter_history
         self.antique_tomes = antique_tomes
+        self._processing = False
 
     def build_embed(self) -> discord.Embed:
         tomes = self.player.codex_tomes
@@ -66,10 +67,15 @@ class CodexMenuView(BaseView):
 
     @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="📖", row=0)
     async def begin_run(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         current_tomes = await self.bot.database.users.get_currency(
             self.user_id, "antique_tome"
         )
         if current_tomes < 1:
+            self._processing = False
             return await interaction.response.send_message(
                 "You need an **Antique Tome** to begin a Codex run.", ephemeral=True
             )

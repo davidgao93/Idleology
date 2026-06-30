@@ -54,6 +54,7 @@ class CodexTomsView(BaseView):
         self.rerolls = rerolls
         self.chapter_history = chapter_history
         self.selected_slot: int | None = None
+        self._processing = False
         self._rebuild()
 
     def _rebuild(self):
@@ -182,9 +183,14 @@ class CodexTomsView(BaseView):
         await self._refresh(interaction)
 
     async def _on_unlock(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         tome = await self.bot.database.codex.unlock_tome_slot(self.user_id)
         if tome is None:
+            self._processing = False
             await interaction.followup.send(
                 "All 5 slots are already unlocked.", ephemeral=True
             )
@@ -194,24 +200,32 @@ class CodexTomsView(BaseView):
         self.player.codex_tomes = await self.bot.database.codex.get_tomes(self.user_id)
         self.selected_slot = tome.slot
         self._rebuild()
+        self._processing = False
         await interaction.edit_original_response(embed=self._build_embed(), view=self)
 
     async def _on_upgrade(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         tome = next(
             (t for t in self.player.codex_tomes if t.slot == self.selected_slot), None
         )
         if not tome or tome.tier >= 5:
+            self._processing = False
             return
         cost = TOME_UPGRADE_COSTS[tome.tier]
         gold_cost = TOME_GOLD_COSTS[tome.tier]
         if self.fragments < cost:
+            self._processing = False
             await interaction.followup.send(
                 "Not enough Codex Fragments.", ephemeral=True
             )
             return
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < gold_cost:
+            self._processing = False
             await interaction.followup.send(
                 f"You need **{gold_cost:,} gold** to upgrade this Tome tier.",
                 ephemeral=True,
@@ -230,24 +244,32 @@ class CodexTomsView(BaseView):
                 self.user_id
             )
         self._rebuild()
+        self._processing = False
         await interaction.edit_original_response(embed=self._build_embed(), view=self)
 
     async def _on_reroll_value(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         tome = next(
             (t for t in self.player.codex_tomes if t.slot == self.selected_slot), None
         )
         if not tome or tome.tier == 0:
+            self._processing = False
             return
         cost = get_reroll_cost(tome.tier)
         gold_cost = get_reroll_gold_cost(tome.tier)
         if self.fragments < cost:
+            self._processing = False
             await interaction.followup.send(
                 "Not enough Codex Fragments.", ephemeral=True
             )
             return
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < gold_cost:
+            self._processing = False
             await interaction.followup.send(
                 f"You need **{gold_cost:,} gold** to reroll a Tome value.",
                 ephemeral=True,
@@ -266,11 +288,17 @@ class CodexTomsView(BaseView):
                 self.user_id
             )
         self._rebuild()
+        self._processing = False
         await interaction.edit_original_response(embed=self._build_embed(), view=self)
 
     async def _on_reroll_type(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         if self.pages <= 0:
+            self._processing = False
             await interaction.followup.send("No Codex Pages available.", ephemeral=True)
             return
         ok, _ = await self.bot.database.codex.reroll_tome_type(
@@ -285,6 +313,7 @@ class CodexTomsView(BaseView):
                 self.user_id
             )
         self._rebuild()
+        self._processing = False
         await interaction.edit_original_response(embed=self._build_embed(), view=self)
 
     async def _on_exit(self, interaction: Interaction):

@@ -54,6 +54,7 @@ class PartnerSkillsView(PartnerBaseView):
         self.items = items
         self.detail_view = detail_view
         self.mode = "combat"  # "combat" or "dispatch"
+        self._processing = False
         self._refresh_buttons()
 
     def build_embed(self) -> discord.Embed:
@@ -208,6 +209,10 @@ class PartnerSkillsView(PartnerBaseView):
         self, slot_idx: int, key_col: str, lvl_col: str, key: str, lvl: int
     ):
         async def callback(interaction: Interaction):
+            if self._processing:
+                await interaction.response.defer()
+                return
+            self._processing = True
             await interaction.response.defer()
             if self.mode == "combat":
                 cost = get_combat_upgrade_cost(lvl)
@@ -220,6 +225,7 @@ class PartnerSkillsView(PartnerBaseView):
                     self.user_id, cost
                 )
             if not ok:
+                self._processing = False
                 await interaction.followup.send("Not enough shards!", ephemeral=True)
                 return
             new_lvl = lvl + 1
@@ -232,20 +238,27 @@ class PartnerSkillsView(PartnerBaseView):
             await interaction.edit_original_response(
                 embed=self.build_embed(), view=self
             )
+            self._processing = False
 
         return callback
 
     def _make_sig_upgrade(self, sig_lvl: int):
         async def callback(interaction: Interaction):
+            if self._processing:
+                await interaction.response.defer()
+                return
+            self._processing = True
             await interaction.response.defer()
             cost = get_sig_upgrade_cost(sig_lvl)
             if cost is None:
+                self._processing = False
                 await interaction.followup.send(
                     "Signature is already at max level!", ephemeral=True
                 )
                 return
             ok = await self.bot.database.partners.spend_shard(self.user_id, 0, cost)
             if not ok:
+                self._processing = False
                 await interaction.followup.send(
                     "Not enough character shards!", ephemeral=True
                 )
@@ -264,11 +277,16 @@ class PartnerSkillsView(PartnerBaseView):
             await interaction.edit_original_response(
                 embed=self.build_embed(), view=self
             )
+            self._processing = False
 
         return callback
 
     def _make_reroll(self, slot_idx: int, key_col: str, lvl_col: str):
         async def callback(interaction: Interaction):
+            if self._processing:
+                await interaction.response.defer()
+                return
+            self._processing = True
             await interaction.response.defer()
             if self.mode == "combat":
                 ok = await self.bot.database.partners.spend_combat_shards(
@@ -279,6 +297,7 @@ class PartnerSkillsView(PartnerBaseView):
                     self.user_id, REROLL_DISPATCH_COST
                 )
             if not ok:
+                self._processing = False
                 await interaction.followup.send("Not enough shards!", ephemeral=True)
                 return
             slots = (
@@ -303,6 +322,7 @@ class PartnerSkillsView(PartnerBaseView):
             await interaction.edit_original_response(
                 embed=self.build_embed(), view=self
             )
+            self._processing = False
 
         return callback
 
@@ -329,6 +349,7 @@ class PartnerDetailView(PartnerBaseView):
         self.partner = partner
         self.items = items
         self.roster_view = roster_view
+        self._processing = False
         self._update_buttons()
 
     def _update_buttons(self):
@@ -370,6 +391,10 @@ class PartnerDetailView(PartnerBaseView):
         self.add_item(back_btn)
 
     async def _set_active(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         await self.bot.database.partners.set_active_combat(
             self.user_id, self.partner.partner_id
@@ -382,8 +407,13 @@ class PartnerDetailView(PartnerBaseView):
             embed.description or ""
         ) + "\n\n✅ Set as active combat partner!"
         await interaction.edit_original_response(embed=embed, view=self)
+        self._processing = False
 
     async def _deactivate(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         await self.bot.database.partners.clear_active_combat(self.user_id)
         self.partner.is_active_combat = False
@@ -393,8 +423,13 @@ class PartnerDetailView(PartnerBaseView):
             embed.description or ""
         ) + "\n\n❌ Removed as active combat partner."
         await interaction.edit_original_response(embed=embed, view=self)
+        self._processing = False
 
     async def _collect_dispatch(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         server_id = str(interaction.guild.id)
         lines = await _apply_dispatch_rewards(
@@ -407,6 +442,7 @@ class PartnerDetailView(PartnerBaseView):
             inline=False,
         )
         await interaction.edit_original_response(embed=embed, view=self)
+        self._processing = False
 
     async def _open_skills(self, interaction: Interaction):
         view = PartnerSkillsView(self.bot, self.user_id, self.partner, self.items, self)
@@ -415,6 +451,10 @@ class PartnerDetailView(PartnerBaseView):
         await interaction.response.edit_message(embed=embed, view=view)
 
     async def _toggle_portrait(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         new_variant = 1 - self.partner.portrait_variant
         await self.bot.database.partners.update_portrait(
@@ -425,8 +465,13 @@ class PartnerDetailView(PartnerBaseView):
         await interaction.edit_original_response(
             embed=_build_partner_embed(self.partner, self.items), view=self
         )
+        self._processing = False
 
     async def _back(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         from core.partners.views.roster_view import PartnerRosterView
 
         await interaction.response.defer()

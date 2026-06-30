@@ -25,6 +25,7 @@ class LowHealthWarningView(BaseView):
             continue_callback  # The function to call to actually start combat
         )
 
+        self._processing = False
         self.update_buttons()
 
     def update_buttons(self):
@@ -67,15 +68,23 @@ class LowHealthWarningView(BaseView):
         return embed
 
     async def heal(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         msg = engine.process_heal(self.player)
         await self.bot.database.users.update_from_player_object(self.player)
-
         self.update_buttons()
+        self._processing = False
         await interaction.response.edit_message(
             content=None, embed=self.build_embed(heal_log=msg), view=self
         )
 
     async def fight(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         # We MUST defer here because generating the monster/boss can take a second
         await interaction.response.defer()
 

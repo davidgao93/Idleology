@@ -86,6 +86,7 @@ class JourneyView(BaseView):
         self.player_level = player_level
         self.claimed = claimed
         self.selected_lvl = _default_milestone_level(player_level)
+        self._processing = False
         self._rebuild_items()
 
     # ------------------------------------------------------------------
@@ -163,9 +164,14 @@ class JourneyView(BaseView):
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def _on_claim(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         pending = self._pending_milestones()
         if not pending:
+            self._processing = False
             await interaction.followup.send("No rewards to claim.", ephemeral=True)
             return
 
@@ -188,6 +194,7 @@ class JourneyView(BaseView):
             description="\n".join(all_lines),
             color=_COLOR_CLAIMED,
         )
+        self._processing = False
         await interaction.edit_original_response(embed=embed, view=self)
         await interaction.followup.send(embed=reward_embed, ephemeral=True)
 

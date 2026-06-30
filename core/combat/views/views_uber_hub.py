@@ -40,6 +40,7 @@ class UberHubView(BaseView):
         self.player = player
         self.uber_data = uber_data
         self.message = None
+        self._processing = False
         self._build_buttons()
 
     # Minimum level required per boss
@@ -188,6 +189,10 @@ class UberHubView(BaseView):
         self.stop()
 
     async def open_aphrodite(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         from core.combat.dojo.dummy_engine import DummyEngine
         from core.combat.views.views_uber_aphrodite import UberAphroditeLobbyView
 
@@ -209,6 +214,10 @@ class UberHubView(BaseView):
         self.stop()
 
     async def open_lucifer(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         from core.combat.dojo.dummy_engine import DummyEngine
         from core.combat.views.views_uber_lucifer import UberLuciferLobbyView
 
@@ -230,6 +239,10 @@ class UberHubView(BaseView):
         self.stop()
 
     async def open_neet(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         from core.combat.dojo.dummy_engine import DummyEngine
         from core.combat.views.views_uber_neet import UberNEETLobbyView
 
@@ -249,6 +262,10 @@ class UberHubView(BaseView):
         self.stop()
 
     async def open_gemini(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         from core.combat.dojo.dummy_engine import DummyEngine
         from core.combat.views.views_uber_gemini import UberGeminiLobbyView
 
@@ -268,6 +285,10 @@ class UberHubView(BaseView):
         self.stop()
 
     async def open_evelynn(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         from core.combat.dojo.dummy_engine import DummyEngine
         from core.combat.views.views_uber_evelynn import UberEvelynnLobbyView
 

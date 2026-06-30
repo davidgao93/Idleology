@@ -9,6 +9,7 @@ class LeaderboardHubView(BaseView):
     def __init__(self, bot, user_id: str, active_tab: str = "levels"):
         super().__init__(bot, user_id)
         self.active_tab = active_tab
+        self._processing = False
         self.update_buttons()
 
     def update_buttons(self):
@@ -34,15 +35,18 @@ class LeaderboardHubView(BaseView):
             self.add_item(btn)
 
     async def handle_tab_switch(self, interaction: Interaction):
+        if self._processing:
+            return await interaction.response.defer()
         tab_id = interaction.data["custom_id"]
         if tab_id == self.active_tab:
             return await interaction.response.defer()
-
+        self._processing = True
         self.active_tab = tab_id
         self.update_buttons()
         await interaction.response.defer()
 
         embed = await self.build_embed()
+        self._processing = False
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def build_embed(self) -> discord.Embed:

@@ -130,6 +130,7 @@ class ResearchView(SettlementBaseView):
         self._active: tuple[str, str] | None = None  # (building_type, start_time)
         self._blueprint_count: int = 0
         self._research_projects: list = []
+        self._processing = False
 
     # ------------------------------------------------------------------
     # Data loading (call before sending)
@@ -313,7 +314,13 @@ class ResearchView(SettlementBaseView):
         await interaction.response.defer()
 
     async def _on_start(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         if self._select is None or not self._select.values:
+            self._processing = False
             await interaction.response.send_message(
                 "Select a building to research first.", ephemeral=True
             )
@@ -325,6 +332,7 @@ class ResearchView(SettlementBaseView):
         if not self._prerequisite_met(b_type):
             prereq = RESEARCH_PREREQUISITES[b_type]
             prereq_name = RESEARCHABLE_BUILDINGS.get(prereq, prereq.replace("_", " ").title())
+            self._processing = False
             await interaction.response.send_message(
                 f"You must research **{prereq_name}** before you can research "
                 f"**{RESEARCHABLE_BUILDINGS[b_type]}**.",
@@ -336,6 +344,7 @@ class ResearchView(SettlementBaseView):
         _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
         blueprints = _mats.get(_RESEARCH_COST_ITEM, 0)
         if blueprints < 1:
+            self._processing = False
             await interaction.response.send_message(
                 "You need 1 **Unidentified Blueprint** to begin research.\n"
                 "Blueprints drop from normal combat (1% chance, affected by special rarity).",
@@ -348,6 +357,7 @@ class ResearchView(SettlementBaseView):
             self.user_id, self.server_id
         )
         if active:
+            self._processing = False
             await interaction.response.send_message(
                 "A research is already in progress. Collect it first.", ephemeral=True
             )
@@ -375,13 +385,19 @@ class ResearchView(SettlementBaseView):
         )
 
         await self.load()
+        self._processing = False
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def _on_collect(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         active = await self.bot.database.settlement.get_active_research(
             self.user_id, self.server_id
         )
         if not active:
+            self._processing = False
             await interaction.response.send_message(
                 "No active research to collect.", ephemeral=True
             )
@@ -415,6 +431,7 @@ class ResearchView(SettlementBaseView):
                 if research_proj
                 else "?"
             )
+            self._processing = False
             await interaction.response.send_message(
                 f"Research isn't done yet.\n"
                 f"⏭️ Advance **{dt_needed}** more Development Turn(s) via **Next Turn**.",
@@ -430,18 +447,25 @@ class ResearchView(SettlementBaseView):
         b_name = RESEARCHABLE_BUILDINGS.get(b_type, b_type.replace("_", " ").title())
         emoji = _BUILDING_EMOJIS.get(b_type, "🔬")
         await self.load()
+        self._processing = False
         embed = self.build_embed()
         embed.colour = discord.Color.gold()
         embed.title = f"✅ Research Complete: {emoji} {b_name}!"
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _on_back(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         # Reload projects so the dashboard's Active Projects field is current.
         self.parent.projects = await self.bot.database.settlement.get_projects(
             self.user_id, self.server_id
         )
         self.parent._rebuild_ui()
+        if hasattr(self.parent, "_processing"):
+            self.parent._processing = False
         await interaction.edit_original_response(
             embed=self.parent.build_embed(), view=self.parent
         )

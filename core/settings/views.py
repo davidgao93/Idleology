@@ -52,6 +52,7 @@ class SettingsView(BaseView):
         self.auto_rest_pay = auto_rest_pay
         self.difficulty = max(0, min(4, difficulty))
         self.player_level = player_level
+        self._processing = False
         self.rebuild_buttons()
 
     def rebuild_buttons(self):
@@ -118,11 +119,16 @@ class SettingsView(BaseView):
             )
 
             async def _difficulty_callback(interaction: Interaction, s=select):
+                if self._processing:
+                    await interaction.response.defer()
+                    return
+                self._processing = True
                 self.difficulty = int(s.values[0])
                 await self.bot.database.users.set_difficulty(
                     self.user_id, self.difficulty
                 )
                 self.rebuild_buttons()
+                self._processing = False
                 await interaction.response.edit_message(
                     embed=self.build_embed(), view=self
                 )
@@ -171,25 +177,40 @@ class SettingsView(BaseView):
         return embed
 
     async def toggle_doors(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         self.doors_status = not self.doors_status
         await self.bot.database.users.toggle_doors(self.user_id, self.doors_status)
         self.rebuild_buttons()
+        self._processing = False
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
     async def toggle_exp_protection(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         self.exp_protection = not self.exp_protection
         await self.bot.database.users.toggle_exp_protection(
             self.user_id, self.exp_protection
         )
         self.rebuild_buttons()
+        self._processing = False
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
     async def toggle_auto_rest_pay(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         self.auto_rest_pay = not self.auto_rest_pay
         await self.bot.database.users.toggle_auto_rest_pay(
             self.user_id, self.auto_rest_pay
         )
         self.rebuild_buttons()
+        self._processing = False
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
     async def _close(self, interaction: Interaction):

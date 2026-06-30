@@ -83,6 +83,7 @@ class DummyConfigView(BaseView):
         self.active_mods: list[str] = []
         self.is_boss_mode = False  # Applies boss_dmg emblem instead of combat_dmg
         self.slayer_active = False  # Simulates slayer task matching this dummy
+        self._processing = False
 
         self.update_components()
 
@@ -286,6 +287,10 @@ class DummyConfigView(BaseView):
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
     async def run_sim(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         lvl = self.dummy_level
@@ -323,6 +328,7 @@ class DummyConfigView(BaseView):
         finally:
             self.player.active_task_species = saved_species
 
+        self._processing = False
         await interaction.edit_original_response(
             embed=self.build_embed(results=results), view=self
         )

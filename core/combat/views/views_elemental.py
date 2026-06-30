@@ -23,9 +23,14 @@ class _ElementalCompletionView(BaseView):
 
     def __init__(self, bot, user_id: str, server_id: str):
         super().__init__(bot, user_id, server_id)
+        self._processing = False
 
     @discord.ui.button(label="Repeat", style=ButtonStyle.success, emoji="🔄")
     async def repeat(self, interaction: Interaction, button: discord.ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         mastery_row = await self.bot.database.skills.get_mastery(
             self.user_id, self.server_id
@@ -35,6 +40,7 @@ class _ElementalCompletionView(BaseView):
             for k in ("blessed_bismuth", "sparkling_sprig", "capricious_carp")
         )
         if not has_keys:
+            self._processing = False
             return await interaction.followup.send(
                 "You need 1 Blessed Bismuth, 1 Sparkling Sprig, and 1 Capricious Carp to fight again.",
                 ephemeral=True,

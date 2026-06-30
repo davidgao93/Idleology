@@ -23,6 +23,7 @@ class AffinityStoryView(PartnerBaseView):
         self.partner = partner
         self.story_idx = story_idx
         self.affinity_view = affinity_view
+        self._processing = False
         read_btn = ui.Button(label="Acknowledge", style=ButtonStyle.success)
         read_btn.callback = self._acknowledge
         self.add_item(read_btn)
@@ -55,6 +56,10 @@ class AffinityStoryView(PartnerBaseView):
         return embed
 
     async def _acknowledge(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         await self.bot.database.partners.update_affinity_story_seen(
             self.user_id, self.partner.partner_id, self.story_idx

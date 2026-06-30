@@ -30,6 +30,7 @@ class PartnerRosterView(PartnerBaseView):
         self.partners = partners
         self.items = items
         self.main_view = main_view
+        self._processing = False
         self._refresh()
 
     def build_embed(self) -> discord.Embed:
@@ -139,6 +140,10 @@ class PartnerRosterView(PartnerBaseView):
         await interaction.edit_original_response(embed=embed, view=form_view)
 
     async def _back(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         embed, items, partners = await self.main_view._fetch_fresh_data()
         await interaction.edit_original_response(embed=embed, view=self.main_view)
@@ -153,9 +158,11 @@ class PartnerRosterView(PartnerBaseView):
 class PartnerMainView(PartnerBaseView):
     def __init__(self, bot, user_id: str):
         super().__init__(bot, user_id)
+        self._processing = False
 
     async def _fetch_fresh_data(self):
         """Re-fetch items and partners from DB. Returns (embed, items, partners)."""
+        self._processing = False
         items = await self.bot.database.partners.get_items(self.user_id)
         rows = await self.bot.database.partners.get_owned(self.user_id)
         partners = [
@@ -293,10 +300,15 @@ class PartnerMainView(PartnerBaseView):
 
     @ui.button(label="Roster", style=ButtonStyle.primary, emoji="📋")
     async def roster_btn(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         rows = await self.bot.database.partners.get_owned(self.user_id)
         items = await self.bot.database.partners.get_items(self.user_id)
         if not rows:
+            self._processing = False
             await interaction.followup.send(
                 "You have no partners yet! Use the **Pull** button to recruit some.",
                 ephemeral=True,
@@ -314,12 +326,17 @@ class PartnerMainView(PartnerBaseView):
 
     @ui.button(label="Dispatch", style=ButtonStyle.secondary, emoji="🗺️")
     async def dispatch_btn(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         from core.partners.views.dispatch_view import DispatchView
 
         await interaction.response.defer()
         rows = await self.bot.database.partners.get_owned(self.user_id)
         items = await self.bot.database.partners.get_items(self.user_id)
         if not rows:
+            self._processing = False
             await interaction.followup.send(
                 "You have no partners yet! Use the **Pull** button to recruit some.",
                 ephemeral=True,
@@ -347,6 +364,10 @@ class PartnerMainView(PartnerBaseView):
 
     @ui.button(label="Affinity", style=ButtonStyle.secondary, emoji="💞", row=1)
     async def affinity_btn(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         from core.partners.views.affinity_view import AffinityView
 
         await interaction.response.defer()

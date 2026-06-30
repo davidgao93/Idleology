@@ -166,6 +166,7 @@ class DispatchView(PartnerBaseView):
         self.items = items
         self.main_view = main_view
         self.selected_partner: Optional[Partner] = None
+        self._processing = False
         self._refresh()
 
     def _get_active_dispatch(self) -> Optional[Partner]:
@@ -328,6 +329,10 @@ class DispatchView(PartnerBaseView):
         self.add_item(back_btn)
 
     async def _replace(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         active = self._get_active_dispatch()
         if active:
@@ -368,6 +373,10 @@ class DispatchView(PartnerBaseView):
             )
 
     async def _boss_raid(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         from core.partners.views_boss_party import (
             BossPartyFormView,
@@ -420,6 +429,10 @@ class DispatchView(PartnerBaseView):
         await interaction.edit_original_response(embed=embed, view=form_view)
 
     async def _on_select(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         partner_id = int(interaction.data["values"][0])
         self.selected_partner = next(
@@ -427,6 +440,7 @@ class DispatchView(PartnerBaseView):
         )
         self._refresh()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
+        self._processing = False
 
     async def _confirm(self, interaction: Interaction):
         sp = self.selected_partner
@@ -457,12 +471,16 @@ class DispatchView(PartnerBaseView):
         await interaction.response.edit_message(embed=embed, view=view)
 
     async def _collect(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
         sp = self.selected_partner
         if not sp or not sp.is_dispatched:
             await interaction.response.send_message(
                 "Selected partner is not dispatched.", ephemeral=True
             )
             return
+        self._processing = True
         await interaction.response.defer()
         server_id = str(interaction.guild.id)
         lines = await _apply_dispatch_rewards(self.bot, self.user_id, server_id, sp)
@@ -486,14 +504,19 @@ class DispatchView(PartnerBaseView):
             inline=False,
         )
         await interaction.edit_original_response(embed=embed, view=self)
+        self._processing = False
 
     async def _unassign(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
         sp = self.selected_partner
         if not sp or not sp.is_dispatched:
             await interaction.response.send_message(
                 "Selected partner is not dispatched.", ephemeral=True
             )
             return
+        self._processing = True
         await interaction.response.defer()
         await self.bot.database.partners.clear_dispatch(self.user_id, sp.partner_id)
 
@@ -516,14 +539,19 @@ class DispatchView(PartnerBaseView):
             inline=False,
         )
         await interaction.edit_original_response(embed=embed, view=self)
+        self._processing = False
 
     async def _reassign(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
         sp = self.selected_partner
         if not sp or not sp.is_dispatched:
             await interaction.response.send_message(
                 "Selected partner is not dispatched.", ephemeral=True
             )
             return
+        self._processing = True
         await interaction.response.defer()
         server_id = str(interaction.guild.id)
         lines = await _apply_dispatch_rewards(self.bot, self.user_id, server_id, sp)
@@ -559,6 +587,10 @@ class DispatchView(PartnerBaseView):
         await interaction.edit_original_response(embed=embed, view=task_view)
 
     async def _back(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         embed, items, partners = await self.main_view._fetch_fresh_data()
         await interaction.edit_original_response(embed=embed, view=self.main_view)
@@ -610,6 +642,7 @@ class DispatchTaskConfirmView(PartnerBaseView):
 
             self.dispatch_view.partners = self.partners
             self.dispatch_view.selected_partner = self.partner
+            self.dispatch_view._processing = False
             self.dispatch_view._refresh()
 
             embed = self.dispatch_view.build_embed()
@@ -622,6 +655,7 @@ class DispatchTaskConfirmView(PartnerBaseView):
         return callback
 
     async def _back(self, interaction: Interaction):
+        self.dispatch_view._processing = False
         await interaction.response.edit_message(
             embed=self.dispatch_view.build_embed(), view=self.dispatch_view
         )

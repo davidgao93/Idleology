@@ -610,24 +610,42 @@ class PlotDetailView(SettlementBaseView):
             # Upgrade cost preview (meta buildings are T1-only, no upgrades)
             if b.tier < 5 and not b.is_meta:
                 target_t = b.tier + 1
-                cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
-                dt_display = upgrade_dt_cost(
-                    b.building_type, target_t, self.event_effects
+                _projects = getattr(self.parent, "projects", []) or []
+                _upgrade_proj = next(
+                    (
+                        p
+                        for p in _projects
+                        if p["project_type"] == "upgrade" and p["target_id"] == b.id
+                    ),
+                    None,
                 )
-                cost_str = (
-                    f"🪵 {cost.get('timber', 0):,} | "
-                    f"🪨 {cost.get('stone', 0):,} | "
-                    f"💰 {cost.get('gold', 0):,} | "
-                    f"⏱️ {dt_display} DTs"
-                )
-                if self.event_effects.get("construction_dt_halved"):
-                    cost_str += " _(Inspiration Surge — halved!)_"
-                if "specials" in cost:
-                    for s in cost["specials"]:
-                        cost_str += f" | ✨ {s['name']} ×{s['qty']}"
-                elif "special_name" in cost:
-                    cost_str += f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
-                embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
+                if _upgrade_proj:
+                    invested = _upgrade_proj["invested_turns"]
+                    required = _upgrade_proj["required_turns"]
+                    embed.add_field(
+                        name="🔨 Under Construction",
+                        value=f"Upgrading to Tier {target_t} — **{invested}/{required} DT(s)** complete",
+                        inline=False,
+                    )
+                else:
+                    cost = SettlementMechanics.get_upgrade_cost(b.building_type, b.tier)
+                    dt_display = upgrade_dt_cost(
+                        b.building_type, target_t, self.event_effects
+                    )
+                    cost_str = (
+                        f"🪵 {cost.get('timber', 0):,} | "
+                        f"🪨 {cost.get('stone', 0):,} | "
+                        f"💰 {cost.get('gold', 0):,} | "
+                        f"⏱️ {dt_display} DTs"
+                    )
+                    if self.event_effects.get("construction_dt_halved"):
+                        cost_str += " _(Inspiration Surge — halved!)_"
+                    if "specials" in cost:
+                        for s in cost["specials"]:
+                            cost_str += f" | ✨ {s['name']} ×{s['qty']}"
+                    elif "special_name" in cost:
+                        cost_str += f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
+                    embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
 
         embed.add_field(
             name="Surrounding Plots",
@@ -754,6 +772,13 @@ class PlotDetailView(SettlementBaseView):
             self.add_item(btn_demo)
             return
 
+        # Pre-compute whether this building already has an upgrade queued.
+        _projects = getattr(self.parent, "projects", []) or []
+        _has_upgrade = any(
+            p["project_type"] == "upgrade" and p["target_id"] == b.id
+            for p in _projects
+        )
+
         # --- Special case: Uber Shrine opens Monument Hall view ---
         if b.building_type == "uber_shrine":
             if b.is_disabled:
@@ -782,6 +807,7 @@ class PlotDetailView(SettlementBaseView):
                     style=ButtonStyle.success,
                     emoji="⬆️",
                     row=0,
+                    disabled=_has_upgrade,
                 )
                 btn_up.callback = self._upgrade_building
                 self.add_item(btn_up)
@@ -835,6 +861,7 @@ class PlotDetailView(SettlementBaseView):
                 style=ButtonStyle.success,
                 emoji="⬆️",
                 row=0,
+                disabled=_has_upgrade,
             )
             btn_up.callback = self._upgrade_building
             self.add_item(btn_up)
@@ -1109,6 +1136,15 @@ class PlotDetailView(SettlementBaseView):
         self._processing = True
 
         b = self.building
+
+        # Guard: reject if an upgrade project for this building already exists.
+        _projects = getattr(self.parent, "projects", []) or []
+        if any(p["project_type"] == "upgrade" and p["target_id"] == b.id for p in _projects):
+            self._processing = False
+            return await interaction.response.send_message(
+                "This building already has an upgrade queued.", ephemeral=True
+            )
+
         target_tier = b.tier + 1
 
         # Cost computation (pure)

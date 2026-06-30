@@ -200,6 +200,7 @@ class SlotPickerView(BaseView):
         self.slot_key = slot_key
         self.eligible = eligible
         self.form_view = form_view
+        self._processing = False
         self._build()
 
     async def on_timeout(self):
@@ -287,6 +288,10 @@ class SlotPickerView(BaseView):
         return embed
 
     async def _on_select(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         val = interaction.data["values"][0]
         if val == "__clear__":
@@ -296,13 +301,19 @@ class SlotPickerView(BaseView):
             self.form_view.slots[self.slot_key] = next(
                 (p for p in self.form_view.all_partners if p.partner_id == pid), None
             )
+        self.form_view._processing = False
         self.form_view._refresh()
         embed = _build_form_embed(self.form_view.slots, self.form_view.all_partners)
         await interaction.edit_original_response(embed=embed, view=self.form_view)
         self.stop()
 
     async def _back(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
+        self.form_view._processing = False
         self.form_view._refresh()
         embed = _build_form_embed(self.form_view.slots, self.form_view.all_partners)
         await interaction.edit_original_response(embed=embed, view=self.form_view)
@@ -334,6 +345,7 @@ class BossPartyFormView(BaseView):
             "tank": None,
             "healer": None,
         }
+        self._processing = False
         self._refresh()
 
     async def on_timeout(self):
@@ -382,6 +394,10 @@ class BossPartyFormView(BaseView):
 
     def _make_slot_callback(self, slot_key: str):
         async def callback(interaction: Interaction):
+            if self._processing:
+                await interaction.response.defer()
+                return
+            self._processing = True
             await interaction.response.defer()
             eligible = _eligible_for_slot(self.all_partners, slot_key, self.slots)
             picker = SlotPickerView(self.bot, slot_key, eligible, form_view=self)
@@ -393,6 +409,10 @@ class BossPartyFormView(BaseView):
         return callback
 
     async def _confirm(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         boss = pick_party_boss(self.player_level)
         start_time = _now_utc().isoformat()
@@ -447,9 +467,15 @@ class BossPartyFormView(BaseView):
         self.stop()
 
     async def _back(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         self.stop()
         if self.back_view and self.message:
+            if hasattr(self.back_view, "_processing"):
+                self.back_view._processing = False
             await interaction.edit_original_response(
                 embed=self.back_view.build_embed(), view=self.back_view
             )
@@ -476,6 +502,7 @@ class BossPartyProgressView(BaseView):
         self.partners_by_id = partners_by_id
         self.back_view = back_view
         self.player_level = player_level
+        self._processing = False
         self._refresh_buttons()
 
     async def on_timeout(self):
@@ -504,6 +531,10 @@ class BossPartyProgressView(BaseView):
         self.add_item(back_btn)
 
     async def _collect(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         elapsed = _elapsed_hours(self.party_row["start_time"])
@@ -619,6 +650,10 @@ class BossPartyProgressView(BaseView):
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _raid_again(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         all_partners = getattr(self.back_view, "partners", [])
         form_view = BossPartyFormView(
@@ -636,9 +671,15 @@ class BossPartyProgressView(BaseView):
         self.stop()
 
     async def _back(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         self.stop()
         if self.back_view and self.message:
+            if hasattr(self.back_view, "_processing"):
+                self.back_view._processing = False
             await interaction.edit_original_response(
                 embed=self.back_view.build_embed(), view=self.back_view
             )

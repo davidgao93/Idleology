@@ -295,7 +295,9 @@ async def process_next_turn(
         summary["dt_resources"]["war_camp_stamina"] = war_camp_stamina
     if companion_cookie > 0:
         summary["dt_resources"]["companion_xp"] = companion_cookie
-        await bot.database.users.modify_currency(user_id, "companion_pet_xp", companion_cookie)
+        await bot.database.users.modify_currency(
+            user_id, "companion_pet_xp", companion_cookie
+        )
 
     return summary
 
@@ -490,7 +492,7 @@ async def _complete_project(
             await bot.database.settlement.complete_research(
                 user_id, server_id, building_type
             )
-        return {"label": f"Researched {building_type.replace('_', ' ').title()}"}
+        return {"label": f"{building_type.replace('_', ' ').title()} research - "}
 
     elif ptype == "plot_develop":
         plot_index = data.get("plot_index")
