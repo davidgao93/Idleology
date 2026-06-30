@@ -5,6 +5,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.combat.calc.calcs import fmt_weapon_passive
+from core.character.passive_formatters import get_weapon_passive_description
 from core.images import HARLAN_AUTHOR, UPGRADE_FORGE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.npc_voices import get_quip
@@ -150,8 +151,10 @@ class ForgeView(BaseUpgradeView):
                 self.item.forge_tier,
             )
 
+            passive_desc = get_weapon_passive_description(new_passive)
             result_embed.description = (
                 f"🔥 **Success!**\nNew Passive: **{fmt_weapon_passive(new_passive)}**"
+                + (f"\n*{passive_desc}*" if passive_desc else "")
             )
             result_embed.color = discord.Color.gold()
         else:
@@ -403,12 +406,18 @@ class ForgeView(BaseUpgradeView):
                 self.item.forges_remaining,
             )
 
+        final_passive_desc = (
+            get_weapon_passive_description(final_passive)
+            if final_passive != "none"
+            else ""
+        )
         result_embed = discord.Embed(
             title="⚒️ Forgemaxx Complete",
             description=(
                 f"**Attempts:** {forges_done}  |  **Successes:** {successes}\n"
-                f"**Final Passive:** {fmt_weapon_passive(final_passive) if final_passive != 'none' else 'None'}\n"
-                f"**Forges Remaining:** {self.item.forges_remaining}"
+                f"**Final Passive:** {fmt_weapon_passive(final_passive) if final_passive != 'none' else 'None'}"
+                + (f"\n*{final_passive_desc}*" if final_passive_desc else "")
+                + f"\n**Forges Remaining:** {self.item.forges_remaining}"
             ),
             color=discord.Color.gold() if successes > 0 else discord.Color.dark_grey(),
         )

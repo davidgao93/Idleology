@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
+from core.character.passive_formatters import get_scaled_passive_description
 from core.images import (
     SYLAS_AUTHOR,
     UPGRADE_ENCHANT,
@@ -168,7 +169,10 @@ class PotentialView(BaseUpgradeView):
                 await self.bot.database.equipment.update_counter(
                     self.item.item_id, itype, "passive_lvl", 1
                 )
-                msg = f"Unlocked **{new_p}**!"
+                passive_desc = get_scaled_passive_description(itype, new_p, 1)
+                msg = f"Unlocked **{new_p}**!" + (
+                    f"\n*{passive_desc}*" if passive_desc else ""
+                )
             else:
                 self.item.passive_lvl += 1
                 await self.bot.database.equipment.update_counter(

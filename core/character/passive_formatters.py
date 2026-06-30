@@ -5,9 +5,45 @@ deterministic combat-start bonuses for the profile hub.
 """
 
 from core.character.passive_data import (
+    _ACCESSORY_PASSIVE_FUNCS,
+    _ARMOR_PASSIVE_DESC,
+    _BOOT_PASSIVE_FUNCS,
     _CORRUPTED_DESC,
+    _GLOVE_PASSIVE_FUNCS,
+    _HELMET_PASSIVE_FUNCS,
     _ROMAN,
+    _WEAPON_PASSIVE_DESC,
 )
+
+_SCALED_PASSIVE_TABLES = {
+    "accessory": _ACCESSORY_PASSIVE_FUNCS,
+    "glove": _GLOVE_PASSIVE_FUNCS,
+    "boot": _BOOT_PASSIVE_FUNCS,
+    "helmet": _HELMET_PASSIVE_FUNCS,
+}
+
+
+def get_weapon_passive_description(passive: str) -> str:
+    """Looks up the effect text for a weapon passive key, e.g. 'burning_3'."""
+    if not passive or passive == "none":
+        return ""
+    return _WEAPON_PASSIVE_DESC.get(passive.lower(), "")
+
+
+def get_armor_passive_description(passive: str) -> str:
+    """Looks up the effect text for a fixed armor passive name, e.g. 'Impregnable'."""
+    if not passive or passive == "none":
+        return ""
+    return _ARMOR_PASSIVE_DESC.get(_normalize(passive), "")
+
+
+def get_scaled_passive_description(item_type: str, passive: str, level: int) -> str:
+    """Looks up the effect text for a levelled accessory/glove/boot/helmet passive."""
+    table = _SCALED_PASSIVE_TABLES.get(item_type)
+    if not table or not passive or passive == "none":
+        return ""
+    fn = table.get(_normalize(passive))
+    return fn(level) if fn else ""
 
 
 def _normalize(name: str) -> str:
