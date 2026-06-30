@@ -74,6 +74,14 @@ def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
     if getattr(item, "rarity", 0):
         embed.add_field(name="✨ Rarity", value=f"{item.rarity:,}%", inline=True)
     embed.add_field(name="🔧 Refinement", value=f"+{item.refinement_lvl}", inline=True)
+    embed.add_field(
+        name="Upgrades",
+        value=(
+            f"Forges Remaining: **{item.forges_remaining}**\n"
+            f"Refines Remaining: **{item.refines_remaining}**"
+        ),
+        inline=False,
+    )
 
     # Weapon template stats
     base_rar = getattr(item, "base_rarity", 0)

@@ -532,6 +532,10 @@ async def _complete_project(
         label = f"{statue_type.title()} Statue" if statue_type else "Statue"
         return {"label": f"{label} Upgraded to T{target_tier}"}
 
+    elif ptype == "town_hall_upgrade":
+        await bot.database.settlement.upgrade_town_hall(user_id, server_id)
+        return {"label": "Town Hall Upgraded"}
+
     return {"label": ptype}
 
 

@@ -1,3 +1,4 @@
+import re
 from typing import Literal
 
 import discord
@@ -132,6 +133,35 @@ class ModDetailsMonsterView(BaseView):
         return embed
 
 
+def _compact_tier_descriptions(descriptions: list[str]) -> str:
+    """Collapse per-tier description strings into one line with X/Y/Z values.
+
+    Splits each description into alternating text/number tokens; wherever the
+    number varies across tiers it is replaced with slash-separated values.
+    """
+    if not descriptions:
+        return ""
+    if len(set(descriptions)) == 1:
+        return descriptions[0]
+    pattern = re.compile(r"(\d+(?:\.\d+)?)")
+    tokenized = [pattern.split(d) for d in descriptions]
+    if len({len(t) for t in tokenized}) != 1:
+        return f"{descriptions[0]} → {descriptions[-1]}"
+    result = []
+    for i, token in enumerate(tokenized[0]):
+        if i % 2 == 0:
+            result.append(token)
+        else:
+            values = [t[i] for t in tokenized]
+            if len(set(values)) == 1:
+                result.append(values[0])
+            else:
+                def _clean(s: str) -> str:
+                    return s.rstrip("0").rstrip(".") if "." in s else s
+                result.append("/".join(_clean(v) for v in values))
+    return "".join(result)
+
+
 class General(commands.Cog, name="general"):
     def __init__(self, bot) -> None:
         self.bot = bot
@@ -256,16 +286,12 @@ class General(commands.Cog, name="general"):
             from core.combat.mobgen.modifier_data import MODIFIER_DEFINITIONS
 
             def _tier_range(name: str) -> str:
-                t1 = make_modifier(name, 1)
                 defn = MODIFIER_DEFINITIONS[name]
-                max_available_tier = len(defn.tiers)
-                t_max = make_modifier(name, 200, force_max_tier=True)
-                d1 = get_modifier_description(t1)
-                d_max = get_modifier_description(t_max)
-                if d1 == d_max:
-                    return d1
-                else:
-                    return f"{d1} → {d_max} (max T{max_available_tier})"
+                descs = [
+                    get_modifier_description(make_modifier(name, 1, force_tier=t))
+                    for t in range(1, len(defn.tiers) + 1)
+                ]
+                return _compact_tier_descriptions(descs)
 
             # Build common lines (sorted alphabetically) + Ascended at end
             common_sorted = sorted(COMMON_MOD_NAMES)

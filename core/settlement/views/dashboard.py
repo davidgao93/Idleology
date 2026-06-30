@@ -912,6 +912,7 @@ class SettlementDashboardView(SettlementBaseView):
             self,
             dc_count=dc_count,
             dc_crafted_today=dc_crafted_today,
+            projects=self.projects,
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 

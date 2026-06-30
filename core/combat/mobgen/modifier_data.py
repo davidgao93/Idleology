@@ -367,7 +367,7 @@ MODIFIER_DEFINITIONS: dict = {
         tiers=[0.50, 0.60, 0.70, 0.80, 0.90],
         difficulties=[0.005, 0.007, 0.008, 0.010, 0.012],
         level_gates=[20, 40, 60, 80, 100],
-        description=lambda v: f"Combat start: Your Ward is reduced by {int(v * 100)}%",
+        description=lambda v: f"Combat start: Your starting Ward is reduced by {int(v * 100)}%",
     ),
     "Multistrike": ModifierDef(
         "Multistrike",

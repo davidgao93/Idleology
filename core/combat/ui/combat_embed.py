@@ -98,6 +98,16 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         lines.append(
             f"💪 Enrage  +{int(player.alchemy_atk_boost_pct * 100)}% ATK/DEF  {player.alchemy_def_boost_turns}t left"
         )
+    if player.alchemy_eclipse_strikes > 0:
+        bonus_str = (
+            f" (+{int(player.alchemy_eclipse_bonus * 100)}% dmg)"
+            if player.alchemy_eclipse_bonus > 0
+            else ""
+        )
+        lines.append(f"🌑 Eclipse  ×{player.alchemy_eclipse_strikes} crit{bonus_str}")
+    if player.alchemy_shield_hp > 0:
+        dur_str = f"  · {player.alchemy_shield_turns}t" if player.alchemy_shield_turns > 0 else ""
+        lines.append(f"🛡️ Aegis  {player.alchemy_shield_hp:,} shield{dur_str}")
     if player.alchemy_enfeeble_turns > 0:
         lines.append(
             f"🌊 Enfeeble  -{int(player.alchemy_enfeeble_pct * 100)}% ATK/DEF"
@@ -283,11 +293,14 @@ def create_combat_embed(
     embed = discord.Embed(title=title, description=description, color=color)
     embed.set_image(url=monster.image)
 
+    m_atk = monster.attack
+    if player.alchemy_enfeeble_pct > 0 and player.alchemy_enfeeble_turns > 0:
+        m_atk = int(m_atk * (1.0 - player.alchemy_enfeeble_pct))
     embed.add_field(
         name=f"🐲 {monster.name}",
         value=(
             f"{monster.hp:,}/{monster.max_hp:,} ❤️\n"
-            f"⚔️ {monster.attack:,} | 🛡️ {monster.defence:,}\n"
+            f"⚔️ {m_atk:,} | 🛡️ {monster.defence:,}\n"
             f"🎯 ~{m_hit}%"
         ),
         inline=True,

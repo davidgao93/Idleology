@@ -457,6 +457,7 @@ class SlotDetailView(BaseView):
         )
         self._processing = False
         self._build_buttons()
+        self.parent._rebuild_select()
 
         name = HematurgyMechanics.passive_display_name(passive_id)
         embed = self.build_embed()
@@ -500,6 +501,7 @@ class SlotDetailView(BaseView):
         )
         self._processing = False
         self._build_buttons()
+        self.parent._rebuild_select()
 
         embed = self.build_embed()
         embed.set_footer(text=f"Upgraded to Tier {new_tier}!")
@@ -610,6 +612,7 @@ class SlotDetailView(BaseView):
         )
         self._processing = False
         self._build_buttons()
+        self.parent._rebuild_select()
 
         embed = self.build_embed()
         embed.set_footer(text=footer)

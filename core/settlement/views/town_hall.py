@@ -18,6 +18,11 @@ _DC_STONE = 500
 _DC_DAILY_CAP = 10
 
 
+def _th_upgrade_dt(target_tier: int) -> int:
+    """DT cost to upgrade the Town Hall to target_tier: 10 × (target_tier − 1)."""
+    return (target_tier - 1) * 10
+
+
 class DCCraftModal(ui.Modal, title="Craft Development Contracts"):
     """Modal that lets the player specify how many DCs to craft (up to daily cap)."""
 
@@ -113,14 +118,22 @@ class TownHallView(SettlementBaseView):
         parent_view,
         dc_count: int = 0,
         dc_crafted_today: int = 0,
+        projects: list | None = None,
     ):
         super().__init__(bot, user_id)
         self.settlement = settlement
         self.parent = parent_view
         self.dc_count = dc_count
         self.dc_crafted_today = dc_crafted_today
+        self.projects: list = projects or []
         self._processing = False
         self.setup_ui()
+
+    def _upgrade_project(self) -> dict | None:
+        return next(
+            (p for p in self.projects if p["project_type"] == "town_hall_upgrade"),
+            None,
+        )
 
     def build_embed(self):
         tier = self.settlement.town_hall_tier
@@ -165,24 +178,40 @@ class TownHallView(SettlementBaseView):
         )
 
         if tier < 7:
-            costs = self._get_upgrade_cost(tier + 1)
-            cost_str = (
-                f"🪵 {costs['timber']:,} | 🪨 {costs['stone']:,} | 💰 {costs['gold']:,}"
-            )
-            if "specials" in costs:
-                reqs = [f"{s['name']} ×{s['qty']}" for s in costs["specials"]]
-                cost_str += f"\n✨ **Requires:** {', '.join(reqs)}"
+            _upgrade_proj = self._upgrade_project()
+            if _upgrade_proj:
+                invested = _upgrade_proj["invested_turns"]
+                required = _upgrade_proj["required_turns"]
+                embed.add_field(
+                    name="🔨 Under Construction",
+                    value=(
+                        f"Upgrading to **Tier {tier + 1}** — "
+                        f"**{invested}/{required} DT(s)** complete\n"
+                        "Use **Next Turn** on the dashboard to advance the project."
+                    ),
+                    inline=False,
+                )
+            else:
+                costs = self._get_upgrade_cost(tier + 1)
+                dt = _th_upgrade_dt(tier + 1)
+                cost_str = (
+                    f"🪵 {costs['timber']:,} | 🪨 {costs['stone']:,} | "
+                    f"💰 {costs['gold']:,} | ⏱️ {dt} DTs"
+                )
+                if "specials" in costs:
+                    reqs = [f"{s['name']} ×{s['qty']}" for s in costs["specials"]]
+                    cost_str += f"\n✨ **Requires:** {', '.join(reqs)}"
 
-            next_passive_zeal = 5 + tier * 9
-            embed.add_field(
-                name="Upgrade Benefits",
-                value=(
-                    f"Meta Slots: {meta_cap} ➡️ **{meta_cap + 1}**\n"
-                    f"Passive Zeal: {passive_zeal_rate}/hr ➡️ **{next_passive_zeal}/hr**"
-                ),
-                inline=False,
-            )
-            embed.add_field(name="Upgrade Cost", value=cost_str, inline=False)
+                next_passive_zeal = 5 + tier * 9
+                embed.add_field(
+                    name="Upgrade Benefits",
+                    value=(
+                        f"Meta Slots: {meta_cap} ➡️ **{meta_cap + 1}**\n"
+                        f"Passive Zeal: {passive_zeal_rate}/hr ➡️ **{next_passive_zeal}/hr**"
+                    ),
+                    inline=False,
+                )
+                embed.add_field(name="Upgrade Cost", value=cost_str, inline=False)
         else:
             embed.add_field(
                 name="Status", value="🌟 Maximum Tier Reached", inline=False
@@ -206,11 +235,12 @@ class TownHallView(SettlementBaseView):
         btn_craft.callback = self.craft_dcs
         self.add_item(btn_craft)
 
+        _has_upgrade = self._upgrade_project() is not None
         btn_up = ui.Button(
             label="Upgrade Hall",
             style=ButtonStyle.success,
             emoji="⬆️",
-            disabled=(self.settlement.town_hall_tier >= 7),
+            disabled=(self.settlement.town_hall_tier >= 7 or _has_upgrade),
             row=0,
         )
         btn_up.callback = self.upgrade
@@ -229,6 +259,13 @@ class TownHallView(SettlementBaseView):
             await interaction.response.defer()
             return
         self._processing = True
+
+        # Server-side guard: block if a project is already queued.
+        if self._upgrade_project() is not None:
+            self._processing = False
+            return await interaction.response.send_message(
+                "A Town Hall upgrade is already in progress.", ephemeral=True
+            )
 
         target_tier = self.settlement.town_hall_tier + 1
         costs = self._get_upgrade_cost(target_tier)
@@ -261,10 +298,8 @@ class TownHallView(SettlementBaseView):
                     )
 
         await interaction.response.defer()
-        for item in self.children:
-            item.disabled = True
-        await interaction.edit_original_response(view=self)
 
+        # Deduct resources
         if "specials" in costs:
             for sp in costs["specials"]:
                 await self.bot.database.settlement_materials.modify(
@@ -279,18 +314,38 @@ class TownHallView(SettlementBaseView):
             self.user_id, self.parent.server_id, changes
         )
         await self.bot.database.users.modify_gold(self.user_id, -costs["gold"])
-        await self.bot.database.settlement.upgrade_town_hall(
-            self.user_id, self.parent.server_id
+
+        # Queue the upgrade project
+        dt = _th_upgrade_dt(target_tier)
+        await self.bot.database.settlement.upsert_project(
+            user_id=self.user_id,
+            server_id=self.parent.server_id,
+            project_type="town_hall_upgrade",
+            target_id=None,
+            required_turns=dt,
+            data={"display_label": "Town Hall Upgrade"},
         )
 
-        self.settlement.town_hall_tier += 1
+        # Refresh projects caches
+        self.projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.parent.server_id
+        )
+        self.parent.projects = self.projects
+
         self.settlement.timber -= costs["timber"]
         self.settlement.stone -= costs["stone"]
+
         self._processing = False
         self.setup_ui()
-        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+        embed = self.build_embed()
+        embed.title = f"⏳ Town Hall Upgrade Queued — Tier {target_tier}"
+        embed.colour = discord.Color.orange()
+        await interaction.edit_original_response(embed=embed, view=self)
 
     async def go_back(self, interaction: Interaction):
+        self.parent.projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.parent.server_id
+        )
         self.parent._rebuild_ui()
         await interaction.response.edit_message(
             embed=self.parent.build_embed(), view=self.parent
