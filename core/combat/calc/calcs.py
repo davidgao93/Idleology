@@ -167,7 +167,7 @@ HELMET_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
     "divine": lambda lvl: f"Converts {lvl * 100}% of Potion Overheal to Ward",
     "frenzy": lambda lvl: f"{lvl * 0.5:.1f}% Inc Dmg per 1% Missing HP",
     "leeching": lambda lvl: f"Heal {lvl * 0.2:.2f}% of dmg dealt",
-    "thorns": lambda lvl: f"Reflect {lvl * 100}% of blocked damage",
+    "thorns": lambda lvl: f"Reflect {lvl * 500}% of blocked damage",
     "ghosted": lambda lvl: f"Gain {lvl * 10} Ward on Evade",
 }
 

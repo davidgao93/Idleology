@@ -166,7 +166,7 @@ _HELMET_PASSIVE_FUNCS: dict = {
         f"During combat: {lvl * 0.5:.1f}% increased damage per 1% missing HP"
     ),
     "leeching": lambda lvl: f"During combat: Heal {lvl * 0.2:.2f}% of damage dealt",
-    "thorns": lambda lvl: f"On block: Reflect {lvl * 100}% of blocked damage",
+    "thorns": lambda lvl: f"On block: Reflect {lvl * 500}% of blocked damage",
     "ghosted": lambda lvl: f"On dodge: Gain {lvl * 10} Ward",
 }
 

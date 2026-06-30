@@ -550,7 +550,7 @@ def process_monster_turn(
 
             if helmet_passive == "thorns" and helmet_lvl > 0:
                 # Reflects pre-PDR/FDR damage — the raw incoming hit before player mitigation
-                reflect = int(dmg_raw * helmet_lvl)
+                reflect = int(dmg_raw * helmet_lvl * 5)
                 monster.hp = max(0, monster.hp - reflect)
                 log.append(
                     f"**Thorns ({helmet_lvl})** reflects **{reflect}** damage back!"

@@ -124,7 +124,7 @@ class Character(commands.Cog, name="character"):
         if not await self.bot.check_user_registered(interaction, data):
             return
 
-        view = ProfileHubView(self.bot, user_id, server_id, "card")
+        view = ProfileHubView(self.bot, user_id, server_id, "profile")
         embed = await ProfileBuilder.build_card(self.bot, user_id, server_id)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
@@ -252,8 +252,8 @@ class Character(commands.Cog, name="character"):
         if not await self.bot.check_user_registered(interaction, data):
             return
 
-        view = ProfileHubView(self.bot, user_id, server_id, "passives")
-        embed = await ProfileBuilder.build_passives(self.bot, user_id, server_id)
+        view = ProfileHubView(self.bot, user_id, server_id, "gear_passives")
+        embed = await ProfileBuilder.build_gear_passives(self.bot, user_id, server_id)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

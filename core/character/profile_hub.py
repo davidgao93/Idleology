@@ -8,6 +8,23 @@ from discord import ButtonStyle, Interaction, ui
 from core.base_view import BaseView
 from core.character.profile_ui import ProfileBuilder
 
+# Row 0: Profile | Cooldowns | Inventory | Crafting | Resources
+_ROW0 = [
+    ("profile",   "Profile",   "👤", 0),
+    ("cooldowns", "Cooldowns", "⏰", 0),
+    ("inventory", "Inventory", "🎒", 0),
+    ("crafting",  "Crafting",  "⚗️", 0),
+    ("resources", "Resources", "📦", 0),
+]
+
+# Row 1: Stats | Gear Passives | Misc Passives | Uber | Close
+_ROW1 = [
+    ("stats",         "Stats",         "📊", 1),
+    ("gear_passives", "Gear Passives", "⚡", 1),
+    ("misc_passives", "Misc Passives", "🔮", 1),
+    ("uber",          "Uber",          "⚔️", 1),
+]
+
 
 class ProfileHubView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str, active_tab: str):
@@ -26,29 +43,24 @@ class ProfileHubView(BaseView):
     def update_buttons(self):
         self.clear_items()
 
-        tabs = [
-            ("card", "Card", "👤"),
-            ("cooldowns", "Cooldowns", "⏰"),
-            ("stats", "Stats", "📊"),
-            ("passives", "Passives", "⚡"),
-            ("inventory", "Inventory", "🎒"),
-            ("crafting", "Crafting", "⚗️"),
-            ("resources", "Resources", "📦"),
-            ("uber", "Uber", "⚔️"),
-        ]
-
-        for tab_id, label, emoji in tabs:
+        for tab_id, label, emoji, row in [*_ROW0, *_ROW1]:
             style = (
                 ButtonStyle.primary
                 if self.active_tab == tab_id
                 else ButtonStyle.secondary
             )
-            btn = ui.Button(label=label, emoji=emoji, style=style, custom_id=tab_id)
+            btn = ui.Button(
+                label=label, emoji=emoji, style=style, custom_id=tab_id, row=row
+            )
             btn.callback = self.handle_tab_switch
             self.add_item(btn)
 
         close_btn = ui.Button(
-            label="Close", emoji="✖️", style=ButtonStyle.secondary, custom_id="close"
+            label="Close",
+            emoji="✖️",
+            style=ButtonStyle.secondary,
+            custom_id="close",
+            row=1,
         )
         close_btn.callback = self.handle_close
         self.add_item(close_btn)
@@ -72,7 +84,7 @@ class ProfileHubView(BaseView):
         await interaction.response.defer()
 
         embed = None
-        if tab_id == "card":
+        if tab_id == "profile":
             embed = await ProfileBuilder.build_card(
                 self.bot, self.user_id, self.server_id
             )
@@ -80,8 +92,12 @@ class ProfileHubView(BaseView):
             embed = await ProfileBuilder.build_stats(
                 self.bot, self.user_id, self.server_id
             )
-        elif tab_id == "passives":
-            embed = await ProfileBuilder.build_passives(
+        elif tab_id == "gear_passives":
+            embed = await ProfileBuilder.build_gear_passives(
+                self.bot, self.user_id, self.server_id
+            )
+        elif tab_id == "misc_passives":
+            embed = await ProfileBuilder.build_misc_passives(
                 self.bot, self.user_id, self.server_id
             )
         elif tab_id == "inventory":

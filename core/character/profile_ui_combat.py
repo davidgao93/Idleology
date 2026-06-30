@@ -324,13 +324,11 @@ class CombatProfileBuilder:
         return embed
 
     @staticmethod
-    async def build_passives(bot, user_id: str, server_id: str) -> discord.Embed:
-        from core.hematurgy.mechanics import HematurgyMechanics
-
+    async def build_gear_passives(bot, user_id: str, server_id: str) -> discord.Embed:
         data = await bot.database.users.get(user_id, server_id)
         p = await load_player(user_id, data, bot.database)
 
-        embed = discord.Embed(title="Active Passives", color=0x7B68EE)
+        embed = discord.Embed(title="Gear Passives", color=0x7B68EE)
         embed.set_thumbnail(url=data["appearance"])
 
         has_any = False
@@ -419,6 +417,33 @@ class CombatProfileBuilder:
                 )
             _add(f"{icon} {slot_label}", lines)
 
+        if not has_any:
+            embed.description = "No gear passives active."
+
+        return embed
+
+    @staticmethod
+    async def build_misc_passives(bot, user_id: str, server_id: str) -> discord.Embed:
+        from core.hematurgy.mechanics import HematurgyMechanics
+
+        data = await bot.database.users.get(user_id, server_id)
+        p = await load_player(user_id, data, bot.database)
+
+        embed = discord.Embed(title="Other Passives", color=0x7B68EE)
+        embed.set_thumbnail(url=data["appearance"])
+
+        has_any = False
+
+        def _add(name: str, lines: list[str]) -> None:
+            nonlocal has_any
+            if not lines:
+                return
+            body = "\n".join(lines)
+            if len(body) > 1020:
+                body = body[:1020] + "…"
+            embed.add_field(name=name, value=body, inline=False)
+            has_any = True
+
         # ── Slayer Emblem ─────────────────────────────────────────────────────
         if p.slayer_emblem:
             lines = []
@@ -477,6 +502,6 @@ class CombatProfileBuilder:
             _add("⚗️ Alchemy Passives", lines)
 
         if not has_any:
-            embed.description = "No active passives found."
+            embed.description = "No other passives active."
 
         return embed

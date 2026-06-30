@@ -687,16 +687,22 @@ class QuestBoardView(BaseView):
             )
         else:
             await interaction.response.defer()
-            await self.execute_horizon_select(path_id, path_def)
+            await self.execute_horizon_select(path_id, path_def, interaction)
 
-    async def execute_horizon_select(self, path_id: str, path_def: dict) -> None:
+    async def execute_horizon_select(
+        self, path_id: str, path_def: dict, interaction: Interaction | None = None
+    ) -> None:
         """Writes the horizon selection and refreshes the main message."""
         await self.bot.database.quests.set_horizon(
             self.user_id, self.server_id, path_id, path_def["goal"]
         )
         await self.load()
         self._build_view_components()
-        await self.message.edit(content=None, embed=self.build_embed(), view=self)
+        embed = self.build_embed()
+        if interaction is not None:
+            await interaction.edit_original_response(content=None, embed=embed, view=self)
+        else:
+            await self.message.edit(content=None, embed=embed, view=self)
 
     # ------------------------------------------------------------------
     # Shop / Close
@@ -835,7 +841,7 @@ class _HorizonSwitchConfirmView(BaseView):
         self._done = True
         await interaction.response.defer()
         path_def = HORIZON_PATHS.get(self.path_id)
-        await self.main_view.execute_horizon_select(self.path_id, path_def)
+        await self.main_view.execute_horizon_select(self.path_id, path_def, interaction)
         self.stop()
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary)
