@@ -252,6 +252,8 @@ class CombatView(BaseView):
         self._processing = (
             False  # Re-entry guard for mutating actions (Free Yourself, etc.)
         )
+        self._stop_auto = False  # Signals auto loop to exit (flee during auto)
+        self._turn_count = 0  # Hard cap: exhaustion draw at 600 turns
 
         self.combat_logger = CombatLogger(player, monster)
         self.combat_logger.log_combat_start(player, monster)
@@ -293,7 +295,8 @@ class CombatView(BaseView):
         is_snared = getattr(self.player.cs, "is_snared", False)
 
         for child in self.children:
-            child.disabled = is_over or self._auto_running
+            # Flee remains accessible even during auto so the player can always escape.
+            child.disabled = is_over or (self._auto_running and child is not self.flee_btn)
 
         # always disable fast_auto_btn if player level < 2:
         if self.player.level < 2:
@@ -391,6 +394,11 @@ class CombatView(BaseView):
             m_log = self._do_monster_turn()
             self.logs[self.monster.name] = m_log
 
+        self._turn_count += 1
+        if self._turn_count >= 600 and self.player.current_hp > 0 and self.monster.hp > 0:
+            await self._handle_exhaustion(interaction.message, interaction)
+            return
+
         # 3. Check End State
         # If cull delivered the killing blow, show the result for 3 s before transitioning.
         if p_log.cull_fired and self.monster.hp <= 0:
@@ -420,6 +428,11 @@ class CombatView(BaseView):
         if self.monster.hp > 0:
             m_log = self._do_monster_turn(context_note="(retaliation to heal/potion)")
             self.logs[self.monster.name] = m_log
+
+        self._turn_count += 1
+        if self._turn_count >= 600 and self.player.current_hp > 0 and self.monster.hp > 0:
+            await self._handle_exhaustion(interaction.message, interaction)
+            return
 
         if self.player.current_hp > 0 and self.monster.hp > 0:
             self._processing = False
@@ -479,7 +492,12 @@ class CombatView(BaseView):
 
         while True:
             # Inner loop: fight the current phase to completion
-            while self.player.current_hp > hp_threshold and self.monster.hp > 0:
+            while (
+                self.player.current_hp > hp_threshold
+                and self.monster.hp > 0
+                and self._turn_count < 600
+                and not self._stop_auto
+            ):
                 p_log = engine.process_player_turn(self.player, self.monster)
                 self.combat_logger.log_player_turn(p_log, self.monster)
                 m_log = ""
@@ -487,6 +505,7 @@ class CombatView(BaseView):
                     m_log = self._do_monster_turn()
 
                 self.logs = {self.player.name: p_log, self.monster.name: m_log}
+                self._turn_count += 1
 
                 self._apply_phase_image_transition()
                 embed = combat_ui.create_combat_embed(
@@ -497,6 +516,29 @@ class CombatView(BaseView):
 
             was_auto = self._auto_running
             self._auto_running = False
+
+            # Fled during auto — perform the save and exit cleanly.
+            if self._stop_auto:
+                self._stop_auto = False
+                self.player.cs.is_snared = False
+                self.logs["Flee"] = "You managed to escape safely!"
+                embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
+                await message.edit(embed=embed, view=None)
+                self.bot.state_manager.clear_active(self.user_id)
+                await self.bot.database.users.update_from_player_object(self.player)
+                await _je.save_jewel_state(self.bot, self.user_id, self.player)
+                if self.crisis_callback:
+                    try:
+                        await self.crisis_callback(False)
+                    except Exception:
+                        pass
+                self.stop()
+                return
+
+            # Exhaustion cap — 600 turns elapsed with both sides still alive.
+            if self._turn_count >= 600 and self.player.current_hp > 0 and self.monster.hp > 0:
+                await self._handle_exhaustion(message)
+                return
 
             # Low HP pause — applies to all fight types including bosses
             if (
@@ -531,6 +573,12 @@ class CombatView(BaseView):
 
     @ui.button(label="Flee", style=ButtonStyle.secondary, emoji="🏃")
     async def flee_btn(self, interaction: Interaction, button: ui.Button):
+        if self._auto_running:
+            # Signal the auto loop to exit on its next iteration, then handle cleanup there.
+            self._stop_auto = True
+            await interaction.response.defer()
+            return
+
         self.player.cs.is_snared = (
             False  # Clean up any transient snare before leaving the fight
         )
@@ -589,7 +637,15 @@ class CombatView(BaseView):
                 m_log = self._do_monster_turn()
 
             self.logs = {self.player.name: p_log, self.monster.name: m_log}
+            self._turn_count += 1
             turns_processed += 1
+
+            if self._turn_count >= 600 and self.monster.hp > 0 and self.player.current_hp > 0:
+                break
+
+        if self._turn_count >= 600 and self.player.current_hp > 0 and self.monster.hp > 0:
+            await self._handle_exhaustion(interaction.message, interaction)
+            return
 
         status_msg = (
             f"⚡ You flash forward in time, **{turns_processed}** turns have gone by."
@@ -617,6 +673,27 @@ class CombatView(BaseView):
             if self.player.current_hp > 0 and self.monster.hp > 0:
                 self._processing = False
             await self.check_combat_state(interaction)
+
+    async def _handle_exhaustion(self, message, interaction: Interaction | None = None):
+        """600-turn cap: end the fight as a draw with no rewards or penalties."""
+        self.logs["System"] = (
+            "⚔️ After **600 turns** of relentless combat, both sides collapse from exhaustion. "
+            "The battle ends in a draw — no rewards granted."
+        )
+        self.update_buttons()
+        embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
+        embed.set_footer(text="Draw: 600 turn limit reached.")
+
+        if interaction and not interaction.response.is_done():
+            await interaction.response.edit_message(embed=embed, view=None)
+        else:
+            await message.edit(embed=embed, view=None)
+
+        self.combat_logger.log_combat_end(self.player, self.monster, "exhaustion")
+        self.bot.state_manager.clear_active(self.user_id)
+        await self.bot.database.users.update_from_player_object(self.player)
+        await _je.save_jewel_state(self.bot, self.user_id, self.player)
+        self.stop()
 
     async def check_combat_state(self, interaction: Interaction):
         """Checks if player died or monster died."""

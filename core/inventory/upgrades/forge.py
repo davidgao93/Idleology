@@ -181,58 +181,105 @@ class ForgeView(BaseUpgradeView):
         await interaction.edit_original_response(embed=result_embed, view=self)
 
     async def forgemaxx_preview(self, interaction: Interaction):
-        """Simulate Forgemaxx and show a resource-cost confirmation before executing."""
+        """Simulate Forgemaxx and show a resource-cost confirmation before executing.
+
+        Simulates worst-case (every attempt succeeds) so forge_tier escalates at the
+        maximum possible rate. Each step checks the correct material tier for that
+        forge_tier level. This gives an accurate upper-bound on resource consumption
+        and correctly catches cases where the player lacks higher-tier materials.
+        """
         await interaction.response.defer()
 
         uid, gid = self.user_id, str(interaction.guild.id)
 
-        initial_costs = EquipmentMechanics.calculate_forge_cost(self.item)
-        if not initial_costs:
+        if not EquipmentMechanics.calculate_forge_cost(self.item):
             await interaction.followup.send("No forges remaining!", ephemeral=True)
             return
 
-        has_res, _, snap = await self._check_triad_costs(initial_costs, uid, gid)
-        if not has_res:
-            await interaction.followup.send(
-                "Insufficient resources for even one forge.", ephemeral=True
-            )
-            return
+        # Material column maps for each resource type
+        _ORE_REFINED = {
+            "iron_ore": ("mining", "iron_bar"),
+            "coal_ore": ("mining", "steel_bar"),
+            "gold_ore": ("mining", "gold_bar"),
+            "platinum_ore": ("mining", "platinum_bar"),
+            "idea_ore": ("mining", "idea_bar"),
+        }
+        _LOG_BASES = ["oak", "willow", "mahogany", "magic", "idea"]
+        _BONE_BASES = ["desiccated", "regular", "sturdy", "reinforced", "titanium"]
+        _MAT_LABEL = {
+            "iron_ore": "⛏️ Iron Ore",
+            "coal_ore": "⛏️ Coal",
+            "gold_ore": "⛏️ Gold Ore",
+            "platinum_ore": "⛏️ Platinum Ore",
+            "idea_ore": "⛏️ Idea Ore",
+            "oak_logs": "🪓 Oak Logs",
+            "willow_logs": "🪓 Willow Logs",
+            "mahogany_logs": "🪓 Mahogany Logs",
+            "magic_logs": "🪓 Magic Logs",
+            "idea_logs": "🪓 Idea Logs",
+            "desiccated_bones": "🎣 Desiccated Bones",
+            "regular_bones": "🎣 Regular Bones",
+            "sturdy_bones": "🎣 Sturdy Bones",
+            "reinforced_bones": "🎣 Reinforced Bones",
+            "titanium_bones": "🎣 Titanium Bones",
+        }
 
-        sim_item = copy.copy(self.item)
+        # Fetch every possible material tier up front
+        sim_mats: dict[str, int] = {}
+        for ore_col, (table, ref_col) in _ORE_REFINED.items():
+            raw = await self.bot.database.skills.get_single_resource(uid, gid, table, ore_col)
+            ref = await self.bot.database.skills.get_single_resource(uid, gid, table, ref_col)
+            sim_mats[ore_col] = raw + ref
+        for base in _LOG_BASES:
+            raw = await self.bot.database.skills.get_single_resource(uid, gid, "woodcutting", f"{base}_logs")
+            ref = await self.bot.database.skills.get_single_resource(uid, gid, "woodcutting", f"{base}_plank")
+            sim_mats[f"{base}_logs"] = raw + ref
+        for base in _BONE_BASES:
+            raw = await self.bot.database.skills.get_single_resource(uid, gid, "fishing", f"{base}_bones")
+            ref = await self.bot.database.skills.get_single_resource(uid, gid, "fishing", f"{base}_essence")
+            sim_mats[f"{base}_bones"] = raw + ref
+
         sim_gold = await self.bot.database.users.get_gold(uid)
-        sim_ore = snap["ore"]["raw_amt"] + snap["ore"]["ref_amt"]
-        sim_log = snap["log"]["raw_amt"] + snap["log"]["ref_amt"]
-        sim_bone = snap["bone"]["raw_amt"] + snap["bone"]["ref_amt"]
+        sim_item = copy.copy(self.item)
 
         forges_possible = 0
-        total_ore = total_log = total_bone = total_gold = 0
+        cost_totals: dict[str, int] = {}
+        total_gold = 0
         stop_reason = "All forge slots exhausted."
 
         while sim_item.forges_remaining > 0:
             c = EquipmentMechanics.calculate_forge_cost(sim_item)
             if not c:
                 break
-            if sim_ore < c["ore_qty"]:
+
+            ore_col = c["ore_type"]
+            log_col = f"{c['log_type']}_logs"
+            bone_col = f"{c['bone_type']}_bones"
+
+            if sim_mats.get(ore_col, 0) < c["ore_qty"]:
                 stop_reason = f"Ran out of {c['ore_type'].removesuffix('_ore').title()}."
                 break
-            if sim_log < c["log_qty"]:
-                stop_reason = f"Ran out of {c['log_type'].title()}."
+            if sim_mats.get(log_col, 0) < c["log_qty"]:
+                stop_reason = f"Ran out of {c['log_type'].title()} Logs."
                 break
-            if sim_bone < c["bone_qty"]:
-                stop_reason = f"Ran out of {c['bone_type'].title()}."
+            if sim_mats.get(bone_col, 0) < c["bone_qty"]:
+                stop_reason = f"Ran out of {c['bone_type'].title()} Bones."
                 break
             if sim_gold < c["gold"]:
                 stop_reason = "Ran out of Gold."
                 break
 
-            sim_ore -= c["ore_qty"]
-            sim_log -= c["log_qty"]
-            sim_bone -= c["bone_qty"]
+            sim_mats[ore_col] -= c["ore_qty"]
+            sim_mats[log_col] -= c["log_qty"]
+            sim_mats[bone_col] -= c["bone_qty"]
             sim_gold -= c["gold"]
-            total_ore += c["ore_qty"]
-            total_log += c["log_qty"]
-            total_bone += c["bone_qty"]
+            cost_totals[ore_col] = cost_totals.get(ore_col, 0) + c["ore_qty"]
+            cost_totals[log_col] = cost_totals.get(log_col, 0) + c["log_qty"]
+            cost_totals[bone_col] = cost_totals.get(bone_col, 0) + c["bone_qty"]
             total_gold += c["gold"]
+
+            # Worst-case: treat every attempt as a success so forge_tier escalates
+            sim_item.forge_tier += 1
             sim_item.forges_remaining -= 1
             forges_possible += 1
 
@@ -242,9 +289,11 @@ class ForgeView(BaseUpgradeView):
             )
             return
 
-        ore_name = initial_costs["ore_type"].removesuffix("_ore").title()
-        log_name = initial_costs["log_type"].title()
-        bone_name = initial_costs["bone_type"].title()
+        mat_lines = "\n".join(
+            f"{_MAT_LABEL.get(col, col)}: {qty:,}"
+            for col, qty in cost_totals.items()
+            if qty > 0
+        )
 
         embed = discord.Embed(title="⚠️ Confirmation", color=discord.Color.orange())
         embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
@@ -252,11 +301,9 @@ class ForgeView(BaseUpgradeView):
         embed.description = (
             f"This will attempt **{forges_possible}** forge(s).\n\n"
             f"**Estimated Resources Consumed:**\n"
-            f"⛏️ {ore_name}: {total_ore:,}\n"
-            f"🪓 {log_name}: {total_log:,}\n"
-            f"🎣 {bone_name}: {total_bone:,}\n"
+            f"{mat_lines}\n"
             f"💰 Gold: {total_gold:,}\n\n"
-            f"*Cost is estimated at current forge tier — successes may increase costs slightly.*\n"
+            f"*Estimate assumes all forges succeed — actual cost is lower if any fail.*\n"
             f"*Stops when: {stop_reason}*\n\n"
             f"Proceed?"
         )
