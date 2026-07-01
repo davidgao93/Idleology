@@ -216,6 +216,14 @@ _VOICES: dict[str, list[str]] = {
         "'Business is business. Sentiment is not something I trade in.'",
         "'Every deal is a small wager. I have yet to lose one that mattered.'",
     ],
+    "nether_market": [
+        "'Ah, a fresh face.' Vex doesn't look up from the ledger. 'Prices turn over every hour. Try to keep up.'",
+        "'My cousin Max runs the Black Market.' A crooked grin. 'I run the *interesting* one.'",
+        "'Everything here is worthless. That's what makes it valuable.' Vex shrugs. 'Buy low, gloat later.'",
+        "'Someone's been asking around about your stash.' Vex doesn't say who. 'Watch yourself.'",
+        "'Codes, curiosities, and other people's poor decisions.' Vex spreads their hands. 'Welcome.'",
+        "'Max thinks I'm reckless.' Vex counts a stack of coin. 'Max has never cracked a good vault.'",
+    ],
 }
 
 

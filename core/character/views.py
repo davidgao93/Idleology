@@ -115,7 +115,11 @@ class RegistrationView(BaseView):
 
         gender_label = "Male" if gender == "M" else "Female"
         embed = interaction.message.embeds[0]
-        embed.description = f"Gender: **{gender_label}**\nSelect a portrait from the menu to preview it."
+        embed.description = (
+            f"Gender: **{gender_label}**\nSelect a portrait from the menu to preview it.\n\n"
+            "*What is an ideology?* Your ideology is the creed you carry into the world. "
+            "Name it, spread it, and recruit followers."
+        )
         embed.set_image(url=self.appearance_url)
 
         await interaction.response.edit_message(embed=embed, view=self)
@@ -141,7 +145,24 @@ class RegistrationView(BaseView):
         await interaction.response.defer()
         sid = str(interaction.guild.id)
 
-        # 0. Enforce ideology uniqueness per server BEFORE writing anything to the DB.
+        # 0a. Guard against registering twice across servers (user_id is globally unique).
+        existing_elsewhere = await self.bot.database.users.get_by_user_id(self.user_id)
+        if existing_elsewhere:
+            error_embed = discord.Embed(
+                title="❌ Already Registered Elsewhere",
+                description=(
+                    "You already have an adventurer registered on another server. "
+                    "Each account can only be active on one server at a time."
+                ),
+                color=discord.Color.red(),
+            )
+            self.clear_items()
+            await interaction.edit_original_response(embed=error_embed, view=self)
+            self.bot.state_manager.clear_active(self.user_id)
+            self.stop()
+            return
+
+        # 0b. Enforce ideology uniqueness per server BEFORE writing anything to the DB.
         existing = await self.bot.database.social.get_all_by_server(sid)
         if ideology.strip().lower() in [i.lower() for i in existing]:
             error_embed = discord.Embed(
@@ -211,15 +232,6 @@ class RegistrationView(BaseView):
 
 
 class IdeologyModal(Modal, title="Choose Your Path"):
-    context = TextInput(
-        label="What is an ideology?",
-        style=discord.TextStyle.paragraph,
-        default=(
-            "Your ideology is the creed you carry into the world. "
-            "Name it, spread it, and recruit followers. "
-        ),
-        required=False,
-    )
     ideology = TextInput(
         label="Ideology Name",
         placeholder="e.g. The Order of the Flame",

@@ -973,6 +973,45 @@ CREATE TABLE IF NOT EXISTS code_redemptions (
 
 
 -- ============================================================
+-- NETHER MARKET
+-- ============================================================
+-- Self-contained economy/PvP mini-game. Items are flavor-only "curiosities"
+-- with no interaction with any other item table. Scoped per (user_id, server_id)
+-- like Apex/Companion Mastery; rotation is shared per server_id.
+
+CREATE TABLE IF NOT EXISTS nether_market_rotation (
+  server_id       TEXT PRIMARY KEY,
+  cheap_item      TEXT,
+  cheap_price     INTEGER,
+  med_item        TEXT,
+  med_price       INTEGER,
+  expensive_item  TEXT,
+  expensive_price INTEGER,
+  rotated_at      REAL
+);
+
+CREATE TABLE IF NOT EXISTS nether_market_holdings (
+  user_id   TEXT    NOT NULL,
+  server_id TEXT    NOT NULL,
+  item_key  TEXT    NOT NULL,
+  quantity  INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, server_id, item_key)
+);
+
+CREATE TABLE IF NOT EXISTS nether_market_profile (
+  user_id            TEXT    NOT NULL,
+  server_id          TEXT    NOT NULL,
+  nether_marks       INTEGER NOT NULL DEFAULT 0,
+  mastery_nodes      TEXT    NOT NULL DEFAULT '{}',
+  plunder_charges    INTEGER NOT NULL DEFAULT 3,
+  last_charge_time   REAL    DEFAULT NULL,
+  shield_expires_at  REAL    DEFAULT NULL,
+  last_plundered_at  REAL    DEFAULT NULL,
+  PRIMARY KEY (user_id, server_id)
+);
+
+
+-- ============================================================
 -- INFRASTRUCTURE
 -- ============================================================
 

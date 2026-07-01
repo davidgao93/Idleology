@@ -574,6 +574,32 @@ class SettlementDashboardView(SettlementBaseView):
     # UI layout
     # -------------------------------------------------------------------------
 
+    def _has_pending_collection(self) -> bool:
+        """Cheap, synchronous check for whether Collect would produce anything.
+        Mirrors the too_early/has_output gates in collect_settlement_resources,
+        using only data already cached on the view (no DB calls)."""
+        try:
+            last = datetime.fromisoformat(self.settlement.last_collection_time)
+        except Exception:
+            return True  # unknown state — don't block the button
+
+        hours = (datetime.now() - last).total_seconds() / 3600
+        if hours < 0.1:
+            return False
+
+        has_staffed_building = any(
+            not b.is_disabled and b.building_type != "war_camp" and b.workers_assigned > 0
+            for b in self.settlement.buildings
+        )
+        if has_staffed_building:
+            return True
+
+        expedition_count = sum(
+            1 for p in self.plots if p.is_developed and p.bonus_type == "expedition_camp"
+        )
+        dc_earned = int(hours / 48) * expedition_count
+        return dc_earned > 0
+
     def _rebuild_ui(self):
         self.clear_items()
 
@@ -742,6 +768,7 @@ class SettlementDashboardView(SettlementBaseView):
             style=ButtonStyle.blurple,
             emoji="🔥",
             row=1,
+            disabled=_pz <= 0,
         )
         gather_zeal_btn.callback = self.on_gather_zeal
         self.add_item(gather_zeal_btn)
@@ -757,6 +784,7 @@ class SettlementDashboardView(SettlementBaseView):
             style=ButtonStyle.primary,
             emoji="🚜",
             row=1,
+            disabled=not self._has_pending_collection(),
         )
         collect_btn.callback = self.collect_resources
         self.add_item(collect_btn)
@@ -785,6 +813,7 @@ class SettlementDashboardView(SettlementBaseView):
             style=ButtonStyle.blurple,
             emoji="⚔️",
             row=1,
+            disabled=_ws <= 0,
         )
         war_camp_btn.callback = self.on_collect_war_camp_stamina
         self.add_item(war_camp_btn)

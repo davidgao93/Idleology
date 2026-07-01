@@ -25,6 +25,14 @@ class Guild(commands.Cog, name="adventurer's guild"):
                 "You are already registered! Use `/card`.", ephemeral=True
             )
 
+        existing_elsewhere = await self.bot.database.users.get_by_user_id(user_id)
+        if existing_elsewhere:
+            return await interaction.response.send_message(
+                "You already have an adventurer registered on another server. "
+                "Each account can only be active on one server at a time.",
+                ephemeral=True,
+            )
+
         self.bot.state_manager.set_active(user_id, "register")
 
         embed = discord.Embed(

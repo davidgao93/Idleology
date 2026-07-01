@@ -29,7 +29,7 @@ _SCENES = [
         "text": (
             "Your primary job is `/combat`. Find a monster, fight it, survive. "
             "Every kill earns gold and experience, and as you grow stronger you'll find "
-            "gear with passives that change how you fight — weapons that chain hits, "
+            "gear that can be enhanced with passives that change how you fight — weapons that chain hits, "
             "armor that shrugs off blows.\n\n"
             "Learn what your equipment actually does. "
             "A warrior who doesn't know their own kit is just a liability with a sword."

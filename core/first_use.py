@@ -62,6 +62,8 @@ from core.images import (
     VALDRIS_THUMBNAIL,
     VALE_PORTRAIT,
     VALE_THUMBNAIL,
+    VEX_PORTRAIT,
+    VEX_THUMBNAIL,
     VEYRA_AUTHOR,
     YUNA_PORTRAIT,
     YUNA_THUMBNAIL,
@@ -548,6 +550,28 @@ TUTORIALS: dict[str, dict] = {
         ],
         "image": TESSARA_THUMBNAIL,
         "color": discord.Color.purple(),
+    },
+    "nether_market": {
+        "title": "\U0001f573️ Nether Market",
+        "author": "Vex, the Fence",
+        "author_icon": VEX_PORTRAIT,
+        "description": (
+            "*Everything here is worthless. That's what makes it interesting.*\n\n"
+            "The Nether Market trades in flavorless **curiosities** whose prices drift up and down "
+            "every hour — buy low, hold, and sell back when the rotation turns in your favor. "
+            "Only 3 items are tradeable at a time, so patience pays.\n\n"
+            "You can also **browse** other players' (and a few NPCs') stashes and attempt to **plunder** "
+            "a cut of their holdings by cracking a hidden 4-digit code, Mastermind-style. "
+            "Win and you walk away with goods and a Nether Mark; lose and you walk away with nothing lost."
+        ),
+        "tips": [
+            "You can only sell an item back while it's one of the 3 currently active offers.",
+            "Plunder charges are limited and regenerate over time — pick your targets carefully.",
+            "A successful plunder shields the target from further attempts for a while — the wealthier they are, the longer it lasts.",
+            "Spend Nether Marks in the Cutpurse (offense) and Strongbox (defense) trees to get better at plundering, or harder to be plundered.",
+        ],
+        "image": VEX_THUMBNAIL,
+        "color": discord.Color.dark_purple(),
     },
 }
 

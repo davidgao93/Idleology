@@ -30,6 +30,14 @@ class UserRepository:
         async with rows as cursor:
             return await cursor.fetchall()
 
+    async def get_by_user_id(self, user_id: str):
+        """Fetch a user row regardless of server (user_id is globally unique)."""
+        rows = await self.connection.execute(
+            "SELECT * FROM users WHERE user_id=?", (user_id,)
+        )
+        async with rows as cursor:
+            return await cursor.fetchone()
+
     async def register(
         self, user_id: str, server_id: str, name: str, appearance: str, ideology: str
     ) -> None:
