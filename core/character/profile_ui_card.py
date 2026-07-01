@@ -516,4 +516,64 @@ class CardProfileBuilder:
         except Exception:
             pass
 
+        # ── Misc. ────────────────────────────────────────────────────────────
+        misc_lines = []
+
+        if player_level >= 10:
+            try:
+                from core.nether_market.mechanics import MAX_CHARGES
+                from core.nether_market.mechanics import NetherMarketMechanics as NMM
+
+                nm_profile = await bot.database.nether_market.get_or_create_profile(
+                    user_id, server_id
+                )
+                nm_regen_secs = NMM.get_charge_regen_seconds(nm_profile["mastery_nodes"])
+                nm_charges, _ = NMM.calculate_charges(
+                    nm_profile["plunder_charges"],
+                    nm_profile["last_charge_time"],
+                    nm_regen_secs,
+                )
+                if nm_charges >= MAX_CHARGES:
+                    nm_str = f"{nm_charges}/{MAX_CHARGES} (full)"
+                else:
+                    nm_next = NMM.seconds_until_next_charge(
+                        nm_profile["plunder_charges"],
+                        nm_profile["last_charge_time"],
+                        nm_regen_secs,
+                    )
+                    nh, nr = divmod(nm_next, 3600)
+                    nm_str = f"{nm_charges}/{MAX_CHARGES} · next in {nh}h {nr // 60:02d}m"
+                misc_lines.append(f"🕳️ **Plunder Attempts** — {nm_str}")
+            except Exception:
+                pass
+
+        # Next server tick — hourly sweep that regenerates stamina, rerolls the
+        # Nether Market rotation, and grants passive skilling resources.
+        try:
+            tick_iterations = []
+            for cog_name, task_name in (
+                ("nether_market", "rotate_markets"),
+                ("skills", "schedule_skills"),
+            ):
+                cog = bot.get_cog(cog_name)
+                loop_task = getattr(cog, task_name, None) if cog else None
+                next_iter = getattr(loop_task, "next_iteration", None)
+                if next_iter:
+                    tick_iterations.append(next_iter)
+            if tick_iterations:
+                next_tick = min(tick_iterations)
+                tick_secs = max(
+                    0, int((next_tick - datetime.now(timezone.utc)).total_seconds())
+                )
+                th, tr = divmod(tick_secs, 3600)
+                misc_lines.append(
+                    f"⏳ **Next Server Tick** — {th}h {tr // 60:02d}m "
+                    "(stamina, market refresh, skilling resources)"
+                )
+        except Exception:
+            pass
+
+        if misc_lines:
+            embed.add_field(name="Misc.", value="\n".join(misc_lines), inline=False)
+
         return embed

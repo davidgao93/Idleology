@@ -162,13 +162,12 @@ class ExperienceManager:
                 if player.level <= 50:
                     if player.level == 2:
                         changes["msgs"].append(
-                            "🩸 A strange wave of corruption washes over you — "
-                            "you permanently lose **1** hit chance. "
+                            "🩸 A strange wave of corruption washes over you. "
                             "*The monsters grow fiercer in the darkness.*"
                         )
                     else:
                         changes["msgs"].append(
-                            "🩸 *A strange wave of corruption washes over you* — you permanently lose **1** hit chance. "
+                            "🩸 *A strange wave of corruption washes over you*. "
                             "*The monsters seem to grow fiercer...*"
                         )
 

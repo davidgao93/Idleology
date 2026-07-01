@@ -42,7 +42,8 @@ class SettlementRepository:
         if not row:
             # Create default row — timestamps left NULL until first settlement visit
             await self.connection.execute(
-                "INSERT INTO settlements (user_id, server_id, town_hall_tier, building_slots) VALUES (?, ?, 1, 5)",
+                "INSERT INTO settlements (user_id, server_id, town_hall_tier, building_slots, settlement_zeal) "
+                "VALUES (?, ?, 1, 5, 500)",
                 (user_id, server_id),
             )
             await self.connection.commit()

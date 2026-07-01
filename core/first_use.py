@@ -169,13 +169,13 @@ TUTORIALS: dict[str, dict] = {
             "*Every great force needs a home. This is yours.*\n\n"
             "Your Settlement is what makes this ideology real — it's not just buildings, it's leverage. "
             "**Logging Camps** and **Quarries** generate materials automatically. "
-            "The **Apothecary** and **Barracks** produce workers. Assign staff, take Development Turns, "
+            "The **Nursery** produce followers. Assign staff, take Development Turns, "
             "and watch it compound.\n\n"
             "**Zeal** is the fuel you earn from fighting and quests. Spend it to take a **Development Turn**, "
             "which advances construction, upgrades, and events. "
             "As your **Town Hall** tiers up, new buildings unlock — eventually you're working with an "
             "Uber Shrine, a Black Market passive tree, and Meta Buildings that amplify everything around them. "
-            "Don't rush it. Just keep taking turns."
+            "Ask Spritz if you're not sure what to do."
         ),
         "tips": [
             "Earn Zeal through combat and quests. More turns means faster progress across everything.",
@@ -557,7 +557,7 @@ TUTORIALS: dict[str, dict] = {
         "author_icon": VEX_PORTRAIT,
         "description": (
             "*Everything here is worthless. That's what makes it interesting.*\n\n"
-            "The Nether Market trades in flavorless **curiosities** whose prices drift up and down "
+            "The Nether Market trades in **curiosities** whose prices drift up and down "
             "every hour — buy low, hold, and sell back when the rotation turns in your favor. "
             "Only 3 items are tradeable at a time, so patience pays.\n\n"
             "You can also **browse** other players' (and a few NPCs') stashes and attempt to **plunder** "
@@ -565,7 +565,7 @@ TUTORIALS: dict[str, dict] = {
             "Win and you walk away with goods and a Nether Mark; lose and you walk away with nothing lost."
         ),
         "tips": [
-            "You can only sell an item back while it's one of the 3 currently active offers.",
+            "You can only sell an item back while it's one of the 3 currently active offers. BE CAREFUL TO NOT LOCK UP ALL YOUR GOLD!",
             "Plunder charges are limited and regenerate over time — pick your targets carefully.",
             "A successful plunder shields the target from further attempts for a while — the wealthier they are, the longer it lasts.",
             "Spend Nether Marks in the Cutpurse (offense) and Strongbox (defense) trees to get better at plundering, or harder to be plundered.",
