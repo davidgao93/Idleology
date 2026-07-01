@@ -1252,6 +1252,17 @@ class Player:
             if monster is not None:
                 pct_pool += get_executioners_rite_bonus(self, monster)
 
+        # Slayer Tree hu_1 "Slayer's Edge" — +18% ATK vs the assigned task species.
+        # Lives in pct_pool (not a damage multiplier) so it sums with every other
+        # ATK% source instead of compounding on top of them.
+        if (
+            monster is not None
+            and self.active_task_species
+            and self.active_task_species == monster.species
+            and self.slayer_tree_nodes.get("hu_1") == "atk"
+        ):
+            pct_pool += 0.18
+
         total = flat + bonus_pool
         if pct_pool:
             total += int(flat * pct_pool)
@@ -1262,7 +1273,9 @@ class Player:
 
         return max(0, total)
 
-    def get_total_defence(self) -> int:
+    def get_total_defence(self, monster: "Monster | None" = None) -> int:
+        """monster is optional — only needed for the conditional Slayer Tree hu_2
+        "def" bonus (which reads monster.species). Every other caller can omit it."""
         flat = self.flat_def  # Base + Equipment; pre-computed, immutable during combat
 
         # ---- Flat bonus pool ----
@@ -1306,6 +1319,17 @@ class Player:
         # as ATK; expires on its own turn timer (see monster_turn.py).
         if self.alchemy_def_boost_pct > 0:
             pct_pool += self.alchemy_def_boost_pct
+
+        # Slayer Tree hu_2 "Hunter's Resolve" — +18% DEF vs the assigned task
+        # species. Lives in pct_pool (not a damage-taken multiplier) so it sums
+        # with every other DEF% source instead of compounding on top of them.
+        if (
+            monster is not None
+            and self.active_task_species
+            and self.active_task_species == monster.species
+            and self.slayer_tree_nodes.get("hu_2") == "def"
+        ):
+            pct_pool += 0.18
 
         total = flat + bonus_pool
         if pct_pool:

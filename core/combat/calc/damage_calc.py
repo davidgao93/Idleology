@@ -53,7 +53,7 @@ def calculate_damage_taken(player: Player, monster: Monster) -> int:
     Rookie shield: players below level 50 receive at most (player.level − 2) damage
     per hit, floored at 1.  Cap starts at 1 (levels 1–3) and rises by +1 per level,
     reaching the uncapped formula at level 50."""
-    p_def = max(player.get_total_defence(), 1)
+    p_def = max(player.get_total_defence(monster), 1)
     base_raw = monster.level * 0.75 * _mid_level_scalar(monster.level)
     surplus = (monster.effective_attack - p_def) / p_def
     surplus = max(-0.95, surplus)
@@ -94,7 +94,7 @@ def roll_monster_damage(
     # Onslaught boosts the monster's effective ATK for this calculation
     if monster.has_modifier("Onslaught"):
         m_atk = int(m_atk * (1 + monster.onslaught_bonus_atk))
-    p_def = max(player.get_total_defence(), 1)
+    p_def = max(player.get_total_defence(monster), 1)
     surplus = max(-0.95, (m_atk - p_def) / p_def)
     surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
     dmg = calculate_damage_taken(player, monster)

@@ -75,7 +75,7 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
 
 def _cs_transcendence(player, monster):
     total_atk = player.get_total_attack(monster)
-    total_def = player.get_total_defence()
+    total_def = player.get_total_defence(monster)
     bonus = int((total_atk + total_def) * 0.20)
     player.bonus_atk += bonus
     return f"**✨ Transcendence** channels your power! ⚔️ +**{bonus}** ATK (20% of total ATK+DEF)"
@@ -367,7 +367,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
     idx, name = get_weapon_tier(player, "sturdy")
     if idx >= 0:
         pct = (idx + 1) * 0.08
-        flat = int(player.get_total_defence() * pct)
+        flat = int(player.get_total_defence(monster) * pct)
         player.bonus_def += flat
         weapon_parts.append(
             f"🛡️ **{fmt_weapon_passive(name)}**: defence boosted by **{flat}** ({int(pct * 100)}%)"
@@ -410,7 +410,7 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
     ):
         pct = _SST["transcendence"][ss_transcendence - 1]
         total_atk = player.get_total_attack(monster)
-        total_def = player.get_total_defence()
+        total_def = player.get_total_defence(monster)
         bonus = int((total_atk + total_def) * pct / 100)
         player.bonus_atk += bonus
         log.append(
@@ -479,7 +479,7 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
         if tyr_pct > 0:
             # Current effective totals (after all other bonuses)
             cur_atk = player.get_total_attack(monster)
-            cur_def = player.get_total_defence()
+            cur_def = player.get_total_defence(monster)
             combined = int((cur_atk + cur_def) * (1 + tyr_pct))
             half = combined // 2
             # Bonus needed: (half - cur_atk) added as bonus_atk, etc.

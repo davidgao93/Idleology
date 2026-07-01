@@ -368,17 +368,17 @@ def process_monster_turn(
                 effective_pdr, max(0, player.get_raw_pdr() - corrode_reduction)
             )
         pdr_notes = [f"base={effective_pdr}%"]
+        pdr_cap = (
+            90
+            if (
+                player.equipped_armor
+                and player.equipped_armor.passive == "Impregnable"
+            )
+            else 80
+        )
         if celestial == "celestial_fortress":
             missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
             bonus_pdr = int(missing_pct / 5.0)
-            pdr_cap = (
-                90
-                if (
-                    player.equipped_armor
-                    and player.equipped_armor.passive == "Impregnable"
-                )
-                else 80
-            )
             effective_pdr = min(pdr_cap, effective_pdr + bonus_pdr)
             pdr_notes.append(
                 f"+{bonus_pdr}%(fortress,{missing_pct:.1f}%missing)={effective_pdr}%"
@@ -389,7 +389,7 @@ def process_monster_turn(
         _hu2 = getattr(player, "slayer_tree_nodes", {}).get("hu_2")
         if _hu2 and player.active_task_species == monster.species:
             if _hu2 == "pdr":
-                effective_pdr = min(80, effective_pdr + 8)
+                effective_pdr = min(pdr_cap, effective_pdr + 8)
                 pdr_notes.append(f"+8%(hu2_pdr)={effective_pdr}%")
             elif _hu2 == "fdr":
                 effective_fdr += 24
@@ -605,19 +605,48 @@ def process_monster_turn(
             if player.alchemy_enfeeble_turns <= 0:
                 player.alchemy_enfeeble_pct = 0.0
 
-        if player.alchemy_dmg_reduction_turns > 0 and total_damage > 0:
-            reduction = int(total_damage * player.alchemy_dmg_reduction_pct)
-            total_damage = max(0, total_damage - reduction)
-            player.alchemy_dmg_reduction_turns -= 1
-            if reduction > 0:
-                _pain_msg = (
-                    f"🩹 **Painkiller** reduces damage by **{reduction}**! "
+        # --- Unified damage-taken reduction pool: Painkiller, Tenacity, Slayer ---
+        # "Killing Blow" (tank). All active % sources are summed first, then applied
+        # as a single reduction — mirrors apply_monster_damage_reduction()'s "Layer 1:
+        # Regular DR" additive-pool pattern so these sources add together instead of
+        # compounding multiplicatively against each other.
+        if total_damage > 0:
+            dtr_pct = 0.0
+            dtr_parts: list[str] = []
+
+            if player.alchemy_dmg_reduction_turns > 0:
+                dtr_pct += player.alchemy_dmg_reduction_pct
+                player.alchemy_dmg_reduction_turns -= 1
+                dtr_parts.append(
+                    f"🩹 Painkiller {int(player.alchemy_dmg_reduction_pct * 100)}% "
                     f"({player.alchemy_dmg_reduction_turns} hit{'s' if player.alchemy_dmg_reduction_turns != 1 else ''} left)"
                 )
-                log.append(_pain_msg)
-                clog.append(_pain_msg)
-            if player.alchemy_dmg_reduction_turns <= 0:
-                player.alchemy_dmg_reduction_pct = 0.0
+                if player.alchemy_dmg_reduction_turns <= 0:
+                    player.alchemy_dmg_reduction_pct = 0.0
+
+            tenacity_pct = player.get_tome_bonus("tenacity")
+            if tenacity_pct > 0 and random.random() < (tenacity_pct / 100):
+                dtr_pct += 0.50
+                dtr_parts.append("**Tenacity** 50%")
+
+            _tree_nodes = getattr(player, "slayer_tree_nodes", {})
+            if (
+                _tree_nodes.get("hu_3") == "tank"
+                and player.active_task_species == monster.species
+            ):
+                dtr_pct += 0.25
+                dtr_parts.append("Slayer's Killing Blow 25%")
+
+            if dtr_pct > 0:
+                dtr_pct = min(0.90, dtr_pct)
+                reduction = int(total_damage * dtr_pct)
+                total_damage = max(0, total_damage - reduction)
+                _dtr_msg = (
+                    f"{' + '.join(dtr_parts)} braces the impact, "
+                    f"reducing the blow by **{reduction}**!"
+                )
+                log.append(_dtr_msg)
+                clog.append(_dtr_msg)
 
         # Partner: co_damage_reduction (L×5% chance to halve incoming damage)
         if (
@@ -650,14 +679,6 @@ def process_monster_turn(
                 monster.onslaught_bonus_atk += monster.get_modifier_value("Onslaught")
 
             damage_dealt = 0
-
-            if player.get_tome_bonus("tenacity") > 0 and random.random() < (
-                player.get_tome_bonus("tenacity") / 100
-            ):
-                total_damage = max(1, total_damage // 2)
-                _ten_msg = "**Tenacity** braces the impact, halving the damage!"
-                log.append(_ten_msg)
-                clog.append(_ten_msg)
 
             void_passive = player.get_accessory_void_passive()
             if void_passive == "nullfield" and random.random() < 0.15:
@@ -720,21 +741,13 @@ def process_monster_turn(
                         )
                         # skip in compact — subtle buff that will affect future numbers
 
-            if total_damage > 0:
-                if player.active_task_species == monster.species:
-                    tiers = player.get_emblem_bonus("slayer_def")
-                    if tiers > 0:
-                        total_damage = int(total_damage * (1 - min(0.50, tiers * 0.02)))
-                    _tree_nodes = getattr(player, "slayer_tree_nodes", {})
-                    if _tree_nodes.get("hu_2") == "def":
-                        total_damage = int(
-                            total_damage * 0.85
-                        )  # +18% DEF ≈ −15% dmg taken
-                    if _tree_nodes.get("hu_3") == "tank":
-                        total_damage = int(
-                            total_damage * 0.75
-                        )  # −25% dmg taken vs task
+            # Slayer emblem "slayer_def" is already folded into DEF via
+            # apply_stat_effects() (bonus_def), and hu_2 "def" is folded into DEF
+            # via get_total_defence()'s pct_pool — neither is re-applied here to
+            # avoid double-counting the same source. hu_3 "tank" is handled above
+            # in the unified damage-taken reduction pool.
 
+            if total_damage > 0:
                 # Aegis shield (powerful distilled passive) — absorb damage
                 shield_hp = getattr(player, "alchemy_shield_hp", 0)
                 if shield_hp > 0 and total_damage > 0:

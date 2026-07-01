@@ -84,7 +84,7 @@ def calculate_monster_hit_chance(player: Player, monster: Monster) -> float:
     m_atk = monster.effective_attack
     if m_atk <= 0:
         return _MON_HIT_MIN
-    pct_diff = (m_atk - player.get_total_defence()) / m_atk
+    pct_diff = (m_atk - player.get_total_defence(monster)) / m_atk
     return min(
         max(_MON_HIT_BASE + pct_diff * _MON_HIT_SENSITIVITY, _MON_HIT_MIN),
         _MON_HIT_MAX,
@@ -154,10 +154,10 @@ def build_attack_multiplier(
         if tiers > 0:
             add_pool_bonus += tiers * 0.05
             add_pool_parts.append(f"slayer_dmg+{int(tiers * 5)}%")
-        # Slayer tree hu_1 ATK bonus vs task species
-        if getattr(player, "slayer_tree_nodes", {}).get("hu_1") == "atk":
-            add_pool_bonus += 0.18
-            add_pool_parts.append("hu1_atk+18%")
+        # hu_1 "atk" (+18% ATK vs task species) is a Bonus ATK source, not a damage
+        # multiplier — it lives in Player.get_total_attack()'s pct_pool instead of
+        # here, so it sums with other ATK% sources rather than compounding on top
+        # of them.
         # Slayer tree hu_3 DMG bonus vs task species
         if getattr(player, "slayer_tree_nodes", {}).get("hu_3") == "dmg":
             add_pool_bonus += 0.25
